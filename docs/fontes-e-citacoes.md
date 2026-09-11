@@ -2,27 +2,12 @@
 
 Uma fonte identifica uma obra ou um material. A referência bibliográfica ajuda a
 reconhecer essa obra; o vínculo explica como ela foi usada; a localização indica
-onde encontrar o trecho pertinente. Essas informações têm funções diferentes.
-Uma referência bem formatada ou um PDF acessível não confirma, por si só, uma
-afirmação didática.
-
-Na Autoria, uma fonte selecionada para um vínculo ainda não salvo pode ser
-inspecionada no catálogo do próprio curso. Fechar sua ficha conserva a seleção
-e o rascunho em edição. Depois de salvar o vínculo, a consulta usa também o
-contexto persistido do alvo. Essa distinção evita apresentar a fonte como ausente
-por ainda não ter sido vinculada; não concede acesso ao estudante nem altera as
-permissões dos arquivos ou a revisão humana do conteúdo.
-Durante uma gravação e sua releitura, o botão de voltar fica desabilitado até
-o painel concluir a atualização ou apresentar a falha; a confirmação da escrita
-não é confundida com o término dessa leitura.
-
-No vínculo contextual, as ações de seleção ficam disponíveis depois que a
-atribuição do item foi carregada. Uma releitura conserva as alterações feitas
-durante a espera. Anexar ou remover um PDF e alterar seu acesso também conservam
-o rascunho de fonte ou âncora, seu foco e sua seleção. A confirmação de salvar
-encerra somente o editor correspondente; a revisão original do rascunho continua
-protegendo contra alterações concorrentes. Uma falha na atualização da lista
-mantém a edição disponível e informa que o estado salvo precisa ser relido.
+onde encontrar o trecho pertinente. A âncora registra essa localização na fonte;
+a ocorrência identifica o trecho do curso que usa a referência. Juntos, esses
+registros tornam possível conferir o apoio dado pela fonte durante a revisão.
+A conferência exige ler a fonte e avaliar sua relação com a afirmação didática;
+a formatação bibliográfica e a disponibilidade do PDF atendem a outras partes
+desse trabalho.
 
 ## Texto do autor e referência gerada
 
@@ -52,7 +37,7 @@ edições nas suas orientações de normalização.
 
 A APA mantém a 7ª edição do [*Publication Manual*](https://www.apa.org/pubs/books/publication-manual-7th-edition-paperback).
 O [guia da biblioteca do IE-ULisboa, de 2023](https://www.ie.ulisboa.pt/sites/default/files/documents/document/default/apa-7-2023.pdf),
-atualmente vinculado pela instituição, orienta o uso de APA em seus trabalhos
+orienta o uso de APA em trabalhos
 acadêmicos e identifica a edição 7. Isso é uma orientação institucional
 pertinente; não torna APA obrigatória para todo curso. Regras específicas de um
 programa, orientador, periódico ou evento continuam relevantes.
@@ -67,23 +52,26 @@ segundo um sistema autor-data.
 
 O AraLearn usa uma projeção limitada dos metadados para
 [CSL-JSON](https://docs.citationstyles.org/en/v1.0.2/specification.html), mantendo a
-fonte canônica como único cadastro. O CSL distingue os dados bibliográficos do
+fonte canônica como único cadastro. CSL (*Citation Style Language*) descreve como apresentar citações e referências;
+CSL-JSON organiza os dados bibliográficos em campos. O CSL distingue os dados do
 item, o contexto da citação e as regras de apresentação. Não é necessário adotar
 um gerenciador bibliográfico completo para usar essa separação.
 
-O motor selecionado é **citeproc-js, pacote `citeproc` 2.4.63**, sem dependências
-adicionais de execução. Ele é carregado sob demanda por módulos locais. Motor,
+O motor selecionado é **citeproc-js, pacote `citeproc` 2.4.63**, que aplica os estilos aos
+dados fornecidos. Seu código é carregado apenas quando necessário, a partir
+dos arquivos distribuídos com o aplicativo. Motor,
 estilos e traduções ficam fixados na distribuição; a geração de uma referência
 não busca código, estilos, metadados ou arquivos em serviços externos.
 
 O componente `renderCslReference(item, {style})` recebe um item CSL limitado e
-devolve texto e segmentos tipados. Os segmentos contêm somente texto, itálico,
+devolve texto e segmentos com formatos permitidos explicitamente. Os segmentos contêm somente texto, itálico,
 negrito e alinhamento sobrescrito/subscrito. O HTML genérico do processador não é
 repassado à interface. URLs são tratadas pelo mecanismo próprio de links do
 produto, separado da formatação bibliográfica. A mesma entrada produz os mesmos
-segmentos no navegador e em Deno.
+segmentos no navegador e no servidor, que usa o ambiente de execução Deno.
 
-Um cache limitado a 32 resultados usa o conteúdo normalizado completo e o estilo
+Um cache — armazenamento temporário para evitar refazer a mesma formatação —
+limitado a 32 resultados usa o conteúdo normalizado completo e o estilo
 como chave. Cada consumidor recebe uma cópia; alterar o retorno não muda outra
 referência. O estado interno de um processador não é reutilizado entre obras.
 
@@ -96,7 +84,7 @@ como sugestão, enquanto `papeis` em cada vínculo declara seu uso naquele alvo.
 A mesma fonte pode ter vários vínculos. Ao editar um vínculo pela posição
 apresentada, os demais são conservados.
 
-Na consulta de uma unidade ou Explicação, cada vínculo informa sua posição
+Na consulta de uma unidade ou explicação, cada vínculo informa sua posição
 atual, o título e a citação da fonte, seu estado e as âncoras correspondentes.
 Cada âncora informa a posição na ficha corrente da fonte, o localizador e o
 trecho de verificação disponíveis, sem divulgar identificadores internos.
@@ -108,16 +96,16 @@ um homônimo. Uma fonte retirada continua identificada como retirada. Uma ficha
 ou âncora ausente é indicada como não localizada; isso não transforma falhas de
 autorização ou de serviço em ausência e não anuncia acesso a um arquivo.
 
-O vínculo pode pertencer a uma unidade ou à **Explicação compartilhada** de uma
+O vínculo pode pertencer a uma unidade ou à **explicação compartilhada** de uma
 microssequência. `consultar_fontes` aceita `explicacao` com o título ou a posição
 da microssequência; em `manter_fonte`, cada item de `vinculos` escolhe `unidade`
-ou `explicacao`. O apoio precisa estar produzido para receber vínculos de
-conteúdo. Suas ocorrências apontam somente ao conteúdo do apoio, sem copiar
+ou `explicacao`. A base precisa estar produzida para receber vínculos de
+conteúdo. Suas ocorrências apontam somente ao conteúdo da base, sem copiar
 referências em todas as unidades e sem usar resposta ou feedback. As fontes
 previstas no planejamento continuam distintas das que sustentam texto produzido.
 
 Os canais releem a versão corrente do alvo antes de gravar. Alterar uma fonte,
-Âncora ou arquivo efetivamente usado pode exigir nova revisão do conteúdo que
+âncora ou arquivo efetivamente usado pode exigir nova revisão do conteúdo que
 depende dele; conferir uma fonte não aprova automaticamente esse conteúdo.
 Referências e arquivos do rascunho ficam disponíveis à inspeção da autoria;
 a leitura estudantil também observa a situação de revisão e os direitos de
@@ -129,6 +117,26 @@ pela âncora. O estado de localização da ocorrência é calculado na leitura;
 não pode ser informado como uma confirmação pelo canal de autoria. A tarefa
 `manter_fonte` também permite escolher `apa7` ou `abnt-2025` para o curso, sem
 reescrever o material didático ou apagar uma referência manual.
+
+## Inspeção e edição de vínculos
+
+Na Autoria, uma fonte selecionada para um vínculo ainda não salvo pode ser
+inspecionada no catálogo do próprio curso. Fechar sua ficha conserva a seleção
+e o rascunho em edição. Depois de salvar o vínculo, a consulta usa também o
+contexto persistido do alvo. Essa distinção evita apresentar a fonte como ausente
+por ainda não ter sido vinculada; não concede acesso ao estudante nem altera as
+permissões dos arquivos ou a revisão humana do conteúdo.
+Durante uma gravação e sua releitura, o botão de voltar fica desabilitado até
+o painel concluir a atualização ou apresentar a falha; a confirmação da escrita
+não é confundida com o término dessa leitura.
+
+No vínculo contextual, as ações de seleção ficam disponíveis depois que a
+atribuição do item foi carregada. Uma releitura conserva as alterações feitas
+durante a espera. Anexar ou remover um PDF e alterar seu acesso também conservam
+o rascunho de fonte ou âncora, seu foco e sua seleção. A confirmação de salvar
+encerra somente o editor correspondente; a revisão original do rascunho continua
+protegendo contra alterações concorrentes. Uma falha na atualização da lista
+mantém a edição disponível e informa que o estado salvo precisa ser relido.
 
 ## Referências no Estudo
 
@@ -144,11 +152,11 @@ Os números são controles locais de navegação, sem alterar o texto ou a fonte
 persistidos. Um sobrescrito junto ao trecho abre sua referência no fim da folha.
 Quando uma fonte tem várias ocorrências, cada retorno identifica o trecho a que
 leva. O retorno a uma ocorrência da unidade fecha a folha e devolve o foco àquela
-ocorrência; o retorno à base mantém a Explicação aberta. Quando a notação impede
+ocorrência; o retorno à base mantém a explicação aberta. Quando a notação impede
 inserir o controle junto ao texto de forma inequívoca, ele acompanha o campo ou
 componente que contém a ocorrência, preservando a notação.
 
-A inspeção na Autoria usa essa mesma navegação no snapshot do objeto. As fontes
+A inspeção na Autoria usa essa mesma navegação sobre a versão consultada do objeto. As fontes
 da base e de cada unidade conservam seus grupos e destinos; abrir uma referência
 ou um PDF não grava conteúdo, consome observações nem declara revisão humana.
 
@@ -156,14 +164,15 @@ O destino web é identificado por seu vínculo. Um PDF autorizado é resolvido
 somente no clique, usando o arquivo e, quando declarada, a página da âncora. A URL
 temporária não integra o documento nem o cache de referências. Falha de rede ou
 de acesso permanece visível e não transforma o arquivo em ausente. Ao editar um
-campo com citações, a serialização conserva o conteúdo autorizado e exclui os
+campo com citações, a conversão da edição em dados salvos conserva o conteúdo e exclui os
 números transitórios; alterar o trecho pode tornar sua ocorrência pendente de
 revisão, sem apagar o vínculo ou declarar revisão humana.
 
 Um acervo sem base explicativa continua estudável e mantém as referências já
 vinculadas. A folha informa a falta da base e cresce conforme o conteúdo
 disponível. A mesma entrada substitui o botão permanente de **Fontes**. A leitura da
-base salva não exige revisão autoral declarada: o acesso segue a política do curso
+base salva pode ocorrer sem marca de revisão quando a política do curso permite
+conteúdo completo salvo. O acesso segue essa escolha
 e os direitos de cada arquivo, conforme [Explicação e revisão
 humana](explicacao-e-revisao-humana.md).
 
@@ -172,7 +181,7 @@ consultadas são armazenadas por curso, revisão e alvo; quando disponíveis,
 continuam legíveis offline nessa mesma revisão. Referências ainda não guardadas
 e arquivos externos indisponíveis são indicados explicitamente. Uma revisão nova
 invalida a reutilização da anterior, e a revogação de acesso remove os respectivos
-caches locais. Corpo e referências usam os tokens comuns de prosa e contraste;
+caches locais. Corpo e referências usam as regras comuns de tipografia e contraste;
 controles preservam nomes acessíveis e área de toque com texto ampliado.
 
 ## Estilos fixados e adaptação ABNT
@@ -181,7 +190,7 @@ O estilo [APA 7](https://raw.githubusercontent.com/citation-style-language/style
 e o estilo institucional
 [UFRGS — ABNT com autoria abreviada](https://raw.githubusercontent.com/citation-style-language/styles/1a16445a22e1ca8aff67cab74fb6077513d67cc0/associacao-brasileira-de-normas-tecnicas-ufrgs-initials.csl)
 são preservados no repositório com os seus autores, colaboradores, avisos e
-hashes. O segundo declara NBR 6023:2025 e NBR 10520:2023. É uma implementação
+resumos criptográficos, que permitem conferir a integridade dos arquivos. O segundo declara NBR 6023:2025 e NBR 10520:2023. É uma implementação
 institucional, não um software emitido ou certificado pela ABNT.
 
 A variante distribuída aplica uma correção pequena e reproduzível ao estilo
@@ -191,13 +200,14 @@ convertido em `p. e12345`. Quando páginas estão informadas, sua apresentação
 permanece própria. A distinção acompanha os exemplos da atualização de 2025
 apresentados pela [ECA/USP](https://www.eca.usp.br/sites/default/files/2025-06/NBR%206023_2025.pdf).
 
-O XML original permanece intacto. A alteração
+O arquivo XML original, que descreve as regras do estilo, permanece intacto. A alteração
 `aralearn-abnt-elocation-v1` é aplicada pelo gerador e identificada nos avisos. O
 campo bibliográfico canônico de localização eletrônica é projetado para `number`
 no CSL; ele não é armazenado como intervalo de páginas.
 
 A adaptação `aralearn-abnt-access-punctuation-v1` também retira o segundo ponto
-acrescentado pelos ramos de página web e relatório depois da macro de acesso,
+acrescentado pelos regras de página web e relatório depois da macro de acesso, trecho reutilizável
+do estilo
 que já fornece a pontuação. Assim, uma URL sem data de acesso termina com um
 único ponto; uma data informada continua aparecendo normalmente. O ajuste é
 feito no CSL gerado, sem limpar a referência por expressão regular nem preencher
@@ -212,7 +222,8 @@ metadados mínimos, preservando os dados e os marcadores de ausência do estilo.
 
 ## Reprodução, licenças e limites
 
-Os fontes e hashes ficam em `src/bibliography/upstream`. Para gerar e conferir os
+Os arquivos originais e seus resumos de integridade ficam em
+[`src/bibliography/upstream`](../src/bibliography/upstream). Para gerar e conferir os
 módulos locais, use:
 
 ```sh
@@ -221,8 +232,8 @@ node scripts/buildBibliographyVendor.mjs --check
 ```
 
 O gerador funciona sem rede ou instalação adicional e recusa arquivos que não
-correspondam aos hashes fixados. O código original é preservado; somente o
-envoltório ESM e o empacotamento dos estilos são gerados.
+correspondam aos hashes fixados. O código original é preservado; somente a
+adaptação para módulos JavaScript e o empacotamento dos estilos são gerados.
 
 O produto mantém sua licença MIT. Para o motor separado, o AraLearn utiliza a
 opção CPAL 1.0 concedida pelo autor, preservando fonte, alterações e avisos. A

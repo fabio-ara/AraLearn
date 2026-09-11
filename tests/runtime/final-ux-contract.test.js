@@ -4,8 +4,10 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
 
-test("o contrato corrente registra as decisões pós-auditoria sem alternativa pendente", async () => {
+test("o contrato histórico conserva as decisões da rodada e aponta para a experiência atual", async () => {
   const contract = await read("ux-atlas/FINAL-UX-CONTRACT.md");
+  assert.match(contract, /Registro histórico da rodada de UX/iu);
+  assert.match(contract, /experiência atual[\s\S]*docs\/sistema-visual\.md/iu);
   assert.match(contract, /contrato corrente de experiência/iu);
   for (const fragment of [
     "A pesquisa respondeu às seis perguntas",
@@ -36,11 +38,21 @@ test("o contrato corrente registra as decisões pós-auditoria sem alternativa p
   assert.doesNotMatch(contract, /alternativas? (?:em aberto|pendentes?)/iu);
 });
 
-test("o Atlas distingue o contrato corrente dos registros históricos", async () => {
+test("o Atlas delimita seus registros históricos e encaminha a documentação vigente", async () => {
   const index = await read("ux-atlas/README.md");
-  assert.match(index, /contrato corrente e referências históricas/iu);
-  assert.match(index, /registros históricos[\s\S]*não são documentação normativa/iu);
-  assert.match(index, /referência normativa\s+compacta reconciliada/iu);
-  assert.match(index, /não prevalecem sobre o contrato corrente/iu);
-  assert.doesNotMatch(index, /matriz de cobertura e o baseline de Estudo são normativos/iu);
+  assert.match(index, /^# Registros históricos de UX/iu);
+  assert.match(index, /não definem o comportamento atual do aplicativo/iu);
+  for (const target of [
+    "docs/sistema-visual.md",
+    "docs/guia-estudante.md",
+    "docs/guia-professor-autor.md",
+    "docs/README.md"
+  ]) {
+    assert.ok(index.includes(`../${target}`), `destino corrente ausente: ${target}`);
+    assert.ok((await read(target)).trim(), `destino corrente vazio: ${target}`);
+  }
+  for (const target of ["FINAL-UX-CONTRACT.md", "MATRIZ-COBERTURA.md", "STUDY-VISUAL-BASELINE.md"]) {
+    assert.ok(index.includes(`](${target})`), `registro histórico não indexado: ${target}`);
+    assert.match(await read(`ux-atlas/${target}`), /Registro histórico da rodada de UX/iu);
+  }
 });

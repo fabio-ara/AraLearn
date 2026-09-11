@@ -5,9 +5,10 @@ A área **Analytics** descreve, com números simples, o estado atual de um curso
 1. como o conteúdo foi desenhado;
 2. onde houve intervenção humana explícita.
 
-Ela não reconstitui a execução técnica, não atribui nota de qualidade e não
-mede aprendizagem ou participação humana. Os números caracterizam o artefato e
-ações observáveis.
+Os números caracterizam o conteúdo salvo e as ações cuja origem permanece
+registrada. A interpretação de qualidade, aprendizagem ou participação humana
+exige examinar o conteúdo e, conforme a pergunta, realizar uma avaliação com
+pessoas.
 
 ## Como consultar
 
@@ -20,9 +21,9 @@ ações observáveis.
 6. **Abrir dados e definições** revela a configuração solicitada, os dados
    aplicados e as intervenções explícitas.
 
-Uma referência interna localiza o recorte, mas a interface mostra seu nome
-humano. Parte, nesse seletor, é apenas um lote de produção; não é nível do mapa
-curricular.
+O seletor identifica cada recorte pelo nome. Uma parte agrupa trabalho de
+produção; um lote pode reunir partes sucessivas. Esses recortes de autoria não
+acrescentam níveis ao [mapa curricular](modelo-didatico.md).
 
 ## Desenho
 
@@ -71,7 +72,7 @@ microssequência. Portanto, suas contagens podem se sobrepor e não formam uma
 partição das unidades do recorte.
 
 O modo automático exige uma escolha contextual registrada; a ausência de valor
-não representa um preset fixo. Herdar e fixar são intenções distintas. Um valor
+não representa uma combinação fixa de valores. Herdar e fixar são intenções distintas. Um valor
 fixado deliberadamente pelo pesquisador prevalece e aparece como definição
 explícita. Isso permite investigar diferentes desenhos sem
 transformar uma aplicação específica em padrão universal.
@@ -126,7 +127,7 @@ A síntese mostra:
 
 A tabela complementar informa observações criadas e resolvidas e agrupa unidades
 pela origem de sua criação e última revisão. Essas contagens não formam
-percentual de autoria nem score de colaboração. Ausência de intervenção
+percentual de autoria nem pontuação de colaboração. Ausência de intervenção
 registrada não significa concordância.
 
 Quando a origem corrente não pode ser atribuída com segurança, Analytics a
@@ -135,9 +136,9 @@ por inferência.
 
 ## De onde vêm os números
 
-Analytics deriva o snapshot das autoridades correntes sempre que possível:
-estrutura, planejamento, configuração efetiva, unidades, componentes, fontes,
-âncoras e observações. Intervenções humanas entram apenas quando o estado
+Analytics calcula uma leitura do estado salvo a partir da estrutura, do
+planejamento, da configuração, das unidades e de seus vínculos com componentes,
+fontes, âncoras e observações. Intervenções humanas entram apenas quando o estado
 corrente conserva origem explícita com significado estável.
 
 A decisão histórica de desenho e a aplicação semântica corrente são distintas.
@@ -174,7 +175,11 @@ tempo em tela numa segunda história do curso.
 **Exportar curso e análise** pede uma ação explícita e salva um JSON com o
 conteúdo integral do curso e a leitura quantitativa do escopo selecionado.
 Inclui configuração solicitada e aplicada, inventário planejado, declarações e
-contagens, sempre com curso e revisão identificados. A exportação falha inteira
+contagens, sempre com curso e revisão identificados. Conserva também as
+explicações, os vínculos com suas fontes, a base aplicada às unidades e as
+declarações de revisão disponíveis. A
+[referência técnica](dicionario-metricas-datasets.md#comparação-e-exportação)
+detalha esses registros. A exportação falha inteira
 se a revisão mudar enquanto as entidades são lidas.
 
 Os arquivos PDF e áudio não são incorporados: permanecem suas referências

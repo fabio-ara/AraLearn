@@ -1,9 +1,15 @@
 # Componentes didáticos e pacotes
 
 No AraLearn, um **componente didático** produz uma representação externa, uma
-forma de resposta ou ambas dentro de uma unidade de estudo. Seu **pacote de
-componente** reúne contrato, validação, apresentação, acessibilidade e avaliação.
-O núcleo de execução conhece as posições ocupadas na Unidade, mas não incorpora
+forma de resposta ou ambas dentro de uma unidade de estudo. Uma tabela pode
+comparar valores; uma lacuna pode pedir que o estudante complete um deles. A
+escolha depende da relação a ensinar e da operação solicitada, conforme a
+[fundamentação pedagógica dos componentes](fundamentacao-pedagogica-dos-resources.md).
+
+Na implementação, o **pacote de componente** reúne o formato dos dados, sua
+validação, apresentação, acessibilidade e, quando há resposta, avaliação.
+O **núcleo de execução** é a parte comum do software que valida e apresenta a
+unidade. Ele conhece as posições de conteúdo, resposta e retorno, mas não incorpora
 a estrutura interna de grafos, matrizes, fórmulas ou processos.
 
 Essa separação permite ampliar o catálogo sem duplicar leitura e persistência.
@@ -15,7 +21,8 @@ exceções pelo aplicativo.
 Uma caixa visual não se torna um componente didático apenas por ter estilo
 próprio. Um pacote especializado se justifica quando texto, tabela genérica ou
 outro componente instalado perderia uma relação relevante, uma notação
-convencional ou uma operação-alvo da tarefa.
+convencional ou uma operação que o estudante precisa realizar. Essa escolha segue a
+[operação-alvo da tarefa](modelo-didatico.md#prática-orientada-pela-operação-alvo-da-tarefa).
 
 ### Critério de decisão
 
@@ -28,8 +35,8 @@ Antes de criar um pacote, responda:
 5. como a forma continua legível, acessível e editável no celular;
 6. quais situações tornam o componente inadequado.
 
-`matrix` é distinto de `table` porque posição algébrica, delimitadores e
-operações matriciais têm significado. `call-stack` é distinto de tabela quando
+O pacote de matriz, `matrix`, é distinto do de tabela, `table`, porque posição algébrica, delimitadores e
+operações matriciais têm significado. O pacote de pilha de chamadas, `call-stack`, é distinto de tabela quando
 precisa mostrar topo, ordem de quadros, ativação e retorno. Se um suposto
 “rastreamento de algoritmo” apenas listar linhas e valores, `table` é
 suficiente. A especialização se sustenta quando materializa o estado do
@@ -38,12 +45,16 @@ genérica não expressa.
 
 Representações múltiplas podem favorecer compreensão quando suas funções são
 coordenadas, mas aumentam carga quando apenas repetem ou decoram a mesma
-informação. Esse princípio é discutido no modelo DeFT de
+informação. O quadro DeFT relaciona o desenho das representações, suas funções e as
+tarefas de aprendizagem; é proposto por
 [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft).
 
 ## 2. Núcleo de execução e pacote
 
-O núcleo em `src/resources/kernel/` oferece:
+Uma instância é uma ocorrência de um pacote com dados próprios, como uma
+tabela concreta. A referência `package@version` identifica o pacote e a versão
+do contrato a que os dados obedecem. O núcleo em
+[`src/resources/kernel/`](../src/resources/kernel/) oferece:
 
 - estrutura externa e posições da unidade de estudo;
 - resolução de `package@version`;
@@ -52,7 +63,7 @@ O núcleo em `src/resources/kernel/` oferece:
 - mediação de lacunas, digitação e respostas;
 - seleção de instâncias para edição e assistência.
 
-Cada diretório em `src/resources/packages/` oferece:
+Cada diretório em [`src/resources/packages/`](../src/resources/packages/) oferece:
 
 - identidade, finalidade, taxonomia, operações e limites no manifesto
   (`manifest`);
@@ -65,9 +76,10 @@ Cada diretório em `src/resources/packages/` oferece:
 - rótulo textual opcional para apresentar um valor de referência sem alterar o
   dado persistido (`practiceValueLabel`);
 - avaliação da resposta (`evaluate`);
-- ativação posterior quando a interação exigir (`hydrate`).
+- ativação dos controles após apresentar o conteúdo, chamada hidratação
+  (`hydrate`), quando a interação exigir.
 
-O registro rejeita pacotes que não cumprem essas obrigações. Um pacote de
+O registro rejeita pacotes que não cumprem as obrigações aplicáveis ao seu papel. Um pacote de
 conteúdo declara `exposition`; um pacote de resposta implementa sua avaliação.
 Todo pacote delimita os textos autorizados e pode participar da busca autoral,
 enquanto a estrutura permanece protegida.
@@ -79,7 +91,8 @@ O inventário e a decisão de manter ou restringir cada gramática estão na
 [auditoria dos componentes](auditoria-academica-dos-resources.md#6-decisão-corrente-e-uso-observado).
 Diretórios auxiliares, como `system-diagrams`, não são pacotes adicionais.
 
-O catálogo descreve os pacotes com facetas controladas:
+O catálogo descreve cada pacote por categorias de consulta, chamadas
+**facetas**, com valores definidos:
 
 - domínios e objetos de conhecimento;
 - operações-alvo das tarefas;
@@ -94,33 +107,36 @@ Essa organização atende a três necessidades. O modelo recupera candidatos por
 intenção, a manutenção acrescenta termos sem ampliar um algoritmo central e a
 curadoria confronta a justificativa de cada escolha.
 
-`consultarComponentesDidaticos` expõe o protocolo
-`aralearn.resource-library.v1` de maneira progressiva:
+O catálogo interno usa o contrato `aralearn.resource-library.v1` e oferece
+consultas progressivas:
 
 1. `explore` mostra famílias e facetas;
 2. `search` ordena candidatos por adequação;
 3. `inspect` compara até oito perfis;
 4. `contracts` entrega exatamente um contrato versionado por chamada;
-5. `validate_study_unit` verifica estrutura e composição a partir de `studyUnitJson`;
-6. `preview_study_unit` informa se a aplicação pode abrir a composição.
+5. `validateStudyUnit` verifica a estrutura e a composição de uma unidade;
+6. `previewStudyUnitDescriptor` prepara a descrição que o aplicativo usa para
+   apresentar uma composição válida.
 
-A ferramenta não envia todo o catálogo nem todos os esquemas ao modelo. A
-Autoria planeja primeiro, busca depois e carrega uma lista de até oito
-candidatos. Ampliar a biblioteca altera os dados catalográficos e os pacotes,
-preservando a interface da ferramenta.
+Nos canais humanos, `consultar_componentes` recebe a função pretendida, a
+busca ou filtros de papel, lugar, estrutura e operação. Devolve até oito
+candidatos; informar um componente permite consultar seu contrato específico.
+A ferramenta usa o catálogo interno, sem expor todos os seus métodos como
+operações públicas. Os campos correntes estão no
+[catálogo de tarefas](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 
-Em `search`, a Autoria pode declarar, além da frase de intenção, papel da
-Unidade, disciplina, estrutura, operação-alvo, modalidade de
+No método interno `search`, a autoria pode declarar, além da frase de intenção, papel da
+unidade, disciplina, estrutura, operação-alvo, modalidade de
 prática, objetos de conhecimento, relações que precisam ser preservadas e se a
 notação é objeto de aprendizagem. Essas facetas já pertencem ao catálogo e
 evitam que uma frase livre esconda o contraste entre, por exemplo, explicar em
 prosa e comparar por tabela, ou entre reconhecer uma alternativa e produzir
 uma resposta por digitação.
 
-O retorno preserva frase e facetas em `producerDeclaration`, marcada como não
-verificada pelo backend. Com facetas presentes, o ajuste usa essas propriedades
+O retorno interno preserva frase e facetas em `producerDeclaration`, marcada
+como declaração de quem produziu a consulta, sem verificação semântica pelo servidor. Com facetas presentes, o ajuste usa essas propriedades
 determinísticas e mantém `query` apenas como localizador curto; interpretar a
-intenção livre continua sendo responsabilidade do GPT e da pessoa autora.
+intenção livre continua sendo responsabilidade do assistente e da pessoa autora.
 
 ## 4. Seleção e cobertura
 
@@ -137,7 +153,7 @@ exemplo e contraindicações depois da busca.
 A escolha segue a função instrucional, não uma meta de variedade. `paragraph`
 continua adequado quando prosa é a melhor forma; `choice`, quando reconhecer
 entre alternativas é a operação pretendida. Contraste, sequência, estrutura,
-código, tabela, classificação e relações visuais devem levar a Autoria a
+código, tabela, classificação e relações visuais devem levar a autoria a
 considerar os componentes correspondentes quando preservarem melhor o objeto.
 
 O ajuste calculado não autoriza o uso sozinho. A política de componentes
@@ -148,7 +164,7 @@ Durante a materialização, o servidor confronta os `package@version` realmente
 persistidos com essa política. Sem representação adequada, a autoria registra
 a lacuna e não finge equivalência.
 
-## 5. Composição da Unidade de estudo
+## 5. Composição da unidade de estudo
 
 Uma unidade de estudo possui:
 
@@ -227,11 +243,12 @@ Cada pacote declara em `editableTargets()` quais textos podem ser alterados sem
 expor a estrutura. Coordenadas, identidades relacionais, tipos de nó, índices e
 textos destinados apenas à acessibilidade ficam fora desse conjunto.
 
-Essa declaração sustenta validação e correções focais, mas não transforma o
-renderer de Conteúdo em editor irrestrito. A interface visual mostra a Unidade com respostas
+Essa declaração delimita as correções textuais permitidas na inspeção do
+conteúdo, conforme o [contrato de conteúdo](aralearn-contract.md). A interface visual mostra a unidade com respostas
 desativadas. Uma correção aprovada pode alterar os campos autorizados e precisa
-validar novamente a Unidade inteira; uma mudança estrutural usa a operação de
-composição. JSON bem-formado, por si só, não concede autoridade nem demonstra
+validar novamente a unidade inteira; uma mudança estrutural usa a operação de
+composição. Dados no formato [JSON](https://developer.mozilla.org/en-US/docs/Glossary/JSON)
+bem-formados, por si só, não concedem autoridade nem demonstram
 validade semântica.
 
 ## 8. Mecanismos de apresentação
@@ -245,52 +262,53 @@ O pacote escolhe a tecnologia conforme a classe do problema:
 | fórmulas, matrizes e reações | [MathML](https://developer.mozilla.org/en-US/docs/Web/MathML) | estrutura matemática nativa e dimensionamento tipográfico dos delimitadores |
 | texto, código e tabelas | [HTML semântico](https://developer.mozilla.org/en-US/docs/Glossary/Semantics#semantics_in_html) | seleção, reorganização responsiva, acessibilidade e edição textual nativas |
 
-O objetivo não é eliminar CSS, mas evitar que geometria acadêmica dependa de coordenadas autorais ou medições artesanais. Motores externos também têm limites: Graphviz não decide o valor pedagógico de um grafo, Vega não escolhe a escala cientificamente correta e MathML não valida uma equação.
+A geometria da representação é calculada a partir dos dados e das convenções
+do pacote; a autoria não precisa fornecer coordenadas de desenho. Motores externos também têm limites: Graphviz não decide o valor pedagógico de um grafo, Vega não escolhe a escala cientificamente correta e MathML não valida uma equação.
 
 ### Inventário tipográfico do catálogo
 
 O registro em `src/resources/packages/generated.js` contém os 38 pacotes abaixo,
 todos na versão 1.0.0. A lista deriva das identidades instaladas; diretórios de
 apoio não são componentes adicionais. `public/styles-tokens.css` fornece os
-papéis, `public/styles.css` os aplica aos renderers e `public/study-references.css`
-liga a Explicação à mesma prosa. Os 34 pacotes de conteúdo podem ocupar os
+papéis, `public/styles.css` os aplica aos componentes de apresentação e `public/study-references.css`
+liga a explicação à mesma prosa. Os 34 pacotes de conteúdo podem ocupar os
 papéis admitidos em seus manifestos; feedback substantivo usa a representação
 do próprio pacote, enquanto acerto, erro e ausência de resposta são estados.
 
 | Pacote | Papéis textuais e mecanismo | Extremo a conservar na inspeção |
 | --- | --- | --- |
-| `aralearn.resource.paragraph` | Prosa, listas, literais e feedback; HTML/rich + MathML | Texto longo, IPA com diacríticos, ruby CJK, RTL com matemática LTR |
+| `aralearn.resource.paragraph` | Prosa, listas, literais e retorno; HTML com formatação + MathML | Texto longo, símbolos fonéticos, anotações de pronúncia sobre ideogramas, escrita da direita para a esquerda com matemática |
 | `aralearn.resource.code` | Enunciado em prosa; bloco `pre/code` monoespaçado | Indentação, linhas longas, crases, operadores e Unicode |
 | `aralearn.resource.table` | Cabeçalhos, células e legenda; tabela HTML na escala densa | Colunas longas, unidades, rolagem local e ordem de leitura |
 | `aralearn.resource.annotated_text` | Texto-fonte, chamadas, excertos e notas; HTML | Anotação extensa, numeração, caracteres e retorno ao trecho |
 | `aralearn.resource.bpmn_process` | Tarefas, eventos, raias e mensagens; Graphviz/SVG + rótulos HTML | Rótulos longos, tipos de evento e direção do processo |
-| `aralearn.resource.interlinear_gloss` | Forma, glosa, tradução e abreviações; HTML com idioma/direção | IPA, diacríticos, morfemas alinhados e RTL |
-| `aralearn.response.choice` | Enunciado, alternativas e feedback; grupo ARIA e botões | Seleção múltipla, melhor resposta, código literal e alternativas longas |
-| `aralearn.response.gap` | Lacuna herda o texto-alvo; campos e opções do SDK | Lacuna em prosa, código, tabela ou diagrama sem mudar notação |
-| `aralearn.response.ordering` | Expressões e controles de movimento do SDK | Ordem, texto longo e alcance por teclado |
+| `aralearn.resource.interlinear_gloss` | Forma, glosa, tradução e abreviações; HTML com idioma/direção | símbolos fonéticos, diacríticos, morfemas alinhados e escrita da direita para a esquerda |
+| `aralearn.response.choice` | Enunciado, alternativas e feedback; grupo acessível e botões | Seleção múltipla, melhor resposta, código literal e alternativas longas |
+| `aralearn.response.gap` | Lacuna herda o texto-alvo; campos e opções da biblioteca de interação | Lacuna em prosa, código, tabela ou diagrama sem mudar notação |
+| `aralearn.response.ordering` | Expressões e controles da biblioteca de interação | Ordem, texto longo e alcance por teclado |
 | `aralearn.resource.tree` | Nós, relações e contorno textual; Graphviz/SVG + HTML | Hierarquia profunda, rótulos extensos e rolagem/zoom local |
 | `aralearn.resource.matrix` | Nome, valores, índices e delimitadores; MathML/HTML | Matrizes altas/largas, sinais e cercas que acompanham o conteúdo |
-| `aralearn.resource.reaction` | Espécies, coeficientes, estados e condições; HTML químico | Subscritos, cargas, setas e condições extensas |
+| `aralearn.resource.reaction` | Espécies, coeficientes, estados e condições; MathML | Subscritos, cargas, setas e condições extensas |
 | `aralearn.resource.flow` | Nós, arestas e enunciado; Graphviz + rótulos HTML | Decisões, ciclos, rótulos longos e geometria medida |
 | `aralearn.resource.formula` | Expressão e leitura acessível; MathML | Frações, raízes aninhadas, tensores, integrais e limites |
 | `aralearn.resource.plane` | Eixos, coordenadas, objetos e legenda; Vega/SVG + HTML | Sinais, unidades, escala e rótulos próximos |
-| `aralearn.resource.chart` | Eixos, séries, legenda e descrição; Vega/SVG + HTML | Unidades, incerteza, números extensos e séries distinguíveis |
+| `aralearn.resource.chart` | Eixos, séries, legenda e descrição; Vega/SVG + HTML | unidades, incerteza, números extensos e séries distinguíveis |
 | `aralearn.resource.software_system_context` | Pessoas, sistemas e relações; Graphviz/SVG + HTML | Nomes, descrições e rótulos de relação longos |
 | `aralearn.resource.software_container` | Contêineres, tecnologia e relações; Graphviz/SVG + HTML | Tecnologias com caixa significativa e fronteiras do sistema |
 | `aralearn.resource.system_internal_block` | Blocos, portas e fluxos; Graphviz/SVG + HTML | Portas, direções e multiplicidades legíveis |
 | `aralearn.resource.graph` | Vértices e arestas; Graphviz/SVG + rótulos HTML | Laços, multiarestas, nomes longos e símbolos |
 | `aralearn.resource.relation_map` | Objetos e relações nomeadas; Graphviz/SVG + HTML | Rótulos verbais e setas sem ambiguidade |
 | `aralearn.resource.database_schema` | Relações, atributos e chaves; Graphviz/SVG + HTML | PK/FK, tipos e identificadores longos |
-| `aralearn.resource.memory_layout` | Endereços, valores e direção; HTML/CSS grid | Hexadecimal, alinhamento e ordem dos endereços |
+| `aralearn.resource.memory_layout` | Endereços, valores e direção; grade de HTML e CSS | Hexadecimal, alinhamento e ordem dos endereços |
 | `aralearn.resource.network_topology` | Equipamentos, interfaces e enlaces; Graphviz/SVG + HTML | Endereços, portas, hub/repetidor e tipos de enlace |
-| `aralearn.resource.packet_layout` | Bits, offsets, campos e legenda; HTML/CSS grid | Offsets monoespaçados, campos repartidos e largura em bits |
+| `aralearn.resource.packet_layout` | Bits, offsets, campos e legenda; grade de HTML e CSS | Offsets monoespaçados, campos repartidos e largura em bits |
 | `aralearn.resource.set_diagram` | Conjuntos, regiões e valores; SVG + HTML | Interseções, regiões vazias e rótulos |
 | `aralearn.resource.state_machine` | Estados, eventos e guardas; Graphviz/SVG + HTML | Transições múltiplas, estados inicial/final e guardas extensas |
 | `aralearn.resource.truth_table` | Variáveis, operadores e resultados; tabela HTML | Negação, condicionais e valores lógicos alinhados |
 | `aralearn.resource.entity_relationship` | Entidades, atributos e relações; Graphviz/SVG + HTML | Cardinalidade, opcionalidade e nomes extensos |
 | `aralearn.resource.state_transition_table` | Estado atual, entrada, saída e destino; tabela HTML | Condições, transições e ausência de destino explícita |
 | `aralearn.resource.call_stack` | Quadros, chamada, variáveis e retorno; HTML | Topo, função ativa, continuação e valores longos |
-| `aralearn.resource.audio` | Títulos, orientação, transcrição e estado; controles nativos | Transcrição longa, IPA, consentimento e faixa indisponível |
+| `aralearn.resource.audio` | Títulos, orientação, transcrição e estado; controles nativos | Transcrição longa, símbolos fonéticos, consentimento e faixa indisponível |
 | `aralearn.resource.calculator` | Expressão, resultado, rótulos e limites; formulário HTML | Sinal, separador decimal, erro e alcance dos controles |
 | `aralearn.resource.dictionary` | Verbetes, idioma e orientação de consulta; HTML | Palavra em outro alfabeto e destino de consulta |
 | `aralearn.resource.grammar` | Construções, idioma e orientação de consulta; HTML | Exemplos em outro idioma e descrições longas |
@@ -298,6 +316,8 @@ do próprio pacote, enquanto acerto, erro e ausência de resposta são estados.
 | `aralearn.resource.terminal_session` | Prompt, comando, streams e código de saída; `pre/code/samp` | Espaços, stdout/stderr, linhas longas e saída vazia |
 | `aralearn.response.open` | Enunciado, resposta e estado; textarea associado ao prompt | Texto ampliado, resposta longa e pista de escrita |
 
+As medidas em `rem` acompanham o tamanho de fonte de referência da página;
+as decisões tipográficas completas estão no [sistema visual](sistema-visual.md).
 Prosa e enunciados compartilham a família de interface e o cinza de leitura;
 alternativas e valores usam o degrau de 1 rem, tabelas/código o de 0,9375 rem,
 legendas o de 0,875 rem e metadados o de 0,8125 rem. Diagramas calculados mantêm
@@ -305,8 +325,8 @@ as métricas adotadas por Graphviz/Vega; medidas internas em pixels não devem s
 substituídas por CSS depois do layout. MathML mantém sua fonte matemática.
 Essas exceções conservam a convenção do objeto, sem criar um segundo tema.
 
-No `choice` single/correct, o enunciado nomeia o grupo e a seleção dispensa
-instrução genérica adicional. Multiple e best mantêm a condição visível como
+No modo de escolha única e resposta correta (`single`/`correct`), o enunciado identifica o grupo de alternativas e a seleção dispensa
+instrução genérica adicional. Os modos de seleção múltipla (`multiple`) e melhor resposta (`best`) mantêm a condição visível como
 descrição acessível do grupo. O modo de resposta revelada e os avisos de
 resposta incompleta continuam explícitos. Alternativas de código usam o mesmo
 escape literal do pacote de código: crases, asteriscos e indentação não viram
@@ -317,7 +337,7 @@ esta lista com o registro e verifica os papéis comuns; o teste
 [de instruções de escolha](../tests/runtime/choice-instructions.test.js) exercita
 os três modos, seus nomes e código literal. A galeria existente e os cursos
 acadêmicos de estresse oferecem os casos para inspeção visual. Essa cobertura
-estática não aprova pixels, zoom, reflow, interação ou eficácia pedagógica.
+estática não aprova geometria, ampliação, reorganização do texto, interação ou eficácia pedagógica.
 
 ## 9. Regras de representação acadêmica
 
@@ -378,7 +398,7 @@ prever resultado e reconhecer comando.
 Esse objeto não é `code`, que preserva código-fonte ou configuração estática;
 não é `table`, que compara registros por atributos; e não é `paragraph`, que
 expõe uma explicação em prosa. O pacote apresenta um registro fornecido pela
-Autoria: não executa nem interpreta comandos, não abre terminal ou banco e não
+autoria: não executa nem interpreta comandos, não abre terminal ou banco e não
 acessa rede ou ambiente externo. O mesmo texto pode produzir outro resultado em
 outro estado, sistema ou momento.
 
@@ -387,7 +407,7 @@ escolha com alternativas exatas e inequívocas. O pacote não avalia digitação
 expressões regulares, equivalência semântica nem resposta livre por modelo. Sua
 lista cronológica, os rótulos dos fluxos de saída e o texto monoespaçado selecionável
 fornecem uma ordem de leitura acessível; no celular, conteúdo largo usa rolagem
-local sem alterar espaços ou quebrar o fluxo da Unidade.
+local sem alterar espaços ou quebrar o fluxo da unidade.
 
 Observar e interpretar uma sessão pode preparar reconhecimento, previsão ou
 diagnóstico, mas não substitui operar um ambiente real quando executar a ação é
@@ -397,7 +417,7 @@ externa adequada ou declarar explicitamente a limitação.
 ## 10. Leitura sem gramática adicional
 
 O estudante encontra a notação reconhecida na área. O pacote preserva essa
-convenção, e a Unidade introduz os termos necessários quando a leitura da
+convenção, e a unidade introduz os termos necessários quando a leitura da
 representação faz parte do conteúdo. Uma instrução breve é adequada quando a
 disciplina ensina aquela forma; vocabulário de implementação e instruções
 óbvias de rolagem ficam fora do conteúdo didático.
@@ -419,9 +439,9 @@ A [matriz de legendas](auditoria-academica-dos-resources.md#legendas-instruçõe
 registra as escolhas por pacote, sem retirar eixos, unidades ou relações para
 reduzir o tamanho do cartão.
 
-Teoria e prática admitem densidades diferentes. Uma Unidade de teoria apresenta
+Teoria e prática admitem densidades diferentes. Uma unidade de teoria apresenta
 uma transformação conceitual delimitada, sem condensar vários pressupostos. Uma
-Unidade de prática pode conter um contexto mais rico porque o estudante precisa
+unidade de prática pode conter um contexto mais rico porque o estudante precisa
 operar sobre ela; ainda assim, rótulos e relações devem permanecer legíveis.
 
 ## Topologia: hub Ethernet e repetidor
@@ -436,7 +456,7 @@ pela [carta do grupo IEEE 802.3 Hub MIB da IETF](https://www.ietf.org/proceeding
 e pela natureza física do repetidor descrita na
 [RFC 2108, seção 2.4.1.2](https://www.rfc-editor.org/rfc/rfc2108#section-2.4.1.2).
 
-O renderer usa retângulo para hub, elipse para repetidor e caixa tridimensional
+O componente usa retângulo para hub, elipse para repetidor e caixa tridimensional
 para switch. Essas são convenções locais de apresentação, não símbolos universais
 de normalização técnica; o rótulo do tipo acompanha cada equipamento. A descrição
 textual equivalente explicita a função dos dois novos tipos. Não se depende da
@@ -462,19 +482,19 @@ caber. Controles de resposta continuam no tratamento próprio das lacunas.
 Hub e repetidor reutilizam os mesmos alvos de edição e lacuna dos demais
 equipamentos. Uma prática pode operar sobre o rótulo autoral de cada nó, com o
 controle naquele nó; consultar ou ampliar o diagrama não cria uma resposta nem
-uma nova ferramenta. O contrato e o exemplo são comuns ao conteúdo da Unidade,
-à Explicação e ao feedback.
+uma nova ferramenta. O contrato e o exemplo são comuns ao conteúdo da unidade,
+à explicação e ao feedback.
 
 ## 11. Telas móveis, orientação e ampliação
 
-Os dez pacotes que usam a camada compartilhada `system-diagrams` e o pacote
-`flow` compartilham o mecanismo de navegação `diagramViewport`. Apresentam um
+Os dez pacotes que usam a camada compartilhada `system-diagrams`, além de
+`graph` e `flow`, usam o mecanismo de navegação `diagramViewport`. Apresentam um
 único diagrama dentro de um quadro estável. A orientação continua favorecendo a
 leitura vertical, mas o estudante pode ampliar e mover o próprio desenho no
-corpo da Unidade. Em telas táteis, uma pinça com dois dedos altera a escala em
+corpo da unidade. Em telas táteis, uma pinça com dois dedos altera a escala em
 torno do ponto
 tocado; quando o conteúdo ampliado ultrapassa o quadro, o arraste percorre os
-dois eixos sem redimensionar a Unidade.
+dois eixos sem redimensionar a unidade.
 
 Quando houver prática, o controle real da lacuna permanece no ponto semântico
 do diagrama. Ele não é duplicado em painel, legenda ou projeção paralela. A
@@ -485,7 +505,7 @@ Uma faixa superior reservada no quadro apresenta, no canto direito e somente
 por ícones e nomes acessíveis, os comandos de diminuir, aumentar e expandir. Ela
 não é sobreposta ao desenho. A expansão move a mesma área visível para um diálogo cuja
 largura não excede a largura móvel do aplicativo; ali, diminuir e aumentar ficam
-à esquerda e o retorno à Unidade fica à direita. Não há botão visível de ajuste:
+à esquerda e o retorno à unidade fica à direita. Não há botão visível de ajuste:
 reduzir até o limite retoma automaticamente o enquadramento global e responsivo.
 Pinça e arraste continuam disponíveis. Escala e posição são estado efêmero do
 componente: auxiliam a navegação, mas não integram curso, progresso ou
@@ -497,9 +517,10 @@ fluxo em bloco. Relações cuja leitura é genuinamente lateral podem conservar
 elementos no mesmo nível, pois a ampliação não depende de forçar toda topologia para
 uma única coluna.
 
-A camada compartilhada abrange `bpmn_process`, `database_schema`, `graph`,
+A camada compartilhada abrange `bpmn_process`, `database_schema`,
 `entity_relationship`, `network_topology`, `relation_map`, `software_container`,
 `software_system_context`, `state_machine`, `system_internal_block` e `tree`.
+`graph` usa o mesmo mecanismo de navegação em sua implementação própria.
 `flow` abre na escala natural, com rolagem local para conservar a leitura dos
 rótulos; oferece o mesmo mecanismo de ampliação e expansão. A validação visual
 inclui larguras móveis, temas e exemplos capazes de expor cruzamentos,
@@ -524,22 +545,22 @@ A interação específica permanece no próprio pacote. Em `annotated_text`,
 selecionar um trecho destaca as notas associadas e traz a primeira nota para
 a área visível; selecionar uma nota destaca os trechos correspondentes. Os
 botões funcionam por toque e teclado e expõem seu estado pressionado. A
-hidratação pode ser chamada novamente sem duplicar listeners nem alterar
+hidratação pode ser chamada novamente sem duplicar vínculos de eventos nem alterar
 outra instância da unidade.
 
 ## 13. Validação e escolha
 
-`validate_study_unit` verifica:
+O método interno `validateStudyUnit` verifica:
 
 - estrutura externa e posições;
 - `package@version` instalado;
-- formato e semântica de `data`;
+- formato de `data` e regras de domínio expressas pelo pacote;
 - identificadores e caminhos de prática;
 - compatibilidades entre conteúdo e resposta.
 
 `search` e `inspect` comparam as facetas declaradas com metadados determinísticos
 do catálogo. Essa comparação ajuda a escolher candidatos, mas não prova que o
-texto, a interação ou o feedback cumpram a intenção. O GPT confronta o conteúdo
+texto, a interação ou o feedback cumpram a intenção. O assistente confronta o conteúdo
 produzido com a função instrucional e a pessoa autora decide ambiguidades.
 
 A apresentação real e os testes de navegador verificam geometria e
@@ -555,7 +576,8 @@ efeito pedagógico com estudantes exigem avaliação acadêmica e empírica.
 5. declare edição e alvos de prática sem expor estrutura;
 6. teste exposição, lacunas independentes, digitação e respostas compatíveis;
 7. teste claro/escuro, 360/390/430 px e computador, textos extensos e dados complexos;
-8. regenere o índice, o espelho da Edge, a projeção SQL e os dados de Autoria;
+8. regenere o índice, a cópia usada pelas funções remotas, a projeção do catálogo
+   no banco de dados e os dados de autoria;
 9. verifique a coerência de nomes, contratos e comportamentos com o modelo corrente;
 10. atualize documentação e evidência de conformidade.
 
@@ -567,18 +589,18 @@ esquema, contrato de autoria, exemplo, normalização, validação, apresentaç�
 texto acessível e alvos textuais pertinentes. `generateResourcePackageIndex.mjs`
 descobre a pasta; a sequência anterior permanece estável porque dela derivaram
 identificadores de exemplos publicados. O catálogo, a consulta de contratos e
-os canais de Autoria usam esse registro. O envelope conserva `package`,
+os canais de autoria usam esse registro. O envelope conserva `package`,
 `version` e `data`, sem acrescentar uma lista de tipos em cada canal.
 
 Respostas declaram `responseInteraction` com `createState`, `submit` e `bind`,
 além de `evaluate`. O pacote controla seus campos, validação de preenchimento e
 interação; o aplicativo fornece acesso ao estado da instância, foco, apresentação
-e submissão. A ligação de eventos suporta nova hidratação sem duplicar listeners.
+e submissão. A ligação de eventos suporta nova hidratação sem duplicar vínculos de eventos.
 Quando uma resposta depende de um trecho do conteúdo, o próprio pacote declara
 `prepareContentInstance`, a validação da relação e, quando necessário,
 `reconcileContentEdit`. Uma ambiguidade na edição textual impede a gravação.
 Assim, acrescentar uma resposta compatível não exige um desvio por identidade
-no controlador de Estudo.
+no controlador de estudo.
 
 `version` identifica a compatibilidade do formato e do significado dos dados.
 Uma ampliação explícita que conserva as entradas anteriores e sua normalização
@@ -587,20 +609,20 @@ distinto, e `flow@1.0.0` mantém os dados ao corrigir sua apresentação. Uma mu
 que invalida ou reinterpreta dados exige nova versão e conversão única dos dados
 úteis. Não se mantêm parsers antigos ou aliases para ocultar a mudança.
 
-O fingerprint SHA-256 do catálogo identifica exatamente manifestos, esquemas e
-contratos de autoria instalados. A revisão de descoberta e esse fingerprint
-acompanham a projeção SQL; o cliente e a Edge recusam divergência ou omissão. O
-SHA do código publicado identifica a implementação completa, incluindo os
+A impressão digital do catálogo, calculada pelo algoritmo SHA-256, identifica
+o conjunto exato de manifestos, esquemas e contratos de autoria instalados. A revisão de descoberta e essa impressão digital
+acompanham a projeção do catálogo no banco de dados; o cliente e as funções remotas recusam divergência ou omissão. A
+referência do commit publicado identifica a implementação completa, incluindo os
 renderizadores. Para preparar uma atualização, execute o gerador do índice,
 `syncEdgeResourceRuntime.mjs` e `syncResourcePackageCatalog.mjs --print`; inclua
-o bloco resultante em uma **nova migration**, com as verificações de transição
-necessárias. O modo padrão do último script apenas confere a migration corrente
-e integra a validação do runtime. Uma migration aplicada não é regravada.
+o bloco resultante em uma **nova migração de banco**, com as verificações de transição
+necessárias. O modo padrão do último script apenas confere a migração corrente
+e integra a validação do ambiente de execução. Uma migração aplicada não é regravada.
 
-A atualização compatível conserva literalmente os snapshots de configuração
+A atualização compatível conserva literalmente os registros da configuração
 já aplicada. Preferências atuais podem receber a revisão corrente quando o
 conjunto de referências permanece igual. A materialização seguinte registra a
-configuração corrente. A edição conserva o snapshot histórico literalmente.
+configuração corrente. A edição conserva o registro histórico literalmente.
 Somente uma mudança de título, com conteúdo e hierarquia idênticos, conserva
 também a aplicação semântica atual. Alterar prosa, resposta ou estrutura
 invalida essa aplicação: referências de componentes iguais não demonstram que
@@ -614,12 +636,13 @@ de conferir que o núcleo não mudou. Esse pacote de teste não integra o produt
 mesmo registro, com identidade `aralearn.resource.*`. Uma ferramenta declara
 `manifest.tool` com rótulo e ícone e implementa
 `toolInteraction.bind(root, data, host)`, que devolve sua função de limpeza.
-Essas instâncias continuam em `content[]`; Estudo as apresenta na barra da
-Unidade, com dois atalhos e um menu para as demais. O aplicativo conserva a
-Unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
+Essas instâncias continuam em `content[]`; estudo as apresenta na barra da
+unidade, com dois atalhos e um menu para as demais. O aplicativo conserva a
+unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
 sua interação. Nenhum enum adicional por canal determina as ferramentas.
 
-Os textos instrucionais usam os mesmos contratos de edição e acessibilidade.
+Os textos instrucionais dessas ferramentas usam os mesmos contratos de edição
+e acessibilidade.
 Esses cinco pacotes não oferecem campos de prática. Gramática, dicionário e
 leitura comportam várias consultas, com URL validada ou referência lógica a um
 PDF de fonte. O papel de consulta não cria atribuição bibliográfica. Áudio

@@ -1,112 +1,145 @@
-# Revisão e correções do Curso
+# Revisão e correções do curso
 
-Revisar um curso significa voltar ao conteúdo corrente, localizar uma questão e
-examinar o percurso necessário para corrigi-la. A revisão pode começar numa
-StudyUnit, numa Observação, numa fonte, numa mudança de parâmetro ou numa
-representação inadequada. Ela não atribui nota ao curso e não mede aprendizagem.
+Revisar um curso significa inspecionar o conteúdo salvo, localizar uma questão
+factual, pedagógica ou editorial e examinar o percurso necessário para corrigi-la.
+O trabalho pode começar na explicação compartilhada de uma microssequência, em
+uma unidade de estudo, numa fonte ou numa observação. O [modelo
+didático](modelo-didatico.md) distingue a base explicativa da sequência de
+atividades e explicações que a mobiliza durante o estudo.
+
+A assistência de IA pode comparar versões, analisar fontes e propor correções.
+A pessoa autora orienta o trabalho, decide as mudanças substantivas e inspeciona
+o resultado. Autorizar uma correção e declarar que o conteúdo foi revisado são
+decisões distintas; a [declaração de revisão
+humana](explicacao-e-revisao-humana.md) registra a segunda sobre o conteúdo salvo.
 
 ## O ciclo de revisão
 
-```text
-inspecionar → observar → preparar a revisão → propor correções
-→ decidir → aplicar → reinspecionar
-```
+1. Inspecione a explicação ou unidade e suas fontes.
+2. Registre ou consulte as observações pertinentes.
+3. Prepare a revisão, incluindo os pontos do percurso que podem ser afetados.
+4. Examine a proposta e resolva as decisões ainda abertas.
+5. Aplique as correções autorizadas e releia o resultado e a fila.
+6. Declare a revisão quando tiver concluído sua inspeção.
 
-A pessoa pode abrir qualquer StudyUnit, inclusive antiga, e registrar uma
-Observação. Quando várias Units compartilham o mesmo problema, a seleção em lote
-grava uma Observação separada em cada alvo. Não existe um objeto permanente de
-lote.
+Uma [observação](observacoes-pedagogicas.md) registra um apontamento sem alterar
+o conteúdo. Cada explicação e unidade mantém uma fila com entradas identificadas
+e versionadas. Selecionar várias unidades cria uma entrada separada em cada
+alvo. Editar uma entrada preserva sua identidade e mantém a pendência.
 
-Antes de propor mudanças, o GPT usa `preparar_revisao` para reler as Observações
-abertas e o contexto pedagógico pertinente. A resposta identifica o problema, o
-conjunto que precisa mudar e uma proposta concreta. A pessoa decide antes de
-`aplicar_correcoes` alterar o curso.
+Antes de propor mudanças, o assistente usa `preparar_revisao` para reler o
+conteúdo, as observações abertas e o contexto pedagógico pertinente. Quando a
+resposta é paginada, precisa terminar as continuações necessárias à análise.
+A proposta identifica o problema e o conjunto que precisa mudar. Correções já
+incluídas no pedido podem prosseguir; uma decisão substantiva ainda não
+autorizada volta à pessoa autora.
 
 ## Contexto pedagogicamente afetado
 
-O alvo anotado não determina sozinho o alcance do reparo. Uma mudança pode exigir
-releitura de Units anteriores e posteriores quando atingir:
+O alvo anotado não determina sozinho o alcance da análise. Uma mudança pode
+exigir reler unidades anteriores e posteriores quando atingir conhecimentos
+prévios, transições, exemplos ou práticas que dependem da explicação alterada.
+Fontes e parâmetros do recorte também fazem parte dessa conferência.
 
-- progressão e conhecimentos prévios;
-- transições entre ideias ou atividades;
-- exemplos que dependem da explicação alterada;
-- prática e consolidação;
-- Fontes, Âncoras ou atribuições;
-- parâmetros efetivos da microssequência.
+O assistente deve propor o menor conjunto coerente de mudanças. Unidades lidas
+como contexto podem permanecer intactas. Outras podem precisar de uma transição
+melhor, de divisão ou de reunião quando a distribuição do conteúdo prejudicar
+a compreensão. A ampliação da leitura não autoriza, por si só, ampliar a escrita.
 
-O GPT deve propor o menor conjunto coerente de mudanças. Isso pode significar
-manter Units que foram lidas como contexto, alterar mais de uma Unit ou criar uma
-distribuição mais adequada da novidade. Revisão focal não significa substituição
-isolada por padrão.
+## Julgamento e validação técnica
 
-## Julgamento semântico e verificações determinísticas
+O servidor verifica estrutura, autorização, referências e versões. Essas
+verificações conseguem recusar uma composição inválida ou uma escrita sobre
+conteúdo que mudou, mas a adequação factual, pedagógica e editorial depende da
+análise do material e de suas fontes.
 
-O servidor verifica estrutura, autorização, referências, limites e concorrência.
-Adequação pedagógica, factual e editorial exige julgamento da pessoa ou do GPT
-com evidência suficiente.
-
-Uma representação estruturalmente válida ainda pode ser inadequada. Se a
-inspeção de componente indicar que ela condensou uma relação importante ou é
-apenas substituta da forma necessária, a revisão deve apresentar um achado e
-uma proposta de representação melhor. Não existe quota de variedade: parágrafo
-e escolha continuam corretos quando cumprem a função instrucional.
+Uma representação aceita pelo contrato ainda pode condensar uma relação que
+precisa ser ensinada. Nesse caso, a revisão identifica o que ficou implícito e
+propõe uma forma de torná-lo compreensível. A escolha de
+[componentes didáticos](componentes-didaticos.md) atende à função do conteúdo;
+não há quantidade obrigatória de formatos diferentes.
 
 ## Fontes e contestação
 
-A revisão apresenta a referência da fonte, o papel que ela cumpre e a Âncora ou
-o trecho pertinente. Uma fonte pode apoiar uma afirmação, contextualizar,
-contrastar ou fornecer um exemplo. Esses papéis não são intercambiáveis.
+A revisão apresenta a referência da fonte, seu papel e a localização do trecho
+pertinente. Uma fonte pode sustentar uma afirmação, contextualizá-la, contrastar
+uma posição ou fornecer um exemplo. O vínculo precisa expressar o uso feito
+naquele conteúdo, conforme [Fontes, citações e referências](fontes-e-citacoes.md).
 
-Fonte e Âncora continuam contestáveis. A pessoa pode corrigir metadados, ajustar
-a localização, mudar a relação com a Unit ou retirar a fonte. Identidade e
-localização demonstram proveniência; não demonstram, sozinhas, qualidade ou
-verdade da afirmação.
+A pessoa pode corrigir os metadados, ajustar a localização, mudar o vínculo ou
+retirar a fonte. Identificar a obra e localizar o trecho torna a atribuição
+verificável; avaliar a qualidade da fonte e o apoio que oferece à afirmação é
+outra parte da revisão. A conferência da fonte atribuída à pessoa autora exige
+sua declaração expressa.
 
 ## Parâmetros e próxima revisão
 
-As escolhas de conteúdo, prática, conversa e cadência do catálogo, os alvos
-editoriais e a direção editorial são consultados no escopo efetivo. Uma definição feita na
-microssequência ou unidade de estudo rege a próxima geração ou revisão daquele
-escopo. No estado `default`, o GPT precisa calibrá-los automaticamente para esse
-contexto. Alvos de palavras e direção editorial podem orientar extensão, estilo
-e organização, mas não eliminar ou comprimir conteúdo necessário; quando uma
-unidade fica densa demais, o curso ganha mais unidades coerentes.
+A preparação consulta os parâmetros e as orientações efetivos do recorte.
+Escolhas automáticas precisam de valores e motivos adequados ao conteúdo;
+fixações da autoria e condições de pesquisa permanecem protegidas. A
+[configuração corrente](desenho-instrucional-parametrizado.md) orienta o próximo
+trabalho, enquanto a configuração aplicada registra as escolhas que produziram
+o material existente.
+
+Uma correção focal preserva o que o pedido não pretende alterar. Mudar uma
+preferência não reescreve automaticamente unidades anteriores. Alvos de palavras
+orientam a extensão, sem justificar a retirada de uma explicação, exemplo ou
+prática necessários. Se a unidade estiver densa demais, reveja sua organização
+e sua relação com o restante do percurso.
 
 ## Aplicação e reinspeção
 
-`aplicar_correcoes` recebe referências humanas das Units e seus conteúdos e
-fontes propostos. A camada confiável resolve identidades e a revisão corrente,
-recusa ambiguidade ou falta de acesso e tenta novamente apenas quando consegue
-preservar a mesma intenção.
+`aplicar_correcoes` aceita unidades, explicações ou ambas num conjunto coerente.
+`salvar_explicacoes` permite corrigir apenas as bases e suas fontes, preservando
+as unidades existentes. A camada de execução resolve os alvos e verifica a
+revisão corrente antes de gravar.
 
-Depois da aplicação, abra o endereço retornado e reinspecione o conjunto
-afetado. A alteração aplicada não prova que o problema foi resolvido. A
-Observação pode então ser respondida ou resolvida de acordo com o estado
-corrente.
+Quando uma correção atende a observações, `observacoesTratadas` identifica as
+versões exatas que foram integralmente atendidas. A retirada dessas pendências
+exige confirmar a gravação e reler o conteúdo e a fila. Entradas vagas,
+conflitantes, parcialmente atendidas ou editadas durante o trabalho permanecem
+pendentes. Ler uma entrada, responder no chat ou iniciar a tentativa não basta
+para tratá-la.
 
-O AraLearn conserva o conteúdo, a configuração, as fontes e as Observações
-necessários ao trabalho. A conversa não cria um histórico universal de rodadas,
-achados ou estados anteriores. Git, backup e exportação explícita cumprem as
-funções de recuperação e pesquisa que exigem um artefato congelado.
+Se a resposta se perder, `retomar_correcao` recupera a tentativa original e
+reconcilia o recibo, o conteúdo e a fila. A operação confirma os efeitos já
+persistidos, sem reaplicar a alteração para retirar uma pendência. Os detalhes
+da referência de recuperação estão em [Autoria pelo
+MCP](autoria-mcp.md#fontes-observações-e-revisão).
+
+Depois, reinspecione o percurso corrigido. A confirmação técnica prova que a
+alteração foi salva; a leitura permite avaliar se ela resolveu o problema.
+Consumir uma observação não declara revisão humana. A marca de revisão só é
+registrada ou retirada por uma decisão expressa da pessoa sobre o conteúdo
+inspecionado, e uma mudança material a desatualiza.
+
+O AraLearn conserva o conteúdo, a configuração, as fontes e as observações
+necessários ao trabalho corrente. Para preservar uma versão como artefato de
+pesquisa ou recuperação, faça uma exportação explícita; a conversa não constitui
+um arquivo permanente de todas as versões do curso.
 
 ## Na interface e na conversa
 
-Em **Conteúdo**, o ícone de Observações abre o contexto da StudyUnit. A pessoa
-pode navegar pelo índice, voltar a uma Unit antiga, selecionar várias Units e
-consultar fontes sem sair do percurso. **Analytics** resume quantitativamente o
-desenho corrente e intervenções humanas explicitamente observáveis.
+Na área **Conteúdo**, os controles da explicação e da unidade dão acesso às
+observações e às fontes. A pessoa pode voltar a uma unidade anterior, selecionar
+várias unidades e conferir o contexto. **Analytics** apresenta medidas do desenho
+e das intervenções registradas; seus [indicadores](analytics-instrucionais.md)
+não substituem a inspeção.
 
-No MCP e em Actions, o percurso usa quatro tarefas humanas:
+MCP e Actions oferecem as seguintes tarefas para esse trabalho:
 
-- `consultar_observacoes` lê o recorte solicitado;
-- `preparar_revisao` amplia o contexto sem alterar o curso;
-- `registrar_observacao` grava um apontamento em uma ou várias Units;
-- `aplicar_correcoes` grava o conjunto aprovado.
+| Tarefa | Efeito |
+| --- | --- |
+| `consultar_observacoes` | lê a fila pertinente |
+| `registrar_observacao` | acrescenta uma entrada à explicação ou às unidades escolhidas |
+| `editar_observacao` | altera a versão inspecionada de uma entrada e mantém a pendência |
+| `preparar_revisao` | reúne conteúdo literal, fontes e contexto sem alterar o curso |
+| `salvar_explicacoes` | produz ou corrige bases e fontes, preservando as unidades |
+| `aplicar_correcoes` | grava o conjunto de correções autorizado |
+| `retomar_correcao` | reconcilia a tentativa original e as pendências atendidas |
+| `declarar_revisao` | registra ou retira a declaração humana sobre o conteúdo inspecionado |
 
-As respostas de coordenação trazem o resultado, um endereço pertinente e uma
-próxima decisão. O conteúdo completo permanece no AraLearn, em vez de ser
-repetido na conversa.
-
-Consulte [Observações e Anotações ancoradas](observacoes-pedagogicas.md),
-[Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) e
-[Autoria pelo MCP](autoria-mcp.md).
+A resposta de coordenação informa o resultado, o link pertinente e a próxima
+decisão, quando houver. Um pedido de texto literal recebe o conteúdo solicitado
+integralmente, com as continuações necessárias. A síntese da conversa não
+substitui o material didático salvo nem sua inspeção.

@@ -6,8 +6,11 @@ Esta auditoria verifica se cada componente didático possui razão pedagógica p
 existir, preserva uma convenção acadêmica identificável e pode ser operado sem
 defeitos visuais ou interativos evitáveis. Um **pacote de componente** é um módulo
 que reúne dados, validação e apresentação próprias. A auditoria examina o
-pacote completo: descrição no catálogo, contrato, validação, mecanismo de
-renderização, alvos de prática, campos editáveis, descrição acessível e testes.
+pacote completo: descrição no catálogo, contrato, validação, apresentação,
+alvos de prática, campos editáveis, descrição acessível e testes. A
+[fundamentação pedagógica](fundamentacao-pedagogica-dos-resources.md) desenvolve
+os critérios gerais; o [contrato de componentes](componentes-didaticos.md)
+descreve sua implementação.
 
 A auditoria separa três perguntas:
 
@@ -37,7 +40,7 @@ Cada pacote de conteúdo deve declarar:
 - convenção disciplinar ou normativa;
 - situações indicadas e contraindicadas;
 - limites de complexidade;
-- folhas textuais editáveis;
+- campos textuais editáveis;
 - alvos possíveis de lacuna ou digitação;
 - descrição não visual equivalente;
 - estratégia de disposição, responsividade e estado interativo.
@@ -48,35 +51,25 @@ confirmação, retorno e acessibilidade. A composição entre conteúdo e respos
 
 ## 3. Decisão de admissão no catálogo
 
-### Problema
-
 Um catálogo crescente pode acumular componentes redundantes, notações
-improvisadas e exemplos que funcionam apenas em casos simples. Isso aumenta o
-contexto de autoria e transfere ao estudante o custo de descobrir como ler cada
+improvisadas e exemplos que funcionam apenas em casos simples. Isso aumenta o volume de informação a examinar na autoria e transfere ao estudante o custo de descobrir como ler cada
 figura.
-
-### Alternativas e requisitos
 
 Um novo objeto pode ser representado por prosa, tabela, pacote existente ou
 pacote especializado. A última alternativa exige estrutura distintiva,
 convenção reconhecível, operação própria e manutenção justificável.
 
-### Decisão
-
 O pacote só entra no catálogo produtivo quando responde satisfatoriamente à
-porta de admissão abaixo. Se a mesma informação e operação forem preservadas
+conjunto de critérios abaixo. Se a mesma informação e operação forem preservadas
 por componente mais simples, prevalece a alternativa mais simples.
 
-### Fundamentação
-
 Representações externas podem apoiar funções diferentes, mas sua coordenação
-também impõe demanda cognitiva ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Coerência e contiguidade
-desaconselham elementos sem função e separação de informações que precisam ser
-integradas ([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A carga criada pela
+também impõe demanda cognitiva ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). A **coerência** orienta retirar elementos sem função na tarefa; a
+**contiguidade**, aproximar informações que precisam ser integradas ([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A carga criada pela
 interface não deve competir desnecessariamente com a tarefa
 ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)).
 
-### Operacionalização: porta de admissão
+### Critérios de admissão
 
 1. Qual relação se perde em `paragraph`, `table` ou outro pacote instalado?
 2. Qual operação-alvo da tarefa depende dessa relação?
@@ -94,16 +87,12 @@ interface não deve competir desnecessariamente com a tarefa
 13. Um especialista do domínio reconhece a convenção adotada?
 14. Existe tarefa empírica capaz de testar sua utilidade didática?
 
-### Consequências
-
 Um pacote pode ser altamente especializado, desde que sua especialização
-preserve uma operação necessária. O catálogo também pode registrar lacunas de
-cobertura sem bloquear autoria; a alternativa usada precisa ser explicitada
-quando houver perda relevante.
+preserve uma operação necessária. O catálogo também pode registrar lacunas de cobertura. A autoria pode
+prosseguir com uma alternativa que preserve o objetivo; perdas relevantes
+precisam ser explicitadas para decisão humana.
 
-### Limites e evidência
-
-A porta organiza julgamento e conformidade, mas não substitui revisão por
+Esses critérios organizam julgamento e conformidade, mas não substitui revisão por
 especialistas nem avaliação com estudantes. Decisões de manter, restringir,
 fundir ou retirar permanecem revisáveis.
 
@@ -113,10 +102,10 @@ fundir ou retirar permanecem revisáveis.
 
 | Pacote | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
 | --- | --- | --- | --- | --- |
-| `paragraph` | exposição verbal progressiva | situar, definir, exemplificar, contrastar e explicar causalmente | uma relação espacial, formal ou tabular seria perdida | estrutura textual sem marcação autorreferente; prática apenas quando a própria linguagem é o objeto |
+| `paragraph` | exposição verbal progressiva | situar, definir, exemplificar, contrastar e explicar causalmente | uma relação espacial, formal ou tabular seria perdida | texto pode expor conteúdo, solicitar uma operação ou conter alvos textuais de prática; a escolha depende da tarefa |
 | `annotated_text` | trechos ancorados e comentários relacionados | localizar evidência, função discursiva, argumento, correferência ou comentário em passagem específica | notas não precisam apontar para trechos precisos | destaque e anotação têm navegação bidirecional; sobreposição de trechos deve permanecer interpretável |
 | `interlinear_gloss` | forma original, segmentação morfêmica, glosa e tradução livre | análise linguística morfema a morfema | três linhas independentes ou tradução sem alinhamento | segue as [Leipzig Glossing Rules](https://www.eva.mpg.de/lingua/resources/glossing-rules.php); lacuna ocupa morfema ou glosa sem quebrar alinhamento |
-| `code` | código-fonte com sintaxe, indentação e posição de token | ler, explicar, executar mentalmente ou completar programa | pseudocódigo não possui convenção definida ou a tarefa é apenas descrever algoritmo | fonte monoespaçada, quebras preservadas e alvo dentro do editor; enunciado nunca recebe a lacuna do código |
+| `code` | código-fonte com sintaxe, indentação e posição de token | ler, explicar, executar mentalmente ou completar programa | pseudocódigo não possui convenção definida ou a tarefa é apenas descrever algoritmo | fonte monoespaçada, quebras preservadas e alvo dentro do código apresentado; enunciado nunca recebe a lacuna do código |
 | `flow` | fluxo de controle algorítmico | acompanhar entrada, processo, decisão, laço, junção e saída | processo organizacional, árvore ou máquina de estados | formas convencionais de fluxograma e rótulos nas arestas; disposição calculada por Graphviz/Viz.js, sem coordenadas autorais |
 | `tree` | hierarquia enraizada | ancestralidade, decomposição, árvore sintática ou estrutura de busca | grafo arbitrário ou lista decorativamente indentada | raiz, níveis, filhos e ordem devem ser semanticamente definidos; cruzamentos evitados pelo algoritmo de disposição |
 
@@ -124,7 +113,7 @@ fundir ou retirar permanecem revisáveis.
 
 | Pacote | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
 | --- | --- | --- | --- | --- |
-| `formula` | árvore de expressão matemática | representar frações, limites, integrais, derivadas, somatórios, produtos, funções e tensores | texto com símbolos soltos ou sintaxe LaTeX livre | MathML mantém agrupamento, operadores e delimitadores proporcionais; lacuna substitui subexpressão sem destruir a árvore |
+| `formula` | árvore de expressão matemática | representar frações, limites, integrais, derivadas, somatórios, produtos, funções e tensores | texto com símbolos soltos ou sintaxe LaTeX livre | MathML mantém agrupamento, operadores e delimitadores proporcionais; lacuna ocupa um campo autorizado da expressão sem destruir a árvore |
 | `matrix` | entradas organizadas por linhas e colunas com delimitadores matemáticos | álgebra linear e operações matriciais | registros possuem cabeçalhos de atributos | delimitadores finos acompanham exatamente a altura das linhas; índice e símbolo conservam peso tipográfico matemático |
 | `plane` | pontos, vetores aplicados, trajetórias e regiões em duas dimensões | geometria analítica, transformações e relações em eixos | série estatística ou figura sem coordenadas | eixos, domínios, unidades, origem e extremidade são explícitos; ponta do vetor termina na coordenada declarada |
 | `graph` | grafo ou dígrafo matemático | vértices, arestas, direção, peso, multiplicidade, laço, caminho e conectividade | mapa conceitual, arquitetura de software ou rede física | topologia é completa e a disposição não altera incidência; cruzamento é reduzido, mas grafos não planares continuam possíveis |
@@ -189,7 +178,7 @@ cardinalidade são o próprio objeto de estudo, e não apenas o formato de uma
 pergunta.
 
 Digitação é uma modalidade de resposta aplicada a um alvo autorizado. Ela não
-constitui pacote de conteúdo. O controle principal da Unidade confirma a
+constitui pacote de conteúdo. O controle principal da unidade confirma a
 resposta, apresenta retorno e, no acionamento seguinte, avança; controles
 redundantes de “conferir” não pertencem ao componente.
 
@@ -204,11 +193,11 @@ mantido pode ser inadequado para determinada tarefa; um pacote restrito pode
 ser a escolha canônica dentro de seu recorte declarado.
 
 A classificação abaixo considera o contrato, a representação acessível, o
-curso de catálogo e o corpus corrente. `Restringir` significa conservar o
+curso de catálogo e o corpus de arquivos de teste. `Restringir` significa conservar o
 pacote com a fronteira indicada. Não representa reprovação do código nem
 autoriza uso fora desse recorte.
 
-| Pacote | Decisão estática | Razão e fronteira | Instâncias nos dez cursos correntes |
+| Pacote | Decisão estática | Razão e fronteira | Instâncias nos dez arquivos de curso |
 | --- | --- | --- | ---: |
 | `paragraph` | `manter` | exposição verbal progressiva e alternativa simples para relações que não exigem outra gramática | 5.370 |
 | `annotated_text` | `manter` | conserva a ligação precisa entre trecho e anotação, ausente na prosa comum | 0 |
@@ -220,7 +209,7 @@ autoriza uso fora desse recorte.
 | `matrix` | `manter` | a posição algébrica das entradas é distinta de registros tabulares | 46 |
 | `plane` | `restringir` | admite somente duas dimensões, com pontos, vetores, trajetórias e regiões declaradas | 8 |
 | `graph` | `manter` | preserva topologia matemática abstrata, inclusive direção, peso e multiplicidade | 183 |
-| `truth_table` | `restringir` | limita cada Unidade móvel a cinco variáveis e 32 valorações | 0 |
+| `truth_table` | `restringir` | limita cada unidade móvel a cinco variáveis e 32 valorações | 0 |
 | `set_diagram` | `restringir` | cobre diagramas de Venn ou Euler com dois ou três conjuntos | 0 |
 | `relation_map` | `manter` | preserva incidência bipartida, domínio, contradomínio, imagem e preimagem | 125 |
 | `table` | `manter` | compara registros homogêneos por atributos e unidades explícitas | 541 |
@@ -255,13 +244,14 @@ identifica problemas dentro de gramáticas que continuam justificadas. Uma
 revisão disciplinar ou equivalência representacional demonstrada pode mudar
 a decisão. Pouco uso, por si só, não decide a retirada.
 
-### Corpus de Cursos
+### Corpus de cursos
 
-A comparação usa dez documentos completos de curso fora dos artefatos de
-galeria e do curso de catálogo. O conjunto reúne os cinco arquivos de teste de
+A comparação usa dez documentos completos de curso versionados no repositório,
+fora dos artefatos de galeria e do curso de catálogo. Esse conjunto não é o
+acervo de cursos hospedados nem uma amostra de uso por estudantes. O conjunto versionado reúne os cinco arquivos de teste de
 conteúdo em `tests/fixtures/course-catalog`, os três cursos em
 `supabase/fixtures/catalog` e os dois arquivos integrais usados na regressão do
-Estudo, `project-minimal` e `project-visual`. Esses cursos contêm 10.388
+estudo, `project-minimal` e `project-visual`. Esses cursos contêm 10.388
 instâncias de onze pacotes. A contagem da tabela registra instâncias, não
 número de cursos nem frequência de uso por pessoas.
 
@@ -275,7 +265,7 @@ de dez cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
 `dictionary`, `grammar` e `reading`.
 
 O curso de catálogo deriva os 38 pacotes do registro. Cada pacote possui uma
-microssequência independente com uma Unidade de teoria e outra de prática. Os
+microssequência independente com uma unidade de teoria e outra de prática. Os
 exemplos e as respostas usam conteúdo disciplinar concreto; perguntas que
 pedem apenas a finalidade ou o nome do pacote são recusadas pelo teste. Essa
 evidência comprova cobertura e validade de contrato. Não mede eficácia nem
@@ -355,55 +345,23 @@ aprendizagem, classifica `tree` como `substitute` e informa que a representaçã
 é uma aproximação. O aviso impede que a materialização seja apresentada como
 equivalência silenciosa.
 
-As medidas abaixo usam JSON em UTF-8 e o estado corrente do registro. São
-limites de regressão técnica, não estimativas de unidades de texto processadas
-pelo modelo (tokens).
+A descoberta progressiva evita apresentar todo o catálogo de uma vez e
+permite comparar a adequação de cada candidato antes de consultar seu contrato.
+Se uma alternativa perde uma relação necessária ao objetivo, essa limitação
+precisa orientar a decisão autoral. O tamanho reduzido da resposta técnica,
+por si só, não torna o componente apropriado ao conteúdo.
 
-| Medida | Estado corrente | Limite automatizado |
-| --- | ---: | ---: |
-| resumo exploratório do catálogo | 9.071 bytes | 10 KiB |
-| busca mais pesada entre as facetas correntes, com oito candidatos | 5.397 bytes | 8 KiB |
-| inspeção dos oito perfis individuais mais extensos | 14.461 bytes | 16 KiB |
-| maior resposta de um contrato exato (`flow`) | 13.376 bytes | 16 KiB |
-| soma das 38 respostas de contrato, consultadas separadamente | 220.775 bytes | 224 KiB |
-| Curso de catálogo completo em disco | 400.394 bytes | lido por recortes no produto |
-| descritores das tarefas humanas do catálogo contextual 4.0 | 54 tarefas; 100.059 bytes | 105.000 bytes |
-| envelope MCP `tools/list`, com OAuth e metadata do catálogo, identificador numérico de um dígito | 107.919 bytes | 112.000 bytes |
-| código dos componentes na árvore `resources`, na origem e no espelho | 68 arquivos; 625.898 bytes | mesmos caminhos na origem e no espelho; 640 KiB |
-
-O orçamento de código cobre a árvore `resources`, não o conjunto completo da
-Edge nem as bibliotecas externas de apresentação. Os cinco pacotes de ferramentas
-acrescentam 53.186 bytes à árvore e 18.882 bytes à soma de contratos em relação
-ao catálogo anterior. Os limites agregados passam a 640 KiB e 224 KiB para
-acomodar esses consumidores implementados; os limites de cada resposta
-continuam iguais. O teste compara os caminhos
-relativos entre origem e espelho, sem exigir uma quantidade fixa de pacotes ou
-arquivos. Os descritores das 54 tarefas humanas têm orçamento separado, de
-105.000 bytes, incluindo os consumidores de estrutura curricular, preferências,
-base explicativa, desenho contextual, fila e revisão expressa. A medição usa
-`JSON.stringify` do catálogo tipado, em UTF-8. O envelope MCP de 107.919 bytes
-inclui os esquemas completos, requisitos OAuth e metadata do catálogo, com
-guarda separada de 112.000 bytes. Essas guardas são internas, não limites do
-fornecedor, medidas de tokens ou provas de aceitação no ChatGPT. Os orçamentos
-do documento Actions e os limites de requisição/resposta são independentes.
-O OpenAPI corrente representa as mesmas 54 tarefas em 30 operações: seis grupos
-tipados e 24 operações diretas. São 83.701 caracteres minificados e 170.371
-formatados, abaixo dos limites locais de 90.000 e 180.000 unidades UTF-16
-descritos no [guia de Actions](autoria-actions.md). Esses limites controlam
-a definição das ferramentas; respostas Actions têm orçamento próprio, com
-fragmentos literais quando o conteúdo não cabe em um envelope. A medição é de
-caracteres UTF-16 e bytes UTF-8, não de tokens efetivamente cobrados pelo modelo.
-O esquema matemático
-compartilhado do parágrafo usa uma definição referenciada, evitando repetir a
-árvore de expressão em cada posição de fórmula.
-
-O fluxo conversacional consulta componentes sob demanda por
-`consultar_componentes`; a representação escolhida é gravada com a StudyUnit e
-não cria tabela nem objeto de Storage por Unidade. Os dados versionados do
-pacote ficam no conteúdo relacional da Unit. Ainda faltam medições hospedadas de
-latência, retomada, CPU, memória, partida fria da Edge e consumo efetivo de
-banco, transferência e Storage. Os limites acima impedem regressões locais
-conhecidas, mas não comprovam esses custos externos.
+Os limites de tamanho do catálogo, das consultas e do código são verificáveis
+no [teste do curso de catálogo](../tests/kernel/resource-catalog-course.test.js).
+Os guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md)
+explicam como as integrações fornecem ferramentas ao assistente e quais
+limites se aplicam a essa comunicação; o
+[gerador OpenAPI](../scripts/buildChatGptActionOpenApi.mjs) verifica o documento
+de operações. Essas medidas técnicas ajudam a controlar a manutenção e o
+transporte dos dados. Já o [benchmark de extensão e ocupação visual](benchmark-footprint-editorial.md)
+compara conteúdo e espaço ocupado no leitor móvel. Nenhuma dessas medidas
+substitui tarefas com pessoas para examinar interpretação, esforço e uso
+das representações.
 
 ## 7. Processo de auditoria
 
@@ -425,7 +383,7 @@ corrigida.
 
 O contrato deve:
 
-- usar conceitos do domínio, não propriedades de CSS ou da biblioteca;
+- usar conceitos do domínio, não propriedades de estilo ou da biblioteca;
 - separar identificadores estruturais e textos visíveis;
 - impedir referências inexistentes e duplicidades indevidas;
 - expressar cardinalidade e limites;
@@ -443,7 +401,7 @@ Casos de estresse incluem:
 - idiomas com palavras mais extensas;
 - temas claro e escuro;
 - larguras móveis, zoom e densidade de pixels diferentes;
-- rolagem vertical da Unidade e rolagem local da moldura;
+- rolagem vertical da unidade e rolagem local da moldura;
 - navegação por teclado, foco e leitor de tela.
 
 São defeitos bloqueadores: texto cortado, elemento oculto, sobreposição que
@@ -460,15 +418,15 @@ são compartilhados acidentalmente.
 
 ### Etapa 6: auditoria de edição e assistência
 
-O modo de edição mostra somente rótulos compreensíveis e seus agrupamentos. O
+A edição textual mostra rótulos compreensíveis e seus agrupamentos. O
 JSON estrutural não aparece como texto editável. A seleção enviada à assistência
 contém:
 
 - objetivo e contexto somente para leitura;
 - campos explicitamente graváveis;
 - identificação do pacote e suas restrições;
-- histórico conversacional necessário à iteração;
-- mecanismo de validação e reversão.
+- orientações e observações pertinentes à alteração;
+- validação e confirmação do estado efetivamente salvo.
 
 Uma resposta estruturalmente válida ainda precisa ser revisada quanto a
 correção e adequação didática. Diretrizes de interação humano-IA sustentam
@@ -489,7 +447,7 @@ isolada. A revisão verifica se:
 4. a representação é necessária à operação;
 5. o retorno explica como agir;
 6. uma alternativa mais simples produziria o mesmo resultado;
-7. a densidade da Unidade prática se justifica pelo contexto da tarefa.
+7. a densidade da unidade prática se justifica pelo contexto da tarefa.
 
 ## 8. Critérios de aceitação
 
@@ -515,20 +473,11 @@ tarefa. Esses três estados não devem ser fundidos em um selo único de
 
 ## 9. Registro de resultados
 
-Cada avaliação acadêmica de um componente registra:
-
-```text
-pacote e escopo
-→ problema examinado
-→ alternativa comparada
-→ fonte disciplinar
-→ caso de estresse
-→ evidência técnica
-→ julgamento especializado
-→ evidência com estudantes, se houver
-→ decisão: manter, restringir, fundir, redesenhar ou retirar
-→ limitações remanescentes
-```
+Cada avaliação identifica o pacote, o escopo e o problema examinado. Registra
+a alternativa comparada, a fonte disciplinar e os casos de estresse utilizados.
+Evidência técnica, julgamento especializado e resultados com estudantes, quando
+houver, permanecem separados. A decisão de manter, restringir, fundir, redesenhar
+ou retirar deve apontar suas razões e as limitações remanescentes.
 
 “Nenhum defeito encontrado” significa apenas que os casos executados não
 revelaram o defeito procurado. Não autoriza inferência de universalidade nem de

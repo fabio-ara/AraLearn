@@ -1,103 +1,83 @@
 # Matriz de conformidade técnica
 
-Esta matriz distingue mecanismos presentes e mudanças aprovadas no
-[programa #295](https://github.com/fabio-ara/AraLearn/issues/295). A base examinada
-é a versão `0.0.64`, revisão `20f9a1b575a21b1714452fdb17b4d6b70e610d29`.
-Código e testes localizados demonstram onde uma regra está implementada e como
-exercitá-la; sua presença não significa execução aprovada nesta revisão.
-Teste de software demonstra o comportamento exercitado; não demonstra
-aprendizagem, qualidade pedagógica global nem usabilidade com participantes.
+O código precisa preservar as mesmas regras quando a pessoa usa a interface, MCP ou
+Actions. Esta matriz relaciona essas regras às partes que as executam e às
+verificações disponíveis. Um teste localizado é um caminho para reproduzir uma prova;
+seu resultado pertence à versão e à execução registradas.
 
-## Mecanismos presentes na base
+A [arquitetura](arquitetura.md) explica como navegador, serviços e banco se
+relacionam. O [guia do desenvolvedor](guia-desenvolvedor.md) orienta a execução dos
+testes. As capacidades apresentadas ao público e seus limites estão em [Capacidades e
+limites atuais](estado-atual-e-roadmap.md).
 
-As verificações abaixo são pontos de partida reutilizáveis. Os destinos da
-seção seguinte prevalecem quando a regra corrente diverge do programa.
+## Capacidades e verificações
 
-| Propriedade | Mecanismo corrente | Evidência focal | Limite |
+Os caminhos abaixo partem da raiz do repositório. Nomes curtos de testes referem-se a
+arquivos de `tests/runtime/` ou `tests/e2e/`.
+
+| Propriedade | Implementação e relação com os dados | Verificação focal | Limite da prova |
 | --- | --- | --- | --- |
-| Autoria abre diretamente no conteúdo | rota canônica `content` e superfície sem overview | `course-authoring-route.test.js`, `course-authoring-surface.test.js` | inspeção local não substitui jornada hospedada |
-| Uma StudyUnit domina o leitor | sequência focal, índice/pesquisa e deep links | `course-inspection-sequence.test.js`, E2E de Autoria | conteúdo real ainda pode revelar problemas de densidade |
-| Planejamento é incremental | uma parte por resposta, releitura do plano e parte anterior reabrível | `incremental-authoring-conversation-acceptance.test.js` | 7–12 é heurística, não gate |
-| AnalysisUnit preserva granularidade semântica | inventário antes da produção e distribuição por teto | `instructional-analysis-granularity-eval.test.js` e fixtures correspondentes | o banco não julga equivalência semântica |
-| Quatro parâmetros pedagógicos e dois alvos editoriais têm efeito | configuração focal e efetiva por escopo | `course-design-parameters.test.js`, Analytics e fixture de calibração | alvos são flexíveis e não podem reduzir conteúdo necessário |
-| MCP e Actions oferecem os mesmos casos de uso | catálogo `COURSE_HUMAN_TASKS` projetado nos dois transportes | `course-human-mcp.test.js`, `chatgpt-action-human-schema.test.js`, gate OpenAPI | cliente real precisa ser reconectado após publicação |
-| Contrato público usa referências humanas | camada confiável resolve identidades e concorrência | testes do executor humano e do roteador | ambiguidade material volta à conversa |
-| Revisão alcança o contexto afetado | Observações abertas, preparação contextual e correções em conjunto | `contextual-review-repair-acceptance.test.js` | aplicação exige reinspeção humana ou assistida |
-| Fontes permanecem localizáveis e contestáveis | Fonte, Âncora e atribuição correntes | testes de fontes, painel e ingestão PDF | proveniência não prova verdade nem qualidade científica |
-| Analytics descreve desenho e autoria correntes | contrato v2 com escopo, Desenho e Autoria | testes de domínio, painel e PGlite | contagens não são scores nem efeito educacional |
-| JSON e painel apresentam o mesmo snapshot | exportação do objeto v2 normalizado exibido | `course-analytics-panel.test.js` | snapshot não contém o curso completo |
-| PDF permanece privado | download server-side e mutação de bytes somente pela Storage API | `course-storage-lifecycle-local-smoke.mjs` | backup do banco não contém os bytes |
-| Remoção, reativação e órfão são recuperáveis | attachment corrente, tombstone e intents abertas | smoke de lifecycle e testes de ingestão | limpeza física exige a API e autorização de serviço |
-| Upgrade preserva o estado útil | dump, restore em PostgreSQL descartável e migração de corte | `verifyBackupRestoreUpgrade.mjs`, `backup-restore-upgrade.test.js` | fixture é representativa, não cópia de dados hospedados |
-| RLS e menor privilégio permanecem ativos | políticas, grants e funções com autoridade delimitada | Supabase local, PGlite e testes de autorização | ocultar controle na UI não substitui recusa do servidor |
+| A autoria abre no conteúdo e mantém o foco | `CourseAuthoringSurface` e rotas usam o curso salvo; inspeção paginada preserva alvo e posição | `course-authoring-route.test.js`, `course-authoring-surface.test.js`, `course-authoring-cutover.spec.js` | teste local não confirma a experiência da versão hospedada |
+| O mapa organiza o curso antes da produção | plano global em módulos, lições e microssequências; partes agrupam produção sem acrescentar nível curricular | `incremental-authoring-conversation-acceptance.test.js` e testes de planejamento | quantidade de partes não mede cobertura ou profundidade |
+| Ideias são acompanhadas ao longo do percurso | inventário de unidades de análise distingue introdução, uso e retomada | `instructional-analysis-granularity-eval.test.js` e casos sintéticos | identidade e contagem não demonstram equivalência de significado |
+| A explicação pode preceder as unidades | `courseExplanation.js` guarda a base; `appliedExplanationBasis.js` identifica a base usada na produção | `applied-explanation-basis.test.js`, `applied-explanation-basis-pglite.test.js` | alterar a base não atualiza silenciosamente o conteúdo produzido |
+| A revisão depende de declaração humana por objeto | `courseContentReview.js`, interface e `declarar_revisao` distinguem explicação e unidade; a base inspecionada é comparada antes da gravação | `course-content-review.test.js`, `course-human-contextual-review.test.js`, `course-microsequence-review.spec.js` | persistir uma declaração não mede qualidade pedagógica; acesso é decisão separada |
+| A política de estudo é explícita | `saved` permite conteúdo salvo; `reviewed_only` exige revisão atual, além das permissões do curso | `course-content-review-access-pglite.test.js` e jornadas de acesso local | revogação de acesso precisa de confirmação conectada no dispositivo |
+| Parâmetros, perfis e cadência conservam decisões aplicadas | `courseDesignParameters.js` tipa valores e herança; perfis copiam preferências, sem vínculo retroativo com os cursos | `course-design-parameters.test.js`, `authoring-profiles.test.js` | alvos editoriais e quantidades não certificam aprendizagem nem autorizam truncar conteúdo |
+| MCP e Actions executam as mesmas tarefas | `COURSE_HUMAN_TASKS` alimenta MCP e a projeção OpenAPI; o executor resolve referências e autorização | `course-human-mcp.test.js`, `chatgpt-action-human-schema.test.js`, verificação OpenAPI | cada cliente efetivo precisa receber o contrato atualizado e ser exercitado |
+| Correções tratam apenas as observações atendidas | fila versionada por explicação ou unidade; releitura da correção confirma conteúdo antes de consumir as versões relacionadas | `course-observation-corrections-pglite.test.js`, `course-observation-review-transport.test.js` | transporte incerto exige reconciliar a mesma tentativa; entradas alteradas continuam pendentes |
+| Componentes funcionam por contrato de pacote | registro delega validação, edição, apresentação e resposta aos pacotes; núcleo conserva composição e ciclo de vida | testes de pacotes, galeria e inspeção visual | validade estrutural não demonstra adequação da representação ao conteúdo |
+| Fontes permanecem localizáveis e contestáveis | fontes, âncoras e vínculos correntes ligam trechos, obras e arquivos; citações usam metadados e estilo do curso | testes de fontes, citações, painel e ingestão | uma relação bibliográfica não comprova a verdade do conteúdo |
+| Arquivos seguem a política autorizada | descritores lógicos no banco; bytes em áreas privadas do Storage; download revalida curso, fonte e arquivo | `course-storage-lifecycle-local-smoke.mjs`, testes de áudio e cópia de arquivos | banco restaurado não comprova presença dos bytes; mídia hospedada exige rede |
+| Remoção e reanexo preservam arquivos ainda usados | marca de retirada e intenção temporária de limpeza; todas as referências e reservas são conferidas antes da exclusão pela API | testes de ingestão, remoção, reativação e órfãos | apagar metadados de Storage diretamente não executa a limpeza física |
+| Cópias são independentes e deliberadas | origem própria ou com permissão de cópia; novas identidades e curso privado, com conteúdo, fontes e arquivos preservados | `course-copy-transport.test.js`, `course-copy-client.test.js`, `course-copy-files-local.test.js` | leitura pública não concede cópia; acessos e estado pessoal não são transportados |
+| Exportação e comparação usam leitura coerente | `courseAuthoringComparison.js` reúne documento, fontes, bases aplicadas e revisão; compara o estado corrente em recortes explícitos | `course-authoring-comparison.test.js` | igualdade de números não demonstra equivalência pedagógica |
+| Analytics descreve o estado corrente | `courseAuthoringAnalytics.js` deriva desenho e autoria; painel e exportação usam o mesmo objeto normalizado | `course-analytics-panel.test.js` e testes de domínio | contagens não são notas, telemetria de atenção ou efeitos educacionais |
+| Continuidade local preserva trabalho e permissões | IndexedDB mantém composição, progresso e filas; sincronização manual adia trocas de conteúdo, com acesso conferido separadamente | testes de repositórios, duas abas, perda de rede e retorno | cópia local não concede autorização permanente |
+| Banco novo e atualizado convergem | migrações reproduzem esquema; restauração descartável aplica a cadeia e compara estrutura e dados úteis | `verifyBackupRestoreUpgrade.mjs`, `backup-restore-upgrade.test.js` | dados sintéticos não substituem um backup atual do ambiente hospedado |
+| Autorização permanece no servidor | privilégios, segurança em nível de linha (RLS) e funções SQL delimitam as operações | Supabase local, testes SQL e jornadas com contas distintas | ocultar um controle na interface não substitui recusa no servidor |
+| A publicação usa uma candidata identificada | validação classifica o impacto; manifesto associa revisão, verificações e artefatos promovidos | `deployment-automation.test.js` e workflows | aprovação de código não confirma, sozinha, a atualização de todos os serviços hospedados |
 
-## Requisitos, etapas e mudanças necessárias
+## Contexto histórico
 
-As etapas indicam onde completar cada capacidade, incluindo suas camadas e
-documentação. Esta seção especifica o destino; não declara funcionalidades
-futuras disponíveis. Caminhos de código são relativos à raiz do repositório;
-nomes curtos de testes referem-se às suítes existentes em `tests/`.
+A refatoração foi organizada pelo
+[programa #295](https://github.com/fabio-ara/AraLearn/issues/295). O
+[registro da base 0.0.64](https://github.com/fabio-ara/AraLearn/blob/20f9a1b575a21b1714452fdb17b4d6b70e610d29/docs/matriz-conformidade-tecnica.md)
+e o [histórico de mudanças](../CHANGELOG.md) conservam as etapas e as lacunas
+então encontradas. As capacidades atuais estão relacionadas acima.
 
-| Requisito aprovado | Etapa | Estado e escritores → consumidores atuais | Dados úteis e mudança necessária | Verificação necessária |
-| --- | --- | --- | --- | --- |
-| Definições e jornadas refutáveis | [#296](https://github.com/fabio-ara/AraLearn/issues/296) | `courseDesignParameters.js`, contratos de componentes e fixtures → produção, inspeção e contagens; classificação semântica permanece declaração a examinar | Preservar repertório, requisitos de evidência e referências; separar definição, valor aplicado e medição, sem recodificar cursos pela aparência | Corpus com casos/contraexemplos; ligação fonte–argumento–decisão–medida; protótipo de continuidade; limites explícitos |
-| Validar candidata uma vez e promover artefatos identificados | [#297](https://github.com/fabio-ara/AraLearn/issues/297) | `validacao.yml` → candidata; `pages.yml` e `android-release.yml` publicam separadamente; Android repete testes/lint | Reutilizar workflows e scripts; conservar checks obrigatórios, identidade de artefatos e certificado; substituir promoção sem gate comum | `deployment-automation.test.js`; classificação documental/runtime/segurança, revisão superada, falha parcial, retry e origem dos artefatos |
-| Identidade pública, visitante e edição só pelo proprietário | [#298](https://github.com/fabio-ara/AraLearn/issues/298) | `AuthGate`, `CourseAuthoringSurface` e `CourseApiClient` → `courseRouter`/adaptador/SQL; perfil v2 exige identificador escolhido; busca limitada concede estudo por UUID e handle; visitante lê projeções públicas, proprietário edita | Preservar IDs internos, contas, acessos e cópias existentes; acrescentar identificador escolhido e projeção pública mínima; retirar concessão por e-mail e criação automática de cópia por estudante | `course-access-local.spec.js`, API/RLS e testes de cópia pessoal adaptados: duas contas e visitante, colisão, revogação, observação e negação de escrita direta |
-| Estudo estável, edição compartilhada e sincronização manual completa | [#299](https://github.com/fabio-ara/AraLearn/issues/299) | `CourseStudyApplication`, `manualStudyUnitEdit` e repositórios locais → renderer/API; `public/main.js` relê por foco/reconexão e descarrega pendências ao sair | Preservar hierarquia, posição, progresso, Rever, observações e rascunhos; aplicar política de sincronização também ao conteúdo aberto, mantendo escrita autoral explícita e acesso | `manual-study-unit-edit.spec.js`, testes dos repositórios e de Estudo: geometria antes/depois, duas abas, offline, conflito, troca de conta e retomada |
-| Parâmetros precisos, perfis por cópia e cadência independente | [#300](https://github.com/fabio-ara/AraLearn/issues/300) | `courseDesignParameters.js`/`CourseDesignPanel` e tarefas humanas → atribuições SQL, materialização e dados de autoria; há quatro parâmetros pedagógicos e dois alvos, sem perfis nem controles separados de lote/pausa | Reutilizar catálogo, atribuições e desenho aplicado; migrar valores explícitos e exceções sem recalibrá-los; perfis copiam preferências, sem vínculo que altere cursos anteriores | `course-design-parameters.test.js` e contratos: herança, automático, fixado, perfil apagado/reaplicado, escopo isolado, prática/posição e conteúdo não truncado |
-| Componentes extensíveis, unidades mistas e notação legível | [#301](https://github.com/fabio-ara/AraLearn/issues/301) | Pacotes → índice gerado/registro → navegador e Edge; envelope limita papéis a `theory`/`practice`; envelope/editor ainda reconhecem tipos nominais; parágrafo não declara matemática | Preservar instâncias e textos; evoluir contrato comum de composição/edição e migrar uma vez o dado afetado; regras internas de cada tipo ficam no pacote | `resource-package-kernel`, `resource-package-autoindex`, `resource-package-edge` e corpus: extensão sem editar núcleo/enums dos canais; matemática, idiomas, XSS, prática, edição e inspeção visual |
-| Fontes contextuais e arquivos com política explícita | [#302](https://github.com/fabio-ara/AraLearn/issues/302) | `courseSources.js`, painel e tarefas → fontes/âncoras/atribuições e Storage; já há referência textual, localizadores e visibilidade por fonte, sem estilo configurável e política pública do curso | Reutilizar identidades e lifecycle; migrar metadados/vínculos sem completar dados desconhecidos; política de #298 e exceções controlam arquivo; URL temporária não vira identidade | Testes de fontes/painel e `course-storage-lifecycle-local-smoke.mjs`: corpus incompleto, estilo, trecho–referência–arquivo–retorno, expiração, revogação, remoção/reanexo e cópia |
-| Ferramentas auxiliares e três caminhos de áudio | [#303](https://github.com/fabio-ara/AraLearn/issues/303) | Registro atual resolve conteúdo/resposta/feedback; não há contrato de ferramentas do card nem caminhos de áudio nesses consumidores | Estender o mesmo catálogo e reutilizar configuração, abertura contextual e arquivos; preservar formato/acesso/cache por referência; adaptador de serviço só com contrato explícito | Extensão de ferramenta sem dispatch por tipo; calculadora determinística; voz ausente, arquivo inválido, idioma/offline/expiração; discriminar stub e serviço real autorizado |
-| Autoria por tarefas com foco e revisão verificável | [#304](https://github.com/fabio-ara/AraLearn/issues/304) | `CourseAuthoringSurface`, rotas, painéis e `CourseInspectionSequence` → casos de uso existentes; mapa global e inspeção paginada já existem | Reutilizar mapa, partes, observações individuais e deep links; seleção múltipla permanece transitória; reorganizar apresentação e retorno sem segunda entidade de lote | `course-authoring-cutover.spec.js`, testes de rota/inspeção/observações: foco, seleção/sair, retorno contextual, reordenação de partes e correção verificada |
-| Integrações focais e mesma autorização | [#305](https://github.com/fabio-ara/AraLearn/issues/305) | `courseHumanTasks.js` → MCP e OpenAPI/Actions; executor resolve referências/repetição e materialização valida o conteúdo | Manter catálogo único, recibos temporários e leituras exatas; retirar instruções duplicadas/substituídas; separar mandato de continuidade e tamanho do lote sem guardar conversa | Contratos humanos, gerador OpenAPI e OAuth; budgets com método; MCP reconectado e Actions importado em conversas novas, dois lotes, correção transversal e retomada |
-| Cópias independentes e comparação do estado corrente | [#306](https://github.com/fabio-ara/AraLearn/issues/306) | o escritor automático anterior foi retirado em #298, preservando origem das cópias próprias e recuperação somente leitura; dados v2 de autoria → painel/JSON do mesmo objeto; cópia comparativa do proprietário ainda pertence a esta etapa | Reutilizar operações úteis de remapeamento; nova cópia privada, sem acessos/progresso/observações pessoais; preservar conteúdo, desenho, fontes e arquivos autorizados independentemente da origem | Testes de cópia e dados: IDs remapeados, exclusão da origem, permissões, revisão consistente, ausência distinta de zero, valores iguais em UI/canais/exportação e condições da medida renderizada |
-| Documentação fiel e retirada do caminho substituído | [#307](https://github.com/fabio-ara/AraLearn/issues/307) | Capítulos canônicos e geradores → guias, referências, contratos e auditorias | Consolidar fontes únicas; retirar leitores, aliases, campos e testes exclusivos após migração; conservar migrations aplicadas, Git e recuperação | Auditorias de documentação, terminologia, resíduos e paridade; busca de escritores/consumidores finais; referências e limites conferidos |
-| Entrega integrada e recuperável | [#308](https://github.com/fabio-ara/AraLearn/issues/308) | CI, verificadores hospedados e builds → Pages, backend e APK | Inventário e backup privado ensaiado antes de alteração remota destrutiva; instalação nova e upgrade convergem; preservar arquivos e assinatura | Suíte integral da candidata, PostgreSQL/RLS, restore/Storage, Chrome e clientes reais; conferir origem, versão, certificado, URL, APK e falha parcial |
+## Preservação dos dados e das responsabilidades
 
-## Decisões de reutilização e remoção
+A revisão crescente do curso evita sobrescrever alterações concorrentes. Os recibos
+temporários recuperam respostas perdidas sem repetir efeitos. Esses mecanismos têm
+funções distintas e continuam necessários mesmo sem um histórico universal de
+execução.
 
-O curso corrente, a hierarquia relacional, a réplica IndexedDB e os casos de uso
-comuns permanecem a base. Revisão crescente, versões de concorrência e recibos
-temporários têm consumidores reais; não constituem um histórico universal e
-não devem ser removidos para diminuir a quantidade de estruturas.
+A antiga cópia automática durante a edição foi retirada. Os cursos já criados
+conservam propriedade e conteúdo; pendências antigas são reconciliadas por prova da
+operação original. A cópia deliberada reutiliza o remapeamento de identidades sem
+transformar o estudo em permissão para editar a origem. Os detalhes estão em
+[Persistência relacional](persistencia-relacional.md#cópia-independente).
 
-A cópia automática de estudante atravessa `CourseStudyApplication`,
-`CourseController`, `CourseApiClient`, `courseProtocol`, adaptador e
-`commit_personal_course_copy_edit_for_actor_v1`. A substituição remove esse
-percurso completo, incluindo a recuperação local exclusiva, depois de tratar
-pendências e preservar cursos já criados com propriedade confirmada. O
-remapeamento útil pode servir à cópia deliberada do proprietário. Tabelas de
-comparações históricas já retiradas pela migração de corte não são base para
-reintroduzir versionamento.
+O núcleo dos componentes mantém a composição comum; cada pacote declara suas regras de
+apresentação, resposta e edição. Uma extensão que exige capacidade nova precisa
+alterar explicitamente o contrato e seus consumidores. Acrescentar um componente não
+autoriza executar código arbitrário vindo do curso.
 
-O registro já delega validação, apresentação, acessibilidade e folhas editáveis
-aos pacotes. A fronteira ainda precisa de correção: `studyUnitEnvelope.js`
-conhece a combinação nominal `choice`/`paragraph`, e `manualStudyUnitEdit.js`
-conhece `gap`/`ordering`. Transferir a regra específica para o contrato do pacote
-preserva a função; simplesmente apagá-la perderia verificação ou edição. O
-núcleo conserva composição, posições, ciclo de vida e protocolos compartilhados.
-Ferramentas usam a extensão mínima desse mecanismo, sem outro sistema de
-plugins ou carregamento de código remoto.
+Fontes e arquivos conservam identidades e autorizações próprias. Compartilhar bytes
+imutáveis entre cópias exige conferir todos os vínculos antes de apagar o objeto.
+Dados privados de autoria não entram na leitura pública só porque o curso ficou
+público; o banco constrói uma seleção explícita dos campos permitidos.
 
-Fontes e arquivos conservam identidades lógicas, vínculos e autorização. Uma
-referência compartilhada por cópia exige que acesso e exclusão considerem todos
-os vínculos válidos; o hash atual restrito ao curso não justifica deduplicação
-global. Metadados de autoria, observações e bytes não entram na projeção pública
-por consequência de o curso se tornar público.
+## Verificação para integração
 
-O levantamento termina quando cada divergência material tem etapa, escritor,
-consumidor, destino do dado e prova que pode refutá-lo. Ele não exige uma
-arquitetura nova antecipada. As definições científicas e seus limites permanecem
-em [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md);
-as jornadas e a geometria, no [Sistema visual](sistema-visual.md).
+Uma mudança de contrato, banco ou autorização deve ser exercitada na regra de domínio,
+no transporte, no banco descartável e no cliente afetado. Instalação nova, atualização
+e restauração verificam riscos diferentes. A seleção de provas segue o impacto real da
+mudança, conforme o [guia do
+desenvolvedor](guia-desenvolvedor.md#testes-e-integração).
 
-## Gate de integração
-
-Uma mudança atravessa camadas quando altera contrato, schema ou autorização.
-Nesse caso, valide a regra pura, a projeção do transporte, o banco descartável e
-o consumidor real correspondente. O gate final acrescenta fresh, upgrade,
-restore, Chrome em tamanhos e temas definidos, MCP reconectado e OpenAPI
-efetivamente reimportado.
-
-Consulte [Verificação da interface](auditoria-front-end.md), [Persistência
-relacional](persistencia-relacional.md) e [Supabase](supabase.md).
+Para a interface, confira também larguras, temas, foco e recuperação de erro no
+[roteiro de verificação](auditoria-front-end.md). Para avaliar compreensão,
+aprendizagem ou experiência com participantes, use o [protocolo de avaliação do
+artefato](protocolo-avaliacao-artefato.md).

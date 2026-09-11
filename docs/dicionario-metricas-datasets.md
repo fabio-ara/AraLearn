@@ -1,7 +1,10 @@
 # Referência da leitura de autoria
 
-Analytics descreve o estado corrente de um curso. O contrato
-`aralearn.course-authoring-analytics.v4` conserva **Desenho** e **Autoria** e
+[Analytics](analytics-instrucionais.md) descreve o estado corrente de um curso.
+Os dados são transportados em JSON, formato que organiza informações em campos,
+listas e objetos. O contrato define quais campos são admitidos e como devem ser
+interpretados; os nomes entre crases correspondem aos identificadores presentes
+no arquivo. A versão `aralearn.course-authoring-analytics.v4` conserva **Desenho** e **Autoria** e
 acrescenta uma base explícita para comparar configurações, declarações e
 contagens. Não possui conjuntos de eventos ou percurso histórico.
 
@@ -10,10 +13,10 @@ contagens. Não possui conjuntos de eventos ou percurso histórico.
 | Campo | Significado |
 | --- | --- |
 | `course` | identidade, título e revisão corrente do curso |
-| `scope.selected` | Curso, parte, microssequência ou StudyUnit consultada |
+| `scope.selected` | curso, parte, microssequência ou unidade de estudo consultada |
 | `scope.options` | opções humanas disponíveis para mudar o recorte |
 | `missingData` | ausências que não podem ser convertidas em zero |
-| `deepLink` | endereço da área, quando a borda pode fornecê-lo |
+| `deepLink` | endereço da área, quando a interface ou integração pode fornecê-lo |
 | `basis` | inventário planejado integral do curso e observações por unidade do escopo |
 | `dimensions` | distribuições calculadas pelo mesmo observador usado na comparação |
 
@@ -41,13 +44,14 @@ permanecem nulos; não são preenchidos com a configuração atual.
 | `practice_position` | modo declarado e referências em ordem curricular | declaração |
 | `representations` | instâncias nos espaços de conteúdo, resposta e feedback | contagem do conteúdo |
 | `extent` | palavras nos campos autorais dos recursos | contagem do conteúdo |
-| `sources` | Fontes distintas efetivamente vinculadas à unidade | contagem do conteúdo |
+| `sources` | fontes distintas efetivamente vinculadas à unidade | contagem do conteúdo |
 
 Cada dimensão inclui definição, unidade, total, denominador e distribuição com
 referências para inspeção. Ausência de declaração é `missingCount`; novidade,
 explicação e retomada não se aplicam à unidade declarada somente prática, e
 oportunidades de prática não se aplicam à unidade somente expositiva. Esses
-casos são `notApplicableCount`. Sem observação aplicável, o total é nulo. A
+casos são `notApplicableCount`. Sem observação aplicável, o total é nulo, isto é,
+não há valor a informar; isso difere de uma contagem conhecida igual a zero. A
 posição da prática é categórica e não recebe total ou diferença numérica.
 
 `revisits` é um indicador da declaração disponível, não uma classificação da
@@ -77,11 +81,11 @@ total não representa extensão visual, tempo de leitura ou complexidade.
 
 | Campo | Pergunta respondida |
 | --- | --- |
-| `studyUnitCount` | quantas StudyUnits existem no escopo? |
-| `parameters` | quais valores pedagógicos foram efetivamente usados e por quantas Units? |
+| `studyUnitCount` | quantas unidades de estudo existem no escopo? |
+| `parameters` | quais valores pedagógicos foram efetivamente usados e por quantas unidades de estudo? |
 | `editorialDirections` | quais direções editoriais foram aplicadas? |
 | `analysisUnits` | quais ideias foram acompanhadas e quantas vezes foram introduzidas, usadas e retomadas? |
-| `introductionsByStudyUnit` | como a novidade se distribui pelas StudyUnits? |
+| `introductionsByStudyUnit` | como a novidade se distribui pelas unidades de estudo? |
 | `explanationForms` | quais formas explicativas foram aplicadas? |
 | `components` | quais representações e formatos de resposta aparecem? |
 | `practiceByRequirement` | quantas oportunidades respondem a cada requisito de evidência? |
@@ -132,13 +136,13 @@ as linhas podem se sobrepor; sua soma não precisa coincidir com
 
 | Campo | Significado |
 | --- | --- |
-| `observations` | Observações criadas, abertas e resolvidas no estado consultável |
+| `observations` | observações criadas, abertas e resolvidas no estado consultável |
 | `explicitParameterOverrideCount` | parâmetros definidos explicitamente e ainda vigentes |
-| `manuallyRevisedStudyUnitCount` | StudyUnits cuja última revisão observável foi humana |
-| `studyUnitsByOrigin` | Units agrupadas pela origem da criação e da última revisão |
+| `manuallyRevisedStudyUnitCount` | unidades de estudo cuja última revisão observável foi humana |
+| `studyUnitsByOrigin` | unidades de estudo agrupadas pela origem da criação e da última revisão |
 
 Esses campos contam estados explícitos. Eles não produzem percentual de autoria,
-score de colaboração ou inferência sobre aceitação.
+pontuação de colaboração ou inferência sobre aceitação.
 
 ## Dados ausentes
 
@@ -156,9 +160,21 @@ usa os campos semânticos literais e a multiplicidade; ignora identidades locais
 e não certifica equivalência semântica. `onlyLeft` e `onlyRight` conservam os
 valores, as quantidades e as referências das diferenças.
 
-**Exportar curso e análise** produz `aralearn.course-authoring-export.v1`:
-`course`, `scope`, `analytics` e `artifact.document`. O documento inclui o
-conteúdo integral do curso; a leitura quantitativa mantém o escopo escolhido.
+**Exportar curso e análise** produz `aralearn.course-authoring-export.v2`, com
+`course`, `scope`, `analytics` e `artifact`. O conteúdo integral do curso fica em
+`artifact.document`, inclusive as explicações salvas; a leitura quantitativa
+mantém o escopo escolhido. Os demais campos de `artifact` preservam metadados
+separados do conteúdo importável:
+
+| Campo | Conteúdo |
+| --- | --- |
+| `explanationSources` | vínculos de fontes de cada explicação, lidos na mesma revisão do curso |
+| `appliedExplanationBases` | base explicativa aplicada a cada unidade, quando registrada, com sua origem |
+| `contentReviews` | estado da declaração de revisão de cada explicação ou unidade e data, quando existente |
+
+O código que valida e organiza a leitura aceita o formato anterior `v1`;
+metadados que ele não continha
+permanecem ausentes. A serialização atual limita o arquivo a 32 MiB (33.554.432 bytes) e falha se o total exceder esse limite.
 O leitor percorre entidades com a mesma revisão e confere novamente a revisão
 ao terminar. Falha ou mudança interrompe a exportação inteira; não há retorno
 parcial ou substituição por cache. O arquivo não inclui bytes PDF/áudio,

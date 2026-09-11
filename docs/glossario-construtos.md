@@ -2,15 +2,15 @@
 
 ## Finalidade
 
-Este glossário define os conceitos usados para formular hipóteses e interpretar
-avaliações do AraLearn. Sua função é impedir que um nome de interface ou um
-rastro técnico seja promovido indevidamente a medida psicológica, educacional
-ou social.
+Agência, compreensão e carga cognitiva exigem definições e formas próprias de
+investigação. Já microssequência, base explicativa e unidade de estudo são
+convenções usadas para organizar o AraLearn. Distinguir esses tipos de termo
+permite formular hipóteses sem tratar nomes ou contagens do aplicativo como
+medidas educacionais.
 
-Um glossário técnico responde, por exemplo, o que são IndexedDB, CAS, RLS,
-esquema ou sincronização. Este glossário responde o que significam agência,
-retomada, compreensão, carga cognitiva extrínseca e qualidade pedagógica. Os
-termos de implementação estão no [Glossário técnico](glossario-tecnico.md).
+As entradas relacionam significado, manifestações possíveis e evidência
+necessária. O [glossário técnico](glossario-tecnico.md) complementa a consulta
+quando a pergunta envolve implementação, como armazenamento e sincronização.
 
 ## Como usar as definições
 
@@ -116,7 +116,7 @@ baixa consequência, sem nota ou classificação.
 - **Manifestação possível:** explicitar o que não foi compreendido, justificar
   mudança de estratégia e revisar o próprio julgamento depois de nova
   evidência.
-- **Não equivale a:** confiança declarada, Observação registrada, resposta
+- **Não equivale a:** confiança declarada, observação registrada, resposta
   correta, tempo de estudo ou marca para revisão.
 - **Evidência necessária:** tarefa, julgamento e comportamento regulatório
   relacionados ao processo definido, com instrumento e momento adequados.
@@ -133,16 +133,42 @@ baixa consequência, sem nota ou classificação.
 - **Evidência necessária:** avaliação da qualidade da escolha e da percepção de
   suporte, não contagem de controles.
 
-### Supervisão humana da IA
+### Literacia em inteligência artificial
+
+- **Tipo:** conceito de orientação educacional e institucional.
+- **Definição:** na Recomendação CM/Rec(2026)12 do Conselho da Europa, capacidade
+  de relacionar-se com a IA de modo crítico, ético, responsável, seguro e
+  efetivo, compreendendo suas dimensões humana, tecnológica e prática
+  (apêndice, § 7;
+  [Conselho da Europa (2026)](referencias.md#ref-coe2026ailiteracy)).
+- **Manifestação possível:** explicar limitações relevantes, avaliar uma
+  resposta e sua fonte, justificar o uso ou o não uso de uma ferramenta e
+  considerar as consequências da decisão.
+- **Não equivale a:** familiaridade com uma marca, habilidade de formular
+  comandos, frequência de uso ou aceitação de sugestões.
+- **Evidência necessária:** tarefas que examinem compreensão técnica, julgamento
+  crítico e ação no contexto definido; a recomendação orienta a formação, mas
+  não fornece uma medida validada para o AraLearn.
+
+### Supervisão humana da IA (*human-in-the-loop*)
 
 Neste glossário, **inteligência artificial (IA)** designa modelos ou serviços
 computacionais que propõem, transformam ou analisam conteúdo durante a autoria.
 
 - **Tipo:** política de desenho.
-- **Definição:** requisito de manter intenção, escopo, proposta, validação,
-  aplicação e consequência sob autoridade explícita da pessoa.
-- **Manifestação possível:** alvo visível, proposta separada da gravação,
-  possibilidade real de rejeitar, corrigir e reverter e registro da decisão.
+- **Definição:** no desenho do AraLearn, participação humana com autoridade para
+  delimitar a tarefa, inspecionar propostas e fontes, decidir sobre mudanças e
+  conferir o resultado salvo. A expressão *human-in-the-loop* identifica essa
+  participação no processo; o que a pessoa efetivamente consegue compreender e
+  corrigir precisa ser avaliado separadamente. O referencial do Ministério da
+  Educação distingue supervisão com decisão humana necessária antes de efeitos
+  relevantes (*human-in-the-loop*) de acompanhamento com possibilidade de
+  intervenção (*human-on-the-loop*, pp. 69–70;
+  [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao)). Cada fluxo
+  do produto precisa ser caracterizado pelo controle que efetivamente oferece.
+- **Manifestação possível:** alvo e fontes inspecionáveis, proposta com alcance
+  compreensível, possibilidade real de rejeitar ou corrigir e registro da
+  decisão humana pertinente ao conteúdo salvo.
 - **Não equivale a:** resultado já demonstrado sobre compreensão, agência ou
   controle efetivo.
 - **Evidência necessária:** inspeção do fluxo, contratos, estados e testes que
@@ -431,7 +457,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Evidência necessária:** análise do processo, das relações e do produto
   coletivo, incluindo conflitos e casos negativos.
 
-O acesso direto ao Estudo e as Observações do AraLearn não oferecem coautoria
+O acesso direto ao estudo e as observações do AraLearn não oferecem coautoria
 ou construção de produto coletivo e, portanto, não operacionalizam esse
 construto.
 
@@ -441,8 +467,8 @@ construto.
   na interface, aparece como **Observação**.
 - **Definição:** anotação com corpo e alvo endereçável, autoria, motivação e
   estado. Pode registrar dúvida, possível erro, confusão, sugestão ou pedido de
-  reformulação ligado a curso, módulo, lição, Tópico, microssequência, Unidade,
-  fonte ou Âncora; podem coexistir várias no mesmo alvo
+  reformulação ligado a curso, módulo, lição, tópico, microssequência,
+  explicação, unidade de estudo, fonte ou âncora; podem coexistir várias no mesmo alvo
   ([W3C (2017)](https://www.w3.org/TR/annotation-model/)).
 - **Manifestação possível:** texto registrado, alvo reencontrável, revisão,
   canal e estado preservados.
@@ -450,7 +476,7 @@ construto.
   Quantidade, categoria e tempo de resolução tampouco medem esses construtos.
 - **Evidência necessária:** corpo, alvo e contexto; ausência de observação não
   significa compreensão. Classificação automática só identifica o próprio
-  Tópico quando ele é o alvo exato; outros assuntos exigem seleção humana
+  tópico quando ele é o alvo exato; outros assuntos exigem seleção humana
   explícita, não inferência pela prosa.
 
 ## Resultados compostos de qualidade
@@ -500,10 +526,10 @@ construto.
   evidência pública permanecem coerentes segundo critérios e revisão semântica.
 - **Não equivale a:** qualidade pedagógica global, aprendizagem, compreensão,
   eficácia do reparo ou validade de um parâmetro.
-- **Evidência necessária:** revisão contextual reproduzível, Units reais, regras
+- **Evidência necessária:** revisão contextual reproduzível, unidades de estudo reais, regras
   declaradas, julgamento humano nos itens semânticos e reinspeção após reparo.
 
-## Termos operacionais de Curso e Autoria
+## Termos operacionais de curso e autoria
 
 As definições desta seção e do modelo didático constituem o contrato conceitual
 da autoria contextual. Uma definição estabelece significado e comportamento
@@ -517,7 +543,7 @@ efeito na interface e nos canais.
 ### Curso
 
 Objeto instrucional vivo e identificável que reúne hierarquia, conteúdo,
-desenho, fontes, Observações e estado de Autoria. Cada recorte completo salvo
+desenho, fontes, observações e estado de autoria. Cada recorte completo salvo
 pode ser estudado por quem tem acesso enquanto a produção do curso continua;
 o curso não depende de uma etapa de publicação para existir.
 É unidade de propriedade e autorização do produto, não turma, disciplina,
@@ -532,13 +558,13 @@ autoral própria e pode anteceder a materialização das unidades. Um rascunho
 intermediário que permita recuperar trabalho permanece identificável como
 incompleto; uma composição parcialmente substituída não é uma entrega pronta.
 Materialização não equivale a geração textual, publicação, qualidade autoral ou
-aprendizagem; seu término demonstra apenas que a operação de Autoria alcançou
+aprendizagem; seu término demonstra apenas que a operação de autoria alcançou
 um estado persistido verificável.
 
 ### Fonte
 
 Objeto de proveniência que identifica o estado corrente de um material usado na
-Autoria. Uma fonte pode ser documento, página da Web, vídeo, PDF ou outro
+autoria. Uma fonte pode ser documento, página da Web, vídeo, PDF ou outro
 material aceito pelo produto. Sua presença permite localizar a origem, mas não
 atesta verdade, qualidade, pertinência ou fidelidade da interpretação.
 
@@ -558,10 +584,11 @@ medida de compreensão, dificuldade, qualidade ou aprendizagem.
 
 ### Achado
 
-Registro produzido numa rodada de Auditoria que descreve uma divergência,
-conserva regra, alvo, evidência e estado e pode originar proposta focal de
-correção. Achado não é Observação, diagnóstico de estudante, correção já
-aplicada nem prova de eficácia da auditoria.
+Problema identificado numa revisão contextual, com regra pertinente, alvo e
+evidência. Pode orientar uma proposta de correção, mas não constitui por si uma
+observação humana, uma correção aplicada ou uma declaração de revisão autoral.
+O [fluxo de revisão](auditoria-de-conformidade-instrucional.md) descreve como
+reler o contexto, propor o reparo e conferir seus efeitos.
 
 ### Parâmetro de desenho
 
@@ -848,7 +875,7 @@ de constituir unidade universal da pesquisa educacional.
 Exposição intelectual e documental desenvolvida para o objetivo da
 microssequência, com pressupostos, conceitos, relações, mecanismos, exemplos,
 limites e fontes pertinentes. **Explicação** é seu nome na interface. Pode ser
-produzida e revisada antes das unidades e, no Estudo, funciona também como apoio
+produzida e revisada antes das unidades e, no estudo, funciona também como apoio
 sob demanda. O contrato prevê uma instância salva por microssequência,
 consultada sem geração por IA ao abrir.
 
@@ -931,7 +958,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 ### Condição autoral fixada
 
 - **Tipo:** termo operacional.
-- **Definição:** Curso independente no qual parâmetros pedagógicos, alvos
+- **Definição:** curso independente no qual parâmetros pedagógicos, alvos
   editoriais e direção editorial foram explicitamente definidos para uma
   comparação deliberada.
 - **Não equivale a:** condição experimental governada, randomização ou garantia
@@ -944,7 +971,9 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Tipo:** registro externo delimitado pelo protocolo de pesquisa.
 - **Definição:** exportação explícita do estado e da configuração efetivamente
   usados numa condição.
-- **Não equivale a:** versão cotidiana do curso ou snapshot de Analytics.
+- **Não equivale a:** curso cotidiano mutável ou leitura quantitativa isolada de
+  Analytics. A exportação de curso e análise conserva conteúdo e metadados,
+  mas PDFs e áudios usados no estudo precisam ser guardados separadamente.
 - **Evidência necessária:** conteúdo, configuração, data, revisão e vínculo
   inequívoco com a condição exposta.
 
@@ -952,16 +981,16 @@ Não equivale a painel de indicadores, predição ou vigilância.
 
 - **Tipo:** registro observável.
 - **Definição:** propriedade derivável do curso corrente, como configuração,
-  composição, fonte ou estado de Observação.
+  composição, fonte ou estado de observação.
 - **Não equivale a:** conversa completa, raciocínio privado, interpretação
-  educacional ou telemetria de Estudo.
+  educacional ou telemetria de estudo.
 - **Evidência necessária:** regra de derivação, escopo, revisão e indicação de
   ausência.
 
 ### Escopo de Analytics
 
 - **Tipo:** recorte operacional.
-- **Definição:** Curso, parte, microssequência ou StudyUnit escolhida para
+- **Definição:** curso, parte, microssequência ou unidade de estudo escolhida para
   agregar o estado corrente.
 - **Não equivale a:** depósito analítico, população de participantes ou
   construto científico.
@@ -971,7 +1000,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 ### Intervenção explicitamente observável
 
 - **Tipo:** estado autoral atribuível.
-- **Definição:** definição de parâmetro, revisão manual ou Observação que o
+- **Definição:** definição de parâmetro, revisão manual ou observação que o
   estado corrente permite contar sem interpretar intenção psicológica.
 - **Não equivale a:** medida, indicador, atenção, aprendizagem ou percentual de
   autoria humana.
@@ -982,7 +1011,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 
 - **Tipo:** definição do conjunto de oportunidades.
 - **Definição:** conjunto ao qual um numerador se refere. Duas correções podem
-  representar duas de duas, duas de vinte ou duas de duzentas Unidades
+  representar duas de duas, duas de vinte ou duas de duzentas unidades
   elegíveis; são medidas diferentes.
 - **Não equivale a:** total disponível por conveniência, número de registros
   retornados ou população inteira presumida.
@@ -1164,14 +1193,14 @@ explicitar contexto e limites.
 Qualquer métrica, indicador ou desfecho futuro deve registrar:
 
 1. construto ou resultado;
-2. unidade de análise;
+2. Unidade de análise;
 3. manifestação observada;
 4. instrumento e qualidade da medida;
 5. interpretação permitida;
 6. explicações alternativas;
 7. intervenção possível;
 8. retenção, acesso, exclusão e custo do dado;
-9. unidade, denominador e algoritmo quando houver valor numérico;
+9. Unidade, denominador e algoritmo quando houver valor numérico;
 10. versão e proveniência da operacionalização.
 
 Se essa cadeia não puder ser preenchida, o dado não deve entrar apenas por
@@ -1179,13 +1208,13 @@ estar tecnicamente disponível. Um termo operacional pode tornar-se objeto de
 investigação, mas não deve ser apresentado como construto estabelecido sem
 desenvolvimento e validação próprios.
 
-## Construtos e dados em Pesquisa
+## Interpretação dos dados de Analytics
 
 - **Fato de Autoria** descreve uma atividade ou estado observável do processo;
   não equivale a atenção, esforço, domínio ou aprendizagem.
 - **Completude do recorte** descreve fatos presentes e ausentes segundo uma
   consulta; não mede adesão sem protocolo e população definidos.
-- **Diferença entre variantes** descreve desenho ou materialização; não é efeito
+- **Diferença entre cursos** descreve desenho ou materialização; não é efeito
   causal sem identificação, instrumento válido e análise apropriada.
 - **Ausência** é dado não disponível ou explicitamente ausente. Não deve ser
   convertida automaticamente em zero, fracasso ou abandono.
@@ -1205,12 +1234,14 @@ desenvolvimento e validação próprios.
 - [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards): Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506.
 - [Biggs (1996)](referencias.md#ref-biggs1996alignment): John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364.
 - [Bjork e Bjork (2011)](referencias.md#ref-bjork2011desirable): Elizabeth L. Bjork; Robert A. Bjork (2011). **Making Things Hard on Yourself, but in a Good Way: Creating Desirable Difficulties to Enhance Learning.** In: *Psychology and the Real World: Essays Illustrating Fundamental Contributions to Society*, Worth Publishers, p. 56–64.
+- [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao): Brasil. Ministério da Educação (2026). **Referencial para Desenvolvimento e Uso Responsáveis de Inteligência Artificial na Educação.** Ministério da Educação.
 - [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative): E. N. Bridwell-Mitchell (2016). **Collaborative Institutional Agency: How Peer Learning in Communities of Practice Enables and Inhibits Micro-Institutional Change.** *Organization Studies*, 37(2), p. 161–192.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63.
 - [Chun et al. (2011)](referencias.md#ref-chun2011attention): Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of External and Internal Attention.** *Annual Review of Psychology*, 62(1), p. 73–101.
+- [Conselho da Europa (2026)](referencias.md#ref-coe2026ailiteracy): Conselho da Europa (2026). **Recommendation CM/Rec(2026)12 of the Committee of Ministers to Member States on Artificial Intelligence Literacy.** Council of Europe.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel): Four-Component Instructional Design (s.d.). **About the 4C/ID Model.**

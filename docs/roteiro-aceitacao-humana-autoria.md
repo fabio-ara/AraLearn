@@ -1,8 +1,24 @@
 # Roteiro de aceitação humana da autoria
 
 Este roteiro avalia se uma pessoa encontra e conclui as tarefas reais de autoria
-sem aprender a arquitetura interna. Automação verifica contratos e geometria;
-não substitui observação de compreensão e uso.
+sem aprender a arquitetura interna. Testes automáticos verificam formatos e
+regras das operações, chamados contratos, além das posições e dimensões da
+interface. Observar compreensão e uso exige tarefas com pessoas.
+
+## Papéis e meios de autoria
+
+A pessoa autora define o objetivo, autoriza o trabalho e inspeciona o material.
+O assistente de IA pode consultar o curso, propor conteúdo e executar mudanças
+no escopo autorizado. A revisão feita pelo assistente é apoio à inspeção;
+a declaração de revisão autoral corresponde a uma decisão da pessoa sobre o
+conteúdo salvo, conforme [explicação e revisão humana](explicacao-e-revisao-humana.md).
+
+As jornadas conversacionais usam [MCP](autoria-mcp.md), protocolo que permite
+a um assistente consultar e operar ferramentas, ou
+[Actions por OpenAPI](autoria-actions.md), integração que descreve as operações
+disponíveis ao cliente. Os testes específicos de ChatGPT permanecem separados
+dos comportamentos comuns de autoria: um contrato correto no servidor não
+comprova que todo cliente o utilizará corretamente.
 
 ## Contrato de jornadas
 
@@ -19,17 +35,17 @@ a validade de cada prova.
 | J4 — perfis e cadência | criar/aplicar/editar/excluir perfil; ajustar lote e pausas | aplicação copia preferências; editar/excluir perfil não muda curso anterior; reaplicar declara alcance/exceções; lotes e pausas independentes |
 | J5 — contexto | abrir unidade indicada, parâmetros, fontes e observações | retorno ao mesmo alvo, rolagem e acionador; tarefa global acessível pelo menu |
 | J6 — seleção | selecionar unidades anteriores e posteriores | sequência vertical mostra vizinhança; sair restaura unidade inicial; seleção não cria entidade persistente |
-| J7 — edição | proprietário edita título, prosa e rótulos de prática | mesmo renderer e geometria na entrada; crescimento natural sem corte, fonte menor ou prática oculta; salvar/reabrir preserva texto |
-| J8 — assistência | proprietário em Estudo discute alteração focal por API | alvo preservado, proposta verificável e domínio comum; falha conserva original/rascunho; chave nunca entra no curso |
-| J9 — observação | estudante autenticado observa e tenta editar | observação chega ao autor/GPT; edição recusada sem cópia automática; visitante não envia observação |
+| J7 — edição | proprietário edita título, prosa e rótulos de prática | mesma apresentação e geometria na entrada; crescimento natural sem corte, fonte menor ou prática oculta; salvar/reabrir preserva texto |
+| J8 — assistência | proprietário em estudo discute alteração focal por API | alvo preservado, proposta verificável e domínio comum; falha conserva original/rascunho; chave nunca entra no curso |
+| J9 — observação | estudante autenticado observa e tenta editar | observação chega ao autor e ao assistente; edição recusada sem cópia automática; visitante não envia observação |
 | J10 — fontes | abrir URL, PDF, slides e referência incompleta | metadados conhecidos, localizador e alcance legíveis; estilo não muda identidade; publicação escolhe política de arquivos/exceções |
-| J11 — corrigir | observação afeta explicação e prática posterior | GPT lê dependências, discute mudança material, aplica dentro do mandato e relê resultado; HTTP 200 não resolve semanticamente a observação |
+| J11 — corrigir | observação afeta explicação e prática posterior | assistente lê dependências, discute mudança material, aplica dentro do mandato e relê resultado; uma resposta técnica de sucesso não comprova atendimento à observação |
 | J12 — parametrizar | autor fixa condição e compara distribuição | pedido, resolução e aplicação distintos; automático calibra contexto; valor fixado prevalece; inventário não é fundido para cumprir teto |
 | J13 — ferramentas | chinês/pinyin com áudio e leitura; matemática com calculadora | idiomas/notação preservados; múltiplos itens; indisponibilidade/custo explícitos; contratos focais e acessibilidade |
 | J14 — sincronizar | duas abas, alteração remota, rascunho e rede intermitente | manual suspende intercâmbio de estudo em fundo e conteúdo aberto; nuvem sincroniza; conflito não perde dados; escrita autoral/acesso continuam |
 | J15 — copiar e comparar | autor copia curso e inspeciona dados | cópias independentes preservam conteúdo, mapa, repertório, configuração e fontes; não copiam acesso/progresso/observações pessoais; tela/export têm mesmos objetos e denominadores |
 | J16 — retomar pelos canais | mesma intenção em MCP e Actions novos | mesma autorização/efeito; texto literal disponível; retorno breve e endereçável; reenvio não duplica conteúdo |
-| J17 — entregar | candidata integrada e documentação | revisão, configuração e artefatos correspondem; runtime substituído removido; prova técnica não se apresenta como avaliação educacional |
+| J17 — entregar | candidata integrada e documentação | revisão, configuração e artefatos correspondem; mecanismos substituídos removidos; prova técnica não se apresenta como avaliação educacional |
 
 ## Continuidade e geometria
 
@@ -43,14 +59,14 @@ Barras principais usam ícones com nomes e estados acessíveis; menus e ajustes
 revelados admitem texto. A coluna permanece até 430 px também no desktop.
 Em 360, 390, 430 e 1280 px, sob o mesmo zoom, fontes carregadas e estado,
 coordenadas/dimensões de controles equivalentes e caixa de conteúdo admitem até
-1 CSS px de arredondamento ao entrar/sair da edição sem alterar texto. Medir
+1 pixel CSS, a unidade de medida de layout do navegador, de arredondamento ao entrar/sair da edição sem alterar texto. Medir
 antes/depois no mesmo ambiente. Texto novo pode aumentar altura; largura,
 âncora e controles fixos continuam preservados.
 
 Sobreposições mantêm foco e devolvem-no ao acionador; se ele deixou de existir
 por ação explícita, testar o destino lógico. Esc fecha detalhe sem descartar
 silenciosamente rascunho. Cabeçalho reserva espaço para controles ausentes;
-título longo não desloca irmãos. Validar teclado, alvos de toque, reflow e zoom
+título longo não desloca irmãos. Validar teclado, alvos de toque, reorganização do conteúdo ao ampliar a tela e zoom
 200%; estabilidade não impede ampliação. As referências são
 [WCAG 2.2](https://www.w3.org/TR/WCAG22/) e o
 [padrão de diálogo WAI-ARIA](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
@@ -94,7 +110,7 @@ indisponível ou mudança de objetivo interrompe também a execução contínua.
 | posição, progresso e Rever pessoais | gravação local e pendência por conta/dispositivo; não enviar nem receber em fundo | intercambiar e resolver conflito material antes de descartar valores |
 | resposta e feedback da prática em curso | interação local continua; esta preferência não cria coleta ou histórico de respostas | não acrescentar sincronização de respostas inexistente no contrato de estado pessoal |
 | observação escrita pelo estudante autenticado | o ato explícito de enviar continua permitido; sem rede, conservar texto pendente, sem reenvio automático em fundo | enviar pendência por ação explícita, com repetição segura; visitante não envia |
-| observações já recebidas e revisão do autor | não substituir em fundo a inspeção de Estudo; abrir/atualizar a tarefa é leitura explícita | reler no alvo e conservar rascunhos |
+| observações já recebidas e revisão do autor | não substituir em fundo a inspeção de estudo; abrir/atualizar a tarefa é leitura explícita | reler no alvo e conservar rascunhos |
 | salvar edição autoral, publicar acesso ou chamar assistência | rede explícita continua; falha preserva original/rascunho | não esperar sincronização pessoal para executar escrita autorizada |
 | sessão, autorização e revogação | verificações de segurança permanecem; manual não conserva direito revogado | conferir acesso antes de intercambiar ou gravar |
 | abrir fonte web, baixar arquivo ou curso ainda não disponível | rede solicitada explicitamente, sujeita a acesso | não classificar esse pedido como atualização de fundo |
@@ -121,11 +137,11 @@ confirmado pode ser reutilizado. Essa navegação não ativa sincronização de 
 Reprove a revisão se:
 
 - a autoria deixa de abrir diretamente em Conteúdo;
-- aparece dashboard, sidebar, segunda coluna permanente ou segundo rolador;
+- aparece painel de indicadores, barra lateral, segunda coluna permanente ou segundo rolador;
 - uma unidade de estudo deixa de dominar o leitor fora da seleção múltipla;
 - ações somente por ícone não possuem nome acessível, foco e estado corretos;
 - a página cria rolagem horizontal em 360, 390 ou 430 px;
-- Estudo perde navegação, renderer, prática, progresso ou funcionamento offline;
+- estudo perde navegação, apresentação, prática, progresso ou funcionamento offline;
 - a interface ou a conversa expõe identificadores, nomes de campos, hashes,
   comandos, contagens internas ou detalhes de transporte.
 
@@ -150,21 +166,21 @@ Execute numa conexão MCP nova ou renovada e num GPT com o OpenAPI corrente
 efetivamente importado:
 
 1. a pessoa pede um curso extenso;
-2. o GPT apresenta uma síntese curricular global;
+2. o assistente de IA apresenta uma síntese curricular global;
 3. um link permite inspecionar todos os módulos, lições e microssequências;
 4. cada item obrigatório do escopo aparece associado ao mapa;
 5. a pessoa altera cobertura ou ordem;
-6. o GPT ajusta a mesma arquitetura, sem materializar unidades;
+6. o assistente de IA ajusta a mesma arquitetura, sem materializar unidades;
 7. a pessoa aprova o mapa visível;
-8. o GPT apresenta brevemente a primeira parte e executa o mandato recebido;
+8. o assistente de IA apresenta brevemente a primeira parte e executa o mandato recebido;
    pede decisão somente se faltar uma escolha material ou autorização, sem
    repeti-la quando o pedido já inclui produção e continuidade;
 9. a pessoa corrige uma ênfase;
-10. o GPT materializa a parte e devolve o link do conteúdo;
+10. o assistente de IA materializa a parte e devolve o link do conteúdo;
 11. a pessoa inspeciona todas as unidades na ordem;
-12. o GPT apresenta a segunda parte, avançando dentro da cadência autorizada;
+12. o assistente de IA apresenta a segunda parte, avançando dentro da cadência autorizada;
 13. a pessoa altera uma decisão e acrescenta uma fonte técnica;
-14. o GPT materializa e a pessoa inspeciona o resultado;
+14. o assistente de IA materializa e a pessoa inspeciona o resultado;
 15. o repertório acumulado distingue ideias novas, usadas e retomadas.
 
 O chat deve parecer conversa com uma pessoa que desconhece o mecanismo do
@@ -185,9 +201,11 @@ lotes e correções rotineiras; conteúdo inexistente não foi revisado factualm
 | “Mostre a configuração e a fonte deste trecho.” | recupera o recorte completo, incluindo páginas adicionais quando necessárias | valores, referência e localização correspondem ao curso autorizado; indisponibilidade não é ocultada |
 | “Mostre o que esta unidade pressupõe.” | exibe ideias introduzidas, usadas e retomadas em linguagem humana | ausência de termos internos e referências coerentes |
 | “Compare teto 1 e 2.” | preserva o repertório e permite mudar a distribuição de unidades | condição fixada prevalece sobre calibração contextual |
-| “Deixe o GPT ajustar ao conteúdo.” | intenção automática sem valor implícito recebe valores e motivos contextuais dos parâmetros do catálogo | fixações preservadas; valor, motivo, origem, escopo e aplicação observáveis |
+| “Deixe o assistente de IA ajustar ao conteúdo.” | intenção automática sem valor implícito recebe valores e motivos contextuais dos parâmetros do catálogo | fixações preservadas; valor, motivo, origem, escopo e aplicação observáveis |
 | “Prefira cerca de 140 palavras por unidade.” | registra alvo editorial flexível sem truncar nem compactar conteúdo | alvo e extensão observada comparáveis; unidades podem ultrapassá-lo |
-| “Confira de onde vem esta afirmação.” | distingue fonte de escopo, avaliação e sustentação técnica | proveniência e limite interpretado |
+| “Confira de onde vem esta afirmação.” | localiza o texto salvo e a fonte em contexto, distingue escopo, avaliação e sustentação e justifica a pertinência do vínculo | inspeção humana do trecho, proveniência e limite interpretado |
+| “O texto está fluente, mas essa fonte sustenta a afirmação?” | examina um caso sintético de atribuição plausível porém incorreta e decide se deve corrigir texto, vínculo ou ambos | justificativa da pessoa, erro identificado e conteúdo salvo conferido |
+| “Já revisei esta explicação.” | registra revisão somente após declaração humana sobre o conteúdo salvo identificado | marca da explicação não revisa automaticamente unidades e mudanças materiais exigem nova inspeção |
 | “Revise as observações abertas.” | relê também progressão, pré-requisitos, transições, exemplos e prática | conjunto afetado e proposta concreta |
 | “Mostre como o curso foi desenhado.” | Analytics mostra estado aplicado e exporta dados comparáveis | valores, origem, escopo, uso e JSON |
 | “Continue numa conversa nova.” | retoma mapa, lotes e repertório persistidos sem repetir o briefing | próxima decisão correta |
@@ -244,13 +262,20 @@ artefato, data, cliente, escopo autorizado e resultado observado. Testes de
 schema, stubs e servidor local não comprovam importação, seleção de ferramentas,
 OAuth ou confirmações na conversa hospedada.
 
+Nas medições, bytes UTF-8 representam o tamanho do texto codificado para
+transmissão, enquanto unidades UTF-16 correspondem à contagem usada por várias
+operações de texto em JavaScript. Os limites podem usar unidades diferentes;
+por isso, elas precisam acompanhar cada número. Tokens são as unidades em que
+o modelo divide o texto; uma estimativa por caracteres não informa o consumo
+real do serviço.
+
 | Medida | Como registrar |
 | --- | --- |
-| schema e descrições | bytes UTF-8 e unidades UTF-16 do JSON serializado, informando se há indentação |
+| esquema de dados e descrições | bytes UTF-8 e unidades UTF-16 do JSON serializado, informando se há indentação |
 | contexto por chamada e acumulado | medir cada pedido e resposta completos; somar o material observado sem alegar acesso ao contexto interno do modelo |
-| estimativa de tokens | identificar o método; `measureAuthoringToolLoad.mjs` usa `ceil(caracteres / 4)`, não um tokenizer nem consumo real faturado |
+| estimativa de tokens | identificar o método; `measureAuthoringToolLoad.mjs` usa `ceil(caracteres / 4)`, não um contador de tokens do modelo nem consumo real faturado |
 | comportamento | número de chamadas, falhas, recuperações e perguntas materiais, com os respectivos efeitos persistidos |
-| limites | distinguir documentação oficial, guard do servidor, orçamento local e aceitação observada no editor ou na conversa |
+| limites | distinguir documentação oficial, restrição aplicada pelo servidor, orçamento local e aceitação observada no editor ou na conversa |
 
 As fontes e unidades dos limites estão em
 [Actions](autoria-actions.md#limites-verificados-e-orçamentos-locais) e
@@ -262,9 +287,9 @@ inteiros quando um recorte sustenta a decisão.
 
 Ao exercitar um limite, conserve a distinção entre leitura grande e escrita
 possivelmente concluída. A primeira deve pedir recorte ou página sem truncar;
-a segunda exige releitura antes da recuperação. Nenhuma economia de payload
+a segunda exige releitura antes da recuperação. Nenhuma redução do volume transferido
 justifica resumo didático, perda de referências ou marcação não consequencial
-de escrita. Se houver bloqueio de login, consentimento, quota, timeout ou editor,
+de escrita. Se houver bloqueio de login, consentimento, limite de uso, tempo de espera excedido ou editor,
 registre o ponto exato e o restante não exercitado; não registre aprovação fictícia.
 
 ## Perguntas finais

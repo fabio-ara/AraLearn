@@ -38,7 +38,11 @@ Depois da importação, o JavaScript dos próprios *flashcards* podia recuperar 
 
 Outra operação era construir endereços da Web a partir desses dados para criar links diretos para páginas externas. No estudo de japonês, usei dessa forma o [guia de gramática de Tae Kim](https://guidetojapanese.org/learn/grammar/); no de chinês, a [Chinese Grammar Wiki](https://resources.allsetlearning.com/chinese/grammar/Main_Page).
 
-Nessa fase, antes da popularização comercial da IA generativa, meu interesse por [processamento de linguagem natural](https://en.wikipedia.org/wiki/Natural_language_processing) também era muito forte. No estudo de japonês, eu explorava ainda a [fonologia suprassegmental](https://www.cambridge.org/core/books/abs/introducing-phonetic-science/suprasegmentals/3418DF78D7466EC8D9F0127DA5108D22) da língua, sobretudo acento e prosódia. O [Online Japanese Accent Dictionary (OJAD)](https://www.gavo.t.u-tokyo.ac.jp/ojad/eng/pages/home) reunia informações sobre o acento do japonês e incluía um tutor de prosódia. Serviços de [síntese de voz do Microsoft Azure](https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech) permitiam também gerar áudio automaticamente para o material.
+Nessa fase, antes da popularização comercial da IA generativa, meu interesse por [processamento de linguagem natural](https://en.wikipedia.org/wiki/Natural_language_processing) também era muito forte. Lidava com problemas de *parsing* de textos em japonês e mandarim: como reconhecer automaticamente suas unidades linguísticas e a maneira como se organizam. No caso do japonês, explorava o [MeCab](https://taku910.github.io/mecab/), um analisador morfológico que segmenta o texto e identifica informações gramaticais sobre as unidades encontradas.
+
+No estudo de japonês, eu explorava ainda a [fonologia suprassegmental](https://www.cambridge.org/core/books/abs/introducing-phonetic-science/suprasegmentals/3418DF78D7466EC8D9F0127DA5108D22), sobretudo os padrões de acento e as variações de altura da voz ao longo das frases. Recorria particularmente ao [tutor de prosódia Suzuki-kun](https://www.gavo.t.u-tokyo.ac.jp/ojad/eng/phrasing/index), do [Online Japanese Accent Dictionary (OJAD)](https://www.gavo.t.u-tokyo.ac.jp/ojad/pages/notes), projeto desenvolvido em colaboração por uma equipe da Universidade de Tóquio e de outras instituições. A partir de um texto em japonês, o tutor estima o padrão de acento e apresenta a curva melódica de sua leitura.
+
+Serviços de [síntese de voz do Microsoft Azure](https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech) permitiam também gerar áudio automaticamente para o material.
 
 Mais tarde, passei a usar o [AnkiWeb](https://docs.ankiweb.net/syncing.html), serviço online do Anki para sincronizar uma coleção entre dispositivos. Por meio dele, eu mantinha meus *decks* sincronizados entre o Anki no computador e o AnkiDroid no celular. Depois da sincronização, o material permanecia disponível no dispositivo para estudo.
 
@@ -102,7 +106,7 @@ Em termos simples, primeiro o AraLearn passou a chamar a IA para gerar e revisar
 
 ## O AraLearn hoje
 
-Hoje, o AraLearn reúne estudo, produção e revisão de cursos no mesmo aplicativo. O conteúdo é organizado em unidades de estudo relacionadas dentro de cursos, e não mais em torno de *flashcards*. O projeto funciona na web e no Android e oferece assistência por IA dentro do próprio aplicativo e por meio das integrações conversacionais desenvolvidas nos últimos anos.
+Hoje, o AraLearn reúne estudo, produção e revisão de cursos no mesmo aplicativo. O conteúdo é organizado em unidades de estudo relacionadas dentro de cursos, e não mais em torno de *flashcards*. O projeto funciona na web e no Android e oferece assistência por IA dentro do próprio aplicativo e por meio das integrações conversacionais desenvolvidas ao longo do projeto.
 
 Minha experiência com educação a distância tornou outro aspecto do problema mais visível. Num curso formal há professores, conteúdos, atividades, avaliações e uma organização definida. Mesmo assim, uma parcela importante do estudo cotidiano pode depender do próprio estudante: administrar o tempo, acompanhar o que ficou para trás, retomar assuntos interrompidos e procurar outra explicação quando o material disponível não basta.
 

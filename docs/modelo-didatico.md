@@ -1,35 +1,14 @@
 # Modelo didático do AraLearn
 
-## Finalidade e estatuto deste documento
-
-Este documento explica o modelo didático adotado pelo AraLearn: quais problemas
-educacionais orientam o produto, quais alternativas foram consideradas, quais
-decisões estão vigentes e como essas decisões aparecem na organização dos
-cursos. O texto parte dos conceitos mais gerais e chega à sua
-operacionalização no artefato.
-
-O modelo é uma **proposta de projeto educacional fundamentada**, não uma teoria
-universal de aprendizagem nem uma demonstração de eficácia. Convém distinguir,
-ao longo da leitura:
-
-- **evidência externa**: resultados e argumentos publicados em outros
-  contextos;
-- **decisão de produto**: escolha pedagógica ou técnica adotada no AraLearn;
-- **hipótese de projeto**: relação que ainda precisa ser examinada com pessoas,
-  tarefas e medidas adequadas;
-- **propriedade implementada**: comportamento demonstrável por código, teste ou
-  inspeção;
-- **resultado empírico**: achado obtido em avaliação documentada do artefato.
-
-Uma propriedade implementada, como o funcionamento sem conexão, não demonstra por
-si só compreensão, retenção ou aprendizagem. Do mesmo modo, uma decisão
-fundamentada pode ser plausível sem ter sido validada no contexto específico do
-AraLearn.
+O AraLearn é um artefato técnico de pesquisa em design instrucional e tecnologia
+educacional. Seu modelo didático orienta a criação de cursos com assistência de
+inteligência artificial (IA), inspeção e revisão humanas, para estudo autodidata
+no celular. O curso precisa conservar explicações, relações com as fontes e
+prática significativa mesmo quando o estudo ocorre em períodos breves.
 
 ## Problema educacional delimitado
 
-O AraLearn foi concebido para situações em que estudar envolve mais do que
-acessar informação. A pessoa precisa compreender de onde um assunto parte,
+Para estudar, a pessoa precisa situar o assunto e compreender
 como seus conceitos se relacionam, qual operação deve aprender, como praticá-la
 e como retomar o percurso após uma interrupção. Esse problema é particularmente
 visível quando o estudo ocorre no celular, em períodos fragmentados e com
@@ -41,19 +20,19 @@ Três riscos orientam o desenho:
    sem progressão suficiente para quem encontra o assunto pela primeira vez;
 2. **fragmentação**: o conteúdo é dividido em unidades curtas, mas perde suas
    relações, sua profundidade e seu propósito;
-3. **atividade aparente**: o estudante toca, avança e conclui Unidades sem precisar
+3. **atividade aparente**: o estudante toca, avança e conclui unidades sem precisar
    explicar, discriminar, aplicar ou recuperar o que estudou.
 
 O modelo responde a esses riscos com progressão explícita, teoria suficiente,
-prática pertinente, retorno acionável, representações adequadas e continuidade
-entre sessões. Trata-se de uma orientação; cada curso continua exigindo
-planejamento e revisão próprios.
+prática pertinente e retorno que ajude a compreender e corrigir o erro.
+Representações adequadas e continuidade entre sessões completam essa orientação. Cada curso exige planejamento e revisão próprios.
 
 ## Estrutura do percurso
 
-O curso é organizado em níveis com responsabilidades diferentes:
+O curso é organizado nos seguintes níveis. Essa divisão é uma convenção do
+AraLearn para planejar, produzir e retomar o estudo:
 
-| Unidade | Função principal | Pergunta que responde |
+| Nível | Função principal | Pergunta que responde |
 | --- | --- | --- |
 | curso | delimitar propósito, público e escopo geral | o que será aprendido e para quê? |
 | módulo | reunir uma região coerente do domínio | que parte ampla do assunto está em foco? |
@@ -63,82 +42,73 @@ O curso é organizado em níveis com responsabilidades diferentes:
 
 ### Mapa curricular global
 
-Antes de materializar conteúdo, a autoria apresenta o mapa completo de módulos,
+Antes de produzir o conteúdo, a autoria apresenta o mapa completo de módulos,
 lições e microssequências, com progressão, dependências importantes e cobertura
 do escopo. O mapa pode ser revisto como rascunho. A aprovação confirma somente
-as decisões que estavam inspecionáveis e não alcança unidades de estudo futuras.
+as decisões disponíveis para inspeção e não alcança unidades de estudo futuras.
 
 ### Por que a microssequência existe
 
-**Problema.** Uma Unidade isolada costuma ser pequena demais para situar, explicar,
+Uma unidade isolada costuma ser pequena demais para situar, explicar,
 exemplificar e praticar um conceito complexo. Uma lição inteira pode conter
 objetivos demais para delimitar o que estava em andamento e permitir uma
 retomada precisa depois de interrupção.
 
-**Alternativas e requisitos.** Seria possível usar somente Unidades e lições, ou
+Seria possível usar somente unidades e lições, ou
 fixar blocos por duração e quantidade. A unidade intermediária, porém, precisa
 preservar um objetivo, seus pré-requisitos, a teoria que o sustenta, as práticas
 que o verificam e a ligação com o percurso, sem impor duração universal.
 
-**Decisão.** A **Microssequência didática** é a unidade de progressão situada
+A **microssequência didática** é a unidade de progressão situada
 entre unidade de estudo e lição. Ela contém objetivo, papel no percurso,
-dependências, conceitos cobertos, operações verificadas e Unidades ordenadas.
+dependências, conceitos cobertos, operações verificadas e unidades ordenadas.
 
-**Fundamentação.** A literatura de carga cognitiva chama atenção para a
-capacidade limitada da memória de trabalho e para demandas introduzidas pelo
-próprio desenho instrucional ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). A evidência sobre segmentação apresenta moderadores
-e não sustenta uma regra universal de tamanho ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura
-de microaprendizagem também reúne intervenções heterogêneas
+A **carga cognitiva** diz respeito às demandas de processamento na memória
+de trabalho, que mantém e manipula informação durante a tarefa. Sua capacidade
+limitada exige considerar como o desenho instrucional apresenta as informações ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). Dividir a apresentação em segmentos pode ajudar em certas condições, mas a
+evidência sobre **segmentação** não sustenta uma regra universal de tamanho ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura
+de **microaprendizagem**, que investiga intervenções em recortes breves, também
+reúne formatos e contextos heterogêneos
 ([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
 
-**Operacionalização.** A Autoria declara a função e as dependências da
-microssequência antes de materializar as Unidades. Sua extensão varia conforme a
+A autoria declara a função e as dependências da
+microssequência antes de produzir as unidades. Sua extensão varia conforme a
 complexidade, os conhecimentos prévios presumidos, os erros previsíveis e a
 evidência de aprendizagem requerida.
 
-**Consequências.** A unidade permite orientar produção, auditoria, retomada e
-revisão sem reduzir a lição a uma lista de telas.
+A microssequência mantém juntas a intenção didática, as unidades ordenadas e
+a base explicativa consultada durante o estudo. Essa relação orienta produção,
+revisão e retomada.
 
-**Limites e evidência.** “Microssequência” é um termo operacional do AraLearn.
-Não se demonstrou que essa unidade seja superior a toda alternativa; sua
-coerência e utilidade precisam ser avaliadas em cursos, públicos e domínios
-concretos.
+A coerência e a utilidade dessa divisão precisam ser avaliadas em cursos,
+públicos e domínios concretos.
 
 ### Parte como coordenação operacional
 
 Depois da aprovação do mapa, a autoria pode reunir microssequências em partes
-para que planejamento, construção, auditoria, reparo e reauditoria permaneçam
-manejáveis. A divisão considera coesão semântica, dependências, quantidade e
-complexidade das microssequências e carga provável de revisão humana.
+para delimitar o que será produzido e revisado em cada etapa. A divisão
+considera quais assuntos precisam permanecer juntos, suas dependências e a
+quantidade de trabalho que a pessoa autora consegue inspecionar.
 
-Parte não aparece na hierarquia acima porque não é unidade pedagógica. Também
-não é definida por duração, número de Unidades ou uma quantidade universal de
-blocos por curso. É uma unidade operacional de coordenação entre pessoa e
-assistente; qualquer contagem inicial funciona, no máximo, como referência
-configurável a ser avaliada.
+Uma **parte** agrupa o trabalho de produção e revisão; não acrescenta nível ao
+currículo. Seu tamanho e as pausas entre lotes são ajustáveis conforme a
+complexidade do material e a disponibilidade da pessoa autora. As regras de
+planejamento e produção estão em [Autoria contextual](autoria-contextual.md).
 
 ## Diagnóstico contextual antes da construção
 
-**Problema.** Um pedido de autoria não contém necessariamente tudo o que muda o
+Um pedido de autoria não contém necessariamente tudo o que muda o
 desenho do curso. Ao mesmo tempo, transformar a abertura em questionário fixo
 produz perguntas irrelevantes, repete informações já disponíveis e pode
 confundir uma condição do contexto com uma regra pedagógica universal.
 
-**Alternativas e requisitos.** A Autoria poderia aplicar sempre o mesmo estilo,
-perguntar tudo novamente ou começar a produzir com lacunas silenciosas. Em vez
-disso, precisa consultar primeiro o pedido, as fontes, o curso e as decisões já
-registradas; distinguir o que está documentado do que é apenas hipótese; e
-interromper para dialogar somente quando uma informação ausente ou contraditória
-mudaria materialmente objetivo, escopo, pré-requisito, sequência, representação,
-prática ou dependência de um ambiente externo.
-
-**Decisão.** Antes de materializar Unidades, a Autoria assume uma
-**responsabilidade diagnóstica contextual**: organiza as condições de
-aprendizagem conhecidas, as exigências do conteúdo e as dificuldades previstas,
-e liga cada dificuldade relevante a uma resposta de desenho proposta, aos
-passos e componentes que a concretizam e a critérios observáveis. Essa
-síntese é apresentada à pessoa autora para confirmação ou correção. Ela não é
-um diagnóstico clínico, psicométrico ou automático dos estudantes.
+A autoria consulta primeiro o pedido, as fontes, o curso e as decisões já
+registradas. A análise relaciona as dificuldades previstas a escolhas de
+sequência, explicação, representação e prática. Uma pergunta adicional é
+necessária quando a informação ausente ou contraditória mudaria uma dessas
+decisões, o objetivo ou o escopo. Essa síntese é apresentada à pessoa autora
+para confirmação ou correção; descreve o contexto planejado, sem medir o
+conhecimento efetivo dos estudantes.
 
 Uma **condição contextual** descreve o cenário, por exemplo, conhecimento prévio
 que pode ser presumido, convenção disciplinar, dispositivo, idioma ou acesso a
@@ -146,13 +116,13 @@ laboratório. Uma **decisão local** define o que fazer numa microssequência, c
 introduzir um pré-requisito, usar um exemplo, escolher uma representação,
 acrescentar prática ou declarar que um meio indispensável não está disponível.
 A mesma condição pode exigir respostas diferentes conforme a operação e o
-conteúdo. Por isso, o estado `default` exige que o GPT calibre automaticamente
-cada microssequência ou unidade segundo sua função, em vez de aplicar um preset
-ao curso inteiro. Uma condição deliberadamente fixada pelo pesquisador prevalece.
-Objetivos, cobertura e invariantes continuam comuns; configuração não substitui
+conteúdo. No modo automático, o assistente calibra
+cada microssequência ou unidade segundo sua função, sem aplicar um conjunto
+fixo de valores ao curso inteiro. Uma condição deliberadamente fixada pelo pesquisador prevalece.
+Objetivos, cobertura e regras do percurso permanecem; configuração não substitui
 decisões locais.
 
-**Fundamentação.** A utilidade de orientação, exemplos e resolução de problemas
+A utilidade de orientação, exemplos e resolução de problemas
 pode mudar com o conhecimento prévio e a tarefa, fenômeno discutido como
 efeito de reversão da especialização (*expertise reversal*)
 ([Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal)). Em análise
@@ -162,189 +132,178 @@ produziu resultados diferentes conforme o conhecimento prévio
 contextual; não fornecem um mecanismo para inferir automaticamente o que cada
 pessoa sabe nem demonstram a eficácia do produto.
 
-**Operacionalização.** Público, escopo, resultados pretendidos, unidades de
-análise e requisitos de evidência ficam no plano instrucional. Orientações
-naturais são revisões próprias por escopo; interpretações estruturadas
-permanecem separadas do texto original. Parâmetros e política de componentes
-possuem valores efetivos com origem e fonte visíveis. Nenhuma camada persiste
-raciocínio privado do modelo nem a transcrição integral do diálogo.
+Público, escopo, resultados pretendidos e conhecimentos necessários ficam no
+plano instrucional. A direção editorial registra orientações de escrita; os
+parâmetros definem escolhas locais, e a política de componentes delimita as
+representações permitidas. A pessoa autora pode inspecionar a origem de cada
+configuração e compará-la com a que foi aplicada ao material salvo. O
+[desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
+explica essas camadas e sua precedência.
 
-**Consequências, limites e responsabilidade.** A pessoa autora continua
-responsável por confirmar o público, julgar as hipóteses, revisar fontes e
-aprovar decisões. O sistema pode tornar inconsistências e lacunas observáveis,
-mas não mede domínio individual, não produz sozinho diagnóstico de domínio, não
-certifica adequação disciplinar e não prediz resultados de aprendizagem.
+A pessoa autora confirma o público, julga as hipóteses e examina a adequação
+disciplinar. A análise do material pode localizar lacunas e inconsistências;
+conhecer o domínio efetivo de cada estudante exige outra forma de avaliação.
 
 ## Análise instrucional e parâmetros locais
 
-O plano e o desenho por escopo separam o percurso abaixo:
+Para construir uma sequência, a autoria identifica o que precisa ser ensinado
+e o que o estudante deverá conseguir fazer. Uma **unidade de análise
+instrucional** é um recorte de conhecimento que vale acompanhar separadamente:
+uma ideia, relação, condição ou procedimento necessário à tarefa. Por exemplo,
+conhecer os nomes de dois equipamentos não implica compreender como se comunicam;
+essa relação pode precisar de desenvolvimento próprio.
 
-```text
-fontes, objetivo e mapa global → repertório por microssequência
-  → parâmetros e orientações efetivos
-  → política e seleção progressiva de componentes
-  → contexto selado pelo servidor → Unidades e fatos de aplicação
-  → Conteúdo e revisão humana
-```
+O recorte depende do público, do objetivo e do repertório pressuposto. Ele não
+corresponde automaticamente a uma palavra ou a um componente de conhecimento
+validado. A distinção entre conhecimento inferido e eventos observáveis é
+tratada por [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli).
+O [protocolo de unidade de análise](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise)
+define os critérios de recorte e de registro.
 
-A **unidade de análise instrucional** representa uma ideia, relação, condição,
-procedimento ou operação necessária ao percurso e que vale acompanhar
-separadamente. Ela não é automaticamente um componente de conhecimento
-validado: componentes de conhecimento e eventos de aprendizagem não são
-observados diretamente, e sua granularidade depende da análise e da população
-([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
-Do mesmo modo, classificar uma ideia como introduzida, já estabelecida e usada
-ou deliberadamente retomada descreve uma hipótese para o desenho, não o domínio
-de uma pessoa.
+O plano identifica onde cada recorte será introduzido, utilizado ou retomado.
+Um **requisito de evidência** explicita a operação e as condições de uma prática
+que servirão para examinar o objetivo pretendido. Solicitar a escolha de uma
+alternativa e solicitar uma justificativa livre, por exemplo, oferecem evidências
+diferentes. A quantidade de oportunidades registra o desenho oferecido, sem
+comprovar desempenho ou aprendizagem.
 
-O plano conserva identidade, nome, descrição curta e referências às unidades
-que introduzem, usam ou retomam cada ideia. Relações essenciais também entram no
-repertório quando precisam ser ensinadas. Isso não cria ontologia universal nem
-grafo genérico; a estrutura curricular continua validando sua própria ordem e
-dependências.
+O catálogo atual reúne doze decisões sobre explicações, prática, extensão e
+estilo, conversa e produção. Entre elas estão o teto de novas unidades de análise,
+as formas de explicação, a quantidade e a variação das práticas e sua posição
+na sequência. Os alvos de palavras orientam a distribuição editorial; as
+preferências de partes, lotes e pausas organizam o trabalho. A
+[tabela do catálogo](desenho-instrucional-parametrizado.md#catálogo-corrente)
+descreve cada decisão, seus valores e escopos.
 
-O catálogo reúne quatro parâmetros pedagógicos — teto de novas unidades por
-unidade expositiva, formas de explicação, oportunidades distintas de prática e
-dimensões de variação — e dois alvos editoriais quantitativos flexíveis —
-palavras por resposta de autoria e por unidade de estudo. Eles podem variar no
-curso, na lição, na microssequência ou na unidade. Os alvos não são limites e
-não autorizam compressão. Módulo pode receber orientação e política de
-componentes, mas não ganhou um parâmetro
-sem necessidade distinta demonstrada. O estado contextual e os valores fixados
-são hipóteses do produto ou da pesquisa, não regras pedagógicas universais.
+Uma escolha automática é calibrada conforme o contexto. Uma atribuição
+explícita da pessoa autora ou de uma condição de pesquisa tem precedência sobre
+a automática; entre atribuições da mesma classe, vale o escopo aplicável mais
+próximo. Remover uma definição local restaura a herança ou a calibração
+contextual. Esses controles representam escolhas revisáveis, não leis
+pedagógicas nem um perfil inferido do estudante.
 
-Uma atribuição explícita da pessoa autora ou de uma condição de pesquisa
-precede a atribuição automática; dentro da mesma classe, vence o escopo
-aplicável mais próximo. A condição de pesquisa registra a origem da decisão,
-sem bloquear sua revisão. Limpar uma definição restaura a herança ou, na
-ausência dela, a calibração contextual sem copiar o valor para o descendente.
+A produção registra a configuração aplicada e relaciona o material às unidades
+de análise, às formas explicativas e às oportunidades de prática declaradas.
+Esses registros permitem comparar intenção e realização. A validação técnica
+confere referências, pertencimento e contagens; a inspeção humana decide se o
+texto desenvolve a relação pretendida, se a fonte a sustenta e se as práticas
+são substantivamente distintas.
 
-No início da materialização, o servidor resolve e sela parâmetros,
-orientações, interpretações, política e os itens do plano atribuídos a cada
-microssequência-alvo. O catálogo selado inclui identidade, posição, enunciado e
-versão, enquanto cada alvo referencia somente seu subconjunto.
+Uma unidade de análise pode ser desenvolvida em várias unidades de estudo.
+A introdução é registrada uma vez, e as continuações usam ou retomam a ideia.
+Uma unidade de estudo também pode desenvolver mais de um recorte quando a
+relação entre eles justificar a composição e o teto de introduções for
+respeitado. Preservar essa flexibilidade evita condensar explicações ou
+fragmentá-las apenas para satisfazer uma contagem.
 
-Na etapa, fatos limitados declaram introduções, usos de ideias estabelecidas,
-formas desenvolvidas, prática, variações e componentes usados. Retomadas são
-derivadas quando uma explicação volta a mobilizar uma ideia estabelecida.
-Formas, oportunidades e variações são
-declarações do assistente ou da pessoa autora validadas quanto ao contrato; não são
-observadas semanticamente pelo banco. Identidades de unidades, pai/alvo e
-`componentRefs` são reconciliados com o conteúdo persistido. Esses fatos
-permitem confrontar planejado e declarado como aplicado; não constituem pontuação,
-diagnóstico ou resultado de aprendizagem.
-
-Ao registrar aplicações em unidades já salvas, o relato conserva somente o
-que foi realizado. Um requisito de prática previsto no desenho pode continuar
-sem oportunidade aplicada, ou com quantidade e variação ainda incompletas.
-Essa diferença permanece identificável no plano e no registro aplicado;
-registrá-la não declara cumprimento. Referências, operações e identidades
-das oportunidades declaradas continuam validadas. A materialização de um
-lote completo exige a cobertura, a quantidade e a variação de prática
-estabelecidas na sua configuração.
-
-Uma unidade de análise é introduzida uma vez, mas pode ser desenvolvida em
-várias unidades de estudo. Cada continuação declara uso ou retomada e a
-cobertura explicativa é reunida no lote; isso permite aprofundar sem condensar
-conteúdo para satisfazer cardinalidade técnica. Uma unidade também pode
-desenvolver mais de uma unidade de análise, desde que a combinação seja
-coerente e o teto de introduções novas seja respeitado.
-
-Interface, MCP e Actions operam o mesmo contrato em linguagem comum. A pessoa
-autora não precisa editar JSON nem um esquema opaco de componentes. A
-fundamentação e os limites estão em
-[Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
+Durante uma produção parcial, práticas previstas podem permanecer ausentes ou
+incompletas; o registro aplicado conserva essa diferença. A produção de
+um lote completo exige a cobertura, a quantidade e a variação estabelecidas
+para ele. O detalhe de contexto, validação e atualização dos registros está em
+[Contexto efetivo e aplicação corrente](desenho-instrucional-parametrizado.md#contexto-efetivo-e-aplicação-corrente).
 
 ## Profundidade sem condensação
 
-O contrato de [Explicação e revisão humana](explicacao-e-revisao-humana.md)
-estabelece um apoio previamente autorado por microssequência. Nesse contrato,
-a suficiência é examinada nas unidades junto do apoio acessível, preservando
-relações, introduções, usos, retomadas e práticas no percurso. A Explicação
-compartilhada é planejada e inspecionada em Autoria e consultada no Estudo pelo
-mesmo conteúdo salvo. Ela é distinta das formas de explicação declaradas nas
-aplicações pedagógicas: uma forma presente somente no apoio não satisfaz a
-declaração de desenvolvimento daquela forma numa unidade. A existência desse
-acesso não demonstra suficiência para novatos nem aprendizagem; são questões
-para exame do material e avaliação empírica pertinente.
+Cada microssequência pode reunir uma **base explicativa**: conteúdo previamente
+autorado que desenvolve conceitos, pressupostos, exemplos, relações e limites.
+Todas as suas unidades dão acesso ao mesmo conteúdo pelo comando **Explicação**.
+A abertura consulta o que foi salvo, sem gerar uma resposta nova por IA.
+O [contrato de explicação e revisão humana](explicacao-e-revisao-humana.md)
+detalha sua produção, suas fontes e sua revisão.
+
+As unidades do percurso continuam substantivas: precisam ensinar uma relação
+ou propor uma tarefa inteligível. A base permite aprofundar e recuperar
+pressupostos sem repetir todo o desenvolvimento em cada unidade. A suficiência
+para iniciantes é examinada no conjunto das unidades e da explicação acessível;
+o estudante com maior experiência pode prosseguir sem abrir o apoio.
+
+A base compartilhada e as **formas de explicação** têm papéis diferentes.
+As formas descrevem como uma ideia foi desenvolvida — por exemplo, por definição,
+mecanismo ou contraste. Uma forma presente apenas na base não satisfaz uma
+exigência de desenvolvimento daquela forma nas unidades do percurso. Essa
+separação conserva a possibilidade de inspecionar o que foi ensinado em cada
+lugar.
 
 ### Explicação progressiva
 
-**Problema.** Uma explicação pode ser curta e ainda assim exigir muitos
+Uma explicação pode ser curta e ainda assim exigir muitos
 conhecimentos ocultos. O estudante novato encontra termos, símbolos e relações
 antes de saber que problema eles resolvem. Expandir o mesmo parágrafo não
 resolve necessariamente a dificuldade; apenas aumenta sua densidade.
 
-**Alternativas e requisitos.** Resumir favorece rapidez de leitura, mas pode
+Resumir favorece rapidez de leitura, mas pode
 retirar fundamentos. Acumular detalhes desde o primeiro contato preserva
 informação, mas pode impedir a construção de um modelo inicial. A solução deve
 começar por uma situação inteligível, introduzir o vocabulário necessário e
 acrescentar camadas até alcançar a profundidade definida pelo escopo.
 
-**Decisão.** O AraLearn não fixa a quantidade de Unidades teóricas. A explicação
+O AraLearn não fixa a quantidade de unidades teóricas. A explicação
 parte do que uma pessoa leiga precisa compreender para situar o objeto e avança
 em complexidade sem omitir os fundamentos necessários à prática.
 
-**Fundamentação.** A carga imposta pela busca e pela integração de elementos
+A carga imposta pela busca e pela integração de elementos
 precisa ser considerada no desenho ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). A segmentação pode favorecer a aprendizagem em
 certas condições, mas seus efeitos dependem do conteúdo, da tarefa e do modo de
 apresentação ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
 
-**Operacionalização.** Antes da produção, a autoria explicita:
+Antes da produção, a autoria explicita:
 
 1. o referente concreto ou problema que situa o assunto;
 2. os conceitos e relações indispensáveis;
 3. os conhecimentos que não podem ser presumidos;
 4. a ordem de introdução da terminologia e da notação;
 5. os exemplos que tornam a operação observável;
-6. as práticas que demonstram compreensão e uso.
+6. as práticas que solicitam compreensão e uso do conteúdo.
 
 Uma tabela densa, uma fórmula ou um diagrama só aparece depois que os elementos
-necessários à sua leitura foram apresentados. Quando uma Unidade acumula objetivos
+necessários à sua leitura foram apresentados. Quando uma unidade acumula objetivos
 independentes, ela é dividida; quando uma relação só faz sentido em conjunto,
 ela permanece integrada.
 
-**Consequências.** O número de Unidades passa a ser consequência do planejamento,
+O número de unidades passa a ser consequência do planejamento,
 e não orçamento pedagógico anterior ao conteúdo. Uma explicação simples pode
 ser profunda porque simplifica a entrada, não o alcance final.
 
-**Limites e evidência.** Mais Unidades não significam automaticamente melhor
+Mais unidades não significam automaticamente melhor
 ensino. Repetição improdutiva, perda de relações e navegação excessiva também
 podem aumentar a carga. A qualidade deve ser examinada por coerência,
 compreensão e prática, não por volume.
 
-### Microteoria
+<a id="microteoria"></a>
 
-**Microteoria** é o conjunto de Unidades teóricas que fornece fundamento
-suficiente para as práticas de uma microssequência. O prefixo “micro” indica um
-recorte local no percurso; não significa resumo, superficialidade, duração
-fixa ou adoção automática de qualquer modelo de microaprendizagem.
+### Suficiência teórica no percurso
 
-Uma microteoria é suficiente quando o estudante encontra no próprio percurso:
+A fundamentação necessária à prática pode ocupar várias unidades e ser
+aprofundada na base explicativa. Sua extensão depende do objetivo e do público.
+O estudante precisa encontrar:
 
 - o problema e o contexto do conceito;
 - os termos e símbolos empregados;
 - as relações necessárias para compreender a operação;
-- pelo menos um exemplo apropriado quando a tarefa exigir modelagem;
+- um exemplo apropriado quando a tarefa exigir modelagem;
 - os limites e contrastes relevantes;
-- base explícita para tudo o que será cobrado nas práticas locais.
+- base explícita para tudo o que será solicitado nas práticas locais.
+
+O exame desse conjunto orienta a distribuição do conteúdo. Se uma relação
+necessária estiver ausente, a revisão precisa desenvolvê-la; encurtar ou
+acrescentar unidades, por si só, não resolve a lacuna.
 
 ## Apoio inicial e retirada gradual
 
-**Problema.** Pedir solução independente cedo demais pode transformar a
+Pedir solução independente cedo demais pode transformar a
 aprendizagem em busca aleatória. Manter todos os passos resolvidos, por outro
 lado, pode impedir que o estudante assuma progressivamente a operação.
 
-**Alternativas e requisitos.** A prática pode começar por problemas completos,
+A prática pode começar por problemas completos,
 por imitação permanente ou por exemplos seguidos de retirada de apoio. Para
 novatos, o desenho precisa tornar a operação visível antes de exigir sua
 execução autônoma; o apoio deve diminuir sem ocultar os dados necessários ao
 problema.
 
-**Decisão.** Quando a natureza da tarefa justificar, a progressão articula
+Quando a natureza da tarefa justificar, a progressão articula
 explicação, exemplo resolvido, prática guiada e prática com menos apoio.
 
-**Fundamentação.** Estudos sobre exemplos resolvidos e transição para resolução
+Estudos sobre exemplos resolvidos e transição para resolução
 independente sustentam essa possibilidade em condições delimitadas
 ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples);
 [Renkl (2002)](referencias.md#ref-renkl2002learning);
@@ -354,237 +313,249 @@ atividade, mas não substituem o trabalho do estudante. O nível de conhecimento
 prévio modifica a utilidade do apoio; por isso, a sequência não é uma receita
 fixa.
 
-**Operacionalização.** A retirada pode ocorrer por passos, dicas, decisões ou
+A retirada pode ocorrer por passos, dicas, decisões ou
 estrutura parcialmente preenchida. Valores, casos, coordenadas, código-base e
-demais informações particulares permanecem na Unidade. Retira-se a ajuda para
+demais informações particulares permanecem na unidade. Retira-se a ajuda para
 decidir, não o enunciado necessário para raciocinar.
 
-**Consequências.** A prática deixa de ser uma passagem abrupta da leitura para
+A prática deixa de ser uma passagem abrupta da leitura para
 o desempenho completo. Também pode ajudar a localizar em qual etapa uma
 dificuldade aparece. Essa possibilidade permanece sujeita a avaliação.
 
-**Limites e evidência.** A retirada excessivamente lenta pode produzir
+A retirada excessivamente lenta pode produzir
 dependência; a rápida pode reintroduzir busca improdutiva. A decisão precisa ser
 avaliada por operação, experiência e resultado.
 
 ## Prática orientada pela operação-alvo da tarefa
 
-Uma **operação-alvo da tarefa** é aquilo que a atividade solicita que a pessoa
-faça sobre o
-conteúdo: recordar, localizar, discriminar, relacionar, ordenar, completar,
-explicar, calcular, transformar, provar ou aplicar, entre outras possibilidades.
+Uma **operação-alvo da tarefa** é o que a pessoa precisa fazer com o conteúdo:
+recordar uma informação, distinguir casos, explicar uma relação ou aplicar um
+procedimento, por exemplo.
 Ela descreve a demanda planejada, não um gesto de entrada, um comportamento já
 observado ou um processo cognitivo que o aplicativo tenha medido.
 
-**Problema.** Variar componentes visuais sem variar a operação produz aparência
+Variar componentes visuais sem variar a operação produz aparência
 de diversidade. Aplicar sempre múltipla escolha também pode reduzir tarefas de
 produção a reconhecimento.
 
-**Alternativas e requisitos.** A autoria poderia selecionar modalidades por
+A autoria poderia selecionar modalidades por
 preferência, por distribuição fixa ou pela evidência necessária. O formato
 precisa corresponder ao que o objetivo exige e permanecer situado no objeto
 representado.
 
-**Decisão.** A prática é escolhida pela operação-alvo e pode articular:
+A prática é escolhida pela operação-alvo e pode articular:
 
 - seleção de uma ou mais alternativas quando discriminar opções é relevante;
 - lacuna localizada dentro de texto, tabela, código, matriz, fórmula ou
   diagrama;
-- digitação quando produzir a resposta faz parte do objetivo;
+- digitação num campo ou resposta aberta quando produzir a resposta faz parte
+  do objetivo;
 - ordenação quando a sequência é o próprio objeto de conhecimento;
 - correspondência por lacunas independentes nos campos textuais de parágrafos
   ou tabelas em que cada relação já é lida, sem uma modalidade autônoma de
   associação.
 
-**Fundamentação.** A prática de recuperação apresenta benefícios em diferentes
+Na **prática de recuperação**, a pessoa tenta trazer à memória o conhecimento
+estudado. Essa prática apresenta benefícios em diferentes
 contextos educacionais, com variação entre tarefas e resultados
 ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). A
-transferência para tarefas novas não é automática ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
+**transferência**, uso do conhecimento em tarefas novas, não é automática ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
-**Operacionalização.** Cada prática declara o que verifica e qual conhecimento
+Cada prática declara o que verifica e qual conhecimento
 anterior a torna respondível. Lacunas são independentes e permanecem no lugar
 estrutural em que a decisão ocorre, inclusive quando várias delas compõem uma
 correspondência. A resposta não aparece antecipadamente na exposição nem é
 revelada antes de ação explícita.
 
-**Consequências.** A diversidade passa a ter função, e não valor ornamental.
+A diversidade passa a ter função, e não valor ornamental.
 Uma mesma representação pode servir à exposição e a práticas diferentes sem
 perder sua gramática acadêmica.
 
-**Limites e evidência.** Tocar numa opção não caracteriza, por si só, prática de
+Tocar numa opção não caracteriza, por si só, prática de
 recuperação. Reconhecimento, produção e ordenação impõem demandas distintas e
 precisam ser avaliados de acordo com o objetivo.
 
 ## Distribuição e intercalação
 
-**Problema.** Um conceito praticado apenas logo após a exposição pode produzir
+Um conceito praticado apenas logo após a exposição pode produzir
 desempenho imediato sem informar retenção. Misturar conteúdos aleatoriamente,
 contudo, pode introduzir confusão sem benefício.
 
-**Alternativas e requisitos.** A prática pode ser concentrada, distribuída no
-tempo ou intercalada com categorias relacionadas. O intervalo deve considerar
-o horizonte de retenção, e a intercalação deve exigir discriminação entre
-operações comparáveis.
+Na **prática distribuída**, as oportunidades se separam no tempo; o intervalo
+depende de por quanto tempo se pretende conservar o conhecimento. Na
+**intercalação**, alternam-se categorias ou procedimentos relacionados, para
+que reconhecer qual se aplica também faça parte da tarefa.
 
-**Decisão.** O planejamento registra dependências e retomadas, sem adotar
+O planejamento registra dependências e retomadas, sem adotar
 intervalo universal. A intercalação é usada quando reconhecer qual conceito ou
 procedimento se aplica faz parte da aprendizagem.
 
-**Fundamentação.** A prática distribuída possui respaldo amplo, mas o intervalo
+A prática distribuída possui respaldo amplo, mas o intervalo
 favorável depende do intervalo de retenção e de outras condições
-([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing)). A intercalação tem moderadores
-próprios, especialmente a similaridade entre categorias
+([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing)). Os efeitos da intercalação também variam,
+especialmente conforme a similaridade entre categorias
 ([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving); [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved)).
 
-**Operacionalização.** Conceitos são retomados depois de separação significativa
+Conceitos são retomados depois de separação significativa
 e práticas próximas podem ser alternadas somente após a base de cada operação
 estar estabelecida.
 
-**Consequências.** O curso pode propor tarefas para examinar discriminação e
+O curso pode propor tarefas para examinar discriminação e
 retenção sem depender da ordem imediata da explicação.
 
-**Limites e evidência.** Nenhum intervalo ou padrão de intercalação serve a
+Nenhum intervalo ou padrão de intercalação serve a
 todos os conteúdos. A seleção exige justificativa e avaliação situada.
 
 ## Retorno acionável e estado não punitivo
 
-**Problema.** “Correto” ou “incorreto” informa um resultado, mas não
+“Correto” ou “incorreto” informa um resultado, mas não
 necessariamente ajuda a entender o erro ou escolher a próxima ação. Acumular
 histórico de respostas, notas e classificações também pode alterar a natureza
 da prática sem que isso seja necessário ao objetivo.
 
-**Alternativas e requisitos.** O sistema poderia avaliar a cada toque, revelar
+O sistema poderia avaliar a cada toque, revelar
 automaticamente a resposta, apenas registrar acerto ou oferecer retorno
 específico após confirmação. O estudante precisa controlar o momento de
 confirmar, poder tentar novamente e receber informação relacionada à distinção
 em estudo.
 
-**Decisão.** O botão principal confirma a resposta e, no toque seguinte,
+O botão principal confirma a resposta e, no toque seguinte,
 avança. A resposta correta só é revelada por ação explícita. Quantidade de
 respostas, ajuda, tempo e respostas reveladas não são convertidos em nota,
-classificação ou diagnóstico automático.
+classificação ou diagnóstico automático. Essa política é desenvolvida em
+[Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md).
 
-**Fundamentação.** O efeito do retorno varia conforme foco, conteúdo,
+O efeito do retorno varia conforme foco, conteúdo,
 oportunidade de ação e contexto ([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Shute (2008)](referencias.md#ref-shute2008feedback); [Morris et al. (2021)](referencias.md#ref-morris2021formative)). O letramento para o uso do retorno inclui interpretá-lo, julgá-lo e agir a
 partir dele ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Wood (2021)](referencias.md#ref-wood2021dialogic)). Avaliações frequentes de baixa consequência apresentam
 resultados médios positivos em determinados contextos, com heterogeneidade
 ([Sotola e Credé (2021)](referencias.md#ref-sotola2021quizzes)).
 
-**Operacionalização.** O retorno explica regra, causa, contraste ou próximo
-passo. Distratores representam erros plausíveis. A pessoa pode limpar,
+O retorno explica regra, causa, contraste ou próximo
+passo. As alternativas incorretas, chamadas **distratores**, representam erros
+plausíveis. A pessoa pode limpar,
 repetir e revelar a resposta sem penalização acumulada.
 
-**Consequências.** O erro pode ser tratado como informação para revisão, e não
+O erro pode ser tratado como informação para revisão, e não
 como marca permanente sobre o estudante.
 
-**Limites e evidência.** O estado não punitivo é uma política normativa. Não há
+O estado não punitivo é uma política normativa. Não há
 base para afirmar, sem estudo próprio, que ele reduz ansiedade ou melhora a
 aprendizagem.
 
 ## Representações como parte do conteúdo
 
-**Problema.** Relações espaciais, tabulares, hierárquicas, temporais ou formais
+Relações espaciais, tabulares, hierárquicas, temporais ou formais
 podem se perder quando convertidas em prosa. O problema inverso ocorre quando
 um diagrama é usado apenas para “variar” e introduz uma notação desnecessária.
 
-**Alternativas e requisitos.** Texto e tabela devem continuar sendo usados
+Texto e tabela devem continuar sendo usados
 quando preservam adequadamente o objeto. Uma representação especializada só se
 justifica quando sua estrutura é necessária à compreensão ou à operação e
 segue uma convenção reconhecível no domínio.
 
-**Decisão.** O catálogo de componentes descreve intenção, estrutura, operações,
-condições de uso e limitações. A Autoria escolhe primeiro o tipo de
-representação e consulta depois seu contrato específico. O **núcleo de execução
-de componentes** descobre, valida e compõe os pacotes de maneira determinística.
+Os [componentes didáticos](componentes-didaticos.md) são as formas estruturadas
+de apresentar conteúdo e receber respostas. Seu catálogo descreve finalidade,
+operações, condições de uso e limitações. A autoria parte da relação a ensinar
+e escolhe uma representação que a preserve; o aplicativo apresenta os dados
+segundo as regras desse componente.
 
-**Fundamentação.** Representações externas podem complementar informação,
+Representações externas podem complementar informação,
 restringir interpretações ou apoiar novas relações, mas sua coordenação também
-cria demanda cognitiva ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Coerência e contiguidade são
-relevantes quando texto e imagem precisam ser integrados
+exige processamento ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Retirar informação sem função — **coerência** — e aproximar elementos que
+precisam ser integrados — **contiguidade** — orientam a combinação de texto e imagem
 ([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
 
-**Operacionalização.** Uma matriz preserva linhas e colunas; um grafo preserva
-vértices e arestas; um plano cartesiano preserva eixos e coordenadas; uma glosa
-interlinear preserva alinhamento entre forma, morfema, glosa e tradução. A
+Uma matriz preserva a posição de cada valor em linhas e colunas. Um grafo
+explicita os elementos e as conexões entre eles; um plano cartesiano conserva
+eixos e coordenadas. Na análise de línguas, uma glosa interlinear alinha partes
+da expressão a seus significados gramaticais e à tradução. A
 lacuna ou digitação aparece dentro do objeto quando ali ocorre o raciocínio.
 Rótulos textuais podem ser editados; topologia, identificadores e estrutura
 permanecem protegidos.
 
-**Consequências.** A representação deixa de ser decoração e torna-se portadora
-de uma relação que o estudante precisa aprender a interpretar e usar.
+A representação conserva uma relação que o estudante precisa aprender a
+interpretar e usar.
 
-**Limites e evidência.** Ausência de sobreposição e validade do contrato são
+Ausência de sobreposição e validade do contrato são
 condições técnicas, não demonstração didática. Adequação acadêmica requer
 confronto com convenções do domínio; compreensão requer tarefas com pessoas.
 
 ## Continuidade móvel e retomada
 
-**Problema.** Interrupções podem exigir reconstruir o objetivo suspenso e o
+Interrupções podem exigir reconstruir o objetivo suspenso e o
 estado da tarefa ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)). Dependência de
 rede também pode transformar uma ação local simples em espera ou bloqueio.
 
-**Alternativas e requisitos.** Um aplicativo pode depender do servidor,
+Um aplicativo pode depender do servidor,
 armazenar apenas uma página temporária ou manter localmente o conteúdo e o estado
 necessários ao estudo. A interação precisa permanecer imediata; a
 sincronização deve ocorrer sem bloquear o gesto principal.
 
-**Decisão.** Estudo utiliza uma réplica local do conteúdo sincronizado e do
+O estudo utiliza uma réplica local do conteúdo sincronizado e do
 estado pessoal. Tema, resposta em elaboração, confirmação e avanço são
-operações locais; a conectividade não integra seu caminho crítico.
+operações locais. A [persistência local](persistencia-relacional.md) conserva
+os dados disponíveis para continuar sem esperar uma resposta do servidor.
 
-**Fundamentação.** A literatura de interrupção sustenta tratar a retomada como
+A literatura de interrupção sustenta tratar a retomada como
 problema próprio, mas não prova que uma implementação específica o resolve. A
 diversidade de interfaces de aprendizagem móvel também desaconselha declarar
 um arranjo universal ([Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui)).
 
-**Operacionalização.** O percurso registra o ponto corrente necessário para
+O percurso registra o ponto corrente necessário para
 continuar. Diagramas preservam legibilidade móvel e, quando bidimensionais,
 usam área de rolagem própria. Preferências de tema permanecem locais.
 
-**Consequências.** A pessoa pode continuar conteúdo já disponível e retomar seu
+A pessoa pode continuar conteúdo já disponível e retomar seu
 ponto sem esperar uma operação remota.
 
-**Limites e evidência.** O funcionamento sem conexão pode ser demonstrado
+O funcionamento sem conexão pode ser demonstrado
 tecnicamente. Redução de custo de retomada, continuidade de estudo e efeitos
 educacionais permanecem resultados a investigar.
 
 ## Autonomia com suporte e responsabilidade humana
 
-**Problema.** Controle aparente pode significar apenas exposição a muitas
+Controle aparente pode significar apenas exposição a muitas
 opções. No extremo oposto, automação sem possibilidade real de rejeição ou
 revisão transfere decisões pedagógicas para mecanismos opacos.
 
-**Alternativas e requisitos.** A pessoa pode receber um percurso fechado, um
+A pessoa pode receber um percurso fechado, um
 ambiente sem estrutura ou apoio ajustável com consequências compreensíveis.
 Autoria assistida precisa separar sugestão, decisão, validação e
 responsabilidade.
 
-**Decisão.** O AraLearn oferece percurso visível, marca pessoal para revisão,
-Observações situadas e assistência conversacional delimitada. Na Autoria, a
-pessoa pode voltar a qualquer StudyUnit, registrar a mudança necessária e
-revisar o conjunto de Units pedagogicamente afetado. A inteligência artificial
-(IA) propõe e transforma conteúdo sob escopo explícito; a decisão editorial
-continua humana.
+O AraLearn mantém a pessoa autora no ciclo de decisão: ela pode inspecionar
+a estrutura e o conteúdo, examinar as fontes, pedir ou fazer correções e
+declarar a revisão do material que examinou. A IA propõe e transforma o
+conteúdo dentro do escopo autorizado. As integrações por
+[MCP](autoria-mcp.md), protocolo de acesso a ferramentas e contexto, e
+[Actions/OpenAPI](autoria-actions.md), integração descrita por operações de
+serviço, dão ao assistente acesso estruturado às mesmas tarefas de autoria; os cursos permanecem
+inspecionáveis na aplicação.
 
-**Fundamentação.** Autorregulação envolve planejamento, execução, monitoramento
-e reflexão ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). Agência
-não se reduz à presença de controles ([Bandura (2001)](referencias.md#ref-bandura2001agency)), e controle do
+**Autorregulação** envolve planejar o próprio estudo, acompanhar sua
+realização e refletir sobre ajustes necessários ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). **Agência**, a capacidade de agir
+intencionalmente e influir no próprio percurso, não se reduz à presença de controles ([Bandura (2001)](referencias.md#ref-bandura2001agency)), e controle do
 aprendiz em tecnologia educacional apresenta resultados heterogêneos
 ([Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol)). Diretrizes de interação entre pessoas e IA recomendam
 comunicar capacidades e limites, permitir correção e sustentar controle
 ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)).
 
-**Operacionalização.** O estudante pode marcar conteúdo para revisão e registrar
-Observações. A pessoa autora recebe contexto de leitura, alvos graváveis
-separados e meios de reabrir, anotar e corrigir qualquer ponto do curso.
-Estrutura e permissões vêm de contratos explícitos, e não da linguagem livre.
+O estudante pode marcar conteúdo para rever e registrar
+[observações situadas](observacoes-pedagogicas.md). Na autoria, a revisão
+distingue a base explicativa de cada unidade: examinar uma não declara revisão
+da outra. Salvar, abrir ou editar também não declara revisão automaticamente.
+O [registro de revisão humana](explicacao-e-revisao-humana.md#revisão-independente-por-objeto)
+identifica o conteúdo a que a declaração se refere e sinaliza alterações
+posteriores.
 
-**Consequências.** A automação funciona como instrumento de autoria, não como
-substituto da avaliação humana. A proveniência pode distinguir contribuições e
-revisões.
+Os vínculos de [fontes e citações](fontes-e-citacoes.md) permitem confrontar
+um trecho com a referência e a localização que o sustentam. A proveniência
+registra a origem da produção e das intervenções. Fonte vinculada, intervenção
+humana e revisão declarada são fatos diferentes e permanecem distinguíveis.
 
-**Limites e evidência.** A existência de controles de confirmação e revisão pode
-ser apenas controle simbólico. Agência, compreensão do escopo e qualidade
+A existência de controles de confirmação e revisão pode
+ser apenas controle simbólico. A participação efetiva da pessoa, sua compreensão do escopo e a qualidade
 autoral exigem avaliação própria.
 
 ## Critérios de qualidade de uma microssequência
@@ -593,7 +564,7 @@ Uma microssequência pode ser auditada pelas seguintes perguntas:
 
 1. o objetivo descreve conhecimento ou desempenho observável?
 2. os pré-requisitos foram ensinados ou explicitamente ligados ao percurso?
-3. a primeira Unidade situa o problema para quem encontra o assunto pela primeira
+3. a primeira unidade situa o problema para quem encontra o assunto pela primeira
    vez?
 4. a terminologia aparece depois de um referente compreensível?
 5. a teoria cobre tudo o que as práticas cobram?
@@ -602,7 +573,7 @@ Uma microssequência pode ser auditada pelas seguintes perguntas:
 8. o apoio diminui de maneira justificável?
 9. o retorno permite compreender e agir?
 10. há retomada quando retenção ou discriminação posterior são relevantes?
-11. a Unidade permanece autocontida nos dados particulares necessários à tarefa?
+11. a unidade permanece autocontida nos dados particulares necessários à tarefa?
 12. hipóteses, decisões e resultados estão descritos sem alegações indevidas?
 13. unidades presumidas novas e relações simultâneas estão explícitas sem ser
     apresentadas como medida de carga?
@@ -626,10 +597,17 @@ progressão possível, sem a transformar em modelo obrigatório:
 8. retomar a operação depois de intervalo significativo;
 9. solicitar aplicação em estrutura nova quando transferência for objetivo.
 
-A quantidade real de Unidades depende do conteúdo. O exemplo mostra uma lógica de
+A quantidade real de unidades depende do conteúdo. O exemplo mostra uma lógica de
 progressão, não uma cota de produção.
 
 ## Relações com os demais documentos
+
+<a id="finalidade-e-estatuto-deste-documento"></a>
+
+Os fundamentos da literatura orientam as decisões do modelo; seus efeitos
+sobre o estudo e a aprendizagem são hipóteses a investigar pelo protocolo
+de avaliação. A inspeção do software permite verificar os comportamentos
+implementados, como a retomada de conteúdo disponível sem conexão.
 
 - A [Revisão de literatura](revisao-de-literatura.md) apresenta a base externa
   e seus limites.

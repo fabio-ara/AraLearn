@@ -1,7 +1,9 @@
 # Corpus de recortes e contraexemplos
 
 Este corpus acompanha o [protocolo de unidade de análise](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise), definição operacional 1.
-Contém casos sintéticos de redes, matemática, organização do trabalho, leitura
+Uma unidade de análise recorta o conhecimento necessário a uma tarefa para
+um público definido. Os casos sintéticos abaixo exercitam esse recorte em
+redes, matemática, organização do trabalho, leitura
 literária e vocabulário, em português, inglês, espanhol, francês e chinês.
 Os trechos foram construídos para comparar decisões de codificação. Não são
 cursos completos, fontes disciplinares de referência ou dados de estudantes.
@@ -105,7 +107,7 @@ coeficiente zero. O plano tem uma lacuna a resolver; não se marca a condição
 como dominada nem se apaga o recorte para conservar “uma novidade”.
 
 As três expressões de A1 não justificam comparação por espaços ou tokens.
-Uma contagem regex de grupos de letras/números no chinês é uma observação desse
+Uma contagem por padrão textual de grupos de letras/números no chinês é uma observação desse
 algoritmo, não segmentação linguística validada nem medida de conhecimento.
 
 ## 3. Organização do trabalho: pré-requisito fora da ementa
@@ -189,7 +191,7 @@ integrais de um material de estudo.
 | D2 | Exemplo resolvido: `3x = 9`; resolução e justificação já visíveis. | Expositiva; U e desenvolvimento de A-regra; zero oportunidades. |
 | D3 | Comparação comentada com o exemplo anterior; depois, solicitar resolver `4x = 20` e justificar antes de abrir a solução. | Mista; R e desenvolvimento; oportunidade O-a de consolidação. |
 | D4 | Solicitar resolver `-2x = 8` e justificar; solução disponível após a tentativa. | Prática; R; O-b varia o sinal do coeficiente, aspecto relevante a revisar semanticamente. |
-| D5 | Explicação de erro recorrente na divisão de ambos os membros, sem nova solicitação. | Expositiva; R e desenvolvimento; zero oportunidades. |
+| D5 | explicação de erro recorrente na divisão de ambos os membros, sem nova solicitação. | Expositiva; R e desenvolvimento; zero oportunidades. |
 
 **Contagens declaradas:** cinco unidades classificadas, três expositivas, uma
 mista e uma de prática; presença de prática em 2/5 unidades. Uma introdução de

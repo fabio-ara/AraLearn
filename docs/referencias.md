@@ -111,6 +111,22 @@ Vincent Aleven; Bruce McLaren; Ido Roll; Kenneth Koedinger (2006). **Toward Meta
 
 Chave bibliográfica: `aleven2006helpseeking`.
 
+<a id="ref-allea2023integrity"></a>
+
+### ALLEA (2023)
+
+ALLEA (2023). **The European Code of Conduct for Research Integrity: Revised Edition 2023.** All European Academies. [DOI 10.26356/ecoc](https://doi.org/10.26356/ecoc) · [acesso ao documento](https://allea.org/wp-content/uploads/2023/06/European-Code-of-Conduct-Revised-Edition-2023.pdf) · ISBN 978-3-9823562-3-5.
+
+Chave bibliográfica: `allea2023integrity`.
+
+<a id="ref-amado2022moocsdesign"></a>
+
+### Amado et al. (2022)
+
+Carolina Amado; Nuno Dorotea; Ana Pedro; João Piedade (2022). **MOOCs Design: A Conceptual Framework for Continuous Teacher Training in Portugal.** *Education Sciences*, 12(5), p. 308. [DOI 10.3390/educsci12050308](https://doi.org/10.3390/educsci12050308) · [acesso ao documento](https://www.mdpi.com/2227-7102/12/5/308).
+
+Chave bibliográfica: `amado2022moocsdesign`.
+
 <a id="ref-aera2014standards"></a>
 
 ### American Educational Research Association et al. (2014)
@@ -174,6 +190,14 @@ Chave bibliográfica: `biggs1996alignment`.
 Elizabeth L. Bjork; Robert A. Bjork (2011). **Making Things Hard on Yourself, but in a Good Way: Creating Desirable Difficulties to Enhance Learning.** In: *Psychology and the Real World: Essays Illustrating Fundamental Contributions to Society*, Worth Publishers, p. 56–64. [acesso ao documento](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/04/EBjork_RBjork_2011.pdf) · ISBN 9781429230438.
 
 Chave bibliográfica: `bjork2011desirable`.
+
+<a id="ref-mec2026iaeducacao"></a>
+
+### Brasil. Ministério da Educação (2026)
+
+Brasil. Ministério da Educação (2026). **Referencial para Desenvolvimento e Uso Responsáveis de Inteligência Artificial na Educação.** Ministério da Educação. [acesso ao documento](https://www.gov.br/mec/pt-br/media/segape/referencial-oficial-pt.pdf).
+
+Chave bibliográfica: `mec2026iaeducacao`.
 
 <a id="ref-bridwellmitchell2016collaborative"></a>
 
@@ -295,6 +319,14 @@ Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of
 
 Chave bibliográfica: `chun2011attention`.
 
+<a id="ref-coe2026ailiteracy"></a>
+
+### Conselho da Europa (2026)
+
+Conselho da Europa (2026). **Recommendation CM/Rec(2026)12 of the Committee of Ministers to Member States on Artificial Intelligence Literacy.** Council of Europe. [acesso ao documento](https://search.coe.int/cm/eng?i=09125948802cde8e).
+
+Chave bibliográfica: `coe2026ailiteracy`.
+
 <a id="ref-cns2016resolucao510"></a>
 
 ### Conselho Nacional de Saúde (2016)
@@ -335,6 +367,14 @@ Mary C. Dyson (2004). **How Physical Text Layout Affects Reading from Screen.** 
 
 Chave bibliográfica: `dyson2004layout`.
 
+<a id="ref-ferreira2024iaautorregulacao"></a>
+
+### Ferreira e Pedrosa (2024)
+
+Adriano Ferreira; Daniela Pedrosa (2024). **Uso da inteligência artificial para apoiar a autorregulação de aprendizagem: uma revisão de literatura.** *PRATICA – Revista Multimédia de Investigação em Inovação Pedagógica e Práticas de e-Learning*, 7(2), p. 101–111. [DOI 10.34630/pel.v7i2.5823](https://doi.org/10.34630/pel.v7i2.5823) · [acesso ao documento](https://parc.ipp.pt/index.php/elearning/article/view/5823).
+
+Chave bibliográfica: `ferreira2024iaautorregulacao`.
+
 <a id="ref-foroughi2016resumption"></a>
 
 ### Foroughi et al. (2016)
@@ -342,6 +382,14 @@ Chave bibliográfica: `dyson2004layout`.
 Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488. [DOI 10.1037/xlm0000251](https://doi.org/10.1037/xlm0000251).
 
 Chave bibliográfica: `foroughi2016resumption`.
+
+<a id="ref-foucault1995discipline"></a>
+
+### Foucault (1995)
+
+Michel Foucault (1995). **Discipline and Punish: The Birth of the Prison.** New York, Vintage Books. [acesso ao documento](https://www.penguinrandomhouse.com/books/55026/discipline-and-punish-by-michel-foucault-and-alan-sheridan/) · ISBN 9780679752554.
+
+Chave bibliográfica: `foucault1995discipline`.
 
 <a id="ref-fourcidmodel"></a>
 
@@ -590,6 +638,14 @@ Chave bibliográfica: `lewis2020rag`.
 Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, p. 103189. [DOI 10.1016/j.ergon.2021.103189](https://doi.org/10.1016/j.ergon.2021.103189).
 
 Chave bibliográfica: `li2021interaction`.
+
+<a id="ref-lyotard1984postmodern"></a>
+
+### Lyotard (1984)
+
+Jean-François Lyotard (1984). **The Postmodern Condition: A Report on Knowledge.** Minneapolis, University of Minnesota Press. [acesso ao documento](https://www.upress.umn.edu/9780816611737/the-postmodern-condition/) · ISBN 9780816611737.
+
+Chave bibliográfica: `lyotard1984postmodern`.
 
 <a id="ref-mann1988rst"></a>
 
@@ -979,7 +1035,7 @@ Chave bibliográfica: `unesco2015tvet`.
 
 ### UNESCO (2023)
 
-UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO. [DOI 10.54675/ewzm9535](https://doi.org/10.54675/ewzm9535).
+UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO. [DOI 10.54675/ewzm9535](https://doi.org/10.54675/ewzm9535) · [acesso ao documento](https://www.unesco.org/en/articles/guidance-generative-ai-education-and-research).
 
 Chave bibliográfica: `unesco2023genai`.
 
