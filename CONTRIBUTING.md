@@ -1,8 +1,9 @@
 # Como contribuir com o AraLearn
 
-Uma contribuição deve resolver um problema identificável e conservar as regras de
-autoria e estudo do AraLearn. Quando a mudança afeta um comportamento, atualize também
-os contratos, testes e documentos que o descrevem.
+Uma contribuição começa por um problema que outra pessoa consiga reconhecer e termina
+com uma mudança que possa ser conferida. Como a mesma regra pode aparecer na interface,
+no servidor e nos clientes externos de autoria, uma alteração de comportamento inclui
+os contratos, testes e documentos afetados.
 
 ## Antes de começar
 
@@ -40,20 +41,21 @@ desaparecer na próxima execução.
 
 ### Núcleo e pacotes de componentes
 
-O núcleo controla navegação, estado de resposta, edição, seleção e integração com
-assistência. Cada componente pertence a um [pacote](docs/componentes-didaticos.md) que
-define os dados aceitos, sua apresentação e regras pedagógicas próprias. Um novo tipo de
-representação deve ser adicionado como pacote; não acrescente ao núcleo uma exceção para
-um caso visual específico.
+O núcleo cuida do que é comum às unidades, como navegação, resposta e edição. Cada
+[pacote de componente](docs/componentes-didaticos.md) define os dados aceitos e a
+apresentação e as regras pedagógicas de uma representação específica. Quando surgir um novo tipo de
+representação, implemente-o como pacote; uma exceção visual no núcleo espalharia uma
+regra particular pela infraestrutura compartilhada.
 
 ### Persistência relacional e migrações
 
 O [Supabase](docs/supabase.md) fornece autenticação, arquivos e o banco PostgreSQL, onde
-o estado compartilhado é armazenado em tabelas relacionadas. O IndexedDB é o
-armazenamento estruturado do navegador: mantém a cópia local e as operações pendentes
-descritas em [persistência e sincronização](docs/persistencia-relacional.md). Mudanças
-do banco são registradas em migrações ordenadas e versionadas. Não edite um banco remoto
-manualmente como substituto de uma migração reproduzível.
+o estado compartilhado fica em tabelas relacionadas. O IndexedDB é o armazenamento do
+navegador usado para a cópia local e para operações pendentes, como explica
+[persistência e sincronização](docs/persistencia-relacional.md). Uma mudança na
+estrutura ou nas regras do banco recebe uma migração: arquivo versionado em SQL, a
+linguagem usada para alterar o banco, que leva outros ambientes ao mesmo estado. Uma
+edição manual do banco remoto não cumpre essa função.
 
 ### Contratos e compatibilidade interna
 
@@ -64,9 +66,9 @@ lote. Não mantenha leitura silenciosa de formatos removidos.
 
 ## Preparar uma contribuição
 
-Tenha uma cópia atualizada do repositório e uma árvore de trabalho que permita
-identificar suas próprias alterações: a comparação com a versão salva no Git
-deve mostrar quais arquivos você modificou.
+Tenha uma cópia atualizada do repositório. A árvore de trabalho é o conjunto de arquivos
+da sua cópia local; a comparação com a versão salva no Git deve permitir identificar
+com clareza o que você modificou.
 
 1. Crie uma branch, linha de trabalho separada, a partir de `main`.
 2. Delimite um problema observável e os arquivos responsáveis por ele.
@@ -93,9 +95,10 @@ precisam ser corrigidas.
 ## Escolher as validações
 
 Escolha as verificações pelo efeito da mudança. Para documentação, execute `npm run
-audit:docs` e confira links e afirmações alteradas. Para código, comece por testes do
-comportamento afetado e pela análise automática do código, chamada *lint*; amplie a verificação quando houver mudança em
-contratos compartilhados, persistência ou autorização.
+audit:docs` e confira links e afirmações alteradas. Para código, comece pelo teste que
+reproduz o comportamento afetado e pela análise automática chamada *lint*. Uma mudança
+que atravessa contratos, persistência ou autorização também precisa das provas dessas
+fronteiras.
 
 ```powershell
 npm run test:focal -- tests/runtime/ci-path-classification.test.js

@@ -14,33 +14,35 @@ recorte adotado e alternativa. Chama-se **codificação** ao trabalho de
 identificar esses recortes e marcar como aparecem nos trechos.
 
 Os casos são sintéticos, construídos para discutir as decisões de análise.
-As leituras concorrentes foram elaboradas conjuntamente e ainda não constituem
-classificações de avaliadores independentes. “Adotado” indica a escolha
-justificada pelo contexto do exemplo. As traduções ajudam a inspecionar essa
-escolha; sua equivalência disciplinar e linguística ainda exige avaliação por
-especialistas e não acrescenta casos independentes à amostra.
+Suas leituras concorrentes foram elaboradas conjuntamente como exercício inicial
+do procedimento.
+“Adotado” indica a escolha justificada pelo contexto do exemplo. As traduções
+servem para verificar se essa escolha permanece reconhecível em outra língua;
+uma avaliação com especialistas precisaria examinar sua equivalência disciplinar
+e linguística.
 
 As identidades abaixo são locais a cada caso. `I` significa introdução, `U` uso,
 `R` retomada e `M` menção. `P` identifica pressuposto no repertório, não ocorrência
 textual. Desenvolvimento é informado por trecho; não se deduz dessas letras.
 Uma mesma identidade introduzida e aplicada na unidade conta uma introdução.
 
-A comparação conserva todos os recortes. Se a leitura A
-descreve uma relação X e a leitura B a divide em X1 e X2 no mesmo trecho, o registro mantém o
-inventário A com uma identidade, inventário B com duas e a proposta de divisão
-X → {X1, X2}, acompanhada da justificativa. Nenhuma identidade é eliminada para
-produzir pares um a um; não se calcula percentual de concordância. Se somente
-X1 corresponder parcialmente a X, X2 continua visível como diferença, e não sai
-de um denominador selecionado depois da leitura. Trocar A e B descreve a mesma
-divergência como fusão. Essa comparação pode orientar revisão sem constituir
-estimativa de confiabilidade ou validade cognitiva.
+A comparação conserva todos os recortes. Se a leitura A descreve uma relação X
+e a leitura B a divide em X1 e X2, o registro mantém os dois inventários e anota
+a proposta X → {X1, X2} com sua justificativa. Quando apenas X1 corresponde
+parcialmente a X, X2 permanece visível como diferença. Inverter A e B descreve a
+mesma divergência como fusão. O registro não elimina identidades para forçar
+pares um a um nem escolhe um denominador depois da leitura. O procedimento serve
+à revisão dos recortes; percentual de concordância, confiabilidade e validade
+cognitiva exigem uma avaliação independente.
 
 ## 1. Redes: rótulo, objeto e relação
 
 **Finalidade e repertório.** Reconhecer os elementos de um exemplo simplificado
-de encaminhamento em rede local. O público conhece “interface de rede”,
-“conexão”, “origem”, “destino” e “tabela”; quadro, switch e endereço MAC não foram
-pressupostos. Não se pretende explicar aqui todo o funcionamento de Ethernet.
+de encaminhamento em rede local. O público já sabe ler uma tabela e conhece os
+papéis de origem, destino, conexão e interface de rede; quadro, switch e
+endereço MAC serão introduzidos no caso. O recorte termina no mecanismo
+necessário a esse encaminhamento, antes de outros aspectos do funcionamento de
+Ethernet.
 
 | Localizador | Trecho construído em português |
 | --- | --- |
@@ -221,14 +223,15 @@ pixels ou tempo de estudo a partir do número de palavras, fórmulas ou campos.
 
 ## O que esta comparação permite concluir
 
-As alternativas revelam critérios refutáveis: duplicar sinônimo, apagar relação,
-presumir pré-requisito omitido, confundir palavra com sentido, contar exemplo
-resolvido como solicitação e tratar várias tentativas como variação violam o
-contexto declarado. Também mostram mudanças legítimas de recorte por público
-e objetivo. Não estabelecem a frequência desses erros em modelos ou pessoas.
+As alternativas tornam os critérios refutáveis. Entre os erros observáveis
+estão duplicar um sinônimo, apagar uma relação e presumir um pré-requisito
+omitido. Os casos também mostram mudanças legítimas de recorte quando público
+ou objetivo mudam. Como o corpus é sintético, ele identifica possibilidades de
+erro, e não sua frequência em modelos ou pessoas.
 
-Uma aplicação posterior do protocolo deve relatar caso, contexto, inventário,
-ocorrências, localizadores, divergências e sua decisão. Comparar apenas os
-totais ocultaria uma troca de identidades. Para alegações de confiabilidade,
-generalização entre idiomas ou efeito educacional, faltam avaliação humana
-independente, amostragem e evidência de desempenho adequadas à pergunta.
+Uma aplicação posterior do protocolo deve conservar o caso e seu contexto,
+além do inventário com localizadores e divergências. Os totais vêm depois dessa
+descrição, pois duas leituras podem ter a mesma quantidade e identidades
+diferentes. Alegações de confiabilidade, generalização entre idiomas ou efeito
+educacional dependem de avaliação humana independente, amostragem e evidência
+de desempenho adequadas à pergunta.

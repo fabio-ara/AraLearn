@@ -11,23 +11,22 @@ as decisões educacionais e sociotécnicas do AraLearn. Sua pergunta orientadora
 > conteúdo vinculado às fontes, representações e prática, para estudo autodidata
 > no celular e continuidade sem conexão?
 
-O texto é uma **revisão narrativa orientada ao desenho do artefato**. Isso significa que as
-fontes foram organizadas em torno de problemas do artefato e de mecanismos
-plausíveis. Não se trata de revisão sistemática, revisão de escopo concluída ou
-meta-análise própria. Uma síntese que pretenda cobertura reproduzível deve
-registrar bases consultadas, estratégias de busca, datas, critérios de
-elegibilidade, duplicatas, processo de seleção e avaliação crítica, seguindo o
-método apropriado; JBI e PRISMA-ScR oferecem orientações para revisões de escopo
+O texto é uma **revisão narrativa orientada ao desenho do artefato**: as fontes
+foram reunidas em torno dos problemas que o AraLearn procura enfrentar e dos
+mecanismos que poderiam explicá-los. Esse método permite relacionar campos
+diferentes, mas não oferece a cobertura reprodutível de uma revisão sistemática
+ou de escopo. Para esse tipo de síntese, seria necessário registrar a busca e o
+percurso completo de seleção e avaliação das fontes; JBI e PRISMA-ScR oferecem
+orientações específicas
 ([Peters et al. (2024)](referencias.md#ref-peters2024scoping); [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)).
 
-A revisão também não demonstra que o AraLearn melhora a aprendizagem. Ela
-oferece:
-
-- **evidência externa**, produzida em populações, tarefas e ambientes próprios;
-- **inferências limitadas**, que relacionam essa evidência ao problema de
-  desenho;
-- **decisões fundamentadas**, adotadas no produto por razões explícitas;
-- **hipóteses**, que permanecem abertas à avaliação e à refutação.
+As fontes descrevem teorias, orientações e resultados produzidos fora do
+AraLearn. Cada seção explicita como esse conhecimento fundamenta uma decisão do
+produto e qual hipótese surge dessa relação. Resultados sobre aprendizagem ou
+uso pertencem aos estudos citados; uma avaliação do AraLearn precisa produzi-los
+em condições próprias. Os [estados usados para classificar essas
+afirmações](fundamentos-pesquisa-e-governanca.md#estados-epistêmicos) estão
+definidos nos fundamentos de pesquisa e governança.
 
 O [procedimento de busca e atualização](#procedimento-de-composição-do-corpus)
 registra como as fontes foram reunidas e quais consultas podem ser reconstruídas.
@@ -40,7 +39,7 @@ Neste texto, **local-first** designa uma arquitetura em que a cópia local
 sustenta a operação corrente e a sincronização com o servidor ocorre sem
 bloquear a interação.
 
-## Como interpretar a força de uma fonte
+## Como avaliar o alcance de uma fonte
 
 A força de uma fonte depende da pergunta e do alcance de seu método:
 
@@ -53,23 +52,26 @@ A força de uma fonte depende da pergunta e do alcance de seu método:
 | norma ou orientação institucional | estabelecer critérios de acessibilidade, ética ou governança | conformidade não demonstra aprendizagem |
 | documentação e testes do artefato | demonstrar estrutura ou comportamento implementado | correção técnica não valida construtos pedagógicos |
 
-O tipo da fonte não basta. É necessário verificar a correspondência entre
-população, tarefa, intervenção, comparação, resultado, duração e contexto. Uma
-meta-análise distante da situação investigada pode oferecer fundamento mais
-indireto do que um estudo de campo bem alinhado à pergunta local.
+O tipo da fonte é apenas o início da avaliação. Seu alcance depende também de
+quem participou, do que as pessoas fizeram, das condições comparadas e do
+resultado observado. Uma meta-análise distante da situação investigada pode
+oferecer fundamento mais indireto que um estudo de campo bem alinhado à
+pergunta local.
 
 ## 1. Aprendizagem móvel, interrupção e retomada
 
 ### Conceitos necessários
 
-**Aprendizagem móvel** não significa apenas conteúdo curto em uma tela pequena.
-O conceito remete a atividades de aprendizagem mediadas por dispositivos que
-podem ocorrer em ambientes, tempos e condições variáveis. A pessoa pode estudar
-em trânsito, alternar tarefas, perder conectividade e retomar depois.
+**Aprendizagem móvel** abrange atividades mediadas por dispositivos que podem
+ocorrer em ambientes, tempos e condições variáveis. O conceito dirige a atenção
+para o que acontece quando a pessoa estuda em trânsito, alterna tarefas ou
+precisa retomar depois de perder a conexão; o tamanho do conteúdo é apenas uma
+das decisões envolvidas.
 
 **Retomada** é o restabelecimento do objetivo e do estado necessários para
-continuar uma atividade suspensa. Abrir novamente a aplicação não prova que a
-pessoa compreendeu onde estava ou o que precisava fazer.
+continuar uma atividade suspensa. Ela pode ser observada quando a pessoa
+reencontra o ponto, explica o que fazia e consegue prosseguir; a reabertura do
+aplicativo descreve somente o primeiro passo.
 
 ### Evidência externa
 
@@ -99,8 +101,9 @@ explica as condições atuais de conexão para estudo e autoria.
 
 ### Conceitos necessários
 
-Aprender sozinho não é sinônimo de **aprendizagem autorregulada**. Modelos de
-autorregulação incluem planejamento, execução, monitoramento e reflexão
+Estudar sozinho descreve uma condição; **aprendizagem autorregulada** descreve o
+processo pelo qual a pessoa planeja, executa, acompanha e revê a própria
+aprendizagem
 ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). **Aprendizagem
 autodirigida** acrescenta iniciativa na definição de objetivos, recursos e
 processos ([Knowles (1975)](referencias.md#ref-knowles1975selfdirected)). **Agência** envolve capacidade de agir de
@@ -117,9 +120,9 @@ autorregulação, que também envolve motivação, comportamento e condições d
 ambiente ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
 [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
 
-Esses conceitos impedem uma inferência comum: disponibilizar opções ou permitir
-navegação não prova autonomia. Uma meta-análise sobre controle do aprendiz em
-tecnologia educacional encontrou efeitos heterogêneos
+Esses conceitos deslocam a análise da quantidade de opções para a qualidade das
+decisões que a pessoa consegue tomar. Uma meta-análise sobre controle do
+aprendiz em tecnologia educacional encontrou efeitos heterogêneos
 ([Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol)). A teoria da autodeterminação também distingue
 escolha significativa e apoio à autonomia de abandono ou ausência de estrutura
 ([Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation)).
@@ -166,11 +169,15 @@ extrínseca** designa demanda dispensável à aprendizagem do conteúdo-alvo, co
 procurar dados espalhados, interpretar rótulos ambíguos ou alternar entre fontes
 que precisam ser integradas.
 
-Segmentar uma explicação pode ajudar, mas não equivale a cortar texto em
-fragmentos. Uma meta-análise encontrou heterogeneidade e moderadores no efeito
-de segmentação ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura de microaprendizagem (*microlearning*) também reúne
-definições e intervenções diversas ([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)). Portanto, não há
-base para as regras “um conceito por unidade” ou “quanto menor, melhor”.
+Segmentar uma explicação significa distribuir suas etapas de modo que a pessoa
+possa acompanhá-las sem perder as relações necessárias. Uma meta-análise
+encontrou efeitos variados conforme as condições da segmentação
+([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A literatura de
+microaprendizagem (*microlearning*) também reúne intervenções bastante
+diferentes
+([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)). Essas evidências orientam
+o exame do conteúdo e da tarefa, em vez de uma regra universal como “um
+conceito por unidade” ou “quanto menor, melhor”.
 
 ### Texto, discurso e extensão editorial
 
@@ -185,10 +192,11 @@ da linguística do texto também mostra que “unidade discursiva” não design
 átomo universal independente de teoria e procedimento
 ([Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades)).
 
-Parágrafo, sentença, quantidade de caracteres, número de palavras, altura e
-tempo estimado de leitura são **medidas editoriais observáveis**. Podem apoiar
-renderização e ergonomia, mas não demonstram por si mesmas unidade de sentido,
-densidade conceitual, dificuldade ou completude. Ferramentas de complexidade
+Parágrafo, número de palavras e tempo estimado de leitura são exemplos de
+**medidas editoriais observáveis**. Junto de outras medidas de extensão e
+apresentação, podem apoiar renderização e ergonomia. Identificar unidade de
+sentido, densidade conceitual, dificuldade ou completude exige analisar também
+o conteúdo e suas relações. Ferramentas de complexidade
 textual integram propriedades lexicais, sintáticas, discursivas e de coesão;
 mesmo assim, seus valores dependem do corpus, da população, da tarefa e da
 interpretação pretendida
@@ -215,45 +223,44 @@ formula o que precisa ser avaliado com autores e estudantes.
 
 ## 4. Unidades, evidência e parâmetros de desenho
 
-### Unidades de conhecimento não são observações diretas
+### Do conhecimento planejado à unidade apresentada
 
-O quadro KLI (*Knowledge–Learning–Instruction*, conhecimento, aprendizagem e
-instrução) relaciona tipos de componentes de conhecimento, eventos de
-aprendizagem e princípios instrucionais, mas trata os componentes como
-entidades não observáveis inferidas a partir de tarefas. A granularidade da
-análise depende da população e do desempenho que se pretende explicar
+Planejar uma atividade exige perguntar que conhecimento a pessoa precisará
+mobilizar. O quadro KLI (*Knowledge–Learning–Instruction*, conhecimento,
+aprendizagem e instrução) chama de **componentes de conhecimento** as unidades
+inferidas a partir do desempenho em tarefas. Esses componentes ajudam a explicar
+a aprendizagem, mas não são objetos que o sistema observe diretamente. O recorte
+adequado muda conforme o público e o desempenho investigado
 ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
-Esse fundamento não autoriza um sistema de autoria a declarar que um tópico é
-um componente psicológico validado ou que conhece o domínio de cada estudante.
 
 Para planejar conteúdo de modo rastreável, o AraLearn adota uma
-[**unidade de análise instrucional**](desenho-instrucional-parametrizado.md). Ela é um recorte editorial revisável,
-ligado a fonte e objetivo. O conhecimento prévio presumido pode ser descrito
-como novo, parcial, integrado ou desconhecido, desde que a base da suposição
-permaneça explícita. Trata-se de operacionalização própria, não de diagnóstico,
-proficiência ou probabilidade de domínio.
+[**unidade de análise
+instrucional**](desenho-instrucional-parametrizado.md). Trata-se de um recorte
+editorial revisável, ligado a uma fonte e a um objetivo, que acompanha uma ideia
+ou relação ao longo da explicação e da prática. O conhecimento prévio é uma
+suposição declarada para aquele público, e não um diagnóstico individual ou uma
+estimativa de domínio.
 
 O [modelo didático](modelo-didatico.md) chama de **unidade de estudo** cada etapa
 salva e identificável do percurso apresentado ao estudante. Ela pode ser
-expositiva, propor prática ou reunir representações, solicitação de resposta e
-feedback. Essa convenção organiza a produção e a navegação; não define um
-gênero discursivo ou construto psicológico. A aparência em cartão tampouco
-implica que toda unidade proponha uma resposta.
+expositiva, propor prática ou reunir uma representação com uma solicitação de
+resposta e seu retorno. É uma convenção que organiza o conteúdo no produto. Sua
+aparência em cartão não determina uma única função discursiva ou atividade.
 
-**Flashcard** fica reservado ao item realmente organizado em torno de uma pista
-e de uma resposta para recuperação. Uma revisão de escopo sobre flashcards
-eletrônicos nas profissões da saúde ilustra usos e resultados dentro desse
-domínio específico; não autoriza classificar explicações, diagramas,
-simulações ou toda a plataforma como flashcards
+**Flashcard**, ou cartão de memorização, designa especificamente o item
+organizado em torno de uma pista e de uma resposta que deve ser recuperada. Uma
+revisão de escopo sobre flashcards eletrônicos nas profissões da saúde oferece
+evidência para esse recurso naquele domínio; explicações, diagramas e simulações
+realizam outras funções
 ([Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards)).
 
-Uma **microssequência didática** ordena unidades de estudo em
-torno de um objetivo instrucional delimitado. Uma **parte de autoria** reúne,
-por sua vez, trabalho de planejamento, produção e revisão que pode abranger
-várias microssequências. Ambas são construções próprias do produto: a primeira
-é didática; a segunda é uma unidade operacional de materialização. A faixa
-orientativa de partes pode ser configurada e nunca constitui uma regularidade
-pedagógica universal.
+Uma **microssequência didática** ordena as unidades de estudo em torno de um
+objetivo delimitado. A **parte de autoria**, por sua vez, reúne uma porção
+manejável do trabalho de planejamento, produção e revisão. A primeira organiza
+o ensino; a segunda organiza o processo de criação e pode abranger mais de uma
+microssequência. Ambas são convenções do AraLearn, explicadas no [modelo
+didático](modelo-didatico.md) e nos [parâmetros de
+autoria](parametros-de-autoria.md).
 
 Estudos de sistemas recentes oferecem evidência situada para manter o plano
 intermediário visível e editável, sem transferir a decisão pedagógica inteira
@@ -266,82 +273,86 @@ estudo misto envolveu 1.043 docentes e 23 curadores num contexto multilíngue e
 de recursos limitados, no qual profissionais continuaram avaliando e
 contextualizando o material produzido
 ([Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha)). Esses
-resultados sustentam investigar planejamento revisável, intervenção humana e
-uso móvel no AraLearn. Eles não validam a entidade parte, não determinam sua
-quantidade nem demonstram que um número específico de partes melhore
-aprendizagem ou qualidade autoral. Os alvos atuais de partes e lotes são
-configurações de processo, descritas em [parâmetros de autoria](parametros-de-autoria.md).
+resultados tornam pertinente investigar planejamento revisável e intervenção
+humana no AraLearn. Como cada estudo avaliou seu próprio sistema e contexto, a
+utilidade das partes de autoria e sua quantidade precisam ser examinadas no
+produto.
 
-### Interatividade depende da estrutura e do público
+### Relações que precisam ser processadas em conjunto
 
-Na teoria da carga cognitiva, elemento designa a unidade que precisa ser
-processada para aprender ou executar algo, e interatividade se refere aos
-elementos que precisam ser coordenados simultaneamente. A estimativa depende
-da estrutura da informação e do conhecimento prévio, é necessariamente
-aproximada e não equivale à dificuldade geral da tarefa
+Na teoria da carga cognitiva, um **elemento** é uma unidade que a pessoa precisa
+processar para aprender ou executar algo. **Interatividade de elementos**
+descreve quantos desses elementos precisam ser coordenados ao mesmo tempo. A
+estimativa depende da estrutura da informação e do conhecimento prévio e, por
+isso, não representa toda a dificuldade da tarefa
 ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
 
-A consequência para o desenho é preservar relações, em vez de criar uma
-pontuação de carga. Unidades e
-relações que precisam permanecer juntas são registradas como conjuntos de
-coordenação; a quantidade de itens pode ser calculada, mas as relações também precisam
-ficar disponíveis. Saber que três conhecimentos estão envolvidos numa tarefa
-não informa, por exemplo, qual deles é pré-requisito de outro. A [análise
-instrucional](desenho-instrucional-parametrizado.md) conserva esses vínculos.
+No planejamento do AraLearn, conhecimentos e relações que precisam permanecer
+juntos formam um **conjunto de coordenação**. A contagem descreve o tamanho do
+conjunto; os vínculos mostram, por exemplo, que uma ideia é pré-requisito de
+outra. A [análise instrucional](desenho-instrucional-parametrizado.md) conserva
+essas duas informações. Essa escolha busca preservar a estrutura da tarefa, e
+não produzir uma pontuação automática de carga cognitiva.
 
-### Requisito de evidência não é medida validada
+### Da tarefa à evidência pretendida
 
-O desenho centrado em evidências (*Evidence-Centered Design*) organiza a avaliação como argumento entre
-alegações, evidência observável e tarefas capazes de produzir essa evidência
+O desenho centrado em evidências (*Evidence-Centered Design*) parte de uma
+pergunta prática: que tarefa produziria uma resposta pertinente à afirmação que
+se deseja sustentar? O método relaciona alegação, evidência observável e tarefa
 ([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)). O
 AraLearn aproveita a separação para ligar objetivo, operação, requisito de
-evidência e forma aceitável de desempenho. A transposição serve à coerência
-autoral; não cria instrumento psicométrico, não estima variável latente e não
-autoriza inferência de domínio.
+evidência e forma aceitável de desempenho. No produto, o **requisito de
+evidência** é um registro de planejamento que ajuda a conferir se a atividade
+corresponde ao objetivo. Transformar a resposta numa medida de aprendizagem
+exige desenvolver e validar um instrumento próprio.
 
 O modelo de desenho instrucional de quatro componentes, conhecido pela sigla
-4C/ID (*Four-Component Instructional Design*), acrescenta distinções úteis entre tarefas integrais, informação de
-apoio, informação procedimental e prática de partes quando a automatização é
-necessária. Variação, apoio e fidelidade dependem da tarefa e do estágio de
-aprendizagem; não compõem uma receita universal
+4C/ID (*Four-Component Instructional Design*), articula quatro componentes com
+funções próprias: tarefas de aprendizagem integrais, informação de apoio,
+informação procedimental e prática de partes da tarefa. As tarefas reúnem a
+competência em situações completas; os outros componentes sustentam o que
+precisa ser compreendido, orientam procedimentos recorrentes no momento de uso
+ou exercitam partes que requerem automatização. O modelo também ajuda a pensar
+quando variar casos e retirar apoio. Essas decisões dependem do conteúdo e do
+estágio de aprendizagem
 ([van Merriënboer (2019)](referencias.md#ref-vanmerrienboer2019fourcomponent)).
 Por isso, formas de desempenho e fidelidade devem permanecer categorias e
 relações com limitações declaradas, em vez de uma escala ordinal artificial.
 
 ### Explicação, prática e materialização
 
-Autoexplicações podem elaborar condições de aplicação e relacionar passos a
-princípios, mas seus efeitos e formas variam entre participantes e tarefas
+Uma **autoexplicação** ocorre quando a pessoa explica para si mesma uma relação
+ou justifica um passo do que está estudando. Essa atividade pode aprofundar
+condições de aplicação e ligar procedimentos a princípios, embora seus efeitos
+variem entre participantes e tarefas
 ([Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations);
 [Chi et al. (1994)](referencias.md#ref-chi1994eliciting)). Explicações
 instrucionais também podem falhar quando não se ajustam ao conhecimento prévio,
 aos conceitos relevantes ou à atividade cognitiva em curso
-([Wittwer e Renkl (2008)](referencias.md#ref-wittwer2008explanations)). Não há,
-portanto, base para um checklist universal ou para uma nota de “qualidade da
-explicação”.
+([Wittwer e Renkl (2008)](referencias.md#ref-wittwer2008explanations)). Avaliar a
+explicação, portanto, requer observar sua relação com o público, o conteúdo e a
+tarefa, em vez de aplicar um checklist universal.
 
 Num estudo com 48 estudantes de formação docente aprendendo probabilidade por
 exemplos resolvidos, explicações instrucionais apoiaram a aprendizagem em
-condições delimitadas, mas também apareceram déficits na forma como o apoio foi
-usado ([Renkl (2002)](referencias.md#ref-renkl2002learning)). O resultado situa
-a relação entre exemplo, explicação oferecida e autoexplicação da pessoa; não
-autoriza substituir a atividade do estudante por explicações adicionais em
-toda tarefa.
+condições delimitadas, mas o uso desse apoio também apresentou dificuldades
+([Renkl (2002)](referencias.md#ref-renkl2002learning)). O resultado situa a
+relação entre exemplo, explicação oferecida e autoexplicação da pessoa. Em outra
+tarefa ou com outro público, essa relação precisa ser examinada novamente.
 
-A implementação registra requisitos aplicáveis, como definição, mecanismo,
-condição de aplicação, limite, contraste, exemplo ou justificativa de
-procedimento, ligados às unidades e relações pertinentes. O mesmo princípio
-se aplica à prática: oportunidades distintas são reconhecidas por alvo,
-operação e estrutura semântica, não por troca cosmética de texto ou componente.
+A implementação registra que aspecto uma explicação precisa desenvolver. Em um
+caso, pode ser o mecanismo que produz um fenômeno; em outro, a condição sob a
+qual uma regra vale ou a justificativa de um procedimento. Na prática, uma nova
+oportunidade precisa mudar o caso de maneira relevante para o objetivo, em vez
+de apenas trocar palavras ou aparência.
 
-O AraLearn distingue o conhecimento a desenvolver, as atividades planejadas e
-as unidades que serão apresentadas ao estudante. A descrição pode conservar
-categorias e relações quando um número isolado perderia informação. Por
-exemplo, contar duas práticas informa quantidade; identificar qual operação
-cada uma solicita permite examinar sua pertinência. A hipótese de que esses
-registros ajudem a detectar omissões e repetição superficial permanece aberta
-à investigação. O [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
-apresenta as convenções e seus procedimentos de análise.
+O AraLearn relaciona o conhecimento a desenvolver, as atividades planejadas e
+as unidades apresentadas ao estudante. Uma contagem de duas práticas informa a
+quantidade; identificar o que cada uma pede permite examinar sua pertinência.
+A hipótese é que conservar essas relações ajude a detectar omissões e repetição
+superficial. O [desenho instrucional
+parametrizado](desenho-instrucional-parametrizado.md) apresenta as convenções e
+seus procedimentos de análise.
 
 ### Desenho de cursos e participação de quem os utiliza
 
@@ -359,10 +370,11 @@ apreciação por participantes; a eficácia formativa continua por demonstrar.
 Para o AraLearn, a contribuição metodológica está em confrontar um modelo de
 autoria com o julgamento de educadores e usuários. É possível examinar se
 objetivos, materiais, atividades e condições de acesso formam um percurso
-compreensível, usando cursos efetivamente produzidos. Essa é uma adaptação
-proposta aqui. O estudo original não avalia autoria generativa nem estudo
-autodidata no celular; seus requisitos de tutoria, certificação e formação
-profissional não se tornam automaticamente requisitos do aplicativo.
+compreensível, usando cursos efetivamente produzidos. Essa adaptação é proposta
+por este projeto. O estudo original tratou MOOCs para formação contínua de
+professores; autoria com IA e estudo autodidata no celular precisam de
+investigação própria, e os requisitos daquele contexto não são transferidos
+automaticamente ao aplicativo.
 
 ## 5. Exemplos resolvidos e retirada de apoio
 
@@ -385,25 +397,24 @@ desempenho quando o apoio deixa de estar disponível.
 
 ## 6. Representações externas e múltiplas representações
 
-### Representar não é decorar
+### A função de uma representação
 
 Uma representação externa torna perceptíveis relações que podem ser difíceis
-de conservar mentalmente: posição num plano, incidência num grafo, hierarquia
-numa árvore, alinhamento numa glosa, estrutura numa fórmula ou comparação numa
-tabela. O quadro DeFT propõe analisar representações por desenho, funções e
-tarefas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Uma representação pode complementar informação,
-restringir interpretações ou ajudar a construir novas relações; também pode
-introduzir convenções desconhecidas e trabalho de coordenação.
+de conservar mentalmente, como a posição num plano, a hierarquia numa árvore ou
+a comparação entre valores. O quadro DeFT propõe analisá-la pelo modo como foi
+desenhada, pela função que cumpre e pela tarefa em que será usada
+([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Ela pode complementar
+uma explicação ou restringir interpretações, mas também introduzir convenções
+desconhecidas que precisam ser aprendidas.
 
 A teoria da aprendizagem multimídia e a evidência de contiguidade sustentam
 integrar elementos que precisam ser compreendidos em conjunto
 ([Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Elas não sustentam que adicionar
 imagens ou aumentar a variedade visual melhora automaticamente a aprendizagem.
 
-Representações diferentes não são traduções transparentes umas das outras. O
-modo de representar pode apoiar determinada inferência e interferir em outra;
-relações entre texto e imagem podem envolver complementaridade, especialização,
-redundância ou outras funções que precisam ser declaradas
+Cada representação destaca algumas relações e pode ocultar outras. Uma imagem
+pode complementar o texto, especializar parte da informação ou apenas repeti-la;
+a função precisa ser declarada
 ([Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations);
 [Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext)).
 Sinalização pode apoiar a coordenação de texto e imagem em condições
@@ -425,7 +436,8 @@ formula a comparação entre alternativas para uma mesma tarefa.
 ## 7. Gênero discursivo e descrição do artefato
 
 Na tradição retórica e organizacional, gênero é uma forma recorrente de ação
-social reconhecida numa comunidade, não um contorno visual ou um tipo de arquivo
+social reconhecida numa comunidade. Forma visual e tipo de arquivo pertencem a
+outras dimensões
 ([Miller (1984)](referencias.md#ref-miller1984genre);
 [Yates e Orlikowski (1992)](referencias.md#ref-yates1992genres)). Por isso, uma
 interface em blocos retangulares não estabelece por si um gênero discursivo, e
@@ -435,9 +447,9 @@ O AraLearn é um **ambiente de aprendizagem, autoria
 e pesquisa com unidades de estudo estruturadas**. A fórmula
 explica funções do artefato; não reivindica a descoberta de um gênero
 discursivo estabelecido. Dentro dele podem coexistir gêneros e atividades
-diversos, como explicação, definição, exemplo resolvido, comparação, pergunta de
-recuperação ou anotação especializada. Eles precisam ser identificados por sua
-função comunicativa e instrucional, não apenas pelo mecanismo de renderização.
+diversos, como uma explicação, um exemplo resolvido ou uma pergunta de
+recuperação. Eles precisam ser identificados por sua função comunicativa e
+instrucional, não apenas pelo mecanismo que os apresenta na tela.
 
 Essas distinções permitem descrever o conteúdo por sua função comunicativa e
 o produto por suas operações. Uma explicação e uma pergunta podem compartilhar
@@ -468,18 +480,19 @@ de interação mostra riscos próprios de consumo de mídia social
 [Baughan et al. (2022)](referencias.md#ref-baughan2022dissociation)). O
 precedente genealógico permanece separado da evidência educacional.
 
-Uma expressão única para gesto e cognição reúne indevidamente níveis
-diferentes. A análise distingue:
+Entre tocar a tela e compreender um conceito há níveis diferentes. A tabela
+organiza essa passagem sem atribuir ao gesto um processo mental que ele não
+revela:
 
-1. **gesto de entrada**, movimento observável, como toque ou deslize;
-2. **ação de interface**, mudança de estado disparada, como avançar ou abrir;
-3. **operação-alvo da tarefa**, como comparar, ordenar, explicar ou provar;
-4. **ação epistêmica**, ação externa que revela informação ou simplifica o
-   trabalho cognitivo sob condições demonstradas; e
-5. **processo cognitivo hipotético**, que não é observado diretamente.
+| Nível | O que pode ser descrito |
+| --- | --- |
+| entrada e interface | o gesto observado, como toque ou deslize, e a mudança de estado produzida, como abrir ou avançar |
+| tarefa | a operação solicitada sobre o conteúdo, como comparar, ordenar ou explicar |
+| relação com o conhecimento | uma ação externa pode revelar informação e funcionar como **ação epistêmica** em condições demonstradas; o processo cognitivo continua sendo uma inferência |
 
-A distinção entre ações pragmáticas e epistêmicas oferece base conceitual, mas
-não autoriza classificar todo toque como ação epistêmica
+A distinção entre ações pragmáticas e epistêmicas oferece base para estudar a
+função de uma ação externa. Classificar um toque como epistêmico requer mostrar
+como ele revelou informação ou simplificou o trabalho na tarefa
 ([Kirsh e Maglio (1994)](referencias.md#ref-kirshmaglio1994epistemic);
 [Kirsh (2010)](referencias.md#ref-kirsh2010external)). Atenção compreende
 processos seletivos internos e externos com mecanismos próprios
@@ -505,9 +518,9 @@ encontraram benefícios em diferentes condições escolares, com variação por
 tarefa, conteúdo e medida ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Transferência para estruturas novas é possível, mas
 moderada ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
-Reconhecer uma alternativa, preencher uma lacuna, digitar uma resposta,
-explicar e ordenar blocos não são operações equivalentes. A dificuldade maior
-de um formato não o torna automaticamente mais educativo.
+Reconhecer uma alternativa, escrever uma explicação e ordenar etapas solicitam
+operações diferentes. A dificuldade maior de um formato, por si só, não o torna
+mais educativo.
 
 A [escolha do formato de resposta](componentes-didaticos.md) precisa acompanhar
 o que se pretende recuperar ou aplicar. Uma seleção pode exigir distinguir
@@ -519,10 +532,11 @@ avaliação posterior.
 
 ## 10. Prática distribuída e intercalação
 
-A prática distribuída apresenta base empírica ampla, mas o intervalo favorável
-depende do horizonte de retenção e de outras características
-([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing)). **Intercalação** não é sinônimo de
-espaçamento: alterna categorias ou procedimentos e pode favorecer
+A **prática distribuída** reapresenta o conhecimento ao longo do tempo. Há uma
+base empírica ampla para seus benefícios, mas o intervalo favorável depende do
+horizonte de retenção e de outras características
+([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing)). Já a **intercalação**
+alterna categorias ou procedimentos e pode favorecer
 discriminação, com moderadores como similaridade
 ([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving); [Taylor e Rohrer (2010)](referencias.md#ref-taylor2010interleaved)).
 
@@ -536,8 +550,8 @@ avaliado.
 
 ## 11. Feedback, ação e baixa consequência
 
-O feedback não é eficaz apenas por ser imediato. Seus efeitos variam conforme
-foco, conteúdo, momento, tarefa e possibilidade de ação
+O efeito do feedback depende do que a mensagem informa, do momento em que chega
+e da possibilidade de a pessoa agir sobre ela
 ([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Shute (2008)](referencias.md#ref-shute2008feedback); [Morris et al. (2021)](referencias.md#ref-morris2021formative)). A competência para interpretar e usar feedback
 (*feedback literacy*) desloca a atenção da mensagem entregue para a capacidade de
 interpretar, julgar e usar essa informação ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Wood (2021)](referencias.md#ref-wood2021dialogic)). Feedback também pode corrigir avaliações metacognitivas
@@ -563,10 +577,14 @@ caso. O conteúdo da mensagem e seu uso importam tanto quanto seu momento.
 
 A aprendizagem ocorre por mediações, instrumentos e relações sociais
 ([Vygotsky (1978)](referencias.md#ref-vygotsky1978mind)). O apoio pode ser contingente e retirado à medida que a pessoa
-assume partes da tarefa ([Wood et al. (1976)](referencias.md#ref-wood1976tutoring)). Comunidades de prática ajudam a
-compreender participação e construção de significado, mas também podem
-habilitar ou inibir agência ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Essas fontes não
-permitem tratar acesso comum a um curso como colaboração ou comunidade.
+assume partes da tarefa
+([Wood et al. (1976)](referencias.md#ref-wood1976tutoring)). Comunidades de
+prática ajudam a compreender participação e construção de significado, mas
+também podem habilitar ou inibir agência
+([Wenger (1998)](referencias.md#ref-wenger1998communities);
+[Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Acesso comum a um
+curso só caracteriza colaboração ou comunidade quando as pessoas efetivamente
+participam, negociam sentidos e transformam a prática.
 
 O AraLearn reserva a edição do curso à pessoa proprietária e permite conceder
 ou revogar acesso para estudo. As [observações](observacoes-pedagogicas.md)
@@ -580,11 +598,10 @@ observar também as relações e o contexto de uso.
 
 ### O que muda quando aprender faz parte do trabalho
 
-No trabalho, uma pessoa pode aprender num curso formal, ao executar uma tarefa,
-ao resolver um problema novo, ao conversar com colegas ou ao revisar uma
-prática. Esses processos não pertencem todos à mesma unidade de análise. Podem
-envolver indivíduo, equipe, organização ou relações entre organizações, e os
-ambientes de trabalho diferem quanto às oportunidades e ao apoio que oferecem.
+No trabalho, uma pessoa pode aprender num curso formal, ao resolver um problema
+ou ao conversar com colegas. Esses processos ocorrem em relações que podem
+envolver a pessoa, a equipe ou a organização, e os ambientes de trabalho
+diferem quanto às oportunidades e ao apoio que oferecem.
 Uma revisão temática também distingue aprendizagem formal e informal e alerta
 contra tratar “o local de trabalho” como ambiente uniforme
 ([Tynjälä (2008)](referencias.md#ref-tynjala2008workplace)).
@@ -634,10 +651,12 @@ mais ampla de sistemas capazes de produzir conteúdo; fluência não implica
 correção factual ou adequação pedagógica.
 
 A geração aumentada por recuperação condiciona a geração a informação
-recuperada ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Nem todo
-mecanismo de consulta de contexto deve ser chamado de RAG; o termo exige que a
-recuperação integre a arquitetura de geração de modo identificável. Essa
-arquitetura não elimina erros de fonte, recuperação, interpretação ou geração.
+recuperada ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). A sigla RAG,
+do inglês *retrieval-augmented generation*, designa especificamente uma
+arquitetura em que a recuperação integra de modo identificável o processo de
+geração. Consultas auxiliares de contexto podem seguir outros desenhos. Mesmo
+numa RAG, a fonte escolhida, sua interpretação e o texto gerado continuam
+sujeitos a erro.
 Uma revisão sobre alucinação na geração de linguagem mostra tipos, causas,
 métricas e formas de mitigação dependentes da tarefa
 ([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)).
@@ -670,8 +689,8 @@ inferior ao melhor desempenho isolado; houve perdas em tarefas de decisão e um
 resultado positivo não significativo em tarefas de criação
 ([Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai)). Em entrevistas
 com docentes de escolas australianas e suecas, o uso para planejar e produzir
-materiais envolveu conferir, validar, editar, reorganizar, reescrever, rejeitar
-e reconstruir saídas ([Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting)).
+materiais envolveu conferir, editar e, quando necessário, rejeitar ou
+reconstruir as saídas ([Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting)).
 Esses relatos tornam visível trabalho profissional que uma descrição centrada
 somente em geração ou economia de tempo apagaria, mas não estimam efeito
 populacional nem aprendizagem.
@@ -764,10 +783,9 @@ responsabilidade e finalidade são princípios éticos relevantes
 tratam feedback informado por dados como processo humano e dialógico
 ([Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
 
-Cliques, tempo, conclusão e resposta revelada são manifestações ambíguas. Podem
-refletir interrupção, acessibilidade, curiosidade, estratégia, familiaridade ou
-falha técnica. Sem modelo e validação, não medem atenção, esforço, domínio ou
-qualidade docente.
+Cliques, tempo e conclusão são manifestações ambíguas. Podem refletir uma
+interrupção, uma estratégia do estudante ou uma falha técnica. Relacioná-los a
+atenção, esforço, domínio ou qualidade docente exige um modelo e validação.
 
 A área **Dados de autoria** descreve conteúdo e intervenções observáveis no
 curso corrente. Suas contagens ajudam a inspecionar o desenho produzido;
@@ -786,29 +804,34 @@ de banco, do instrumento ou do algoritmo
 ([Messick (1995)](referencias.md#ref-messick1995validity);
 [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
 
-Para a pesquisa no AraLearn, os níveis ficam separados:
+Para a pesquisa no AraLearn, o caminho do registro à conclusão possui etapas
+distintas:
 
-- **dado bruto** é o observável preservado com contexto, unidade e proveniência;
-- **métrica** é uma regra de cálculo versionada;
-- **medida** é o valor observado ou derivado pela aplicação dessa regra;
-- **indicador** é uma interpretação declarada para apoiar uma finalidade;
-- **desfecho de pesquisa** é a variável escolhida como resultado no protocolo.
+| Etapa | Função |
+| --- | --- |
+| dado bruto | preserva o que foi observado, com contexto, unidade e origem |
+| métrica e medida | a métrica define uma regra de cálculo versionada; a medida é o valor obtido por observação ou pela aplicação dessa regra |
+| indicador | interpreta uma ou mais medidas para uma finalidade declarada |
+| desfecho de pesquisa | define no protocolo qual variável será tratada como resultado |
 
 Uma contagem de anotações, por exemplo, pode ser dado e medida de frequência.
 Ela só se torna indicador de carga de revisão sob uma justificativa explícita e
 não mede automaticamente dificuldade, qualidade, engajamento ou atenção. O
-mesmo vale para proporção teoria–prática, distribuição de componentes,
-quantidade de conceitos anotados, tempo de materialização e taxa de correção.
+mesmo vale para a proporção entre teoria e prática, o uso dos componentes e a
+taxa de correção.
 
-- **Decisão:** conservar fatos de autoria e planejamento em granularidade
-  suficiente para recalcular métricas; versionar definição, fórmula,
-  denominador e filtros; registrar interpretação permitida e proibida.
-- **Hipótese:** ligar configuração, fonte, anotação, correção e versão do
-  conteúdo pode permitir análises reprodutíveis do processo de autoria.
-- **Limites e evidência necessária:** reprodutibilidade técnica não demonstra
-  validade educacional ou causalidade. Cada estudo precisa justificar
-  instrumento, população, momento, dados ausentes, incerteza, comparações e
-  consequências do uso.
+Como decisão de produto, o AraLearn conserva os fatos de autoria e planejamento
+necessários para recalcular métricas. Definição, fórmula, denominador e filtros
+recebem versão, acompanhados tanto das interpretações admitidas quanto das
+interpretações vedadas. A hipótese é que ligar esses registros à versão do
+conteúdo permita análises reprodutíveis do processo de autoria.
+
+Essa reprodutibilidade é técnica. Validade educacional e causalidade dependem
+do instrumento, da população, do momento, dos dados ausentes e das comparações
+definidas em cada estudo, além das consequências previstas para o uso do
+resultado. O protocolo também declara como a incerteza será representada e
+tratada na análise; um valor calculável não elimina a incerteza da medição ou
+da interpretação.
 
 ## 17. Construção e avaliação do artefato
 
@@ -827,88 +850,72 @@ preparado para a avaliação (artificial) do uso próximo ao cotidiano
 (naturalístico)
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
-DBR e DSR oferecem possibilidades de pesquisa orientada ao desenho:
+DBR é especialmente pertinente quando a pergunta acompanha como uma
+intervenção educacional se transforma e opera em situações reais. DSR dirige a
+atenção ao artefato, aos mecanismos que ele incorpora e ao conhecimento de
+desenho produzido. Testes de software podem compor a evidência técnica de uma
+DSR, enquanto os resultados educacionais exigem procedimentos próprios.
 
-- DBR é apropriada para investigar como uma intervenção opera com estudantes,
-  autores e instituições em situações reais;
-- DSR é apropriada para investigar o artefato, seus mecanismos, sua utilidade,
-  sua correção e o conhecimento de design produzido;
-- testes de software podem integrar DSR como evidência técnica, mas não
-  substituem avaliação educacional;
-- outras perguntas, como compreender práticas institucionais, podem seguir um estudo de caso ou outro enquadramento justificado. O [protocolo](protocolo-avaliacao-artefato.md#escolher-uma-estratégia-de-investigação) desenvolve essas escolhas.
+Perguntas sobre práticas institucionais ou experiência vivida podem requerer
+estudo de caso ou outro enquadramento. O
+[protocolo](protocolo-avaliacao-artefato.md#escolher-uma-estratégia-de-investigação)
+relaciona cada estratégia ao tipo de pergunta que ela consegue responder.
 
 ## Síntese das alegações
 
-| Alegação simplificada | Estado desta revisão | Consequência responsável |
+| Tema | O que a revisão sustenta | Consequência para o desenho e a pesquisa |
 | --- | --- | --- |
-| unidades menores são sempre melhores | não sustentada | dimensionar por objetivo, relações e conhecimentos prévios |
-| cardinalidade de unidades mede carga cognitiva | não sustentada | conservar estrutura, público e relações; usar contagem apenas como descrição operacional |
-| parágrafo, caracteres ou palavras delimitam unidade de sentido | falso como regra geral | declarar critério discursivo, anotação, denominador e versão |
-| toda unidade visual do AraLearn é um flashcard | falso | reservar flashcard para organização pista–resposta; separar unidade, gênero e atividade |
-| toda dimensão pedagógica deve receber pontuação | falso | manter categorias, conjuntos, vetores e relações quando preservam melhor a decisão |
-| mais representações melhoram aprendizagem | não sustentada | exigir função e adequação de cada representação |
-| transformar texto em imagem preserva necessariamente o mesmo conteúdo | falso | registrar relação, fonte, perdas, acréscimos e finalidade da transformação |
-| componente disponível foi selecionado e usado | falso | distinguir política vigente, escolha local e instância materializada |
-| recuperação e distribuição podem beneficiar aprendizagem | sustentada em múltiplos contextos, com moderadores | escolher operação, intervalo, feedback e medida |
-| oferecer controle produz autonomia | não sustentada como regra | articular escolha significativa, estrutura e avaliação de agência |
-| feedback funciona por ser imediato | simplificação indevida | estudar conteúdo, foco, interpretação e ação |
-| armazenamento local reduz atrito e melhora aprendizagem | primeira relação é hipótese; segunda requer estudo separado | medir retomada antes de inferir efeito educacional |
-| rolagem vertical demonstra atenção ou engajamento | falso | registrar gesto, ação e contexto; validar separadamente qualquer inferência psicológica |
-| contrato e RAG garantem correção | falso | validar, auditar, revisar e conservar controle humano |
-| rastros de uso medem aprendizagem | falso sem validação | partir de construto e finalidade, não do dado disponível |
-| uma fórmula reproduzível torna a métrica válida | falso | validar interpretação e uso para população, tarefa e decisão declaradas |
+| tamanho das unidades | o dimensionamento depende do objetivo, das relações e do conhecimento prévio | planejar a progressão antes de definir quantidade ou extensão |
+| contagem e carga cognitiva | a quantidade descreve o material; carga depende também das relações e do público | conservar vínculos e usar contagens como descritores operacionais |
+| limites de sentido | parágrafo e extensão são medidas editoriais, não fronteiras semânticas universais | declarar o critério de segmentação, o denominador e a versão |
+| unidade de estudo e flashcard | flashcard é o caso específico organizado por pista e resposta | identificar unidade, gênero e atividade por suas funções |
+| representação de dimensões pedagógicas | algumas relações são mais bem preservadas por categorias ou conjuntos que por pontuações | escolher a forma de registro conforme a informação necessária |
+| múltiplas representações | o benefício depende da função e da coordenação entre as formas | justificar cada representação pela operação que ela apoia |
+| transformação entre formas | passar de texto para imagem pode perder, acrescentar ou alterar relações | registrar fonte, finalidade e mudanças da transformação |
+| disponibilidade e uso de componentes | política disponível, escolha local e instância produzida são estados diferentes | verificar no conteúdo qual componente foi realmente usado |
+| recuperação e distribuição | podem favorecer aprendizagem em vários contextos, com moderadores | definir operação, intervalo, retorno e medida |
+| escolha e autonomia | opções ganham sentido quando a pessoa as compreende e dispõe de estrutura para agir | avaliar agência e qualidade da escolha, não quantidade de controles |
+| retorno | conteúdo, foco e possibilidade de ação importam junto com o momento | observar como a pessoa interpreta e usa a informação |
+| disponibilidade local | o software pode demonstrar acesso sem rede; retomada e aprendizagem são resultados humanos distintos | avaliar primeiro se a pessoa reconstrói e continua a tarefa |
+| gesto e atenção | rolagem registra uma interação, enquanto atenção e engajamento são construtos próprios | conservar gesto, ação e contexto e validar qualquer inferência psicológica |
+| contexto para geração | recuperação e contratos delimitam informação e operação, mas ainda admitem erro | inspecionar fontes e resultado e conservar intervenção humana |
+| rastros de uso | registros técnicos precisam de um argumento que os relacione ao fenômeno investigado | começar pelo construto e pela finalidade da análise |
+| reprodutibilidade e validade | uma fórmula reproduzível assegura o cálculo, não a interpretação | validar o uso para a população, a tarefa e a decisão declaradas |
 
 ## Lacunas de conhecimento
 
-O corpus atual ainda precisa ser ampliado para:
+As lacunas atuais formam cinco frentes de pesquisa:
 
-- comparar sistemas de gestão da aprendizagem, itens de recuperação por pista–resposta, tutores, sistemas de microaprendizagem, ferramentas de
-  autoria, sistemas local-first e catálogos extensíveis sem reduzir suas
-  diferenças;
-- caracterizar estudantes-trabalhadores e situações reais de conectividade;
-- selecionar e validar medidas de retomada, carga, agência, competência para usar feedback e
-  qualidade autoral;
-- mapear gêneros discursivos, critérios de segmentação, convenções
-  representacionais e operações-alvo em mais áreas do
-  conhecimento;
-- estudar composição e transformação de múltiplas representações numa mesma
-  unidade de estudo;
-- investigar explicação progressiva para novatos sem perda de profundidade;
-- avaliar se autores compreendem e corrigem unidades, conjuntos de coordenação,
-  requisitos de explicação e requisitos de evidência;
-- validar limites locais de novidade, coordenação e oportunidades de prática
-  sem promovê-los a escalas psicológicas;
-- comparar políticas de componentes e registrar quando nenhuma representação
-  disponível é adequada;
-- separar compreensão imediata, retenção e transferência em formatos de
-  prática diferentes;
-- comparar sequência vertical, paginação e outras formas de inspeção autoral
-  sem usar rolagem ou permanência como medidas substitutas de atenção;
-- validar definições e instrumentos para densidade conceitual, complexidade
-  textual, engajamento e qualidade autoral;
-- investigar modelos de IA de capacidades e custos distintos na autoria;
-- estudar governança, proveniência, poder e autoria coletiva;
-- registrar mecanismos que falham, resultados nulos e efeitos adversos.
+| Frente | Conhecimento ainda necessário |
+| --- | --- |
+| sistemas e contextos de uso | comparar classes de sistemas sem apagar suas diferenças e caracterizar estudantes-trabalhadores em situações reais de tempo, dispositivo e conectividade |
+| progressão e representação | mapear critérios de segmentação e convenções em diferentes áreas, estudar a coordenação entre representações e investigar explicações progressivas para novatos sem perda de profundidade |
+| planejamento e medida | examinar se autores compreendem os registros de análise instrucional, validar seus limites locais e desenvolver medidas de retomada, carga, agência, uso do retorno e qualidade autoral |
+| prática e interface | comparar políticas de componentes, distinguir compreensão imediata, retenção e transferência e confrontar formas de inspeção como sequência vertical e paginação |
+| IA e governança | investigar modelos com capacidades e custos distintos, estudar proveniência, poder e autoria coletiva e registrar mecanismos que falham, resultados nulos e efeitos adversos |
+
+Algumas frentes exigem definições e instrumentos específicos, especialmente
+para densidade conceitual, complexidade textual e engajamento. Esses
+instrumentos devem ser validados para a interpretação pretendida antes de
+orientarem decisões do produto.
 
 ## Procedimento de composição do corpus
 
-O corpus atual foi composto por:
+O corpus partiu das alegações pedagógicas e sociotécnicas presentes no desenho
+do AraLearn. Para cada uma, foram procuradas sínteses de evidência, estudos
+fundamentais, quadros conceituais e fontes normativas pertinentes. A identidade
+bibliográfica foi conferida por DOI — identificador persistente de uma
+publicação —, ISBN — identificador de uma edição de livro — ou endereço
+institucional estável.
 
-1. identificação das alegações pedagógicas e sociotécnicas presentes no
-   desenho do AraLearn;
-2. busca de revisões, meta-análises, estudos fundamentais, quadros conceituais,
-   normas e orientações institucionais relevantes a essas alegações;
-3. conferência de DOI — identificador persistente de uma publicação —, ISBN —
-   identificador de uma edição de livro — ou endereço institucional persistente;
-4. classificação de cada fonte por tema, tipo de evidência, população, tarefa
-   e limite de transferência;
-5. separação entre o que a fonte sustenta, a inferência feita para o artefato e
-   o que ainda precisa ser avaliado.
+Depois da conferência, cada fonte foi relacionada ao tema, ao público, à tarefa
+e ao alcance de seu método. A síntese final separa o resultado publicado, a
+inferência feita para o artefato e a questão que ainda precisa de avaliação.
 
-Foram excluídos como fundamento de eficácia: materiais promocionais,
-comparações sem identidade bibliográfica verificável, inferências que tratam
-satisfação ou conclusão como aprendizagem e afirmações sobre sistemas cujo
-mecanismo não pode ser separado do conjunto da intervenção.
+Materiais promocionais e comparações sem identidade bibliográfica verificável
+ficaram fora do fundamento de eficácia. O mesmo ocorreu com inferências que
+tratavam satisfação ou conclusão como aprendizagem e com afirmações cujo
+mecanismo não podia ser separado do restante da intervenção.
 
 Essa estratégia oferece rastreabilidade, mas não garante exaustividade. Novas
 fontes devem entrar na bibliografia somente depois de conferência e devem
@@ -927,10 +934,9 @@ narrativa. Uma revisão sistemática ou de escopo requer protocolo e etapas
 próprios, compatíveis com a pergunta e o método escolhido.
 
 1. formular uma pergunta delimitada e associá-la a um eixo desta revisão;
-2. escolher bases adequadas ao eixo, por exemplo, ERIC ou PsycINFO para
-   educação e psicologia, Scopus ou Web of Science para cobertura
-   interdisciplinar, ACM Digital Library ou IEEE Xplore para interação e
-   computação, e fontes institucionais primárias para normas;
+2. escolher bases adequadas ao eixo, como ERIC para educação, Scopus para
+   cobertura interdisciplinar e ACM Digital Library para computação; normas
+   exigem a fonte institucional primária pertinente;
 3. registrar, antes da seleção, a base, a consulta exatamente como executada,
    a data e hora em UTC, os filtros e a contagem informada pela base;
 4. deduplicar primeiro por DOI e, quando ele não existir, por título, ano e
@@ -993,15 +999,11 @@ do Git e explicam a mudança em `observacoes`.
 
 ## Documentos de operacionalização
 
-- [Modelo didático](modelo-didatico.md)
-- [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
-- [Fundamentos de pesquisa e governança](fundamentos-pesquisa-e-governanca.md)
-- [Quadro teórico](quadro-teorico.md)
-- [Glossário de construtos](glossario-construtos.md)
-- [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
-- [Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md)
-- [Fundamentação pedagógica das representações](fundamentacao-pedagogica-dos-resources.md)
-- [Contribuição e originalidade](contribuicao-originalidade.md)
+O [modelo didático](modelo-didatico.md) leva estes fundamentos ao planejamento
+dos cursos. O [quadro teórico](quadro-teorico.md) formula as relações a
+investigar, e o [protocolo de avaliação](protocolo-avaliacao-artefato.md) ajuda a
+transformá-las em estudos delimitados. O [percurso acadêmico da
+documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restantes.
 
 <!-- referências locais: início -->
 

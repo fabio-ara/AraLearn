@@ -7,8 +7,10 @@ aplicativo precisa lembrar onde continuar, quais unidades já foram avançadas e
 o que a pessoa marcou para rever. O AraLearn chama esse conjunto mínimo de
 **estado de estudo**.
 
-Esse estado sustenta a continuidade. Ele não forma boletim, histórico de
-navegação nem modelo de proficiência.
+Esse estado sustenta a continuidade: guarda o ponto alcançado e escolhas
+pessoais de retomada. Notas, histórico de navegação e estimativas de
+proficiência exigiriam outros dados e outra finalidade; eles ficam fora desse
+registro.
 
 ## Estado funcional e telemetria
 
@@ -37,10 +39,10 @@ conservados separadamente do progresso. Essa separação permite que o
 proprietário faça a triagem do texto enviado sem receber o estado pessoal de
 continuidade.
 
-A data de atualização serve para conciliar cópias. Ela não é convertida em
-sessão, frequência ou tempo de estudo. O estado pessoal também não guarda cada
-abertura, cada envio, respostas anteriores, último resultado, velocidade de
-avanço ou comparação entre estudantes.
+A data de atualização serve para conciliar cópias. As interações momentâneas,
+como uma abertura ou uma resposta, permanecem fora do estado depois que cumprem
+sua função na tela. Assim, a continuidade não produz por si só sessões, tempos
+de estudo ou comparações entre estudantes.
 
 ## Avançar e retomar
 
@@ -121,9 +123,11 @@ do estudo.
 ## Quem pode acessar
 
 Com conta, o estado de continuidade e **Rever** só pode ser lido pela própria
-pessoa. Sem conta, permanece localmente no dispositivo. Cada estudante também lê somente suas anotações. O proprietário
-recebe a caixa de entrada do curso, sem tempo de estudo, quantidade de respostas,
-respostas anteriores ou classificação individual de desempenho.
+pessoa. Sem conta, permanece localmente no dispositivo. Cada estudante também
+lê somente suas anotações. O proprietário recebe a caixa de entrada do curso,
+que contém os apontamentos enviados para triagem. Como tempo de estudo,
+respostas às atividades e classificações individuais ficam fora do estado, essa
+caixa não os expõe.
 
 Uma síntese da caixa de entrada ajuda a localizar alvos com registros abertos.
 Ela descreve a fila de trabalho e não mede estudantes, turmas, aprendizagem ou

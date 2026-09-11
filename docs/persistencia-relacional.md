@@ -1,12 +1,16 @@
 # Persistência relacional e continuidade local
 
-O AraLearn precisa manter um curso coerente quando diferentes interfaces leem e
-alteram seu conteúdo, quando duas abas estão abertas ou quando uma resposta de rede se
-perde. O [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html), sistema
-de banco de dados relacional, conserva o estado compartilhado e as permissões. No dispositivo, o
-[IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API), interface
-oferecida pelo navegador para armazenar dados estruturados, mantém a cópia necessária ao estudo,
-os rascunhos e as operações ainda não confirmadas.
+Um curso pode ser aberto pela interface, alterado por um cliente de IA e consultado em
+duas abas ao mesmo tempo. A rede também pode cair depois que o servidor salvou uma
+mudança, mas antes de devolver a resposta. A persistência do AraLearn precisa manter um
+único estado compartilhado sem perder o trabalho que ainda existe apenas no
+dispositivo.
+
+O [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html), sistema de banco
+de dados relacional, conserva o curso compartilhado e suas permissões. No dispositivo,
+o [IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API), interface
+do navegador para armazenar dados estruturados, mantém a cópia necessária ao estudo,
+os rascunhos e as operações que aguardam confirmação.
 
 A autorização continua no servidor; a cópia local oferece continuidade sem rede. O
 banco mantém o estado corrente e recibos temporários para recuperar operações, sem
@@ -33,9 +37,9 @@ ambos apresentados no [guia de Supabase](supabase.md).
 
 ## Modelo corrente do curso
 
-O [modelo didático](modelo-didatico.md) organiza o percurso em curso, módulo, lição,
-microssequência e unidade. No banco, cada elemento é um registro ligado ao elemento
-que o contém.
+O [modelo didático](modelo-didatico.md) organiza o percurso em vários níveis, do curso
+às unidades de estudo. No banco, cada elemento é um registro ligado ao elemento que o
+contém.
 
 `public.courses` contém identidade, proprietário, título, objetivo, revisão,
 visibilidade e política de acesso público a arquivos. Cada curso nasce privado. A
@@ -50,10 +54,10 @@ alterar a explicação posteriormente não reescreve essas unidades. As marcas d
 revisão humana também são separadas: registram a inspeção de cada explicação ou
 unidade e das respectivas fontes.
 
-O plano possui mapa curricular global, estado de aprovação, pré-requisitos, itens de
-escopo, repertório de unidades de análise, requisitos de evidência e partes. Cada
-parte referencia microssequências já existentes. Esses vínculos permitem preparar um
-lote sem convertê-lo em nível didático.
+O plano reúne o mapa curricular global e as informações que orientam sua produção. O
+[contrato do plano](aralearn-contract.md#curso-e-estrutura) descreve seus campos. Cada
+parte referencia microssequências já existentes, o que permite preparar um lote sem
+convertê-lo em nível didático.
 
 A composição de Estudo e a exportação preservam `scopeItemIds` quando esses vínculos
 de cobertura estão presentes na microssequência: são até 64 UUIDs, identificadores
@@ -71,15 +75,17 @@ de componentes possuem uma atribuição corrente por curso ou escopo permitido. 
 são flexíveis e não funcionam como limites de conteúdo. Remover uma atribuição local
 restaura herança. A linha anterior não permanece como estado de produto.
 
-Uma unidade pode guardar um registro das condições usadas na produção, chamado
-snapshot, e uma aplicação de desenho, que descreve como essas condições foram
-realizadas. O snapshot contém apenas parâmetros e itens pertinentes à sua
-microssequência; a aplicação registra ideias introduzidas, ideias estabelecidas
-usadas, formas explicativas, componentes e prática efetivamente usados. Uma correção
-focal preserva o snapshot histórico literalmente. A aplicação corrente é invalidada
-quando muda o conteúdo que a sustentava ou sua hierarquia; editar somente o título
-mantém o par. Analytics não atribui mapeamento instrucional corrente a uma unidade
-cuja aplicação foi invalidada.
+Uma unidade pode guardar as condições usadas na produção num registro chamado
+*snapshot*. Outro registro, a aplicação de desenho, descreve como essas condições se
+realizaram no conteúdo: ideias introduzidas ou já estabelecidas que foram usadas,
+formas explicativas, componentes e prática. O snapshot contém somente o recorte
+pertinente à microssequência, e uma correção focal o preserva literalmente como
+registro histórico.
+
+Se mudar o conteúdo ou a hierarquia que sustentava a aplicação, ela deixa de descrever
+o estado corrente; uma alteração apenas no título mantém a relação. Por isso, os
+[dados de autoria](analytics-instrucionais.md) não atribuem um mapeamento instrucional
+corrente a uma unidade cuja aplicação foi invalidada.
 
 ## Escritas concorrentes
 
@@ -144,11 +150,11 @@ passam pela mesma validação e apresentação antes de serem salvas. Somente o
 proprietário edita. Estudantes e visitantes não criam cursos ao tentar alterar
 conteúdo.
 
-Na autoria, o armazenamento local conserva a lista de cursos próprios, o cabeçalho,
-o planejamento, a hierarquia, páginas recentes de Conteúdo e a posição de retomada.
-Uma leitura desses dados sem confirmação remota é identificada como desatualizada e
-serve à consulta. Quando muda a revisão remota, os dados derivados da anterior são
-invalidados antes de nova leitura.
+Na autoria, o armazenamento local conserva a continuidade do trabalho. Ele parte da
+lista e do cabeçalho do curso, alcança seu planejamento e sua hierarquia e guarda as
+páginas recentes de Conteúdo e a posição de retomada. Sem confirmação remota, esses dados aparecem como uma cópia possivelmente
+desatualizada e servem à consulta. Quando muda a revisão do servidor, o aplicativo
+invalida o que foi derivado da anterior antes de fazer nova leitura.
 
 Depois da confirmação de uma edição manual ou assistida, o aplicativo guarda uma
 cópia fiel da unidade salva e recompõe o curso antes de substituir a leitura local.
@@ -164,10 +170,10 @@ manual. Se a cópia não corresponder ao recibo ou a leitura falhar, a edição 
 salva: o aplicativo informa a sincronização pendente e recupera a leitura, sem
 reenviar a gravação.
 
-Parâmetros, catálogos privados de fontes e áudios, caixa autoral de observações,
-revisão, correções, análise de autoria e gestão de acesso exigem o servidor corrente.
-Os bytes dos arquivos não integram essa réplica. Uma prévia na lista de cursos pode
-ser conhecida localmente sem que a composição já esteja disponível para estudo.
+Operações que dependem do estado compartilhado corrente — ajustar parâmetros, tratar
+observações ou gerir acesso, por exemplo — exigem o servidor. Os bytes dos arquivos
+também ficam fora dessa réplica. Assim, uma prévia pode aparecer na lista local de
+cursos antes que sua composição esteja disponível para estudo.
 
 ## Fontes e proveniência
 
@@ -235,10 +241,10 @@ permissões do curso.
 
 ## Analytics corrente
 
-Analytics deriva números da estrutura, do desenho aplicado, das fontes e das
-observações. A autoria observável usa parâmetros definidos e a origem corrente da
-criação e da última revisão das unidades de estudo. Não existe tabela de fatos de
-Analytics nem coleta de interação para alimentar o painel.
+O painel de Analytics é derivado sob demanda apenas do estado salvo. Sua fonte reúne a
+estrutura, o desenho aplicado, as fontes, as observações, os parâmetros definidos e a
+origem corrente da criação ou da última revisão das unidades. Dados de interação ficam
+fora dessa fonte.
 
 ## Estado pessoal
 
@@ -281,13 +287,13 @@ Migrações são arquivos SQL ordenados que reproduzem a evolução do esquema, 
 de tabelas, funções e permissões do banco. O código candidato usa apenas o contrato
 corrente; Git e releases recuperam código, não dados.
 
-Um arquivo de backup lógico (dump) do PostgreSQL inclui estado relacional e metadados
-de Storage, mas não os bytes. Backup de desastre precisa copiar também os objetos
-privados. O ensaio `npm run test:backup-restore:local` usa bancos descartáveis e dados
-sintéticos. Ele prepara uma versão anterior, produz e restaura um backup e aplica
-as migrações até o contrato corrente. A comparação confere estrutura, conteúdo,
-identidades, fontes e operações pendentes, além dos leitores atuais. Ao terminar,
-remove os bancos temporários.
+Um arquivo de backup lógico (dump) do PostgreSQL inclui o estado relacional e os
+metadados do Storage, mas os bytes precisam de uma cópia própria. O ensaio
+`npm run test:backup-restore:local` prepara uma versão anterior num banco descartável,
+restaura seu backup e aplica as migrações até o contrato corrente. Depois, compara a
+estrutura, as identidades e os dados úteis, como conteúdo, fontes e operações
+pendentes, com o que os leitores atuais esperam. Os bancos temporários são removidos ao
+final.
 
 Esse ensaio verifica o processo de atualização; a recuperação de um ambiente
 hospedado exige uma cópia de segurança dos seus próprios dados e arquivos. O
@@ -296,6 +302,47 @@ casos e as comparações executadas.
 
 O teste `npm run test:storage:lifecycle:local` complementa essa prova com bytes reais
 pela Storage API.
+
+## Identidade escolhida e visitante
+
+Uma pessoa precisa de um nome pelo qual possa ser encontrada sem transformar esse nome
+na identidade interna de todos os seus dados. `person_profiles.handle` guarda o
+identificador público escolhido; ele é único, usa o conjunto limitado de caracteres
+ASCII em minúsculas e fica separado do UUID estável. A migração deixa o campo vazio
+para contas existentes; a configuração inicial
+exige escolha antes da experiência autenticada. Nomes anteriores são preservados num
+arquivo relacional privado de migração, sem leitor usado pela aplicação em execução. O perfil v2 validado
+pode ser reaberto offline no cache da própria conta; erro de autenticação ou permissão
+invalida esse cache.
+
+O visitante usa `aralearn-course-v1-visitor`, separado dos bancos por conta. Progresso
+e marcas para rever ficam locais e não chamam operações remotas de estado pessoal. Leituras
+públicas usam projeções permitidas; nenhuma tabela privada ganha acesso anônimo.
+Entrar numa conta não associa silenciosamente os dados do visitante.
+
+## Sincronização e concorrência no dispositivo
+
+A escolha entre sincronização automática e manual precisa valer em todas as abas do
+mesmo dispositivo. Ela é guardada em `aralearn.ui.study-synchronization` e observada
+entre abas. No modo manual, listas, composição já aberta e filas de estudo
+usam a cópia local; o campo `explicit: true` identifica uma sincronização solicitada
+pela pessoa. Uma consulta de
+acesso separada continua sendo atualizada pela rede e retira cursos cuja revogação foi
+confirmada, sem substituir o conteúdo dos cursos autorizados. Quando essa consulta
+confirma acesso pela rede, o indicador deixa de reutilizar a marca antiga de
+desconexão. A revisão em cache, sua restrição de edição e as pendências permanecem; o
+evento `online` sozinho não confirma acesso ao serviço.
+
+Transações IndexedDB leem a revisão local atual antes de aplicar cada alteração.
+Conclusões independentes na mesma lição e marcas de unidades diferentes são reunidas.
+A requisição remota pendente conserva identidade e conteúdo do pedido até receber
+confirmação. Diferenças incompatíveis no mesmo dado permanecem como conflito local,
+com comparação e resolução explícita, preservando alterações disjuntas.
+
+A incorporação de estado visitante exige prévia e escolha dos cursos. O estado e o
+recibo da incorporação são gravados na mesma transação do banco da conta; o banco
+visitante permanece intacto. A união acrescenta conclusões e marcas para rever,
+preserva a posição da conta e não grava conteúdo do curso nem observações.
 
 ## Verificação
 
@@ -317,39 +364,3 @@ executar essas provas.
 
 Consulte [Supabase no AraLearn](supabase.md) para o ambiente e a segurança, e
 [Implantação](implantacao.md) para a ordem de promoção.
-
-## Identidade escolhida e visitante
-
-`person_profiles.handle` é único, normalizado em ASCII minúsculo e separado do UUID
-estável. A migração deixa o campo vazio para contas existentes; a configuração inicial
-exige escolha antes da experiência autenticada. Nomes anteriores são preservados num
-arquivo relacional privado de migração, sem leitor de runtime. O perfil v2 validado
-pode ser reaberto offline no cache da própria conta; erro de autenticação ou permissão
-invalida esse cache.
-
-O visitante usa `aralearn-course-v1-visitor`, separado dos bancos por conta. Progresso
-e marcas para rever ficam locais e não chamam endpoints de estado pessoal. Leituras
-públicas usam projeções permitidas; nenhuma tabela privada ganha acesso anônimo.
-Entrar numa conta não associa silenciosamente os dados do visitante.
-
-## Sincronização e concorrência no dispositivo
-
-A preferência `aralearn.ui.study-synchronization` pertence ao dispositivo e é
-observada entre abas. No modo manual, listas, composição já aberta e filas de estudo
-usam o cache; `explicit: true` distingue a sincronização solicitada. Uma consulta de
-acesso separada continua sendo atualizada pela rede e retira cursos cuja revogação foi
-confirmada, sem substituir o conteúdo dos cursos autorizados. Quando essa consulta
-confirma acesso pela rede, o indicador deixa de reutilizar a marca antiga de
-desconexão. A revisão em cache, sua restrição de edição e as pendências permanecem; o
-evento `online` sozinho não confirma acesso ao serviço.
-
-Transações IndexedDB leem a revisão local atual antes de aplicar cada alteração.
-Conclusões independentes na mesma lição e marcas de unidades diferentes são reunidas.
-A requisição remota pendente conserva identidade e conteúdo do pedido até receber
-confirmação. Diferenças incompatíveis no mesmo dado permanecem como conflito local,
-com comparação e resolução explícita, preservando alterações disjuntas.
-
-A incorporação de estado visitante exige prévia e escolha dos cursos. O estado e o
-recibo da incorporação são gravados na mesma transação do banco da conta; o banco
-visitante permanece intacto. A união acrescenta conclusões e marcas para rever,
-preserva a posição da conta e não grava conteúdo do curso nem observações.

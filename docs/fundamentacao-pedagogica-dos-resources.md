@@ -50,12 +50,12 @@ A **coerência** orienta retirar elementos sem função na tarefa; a
 para variar a aparência pode exigir trabalho de interpretação sem acrescentar
 uma relação útil.
 
-A admissão de um pacote registra o objeto preservado, a operação pretendida,
-a convenção adotada e a diferença em relação aos componentes próximos. Registra
-também contraindicações, quantidade máxima de elementos e casos complexos que
-exponham seus limites. A [auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md)
-aplica esses critérios e pode recomendar manter, restringir, fundir ou retirar
-um pacote.
+A admissão de um pacote registra por que aquela representação é necessária,
+qual operação atende e quais convenções preserva. Também a distingue dos
+componentes próximos e torna seus limites verificáveis por contraindicações,
+quantidades máximas e casos complexos. A [auditoria acadêmica dos
+componentes](auditoria-academica-dos-resources.md) aplica esses critérios e
+pode recomendar manter, restringir, fundir ou retirar um pacote.
 
 ## 2. Da tarefa à escolha do componente
 
@@ -72,9 +72,10 @@ reconstruir uma sequência; sua relação com o objetivo é desenvolvida no
 A autoria parte do objetivo, dos conhecimentos necessários e da resposta que
 permitirá examinar a tarefa. Consulta o catálogo para encontrar componentes
 compatíveis; depois examina o formato dos dados do candidato escolhido. Cada
-entrada descreve as relações que preserva, as operações que admite, o
-conhecimento necessário à leitura, as modalidades de resposta e as situações
-em que outra representação é preferível.
+entrada explica o que a representação preserva, que uso exige do estudante e
+que conhecimento é necessário para interpretá-la. Também relaciona as
+operações e modalidades de resposta admitidas e indica quando outra forma
+atende melhor à tarefa.
 
 Essa ordem relaciona a escolha à função da representação, conforme DeFT
 ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). A **prática de
@@ -136,13 +137,15 @@ de solicitar execução independente, sobretudo para novatos em condições
 específicas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples);
 [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)).
 
-Ao revisar o percurso, importa examinar se o estudante recebeu o problema,
-os símbolos, a direção de leitura e o significado das posições, linhas e
-rótulos. Um exemplo de inferência válida ajuda a mostrar o que se pode concluir.
+Ao revisar o percurso, importa examinar se o estudante consegue reconhecer o
+problema, interpretar os símbolos e acompanhar a direção de leitura. Um exemplo
+de inferência válida ajuda a mostrar como posições e rótulos participam do que
+se pode concluir.
 Em prática, o contexto pode ser mais rico porque os elementos já ensinados
-precisam permanecer disponíveis para a operação. A quantidade de elementos,
-por si só, não estabelece a dificuldade; a avaliação pode pedir ao estudante
-que leia, explique e aplique a representação.
+precisam permanecer disponíveis para a operação. A dificuldade depende também
+das relações e do conhecimento prévio, e não apenas da quantidade de elementos.
+A avaliação pode pedir ao estudante que leia, explique e aplique a
+representação.
 
 ## 4. Conteúdo autorado e disposição visual
 
@@ -153,12 +156,12 @@ significado de cada ligação. A posição das caixas e o caminho das linhas sã
 calculados pelo software. Essa separação permite conservar o conteúdo quando
 um rótulo fica mais longo ou a largura da tela muda.
 
-O **contrato de dados** define quais elementos, relações e valores a autoria
-pode fornecer. O pacote confere esses dados e produz a representação. A
-**geometria visual** compreende posições, rotas, escalas e dimensões. Ela usa
-mecanismos adequados ao objeto: Graphviz para estruturas de conexões, Vega para
-gráficos com escalas e séries, MathML para estrutura matemática e HTML para
-texto, tabelas e controles. Suas funções e referências estão no
+O **contrato de dados** define quais elementos e relações a autoria pode
+fornecer. O pacote confere esses dados e produz a representação. A **geometria
+visual** determina onde e com que dimensões cada elemento aparece. Ela usa
+mecanismos adequados ao objeto, como Graphviz para conexões, Vega para gráficos
+e MathML para estrutura matemática; texto e controles seguem os recursos da
+Web. Suas funções e referências estão no
 [capítulo técnico dos componentes](componentes-didaticos.md#8-mecanismos-de-apresentação).
 
 A escolha busca consistência e manutenção mais simples. Os princípios de
@@ -282,8 +285,9 @@ protegidos nessa operação; mudar a composição usa uma tarefa própria.
 
 Na inspeção de conteúdo, as respostas ficam desativadas e os campos editáveis
 recebem rótulos compreensíveis. A pessoa examina a proposta; a gravação confere
-o alvo e o escopo autorizados; a releitura mostra o resultado salvo. A conversa
-em linguagem natural não amplia por si só a permissão de escrita.
+o alvo e o escopo autorizados; a releitura mostra o resultado salvo. A permissão
+de escrita permanece limitada a esse escopo mesmo quando o pedido é feito em
+linguagem natural.
 
 Diretrizes de interação entre pessoas e IA recomendam comunicar capacidades e
 limites, permitir correção e manter controle humano
@@ -320,9 +324,10 @@ a adequação é examinada na tarefa e no dispositivo.
 As WCAG 2.2, diretrizes de acessibilidade para conteúdo da Web, orientam
 contraste, reorganização do conteúdo, foco visível, teclado e alvos acionáveis
 ([World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22)). Os testes
-dos pacotes incluem temas claro e escuro, telas móveis, ampliação, rótulos
-extensos e respostas preenchidas. Descrições textuais precisam conservar
-entidades, relações e ordem de leitura sem depender só de cor ou posição.
+dos pacotes variam condições que podem alterar a leitura, como tema, largura da
+tela e ampliação. Também usam conteúdo extenso e respostas preenchidas.
+Descrições textuais precisam conservar entidades, relações e ordem de leitura
+sem depender só de cor ou posição.
 
 Testes automatizados conseguem localizar parte dos defeitos. Uso com leitores
 de tela, diferentes capacidades motoras e dispositivos reais acrescenta
@@ -358,18 +363,19 @@ examinar erros de leitura e explicações dos estudantes.
 ## 10. Da fundamentação à avaliação
 
 A [auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md)
-reúne critérios por pacote: justificativa, convenção, casos válidos e inválidos,
-edição, prática, leitura acessível e limites. Ela permite examinar uma proposta
-ou revisar um componente instalado sem repetir o contrato inteiro nesta
-fundamentação. A [matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+reúne os critérios completos por pacote, desde sua justificativa e convenção até
+os testes de uso e seus limites. Ela permite examinar uma proposta ou revisar um
+componente instalado sem repetir o contrato inteiro nesta fundamentação. A
+[matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
 relaciona essas decisões a formas de avaliação.
 
 Cada pergunta exige uma evidência apropriada. Testes verificam se a mesma
 entrada produz a estrutura prevista, se as lacunas são independentes e se o
 conteúdo permanece visível nos casos executados. Especialistas confrontam a
 representação com as convenções do domínio. Tarefas com participantes examinam
-compreensão, esforço, retenção, transferência e qualidade da revisão. A aprovação
-em um desses exames não substitui os demais.
+compreensão e esforço, além de resultados como retenção, transferência e
+qualidade da revisão. Os três exames produzem resultados complementares e
+permanecem separados.
 
 <!-- referências locais: início -->
 

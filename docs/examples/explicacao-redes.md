@@ -1,6 +1,11 @@
 # Exemplos de explicação: fundamentos de redes e SNMP/RMON
 
-Estes exemplos sintéticos ilustram o [contrato de explicação e revisão humana](../explicacao-e-revisao-humana.md). São rascunhos didáticos, sem aprovação humana de conteúdo, materialização no aplicativo ou evidência de aprendizagem. Casos e números são inventados; não representam cursos reais.
+Estes exemplos sintéticos permitem inspecionar o
+[contrato de explicação e revisão humana](../explicacao-e-revisao-humana.md).
+Os casos e números foram criados para esse fim e permanecem como rascunhos
+didáticos. Uma revisão humana e uma eventual materialização no aplicativo ainda
+seriam etapas posteriores; portanto, os exemplos também não oferecem evidência
+de aprendizagem.
 
 Cada exemplo reúne uma microssequência, unidades substantivas, duas práticas e
 uma única base explicativa, acessível pelo comando **Explicação**. Quantidade de unidades, títulos, seções e extensão são decisões locais. Notas de autoria, aplicação e respostas esperadas ficam separadas do texto que será apresentado ao estudante; o gabarito não pertence ao apoio aberto durante a tentativa.
@@ -11,7 +16,11 @@ uma única base explicativa, acessível pelo comando **Explicação**. Quantidad
 
 **Objetivo:** diante de uma pequena situação de comunicação, distinguir o host participante, sua interface com a rede e o protocolo usado, justificando por que trocar uma interface não cria, por si só, outro host.
 
-**Pressupostos a desenvolver no apoio:** uma aplicação é um programa que realiza uma tarefa; comunicar envolve informação enviada e recebida; uma conexão pode usar cabo ou rádio. Não se exige conhecer endereços, camadas, roteamento ou nomes de protocolos antes deste recorte. A distinção entre interface física e lógica será localizada como limite, sem virar requisito de avaliação aqui.
+**Pressupostos a desenvolver no apoio:** uma aplicação é um programa que realiza
+uma tarefa; comunicar envolve informação enviada e recebida; uma conexão pode
+usar cabo ou rádio. O recorte antecede o estudo detalhado de endereçamento e
+roteamento. A distinção entre interface física e lógica aparece apenas para
+delimitar o exemplo e fica fora da avaliação desta etapa.
 
 **Proposta da explicação:** desenvolver a relação participante–interface–regra em uma situação concreta; explicitar o que o desenho representa; contrastar uma máquina com duas interfaces e duas máquinas com uma interface cada. A fonte prevista é a RFC 1122, §§1.1.1, 1.1.3 e 1.3.3. RFC (*Request for Comments*) é uma série de documentos técnicos sobre a Internet, que inclui padrões e outras propostas; o número identifica o documento consultado. Seu papel é técnico/conceitual, não evidência de avaliação nem fonte de edital.
 
@@ -102,7 +111,15 @@ As câmeras A e B são máquinas distintas. Cada uma possui apenas uma interface
 | F-A2 — Interface como conexão do host | F-U1 | F-U2 retoma por contraste; ambas as práticas mobilizam | Distinguir alteração da conexão e identidade do participante |
 | F-A3 — Protocolo como regra da comunicação | F-U2 | Ambas as práticas mobilizam | Separar compartilhamento da regra e identidade da máquina |
 
-F-U1 e F-U2 já contêm definição, exemplo e contraste substantivos. F-X desenvolve pressupostos e relações; não recebe introduções curriculares ou oportunidades creditadas por ter sido aberto. Não há ideia nova declarada nas práticas. A segunda prática muda de **um host com várias interfaces** para **vários hosts com uma interface cada**; não é somente troca de nomes ou reordenação de alternativas. F-P1 e F-P2 vinculam-se ao mesmo F-E1 com identidades de oportunidade distintas. A avaliação declarada continua limitada à seleção com razões oferecidas, sem inferir produção autônoma de uma justificativa.
+F-U1 e F-U2 contêm definição, exemplo e contraste substantivos. F-X desenvolve
+os pressupostos e as relações que podem ser consultados durante o percurso; sua
+abertura não acrescenta uma introdução curricular nem uma oportunidade de
+prática. As práticas usam apenas o que já foi ensinado. A segunda muda de **um
+host com várias interfaces** para **vários hosts com uma interface cada**, uma
+variação que altera a relação analisada em vez de apenas trocar nomes ou ordenar
+as alternativas. F-P1 e F-P2 vinculam-se ao mesmo F-E1 com identidades de
+oportunidade distintas. A avaliação observa a escolha entre razões oferecidas;
+produzir uma justificativa sem essas opções exigiria outra atividade.
 
 Componentes do catálogo corrente: prosa em `aralearn.resource.paragraph@1.0.0`; comparação em `aralearn.resource.table@1.0.0`; pertencimento em `aralearn.resource.tree@1.0.0`, variante `hierarchy`; respostas em `aralearn.response.choice@1.0.0`. A árvore se justifica pela relação pai–filho do recorte; não substitui uma topologia quando a tarefa for seguir enlaces entre equipamentos. Configuração do desenho prevista, com o componente já instalado:
 
@@ -124,9 +141,17 @@ Componentes do catálogo corrente: prosa em `aralearn.resource.paragraph@1.0.0`;
 
 **Objetivo:** escolher uma forma de observação compatível com uma pergunta operacional, identificando quem consulta, quem responde, qual informação é nomeada e se a pergunta exige estado atual ou histórico previamente coletado.
 
-**Pressupostos:** host, interface e protocolo conforme o exemplo anterior; diferença entre “agora” e “durante um intervalo”. A explicação recupera essas relações. Não se exige conhecer a sintaxe de comandos de fornecedor, programar uma MIB ou configurar segurança antes deste recorte.
+**Pressupostos:** host, interface e protocolo conforme o exemplo anterior;
+diferença entre “agora” e “durante um intervalo”. A explicação recupera essas
+relações. Sintaxe de comandos de fornecedor, programação de MIB e configuração
+de segurança pertencem a etapas operacionais posteriores.
 
-**Proposta da explicação:** conectar a pergunta operacional ao diálogo entre gerente e agente; desenvolver a diferença entre definição de objeto, instância e valor; resolver uma consulta de leitura; contrastar uma resposta atual com registros de intervalos RMON. As fontes previstas são RFC 3411, RFC 3416 e RFC 2819; RFC 2578 e RFC 2863 sustentam os detalhes indispensáveis de identificação e interface. Sem alegação de cobertura de concurso.
+**Proposta da explicação:** conectar a pergunta operacional ao diálogo entre
+gerente e agente; desenvolver a diferença entre objeto, instância e valor; e
+contrastar uma resposta atual com registros de intervalos RMON por meio de um
+caso resolvido. As fontes previstas são RFC 3411, RFC 3416 e RFC 2819; RFC 2578
+e RFC 2863 sustentam os detalhes indispensáveis de identificação e interface.
+O recorte tem finalidade introdutória e técnica.
 
 **Requisito G-E1:** escolher uma interpretação/plano que associe corretamente papéis, instância consultada e natureza temporal da evidência. Escolher o nome de uma sigla isolada não atende ao requisito.
 
@@ -223,7 +248,12 @@ O monitor M permaneceu ativo enquanto a estação de gerência ficou sem contato
 | G-A3 — Consulta Get e alcance de sua resposta | G-U2 | G-U3 retoma por contraste; ambas as práticas mobilizam | Distinguir obter um valor de reconstruir um intervalo |
 | G-A4 — Coleta e recuperação de histórico RMON | G-U3 | Ambas as práticas mobilizam | Exigir observação anterior disponível para tratar o passado |
 
-As identidades representam relações instrucionais delimitadas pelo objetivo. Não são uma contagem de siglas nem componentes de conhecimento empiricamente validados. Se a inspeção mostrar que G-A2 reúne relações demais para o público, a decisão é reorganizar a introdução e conservar o objetivo, não chamar várias ideias de uma só para passar no teto.
+As identidades representam relações instrucionais delimitadas pelo objetivo. A
+contagem acompanha essas decisões de planejamento, enquanto a validação do que
+o estudante aprende exigiria outro método. Se a inspeção mostrar que G-A2 reúne
+relações demais para o público, a introdução precisa ser reorganizada com o
+mesmo objetivo; agrupar várias ideias sob um só nome apenas para atender ao teto
+falsearia o registro.
 
 G-U1, G-U2 e G-U3 trazem definição, exemplo e contraste. O apoio desenvolve a leitura seletiva e o caso resolvido; não concentra uma relação obrigatória ausente do percurso. F-A1 a F-A3 são pressupostos usados neste segundo exemplo, com recuperação no apoio, sem nova introdução curricular. As práticas não introduzem conceitos novos: G-P1 interpreta uma conclusão indevida, G-P2 seleciona um plano para duas perguntas. Ambas atendem ao mesmo G-E1 e preservam sua operação-alvo; variam caso/dados e característica da tarefa. Não contam acesso ao apoio como resposta ou oportunidade adicional.
 
@@ -231,7 +261,11 @@ Componentes previstos: `paragraph`, `table` e `response.choice`, todos na versã
 
 ## Parâmetros e composição das práticas
 
-As atribuições abaixo são **propostas contextuais deste rascunho**, no escopo da microssequência. Não são defaults científicos, aprovação humana nem atribuições gravadas no servidor. Preferências explícitas da pessoa autora prevaleceriam segundo a herança já existente. O catálogo de parâmetros permanece o vigente; desenho aplicado e fatos de uso conservam o mecanismo atual.
+As atribuições abaixo são **propostas contextuais deste rascunho**, no escopo da
+microssequência. Elas só se tornariam escolhas aplicadas depois da decisão da
+pessoa autora e da gravação no servidor. O catálogo de parâmetros e suas regras
+de herança permanecem os vigentes; estas propostas não estabelecem valores
+cientificamente universais.
 
 | Parâmetro humano existente | Fundamentos | SNMP/RMON | Efeito e limite a inspecionar |
 |---|---|---|---|
@@ -260,4 +294,23 @@ As chamadas ¹–⁶ marcam vínculos previstos. Em uma futura versão de teste 
 | ⁵ | K. McCloghrie e F. Kastenholz, [RFC 2863 — The Interfaces Group MIB](https://www.rfc-editor.org/rfc/rfc2863.html#section-6), junho de 2000, §6, definições `ifIndex`, `ifDescr`, `ifAdminStatus` e `ifOperStatus` | Semântica de índice e estado operacional. Leitura focal das definições; não associação dos índices a equipamento real nem prova de funcionamento da aplicação. |
 | ⁶ | S. Waldbusser, [RFC 2819 — Remote Network Monitoring Management Information Base](https://www.rfc-editor.org/rfc/rfc2819.html#section-2.1), maio de 2000, §§2–2.1, 2.3–2.3.3 e §5, definições `historyControlIndex`, `historyControlDataSource`, `historyControlBucketsGranted`, `historyControlInterval` | Coleta local, histórico, amostragem e retenção. Leitura focal. Não se afirma que todos os grupos estejam implementados ou que o monitor enxergue tráfego de toda a rede. Intervalos de um minuto são dados do caso, não recomendação operacional universal. |
 
-Também foram consultadas as páginas oficiais **About this RFC**. [RFC 1122](https://www.rfc-editor.org/info/rfc1122/) é listada como Internet Standard com atualizações posteriores, incluindo RFC 9293 para TCP; o exemplo limita-se à distinção conceitual lida e não reproduz suas antigas recomendações operacionais. [RFC 3411](https://www.rfc-editor.org/info/rfc3411/) registra atualizações pelas RFCs 5343 e 5590, relativas a descoberta de Context EngineID e subsistema de transporte; seus mecanismos não são ensinados aqui. As páginas de [RFC 3416](https://www.rfc-editor.org/info/rfc3416/) e [RFC 2819](https://www.rfc-editor.org/info/rfc2819/) as apresentam como Internet Standards e registram que substituem, respectivamente, RFC 1905 e RFC 1757. Não foi realizada varredura integral de erratas ou de toda a cadeia de atualizações. As definições adicionais de SMIv2 e IF-MIB foram consultadas para o recorte; uma futura prática operacional em equipamento requer conferir sua documentação e suporte efetivo.
+As páginas oficiais **About this RFC** informam o estado de cada fonte. A
+[RFC 1122](https://www.rfc-editor.org/info/rfc1122/) aparece como Internet
+Standard e recebeu atualizações posteriores, entre elas a RFC 9293 para TCP. As
+páginas da [RFC 3416](https://www.rfc-editor.org/info/rfc3416/) e da
+[RFC 2819](https://www.rfc-editor.org/info/rfc2819/) também as apresentam como
+Internet Standards e registram que substituem, respectivamente, a RFC 1905 e a
+RFC 1757.
+
+O exemplo usa somente a distinção conceitual localizada na RFC 1122, preservando
+fora do recorte suas antigas recomendações operacionais. A
+[RFC 3411](https://www.rfc-editor.org/info/rfc3411/) registra atualizações pelas
+RFCs 5343 e 5590, relativas à descoberta de Context EngineID e ao subsistema de
+transporte; esses mecanismos também ficam fora do conteúdo ensinado aqui. As
+definições adicionais de SMIv2 e IF-MIB foram consultadas apenas no recorte
+indicado na tabela.
+
+Uma revisão futura pode percorrer integralmente as erratas e toda a cadeia de
+atualizações. Antes de transformar o exemplo em prática sobre equipamento real,
+a autoria precisa conferir também a documentação e o suporte efetivo desse
+equipamento.

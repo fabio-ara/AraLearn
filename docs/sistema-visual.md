@@ -1,9 +1,9 @@
 # Sistema visual do AraLearn
 
-O sistema visual organiza conteúdo, ações e estados para que a pessoa reconheça onde
-está, o que pode fazer e o que mudou. O conteúdo didático ocupa o primeiro plano. Cor,
-movimento e elementos decorativos entram apenas quando ajudam a perceber estrutura,
-seleção, origem ou estado.
+O sistema visual precisa ajudar a pessoa a responder três perguntas durante o uso:
+onde estou, o que posso fazer e o que acabou de mudar. O conteúdo didático ocupa o
+primeiro plano; cor, movimento e elementos decorativos servem para tornar estrutura,
+seleção, origem e estado perceptíveis.
 
 A mesma linguagem atende Estudo e Autoria. As duas superfícies preservam a identidade
 do curso, mas apresentam controles diferentes porque estudar, planejar, inspecionar e
@@ -17,12 +17,12 @@ ambiente em que foram observados.
 ## Fundamentos
 
 As regras de aparência ficam em folhas de estilo
-[CSS](https://developer.mozilla.org/pt-BR/docs/Web/CSS): elas definem, por exemplo,
-cor, espaço e tamanho dos elementos da página. O AraLearn usa componentes próprios e
-variáveis de estilo nomeadas por função, também chamadas variáveis semânticas.
-Cada variável recebe o nome de sua função, como `action-primary`, `text-secondary` ou
-`status-danger`. O componente pede a função visual de que precisa, enquanto os modos
-claro e escuro fornecem o valor correspondente.
+[CSS](https://developer.mozilla.org/pt-BR/docs/Web/CSS), a linguagem que define a
+apresentação dos elementos da página. Em vez de cada componente repetir cores e
+espaços literais, o AraLearn usa variáveis nomeadas pela função que desempenham. Essas
+variáveis semânticas têm nomes como `action-primary`, `text-secondary` e
+`status-danger`. O componente pede a função visual; os modos claro e escuro fornecem o
+valor adequado a ela.
 
 Essa organização evita que uma cor adequada a uma tela se torne ilegível em outra.
 Também permite corrigir contraste e coerência numa única origem, sem substituições
@@ -48,7 +48,9 @@ biblioteca visual ou um modelo de navegação completo.
 
 ## Variáveis de estilo e modos de cor
 
-As variáveis de `public/styles-tokens.css` se distribuem em três níveis:
+Uma mudança de tema não deve exigir a edição de cada componente. Para separar os
+valores básicos de suas funções na interface, as variáveis de
+`public/styles-tokens.css` se distribuem em três níveis:
 
 - opções primitivas de cor, espaço, raio, tipografia e movimento;
 - papéis semânticos de superfície, texto, borda, ação, estado, estudo e dados;
@@ -61,7 +63,8 @@ precisa de verificação de contraste, pois a presença de uma variável não ga
 legibilidade por si só.
 
 O seletor oferece **Sistema**, **Claro** e **Escuro**. A opção Sistema acompanha
-`prefers-color-scheme`; uma escolha explícita prevalece e fica no dispositivo.
+`prefers-color-scheme`, a preferência de cor informada pelo sistema operacional; uma
+escolha explícita prevalece e fica no dispositivo.
 `data-theme-preference` conserva a preferência, e `data-color-mode` registra o modo
 resolvido. A troca ocorre sem recarregar o curso ou consultar a rede.
 
@@ -165,19 +168,20 @@ concede Estudo e não entra na Autoria da pessoa favorecida. Uma cópia explicit
 criada pelo proprietário aparece na sua Autoria como curso independente. Semelhança
 visual entre cartões de navegação não comunica permissão.
 
-Sua entrada usa um único seletor pesquisável de curso (combobox) e uma única prévia
-detalhada do curso selecionado. A prévia reúne objetivo, relação de acesso, progresso,
-disponibilidade local e a ação estável **Abrir**, que leva à lista de módulos. Ela não
-se multiplica numa grade de cartões, não pula a hierarquia por causa de uma posição
-salva e não mostra UUID, hash ou revisão técnica. A composição permanece centralizada
-e limitada a 430 px também em 1280 px.
+Na entrada, um único seletor pesquisável, tecnicamente um *combobox*, escolhe o curso
+mostrado numa prévia detalhada. Nela, objetivo e relação de acesso identificam o curso;
+progresso e disponibilidade local mostram como retomá-lo. A ação estável **Abrir**
+inicia a navegação pela lista de módulos; uma posição salva aparece como informação para a retomada. UUID,
+hash e revisão técnica permanecem no diagnóstico. A composição usa uma coluna
+centralizada de até 430 px, inclusive numa tela de 1280 px.
 
 ## Sequência curricular em Conteúdo
 
 Em Conteúdo, a inspeção percorre uma sequência curricular com limites explícitos. Ela
 reutiliza o mecanismo de renderização de Estudo com respostas inertes e mostra
 posição, hierarquia e limites do recorte. O autor pode restringir a sequência por
-curso, parte, módulo, lição ou microssequência.
+qualquer trecho da hierarquia curricular, do curso à microssequência, ou por uma parte
+de autoria.
 
 A [explicação](explicacao-e-revisao-humana.md), texto-base da microssequência, abre
 em uma sobreposição para consulta e inspeção junto às fontes. Ela conserva sua
@@ -236,10 +240,12 @@ esquerda (RTL).
 
 O [inventário de papéis do
 catálogo](componentes-didaticos.md#inventário-tipográfico-do-catálogo) relaciona os 38
-pacotes, seus renderers e extremos pertinentes. Os testes
+pacotes, os módulos que os apresentam na tela — seus *renderers* — e os casos extremos
+pertinentes. Os testes
 [tipográficos](../tests/runtime/resource-typography.test.js) conferem tokens,
 contraste das combinações declaradas e preservação textual. Eles não medem métricas de
-fontes instaladas, reflow ou legibilidade dos pixels: 320 CSS px, ampliação de 200%,
+fontes instaladas, reorganização do texto (*reflow*) ou legibilidade dos pixels: 320
+CSS px, ampliação de 200%,
 larguras móveis, temas e interação exigem a inspeção real coordenada no Chrome. SVGs
 com geometria calculada mantêm a família e o tamanho usados pelo motor; CSS não troca
 sua métrica depois do cálculo.
@@ -261,9 +267,9 @@ deslocam esses controles. Confirmações de sucesso são fecháveis e breves; er
 respostas incertas mantêm um sinal no menu, onde a explicação e a ação de recuperação
 podem ser abertas sem encobrir permanentemente o rodapé.
 
-A edição aberta pelo Conteúdo conserva o cabeçalho e a rota da Autoria nos níveis
-curso, módulo, lição, microssequência e unidade. O motor de edição é compartilhado com
-o Estudo, mas essa entrada retorna à inspeção ao salvar ou cancelar, preservando a
+A edição aberta pelo Conteúdo conserva o cabeçalho e a rota da Autoria em toda a
+hierarquia, do curso à unidade de estudo. O motor de edição é compartilhado com o
+Estudo, mas essa entrada retorna à inspeção ao salvar ou cancelar, preservando a
 posição e o foco de origem. Voltar com um rascunho ou uma gravação incerta exige
 decidir se ele deve ser mantido ou descartado; descartar a recuperação não desfaz
 dados já salvos. Essa edição não altera o percurso de Estudo.
@@ -275,7 +281,7 @@ menu; falhas de leitura e criação permanecem acessíveis pelo indicador, sem d
 busca ou encobrir os cards. A recuperação de uma criação incerta conserva o pedido
 original até sua confirmação ou descarte explícito.
 
-Fontes mantém o catálogo como área principal. A fonte selecionada abre uma folha de
+Fontes mantêm o catálogo como área principal. A fonte selecionada abre uma folha de
 altura estável, com título curto e dados completos em detalhes revelados. Referência,
 arquivos, âncoras e observações conservam seus dados e ações; fechar retorna ao foco
 de origem. Pessoas revela acesso e cópia em ajustes, mantendo ações individuais por
@@ -286,7 +292,10 @@ sobreposição funcional. Metadados podem ser menores que a prosa, mas continuam
 legíveis com ampliação de texto. Controles principais preservam área interativa de
 pelo menos 44 por 44 px. Controles repetidos dentro de uma prática podem usar 28 por
 28 px quando a densidade do objeto exige. Esse tamanho supera o mínimo de 24 por 24 px
-do nível AA das [diretrizes WCAG 2.2](https://www.w3.org/TR/WCAG22/#target-size-minimum); teclado, foco e separação continuam necessários.
+do nível AA das
+[diretrizes WCAG 2.2](https://www.w3.org/TR/WCAG22/#target-size-minimum); teclado, foco
+e separação
+continuam necessários.
 
 Fórmulas, diagramas e notações podem exigir métricas próprias. O tamanho óptico deve
 acompanhar o texto ao redor, e a ampliação precisa preservar em conjunto o rótulo e a
@@ -294,19 +303,20 @@ geometria calculada.
 
 ## Ícones, rótulos e foco
 
-Ícones funcionais são SVG monocromáticos numa grade comum e usam `currentColor`. Um
-ícone sem texto visível recebe nome acessível. O estado é comunicado por rótulo, forma
-e cor; a troca de glifo isolada não basta.
+Ícones funcionais são imagens vetoriais SVG monocromáticas numa grade comum. O valor
+CSS `currentColor` faz com que herdem a cor do controle em que aparecem. Um ícone sem
+texto visível recebe nome acessível. O estado é comunicado por rótulo, forma e cor; a
+troca do desenho isolado não basta.
 
 Nas superfícies principais, os controles usam ícones com nomes acessíveis. Menus e
 ajustes revelados admitem rótulos. Títulos não recebem sufixos como `· Seu Curso` para
 expressar propriedade; iconografia e estado acessível fazem essa distinção, com cor
 apenas como reforço.
 
-Rótulos descrevem a tarefa. Termos como JSON, versão de estado, identificador de
-pacote ou trava de concorrência aparecem apenas em diagnóstico técnico. A interface
-comum fala em curso, parte, unidade de estudo, componente didático, fonte, observação,
-achado e correção.
+Rótulos descrevem a tarefa. Termos como JSON, versão de estado ou identificador de
+pacote aparecem apenas em diagnóstico técnico. A interface comum usa palavras do
+trabalho, como curso, unidade de estudo e fonte. O
+[vocabulário controlado](vocabulario-controlado.md) reúne os nomes canônicos.
 
 Contorno, cursor, foco e aparência precisam corresponder à ação disponível. O foco
 visível pertence ao controle ativo. Texto sem ação não recebe aparência de botão, e um
@@ -314,9 +324,9 @@ elemento editável não transfere essa aparência para toda a unidade.
 
 ## Componentes didáticos e representações
 
-Os pacotes de componentes usam as variáveis `resource-*` para superfície, texto,
-borda, grade, eixo, estrutura, lacuna e retorno. Séries de dados usam `data-series-*`
-com valores próprios nos modos claro e escuro.
+Cada [pacote de componente](componentes-didaticos.md) implementa uma representação ou
+forma de resposta e usa variáveis `resource-*` para seus papéis visuais. Gráficos usam
+também `data-series-*` para distinguir séries de dados nos modos claro e escuro.
 
 SVGs usam classes, variáveis e `currentColor` quando isso preserva a semântica. Séries
 se distinguem também por rótulo, forma, traço ou padrão. Eixos, unidades e legendas
@@ -356,7 +366,8 @@ somente o interior do cartão rola quando necessário. Numa lacuna preenchível,
 pertence à lacuna ativa, e limpar uma resposta não altera as lacunas vizinhas.
 
 Movimento preserva continuidade espacial ou explica mudança de estado. A preferência
-`prefers-reduced-motion` reduz transições e elimina movimento decorativo contínuo.
+`prefers-reduced-motion`, configurada no sistema para reduzir animações, encurta
+transições e elimina movimento decorativo contínuo.
 Navegar, voltar, confirmar e cancelar não aguardam uma animação.
 
 ## Área segura, sobreposições e mensagens
@@ -389,7 +400,8 @@ duplicada quando o AraLearn relê o estado remoto.
 
 ## Acessibilidade e verificação
 
-As diretrizes de acessibilidade para conteúdo web, [WCAG 2.2](https://www.w3.org/TR/WCAG22/), são a referência técnica. A validação
+As diretrizes de acessibilidade para conteúdo web,
+[WCAG 2.2](https://www.w3.org/TR/WCAG22/), são a referência técnica. A validação
 abrange contraste textual e não textual, ampliação de 200%, reorganização do conteúdo,
 teclado, toque, nome, papel e estado acessíveis, alternativa a gestos e preferência de
 movimento reduzido.
@@ -411,7 +423,8 @@ Resultados e casos condicionados ficam nos checks da revisão executada. A compr
 por pessoas leigas depende de avaliação com participantes.
 
 A verificação de Autoria compara o estado anterior e o posterior às alterações no
-planejamento, nos parâmetros, nas fontes e nas declarações de revisão. Seletores e ações conservam dimensões,
+planejamento, nos parâmetros, nas fontes e nas declarações de revisão. Seletores e ações
+conservam dimensões,
 posição e foco; a assistência tem nome acessível contextual e dica de uso. Depois
 da publicação, uma rodada no Chrome confere a versão efetivamente disponível.
 

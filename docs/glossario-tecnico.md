@@ -12,17 +12,20 @@ A história de mudanças permanece no repositório e permite recuperar versões
 anteriores.
 
 **Interface cliente (`frontend`).** Código executado no navegador ou no WebView
-Android. Inclui Estudo, Autoria, componentes didáticos e persistência local.
+Android. Apresenta as superfícies de Estudo e Autoria e coordena os componentes
+didáticos com o estado mantido no dispositivo.
 
 **WebView.** Componente Android que abre e executa uma interface web dentro do
 aplicativo instalado. O AraLearn empacota nele os mesmos arquivos usados pelo site;
 consulte o [aplicativo Android](../android/README.md).
 
 **Serviço remoto (`backend`).** Funções que autenticam, autorizam, validam e persistem
-operações. O AraLearn usa PostgreSQL, Auth, Storage e Edge Functions do Supabase.
+operações. Na instalação corrente, o PostgreSQL conserva os dados e serviços do
+Supabase cuidam da identidade, dos arquivos e das funções executadas na borda.
 
-**Domínio.** Regras do produto independentes da aparência da tela, como composição,
-resolução de parâmetros, fontes, observações e Analytics.
+**Domínio.** Regras do produto independentes da aparência da tela. Elas organizam
+as relações do curso e as decisões de autoria que interface e serviços precisam
+interpretar da mesma forma.
 
 **Contrato fechado.** Estrutura que recusa campos e valores não declarados. Evita
 interpretações diferentes entre navegador, Edge Function e banco.
@@ -47,8 +50,8 @@ a conferir a integridade de PDFs e áudios.
 
 **Esquema (`schema`).** Em contratos de dados, descrição dos campos, tipos e valores
 aceitos. No PostgreSQL, também designa um espaço que agrupa tabelas e funções, como
-`public` e `private`. A validade estrutural do conteúdo não demonstra correção factual
-ou qualidade pedagógica.
+`public` e `private`. A validade estrutural confirma o formato; a correção factual e a
+qualidade pedagógica são examinadas no conteúdo.
 
 **Fonte canônica.** Registro ou definição que os demais componentes consultam
 como referência para interpretar um dado ou uma regra.
@@ -56,17 +59,18 @@ como referência para interpretar um dado ou uma regra.
 ## Curso e composição
 
 **Curso (`course`).** Objeto que reúne o conteúdo e as relações mantidas pela
-interface, pelo MCP e por Actions. Possui proprietário, título, objetivo, revisão e
-relações próprias para plano, composição, configuração, fontes e observações.
+interface, pelo MCP e por Actions. Sua identidade e propriedade delimitam o objeto;
+o plano organiza o percurso; a composição guarda o conteúdo; os demais registros
+relacionam esse conteúdo à configuração, às fontes e às observações.
 
 **Revisão do curso (`revision`).** Número inteiro que aumenta quando o curso é
 alterado. Ao comparar a revisão que leu com a atual, uma operação detecta mudanças
 feitas nesse intervalo. É um controle técnico, distinto da declaração humana de
 revisão do conteúdo.
 
-**Composição didática.** Estrutura corrente de curso, módulo, lição, microssequência
-didática e unidade de estudo. Um tópico pode classificar conteúdo dentro da lição, mas
-não acrescenta um nível ao percurso principal.
+**Composição didática.** Estrutura curricular corrente, organizada em níveis que vão
+do curso à unidade de estudo. Um tópico pode classificar conteúdo dentro da lição,
+mas não acrescenta um nível ao percurso principal.
 
 **Unidade de estudo (`StudyUnit`, `study_unit`).** Etapa salva do percurso, com
 posição e endereço próprios. Pode apresentar explicações, representações, atividades e
@@ -94,19 +98,19 @@ compartilhado não cria cópia automaticamente. Consulte
 
 ## Planejamento e produção
 
-**Plano instrucional vivo.** Planejamento revisável com público, pré-requisitos,
-escopo, mapa curricular completo, repertório de unidades de análise, requisitos de
-evidência e partes operacionais. O mapa pode ser rascunho ou aprovado sem materializar
-conteúdo.
+**Plano instrucional vivo.** Planejamento revisável que reúne a finalidade e as
+condições de entrada do curso, seu mapa curricular e os registros que orientam
+evidência, análise e produção. O mapa pode ser rascunho ou aprovado antes da
+produção do conteúdo.
 
 **Parte de autoria.** Conjunto de trabalho que reúne uma ou mais microssequências
 já existentes no mapa para planejar e produzir seu conteúdo. Partes podem ser
 reunidas em um lote de produção. Esses agrupamentos podem ser redimensionados sem
 mudar a hierarquia do currículo.
 
-**Unidade de análise (`instructional_analysis_unit`).** Ideia, relação, condição,
-procedimento ou operação que vale acompanhar no repertório do percurso. Pode ser
-introduzida, usada depois de estabelecida ou retomada.
+**Unidade de análise (`instructional_analysis_unit`).** Recorte de conhecimento ou de
+ação que vale acompanhar no repertório do percurso. Pode ser introduzido, usado depois
+de estabelecido ou retomado.
 
 **Requisito de evidência.** Operação e condições que uma atividade solicita para
 examinar um objetivo de aprendizagem. Se o objetivo é comparar duas soluções, por
@@ -127,14 +131,15 @@ permanece equivalente e muda apenas a distribuição pelas unidades.
 ## Configuração autoral
 
 **Parâmetro de autoria.** Decisão configurável que orienta explicações, prática,
-leitura e estilo, conversa ou produção. O [catálogo de
-parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente) separa conteúdo e prática de alvos editoriais e
-cadência de trabalho. Teto de novidade, formas explicativas e oportunidades de prática
-são condições de desenho, não medidas de aprendizagem.
+o desenho do conteúdo ou a organização do trabalho de autoria. O [catálogo de
+parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente) desenvolve essas
+duas funções. Teto de novidade, formas explicativas e oportunidades de prática são
+condições de desenho, e não medidas de aprendizagem.
 
 **Alvo editorial quantitativo.** Intenção flexível de palavras por resposta de autoria
-ou por unidade de estudo. Não é mínimo nem máximo, não mede qualidade e não autoriza
-ocultar decisões, comprimir conteúdo ou atomizar unidades.
+ou por unidade de estudo. Serve para planejar a extensão; a necessidade do conteúdo
+determina o tamanho final. Sua aplicação preserva as decisões explícitas e a
+unidade didática do conteúdo; a qualidade é examinada por outros critérios.
 
 **Configuração efetiva.** Orientação que resulta da definição local e da herança de
 um escopo mais amplo. Pode fixar um valor ou manter a escolha automática ainda sem
@@ -154,18 +159,20 @@ Consulte a [origem e a prioridade das escolhas](autoria-contextual.md#parâmetro
 
 **Direção editorial.** Orientação qualitativa de extensão, estilo, títulos ou
 organização, separada dos parâmetros tipados e dos alvos editoriais quantitativos.
-Nunca elimina novidade necessária; pode levar à criação de mais unidades de estudo.
+Preserva a novidade necessária e pode levar à criação de mais unidades de estudo.
 
 **Política de componentes.** Disponibilidade, preferência ou restrição corrente de
-pacotes didáticos. Preferência não concede permissão e não cria quota de variedade.
+pacotes didáticos. A política ordena preferências entre componentes permitidos;
+permissões e variedade têm controles próprios.
 
 ## Componentes didáticos
 
 **Componente didático.** Capacidade modular que apresenta uma representação, coleta
 resposta ou oferece retorno dentro de uma unidade de estudo.
 
-**Pacote de componente (`component package`).** Módulo versionado que reúne manifesto,
-schema, normalização, renderização, capacidades e exemplos.
+**Pacote de componente (`component package`).** Módulo versionado cujo manifesto o
+identifica. O esquema e a normalização conferem os dados; a renderização os apresenta,
+acompanhada das capacidades e dos exemplos documentados.
 
 **Biblioteca de componentes.** Índice gerado dos manifestos e consultado sob demanda
 quando a função instrucional não determina claramente a representação.
@@ -195,7 +202,8 @@ indicar falha nessa etapa.
 
 **[IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API).** API
 do navegador para armazenar e consultar dados estruturados em transações. No AraLearn,
-guarda sessão, páginas, documentos compostos, estado pessoal e filas de observações.
+guarda a sessão e as páginas de navegação, os documentos recompostos dos cursos e o
+estado pessoal, incluindo as filas de observações.
 Uma transação confirma todas as suas alterações juntas ou as desfaz em caso de falha.
 
 **Cache.** Cópia usada para evitar uma nova leitura ou cálculo e reduzir a espera.
@@ -282,8 +290,8 @@ AraLearn, funções SQL mantêm próximas dos dados as regras de gravação e ac
 
 **[PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html).** Sistema
 gerenciador de banco de dados relacional. No AraLearn, é a autoridade remota para
-curso, composição, plano, configuração, acesso, estado pessoal, observações, fontes e
-dados de Analytics.
+o conteúdo compartilhado dos cursos, o acesso, o estado pessoal sincronizado e os
+registros de autoria.
 
 **PostgREST.** Camada que expõe funções PostgreSQL por HTTP conforme privilégios e
 políticas.
@@ -340,8 +348,9 @@ unidades de estudo cria registros separados, não um lote permanente.
 **Caixa de observações.** Consulta filtrável das manifestações correntes. Estado
 aberto ou resolvido descreve triagem e não altera o conteúdo por implicação.
 
-**Revisão contextual.** Releitura do alvo e de unidades relacionadas por progressão,
-pré-requisito, transição, exemplo ou prática antes de propor mudanças.
+**Revisão contextual.** Releitura do alvo e de unidades relacionadas pelo percurso
+curricular e por elementos didáticos afetados, como exemplos e práticas, antes de
+propor mudanças.
 
 **Achado de revisão.** Problema concreto identificado durante a análise, com evidência
 e proposta de correção. Pode motivar uma observação; não constitui um registro
@@ -402,8 +411,9 @@ percentual de autoria humana.
 
 **Snapshot de análise.** Retrato estruturado dos dados e das contagens de um recorte
 numa revisão do curso. A ação **Exportar curso e análise** inclui esse retrato e
-também o documento integral do curso, fontes, bases explicativas, parâmetros e
-declarações de revisão. Os bytes dos anexos ficam fora do arquivo.
+também o documento integral do curso, acompanhado dos registros que relacionam o
+conteúdo às fontes, às bases explicativas, às escolhas aplicadas e à revisão humana.
+Os bytes dos anexos ficam fora do arquivo.
 
 **Condição de pesquisa.** Curso privado independente no qual a pessoa fixa uma
 configuração para comparação deliberada. A comparação não exige entidade de variante

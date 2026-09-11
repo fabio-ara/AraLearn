@@ -1,10 +1,9 @@
 # Supabase no AraLearn
 
-O AraLearn precisa conservar relações, identificar pessoas, guardar arquivos privados
-e receber operações que não devem ser executadas somente no navegador.
-[Supabase](https://supabase.com/docs) reúne esses serviços em um projeto. No
-AraLearn, o banco guarda as relações do curso, o armazenamento conserva os arquivos e
-a autenticação verifica a conta que solicita cada operação:
+O curso compartilhado precisa de um lugar que continue acessível quando a pessoa muda
+de dispositivo. Esse serviço também precisa identificar quem faz cada pedido e
+proteger arquivos que não pertencem ao documento público da página. O AraLearn usa
+[Supabase](https://supabase.com/docs) para reunir essas funções no servidor:
 
 | Parte da plataforma | Problema que resolve no AraLearn | O que conserva ou executa |
 | --- | --- | --- |
@@ -13,12 +12,11 @@ a autenticação verifica a conta que solicita cada operação:
 | [Storage](https://supabase.com/docs/guides/storage) | guarda arquivos privados, como avatar, PDF e áudio | bytes; vínculo e acesso continuam no banco |
 | [Edge Functions](https://supabase.com/docs/guides/functions) | recebe pedidos pela rede, verifica identidade e chama as operações comuns | funções do servidor; as regras de conteúdo e do banco validam a alteração |
 
-O serviço de notificações Realtime está desativado na configuração local. A
-atualização entre abas usa `BroadcastChannel`, a comunicação oferecida pelo navegador
-entre abas da mesma origem. No modo automático, foco, visibilidade e retorno da
-conexão permitem reconciliação; no manual, conteúdo e filas pessoais aguardam a
-sincronização explícita. As verificações de sessão, acesso e revogação permanecem
-ativas.
+O serviço de notificações Realtime está desativado na configuração local. Em seu
+lugar, `BroadcastChannel`, recurso do navegador para comunicar abas da mesma origem,
+avisa que um dado pode ter mudado. No modo automático, voltar à aba ou recuperar a
+conexão inicia a conferência com o servidor. No modo manual, conteúdo e filas pessoais
+aguardam a ação de sincronizar; sessão, acesso e revogação continuam sendo conferidos.
 
 ## PostgreSQL, esquemas e autorização
 
@@ -69,11 +67,17 @@ aberta e seu estado de revisão, sem gerar texto nem alterar progresso. O [contr
 explicação e revisão humana](explicacao-e-revisao-humana.md) distingue essa base, as
 unidades produzidas e as decisões da pessoa autora.
 
-A explicação e cada unidade têm uma declaração própria de revisão. O estado `current`
-indica que a declaração ainda corresponde ao conteúdo e às fontes; `stale` conserva
-uma declaração anterior cuja base mudou. `draft` indica ausência de declaração vigente, inclusive quando uma declaração
-anterior foi retirada; `unregistered` identifica ausência do metadado legado. Esses metadados ficam
-fora do conteúdo editável e importável.
+A explicação e cada unidade têm uma declaração própria de revisão. O estado mostra a
+relação entre essa declaração e a base material atual:
+
+| Estado | Situação registrada |
+| --- | --- |
+| `current` | A declaração corresponde ao conteúdo e às fontes atuais. |
+| `stale` | A base mudou depois da declaração. |
+| `draft` | Não existe declaração vigente, inclusive porque uma anterior foi retirada. |
+| `unregistered` | O objeto veio do acervo anterior sem esse metadado. |
+
+Esses metadados ficam fora do conteúdo editável e importável.
 
 A interface lê o alvo por `get_course_content_review_v1` e registra ou retira a
 declaração por `set_course_content_review_v1`. Os canais de autoria usam as variantes
@@ -146,7 +150,8 @@ registrar revisão por consequência da edição.
 O controlador guarda o pedido antes de enviá-lo. Uma resposta perdida conserva
 identidade, conteúdo e proveniência para recuperar o mesmo resultado ao reabrir. A
 pendência termina com confirmação ou recusa definitiva e é removida junto aos dados
-privados na revogação de acesso. Uma alteração de fontes pode mudar a revisão do curso sem reescrever o texto;
+privados na revogação de acesso. Uma alteração de fontes pode mudar a revisão do curso
+sem reescrever o texto;
 a confirmação distingue esses efeitos.
 
 A decisão de revisão também conserva o pedido original, separado por curso e
@@ -158,37 +163,40 @@ conforme [Implantação](implantacao.md).
 
 ## Auth: conta da aplicação e OAuth do MCP
 
-Auth mantém cadastro por e-mail, confirmação, recuperação e sessão. O token de
-renovação, ou refresh token, permite obter nova credencial de acesso sem pedir senha a
-cada operação; a rotação substitui esse token durante o uso. A configuração local
-exige confirmação de e-mail, protege troca de senha e não habilita contas anônimas. Em
-ambiente hospedado, Site URL, SMTP e redirecionamentos devem corresponder aos
-endereços realmente publicados. O site local, a origem interna do Android e
-`aralearn://auth/callback` são os retornos previstos no ambiente de desenvolvimento.
+Auth mantém cadastro por e-mail, confirmação, recuperação e sessão. Para que a pessoa
+não precise fornecer a senha a cada operação, um token de renovação (*refresh token*)
+permite obter outra credencial de acesso; a rotação substitui esse token durante o
+uso. A configuração local exige confirmação de e-mail, protege a troca de senha e
+desabilita contas anônimas. No ambiente hospedado, o endereço principal (Site URL), o
+serviço de envio de e-mail (SMTP) e os redirecionamentos
+precisam corresponder aos endereços publicados. O desenvolvimento prevê o site local,
+a origem interna do Android e `aralearn://auth/callback`.
 
-OAuth permite autorizar a conexão de um cliente à conta sem entregar a senha a esse
-cliente. O [servidor OAuth 2.1 do
-Supabase](https://supabase.com/docs/guides/auth/oauth-server) é usado pelo MCP. O
-cadastro dinâmico de clientes fica habilitado; o caminho de autorização é `/`, porque
-a tela de consentimento pertence ao shell do AraLearn. Os tokens JWT são credenciais
-assinadas: o servidor confere a assinatura antes de aceitar os dados de identidade. O
-projeto usa chave assimétrica, separando a chave que assina da chave pública usada
-para conferir. Durante a emissão, o Supabase chama
-`public.aralearn_mcp_access_token_hook` para ajustar os dados que entrarão na
-credencial; esse ponto de extensão é chamado de hook. A função reduz os dados do token de acesso, substitui
-identificadores diretos por identificadores específicos de cada cliente e anuncia
-somente `offline_access`. O servidor MCP ainda valida assinatura ES256, emissor,
-destinatário, tempos, cliente, escopo, sessão de origem e consentimento vivo.
+OAuth permite autorizar um cliente a agir em nome da conta sem lhe entregar a senha. O
+MCP usa o [servidor OAuth 2.1 do
+Supabase](https://supabase.com/docs/guides/auth/oauth-server), com cadastro dinâmico de
+clientes e tela de consentimento no próprio AraLearn. Sua credencial é um JWT: um
+conjunto de dados assinado. O projeto usa uma chave assimétrica: uma chave privada
+assina a credencial, e a chave pública permite ao MCP conferir essa assinatura sem
+receber o segredo.
 
-Actions não reutiliza esse token de acesso. Sua função mantém uma autorização OAuth
-própria, com cliente confidencial ligado ao GPT, código de autorização, escopos
-`openid email`, token de acesso opaco, cujo significado fica no servidor, e token de
-renovação rotativo. A conta AraLearn aprova ou nega a conexão na mesma interface, mas
-o protocolo, o consentimento e os tokens pertencem ao canal de Actions.
+Na emissão, o Supabase chama `public.aralearn_mcp_access_token_hook`. Esse ponto de
+extensão, chamado *hook*, retira dados desnecessários, substitui identificadores
+diretos por identificadores específicos de cada cliente e anuncia apenas o escopo
+`offline_access`. Antes de aceitar a credencial, o servidor MCP confere a assinatura
+ES256, o emissor, o destinatário e os horários de validade. Também verifica cliente,
+escopo, sessão de origem e consentimento vigente, que ligam o token à autorização
+concedida.
+
+Actions usa uma autorização OAuth separada. Um cliente confidencial ligado ao GPT
+troca um código de autorização por uma credencial de acesso opaca, cujo significado
+fica no servidor, e por um token de renovação rotativo; os escopos pedidos são
+`openid email`. A conta aprova ou nega a conexão na mesma interface do AraLearn, mas
+protocolo, consentimento e credenciais pertencem somente a esse canal.
 
 ## Chaves publicáveis e segredos
 
-O site e o APK recebem somente:
+O site e o pacote instalável Android (APK) recebem somente:
 
 - `ARALEARN_SUPABASE_URL`;
 - `ARALEARN_SUPABASE_PUBLISHABLE_KEY`.
@@ -213,8 +221,13 @@ na memória da sessão, não no Supabase nem no artefato público.
 
 ## Storage: bytes privados e vínculo relacional
 
-As áreas de arquivos, chamadas buckets, `person-avatars`, `course-source-pdfs` e
-`course-media` são privadas. O Storage guarda bytes; o PostgreSQL conserva caminho,
+Guardar um arquivo envolve duas responsabilidades: conservar seus bytes e decidir a
+que pessoa ou curso eles estão ligados. O Storage assume a primeira; o PostgreSQL
+registra a relação usada para identificar e autorizar o arquivo. As áreas de
+arquivos, chamadas *buckets*, `person-avatars`, `course-source-pdfs` e
+`course-media` são privadas.
+
+O PostgreSQL conserva caminho,
 impressão digital SHA-256, tamanho, tipo e vínculo corrente com a fonte. Conhecer um
 caminho não concede leitura. [Políticas do
 Storage](https://supabase.com/docs/guides/storage/security/access-control) protegem
@@ -288,7 +301,9 @@ coincidir durante a concessão e a troca de token.
 
 ## Ambiente local reproduzível
 
-`supabase/config.toml` fixa PostgreSQL 17, portas 54321 a 54324, e-mail local,
+Para testar banco, arquivos e autorização sem alterar o ambiente hospedado, o
+repositório reproduz localmente os serviços necessários. `supabase/config.toml` fixa
+PostgreSQL 17, portas 54321 a 54324, e-mail local,
 Storage, Auth, OAuth, hook e as três Edge Functions. Com
 [Docker](https://docs.docker.com/desktop/) e [Supabase CLI
 2.115.0](https://supabase.com/docs/guides/local-development/cli/getting-started)
@@ -300,19 +315,19 @@ npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
-O reset recria o banco local e aplica as migrações e os dados iniciais (seed) nesse
-ambiente descartável. A validação exerce PostgreSQL, RLS, Auth por e-mail, PostgREST,
-Storage, API, MCP, OAuth e revisão do esquema.
+O reset recria o banco local e aplica as migrações e os dados iniciais (*seed*) nesse
+ambiente descartável. A validação percorre banco e autorização — PostgreSQL, RLS,
+PostgREST e revisão do esquema —, a conta por Auth e e-mail, os arquivos no Storage e
+as integrações pela API, pelo MCP e pelo OAuth.
 [Deno](https://docs.deno.com/runtime/getting_started/installation/) é necessário para
-a autoria das Edge Functions. O teste local demonstra o estado recriado; não comprova
+desenvolver as Edge Functions. O teste local demonstra o estado recriado; não comprova
 que o projeto hospedado recebeu a mesma revisão.
 
-O catálogo de componentes e sua impressão digital precisam concordar entre navegador,
-funções e projeção SQL. Os verificadores do gerador conferem a fonte corrente; os
-testes de migração conferem o estado de cada etapa histórica. As sincronizações de
-catálogo de setembro estão registradas na [história do esquema](schema-change-log.md).
-O manifesto exigido pelo cliente identifica a revisão necessária, sem fixá-la num
-procedimento operacional que envelheceria a cada migração.
+O catálogo de componentes e sua impressão digital precisam concordar no navegador,
+nas funções e no banco. Os verificadores conferem a fonte corrente, enquanto os testes
+de migração reconstroem as etapas históricas. As mudanças do catálogo estão na
+[história do esquema](schema-change-log.md), e o manifesto do cliente informa qual
+revisão do serviço é necessária.
 
 As provas focais de Storage e recuperação usam somente ambientes locais:
 
@@ -327,11 +342,12 @@ o corte histórico e continua por todas as migrações até o manifesto corrente
 estado útil e leitores atuais; a medição de redução técnica pertence ao corte
 histórico.
 
-## Retenção e Manutenção
+## Retenção e manutenção
 
-A rotina de retenção remove, por classe e em lotes, observações retiradas depois do
-prazo lógico, recibos expirados, intenções de PDF vencidas e janelas antigas de
-limitação de acesso. O
+Recibos e intenções temporárias permitem recuperar operações durante uma janela
+definida. Depois dela, a rotina de retenção remove em lotes as observações já retiradas,
+os recibos expirados, as intenções de PDF vencidas e as janelas antigas de limitação de
+acesso. O
 [pg_cron](https://supabase.com/docs/guides/database/extensions/pg_cron) a executa
 diariamente às 03:17, no fuso do banco, com limite de 512 itens por classe. Leituras e
 escritas também podem limpar dados vencidos nos caminhos previstos. Uma identidade

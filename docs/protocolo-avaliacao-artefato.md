@@ -3,17 +3,18 @@
 ## Planejar a avaliação
 
 Uma avaliação do AraLearn precisa definir que propriedade será examinada e para
-qual finalidade: funcionamento do software, qualidade do curso, trabalho de
-autoria ou aprendizagem. O protocolo relaciona a pergunta à versão do artefato,
-aos métodos, aos resultados e à decisão de manter, alterar ou remover um
-mecanismo.
+qual finalidade. O objeto pode ir do funcionamento do software à qualidade do
+curso e aos processos humanos de autoria ou aprendizagem. O protocolo relaciona
+a pergunta à versão do artefato, ao método e à decisão que os resultados
+deverão orientar.
 
-Cada estudo precisa de projeto próprio, plano de amostragem e análise,
-instrumentos com evidências adequadas de validade e procedimentos de proteção,
-retenção e descarte de dados. Avaliação ética, autorização institucional,
-consentimento e registro prévio seguem o contexto e o método adotados. No Brasil,
-a Resolução CNS nº 510/2016 estabelece normas para as pesquisas em Ciências
-Humanas e Sociais abrangidas por seu escopo
+Cada estudo precisa de um projeto que explique quem ou o que será observado e
+como os dados serão analisados. Isso inclui justificar a amostragem, usar
+instrumentos com evidências adequadas de validade e definir a proteção dos
+dados ao longo de seu ciclo de vida. O contexto e o método determinam os
+procedimentos de consentimento, avaliação ética, autorização institucional e
+registro prévio. No Brasil, a Resolução CNS nº 510/2016 estabelece normas para
+as pesquisas em Ciências Humanas e Sociais abrangidas por seu escopo
 ([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
 
 O tipo de evidência acompanha a pergunta. Testes demonstram propriedades do
@@ -44,10 +45,10 @@ desenvolve o funcionamento da cópia local.
 
 ## Escolher uma estratégia de investigação
 
-A estratégia depende do conhecimento pretendido. Compreender práticas de uma
-instituição, refinar uma intervenção com educadores e estimar o efeito de uma
-mudança são propósitos distintos. Os procedimentos seguintes são possibilidades
-a particularizar; uma investigação pode seguir outro enquadramento justificado.
+A estratégia depende do conhecimento pretendido. Compreender uma prática em
+seu contexto, refinar uma intervenção e estimar o efeito de uma mudança são
+propósitos distintos. As alternativas a seguir mostram como essa diferença
+muda o desenho da investigação.
 
 ### Compreender uma situação por estudo de caso
 
@@ -103,10 +104,10 @@ observacional. A escolha requer pressupostos e análise compatíveis
 ### Relacionar estratégias
 
 Uma observação de uso pode revelar um requisito técnico; uma falha técnica
-pode explicar por que a intervenção prevista não ocorreu. Compartilhar dados
-entre etapas da pesquisa é útil quando sua função permanece clara. Estudo de
-caso, DBR, DSR e comparação de efeitos não são etapas obrigatórias de uma mesma
-escada: a pergunta determina quais relações precisam ser investigadas.
+pode explicar por que a intervenção prevista não ocorreu. Dados podem, portanto,
+servir a momentos diferentes da pesquisa, desde que sua função permaneça
+clara. Estudo de caso, DBR, DSR e comparação de efeitos são estratégias que a
+pergunta pode aproximar ou manter separadas.
 
 ## Formulação de uma avaliação
 
@@ -138,16 +139,17 @@ Pergunta delimitada:
 > vinte e quatro horas, um cursor local com conteúdo sincronizado, comparado à
 > reabertura no início da lição, altera o sucesso e os erros de retomada?
 
-A segunda pergunta ainda não mede aprendizagem. Ela investiga retomada. Uma
-tarefa posterior de compreensão ou retenção precisaria ser planejada
-separadamente.
+A segunda pergunta investiga retomada. Para estudar aprendizagem, seria
+necessário acrescentar uma tarefa de compreensão ou retenção e definir como
+seu resultado seria interpretado.
 
 ### Quando a avaliação compara condições
 
 Use cursos privados independentes para condições distintas e registre fora do
-produto o que deve permanecer comum. Essa separação sustenta a descrição
-técnica da intervenção, mas não constitui experimento. Antes da investigação, o
-protocolo particular precisa identificar:
+produto o que deve permanecer comum. Essa separação organiza os materiais; o
+desenho experimental depende ainda de participantes, atribuição às condições,
+medidas e análise. Antes da investigação, o protocolo particular precisa
+identificar:
 
 - o planejamento comum e sua revisão;
 - as revisões de cada curso na produção e na exposição;
@@ -172,10 +174,10 @@ O ambiente pode ser **artificial**, preparado para examinar certas condições,
 ou **naturalístico**, próximo do uso cotidiano
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
-A progressão abaixo é uma organização possível do projeto. Começar pela
-inspeção técnica reduz o risco de levar falhas conhecidas a participantes. A
-seleção de episódios acompanha a pergunta e o risco, sem exigir que todo estudo
-percorra a tabela.
+A progressão abaixo organiza tipos de avaliação que podem ser combinados
+conforme a pergunta e o risco. A inspeção técnica vem primeiro para evitar que
+falhas conhecidas cheguem aos participantes; os episódios seguintes são
+selecionados conforme o estudo.
 
 | Episódio | Finalidade e ambiente | Pergunta principal | Evidência mínima | Critério para avançar |
 | --- | --- | --- | --- | --- |
@@ -195,10 +197,10 @@ mesmo que outras medidas sejam favoráveis.
 
 ### Perfis relevantes
 
-O público prioritário no desenho inclui adultos que conciliam estudo e trabalho,
-com variação de experiência digital, área de conhecimento, dispositivo e
-conectividade. Outros papéis, como especialistas, docentes, autores, revisores
-e administradores, respondem a perguntas distintas.
+O público prioritário no desenho inclui adultos que conciliam estudo e trabalho.
+A amostra considera sua experiência digital, área de conhecimento e condições
+de acesso, inclusive dispositivo e conectividade. Outros participantes, como
+especialistas ou pessoas que produzem cursos, respondem a perguntas distintas.
 
 Uma pessoa especialista não substitui uma novata quando a pergunta trata de
 pressupostos ocultos; uma pessoa novata não substitui especialista na avaliação
@@ -458,14 +460,14 @@ As fontes metodológicas incluem estudo de caso ([Baxter e Jack (2008)](referenc
 
 Ao usar a [exportação de curso e análise](analytics-instrucionais.md#exportar),
 registre o contrato, o curso, sua revisão, o escopo escolhido e a data. Preserve
-as distribuições que sustentaram a comparação, suas definições, denominadores
-e ausências. O arquivo inclui conteúdo salvo e metadados disponíveis de fontes,
-configuração aplicada e revisão; os PDFs e áudios precisam ser conservados
-separadamente quando integrarem a condição apresentada.
+também as definições e os denominadores das distribuições usadas na comparação,
+inclusive seus dados ausentes. O arquivo reúne o conteúdo salvo e os metadados
+disponíveis para interpretar sua produção. PDFs e áudios precisam ser
+conservados separadamente quando integrarem a condição apresentada.
 
 As contagens descrevem o desenho e as intervenções observáveis no estado
-corrente. Não reconstituem uma história completa de autoria nem a exposição dos
-participantes. Testes inferenciais e alegações causais dependem do plano do
+corrente. A história completa da autoria e a exposição dos participantes exigem
+outros registros. Testes inferenciais e alegações causais dependem do plano do
 estudo, de seus instrumentos e de suas premissas.
 
 <!-- referências locais: início -->

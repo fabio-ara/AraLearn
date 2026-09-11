@@ -8,7 +8,7 @@ test("o contrato histórico conserva as decisões da rodada e aponta para a expe
   const contract = await read("ux-atlas/FINAL-UX-CONTRACT.md");
   assert.match(contract, /Registro histórico da rodada de UX/iu);
   assert.match(contract, /experiência atual[\s\S]*docs\/sistema-visual\.md/iu);
-  assert.match(contract, /contrato corrente de experiência/iu);
+  assert.match(contract, /contratos executáveis correntes/iu);
   for (const fragment of [
     "A pesquisa respondeu às seis perguntas",
     "Assistência por IA",
@@ -41,7 +41,7 @@ test("o contrato histórico conserva as decisões da rodada e aponta para a expe
 test("o Atlas delimita seus registros históricos e encaminha a documentação vigente", async () => {
   const index = await read("ux-atlas/README.md");
   assert.match(index, /^# Registros históricos de UX/iu);
-  assert.match(index, /não definem o comportamento atual do aplicativo/iu);
+  assert.match(index, /O comportamento atual do aplicativo é\s+descrito pelas fontes/iu);
   for (const target of [
     "docs/sistema-visual.md",
     "docs/guia-estudante.md",

@@ -8,13 +8,14 @@ estudo e não consegue continuar, por exemplo, o problema pode envolver a
 localização do ponto, a compreensão do conteúdo ou as condições de tempo e
 trabalho. Cada leitura dirige a investigação a relações diferentes.
 
-Este documento desenvolve duas formas de examinar o AraLearn. As **proposições
-de desenho** formulam relações a investigar entre suas escolhas e o uso por
-pessoas. As [lentes críticas](#lentes-críticas-sobre-informação-e-poder) ajudam
-a questionar as finalidades, os critérios de valor e as relações de poder que
-podem acompanhar esse uso. A escolha e a combinação dessas perspectivas
-dependem da pergunta; uma investigação interpretativa não precisa converter
-toda relação numa previsão causal.
+Este documento oferece duas formas complementares de examinar o AraLearn. Uma
+**proposição de desenho** relaciona uma escolha do produto a um processo humano
+que ainda precisa ser investigado. As [lentes
+críticas](#lentes-críticas-sobre-informação-e-poder) voltam a atenção para as
+finalidades do uso e para quem define seus critérios de valor. A pergunta de
+pesquisa determina qual perspectiva é pertinente; compreender uma prática, por
+exemplo, pode exigir interpretação sem que se procure atribuir a ela um efeito
+causal.
 
 Para as proposições de desenho, o projeto adota o seguinte roteiro:
 
@@ -26,10 +27,11 @@ Para as proposições de desenho, o projeto adota o seguinte roteiro:
 | explicações rivais | considerar outras razões para o resultado | familiaridade com o conteúdo ou interrupção breve |
 | critério de revisão | indicar o que enfraqueceria a proposição | o ponto é encontrado, mas a continuação permanece incorreta |
 
-A relação entre **contexto, mecanismo e resultado**, abreviada aqui como C–M–O,
-é uma convenção de organização das hipóteses deste quadro. A observação de um
-resultado favorável ainda precisa ser confrontada com explicações alternativas
-antes de sustentar uma conclusão causal.
+O encadeamento entre **contexto, mecanismo e resultado** organiza as hipóteses
+deste quadro. Ele obriga a dizer para quem e em que situação uma escolha
+poderia atuar, como essa atuação ocorreria e o que seria observado. Um resultado
+favorável precisa ser confrontado com outras explicações antes de sustentar uma
+conclusão causal.
 
 ## Estados de conhecimento usados
 
@@ -41,11 +43,16 @@ explicam a classificação completa e sua função na comunicação dos resultad
 
 ## Teoria de mudança provisória
 
-O desenho responde a condições de tempo fragmentado, interrupção e
-conectividade variável. Disponibilidade local e retomada explícita procuram
-preservar a continuidade; explicações progressivas, representações adequadas
-e prática pertinente procuram apoiar a compreensão e a aplicação. A inspeção
-humana pode identificar problemas nessas escolhas e orientar sua revisão.
+O desenho parte de duas situações concretas. Durante o estudo, pouco tempo,
+interrupções e conexão instável podem romper a continuidade; na autoria, uma
+explicação ou atividade gerada com IA pode conter um erro que precisa ser
+localizado e corrigido. O AraLearn responde à primeira situação conservando o
+conteúdo e o ponto de estudo no dispositivo. Para a segunda, mantém o material,
+suas fontes e o alcance das mudanças disponíveis à inspeção humana.
+
+Essas respostas técnicas formam uma **teoria de mudança provisória**: um modelo
+de como certas escolhas poderiam favorecer resultados humanos. A tabela resume
+as três relações que depois são detalhadas como proposições.
 
 | Condição ou recurso | Mecanismo a investigar | Resultado a avaliar |
 | --- | --- | --- |
@@ -53,13 +60,21 @@ humana pode identificar problemas nessas escolhas e orientar sua revisão.
 | progressão, representações e prática | compreensão de relações e exercício das operações pretendidas | compreensão, retenção e transferência em tarefas próprias |
 | autoria assistida, fontes e revisão humana | inspeção, julgamento e correção do material | qualidade autoral e controle sobre mudanças |
 
-Cada relação é uma hipótese. Disponibilidade local pode sustentar continuidade
-técnica sem alterar a compreensão; prática abundante pode ser irrelevante se
-exigir operações ainda não ensinadas. Inteligência artificial (IA), acesso
-compartilhado e [dados de autoria](analytics-instrucionais.md) modificam condições de
-autoria e decisão, mas seus efeitos precisam ser investigados por pergunta.
+Cada relação permanece uma hipótese até ser avaliada. A disponibilidade local,
+por exemplo, pode manter o conteúdo acessível sem ajudar a pessoa a reconstruir
+o raciocínio interrompido. Do mesmo modo, muitas atividades pouco ajudam quando
+exigem operações que o percurso ainda não ensinou. O uso de inteligência
+artificial (IA), as formas de acesso e os [dados de
+autoria](analytics-instrucionais.md) também precisam ser estudados por meio de
+perguntas próprias.
 
 ## Níveis de análise
+
+No [modelo didático](modelo-didatico.md), uma microssequência desenvolve um
+objetivo por meio de unidades de estudo; o percurso reúne essas sequências em
+níveis mais amplos. Na infraestrutura, o núcleo comum interpreta os cursos e os
+pacotes acrescentam representações especializadas. A análise pode recortar
+qualquer um desses níveis, conforme a pergunta.
 
 O mesmo dado não responde a perguntas de todos os níveis:
 
@@ -130,239 +145,244 @@ construtos](glossario-construtos.md).
 ## Proposições de desenho
 
 As proposições P1–P10 são **hipóteses** para estudos que examinem escolhas de
-desenho. Os tópicos seguintes conservam alternativas, fundamento e condições
-de avaliação de cada uma. É possível selecionar uma relação pertinente à
-pergunta, sem investigar todas as proposições no mesmo estudo.
+desenho. Cada uma parte de um problema, identifica a decisão tomada no produto
+e explica que relação se pretende investigar. O fundamento vem da literatura;
+o efeito sobre pessoas depende de avaliação. Um estudo seleciona apenas as
+proposições pertinentes à sua pergunta.
 
 ### P1: retomada local após interrupção
 
-- **Problema e contexto:** estudo móvel suspenso ou conexão ausente pode exigir
-  reconstrução do objetivo e introduzir espera.
-- **Alternativas ou requisitos:** depender do servidor; manter apenas uma cópia temporária da
-  tela; conservar réplica e estado corrente. A ação local deve responder sem
-  aguardar rede.
-- **Decisão:** manter conteúdo sincronizado e ponto de retomada no dispositivo;
-  sincronizar sem bloquear a interação principal.
-- **Fundamentação:** interrupções podem impor custo de retomada
-  ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)).
-- **Operacionalização:** conteúdo e estado corrente legíveis sem conexão; cenário
-  automatizado de perda de rede; tarefa humana de localizar e continuar.
-- **Consequência esperada:** menos erros operacionais e maior sucesso de
-  retomada.
-- **Explicações rivais:** tarefa simples, memória recente, familiaridade com o
-  curso ou instrução recebida.
-- **Limite e evidência de enfraquecimento:** se o ponto de retomada não for compreendido,
-  não superar alternativa ou divergir entre dispositivos, a proposição deve ser
-  revista. O funcionamento técnico sem conexão não demonstra aprendizagem.
+Quando o estudo é interrompido, continuar envolve mais que abrir outra vez o
+aplicativo: a pessoa precisa reencontrar o ponto e reconstruir o que estava
+fazendo. Se cada ação depender do servidor, uma conexão ausente acrescenta
+espera ao problema. O AraLearn conserva no dispositivo o conteúdo sincronizado
+e o ponto de estudo, enquanto a sincronização posterior ocorre sem bloquear a
+interação principal. A hipótese é que essa escolha reduza erros operacionais e
+favoreça a retomada.
+
+Estudos sobre interrupção mostram que recuperar objetivos suspensos pode ter
+custo e que esse custo varia conforme a duração e a demanda da interrupção
+([Monk et al. (2008)](referencias.md#ref-monk2008resumption);
+[Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)). Essa literatura fundamenta
+a pergunta, mas o mecanismo específico do AraLearn precisa ser examinado.
+
+A avaliação técnica verifica acesso e resposta local durante a perda de rede.
+A avaliação com pessoas observa se elas localizam o ponto, explicam o estado da
+tarefa e continuam corretamente. Simplicidade da tarefa, familiaridade com o
+curso e duração da interrupção são explicações alternativas. Divergências entre
+dispositivos, ponto incompreensível ou desempenho semelhante ao de uma solução
+dependente do servidor enfraquecem a proposição.
 
 ### P2: progressão suficiente sem condensação
 
-- **Problema e contexto:** uma pessoa novata encontra teoria densa, siglas e
-  pressupostos ocultos.
-- **Alternativas ou requisitos:** resumo curto, exposição extensa de uma vez ou
-  progressão em camadas; a profundidade final e as relações precisam ser
-  preservadas.
-- **Decisão:** planejamento antecede quantidade de unidades de estudo; não há tamanho fixo de
-  explicação ou prática.
-- **Fundamentação:** carga e segmentação dependem de tarefa e desenho
-  ([Sweller et al. (1998)](referencias.md#ref-sweller1998architecture); [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)); microaprendizagem é um campo
-  heterogêneo ([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
-- **Operacionalização:** unidades presumidas novas, pré-requisitos, referentes,
-  termos, relações, conjuntos de coordenação, requisitos de explicação e
-  evidência são declarados antes da materialização; contagens mantêm unidade e
-  denominador explícitos.
-- **Consequência esperada:** menos saltos conceituais e melhor capacidade de
-  explicar e aplicar.
-- **Explicações rivais:** maior tempo total, repetição, qualidade do autor ou
-  conhecimento prévio não medido.
-- **Limite e evidência de enfraquecimento:** redundância improdutiva, perda de
-  relações ou incompreensão persistente exigem revisão; mais unidades não
-  sustentam a proposição.
+Uma pessoa novata pode encontrar siglas, relações e pressupostos que o texto
+trata como conhecidos. Resumir ainda mais amplia esse salto; apresentar tudo de
+uma vez pode dificultar o acompanhamento. No AraLearn, o planejamento explicita
+o repertório presumido, as relações que precisam permanecer juntas, os passos
+da explicação e o que a prática deve tornar observável. Só depois se decide
+quantas unidades de estudo realizarão esse percurso. A hipótese é que essa
+ordem reduza saltos conceituais sem perder profundidade.
+
+A literatura indica que carga e segmentação variam com a tarefa, o desenho e o
+conhecimento prévio
+([Sweller et al. (1998)](referencias.md#ref-sweller1998architecture);
+[Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity);
+[Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). Os estudos de microaprendizagem
+também reúnem intervenções muito diferentes, sem fornecer um tamanho universal
+([De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
+
+A avaliação compara percursos que preservem o mesmo objetivo e examina onde a
+pessoa consegue explicar e aplicar as relações. Tempo dedicado, repetição,
+qualidade da autoria e conhecimento prévio podem explicar diferenças. A
+proposição perde força quando a progressão apenas repete informação, rompe
+relações ou mantém os mesmos pontos de incompreensão. A quantidade de unidades,
+isoladamente, descreve o material produzido.
 
 ### P3: representação escolhida pela operação
 
-- **Problema e contexto:** relações espaciais, formais, tabulares ou
-  hierárquicas se perdem em prosa; diagramas inadequados também criam carga.
-- **Alternativas ou requisitos:** texto, representação geral ou representação
-  especializada; a escolha deve preservar convenção e operação-alvo da tarefa.
-- **Decisão:** escolher a representação pela tarefa que ela precisa apoiar.
-  O autor ou assistente consulta os componentes disponíveis e suas regras de
-  uso; a escolha é conferida no conteúdo efetivamente produzido.
-- **Fundamentação:** representações possuem funções, restrições e demandas de
-  coordenação ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
-- **Operacionalização:** comparar representações para a mesma operação, com casos
-  disciplinares pertinentes e interpretação por participantes. A versão do
-  [componente](componentes-didaticos.md) é identificada e sua apresentação
-  técnica é verificada. Se faltar um recurso adequado, a limitação fica
-  registrada na condição avaliada.
-- **Consequência esperada:** interpretação mais precisa e menor tradução para
-  prosa ou tabelas improvisadas.
-- **Explicações rivais:** novidade, familiaridade com a notação, dica no
-  enunciado ou qualidade visual geral.
-- **Limite e evidência de enfraquecimento:** se texto ou componente geral produzir
-  desempenho igual ou melhor, ou se a gramática exigir explicação maior que seu
-  benefício, o componente deve ser revisto, fundido ou removido.
+Certas relações ficam difíceis de acompanhar em prosa. Uma tabela pode apoiar
+comparações e um diagrama pode tornar visível a ordem de um procedimento; uma
+representação inadequada, porém, acrescenta uma convenção que também precisa
+ser aprendida. O AraLearn escolhe o componente pela operação que a tarefa
+solicita e confere a escolha no conteúdo produzido. A hipótese é que uma
+representação adequada favoreça interpretação mais precisa e reduza traduções
+mentais desnecessárias.
+
+Representações têm funções e restrições próprias e podem exigir coordenação
+com texto ou outras formas de apresentação
+([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft);
+[Mayer (2009)](referencias.md#ref-mayer2009multimedia);
+[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A literatura orienta a escolha;
+não decide qual componente funcionará em todo conteúdo.
+
+A avaliação mantém a operação e o conteúdo comparáveis, identifica a versão do
+[componente](componentes-didaticos.md) e observa como participantes interpretam
+as alternativas. Familiaridade com a notação, novidade e dicas do enunciado
+podem explicar o resultado. Se texto ou um componente mais simples produzir
+desempenho igual ou melhor, ou se aprender a representação custar mais que seu
+benefício, ela deve ser revista, fundida ou retirada.
 
 ### P4: apoio seguido de produção independente
 
-- **Problema e contexto:** novato precisa compreender uma operação complexa sem
-  permanecer dependente de solução pronta.
-- **Alternativas ou requisitos:** resolução não apoiada, exemplo permanente ou
-  retirada gradual.
-- **Decisão:** articular exemplo resolvido, prática guiada e prática com menos
-  apoio quando a tarefa justificar.
-- **Fundamentação:** exemplos resolvidos e retirada gradual (*fading*) apresentam benefícios em
-  condições delimitadas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)).
-- **Operacionalização:** dados particulares permanecem na unidade; passos, dicas ou
-  decisões são retirados progressivamente.
-- **Consequência esperada:** transição mais compreensível entre observação e
-  execução.
-- **Explicações rivais:** tempo maior na tarefa, repetição ou item mais fácil.
-- **Limite e evidência de enfraquecimento:** passividade, dependência ou ausência
-  de desempenho sem apoio enfraquecem a proposição.
+Uma pessoa novata pode precisar acompanhar uma operação antes de executá-la,
+mas a solução pronta não deve substituir indefinidamente sua própria produção.
+Quando a tarefa justifica, o AraLearn articula exemplo resolvido, prática guiada
+e prática com menos apoio. A hipótese é que a retirada progressiva de passos ou
+dicas torne mais compreensível a passagem da observação à execução.
+
+Exemplos resolvidos e retirada gradual de apoio apresentam benefícios em
+condições delimitadas
+([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples);
+[Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). A avaliação precisa conservar a
+estrutura da tarefa e identificar o apoio disponível em cada etapa. Tempo
+maior, repetição ou um item final mais fácil podem explicar diferenças. Se a
+pessoa permanece passiva ou deixa de realizar a tarefa quando o apoio some, a
+proposição é enfraquecida.
 
 ### P5: prática variada por função e não por aparência
 
-- **Problema e contexto:** uma tarefa pode ser resolvida por pistas superficiais,
-  qualquer que seja o formato; mudar apenas a aparência preserva esse problema.
-- **Alternativas ou requisitos:** formato fixo, rotação aleatória ou seleção
-  pela evidência de aprendizagem.
-- **Decisão:** escolher entre seleção, lacuna, digitação e ordenação conforme a
-  operação-alvo; expressar correspondências simples por lacunas e posicionar
-  cada resposta dentro do objeto, inclusive os trechos permutados pela
-  ordenação.
-- **Fundamentação:** recuperação pode beneficiar aprendizagem, com moderadores e
-  limites de transferência ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
-- **Operacionalização:** cada prática declara alvo, operação e o que verifica;
-  a contagem distingue o que muda no conhecimento, na
-  operação e nos dados do problema, para que mudança cosmética não infle as
-  oportunidades distintas; tarefas posteriores distinguem retenção e
-  transferência.
-- **Consequência esperada:** correspondência mais clara entre objetivo e ação do
-  estudante.
-- **Explicações rivais:** dificuldade, tempo, familiaridade ou pistas do formato.
-- **Limite e evidência de enfraquecimento:** prática artificial, resposta fora do
-  objeto ou ausência de transferência exigem revisão.
+Mudar a aparência de uma atividade não muda necessariamente o que a pessoa faz
+para resolvê-la. Uma seleção pode exigir discriminar casos próximos; uma lacuna
+pode recuperar uma relação curta; uma ordenação pode reconstruir um
+procedimento. O AraLearn escolhe a forma de resposta pela operação-alvo,
+expressa correspondências simples por lacunas e mantém a resposta dentro do
+próprio objeto — inclusive os trechos que a pessoa reorganiza numa ordenação.
+A hipótese é que essa correspondência torne a prática mais pertinente ao
+objetivo. A [regra operacional completa](modelo-didatico.md#prática-orientada-pela-operação-alvo-da-tarefa)
+explica como alvo, resposta e retorno permanecem coordenados.
+
+A prática de recuperação pode favorecer a aprendizagem, embora o efeito varie
+e a transferência tenha limites
+([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval);
+[Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)). Por isso, cada atividade identifica
+o conhecimento mobilizado, a operação solicitada e a evidência pretendida. Uma
+nova oportunidade de prática requer variação substantiva do caso, não mera
+troca de texto ou componente.
+
+A avaliação observa a resposta imediata e tarefas posteriores de retenção ou
+transferência. Dificuldade, tempo e pistas do formato são explicações
+alternativas. Práticas artificiais, respostas deslocadas do objeto ou
+desempenho restrito ao formato treinado indicam necessidade de revisão.
 
 ### P6: retorno acionável de baixa consequência
 
-- **Problema e contexto:** resultado binário não explica o erro; punição
-  acumulada pode ser irrelevante ao objetivo de prática.
-- **Alternativas ou requisitos:** avaliação por toque, revelação automática ou
-  confirmação seguida de retorno específico e nova tentativa.
-- **Decisão:** confirmar antes de avaliar, revelar resposta apenas por ação
-  explícita, permitir repetição e não converter tentativas em nota ou
-  classificação.
-- **Fundamentação:** o retorno depende de conteúdo, foco e possibilidade de ação
-  ([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Shute (2008)](referencias.md#ref-shute2008feedback); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)).
-- **Operacionalização:** retorno que explicite a distinção, distratores plausíveis, limpar,
-  repetir e aplicar depois.
-- **Consequência esperada:** melhor interpretação e ação sobre o erro.
-- **Explicações rivais:** mera repetição, resposta fornecida ou item mais fácil.
-- **Limite e evidência de enfraquecimento:** retorno incompreensível, revelação
-  precoce ou dependência de ajuda enfraquecem a proposição. Redução de ansiedade
-  não é alegada sem medida.
+Saber apenas que uma resposta está errada oferece pouca orientação para a
+tentativa seguinte. No AraLearn, o estudante confirma antes da avaliação,
+recebe retorno específico e pode tentar outra vez; a solução só é revelada por
+uma ação própria. As tentativas não produzem nota nem classificação acumulada.
+A hipótese é que esse retorno ajude a interpretar o erro e agir num novo caso.
+
+O efeito do retorno depende de seu conteúdo, foco e possibilidade de uso
+([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback);
+[Shute (2008)](referencias.md#ref-shute2008feedback);
+[Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)). A avaliação examina se
+a mensagem torna a distinção compreensível e se a pessoa consegue aplicá-la
+depois. Repetição, solução fornecida ou item mais fácil podem produzir melhora
+aparente. Retorno incompreensível, revelação precoce e dependência persistente
+de ajuda enfraquecem a proposição. Ansiedade constitui outro resultado e requer
+medida própria.
 
 ### P7: correção contextual e revisável
 
-- **Problema e contexto:** corrigir sem manter a unidade e seu contexto pode
-  ocultar o alvo e alterar estrutura indevida.
-- **Alternativas ou requisitos:** editor estrutural livre, instrução sem escopo
-  ou correção limitada ao alvo existente com contexto protegido.
-- **Decisão:** reunir o contexto salvo, explicitar o conjunto de conteúdo e
-  fontes que a correção alcançará e respeitar a autorização da pessoa autora.
-  Uma correção focal e um reparo de dependências podem exigir recortes diferentes;
-  ambos precisam de releitura para confirmar o resultado.
-- **Fundamentação:** controle humano exige comunicação de capacidade, correção e
-  ação compreensível ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)); interpretação e uso do retorno são
-  processos, não entrega isolada ([Wood (2021)](referencias.md#ref-wood2021dialogic)).
-- **Operacionalização:** observações abertas identificam os alvos; o contexto
-  preparado inclui unidades de estudo pedagogicamente afetadas; a correção atualiza o curso
-  corrente; uma nova produção verifica novamente a configuração e a composição
-  declaradas, sem certificar a correção factual do conteúdo.
-- **Consequência esperada:** menos erros de alvo e maior compreensão do escopo.
-- **Explicações rivais:** edição mais curta, experiência técnica ou tarefa
-  trivial.
-- **Limite e evidência de enfraquecimento:** estrutura exposta como texto,
-  alteração lateral ou conjunto de reparos incompreensível exigem bloquear e
-  revisar.
+Corrigir um exemplo sem recuperar seu contexto pode atingir o ponto errado ou
+deixar atividades dependentes incoerentes. Antes da alteração, o AraLearn reúne
+o conteúdo salvo, as fontes e as unidades afetadas e mostra à pessoa autora o
+alcance proposto. Uma correção focal e um reparo de dependências podem ter
+recortes diferentes; ambos exigem releitura do resultado. A hipótese é que esse
+processo reduza erros de alvo e torne o escopo da mudança mais compreensível.
+
+Diretrizes de interação humano–IA destacam a comunicação das capacidades do
+sistema e a possibilidade de corrigir suas ações
+([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Estudos sobre o
+uso de retorno também tratam interpretação e ação como processo, e não como
+mera entrega de uma mensagem
+([Wood (2021)](referencias.md#ref-wood2021dialogic)).
+
+A avaliação acompanha se autores preveem o que será alterado, identificam
+mudanças laterais e confirmam o resultado salvo. Edição curta, experiência
+técnica e tarefa trivial podem explicar bom desempenho. Se a estrutura interna
+aparece como texto incompreensível ou o conjunto de reparos ultrapassa o alcance
+entendido, a operação deve ser bloqueada e redesenhada. A validação estrutural
+da gravação permanece distinta da correção factual do conteúdo.
 
 ### P8: observação situada e ciclo de retorno
 
-- **Problema e contexto:** dúvida ou possível erro pode se perder quando
-  separado da unidade que lhe dá sentido.
-- **Alternativas ou requisitos:** telemetria inferida, comentário geral ou
-  manifestação voluntária ligada ao objeto.
-- **Decisão:** registrar observação situada, resposta e vínculo opcional com
-  reparo confirmado, mantendo-os semanticamente distintos.
-- **Fundamentação:** retorno formativo e sua apropriação dependem de informação
-  e oportunidade de ação ([Nicol e Macfarlane-Dick (2006)](referencias.md#ref-nicol2006formative); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Nicol e Kushwah (2024)](referencias.md#ref-nicol2024feedbackagency)).
-- **Operacionalização:** registrar, reencontrar, responder e decidir ação sem
-  copiar toda a unidade nem diagnosticar o estudante.
-- **Consequência esperada:** retorno compreensível e melhoria editorial
-  rastreável.
-- **Explicações rivais:** memória do problema, contato externo ou seleção de
-  casos fáceis.
-- **Limite e evidência de enfraquecimento:** observação perdida, tratada como
-  diagnóstico ou sem responsável pelo retorno exige revisão.
+Uma dúvida perde parte do sentido quando se separa da explicação ou atividade
+que a provocou. O AraLearn registra a observação junto ao alvo e conserva,
+separadamente, a resposta e o vínculo com um eventual reparo confirmado. A
+hipótese é que essa localização favoreça um retorno compreensível e uma melhoria
+editorial rastreável.
+
+Retorno formativo depende de informação que possa orientar ação, e sua
+apropriação envolve o trabalho de quem o recebe
+([Nicol e Macfarlane-Dick (2006)](referencias.md#ref-nicol2006formative);
+[Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy);
+[Nicol e Kushwah (2024)](referencias.md#ref-nicol2024feedbackagency)). A avaliação observa
+se a pessoa reencontra o problema, compreende a resposta e decide uma ação. A
+memória do caso ou um contato fora do sistema pode explicar parte do resultado.
+Observações perdidas, convertidas em diagnóstico do estudante ou sem
+responsável pelo retorno indicam falha do desenho.
 
 ### P9: propriedade do curso e assistência de IA delimitada
 
-- **Problema e contexto:** edição difusa e geração automática podem ampliar
-  poder, escopo e consequência sem responsabilidade compreensível.
-- **Alternativas ou requisitos:** edição compartilhada por papéis, isolamento
-  completo ou propriedade do curso com acesso direto e revogável para estudo;
-  automação livre ou assistência delimitada por contratos e proveniência.
-- **Decisão:** reservar a autoria à pessoa proprietária, conceder por acesso
-  direto somente o estudo e restringir a IA por catálogo, contrato, escopo e
-  validação.
-- **Fundamentação:** estudos de comunidades mostram relações entre participação
-  e agência ([Wenger (1998)](referencias.md#ref-wenger1998communities);
-  [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)).
-  Eles ajudam a examinar consequências das regras de acesso; reservar a edição
-  à pessoa proprietária é uma escolha específica do projeto. Para a assistência
-  de IA, orientações de governança destacam responsabilidade e explicitação
-  dos riscos ([UNESCO (2023)](referencias.md#ref-unesco2023genai);
-  [Autio et al. (2024)](referencias.md#ref-nist2024genai)). A [revisão de literatura](revisao-de-literatura.md#14-inteligência-artificial-generativa-recuperação-de-contexto-e-controle-humano)
-  discute como buscar documentos e contexto pode apoiar a geração e por que
-  essa busca ainda requer inspeção das fontes e do resultado.
-- **Operacionalização:** autorização por curso e operação, acesso revogável,
-  trilha de proveniência, contrato especializado, auditoria e revisão humana.
-- **Consequência esperada:** acesso e autoria mais delimitados, com menor
-  alteração indevida da estrutura.
-- **Explicações rivais:** modelo maior, instrução intensiva, cenário artificial
-  ou baixa complexidade.
-- **Limite e evidência de enfraquecimento:** confusão entre propriedade e acesso, falsa sensação de
-  controle, erro pedagógico persistente ou seleção inadequada exigem revisão.
+Quando muitas pessoas ou uma automação podem editar o mesmo curso, fica mais
+difícil compreender quem responde pelas mudanças. O AraLearn reserva a autoria
+à pessoa proprietária e permite conceder acesso revogável para estudo. A IA só
+atua por operações com catálogo, regras, alcance e validação definidos. A
+hipótese é que essa combinação delimite melhor a autoria e reduza alterações
+indevidas da estrutura.
+
+Estudos de comunidades de prática ajudam a investigar como regras de
+participação se relacionam à agência
+([Wenger (1998)](referencias.md#ref-wenger1998communities);
+[Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)). Reservar a edição
+à pessoa proprietária, contudo, é decisão específica do projeto. Na assistência
+por IA, UNESCO e NIST destacam responsabilidade e comunicação dos riscos
+([UNESCO (2023)](referencias.md#ref-unesco2023genai);
+[Autio et al. (2024)](referencias.md#ref-nist2024genai)). A [revisão de
+literatura](revisao-de-literatura.md#14-inteligência-artificial-generativa-recuperação-de-contexto-e-controle-humano)
+explica por que recuperar contexto ainda requer inspeção das fontes e do
+resultado.
+
+A avaliação propõe tarefas de autorização, correção e revogação e observa se as
+pessoas distinguem propriedade, acesso e ação da IA. Proveniência e testes
+demonstram o que o sistema registrou; entrevistas e desempenho mostram como o
+controle foi compreendido. Modelo mais capaz, instrução intensiva ou cenário
+simples são explicações alternativas. Confusão persistente, falsa sensação de
+controle e erros pedagógicos não detectados enfraquecem a proposição.
 
 ### P10: dados definidos pela finalidade
 
-- **Problema e contexto:** registros disponíveis podem ser convertidos em medidas substitutas de
-  atenção, domínio ou risco sem validade.
-- **Alternativas ou requisitos:** coletar tudo, não coletar nada ou registrar
-  somente dados ligados a pergunta e ação legítimas.
-- **Decisão:** definir construto, manifestação, interpretação, intervenção,
-  retenção, acesso e custo antes da coleta; recusar tempo e cliques como medidas substitutas
-  por padrão.
-- **Fundamentação:** análise de dados educacionais requer transparência, controle, responsabilidade
-  e processo centrado nas pessoas ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
-- **Operacionalização:** dicionário de métricas, matriz de finalidade, orçamento de armazenamento,
-  acesso proporcional e teste de interpretação.
-- **Consequência esperada:** informação mais acionável com menor risco de
-  vigilância e inferência indevida.
-- **Explicações rivais:** utilidade menor apenas por haver menos dados ou
-  interpretação equivocada por participantes.
-- **Limite e evidência de enfraquecimento:** se decisões legítimas não puderem
-  ser sustentadas, o conjunto deve ser revisto; a revisão não autoriza coleta
-  irrestrita.
+Um registro tecnicamente disponível pode parecer uma medida pronta. Tempo e
+cliques, por exemplo, admitem muitas interpretações e não revelam diretamente
+atenção ou domínio. No AraLearn, a pergunta e a ação legítima precedem a coleta:
+é preciso definir o fenômeno de interesse, sua manifestação observável, o uso
+pretendido e o ciclo de vida do dado. A hipótese é que esse recorte produza
+informação mais útil com menor risco de vigilância e inferência indevida.
+
+A literatura de análise de dados educacionais destaca transparência, controle,
+responsabilidade e participação das pessoas afetadas
+([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
+[Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics);
+[Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). O dicionário de métricas
+registra o cálculo e o denominador; o protocolo define finalidade, acesso,
+retenção e custo.
+
+A avaliação testa se as interpretações são compreendidas e se apoiam decisões
+legítimas. Um conjunto pequeno pode ser insuficiente, e participantes podem
+interpretar de modo equivocado até uma definição explícita. Nesses casos, dados
+e explicação precisam ser revistos. A necessidade de uma decisão específica
+pode justificar nova coleta, desde que o mesmo processo de finalidade e
+governança seja repetido.
 
 ## Lentes críticas sobre informação e poder
 
 Um artefato educacional também precisa ser examinado pelos fins que passa a
 servir. A possibilidade de produzir mais conteúdo, registrar mais operações
-ou estudar em mais momentos não basta para justificar o desenho. Estas lentes
-filosóficas e sociológicas ajudam a formular perguntas sobre essas escolhas;
-não constituem resultados empíricos sobre o AraLearn.
+ou estudar em mais momentos não basta para justificar o desenho. A função
+destas lentes filosóficas e sociológicas é formular perguntas sobre essas
+escolhas. Efeitos empíricos sobre o AraLearn precisam ser investigados nos
+contextos de uso correspondentes.
 
 ### Informação, formação e critérios de valor
 
@@ -394,8 +414,9 @@ Em *Vigiar e punir*,
 panoptismo, analisa como visibilidade, registro e organização das condutas
 participam de relações de poder. A normalização envolve comparar pessoas com
 uma norma e orientar sua conduta por essa comparação. Essa análise histórica
-permite questionar quem observa, define o esperado e decide as consequências;
-não autoriza chamar qualquer registro educacional de vigilância disciplinar.
+permite questionar quem observa, define o esperado e decide as consequências.
+Aplicá-la a um registro educacional requer examinar como esse registro é usado,
+por quem e com que efeitos.
 
 O AraLearn atualmente descreve conteúdo e intervenções autorais observáveis,
 com [limites explícitos de coleta](privacidade.md). Uma possível reutilização
@@ -414,21 +435,19 @@ e no [guia de investigação](guia-pesquisador.md#formular-caminhos-de-investiga
 
 ## Resultados que permanecem separados
 
-Uma avaliação pode reunir medidas, mas deve manter distintos:
+Uma avaliação pode reunir medidas, mas cada família de resultado responde a
+uma pergunta diferente:
 
-- usabilidade;
-- continuidade e retomada;
-- carga cognitiva durante a tarefa;
-- compreensão conceitual imediata;
-- retenção posterior;
-- transferência;
-- qualidade factual, pedagógica e representacional;
-- agência e controle humano;
-- compreensão de propriedade, acesso e responsabilidade;
-- correção, resiliência e frugalidade técnica.
+| Foco | Resultados que podem ser investigados |
+| --- | --- |
+| interação e continuidade | usabilidade, retomada e demanda cognitiva durante a tarefa |
+| aprendizagem | compreensão imediata, retenção posterior e transferência |
+| conteúdo e autoria | qualidade factual, pedagógica e representacional; agência, controle humano e compreensão das responsabilidades |
+| infraestrutura | correção, resiliência e frugalidade técnica |
 
-“Eficácia do AraLearn” não é uma variável única. Cada resultado exige unidade,
-instrumento, momento e interpretação próprios.
+Assim, uma alegação ampla de “eficácia do AraLearn” precisa ser decomposta. A
+unidade observada, o instrumento, o momento e a interpretação mudam conforme o
+resultado escolhido.
 
 ## Relacionar indicadores e interpretação
 

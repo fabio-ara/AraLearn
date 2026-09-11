@@ -1,21 +1,24 @@
 # Privacidade e tratamento de dados
 
-O AraLearn usa dados de conta para autenticar a pessoa e controlar acesso aos cursos;
-mantém também conteúdo autoral, estado de estudo e observações. Proteger esses dados
-exige distinguir o que cada pessoa fornece, quem recebe a informação e por quanto
-tempo ela permanece no aplicativo ou nos serviços contratados.
+O AraLearn usa dados de conta para autenticar a pessoa e controlar o acesso aos cursos.
+Também mantém o material produzido, o estado necessário para retomar o estudo e as
+observações enviadas. Proteger esses dados exige acompanhar três relações: qual é a
+finalidade de cada informação, quem consegue recebê-la e quando ela deixa de ser
+necessária.
 
-A proteção desses dados considera expressamente a **Lei Geral de Proteção de Dados
-Pessoais (LGPD), no Brasil**, e o **Regulamento Geral sobre a Proteção de Dados (RGPD),
-em Portugal**, acompanhado da Lei portuguesa n.º 58/2019. Os controles do software não
-constituem declaração de conformidade: cada implantação precisa identificar a legislação
-aplicável, os responsáveis, as finalidades e as condições efetivas de tratamento.
+A referência jurídica é a **Lei Geral de Proteção de Dados Pessoais (LGPD), no
+Brasil**, e o **Regulamento Geral sobre a Proteção de Dados (RGPD), em Portugal**,
+acompanhado da Lei portuguesa n.º 58/2019. O código fornece controles técnicos; a
+conformidade jurídica depende também da implantação concreta, de quem decide as
+finalidades e dos serviços efetivamente contratados.
 
 Cada uso dos dados precisa de uma finalidade definida. Para retomar o estudo, por
-exemplo, basta conhecer a posição e as marcações da pessoa; acompanhar todos os seus
-toques seria outra coleta, que exigiria justificativa própria. Usar somente os dados
-necessários à finalidade é o princípio de minimização. Também são necessários
-controle de acesso e informação compreensível sobre o tratamento ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
+exemplo, bastam a posição e as marcações da pessoa; registrar todos os seus toques
+seria outra coleta, com finalidade e justificativa próprias. O princípio de
+minimização orienta o uso apenas dos dados necessários. Controle de acesso e
+informação compreensível sobre o tratamento completam essa relação
+([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
+[Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
 
 ## Conceitos essenciais
 
@@ -74,7 +77,8 @@ minimização e, quando a finalidade permitir, anonimização ou pseudonimizaç�
 art. 89º; Lei n.º 58/2019, art. 31º). A finalidade científica não suspende por si só os
 direitos das pessoas.
 
-As leis empregam nomes diferentes para funções próximas:
+As duas leis atribuem responsabilidades conforme a atuação de cada parte, embora usem
+nomes diferentes para funções próximas:
 
 | Papel no tratamento | Brasil — LGPD, art. 5º | Portugal — RGPD, art. 4º |
 | --- | --- | --- |
@@ -94,7 +98,9 @@ tela não substitui as condições jurídicas para tratar os dados envolvidos.
 
 ## Dados e finalidades
 
-O [Supabase](supabase.md) reúne o serviço de autenticação (Auth), o banco relacional
+Para reconhecer quem recebe cada dado, é preciso acompanhar seu percurso entre
+dispositivo e servidor. O [Supabase](supabase.md) reúne o serviço de autenticação
+(Auth), o banco relacional
 PostgreSQL e o armazenamento de arquivos (Storage). O banco guarda registros e relações;
 áreas de arquivos chamadas *buckets* guardam os bytes de PDFs, áudios e fotos. Os dados
 necessários para estudar ficam também no IndexedDB, o armazenamento estruturado do
@@ -119,8 +125,9 @@ podem continuar relacionados à pessoa mesmo sem seu nome. Texto livre também p
 conter informações pessoais ou sensíveis, qualquer que seja o nome da tabela onde
 foi guardado.
 
-Os prazos técnicos de limpeza abaixo não definem os prazos institucionais de retenção de
-arquivos, registros de operação e cópias de segurança.
+Os prazos abaixo descrevem a limpeza executada pelo software. A instituição ainda
+precisa definir a retenção de seus arquivos, registros de operação e cópias de
+segurança.
 
 | Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
 | --- | --- | --- | --- | --- | --- |
@@ -136,10 +143,10 @@ arquivos, registros de operação e cópias de segurança.
 | pesquisa | protocolo, pseudônimo específico, medidas e eventual tabela de reidentificação | pessoal pseudonimizado enquanto reidentificável; pode tornar-se sensível conforme a pergunta | plano de dados segregado e acesso definido pelo protocolo, ainda não implantado como infraestrutura genérica | conforme protocolo, retirada e obrigação institucional | exportação somente nos termos do protocolo; resultados publicados exigem avaliação de reidentificação |
 | registros e limpeza | contagens de tentativas, datas de expiração e contagens de remoção para segurança e ciclo de vida | ator é identificador pessoal da conta; horários e contagens permanecem correlacionáveis; nenhuma coluna de e-mail integra o contador de concessões | tabelas privadas e rotina administrativa | janela de concessão, 30 dias; demais prazos por classe | contagens operacionais não integram exportação comum nem autorizam pesquisa |
 
-Nenhuma categoria sensível é coletada como requisito do produto. Se uma futura pesquisa
-tratar saúde, religião, origem racial ou étnica, opinião política, biometria ou outra
-categoria especialmente protegida, a implantação precisa concluir a avaliação jurídica e
-ética antes da coleta. O mesmo vale para pesquisa com crianças e adolescentes.
+O produto não exige categoria sensível para funcionar. Uma pesquisa que trate, por
+exemplo, saúde, religião ou biometria precisa concluir a avaliação jurídica e ética
+antes da coleta. A mesma avaliação específica se aplica a pesquisas com crianças e
+adolescentes.
 
 ## Conta, perfil e localização por identificador
 
@@ -336,13 +343,12 @@ uso em pesquisa.
 
 ## Integrações conversacionais
 
-Um protocolo aberto conecta clientes externos de assistência às ferramentas de autoria:
-o **Model Context Protocol (MCP)**. A pessoa escolhe e autoriza o cliente conectado.
-As listagens e leituras de autoria são limitadas aos cursos próprios. Há uma consulta
-específica para preparar cópias: ela pode localizar também metadados de um curso para
-o qual a pessoa recebeu permissão explícita de cópia. Essa permissão permite criar
-outro curso, mantendo a autoria do original com seu proprietário. As mesmas regras
-de propriedade, revisão e confirmação da interface são aplicadas pelo servidor.
+O **Model Context Protocol (MCP)** conecta um cliente externo de assistência às
+ferramentas de autoria. A pessoa escolhe e autoriza esse cliente. As leituras autorais
+alcançam seus próprios cursos; uma consulta específica também pode localizar os
+metadados de um curso que recebeu permissão explícita para copiar. A cópia resultante é
+outro curso, e a autoria do original permanece com seu proprietário. O servidor aplica
+as mesmas regras de propriedade, revisão e confirmação usadas pela interface.
 
 O [catálogo MCP](autoria-mcp.md) define tarefas também oferecidas pela [integração
 Actions/OpenAPI](autoria-actions.md). O proprietário pode consultar identificadores das
@@ -386,51 +392,44 @@ Fontes preservam as referências necessárias à autoria, mas não expõem ator,
 Storage ou credencial administrativa. A incorporação de PDF aceita o arquivo temporário
 entregue pelo transporte, valida origem e bytes no servidor e grava o objeto em bucket
 privado. Para abrir um anexo, o serviço autoriza o alvo e emite uma URL assinada de
-curta duração. Metadados livres da fonte, como título, autoria declarada, citação,
-endereço, identificador, edição e trecho de verificação, podem conter dados pessoais e
-exigem minimização. O painel de fontes do estudo mostra somente os metadados e a
+curta duração. Campos livres da fonte, como título, autoria declarada e trecho de
+verificação, também podem conter dados pessoais e exigem minimização. O painel de
+fontes do estudo mostra somente os metadados e a
 localização permitidos pela visibilidade escolhida. Em Actions, o destinatário é o GPT
 conectado; no MCP, é o cliente MCP conectado.
 
-Na [edição com IA](assistencia-por-ia.md), a pessoa escolhe OpenAI, Gemini ou DeepSeek e
-envia o pedido diretamente do dispositivo ao provedor. A chave segue somente no
-cabeçalho da chamada e permanece em memória durante a sessão. O pedido inclui a seleção,
-o restante do alvo como contexto, a configuração aplicada, o resumo curricular e até
-oito mensagens anteriores da conversa. A solicitação inclui os identificadores internos
-dos objetos necessários para manter o recorte e a ordem.
+Na [edição com IA](assistencia-por-ia.md), a pessoa escolhe OpenAI, Gemini ou DeepSeek.
+Ao enviar uma mensagem, o dispositivo remete ao provedor a seleção editada, o restante
+do alvo como contexto, a configuração aplicada, um resumo curricular e até oito
+mensagens anteriores. Identificadores internos mantêm o recorte e a ordem dos objetos.
+A interface inicia a chamada nessa própria ação de envio, sem apresentar outra tela
+com a íntegra do pedido. A configuração associa cada provedor somente à sua origem
+oficial.
 
-O pedido é montado a partir do alvo e do contexto curricular selecionados, sem consultar
-o acervo de fontes, os arquivos anexos ou o perfil da conta. Erros públicos do provedor
-preservam código e orientação úteis, mas não refletem segredo, e-mail, cabeçalho de
-autorização ou corpo bruto. As Edge Functions não registram corpo, cabeçalhos ou
-exceções brutas no console; workflows também recusam rastreamento e impressão direta de
-credenciais. O texto editável escolhido ainda pode conter dado pessoal por decisão da
-pessoa, razão pela qual a pessoa precisa conferir a seleção e o contexto antes de
-enviar.
+O pedido é montado a partir do alvo e do contexto curricular selecionados. O acervo de
+fontes, os anexos e o perfil da conta não são consultados para compô-lo. A chave do
+provedor segue no cabeçalho da requisição e permanece somente na memória da sessão; não
+entra no IndexedDB, no PostgreSQL, no Storage ou nos artefatos gerados. Sair, recarregar
+ou encerrar a sessão descarta a chave e a conversa local.
 
-O AraLearn conserva a conversa e a chave apenas na memória da sessão. O provedor recebe
-o conteúdo enviado e pode retê-lo conforme os termos do serviço escolhido. A interface
-atual inicia a chamada pela ação de enviar a mensagem; não exibe uma confirmação
-separada com o conteúdo integral do envio.
+Erros apresentados pelo AraLearn conservam o código e a orientação úteis sem repetir
+segredo, e-mail, cabeçalho de autorização ou corpo bruto. As Edge Functions não
+registram corpo, cabeçalhos ou exceções brutas no console; os fluxos de automação
+recusam rastreamento e impressão direta de credenciais. Ainda assim, o texto selecionado
+pode conter informações pessoais, e o provedor pode conservar o que já recebeu segundo
+seus próprios termos. Ao sair da conta, o aplicativo também cancela a chamada em
+curso. Esse cancelamento não recolhe uma solicitação que o provedor já tenha recebido.
 
-A configuração de IA é válida para a sessão e vincula cada provedor à sua origem
-oficial. O aplicativo envia a chave apenas no cabeçalho da requisição. A credencial
-permanece em memória até sair, recarregar ou encerrar a sessão; não entra no IndexedDB,
-no PostgreSQL, no Storage nem nos artefatos. Esse percurso não oferece armazenamento de
-credencial duradoura.
-
-Ao sair da conta, o aplicativo cancela a chamada ao provedor e descarta a conversa e a
-credencial em memória. Isso não remove uma solicitação que o provedor já recebeu.
-
-Mesmo com esse recorte, o conteúdo enviado fica sujeito às regras do provedor escolhido.
-A pessoa deve evitar segredos e dados pessoais desnecessários, delimitar a finalidade e
-revisar a proposta antes de incorporá-la ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai); [UNESCO (2023)](referencias.md#ref-unesco2023genai)).
+Antes do envio, a pessoa precisa conferir o recorte, retirar segredos e dados pessoais
+desnecessários e delimitar a finalidade. A proposta recebida também deve ser revisada
+antes de entrar no curso ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
+[UNESCO (2023)](referencias.md#ref-unesco2023genai)).
 
 ## Dados no dispositivo
 
-O navegador e o aplicativo Android mantêm sessão autenticada, listas resumidas,
-composições já abertas, estado pessoal, alterações pendentes, anotações e arquivos
-estáticos da interface.
+O dispositivo conserva o necessário para manter a sessão e continuar o trabalho já
+iniciado. Isso inclui a composição de cursos abertos, o estado pessoal e alterações
+pendentes, além dos arquivos estáticos da interface.
 
 A sessão persiste somente `access_token`, `refresh_token`, tipo, expiração e `user.id`.
 E-mail, nome, identidades externas e o restante do objeto retornado pelo Auth não são

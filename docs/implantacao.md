@@ -1,19 +1,20 @@
 # Implantação
 
-Uma instalação do AraLearn reúne o serviço remoto, o site e, quando necessário, o
-aplicativo Android. O [Supabase](supabase.md) fornece o banco de dados, a autenticação e
-o armazenamento de arquivos; esse conjunto é o backend. O site e o Android executam a
-interface e guardam no dispositivo o conteúdo de estudo já carregado.
+Uma instalação do AraLearn reúne o serviço remoto e a interface que chega às pessoas
+pelo site ou pelo aplicativo Android. O [Supabase](supabase.md) fornece banco de dados,
+autenticação e armazenamento de arquivos; esse conjunto executado no servidor é o
+*backend*. Site e Android apresentam a interface e guardam no dispositivo o conteúdo
+de estudo já carregado.
 
 Os três precisam usar versões compatíveis. Por exemplo, publicar uma interface que
 depende de uma nova operação do servidor antes de instalar essa operação pode impedir a
 gravação de um curso. A implantação valida a combinação de versões e publica os mesmos
 arquivos que passaram pela verificação.
 
-O repositório oferece diagnóstico, planejamento, aplicação e verificação como etapas
-separadas. O diagnóstico confere ferramentas e configuração da máquina; o plano lista as
-operações necessárias; a aplicação altera o destino autorizado; a verificação compara os
-arquivos e contratos publicados com os esperados.
+O procedimento separa preparação e mudança do ambiente público. Primeiro, o diagnóstico
+confere a máquina e o plano mostra o que será executado. Só a etapa de aplicação altera
+o destino autorizado; depois, a verificação compara o que foi publicado com a candidata
+aprovada.
 
 Os comandos abaixo usam PowerShell. Execute-os na raiz de uma cópia atualizada do
 repositório. O fluxo completo pressupõe acesso administrativo à hospedagem; essas
@@ -22,6 +23,7 @@ Android.
 
 ## Escolher o perfil
 
+O perfil liga o tipo de hospedagem às etapas que o procedimento precisa executar.
 `scripts/planDeployment.ps1` reconhece três destinos:
 
 | Perfil | Site | Backend | Uso |
@@ -114,11 +116,12 @@ fronteira de segurança.
 
 ## Validar antes da publicação
 
-A integração contínua (CI) executa verificações quando uma solicitação de integração
-recebe mudanças. O fluxo está em [`validacao.yml`](../.github/workflows/validacao.yml).
-Uma candidata é a versão separada para avaliação; seu manifesto registra os arquivos e
-resultados que podem ser usados posteriormente na publicação. Um recibo local guarda o
-resultado de uma operação, mas não substitui esse manifesto.
+A integração contínua (CI) executa verificações automatizadas quando uma solicitação de
+integração recebe mudanças. O fluxo está em
+[`validacao.yml`](../.github/workflows/validacao.yml). A versão avaliada recebe o nome
+de candidata. Seu manifesto identifica os arquivos e resultados que poderão seguir
+para publicação. Recibos produzidos por testes locais registram apenas aquelas
+execuções e não identificam a candidata inteira.
 
 Durante o desenvolvimento, execute primeiro os testes do comportamento alterado. O
 executor de testes aceita nomes de arquivos explícitos; ele rejeita caminhos
@@ -158,14 +161,12 @@ desenvolvimento. O controle de concorrência cancela a execução superada da me
 referência. O acionamento manual de uma execução não deve duplicar esse caminho na
 branch da solicitação.
 
-A preparação comum executa auditorias e verificadores antes dos dois trabalhos mais
-demorados: web/Android e Supabase local. O trabalho web testa o código de execução sem
-repetir essa preparação. Os caches de npm, Chromium e Gradle reaproveitam downloads
-compatíveis com a plataforma e o arquivo de dependências fixadas (`package-lock.json`).
-Eles economizam transferência; os testes continuam necessários. A integração habilita
-cenários adicionais no mesmo conjunto de serviços locais e no processo de funções já
-preparado. Recibos locais e provas parciais não são aceitos pela promoção como manifesto
-de aprovação integral.
+A preparação comum executa auditorias e verificadores antes dos trabalhos mais demorados
+com a interface, o Android e o Supabase local. O trabalho web reutiliza essa preparação
+e testa o código de execução. Os *caches* de npm, Chromium e Gradle evitam baixar de novo
+dependências idênticas; eles não substituem os testes. A promoção só aceita o manifesto
+produzido pelo conjunto integral de provas da candidata. A integração acrescenta seus
+cenários ao mesmo conjunto de serviços locais e ao processo de funções já preparado.
 
 Instale exatamente as dependências fixadas:
 
@@ -265,19 +266,19 @@ dependa da nova revisão.
 
 ## Publicar o site
 
-`npm run pages:build` gera `.pages` a partir das mesmas fontes validadas. O artefato
-contém HTML, CSS, módulos JavaScript, manifesto de recursos, configuração pública e o
-documento OpenAPI de Actions. Não contém cursos, chave secreta nem credencial de
-provedor.
+`npm run pages:build` gera o diretório `.pages` a partir das mesmas fontes validadas.
+Ele contém HTML, CSS, módulos JavaScript, o manifesto de recursos, a configuração
+pública e o documento OpenAPI de Actions. Dados de cursos e credenciais secretas
+permanecem fora do artefato.
 
 A automação (*workflow*) [`pages.yml`](../.github/workflows/pages.yml) coordena a
 publicação em três fases. Nesse fluxo, promoção é a passagem de uma versão validada para
-o ambiente público. O envio de commits ao repositório não inicia a publicação. Após
-integrar a candidata, prepare os artefatos enquanto o serviço remoto e o site publicados
-continuam compatíveis. Informe a execução integral e sua tentativa, ambas identificadas
-no GitHub. Uma execução recente com sucesso não substitui a identificação da candidata
-validada. Os comandos usam a [GitHub CLI](https://cli.github.com/manual/), autenticada
-para o repositório:
+o ambiente público; enviar commits ao repositório não inicia essa passagem. Depois da
+integração, a fase de preparação recebe os identificadores da execução integral e de
+sua tentativa no GitHub. Assim, um sucesso antigo ou de outra candidata não pode ser
+usado por engano. Os artefatos são preparados enquanto o serviço remoto e o site
+publicado ainda permanecem compatíveis. Os comandos usam a
+[GitHub CLI](https://cli.github.com/manual/), autenticada para o repositório:
 
 ```powershell
 gh workflow run pages.yml --ref main `
@@ -423,7 +424,8 @@ Para GitHub Pages com Supabase hospedado, a sequência é:
 5. integrar a revisão aprovada e confirmar os checks do SHA exato;
 6. executar `preparar`: assinar o APK e provar instalação/upgrade nativos sem mudar o backend publicado;
 7. concluir backup/restauração pertinente, aplicar migrações e publicar as Edge Functions;
-8. executar `publicar_site`: verificar backend e prova já produzida, publicar os bytes Pages e guardar o APK em rascunho;
+8. executar `publicar_site`: verificar backend e prova já produzida, publicar os bytes
+   Pages e guardar o APK em rascunho;
 9. executar as jornadas críticas e provas reais de cliente da candidata;
 10. executar `finalizar_release`: revalidar os artefatos e publicar a Release/APK correspondente.
 

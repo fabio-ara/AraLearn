@@ -1,7 +1,8 @@
 # Verificação da interface
 
-Verificar a interface exige acompanhar a ação da pessoa, sua resposta visível e o
-efeito nos dados. O percurso reúne navegação, autorização, gravação e apresentação; a
+Uma tela pode parecer correta e ainda salvar o dado errado, perder o foco ou oferecer
+uma ação que o servidor recusará. Por isso, a verificação acompanha a jornada inteira:
+o que a pessoa faz, a resposta visível e o efeito persistido. A
 [matriz técnica](matriz-conformidade-tecnica.md) indica os testes disponíveis para
 cada capacidade.
 
@@ -11,9 +12,9 @@ Uma jornada é uma sequência de ações com uma finalidade, como abrir um curso
 consultar sua explicação e voltar à atividade. A verificação acompanha esse
 percurso e confere tanto o resultado percebido pela pessoa quanto o que foi salvo.
 
-Em cada jornada, registre o estado inicial, execute as ações e confirme o efeito no
-local que conserva o dado: o servidor para o curso e as permissões; o armazenamento do
-dispositivo para rascunhos, posição e filas locais. A
+Em cada jornada, registre o estado inicial, execute as ações e confirme o efeito onde
+o dado é realmente conservado. O servidor decide o curso compartilhado e as
+permissões; o dispositivo guarda rascunhos, posição e filas locais. A
 [persistência](persistencia-relacional.md) explica essa divisão.
 
 Em **Estudo**, percorra:
@@ -62,9 +63,9 @@ deve exibir nomes de campos, termos internos, identificadores ou contagens
 apresentadas como julgamento pedagógico.
 
 No mapa, teste a seta isoladamente, abra objetivos longos e siga vínculos da
-cobertura, retornando ao mesmo ramo, posição e foco. Em Parâmetros, alterne curso,
-módulo, lição, microssequência e unidade, incluindo valores automáticos, fixos e
-herdados e um rascunho ainda não salvo. Nas folhas de observações, confira leitura sem
+cobertura, retornando ao mesmo ramo, posição e foco. Em Parâmetros, percorra múltiplos
+recortes da hierarquia, do curso à unidade de estudo, incluindo um rascunho ainda não
+salvo e valores automáticos, fixos ou herdados. Nas folhas de observações, confira leitura sem
 edição, texto alterado, fechamento e retomada; avisos não podem encobrir campo, envio
 ou foco.
 
@@ -82,7 +83,8 @@ autoriza reduzir a explicação didática produzida.
 
 A Assistência por IA precisa demonstrar conversa, uma proposta concreta em cada
 resposta, revisão multiturmo, aceite explícito, descoberta progressiva de componentes,
-validação na apresentação real dos componentes, aplicação ao rascunho e gravação separada. Uma proposta
+validação na apresentação real dos componentes, aplicação ao rascunho e gravação
+separada. Uma proposta
 recusada deve deixar o conteúdo corrente intacto.
 
 ## Revisão do percurso materializado
@@ -134,9 +136,9 @@ atalhos equivalentes.
 
 Os testes de execução exercitam contratos e estados de erro.
 [Playwright](https://playwright.dev/docs/intro), ferramenta que controla o navegador
-em testes automatizados, percorre interações repetíveis e matrizes de tamanho. O
-Chrome real completa a prova ao mostrar a aplicação efetivamente carregada, a sessão
-autenticada, o foco, o console e o comportamento físico das sobreposições.
+automaticamente, repete interações e tamanhos de tela de forma previsível. Uma rodada
+manual no Chrome completa essa prova ao observar a aplicação publicada, com sessão
+autenticada, foco, console e comportamento real das sobreposições.
 
 Execute as verificações da área alterada e a preparação da candidata:
 

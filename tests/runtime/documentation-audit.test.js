@@ -51,7 +51,7 @@ function temporaryDocumentation() {
       "",
       "## Começar a usar",
       "",
-      "## Estudar o modelo pedagógico",
+      "## Compreender o modelo didático",
       "",
       "## Aprender no trabalho e formar profissionalmente",
       "",
@@ -121,6 +121,23 @@ function temporaryDocumentation() {
   fs.writeFileSync(path.join(temporaryRoot, "docs", "nested", "detalhe.md"), "# Detalhe\n", "utf8");
   return temporaryRoot;
 }
+
+test("auditoria aceita o inventário como índice integral do corpus", (context) => {
+  const temporaryRoot = temporaryDocumentation();
+  context.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(temporaryRoot, "docs", "aprofundamento.md"),
+    "# Aprofundamento\n",
+    "utf8"
+  );
+  fs.appendFileSync(
+    path.join(temporaryRoot, "docs", "inventario-documentacao.md"),
+    "\n[Aprofundamento](aprofundamento.md)\n",
+    "utf8"
+  );
+
+  assert.deepEqual(auditDocumentation({ root: temporaryRoot }), []);
+});
 
 test("auditoria exige os documentos técnicos e links reais no índice público", (context) => {
   const temporaryRoot = temporaryDocumentation();

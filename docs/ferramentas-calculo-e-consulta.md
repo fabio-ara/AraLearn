@@ -1,9 +1,9 @@
 # Ferramentas de cálculo e consulta
 
-Calculadora, gramática, dicionário e leitura complementar oferecem apoio à
-tarefa em estudo: conferir um valor, consultar uma construção, interpretar uma
-palavra ou aprofundar uma comparação. Os controles do estudo abrem a ferramenta
-sem substituir a unidade e permitem voltar à mesma leitura.
+As ferramentas oferecem apoio pontual durante uma tarefa. Elas permitem, por
+exemplo, conferir um cálculo, consultar uma construção linguística ou abrir uma
+leitura selecionada pela autoria. Seus controles mantêm a unidade aberta e
+permitem voltar ao mesmo ponto do estudo.
 
 As ferramentas pertencem ao [catálogo de componentes didáticos](componentes-didaticos.md),
 conjunto de formatos que o autor pode incluir numa unidade. A calculadora
@@ -11,23 +11,24 @@ opera no dispositivo; gramática, dicionário e leitura abrem materiais
 selecionados para consulta. A disponibilidade de um destino externo depende
 de sua conexão e das permissões do material.
 
-O título e a orientação devem explicar por que usar a ferramenta naquela
-tarefa. Abrir uma calculadora ou um recurso externo não registra uma resposta
-correta, uma conclusão nem uma verificação factual. As ferramentas não oferecem
-alvos de lacuna automáticos: um rótulo de consulta não deve virar exercício
-por acidente.
+O título e a orientação explicam por que usar a ferramenta naquela tarefa. A
+abertura registra apenas a consulta; respostas e conclusões pertencem à
+atividade que solicita que o estudante faça algo com o resultado. Por isso, um
+exercício usa um componente de resposta próprio em vez de transformar
+automaticamente o rótulo da ferramenta em lacuna.
 
 ## Calculadora
 
-`aralearn.resource.calculator@1.0.0` oferece cálculo numérico real aproximado.
-É adequada quando verificar valores ajuda a testar uma previsão, comparar
-casos ou acompanhar um raciocínio. Não substitui a explicação do mecanismo,
-nem deve ser oferecida numa tarefa que exige cálculo mental sem apoio.
+`aralearn.resource.calculator@1.0.0` faz cálculos numéricos aproximados no
+dispositivo. É adequada quando verificar valores ajuda a testar uma previsão,
+comparar casos ou acompanhar um raciocínio. A explicação do mecanismo continua
+no percurso, e uma tarefa de cálculo mental pode deixar essa ferramenta de fora.
 
-Os dados são `title`, `angleUnit` (`radians` ou `degrees`) e, opcionalmente,
-`prompt` e `initialExpression`. A unidade angular fica visível e pode ser alterada durante
-o uso. A expressão inicial pode orientar uma exploração, mas não deve revelar
-a resposta que o estudante precisa produzir.
+Na tela, a calculadora apresenta um título e informa se os ângulos estão em
+radianos ou graus. Pode também trazer uma orientação e uma expressão inicial.
+No contrato técnico, esses dados correspondem a `title`, `angleUnit`, `prompt`
+e `initialExpression`. A unidade angular pode ser alterada durante o uso. A
+expressão inicial orienta uma exploração sem antecipar a resposta solicitada.
 
 O interpretador de expressões aceita os operadores `+`, `-`, `*`, `/` e `^`, parênteses, constantes
 `pi`/`π` e `e`, e as funções unárias `abs`, `sqrt`, `ln`, `log`, `exp`, `sin`,
@@ -59,8 +60,8 @@ recusados. Também se recusam estouro numérico e resultados de multiplicação,
 divisão, potência ou exponencial que perdem completamente seu valor por
 arredondamento para zero. Ângulos têm módulo máximo de 10¹²; a tangente é
 recusada quando o módulo do cosseno calculado é menor que 10⁻¹², inclusive
-perto de seus polos. Esses são limites operacionais explícitos, não um sistema
-de álgebra computacional.
+perto de seus polos. Esses limites delimitam uma calculadora numérica, distinta
+de um sistema capaz de manipular expressões algébricas simbolicamente.
 
 Expressão e unidade angular têm rótulos. Enter calcula, o resultado ou erro
 é anunciado e o foco permanece na tarefa. Alterar expressão ou unidade angular
@@ -104,13 +105,14 @@ evidência são papéis distintos, ainda que compartilhem documento ou URL.
 
 ## Contrato dos recursos de consulta
 
-Na implementação, uma ocorrência de ferramenta é uma **instância** de componente
-no espaço de conteúdo, `content`. Ela informa rótulo e ícone em `manifest.tool`,
-a descrição de seus controles. A função `toolInteraction.bind(root, data, host)`
-ativa a interação e oferece um procedimento de limpeza ao fechar a ferramenta.
-`host` representa os serviços que o aplicativo fornece ao componente, como
-abrir um arquivo autorizado. O [contrato comum dos pacotes](componentes-didaticos.md)
-explica essa separação.
+Uma ferramenta precisa abrir e fechar sem perder o estado da unidade. Para que
+o aplicativo faça isso do mesmo modo com todos os pacotes, cada ocorrência é
+tratada como uma **instância** de componente no espaço de conteúdo, `content`.
+Ela informa rótulo e ícone em `manifest.tool`, a descrição de seus controles.
+A função `toolInteraction.bind(root, data, host)` ativa a interação e devolve o
+procedimento que desfaz esses vínculos ao fechar. `host` representa os serviços
+oferecidos pelo aplicativo ao componente, como abrir um arquivo autorizado. O
+[contrato comum dos pacotes](componentes-didaticos.md) explica essa separação.
 
 Os três pacotes de consulta compartilham os mesmos dados: `title`, `items` e
 `prompt` opcional. Há de um a 32 itens por instância; cada item tem `id`,
@@ -133,11 +135,12 @@ Mensagens internas, credenciais e URLs temporárias não são reproduzidas na
 mensagem. Ao fechar a ferramenta, o aplicativo remove os vínculos de eventos e ignora
 a conclusão de operações iniciadas naquela abertura.
 
-As provas locais exercitam interpretação, precedência, limites, domínio real,
-normalização pelo registro, apresentação segura do texto e destinos. A prova isolada em navegador
-exercita teclado, unidades angulares, múltiplos itens, falha, nova tentativa e
-fechamento, com abertura pelo aplicativo simulado. Isso não equivale a uma abertura hospedada de PDF nem à
-verificação de serviços externos; o fluxo integrado conserva essa distinção.
+As provas locais verificam a interpretação e a precedência dos cálculos, o
+domínio real e os limites dos contratos, além da normalização e da apresentação
+segura dos destinos. A prova isolada no navegador exercita teclado, unidades
+angulares e múltiplos itens, junto ao ciclo de abrir, falhar, tentar novamente e
+fechar usando um aplicativo simulado. A abertura hospedada de um PDF e os
+serviços externos pertencem ao teste do fluxo integrado.
 
 <a id="composição-nos-canais-humanos"></a>
 
@@ -146,11 +149,13 @@ verificação de serviços externos; o fluxo integrado conserva essa distinção
 `consultar_componentes` descobre os pacotes pelo mesmo catálogo utilizado no
 estudo. Uma consulta focal devolve o contrato de um pacote, seu exemplo e, quando
 existe, `ferramenta: {label, icon}`. `materializar_parte` e `aplicar_correcoes`
-recebem as instâncias no `content` comum; o canal usa o contrato comum de conteúdo, sem uma lista de tipos ou
-rotina de gravação separada para cada ferramenta. A consulta focal de uma fonte também fornece
-`arquivosParaConteudo`, com alvos lógicos de PDF e rótulos por posição. Esses
-alvos permitem compor leituras auxiliares sem inventar identidades, transformar
-o arquivo em evidência ou persistir URLs de Storage.
+recebem as instâncias no `content` comum; assim, cada canal reutiliza o contrato
+de conteúdo e a mesma rotina de gravação. A consulta focal de uma fonte também
+fornece `arquivosParaConteudo`, com referências verificadas aos PDFs que podem
+ser escolhidos e um rótulo para localizar cada posição. A composição usa essas
+referências lógicas em vez de criar outra
+identidade para o arquivo ou guardar seu endereço temporário de Storage. O
+vínculo como evidência continua sendo uma decisão separada.
 
 `guardar_audio({curso, audio})` recebe um arquivo já existente. O retorno
 `context.storedAudio` contém somente nome e referência lógica verificada

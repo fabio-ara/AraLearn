@@ -6,7 +6,11 @@
 
 Uma atividade pode exigir conceitos e relações que precisam de desenvolvimento maior do que cabe em sua tela. Em um exercício sobre comunicação, por exemplo, identificar quem envia e quem recebe uma mensagem depende de compreender primeiro esses papéis. A tarefa perde sentido se o curso apenas apresentar os nomes e esperar que o estudante deduza a relação.
 
-No AraLearn, a **explicação** é o texto-base de uma microssequência: desenvolve o assunto, seus pressupostos, exemplos e fontes. Uma **microssequência didática** reúne um percurso com objetivo próprio, dentro de uma lição. Suas unidades de estudo ensinam e exercitam esse conteúdo, conforme o [modelo didático](modelo-didatico.md).
+No AraLearn, a **explicação** é o texto-base de uma microssequência: desenvolve
+o assunto e a base necessária para compreendê-lo, com exemplos e fontes. Uma
+**microssequência didática** reúne um percurso com objetivo próprio dentro de
+uma lição. Suas unidades de estudo ensinam e exercitam esse conteúdo, conforme
+o [modelo didático](modelo-didatico.md).
 
 A mesma explicação pode ser consultada a partir de todas as unidades daquela microssequência. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante a leitura e a prática. Na interface, o controle recebe o nome **Explicação**.
 
@@ -16,21 +20,39 @@ A explicação e as unidades realizam trabalhos relacionados. A explicação des
 
 Uma unidade precisa conter ensino ou uma tarefa inteligível. Escrever apenas “leia a explicação” não substitui a relação que o percurso precisa desenvolver. Se a atividade pede identificar a origem de uma mensagem e depois explicar a inversão dos papéis na resposta, essa relação deve ser ensinada, e a explicação pode desenvolvê-la com maior profundidade.
 
-Quem já conhece o assunto pode seguir sem abrir a explicação. Quem precisa recuperar um pressuposto deve conseguir encontrar ali uma definição, um exemplo e sua relação com a tarefa. A inspeção autoral examina o conjunto: nem comprimir todo o assunto na unidade, nem deslocar todo o ensino para um apoio que o estudante talvez não saiba que precisa consultar.
+Quem já conhece o assunto pode seguir sem abrir a explicação. Quem precisa
+recuperar um pressuposto deve conseguir encontrar ali uma definição, um exemplo
+e sua relação com a tarefa. A inspeção autoral procura uma distribuição em que
+a unidade continue inteligível e a explicação ofereça o aprofundamento que pode
+ser consultado durante o percurso.
 
 ### Parâmetros e declarações de aplicação
 
 Os [parâmetros de desenho](desenho-instrucional-parametrizado.md) orientam escolhas como quantas ideias novas apresentar juntas e quais formas de explicação desenvolver. A **intenção corrente** registra as escolhas para o próximo trabalho. A **configuração aplicada** conserva as usadas na produção de uma unidade. Alterar uma preferência agora não reescreve o conteúdo já produzido.
 
-A explicação compartilhada é um objeto do curso; uma **forma de explicação** é uma maneira de desenvolver uma ideia, como defini-la, mostrar um exemplo ou contrastar casos. Essas duas coisas não devem ser confundidas. Se o registro de uma unidade declara que ela desenvolve um exemplo, o exemplo precisa estar naquela unidade. Sua presença apenas no texto-base não comprova a declaração.
+A explicação compartilhada é um objeto do curso; uma **forma de explicação** é
+uma maneira de desenvolver uma ideia, como defini-la, mostrar um exemplo ou
+contrastar casos. A primeira oferece uma base comum à microssequência. A segunda
+descreve o trabalho realizado num trecho determinado. Assim, se o registro de
+uma unidade declara que ela desenvolve um exemplo, o exemplo precisa estar
+naquela unidade; sua presença no texto-base responde a outra função.
 
-Uma ideia pode ser desenvolvida em várias unidades. A primeira apresentação é registrada como introdução; uma unidade posterior pode usar a ideia ou retomá-la para aprofundar uma relação. Por exemplo, depois de introduzir origem e destino, o percurso pode retomar esses conceitos na resposta do servidor. A retomada não é outra introdução dos mesmos conceitos.
+Uma ideia pode ser desenvolvida em várias unidades. A primeira apresentação é
+registrada como introdução; uma unidade posterior pode usar a ideia ou retomá-la
+para aprofundar uma relação. Por exemplo, depois de introduzir origem e destino,
+o percurso pode retomar esses conceitos na resposta do servidor. A retomada
+preserva a identidade dos conceitos já introduzidos.
 
 O alvo editorial de palavras por unidade é uma orientação para distribuir o conteúdo. Ele não determina a extensão da explicação. Se o desenvolvimento da base revelar uma lacuna no percurso, a pessoa autora precisa decidir como tratá-la no mapa e nas unidades, em vez de considerar a lacuna resolvida só porque o texto-base ficou mais longo.
 
 ### Composição e fontes
 
-A explicação utiliza os [componentes didáticos](componentes-didaticos.md) disponíveis para apresentar texto e representações. Uma tabela pode comparar casos; um diagrama, mostrar uma relação; a prosa explica o significado e como ler essas representações. Definição, mecanismo, exemplo e contraste são possibilidades de composição, escolhidas conforme o objetivo.
+A explicação utiliza os
+[componentes didáticos](componentes-didaticos.md) disponíveis para apresentar
+texto e representações. Uma tabela pode comparar casos; um diagrama, mostrar
+uma relação; a prosa explica o significado e como ler essas representações.
+Definição, exemplo e contraste ilustram formas de composição escolhidas conforme
+o objetivo.
 
 As citações ligam afirmações à obra e ao trecho pertinente. A mesma fonte pode ser usada na explicação e em uma unidade, com vínculos próprios. Por exemplo, a base pode desenvolver um conceito com um livro, enquanto uma unidade usa outro documento para discutir um caso. [Fontes, citações e referências](fontes-e-citacoes.md) explica a distinção entre obra, localização na fonte e ocorrência no curso.
 
@@ -38,7 +60,11 @@ A pessoa autora confere o papel da fonte e o apoio que ela oferece ao texto. Uma
 
 ## Dados, produção e revisão
 
-O mapa pode guardar uma proposta da explicação antes de existir o texto desenvolvido. Essa proposta indica finalidade, pressupostos, relações e fontes previstas. Produzir a explicação transforma a proposta em conteúdo salvo, que pode ser inspecionado e ajustado antes de organizar as unidades.
+O mapa pode guardar uma proposta da explicação antes de existir o texto
+desenvolvido. Essa proposta indica a finalidade e as relações a desenvolver,
+com os pressupostos e as fontes previstas. Produzir a explicação transforma a
+proposta em conteúdo salvo, que pode ser inspecionado e ajustado antes de
+organizar as unidades.
 
 No foco **Conteúdo**, a autoria trabalha explicações e fontes. **Ciclo completo** inclui também o desenho e a produção das unidades. A [configuração do processo de autoria](configuracoes.md#preferências-pessoais) permite escolher como agrupar esse trabalho e em quais pontos inspecioná-lo.
 
@@ -50,7 +76,11 @@ Cada explicação e cada unidade tem sua própria marca de revisão. A pessoa au
 
 Depois de inspecionar o texto salvo, as fontes e as atividades pertinentes, use **Marcar como revisado** no objeto correspondente. **Retirar marca de revisão** desfaz essa declaração sem apagar o conteúdo. Se houver uma edição aberta, salve ou descarte o rascunho antes de marcar: a declaração se refere ao conteúdo salvo que foi examinado.
 
-A marca registra uma declaração humana; não comprova, por si só, a qualidade dessa inspeção. Salvar uma edição, resolver uma observação ou receber uma resposta tecnicamente válida do assistente não declara revisão. Nos canais conectados, a marca também depende de uma decisão humana expressa sobre o conteúdo identificado.
+A marca registra uma declaração humana sobre o conteúdo inspecionado. A
+qualidade dessa inspeção depende do trabalho realizado pela pessoa autora.
+Salvar uma edição, resolver uma observação e receber uma resposta tecnicamente
+válida do assistente são ações separadas. Nos canais conectados, a marca depende
+de uma decisão humana expressa sobre o conteúdo identificado.
 
 A marca **Rever** tem outra finalidade: é uma escolha pessoal do estudante para voltar a uma unidade. Ela não altera a revisão autoral.
 
@@ -107,7 +137,12 @@ Para investigar essas decisões, o mapeamento de conjecturas de [Sandoval (2014)
 | Retorno preservando a resposta | Retomar o raciocínio após a consulta | A pessoa continua a tarefa sem reconstruir seu contexto? |
 | Fontes localizadas e revisão humana | Conferir sustentação e corrigir interpretações | A inspeção encontra problemas materiais ou se limita à presença da referência? |
 
-Essas relações ainda são hipóteses. Uma avaliação com pessoas precisa definir pergunta, instrumentos, comparação e tratamento de dados. O [guia de pesquisa](guia-pesquisador.md) desenvolve esses caminhos. O [registro bibliográfico](evidence/registro-buscas-bibliograficas.csv) conserva as consultas e os limites de leitura que fundamentaram esta seleção; ela não constitui uma revisão sistemática.
+Essas relações ainda são hipóteses. Uma avaliação com pessoas precisa definir a
+pergunta e os instrumentos, a lógica de comparação e o tratamento dos dados. O
+[guia de pesquisa](guia-pesquisador.md) desenvolve esses caminhos. O
+[registro bibliográfico](evidence/registro-buscas-bibliograficas.csv) conserva
+as consultas e os limites de leitura que fundamentaram esta seleção; ela não
+constitui uma revisão sistemática.
 
 ## Critérios discriminantes de aceitação
 

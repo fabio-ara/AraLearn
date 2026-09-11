@@ -14,15 +14,16 @@ do curso como estava; a alteração depende do
 ## O que o registro contém
 
 Cada observação conserva o texto, a categoria, o alvo e seu caminho curricular.
-Também guarda a origem da contribuição, a versão do registro, seu estado e as
-informações de autoria e data necessárias à conversa e à privacidade. Uma
-resposta do proprietário permanece associada à mesma observação.
+A origem da contribuição registra de onde veio o apontamento; autoria, data,
+versão e estado permitem acompanhar a conversa e sua proveniência. Uma resposta
+do proprietário permanece associada ao mesmo registro.
 
-O modelo admite curso, módulo, lição, tópico, microssequência, explicação,
-unidade de estudo, fonte e âncora de fonte, conforme a operação e a interface.
-A âncora de fonte localiza um trecho do material consultado; esse conceito é
-desenvolvido em [Fontes, citações e referências](fontes-e-citacoes.md).
-Editar o registro conserva sua identidade e cria uma nova versão.
+Os exemplos da abertura bastam para o uso cotidiano. Como referência
+operacional, o modelo admite curso, módulo, lição, tópico, microssequência,
+explicação, unidade de estudo, fonte e âncora de fonte, conforme a operação e a
+interface. A âncora localiza um trecho do material consultado, como desenvolve
+[Fontes, citações e referências](fontes-e-citacoes.md). Editar o registro
+conserva sua identidade e cria uma nova versão.
 
 ## Categorias
 
@@ -70,9 +71,10 @@ ser relido antes de uma correção.
 
 ## Caixa de Observações
 
-A caixa autoral permite filtrar e abrir o detalhe dos registros. As ações de
-responder, considerar, resolver, reabrir, editar ou retirar dependem da permissão
-e do estado. O link do objeto retorna ao alvo enquanto ele estiver acessível.
+A caixa autoral permite filtrar e abrir o detalhe dos registros. O papel da
+pessoa, a permissão e o estado determinam quais ações ficam disponíveis, como
+responder, encerrar a triagem ou editar a própria entrada. O link do objeto
+retorna ao alvo enquanto ele estiver acessível.
 
 | Estado | Significado |
 | --- | --- |
@@ -87,10 +89,10 @@ alteração é necessária. O estado, sozinho, não comprova correção do conte
 ## Da observação à revisão
 
 O assistente conectado relê as observações pertinentes, o alvo e seu contexto
-antes de propor mudanças. Unidades anteriores ou posteriores podem ser
-necessárias para examinar progressão, pré-requisitos, exemplos, práticas e
-fontes. A proposta distingue os objetos usados para compreender o problema
-daqueles que serão alterados.
+antes de propor mudanças. Unidades vizinhas podem ser necessárias para examinar
+a progressão, a base oferecida ao estudante e as fontes usadas. A proposta
+distingue os objetos consultados para compreender o problema daqueles que serão
+alterados.
 
 Depois da decisão humana, a correção é aplicada e o resultado salvo é relido.
 Cada explicação e unidade mantém uma lista de observações ainda pendentes, sua fila autoral. Uma entrada pode ser editada enquanto a correção é preparada; por isso o sistema conserva versões do texto. Somente as versões expressamente vinculadas à correção confirmada são tratadas. Ler, responder ou iniciar uma

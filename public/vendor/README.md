@@ -1,8 +1,9 @@
 # Bibliotecas locais de diagramação e visualização
 
-As bibliotecas deste diretório calculam e desenham representações no navegador. Suas
-cópias no repositório permitem que o site e o aplicativo Android usem as mesmas versões
-e que representações já carregadas continuem disponíveis sem conexão.
+Gráficos e diagramas precisam de cálculos que não pertencem ao conteúdo do curso. As
+bibliotecas deste diretório fazem esse trabalho no navegador. Manter uma cópia delas no
+repositório garante que site e Android usem os mesmos arquivos e que uma representação
+já carregada continue disponível sem conexão.
 
 Arquivos versionados aqui não devem ser alterados manualmente para corrigir um caso
 visual. A correção pertence ao pacote do componente, ao contrato semântico ou ao
@@ -16,23 +17,23 @@ didáticos](../../docs/componentes-didaticos.md).
 
 | Arquivo | Origem | Função no AraLearn |
 | --- | --- | --- |
-| `viz-global.js` | [Viz.js](https://github.com/mdaines/viz-js) 3.27.0, com [Graphviz](https://graphviz.org/) 14.1.5 em WebAssembly | Calcula disposição de fluxogramas e diagramas relacionais. |
+| `viz-global.js` | [Viz.js](https://github.com/mdaines/viz-js) 3.27.0, com [Graphviz](https://graphviz.org/) 14.1.5 em WebAssembly, formato de código executável pelo navegador | Calcula disposição de fluxogramas e diagramas relacionais. |
 | `vega.min.js` | [Vega](https://github.com/vega/vega) 6.3.1 | Executa a especificação de visualizações estatísticas. |
 | `vega-lite.min.js` | [Vega-Lite](https://github.com/vega/vega-lite) 6.4.3 | Compila contratos de alto nível para Vega. |
 | `vega-interpreter.js` | vega-interpreter 2.3.1 | Calcula expressões dos gráficos sem gerar código JavaScript durante a execução. |
 | `venn.esm.js` | `@upsetjs/venn.js` 2.0.0 | Calcula regiões e contornos de diagramas de Venn e Euler. |
 
-Vega-Lite e DOT são formatos usados pelas bibliotecas para descrever gráficos e
-diagramas. Eles não são o formato em que o curso é escrito. A autoria fornece ao pacote
-os elementos e as relações que devem ser representados; o pacote produz a especificação
-técnica. Essa separação impede que conteúdo de curso fique acoplado à versão de uma
-biblioteca de desenho.
+Vega-Lite descreve um gráfico por seus dados e relações visuais; DOT descreve os nós e
+as ligações de um diagrama. O curso não é escrito nesses formatos. A autoria fornece ao
+pacote os elementos e relações que precisam aparecer, e o pacote produz a especificação
+técnica esperada pela biblioteca. Assim, uma mudança na biblioteca de desenho não exige
+reescrever o conteúdo do curso.
 
 ## Por que as dependências são locais
 
-Carregar uma biblioteca de um servidor externo, como uma rede de distribuição de
-conteúdo (CDN), tornaria a primeira renderização dependente da rede e permitiria que web
-e APK recebessem arquivos diferentes. A cópia local torna a versão auditável,
+Uma rede de distribuição de conteúdo (CDN) poderia fornecer essas bibliotecas a partir
+de outro servidor. Isso faria a primeira apresentação depender da rede e poderia levar
+site e APK a arquivos diferentes. A cópia local torna a versão verificável,
 reproduzível e disponível no aplicativo empacotado.
 
 `vega-interpreter.js` também atende à política de segurança do aplicativo: ele calcula
@@ -74,7 +75,9 @@ de atualizar o arquivo versionado.
 ## Atualizar as demais bibliotecas
 
 `viz-global.js`, `vega.min.js`, `vega-lite.min.js` e `venn.esm.js` não possuem um
-gerador de repositório equivalente. Uma atualização deliberada deve:
+gerador equivalente no repositório. Como alguns são compactados para distribuição — os
+arquivos `*.min.js` —, origem e integridade precisam ser verificadas durante uma
+atualização:
 
 1. identificar versão, origem e licença do artefato;
 2. atualizar a dependência correspondente em `package.json` e no arquivo de
@@ -89,6 +92,9 @@ projeto de origem não fornecer um artefato adequado, adicione um gerador verifi
 antes de versionar o resultado.
 
 ## Validação específica
+
+Confira se o arquivo gerado corresponde à dependência instalada e depois execute as
+verificações gerais do código:
 
 ```powershell
 npm run resources:vendor -- --check

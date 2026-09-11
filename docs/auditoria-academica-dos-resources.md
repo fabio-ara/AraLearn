@@ -5,9 +5,9 @@
 Esta auditoria verifica se cada componente didático possui razão pedagógica para
 existir, preserva uma convenção acadêmica identificável e pode ser operado sem
 defeitos visuais ou interativos evitáveis. Um **pacote de componente** é um módulo
-que reúne dados, validação e apresentação próprias. A auditoria examina o
-pacote completo: descrição no catálogo, contrato, validação, apresentação,
-alvos de prática, campos editáveis, descrição acessível e testes. A
+que reúne os dados aceitos, as regras de validação e a forma de apresentação. A
+auditoria acompanha esse módulo do catálogo aos testes e examina, entre outros
+pontos, a prática, a edição e a acessibilidade. A
 [fundamentação pedagógica](fundamentacao-pedagogica-dos-resources.md) desenvolve
 os critérios gerais; o [contrato de componentes](componentes-didaticos.md)
 descreve sua implementação.
@@ -22,8 +22,8 @@ A auditoria separa três perguntas:
    representação na tarefa pretendida?
 
 As duas primeiras podem receber evidência por inspeção especializada e testes.
-A terceira exige participantes e tarefas. Um pacote tecnicamente correto não
-é, por esse motivo, pedagogicamente eficaz.
+A terceira exige participantes realizando tarefas. Assim, correção técnica e
+eficácia pedagógica permanecem resultados separados.
 
 ## 2. Unidade de auditoria
 
@@ -52,19 +52,23 @@ Cada pacote de conteúdo deve declarar:
 - descrição não visual equivalente;
 - estratégia de disposição, responsividade e estado interativo.
 
-Cada pacote de resposta deve declarar identidade, avaliação, limpeza,
-confirmação, retorno e acessibilidade. A composição entre conteúdo e resposta
-é válida somente quando a modalidade corresponde à operação-alvo planejada.
+Cada pacote de resposta deve declarar o ciclo completo da interação. A
+identidade do alvo orienta como a resposta é avaliada e limpa; a confirmação
+determina quando o retorno aparece. O ciclo também precisa conservar a
+acessibilidade. A composição entre conteúdo e resposta é válida somente quando
+a modalidade corresponde à operação-alvo planejada.
 
 ## 3. Decisão de admissão no catálogo
 
-Um catálogo crescente pode acumular componentes redundantes, notações
-improvisadas e exemplos que funcionam apenas em casos simples. Isso aumenta o volume de informação a examinar na autoria e transfere ao estudante o custo de descobrir como ler cada
-figura.
+Um catálogo crescente pode acumular componentes redundantes ou notações que
+funcionam apenas em exemplos simples. A autoria passa a examinar mais opções, e
+o estudante precisa descobrir como ler figuras cuja diferença pode ser apenas
+aparente.
 
-Um novo objeto pode ser representado por prosa, tabela, pacote existente ou
-pacote especializado. A última alternativa exige estrutura distintiva,
-convenção reconhecível, operação própria e manutenção justificável.
+Um novo objeto pode ser apresentado por um recurso geral, como prosa ou tabela,
+ou por um pacote especializado. A especialização precisa conservar uma relação
+que os recursos existentes perdem, seguir uma convenção reconhecível e atender
+a uma operação própria. Seu custo de manutenção também participa da decisão.
 
 O pacote só entra no catálogo produtivo quando responde satisfatoriamente ao
 conjunto de critérios abaixo. Se a mesma informação e operação forem preservadas
@@ -164,10 +168,9 @@ fundir ou retirar permanecem revisáveis.
 | --- | --- | --- | --- | --- |
 | `chart` | série quantitativa, escala, unidade e incerteza | linha, dispersão ou barras com método declarado | histograma, boxplot, regressão ou painel são improvisados pelo mesmo contrato | Vega-Lite deriva escalas, eixos, legendas e marcas; cor não é canal único e incerteza precisa ser nomeada |
 
-O catálogo deve ser ampliado quando uma área exige outra gramática, por
-exemplo, árvore sintática com operações próprias, mapa filogenético, via
-metabólica, partitura ou estrutura cristalina, e não quando se deseja apenas
-um novo estilo para relações já preservadas.
+O catálogo deve ser ampliado quando uma área exige outra gramática, como uma
+árvore sintática, um mapa filogenético ou uma partitura. Um novo estilo visual
+para relações já preservadas usa o pacote existente.
 
 ### 4.7 Áudio e ferramentas de apoio
 
@@ -215,9 +218,9 @@ mantido pode ser inadequado para determinada tarefa; um pacote restrito pode
 ser a escolha canônica dentro de seu recorte declarado.
 
 A classificação abaixo considera o contrato, a representação acessível, o
-curso de catálogo e o corpus de arquivos de teste. `Restringir` significa conservar o
-pacote com a fronteira indicada. Não representa reprovação do código nem
-autoriza uso fora desse recorte.
+curso de catálogo e o corpus de arquivos de teste. `Restringir` conserva o
+pacote para a fronteira indicada; dentro dela, o código ainda passa pelas mesmas
+verificações dos demais pacotes.
 
 | Pacote | Decisão estática | Razão e fronteira | Instâncias nos dez arquivos de curso |
 | --- | --- | --- | ---: |
@@ -260,22 +263,23 @@ autoriza uso fora desse recorte.
 | `ordering` | `restringir` | atua somente em alvos textuais de `paragraph` e `table`, sem representar ordem espacial | 0 |
 | `open` | `manter` | permite produção livre sem afirmar correção semântica automática | 0 |
 
-O inventário não demonstra motivo para fundir ou retirar um pacote. Isso não
-dispensa correções de contrato, apresentação ou interação: a auditoria móvel
-identifica problemas dentro de gramáticas que continuam justificadas. Uma
-revisão disciplinar ou equivalência representacional demonstrada pode mudar
-a decisão. Pouco uso, por si só, não decide a retirada.
+O inventário sustenta a conservação atual dos pacotes, com as restrições
+indicadas na tabela. Problemas de contrato, apresentação ou interação continuam
+gerando correções dentro dessas gramáticas. Uma revisão disciplinar ou a
+demonstração de equivalência representacional pode mudar a decisão; a frequência
+de uso é apenas uma das informações a considerar.
 
 ### Corpus de cursos
 
-A comparação usa dez documentos completos de curso versionados no repositório,
-fora dos artefatos de galeria e do curso de catálogo. Esse conjunto não é o
-acervo de cursos hospedados nem uma amostra de uso por estudantes. O conjunto versionado reúne os cinco arquivos de teste de
-conteúdo em `tests/fixtures/course-catalog`, os três cursos em
-`supabase/fixtures/catalog` e os dois arquivos integrais usados na regressão do
-estudo, `project-minimal` e `project-visual`. Esses cursos contêm 10.388
-instâncias de onze pacotes. A contagem da tabela registra instâncias, não
-número de cursos nem frequência de uso por pessoas.
+A comparação usa dez documentos completos de curso versionados no repositório:
+cinco arquivos de teste de conteúdo, três cursos de catálogo do servidor e dois
+arquivos integrais de regressão do estudo. Trata-se de um corpus técnico, distinto
+do acervo hospedado e do uso por estudantes. Esses cursos contêm 10.388
+instâncias de onze pacotes. A contagem da tabela registra ocorrências no
+conteúdo. Os arquivos estão em `tests/fixtures/course-catalog`,
+`supabase/fixtures/catalog` e `tests/fixtures/package`. Os dois arquivos de
+regressão são `tests/fixtures/package/project-minimal.json` e
+`tests/fixtures/package/project-visual.json`.
 
 Os outros 27 pacotes aparecem no curso de catálogo, mas ainda não no corpus
 de dez cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
@@ -358,25 +362,25 @@ notação possível nem avaliação com leitor de tela humano.
 | `grammar` | construção ou uso a examinar e orientação de retorno à tarefa | mesmos controles de consulta, preservando itens e idiomas distintos |
 | `reading` | título do material, propósito da leitura e condição de acesso | destinos externos ou PDF autorizado, sem tratar a abertura como revisão da fonte |
 
-Essas escolhas não autorizam apagar legendas por correspondência de palavras.
-Também não equiparam uma alternativa textual produzida pelo pacote a um teste
-com tecnologia assistiva: relação, ordem, foco e leitura real precisam ser
-confrontados com o caso em uso.
+As orientações da tabela dependem da função de cada legenda; coincidência de
+palavras é insuficiente para decidir sua retirada. A alternativa textual
+produzida pelo pacote também precisa ser confrontada com tecnologia assistiva
+em uso, pois relação, ordem e foco participam da leitura real.
 
 ### Descoberta, degradação e limites técnicos
 
-A busca de componentes devolve no máximo oito candidatos. A inspeção admite oito
-perfis e a consulta de contrato recebe uma identidade exata por chamada. Uma
-solicitação por árvore sintática, quando a notação é parte do objeto de
-aprendizagem, classifica `tree` como `substitute` e informa que a representação
-é uma aproximação. O aviso impede que a materialização seja apresentada como
-equivalência silenciosa.
+Na descoberta progressiva, a busca devolve no máximo oito candidatos, e a etapa
+seguinte compara os perfis resumidos de até oito deles. A consulta detalhada
+recebe a identidade exata de um contrato por chamada. Se a autoria pedir uma
+árvore sintática e a notação fizer parte da aprendizagem, por exemplo, `tree`
+aparece como `substitute`: uma aproximação cuja perda precisa ser apresentada
+antes da materialização.
 
 A descoberta progressiva evita apresentar todo o catálogo de uma vez e
 permite comparar a adequação de cada candidato antes de consultar seu contrato.
 Se uma alternativa perde uma relação necessária ao objetivo, essa limitação
-precisa orientar a decisão autoral. O tamanho reduzido da resposta técnica,
-por si só, não torna o componente apropriado ao conteúdo.
+precisa orientar a decisão autoral. A adequação depende dessa relação semântica;
+o tamanho da resposta técnica é uma questão separada.
 
 Os limites de tamanho do catálogo, das consultas e do código são verificáveis
 no [teste do curso de catálogo](../tests/kernel/resource-catalog-course.test.js).

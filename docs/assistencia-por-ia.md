@@ -2,7 +2,7 @@
 
 Um modelo de linguagem gera texto a partir das instruções e do contexto que recebe. No AraLearn, essa capacidade pode ajudar a planejar um curso, desenvolver explicações e preparar atividades. A pessoa autora define a finalidade, discute a proposta e inspeciona o conteúdo e sua relação com as fontes.
 
-A assistência pode ocorrer numa conversa externa conectada ou sobre um trecho aberto no próprio aplicativo. O curso permanece salvo e pode ser retomado entre sessões. Os fluxos diferem no que o assistente recebe, no alcance da alteração e na forma de examinar o resultado antes de gravá-lo.
+A assistência pode ocorrer numa conversa externa conectada ou sobre um trecho aberto no próprio aplicativo. O curso permanece salvo e pode ser retomado entre sessões. Em cada fluxo, mudam o contexto recebido pelo assistente, o alcance da alteração e a forma de examinar o resultado antes de gravá-lo.
 
 Para apresentar as propostas, o AraLearn usa conteúdo estruturado: os dados indicam, por exemplo, qual texto pertence a um parágrafo ou quais alternativas compõem uma atividade. Os [contratos de conteúdo](aralearn-contract.md) definem os campos e as relações aceitos. Essa conferência técnica permite verificar se a proposta pode ser utilizada pelo sistema; examinar sua correção factual e pedagógica exige ler o material e as fontes.
 
@@ -25,11 +25,14 @@ No curso, uma unidade apresenta uma relação ou uma atividade; uma microssequê
 | **Model Context Protocol (MCP)** | Um cliente externo compatível descobre as tarefas de autoria e as utiliza sobre o curso, com autorização da conta. |
 | **Actions/OpenAPI** | As mesmas tarefas são oferecidas por operações descritas em OpenAPI, um formato de descrição de serviços. O cliente de testes atual é o [ChatGPT](https://chatgpt.com), uma aplicação externa, por meio de Actions. |
 
-Os canais têm credenciais e sessões próprias. Uma **credencial** permite ao serviço reconhecer o acesso autorizado; uma **sessão** conserva o contexto de uma interação. A autorização de um canal não conecta automaticamente os demais.
+Os canais têm credenciais e sessões próprias. Uma **credencial** permite ao serviço reconhecer o acesso autorizado; uma **sessão** conserva o contexto de uma interação. Por isso, cada canal precisa de sua própria conexão.
 
 A assistência interna utiliza adaptadores, as partes do código que convertem o pedido para o formato de cada provedor. Os três adaptadores implementados são os listados acima. Nas conversas externas, a separação entre tarefas de autoria e modelos favorece o uso de clientes diferentes, cuja compatibilidade depende dos recursos e da autenticação disponíveis.
 
-O catálogo conversacional inclui criação, cópia, exclusão e acesso a cursos. Perfil pessoal, foto e exclusão da conta são cuidados pela interface autenticada. Os guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md) detalham configuração e alcance de cada canal.
+O catálogo conversacional cobre o ciclo dos cursos e sua disponibilização a
+outras pessoas. Dados do perfil e da conta são cuidados pela interface
+autenticada. Os guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md)
+detalham a configuração e o alcance de cada canal.
 
 ## A sessão de assistência por IA
 
@@ -46,10 +49,10 @@ Esse alvo é fixado ao iniciar a sessão, que progride assim:
 7. **Aplicar ao rascunho** aceita o resultado conferido; **Descartar prévia** o remove;
 8. **Salvar proposta** grava o rascunho com a revisão original; **Descartar rascunho** restaura o original.
 
-Fechar a sessão apaga mensagens, configuração e qualquer proposta ainda não
-aplicada. Um resultado já aceito permanece no rascunho; a conversa não entra no
-conteúdo do curso nem no [armazenamento do servidor ou do dispositivo](persistencia-relacional.md).
-Os comprovantes de cada gravação, chamados de recibos, também não incluem a conversa.
+Fechar a sessão apaga as mensagens e as propostas ainda não aplicadas. Um
+resultado já aceito permanece no rascunho. A conversa existe somente durante a
+sessão e fica fora do [conteúdo e dos dados persistidos pelo AraLearn](persistencia-relacional.md).
+Os comprovantes de cada gravação, chamados de recibos, registram a operação salva.
 
 ### Escopos de escrita
 
@@ -71,16 +74,18 @@ existentes continuam cursos independentes sob a autoridade de seu proprietário.
 
 ## Contexto enviado
 
-O conjunto enviado ao modelo inclui a instrução da pessoa, até oito mensagens
-recentes da sessão, a proposta corrente, o caminho didático e o conteúdo
-necessário para compreender o alvo.
+O conjunto enviado ao modelo reúne a instrução da pessoa e até oito mensagens
+recentes da sessão. Para situar o pedido, inclui também a proposta corrente e o
+trecho do percurso didático necessário para compreender o alvo.
 Para a unidade, inclui os componentes e campos editáveis. Para a
 microssequência, inclui sua ordem e suas unidades. Para a lição, inclui as
 microssequências e o contexto curricular suficiente para criar, remover ou
 reordenar sem perder relações.
 
-O contexto é somente leitura. Identificadores de autorização, credenciais,
-arquivos do armazenamento e dados pessoais externos ao recorte não são enviados.
+O modelo recebe somente o conteúdo descrito acima, para leitura. Identificadores
+técnicos de autorização e arquivos mantidos no armazenamento permanecem no
+serviço; credenciais e dados pessoais externos ao recorte também ficam fora do
+envio.
 O contexto tem limite de 96 KiB, ou 98.304 bytes. O resumo curricular pode ser reduzido fora do
 alvo; se o conteúdo necessário à alteração ainda não couber, a interface informa
 o limite e preserva o rascunho.
@@ -133,21 +138,21 @@ mas não desfaz uma gravação que já possa ter sido concluída no curso.
 ## Provedor remoto e credencial da sessão
 
 A pessoa escolhe OpenAI, Gemini ou DeepSeek, informa o modelo quando necessário
-e fornece a própria chave. A chave permanece apenas em memória durante a sessão,
-segue somente no cabeçalho da chamada ao provedor escolhido e não entra no
-curso, banco, armazenamento local, arquivos ou registros de execução do aplicativo.
+e fornece a própria chave. A chave permanece apenas em memória durante a sessão
+e segue somente no cabeçalho da chamada ao provedor escolhido. O AraLearn não a
+grava.
 
-Sair, recarregar ou fechar a interface cancela a chamada pendente e apaga
-provedor, modelo, chave, conversa e qualquer candidata ainda não aplicada. Uma
+Sair, recarregar ou fechar a interface cancela a chamada pendente e apaga a
+conversa, sua configuração transitória e qualquer candidata ainda não aplicada. Uma
 alteração já aceita permanece no rascunho. Uma resposta tardia não pode reabrir
 a sessão nem aplicar conteúdo. Os endereços dos serviços são definidos pelos
 adaptadores; a interface pede apenas as escolhas necessárias ao uso.
 
 A pessoa precisa revisar o recorte e os termos do provedor. A permanência da
 chave somente em memória não altera sua validade no serviço. Testes automatizados
-usam respostas simuladas, sem custo; uma prova real exige credencial autorizada
-e limite de consumo definido. Testes simulados não demonstram interoperabilidade
-com a conta e o modelo de um serviço real.
+usam respostas simuladas, sem custo. A interoperabilidade com uma conta e um
+modelo reais é verificada à parte, com credencial autorizada e limite de consumo
+definido.
 
 ## MCP e Actions
 
@@ -166,7 +171,10 @@ Actions](autoria-actions.md) desenvolvem as diferenças de transporte.
 
 ## Planejamento, fontes e revisão
 
-O [guia da pessoa autora](guia-professor-autor.md) desenvolve as decisões sobre mapa, explicação, unidades e fontes. O [guia por conversa](criar-cursos-pelo-chat.md) mostra como pedir, inspecionar e ajustar o trabalho com um assistente externo.
+O [guia da pessoa autora](guia-professor-autor.md) acompanha as decisões do
+planejamento à produção, incluindo as bases explicativas e suas fontes. O
+[guia por conversa](criar-cursos-pelo-chat.md) mostra como pedir, inspecionar e
+ajustar o trabalho com um assistente externo.
 
 Aprovar o mapa confirma a organização salva que foi inspecionada. Autorizar produção delimita o que o assistente pode fazer. Declarar revisão registra uma decisão humana sobre conteúdo já salvo. Essas decisões têm efeitos próprios: uma autorização de continuidade permite avançar até o limite combinado, mas não fabrica uma declaração de inspeção.
 
@@ -178,16 +186,18 @@ Fontes e âncoras — localizações dos trechos utilizados — ficam no curso c
 
 Uma correção começa pela leitura do alvo, das observações e dos pontos do curso afetados. Depois da alteração autorizada, a releitura confere o conteúdo salvo e quais observações foram efetivamente atendidas. A [recuperação da mesma tentativa](auditoria-de-conformidade-instrucional.md#aplicação-e-reinspeção) permite conferir uma resposta perdida antes de outra gravação. A declaração humana de revisão permanece uma decisão separada.
 
-## Limites de interpretação
+## Verificação técnica e avaliação educacional
 
-Contratos podem demonstrar integridade técnica, autorização e correspondência
-entre referências. Eles não demonstram verdade científica, qualidade global ou
-aprendizagem. Recomendações de interação humano-IA ressaltam visibilidade,
+Os contratos verificam a integridade técnica, a autorização e a correspondência
+entre referências. A correção factual e pedagógica depende da inspeção do
+conteúdo e das fontes; os efeitos sobre a aprendizagem dependem de investigação
+com pessoas. Recomendações de interação humano-IA ressaltam visibilidade,
 controle e possibilidade de correção
 ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Num estudo de
 decisão assistida por IA, intervenções que forçavam reflexão reduziram
-dependência excessiva, mas acrescentaram custo; esse resultado é situado e não
-garante o mesmo efeito na autoria educacional
+dependência excessiva, mas acrescentaram custo. Esse resultado ajuda a formular
+hipóteses para a autoria educacional, que precisam ser avaliadas no próprio
+contexto
 ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). No uso
 educacional de modelos generativos, a responsabilidade factual e pedagógica permanece humana
 ([UNESCO (2023)](referencias.md#ref-unesco2023genai)).

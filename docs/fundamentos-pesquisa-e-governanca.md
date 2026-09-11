@@ -1,12 +1,12 @@
 # Fundamentos de pesquisa e governança
 
-## Objeto e responsabilidade da pesquisa
+## O que está sendo investigado
 
-O AraLearn é um artefato técnico de pesquisa em design instrucional e tecnologia
-educacional. A pessoa autora cria cursos com assistência de inteligência
-artificial (IA), inspeciona a estrutura e o conteúdo e confere suas relações com
-as fontes. Os cursos resultantes organizam explicações, representações e
-práticas para estudo autodidata no celular.
+O AraLearn é, ao mesmo tempo, uma aplicação em desenvolvimento e um objeto de
+pesquisa em design instrucional e tecnologia educacional. Nele, uma pessoa cria
+um curso com assistência de inteligência artificial (IA), inspeciona o material
+e confere sua relação com as fontes. O curso organiza explicações e atividades
+para estudo autodidata no celular.
 
 Investigar esse artefato envolve perguntas sobre o software, o desenho
 instrucional e seu uso por pessoas. O funcionamento sem conexão pode ser
@@ -16,11 +16,10 @@ e hipóteses, enquanto a avaliação examina o que ocorre numa versão do produt
 
 ## Governança da pesquisa
 
-A governança da pesquisa envolve responsabilidades e procedimentos para
-sustentar sua qualidade e integridade. O Código Europeu de Conduta para a
-Integridade da Pesquisa destaca confiabilidade, honestidade, respeito e
-responsabilização, com deveres relativos ao ambiente de pesquisa, aos métodos,
-aos dados e à comunicação dos resultados
+A governança da pesquisa reúne responsabilidades e procedimentos para manter
+sua qualidade e integridade ao longo do trabalho. O Código Europeu de Conduta
+para a Integridade da Pesquisa organiza esse compromisso em torno de
+confiabilidade, honestidade, respeito e responsabilização
 ([ALLEA (2023)](referencias.md#ref-allea2023integrity)).
 
 No AraLearn, esses princípios orientam o registro da origem e do alcance das
@@ -28,10 +27,11 @@ afirmações. Uma decisão do projeto precisa permanecer distinguível do
 conhecimento publicado e dos resultados de uma avaliação. A classificação
 abaixo é uma convenção documental do projeto para manter essas diferenças.
 
-Para cada afirmação relevante, o registro deve permitir reencontrar a fonte,
-o contexto, a decisão fundamentada e, quando houver implementação ou avaliação,
-a versão e a evidência correspondentes. O protocolo também define os dados
-necessários, quem pode acessá-los e os limites da conclusão.
+Para cada afirmação relevante, o registro precisa permitir reencontrar sua
+origem e seu alcance. Quando a afirmação depender de uma versão do produto ou
+de uma avaliação, essa versão e a evidência correspondente também são
+registradas. O protocolo de cada estudo define ainda quais dados serão usados,
+quem poderá acessá-los e até onde a conclusão poderá chegar.
 
 ## Estados epistêmicos
 
@@ -63,31 +63,32 @@ A documentação distingue seis estados para tornar esse alcance reconhecível:
 
 ## Objeto, contexto e delimitação
 
-O objeto investigado reúne autoria de cursos e estudo móvel. O curso é
-organizado em módulos e lições; dentro delas, as microssequências desenvolvem
-objetivos delimitados por meio de unidades de estudo, como descreve o
-[modelo didático](modelo-didatico.md). Conteúdo previamente sincronizado fica
-disponível no dispositivo, e a troca de dados com o servidor preserva a
-interação local. Essa arquitetura, chamada *local-first*, é desenvolvida em
-[armazenamento e sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo). O contexto prioritário inclui pessoas adultas que conciliam
-trabalho e estudo, utilizam celular, enfrentam interrupções e podem perder
-conectividade.
+O objeto investigado reúne a autoria de cursos e o estudo no celular. O
+conteúdo percorre vários níveis, do curso às unidades de estudo. Entre eles, a
+microssequência desenvolve um objetivo delimitado ao longo de etapas, como
+descreve o [modelo didático](modelo-didatico.md). Depois de sincronizado, o
+material necessário ao estudo permanece no dispositivo, enquanto as trocas com
+o servidor ocorrem sem interromper a ação local. Essa arquitetura é chamada
+*local-first* e está desenvolvida em [armazenamento e
+sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo).
+
+O contexto prioritário inclui pessoas adultas que conciliam trabalho e estudo,
+usam o celular em períodos breves e podem sofrer interrupções ou perder a
+conexão.
 
 Essa prioridade é uma **delimitação de design**, não uma descrição empírica de
 todos os usuários. Cada avaliação precisa caracterizar sua própria população,
 incluindo experiência com tecnologia, domínio de conhecimento, dispositivo,
 condições de rede e contexto de uso.
 
-O problema de pesquisa não se reduz a disponibilizar conteúdo. Ele envolve:
+Disponibilizar conteúdo é apenas uma parte do problema. A investigação precisa
+relacionar três frentes:
 
-- construir explicações profundas sem pressupostos ocultos;
-- dividir o percurso sem fragmentar relações;
-- escolher representações apropriadas às operações;
-- articular teoria, prática, feedback e retomada;
-- sustentar estudo em condições móveis e sem conexão;
-- permitir autoria assistida sem transferir responsabilidade à IA;
-- delimitar propriedade e acesso sem vigilância ou poder difuso;
-- manter custo, armazenamento e manutenção proporcionais.
+| Frente | Problema central |
+| --- | --- |
+| aprendizagem | construir explicações profundas e distribuir suas etapas sem romper relações; escolher representações e atividades que correspondam ao que se pretende aprender |
+| continuidade | permitir estudo e retomada sob interrupção ou perda de conexão, com custo e manutenção proporcionais |
+| autoria e governança | usar IA sem deslocar a responsabilidade humana e manter propriedade, acesso e dados sob regras compreensíveis |
 
 ## Pergunta orientadora e subproblemas
 
@@ -98,24 +99,17 @@ Uma pergunta ampla capaz de organizar o programa é:
 > variável, preservando coerência pedagógica, vínculo com as fontes e controle
 > humano sobre o conteúdo?
 
-Essa pergunta deve ser decomposta em estudos delimitados:
+Uma única pesquisa não conseguiria responder a toda a pergunta. Estudos
+delimitados podem concentrar-se em três conjuntos de subproblemas:
 
-1. **progressão didática:** em que condições a distribuição de explicação,
-   exemplo, prática e feedback sustenta compreensão, retenção e transferência?
-2. **representação:** quando uma representação especializada ajuda a executar uma
-   operação sem introduzir gramática visual ou carga desnecessária?
-3. **continuidade:** como disponibilidade local, sincronização e marco de
-   retomada afetam a capacidade de continuar após interrupção?
-4. **autoria assistida:** como catálogo, contrato, escopo e reversibilidade
-   afetam erro de alvo, qualidade e controle humano?
-5. **governança:** que formas de propriedade, acesso, dados e intervenções são legítimas e úteis sem
-   converter rastros ambíguos em diagnóstico?
-6. **frugalidade:** como custo, armazenamento, volume transferido e manutenção evoluem sem
-   comprometer segurança, acessibilidade e rigor?
+| Eixo | Perguntas possíveis |
+| --- | --- |
+| aprendizagem e continuidade | Como a progressão sustenta compreensão, retenção e transferência? Quando uma representação ajuda a executar a operação pretendida? Como o estado local favorece a retomada depois de uma interrupção? |
+| autoria assistida | Como a pessoa compreende o alcance de uma ação da IA, detecta erros de alvo e conserva controle sobre a correção? |
+| governança e sustentação | Que regras de propriedade, acesso e uso de dados são legítimas? Como custo, armazenamento e manutenção evoluem sem comprometer segurança, acessibilidade e rigor? |
 
-Essas perguntas podem ser investigadas separadamente. Colocá-las num único
-estudo produziria unidades, medidas e explicações rivais demais para uma análise
-coerente.
+Cada estudo seleciona uma dessas relações e define sua própria unidade de
+análise, suas medidas e as explicações alternativas pertinentes.
 
 ## Escolher o enquadramento da pesquisa
 
@@ -242,23 +236,29 @@ servir à descoberta, mas não se tornam evidência externa sem conferência da
 fonte original.
 
 Uma revisão reproduzível futura deve registrar o protocolo fora do código do
-produto: bases, expressões de busca, datas, critérios, duplicatas, seleção, avaliação
-crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scoping); [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)).
+produto. Isso inclui a consulta exatamente como executada, a deduplicação dos
+resultados, a avaliação crítica das fontes e um fluxograma que mostre como os
+resultados chegaram ao corpus final
+([Peters et al. (2024)](referencias.md#ref-peters2024scoping);
+[Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)). O
+[protocolo prospectivo ARA-LIT-1](revisao-de-literatura.md#protocolo-prospectivo-de-busca-e-atualização)
+define o registro da base, do momento da busca, dos critérios e das contagens
+necessárias para reconstruir esse percurso.
 
 ### Proveniência das fontes de um curso
 
 A bibliografia desta documentação e as fontes usadas num curso cumprem funções
-diferentes. Dentro do produto, uma fonte possui identidade e estado correntes;
-uma âncora localiza página, tempo, fragmento de endereço ou trecho textual; e
-uma atribuição liga essa âncora a um item do plano, uma unidade de estudo ou à explicação
-compartilhada de uma microssequência. A relação
-declara se a fonte informa ou sustenta o alvo, ou se o alvo foi adaptado ou
-citado a partir dela.
+diferentes. No curso, cada material usado recebe uma identidade como **fonte**.
+Uma **âncora** localiza a parte pertinente desse material, como uma página ou
+um trecho. A **atribuição** liga essa localização à explicação, ao planejamento
+ou à unidade de estudo que a utiliza e registra o tipo de relação entre eles. O
+[capítulo sobre fontes e citações](fontes-e-citacoes.md) desenvolve essa cadeia.
 
-Essa cadeia permite localizar o material usado e reconstruir a decisão
-autoral. Ela não demonstra que a fonte é verdadeira, que a atribuição é
-pertinente ou que o conteúdo derivado é fiel. Essas conclusões exigem leitura,
-julgamento disciplinar e, quando fizerem parte da pergunta, avaliação própria.
+Essa cadeia localiza o material usado e ajuda a reconstruir a decisão autoral.
+A qualidade da fonte, a pertinência da atribuição e a fidelidade do conteúdo
+derivado continuam dependendo de leitura e julgamento disciplinar. Quando uma
+dessas qualidades fizer parte da pergunta de pesquisa, precisa de avaliação
+própria.
 
 ## Governança de decisões
 
@@ -271,45 +271,35 @@ uma declaração vigente daquela desatualizada por mudança material. O
 estados; avaliar se a pessoa compreendeu e inspecionou adequadamente o objeto
 exige observação do uso.
 
-No contrato contextual, revisão é uma declaração reversível ligada ao conteúdo
-salvo inspecionado. Mudança material pode desatualizá-la. Salvar uma edição,
-registrar observação ou abrir conteúdo mantém significado próprio; nenhum
-desses atos declara revisão. Comentário também não aplica nova intenção ao
-conteúdo. O clique de revisão registra uma declaração, sem comprovar leitura,
-correção ou eficácia.
+No contrato contextual, **revisão autoral** é uma declaração reversível ligada
+ao conteúdo salvo que a pessoa afirma ter inspecionado. Uma mudança material
+pode desatualizá-la. Edição, observação e revisão permanecem ações diferentes:
+salvar altera o conteúdo; registrar uma observação preserva um comentário
+situado; marcar a revisão registra a declaração. A avaliação do uso precisa
+examinar se a inspeção realmente ocorreu e com que qualidade.
 
-Revisão e acesso são decisões independentes. Conteúdo completo salvo não
-revisado pode ser estudado por quem possui acesso, inclusive visitante de curso
-explicitamente público. A política de disponibilizar somente material revisado
-é opcional e expressa. Em qualquer política, a revisão não concede propriedade,
-publicidade ou direito a arquivos; rascunho local e gravação parcial não se
-tornam conteúdo público. Ausência de registro antigo permanece ausência, sem
-reconstrução fictícia de aprovação.
+Revisão e acesso são decisões independentes. Quem possui acesso pode estudar
+conteúdo completo salvo, mesmo quando ainda não há declaração de revisão. Uma
+política opcional pode restringir o estudo ao material revisado. Propriedade,
+visibilidade e direito aos arquivos seguem regras próprias; rascunhos locais e
+gravações parciais permanecem fora do conteúdo disponibilizado. Registros
+antigos sem declaração de revisão conservam esse estado de ausência.
 
 ### Registro mínimo
 
-O registro de uma decisão permite compreender a escolha e retomá-la. Ele reúne:
-
-1. **problema:** qual situação requer decisão;
-2. **alternativas e requisitos:** que soluções eram plausíveis e o que não
-   poderia ser perdido;
-3. **decisão:** o que foi adotado;
-4. **fundamentação:** que literatura, norma, evidência técnica ou valor a
-   sustenta;
-5. **operacionalização:** onde aparece no produto e como será verificada;
-6. **consequências:** benefícios esperados, custos e dependências;
-7. **limites e evidência:** o que ainda não se sabe e que achado exigiria
-   revisão.
+O registro de uma decisão permite compreender a escolha e retomá-la. Primeiro
+descreve o problema, as alternativas consideradas e o que precisava ser
+preservado. Depois identifica a decisão, seu fundamento e onde ela aparece no
+produto. Por fim, registra consequências esperadas, custos, limites e o tipo de
+evidência que poderia levar a uma revisão.
 
 ### Rastreabilidade separada
 
-Uma mudança deixa rastros diferentes:
-
-- justificação conceitual e pedagógica na documentação pública;
-- decisão operacional e incidentes no registro operacional apropriado;
-- implementação no código, contratos e esquemas de dados;
-- conformidade em testes e medições técnicas;
-- avaliação em protocolo, instrumentos e dados autorizados.
+Uma mudança deixa rastros em lugares diferentes porque cada registro responde
+a uma pergunta. A documentação pública conserva sua justificativa conceitual;
+o registro operacional acompanha decisões e incidentes; o código e os testes
+mostram como ela foi implementada. Quando há avaliação com pessoas ou cursos,
+o protocolo e os dados autorizados registram o procedimento e seus resultados.
 
 Uma justificativa formulada depois da decisão é identificada como tal. Essa
 distinção conserva a história da escolha, inclusive quando uma hipótese falha
@@ -317,18 +307,14 @@ e o projeto precisa ser revisto.
 
 ## Governança de dados e ética
 
-Antes de coletar um dado, devem ser definidos:
+Coletar um dado só faz sentido depois de definir a pergunta que ele ajudará a
+responder. A governança organiza essa preparação em três momentos:
 
-- pergunta e finalidade;
-- construto ou resultado;
-- unidade de análise;
-- manifestação observada;
-- interpretações permitidas e proibidas;
-- explicações alternativas;
-- intervenção possível;
-- acesso, retenção, exclusão e descarte;
-- custo de armazenamento e risco;
-- informação e consentimento necessários.
+| Momento | O que precisa ser definido |
+| --- | --- |
+| relação com a pesquisa | finalidade, resultado investigado, unidade de análise e manifestação que será observada |
+| interpretação e ação | usos permitidos da medida, explicações alternativas e intervenção que ela poderia fundamentar |
+| proteção e ciclo de vida | informação e consentimento necessários, acesso, retenção, exclusão, descarte, custo e risco |
 
 Quando uma investigação brasileira em Ciências Humanas e Sociais estiver no
 escopo da Resolução CNS nº 510/2016, informação, consentimento ou assentimento,
@@ -338,8 +324,9 @@ norma aplicável
 Essa autoridade é normativa; não demonstra que uma medida seja válida nem que
 uma intervenção produza aprendizagem.
 
-Cliques, tempo e conclusão não entram apenas por estarem disponíveis. A ética
-integra o desenho da análise de dados desde a definição da finalidade
+Disponibilidade técnica, portanto, não é critério de coleta. Registros como
+cliques, tempo e conclusão precisam passar pelo mesmo exame de finalidade e
+risco. A ética integra o desenho da análise desde esse primeiro momento
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
 operacional sempre que o desenho e o risco assim exigirem.
 
@@ -352,17 +339,18 @@ apoiadas em [Lyotard (1984)](referencias.md#ref-lyotard1984postmodern) e
 do projeto: que conhecimento é valorizado, quem define uma norma e quais
 consequências seguem de tornar uma atividade visível?
 
-Na análise do AraLearn, essas perguntas têm efeitos concretos. Uma quantidade
-de unidades não deve virar meta de produtividade docente; uma conclusão não
-deve virar prova de esforço; a disponibilidade móvel não deve legitimar a
-expectativa de estudo permanente. São limites de interpretação e uso que
-precisam acompanhar qualquer proposta de adoção institucional.
+Na análise do AraLearn, essas perguntas alcançam usos bastante concretos. A
+quantidade de unidades descreve um material, e não a produtividade de quem o
+criou. A conclusão de um percurso registra um estado do curso, e não o esforço
+da pessoa. A disponibilidade no celular tampouco transforma todo intervalo
+livre em tempo devido ao estudo. Esses limites precisam acompanhar qualquer
+proposta de adoção institucional.
 
-O produto não implementa essas avaliações de pessoas. Um estudo sobre sua
-reutilização deve examinar as decisões efetivas da instituição, ouvir autores
-e estudantes, verificar condições de recusa e contestação e preservar relatos
-de efeitos adversos. Avaliar benefícios inclui perguntar para quem eles
-ocorrem e que trabalho, dependência ou restrição de autonomia os acompanha.
+Um estudo sobre reutilização institucional precisa examinar as decisões
+efetivas da organização e ouvir as pessoas afetadas. Condições de recusa e
+contestação, efeitos adversos e distribuição do trabalho fazem parte do
+resultado. Assim, uma alegação de benefício também identifica para quem ele
+ocorre e que dependências ou restrições de autonomia o acompanham.
 O [guia de investigação](guia-pesquisador.md#formular-caminhos-de-investigação)
 apresenta uma forma de estudar essas relações sem tratá-las como efeitos já
 constatados.
@@ -370,37 +358,44 @@ constatados.
 ### Governança de condições comparáveis
 
 Uma investigação pode usar cursos privados independentes para produzir
-condições diferentes. O protocolo externo registra a pergunta, o inventário
-semântico comum, a configuração fixada, o artefato efetivamente exposto, a
-população, a atribuição, os instrumentos, os dados ausentes e a análise.
+condições diferentes. O protocolo externo registra o que deve permanecer comum,
+o que será alterado e qual versão foi efetivamente apresentada. Também define
+quem participa, como cada condição é atribuída, quais instrumentos serão usados
+e como a análise tratará dados ausentes.
 
-Intenção corrente, configuração aplicada, proveniência e declaração de revisão
-precisam permanecer distinguíveis nesse registro. A preferência pessoal de
-processo não modifica uma condição fixada. Nova geração pode alterar linguagem,
-exemplos e dificuldade junto com o parâmetro escolhido; copiar o curso ou
-alterar um controle não demonstra que somente uma variável mudou. A base, suas
-fontes, unidades, divergências e regras de consulta do apoio integram a condição
-efetivamente apresentada. Modelo e configuração só são registrados quando
-conhecidos, sem preencher lacunas por adivinhação.
+Nesse registro, quatro relações continuam distinguíveis porque respondem a
+perguntas diferentes. A **intenção atual** informa o que a pessoa autora deseja;
+a **configuração aplicada** identifica o que efetivamente produziu cada unidade.
+A **proveniência** permite reconstruir a origem e o histórico do material, e a
+**declaração de revisão** registra qual versão uma pessoa conferiu. Uma nova
+geração pode mudar linguagem, exemplos ou dificuldade junto com o parâmetro
+escolhido. Por isso, copiar um curso e alterar um controle ainda requer conferir
+todo o material exposto: sua explicação, fontes, unidades e formas de consultar
+apoio. Modelo e configuração são registrados quando conhecidos; lacunas
+permanecem indicadas como dados ausentes.
 
-O produto não cria uma entidade de variante nem bloqueia o curso. Separar os
-cursos ajuda a evitar mistura acidental, mas não garante equivalência semântica,
-fidelidade de exposição ou validade causal. Consulte [Comparar condições de
+No produto, essas condições continuam sendo cursos editáveis independentes, e
+não variantes experimentais bloqueadas. A separação reduz misturas acidentais;
+equivalência semântica, fidelidade da exposição e validade causal dependem do
+protocolo. Consulte [Comparar condições de
 desenho](experimentos-instrucionais-parametrizados.md).
 
 ## Limitações atuais do programa
 
-- a revisão bibliográfica é narrativa e não exaustiva;
-- o público prioritário ainda precisa ser caracterizado em cada estudo;
-- não há evidência consolidada de eficácia educacional do AraLearn;
-- validade entre áreas do conhecimento, níveis de formação e instituições
-  permanece aberta;
-- modelos, provedores e instruções de IA podem mudar entre avaliações;
-- qualidade visual, esquema de dados e testes não demonstram compreensão;
-- frugalidade precisa ser medida longitudinalmente;
-- autoria coletiva, poder institucional e participação exigem estudos próprios;
-- resultados negativos e mecanismos removidos precisam ser preservados para
-  evitar viés de sobrevivência.
+A revisão bibliográfica atual é narrativa, e cada estudo ainda precisa
+caracterizar o público que efetivamente participa. O programa não dispõe de
+evidência consolidada sobre eficácia educacional, nem sobre a transferência de
+resultados entre áreas do conhecimento e instituições.
+
+As versões também mudam: modelos, provedores e instruções de IA podem diferir
+entre avaliações. Testes e inspeções do software sustentam propriedades
+técnicas, enquanto compreensão e outras experiências humanas requerem medidas
+próprias. Frugalidade depende de acompanhamento longitudinal.
+
+Autoria coletiva, participação e usos institucionais do poder permanecem
+frentes específicas de investigação. Resultados negativos e mecanismos
+retirados precisam integrar o registro para que o programa não seja descrito
+apenas por seus casos bem-sucedidos.
 
 ## Mapa do corpus acadêmico
 
@@ -417,33 +412,37 @@ desenho](experimentos-instrucionais-parametrizados.md).
 
 ## Governança dos dados de autoria
 
-A área **Dados de autoria** deriva do estado corrente contagens de desenho e intervenções
-humanas explicitamente observáveis. A consulta é exclusiva da pessoa
-proprietária; a leitura quantitativa não inclui texto de observações, identidade
-de conta ou conversa. A ação **Exportar curso e análise** acrescenta o conteúdo
-integral salvo do curso, além dos registros disponíveis de fontes, configuração
-aplicada e revisão. Esse alcance está detalhado na
+A área **Dados de autoria** resume propriedades observáveis do curso atual, como
+a distribuição das unidades e as intervenções humanas registradas. Somente a
+pessoa proprietária pode consultá-la. A tela quantitativa omite o texto das
+observações, a identidade da conta e a conversa usada na autoria. Quando a
+pessoa escolhe **Exportar curso e análise**, o arquivo inclui também o conteúdo
+salvo e os registros disponíveis de fontes, configuração aplicada e revisão.
+Esse alcance está detalhado na
 [referência da exportação](dicionario-metricas-datasets.md#comparação-e-exportação).
 
-Uma contagem precisa declarar a que conjunto se refere: esse conjunto é seu
-**denominador**. Duas correções em duas unidades e duas correções em duzentas
-unidades descrevem situações distintas. O [guia de investigação](guia-pesquisador.md#escolher-unidade-de-análise-e-medida)
-explica como relacionar esses registros à pergunta e aos dados ausentes. As contagens do
-produto não medem aprendizagem, atenção, esforço ou qualidade. Um desfecho exige
-protocolo, instrumento e finalidade próprios, com consentimento e avaliação
-ética quando aplicáveis. Mesmo sem registros de conta, o conteúdo e seus
-metadados podem identificar pessoas ou contextos. A exportação exige controle
-de acesso, retenção e avaliação de reidentificação conforme o plano do estudo.
+Uma contagem precisa declarar o conjunto ao qual se refere, chamado
+**denominador**. Duas correções em duas unidades descrevem uma situação bem
+diferente de duas correções em duzentas. O [guia de
+investigação](guia-pesquisador.md#escolher-unidade-de-análise-e-medida) explica
+como relacionar esses registros à pergunta e aos dados ausentes.
 
-### Revisão focal da autoria contextual
+Essas contagens descrevem a autoria; aprendizagem, atenção, esforço e qualidade
+exigem protocolo e instrumentos próprios. Consentimento e avaliação ética são
+aplicados quando pertinentes ao estudo. Mesmo sem a identidade da conta, o
+conteúdo e seus metadados podem revelar pessoas ou contextos. Por isso, a
+exportação precisa seguir regras de acesso, retenção e avaliação do risco de
+reidentificação.
 
-A conferência bibliográfica de **9 de setembro de 2026 (UTC)** examinou decisões de
-nomenclatura, separação entre conteúdo e realização, controle autoral e
-acessibilidade. Partiu de referências já pertinentes ao problema, conferindo
-páginas primárias das editoras, repositório institucional dos autores e fontes
-oficiais. O critério de encerramento foi obter fundamento e limite explícitos
-para cada decisão desta seção. Não houve busca exaustiva, comparação sistemática
-de estudos ou nova avaliação de eficácia do AraLearn.
+## Revisão focal da autoria contextual
+
+A conferência bibliográfica de **9 de setembro de 2026 (UTC)** examinou as bases
+usadas para justificar decisões sobre autoria contextual. Ela partiu de
+referências já relacionadas ao problema e consultou páginas das editoras,
+repositórios dos autores e fontes oficiais. A busca foi encerrada quando cada
+decisão desta seção possuía um fundamento e um limite identificáveis. Trata-se
+de uma revisão focal, e não de uma busca exaustiva ou comparação sistemática de
+estudos.
 
 O alcance efetivamente consultado está registrado abaixo. Quando uma página
 editorial não abriu diretamente, usou-se o resumo que ela disponibilizava na

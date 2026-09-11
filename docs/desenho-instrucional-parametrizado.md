@@ -4,9 +4,10 @@ Os parâmetros do AraLearn registram decisões sobre como explicar, propor
 práticas, distribuir o texto e organizar a produção de um curso. A pessoa
 autora pode defini-los, delegar escolhas ao assistente e comparar a intenção
 atual com a configuração aplicada, registro das escolhas usadas na produção
-das unidades salvas. A interface e os canais
-de autoria por [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md)
-usam as mesmas definições.
+das unidades salvas. Essas decisões podem ser ajustadas na interface ou por uma
+conversa externa conectada ao AraLearn. [MCP](autoria-mcp.md) e
+[Actions/OpenAPI](autoria-actions.md) são os dois meios de integração usados
+nessas conversas; ambos seguem as mesmas definições.
 
 Esses parâmetros tornam o [modelo didático](modelo-didatico.md) inspecionável
 em escolhas locais. Seus valores são decisões de projeto ou condições de
@@ -29,26 +30,20 @@ uma orientação do curso pode chegar às suas unidades. No modo automático,
 a escolha ainda será feita conforme a tarefa; no modo fixo, a pessoa registra
 um valor que deve ser respeitado.
 
-Um parâmetro identifica uma decisão ajustável e define como representá-la.
-O [catálogo canônico](../src/domain/courseDesignParameters.js) registra:
+Um parâmetro identifica uma decisão ajustável e define como representá-la. O
+[catálogo canônico](../src/domain/courseDesignParameters.js) é a fonte comum
+dessas regras. Para cada decisão, ele registra sua identidade e significado, os
+valores e escopos admitidos e se a escolha está automática ou fixada. Também
+conserva a versão, os limites de interpretação e as referências pertinentes.
 
-- identidade e versão;
-- definição operacional;
-- forma do valor e domínio permitido;
-- escopos em que pode ser atribuído;
-- estado contextual ou valor deliberadamente definido;
-- limites de interpretação;
-- referências que fundamentam a dimensão investigada.
-
-No modo automático, o assistente precisa escolher cada valor conforme público,
-conteúdo, função, planejamento e escopo admitido pelo catálogo. A ausência de
-escolha é explícita; não representa um conjunto fixo de valores. Herdar conserva a intenção
-do escopo anterior, enquanto uma escolha fixa conserva o valor deliberado.
-A produção registra a **calibração**, escolha de valores e justificativas
-conforme a tarefa, junto ao conteúdo. Evidência
-externa pode justificar a investigação de uma dimensão, mas não estabelece
-automaticamente o melhor valor para toda população, conteúdo ou tarefa. Uma
-definição deliberadamente fixada pelo pesquisador prevalece no escopo pertinente.
+No modo automático, o assistente escolhe cada valor segundo a tarefa e o público,
+dentro do escopo admitido pelo catálogo. Esse estado delega uma decisão futura;
+ele não esconde um conjunto fixo de valores. Herdar conserva a intenção de um
+escopo mais amplo, enquanto uma escolha fixa conserva o valor deliberado. A
+produção registra a **calibração**, isto é, os valores escolhidos e suas
+justificativas naquele contexto. Evidência externa pode justificar a investigação
+de uma dimensão; o melhor valor para cada situação continua sendo uma hipótese
+a avaliar. Uma definição fixada pelo pesquisador prevalece no escopo pertinente.
 
 Limites de caracteres, bytes, elementos de página e tamanho de lote continuam
 relevantes para ergonomia e segurança. A quantidade de partes organiza a
@@ -57,8 +52,9 @@ escopo de curso e não viram atribuições locais de uma unidade de estudo.
 
 ## Catálogo corrente
 
-O catálogo 1.2.1 contém doze decisões organizadas em explicações, prática, leitura e estilo,
-conversa e produção. Interface, MCP, Actions e banco usam essas mesmas definições.
+O catálogo 1.2.1 contém doze decisões. Elas cobrem o desenho do material e a
+organização do trabalho de autoria. A interface, as duas integrações e o banco
+de dados que preserva a configuração usam as mesmas definições.
 Cada escolha possui uma definição comum, usada para consultar e salvar os valores.
 Os [identificadores técnicos](#identificadores-para-integração) permitem reconhecer
 essas mesmas decisões nos dados trocados pelos canais de autoria.
@@ -79,13 +75,13 @@ essas mesmas decisões nos dados trocados pelos canais de autoria.
 | Forma da conversa de autoria | concisão, debate ou explicação | curso, lição, microssequência e unidade de estudo | forma da conversa de autoria |
 
 Os quatro primeiros parâmetros registram como desenvolver os recortes de
-conhecimento e oferecer prática. Distribuição e posição acrescentam decisões
-sobre a sequência. Os dois
-alvos de palavras tornam a extensão editorial comparável sem transformá-la em medida de
-qualidade. Um alvo de palavras não é mínimo nem máximo: respostas e unidades
-podem ultrapassá-lo quando a decisão ou o conteúdo exigirem. Ele nunca autoriza
-ocultar uma decisão educacional, truncar conteúdo necessário, compactar várias
-novidades ou atomizar uma explicação para satisfazer a contagem.
+conhecimento e oferecer prática. Distribuição e posição tratam da sequência. Os
+dois alvos de palavras tornam a extensão editorial comparável, enquanto a
+qualidade continua dependendo da leitura do conteúdo. Um alvo funciona como
+referência flexível, não como mínimo ou máximo: respostas e unidades podem
+ultrapassá-lo quando a decisão ou o conteúdo exigirem. Cumprir essa referência
+significa preservar as decisões explícitas, o conteúdo necessário e unidades
+didáticas inteiras, mesmo quando isso leva a ultrapassar o alvo.
 
 Distribuição e posição descrevem a intenção da sequência, sem certificar sua
 adequação pela contagem. Cadência organiza o trabalho de autoria. Preferência
@@ -152,8 +148,8 @@ si um mínimo de oportunidades distintas.
 recorte de conhecimento necessário para explicar, reconhecer, relacionar ou
 executar a operação pretendida para um público e um repertório declarados.
 Pode ser conceito, definição, relação, regra, condição ou distinção. Essas
-descrições ajudam a justificar o recorte; não formam uma classificação universal do conhecimento
-nem exigem uma taxonomia específica de cada disciplina.
+descrições ajudam a justificar o recorte; não formam uma classificação universal
+do conhecimento nem exigem uma taxonomia específica de cada disciplina.
 
 O recorte pertence ao desenho do curso. Ele não é identificado pela quantidade
 de palavras ou frases, pelo formato visual ou pelas unidades numéricas usadas
@@ -225,12 +221,14 @@ contagem o certifica.
 
 ### Codificação assistida por modelo de linguagem
 
-A IA recebe protocolo, público, inventário corrente, trecho e contexto focal.
-Propõe identidades, localizadores, ocorrências, justificativas e lacunas;
-não infere conhecimento efetivo do estudante pela fluência do texto. O software
-verifica identidades, duplicações, referências, ordem e contagens. A pessoa
-autora pode contestar o recorte; ambiguidade que altera escopo, repertório ou
-condição fixada deve ser trazida como decisão concreta.
+Na codificação assistida, a IA aplica o protocolo a um trecho situado no curso.
+Para isso, recebe a descrição do público, o inventário corrente e o contexto
+necessário. Sua proposta identifica os recortes, mostra onde ocorrem e aponta
+as justificativas ou lacunas encontradas. O software confere a consistência dos
+registros: suas identidades e duplicações, os vínculos entre eles, a ordem e as
+contagens. A pessoa autora examina o significado dos recortes e decide as
+ambiguidades que afetem o escopo, o repertório ou uma condição fixada. A
+fluência do texto, por si só, não informa o conhecimento efetivo do estudante.
 
 Resultados de modelos de linguagem em classificação de textos delimitam a possibilidade de
 assistência, mas não validam este recorte de conhecimento pedagógico
@@ -240,22 +238,23 @@ em subpalavras é uma técnica de representação computacional
 ([Sennrich et al. (2016)](referencias.md#ref-sennrich2016subwords)); contar essas
 unidades ou dimensões internas não identifica conceitos humanos.
 
-Para investigar estabilidade, fixar conteúdo, contexto, protocolo, modelo,
-configuração e instrução efetivamente enviados; comparar identidades alinhadas
-pelo significado, localizadores, divisões/fusões e rótulos, não só totais.
-Nesta definição, a comparação de inventários não produz taxa de concordância:
-divisões e fusões impedem pressupor um universo comum de pares. Relatar os dois
-inventários completos, correspondências propostas, divisões, fusões, omissões e
-dúvidas com seus localizadores, sem excluir discordâncias para calcular um
-percentual. Contagens descritivas têm como base cada inventário integral, e não
-somente o subconjunto que foi possível alinhar. A regra vale também quando
-nenhuma correspondência é encontrada: o resultado é comparação não resolvida,
-não concordância zero ou perfeita.
-Repetições do mesmo modelo não são codificadores humanos independentes.
-Um estudo de confiabilidade exigirá corpus próprio, codificação humana
-independente e uma regra para alinhar os recortes e resolver discordâncias, com base de
-comparação definida antes da codificação. Não foi realizado
-esse estudo nesta etapa, nem estimada validade cognitiva.
+Para investigar estabilidade, é preciso manter constante a entrada completa —
+material, contexto e instrução —, além do protocolo e da configuração do modelo.
+A comparação considera o significado, o rótulo e o local de cada recorte,
+inclusive quando um inventário divide o que outro reuniu.
+Por isso, um total isolado ou uma taxa simples de concordância perderia justamente
+as diferenças que precisam ser examinadas.
+
+O relato conserva os dois inventários completos. Ele apresenta as
+correspondências propostas e localiza divisões, fusões, omissões e dúvidas. As
+contagens descritivas usam cada inventário integral como base, inclusive quando
+o alinhamento fica sem solução. Nesse caso, o resultado continua sendo uma
+comparação sem alinhamento, e não concordância zero ou perfeita. Repetir o mesmo
+modelo também não produz codificadores humanos independentes. Um estudo de
+confiabilidade exigirá corpus
+próprio, codificação humana independente e regras de comparação definidas antes
+da análise. Esse estudo e a validação cognitiva do protocolo ainda precisam ser
+realizados.
 
 O [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md) torna
 refutáveis as decisões do protocolo. É material sintético de inspeção, não
@@ -299,12 +298,13 @@ pela ordem dos eventos.
 
 ## Medidas observáveis e seus denominadores
 
-Estas definições são contratos de cálculo, não promessa de instrumentação
-inteiramente implementada. Usar a mesma revisão corrente do conteúdo, inventário,
-ordem, público e protocolo. Ausência de anotação é dado ausente, não zero. Em
-qualquer agregado, informar quantos itens foram analisados e quantos faltam.
-Denominador vazio produz “não se aplica”, nunca zero por divisão implícita.
-Classificação incompleta permite somente resultado parcial identificado como tal.
+Para que duas medições possam ser comparadas, estas definições fixam como cada
+resultado é calculado. O **denominador** é o conjunto de casos sobre o qual a
+medida se aplica; ele precisa usar a mesma revisão do conteúdo, do inventário e
+do protocolo, além da mesma ordem e definição de público. Anotação ausente
+permanece como dado ausente. Todo resultado agregado informa quantos itens foram
+analisados e quantos faltam. Um conjunto vazio produz “não se aplica”, e uma
+classificação incompleta produz um resultado parcial identificado como tal.
 
 O diagnóstico corrente implementa um subconjunto dessas definições. Em particular,
 `revisits` conta aplicações explicativas de identidades não introduzidas na mesma
@@ -327,15 +327,21 @@ anotações do corpus não devem ser apresentadas como campos já observados pel
 
 A **extensão renderizada** é o espaço ocupado pelo conteúdo tal como aparece
 na tela. A área visível da página no navegador é o
-[*viewport*](https://developer.mozilla.org/en-US/docs/Glossary/Viewport). Pixels CSS são
-unidades de disposição da página, distintas dos pontos físicos da tela. Para
-comparar medidas, registrar essa área e a parte útil após barras fixas,
-largura, tipografia carregada, tamanho de fonte, entrelinha, zoom, escala do
-dispositivo, navegador, modo de visualização, idioma, tema e estado da prática
-(inicial, resposta preenchida, retorno aberto, detalhes expandidos). Medir a área
-didática, com instruções, alternativas e retorno visível; excluir menu e
-ferramentas sobrepostos. Declarar inclusões de cabeçalho e margens. Área de
-rolagem interna exige medida e inspeção próprias: a altura externa pode ocultá-la.
+[*viewport*](https://developer.mozilla.org/en-US/docs/Glossary/Viewport). Pixels
+CSS são unidades usadas para organizar a página, distintas dos pontos físicos
+da tela.
+
+Uma comparação começa pela geometria do ambiente: largura do *viewport*, área
+útil depois das barras fixas, zoom e escala do dispositivo. Também registra o
+navegador, o modo de visualização e o tema. A tipografia forma outra condição:
+fonte carregada, tamanho, entrelinha e idioma precisam permanecer iguais.
+
+O estado do conteúdo completa a medida. A prática pode estar vazia, preenchida
+ou com o retorno aberto; detalhes também podem estar expandidos. A área didática
+inclui as instruções, as alternativas e o retorno visível, enquanto menus e
+ferramentas sobrepostos ficam fora. Cabeçalhos e margens têm sua inclusão
+declarada. Uma rolagem interna recebe medida própria, pois a altura externa pode
+ocultar o conteúdo que ela contém.
 
 Fonte, fórmula, imagem ou retorno ainda não carregados invalidam a comparação.
 Uma observação inicial não representa todos os estados. Sem navegador e estado
@@ -360,19 +366,20 @@ fluxo de autoria. Eles não são parâmetros ajustáveis de uma condição. Dist
 podem variar pela configuração existente. Uma heurística pedagógica não se torna
 automaticamente entidade ou controle novo.
 
-Rótulos como densidade conceitual, dificuldade, carga cognitiva, profundidade,
-teoria e prática, cobertura, progressão ou qualidade abrangem fenômenos
-distintos e exigem unidades e métodos próprios. O AraLearn não os reduz a
-controles globais.
+Rótulos abrangentes, como densidade, carga cognitiva ou qualidade, reúnem
+fenômenos diferentes. Cobertura, progressão e a relação entre teoria e prática
+também pedem perguntas próprias. Em vez de convertê-los em controles globais,
+o AraLearn os relaciona a observações mais delimitadas:
 
-Algumas relações podem ser examinadas por meios mais precisos:
+| Questão | Como pode ser examinada |
+| --- | --- |
+| cobertura e progressão | comparar o inventário com as introduções e examinar a ordem curricular com seus pré-requisitos |
+| profundidade e relação entre teoria e prática | ler o desenvolvimento nas unidades e as operações solicitadas ao estudante |
 
-- cobertura compara o inventário planejado e as introduções correntes;
-- progressão depende de ordem curricular e pré-requisitos;
-- teoria e prática aparecem nas unidades e em suas operações;
-- extensão editorial usa contagens observáveis, sem equivaler a complexidade;
-- densidade textual só se torna métrica quando unidade, idioma, gênero,
-  denominador e procedimento estão definidos.
+A extensão editorial pode ser descrita por contagens observadas. Uma medida de
+densidade exige que unidade, idioma, gênero, denominador e procedimento estejam
+definidos. Carga cognitiva, dificuldade e qualidade designam fenômenos distintos e
+precisam de construtos, instrumentos e métodos próprios.
 
 Essa escolha preserva a possibilidade de pesquisa sem atribuir um significado
 indevido a números fáceis de calcular.
@@ -448,19 +455,18 @@ bloqueado ou fora de uma lista restrita faz a gravação inteira ser revertida.
 ## Contexto efetivo e aplicação corrente
 
 Ao preparar a produção de uma parte, o servidor reúne para cada microssequência
-os parâmetros pedagógicos, os alvos editoriais, a direção editorial, a política
-de componentes, o repertório, os requisitos de evidência e as fontes pertinentes.
+as decisões didáticas e editoriais, os componentes disponíveis e o repertório
+que relaciona conhecimentos, práticas e fontes.
 
-A gravação conserva com as unidades de estudo a aplicação instrucional corrente:
+A **aplicação instrucional corrente** descreve como essas decisões foram
+realizadas no conteúdo que está salvo. A gravação conserva:
 
-- identidades das unidades do lote;
-- unidades de análise declaradas como introduzidas;
-- unidades de análise estabelecidas que foram utilizadas;
-- formas de explicação desenvolvidas ou justificadamente inaplicáveis;
-- oportunidades dirigidas aos requisitos de evidência;
-- operação mantida e dimensões variadas;
-- componentes usados;
-- alvos editoriais aplicados e extensão observada.
+| Aspecto | Registro conservado |
+| --- | --- |
+| conteúdo produzido | identidades das unidades e componentes usados |
+| desenvolvimento do conhecimento | unidades de análise introduzidas ou utilizadas e formas de explicação desenvolvidas ou justificadamente inaplicáveis |
+| prática | oportunidades ligadas aos requisitos de evidência, operação mantida e dimensões variadas |
+| edição | alvos aplicados e extensão observada |
 
 Uma edição apenas do título, sem mudar conteúdo ou posição na estrutura,
 conserva a decisão e os mapeamentos registrados, incluindo sua data original.
@@ -480,15 +486,15 @@ nem quantidade de telas.
 
 Uma unidade de prática também pode fazer consolidação formativa sem se dirigir
 a um requisito de evidência: por exemplo, recuperar uma relação recém-explicada
-antes de introduzir a próxima. Nesse caso, ela não se liga a um requisito e não
-entra na contagem mínima de oportunidades de evidência. Isso
-permite composições como explicação, pequena consolidação, nova explicação,
-aplicação e prática de evidência, sem transformar essa ordem em roteiro
-universal nem inventar um requisito de evidência.
+antes de introduzir a próxima. Nesse caso, ela fica fora da contagem mínima de
+oportunidades de evidência. Assim, uma pequena consolidação pode aparecer entre
+dois momentos de explicação quando essa progressão fizer sentido, sem se tornar
+um roteiro universal ou um requisito inventado apenas para a contagem.
 
-O contrato verifica forma, unicidade, pertencimento, teto, cobertura declarada
-e política de componentes. O banco de dados também confere se unidades, relações curriculares,
-microssequências e componentes correspondem ao conteúdo gravado; essa
+As regras de gravação verificam a forma e a integridade dos registros — como
+unicidade, pertencimento e teto —, a cobertura declarada e a política de
+componentes. O banco de dados também confere se as unidades, suas relações
+curriculares e os componentes correspondem ao conteúdo gravado; essa
 verificação integra a [persistência relacional](persistencia-relacional.md).
 
 Essa verificação preserva rastreabilidade. Ela não substitui a leitura
@@ -587,11 +593,9 @@ configuração. Para consultar valores, alcance e finalidade, use o
 ## Limites operacionais
 
 Valores e textos possuem limites de transporte e persistência. Uma leitura muito
-ampla deve usar um escopo mais específico; uma direção editorial extensa deve
-ser dividida conforme sua função.
-
-Esses valores protegem transporte, memória e transação. Eles não possuem
-significado pedagógico.
+ampla usa um escopo mais específico; uma direção editorial extensa é dividida
+conforme sua função. Esses limites protegem transporte, memória e transação e
+têm finalidade exclusivamente operacional.
 
 ## Fundamentação e limites de interpretação
 

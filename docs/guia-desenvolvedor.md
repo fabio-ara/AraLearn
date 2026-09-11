@@ -1,11 +1,13 @@
 # Guia do desenvolvedor
 
-O AraLearn é uma aplicação web em módulos JavaScript, distribuída também numa WebView,
-o componente que apresenta a aplicação dentro do pacote Android. Os serviços remotos
-usam [Supabase](supabase.md). A interface e os canais [MCP](autoria-mcp.md) e
-[Actions/OpenAPI](autoria-actions.md) leem e alteram os mesmos cursos. Mudanças de
-código precisam preservar conteúdo, permissões e decisões humanas em todos esses
-caminhos.
+O AraLearn possui uma única aplicação web, organizada em módulos JavaScript. No
+Android, uma WebView — o componente que executa páginas web dentro de um aplicativo —
+apresenta esse mesmo código. Os serviços remotos usam [Supabase](supabase.md).
+
+A interface e os canais externos de autoria, [MCP](autoria-mcp.md) e
+[Actions/OpenAPI](autoria-actions.md), chegam aos mesmos cursos. Por isso, uma mudança
+de código precisa preservar o significado do conteúdo, as permissões e as decisões
+humanas independentemente do caminho usado.
 
 Comece pela [Arquitetura](arquitetura.md), siga para [Persistência relacional e
 sincronização](persistencia-relacional.md) e consulte [Supabase](supabase.md) antes de
@@ -76,6 +78,8 @@ pedir ao modelo que invente seus valores.
 
 ## Mapa do repositório
 
+Use o mapa para localizar a parte que decide o comportamento antes de editar:
+
 | Caminho | Responsabilidade |
 | --- | --- |
 | `public/` | documento web, estilos, manifesto e service worker |
@@ -85,7 +89,7 @@ pedir ao modelo que invente seus valores.
 | `src/supabase/` | cliente e coordenação remota no navegador |
 | `src/ui/` | superfície estreita de Autoria e leitores focais |
 | `src/resources/` e `src/render/` | catálogo, contratos e renderização didática |
-| `supabase/migrations/` | esquema, funções, privilégios e RLS versionados |
+| `supabase/migrations/` | esquema, funções, privilégios e segurança em nível de linha (RLS) versionados |
 | `supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js` | catálogo humano e execução compartilhada por MCP e Actions |
 | `supabase/functions/_shared/aralearn-authoring/courseKnowledge.js` | orientação focal por fase autoral |
 | `scripts/projectHumanAuthoringActions.mjs` | projeção do catálogo para Actions |
@@ -102,18 +106,21 @@ npm.cmd run resources:sync-edge
 
 ## Hierarquia e análise instrucional
 
-A composição usa curso, módulo, lição, microssequência e unidade de estudo. O mapa
-curricular completo existe antes da produção. Uma parte é o lote operacional que
-referencia microssequências já previstas, não um nível dessa árvore.
+A composição organiza o percurso em vários níveis, do curso às unidades de estudo. O
+mapa curricular completo existe antes da produção. Uma parte apenas agrupa, para
+produção, microssequências que já estão nesse mapa; ela não acrescenta outro nível ao
+percurso.
 
-Uma unidade de análise identifica uma ideia, relação, condição, procedimento ou
-operação acompanhada no percurso. No código, ela se chama
-`instructional_analysis_unit`; o [modelo didático](modelo-didatico.md) explica
-como essa análise orienta a produção. A aplicação
-distingue introdução, uso de conhecimento estabelecido e retomada. O backend pode
-conferir identidade, ordem, referência e limites, mas não alegar que duas formulações
-são equivalentes semanticamente. Os dados sintéticos de teste, chamados fixtures, devem tornar esse julgamento
-inspecionável sem representar uma validação semântica automática.
+Uma unidade de análise identifica algo que precisa ser acompanhado ao longo do
+percurso, como uma ideia ou um procedimento. No código, ela se chama
+`instructional_analysis_unit`; o [modelo didático](modelo-didatico.md) explica como
+essa análise orienta a produção. A aplicação distingue quando esse conhecimento é
+introduzido, usado como já estabelecido ou retomado.
+
+O backend consegue conferir identidade, ordem e referências, mas a equivalência de
+significado entre duas formulações exige julgamento autoral. Os dados sintéticos usados
+nos testes, chamados *fixtures*, precisam deixar esse julgamento inspecionável em vez
+de apresentá-lo como validação semântica automática.
 
 Uma instância didática escolhe um pacote por `package@version` e passa pelo esquema
 desse pacote, que define os campos e valores aceitos, antes de ser persistida ou
@@ -143,6 +150,7 @@ outra tabela ou serviço depende do que precisa ser guardado ou executado.
 
 ## MCP e Actions
 
+Os dois canais precisam oferecer as mesmas tarefas sem manter duas implementações.
 `COURSE_HUMAN_TASKS` é a lista canônica das 54 tarefas humanas. O MCP publica cada
 tarefa com metadados próprios. Actions usa o mapeamento de tarefas para operações, chamado binding, em
 `courseActionBindings.js` para oferecê-las em 30 operações HTTP: seis grupos recebem
@@ -181,11 +189,12 @@ traduz ambos para `stale_course_state`. Os handlers que já produzem um envelope
 `PGRST` preservam seu código JSON e capturam as duas classes; o código dentro do JSON
 não é o SQLSTATE lançado pela função.
 
-Uma composição nova permanece candidata no
-[IndexedDB](persistencia-relacional.md), o armazenamento estruturado do navegador, até a validação integral. Nunca
-apague a última revisão válida para aceitar uma candidata incompleta. Estado pessoal e
-observações possuem filas específicas. Planejamento, produção, fontes, configuração,
-revisão e Analytics exigem o estado remoto corrente.
+Uma composição recém-obtida permanece candidata no
+[IndexedDB](persistencia-relacional.md), o armazenamento estruturado do navegador, até
+ser validada por inteiro. A última revisão válida só é substituída depois dessa
+conferência. Estado pessoal e observações possuem filas próprias; trabalhos autorais
+que dependem do curso compartilhado corrente, como produzir conteúdo ou tratar uma
+fonte, exigem o servidor.
 
 ### Recuperação da exclusão de cursos
 
@@ -230,13 +239,15 @@ descrito em [análise de autoria](analytics-instrucionais.md).
 ## Fontes, PDFs e Storage
 
 [Fontes](fontes-e-citacoes.md) identificam materiais; âncoras localizam passagens;
-atribuições registram seu uso no conteúdo. Os três guardam o estado corrente. O serviço calcula e valida a
+atribuições registram seu uso no conteúdo. Os três guardam o estado corrente. O serviço
+calcula e valida a
 identidade binária do PDF, controla cota e usa a API do Storage para gravar ou remover
 objetos. O esquema `storage` é lido para inventário e autorização, nunca alterado
 diretamente pela aplicação ou por migração de negócio.
 
 O download é preparado no servidor e devolve uma URL assinada de curta duração. Essa
-URL não é identidade persistente do anexo. A remoção conserva uma marca relacional de retirada, chamada tombstone, e uma
+URL não é identidade persistente do anexo. A remoção conserva uma marca relacional de
+retirada, chamada *tombstone*, e uma
 intenção temporária de limpeza até o objeto ser eliminado pela API.
 
 Valide o ciclo real com:
@@ -247,9 +258,10 @@ npm.cmd run test:storage:lifecycle:local
 
 ## Migrações, instalação nova e atualização
 
-Uma migração deve falhar diante de pré-condição incompatível e instalar junto a
-estrutura, índices, privilégios e políticas. Verifique a instalação em banco novo (fresh) e a atualização de um banco com
-dados úteis (upgrade).
+Uma migração descreve uma passagem reproduzível de um estado do banco para o seguinte.
+Ela deve recusar uma pré-condição incompatível e instalar junto tudo o que a mudança
+exige, inclusive seus privilégios e políticas. Verifique tanto a instalação em banco
+novo (*fresh*) quanto a atualização de um banco que já contém dados (*upgrade*).
 
 ```powershell
 npx.cmd --yes supabase@2.115.0 db reset
@@ -258,18 +270,21 @@ pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 npm.cmd run test:backup-restore:local
 ```
 
-O ensaio de backup e restauração usa bancos PostgreSQL descartáveis e sem rede,
-restaura um dump sintético anterior e percorre a cadeia de migrações até o manifesto
-corrente. Confere estrutura, planejamento, desenho, configuração, fontes, metadados de
-PDFs e observações. Também instala a cadeia do zero em outro banco e compara o esquema
-executável, incluindo concessões de privilégios (grants) e políticas, e as definições e os padrões dos catálogos
-de parâmetros e componentes com o banco atualizado. O acervo anterior conserva o
-estado de revisão não registrado e a leitura permitida, sem receber aprovação ou
-explicação geradas pela atualização. Cada migração é registrada no histórico antes da
-próxima verificação. As comparações de estrutura e os ajustes necessários à restauração estão no
-[verificador de atualização](../scripts/verifyBackupRestoreUpgrade.mjs). Essa prova não
-equivale à restauração de um backup hospedado atual. Os bytes do Storage formam uma
-fronteira separada do backup lógico do banco.
+O ensaio de backup e restauração usa bancos PostgreSQL descartáveis e sem rede. Ele
+restaura um *dump* sintético de uma versão anterior, percorre as migrações até o
+manifesto corrente e confere a estrutura e os dados úteis. Em outro banco, instala a
+mesma cadeia desde o início e compara o esquema executável, inclusive privilégios,
+políticas e catálogos compartilhados. Cada migração fica registrada no histórico antes
+de o verificador avançar para a seguinte.
+
+O ensaio confere estrutura, planejamento, desenho, configuração, fontes, metadados de
+PDF e observações. Os dados anteriores mantêm seu significado durante o percurso: um
+objeto sem registro de revisão, por exemplo, não recebe uma aprovação criada pela
+atualização. As
+comparações e os ajustes da restauração estão no
+[verificador de atualização](../scripts/verifyBackupRestoreUpgrade.mjs). O ensaio usa
+dados sintéticos; a restauração hospedada precisa de seu backup corrente, e os bytes do
+Storage precisam de uma cópia separada do *dump* do banco.
 
 Funções `security definer` executam com os direitos de seu proprietário.
 Elas fixam onde procurar tabelas e funções (`search_path`), limitam quem pode
@@ -290,22 +305,23 @@ npm.cmd run validate:candidate -- --base origin/main
 ```
 
 A candidata é o conjunto de alterações que será integrado; cada verificação
-obrigatória é chamada de gate. O classificador distingue documentação, web,
-contratos, serviços remotos (backend), banco, Android e
-orquestração. Caminhos desconhecidos ampliam o conjunto. CSS puro seleciona provas de
-interface sem iniciar banco; comportamento web e contratos incluem integração real
-local. Android possui testes de contrato e build/lint locais quando aplicáveis, além
-do gate obrigatório na integral final. A seleção é conservadora, não uma análise
-completa de dependências: acrescente o teste focal do comportamento alterado quando
-ele ainda não estiver representado.
+obrigatória é chamada de *gate*. O classificador examina os caminhos alterados e
+escolhe as provas da área correspondente. Ele distingue documentação e web; contratos,
+serviços remotos e banco; Android e orquestração. Uma mudança apenas nas folhas de
+estilo (CSS), por exemplo, seleciona provas de interface; contratos e banco exigem
+integração local; caminhos desconhecidos ampliam a verificação. Como essa classificação
+não reconstrói todas as dependências do código, acrescente o teste focal do comportamento
+alterado quando ele ainda não estiver representado. Mudanças Android recebem suas provas
+locais e o gate obrigatório na validação integral final.
 
-A preparação executa verificadores de
-arquivos, análise estática de código (lint), testes de execução selecionados, jornadas
-completas no navegador (E2E) e integração com os serviços, nessa ordem. A primeira
-falha interrompe o percurso. O resumo em `.validation/candidate.json` contém árvore,
-configuração, gates, resultado, falhas e referências de logs. O diretório é ignorado
-pelo Git. Leia primeiro esse resumo; abra somente o log necessário para diagnosticar
-uma falha.
+A preparação começa por verificações rápidas de arquivos e análise estática do código
+(*lint*) e avança para testes de execução, jornadas de ponta a ponta no navegador
+(E2E) e
+integração com os serviços. A primeira falha interrompe o percurso. O resumo em
+`.validation/candidate.json` identifica a árvore e a configuração da candidata, os
+gates selecionados, o resultado e as falhas, com referências aos logs. Como o diretório
+é ignorado pelo Git, leia esse resumo local antes de abrir o log necessário ao
+diagnóstico.
 
 Resultados locais podem ser reutilizados quando arquivos, dependências e
 configuração relevantes permanecem iguais. `--force` repete as verificações.
@@ -329,7 +345,8 @@ enviar novas mudanças. Não inicie outra integral enquanto houver gate local pe
 O comando não faz commit, push, merge ou publicação.
 
 Durante um ajuste, também é possível escolher explicitamente os arquivos que exercitam
-a mudança. O programa que executa os testes, ou runner, aceita arquivos de `tests/kernel` e `tests/runtime`, recusa
+a mudança. O programa que executa os testes, ou *runner*, aceita arquivos de
+`tests/kernel` e `tests/runtime`, recusa
 seleção vazia ou inválida e preserva o código de saída:
 
 ```powershell
@@ -345,10 +362,12 @@ transformações SQL e contratos do banco; Auth, RLS, Storage e concorrência re
 precisam do Supabase local. As jornadas opt-in de acesso em
 `course-access-local.spec.js` criam contas e cursos próprios na stack local. Quando
 exercitam leitores ou visitantes, suas fixtures incluem explicação e uma declaração de
-revisão de teste pelo RPC protegido quando o cenário usa a política `reviewed_only`;
+revisão de teste por uma chamada remota de procedimento (RPC) protegida quando o
+cenário usa a política `reviewed_only`;
 essa preparação não constitui revisão humana de um curso real. As revisões usadas após
 a aprovação são relidas, sem fixar o número anterior à mudança. Falhas HTTP
-inesperadas continuam reprovando a jornada. Os testes conservam o registro das contas e dos arquivos criados para confirmar
+inesperadas continuam reprovando a jornada. Os testes conservam o registro das contas e
+dos arquivos criados para confirmar
 sua limpeza. Uma falha de limpeza precisa ser resolvida antes de encerrar a
 validação.
 
@@ -359,8 +378,9 @@ npm.cmd run test:e2e
 npm.cmd run test:e2e -- tests/e2e/study-explanation.spec.js --retries=0
 ```
 
-O runner encaminha a seleção ao Playwright e restaura a configuração temporária de
-staging. E2E obrigatório com zero testes, skip ou falha não aprova a preparação;
+O runner encaminha a seleção ao Playwright e restaura a configuração temporária do
+ambiente intermediário (*staging*). E2E obrigatório com zero testes, *skip* ou falha
+não aprova a preparação;
 `--forbid-only` impede que um `test.only` reduza a prova da candidata. Testes contra
 adaptadores sintéticos continuam separados das jornadas com Auth, HTTP, PostgreSQL e
 Storage reais locais.
@@ -368,14 +388,15 @@ Storage reais locais.
 O gate de banco executa Deno, o ambiente das funções remotas; pgTAP, a suíte de
 testes SQL; inventário de paridade; lint; e concorrência antes
 das jornadas. Local e CI registram avisos do lint e bloqueiam erros explicitamente.
-Uma migration candidata precisa estar aplicada na stack; alterar silenciosamente uma
-migration já aplicada é recusado. Instalação nova, atualização e restauração continuam obrigatórios
+Uma migração candidata precisa estar aplicada no conjunto local de serviços; alterar
+silenciosamente uma migração já aplicada é recusado. Instalação nova, atualização e restauração continuam obrigatórios
 conforme o impacto da mudança e o corte.
 
 `npm run test:integration:local` reaproveita uma stack local já preparada e executa
 Autoria corrente, dois lotes por canal HTTP, as dez jornadas reais no Chromium e cópia
 PDF/WAV. O runner não inicia, reseta nem encerra o banco. Ele serve funções próprias,
-confere se os serviços estão prontos (readiness) e encerra somente o processo que iniciou; a CI pode compartilhar seu
+confere se os serviços estão prontos (*readiness*) e encerra somente o processo que
+iniciou; a CI pode compartilhar seu
 processo já supervisionado. Um runtime persistente local pode ser usado com
 `--functions-existing` apenas após conferir que os arquivos estão montados somente para leitura, a origem, a
 prontidão dos serviços e
@@ -414,7 +435,8 @@ Uma entrega web passa ainda por `validateDeployment.ps1 -Scope Web`; Android usa
 `-Scope Full`. Mudança de banco exige instalação nova, atualização, restauração e verificação
 hospedada
 antes da publicação. A validação completa exigida pelas regras de integração da
-candidata final pode fornecer a prova de referência; não repita o mesmo conjunto local e remotamente sem uma alteração que
+candidata final pode fornecer a prova de referência; não repita o mesmo conjunto local
+e remotamente sem uma alteração que
 invalide a evidência. `test:preflight` contém os verificadores e auditorias;
 `test:runtime` contém o conjunto Node. `npm test` continua executando ambos.
 

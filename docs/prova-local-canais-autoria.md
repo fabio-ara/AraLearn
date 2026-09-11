@@ -74,7 +74,7 @@ pela relação `ON DELETE CASCADE`, que apaga o registro dependente quando a pes
 sintética é excluída. Uma falha de limpeza impede o resultado de sucesso. Esse
 comando não dispara a suíte integral.
 
-A carga delimita um caso reproduzível, sem definir o volume máximo dos canais
-ou a suficiência pedagógica do conteúdo. A matriz do catálogo inteiro e as
-conversas novas nos clientes efetivos continuam etapas próprias do
+A carga delimita um caso reproduzível. O volume máximo dos canais e a
+suficiência pedagógica do conteúdo exigem avaliações próprias. A matriz do
+catálogo inteiro e as conversas novas nos clientes efetivos continuam etapas do
 [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).

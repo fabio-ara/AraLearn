@@ -25,9 +25,13 @@ controles e regras de persistência.
 | Configuração aplicada | Registro das decisões que orientaram a produção e gravação da unidade de estudo, operação chamada de materialização, com origem e motivo. |
 | Revisão autoral | Declaração da pessoa de que inspecionou o conteúdo salvo da explicação ou unidade. É reversível e pode ficar desatualizada após mudança material. |
 
-O curso reúne módulos; cada módulo contém lições, compostas por
-microssequências e suas unidades de estudo. Partes e lotes agrupam o trabalho
-de produção sem acrescentar um nível ao currículo. A explicação pertence à microssequência e não acrescenta um nível curricular. Uma unidade pode ter fonte própria para um caso, conjunto de dados, figura ou trecho documental; a apresentação reunida das referências preserva o objeto sustentado por cada vínculo.
+O curso é organizado em vários níveis, do próprio curso às unidades de estudo.
+O [modelo didático](modelo-didatico.md) apresenta os níveis intermediários e a
+relação entre eles. Partes e lotes servem para organizar o trabalho de produção,
+enquanto a explicação constitui o texto-base de uma microssequência; nenhum
+deles acrescenta outro nível ao currículo. Uma unidade pode ter uma fonte
+própria, e a apresentação reunida das referências conserva qual objeto cada
+vínculo sustenta.
 
 Esses conceitos cumprem os papéis definidos pelo AraLearn. O
 [modelo didático](modelo-didatico.md) desenvolve as relações curriculares; a
@@ -50,9 +54,21 @@ explicação e os tipos e limites dos dados também são verificados ao salvar.
 Assim, o rascunho admite incompletude pedagógica sem perder a consistência
 necessária para retomar sua edição.
 
-A aprovação exige público e escopo definidos, ao menos um módulo, uma lição em cada módulo e uma microssequência em cada lição. Todo item de escopo precisa estar coberto, e cada dependência precisa apontar para uma microssequência anterior no percurso global. A decisão corresponde ao mapa salvo e inspecionável corrente. Persistir um recorte volta o mapa para rascunho; não declara revisão do conteúdo nem altera acesso ao curso.
+A aprovação exige público e escopo definidos e uma hierarquia com ao menos um
+módulo e sem ramos vazios: cada módulo contém ao menos uma lição, e cada lição
+alcança uma microssequência.
+Todo item de escopo precisa estar coberto, e cada
+dependência precisa apontar para uma microssequência anterior no percurso global.
+A decisão corresponde ao mapa salvo e inspecionável corrente. Persistir um recorte
+volta o mapa para rascunho; revisão do conteúdo e acesso ao curso continuam sendo
+decisões próprias.
 
-Renomear, reordenar e atualizar objetivos, dependências ou outras intenções do mapa preserva as identidades, a explicação, as unidades e suas configurações aplicadas. Campos fora do recorte são conservados, inclusive detalhes dos guias, verificações e erros previstos. Um ramo com unidades, explicação salva ou vínculo de fonte não pode ser removido nem transferido para outro pai por omissão no mapa. Itens de escopo com fontes também são protegidos contra remoção. Ramos ainda vazios podem ser retirados pelo planejamento.
+Uma alteração do planejamento preserva a identidade e o conteúdo já produzido,
+além dos registros que explicam como esse conteúdo foi criado. Somente os campos
+do recorte enviado são atualizados; os demais permanecem como estavam. Por isso,
+omitir um ramo já preenchido não o remove nem o transfere para outro pai. A mesma
+proteção vale para itens de escopo ligados a fontes. Ramos ainda vazios podem ser
+retirados pelo planejamento.
 
 A gravação verifica a propriedade e as versões do curso e do plano. Um recibo
 associa o resultado à tentativa, permitindo recuperá-lo depois de uma falha de
@@ -106,7 +122,12 @@ definições e escopos admitidos; o
 e as [regras do banco](../supabase/migrations/20260905080544_scoped_authoring_preferences_and_profiles.sql)
 aplicam a prioridade entre atribuições.
 
-O [painel de parâmetros](../src/ui/CourseDesignPanel.js) apresenta valor, origem, alcance, justificativa, limites e, na unidade, configuração aplicada. Retirar a atribuição local restaura a resolução das demais decisões do caminho (`clear_parameter`); delegar o parâmetro pede uma escolha contextual (`delegate_parameter`). Salvar intenção altera a orientação para a próxima produção ou revisão solicitada. O conteúdo salvo e seu registro aplicado só mudam mediante uma operação de conteúdo pertinente.
+O [painel de parâmetros](../src/ui/CourseDesignPanel.js) apresenta a decisão
+resolvida, sua origem, seu alcance, a justificativa e os limites; na unidade,
+mostra também a configuração aplicada. Retirar a atribuição local restaura a resolução das demais decisões do
+caminho (`clear_parameter`); delegar o parâmetro pede uma escolha contextual
+(`delegate_parameter`). Salvar a intenção orienta a próxima produção ou revisão.
+O conteúdo e seu registro aplicado mudam por uma operação de conteúdo própria.
 
 O registro das aplicações em unidades existentes descreve como o conteúdo
 foi organizado e conserva os requisitos planejados, inclusive prática futura ainda
@@ -117,9 +138,10 @@ declaração pode ficar desatualizada. A lacuna
 entre prática planejada e aplicada permanece visível; materializar um lote
 completo continua exigindo a cobertura prevista.
 
-Na conversa conectada, `consultar_configuracao` e `ajustar_configuracao` permitem inspecionar e alterar essas escolhas com seleção de curso, módulo, lição, microssequência ou unidade. Selecionar
-um módulo permite consultar seu contexto; isso não amplia os escopos admitidos
-pelos doze parâmetros. Direção editorial e política de componentes têm regras
+Na conversa conectada, `consultar_configuracao` e `ajustar_configuracao` permitem
+inspecionar e alterar essas escolhas no nível curricular selecionado. O módulo
+pode fornecer contexto para a consulta, mas não recebe parâmetros cujo catálogo
+não admita esse escopo. Direção editorial e política de componentes têm regras
 próprias de alcance.
 
 ## Controles além do catálogo
@@ -175,11 +197,30 @@ O foco **Ciclo completo** desenvolve o planejamento, a explicação e o desenho;
 **Pontos de revisão** indicam o que inspecionar ao longo do trabalho: mapa,
 base ou unidades. A frequência de pausa tem um parâmetro próprio. Escolher esses pontos organiza a inspeção; a declaração de revisão depende da decisão posterior sobre cada objeto, e o acesso conserva sua política própria. **Diálogo** define concisão, debate ou explicação e um alvo flexível de extensão da conversa. Conversa curta preserva as decisões substantivas e a suficiência do conteúdo didático.
 
-Os padrões pessoais são acessíveis em **Configurações → Preferências de autoria** e nos canais conectados. O acordo de um trabalho em andamento conserva uma cópia dessas escolhas. Seu mandato delimita o que a pessoa autorizou produzir, com o escopo e as restrições pertinentes. Cada leitura informa o padrão, a exceção expressa aplicável e o fluxo acordado. Uma alteração pessoal posterior é informada e conserva o mandato em andamento; incorporá-la ao trabalho depende de uma mudança expressa do acordo. Aplicar um perfil copia suas escolhas para o curso. As escolhas de foco, cadência, revisão e diálogo permanecem independentes. A resolução do acordo está em [Parâmetros de autoria](parametros-de-autoria.md#resolução-com-curso-e-mandato).
+Os padrões pessoais são acessíveis em **Configurações → Preferências de
+autoria** e nos canais conectados. As escolhas de foco, cadência, revisão e
+diálogo permanecem independentes.
+
+O acordo de um trabalho em andamento conserva uma cópia dessas escolhas. Seu
+mandato delimita o que a pessoa autorizou produzir, com o escopo e as restrições
+pertinentes. Cada leitura informa o padrão, a exceção expressa aplicável e o
+fluxo acordado.
+
+Uma alteração pessoal posterior fica visível, enquanto o mandato em andamento
+conserva o acordo anterior até uma mudança expressa. Aplicar um perfil copia
+suas escolhas para o curso, que passa a manter essa configuração. A resolução
+do acordo está em [Parâmetros de
+autoria](parametros-de-autoria.md#resolução-com-curso-e-mandato).
 
 ## Intenção, aplicado, edição e revisão
 
-No detalhe de uma decisão, a interface e os canais mostram rótulo, significado, valor efetivo, origem, alcance e motivo. Havendo conteúdo, mostram também a configuração aplicada naquela produção ou a ausência desse registro. Um exemplo de estado legível é: “Para próximas produções: definição e contraste; fixado nesta microssequência” e “Aplicado nesta unidade: definição e exemplo; escolha contextual da produção anterior”. Os valores são ilustrativos, não prescrições universais.
+No detalhe de uma decisão, a interface e os canais mostram seu significado, o
+valor efetivo e a procedência desse valor, incluindo alcance e motivo. Havendo
+conteúdo, mostram também a configuração aplicada naquela produção ou informam
+que esse registro está ausente. Um exemplo de estado legível é: “Para próximas
+produções: definição e contraste; fixado nesta microssequência” e “Aplicado nesta
+unidade: definição e exemplo; escolha contextual da produção anterior”. Os
+valores são ilustrativos.
 
 Uma mudança de intenção afeta a direção futura. Aplicar ao conteúdo existente é outra operação, com recorte e impacto declarados. Mudar apenas a intenção conserva a configuração aplicada anterior. A proveniência, registro da origem e das intervenções no conteúdo, distingue
 geração, edição manual e aplicação solicitada; texto redigido pelo assistente não recebe autoria humana por causa de um clique posterior.
@@ -194,7 +235,13 @@ geração, edição manual e aplicação solicitada; texto redigido pelo assiste
 | Revisão desatualizada | O conteúdo ou os dados pertinentes à revisão mudaram após a inspeção. | Apagamento da evidência histórica ou aprovação automática do conteúdo novo. |
 | Publicar/compartilhar acesso | O proprietário concede acesso expresso ao conteúdo completo salvo. | Edição local, gravação parcial e arquivos sem direito. |
 
-Uma alteração material na base, fonte ou requisito pode exigir reinspeção das unidades relacionadas. O sistema usa vínculos conhecidos e comunica limites da análise de impacto sem alegar compreensão semântica perfeita. Marcar a base não marca as unidades. Diante de edição pendente, a pessoa salva ou descarta antes de marcar revisão. Quando um registro de revisão se refere ao conjunto de uma microssequência, ele conserva esse alcance; sua existência não equivale a novas declarações individuais sobre cada objeto.
+Uma alteração material na base, fonte ou requisito pode exigir reinspeção das
+unidades relacionadas. A análise de impacto percorre os vínculos conhecidos e
+informa até onde eles permitem acompanhar a mudança. Cada objeto conserva sua
+própria declaração: marcar a base altera o estado dela, enquanto as unidades
+mantêm os seus. Diante de edição pendente, a pessoa salva ou descarta antes de
+marcar revisão. Um registro coletivo conserva o alcance da microssequência; as
+declarações individuais continuam ligadas a cada objeto.
 
 A leitura combina acesso autorizado com conteúdo completo salvo. A política
 `reviewed_only`, quando expressamente ativada, exige também revisão atual do
@@ -204,7 +251,11 @@ explica a escolha do proprietário e seu efeito para quem estuda.
 
 ## Localização e continuidade da interface
 
-Configurações mantém o mesmo acesso e os grupos Conta, Aparência, Sincronização/dados deste dispositivo e Preferências de autoria em Estudo e Autoria. Manutenção aparece só ao papel autorizado. Decisões curriculares continuam junto ao objeto: curso/ramo no planejamento; base, fontes e análise na microssequência/explicação; aplicado e revisão na unidade.
+**Configurações** permanece acessível em Estudo e Autoria. Ali ficam as escolhas
+da conta e do dispositivo, enquanto **Manutenção** aparece somente para quem tem
+o papel necessário. As decisões curriculares permanecem perto do objeto a que se
+aplicam: o planejamento reúne curso e ramos; a microssequência reúne explicação e
+fontes; a unidade mostra o que foi aplicado e revisado.
 
 O controle abre um minipainel no objeto corrente e conserva objeto, rolagem, foco e rascunho. “Neste objeto” é o alvo inicial; escolher outro alcance admitido mostra seu efeito antes de aplicar. O painel conserva valores e textos legíveis mesmo quando as ações principais usam somente ícones. Cada ação tem nome e estado acessível, área de toque suficiente e ajuda utilizável por teclado/toque.
 
@@ -240,5 +291,5 @@ Testes de domínio verificam regras; testes com banco verificam persistência e
 concorrência; testes de interface exercitam interação e continuidade. Uma
 conversa conectada e a inspeção visual da versão publicada completam recortes
 diferentes da verificação. Cada resultado precisa identificar a versão, o
-ambiente e as ações executadas. Nenhuma dessas provas técnicas substitui a
-avaliação educacional do artefato com pessoas.
+ambiente e as ações executadas. A avaliação educacional do artefato com pessoas
+responde a outra pergunta: o que ocorre durante seu uso para aprender.

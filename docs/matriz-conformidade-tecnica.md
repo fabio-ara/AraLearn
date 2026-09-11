@@ -1,12 +1,13 @@
 # Matriz de conformidade técnica
 
-O código precisa preservar as mesmas regras quando a pessoa usa a interface ou
-solicita autoria por um cliente externo de IA. Esses clientes enviam pedidos por
-[MCP](autoria-mcp.md), protocolo de chamada de ferramentas, ou por
-[Actions](autoria-actions.md), operações descritas em OpenAPI. Esta matriz relaciona
-as regras às partes que as executam e às
-verificações disponíveis. Um teste localizado é um caminho para reproduzir uma prova;
-seu resultado pertence à versão e à execução registradas.
+Uma mesma ação pode chegar ao AraLearn pela interface ou por um cliente externo de IA.
+O resultado e a autorização precisam continuar iguais nos dois caminhos. Esses
+clientes usam [MCP](autoria-mcp.md), protocolo de chamada de ferramentas, ou
+[Actions](autoria-actions.md), operações descritas em OpenAPI.
+
+A matriz relaciona cada propriedade às partes que a executam e ao teste focal capaz de
+reproduzi-la. A última coluna delimita o que esse teste ainda não responde. Todo
+resultado pertence à versão e à execução em que foi obtido.
 
 A [arquitetura](arquitetura.md) explica como navegador, serviços e banco se
 relacionam. O [guia do desenvolvedor](guia-desenvolvedor.md) orienta a execução dos
@@ -74,11 +75,12 @@ público; o banco constrói uma seleção explícita dos campos permitidos.
 
 ## Verificação para integração
 
-Uma mudança de contrato, banco ou autorização deve ser exercitada na regra de domínio,
-no transporte, no banco descartável e no cliente afetado. Instalação nova, atualização
-e restauração verificam riscos diferentes. A seleção de provas segue o impacto real da
-mudança, conforme o [guia do
-desenvolvedor](guia-desenvolvedor.md#testes-e-integração).
+Uma mudança precisa ser verificada em cada fronteira que possa alterar seu efeito. Se
+mudar uma autorização, por exemplo, a prova percorre a regra, o pedido pela rede, o
+banco descartável e o cliente afetado. Instalação nova, atualização e restauração
+respondem a riscos diferentes. O [guia do
+desenvolvedor](guia-desenvolvedor.md#testes-e-integração) orienta a seleção conforme o
+impacto da mudança.
 
 Para a interface, confira também larguras, temas, foco e recuperação de erro no
 [roteiro de verificação](auditoria-front-end.md). Para avaliar compreensão,

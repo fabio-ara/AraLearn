@@ -27,30 +27,30 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 
 | Documento | Função predominante |
 | --- | --- |
-| [`docs/modelo-didatico.md`](modelo-didatico.md) | capítulo conceitual do percurso didático |
-| [`docs/desenho-instrucional-parametrizado.md`](desenho-instrucional-parametrizado.md) | capítulo conceitual e técnico dos parâmetros de desenho |
-| [`docs/corpus-unidades-de-analise.md`](corpus-unidades-de-analise.md) | exemplos e contraexemplos de recorte instrucional, contexto, idioma e distribuição de prática |
-| [`docs/componentes-didaticos.md`](componentes-didaticos.md) | capítulo conceitual e técnico das representações e respostas |
+| [`docs/modelo-didatico.md`](modelo-didatico.md) | como explicação, unidades e prática formam um percurso de estudo |
+| [`docs/desenho-instrucional-parametrizado.md`](desenho-instrucional-parametrizado.md) | como registrar escolhas sobre o desenvolvimento das ideias e a distribuição da prática |
+| [`docs/corpus-unidades-de-analise.md`](corpus-unidades-de-analise.md) | exemplos e contraexemplos de divisão do conteúdo e organização da prática em diferentes contextos e idiomas |
+| [`docs/componentes-didaticos.md`](componentes-didaticos.md) | como o aplicativo apresenta conteúdo e recebe respostas |
 | [`docs/audio.md`](audio.md) | referência de vozes, arquivos de áudio e geração por serviço |
 | [`docs/ferramentas-calculo-e-consulta.md`](ferramentas-calculo-e-consulta.md) | referência de calculadora, dicionários, gramática e leituras de apoio |
 | [`docs/fontes-e-citacoes.md`](fontes-e-citacoes.md) | dados bibliográficos, localizações e vínculos entre fontes e conteúdo |
-| [`docs/explicacao-e-revisao-humana.md`](explicacao-e-revisao-humana.md) | explicação compartilhada, revisão humana por objeto e suas hipóteses educacionais |
+| [`docs/explicacao-e-revisao-humana.md`](explicacao-e-revisao-humana.md) | papel da explicação como texto-base e revisão humana de cada conteúdo salvo |
 | [`docs/examples/explicacao-redes.md`](examples/explicacao-redes.md) | exemplos completos de relação entre explicações, unidades, prática e fontes |
-| [`docs/fundamentacao-pedagogica-dos-resources.md`](fundamentacao-pedagogica-dos-resources.md) | capítulo acadêmico das decisões representacionais |
-| [`docs/estado-de-estudo-nao-punitivo.md`](estado-de-estudo-nao-punitivo.md) | capítulo conceitual sobre continuidade e estado pessoal |
-| [`docs/observacoes-pedagogicas.md`](observacoes-pedagogicas.md) | capítulo conceitual e guia de observações |
-| [`docs/experimentos-instrucionais-parametrizados.md`](experimentos-instrucionais-parametrizados.md) | guia para comparar condições em cursos separados |
+| [`docs/fundamentacao-pedagogica-dos-resources.md`](fundamentacao-pedagogica-dos-resources.md) | critérios e literatura para escolher uma representação didática |
+| [`docs/estado-de-estudo-nao-punitivo.md`](estado-de-estudo-nao-punitivo.md) | dados pessoais usados para retomar o estudo e limites de sua interpretação |
+| [`docs/observacoes-pedagogicas.md`](observacoes-pedagogicas.md) | como registrar uma dificuldade e acompanhar sua resposta ou correção |
+| [`docs/experimentos-instrucionais-parametrizados.md`](experimentos-instrucionais-parametrizados.md) | como comparar cursos produzidos sob condições de desenho diferentes |
 | [`docs/benchmark-footprint-editorial.md`](benchmark-footprint-editorial.md) | ensaio de extensão textual e ocupação visual, com medidas e hipóteses de uso |
-| [`docs/analytics-instrucionais.md`](analytics-instrucionais.md) | capítulo conceitual e operacional dos dados de autoria |
-| [`docs/dicionario-metricas-datasets.md`](dicionario-metricas-datasets.md) | referência dos campos, contagens e limites dos dados de autoria |
-| [`docs/revisao-de-literatura.md`](revisao-de-literatura.md) | revisão narrativa orientada ao desenho |
-| [`docs/quadro-teorico.md`](quadro-teorico.md) | capítulo acadêmico de proposições e relações |
-| [`docs/fundamentos-pesquisa-e-governanca.md`](fundamentos-pesquisa-e-governanca.md) | capítulo metodológico e de governança |
+| [`docs/analytics-instrucionais.md`](analytics-instrucionais.md) | quais escolhas produziram cada unidade e como consultar ou comparar esses registros |
+| [`docs/dicionario-metricas-datasets.md`](dicionario-metricas-datasets.md) | significado, origem e limites de cada campo exportado sobre a autoria |
+| [`docs/revisao-de-literatura.md`](revisao-de-literatura.md) | literatura que fundamenta o desenho e delimita as hipóteses do projeto |
+| [`docs/quadro-teorico.md`](quadro-teorico.md) | conceitos e relações usados para formular perguntas de pesquisa |
+| [`docs/fundamentos-pesquisa-e-governanca.md`](fundamentos-pesquisa-e-governanca.md) | como perguntas, decisões e evidências são registradas e relacionadas na pesquisa |
 | [`docs/contribuicao-originalidade.md`](contribuicao-originalidade.md) | capítulo acadêmico sobre contribuição e limites |
-| [`docs/protocolo-avaliacao-artefato.md`](protocolo-avaliacao-artefato.md) | referência metodológica de avaliação |
-| [`docs/auditoria-academica-dos-resources.md`](auditoria-academica-dos-resources.md) | avaliação acadêmica e técnica dos componentes |
-| [`docs/auditoria-de-conformidade-instrucional.md`](auditoria-de-conformidade-instrucional.md) | capítulo de revisão contextual e correção instrucional |
-| [`docs/matriz-rastreabilidade-pedagogica.md`](matriz-rastreabilidade-pedagogica.md) | referência entre fundamentos, decisões e avaliação |
+| [`docs/protocolo-avaliacao-artefato.md`](protocolo-avaliacao-artefato.md) | perguntas, métodos e evidências para avaliar o AraLearn |
+| [`docs/auditoria-academica-dos-resources.md`](auditoria-academica-dos-resources.md) | avaliação das formas de apresentar conteúdo e receber respostas |
+| [`docs/auditoria-de-conformidade-instrucional.md`](auditoria-de-conformidade-instrucional.md) | como reunir observações, corrigir o conteúdo e conferir o resultado |
+| [`docs/matriz-rastreabilidade-pedagogica.md`](matriz-rastreabilidade-pedagogica.md) | relação entre literatura, decisões do produto e avaliação prevista |
 | [`docs/roteiro-aceitacao-humana-autoria.md`](roteiro-aceitacao-humana-autoria.md) | instrumento de avaliação humana da autoria |
 | [`docs/origens-do-aralearn.md`](origens-do-aralearn.md) | história biográfica do projeto |
 
@@ -58,30 +58,30 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 
 | Documento | Função predominante |
 | --- | --- |
-| [`docs/arquitetura.md`](arquitetura.md) | capítulo técnico da arquitetura |
-| [`docs/persistencia-relacional.md`](persistencia-relacional.md) | capítulo técnico de persistência, concorrência e operação sem conexão |
-| [`docs/supabase.md`](supabase.md) | capítulo técnico dos serviços de autenticação, banco e arquivos |
-| [`docs/aralearn-contract.md`](aralearn-contract.md) | referência dos contratos de conteúdo e dados |
-| [`docs/assistencia-por-ia.md`](assistencia-por-ia.md) | capítulo técnico-conceitual da assistência e das integrações de IA |
-| [`docs/autoria-mcp.md`](autoria-mcp.md) | referência técnica do MCP |
-| [`docs/autoria-actions.md`](autoria-actions.md) | guia e referência de Actions/OpenAPI |
-| [`docs/fluxos-prompts-e-contratos.md`](fluxos-prompts-e-contratos.md) | capítulo técnico das fronteiras entre linguagem e escrita estruturada |
-| [`docs/autoria-contextual.md`](autoria-contextual.md) | decisões, responsabilidades e controles da autoria no objeto corrente |
-| [`docs/parametros-de-autoria.md`](parametros-de-autoria.md) | resolução das preferências e registro da configuração aplicada |
-| [`docs/planejamento-contextual.md`](planejamento-contextual.md) | consulta do mapa, decisões por ramo e aprovação da versão inspecionada |
-| [`docs/estrutura-curricular-por-referencia.md`](estrutura-curricular-por-referencia.md) | operações de alteração curricular por título, posição ou referência |
-| [`docs/sistema-visual.md`](sistema-visual.md) | capítulo técnico da interface, responsividade e acessibilidade |
-| [`docs/privacidade.md`](privacidade.md) | capítulo técnico e operacional de tratamento de dados |
-| [`docs/guia-desenvolvedor.md`](guia-desenvolvedor.md) | guia de desenvolvimento e validação |
-| [`docs/matriz-conformidade-tecnica.md`](matriz-conformidade-tecnica.md) | referência de propriedades e evidências técnicas |
-| [`docs/auditoria-front-end.md`](auditoria-front-end.md) | método de avaliação da interface e da conexão vertical |
+| [`docs/arquitetura.md`](arquitetura.md) | o que acontece no dispositivo, no servidor e nos serviços externos |
+| [`docs/persistencia-relacional.md`](persistencia-relacional.md) | como cursos são guardados e sincronizados sem perder alterações concorrentes |
+| [`docs/supabase.md`](supabase.md) | serviços usados para identificar contas, guardar dados e arquivos e controlar o acesso |
+| [`docs/aralearn-contract.md`](aralearn-contract.md) | formatos de conteúdo e dados que o aplicativo aceita e valida |
+| [`docs/assistencia-por-ia.md`](assistencia-por-ia.md) | como a IA recebe contexto, propõe mudanças e se conecta ao AraLearn |
+| [`docs/autoria-mcp.md`](autoria-mcp.md) | como conectar uma aplicação de IA às tarefas do AraLearn pelo MCP |
+| [`docs/autoria-actions.md`](autoria-actions.md) | como configurar e usar o canal baseado em OpenAPI e Actions |
+| [`docs/fluxos-prompts-e-contratos.md`](fluxos-prompts-e-contratos.md) | como um pedido em linguagem natural se torna uma alteração estruturada e verificável |
+| [`docs/autoria-contextual.md`](autoria-contextual.md) | como escolher com segurança o conteúdo que será examinado ou alterado |
+| [`docs/parametros-de-autoria.md`](parametros-de-autoria.md) | como orientações futuras se distinguem das escolhas já aplicadas ao conteúdo |
+| [`docs/planejamento-contextual.md`](planejamento-contextual.md) | como consultar, alterar trechos e aprovar o mapa curricular |
+| [`docs/estrutura-curricular-por-referencia.md`](estrutura-curricular-por-referencia.md) | como localizar e mover, duplicar ou reordenar um ponto do currículo |
+| [`docs/sistema-visual.md`](sistema-visual.md) | como a interface se adapta às telas e mantém legibilidade, interação e acessibilidade |
+| [`docs/privacidade.md`](privacidade.md) | finalidade, acesso, retenção e exclusão dos dados |
+| [`docs/guia-desenvolvedor.md`](guia-desenvolvedor.md) | preparação do ambiente, estrutura do código e verificações de desenvolvimento |
+| [`docs/matriz-conformidade-tecnica.md`](matriz-conformidade-tecnica.md) | onde cada propriedade do sistema é implementada e verificada |
+| [`docs/auditoria-front-end.md`](auditoria-front-end.md) | como conferir o percurso completo da interface até a gravação dos dados |
 
 ### Operação e contribuição
 
 | Documento | Função predominante |
 | --- | --- |
 | [`docs/implantacao.md`](implantacao.md) | guia de implantação, operação e recuperação |
-| [`docs/prova-local-canais-autoria.md`](prova-local-canais-autoria.md) | procedimento de verificação local de transporte e persistência em MCP e Actions |
+| [`docs/prova-local-canais-autoria.md`](prova-local-canais-autoria.md) | como reproduzir uma operação por MCP e Actions e confirmar que o resultado foi salvo |
 | [`android/README.md`](../android/README.md) | guia do aplicativo Android que integra a experiência web |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | guia de contribuição para desenvolvimento |
 | [`LICENSE.md`](../LICENSE.md) | licença jurídica do repositório |
@@ -98,7 +98,7 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 | [`docs/vocabulario-controlado.md`](vocabulario-controlado.md) | referência terminológica derivada de `docs/evidence/terminologia-canonica.v1.json` |
 | [`docs/referencias.bib`](referencias.bib) | fonte canônica dos metadados bibliográficos |
 | [`docs/referencias.md`](referencias.md) | bibliografia legível derivada de `referencias.bib` |
-| [`docs/evidence/registro-buscas-bibliograficas.csv`](evidence/registro-buscas-bibliograficas.csv) | registro das consultas realmente executadas sob ARA-LIT-1 |
+| [`docs/evidence/registro-buscas-bibliograficas.csv`](evidence/registro-buscas-bibliograficas.csv) | registro das buscas bibliográficas efetivamente realizadas |
 
 ### História do produto e da interface
 
@@ -113,10 +113,11 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 
 ## Fontes estruturadas e manutenção
 
-A bibliografia legível é gerada de `referencias.bib`, e o vocabulário controlado
-é gerado de `docs/evidence/terminologia-canonica.v1.json`. Essas fontes conservam
-os dados usados nas páginas correspondentes. Contratos e registros técnicos
-estruturados complementam os documentos do inventário.
+A página legível da bibliografia é gerada a partir de `referencias.bib`. Da mesma
+forma, o vocabulário controlado parte dos dados de
+`docs/evidence/terminologia-canonica.v1.json`. Esses arquivos de origem conservam
+as entradas a partir das quais as páginas são produzidas. Outros registros
+estruturados documentam formatos e verificações usados pelo sistema.
 
 Os [princípios editoriais](principios-editoriais.md) reúnem escolhas compartilhadas
 para quem escreve, revisa e contribui com a documentação. As páginas de uso e

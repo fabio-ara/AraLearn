@@ -1,12 +1,14 @@
 # Referência da leitura de autoria
 
-[Analytics](analytics-instrucionais.md) descreve o estado corrente de um curso.
+[Dados de autoria](analytics-instrucionais.md) descreve o estado corrente de um
+curso.
 Os dados são transportados em JSON, formato que organiza informações em campos,
 listas e objetos. O contrato define quais campos são admitidos e como devem ser
 interpretados; os nomes entre crases correspondem aos identificadores presentes
 no arquivo. A versão `aralearn.course-authoring-analytics.v4` conserva **Desenho** e **Autoria** e
 acrescenta uma base explícita para comparar configurações, declarações e
-contagens. Não possui conjuntos de eventos ou percurso histórico.
+contagens. Seu objeto é o estado salvo; eventos e percurso histórico exigem
+outra fonte de dados.
 
 ## Escopo
 
@@ -39,11 +41,12 @@ inclusive quando a observação está limitada a uma unidade. `analysisUnits` e
 descrição e referência. `sources` contém metadados bibliográficos, âncoras e
 identificadores lógicos dos anexos, sem caminhos internos ou links temporários.
 
-Cada entrada de `basis.studyUnits` distingue `requestedParameters` (resolução
-canônica atual), `appliedParameters` (valores registrados na aplicação),
-`declaration` (composição declarada pelo produtor), `components`, `wordCount` e
-`sourceLinks` (presença observável). Valores ou motivos históricos ausentes
-permanecem nulos; não são preenchidos com a configuração atual.
+Cada entrada de `basis.studyUnits` separa a intenção corrente da configuração
+que produziu a unidade. Também conserva a declaração de quem a produziu e as
+propriedades observáveis do conteúdo. Os campos correspondentes são
+`requestedParameters`, `appliedParameters`, `declaration`, `components`,
+`wordCount` e `sourceLinks`. Valores ou motivos históricos ausentes permanecem
+nulos, em vez de receber a configuração atual.
 
 | Dimensão | Cálculo por unidade | Base |
 | --- | --- | --- |
@@ -65,28 +68,28 @@ casos são `notApplicableCount`. Sem observação aplicável, o total é nulo, i
 não há valor a informar; isso difere de uma contagem conhecida igual a zero. A
 posição da prática é categórica e não recebe total ou diferença numérica.
 
-`revisits` é um indicador da declaração disponível, não uma classificação da
-intenção do trecho. Pode incluir o desenvolvimento continuado de uma ideia e
-não cobre toda reativação feita durante a prática. O protocolo editorial
-distingue esses casos por leitura contextual; o cálculo atual não os resolve
-semanticamente.
+`revisits` deriva da declaração disponível. O indicador pode incluir o
+desenvolvimento continuado de uma ideia e deixar de fora uma reativação feita
+somente durante a prática. A intenção do trecho é distinguida por leitura
+contextual no protocolo editorial, e não por esse cálculo.
 
 Em `practice`, a identidade contada é o par requisito–oportunidade, dentro de
 cada unidade. Uma solicitação que atende a dois requisitos contribui com dois
 pares; repetir a mesma oportunidade em outra unidade também contribui para a
-soma das observações. Portanto, o total não é uma deduplicação global de
-solicitações nem comprova sua distinção semântica. Prática informal sem essa
-declaração não é estimada pela rotina de cálculo.
+soma. O total representa esses pares, e não solicitações globais deduplicadas
+ou diferenças semânticas verificadas. A rotina calcula apenas a prática que
+possui essa declaração.
 
 `wordCount` e `extent` usam o contador
 `private.count_course_component_authorial_words_v1`: ele percorre strings dos
 dados dos componentes, exclui campos por nome e conta sequências alfanuméricas
-com apóstrofos ou hífens internos. É uma aproximação operacional, sem
-segmentação específica por idioma nem leitura do texto renderizado. Notação,
-marcação e campos textuais novos podem alterar o resultado; uma sequência de
-caracteres chineses não é segmentada em palavras linguísticas por essa regra.
-Comparações devem conservar algoritmo, idioma e convenções do conteúdo. O
-total não representa extensão visual, tempo de leitura ou complexidade.
+com apóstrofos ou hífens internos. Essa aproximação operacional trabalha sobre
+os dados, antes da apresentação, e usa a mesma segmentação para todos os
+idiomas. Por isso, uma sequência contínua de caracteres chineses pode formar um
+único grupo, em vez de palavras linguisticamente segmentadas. Novos campos
+textuais também podem alterar o resultado. Comparações devem conservar algoritmo,
+idioma e convenções do conteúdo. Extensão visual, tempo de leitura e complexidade
+requerem outras medidas.
 
 ## Desenho
 
@@ -110,16 +113,16 @@ total não representa extensão visual, tempo de leitura ou complexidade.
 Cada entrada exporta sua `definition` e os valores efetivamente aplicados, com
 origem, motivo (`reason`, nulo quando não registrado) e escopo de origem. Os
 alvos de palavras por resposta de autoria e por unidade de estudo são flexíveis:
-não são limites nem autorizam compressão. O primeiro descreve configuração,
-não uma conversa observada; não há transcrição em Analytics. Direção editorial
-permanece em campo separado.
+são referências, e não limites de tamanho. O primeiro descreve a configuração,
+pois **Dados de autoria** trabalha com o curso salvo e não com transcrições de
+conversa. A direção editorial permanece em campo separado.
 
 `practiceSequence` contém `studyUnitRef`, `position` e `mode`: `expository`,
 `practice`, `mixed` ou nulo quando a função não foi declarada. A ordem segue a
 hierarquia curricular do escopo. O cálculo não deduz função a partir de
 componentes, respostas ou tamanho do conteúdo.
 
-`practiceDistribution` é derivada dessa sequência pelo
+`practiceDistribution` é derivada dessa sequência pela
 [rotina de cálculo da distribuição](../src/domain/coursePracticeDistribution.js).
 `expositoryOnlyCount`, `practiceOnlyCount`, `mixedCount` e `undeclaredCount`
 são categorias exclusivas e somam `studyUnitCount`. `expositionPositions` e
@@ -152,8 +155,8 @@ as linhas podem se sobrepor; sua soma não precisa coincidir com
 | `manuallyRevisedStudyUnitCount` | unidades de estudo cuja última revisão observável foi humana |
 | `studyUnitsByOrigin` | unidades de estudo agrupadas pela origem da criação e da última revisão |
 
-Esses campos contam estados explícitos. Eles não produzem percentual de autoria,
-pontuação de colaboração ou inferência sobre aceitação.
+Esses campos contam estados explícitos. Percentual de autoria, pontuação de
+colaboração e aceitação exigiriam definições e dados diferentes.
 
 ## Dados ausentes
 
@@ -164,8 +167,8 @@ não se aplica segundo o cálculo corrente. Misturar essas três situações
 produziria uma comparação enganosa.
 
 Uma contagem conhecida pode ser zero. Uma origem que o estado corrente não
-permite atribuir aparece em `missingData` e não entra numa categoria inventada.
-Consumidores devem manter essa diferença na interface e na exportação.
+permite atribuir aparece em `missingData`. Interface e exportação preservam essa
+diferença, sem criar uma categoria para preencher o desconhecido.
 
 ## Comparação e exportação
 
@@ -190,17 +193,18 @@ separados do conteúdo importável:
 | `contentReviews` | estado da declaração de revisão de cada explicação ou unidade e data, quando existente |
 
 O código que valida e organiza a leitura aceita o formato anterior `v1`;
-metadados que ele não continha
-permanecem ausentes. A serialização atual limita o arquivo a 32 MiB (33.554.432 bytes) e falha se o total exceder esse limite.
+metadados que ele não continha permanecem ausentes. A serialização atual limita
+o arquivo a 32 MiB (33.554.432 bytes) e falha se o total exceder esse limite.
 O leitor percorre entidades com a mesma revisão e confere novamente a revisão
-ao terminar. Falha ou mudança interrompe a exportação inteira; não há retorno
-parcial ou substituição por cache. O arquivo não inclui bytes PDF/áudio,
-registros de pessoas, progresso pessoal, credenciais ou transcrições.
+ao terminar. Uma falha ou mudança interrompe a exportação inteira, de modo que
+o arquivo represente uma revisão consistente. PDFs e áudios aparecem por
+referência; dados de pessoas, uso, credenciais e transcrições ficam fora do
+contrato.
 
 Os contratos são compartilhados pela interface, pelos canais humanos e pela
 exportação em [courseAuthoringComparison.js](../src/domain/courseAuthoringComparison.js).
 As dimensões são calculadas em
 [courseAuthoringBasis.js](../src/domain/courseAuthoringBasis.js).
 
-Consulte [Analytics da Autoria](analytics-instrucionais.md) para interpretar os
+Consulte [Dados de autoria](analytics-instrucionais.md) para interpretar os
 números e [Arquitetura](arquitetura.md#dados-de-autoria) para sua derivação.
