@@ -1,18 +1,19 @@
 # Planejamento e decisões no objeto corrente
 
 O mapa de **Planejamento** permite examinar o que um curso pretende ensinar e
-em que ordem. Cada módulo reúne lições; cada lição reúne microssequências,
-sequências curtas com um objetivo didático. Ao abrir um ramo, a pessoa encontra
-seus objetivos e pode consultar os ajustes que orientam a produção daquele
-conteúdo. O [modelo didático](modelo-didatico.md) desenvolve essa organização.
+em que ordem. Ele apresenta o currículo em níveis, do curso às microssequências,
+que são sequências curtas com um objetivo didático. Ao abrir um ramo, a pessoa
+encontra seus objetivos e pode consultar os ajustes que orientam a produção
+daquele conteúdo. O [modelo didático](modelo-didatico.md) desenvolve os níveis e
+as relações dessa organização.
 
 ## Examinar e ajustar o mapa
 
 Os parâmetros orientam a apresentação e a prática. As orientações editoriais
 registram escolhas de linguagem e organização. O painel indica de onde veio
 cada decisão e a quais objetos ela se aplica, seu **escopo**. Os escopos
-admitidos variam conforme a escolha: consultar um módulo, por exemplo, não
-significa que todos os parâmetros possam ser definidos nesse nível. O
+admitidos variam conforme a escolha: um módulo pode fornecer contexto para a
+consulta mesmo quando determinado parâmetro só pode ser definido em outro nível. O
 [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
 apresenta essas regras.
 
@@ -47,7 +48,8 @@ sem reconstruir o mapa a partir da tela. Dados de produção só acompanham o
 planejamento quando pertencem à mesma versão e revisão do curso. Se a resposta
 a uma aprovação se perder, o aplicativo conserva a tentativa e consulta seu
 resultado antes de iniciar outra. O [contrato das operações](aralearn-contract.md)
-descreve esses controles. A aprovação não modifica quem pode acessar o curso.
+descreve esses controles. O acesso ao curso continua regido por uma decisão
+própria do proprietário.
 
 ## Base, intenção e aplicação
 
@@ -68,7 +70,8 @@ O [teste de planejamento](../tests/runtime/course-planning-context.test.js)
 verifica rascunhos com dependências pendentes, a leitura do mapa salvo e a
 distinção entre intenção, aplicação e dados indisponíveis. O
 [teste da interface](../tests/e2e/course-planning-context.spec.js)
-exercita filtros, abertura da base sem unidades, conservação de rascunhos,
-aprovação, respostas perdidas ou tardias e estabilidade da apresentação.
+percorre a busca no mapa e a abertura de uma base ainda sem unidades. Também
+acompanha a conservação de rascunhos, a aprovação e a estabilidade da
+apresentação, inclusive diante de respostas perdidas ou tardias.
 Esses testes usam dados controlados; a [validação dos canais](roteiro-aceitacao-humana-autoria.md)
 examina também o acesso e o salvamento na versão conectada.

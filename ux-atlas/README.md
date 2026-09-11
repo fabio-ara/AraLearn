@@ -1,8 +1,9 @@
 # Registros históricos de UX
 
 Este diretório conserva decisões e verificações de rodadas anteriores de desenho
-da experiência. Títulos, versões, issues e referências normativas nos arquivos
-pertencem ao período registrado; não definem o comportamento atual do aplicativo.
+da experiência de uso (*user experience*, UX). Os termos e referências de cada
+arquivo pertencem ao período registrado. O comportamento atual do aplicativo é
+descrito pelas fontes indicadas a seguir.
 
 A experiência vigente está no [sistema visual](../docs/sistema-visual.md), nos
 guias de [estudo](../docs/guia-estudante.md) e

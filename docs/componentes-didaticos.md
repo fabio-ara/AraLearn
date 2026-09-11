@@ -65,7 +65,10 @@ pacote; elas seguem as mesmas regras de linhas, colunas e cabeçalhos. O núcleo
 - mediação de lacunas, digitação e respostas;
 - seleção de instâncias para edição e assistência.
 
-Cada diretório em [`src/resources/packages/`](../src/resources/packages/) oferece:
+Cada diretório em [`src/resources/packages/`](../src/resources/packages/) define
+um pacote. Sua função didática orienta os dados aceitos, a apresentação e a
+forma de participar de uma atividade. No código, essas responsabilidades ficam
+separadas nos seguintes elementos:
 
 - identidade, finalidade, taxonomia, operações e limites no manifesto
   (`manifest`);
@@ -94,21 +97,16 @@ O inventário e a decisão de manter ou restringir cada gramática estão na
 [auditoria dos componentes](auditoria-academica-dos-resources.md#6-decisão-corrente-e-uso-observado).
 Diretórios auxiliares, como `system-diagrams`, não são pacotes adicionais.
 
-O catálogo descreve cada pacote por categorias de consulta, chamadas
-**facetas**, com valores definidos:
+Para encontrar um componente pelo que ele precisa fazer, o catálogo descreve
+cada pacote por categorias de consulta, chamadas **facetas**. Elas situam o
+objeto e as convenções da área, a operação e a modalidade de prática, a forma de
+apresentação e sua compatibilidade com a resposta, além dos limites de uso e
+acessibilidade.
 
-- domínios e objetos de conhecimento;
-- operações-alvo das tarefas;
-- convenções acadêmicas;
-- modalidades de prática;
-- mecanismos de apresentação;
-- adequações e contraindicações;
-- acessibilidade e limitações;
-- posições e compatibilidades de resposta.
-
-Essa organização atende a três necessidades. O modelo recupera candidatos por
-intenção, a manutenção acrescenta termos sem ampliar um algoritmo central e a
-curadoria confronta a justificativa de cada escolha.
+Como as facetas descrevem a intenção, o modelo consegue recuperar candidatos
+pertinentes. O mesmo vocabulário permite acrescentar termos ao catálogo sem
+ampliar um algoritmo central e oferece à curadoria uma base para confrontar a
+justificativa de cada escolha.
 
 O catálogo interno usa o contrato `aralearn.resource-library.v1` e oferece
 consultas progressivas:
@@ -128,13 +126,13 @@ A ferramenta usa o catálogo interno, sem expor todos os seus métodos como
 operações públicas. Os campos correntes estão no
 [catálogo de tarefas](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 
-No método interno `search`, a autoria pode declarar, além da frase de intenção, papel da
-unidade, disciplina, estrutura, operação-alvo, modalidade de
-prática, objetos de conhecimento, relações que precisam ser preservadas e se a
-notação é objeto de aprendizagem. Essas facetas já pertencem ao catálogo e
-evitam que uma frase livre esconda o contraste entre, por exemplo, explicar em
-prosa e comparar por tabela, ou entre reconhecer uma alternativa e produzir
-uma resposta por digitação.
+No método interno `search`, a autoria pode complementar a frase de intenção com
+facetas sobre o contexto da unidade e da disciplina, o objeto de conhecimento e
+a operação esperada. Também pode indicar a modalidade de prática, a relação que
+precisa ser preservada e se a notação faz parte da aprendizagem. Esses dados
+tornam explícitos contrastes que uma frase livre pode ocultar, como explicar em
+prosa ou comparar por tabela, reconhecer uma alternativa ou produzir uma
+resposta por digitação.
 
 O retorno interno preserva frase e facetas em `producerDeclaration`, marcada
 como declaração de quem produziu a consulta, sem verificação semântica pelo servidor. Com facetas presentes, o ajuste usa essas propriedades
@@ -153,11 +151,11 @@ Esses termos descrevem o ajuste calculado; não proclamam que uma representaçã
 seja universal na academia. O assistente ainda precisa confrontar convenções,
 exemplo e contraindicações depois da busca.
 
-A escolha segue a função instrucional, não uma meta de variedade. `paragraph`
-continua adequado quando prosa é a melhor forma; `choice`, quando reconhecer
-entre alternativas é a operação pretendida. Contraste, sequência, estrutura,
-código, tabela, classificação e relações visuais devem levar a autoria a
-considerar os componentes correspondentes quando preservarem melhor o objeto.
+A escolha segue a função instrucional. `paragraph` continua adequado quando a
+prosa é a melhor forma; `choice`, quando a operação pretendida é reconhecer
+entre alternativas. Uma sequência, uma estrutura de código ou uma relação
+visual leva a autoria a considerar componentes que preservem melhor aquele
+objeto.
 
 O ajuste calculado não autoriza o uso sozinho. A política de componentes
 efetiva do curso e do escopo fixa a revisão do catálogo, a disponibilidade
@@ -276,20 +274,21 @@ textuais e casos extremos de cada pacote. As decisões gerais pertencem ao
 
 ## 9. Regras de representação acadêmica
 
-Um contrato de alto nível deve usar conceitos da área. Exemplos:
+Um contrato de alto nível usa os conceitos da área. A tabela mostra essa
+tradução em alguns dos pacotes especializados:
 
-- grafos com vértices, arestas, direção, peso e agrupamentos, sem coordenadas
-  (`graph`);
-- relações com domínio, contradomínio e pares ordenados, sem duplicar elementos
-  (`relation-map`);
-- matrizes com entradas, linhas, colunas e tipo de delimitador (`matrix`);
-- fluxos com eventos, processos, decisões, ramos e junções (`flow`);
-- gráficos com variáveis, unidades, séries, incerteza, escala e nota
-  metodológica (`chart`);
-- glosas com forma, segmentação morfológica, abreviações e tradução
-  (`interlinear-gloss`);
-- reações com espécies, coeficientes, estados, cargas, condições e seta
-  (`reaction`).
+| Pacote | Conceitos recebidos pelo contrato |
+| --- | --- |
+| `graph` | vértices, arestas, direção, peso e agrupamentos, sem coordenadas de desenho |
+| `chart` | variáveis, unidades, séries, incerteza, escala e nota metodológica |
+| `reaction` | espécies, coeficientes, estados, cargas, condições e seta |
+
+Essas três linhas são exemplos, não o inventário do catálogo. A consulta
+`contracts`, apresentada em [Catálogo como vocabulário
+controlado](#3-catálogo-como-vocabulário-controlado), entrega o contrato
+versionado completo do pacote escolhido. É ali que permanecem, por exemplo,
+domínio, contradomínio e pares ordenados para `relation-map`, além dos campos
+próprios dos demais pacotes.
 
 O contrato usa conceitos da área em vez de pedir SVG, LaTeX livre, uma tabela
 improvisada ou frases concatenadas. Isso reduz ambiguidades e permite que o
@@ -320,11 +319,13 @@ textual quando a ordem e o estado observável fazem parte do objeto de estudo.
 
 O contrato declara uma orientação pedagógica em `prompt`, o `environment`, um
 `initialContext` opcional e uma lista ordenada de `interactions`. Cada interação
-possui `input` e pode registrar separadamente o sinal visual de entrada, `stdout`,
-`stderr`, `exitCode` e um efeito curto. Espaços e quebras de linha são
-preservados num conteúdo declarativo e determinístico. Em `stdout` e `stderr`,
-a cadeia de caracteres vazia significa que o fluxo foi observado sem conteúdo; a omissão
-significa que ele não foi registrado ou não é pertinente.
+possui `input` e pode registrar separadamente o sinal visual de entrada. A saída
+normal vai em `stdout`; mensagens de diagnóstico ou erro, em `stderr`; e
+`exitCode` registra o código de encerramento. Um efeito curto pode completar a
+interpretação. Espaços e quebras de linha são preservados num conteúdo
+declarativo e determinístico. Em `stdout` e `stderr`, a cadeia de caracteres
+vazia significa que o fluxo foi observado sem conteúdo; a omissão significa
+que ele não foi registrado ou não é pertinente.
 
 As operações previstas são rastrear interação, interpretar saída, identificar
 erro, relacionar ação e consequência, comparar estado, diagnosticar situação,
@@ -482,13 +483,13 @@ efeito pedagógico com estudantes exigem avaliação acadêmica e empírica.
 Adicionar um pacote preserva o núcleo. Alterar a estrutura externa, as posições ou a
 semântica comum modifica o núcleo e exige revisão mais ampla.
 
-Uma pasta em `src/resources/packages` exporta uma definição com manifesto,
-esquema, contrato de autoria, exemplo, normalização, validação, apresentação,
-texto acessível e alvos textuais pertinentes. `generateResourcePackageIndex.mjs`
-descobre a pasta; a sequência anterior permanece estável porque dela derivaram
-identificadores de exemplos publicados. O catálogo, a consulta de contratos e
-os canais de autoria usam esse registro. O envelope conserva `package`,
-`version` e `data`, sem acrescentar uma lista de tipos em cada canal.
+Cada pasta em `src/resources/packages` exporta a definição descrita na seção
+[Núcleo de execução e pacote](#2-núcleo-de-execução-e-pacote).
+`generateResourcePackageIndex.mjs` encontra essas pastas e forma o índice. A
+ordem anterior permanece estável porque dela derivaram identificadores de
+exemplos publicados. O catálogo, a consulta de contratos e os canais de autoria
+usam esse registro. Cada instância leva apenas a identidade do pacote, a versão
+e os dados, nos campos `package`, `version` e `data`.
 
 Respostas declaram `responseInteraction` com `createState`, `submit` e `bind`,
 além de `evaluate`. O pacote controla seus campos, validação de preenchimento e
@@ -505,17 +506,24 @@ Uma ampliação explícita que conserva as entradas anteriores e sua normalizaç
 pode manter a versão: `paragraph@1.0.0` admite texto simples e o formato rico
 distinto, e `flow@1.0.0` mantém os dados ao corrigir sua apresentação. Uma mudança
 que invalida ou reinterpreta dados exige nova versão e conversão única dos dados
-úteis. Não se mantêm parsers antigos ou aliases para ocultar a mudança.
+úteis. Cada versão, assim, conserva um contrato explícito, e a compatibilidade
+com os dados anteriores fica concentrada na conversão.
 
-A impressão digital do catálogo, calculada pelo algoritmo SHA-256, identifica
-o conjunto exato de manifestos, esquemas e contratos de autoria instalados. A revisão de descoberta e essa impressão digital
-acompanham a projeção do catálogo no banco de dados; o cliente e as funções remotas recusam divergência ou omissão. A
-referência do commit publicado identifica a implementação completa, incluindo os
-renderizadores. Para preparar uma atualização, execute o gerador do índice,
-`syncEdgeResourceRuntime.mjs` e `syncResourcePackageCatalog.mjs --print`; inclua
-o bloco resultante em uma **nova migração de banco**, com as verificações de transição
-necessárias. O modo padrão do último script apenas confere a migração corrente
-e integra a validação do ambiente de execução. Uma migração aplicada não é regravada.
+O navegador, as funções remotas e o banco de dados mantêm projeções do mesmo
+catálogo. Para impedir que uma delas aceite um contrato diferente, uma
+**impressão digital** calculada pelo algoritmo SHA-256 identifica o conjunto
+exato de manifestos, esquemas e contratos instalados. A revisão de descoberta e
+essa impressão acompanham a projeção do banco; uma divergência interrompe o uso.
+A referência da revisão publicada no Git, chamada *commit*, identifica a
+implementação completa, incluindo os renderizadores.
+
+Para preparar uma atualização, execute o gerador do índice,
+`syncEdgeResourceRuntime.mjs` e `syncResourcePackageCatalog.mjs --print`. O bloco
+resultante entra em uma **nova migração de banco**, alteração versionada que
+leva o catálogo persistido de um estado ao seguinte com as verificações de
+transição necessárias. O modo padrão do último script confere a migração
+corrente e integra a validação do ambiente de execução. Migrações já aplicadas
+permanecem imutáveis.
 
 A atualização compatível conserva literalmente os registros da configuração
 já aplicada. Preferências atuais podem receber a revisão corrente quando o
@@ -527,17 +535,20 @@ invalida essa aplicação: referências de componentes iguais não demonstram qu
 o conteúdo continua realizando a mesma análise instrucional.
 
 A prova de extensão em `tests/kernel/resource-package-extension.test.js`
-acrescenta um pacote apenas a uma cópia temporária: verifica descoberta,
-contrato, normalização, ida e volta relacional, apresentação e interação, além
-de conferir que o núcleo não mudou. Esse pacote de teste não integra o produto.
-Áudio, calculadora, gramática, dicionário e leitura são pacotes de conteúdo do
+acrescenta um pacote a uma cópia temporária. Ela percorre sua descoberta, seu
+contrato e sua normalização; testa a ida e volta relacional, a apresentação e a
+interação; e confere que o núcleo permaneceu igual. O pacote temporário fica
+fora do produto.
+
+Áudio e ferramentas de cálculo ou consulta também são pacotes de conteúdo do
 mesmo registro, com identidade `aralearn.resource.*`. Uma ferramenta declara
 `manifest.tool` com rótulo e ícone e implementa
 `toolInteraction.bind(root, data, host)`, que devolve sua função de limpeza.
 Essas instâncias continuam em `content[]`; estudo as apresenta na barra da
 unidade, com dois atalhos e um menu para as demais. O aplicativo conserva a
 unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
-sua interação. Nenhum enum adicional por canal determina as ferramentas.
+sua interação. Cada canal reconhece as ferramentas pelo catálogo, sem manter
+outra lista fixa de tipos.
 
 Os textos instrucionais dessas ferramentas usam os mesmos contratos de edição
 e acessibilidade.
@@ -555,9 +566,10 @@ pacote. Reúnem detalhes que variam conforme a representação.
 
 ### Inventário tipográfico do catálogo
 
-O registro em `src/resources/packages/generated.js` contém os 38 pacotes abaixo,
-todos na versão 1.0.0. A lista deriva das identidades instaladas; diretórios de
-apoio não são componentes adicionais. `public/styles-tokens.css` fornece os
+O registro em `src/resources/packages/generated.js` contém os 38 pacotes abaixo.
+`aralearn.response.ordering` está na versão 3.0.0; os demais estão na 1.0.0. A
+lista deriva das identidades instaladas, enquanto diretórios de apoio cumprem
+outra função. `public/styles-tokens.css` fornece os
 papéis, `public/styles.css` os aplica aos componentes de apresentação e `public/study-references.css`
 liga a explicação à mesma prosa. Os 34 pacotes de conteúdo podem ocupar os
 papéis admitidos em seus manifestos; feedback substantivo usa a representação
@@ -625,7 +637,9 @@ esta lista com o registro e verifica os papéis comuns; o teste
 [de instruções de escolha](../tests/runtime/choice-instructions.test.js) exercita
 os três modos, seus nomes e código literal. A galeria existente e os cursos
 acadêmicos de estresse oferecem os casos para inspeção visual. Essa cobertura
-estática não aprova geometria, ampliação, reorganização do texto, interação ou eficácia pedagógica.
+estática é complementada por testes dinâmicos de geometria, ampliação e
+reorganização do texto, além da interação. A eficácia pedagógica exige avaliação com
+método próprio.
 
 ### Topologia: hub Ethernet e repetidor
 
@@ -650,9 +664,10 @@ O exemplo completo do
 representa duas estações ligadas a um hub, seguido de um repetidor e de um switch.
 Os trechos ligados por repetição são agrupados, os quatro enlaces Ethernet são
 bidirecionais e o switch conecta esse recorte à rede comutada. O exemplo permite
-comparar os papéis dos equipamentos; não estima alcance, desempenho ou colisões,
-nem simula tráfego. As condições físicas e as regras de instalação de uma rede
-real exigem dados adicionais e não são inferidas do desenho.
+comparar os papéis dos equipamentos. Alcance, desempenho e colisões exigem
+outros dados, e uma simulação de tráfego exigiria outro tipo de componente. As
+condições físicas e as regras de instalação de uma rede real também dependem de
+informações que o desenho não contém.
 
 Na hidratação, rótulos de enlaces e fronteiras que contêm apenas marcação de
 campo autoral conservam a fonte e a entrelinha medidas no SVG. A caixa HTML

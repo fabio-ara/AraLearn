@@ -39,7 +39,8 @@ test("frente pedagógica possui as seis fontes canônicas e mapa de leitura", ()
 test("revisão e contribuição distinguem hipótese de eficácia comprovada", () => {
   const review = read("docs/revisao-de-literatura.md");
   const contribution = read("docs/contribuicao-originalidade.md");
-  assert.match(review, /Não se trata de revisão sistemática/u);
+  assert.match(review, /revisão narrativa orientada ao desenho do artefato/u);
+  assert.match(review, /não oferece a cobertura reprodutível de uma revisão sistemática/u);
   assert.match(review, /## Lacunas de conhecimento/u);
   assert.match(contribution, /novidade[\s\S]*busca documentada/u);
   assert.match(contribution, /vantagem[\s\S]*compara alternativas/u);

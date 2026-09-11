@@ -160,14 +160,16 @@ o GPT. Importar o schema e renovar o login OAuth são estados separados. A impor
 áudio não comprimido, ou MP3 já existente. Cada tarefa aceita um arquivo de
 até 20 MiB, isto é, 20 × 1.048.576 bytes. O ChatGPT
 preenche `openaiFileIdRefs` com o descritor temporário da conversa. O servidor
-confere origem, prazo, rótulo de formato (MIME) e bytes, bloqueia redirecionamentos e não devolve a
-URL transitória. A adaptação é derivada do metadado da tarefa, com o mesmo
+confere o descritor e os bytes recebidos, incluindo origem, prazo e rótulo de
+formato (MIME). Também bloqueia redirecionamentos e descarta a URL transitória.
+A adaptação é derivada do metadado da tarefa, com o mesmo
 contrato humano do MCP.
 
 O PDF só é guardado quando existe a intenção de mantê-lo como fonte; uma
 leitura pontual não chama essa operação. Áudio pertence à biblioteca do curso;
-sua ingestão não cria uma fonte de evidência, não sintetiza voz e não transcreve
-o arquivo. `consultar_audios` recupera referências lógicas para reutilização em
+essa tarefa guarda um arquivo já existente para reutilização, separadamente das
+fontes de evidência e dos serviços de síntese ou transcrição. `consultar_audios`
+recupera referências lógicas para reutilização em
 uma conversa posterior. A [composição nos canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-de-autoria)
 relaciona essas referências aos componentes usados no conteúdo.
 
@@ -191,8 +193,9 @@ Consulta às fontes oficiais reconferida em 11 de setembro de 2026:
 
 Essas regras vêm de
 [OpenAI: produção em Actions](https://developers.openai.com/api/docs/actions/production).
-Elas não estabelecem, nessa página, o tamanho total aceito pelo editor de OpenAPI.
-A importação real do artefato corrente continua sendo uma verificação distinta.
+Essa página não publica um tamanho total para o arquivo aceito pelo editor de
+OpenAPI. Por isso, a importação do artefato corrente constitui a verificação
+desse limite na prática.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
 que conservam as 54 tarefas do catálogo 4.0.0. Essa organização permite
@@ -216,9 +219,9 @@ completo recebido ou convertido em texto, pois a fonte não define a unidade Uni
 “caractere”. A decodificação exige UTF-8 válido. A proteção de 512 KiB limita
 memória local e o prazo interno é de 40 segundos; ambos são escolhas do
 AraLearn. Os orçamentos locais do schema também não são limites oficiais.
-Nenhuma dessas proteções trunca ou resume conteúdo silenciosamente: leitura
-grande exige recorte ou paginação; uma escrita possivelmente concluída exige
-releitura antes de recuperação. Medidas e aceitação do cliente seguem o
+Essas proteções recusam o excesso em vez de truncar ou resumir conteúdo: uma
+leitura grande usa recorte ou paginação, e uma escrita possivelmente concluída
+é relida antes da recuperação. Medidas e aceitação do cliente seguem o
 [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
 
 Respostas extensas de preparo e inspeção usam a continuação comum aos canais.
@@ -229,9 +232,10 @@ o assistente precisa concluí-la antes de avaliar ou alterar o recorte. O
 [prova local dos canais](prova-local-canais-autoria.md) verifica a equivalência
 entre os documentos recuperados por MCP e Actions.
 
-Quando uma gravação fica sem resposta, é preciso distinguir a elaboração dos
-argumentos, o envio ao serviço, a validação e a persistência. O relato da
-conversa, isoladamente, não identifica em qual etapa houve a interrupção. A
+Quando uma gravação fica sem resposta, o diagnóstico acompanha o pedido desde a
+elaboração dos argumentos até a persistência, passando pelo transporte e pela
+validação. O relato da conversa, isoladamente, não identifica em qual etapa
+houve a interrupção. A
 releitura do recorte e o recibo da tentativa permitem conferir se a mudança foi
 salva antes de recuperá-la. Os dados disponíveis no cliente delimitam o
 diagnóstico: o tamanho de um documento exportado, por exemplo, não informa o
@@ -248,10 +252,12 @@ npm run test:authoring:actions
 
 O gerador projeta o catálogo compartilhado com o
 [mapeamento de transporte de Actions](../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js).
-A validação confere a correspondência exata das 54 tarefas, os seis grupos e as
-24 operações diretas, o vínculo entre tarefa e argumentos, OAuth, confirmações,
-limites, respostas e intenções diretas, indiretas e negativas. Referências de
-arquivos permanecem nas duas operações diretas de ingestão.
+A validação confere se as 54 tarefas continuam representadas pelos seis grupos e
+pelas 24 operações diretas. Também percorre os vínculos entre tarefas e
+argumentos, seus limites e as regras transversais de autorização, confirmação e
+resposta, inclusive nas formas direta, indireta e negativa de expressar uma
+intenção.
+Referências de arquivos permanecem nas duas operações diretas de ingestão.
 
 ## Importar no ChatGPT
 

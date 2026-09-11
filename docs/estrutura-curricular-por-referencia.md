@@ -7,8 +7,9 @@ contadas a partir de 1. Essa forma de localização atende aos canais
 [MCP](autoria-mcp.md) e [Actions](autoria-actions.md).
 
 Um **ramo curricular** é o item escolhido e tudo que está organizado abaixo
-dele. Mover um módulo, por exemplo, move também suas lições, microssequências e
-unidades. O [modelo didático](modelo-didatico.md) explica esses níveis.
+dele. Mover um módulo, por exemplo, leva junto todos os seus descendentes, até
+as unidades de estudo. O [modelo didático](modelo-didatico.md) explica esses
+níveis.
 
 ## Operações e efeitos
 
@@ -52,14 +53,15 @@ preservando o mapa curricular.
 ## O que uma cópia conserva
 
 A cópia recebe identidades próprias, mas o texto e os componentes permanecem
-literais. O serviço atualiza as referências entre os itens copiados: parentes,
-dependências, `branchOf`, cobertura de tópicos e tópicos das unidades.
+literais. O serviço reconstrói as referências internas do ramo em três grupos:
+a filiação entre os itens, inclusive `branchOf`; as dependências; e a cobertura
+de tópicos, inclusive os tópicos registrados nas unidades.
 
 A configuração aplicada e a referência da explicação utilizada conservam a
 origem da produção. Elas permitem saber como o material original foi produzido;
 copiar esse material não constitui uma nova geração. Declarações humanas de
-revisão, observações, progresso, acessos e associação ao lote de produção
-permanecem na origem.
+revisão, observações e progresso permanecem na origem, assim como as relações de
+acesso e a associação ao lote de produção.
 
 As relações com fontes conservam âncoras, papéis e ocorrências — respectivamente,
 os trechos localizados na obra, a função da fonte e os pontos em que é utilizada
@@ -98,9 +100,9 @@ dados, executam a migração completa dessas operações, incluindo relações e
 tabelas, ordenação, recibos e fontes. Funções de acesso e consulta de estado da
 fonte são substituídas por auxiliares limitados a esse conjunto de teste.
 
-Os casos verificam propriedade e permissões, comparação de versões antes da
-gravação, recuperação do mesmo recibo, reversão de uma transação com falha,
-fontes retiradas, origem aplicada, dependências e tópicos. Há também um caso de
+Os casos percorrem autorização, concorrência e recuperação de falhas. No
+conteúdo copiado, acompanham a origem aplicada e as relações de fontes — mesmo
+quando retiradas do catálogo —, dependências e tópicos. Há também um caso de
 cópia com 262 entidades e conteúdo acima de 512 KiB, para exercitar um ramo que
 excede o tamanho de um pedido comum. A instalação integral do banco, a API, o
 armazenamento de arquivos e as conversas hospedadas são examinados pelas

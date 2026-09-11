@@ -1,10 +1,13 @@
 # Contratos do AraLearn
 
-A interface e os clientes externos precisam trocar dados com o servidor sem
-alterar seu significado. Os **contratos** definem a forma desses dados, as
-condições e os efeitos de cada operação. Os serviços do servidor, implementados
-como funções executadas na infraestrutura hospedada — [Edge Functions](supabase.md) —,
-validam os pedidos antes de consultar ou alterar o banco.
+A interface, o servidor e os clientes externos precisam atribuir o mesmo significado
+aos dados que trocam. Um campo omitido, uma versão antiga ou uma resposta incompleta
+pode mudar o efeito de uma operação. Os **contratos** evitam essa ambiguidade ao
+definir a forma dos dados, as condições de uso e o resultado de cada pedido.
+
+No servidor, funções executadas na infraestrutura hospedada — as
+[Edge Functions](supabase.md) — validam cada pedido antes de consultar ou alterar o
+banco.
 
 A interface, o [MCP](autoria-mcp.md), protocolo de comunicação com clientes de IA,
 e [Actions](autoria-actions.md), acesso descrito em OpenAPI para o cliente usado
@@ -32,6 +35,8 @@ do material: a validação do formato e do acesso resolve outra parte do problem
 
 ## Curso e estrutura
 
+O cliente precisa receber uma composição completa o suficiente para estudar e salvar
+uma cópia local, mas uma tarefa de autoria pode trabalhar sobre um recorte. O contrato
 `aralearn.course.v1` representa a composição curricular validada usada em
 estudo e nas cópias locais. As leituras de autoria retornam apenas os dados
 necessários ao trabalho: resumo do curso, páginas de seus itens ou inspeção de
@@ -46,26 +51,27 @@ o que uma atividade pede para tornar observável sua aplicação, conforme o
 estar ausente, em rascunho ou aprovado. Uma parte contém posição, título,
 intenção, progressão local e vínculos com microssequências já existentes.
 
-[Módulo, lição, microssequência e unidade de estudo](modelo-didatico.md) formam
-a hierarquia didática.
-Parte é lote de autoria e não aparece como pai curricular. Salvar ou redimensionar
-uma parte não cria nem reorganiza currículo.
+A [hierarquia didática](modelo-didatico.md) vai do curso às unidades de estudo. Uma
+parte é apenas o lote usado na autoria e não aparece como pai curricular. Salvar ou
+redimensionar uma parte não cria nem reorganiza o currículo.
 
-A microssequência conserva `explanationPlan: {purpose, prerequisites, relations,
-sourceIds}`, que planeja propósito, pressupostos, relações e fontes, e
-`explanation: {title, content}`, que guarda título e conteúdo da explicação.
-Os componentes usam o catálogo comum; a base não tem resposta nem progresso
-próprios. Esses
-campos podem estar ausentes no acervo anterior. A materialização corrente exige
-proposta no mapa e uma explicação por microssequência da parte. Bases já salvas
-são reutilizadas; o pedido de materialização inclui apenas aquelas que também
-serão criadas ou alteradas. `salvar_explicacoes` permite desenvolver a base e suas
-fontes antes das unidades, inclusive com mapa em rascunho.
+A microssequência conserva separadamente o plano da explicação e o texto já
+desenvolvido. `explanationPlan: {purpose, prerequisites, relations, sourceIds}` registra
+o que a explicação precisa realizar; `explanation: {title, content}` guarda o título e
+o conteúdo. Os componentes vêm do catálogo comum. Como a explicação serve de base às
+unidades, ela não possui resposta nem progresso próprios.
+
+Esses campos podem estar ausentes no acervo anterior. A materialização corrente exige
+uma proposta no mapa e uma explicação para cada microssequência da parte. Uma base já
+salva pode ser reutilizada; o pedido envia somente as que serão criadas ou alteradas.
+A tarefa `salvar_explicacoes` permite desenvolver o texto-base e suas fontes antes das
+unidades, inclusive enquanto o mapa ainda é rascunho.
 
 A leitura de revisão `contentReview` é metadado protegido, separado do conteúdo
 editável. Ela informa revisão não registrada, rascunho, revisão atual ou
 desatualizada. O comando autenticado compara a referência do conteúdo que o proprietário
-declara ter inspecionado com o estado salvo atual. A decisão humana expressa pode ser registrada na interface ou por
+declara ter inspecionado com o estado salvo atual. A decisão humana expressa pode ser
+registrada na interface ou por
 `declarar_revisao`, com a referência fornecida na preparação. Importar, produzir
 ou corrigir conteúdo não declara essa revisão. Fontes e arquivos usados entram
 na base da conferência.
@@ -80,7 +86,8 @@ conservam identidade, posição e o título de estado "Aguardando revisão da
 autoria", sem objetivo, papel pedagógico ou conteúdo da base. Cada unidade
 acessível é validada integralmente e conserva sua elegibilidade independente da
 base. O montador reconhece esse marcador apenas no recorte explícito de leitura,
-inclusive no armazenamento local de consulta; importação e autoria exigem a composição curricular completa.
+inclusive no armazenamento local de consulta; importação e autoria exigem a composição
+curricular completa.
 
 A composição estrutural aceita `courseMetadata: {title, objective}` opcional,
 inclusive sem alterações de entidades. Metadados, entidades e atribuições são
@@ -220,12 +227,16 @@ atuais nem ampliar os direitos sobre arquivos.
 
 ## Pessoas e acesso
 
-`aralearn.person-profile.v2` contém UUID, identificador público escolhido, avatar
-opcional e data de atualização. Não expõe e-mail nem segundo nome de exibição.
+Uma concessão precisa continuar ligada à mesma pessoa mesmo que ela altere o nome pelo
+qual é encontrada. Por isso, o perfil separa a identidade estável do identificador
+público escolhido. `aralearn.person-profile.v2` contém UUID, identificador, avatar
+opcional e data de atualização. Nesse contrato, `handle` é o identificador público
+escolhido. O perfil não expõe e-mail nem segundo nome de exibição.
 Identificadores usam de 3 a 30 letras latinas minúsculas sem acento, algarismos
 e os sinais ponto, sublinhado ou hífen, começando e terminando com letra ou algarismo;
 o `@` inicial é aceito na entrada. UUID é a identidade estável usada internamente;
-o identificador público é o nome pelo qual a pessoa pode ser encontrada. Perfis ainda sem identificador exigem escolha.
+o identificador público é o nome pelo qual a pessoa pode ser encontrada. Perfis ainda
+sem identificador exigem escolha.
 
 `aralearn.course-list.v2` distingue `owned`, `shared` e `public`, com permissões
 explícitas de editar, copiar e observar. Esses valores distinguem cursos próprios,
@@ -367,12 +378,14 @@ A incorporação do PDF é feita pelo servidor e usa:
   para obter o arquivo.
 
 O aplicativo recebe `aralearn.course-source-pdf-download.v2`, com referência
-lógica do arquivo e URL temporária, sem o caminho interno do serviço de arquivos [Storage](supabase.md). A política
+lógica do arquivo e URL temporária, sem o caminho interno do serviço de arquivos
+[Storage](supabase.md). A política
 efetiva respeita a exceção do arquivo, depois a da fonte e depois a do curso;
 essa autorização não torna público o compartimento de armazenamento, chamado bucket.
 
 O caminho de armazenamento e o resumo SHA-256, que identifica os bytes do
-arquivo, são derivados pelo serviço e não são argumentos de uma tarefa humana. Criar ou revisar a fonte e vincular o PDF ocorre numa única
+arquivo, são derivados pelo serviço e não são argumentos de uma tarefa humana. Criar
+ou revisar a fonte e vincular o PDF ocorre numa única
 transação e avança a revisão do curso uma vez.
 
 `aralearn.course-study-citations.v2` entrega ao Estudo citação, endereço
@@ -406,14 +419,13 @@ esses registros representam.
 ## Áudio e ferramentas de estudo
 
 As [ferramentas de estudo](ferramentas-calculo-e-consulta.md) oferecem ações como
-ouvir uma faixa ou fazer um cálculo. Cada ferramenta é uma instância de pacote
-— código, dados e regras de um componente — no conteúdo em `content[]`, identificadas
-por `manifest.tool` e ativadas por `toolInteraction.bind`. O núcleo oferece
-abertura, foco, fechamento e serviços de acesso; cada pacote fornece a própria
-interação. Áudio, calculadora, gramática, dicionário e leitura compartilham os
-contratos de descoberta, normalização, materialização e edição dos demais
-pacotes. Uma consulta instrucional não cria automaticamente uma atribuição de
-fonte.
+ouvir uma faixa ou fazer um cálculo. Cada ferramenta é uma instância de pacote — o
+conjunto de código, dados e regras de um componente — no conteúdo em `content[]`. O
+campo `manifest.tool` identifica a ferramenta, e `toolInteraction.bind` liga a
+interação ao conteúdo. O núcleo cuida da abertura, do foco, do fechamento e dos
+serviços comuns; o pacote implementa a atividade específica. Essas ferramentas passam pelos mesmos
+contratos de descoberta, normalização, materialização e edição dos demais pacotes. Uma
+consulta instrucional só recebe atribuição de fonte quando esse vínculo é registrado.
 
 `aralearn.course-media.v1` oferece configuração de áudio na revisão solicitada
 ou catálogo paginado exclusivo do proprietário. A configuração contém idioma,
@@ -490,7 +502,10 @@ descreve esses campos, os limites e as condições de leitura da exportação.
 
 ## Recuperação de cópias próprias e estado de Estudo
 
-Cópias independentes mantêm o conteúdo e remapeiam as identidades dos itens de
+Uma cópia recebe novas identidades internas para poder evoluir sem alterar a origem.
+Durante essa tradução, os vínculos do planejamento também precisam continuar apontando
+para os itens correspondentes. Cópias independentes mantêm o conteúdo e remapeiam as
+identidades dos itens de
 planejamento tanto nas associações curriculares quanto em `scopeItemIds` das
 microssequências. A cobertura representa um conjunto; a cópia nova conserva a
 ordem declarada ao traduzir os IDs. Cópias anteriores com referências órfãs são
@@ -539,11 +554,13 @@ contexto pode acompanhar a continuação das chamadas sem virar texto do chat.
 `tools/list` publica o catálogo permitido pelo escopo OAuth, isto é, pelas
 operações autorizadas para o cliente.
 `tools/call` valida o argumento antes do caso de uso e devolve texto breve mais
-`structuredContent`, com o resultado estruturado. Recursos visuais são ligados somente às tarefas que têm um
+`structuredContent`, com o resultado estruturado. Recursos visuais são ligados somente
+às tarefas que têm um
 consumidor atual.
 
 O servidor identifica o catálogo por versão e hash. Depois de uma mudança, o app
-usado no cliente externo [ChatGPT](https://chatgpt.com) precisa de **Refresh** e a conversa deve ser nova. Renovar o login OAuth é
+usado no cliente externo [ChatGPT](https://chatgpt.com) precisa de **Refresh**, e a
+conversa deve ser nova. Renovar o login OAuth é
 necessário somente se a autorização ou a conta também mudar. Não há aliases de
 ferramentas antigas.
 
@@ -554,7 +571,8 @@ O gerador `buildChatGptActionOpenApi.mjs` projeta as 54 tarefas do catálogo em
 validados e 24 operações diretas. O mapeamento
 `courseActionBindings.js` vincula `tarefa` e `argumentos` nos grupos e conserva
 os argumentos na raiz das operações diretas. A validação e os casos de uso
-continuam compartilhados com o MCP; o OpenAPI preserva a autorização OAuth, as indicações ao cliente e os schemas
+continuam compartilhados com o MCP; o OpenAPI preserva a autorização OAuth, as
+indicações ao cliente e os schemas
 específicos de cada tarefa. Os grupos estão descritos em
 [Autoria por Actions](autoria-actions.md#operações).
 
@@ -587,11 +605,11 @@ serviço devolve uma parte do conteúdo e uma referência para obter a seguinte.
 O cliente reutiliza o valor recebido no mesmo recorte, sem editá-lo. Se a versão
 mudar entre páginas, a leitura reinicia para evitar combinar estados diferentes.
 
-Listas de cursos, preparo, fontes e revisão utilizam continuação. A preparação
-pode incluir proposta, explicação literal, fontes e revisão das microssequências;
-o repertório do curso usa a mesma continuação do restante do preparo. A página
-limita o volume transferido de cada vez, enquanto a decisão pedagógica determina
-quanto conteúdo precisa ser lido.
+Consultas extensas, como listas de cursos, fontes ou materiais de revisão, utilizam
+continuação. No preparo de uma parte, as páginas carregam a proposta, a explicação
+literal, as fontes e a revisão das microssequências; o repertório do curso avança com a
+mesma continuação. A paginação limita o volume transferido em cada resposta; a decisão
+pedagógica continua determinando quanto material precisa ser lido.
 
 Resultados extensos podem usar fragmentos de JSON, formato que organiza dados
 em campos. Esses fragmentos são trechos literais de um documento: precisam ser

@@ -2,27 +2,29 @@
 
 ## 1. O que significa contribuição em pesquisa orientada ao desenho de artefatos
 
-Uma contribuição não é sinônimo de funcionalidade nova. Em pesquisa orientada
-à construção de artefatos, pode haver contribuição em pelo menos quatro níveis:
+Em uma pesquisa orientada à construção de artefatos, a contribuição pode estar
+na solução implementada, no conhecimento produzido sobre seu desenho ou na
+forma de investigá-la. A avaliação pode acrescentar ainda resultados empíricos
+sobre uma versão e um contexto definidos.
 
-1. **artefato**: sistema, método ou modelo concretamente implementado;
-2. **conhecimento de desenho**: explicação sobre como e em que condições uma
-   solução pode enfrentar uma classe de problemas;
-3. **instrumento de investigação**: contratos, rubricas, corpora ou protocolos
-   que permitem examinar o fenômeno;
-4. **resultado empírico**: evidência produzida pela avaliação do artefato.
+| Lugar da contribuição | O que o trabalho acrescenta |
+| --- | --- |
+| artefato | sistema, método ou modelo implementado |
+| conhecimento de desenho | explicação sobre como e em que condições uma solução enfrenta uma classe de problemas |
+| instrumento de investigação | regras explícitas, rubricas, conjuntos de casos ou protocolos para examinar o fenômeno |
+| resultado empírico | evidência produzida na avaliação do artefato |
 
-A pesquisa em ciência do design, ou DSR (*Design Science Research*), trata relevância do problema, rigor do conhecimento
-utilizado, construção e avaliação como atividades relacionadas
+A pesquisa em ciência do design, ou DSR (*Design Science Research*), relaciona
+a relevância do problema, o conhecimento disponível, a construção e a avaliação
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). Uma contribuição de desenho ganha
 força quando ultrapassa a descrição da instância e explicita princípios,
 contextos e limites de transferência ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). Ciclos de pesquisa baseada em design, ou DBR (*Design-Based Research*), também valorizam refinamento em situações educacionais e
 produção de conhecimento associado ao desenho, sem supor que uma intervenção
 funcione igualmente em qualquer contexto ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
 
-O AraLearn pode ser descrito como artefato implementado. Sua originalidade
-pedagógica, sua utilidade em uso e sua eficácia de aprendizagem permanecem
-questões empíricas até que sejam avaliadas com métodos compatíveis.
+O AraLearn já pode ser examinado como artefato implementado. Alegações sobre
+originalidade pedagógica, utilidade em uso ou aprendizagem dependem de
+comparações e avaliações compatíveis com cada pergunta.
 
 A [arquitetura](arquitetura.md) descreve como o aplicativo coordena componentes,
 conteúdo e armazenamento. As contribuições a seguir relacionam essas escolhas
@@ -33,7 +35,7 @@ utilidade e dos efeitos que ainda precisam ser avaliados.
 
 | Conceito | Pergunta | Evidência apropriada |
 | --- | --- | --- |
-| novidade técnica | existe diferença verificável em relação a soluções anteriores? | comparação arquitetural, código, contratos e estado da técnica |
+| novidade técnica | existe diferença verificável em relação a soluções anteriores? | comparação da arquitetura, das regras implementadas e das soluções anteriores documentadas |
 | utilidade | a solução ajuda alguém a realizar uma tarefa relevante? | tarefas com usuários, erros, tempo, satisfação e análise qualitativa |
 | usabilidade | pessoas específicas alcançam objetivos com eficácia, eficiência e satisfação em contexto definido? | avaliação baseada em contexto de uso e medidas correspondentes ([International Organization for Standardization (2018)](referencias.md#ref-iso2018usability)) |
 | adequação pedagógica | objetivos, fundamentos, prática, feedback e representação estão coerentes? | rubrica, especialistas, estudantes e análise das tarefas |
@@ -68,11 +70,12 @@ Essa coordenação aparece em três conjuntos de escolhas:
   desenvolvem essas escolhas.
 
 A [revisão de literatura](revisao-de-literatura.md) reúne fundamentos para cada
-relação; nenhuma fonte avalia a configuração do AraLearn como conjunto. É
-possível investigar um mecanismo ou a coordenação entre eles. A segunda opção
-aproxima o estudo do uso completo, mas dificulta atribuir um resultado a uma
-escolha isolada. Originalidade, utilidade, custo e efeito educacional exigem
-perguntas e comparações próprias.
+relação. Como as fontes estudam outros artefatos e contextos, a configuração do
+AraLearn precisa de avaliação própria. Um estudo pode isolar um mecanismo ou
+examinar a coordenação entre vários deles. A segunda opção se aproxima do uso
+completo, mas torna mais difícil atribuir o resultado a uma escolha específica.
+Originalidade, utilidade, custo e aprendizagem continuam sendo perguntas
+distintas.
 
 ## 4. Contribuições potenciais
 
@@ -80,9 +83,10 @@ perguntas e comparações próprias.
 
 Incluir uma matriz, um fluxograma ou outra representação exige regras próprias
 de conteúdo, apresentação e resposta. O AraLearn reúne essas regras em pacotes
-independentes que obedecem a uma interface comum: o aplicativo sabe como
-utilizá-los sem concentrar todos os detalhes de cada representação num único
-módulo. O [catálogo de componentes](componentes-didaticos.md) descreve seus usos.
+independentes que seguem o mesmo contrato técnico. Esse contrato informa ao
+aplicativo como reconhecer, validar e apresentar cada pacote, sem concentrar os
+detalhes de todas as representações num único módulo. O [catálogo de
+componentes](componentes-didaticos.md) descreve seus usos.
 
 A contribuição potencial é um padrão de organização que facilite acrescentar
 representações disciplinares preservando coerência e acessibilidade. Para
@@ -96,8 +100,10 @@ problema e à avaliação ([Hevner et al. (2004)](referencias.md#ref-hevner2004d
 
 O assistente primeiro encontra recursos pela operação pretendida, como
 comparar valores ou representar um procedimento, e depois recebe as regras do
-componente escolhido. Essa consulta progressiva evita exigir que a autoria
-conheça previamente todos os nomes e formatos técnicos. O [catálogo](componentes-didaticos.md)
+componente escolhido. Essas regras formam o **contrato** do componente: dizem
+que dados ele aceita e como deve ser usado. A consulta progressiva permite
+começar pela necessidade didática, sem exigir que a pessoa conheça de antemão
+todos os nomes e formatos técnicos. O [catálogo](componentes-didaticos.md)
 explica as representações disponíveis.
 
 A contribuição potencial é um método para recuperar informação de autoria
@@ -230,10 +236,10 @@ escolha ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
 ## 5. Relação com classes de sistemas existentes
 
-Uma alegação de vantagem sobre outras soluções exige comparação explícita.
-A utilidade em contexto e a compreensão dos processos também podem ser
-investigadas por outros desenhos, conforme a pergunta. A tabela organiza classes funcionais sem afirmar que determinada
-configuração inexista em outros produtos ou estudos.
+Para alegar vantagem, é preciso definir quais soluções serão comparadas e por
+quais critérios. A tabela organiza classes funcionais que ajudam a formular
+essa comparação; ela não funciona como inventário de todos os produtos nem como
+afirmação de exclusividade.
 
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
@@ -241,7 +247,7 @@ configuração inexista em outros produtos ou estudos.
 | flashcards e prática | recuperação, repetição e retorno após a resposta | microssequências e componentes estruturados acrescentam profundidade sem perder fluidez? |
 | ferramentas de autoria | edição visual e publicação | catálogo progressivo e contratos tornam escolhas representacionais mais coerentes? |
 | bibliotecas de visualização | renderização especializada | pacotes de componente integram convenção, prática, edição e acessibilidade além da figura isolada? |
-| aplicações com cópia local | réplica, fila e sincronização | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
+| aplicações com cópia local | trabalho no dispositivo e envio posterior ao servidor | a arquitetura mantém continuidade e resolve conflitos com custo proporcional? |
 | assistência por modelo de linguagem | geração e transformação de conteúdo | escopo explícito, validação e revisão contextual reduzem mudanças indevidas sem criar controle apenas simbólico? |
 | análise de dados educacionais | descrição, previsão e intervenção | que perguntas úteis podem ser respondidas com dados mínimos, definições explícitas e participação adequada? |
 
@@ -253,25 +259,21 @@ existe”.
 
 ### 6.1 Alegações sustentáveis por inspeção e teste técnico
 
-Quando acompanhadas de evidência reproduzível, podem ser afirmadas propriedades
-como:
-
-- existência de núcleo comum e pacotes de componente separados;
-- descoberta de catálogo antes da recuperação do contrato;
-- validação de esquemas de dados e escopo de edição;
-- operação sem conexão nos cenários testados;
-- retorno a qualquer ponto do curso e revisão segundo o fluxo implementado;
-- ausência de recorte ou sobreposição nos casos geométricos avaliados.
+Inspeção e teste técnico sustentam afirmações sobre o que o artefato faz numa
+versão e num cenário reproduzíveis. Podem demonstrar, por exemplo, que o núcleo
+e os pacotes de componente estão separados, que a autoria consulta o catálogo
+antes de receber o contrato escolhido e que um percurso previamente
+sincronizado permanece acessível nos cenários testados sem conexão. O mesmo
+tipo de evidência verifica regras dos dados, limites de edição, estados de revisão e
+apresentação geométrica. O teste registra sempre a versão e o caso coberto.
 
 ### 6.2 Alegações que exigem avaliação de uso
 
-Não podem ser inferidas apenas do código:
-
-- pessoas leigas compreendem catálogo, componentes, propriedade, acesso e revisão;
-- autoria assistida reduz retrabalho;
-- retomada local reduz atrito;
-- propriedade e acesso direto tornam a responsabilidade compreensível;
-- observações situadas produzem ação útil.
+Compreender o efeito dessas propriedades sobre uma tarefa exige observar
+pessoas. Uma avaliação de uso pode investigar, por exemplo, se autores leigos
+compreendem o catálogo e o alcance de uma revisão, se a assistência reduz
+retrabalho ou se o estado local ajuda alguém a retomar o estudo. Questões sobre
+responsabilidade e utilidade das observações também pertencem a esse nível.
 
 ### 6.3 Alegações sobre aprendizagem, esforço e experiência
 
@@ -297,25 +299,20 @@ critérios relevantes, como esforço de autoria, qualidade do conteúdo ou custo
 de manutenção. O resultado conserva as versões, tarefas, pessoas e condições
 examinadas; não estabelece superioridade universal.
 
-Há também conclusões que uma comparação desse tipo não autoriza. Um esquema
-de dados válido não torna o conteúdo factualmente correto: a fidelidade às
-fontes e a correção disciplinar exigem inspeção própria. Da mesma forma,
-ausência de telemetria comportamental não basta para garantir justiça ou
-privacidade, que dependem também dos demais dados, finalidades, acessos e
-consequências do uso. Os [fundamentos de governança](fundamentos-pesquisa-e-governanca.md)
-tratam dessas relações.
+Cada critério limita a conclusão alcançada. Um esquema de dados válido sustenta
+a estrutura da gravação; correção factual e fidelidade às fontes exigem inspeção
+do conteúdo. A redução da telemetria comportamental diminui uma categoria de
+coleta; justiça e privacidade dependem também das finalidades, dos acessos e das
+consequências do uso. Os [fundamentos de
+governança](fundamentos-pesquisa-e-governanca.md) desenvolvem essas relações.
 
 ## 7. Resultados contrários e contribuição negativa
 
 Conhecimento de desenho também pode surgir quando uma solução não funciona.
-Exemplos relevantes incluem:
-
-- componente cuja convenção não é compreendida;
-- representação especializada sem vantagem sobre tabela ou prosa;
-- segmentação que quebra relações conceituais;
-- controle de assistência que não impede aceitação automática;
-- conflito de sincronização que torna versões incompreensíveis;
-- indicador cuja interpretação não sustenta intervenção legítima.
+Um componente pode introduzir uma convenção que o público não compreende; uma
+segmentação pode romper relações conceituais; um controle de IA pode produzir
+apenas a aparência de decisão humana. Falhas de sincronização e indicadores sem
+interpretação legítima pertencem ao mesmo conjunto de resultados contrários.
 
 Esses resultados devem registrar contexto, mecanismo esperado, observação,
 explicações rivais e decisão resultante: manter, restringir, fundir, redesenhar
@@ -324,16 +321,15 @@ um princípio pode ser transferido.
 
 ## 8. Estrutura de uma alegação responsável
 
-Toda contribuição avaliada deve apresentar:
+Uma alegação responsável conserva o caminho entre problema, solução e
+evidência:
 
-1. problema e contexto;
-2. alternativas e requisitos;
-3. decisão e mecanismo implementado;
-4. fundamentação externa;
-5. procedimento de avaliação;
-6. resultado observado e incerteza;
-7. explicações rivais;
-8. consequências e limites de transferência.
+| Etapa | Registro necessário |
+| --- | --- |
+| delimitação | problema, contexto, alternativas e requisitos |
+| desenho | decisão, mecanismo implementado e fundamento externo |
+| avaliação | procedimento, resultado observado, incerteza e explicações rivais |
+| alcance | consequências e limites de transferência |
 
 Quando não houver resultado empírico, a cadeia termina em hipótese e protocolo.
 O [Protocolo de avaliação do artefato](protocolo-avaliacao-artefato.md) define

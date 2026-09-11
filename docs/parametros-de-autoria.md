@@ -38,7 +38,7 @@ pelos canais que ligam um assistente externo às tarefas do AraLearn:
 
 | Escolha | Significado |
 | --- | --- |
-| Foco | **Conteúdo** desenvolve bases explicativas e fontes. **Ciclo completo** inclui também desenho, unidades e revisão no recorte autorizado. |
+| Foco | **Conteúdo** desenvolve bases explicativas e fontes. **Ciclo completo** inclui também desenho e produção das unidades no recorte autorizado. |
 | Cadência do trabalho | Organiza o trabalho por microssequência, parte ou lote. Tamanhos e frequência de pausa têm escolhas próprias. |
 | Pontos de revisão | Indicam onde a pessoa pretende inspecionar: mapa curricular, explicação e unidade de estudo. Pode não haver pontos selecionados; a declaração de revisão permanece uma ação expressa. |
 | Parâmetros de diálogo e produção | Definem extensão e forma da conversa, tamanho pretendido das partes e lotes e frequência de pausa. Cada um admite escolha automática ou valor fixo. |
@@ -50,11 +50,9 @@ ao [mesmo catálogo usado nos cursos](autoria-contextual.md#parâmetros-origem-e
 Parâmetros sobre explicação, prática ou extensão das unidades ficam ligados ao
 curso e aos seus objetos; não integram essa preferência pessoal de processo.
 
-Por exemplo, organizar o trabalho por parte não determina quantas
-microssequências ela reúne nem obriga a pausar a cada parte. Da mesma forma,
-escolher uma conversa concisa não reduz a explicação necessária ao estudante.
-Essas escolhas têm funções diferentes e podem ser combinadas conforme o
-trabalho.
+O tamanho da parte e a frequência das pausas são escolhas próprias. Da mesma
+forma, a concisão regula a conversa, enquanto a necessidade do estudante regula
+a explicação. Essas escolhas podem ser combinadas conforme o trabalho.
 
 Antes da primeira gravação, o aplicativo oferece **Ciclo completo**, cadência
 por parte, os três pontos de revisão e os cinco parâmetros em modo automático.
@@ -65,8 +63,8 @@ em aberto; os números de referência do catálogo não são fixações implíci
 ## Persistência e fronteira de acesso
 
 Salvar preferências confirma escolhas na conta, tornando-as disponíveis na
-próxima consulta dos clientes conectados. Isso não reescreve cursos, bases,
-unidades ou perfis salvos. Aparência e sincronização pertencem às
+próxima consulta dos clientes conectados. A operação muda somente esse registro;
+cursos e perfis já salvos conservam seu estado. Aparência e sincronização pertencem às
 [configurações do dispositivo](configuracoes.md).
 
 Cada gravação informa a revisão das preferências que a pessoa estava editando.
@@ -109,8 +107,9 @@ pesquisa, valores fixos e escolhas de cada nível estão no
 [catálogo contextual](autoria-contextual.md#parâmetros-origem-e-persistência).
 
 Um trabalho em andamento pode conservar uma cópia das escolhas combinadas,
-chamada de **mandato de processo**. Ela identifica curso, revisão pessoal,
-preferências e condições do curso naquele momento. Assim, uma alteração posterior do padrão
+chamada de **mandato de processo**. Ela liga o curso às preferências e condições
+que regiam o trabalho e registra qual revisão das preferências foi consultada.
+Assim, uma alteração posterior do padrão
 pessoal não troca silenciosamente o processo em andamento. O acordo pode
 conter uma exceção expressa, como desenvolver somente as bases explicativas de
 um recorte. Condições de pesquisa continuam obrigatórias.
@@ -176,7 +175,8 @@ A explicação pode mudar depois da produção de uma unidade. Para distinguir a
 base usada naquela produção da base disponível hoje, cada unidade pode guardar
 um registro de **base explicativa aplicada**. Esse registro identifica a
 microssequência, sua versão e uma impressão digital, ou *hash*, dos dados
-relevantes: conteúdo, relações, dependências, fontes e arquivos.
+relevantes da base: o conteúdo e suas relações curriculares, além das fontes e
+dos arquivos vinculados.
 
 O contrato `aralearn.applied-explanation-basis.v1` usa `microsequenceId` para
 identificar a microssequência, `entityVersion` para sua versão e `basisHash`

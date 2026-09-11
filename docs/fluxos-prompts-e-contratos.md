@@ -63,9 +63,9 @@ informações; uma operação de escrita pode modificar o estado salvo.
 | conferir fontes | `consultar_fontes` | `manter_fonte`, `incorporar_pdf_como_fonte` |
 | declarar revisão humana | `preparar_revisao` | `declarar_revisao` |
 
-A [referência completa](autoria-mcp.md#tarefas-disponíveis) inclui também perfis,
-organização curricular, áudio, cópia, comparação, exportação e acesso. Perfil
-público, avatar e exclusão da conta permanecem na interface autenticada.
+A [referência completa](autoria-mcp.md#tarefas-disponíveis) abrange as demais
+etapas do ciclo autoral, dos perfis ao controle de acesso. Perfil público,
+avatar e exclusão da conta permanecem na interface autenticada.
 
 ## Seleção progressiva de contexto
 
@@ -100,10 +100,11 @@ resposta na conversa e a profundidade do material didático são escolhas distin
 
 ## Mapa curricular e bases explicativas
 
-O mapa relaciona objetivo, público, conhecimentos prévios, escopo e ordem dos
-conteúdos. Pode ser desenvolvido por ramos e salvo como rascunho. A pessoa
-inspeciona módulos, lições e microssequências, inclusive dependências e cobertura
-dos conteúdos obrigatórios, e declara a aprovação da versão que examinou.
+O mapa relaciona a finalidade e o público do curso ao que precisa ser ensinado,
+aos conhecimentos de entrada e à ordem do percurso. Pode ser desenvolvido por
+ramos e salvo como rascunho. A pessoa inspeciona a hierarquia completa, com suas
+dependências e a cobertura dos conteúdos obrigatórios, e declara a aprovação da
+versão que examinou.
 
 A explicação pode ser desenvolvida numa microssequência existente enquanto o
 mapa ainda está em rascunho e antes de haver unidades. No foco **Conteúdo**, a
@@ -159,10 +160,10 @@ pontos de revisão, diálogo e perfis reutilizáveis.
 
 ## Repertório acumulado
 
-O repertório registra os conhecimentos que o percurso precisa desenvolver:
-ideias, relações, condições e operações. Uma **unidade de análise instrucional**
-é um desses recortes de conhecimento; ela permite reconhecer, por exemplo, que
-a mesma distinção foi introduzida numa unidade de estudo e utilizada em outra.
+O repertório registra os conhecimentos e as operações que o percurso precisa
+desenvolver. Uma **unidade de análise instrucional** é um desses recortes; ela
+permite reconhecer, por exemplo, que a mesma distinção foi introduzida numa
+unidade de estudo e utilizada em outra.
 O [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
 explica como delimitar esses recortes.
 
@@ -253,10 +254,11 @@ atendidas apenas parcialmente continuam pendentes. A
 [declaração humana de revisão](explicacao-e-revisao-humana.md) permanece uma
 decisão expressa sobre o conteúdo salvo, separada do tratamento dessas entradas.
 
-O curso conserva os dados necessários à autoria e ao estudo. A conversa não é
-gravada como conteúdo do curso; cliques e tempo em tela não alimentam os dados
-de autoria. O capítulo de [privacidade](privacidade.md) distingue as informações
-do aplicativo das enviadas aos serviços externos de IA.
+O curso conserva os dados necessários à autoria e ao estudo. Os dados de autoria
+derivam desses registros salvos; a conversa permanece na sessão, e o painel não
+se baseia em cliques ou tempo de tela. O capítulo de
+[privacidade](privacidade.md) distingue as informações do aplicativo das
+enviadas aos serviços externos de IA.
 
 ## Confirmar o resultado e recuperar uma interrupção
 

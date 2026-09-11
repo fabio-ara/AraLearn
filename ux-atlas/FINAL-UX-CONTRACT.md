@@ -1,4 +1,4 @@
-# Contrato corrente de experiência
+# Contrato histórico de experiência
 
 > Registro histórico da rodada de UX indicada neste arquivo. As afirmações de
 > vigência abaixo pertencem àquela rodada. Para a experiência atual, consulte o
@@ -6,12 +6,11 @@
 > [estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md).
 
 
-Este documento é a referência normativa compacta da experiência do AraLearn.
-Ele reconcilia o contrato anterior com a auditoria humana posterior e deve ser
-lido junto dos contratos executáveis e do
-[mapa da documentação atual](../docs/README.md). Quando um registro histórico
-do Atlas divergir deste arquivo, prevalecem este contrato, o produto corrente e
-a documentação canônica afetada.
+Na rodada registrada, este documento serviu como referência normativa compacta
+da experiência do AraLearn. Ele reconciliou o contrato anterior com a auditoria
+humana posterior e resolveu divergências entre os registros produzidos naquele
+trabalho. Para compreender o produto atual, comece pelo
+[mapa da documentação](../docs/README.md) e pelos contratos executáveis correntes.
 
 ## Decisões encerradas pela pesquisa finita
 

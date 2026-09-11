@@ -7,8 +7,8 @@
 
 
 Este documento preserva a baseline visual usada na rodada de UX encerrada.
-Termos, caminhos e instruções abaixo registram aquele período e não têm
-autoridade sobre a experiência vigente. Para o estado atual, consulte o
+Termos, caminhos e instruções abaixo se aplicam àquele período. Para o estado
+atual, consulte o
 [sistema visual](../docs/sistema-visual.md), o
 [guia do estudante](../docs/guia-estudante.md) e os contratos executáveis.
 

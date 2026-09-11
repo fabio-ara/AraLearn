@@ -8,7 +8,12 @@ Esses registros ajudam a voltar ao material durante a revisão. Conferir a inter
 
 ## Registrar a obra e seu papel
 
-Em **Fontes**, use **Nova fonte** para informar o que já conhece sobre o material. **Dados da referência** abre os campos adicionais de autoria, título, data, publicação e outros dados pertinentes. Esses dados que descrevem a obra são chamados de metadados. Não é necessário inventar uma data ou decompor um nome institucional para completar a ficha. **Conferir referência** mostra a apresentação antes de salvar.
+Em **Fontes**, use **Nova fonte** para informar o que já conhece sobre o
+material. **Dados da referência** abre campos adicionais, como autoria, título
+e publicação. Esses dados que descrevem a obra são chamados de **metadados**.
+Preencha apenas o que puder conferir; um campo vazio preserva melhor a incerteza
+do que uma data inventada ou um nome institucional decomposto sem base.
+**Conferir referência** mostra a apresentação antes de salvar.
 
 Uma ementa pode delimitar os assuntos obrigatórios; uma prova pode ajudar a examinar como um conhecimento é solicitado; um livro ou artigo pode fundamentar uma explicação. Os papéis sugeridos no cadastro ajudam a preencher novos vínculos, mas cada uso mantém sua própria indicação. A mesma obra pode cumprir funções diferentes em pontos diferentes do curso.
 
@@ -18,34 +23,42 @@ No detalhe, **Registrar observação** permite apontar uma dúvida, contestar um
 
 Você pode escrever a referência ou pedir que o aplicativo a forme a partir dos dados conhecidos. A referência escrita pode atender a uma orientação institucional ou registrar um material com poucos dados disponíveis. O texto informado é preservado ao alternar modos e estilos.
 
-Em **Fontes → Estilo das referências**, escolha o estilo de formatação ABNT ou APA para o curso. A troca reformata as referências geradas; não reescreve as referências manuais, altera a identidade das fontes ou muda seus vínculos com o conteúdo.
+Em **Fontes → Estilo das referências**, escolha o estilo de formatação ABNT ou
+APA para o curso. A troca reformata as referências geradas e preserva o texto
+das referências manuais, a identidade das fontes e seus vínculos com o conteúdo.
 
-A referência gerada utiliza os dados informados na ficha. Sobrenomes, datas, páginas e títulos ausentes não são deduzidos para preencher campos. Se faltarem informações, complete as que conseguir verificar ou mantenha uma referência manual. A geração de uma linha formatada não garante que a identificação da obra esteja suficiente.
+A referência gerada utiliza exatamente os dados informados na ficha. Campos
+desconhecidos permanecem ausentes. Complete o que conseguir verificar ou
+mantenha uma referência manual quando ela representar melhor o material. A
+suficiência para identificar a obra ainda precisa ser conferida pela autoria.
 
 ## Estilos e orientação institucional
 
 Os estilos iniciais são o da American Psychological Association (APA), 7ª edição, e o baseado nas normas da Associação Brasileira de Normas Técnicas (ABNT), com a NBR 6023:2025. A norma
-brasileira de citações em documentos é a NBR 10520:2023; não se confunde com a
-norma de referências. As bibliotecas da [Unicamp](https://www.ifch.unicamp.br/biblioteca/servico/normalizacao)
+brasileira de citações em documentos é a NBR 10520:2023; a NBR 6023 trata da
+elaboração das referências. As bibliotecas da [Unicamp](https://www.ifch.unicamp.br/biblioteca/servico/normalizacao)
 e da [ECA/USP](https://www.eca.usp.br/biblioteca/normalizacao) identificam essas
 edições nas suas orientações de normalização.
 
 A APA mantém a 7ª edição do [*Publication Manual*](https://www.apa.org/pubs/books/publication-manual-7th-edition-paperback).
 O [guia da biblioteca do IE-ULisboa, de 2023](https://www.ie.ulisboa.pt/sites/default/files/documents/document/default/apa-7-2023.pdf),
 orienta o uso de APA em trabalhos
-acadêmicos e identifica a edição 7. Isso é uma orientação institucional
-pertinente; não torna APA obrigatória para todo curso. Regras específicas de um
-programa, orientador, periódico ou evento continuam relevantes.
+acadêmicos e identifica a edição 7. Cada curso ainda segue as regras pertinentes
+de seu programa, orientador ou periódico.
 
-O estilo de um curso determina a apresentação das referências geradas. Ele não
-muda a identidade da fonte ou os vínculos com o material. Da mesma forma, um
-marcador numérico ou sobrescrito usado para abrir uma referência é um controle de
-navegação: sua presença não significa que o texto inteiro esteja normalizado
-segundo um sistema autor-data.
+O estilo de um curso determina a apresentação das referências geradas e
+preserva a identidade da fonte e os vínculos com o material. Um marcador
+numérico ou sobrescrito usado para abrir uma referência cumpre apenas a função
+de navegação. A normalização do texto segundo um sistema autor-data pertence à
+redação do próprio conteúdo.
 
 ## Localizar o uso no curso e na fonte
 
-Uma localização precisa responder a uma pergunta concreta: onde a pessoa poderá conferir este uso? Na fonte, pode ser uma página, um intervalo de tempo, uma figura, um slide ou um trecho. Ao criar uma âncora relacionada a um PDF anexado, escolha o arquivo correspondente. Essa ligação conserva o arquivo correto mesmo quando seu endereço temporário de acesso muda.
+Uma localização precisa responder a uma pergunta concreta: onde a pessoa poderá
+conferir este uso? Conforme o material, ela pode indicar uma página, um intervalo
+de tempo ou um elemento identificado, como uma figura. Ao criar uma âncora
+relacionada a um PDF anexado, escolha o arquivo correspondente. Essa ligação
+conserva o arquivo correto mesmo quando seu endereço temporário de acesso muda.
 
 No conteúdo, abra **Fontes e âncoras** da unidade ou o controle de fontes da explicação. Escolha a obra e indique como ela foi utilizada. Uma adaptação reconhece o material que serviu de base a uma formulação; um contraste coloca a afirmação em relação com outra posição; uma citação direta identifica a origem das palavras reproduzidas. O papel e a relação precisam corresponder ao que foi realmente feito.
 
@@ -126,7 +139,8 @@ O componente `renderCslReference(item, {style})` recebe um item CSL limitado e
 devolve texto e segmentos com formatos permitidos explicitamente. Os segmentos contêm somente texto, itálico,
 negrito e alinhamento sobrescrito/subscrito. O HTML genérico do processador — marcação que descreve o conteúdo de páginas — não é repassado à interface. URLs são tratadas pelo mecanismo próprio de links do
 produto, separado da formatação bibliográfica. A mesma entrada produz os mesmos
-segmentos no navegador e no servidor, que usa o ambiente de execução Deno.
+segmentos no navegador e no servidor, onde o código é executado pelo ambiente
+Deno, que executa JavaScript e TypeScript fora do navegador.
 
 Um cache — armazenamento temporário para evitar refazer a mesma formatação —
 limitado a 32 resultados usa o conteúdo normalizado completo e o estilo
@@ -192,10 +206,12 @@ CC BY-SA 3.0. Os [avisos de terceiros](../public/vendor/bibliography/NOTICE.txt)
 a [CPAL](../public/vendor/bibliography/CPAL-1.0.txt) e a
 [CC BY-SA](../public/vendor/bibliography/CC-BY-SA-3.0.txt) acompanham a distribuição.
 
-Os testes focais cobrem os estilos, metadados incompletos, texto hostil,
-localização eletrônica, tipografia, igualdade de segmentos e isolamento do
-cache. O corpus de execução contém itens públicos identificados e casos
-sintéticos explicitamente marcados. Ele demonstra funcionamento e segurança do
-componente; não demonstra conformidade integral de todos os tipos documentais
-ou de um trabalho acadêmico completo. Referência bibliográfica, localização da
-evidência e verificação do conteúdo continuam responsabilidades distintas.
+Os testes focais percorrem a formatação dos estilos, os casos de dados
+incompletos e o tratamento seguro da saída. Também verificam a localização
+eletrônica, a igualdade do resultado no navegador e no servidor, a tipografia e
+o isolamento do *cache*. O corpus de execução contém
+itens públicos identificados e casos sintéticos explicitamente marcados. Ele
+demonstra o funcionamento e a segurança do componente; a conformidade integral
+de todos os tipos documentais ou de um trabalho acadêmico completo exige uma
+avaliação mais ampla. Referência bibliográfica, localização da evidência e
+verificação do conteúdo continuam responsabilidades distintas.

@@ -67,7 +67,7 @@ const REQUIRED_PRODUCT_PRESENTATION_HEADINGS = Object.freeze([
 ]);
 const REQUIRED_DOCUMENTATION_ROUTES = Object.freeze([
   "comecar a usar",
-  "estudar o modelo pedagogico",
+  "compreender o modelo didatico",
   "aprender no trabalho e formar profissionalmente",
   "estudar a engenharia",
   "estudar a autoria de cursos",
@@ -578,6 +578,8 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
 
   const rootReadme = sources.get(path.join(root, "README.md")) || "";
   const docsReadme = sources.get(path.join(root, "docs", "README.md")) || "";
+  const documentationInventory =
+    sources.get(path.join(root, "docs", "inventario-documentacao.md")) || "";
   auditRequiredTechnicalDocuments({ root, docsReadme, errors });
   auditForbiddenCurrentDocuments({ root, errors });
   auditCurrentStateMatrix({ root, sources, errors });
@@ -587,7 +589,7 @@ export function auditDocumentation({ root = defaultRoot } = {}) {
   auditEditorialIndependence({ root, markdown, sources, errors });
   auditLearningArchitecture({ rootReadme, docsReadme, errors });
   auditBibliographicCitations({ root, markdown, sources, errors });
-  const indexes = `${rootReadme}\n${docsReadme}`;
+  const indexes = `${rootReadme}\n${docsReadme}\n${documentationInventory}`;
   for (const file of markdown.filter((current) => path.dirname(current) === path.join(root, "docs"))) {
     if (path.basename(file) === "README.md") continue;
     const relative = path.basename(file);

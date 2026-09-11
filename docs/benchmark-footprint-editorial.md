@@ -1,11 +1,11 @@
-# Benchmark de extensão e ocupação visual
+# Medir extensão e ocupação visual
 
 Uma tabela e um parágrafo podem conter a mesma quantidade de palavras e ocupar
 espaços diferentes na tela. Este ensaio compara medidas de extensão do conteúdo
 com o espaço efetivamente ocupado no leitor móvel. O termo *benchmark* designa
 a comparação com um conjunto fixo de casos; *footprint* é a ocupação visual.
-O problema investigado é quanto cada medida descreve essa ocupação, e não a
-qualidade pedagógica da unidade.
+O problema investigado é quanto cada medida descreve essa ocupação. A qualidade
+pedagógica da unidade exige outros critérios e outro tipo de avaliação.
 
 ## Corpus e ambiente
 
@@ -31,7 +31,10 @@ O ensaio registra quatro perspectivas:
 3. footprint abstrato em linhas, combinando quebra de texto estimada e custo estrutural;
 4. pixels e fração de viewport medidos na apresentação real após o carregamento dos componentes.
 
-Os coeficientes experimentais estão versionados em `scripts/editorialFootprintMetrics.mjs` para tornar a comparação auditável. Eles não são exportados para o aplicativo em execução, não são persistidos com o curso e não representam um limiar recomendado.
+Os coeficientes experimentais estão versionados em
+`scripts/editorialFootprintMetrics.mjs`, o que permite auditar o cálculo. Eles
+pertencem ao ensaio: o aplicativo em execução não os exporta nem os grava com o
+curso, e o projeto ainda não definiu um limiar recomendado a partir deles.
 
 Execute:
 
@@ -55,9 +58,9 @@ usá-los numa análise reproduzível da versão atual, é necessário executar o
 ensaio e conservar seu relatório junto da versão do código e do ambiente.
 
 No conjunto descrito, considerar a estrutura aproximou melhor a ordenação dos
-casos daquela obtida pela medição real. Essa comparação sugere uma possibilidade
-de estimativa; não estabelece uma fronteira entre unidade adequada e inadequada
-nem demonstra que os pesos se generalizam para outros cursos.
+casos daquela obtida pela medição real. O resultado sustenta investigar essa
+estimativa em outros materiais. Definir uma fronteira de adequação ou usar os
+mesmos pesos em outros cursos exigiria evidência adicional.
 
 ## Critério de encerramento
 
@@ -73,10 +76,10 @@ de leitura móveis é uma candidata a investigar, tendo a medição real como
 referência de calibração.
 
 Uma hipótese é oferecer uma faixa de extensão preferida e alertar sobre
-ultrapassagens, mantendo a decisão com a autoria. O aviso poderia sugerir
-examinar a distribuição do conteúdo; a unidade continuaria disponível para
-salvar, publicar e estudar. A faixa não seria uma nota de qualidade nem uma
-regra para truncar explicações.
+ultrapassagens, mantendo a decisão com a autoria. O aviso serviria para localizar
+uma unidade e examinar a distribuição de seu conteúdo. Ela continuaria
+disponível para salvar, publicar e estudar; a faixa funcionaria como orientação,
+sem pontuar qualidade ou truncar explicações.
 
 A proposta técnica recebeu o nome `EditorialPolicy`. Nela, `target` seria o
 alvo, `preferredRange` a faixa preferida e `softMaximum` um máximo orientador.
@@ -84,9 +87,7 @@ A origem `automatic` usaria um padrão do produto; `explicit` registraria a
 escolha informada no ponto de aplicação. O alcance e a combinação entre níveis
 do curso ainda dependeriam de uma necessidade definida.
 
-Esse contrato é uma hipótese, separada dos
-[parâmetros de autoria existentes](desenho-instrucional-parametrizado.md).
-O produto não implementa sua faixa, alerta ou pontuação. O corpus atual também
-não fundamenta os valores de um padrão: investigar a estimativa em outros
-conteúdos e examinar a compreensão do aviso pela autoria precede uma decisão
-de implementação.
+Esse contrato permanece como hipótese, separado dos [parâmetros de autoria
+existentes](desenho-instrucional-parametrizado.md). Faixa, alerta e pontuação
+ainda não foram implementados. Antes de definir um padrão, seria preciso testar
+a estimativa em outros conteúdos e observar como a autoria compreende o aviso.

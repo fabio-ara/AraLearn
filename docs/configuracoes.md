@@ -1,6 +1,6 @@
 # Configurações do aplicativo
 
-Abra **Configurações** pelo botão de conta no cabeçalho da tela inicial, de Estudo ou de Autoria. O painel reúne escolhas pessoais: sua identificação, a aparência, os dados deste dispositivo e o modo de conduzir a autoria. Fechar o painel devolve o contexto em que você estava; **Voltar** ou Escape sai primeiro do grupo aberto.
+Abra **Configurações** pelo botão de conta no cabeçalho da tela inicial, em Estudo ou Autoria. O painel separa as escolhas pelo lugar em que produzem efeito: algumas pertencem à conta; outras valem somente no dispositivo atual. Fechar o painel devolve o contexto em que você estava; **Voltar** ou Escape sai primeiro do grupo aberto.
 
 | Grupo | Para que serve | Onde a escolha vale |
 | --- | --- | --- |
@@ -13,28 +13,30 @@ Sem conta, os mesmos grupos informam o que está disponível. Aparência permite
 
 ## Preferências pessoais
 
-O **foco** indica que trabalho deseja desenvolver. **Conteúdo** trata explicações e fontes. **Ciclo completo** inclui também o desenho e a produção das unidades. Essa escolha permite, por exemplo, trabalhar primeiro a explicação de um assunto antes de pedir sua organização em atividades.
+As preferências pessoais orientam como um novo trabalho com o assistente começa. Elas respondem a três perguntas: o que será desenvolvido, como o trabalho será agrupado e quando você deseja conferir o resultado.
 
-A **cadência** indica como o trabalho será agrupado: por microssequência, parte ou lote. Uma microssequência desenvolve um objetivo do curso; uma parte reúne microssequências para produção, e um lote pode agrupar várias partes, conforme o [planejamento de autoria](planejamento-contextual.md). Escolher um agrupamento não determina sozinho seu tamanho nem a frequência das pausas. O recorte e os limites de continuidade precisam acompanhar o trabalho combinado.
+O **foco** responde à primeira pergunta. **Conteúdo** trabalha a explicação e suas fontes. **Ciclo completo** coordena também o desenho e a produção das unidades no recorte autorizado. Assim, você pode desenvolver primeiro a base de um assunto ou conduzir no mesmo trabalho sua passagem para a sequência de estudo. Os pontos em que você deseja inspecionar o resultado são escolhidos separadamente.
 
-Os **pontos de revisão** indicam onde você quer inspecionar propostas ou resultados. Os parâmetros de **diálogo** orientam a forma da conversa. Você pode ajustar essas escolhas separadamente; selecionar um ponto de inspeção não registra automaticamente que o conteúdo foi revisado.
+A **cadência** responde à segunda. Ela define a escala acompanhada, da microssequência — pequeno percurso com objetivo próprio — ao lote que reúne várias partes de produção. Esses recortes organizam a quantidade de trabalho conduzida em conjunto; o [planejamento de autoria](planejamento-contextual.md) explica como se relacionam com o curso. O tamanho de uma parte e a frequência das pausas têm escolhas próprias.
 
-O padrão inicial do aplicativo e suas preferências salvas têm sua origem indicada. Escolhas expressas no curso e condições de pesquisa prevalecem sobre o padrão pessoal. Um trabalho já combinado conserva seu acordo até uma mudança explícita. [Parâmetros de autoria](parametros-de-autoria.md) explica como essas preferências se relacionam às decisões de cada curso.
+Os **pontos de revisão** respondem à terceira pergunta: indicam se você quer inspecionar o mapa, a explicação ou as unidades durante o processo. Essa inspeção é um momento de conferência; a declaração de revisão do conteúdo é registrada depois, por uma ação própria. Os parâmetros de **diálogo** ajustam a forma da conversa, como a extensão da resposta e a preferência por concisão, debate ou explicação desenvolvida.
 
-Salvar preferências não altera o currículo, as explicações, as unidades ou suas marcas de revisão. Para mudar conteúdo já produzido, é necessário solicitar e inspecionar essa alteração.
+O painel identifica se o valor veio do padrão inicial ou de uma preferência que você salvou. Uma escolha feita para determinado curso vale naquele contexto; uma condição de pesquisa fixa o que precisa permanecer constante numa comparação. Um trabalho já iniciado conserva o que foi combinado até uma mudança expressa. [Parâmetros de autoria](parametros-de-autoria.md) explica como esses alcances se relacionam.
+
+As preferências salvas orientam os trabalhos seguintes. O material já produzido conserva suas escolhas até que você solicite e inspecione uma alteração nele.
 
 ## Guardar e retomar uma edição
 
 O painel conserva o rascunho quando você muda de grupo, fecha e reabre. Se os dados da conta foram alterados em outro acesso, ele apresenta os valores salvos para comparação. Você pode carregar esses valores ou conservar seu rascunho para concluir a decisão.
 
-Se uma gravação ficar sem confirmação, siga a recuperação indicada no mesmo painel antes de iniciar outro pedido. O aplicativo procura conferir o resultado e preserva as edições feitas depois do envio. [Solução de problemas](solucao-de-problemas.md#o-formulário-reapareceu-depois-de-salvar) explica esse caso.
+Se uma gravação ficar sem confirmação, use a recuperação indicada no painel. Ela verifica primeiro se o servidor recebeu a alteração anterior, evitando que outro envio substitua ou duplique o trabalho. As edições feitas depois do envio permanecem no rascunho. [Solução de problemas](solucao-de-problemas.md#o-formulário-reapareceu-depois-de-salvar) explica esse caso.
 
 ## Conta, aparência e dados locais
 
 As instruções de cadastro, perfil, tema, saída e exclusão estão em [Uso do aplicativo](uso-do-app.md). Para preparar estudo sem rede e escolher quando sincronizar, veja o [guia do estudante](guia-estudante.md#escolher-quando-sincronizar).
 
-## Verificação
+## Verificação técnica
 
-Os testes de [Configurações no navegador](../tests/e2e/common-settings.spec.js) exercitam retorno ao contexto, preservação de rascunhos, alterações por outra sessão e recuperação de gravação. Usam a interface e o armazenamento local reais com respostas de serviço controladas. O [teste de Autoria](../tests/runtime/course-authoring-surface.test.js) também confere a abertura do painel sem trocar de rota.
+Para quem desenvolve, o teste de [Configurações no navegador](../tests/e2e/common-settings.spec.js) usa a interface e o armazenamento local reais, com respostas controladas do serviço. Ele verifica o retorno ao contexto, a preservação de rascunhos, mudanças vindas de outra sessão e a recuperação de gravações. O teste da [superfície de Autoria](../tests/runtime/course-authoring-surface.test.js) confere também a abertura do painel no curso sem trocar de rota.
 
-Essas verificações examinam a interface. Autenticação, gravação no servidor e integração pelos canais têm verificações próprias, descritas no [guia de desenvolvimento](guia-desenvolvedor.md).
+Esses testes demonstram o comportamento da interface. As verificações de autenticação, gravação no servidor e integração pelos canais têm escopos próprios, reunidos no [guia de desenvolvimento](guia-desenvolvedor.md).

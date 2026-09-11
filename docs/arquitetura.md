@@ -1,37 +1,39 @@
 # Arquitetura do AraLearn
 
 O AraLearn mantém no servidor o curso que a pessoa planeja, inspeciona e revisa com
-assistência de inteligência artificial (IA). O aplicativo apresenta esse conteúdo para estudo no celular e
-conserva uma cópia local para continuidade sem rede. A conversa pode mudar de cliente;
-o curso e suas relações permanecem no aplicativo.
+assistência de inteligência artificial (IA). O aplicativo apresenta esse conteúdo para
+estudo e conserva no dispositivo a cópia necessária para continuar mesmo quando a rede
+falha. A conversa pode mudar de cliente; o curso e suas relações permanecem no
+AraLearn.
 
-A arquitetura separa quatro responsabilidades:
+No servidor, o [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html),
+sistema de banco de dados relacional, guarda o conteúdo e as relações entre os objetos.
+O [Storage do Supabase](https://supabase.com/docs/guides/storage) conserva os arquivos
+em áreas privadas, enquanto o banco registra a que curso eles pertencem e quem pode
+abri-los. No dispositivo, o navegador apresenta **Estudo** e **Autoria** e mantém os
+dados locais.
 
-- [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html), sistema de
-  banco de dados relacional, guarda o conteúdo e as relações entre os objetos;
-- [Storage do Supabase](https://supabase.com/docs/guides/storage) guarda os
-  arquivos em áreas privadas, com acesso autorizado pelo servidor;
-- o navegador apresenta **Estudo** e **Autoria** e conserva os dados locais;
-- clientes externos de IA enviam pedidos de autoria por [MCP](autoria-mcp.md),
-  protocolo de descoberta e chamada de ferramentas, ou por operações descritas em
-  [OpenAPI](autoria-actions.md), usadas pelo canal Actions. Os pedidos passam pelas
-  mesmas regras de conteúdo e autorização da interface.
+Clientes externos de IA chegam ao mesmo servidor por dois canais. O
+[MCP](autoria-mcp.md) permite descobrir e chamar ferramentas; o canal
+[Actions](autoria-actions.md) usa operações descritas em OpenAPI, um formato para
+documentar pedidos e respostas de uma interface de programação. Nos dois casos, as
+regras de conteúdo e autorização são as mesmas aplicadas à interface do AraLearn.
 
 A [matriz técnica](matriz-conformidade-tecnica.md) relaciona capacidades e
 verificações. A [história do esquema](schema-change-log.md) registra sua evolução.
 
 ## O curso como raiz
 
-O curso é o ponto de ligação dos dados. A [hierarquia didática](modelo-didatico.md)
-organiza o percurso; o plano antecipa o que será ensinado. Unidades de análise
-identificam as ideias acompanhadas no percurso, e requisitos de evidência indicam o
-que uma prática deve permitir observar.
+O curso é o ponto de ligação dos dados. Seu percurso possui vários níveis, do curso às
+unidades de estudo (`StudyUnit` no código), conforme a
+[hierarquia didática](modelo-didatico.md). O mapa curricular antecipa o percurso
+completo; as partes de autoria agrupam trechos já previstos para que sejam produzidos
+em lotes, sem acrescentar outro nível ao currículo.
 
-A estrutura organiza módulos, lições, microssequências e unidades de estudo
-(`StudyUnit` no código). O mapa curricular antecipa esse percurso; as partes de
-autoria agrupam a produção de trechos já previstos. O repertório de unidades de
-análise (`AnalysisUnit`) permite acompanhar em que ponto uma ideia é introduzida ou
-usada novamente.
+O plano também acompanha as ideias que precisam aparecer ao longo do curso. Cada uma
+recebe uma identidade no repertório `instructionalAnalysisUnits`, o que permite registrar
+onde ela é introduzida e onde volta a ser usada. Requisitos de evidência ligam a
+prática ao que a atividade deve tornar observável.
 
 Os [parâmetros](parametros-de-autoria.md) orientam conteúdo, prática, conversa e ritmo
 de produção. As orientações editoriais qualitativas complementam essas escolhas.
@@ -50,14 +52,17 @@ atual. Visibilidade pública, concessões individuais e acesso aos arquivos poss
 controles próprios. Revisar o conteúdo mantém o mesmo curso, sem criar uma árvore de
 versões.
 
-A microssequência guarda uma base explicativa, `explanation`, e sua proposta,
-`explanationPlan`. Essa [explicação](explicacao-e-revisao-humana.md) pode ser
-desenvolvida antes das unidades; elas registram a base usada na sua produção. Em
-Estudo, ela abre numa sobreposição que usa os mesmos componentes, ferramentas e
-recursos bibliográficos das unidades. Fontes e ocorrências usam o alvo
-`microsequence_explanation`, com localizações no texto-base, e os arquivos
-passam pelas autorizações existentes. O texto acompanha a composição local; isso não
-cria cache binário de PDF ou áudio nem permite misturar revisões do curso.
+A microssequência pode receber primeiro uma proposta de explicação,
+`explanationPlan`, e depois o texto-base, `explanation`. Essa
+[explicação](explicacao-e-revisao-humana.md) desenvolve o assunto antes ou junto das
+unidades; cada unidade registra qual base foi usada na sua produção. Em Estudo, o
+texto abre sobre o conteúdo corrente e utiliza os mesmos componentes, ferramentas e
+referências bibliográficas das unidades.
+
+As fontes ligadas a esse texto usam o alvo `microsequence_explanation`, com ocorrências
+localizadas na própria explicação. O texto integra a cópia local do curso, mas PDFs e
+áudios continuam dependendo da autorização do servidor e de acesso à rede. A leitura
+local também preserva uma única revisão coerente do curso.
 
 Cada explicação e unidade tem seu próprio `contentReview`, separado do conteúdo
 editável. A declaração de revisão compara uma impressão digital do conteúdo e das
@@ -80,10 +85,10 @@ marcas no dispositivo. O catálogo compacto também inclui cursos públicos, sem
 uma autoridade de conteúdo separada.
 
 Uma ação explícita pode copiar um curso próprio ou um curso cujo proprietário concedeu
-permissão de cópia. O resultado tem nova identidade e pertence à pessoa solicitante;
-começa privado, com arquivos restritos. Estrutura, inventário, conteúdo, configuração,
-fontes e arquivos são preservados, enquanto acessos e estado pessoal permanecem na
-origem. Leitura pública não concede essa permissão.
+permissão de cópia. O resultado tem nova identidade, pertence à pessoa solicitante e
+começa privado, com arquivos restritos. A cópia preserva estrutura, inventário,
+conteúdo, configuração, fontes e arquivos; acessos de outras pessoas e estado de estudo
+permanecem na origem. Leitura pública não concede permissão de cópia.
 
 A [persistência das cópias](persistencia-relacional.md#cópia-independente) também
 preserva os cursos criados por versões anteriores e permite recuperar tentativas
@@ -107,17 +112,15 @@ localizar, ler e revisar o resultado no contexto.
 ## Um catálogo humano para MCP e Actions
 
 MCP e Actions são formas distintas de comunicar pedidos ao mesmo catálogo de tarefas
-de autoria. O catálogo `courseHumanTasks.js` define nome, descrição, estrutura dos
-argumentos, efeito e indicações de uso. O MCP publica esse catálogo diretamente.
-OpenAPI descreve caminhos, argumentos e respostas de operações HTTP; o gerador projeta
-o catálogo nesse formato para Actions sem manter uma segunda definição.
+de autoria. O arquivo `courseHumanTasks.js` define, para cada tarefa, seu nome, seus
+argumentos e o efeito esperado. O MCP publica essa definição diretamente. Para
+Actions, um gerador a converte em OpenAPI, formato que descreve operações HTTP, sem
+manter uma segunda lista manual.
 
-As leituras retomam curso, consultam planejamento, preparam materialização, consultam
-configuração e observações, preparam revisão e consultam fontes e componentes. As
-escritas criam curso, salvam o mapa curricular, definem e materializam partes, ajustam
-configuração, registram observações, aplicam correções, mantêm fontes e incorporam PDF
-e áudio. Perfis guardam preferências reutilizáveis. Cópia, comparação e exportação
-usam os mesmos casos de uso da aplicação, com autorização específica para cada
+O catálogo acompanha o percurso inteiro de autoria. Retomar um curso, materializar uma
+parte e tratar uma observação são exemplos de tarefas que chegam aos mesmos casos de
+uso da aplicação. Ele também cobre preferências reutilizáveis e operações sobre o
+curso completo, como copiar, comparar e exportar, sempre com a autorização própria da
 operação.
 
 Argumentos públicos usam título, posição e referência humana. A camada confiável em
@@ -143,8 +146,8 @@ propriedade, versão e formato e executa uma transação: as alterações relaci
 são confirmadas juntas ou desfeitas em caso de falha. Esse desenho evita conceder
 acesso direto às tabelas privadas e mantém a decisão de autorização junto do dado.
 
-Visitantes alcançam somente funções remotas de leitura, chamadas RPCs, que selecionam
-os dados permitidos e verificam o acesso. A escrita exige uma pessoa autorizada para o
+Visitantes alcançam somente chamadas remotas de procedimento (RPCs) de leitura, que
+selecionam os dados permitidos e verificam o acesso. A escrita exige uma pessoa autorizada para o
 curso e a operação. O perfil usa um identificador público escolhido pela pessoa e
 avatar opcional; busca e concessão de acesso privado são delimitadas pelo curso do
 proprietário, sem diretório geral de contas. O Storage permanece privado, inclusive
@@ -169,11 +172,11 @@ mesmo mecanismo de Estudo, mas as respostas ficam inertes durante a inspeção a
 
 ## Mapa global e produção incremental
 
-O plano conserva público, pré-requisitos declarados, itens de escopo, mapa curricular,
-repertório acumulado, requisitos de evidência e partes. O mapa organiza todo o curso
-em módulos, lições e microssequências antes de qualquer materialização. Cada item
-obrigatório do escopo aponta para os lugares do mapa em que será ensinado e, depois da
-produção, para as unidades que o desenvolveram.
+O plano conserva o que é necessário para orientar o curso antes e durante a produção:
+para quem ele se destina, o que precisa ensinar e como esse percurso será distribuído.
+O [contrato do plano](aralearn-contract.md#curso-e-estrutura) registra os campos
+completos. No mapa, cada item obrigatório do escopo aponta primeiro para os pontos em
+que será ensinado e, depois da produção, para as unidades que o desenvolveram.
 
 O mesmo mapa pode existir como rascunho ou aprovado. A aprovação é uma propriedade do
 artefato completo que estava inspecionável; ela não aprova unidades futuras. Partes só
@@ -200,15 +203,17 @@ atribuição corrente por escopo. Limpar uma definição restaura herança e rem
 atribuição local; não cria uma linha histórica de “limpeza”.
 
 Quando uma unidade de estudo é materializada, ela guarda o recorte de desenho
-efetivamente aplicado: ideias e requisitos pertinentes, valores pedagógicos, alvos
-editoriais, direção editorial, componentes e oportunidades de prática. Esse registro
-focal, ou snapshot, permite inspecionar as decisões aplicadas e calcular
-[Analytics](analytics-instrucionais.md), as contagens do desenho e da autoria, sem
-conservar o contexto de execução da parte inteira. Uma edição focal preserva
-literalmente esse registro histórico. A aplicação só continua corrente quando conteúdo
-e hierarquia que a sustentavam permanecem iguais, descontada a mudança de título; uma
-mudança substantiva retira essa alegação corrente sem fabricar uma nova data de
-análise.
+efetivamente aplicado. Esse registro focal, chamado *snapshot* no código, reúne as
+ideias e requisitos pertinentes, a configuração adotada, os componentes e a prática
+prevista para aquela unidade. Com ele, é possível inspecionar as decisões aplicadas e calcular os
+[dados de autoria](analytics-instrucionais.md) sem conservar o contexto de execução da
+parte inteira.
+
+Uma edição focal preserva literalmente o snapshot histórico. A descrição de como o
+desenho se realiza no conteúdo só continua corrente enquanto o conteúdo e a hierarquia
+que a sustentavam permanecem iguais, descontada uma mudança de título. Uma alteração
+substantiva invalida essa relação, sem atribuir uma nova data de análise que não
+ocorreu.
 
 Ideias introduzidas são persistidas separadamente das ideias estabelecidas que a
 unidade apenas utiliza. Retomadas são derivadas das explicações de ideias já
@@ -228,10 +233,10 @@ exceções são preservadas ou removidas por seleção explícita. Condições d
 ficam protegidas. Editar ou excluir um perfil não altera as cópias, e a aplicação não
 reescreve conteúdo nem snapshots existentes.
 
-O fluxo mantém três regras: planejar o mapa global antes dos lotes, aprovar somente o
-que pode ser inspecionado e formular as decisões autorais em linguagem humana. A
-distribuição do conteúdo, as formas explicativas e a prática podem ser ajustadas.
-Princípios pedagógicos orientam essas decisões e sua avaliação.
+O mapa global vem antes dos lotes, e cada aprovação se refere ao artefato que a pessoa
+pôde inspecionar. Na conversa, essas decisões aparecem em linguagem humana. A
+distribuição do conteúdo, as formas explicativas e a prática continuam ajustáveis à
+luz dos princípios pedagógicos e da avaliação do curso.
 
 ## Concorrência e repetição segura
 
@@ -271,10 +276,11 @@ SHA-256, uma impressão digital usada para conferir os bytes recebidos, usa uma
 intenção curta para cota e concorrência, envia pela Storage API, relê o objeto e só
 então ativa o vínculo.
 
-A remoção conserva uma marca relacional de retirada, chamada tombstone, e uma intenção
+A remoção conserva uma marca relacional de retirada, chamada *tombstone*, e uma intenção
 temporária de limpeza. Depois da transação, o adaptador reivindica a intenção,
-revalida que nenhum vínculo ativo usa o objeto, remove-o pela Storage API e confirma a
-conclusão. Reanexar o mesmo conteúdo reativa o vínculo após nova verificação.
+revalida que nenhum vínculo ativo usa o objeto, remove-o pela interface do Storage e
+confirma a conclusão. Essa interface de programação (API) é o único caminho usado para
+alterar os bytes. Reanexar o mesmo conteúdo reativa o vínculo após nova verificação.
 
 Áudio usa `course-media`, com WAV PCM ou MP3, descritor lógico e referência na unidade
 ou explicação. PDFs e áudios compartilham a cota do curso. A cópia independente pode
@@ -289,18 +295,18 @@ Uma observação pertence a uma pessoa e a um alvo. Selecionar várias unidades 
 cria registros separados; não existe entidade de lote. A caixa autoral pode consultar
 as abertas por escopo.
 
-Preparar revisão amplia o foco para unidades afetadas por progressão, pré-requisitos,
-transições, exemplos e prática. Aplicar correções grava o conjunto aprovado e a
+Preparar revisão amplia o foco para outras unidades relacionadas, por exemplo, pela
+progressão, pelos pré-requisitos ou pela prática. Aplicar correções grava o conjunto aprovado e a
 inspeção seguinte permite conferir o resultado. Reversibilidade cotidiana vem de poder
 reabrir qualquer ponto e revisá-lo outra vez.
 
 ## Dados de autoria
 
-O painel **Dados de autoria** apresenta contagens derivadas do estado salvo, também
-chamadas de *analytics* no código. A pessoa escolhe a dimensão que quer examinar e o
-recorte do curso. O desenho reúne dados das unidades, ideias, prática, fontes,
-parâmetros, extensão textual e componentes; a autoria reúne observações, escolhas
-registradas e a origem observável da criação e da última revisão das unidades.
+O painel **Dados de autoria** apresenta contagens derivadas do estado salvo, chamadas
+de *analytics* no código. A pessoa escolhe uma dimensão e um recorte do curso. Uma
+dimensão pode mostrar, por exemplo, como as ideias se distribuem pelas unidades ou
+como as práticas usam os componentes. Outro grupo descreve intervenções de autoria,
+como observações e a origem registrada da última revisão.
 
 Esse retrato não usa telemetria de atenção, conversa ou rastreamento da execução. A
 exportação JSON combina a leitura autoral com o documento literal do curso. Ela não
@@ -342,8 +348,8 @@ exista.
 [Pacotes versionados](componentes-didaticos.md) implementam representações e formatos
 de resposta. O catálogo informa função e contrato; o autor escolhe pelo papel
 instrucional. `paragraph` e `choice` são componentes válidos, não alternativas
-automáticas quando tabela, sequência, classificação, código ou diagrama representam
-melhor o conteúdo.
+automáticas. Conforme o papel instrucional, uma tabela, um trecho de código ou um
+diagrama podem representar melhor o conteúdo.
 
 A preparação da aplicação, chamada build, sincroniza os módulos compartilhados com as
 Edge Functions, as funções remotas do Supabase. Essa verificação impede que navegador
@@ -358,14 +364,20 @@ exige contrato e código que a utilize. O curso não fornece código livre para 
 
 ## Segurança por fronteira
 
-- o esquema `public`, agrupamento de tabelas e funções do banco, expõe apenas relações deliberadas e usa privilégios explícitos mais
+Cada parte recebe somente a autoridade necessária para cumprir sua função. As
+fronteiras abaixo impedem que uma chave destinada ao cliente se torne acesso
+administrativo ou que uma leitura pública alcance relações privadas:
+
+- o esquema `public`, agrupamento de tabelas e funções do banco, expõe apenas relações
+  deliberadas e combina privilégios explícitos com
   [segurança em nível de linha (RLS)](supabase.md#postgresql-esquemas-e-autorização);
-- `private` fica fora da Data API e suas tabelas usam RLS como defesa adicional;
+- `private` fica fora da interface de dados (Data API), e suas tabelas usam RLS como
+  defesa adicional;
 - funções `security definer` executam com os direitos de seu proprietário;
   fixam onde procurar objetos (`search_path`), validam a identidade e limitam
   quem pode chamá-las;
 - Storage usa buckets privados e políticas por vínculo;
-- site e APK recebem apenas URL e chave publicável;
+- site e pacote Android (APK) recebem apenas URL e chave publicável;
 - segredos administrativos permanecem nas Edge Functions;
 - exclusão de conta e remoção de órfão revalidam objetos antes de apagar bytes.
 

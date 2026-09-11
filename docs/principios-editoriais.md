@@ -1,8 +1,14 @@
 # Princípios editoriais da documentação
 
-A documentação do AraLearn é parte de sua proposta educativa. Ela permite compreender o aplicativo, aprender a utilizá-lo, contribuir para seu desenvolvimento e examinar suas possibilidades como artefato de pesquisa em design instrucional e tecnologia educacional. Este capítulo apresenta as escolhas de organização, linguagem e fundamentação adotadas no projeto e suas razões.
+A documentação do AraLearn é parte de sua proposta educativa. Ela oferece
+caminhos para usar o aplicativo, compreender seu funcionamento e aprofundar o
+trabalho de desenvolvimento ou pesquisa. Este capítulo apresenta as escolhas de
+organização, linguagem e fundamentação adotadas no projeto e suas razões.
 
-O público reúne pessoas com experiências diferentes: estudantes autodidatas, autores de cursos, educadores, pesquisadores, engenheiros de software e responsáveis por usos institucionais. A entrada de cada leitor pode variar. A documentação oferece percursos de aprofundamento para que ninguém precise dominar antecipadamente todas essas áreas.
+O público reúne pessoas com experiências diferentes em estudo, educação e
+tecnologia. A entrada de cada leitor pode variar. A documentação oferece
+percursos de aprofundamento para que uma especialidade não seja pré-requisito
+silencioso para compreender outra.
 
 ## Uma progressão que parte de problemas concretos
 
@@ -11,6 +17,22 @@ A apresentação de um conceito começa pela situação que ele ajuda a compreen
 O mesmo cuidado orienta os capítulos educacionais. A dificuldade de acompanhar uma explicação que exige atenção simultânea a muitos elementos ajuda a situar a discussão sobre carga cognitiva. O ato de tentar recordar uma resposta antes de consultá-la permite introduzir a prática de recuperação. A teoria aprofunda esses problemas e oferece formas de investigá-los.
 
 Essa progressão também vale dentro dos capítulos especializados. Siglas, convenções do AraLearn e conceitos acadêmicos recebem uma explicação breve no ponto em que se tornam necessários. Um link próximo oferece aprofundamento. Os glossários apoiam a consulta posterior, enquanto a explicação local permite continuar a leitura.
+
+Mesmo um artigo técnico aprofundado constrói o repertório necessário ao seu
+próprio raciocínio. Primeiro apresenta o problema, a finalidade do mecanismo e
+suas relações com o restante do sistema; depois introduz contratos,
+identificadores e outros detalhes especializados. Essa progressão preserva a
+profundidade técnica e permite que um leitor sem conhecimento prévio chegue até
+ela.
+
+Na prosa, a documentação evita antecipar a lista completa de uma classificação
+quando o leitor precisa apenas reconhecer seu alcance. Uma estrutura com muitos
+níveis pode ser apresentada “do curso à unidade de estudo”, com um link para a
+referência exata.
+Quando exemplos bastam, três casos representativos costumam formar melhor o
+modelo mental do que um inventário. Enumerações completas permanecem nos
+lugares em que os itens são o próprio objeto de consulta, como contratos,
+matrizes e checklists.
 
 Depois de apresentado, um termo pode ser usado com consistência, sem uma nova definição em cada parágrafo. Quando a mesma palavra tem sentidos diferentes em áreas próximas, a qualificação ajuda a reconhecer o sentido adotado: revisão de conteúdo, revisão bibliográfica e revisão de software, por exemplo, designam atividades distintas.
 
@@ -40,17 +62,38 @@ A prosa privilegia frases que desenvolvem uma relação reconhecível: quem real
 
 O uso de terminologia especializada acrescenta precisão e permite continuar a pesquisa fora da documentação. Quando pertinente, a primeira ocorrência apresenta o termo em português e sua forma consagrada em outra língua. Nomes de instituições, padrões, protocolos, produtos e trabalhos acadêmicos permanecem reconhecíveis.
 
-Os nomes comuns do domínio aparecem em minúsculas no corpo do texto: curso, módulo, lição, microssequência didática, unidade de estudo, explicação, fonte, âncora, observação, estudo e autoria. Sua importância no AraLearn não os transforma em nomes próprios. Maiúsculas permanecem no início de frases, em títulos, em nomes próprios e na reprodução exata de identificadores e rótulos da interface. “Ler a explicação” descreve o conteúdo; “abrir **Explicação**” pode identificar uma ação com esse nome na interface vigente.
+Os nomes comuns do domínio aparecem em minúsculas no corpo do texto, do curso
+à unidade de estudo. O mesmo vale para termos como explicação, fonte e autoria;
+o [vocabulário controlado](vocabulario-controlado.md) mantém a relação completa.
+Maiúsculas permanecem em nomes próprios, títulos e na reprodução exata de
+identificadores ou rótulos da interface. “Ler a explicação” descreve o conteúdo;
+“abrir **Explicação**” pode identificar uma ação com esse nome na interface
+vigente.
 
-O [vocabulário controlado](vocabulario-controlado.md) reúne convenções do produto e suas relações com o código. Os [glossários técnico](glossario-tecnico.md) e [de construtos](glossario-construtos.md) desenvolvem conceitos de engenharia, educação e metodologia. Um construto é um conceito empregado para formular e investigar um fenômeno, como autorregulação; sua definição orienta o que uma pesquisa procura observar.
+Os [glossários técnico](glossario-tecnico.md) e [de
+construtos](glossario-construtos.md) desenvolvem conceitos de engenharia,
+educação e metodologia. Um construto é um conceito empregado para formular e
+investigar um fenômeno, como autorregulação; sua definição orienta o que uma
+pesquisa procura observar.
 
 ## Autoria, assistência e participação humana
 
-A apresentação geral descreve papéis: pessoa autora, estudante, assistente, modelo de linguagem e cliente de integração. As marcas aparecem quando identificam um serviço efetivamente utilizado, uma configuração ou uma condição de compatibilidade. Essa escolha permite compreender o processo de autoria e discutir sua evolução entre fornecedores.
+A apresentação geral distingue os papéis humanos e técnicos no processo de
+autoria. A [assistência por IA](assistencia-por-ia.md) mantém a relação completa
+entre eles. Marcas aparecem quando identificam um serviço efetivamente usado,
+uma configuração ou uma condição de compatibilidade. Assim, o processo pode ser
+compreendido mesmo quando o fornecedor muda.
 
-MCP e OpenAPI são apresentados pela função que exercem na comunicação entre aplicações. O uso desses padrões facilita a descrição de interfaces de integração; a compatibilidade de um cliente depende também de suas capacidades e das condições de autorização. A [assistência por IA](assistencia-por-ia.md) desenvolve essas relações.
+MCP e OpenAPI são apresentados pela função que exercem na comunicação entre
+aplicações. O uso desses padrões facilita a descrição de interfaces de
+integração; a compatibilidade de um cliente depende também de suas capacidades
+e das condições de autorização.
 
-A participação humana é descrita por ações observáveis: definir intenções, examinar propostas, conferir fontes, solicitar correções e declarar a revisão do conteúdo inspecionado. Geração de conteúdo, validação de formato, correção e declaração humana de revisão têm significados próprios. Essa precisão ajuda tanto a usar o aplicativo quanto a investigar a colaboração entre pessoas e sistemas de inteligência artificial.
+A participação humana é descrita por ações observáveis, como definir a
+intenção, examinar uma proposta e decidir sobre o conteúdo salvo. Produzir,
+validar e declarar revisão continuam sendo atos distintos. Essa precisão ajuda
+tanto a usar o aplicativo quanto a investigar a colaboração entre pessoas e
+sistemas de inteligência artificial.
 
 ## O alcance de cada afirmação
 
@@ -73,7 +116,11 @@ A proximidade entre um termo do produto e um conceito da literatura abre uma rel
 
 As fontes são escolhidas pela contribuição que oferecem à pergunta em discussão. Trabalhos teóricos ajudam a formular relações; estudos primários permitem examinar métodos e resultados; revisões e meta-análises situam a diversidade da evidência disponível. Obras fundamentais e pesquisas recentes podem cumprir funções complementares.
 
-A leitura de uma publicação considera também o enquadramento teórico, o método, a população, o contexto, os limites e as questões futuras. Esses elementos ajudam a formular investigações adequadas para o AraLearn. Uma proposta derivada dessa leitura é apresentada como possibilidade para o artefato, com distinção entre a contribuição dos autores e a interpretação desenvolvida no projeto.
+A leitura de uma publicação considera o argumento, o método e as condições
+que limitam seus resultados. Esses elementos ajudam a formular investigações
+adequadas para o AraLearn. Uma proposta derivada dessa leitura é apresentada
+como possibilidade para o artefato, com distinção entre a contribuição dos
+autores e a interpretação desenvolvida no projeto.
 
 Resultados contraditórios, nulos ou dependentes do contexto permanecem relevantes quando alteram a interpretação. A escolha de um estudo considera o que seu conteúdo permite afirmar; a afinidade entre títulos, temas ou instituições é insuficiente para justificar sua inclusão.
 
@@ -89,7 +136,10 @@ O [registro de buscas bibliográficas](evidence/registro-buscas-bibliograficas.c
 
 ## Engenharia que pode ser compreendida e reproduzida
 
-Os capítulos técnicos explicam o problema atendido por cada subsistema e suas relações com o restante do aplicativo. Dependendo do assunto, isso inclui quem pode realizar uma operação, onde os dados são guardados, como as mudanças são sincronizadas, o que acontece sem conexão e como uma falha pode ser recuperada.
+Os capítulos técnicos explicam o problema atendido por cada subsistema e suas
+relações com o restante do aplicativo. Conforme o assunto, acompanham o acesso,
+o caminho dos dados ou a recuperação de uma falha até o nível necessário para
+compreender e reproduzir o funcionamento.
 
 Identificadores, trechos de código e estruturas de dados são úteis quando permitem integrar um cliente, localizar uma implementação, reproduzir uma operação ou verificar uma propriedade. A seleção desses detalhes considera sua finalidade para o leitor. A descrição de cada função auxiliar ou de cada ajuste de implementação pertence ao código e a seu histórico; os capítulos desenvolvem o funcionamento que essas partes tornam possível.
 

@@ -14,11 +14,11 @@ Entre 2009 e 2013, fiz Bacharelado em Letras, com habilitação em Linguística,
 
 Um exemplo era a memorização de *kanji*, logogramas de origem chinesa utilizados na escrita japonesa. Para estudá-los, eu precisava associar a forma gráfica, os significados e diferentes leituras de muitos caracteres, e essas associações se perdiam com facilidade sem revisão. O Anki era útil para esse tipo de memorização, mas ainda não ocupava uma posição central na minha forma de estudar.
 
-Naquele período, *smartphones* ainda não faziam parte da minha rotina de estudo, e eu não usava o [AnkiDroid](https://ankidroid.org/), aplicativo para Android que mais tarde me permitiria estudar no celular os mesmos *decks* do Anki, isto é, suas coleções de cartões.
+Naquele período, *smartphones* ainda não faziam parte da minha rotina de estudo. O estudo no celular viria mais tarde com o [AnkiDroid](https://ankidroid.org/), aplicativo para Android que me permitiria acessar os mesmos *decks* do Anki, isto é, suas coleções de cartões.
 
 Entre 2014 e 2020, durante o Bacharelado em Ciências Biológicas na USP, encontrar formas mais eficientes de estudar ganhou muito mais importância. As disciplinas envolviam grande quantidade de conceitos e terminologia especializada, leituras frequentemente em inglês e livros que podiam chegar a centenas ou milhares de páginas. Passei então a usar *flashcards* com muito mais intensidade.
 
-Ao mesmo tempo, continuei procurando materiais mais acessíveis para começar a estudar assuntos difíceis. Por iniciativa própria, encontrei materiais da [Universidade Virtual do Estado de São Paulo (UNIVESP)](https://apps.univesp.br/repositorio/) e [materiais do CEDERJ](https://canal.cecierj.edu.br/conteudo/graduacao/). Em geral, eram menores, estavam em português e eram mais fáceis de percorrer. Podiam ter menos profundidade ou alguma imprecisão em comparação com os grandes livros de referência, mas funcionavam bem como primeira aproximação. Depois de adquirir uma visão inicial do assunto, tornava-se mais fácil voltar às fontes extensas e aprofundadas.
+Ao mesmo tempo, continuei procurando materiais mais acessíveis para começar a estudar assuntos difíceis. Por iniciativa própria, encontrei materiais da [Universidade Virtual do Estado de São Paulo (UNIVESP)](https://apps.univesp.br/repositorio/) e [materiais do CEDERJ](https://canal.cecierj.edu.br/conteudo/graduacao/). Em geral, eram menores, estavam em português e eram mais fáceis de percorrer. Eles me ofereciam uma primeira visão do assunto; com essa base, tornava-se mais fácil voltar às fontes extensas e aprofundadas.
 
 ## Idiomas, personalização e automação
 
@@ -34,19 +34,19 @@ Boa parte do trabalho acontecia antes da importação. No [Notepad++](https://no
 
 Parte do resultado era organizada em arquivos CSV, um formato simples para armazenar dados tabulares como texto, muitas vezes com auxílio do [LibreOffice Calc](https://help.libreoffice.org/latest/pt-BR/text/scalc/main0503.html?DbPAR=CALC). Esses arquivos serviam como uma base intermediária para os dados que depois seriam importados para o Anki.
 
-Depois da importação, o JavaScript dos próprios *flashcards* podia recuperar campos e relacionar informações que eu havia preparado anteriormente com regex e CSV.
+Depois da importação, o JavaScript dos próprios *flashcards* podia recuperar os campos — as partes nomeadas dos dados de cada cartão — e relacionar informações que eu havia preparado anteriormente com regex e CSV.
 
 Outra operação era construir endereços da Web a partir desses dados para criar links diretos para páginas externas. No estudo de japonês, usei dessa forma o [guia de gramática de Tae Kim](https://guidetojapanese.org/learn/grammar/); no de chinês, a [Chinese Grammar Wiki](https://resources.allsetlearning.com/chinese/grammar/Main_Page).
 
 Nessa fase, antes da popularização comercial da IA generativa, meu interesse por [processamento de linguagem natural](https://en.wikipedia.org/wiki/Natural_language_processing) também era muito forte. Lidava com problemas de *parsing* de textos em japonês e mandarim: como reconhecer automaticamente suas unidades linguísticas e a maneira como se organizam. No caso do japonês, explorava o [MeCab](https://taku910.github.io/mecab/), um analisador morfológico que segmenta o texto e identifica informações gramaticais sobre as unidades encontradas.
 
-No estudo de japonês, eu explorava ainda a [fonologia suprassegmental](https://www.cambridge.org/core/books/abs/introducing-phonetic-science/suprasegmentals/3418DF78D7466EC8D9F0127DA5108D22), sobretudo os padrões de acento e as variações de altura da voz ao longo das frases. Recorria particularmente ao [tutor de prosódia Suzuki-kun](https://www.gavo.t.u-tokyo.ac.jp/ojad/eng/phrasing/index), do [Online Japanese Accent Dictionary (OJAD)](https://www.gavo.t.u-tokyo.ac.jp/ojad/pages/notes), projeto desenvolvido em colaboração por uma equipe da Universidade de Tóquio e de outras instituições. A partir de um texto em japonês, o tutor estima o padrão de acento e apresenta a curva melódica de sua leitura.
+Outro problema era estudar aspectos da pronúncia japonesa que ultrapassavam sons isolados, sobretudo os padrões de acento e as variações de altura da voz ao longo das frases. Esse é um tema da [fonologia suprassegmental](https://www.cambridge.org/core/books/abs/introducing-phonetic-science/suprasegmentals/3418DF78D7466EC8D9F0127DA5108D22). Eu recorria ao [tutor de prosódia Suzuki-kun](https://www.gavo.t.u-tokyo.ac.jp/ojad/eng/phrasing/index), do [Online Japanese Accent Dictionary (OJAD)](https://www.gavo.t.u-tokyo.ac.jp/ojad/pages/notes), que estima o padrão de acento de um texto e apresenta a curva melódica de sua leitura.
 
 Serviços de [síntese de voz do Microsoft Azure](https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech) permitiam também gerar áudio automaticamente para o material.
 
 Mais tarde, passei a usar o [AnkiWeb](https://docs.ankiweb.net/syncing.html), serviço online do Anki para sincronizar uma coleção entre dispositivos. Por meio dele, eu mantinha meus *decks* sincronizados entre o Anki no computador e o AnkiDroid no celular. Depois da sincronização, o material permanecia disponível no dispositivo para estudo.
 
-Nesse ponto, produzir material no Anki já significava muito mais do que escrever *flashcards* manualmente. Eu preparava dados em grande quantidade, automatizava transformações, controlava a apresentação e o comportamento dos *flashcards*, gerava áudio e ligava o material a fontes externas. O objetivo não era programar por programar. A automação diminuía o trabalho manual necessário para produzir conteúdo personalizado para meu próprio estudo.
+Nesse ponto, produzir material no Anki já significava transformar fontes e dados em conteúdo pronto para estudar. Eu automatizava a preparação, controlava o comportamento dos *flashcards* e acrescentava recursos como áudio ou links de consulta. A finalidade da programação era diminuir o trabalho manual necessário para produzir conteúdo personalizado para meu próprio estudo.
 
 ## Dos idiomas a outros campos de estudo
 
@@ -66,15 +66,15 @@ Automatizar processos usados no dia a dia exigia compreender as regras envolvida
 
 ## Aprofundar a formação em tecnologia
 
-Quando passei a procurar uma formação mais ampla em tecnologia da informação, encontrei muitas opções a distância. Entre as poucas alternativas que encontrei para fazer cursos livres e de aperfeiçoamento profissional com tutoria presencial, os cursos do [SENAI](https://www.senai.portaldaindustria.com.br/) tiveram um papel importante.
+Quando passei a procurar uma formação mais ampla em tecnologia da informação, busquei também cursos livres e de aperfeiçoamento profissional com tutoria presencial. Os cursos do [SENAI](https://www.senai.portaldaindustria.com.br/) tiveram um papel importante nesse percurso.
 
 Também voltei à UNIVESP, agora como estudante. Os materiais produzidos para a universidade tinham sido muito úteis quando eu estudava Ciências Biológicas na USP, e essa boa experiência influenciou minha decisão de ingressar no [Bacharelado em Tecnologia da Informação](https://univesp.br/bacharelado-em-tecnologia-da-informacao/) da própria instituição.
 
-Estudar um curso completo era diferente de consultar alguns de seus materiais isoladamente. Havia disciplinas, avaliações e apoio institucional, mas boa parte da organização cotidiana do estudo continuava dependendo de mim: distribuir o tempo, acompanhar assuntos diferentes e estabelecer relações entre conteúdos apresentados separadamente.
+Estudar um curso completo era diferente de consultar alguns de seus materiais isoladamente. A instituição oferecia um percurso e apoio, enquanto a organização cotidiana continuava dependendo de mim: distribuir o tempo, acompanhar assuntos diferentes e estabelecer relações entre conteúdos apresentados separadamente.
 
-Foi nessa fase que uma dificuldade do aprendizado de desenvolvimento de software ficou especialmente evidente. Eu já tinha alguma experiência com programação, HTML, CSS e JavaScript, mas precisava compreender como muitas partes de um sistema funcionavam juntas.
+Foi nessa fase que uma dificuldade do aprendizado de desenvolvimento de software ficou especialmente evidente. Eu já tinha alguma experiência com programação para o navegador, mas precisava visualizar o percurso completo de uma aplicação: a interface com a qual a pessoa interage (*frontend*) envia pedidos à lógica executada no servidor (*backend*), que por sua vez lê e grava dados.
 
-Eu precisava relacionar a interface executada no navegador (*frontend*) à lógica executada no servidor (*backend*) e aos bancos de dados. Além disso, precisei aprender ferramentas que não faziam parte da minha prática anterior. [Git](https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control) permitia registrar e acompanhar mudanças no código ao longo do tempo; [GitHub](https://docs.github.com/en/get-started/start-your-journey/what-is-github) oferecia um ambiente para armazenar esses projetos e trabalhar com seus repositórios.
+Também precisei aprender a acompanhar a evolução do próprio código. O [Git](https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control) registrava as mudanças ao longo do tempo; o [GitHub](https://docs.github.com/en/get-started/start-your-journey/what-is-github) oferecia um ambiente para armazenar os projetos e trabalhar com seus repositórios.
 
 O que me surpreendia era menos a dificuldade de uma tecnologia isolada do que a quantidade de relações necessárias para construir uma aplicação completa. Saber reproduzir uma página, escrever uma função ou acompanhar um exemplo de banco de dados não significava saber como organizar essas partes num sistema.
 
@@ -96,26 +96,26 @@ Os [grandes modelos de linguagem](https://en.wikipedia.org/wiki/Large_language_m
 
 Num primeiro momento, o AraLearn começou a chamar esses modelos por meio de uma [interface de programação de aplicações](https://developer.mozilla.org/en-US/docs/Glossary/API) (*application programming interface*, API). Uma API define como um programa pode solicitar uma operação a outro. Assim, o AraLearn podia enviar conteúdo a um serviço de LLM e receber de volta, por exemplo, uma explicação gerada ou uma revisão.
 
-Mais tarde, surgiu também o movimento no sentido contrário: aplicações que usam LLMs puderam chamar operações do próprio AraLearn. Em vez de o AraLearn apenas enviar texto para a IA, a IA podia consultar estruturas do curso e usar funções oferecidas pelo sistema. O projeto adotou dois caminhos para isso: OpenAPI com Actions e MCP.
+Mais tarde, surgiu também o movimento no sentido contrário: aplicações que usam LLMs puderam chamar operações do próprio AraLearn. Assim, uma conversa autorizada podia consultar a estrutura do curso e usar funções oferecidas pelo sistema. O projeto adotou dois caminhos de conexão: OpenAPI com Actions e MCP.
 
-Com a [OpenAPI Specification](https://www.openapis.org/what-is-openapi), o AraLearn mantém em um formato padronizado a relação das operações que oferece, os dados que cada uma recebe e a resposta que devolve. Um GPT personalizado pode importar esse arquivo e usar [Actions](https://developers.openai.com/api/docs/actions/introduction) — chamadas a serviços externos feitas durante a conversa — para executar essas operações.
+Com a [OpenAPI Specification](https://www.openapis.org/what-is-openapi), o AraLearn descreve em formato padronizado as operações que oferece, os dados que cada uma recebe e as respostas que devolve. Nos testes atuais desse canal, um GPT personalizado importa a descrição e usa [Actions](https://developers.openai.com/api/docs/actions/introduction), chamadas a serviços externos feitas durante a conversa, para executar essas operações no AraLearn.
 
-O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) oferece outro caminho para um objetivo semelhante. Ao se conectar pelo protocolo, uma aplicação compatível pode obter do AraLearn as ferramentas e os recursos disponíveis e utilizá-los durante a conversa.
+O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) oferece outro caminho. Uma aplicação compatível obtém do AraLearn as ferramentas disponíveis e pode utilizá-las durante a conversa.
 
-Em termos simples, primeiro o AraLearn passou a chamar a IA para gerar e revisar conteúdo. Depois, aplicações com IA também puderam chamar o AraLearn para trabalhar sobre seus cursos. OpenAPI com Actions e MCP são duas formas diferentes de realizar essa segunda integração.
+Em termos simples, primeiro o AraLearn passou a chamar a IA para gerar e revisar conteúdo. Depois, aplicações com IA também puderam chamar o AraLearn para trabalhar sobre seus cursos.
 
 ## O AraLearn hoje
 
-Hoje, o AraLearn reúne estudo, produção e revisão de cursos no mesmo aplicativo. O conteúdo é organizado em unidades de estudo relacionadas dentro de cursos, e não mais em torno de *flashcards*. O projeto funciona na web e no Android e oferece assistência por IA dentro do próprio aplicativo e por meio das integrações conversacionais desenvolvidas ao longo do projeto.
+Essa evolução levou o AraLearn além dos *flashcards*: o conteúdo passou a ser desenvolvido em unidades relacionadas dentro de um curso, e o próprio percurso de autoria e estudo tornou-se parte do aplicativo. Hoje o projeto funciona na web e no Android e oferece assistência por IA tanto na interface quanto por aplicações de conversa conectadas.
 
-Minha experiência com educação a distância tornou outro aspecto do problema mais visível. Num curso formal há professores, conteúdos, atividades, avaliações e uma organização definida. Mesmo assim, uma parcela importante do estudo cotidiano pode depender do próprio estudante: administrar o tempo, acompanhar o que ficou para trás, retomar assuntos interrompidos e procurar outra explicação quando o material disponível não basta.
+Minha experiência com educação a distância tornou outro aspecto do problema mais visível. Um curso formal já oferece conteúdo, apoio e um percurso. Ainda assim, o estudante precisa organizar o tempo, retomar assuntos interrompidos e procurar outra explicação quando o material disponível não basta.
 
-Como o AraLearn nasceu de problemas do estudo autodidata, comecei a considerar sua utilidade também nesse contexto. Hoje me interessa investigar se uma ferramenta desse tipo pode ajudar estudantes de cursos a distância a organizar melhor o próprio estudo, relacionar conteúdos e retomar assuntos depois de interrupções. Trata-se de uma possibilidade a investigar, não de um efeito educacional já estabelecido.
+Como o AraLearn nasceu de problemas do estudo autodidata, comecei a considerar sua utilidade também nesse contexto. A avaliação deverá estabelecer se, para quem e em que condições uma ferramenta desse tipo pode ajudar estudantes de cursos a distância a organizar, relacionar e retomar o próprio estudo.
 
 Recentemente, ingressei no [Mestrado em Educação e Tecnologias Digitais (METD)](https://www.ie.ulisboa.pt/ensino/mestrados/mestrado-em-educacao-e-tecnologias-digitais-ead), do Instituto de Educação da Universidade de Lisboa. Procurei essa formação para aprofundar meus conhecimentos sobre design instrucional e tecnologia educacional e estudar com mais rigor questões que até então haviam surgido principalmente da minha experiência como estudante e do desenvolvimento do AraLearn.
 
 Essas questões não são novas na minha vida. Antes mesmo da universidade, eu já procurava materiais mais acessíveis para chegar depois a textos difíceis. Mais tarde, os *flashcards* ajudaram a manter conhecimentos fáceis de esquecer, e a automação diminuiu o trabalho necessário para produzir materiais próprios. Ao estudar desenvolvimento de software, o problema reapareceu na dificuldade de relacionar conteúdos ensinados separadamente.
 
-Hoje, essa questão se tornou ainda mais concreta. Concilio trabalho em tempo integral, uma graduação no período noturno, cursos avulsos e o mestrado. O tempo disponível para estudar é dividido entre assuntos diferentes e frequentemente interrompido. Retomar rapidamente o contexto, entender onde uma informação nova se encaixa e gastar menos tempo preparando o próprio estudo têm, por isso, importância prática no meu dia a dia.
+Hoje, essa questão se tornou ainda mais concreta. Concilio trabalho em tempo integral com diferentes formações. O tempo disponível para estudar é dividido entre assuntos e frequentemente interrompido. Retomar rapidamente o contexto, entender onde uma informação nova se encaixa e gastar menos tempo preparando o próprio estudo têm, por isso, importância prática no meu dia a dia.
 
-O AraLearn continua sendo um projeto de engenharia de software, mas seu desenvolvimento agora ocorre ao lado de um estudo mais sistemático de educação, design instrucional e tecnologia educacional. A pergunta que continua me acompanhando é como reduzir o trabalho que fica entre ter acesso à informação e conseguir compreendê-la, relacioná-la ao que já sei e voltar a usá-la depois, especialmente quando o tempo para estudar é curto e fragmentado.
+Hoje, o desenvolvimento de software e o estudo sistemático de educação, design instrucional e tecnologia educacional fazem parte do mesmo projeto. A pergunta que continua me acompanhando é como reduzir o trabalho que fica entre ter acesso à informação e conseguir compreendê-la, relacioná-la ao que já sei e voltar a usá-la depois, especialmente quando o tempo para estudar é curto e fragmentado.

@@ -1,9 +1,10 @@
 # Revisão e correções do curso
 
-Revisar um curso significa inspecionar o conteúdo salvo, localizar uma questão
-factual, pedagógica ou editorial e examinar o percurso necessário para corrigi-la.
-O trabalho pode começar na explicação compartilhada de uma microssequência, em
-uma unidade de estudo, numa fonte ou numa observação. O [modelo
+Revisar um curso significa inspecionar o conteúdo salvo, localizar um problema
+factual, pedagógico ou editorial e examinar o percurso necessário para corrigi-lo.
+O apontamento pode estar na
+explicação compartilhada por uma microssequência ou numa unidade de estudo e
+envolver também suas fontes e observações. O [modelo
 didático](modelo-didatico.md) distingue a base explicativa da sequência de
 atividades e explicações que a mobiliza durante o estudo.
 
@@ -37,22 +38,23 @@ autorizada volta à pessoa autora.
 
 ## Contexto pedagogicamente afetado
 
-O alvo anotado não determina sozinho o alcance da análise. Uma mudança pode
-exigir reler unidades anteriores e posteriores quando atingir conhecimentos
-prévios, transições, exemplos ou práticas que dependem da explicação alterada.
-Fontes e parâmetros do recorte também fazem parte dessa conferência.
+O alcance da análise acompanha as dependências do problema. Uma mudança pode
+exigir reler unidades anteriores e posteriores quando elas preparam ou usam a
+explicação alterada. Fontes e parâmetros do recorte também entram nessa
+conferência.
 
 O assistente deve propor o menor conjunto coerente de mudanças. Unidades lidas
-como contexto podem permanecer intactas. Outras podem precisar de uma transição
-melhor, de divisão ou de reunião quando a distribuição do conteúdo prejudicar
-a compreensão. A ampliação da leitura não autoriza, por si só, ampliar a escrita.
+como contexto podem permanecer intactas; outras podem precisar de nova
+transição ou de outra distribuição do conteúdo. A escrita continua limitada ao
+que a pessoa autora autorizou, ainda que a análise tenha precisado ler um trecho
+maior.
 
 ## Julgamento e validação técnica
 
-O servidor verifica estrutura, autorização, referências e versões. Essas
-verificações conseguem recusar uma composição inválida ou uma escrita sobre
-conteúdo que mudou, mas a adequação factual, pedagógica e editorial depende da
-análise do material e de suas fontes.
+O servidor verifica se a escrita tem estrutura e referências válidas, está
+autorizada e ainda se refere à versão lida. Essas regras impedem algumas
+gravações indevidas. A adequação do conteúdo, porém, depende da análise do
+material e de suas fontes.
 
 Uma representação aceita pelo contrato ainda pode condensar uma relação que
 precisa ser ensinada. Por exemplo, um cálculo de média pode mostrar a divisão
@@ -84,8 +86,8 @@ fixações da autoria e condições de pesquisa permanecem protegidas. A
 trabalho, enquanto a configuração aplicada registra as escolhas que produziram
 o material existente.
 
-Uma correção focal preserva o que o pedido não pretende alterar. Mudar uma
-preferência não reescreve automaticamente unidades anteriores. Alvos de palavras
+Uma correção focal alcança somente o recorte solicitado. Mudar uma preferência
+não reescreve automaticamente unidades anteriores. Alvos de palavras
 orientam a extensão, sem justificar a retirada de uma explicação, exemplo ou
 prática necessários. Se a unidade estiver densa demais, reveja sua organização
 e sua relação com o restante do percurso.
@@ -116,10 +118,10 @@ Considerar uma observação tratada não declara revisão humana. A marca de rev
 registrada ou retirada por uma decisão expressa da pessoa sobre o conteúdo
 inspecionado, e uma mudança material a desatualiza.
 
-O AraLearn conserva o conteúdo, a configuração, as fontes e as observações
-necessários ao trabalho corrente. Para preservar uma versão como artefato de
-pesquisa ou recuperação, faça uma exportação explícita; a conversa não constitui
-um arquivo permanente de todas as versões do curso.
+O estado corrente do curso conserva o material e os registros necessários para
+continuar o trabalho. Uma pesquisa que precise identificar a versão examinada
+deve fazer uma exportação explícita: a conversa serve à coordenação, e não como
+arquivo permanente de todas as versões.
 
 ## Na interface e na conversa
 

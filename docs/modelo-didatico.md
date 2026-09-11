@@ -1,10 +1,11 @@
 # Modelo didático do AraLearn
 
-O AraLearn é um artefato técnico de pesquisa em design instrucional e tecnologia
-educacional. Seu modelo didático orienta a criação de cursos com assistência de
-inteligência artificial (IA), inspeção e revisão humanas, para estudo autodidata
-no celular. O curso precisa conservar explicações, relações com as fontes e
-prática significativa mesmo quando o estudo ocorre em períodos breves.
+O AraLearn é um produto de software usado também como objeto de pesquisa em
+design instrucional e tecnologia educacional. Seu modelo didático orienta a
+criação de cursos com assistência de inteligência artificial (IA) e revisão
+humana, destinados ao estudo autodidata no celular. Mesmo quando o estudo ocorre
+em períodos breves, o curso precisa conservar explicações suficientes, relações
+com as fontes e prática significativa.
 
 ## Problema educacional delimitado
 
@@ -37,7 +38,9 @@ média. Essa etapa reúne a situação inicial, a explicação do cálculo, um c
 resolvido e práticas que pedem calcular e interpretar. No AraLearn, esse
 conjunto orientado por um objetivo delimitado é uma **microssequência**.
 
-A organização completa usa os seguintes níveis, convencionados pelo projeto:
+O percurso se estende por vários níveis, do curso à unidade de estudo. A tabela
+registra a função que o AraLearn atribui a cada nível e aplica essa convenção ao
+exemplo:
 
 | Nível | Função | Exemplo no curso ilustrativo |
 | --- | --- | --- |
@@ -56,8 +59,9 @@ A pessoa autora pode corrigir esse rascunho e aprovar as decisões que consegue
 inspecionar. O planejamento pode avançar progressivamente: a explicação de uma
 microssequência já existente pode ser desenvolvida enquanto o mapa ainda está
 em rascunho. A aprovação do mapa completo antecede a organização das partes de
-produção e das unidades que elas entregam. Essa aprovação delimita o percurso;
-não declara revisão das explicações nem das unidades de estudo.
+produção e das unidades que elas entregam. Essa aprovação delimita o percurso.
+Explicações e unidades recebem revisão própria quando seu conteúdo estiver
+disponível para inspeção.
 
 ### Por que a microssequência existe
 
@@ -84,10 +88,10 @@ utilidade precisa ser examinada nos cursos e públicos em que for usada.
 ### Parte como coordenação operacional
 
 Depois da aprovação do mapa, a autoria pode reunir microssequências em uma
-**parte**: um conjunto de trabalho a produzir e revisar. Um **lote** pode reunir
-partes sucessivas. Essa divisão considera assuntos que precisam permanecer
-juntos e a quantidade de material que a pessoa consegue inspecionar; ela não
-acrescenta níveis ao currículo. O fluxo está em
+**parte**, conjunto de trabalho que será produzido e revisado. Partes sucessivas
+podem formar um **lote**. Essa divisão coordena o trabalho segundo as relações
+que precisam permanecer juntas e a quantidade de material que a pessoa consegue
+inspecionar. Partes e lotes ficam fora da hierarquia curricular. O fluxo está em
 [Autoria contextual](autoria-contextual.md).
 
 ## Diagnóstico contextual antes da construção
@@ -104,11 +108,11 @@ a cobertura ou uma escolha de explicação, representação ou prática. A sínt
 é apresentada à pessoa autora para confirmação. Trata-se de uma descrição do
 público planejado, distinta de uma avaliação do conhecimento de cada estudante.
 
-Uma **condição contextual**, como idioma, dispositivo ou acesso a laboratório,
-ajuda a decidir o que fazer. A **decisão local** é a resposta instrucional a
-essa condição: introduzir um pré-requisito, usar um exemplo, acrescentar prática
-ou reconhecer que um meio indispensável não está disponível. A mesma condição
-pode levar a escolhas diferentes em tarefas distintas.
+Uma **condição contextual**, como o idioma ou o acesso a laboratório, ajuda a
+decidir o que fazer. A **decisão local** é a resposta instrucional a essa
+condição: pode introduzir um pré-requisito, escolher um exemplo ou reconhecer a
+falta de um meio indispensável. A mesma condição pode levar a escolhas
+diferentes em tarefas distintas.
 
 O **efeito de reversão da especialização** descreve situações em que uma forma
 de apoio útil a iniciantes perde utilidade ou se torna desfavorável para quem
@@ -147,14 +151,14 @@ recorte às unidades que o introduzem, utilizam ou retomam e às práticas
 pertinentes. A existência da atividade registra uma oportunidade oferecida;
 o desempenho depende do que o estudante fizer.
 
-Os parâmetros permitem tornar escolhas desse desenho explícitas. Um teto de
-novidades orienta quantos recortes serão introduzidos numa unidade expositiva,
-que desenvolve conteúdo sem solicitar uma resposta antes de mostrar a solução.
-As formas de explicação indicam como desenvolvê-los; os requisitos de prática
-indicam quantidade e variação das oportunidades. Alvos de palavras orientam a
-extensão do texto, enquanto preferências de conversa, partes, lotes e pausas
-organizam a autoria. O [catálogo das doze decisões](desenho-instrucional-parametrizado.md#catálogo-corrente)
-conserva valores e escopos.
+Os parâmetros tornam explícitas escolhas desse desenho. Um teto de novidades
+orienta quantos recortes serão introduzidos numa unidade expositiva, que
+desenvolve conteúdo antes de solicitar uma resposta. Outros parâmetros orientam
+como explicar e praticar esses recortes. Alvos de palavras cuidam da extensão
+editorial, enquanto as preferências do processo organizam a conversa e os
+conjuntos de produção. O
+[catálogo das doze decisões](desenho-instrucional-parametrizado.md#catálogo-corrente)
+conserva os valores e escopos de cada uma.
 
 No modo automático, o assistente escolhe valores conforme o contexto e registra
 os motivos. Uma decisão explicitamente fixada pela pessoa autora ou por uma
@@ -182,8 +186,9 @@ regras dessa conferência estão em
 
 ## Profundidade sem condensação
 
-A **explicação** é o texto-base autorado da microssequência, com seus conceitos,
-pressupostos, exemplos, relações, limites e vínculos com as fontes. Todas as
+A **explicação** é o texto-base autorado da microssequência. Ela torna explícitos
+os pressupostos necessários, desenvolve conceitos e relações por meio de
+exemplos e delimita o conteúdo com suas fontes. Todas as
 unidades desse conjunto dão acesso ao mesmo conteúdo pelo comando
 **Explicação**. Abrir esse apoio consulta o que foi salvo; não produz uma nova
 resposta de IA. Sua autoria, fontes e revisão são descritas em
@@ -211,10 +216,10 @@ reunidos entre três observações. Distribuir esse total igualmente produz
 5 minutos por observação. A divisão ganha sentido antes da fórmula; depois,
 a notação pode expressar a relação já compreendida.
 
-No planejamento, a autoria identifica o problema inicial, os conhecimentos
-necessários, os pressupostos ainda por desenvolver e a ordem de apresentação
-de exemplos, termos e símbolos. Tabelas, fórmulas e diagramas entram quando
-seus elementos já podem ser interpretados. A busca por informação e sua
+No planejamento, a autoria identifica o problema inicial, o que ainda precisa
+ser desenvolvido e a ordem em que exemplos e notações se tornam compreensíveis.
+Tabelas, fórmulas e diagramas entram quando seus elementos já podem ser
+interpretados. A busca por informação e sua
 integração também participam das demandas da tarefa
 ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload);
 [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)).
@@ -235,8 +240,8 @@ como pré-requisito. No exemplo, pedir que o estudante julgue a influência de
 um valor extremo exige antes desenvolver a relação entre esse valor, o total
 e a média. Saber executar a divisão não basta.
 
-A revisão examina se estão disponíveis o contexto do conceito, os termos e
-símbolos usados, as relações necessárias, um exemplo apropriado e os limites
+A revisão examina se o estudante encontra o significado dos conceitos e das
+notações, as relações necessárias e um exemplo que torne claros os limites
 relevantes à tarefa. Uma lacuna nessa base exige desenvolvimento; alterar o
 tamanho das unidades sem tratar a relação ausente apenas redistribui a lacuna.
 
@@ -363,9 +368,9 @@ retirar informação sem função; a **contiguidade**, aproximar elementos que
 precisam ser integrados ([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
 [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
 
-Os componentes conservam estruturas pertinentes ao domínio: posição em uma
-matriz, conexões em um grafo, coordenadas num plano ou alinhamento entre forma
-e significado numa glosa interlinear. Uma prática pode solicitar resposta
+Os componentes conservam estruturas pertinentes ao domínio, como a posição em
+uma matriz, as conexões em um grafo e o alinhamento entre forma e significado
+numa glosa interlinear. Uma prática pode solicitar resposta
 no próprio lugar em que essa relação é interpretada. A
 [fundamentação pedagógica dos componentes](fundamentacao-pedagogica-dos-resources.md)
 desenvolve os critérios de escolha, composição e acessibilidade; o
@@ -395,9 +400,9 @@ precisam ser examinados com pessoas e tarefas.
 
 ## Autonomia com suporte e responsabilidade humana
 
-Na autoria assistida, a pessoa examina estrutura, conteúdo e fontes, pede ou
-faz correções e declara a revisão do material inspecionado. O assistente propõe
-e transforma conteúdo no escopo autorizado. Ele trabalha por uma conversa
+Na autoria assistida, a pessoa examina o curso e as evidências que o sustentam,
+pede ou faz correções e declara a revisão do material inspecionado. O assistente
+propõe e transforma conteúdo no escopo autorizado. Ele trabalha por uma conversa
 externa conectada às tarefas do AraLearn; os cursos continuam disponíveis para
 inspeção na aplicação. Os guias de [MCP](autoria-mcp.md) e
 [Actions/OpenAPI](autoria-actions.md) descrevem os meios técnicos dessa
@@ -442,9 +447,9 @@ Quatro perguntas organizam esse trabalho:
 | A prática solicita o que se pretende ensinar? | operação, dados particulares disponíveis, variação substantiva, apoio, retorno e retomadas pertinentes |
 | O conteúdo pode ser inspecionado e corrigido? | fontes, convenções das representações, componentes permitidos, limites assumidos e alcance da revisão humana |
 
-A contagem de recortes não mede carga cognitiva. A diversidade de formatos não
-certifica diversidade de prática. Esses registros ajudam a localizar o que ler;
-o julgamento depende do conteúdo e da tarefa. O
+As contagens localizam onde os recortes foram tratados, e a lista de formatos
+mostra como o material foi apresentado. A carga cognitiva e a diversidade real
+das práticas exigem examinar o conteúdo e a tarefa. O
 [ciclo de revisão](auditoria-de-conformidade-instrucional.md) relaciona os
 apontamentos às correções e à nova inspeção.
 
@@ -460,8 +465,8 @@ imediata do exemplo.
 
 A comparação com mediana pertence a uma etapa em que ambos os conceitos já
 estejam disponíveis. A quantidade de unidades decorre das explicações e
-práticas necessárias ao público; esse exemplo não prescreve um roteiro para
-todos os cursos.
+práticas necessárias ao público, por isso outros cursos podem seguir
+progressões diferentes.
 
 ## Relações com os demais documentos
 

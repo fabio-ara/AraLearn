@@ -2,11 +2,12 @@
 
 ## Finalidade
 
-Agência, compreensão e carga cognitiva exigem definições e formas próprias de
-investigação. Já microssequência, base explicativa e unidade de estudo são
-convenções usadas para organizar o AraLearn. Distinguir esses tipos de termo
-permite formular hipóteses sem tratar nomes ou contagens do aplicativo como
-medidas educacionais.
+Este glossário reúne palavras que parecem semelhantes na interface, no desenho
+do curso e na pesquisa, mas cumprem funções diferentes. Agência e carga
+cognitiva, por exemplo, são conceitos teóricos que precisam ser investigados;
+microssequência e unidade de estudo são convenções usadas para organizar o
+AraLearn. Essa distinção evita transformar um nome ou uma contagem do aplicativo
+em medida educacional.
 
 As entradas relacionam significado, manifestações possíveis e evidência
 necessária. O [glossário técnico](glossario-tecnico.md) complementa a consulta
@@ -14,50 +15,26 @@ quando a pergunta envolve implementação, como armazenamento e sincronização.
 
 ## Como usar as definições
 
-Cada entrada distingue:
+As entradas seguem o mesmo percurso. O **tipo** informa se o termo vem da
+teoria, nomeia um resultado ou organiza o produto. A **definição** estabelece o
+sentido adotado; a **manifestação possível** mostra como o conceito poderia
+aparecer num estudo. Os campos **Não equivale a** e **Evidência necessária**
+delimitam a interpretação.
 
-- **definição de trabalho**: significado adotado na documentação;
-- **manifestação possível**: comportamento ou produto que pode contribuir para
-  observar o conceito;
-- **não exemplo ou interpretação proibida**: dado que não deve ser tratado como
-  equivalente;
-- **evidência necessária**: condição mínima para uma interpretação responsável.
-
-Nenhuma manifestação isolada mede automaticamente um construto. Uma pessoa que
-rejeita uma sugestão pode estar exercendo agência, mas o clique em “rejeitar”
-não revela, sozinho, se ela compreendeu a alternativa e agiu intencionalmente.
+Uma manifestação só ganha valor como evidência quando está ligada a uma tarefa
+e a uma interpretação. A pessoa que rejeita uma sugestão pode estar exercendo
+agência; para sustentar essa conclusão, é preciso examinar se ela compreendeu a
+alternativa e agiu intencionalmente, além de registrar o clique.
 
 ## Tipos de termo
 
-### Construto teórico
-
-Conceito abstrato usado para explicar fenômenos, apoiado por teoria e pesquisa.
-Não é diretamente observável; precisa ser operacionalizado por manifestações e
-instrumentos. Exemplos: agência e aprendizagem autorregulada.
-
-### Resultado
-
-Fenômeno que uma avaliação procura observar sob condições declaradas. Pode ser
-simples, como sucesso numa tarefa de retomada, ou composto, como qualidade
-pedagógica avaliada por rubrica.
-
-### Termo operacional
-
-Vocabulário criado ou delimitado pelo AraLearn para organizar o produto. Não
-tem pretensão de se tornar um construto universal. Exemplos: microssequência e
-base explicativa.
-
-### Política de desenho
-
-Escolha normativa que determina como o produto deve se comportar. Ela pode
-gerar hipóteses, mas não é evidência de efeito. Exemplo: não converter erros,
-ajuda ou tempo em nota ou diagnóstico.
-
-### Condição de tarefa
-
-Característica do cenário em que uma atividade ocorre. Exemplo: prática com
-consequências reduzidas para a avaliação. No AraLearn, a opção específica é
-praticar sem nota ou classificação.
+| Tipo de termo | Função |
+| --- | --- |
+| **construto teórico** | conceito abstrato usado para explicar um fenômeno; teoria e instrumentos relacionam o conceito às manifestações observáveis |
+| **resultado** | fenômeno que uma avaliação procura observar sob condições declaradas, como sucesso numa tarefa de retomada ou qualidade pedagógica avaliada por rubrica |
+| **termo operacional** | vocabulário criado ou delimitado pelo AraLearn para organizar o produto, como microssequência e base explicativa |
+| **política de desenho** | escolha normativa sobre o comportamento do produto, capaz de gerar hipóteses, mas distinta da evidência de efeito |
+| **condição de tarefa** | característica do cenário em que a atividade ocorre, como uma prática sem nota ou classificação |
 
 ## Construtos relacionados à autonomia
 
@@ -471,9 +448,9 @@ outras dimensões.
 - **Tipo:** termo operacional alinhado ao modelo de anotações da Web do W3C;
   na interface, aparece como **Observação**.
 - **Definição:** anotação com corpo e alvo endereçável, autoria, motivação e
-  estado. Pode registrar dúvida, possível erro, confusão, sugestão ou pedido de
-  reformulação ligado a curso, módulo, lição, tópico, microssequência,
-  explicação, unidade de estudo, fonte ou âncora; podem coexistir várias no mesmo alvo
+  estado. Pode registrar uma dúvida, um possível erro ou uma sugestão em
+  qualquer nível endereçável do curso, da estrutura geral a uma unidade, fonte
+  ou âncora. Várias observações podem coexistir no mesmo alvo
   ([W3C (2017)](https://www.w3.org/TR/annotation-model/)).
 - **Manifestação possível:** texto registrado, alvo reencontrável, revisão,
   canal e estado preservados.
@@ -491,8 +468,8 @@ outras dimensões.
 - **Tipo:** resultado composto.
 - **Definição:** alinhamento entre propósito, conhecimentos prévios,
   progressão, explicação, representação, prática e retorno.
-- **Manifestação possível:** teoria cobre a prática, não há saltos ocultos,
-  exemplos são pertinentes e tarefas verificam o objetivo.
+- **Manifestação possível:** a explicação prepara a prática, os exemplos são
+  pertinentes e as tarefas correspondem ao objetivo.
 - **Não equivale a:** esquema válido, grande volume, fluência textual ou
   aprovação de uma única pessoa.
 - **Evidência necessária:** rubrica explícita, revisão de conteúdo e tarefas com
@@ -547,62 +524,63 @@ efeito na interface e nos canais.
 
 ### Curso
 
-Objeto instrucional vivo e identificável que reúne hierarquia, conteúdo,
-desenho, fontes, observações e estado de autoria. Cada recorte completo salvo
-pode ser estudado por quem tem acesso enquanto a produção do curso continua;
-o curso não depende de uma etapa de publicação para existir.
-É unidade de propriedade e autorização do produto, não turma, disciplina,
-intervenção educacional validada ou programa institucional.
+Objeto instrucional identificável que organiza um percurso de estudo e conserva
+o conteúdo, as fontes e as decisões de autoria relacionadas. Quem possui acesso
+pode estudar o que já foi salvo enquanto a produção continua. No produto, o
+curso também é a unidade à qual se vinculam propriedade e autorização. Ele pode
+representar uma disciplina ou integrar uma intervenção, mas esses contextos
+precisam ser definidos fora do termo operacional.
 
 ### Materialização
 
-Operação que transforma desenho e contexto focal autorizados em unidades de
-estudo persistidas. Seu resultado conserva composição, configuração aplicada e
-proveniência correspondentes. A produção da base explicativa é uma operação
-autoral própria e pode anteceder a materialização das unidades. Um rascunho
-intermediário que permita recuperar trabalho permanece identificável como
-incompleto; uma composição parcialmente substituída não é uma entrega pronta.
-Materialização não equivale a geração textual, publicação, qualidade autoral ou
-aprendizagem; seu término demonstra apenas que a operação de autoria alcançou
-um estado persistido verificável.
+Operação que realiza um desenho autorizado como unidades de estudo salvas. O
+resultado registra quais decisões foram aplicadas e de onde vieram seus
+elementos. A base explicativa possui produção própria e pode ser concluída antes
+dessas unidades. Rascunhos recuperáveis e substituições parciais permanecem
+marcados como incompletos. Concluir a materialização confirma a persistência da
+operação; publicação, qualidade autoral e aprendizagem pertencem a outras
+etapas de verificação.
 
 ### Fonte
 
 Objeto de proveniência que identifica o estado corrente de um material usado na
 autoria. Uma fonte pode ser documento, página da Web, vídeo, PDF ou outro
-material aceito pelo produto. Sua presença permite localizar a origem, mas não
-atesta verdade, qualidade, pertinência ou fidelidade da interpretação.
+material aceito pelo produto. Sua presença permite localizar a origem. Verdade,
+qualidade, pertinência e fidelidade da interpretação precisam ser examinadas no
+material e no uso que dele foi feito.
 
 ### Âncora
 
 Localização delimitada dentro da fonte corrente, como página,
 instante de mídia, fragmento de endereço ou trecho textual. Ela torna a
-atribuição reencontrável; não demonstra que o alvo foi interpretado
-corretamente nem substitui a leitura do contexto.
+atribuição reencontrável. A interpretação ainda precisa considerar o conteúdo e
+o contexto ao redor dessa localização.
 
 ### Observação
 
 Nome de interface da anotação ancorada registrada por uma pessoa sobre um alvo
 do curso. Pode expressar dúvida, possível erro, confusão, sugestão ou pedido de
-revisão e possui estado próprio. Não altera o conteúdo automaticamente e não é
-medida de compreensão, dificuldade, qualidade ou aprendizagem.
+revisão e possui estado próprio. O conteúdo só muda quando uma correção é
+aplicada. Compreensão, dificuldade e aprendizagem pertencem a avaliações
+próprias.
 
 ### Achado
 
 Problema identificado numa revisão contextual, com regra pertinente, alvo e
-evidência. Pode orientar uma proposta de correção, mas não constitui por si uma
-observação humana, uma correção aplicada ou uma declaração de revisão autoral.
+evidência. Pode orientar uma proposta de correção. Observação humana, aplicação
+do reparo e declaração de revisão autoral permanecem registros separados.
 O [fluxo de revisão](auditoria-de-conformidade-instrucional.md) descreve como
 reler o contexto, propor o reparo e conferir seus efeitos.
 
 ### Parâmetro de desenho
 
-Escolha que orienta a produção do conteúdo. Por exemplo, a pessoa autora pode
-fixar quantas práticas devem solicitar certa operação ou definir uma extensão
-aproximada para as unidades. O [catálogo de parâmetros](parametros-de-autoria.md)
-esclarece quais valores podem ser escolhidos, onde valem e como chegam ao
-conteúdo. Quando uma decisão do curso também vale para suas partes, diz-se que
-essas partes a herdam, nos limites admitidos pelo catálogo.
+Escolha que orienta a produção do conteúdo. A pessoa autora pode, por exemplo,
+definir quantas práticas devem solicitar determinada operação ou indicar a
+extensão aproximada das unidades. O [catálogo de
+parâmetros](parametros-de-autoria.md) mostra quais valores podem ser escolhidos,
+em que parte do curso valem e como chegam ao conteúdo. Uma decisão definida num
+nível mais amplo pode ser herdada pelos níveis abaixo, conforme as regras do
+catálogo.
 
 Alvos editoriais orientam apresentação e extensão com flexibilidade; uma
 restrição sobre ideias novas delimita o desenho planejado. Seus valores
@@ -612,24 +590,21 @@ de pausas, organizam o trabalho autoral.
 
 ### Configuração corrente ou intenção corrente
 
-Decisão vigente que orienta uma próxima produção ou aplicação autorizada,
-resolvida pelos escopos e pela origem admitidos no catálogo. O detalhe de um
-valor informa onde ele foi fixado, o que foi herdado e qual objeto a mudança
-alcançará. Modificar a intenção não reescreve conteúdo existente, configuração
-aplicada ou condição de pesquisa fixada. Aplicar a nova intenção a conteúdo já
-salvo exige operação própria, com recorte e efeito explícitos.
+Conjunto de decisões que orientará a próxima produção ou aplicação autorizada.
+Cada valor registra onde foi definido, o que foi herdado e qual objeto uma
+mudança alcançará. Alterar essa intenção prepara uma operação futura. Para levar
+o novo valor ao conteúdo salvo, é necessária uma ação própria com alcance e
+efeito explícitos.
 
 ### Configuração aplicada
 
 Registro das decisões instrucionais e editoriais usadas para produzir uma
-unidade de estudo identificada. Preserva o
-valor e a origem conhecidos naquele momento, inclusive calibração automática
-ou aplicação solicitada pelo autor. Diferença em relação à intenção corrente
-permanece visível; uma preferência posterior não atualiza esse registro
-retroativamente. A base explicativa possui registro próprio de versão e
-fontes; sua produção antecede ou acompanha a realização em unidades e não
-recebe essa configuração de unidade. A declaração da IA sobre o que aplicou é um dado a inspecionar,
-não prova de que o conteúdo realiza corretamente o desenho.
+unidade de estudo identificada. Ele preserva os valores e suas origens naquele
+momento, inclusive quando resultam de calibração automática. Assim, uma mudança
+posterior na intenção continua distinguível do que realmente orientou a
+unidade. A base explicativa conserva versão e fontes próprias. Quando a IA
+declara que aplicou uma configuração, essa declaração integra o registro e
+precisa ser conferida no conteúdo produzido.
 
 ### Edição e intervenção humana
 
@@ -648,33 +623,31 @@ declaração, declaração pertinente ao conteúdo corrente e declaração
 desatualizada após mudança material. Marcar com edição pendente requer resolver
 salvar ou descartar; retirar a marca não desfaz a edição.
 
-A declaração sobre uma base não revisa automaticamente suas unidades. Mudanças
-conhecidas em base, fonte ou requisitos podem exigir reinspeção dos objetos
-relacionados. O agregado deve revelar pendências e preservar a ausência de
-registros do acervo antigo. A marca não prova leitura, acerto, qualidade,
-eficácia ou concessão de acesso. É distinta de **Rever**, a marca pessoal do
+A declaração corresponde ao objeto salvo que foi inspecionado: revisar a base
+explicativa não revisa automaticamente suas unidades. Mudanças na base, nas
+fontes ou nos requisitos podem exigir nova inspeção dos objetos relacionados.
+A marca registra a declaração humana; qualidade e eficácia requerem avaliação
+própria. Ela também é distinta de **Rever**, a marca pessoal usada pelo
 estudante para retomar uma unidade.
 
 ### Visibilidade e acesso
 
 Visibilidade expressa a decisão autorizada sobre quem pode encontrar ou estudar
 o curso; acesso é a permissão efetiva de consultar o objeto e seus arquivos.
-Conteúdo completo salvo pode ser estudado sem revisão autoral por quem possui
-acesso, inclusive visitante anônimo de curso explicitamente público. Uma
-política expressa de disponibilizar somente conteúdo revisado acrescenta uma
-condição de acesso; não é o padrão universal nem o significado da revisão.
-Rascunho local, gravação parcial e arquivo sem direito de acesso permanecem
-protegidos. Migração não presume revisão nem torna público um curso privado.
+Quem possui acesso pode estudar o conteúdo completo salvo, inclusive como
+visitante anônimo de um curso público. Uma política opcional pode restringir a
+consulta ao material com revisão autoral. Rascunhos locais, gravações parciais
+e arquivos sem autorização permanecem protegidos. Migrações preservam os
+estados de revisão e visibilidade já conhecidos.
 
 ### Preferências do processo de autoria
 
-Padrões pessoais de foco, cadência, pontos de revisão e diálogo, disponíveis
-aos canais no recorte necessário ao trabalho. Podem iniciar ou orientar a
-continuidade de um mandato, que é o pedido autoral com escopo e condições
-acordados. Exceções explícitas de curso ou pesquisa ficam identificáveis.
-Mudanças posteriores de preferência são conciliadas com o mandato em curso;
-não rematerializam cursos nem alteram silenciosamente uma condição fixada.
-Um perfil salvo é cópia de preferências, não herança viva obrigatória.
+Padrões pessoais que organizam o modo de trabalhar, como o foco da autoria, a
+cadência e os momentos de revisão. Eles podem iniciar ou orientar a continuidade
+de um **mandato**, isto é, o pedido autoral com alcance e condições acordados.
+Exceções de curso ou pesquisa ficam registradas. Uma mudança posterior de
+preferência precisa ser conciliada com o mandato em curso; um perfil salvo
+conserva uma cópia dos valores, e não uma ligação que atualiza todos os cursos.
 
 ### Foco Conteúdo e Ciclo completo
 
@@ -723,8 +696,8 @@ usado ou evidência de que a representação selecionada é adequada.
 ### Segmento discursivo
 
 Trecho delimitado segundo critério declarado, como relação retórica, intenção
-discursiva, subtópico, proposição ou função informacional. Não existe uma
-fronteira semântica universal independente de teoria, procedimento e tarefa
+discursiva ou mudança de subtópico. A fronteira depende da teoria, do
+procedimento e da tarefa
 ([Mann e Thompson (1988)](referencias.md#ref-mann1988rst);
 [Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation);
 [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades)).
@@ -734,11 +707,11 @@ conceitual, retórica ou instrucional.
 
 ### Extensão editorial
 
-Contagem observável de caracteres, palavras, linhas, altura, duração ou volume
-transferido.
-Pode orientar ergonomia, renderização e limites técnicos, mas não mede por si
-mesma densidade conceitual, dificuldade, completude, atenção ou compreensão.
-Quando usada como alvo editorial, continua flexível e não autoriza compressão.
+Medida observável do tamanho ou da apresentação de um conteúdo, como número de
+palavras, altura ou duração. Pode orientar ergonomia, renderização e limites
+técnicos. Densidade conceitual e dificuldade exigem analisar também o que o
+texto desenvolve e para qual público. Quando usada como alvo editorial, a
+extensão continua flexível e não autoriza compressão do conteúdo necessário.
 
 ### Complexidade textual
 
@@ -753,13 +726,16 @@ diretamente nível pedagógico, diagnóstico ou nota de qualidade.
 ### Unidade de estudo
 
 Episódio instrucional apresentado ao estudante, com função delimitada no desenho
-da microssequência: exposição, exemplo, contraste, prática ou integração, entre
-outras funções pertinentes. É persistido, ordenável e endereçável e pode reunir
-representações, solicitação de resposta e retorno. Seu limite acompanha a tarefa
-e suas relações, sem ser determinado por contagem de palavras. É termo
-operacional do AraLearn, distinto de componente de conhecimento, unidade
-psicológica ou unidade estatística de uma pesquisa. Card é sua apresentação
-visual possível; componente é um recurso usado em sua composição.
+da microssequência, como exposição, exemplo ou prática. Ela fica salva numa
+ordem e pode ser endereçada diretamente. Também pode reunir uma representação,
+uma solicitação de resposta e seu retorno. Seu limite acompanha a tarefa e as
+relações necessárias, em vez de uma contagem fixa de palavras. No AraLearn,
+**card** é uma apresentação visual possível da unidade; **componente** é um dos
+recursos usados para compô-la. A unidade de estudo pertence ao modelo
+operacional do produto. Um componente de conhecimento descreve o saber
+mobilizado; uma unidade psicológica delimita um fenômeno humano; e uma unidade
+estatística define o que será observado ou comparado numa análise. Esses três
+conceitos pertencem a níveis analíticos diferentes da unidade de estudo.
 
 ### Cartão de memorização (`flashcard`)
 
@@ -785,11 +761,12 @@ pode desenvolvê-lo e as unidades indicar onde é introduzido, usado ou retomado
 Uma unidade de estudo pode mobilizar vários recortes; um recorte pode atravessar
 várias unidades.
 
-É uma hipótese de análise instrucional do AraLearn, distinta de palavra,
-token, card, componente, medida cognitiva e unidade estatística de análise.
-A distinção de níveis, eventos observáveis e aprendizagem inferida no KLI ajuda
-a explicitar esse limite ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli));
-não valida a correspondência entre cada recorte e um componente de conhecimento.
+É uma convenção de análise instrucional do AraLearn. Palavras, elementos da
+interface e unidades estatísticas seguem outros critérios de recorte. O quadro
+KLI ajuda a distinguir atividade observável e aprendizagem inferida
+([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)); cada
+correspondência entre o recorte editorial e um componente de conhecimento
+permanece uma hipótese a investigar.
 
 ### Conjunto de coordenação
 
@@ -809,11 +786,10 @@ conteúdo; não existe uma lista que toda explicação precise preencher.
 
 ### Forma de explicação
 
-Realização observável pela qual uma unidade ou relação é desenvolvida, como
-definição simples, exemplo concreto, mecanismo, contraste, condição de
-aplicação, limite, exemplo resolvido ou ligação entre representações. A forma
-pode ser exigida somente quando aplicável e não é sinônimo de menção de uma
-palavra, comprimento do texto ou qualidade comprovada.
+Realização observável pela qual uma ideia ou relação é desenvolvida, como um
+exemplo concreto, um contraste ou a explicação de um mecanismo. A forma só é
+exigida quando corresponde à necessidade do conteúdo. Mencionar uma palavra ou
+aumentar o texto, por si só, não demonstra que essa necessidade foi atendida.
 
 ### Requisito de evidência
 
@@ -832,10 +808,9 @@ texto, ordem visual ou componente não cria necessariamente outra oportunidade.
 ### Dimensão de variação da prática
 
 Aspecto declarado que muda entre oportunidades voltadas ao mesmo requisito de
-evidência, como caso ou dados, contexto, característica da tarefa,
-representação externa ou nível de apoio. A operação-alvo permanece invariável;
-trocar a operação tende a constituir outro requisito, não uma variação do
-mesmo.
+evidência, como os dados do caso, o contexto ou o nível de apoio. A
+operação-alvo permanece a mesma; quando ela muda, em geral há outro requisito de
+evidência, e não apenas uma variação da prática anterior.
 
 ### Fidelidade da tarefa
 
@@ -845,10 +820,11 @@ uma representação pode ser adequada a uma evidência e insuficiente para outra
 
 ### Diagnóstico pedagógico contextual
 
-Síntese de planejamento que relaciona condições de aprendizagem, exigências do
-conteúdo, dificuldades previstas e respostas de desenho antes da
-materialização. Não equivale a avaliação clínica ou psicométrica, perfil
-individual, medição de domínio nem predição de eficácia.
+Síntese de planejamento feita antes da materialização. Ela relaciona as
+condições do público às exigências do conteúdo, formula dificuldades previstas
+e registra como o desenho responderá a elas. O adjetivo **pedagógico** delimita
+seu alcance: trata-se do planejamento do curso, e não de avaliação clínica,
+perfil individual ou medição de domínio.
 
 ### Condição de aprendizagem
 
@@ -882,15 +858,17 @@ Recorte didático orientado a um objetivo delimitado e a uma progressão, com
 público, repertório presumido, escopo e dependências pertinentes. Reúne base
 explicativa, desenho e unidades de estudo, que podem estar em estágios distintos
 de produção. Sua identidade não depende de já possuir unidades materializadas.
-Conserva a hierarquia curso → módulo → lição → microssequência → unidade.
-É termo operacional do AraLearn, sem duração ou quantidade fixa e sem pretensão
-de constituir unidade universal da pesquisa educacional.
+Na estrutura do curso, ocupa o nível entre a lição e as unidades de estudo. É
+um termo operacional do AraLearn, sem duração ou quantidade fixa; uma pesquisa
+que o use como unidade de análise precisa justificar esse recorte.
 
 ### Base explicativa da microssequência — explicação
 
 Exposição intelectual e documental desenvolvida para o objetivo da
-microssequência, com pressupostos, conceitos, relações, mecanismos, exemplos,
-limites e fontes pertinentes. A interface apresenta esse texto como explicação. Pode ser
+microssequência. Ela torna explícito o repertório presumido, desenvolve as
+relações necessárias e registra as fontes pertinentes. Conceitos, exemplos e
+limites entram conforme o objetivo. A interface apresenta esse texto como
+**explicação**. Pode ser
 produzida e revisada antes das unidades e, no estudo, funciona também como apoio
 sob demanda. O contrato prevê uma instância salva por microssequência,
 consultada sem geração por IA ao abrir.
@@ -911,9 +889,9 @@ automaticamente o repertório atribuído ao estudante.
 ### Desenho instrucional da microssequência
 
 Intenção articulada sobre como apresentar e mobilizar o conteúdo para o público
-e o objetivo: análise de conhecimento, evidência pretendida, parâmetros,
-representações, componentes, prática e sequência. Orienta episódios
-instrucionais, não apenas contagens ou o preenchimento de uma tela. A relação
+e o objetivo. Relaciona o conhecimento necessário à evidência pretendida e
+organiza a sequência de explicação, representação e prática. Assim, orienta os
+episódios instrucionais, e não apenas contagens ou o preenchimento de uma tela. A relação
 entre objetivo, atividade e avaliação fundamenta o cuidado com alinhamento
 ([Biggs (1996)](referencias.md#ref-biggs1996alignment)); esse fundamento não
 determina uma taxonomia única, forma obrigatória ou teto universal de ideias.
@@ -921,10 +899,10 @@ determina uma taxonomia única, forma obrigatória ou teto universal de ideias.
 ### Parte de autoria
 
 Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
-dependências, complexidade das microssequências e volume de revisão. É recorte
-de coordenação da produção de bases e/ou unidades, não nível curricular. Seus
-alvos configuráveis coordenam trabalho e revisão, sem impor cota pedagógica ou
-quantidade universal; cada parte pode abranger várias microssequências.
+dependências e volume de revisão. Coordena a produção de explicações e unidades,
+mas não acrescenta um nível à estrutura curricular. Seus alvos configuráveis
+organizam o trabalho sem impor uma quantidade pedagógica; uma parte pode
+abranger várias microssequências.
 
 ### Microteoria
 
@@ -950,14 +928,16 @@ não resultado demonstrado sobre ansiedade.
 
 ### Frugalidade
 
-Critério de proporcionalidade de armazenamento, volume transferido, latência, custo e
-manutenção ao contexto do produto. Não autoriza reduzir segurança,
-acessibilidade, rigor ou qualidade pedagógica.
+Critério que relaciona o uso de recursos técnicos, como armazenamento, dados
+transferidos e custo de manutenção, ao contexto do produto. A redução de
+recursos permanece subordinada à segurança, à acessibilidade e à qualidade
+pedagógica.
 
 ### Análise de dados centrada nas pessoas
 
-Orientação segundo a qual pergunta, participação, interpretação, intervenção e
-limite precedem a coleta de dados
+Orientação segundo a qual a pergunta, a participação das pessoas afetadas, a
+interpretação pretendida, a intervenção que poderia decorrer dos resultados e
+os limites desse uso são definidos antes da coleta de dados
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
 [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)).
 Não equivale a painel de indicadores, predição ou vigilância.
@@ -1011,8 +991,8 @@ Não equivale a painel de indicadores, predição ou vigilância.
 ### Escopo dos dados de autoria
 
 - **Tipo:** recorte operacional.
-- **Definição:** curso, parte, microssequência ou unidade de estudo escolhida para
-  agregar o estado corrente.
+- **Definição:** nível escolhido para agregar o estado corrente, do curso a uma
+  unidade de estudo.
 - **Não equivale a:** depósito analítico, população de participantes ou
   construto científico.
 - **Evidência necessária:** definição do recorte, regras de inclusão e
@@ -1212,18 +1192,16 @@ explicitar contexto e limites.
 
 ## Regra de operacionalização
 
-Qualquer métrica, indicador ou desfecho futuro deve registrar:
+Qualquer métrica, indicador ou desfecho futuro precisa conservar a cadeia que
+liga a pergunta ao dado:
 
-1. construto ou resultado;
-2. Unidade de análise;
-3. manifestação observada;
-4. instrumento e qualidade da medida;
-5. interpretação permitida;
-6. explicações alternativas;
-7. intervenção possível;
-8. retenção, acesso, exclusão e custo do dado;
-9. unidade, denominador e algoritmo quando houver valor numérico;
-10. versão e proveniência da operacionalização.
+| Etapa | Registro necessário |
+| --- | --- |
+| definição | construto ou resultado, unidade de análise e manifestação observada |
+| medida | instrumento e qualidade da medida; para valores numéricos, unidade, denominador e algoritmo |
+| interpretação | uso permitido, explicações alternativas e intervenção possível |
+| governança | acesso, retenção, exclusão e custo do dado |
+| rastreabilidade | versão e proveniência da operacionalização |
 
 Se essa cadeia não puder ser preenchida, o dado não deve entrar apenas por
 estar tecnicamente disponível. Um termo operacional pode tornar-se objeto de
@@ -1234,17 +1212,13 @@ desenvolvimento e validação próprios.
 
 ## Interpretação dos dados de autoria
 
-- **Fato de autoria** descreve uma atividade ou estado observável do processo;
-  não equivale a atenção, esforço, domínio ou aprendizagem.
-- **Completude do recorte** descreve fatos presentes e ausentes segundo uma
-  consulta; não mede adesão sem protocolo e população definidos.
-- **Diferença entre cursos** descreve desenho ou materialização; não é efeito
-  causal sem identificação, instrumento válido e análise apropriada.
-- **Ausência** é dado não disponível ou explicitamente ausente. Não deve ser
-  convertida automaticamente em zero, fracasso ou abandono.
-- **Adequação contextual de componente** (`canonical`, `versatile`,
-  `substitute`) descreve a relação declarada com a necessidade instrucional;
-  não ordena qualidade.
+| Registro | Interpretação delimitada |
+| --- | --- |
+| fato de autoria | descreve uma atividade ou estado observável do processo; atenção, esforço e aprendizagem requerem medidas próprias |
+| completude do recorte | descreve o que está presente ou ausente na consulta; adesão exige protocolo e população definidos |
+| diferença entre cursos | descreve desenho ou materialização; atribuir efeito causal exige identificação, instrumento válido e análise apropriada |
+| ausência | registra que um dado não está disponível ou não se aplica; zero, fracasso e abandono possuem outros significados |
+| adequação contextual de componente (`canonical`, `versatile`, `substitute`) | descreve a relação declarada entre o componente e a necessidade instrucional, sem ordenar sua qualidade |
 
 <!-- referências locais: início -->
 

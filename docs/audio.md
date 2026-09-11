@@ -1,6 +1,10 @@
 # Áudio no estudo
 
-O áudio pode integrar uma unidade ou a [explicação compartilhada](explicacao-e-revisao-humana.md). Sua função depende da tarefa: ouvir um exemplo, reconhecer um som ou acompanhar uma explicação. Abra o ícone da ferramenta para escolher uma faixa, reproduzir, parar ou consultar a alternativa textual disponível.
+O áudio pode integrar uma unidade ou a
+[explicação compartilhada](explicacao-e-revisao-humana.md). Sua função depende
+da tarefa: ouvir um exemplo, reconhecer um som ou acompanhar uma explicação.
+Abra o ícone da ferramenta para escolher uma faixa, controlar sua reprodução e
+consultar a alternativa textual disponível.
 
 Há duas formas de escutar: pedir ao dispositivo que leia um texto ou reproduzir um arquivo já guardado no curso. O autor também pode gerar uma gravação por um serviço externo e, depois de ouvi-la, guardá-la como arquivo.
 
@@ -48,7 +52,11 @@ Revogar acesso impede novas autorizações, mas não recolhe os dados já recebi
 
 Na Autoria, **Gerar voz** utiliza o serviço Gemini configurado no aplicativo. Informe o texto, escolha uma voz, forneça a credencial temporária e autorize o envio e o consumo da sua cota. A credencial não fica guardada no curso nem no perfil. Abrir uma unidade ou reproduzir uma faixa existente não gera outra gravação.
 
-Ouça o resultado antes de guardar. Pronúncia, sotaque e ritmo podem precisar de ajuste, sobretudo em conteúdo especializado. O serviço declara suporte a idiomas como português, inglês, japonês, coreano e chinês mandarim; isso não garante a qualidade de uma gravação específica. [Vozes e geração de fala](https://ai.google.dev/gemini-api/docs/generate-content/speech-generation).
+Ouça o resultado antes de guardar. Pronúncia, sotaque e ritmo podem precisar de
+ajuste, sobretudo em conteúdo especializado. O serviço declara suporte a
+português, inglês, japonês e outros idiomas. Cada gravação ainda precisa ser
+conferida pela autoria. Consulte
+[Vozes e geração de fala](https://ai.google.dev/gemini-api/docs/generate-content/speech-generation).
 
 A interface gera a gravação em ritmo normal; a velocidade configurada no curso é aplicada ao reproduzi-la. Para textos longos, divida a gravação por partes que façam sentido na aprendizagem. O aplicativo aceita até 16 mil caracteres por fala e não corta o texto automaticamente; o serviço também tem seus próprios limites.
 
@@ -56,7 +64,17 @@ Se a resposta da geração se perder, outro pedido pode produzir outra cobrança
 
 ## Custo, privacidade e disponibilidade
 
-A referência de preços conferida em 11 de setembro de 2026 informa nível gratuito e, no nível pago do Gemini 2.5 Flash Preview TTS, US$ 0,50 por milhão de tokens de texto de entrada e US$ 10 por milhão de tokens de áudio de saída. Tokens são unidades usadas pelo serviço para processar texto ou áudio; não correspondem a um número fixo de caracteres ou segundos. A cota e a cobrança dependem do projeto e da conta. Confira os [preços](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-preview-tts) e [limites por projeto](https://ai.google.dev/gemini-api/docs/rate-limits) antes de gerar.
+A referência de preços conferida em 11 de setembro de 2026 informa um nível
+gratuito e outro pago para a geração de fala a partir de texto (*text-to-speech*,
+TTS). No Gemini 2.5 Flash Preview TTS, o nível pago indicava US$ 0,50 por milhão
+de tokens de texto de entrada e US$ 10 por milhão de tokens de áudio de saída.
+
+Tokens são unidades usadas pelo serviço para processar texto ou áudio; não
+correspondem a um número fixo de caracteres ou segundos. A cota e a cobrança
+dependem do projeto e da conta. Confira os
+[preços](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-preview-tts)
+e os [limites por projeto](https://ai.google.dev/gemini-api/docs/rate-limits)
+antes de gerar.
 
 Nos serviços gratuitos, os termos do Google admitem uso do conteúdo para melhoria de produtos e revisão humana e orientam a não enviar dados pessoais, confidenciais ou sensíveis. Os serviços pagos têm condições diferentes, além de retenções ligadas a segurança e abuso. A autorização na interface não substitui a conferência das condições da conta. [Termos da Gemini API](https://ai.google.dev/gemini-api/terms).
 
@@ -72,7 +90,10 @@ A Web Speech API é o recurso pelo qual o navegador oferece síntese de voz. Ela
 
 ### Integridade e transferência dos arquivos
 
-O servidor confere formato, tamanho, acesso e bytes do arquivo. Guarda também um **hash**, resumo calculado que permite verificar se o conteúdo recebido corresponde ao armazenado. O curso referencia a identidade do áudio, não seu endereço interno de armazenamento.
+O servidor confere o arquivo recebido e a autorização para guardá-lo. Também
+registra seu tamanho, formato e **hash**, resumo calculado que permite verificar
+se os mesmos bytes chegaram ao armazenamento. O curso referencia a identidade
+do áudio, não seu endereço interno de armazenamento.
 
 Na reprodução, o aplicativo confere o arquivo e cria um objeto em memória, chamado **Blob**, para disponibilizar seus bytes ao navegador. O endereço local desse objeto é liberado ao terminar o uso. Mesmo um arquivo com estrutura aceita pode falhar no decodificador de um navegador, que transforma os dados em som; a ferramenta informa essa situação e permite tentar novamente.
 

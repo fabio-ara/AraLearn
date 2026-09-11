@@ -16,10 +16,10 @@ correções foram salvas seria apenas uma parte da observação.
 ## Formular caminhos de investigação
 
 A escolha do enquadramento depende do problema e do acesso a participantes,
-materiais e situações de uso. O mesmo aplicativo pode integrar estudos de
-desenho instrucional, autorregulação, interação com IA ou adoção institucional.
-Os caminhos abaixo são possibilidades do projeto, sem pressupor um programa
-de pós-graduação ou orientador.
+materiais e situações de uso. O mesmo aplicativo pode sustentar perguntas que
+vão do desenho de um curso ao modo como ele é adotado por uma instituição. A
+tabela oferece pontos de partida para transformar interesses diferentes em
+perguntas investigáveis.
 
 | Interesse inicial | Pergunta possível | Como começar a investigá-la |
 | --- | --- | --- |
@@ -70,13 +70,14 @@ criam dificuldades naquele contexto
 [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
 
 Quando a pergunta trata de uma solução e do conhecimento que sua construção e
-avaliação podem acrescentar, **Design Science Research** (DSR) é outro
-referencial possível. Uma investigação pode, por exemplo, comparar maneiras de
-apresentar decisões de autoria e avaliar sua utilidade e seus limites
+avaliação podem acrescentar, a **pesquisa orientada à construção e avaliação
+de artefatos**, ou *Design Science Research* (DSR), oferece outro referencial.
+Uma investigação pode, por exemplo, comparar maneiras de apresentar decisões
+de autoria e avaliar sua utilidade e seus limites
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience)). DBR e DSR
-possuem tradições e ênfases distintas; nenhuma delas é requisito para toda
-pesquisa sobre o AraLearn. O [protocolo de avaliação](protocolo-avaliacao-artefato.md)
-explica como escolher e particularizar essas estratégias.
+possuem tradições e ênfases distintas. A pergunta e a contribuição pretendida
+orientam a escolha. O [protocolo de avaliação](protocolo-avaliacao-artefato.md)
+explica como particularizar essas estratégias.
 
 Para atribuir um efeito a uma mudança, a comparação precisa enfrentar outras
 explicações. Se autores experientes usam uma versão e iniciantes usam outra,
@@ -137,8 +138,9 @@ diferentes. O [modelo didático](modelo-didatico.md) desenvolve essa relação.
 
 As escolhas de autoria permitem produzir condições deliberadamente diferentes.
 O [catálogo de desenho](desenho-instrucional-parametrizado.md) reúne decisões
-sobre novidades introduzidas, formas de explicação, prática, extensão editorial
-e organização do trabalho autoral. Cada decisão tem um alcance próprio.
+que orientam desde a distribuição do conhecimento e da prática até a extensão
+editorial e a organização do trabalho autoral. Cada decisão tem um alcance
+próprio.
 
 Para planejar o conteúdo, uma **unidade de análise instrucional** acompanha um
 recorte de conhecimento, como um conceito ou uma relação. Um **requisito de
@@ -166,18 +168,19 @@ O curso continua editável durante seu uso cotidiano. Para identificar o que os
 participantes estudaram, a pesquisa guarda a versão apresentada e as condições
 de exposição, como data, acesso à ajuda e materiais externos disponíveis.
 
-Em **Dados de autoria**, **Exportar curso e análise** reúne o conteúdo integral salvo
-do curso e a leitura quantitativa do escopo escolhido. Inclui as explicações,
-suas fontes, os registros disponíveis de configuração aplicada e as declarações
-de revisão. A exportação conserva uma revisão consistente do curso; os PDFs e
-áudios permanecem referenciados e precisam ser guardados separadamente quando
-integram o estudo. Os campos estão na [referência de exportação](dicionario-metricas-datasets.md#comparação-e-exportação).
+Em **Dados de autoria**, **Exportar curso e análise** reúne o conteúdo integral
+salvo e a leitura quantitativa do escopo escolhido. O arquivo conserva, sob a
+mesma revisão do curso, o material e os registros necessários para interpretar
+seu desenho. PDFs e áudios permanecem referenciados e precisam ser guardados
+separadamente quando integram o estudo. A [referência de
+exportação](dicionario-metricas-datasets.md#comparação-e-exportação) descreve
+os campos disponíveis.
 
-**Dados de autoria** é a área que apresenta contagens do desenho e das intervenções
-observáveis na autoria. Abre em **Novidade declarada**; **Escolher dimensão e
-escopo** permite examinar curso, parte, microssequência ou unidade. **Abrir dados
-e definições** ajuda a conferir de onde vieram os números. O [guia de
-dados de autoria](analytics-instrucionais.md) explica essas consultas.
+**Dados de autoria** apresenta contagens do desenho e das intervenções
+observáveis na autoria. A entrada mostra **Novidade declarada**; a partir dela,
+é possível mudar a dimensão e o trecho do curso examinado ou abrir os dados e
+suas definições. O [guia de dados de autoria](analytics-instrucionais.md)
+explica essas consultas.
 
 As contagens descrevem o material salvo e as intervenções cuja origem pode ser
 identificada. Elas ajudam a caracterizar o curso usado na pesquisa. Processos

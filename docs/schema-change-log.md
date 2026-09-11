@@ -1,4 +1,21 @@
-# Alterações do schema
+# Alterações do esquema de dados
+
+O AraLearn guarda no PostgreSQL o conteúdo compartilhado e as relações que o
+mantêm coerente. A organização dessas tabelas, funções e regras de acesso é
+chamada de **esquema de dados**. Cada *migration* é um arquivo SQL versionado que
+leva esse esquema de um estado conhecido ao seguinte, preservando ou
+transformando os dados conforme a mudança exige. A
+[persistência relacional](persistencia-relacional.md) apresenta primeiro o
+funcionamento corrente; este registro conserva a sequência histórica das
+alterações.
+
+O título de cada entrada começa pelo identificador temporal da migração; esse
+identificador informa a ordem exata das alterações. O **manifesto da execução**
+declara qual revisão do esquema o site e as funções remotas esperam encontrar. Testes
+locais verificam regras e transformações com dados controlados; a implantação
+hospedada acrescenta a conferência do ambiente que realmente atende ao
+aplicativo. Outros termos recorrentes estão no
+[glossário técnico](glossario-tecnico.md).
 
 ## 20260910134141 — cobertura curricular de cópias independentes
 
@@ -16,12 +33,12 @@ a restauração e o ensaio do upgrade devem conferir os dados úteis preservados
 
 ## 20260910054749 — aplicações existentes e prática planejada
 
-O registro de aplicações e a aplicação expressa de configuração em unidades
-existentes conservam requisitos de prática ainda não realizados ou parcialmente
-realizados. Um núcleo privado compartilhado valida a integridade das declarações;
-o caminho de materialização completa também exige cobertura, quantidade mínima
-de oportunidades e dimensões de variação. O modo é escolhido pelo escritor,
-sem acrescentar campo aos canais de autoria.
+Esta mudança permite registrar, em unidades já existentes, a prática planejada
+que ainda está ausente ou parcialmente realizada. Na produção completa, o
+servidor continua exigindo a cobertura prevista, a quantidade mínima de
+oportunidades e sua variação. Tecnicamente, um núcleo privado compartilhado
+valida as declarações, e o escritor escolhe o modo da operação sem acrescentar
+campo aos canais de autoria.
 
 A migration preserva os vínculos e dados do curso, snapshots, fontes e revisão.
 Referências, oportunidades duplicadas, operação invariável, componentes, acesso,
@@ -32,27 +49,42 @@ hospedada. O manifesto avança para exigir esta revisão no corte.
 
 ## 20260908105357 — leitura de origens autorizadas para cópia
 
-A preparação de cópia usa uma leitura de serviço específica para cursos próprios ou com permissão explícita de cópia. As chamadas anteriores alcançavam wrappers de leitura cujo acesso já havia sido revogado. A migração acrescenta `list_copyable_courses_for_actor_v1`, sem reativar esses wrappers nem conceder edição da origem compartilhada.
+Ao preparar uma cópia, o serviço precisa ler somente cursos próprios ou com
+permissão explícita para essa operação. As chamadas anteriores alcançavam
+funções intermediárias, ou *wrappers*, cujo acesso já havia sido revogado. A
+migração acrescenta `list_copyable_courses_for_actor_v1`, mantendo a origem
+compartilhada sob a autoridade do proprietário.
 
 O leitor reutiliza a política e a projeção atuais, valida o perfil do ator e filtra a autorização antes do limite e do cursor. A consulta por UUID devolve o mesmo envelope de lista; curso ausente ou sem permissão produz lista vazia, sem metadados privados. Ser público ou estar disponível apenas para estudo não concede cópia. Testes transacionais cobrem esses casos, a paginação, as concessões exclusivas ao serviço e a preservação dos registros. Não há transformação de cursos, arquivos, fontes ou decisões de revisão.
 
 ## 20260908023156 — impressão regenerada do catálogo de pacotes
 
-O gate de autoíndice identificou o fingerprint gerado desatualizado. Reexecutar o gerador manteve imports e ordem dos pacotes e atualizou somente `RESOURCE_PACKAGE_CONTRACT_FINGERPRINT`. A projeção SQL passa a anunciar essa impressão, consumida pela descoberta do contrato, mantendo a versão `1-70b27609`, as referências e as opções do catálogo.
+O catálogo de componentes é gerado a partir dos pacotes instalados. Uma impressão
+digital, ou *fingerprint*, permite conferir se a projeção anunciada pelo servidor
+corresponde a esse catálogo. A verificação automática encontrou a impressão
+desatualizada; reexecutar o gerador manteve os pacotes e atualizou somente
+`RESOURCE_PACKAGE_CONTRACT_FINGERPRINT`. A projeção SQL passa a anunciar essa
+impressão para a descoberta do contrato, mantendo a versão `1-70b27609`, a ordem,
+as referências e as opções do catálogo.
 
 O bloco SQL foi produzido por `renderResourcePackageCatalogSql()`. A migração exige revisão e fingerprint anteriores exatos, compara versão/opções e metadados da função após a substituição e não regrava políticas, conteúdo, snapshots ou decisões de revisão. O manifesto avança para distinguir o backend com a projeção sincronizada. Testes focais exercitam preservação e rollback quando a origem diverge ou as opções sofreriam alteração incidental. A igualdade dessa impressão é um contrato de sincronização; não constitui evidência de eficácia pedagógica.
 
 
 ## 20260908020737 — conflito de revisão na leitura das citações
 
-A leitura das citações da Explicação passa a devolver `PT409` quando a revisão solicitada ficou antiga, conforme o contrato de conflitos HTTP 409. A mensagem, a assinatura e as guardas de acesso e revisão humana permanecem. Não há alteração de dados, concessões ou aprovações.
+Quando um cliente pede citações a partir de uma revisão antiga, ele precisa reler
+o estado corrente antes de continuar. A consulta passa a comunicar essa situação
+como conflito HTTP 409, representado por `PT409` no banco. A mensagem, a assinatura
+e as guardas de acesso e revisão humana permanecem; os dados e as decisões de
+acesso ou revisão conservam seu estado.
 
 A falha foi reproduzida pelo gate SQL de conflitos: a nova leitura ainda levantava `40001`, reservado à serialização nativa. O teste focal agora exerce esse CAS diretamente, além do inventário de guardas e da preservação dos envelopes nativos. Fixtures de acesso público, citações e áudio aprovam seu conjunto exclusivamente sintético pelo RPC de sessão do proprietário; política de arquivo e presença de vínculo não substituem revisão. Chamadas SQL posicionais de metadados tipam o argumento JSON para distinguir os overloads; clientes continuam usando argumentos nomeados.
 
 
 ## 20260908003749 — ausência de atribuição em Fontes
 
-A leitura de um alvo existente sem atribuição bibliográfica retorna `items: []`.
+Ao consultar um trecho que ainda não possui fonte atribuída, o cliente recebe uma
+lista vazia, `items: []`.
 A função escalar que resolve a atribuição produzia uma linha composta nula no
 `FROM`; a agregação transformava essa ausência em item com identidade e versão
 nulas, recusado corretamente pelo cliente. O filtro por identidade da atribuição
@@ -71,6 +103,9 @@ foi reescrita. Essa distinção é coberta na prova local, sem afirmar revisão 
 de conteúdo real ou aplicação hospedada.
 
 ## 20260908002120 — edição manual da Explicação
+
+Esta mudança permite que a pessoa proprietária edite somente a explicação da
+microssequência que está inspecionando, preservando o restante do curso.
 
 A composição existente recebe um ramo focal para a pessoa proprietária editar
 somente a Explicação da microssequência inspecionada. O serviço exige versão da
@@ -94,6 +129,9 @@ CAS, replay, recusa de mudança de escopo/fontes, preservação de unidades e re
 e permissões do serviço; clientes e publicação hospedados permanecem no gate final.
 
 ## 20260907222912 — Explicação compartilhada e revisão humana
+
+Cada microssequência passa a ter uma explicação compartilhada, preparada uma
+vez e consultada por suas unidades.
 
 A microssequência corrente conserva `explanationPlan` e uma `explanation` com
 título e recursos do catálogo comum. Materializar uma parte exige um apoio por
@@ -133,6 +171,9 @@ aprendizagem nem substituem a inspeção humana do conteúdo.
 
 ## 20260907031059 — declaração do contrato de conflitos HTTP 409
 
+Antes de publicar site e funções, a implantação precisa confirmar que o banco
+reconhece a nova resposta para conflitos.
+
 O manifesto passa a anunciar `course-business-conflicts-http-409-v1`, com 48
 capacidades em ordem canônica e `contractVersion: 1`. A declaração exige o
 manifesto 20260905163000 e a migration de conflitos 20260907013604 aplicada,
@@ -144,7 +185,33 @@ A comparação hospedada e o ensaio de restauração exigem a revisão e as
 capacidades exatas; a cadeia pendente termina nesta declaração. A migration
 não reaplica a transformação dos conflitos nem substitui a prova de restauração.
 
+## 20260907013604 — conflitos de aplicação com resposta finita
+
+Quando duas operações partem de uma revisão que já ficou antiga, o cliente deve
+receber uma resposta finita e reler o estado antes de tentar novamente. A
+migration `20260907013604_business_conflicts_use_http_409.sql` passa a representar
+esses conflitos por `PT409`, correspondente ao HTTP 409. Usar `40001` nesses
+pontos podia manter a mesma consulta em repetição no transporte. As guardas de
+revisão, locks, permissões e recibos permanecem.
+
+A transformação transacional se limita a 43 assinaturas correntes, com contagens
+prévias verificadas: 69 pontos de conflito e sete capturas ampliadas. Ela preserva
+os metadados das funções e os oito códigos JSON dos envelopes `PGRST`, incluindo
+o tratamento de serialização nativa. Nenhuma tabela de dados é modificada. A API
+reconhece o novo SQLSTATE como `stale_course_state`; banco e Edge devem ser
+promovidos de forma coordenada.
+
+O teste `supabase/tests/024_business_conflicts_test.sql` verifica leitura com
+revisão divergente e atual, autorização, ausência de escrita nas leituras, os dois
+caminhos de captura, rollback e idempotência. Os testes dos comandos afetados
+conservam os casos de conflito. Essas provas locais e a validação HTTP no corte
+hospedado examinam etapas complementares da mudança; o procedimento de
+backup/restauração continua próprio da implantação.
+
 ## 20260905163000 — ordem canônica das capacidades
+
+Um banco restaurado pode ordenar texto de formas diferentes conforme sua
+configuração linguística. Esta mudança torna estável a comparação do manifesto.
 
 O manifesto conserva suas 47 capacidades e as ordena com collation `C`, sem
 depender da configuração linguística do banco restaurado. O complemento não
@@ -164,6 +231,9 @@ semântica, conservando sua versão literal; registros já aplicados não são
 reescritos. O manifesto exige 47 capacidades na revisão 20260905162000.
 
 ## 20260905154944 — base de autoria, comparação e exportação
+
+Para comparar escolhas de autoria, a exportação passa a levar consigo a base
+curricular à qual as contagens se referem.
 
 Analytics v4 inclui a base curricular do curso, os inventários declarados e as
 escolhas solicitadas e aplicadas. A projeção distingue ausência de declaração,
@@ -276,6 +346,10 @@ etapa é `20260905101903`; a aplicação local não certifica a migração hospe
 
 ## 20260905094108–20260905095110 — decisão histórica e aplicação corrente
 
+O escritor anterior registrava a configuração aplicada em mais de uma forma, e
+uma delas perdeu o campo que identificava seu tipo. A preparação abaixo repara
+essa diferença antes da atualização.
+
 A preparação `20260905094108_normalize_applied_design_discriminator.sql`
 identifica a forma produzida pelo escritor anterior e acrescenta o discriminador
 que uma expressão SQL omitia. Nenhum valor, identidade ou horário é reinterpretado.
@@ -336,6 +410,9 @@ migrations pendentes antes da aplicação hospedada.
 
 ## 20260905083846 — escolha automática na aplicação contextual
 
+Quando uma escolha fica delegada ao assistente, a produção precisa resolvê-la no
+contexto da unidade e registrar o valor escolhido e seu motivo.
+
 A migration `20260905083846_contextual_automatic_design_application.sql` permite
 que a materialização existente selecione valores automáticos no contexto da
 unidade, registrando valor, origem e motivo no snapshot v2. Parte, lote e pausa
@@ -358,6 +435,9 @@ preservada e resposta perdida. Fixtures sintéticas são revertidas ao terminar;
 essa evidência não declara implantação hospedada.
 
 ## 20260905080544 — parâmetros por escopo e perfis de autoria
+
+Uma decisão de desenho pode valer para diferentes partes do curso e pode ser
+delegada ou fixada pela pessoa.
 
 A migration `20260905080544_scoped_authoring_preferences_and_profiles.sql` projeta
 o catálogo único 1.2.0, distingue intenção automática de valor fixo e substitui
@@ -386,6 +466,9 @@ certificam implantação hospedada.
 
 ## 20260905062817 — identidade e acesso público
 
+Esta mudança permite que cada pessoa escolha um identificador e que o
+proprietário disponibilize um curso explicitamente ao público.
+
 A migration `20260905062817_public_course_access_and_identity.sql` introduz identificadores escolhidos pelas pessoas e leitura pública de cursos. Perfis conservam UUID e avatar; o identificador inicial fica vazio até a escolha. Os nomes anteriores são preservados em `private.person_profile_identity_migration_backup`, sem permissão para clientes nem leitor de runtime. Cursos existentes e novos permanecem privados por padrão.
 
 A publicação exige confirmação do proprietário e política explícita de arquivos. O bucket continua privado. Exceções de arquivo prevalecem sobre as da fonte; estas prevalecem sobre a política do curso. As RPCs públicas projetam somente dados de estudo. Visitantes não precisam de conta; pessoas autenticadas podem enviar suas próprias observações, sem editar o curso.
@@ -408,11 +491,17 @@ No ensaio local, passaram 63 verificações do estado final, 17 de upgrade e 2 d
 
 ## 20260905070040 — guarda de upload de avatar
 
+Antes de guardar um avatar, o serviço confere se a sessão e o caminho do arquivo
+pertencem à mesma pessoa.
+
 A migration `20260905070040_fix_person_avatar_storage_profile_guard.sql` retira da policy de inserção do Storage a consulta direta a `person_profiles`, cuja leitura ampla foi revogada. Reutiliza a guarda protegida existente, que valida sessão, perfil e exclusão de conta sob lock. As condições de proprietário, caminho e bucket permanecem. Nenhum diretório de perfis é aberto.
 
 O teste `supabase/tests/012_person_avatar_storage_policy_test.sql` passou 16 verificações locais: upload e leitura próprios, busca no contexto do curso, relação de compartilhamento, negações para outra pessoa e visitante, sessão expirada e bucket privado. Ele exercita policies com identidades sintéticas em transação; a transferência de bytes depende da jornada real de Storage.
 
 ## 20260905070507 — metadados atômicos e projeção de citações
+
+Ao salvar título e objetivo junto do conteúdo, toda a mudança precisa ser
+confirmada ou desfeita como uma unidade.
 
 A migration `20260905070507_atomic_course_metadata_and_public_citations.sql` estende o comando existente de composição com `courseMetadata: {title, objective}` opcional. Título, objetivo, entidades e atribuições usam a mesma transação, revisão esperada e recibo. A edição focal de unidade rejeita metadados do curso. A ausência do argumento conserva as chamadas existentes e seus hashes; as assinaturas substituídas são retiradas.
 
@@ -425,11 +514,3 @@ A migration `20260905071622_separate_public_file_policy_from_citation_display.sq
 O teste focal `supabase/tests/013_atomic_course_metadata_test.sql` passou 28 verificações locais sobre as duas últimas correções: gravação somente de metadados, combinação com entidades e atribuições, idempotência, conflito de revisão, propriedade, rollback integral, chamadas sem o novo argumento, projeção anônima sem trecho privado e PDF autorizado por exceção do arquivo. Todos os dados sintéticos são revertidos pela transação de teste.
 
 Estas correções são incrementais. Antes de aplicá-las, mantenha o backup e o ensaio de restauração exigidos acima, confira a lista exata de migrations pendentes e valide o manifesto final `20260905071622`. Não execute reset nem seed de upgrade sobre um ambiente que já recebeu estas migrations. As provas SQL locais e as jornadas com clientes reais complementam-se; nenhuma delas declara a implantação hospedada concluída.
-
-## 20260907013604 — conflitos de aplicação com resposta finita
-
-A migration `20260907013604_business_conflicts_use_http_409.sql` muda os conflitos deliberados de revisão e estado para `PT409`. A resposta HTTP 409 permite que o cliente releia o estado; usar `40001` nesses pontos podia manter a mesma consulta em repetição no transporte. As guardas de revisão, locks, permissões e recibos permanecem.
-
-A transformação transacional se limita a 43 assinaturas correntes, com contagens prévias verificadas: 69 pontos de conflito e sete capturas ampliadas. Ela preserva os metadados das funções e os oito códigos JSON dos envelopes `PGRST`, incluindo o tratamento de serialização nativa. Nenhuma tabela de dados é modificada. A API reconhece o novo SQLSTATE como `stale_course_state`; banco e Edge devem ser promovidos de forma coordenada.
-
-O teste `supabase/tests/024_business_conflicts_test.sql` verifica leitura com revisão divergente e atual, autorização, ausência de escrita nas leituras, os dois caminhos de captura, rollback e idempotência. Os testes dos comandos afetados conservam os casos de conflito. Essas provas locais não substituem backup/restauração e a validação HTTP no corte hospedado.

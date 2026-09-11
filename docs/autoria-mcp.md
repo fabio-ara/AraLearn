@@ -279,17 +279,19 @@ um teste local examina outra etapa desse percurso. O
 [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais)
 separa medidas mecânicas, estimativas e observação do cliente real.
 
-Há também uma fronteira entre o schema servido e a validação feita pelo
-cliente. Se um campo obrigatório no catálogo corrente for rejeitado pelo cliente
-como propriedade adicional, a comparação entre o catálogo servido e o
-importado permite localizar a divergência. O pedido e o erro podem ser
-registrados sem dados sensíveis para esse diagnóstico. Remover uma referência
-necessária alteraria o conteúdo sem resolver a incompatibilidade dos contratos. Atualizar as ferramentas na
+Um campo obrigatório pode aparecer no erro do cliente como “propriedade
+adicional” quando cliente e servidor usam versões diferentes da descrição dos
+campos. Tecnicamente, há uma fronteira entre o esquema servido e a validação
+feita pelo cliente. A comparação entre o catálogo servido e o importado permite
+localizar essa divergência. O pedido e o erro podem ser
+registrados sem dados sensíveis para esse diagnóstico. A correção precisa
+alinhar os contratos servido e importado; retirar uma referência necessária
+apenas mudaria o conteúdo. Atualizar as ferramentas na
 página de detalhes do app recupera ferramentas, descrições e instruções do
 servidor, conforme a [documentação de gestão do app](https://developers.openai.com/api/docs/guides/developer-mode).
 A confirmação exige uma conversa nova e nova prova da chamada.
-Uma indicação genérica de restrição do ambiente de trabalho no erro não identifica, por
-si só, a configuração que causou a divergência.
+Uma indicação genérica sobre o ambiente descreve apenas o contexto da falha; a
+comparação dos contratos identifica a configuração divergente.
 
 ## Verificação local
 
@@ -300,9 +302,9 @@ deno test --config supabase/functions/deno.json `
   supabase/functions/tests/aralearn-authoring-mcp.test.ts
 ```
 
-Essas verificações conferem catálogo, seleção por intenção, desambiguação,
-autorização e paridade com Actions. A jornada em cliente real é executada depois
-da publicação deliberada.
+Essas verificações percorrem o catálogo desde a seleção da tarefa e a resolução
+do alvo até a autorização, além de conferir a paridade com Actions. A jornada em
+cliente real é executada depois da publicação deliberada.
 
 ## Referências técnicas
 

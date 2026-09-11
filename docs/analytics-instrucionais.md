@@ -1,4 +1,4 @@
-# Analytics da autoria
+# Dados de autoria
 
 A área **Dados de autoria** permite inspecionar a distribuição do conteúdo e as
 intervenções registradas na autoria. Por exemplo, uma concentração de ideias
@@ -18,7 +18,7 @@ um conhecimento ou comportamento que não foi observado.
 2. Entre em **Dados de autoria**.
 3. A entrada mostra **Novidade declarada**, com distribuição por unidade.
 4. Use **Escolher dimensão e escopo** para mudar a propriedade observada ou
-   selecionar curso, parte, microssequência ou unidade de estudo.
+   selecionar um recorte, do curso inteiro a uma unidade de estudo.
 5. Abra uma faixa da distribuição para inspecionar as unidades por seus títulos.
 6. **Abrir dados e definições** revela a configuração solicitada, os dados
    aplicados e as intervenções explícitas.
@@ -59,11 +59,10 @@ Duas definições são alvos editoriais quantitativos flexíveis:
 - palavras por resposta de autoria;
 - palavras por unidade de estudo.
 
-As demais orientam distribuição e posição das práticas, granularidade de parte
-e lote, frequência de pausa e preferência da conversa. Parte, lote e pausa têm
-escopo de curso. Os grupos seguem o catálogo canônico: explicações, prática,
-leitura e estilo, produção e conversa. Uma intenção automática ainda sem valor
-não é tratada como escolha aplicada.
+As demais orientam a distribuição da prática e o processo de produção, inclusive
+partes, lotes e pausas. O catálogo canônico conserva os grupos e o alcance exato
+de cada definição. Enquanto uma intenção automática ainda não recebeu valor, ela
+fica fora da configuração aplicada.
 
 Quando unidades do mesmo escopo usam valores diferentes, a distribuição informa
 quantas receberam cada valor, sua origem — calibração contextual, decisão da
@@ -84,12 +83,12 @@ Uma condição fixada para pesquisa permanece explícita e tem prioridade. O
 registro de origem permite distinguir essas escolhas; as regras completas
 estão em [Preferências e configuração aplicada](parametros-de-autoria.md).
 
-Os alvos de palavras não são mínimos ou máximos, não medem qualidade e não
-autorizam comprimir conhecimento, ocultar decisões ou fragmentar unidades. A
-distribuição observada descreve o artefato produzido; não julga sua adequação.
-O alvo de resposta de autoria caracteriza o desenho configurado. Ele não é
-tratado como medida de uma conversa observada: o AraLearn não persiste
-transcrição para Analytics.
+Os alvos de palavras são referências flexíveis de extensão. A diferença entre
+alvo e contagem observada indica onde inspecionar a organização do material;
+a adequação depende de preservar o conhecimento e a prática necessários. O alvo
+de resposta de autoria caracteriza o desenho configurado, enquanto a contagem
+por unidade caracteriza o conteúdo salvo. Conversas ficam fora dessa medida,
+pois o AraLearn não persiste sua transcrição em **Dados de autoria**.
 
 ### Conteúdo e representações
 
@@ -100,12 +99,12 @@ As tabelas relacionam:
 - formas explicativas aplicadas;
 - componentes e representações usados.
 
-“Retomadas” tem aqui um cálculo restrito: aplicações explicativas de ideias não
-introduzidas na mesma unidade. A contagem pode incluir continuação do
-desenvolvimento, sem demonstrar reativação intencional; também não detecta toda
-retomada realizada em uma prática. Para interpretar a função didática, é preciso
-inspecionar o trecho e a sequência. Esse agregado não substitui a codificação
-mais detalhada do [protocolo de análise](desenho-instrucional-parametrizado.md).
+Aqui, “retomadas” conta aplicações explicativas de ideias que não foram
+introduzidas na mesma unidade. Uma continuação do desenvolvimento também pode
+entrar nesse cálculo, enquanto retomadas feitas apenas na prática podem ficar de
+fora. A função didática depende, portanto, da inspeção do trecho e da sequência.
+O [protocolo de análise](desenho-instrucional-parametrizado.md) oferece a
+codificação mais detalhada.
 
 Comparar tetos diferentes não autoriza agrupar ideias independentes numa unidade
 de análise maior. O repertório pode permanecer igual enquanto sua distribuição
@@ -122,8 +121,8 @@ seção. As tabelas relacionam esses registros ao conteúdo:
 - oportunidades que exercitam cada dimensão de variação;
 - fontes, âncoras e unidades relacionadas, agrupadas pelo papel de cada vínculo.
 
-Contar uma oportunidade não demonstra que alguém aprendeu. O número informa
-apenas que o artefato oferece aquela prática.
+O número descreve as oportunidades que o artefato oferece. Evidência de
+aprendizagem vem do desempenho de participantes em tarefas adequadas.
 Uma solicitação ligada a dois requisitos entra na contagem de cada um; somar
 essas linhas não produz o número de solicitações únicas do curso.
 
@@ -136,27 +135,27 @@ A síntese mostra:
 - unidades cuja última revisão observável foi manual.
 
 A tabela complementar informa observações criadas e resolvidas e agrupa unidades
-pela origem de sua criação e última revisão. Essas contagens não formam
-percentual de autoria nem pontuação de colaboração. Ausência de intervenção
-registrada não significa concordância.
+pela origem de sua criação e última revisão. As contagens descrevem intervenções
+registradas. Percentual de autoria, qualidade da colaboração e concordância
+exigiriam outros dados e critérios.
 
-Quando a origem corrente não pode ser atribuída com segurança, Analytics a
-mantém ausente; não converte desconhecimento em zero nem reconstrói uma história
-por inferência.
+Quando a origem corrente não pode ser atribuída com segurança, **Dados de
+autoria** registra a ausência. Assim, zero continua reservado a uma contagem
+conhecida, e a história não é completada por inferência.
 
 ## De onde vêm os números
 
-Analytics calcula uma leitura do estado salvo a partir da estrutura, do
-planejamento, da configuração, das unidades e de seus vínculos com componentes,
-fontes, âncoras e observações. Intervenções humanas entram apenas quando o estado
-corrente conserva origem explícita com significado estável.
+**Dados de autoria** calcula uma leitura do estado salvo. Para isso, relaciona
+o planejamento e a configuração ao conteúdo efetivamente produzido e aos seus
+vínculos. Uma intervenção humana entra no cálculo quando o estado corrente
+conserva uma origem explícita com significado estável.
 
 A decisão histórica de desenho e a aplicação semântica corrente são distintas.
-Editar apenas o título conserva ambas sem atualizar a data da decisão. Alterar
-o conteúdo ou a posição na estrutura conserva a decisão histórica, mas retira
-os mapeamentos anteriores da análise corrente até uma nova aplicação validada.
-Essa ausência é informada; não se deduz que o conteúdo novo conserva as mesmas
-ideias somente porque usa os mesmos componentes.
+Editar apenas o título conserva a decisão e sua aplicação, sem atualizar a data.
+Alterar o conteúdo ou a posição na estrutura conserva a decisão histórica, mas
+retira os mapeamentos anteriores da análise corrente até uma nova aplicação
+validada. A ausência informada evita atribuir automaticamente as ideias antigas
+ao conteúdo novo.
 
 O contrato técnico `aralearn.course-authoring-analytics.v4` contém curso e
 escopo, desenho e autoria quantitativos, dados ausentes, base observada e
@@ -183,28 +182,26 @@ integram essa base.
 ## Exportar
 
 **Exportar curso e análise** salva um arquivo JSON, formato de dados organizado
-em campos e listas, com o
-conteúdo integral do curso e a leitura quantitativa do escopo selecionado.
-Inclui configuração solicitada e aplicada, inventário planejado, declarações e
-contagens, sempre com curso e revisão identificados. Conserva também as
-explicações, os vínculos com suas fontes, a base aplicada às unidades e as
-declarações de revisão disponíveis. A
-[referência técnica](dicionario-metricas-datasets.md#comparação-e-exportação)
-detalha esses registros. A exportação falha inteira
-se a revisão mudar enquanto as entidades são lidas.
+em campos e listas, com o conteúdo integral do curso e a leitura quantitativa
+do escopo selecionado. Sob uma revisão identificada, o arquivo relaciona o
+planejamento e a configuração ao conteúdo, às fontes e às declarações de revisão
+disponíveis. A [referência
+técnica](dicionario-metricas-datasets.md#comparação-e-exportação) detalha os
+campos. Se a revisão mudar enquanto as entidades são lidas, a exportação falha
+inteira.
 
-Os arquivos PDF e áudio não são incorporados: permanecem suas referências
-lógicas. O arquivo também não inclui pessoas, progresso pessoal, credenciais
-ou conversas. Guardar esse artefato não cria uma versão imutável dentro do
-curso; uma investigação deve conservar separadamente os materiais e as
-condições necessários à reprodução de seu protocolo.
+Para manter o arquivo transportável, PDFs e áudios aparecem por suas referências
+lógicas. Dados de pessoas e de uso, como progresso ou conversas, ficam fora da
+exportação, assim como credenciais. O curso continua editável depois que o
+arquivo é criado; uma investigação deve conservar separadamente os materiais e
+as condições necessários à reprodução de seu protocolo.
 
 ## Limites de interpretação
 
-Analytics caracteriza o desenho instrucional e intervenções observáveis. Não
-mede compreensão, retenção, transferência, atenção, esforço, dificuldade ou
-qualidade global. Esses resultados exigem pergunta, população, instrumento,
-tratamento de dados ausentes e análise definidos no protocolo da pesquisa.
+**Dados de autoria** caracteriza o desenho instrucional e as intervenções
+observáveis. Resultados sobre pessoas — como compreensão, retenção ou esforço —
+exigem participantes, instrumentos e análise definidos no protocolo da
+pesquisa.
 
 Consulte o [Guia do pesquisador](guia-pesquisador.md) para formular perguntas e
 registrar limites de inferência.

@@ -1,10 +1,10 @@
 # Aplicativo Android do AraLearn
 
-O aplicativo Android empacota a aplicação web do AraLearn em uma
+Site e Android compartilham uma única aplicação web. No Android, ela é empacotada numa
 [`WebView`](https://developer.android.com/develop/ui/views/layout/webapps/webview),
-componente nativo que exibe e executa o mesmo código JavaScript do site. Essa escolha
-mantém autenticação, estudo, persistência e sincronização sob as mesmas regras nos dois
-ambientes e reduz o risco de duas implementações divergirem.
+componente nativo que exibe e executa o mesmo código JavaScript do site. O código comum
+mantém as regras de autenticação, estudo, persistência e sincronização alinhadas nos
+dois ambientes.
 
 ## Como o aplicativo é composto
 
@@ -13,9 +13,10 @@ O APK, arquivo usado para instalar o aplicativo, reúne duas camadas:
 - a camada nativa abre a `WebView`, recebe o retorno da autenticação, aplica as
   restrições de navegação, hospeda os arquivos locais e abre o seletor do
   sistema para salvar exportações;
-- a aplicação web executa a interface, acessa o [Supabase](../docs/supabase.md), que fornece banco,
-  autenticação e funções remotas, guarda a cópia de estudo no IndexedDB, uma API de armazenamento estruturado
-  oferecida pelo navegador, e sincroniza estado pessoal e observações pendentes.
+- a aplicação web executa a interface e acessa o
+  [Supabase](../docs/supabase.md), serviço que fornece banco, autenticação e funções
+  remotas. Sua cópia de estudo fica no IndexedDB, armazenamento estruturado oferecido
+  pela WebView, e as filas sincronizam estado pessoal e observações pendentes.
 
 Os arquivos são servidos por
 [`WebViewAssetLoader`](https://developer.android.com/reference/androidx/webkit/WebViewAssetLoader)
@@ -23,20 +24,22 @@ na origem interna `https://appassets.androidplatform.net`. Uma origem HTTPS est�
 permite que a sessão e o IndexedDB sobrevivam ao fechamento do aplicativo sem liberar
 acesso universal a arquivos do aparelho.
 
-O APK não leva cursos nem um catálogo operacional embutidos. Visitantes podem abrir
-cursos públicos; a conta habilita o estado pessoal e o acesso concedido. Depois de
-carregar um curso, o conteúdo já replicado e o estado de estudo da conta continuam
-disponíveis sem conexão. Progresso, itens para rever e observações usam filas próprias.
-O envio respeita a preferência de sincronização automática ou manual; a reconexão não
-substitui a ação manual. Arquivos de áudio e PDF exigem autorização na abertura e não
-integram uma cópia persistente para ouvir ou abrir sem conexão. Alterações de autoria
-exigem conexão e não entram numa fila offline genérica.
+O APK contém a aplicação, e o serviço remoto fornece o catálogo e o conteúdo dos
+cursos. Depois que um curso é carregado, sua réplica e o estado de estudo da conta
+podem ser usados sem conexão. Progresso, itens
+para rever e observações possuem filas próprias. No modo
+automático, elas voltam a ser enviadas quando o serviço fica disponível; no manual,
+aguardam a ação de sincronizar.
+
+PDFs e áudios são autorizados a cada abertura e não entram nessa réplica persistente.
+Alterações de autoria também exigem conexão. Visitantes podem abrir cursos públicos;
+uma conta acrescenta seu estado pessoal e os acessos recebidos.
 
 ## Limites de segurança
 
 O aplicativo solicita somente a permissão Android `INTERNET`. A camada nativa:
 
-- habilita JavaScript, armazenamento DOM e banco da `WebView`;
+- habilita JavaScript, o armazenamento DOM e o banco local da `WebView`;
 - bloqueia acesso a `file://` e acesso universal entre origens;
 - rejeita conteúdo misto na versão de publicação;
 - abre links HTTP(S), telefone e e-mail em aplicativos externos;
@@ -111,9 +114,9 @@ hospedeira. HTTP é aceito apenas na compilação de depuração e somente para 
 `127.0.0.1` ou `localhost`. Em aparelho físico, use um endereço HTTPS acessível ao
 aparelho. A versão de publicação exige HTTPS.
 
-Sem configuração pública, o APK de depuração ainda pode ser gerado para inspeção do
-artefato, mas não consegue autenticar nem obter cursos. Isso não ativa catálogo anônimo
-ou conteúdo embutido.
+Uma compilação de depuração sem configuração pública serve para inspecionar o
+artefato. A autenticação e a consulta de cursos exigem URL e chave publicável; na
+ausência delas, a compilação permanece limitada à interface empacotada.
 
 ## Gerar um APK de depuração
 
@@ -202,10 +205,10 @@ administrativa.
 ## Autenticação móvel
 
 O retorno `aralearn://auth/callback` transporta somente um código temporário. O fluxo
-[PKCE](../docs/supabase.md) exige também um verificador criado ao iniciar o login, que
-permanece no IndexedDB do mesmo dispositivo. A tela nativa de entrada, implementada como
-uma Activity Android, conserva a consulta recebida e a encaminha ao aplicativo interno;
-fragmentos com token de acesso ou de renovação são rejeitados.
+[PKCE](../docs/supabase.md) vincula esse código ao dispositivo que iniciou o login por
+meio de um verificador guardado no IndexedDB. A tela nativa que recebe o retorno — uma
+*Activity* Android — encaminha a consulta ao aplicativo interno. Retornos que tragam
+tokens de acesso ou renovação diretamente são rejeitados.
 
 O esquema personalizado é adequado ao ambiente atual, mas outro aplicativo pode
 registrar o mesmo esquema e interromper o retorno. Uma distribuição em larga escala deve
@@ -240,12 +243,12 @@ artefato.
 
 ## Verificação automatizada de instalação e atualização
 
-Uma atualização precisa preservar as preferências já salvas e ser aceita como
-continuação do aplicativo instalado. Antes da publicação, o teste automatizado
-instala o APK candidato em dois cenários: instalação limpa e atualização da versão
-pública 0.0.67, código 213. A versão candidata é obtida do manifesto aprovado e
-precisa avançar em relação à base. Pacote, certificado, versão, impressão digital
-SHA-256 e identificador da instalação Android são conferidos.
+Uma atualização precisa ser reconhecida como continuação do aplicativo instalado e
+preservar suas preferências. Antes da publicação, o teste automatizado instala o APK
+candidato do zero e também sobre a versão pública 0.0.67, código 213. A versão
+candidata vem do manifesto aprovado e precisa avançar em relação a essa base. O teste
+confere a identidade do pacote e da assinatura, as versões, a impressão digital
+SHA-256 e o identificador atribuído à instalação pelo Android.
 
 O script `scripts/androidNativeGate.py` usa um emulador descartável. O conjunto de
 ferramentas Android (SDK) e suas licenças precisam estar disponíveis; o script mantém
@@ -284,8 +287,8 @@ curso descartável de teste quando for alterar dados.
 9. Abra **Configurações → Conta** e **Configurações → Aparência**; confira
    perfil, saída e persistência do tema escolhido.
 
-O aplicativo não importa cursos pelo menu **Compartilhar** do Android. Cursos próprios e
-compartilhados chegam pelo mesmo serviço relacional usado no site.
+Cursos próprios e compartilhados chegam pelo mesmo serviço relacional usado no site;
+o menu **Compartilhar** do Android fica fora desse percurso.
 
 ## Diagnóstico rápido
 
