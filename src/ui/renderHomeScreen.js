@@ -84,6 +84,7 @@ function coursePresentation(course, progress, permissions = {}) {
     lessonCount,
     percentage,
     owned,
+    canCopy: permissions.canCopy === true,
     publicCourse: permissions.ownership === "public",
     ownershipLabel: owned ? "Curso próprio" : permissions.ownership === "public" ? "Curso público" : "Curso compartilhado",
     availableOffline: permissions.availableOffline === true
@@ -126,6 +127,7 @@ function renderCoursePreview({
     lessonCount,
     percentage,
     owned,
+    canCopy,
     publicCourse,
     ownershipLabel,
     availableOffline
@@ -173,7 +175,7 @@ function renderCoursePreview({
     renderUiIcon("more", "home-tab-icon") + '</button>' +
     '<div class="home-course-lifecycle-menu" id="home-course-actions-menu" popover="auto" role="menu"' +
     ' aria-label="Ações deste curso">' +
-    (course.canCopy === true && !offline
+    (canCopy && !offline
       ? '<button type="button" role="menuitem" data-action="copy-course" data-course-id="' +
         escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu" popovertargetaction="hide">' +
         renderUiIcon("copy", "home-tab-icon") + '<span>Copiar curso</span></button>' : "") +

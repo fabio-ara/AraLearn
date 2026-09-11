@@ -184,6 +184,47 @@ async function openFirstStudyUnit(app) {
   ]);
 }
 
+test("a aplicação leva canCopy do resumo de acesso à Home e conserva a negação após mudança", async (t) => {
+  const document = project();
+  assert.equal(Object.hasOwn(document.courses[0], "canCopy"), false);
+  const repository = applicationRepository(document, async () => {});
+  const summary = { ...repository.loadCourseSummaries()[0], canCopy: true };
+  // Repositório em memória na fronteira de loadCourseSummaries; aplicação e Home reais.
+  repository.loadCourseSummaries = () => [{ ...summary }];
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document });
+  t.after(() => app.destroy());
+  assert.match(root.innerHTML, /role="menuitem" data-action="copy-course"/u);
+  assert.match(root.innerHTML, /data-action="leave-shared-course"/u);
+  await openFirstStudyUnit(app);
+  root.click("go-home");
+  await nextTurn();
+  assert.match(root.innerHTML, /role="menuitem" data-action="copy-course"/u,
+    "Ler o documento e retornar não remove a permissão da concessão");
+  app.setOfflineStatus(true);
+  assert.doesNotMatch(root.innerHTML, /data-action="copy-course"/u);
+  app.setOfflineStatus(false);
+  assert.match(root.innerHTML, /data-action="copy-course"/u);
+  summary.canCopy = false;
+  app.refreshRuntimeStatus();
+  assert.doesNotMatch(root.innerHTML, /data-action="copy-course"/u);
+  assert.match(root.innerHTML, /data-action="leave-shared-course"/u);
+  assert.equal(Object.hasOwn(repository.loadProject().courses[0], "canCopy"), false,
+    "Permissão de acesso não é inserida no documento de conteúdo");
+});
+
+test("a Home de visitante não oferece cópia mesmo com resumo permissivo", () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1,
+    ownership: "public", canEdit: false, canCopy: true }];
+  const root = new FakeStudyRoot();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  assert.doesNotMatch(root.innerHTML, /data-action="copy-course"/u);
+  assert.match(root.innerHTML, /data-action="clear-local-course"/u);
+  app.destroy();
+});
+
 test("visitante abre projeção revisada pelo Controller e Estudo reais sem expor bases ou unidades ocultas", async (t) => {
   const complete = project();
   const first = complete.courses[0].modules[0].lessons[0].microsequences[0];

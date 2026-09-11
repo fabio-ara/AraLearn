@@ -3021,6 +3021,7 @@ export function createCourseStudyApplication({
       return [course.id, {
         ownership: summary?.ownership || "shared",
         canEdit: !visitor && summary?.ownership === "owned" && summary?.canEdit === true,
+        canCopy: !visitor && summary?.canCopy === true,
         moduleCount: summary?.moduleCount || 0,
         lessonCount: summary?.lessonCount || 0,
         studyUnitCount: summary?.studyUnitCount || 0,

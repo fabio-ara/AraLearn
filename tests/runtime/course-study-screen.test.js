@@ -622,6 +622,38 @@ test("a Home distingue propriedade e preserva cursos copiados como cursos própr
   assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
 });
 
+test("a Home oferece cópia pela permissão de acesso, sem exigir esse campo no conteúdo", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  assert.equal(Object.hasOwn(course, "canCopy"), false);
+  for (const scenario of [
+    { ownership: "owned", canCopy: true, expected: true, lifecycle: "delete-owned-course" },
+    { ownership: "shared", canCopy: true, expected: true, lifecycle: "leave-shared-course" },
+    { ownership: "shared", canCopy: false, expected: false, lifecycle: "leave-shared-course" },
+    { ownership: "public", canCopy: false, expected: false, lifecycle: "clear-local-course" },
+    { ownership: "owned", expected: false, lifecycle: "delete-owned-course" },
+    { ownership: "shared", canCopy: true, offline: true, expected: false, lifecycle: "leave-shared-course" },
+    { ownership: "shared", canCopy: false, contentFlag: true, expected: false, lifecycle: "leave-shared-course" },
+    { ownership: "public", contentFlag: true, expected: false, lifecycle: "clear-local-course" }
+  ]) {
+    const content = { ...course, ...(scenario.contentFlag ? { canCopy: true } : {}) };
+    const html = renderHomeScreen({
+      project: { ...project, courses: [content] },
+      progress: { version: 1, lessons: {} },
+      selectedCourseId: course.id,
+      runtimeStatus: { offline: scenario.offline === true },
+      editorSupport: { coursePermissionsById: { [course.id]: {
+        ownership: scenario.ownership,
+        ...(Object.hasOwn(scenario, "canCopy") ? { canCopy: scenario.canCopy } : {})
+      } } }
+    });
+    assert.equal(html.includes('role="menuitem" data-action="copy-course"'), scenario.expected,
+      JSON.stringify(scenario));
+    assert.ok(html.includes(`data-action="${scenario.lifecycle}"`), "A ação própria do tipo de acesso permanece");
+    assert.match(html, /aria-label="Ações deste curso"[^>]+aria-haspopup="menu"/u);
+  }
+});
+
 test("a edição em Estudo preserva o fluxo direto do proprietário sem criar cópia", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
