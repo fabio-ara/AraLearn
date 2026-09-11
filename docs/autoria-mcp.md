@@ -383,6 +383,19 @@ identidade para disfarçar incerteza. A indisponibilidade adia a operação e se
 dependentes, sem impedir trabalho independente. Recusa de autorização não é
 tratada como falha transitória nem resolvida por reconexão automática.
 
+## Confirmação de exclusão por MCP
+
+A confirmação de `excluir_curso` pelo MCP pode ficar sem retorno de ferramenta.
+Em um ensaio no ChatGPT, o assistente relatou um bloqueio de segurança, mas não
+foi capturado erro bruto que confirmasse a causa. A mensagem pode variar; esse
+resultado não comprova exclusão nem falha geral do canal.
+
+Antes de outra ação, confira o estado do curso e da limpeza de arquivos com
+acesso do proprietário e preserve a confirmação original. O proprietário
+também dispõe de exclusão por [Actions](autoria-actions.md) e pela interface,
+sujeitas às respectivas confirmações e controles de acesso. Uma recusa explícita
+deve ser respeitada.
+
 ## Autenticação e atualização
 
 O MCP usa OAuth 2.1. A conexão solicita o escopo autoral necessário e o servidor

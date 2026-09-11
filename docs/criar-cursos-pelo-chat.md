@@ -239,6 +239,15 @@ escolha humana expressa pode ser registrada no aplicativo ou por
 desatualiza a marca afetada. Conteúdo completo salvo pode ser estudado por quem
 tem acesso; exigir somente revisado é uma política opcional e expressa do curso.
 
+Para excluir um curso próprio, confira o alvo e a confirmação apresentada.
+A confirmação pelo MCP pode ficar sem retorno; confira o estado do curso e da
+limpeza de arquivos antes de outra ação. Em um ensaio, o ChatGPT relatou um
+bloqueio de segurança sem erro bruto capturado, o que não confirma a causa nem a exclusão.
+O proprietário também dispõe de exclusão por Actions e pela interface, com
+seus controles de acesso e confirmação. Veja a
+[limitação observada no MCP](autoria-mcp.md#confirmação-de-exclusão-por-mcp);
+a mensagem pode variar e uma recusa explícita deve ser respeitada.
+
 Veja [Autoria pelo MCP](autoria-mcp.md), [Autoria por Actions](autoria-actions.md)
 e [Analytics da autoria](analytics-instrucionais.md) para os detalhes de cada
 superfície.
