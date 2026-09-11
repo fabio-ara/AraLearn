@@ -83,9 +83,11 @@ function temporaryDocumentation() {
       "",
       "Evidência revista em 2026-08-17.",
       "",
-      "| Caso de uso | Existe | Conectado | Acessível | Uso verificado | Funciona | Necessário | Alinhamento | Limites e destino |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-      "| Abrir conteúdo | sim | sim | aplicativo | teste | sim | sim | sim | manter |",
+      "| Capacidade | Quem pode usar | Conexão e condições | Limites e aprofundamento |",
+      "| --- | --- | --- | --- |",
+      "| Abrir conteúdo | pessoa com acesso | carregamento inicial | conteúdo disponível no dispositivo |",
+      "",
+      "[Evidências técnicas](matriz-conformidade-tecnica.md)",
       ""
     ].join("\n"),
     "utf8"
@@ -197,6 +199,7 @@ test("auditoria rejeita checkpoint público e matriz de estado sem dimensão obr
   const errors = auditDocumentation({ root: temporaryRoot });
   assert.ok(errors.some((error) => error.includes("checkpoint de tarefa")));
   assert.ok(errors.some((error) => error.includes("matriz corrente deve separar")));
+  assert.ok(errors.some((error) => error.includes("verificação precisa encaminhar às evidências técnicas")));
 });
 
 test("auditoria valida log bibliográfico e acessibilidade dos visuais", (context) => {

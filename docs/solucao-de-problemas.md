@@ -2,415 +2,190 @@
 
 ## Diagnosticar sem perder trabalho
 
-Antes de limpar dados ou reinstalar:
+Quando uma ação falhar, preserve primeiro o que ainda está no dispositivo. Antes de limpar dados ou reinstalar, confira a mensagem, a conexão e o estado indicado pela nuvem. Use **Tentar novamente** ou solicite outra leitura quando a interface oferecer essa recuperação.
 
-1. anote a tela, o curso e a ação que falhou;
-2. confira o estado de sincronização e a disponibilidade da conexão;
-3. observe mensagens de fila, revisão ou retomada;
-4. use a nuvem ou **Tentar novamente** para solicitar outra leitura;
-5. só use limpeza local depois de avaliar alterações pendentes feitas sem conexão.
-
-Uma captura de tela ajuda a explicar o estado visual. Console e rede ajudam a separar
-falha da interface, autorização, servidor e sincronização. Não inclua tokens, senhas,
-e-mail completo ou conteúdo privado ao registrar um defeito.
+Anote em que tela estava, o curso e a ação realizada. Uma captura ajuda a mostrar o problema. Para registrar um defeito, bastam inicialmente o resultado esperado, o observado e a mensagem apresentada; os [registros técnicos](#registrar-um-defeito-útil-e-seguro) podem ser examinados depois, quando necessários.
 
 ## Não consigo entrar
 
-Confirme e-mail, senha e eventual confirmação da conta. Se necessário, use **Recuperar
-senha** e abra o link no contexto autorizado. Um link expirado ou em fluxo inseguro deve
-ser substituído por um novo; não copie tokens para a URL manualmente.
+Confira e-mail, senha e eventual confirmação da conta. Use **Recuperar senha** se necessário. Se o link recebido não for aceito, solicite outro pelo aplicativo. Não altere manualmente seu endereço para tentar fazê-lo funcionar.
 
 ## O aplicativo não conclui a inicialização
 
-A preparação indica as etapas de dispositivo, conta e cursos. Use **Tentar novamente**.
-Se a falha local persistir, a interface pode oferecer limpar os dados do dispositivo.
+A preparação indica as etapas de dispositivo, conta e cursos. Use **Tentar novamente**. Se a falha local persistir, a interface pode oferecer limpar os dados do dispositivo. Essa limpeza pode apagar progresso, marcas e observações ainda não enviados; confira as pendências antes de confirmar.
 
-Essa limpeza remove a cópia local e operações ainda não sincronizadas. Não a confirme se
-houver progresso, marcas ou observações feitas sem conexão que precisam ser preservados.
-
-Em **Configurações → Conta**, a ação **Sair** preserva cursos offline, estado pessoal e
-filas ou rascunhos que já estejam gravados no dispositivo. A confirmação avisa que uma
-alteração ainda aberta somente no editor será perdida. **Remover dados deste
-dispositivo** mantém a sessão e apaga somente o conjunto de dados locais da conta ativa;
-**Sair e remover dados deste dispositivo** faz as duas operações. Nenhuma delas apaga
-dados já enviados ao servidor, e dados locais de outra conta no mesmo navegador
-permanecem.
+**Sair**, **Remover dados deste dispositivo** e **Sair e remover dados deste dispositivo** têm efeitos diferentes. A primeira encerra a sessão e pode manter dados já guardados; a segunda apaga os dados locais da conta ativa; a terceira faz as duas coisas. Uma edição que ainda existe apenas no formulário aberto pode ser perdida. Veja [Uso do aplicativo](uso-do-app.md#sair).
 
 ## Um curso não aparece
 
-Em **Estudo**, aparecem cursos próprios, com acesso direto e públicos. Em **Autoria**,
-aparecem somente cursos próprios.
+Em **Estudo**, aparecem cursos próprios, compartilhados e públicos. Em **Autoria**, aparecem somente os próprios. Confira a conta e o espaço selecionado e atualize a lista com conexão.
 
-1. confirme que está na conta e no modo corretos;
-2. atualize a lista quando a conexão retornar;
-3. para curso compartilhado, peça ao proprietário que confira **Pessoas e acesso**;
-4. confirme que o proprietário selecionou o seu identificador atual e concedeu o acesso à sua conta.
-
-Cursos tornados públicos pelo proprietário também aparecem em estudo e podem ser abertos
-por visitantes. Confira a busca e a disponibilidade pública do curso; o catálogo não
-concede acesso aos cursos privados.
+Se o curso foi compartilhado, peça ao proprietário que confira **Pessoas e acesso** e seu `@identificador` atual. Um curso público pode ser aberto por visitantes; um privado depende de acesso concedido à conta correta.
 
 ## Um curso aparece, mas não abre
 
-Na primeira abertura, a composição é baixada em páginas sob uma única revisão. Se o
-curso mudar durante esse processo, o cliente descarta o conjunto parcial e reinicia a
-leitura.
+Ter o título na lista não significa que o conteúdo já foi guardado. A primeira abertura precisa de conexão. Sem rede, a prévia distingue **Disponível offline** de **Conecte-se para abrir este curso**.
 
-Tente novamente com conexão estável. Se continuar falhando, registre o curso, a mensagem
-e se o erro ocorreu antes ou depois de aparecer conteúdo conhecido da cópia local.
+Tente abrir com conexão estável e aguarde a conclusão. Se continuar falhando, anote a mensagem e se algum conteúdo chegou a aparecer. O aplicativo precisa obter uma versão coerente do curso; a [persistência](persistencia-relacional.md) explica o que acontece quando o curso muda durante essa leitura.
 
 ## O aplicativo mostra o último estado conhecido
 
-Isso indica uso da réplica local. Ela permite retomar conteúdo já aberto, mas não prova
-que a lista, o acesso ou a composição estão atualizados. Use a nuvem para solicitar
-atualização. No modo manual, essa ação não ativa a sincronização automática. Preserve a
-cópia e os rascunhos enquanto confere o resultado.
+O aplicativo está usando a cópia que conseguiu guardar anteriormente. Use a nuvem para consultar atualizações. No modo manual, essa ação não ativa o modo automático. Preserve rascunhos enquanto confere o resultado.
 
-O serviço pode estar temporariamente indisponível mesmo quando outros sites abrem
-normalmente. **Lendo conteúdo**, cópia local com atualização pendente, falha do serviço
-e ausência de conexão descrevem situações diferentes. Durante a leitura, aguarde seu
-resultado antes de concluir que o curso está vazio. Se o prazo terminar, uma nova
-tentativa explícita continua possível sem desligar e religar a rede nem apagar os dados
-locais.
+O serviço pode estar indisponível mesmo quando outros sites abrem. Durante **Lendo conteúdo**, aguarde antes de concluir que o curso está vazio. Se houver falha, solicite outra leitura sem apagar os dados locais.
 
 ## A atualização foi adiada por uma edição
 
-Retome o rascunho indicado no aviso e conclua, salve ou descarte a alteração
-conscientemente. Em uma observação enviada apenas para parte dos alvos, continue a mesma
-operação para conferir os restantes. Abrir uma folha apenas para consultar não deveria
-criar esse bloqueio; se isso ocorrer, registre o contexto e a mensagem sem limpar os
-dados do dispositivo.
+Abra o rascunho indicado no aviso e salve ou descarte a alteração antes de atualizar. Se uma observação foi enviada apenas para alguns alvos, retome a mesma operação para conferir os restantes.
+
+Abrir um painel somente para consultar não deveria criar esse bloqueio. Se isso ocorrer, registre a tela e a mensagem; limpar o dispositivo pode apagar o trabalho que ajudaria a entender o problema.
 
 ## Progresso ou marca aguardam envio
 
-Progresso e marcas para rever entram numa fila por curso, descrita em [persistência e
-sincronização](persistencia-relacional.md). Preserve os dados locais até a conexão
-retornar. O aplicativo tenta conciliar essas alterações com a versão do servidor antes
-de enviá-las.
+Confira a conexão e o modo de sincronização. No manual, use a nuvem para enviar o que ficou guardado. Se continuar pendente, reabra o curso, confirme que ainda tem acesso e tente sincronizar. Registre a mensagem se a falha persistir.
 
-Se a fila continuar pendente:
-
-1. abra novamente o curso;
-2. confirme que o acesso ainda existe;
-3. tente sincronizar com conexão estável;
-4. registre o tipo da operação e a mensagem, sem copiar o conteúdo privado.
+Progresso e marcas ficam numa lista de alterações a enviar, chamada fila. Preserve os dados do aplicativo até a confirmação. O [guia do estudante](guia-estudante.md#escolher-quando-sincronizar) explica essa continuidade.
 
 ## Uma observação aguarda envio
 
-Observações usam uma fila de envio própria, separada do estado pessoal. Reabra a
-unidade, confirme o indicador de sincronização e reconecte. Quando há duas abas abertas,
-cada uma consulta o armazenamento local da mesma conta para atualizar a observação sem
-substituir o rascunho em edição. Atividade de outra pessoa não muda essa versão nem deve
-aparecer como conflito. Se o item ficar **em conflito** ou **falhou**, não crie uma
-cópia às cegas: releia o estado remoto e revise o comando. Quando o servidor confirma a
-perda de acesso, o aplicativo remove a cópia local e a fila correspondente.
+Reabra a unidade e confira o indicador da observação. Ela tem uma fila própria, separada do progresso. Reconecte e use a recuperação indicada. Se o estado for **em conflito** ou **falhou**, confira o texto guardado e a versão apresentada antes de criar outra entrada, para evitar duplicar a contribuição.
+
+Duas abas da mesma conta podem acompanhar o envio sem substituir um rascunho em edição. Se o acesso ao curso foi retirado, o aplicativo informa a mudança e remove a cópia e a fila correspondentes quando confirma essa perda pela rede.
 
 ## Uma observação foi salva, mas não houve correção
 
-A observação feita no estudo fica vinculada ao ponto comentado e chega à caixa de
-entrada do proprietário, conforme o [fluxo de revisão](guia-professor-autor.md). Ali ela
-pode ser considerada, respondida ou resolvida. Esses estados descrevem triagem: salvar,
-responder ou resolver não altera o curso. Para corrigir por conversa, consulte as
-observações abertas, prepare uma revisão coerente e confirme a proposta antes de
-aplicá-la. Reabra depois as unidades de estudo afetadas para verificar o resultado.
+A observação chega à caixa de entrada do proprietário e pode ser considerada, respondida ou resolvida. Esses estados descrevem seu tratamento. Uma dúvida pode ser respondida sem mudar o curso; uma correção exige uma alteração específica no conteúdo.
+
+Para corrigir, o autor examina a questão, decide a mudança e confere o resultado salvo. O [fluxo de observações](observacoes-pedagogicas.md#da-observação-à-revisão) distingue esse trabalho da declaração de revisão humana.
 
 ## A revisão ou correção não funciona sem conexão
 
-Preparar e aplicar uma revisão exige conexão porque o serviço precisa reler o curso
-autorizado. Reconecte, consulte novamente as observações e o contexto afetado e só então
-execute a ação. Não trate a última tela renderizada como estado corrente.
+A autoria precisa consultar o estado atual e a autorização do curso antes de alterar ou marcar revisão. Reconecte, abra novamente o alvo e confira o conteúdo e as observações antes de continuar. A cópia anterior é útil para leitura, mas pode não conter as mudanças mais recentes.
 
 ## A revisão considerou somente a unidade anotada
 
-Interrompa antes de aplicar. Peça que o assistente releia progressão, pré-requisitos,
-transições, exemplos e prática relacionados. A proposta deve distinguir as unidades que
-só fornecem contexto das que realmente precisam mudar.
+Antes de aplicar, examine se o problema também afeta o que vem antes ou depois. Peça ao assistente que leia esses pontos e diferencie o que serve de contexto do que precisa ser alterado. Uma correção de pré-requisito ou de transição pode exigir mais de uma unidade.
 
 ## Não consigo aplicar uma correção
 
-Se a unidade de estudo, seu conteúdo ou suas fontes mudaram desde a leitura, o serviço
-recusa a proposta desatualizada. Releia o conjunto e reconcilie a mesma intenção com o
-estado corrente. Não repita a escrita às cegas.
+Se o conteúdo ou as fontes mudaram desde a preparação, a proposta pode estar desatualizada. Releia o alvo e compare a mudança pretendida com o estado atual. Se o envio ficou sem resposta, peça a conferência da mesma tentativa antes de aplicar novamente. [Autoria por MCP](autoria-mcp.md) e [Actions](autoria-actions.md) explicam a recuperação nos respectivos canais.
 
 ## O apoio factual parece insuficiente
 
-Reabra **Fontes** e confira a referência e o trecho ou local indicado, chamado âncora.
-Confira também o papel da fonte e sua relação com a unidade de estudo, como explicado em
-[Fontes e citações](fontes-e-citacoes.md). **Sustenta** é apropriado para uma afirmação;
-**Citado de** informa a origem de uma citação e não prova sua verdade. Se a evidência
-não bastar, conteste ou substitua a fonte e prepare novamente a revisão.
+Abra **Explicação** e siga a referência da afirmação. Na Autoria, use os controles de fontes para examinar a obra e o trecho indicado. A localização na fonte é chamada âncora; o [guia de fontes](fontes-e-citacoes.md) explica como conferi-la.
+
+Verifique se o material realmente sustenta a afirmação. **Sustenta** indica esse uso; **Citado de** identifica a origem das palavras, sem certificar que a afirmação citada seja verdadeira. Se o apoio for insuficiente, registre o problema e reveja a fonte, a interpretação ou o vínculo antes da nova revisão.
 
 ## Uma observação retirada não aparece mais
 
-Uma observação retirada deixa de integrar a caixa corrente e não autoriza mudança
-posterior. Se a questão ainda existir, registre uma nova observação no alvo atual em vez
-de tentar restaurar um estado interno antigo.
+Retirar uma observação remove-a da consulta corrente. Se a questão continuar relevante, registre-a sobre o conteúdo atual. O [capítulo de observações](observacoes-pedagogicas.md) explica seus estados e a relação com a retenção.
 
 ## Uma prática não permite avançar
 
-Confira campos obrigatórios e mensagens próximas ao componente. Se a interação parecer
-preenchida mas continuar bloqueada, registre o tipo de componente e a unidade. O avanço
-depende do contrato do componente, não de uma pontuação global.
+Confira os campos obrigatórios e as mensagens próximas à atividade. Nas lacunas, verifique cada preenchimento. Se tudo parecer completo e o bloqueio continuar, registre a unidade, a atividade e a mensagem.
+
+Cada atividade tem seus controles e critérios de resposta; o bloqueio não resulta de uma nota global do curso. Nas respostas abertas, o significado do texto não recebe avaliação automática.
 
 ## Uma edição de autoria entrou em conflito
 
-Outro cliente alterou o curso depois da leitura. Reabra ou releia o curso, compare a
-intenção com o estado novo e aplique apenas o que ainda faz sentido. Não aumente a
-revisão à mão e não repita a escrita às cegas.
+Outra sessão pode ter alterado o curso depois de você abrir a edição. Compare seu rascunho com o conteúdo atual e preserve somente as mudanças que ainda fazem sentido. Não tente contornar a indicação de conflito. O [guia de assistência](assistencia-por-ia.md#aplicação-ao-rascunho-e-concorrência) explica a preservação de propostas.
 
 ## Há um rascunho antigo de cópia guardado
 
-O estudante não edita o curso compartilhado ou público, e o aplicativo não cria cópias
-automaticamente. Cópias próprias já existentes continuam sendo cursos independentes,
-editáveis por seu proprietário.
+Versões anteriores podiam guardar uma tentativa de criar cópia cuja confirmação se perdeu. A recuperação atual procura o curso próprio correspondente e confere se a alteração já foi salva, sem criar outra cópia ou aplicar novamente o texto.
 
-Uma intenção guardada pela versão anterior pode ter recebido confirmação no servidor
-mesmo quando a resposta se perdeu. A recuperação consulta a prova de origem do alvo
-ainda próprio e a edição inicial, sem reaplicar o texto nem criar outro curso. Ela pode
-reconhecer esse alvo mesmo se a origem foi removida. Uma revisão posterior no alvo não
-autoriza sobrescrevê-lo.
-
-Se não houver prova suficiente, o rascunho permanece guardado. Confira o conteúdo antes
-de descartá-lo explicitamente; repetir a consulta não recria o comando retirado nem
-transforma o curso de outra pessoa em curso próprio.
+Se não houver confirmação suficiente, o rascunho permanece disponível. Confira seu conteúdo antes de descartá-lo. O [contrato de conteúdo](aralearn-contract.md) conserva os detalhes dessa recuperação de versões antigas. Atualmente, estudar ou comentar um curso compartilhado não cria uma cópia automática.
 
 ## O formulário reapareceu depois de salvar
 
-Se a mensagem disser que a resposta se perdeu e que a operação pode ter sido confirmada,
-confira os valores preservados e tente novamente pelo mesmo botão, sem reeditar o
-formulário. Parâmetros, fontes, observações e conteúdo podem reutilizar a intenção
-pendente para recuperar a resposta sem duplicar o efeito.
+Leia a mensagem: a resposta pode ter se perdido depois de o servidor guardar a alteração. Confira os valores preservados e siga a recuperação pelo mesmo controle, sem transformar o envio pendente em outro pedido.
 
-Use **Cancelar** ou **Descartar** somente quando quiser abandonar essa intenção. O
-rascunho é transitório da interface e não integra a fila do IndexedDB; evite recarregar
-ou fechar a página antes de concluir a repetição ou o descarte.
-
-Rascunhos antigos da criação automática de cópia podem permanecer no IndexedDB para
-recuperação por consulta, como descrito acima. Esse caso não repete o escritor retirado.
-Descartar a intenção remove seu envelope; conversa, configuração e credencial do
-provedor não fazem parte dele.
+Se escolher **Cancelar** ou **Descartar**, você abandona o rascunho local; isso não desfaz uma gravação que já possa ter ocorrido. Evite fechar ou recarregar enquanto houver trabalho apenas no formulário. Quando a recuperação concluir, confira o resultado antes de iniciar outra alteração.
 
 ## A assistência por IA não responde
 
-Confira o provedor escolhido, o modelo, a conectividade e a validade ou cota da chave
-efêmera. OpenAI, Gemini e DeepSeek usam origens oficiais fixas; a interface normal não
-aceita outro endereço de serviço. Recarregar ou sair apaga a chave e a conversa,
-portanto abra uma nova sessão quando necessário. Não grave a chave no curso, no
-navegador ou em logs para contornar uma falha.
+Confira o provedor, o modelo, a conexão e a validade ou cota da chave de acesso. Recarregar ou fechar a sessão apaga a chave e a conversa; será necessário fornecê-las novamente. Preserve primeiro qualquer proposta que já tenha sido aplicada ao rascunho.
 
-Falha, cota, recusa ou resposta fora do formato não altera o curso. Feche a sugestão e
-continue a edição manual, ou use um cliente MCP ou um GPT conectado por Actions para uma
-tarefa mais ampla. O [guia de assistência](assistencia-por-ia.md) distingue esses
-percursos. Se **Aplicar ao rascunho** já foi usado, confira o conteúdo e ainda use
-**Salvar** para efetivar a mudança; aplicar a candidata não grava por si só.
+Uma falha de geração não altera o curso. Você pode continuar a edição manual ou usar uma conversa externa conectada para uma tarefa mais ampla. O [guia de assistência](assistencia-por-ia.md) distingue esses percursos e os dados enviados.
+
+Se já usou **Aplicar ao rascunho**, confira esse rascunho e use **Salvar** quando estiver adequado. Aplicar a prévia e gravar no curso são decisões separadas.
 
 ## Não consigo salvar uma atribuição de fontes
 
-Confira se cada fonte escolhida possui ao menos uma âncora ativa no estado corrente e se
-o conjunto exibido contém tudo o que deve permanecer no alvo. Salvar substitui o
-conjunto completo; não há modo de acréscimo parcial. Se o curso ou o alvo mudou, releia
-e reconcilie antes de tentar novamente.
+Confira as fontes e suas localizações ativas. Examine o conjunto exibido antes de salvar: ele deve conter todos os vínculos que precisam permanecer naquele alvo. Se o curso mudou, releia a versão atual antes de preparar outro conjunto.
 
-Uma referência **Legado não resolvido** pode não ter metadados nem âncora. Trata-se de
-um vínculo antigo cuja referência ainda precisa ser conferida. Para resolvê-la, revise a
-mesma identidade literal; não crie uma fonte parecida nem remova espaços do
-identificador. Depois de falha de rede sem resposta, repita o pedido pelo mesmo
-controle, sem editar a intenção. O cliente reaproveita internamente o pedido pendente e
-recupera o recibo sem duplicar a alteração.
+**Legado não resolvido** identifica uma referência antiga que ainda precisa ser conferida. Complete o cadastro correspondente em vez de criar outra fonte parecida. Se o resultado de um envio estiver incerto, recupere o mesmo pedido pelo controle indicado. [Fontes, citações e referências](fontes-e-citacoes.md#localizar-o-uso-no-curso-e-na-fonte) explica a edição dos vínculos.
 
 ## Um PDF de fonte não foi enviado ou não abre
 
-O PDF precisa ser válido e ter no máximo 20 MiB. Envie-o na mesma mensagem em que pedir
-`incorporar_pdf_como_fonte`. O servidor baixa a referência temporária, valida os bytes e
-só então cria ou atualiza o vínculo com a fonte. Se a referência expirar, anexe
-novamente o mesmo arquivo numa mensagem nova.
+Confira se o arquivo é um PDF válido de até 20 MiB, aproximadamente 21 megabytes. A cota conjunta de PDFs e áudios é de 64 MiB por curso, e uma fonte aceita até oito anexos. Em conversa, envie um único PDF na mensagem em que pede sua incorporação como fonte.
 
-Para abrir um anexo, releia a fonte e solicite um novo endereço assinado. O endereço
-expira em 60 segundos, não pode ser revogado individualmente durante essa janela e não
-deve ser guardado como identidade do arquivo. Confira também a cota conjunta de 64 MiB
-de PDFs e áudios por curso e o limite de oito anexos por fonte.
+Se o acesso temporário ao anexo expirou, anexe novamente o mesmo arquivo. Se a gravação ficou sem confirmação, consulte a fonte antes de repetir o envio: o PDF pode já estar guardado. O nome do arquivo ou um caminho digitado não substitui o anexo recebido pelo cliente.
 
-Envio, remoção e reativação de bytes passam pelo serviço e pela API do Storage; o
-navegador e o modelo não escolhem o caminho interno do objeto. Uma falha não confirmada
-deve ser seguida por nova consulta da fonte antes de outra escrita.
+Para abrir um PDF já guardado, volte à referência e solicite a abertura outra vez. O endereço de download dura 60 segundos; reabrir permite obter uma autorização atual. Os detalhes do transporte estão nos guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md).
 
 ## O estudo não mostra uma fonte ou um link
 
-Abra **Fontes** na unidade: a consulta é sob demanda e não ocorre junto com o conteúdo.
-Fonte oculta ou legada não resolvida é omitida. A visibilidade **Citação** mostra
-identificação e localização, mas não URL; somente **Citação e link** pode mostrar o
-endereço. Se o acesso foi revogado ou o curso não existe mais, o aplicativo limpa o
-estado local em vez de conservar o painel.
+Abra **Explicação** na unidade ou siga a citação sobrescrita. As referências da unidade e da base ficam no fim da leitura. **Mostrar citação** exibe a identificação e a localização; **Mostrar citação e link** também permite apresentar o endereço externo.
+
+A autoria pode manter uma fonte oculta no estudo. O link de um arquivo também depende de sua autorização. Sem rede, uma referência ainda não consultada pode não estar guardada, mesmo que exista no curso. [Fontes](fontes-e-citacoes.md#referências-no-estudo) distingue essas situações.
 
 ## MCP ou Actions não encontra ou não altera o curso
 
-1. confirme OAuth e conta;
-2. confirme que o curso é próprio, pois a autoria é exclusiva do proprietário;
-3. confira se o cliente oferece as tarefas humanas do catálogo corrente;
-4. use `retomar_curso` ou a leitura focal da tarefa antes de escrever;
-5. diante de conflito ou referência ambígua, releia o recorte;
-6. confira se conversa e interface apontam para o mesmo ambiente.
+Confira se a conexão está autorizada na conta correta e se o curso pertence a você. Uma concessão para estudo não permite autoria remota. Peça ao assistente que retome o curso e leia o estado salvo antes de alterar.
 
-Uma concessão de acesso permite estudo, não autoria remota.
+Atualize o catálogo de ferramentas do cliente se ele ainda mostrar operações antigas. Uma conversa nova pode ser necessária para usar a lista atual. No cliente ChatGPT, os controles correspondentes são **Refresh** e **Reconnect**; reconecte quando houver problema de autorização ou de conta.
 
-Conexões MCP sem consentimento corrente precisam autorizar o escopo `offline_access`. O
-fluxo não emite `id_token`. Se o bearer funcionar no MCP, mas for recusado diretamente
-no GoTrue, na API de dados ou no Storage, essa recusa é o comportamento esperado: ele é
-uma credencial exclusiva do recurso MCP, não uma sessão da aplicação.
+Em Actions, uma mudança no documento OpenAPI exige importar a versão atual e salvar a configuração. Atualizar o arquivo do projeto não atualiza automaticamente uma configuração já importada. Mudanças de autorização também podem exigir conectar de novo a conta.
 
-No cliente MCP, atualize o catálogo de ferramentas e abra uma conversa nova; a conversa
-anterior pode conservar a lista antiga. No ChatGPT, os controles correspondentes são
-**Refresh** e **Reconnect**: reconecte quando houver problema de autorização ou conta.
-Compare as ferramentas com o [catálogo de autoria por MCP](autoria-mcp.md), que inclui
-também tarefas de acesso, cópia, estrutura, configuração e revisão. Referências opacas
-devolvidas pela ferramenta são esperadas; o usuário não deve precisar fabricar
-identificadores internos ou versões do banco.
+A configuração técnica e o diagnóstico de credenciais estão nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md). Eles distinguem os canais, a renovação de acesso e o tratamento de anexos. A pessoa autora não precisa fabricar identificadores internos ou versões do banco.
 
-Se a tentativa mostrar `Sem resposta de ferramenta`, verifique se houve uma invocação da
-função MCP. Ausência simultânea de invocação e de log estrutural sugere falha anterior
-ao recebimento pelo backend, inclusive no transporte do cliente. Essa ausência só é
-conclusiva quando os registros cobrem a mesma tentativa e a janela completa; não simule
-uma resposta da ferramenta. Se a invocação existir, classifique o erro no servidor e
-confirme que nenhuma mudança parcial foi gravada. Registre somente status e categoria
-segura, sem copiar credenciais ou conteúdo privado.
-
-Em Actions, confira se o OpenAPI importado coincide com o documento corrente, se
-`client_id` e `client_secret` pertencem ao cliente vinculado àquele GPT e se as URLs de
-autorização e token usam a função `aralearn-authoring-action`. O escopo é `openid
-email`, e o access token opaco não funciona no MCP, no GoTrue, na API de dados ou no
-Storage. Se o segredo se perdeu antes do vínculo, prepare outro cliente; se o GPT já
-estava vinculado e precisa substituir a credencial, vincular um novo cliente ao mesmo
-identificador desativa o anterior e revoga seus tokens. A execução corrente não possui
-uma ação separada para revogar uma concessão já vinculada.
-
-Uma migração anterior revogou tokens Actions de clientes já vinculados. Se a conexão
-deixou de funcionar após uma atualização, confirme novamente o OAuth. Reimporte o
-OpenAPI quando o documento tiver mudado, mesmo que a conexão anterior ainda apareça no
-GPT.
-
-Se a Action pedir outra coisa além de referências humanas do curso, reimporte o OpenAPI,
-salve a configuração e abra uma conversa nova. Publicar o arquivo não atualiza
-automaticamente uma Action já importada.
-
-Para PDF, `incorporar_pdf_como_fonte` precisa receber exatamente um PDF ligado à
-mensagem corrente. O transporte converte o anexo na referência temporária que o servidor
-valida. Nome, caminho local ou URL digitada não substituem o arquivo.
-
-O anexo pertence à mensagem em que foi enviado. Uma nova tentativa ainda ligada à mesma
-mensagem pode usar a referência corrente; uma tentativa iniciada em mensagem posterior
-precisa receber novamente o mesmo PDF. Diagnostique a categoria antes de pedir qualquer
-reenvio:
-
-| Situação | Recuperação |
-| --- | --- |
-| nenhum arquivo chegou à chamada | repita com o PDF da mensagem corrente; em outra mensagem, anexe novamente o mesmo arquivo |
-| a referência chegou malformada | reconstrua a chamada a partir do anexo, sem copiar ou fabricar nome, URL ou identidade |
-| chegaram vários arquivos | selecione exatamente um PDF |
-| o tipo não é PDF | use um único PDF válido |
-| o acesso temporário expirou | anexe novamente o mesmo PDF e faça uma nova tentativa |
-| download indisponível ou timeout | repita a mesma intenção; não peça reenvio sem sinal de expiração |
-| a persistência não foi confirmada | consulte novamente a fonte antes de anunciar sucesso |
-
-Se o transporte estiver correto e o download for recusado antes do Storage, registre
-apenas a categoria segura do erro e o hostname sanitizado. Não copie a referência
-temporária do arquivo nem amplie a política para HTTPS arbitrário.
+Se aparecer **Sem resposta de ferramenta**, não conclua que a mudança falhou nem peça que o assistente simule um resultado. Confira a mesma tentativa e o conteúdo salvo. Para distinguir falha do cliente, envio e resposta do servidor, o diagnóstico técnico precisa dos registros daquela tentativa, com credenciais e dados privados protegidos.
 
 ## A alteração por MCP ou Actions não aparece na interface
 
-MCP, Actions e a autoria usam o mesmo curso, mas a interface pode conservar uma projeção
-já carregada. Ao voltar à guia ou focalizar a janela do AraLearn, aguarde a releitura da
-área visível. Se o navegador não sinalizar o retorno, use a ação **Atualizar** no
-cabeçalho do curso e confira a nova revisão. Se a leitura do servidor contiver a mudança
-e a tela não, registre console, rede, rota e revisão exibida: o defeito está na projeção
-ou atualização da interface, não numa etapa de publicação.
+Volte ao AraLearn e aguarde a atualização. Se necessário, use **Atualizar** no cabeçalho do curso. A conversa e o aplicativo trabalham sobre o mesmo curso; uma tela anterior pode ainda não ter recebido a mudança.
 
-Quando houver uma confirmação ou um formulário em edição, o AraLearn adia a atualização
-para conservar o rascunho. Conclua ou cancele essa edição e use **Atualizar** novamente.
+Se houver um formulário em edição, conclua ou descarte o rascunho indicado e atualize novamente. Quando a leitura do servidor confirma a alteração, mas a tela continua mostrando outra versão, registre a tela e a mensagem para investigar a atualização da interface. Não repita a produção apenas para tentar fazê-la aparecer.
 
 ## Duas condições autorais não mostram a diferença esperada
 
-Ao comparar condições de pesquisa, use cursos privados independentes e confira se ambos
-cobrem os mesmos conceitos e objetivos. Verifique se os parâmetros foram fixados antes
-da produção e se aparecem na configuração aplicada. As metas de extensão são flexíveis:
-um texto mais curto não pode eliminar conceitos necessários e pode exigir mais unidades
-de estudo. Consulte o [modelo didático](modelo-didatico.md) para distinguir extensão,
-novidade e prática.
+Confira se os cursos comparados cobrem os mesmos conceitos e objetivos e se os parâmetros que deveriam distingui-los foram fixados antes da produção. Examine a **configuração aplicada**, que registra as escolhas usadas no conteúdo, e não somente a preferência atual.
+
+Uma meta de extensão é flexível: o texto pode precisar de outra distribuição para preservar uma relação. O [modelo didático](modelo-didatico.md) distingue extensão, novidade e prática; o [guia de pesquisa](guia-pesquisador.md) trata das condições de comparação.
 
 ## Um número da análise de autoria parece incorreto
 
-Confirme o escopo selecionado e abra **Desenho** e **Autoria**. Dados que não podem ser
-atribuídos ao recorte aparecem como indisponíveis, nunca como zero. Use a exportação da
-análise para comparar o retrato do estado salvo em JSON com os números visíveis. Os
-[indicadores de autoria](analytics-instrucionais.md) descrevem o estado corrente; não
-demonstra aprendizagem nem percentual de autoria humana.
+Em **Dados de autoria**, confira a dimensão e o escopo selecionados e use **Abrir dados e definições**. Uma informação que não pode ser atribuída ao recorte aparece como indisponível, não como zero.
+
+Use **Exportar curso e análise** para comparar os registros do estado salvo com os números apresentados. A [análise de autoria](analytics-instrucionais.md) explica os campos e seus limites: os indicadores não demonstram aprendizagem nem um percentual geral de autoria humana.
 
 ## Não consigo conceder acesso
 
-Somente o proprietário pode gerir **Pessoas e acesso**. O destinatário precisa escolher
-um identificador no perfil. Digite pelo menos dois caracteres e selecione a pessoa entre
-os resultados, conferindo identificador e avatar. A busca retorna até dez pessoas no
-contexto desse curso; não há diretório genérico.
+Somente o proprietário pode gerir **Pessoas e acesso**. A pessoa destinatária precisa ter escolhido seu identificador no perfil. Digite ao menos dois caracteres, selecione o resultado e confira o identificador e a foto antes de confirmar.
 
-A confirmação vincula a conta selecionada ao identificador conferido. Se ele mudou ou
-foi reutilizado por outra conta, pesquise novamente antes de confirmar. O acesso permite
-estudar e enviar observações próprias. A permissão de criar uma cópia é escolhida
-separadamente; a concessão não permite editar o original. Depois de dez tentativas de
-concessão ou sessenta buscas em dez minutos, aguarde a janela seguinte.
-
-Se o identificador desejado estiver ocupado ao salvar o perfil, escolha outro. O
-identificador aceita de 3 a 30 caracteres ASCII: letras minúsculas, números, ponto,
-sublinhado e hífen, começando e terminando com letra ou número. O `@` inicial é opcional
-na entrada e não faz parte do valor guardado.
+Se o identificador mudou durante a escolha, pesquise novamente. Há limites de buscas e concessões; aguarde quando a interface indicar isso. O acesso concedido permite estudar e observar, enquanto edição e cópia têm regras próprias. [Uso do aplicativo](uso-do-app.md#conceder-e-revogar-acesso) desenvolve essas diferenças.
 
 ## A foto de perfil não é aceita
 
-Use JPEG, PNG ou WebP de até 512 KiB. O objeto fica no bucket privado de avatares. Se a
-foto nova for registrada e a remoção da anterior falhar, a tela deve informar a limpeza
-pendente; não envie repetidamente arquivos maiores.
+Use JPEG, PNG ou WebP de até 512 KiB, aproximadamente meio megabyte. Se a gravação ficou sem confirmação ou a remoção da foto anterior falhou, siga a recuperação no mesmo painel antes de escolher outro arquivo.
+
+A foto fica em armazenamento privado. A [política de privacidade](privacidade.md) explica sua conservação e remoção.
 
 ## A conta não é excluída
 
-A exclusão exige a frase exata `EXCLUIR MINHA CONTA`. O aplicativo envia uma solicitação
-confirmada à API, que remove os cursos próprios e seus PDFs e áudios, além dos avatares.
-O banco recusa a exclusão enquanto algum desses objetos permanecer. Siga a recuperação
-indicada pela interface com conexão estável. A exclusão remove cursos próprios e dados
-relacionados de modo irreversível.
+A operação exige conexão e a frase exata `EXCLUIR MINHA CONTA`. Ela remove irreversivelmente a conta, os cursos próprios e os arquivos associados. Uma interrupção pode ocorrer depois de alguns arquivos terem sido removidos. Siga a recuperação apresentada para confirmar ou concluir a mesma operação.
 
-O banco revoga todas as sessões antes de remover o usuário do Auth. Um download de PDF
-já assinado ainda pode funcionar por até 60 segundos. O inventário posterior apenas
-classifica possíveis objetos órfãos; a remoção exige outra decisão segura sobre vínculo,
-retenção e backup.
-
-Se a interface informar que a conta foi excluída, mas a limpeza local ficou bloqueada
-por outra aba, feche a outra instância e repita apenas a limpeza do dispositivo. A
-exclusão remota já é terminal e não deve ser enviada novamente.
+Se a interface já informou que a conta foi excluída, mas outra aba impede limpar os dados locais, feche essa aba e repita somente a limpeza do dispositivo. A exclusão remota não deve ser enviada outra vez. [Privacidade](privacidade.md) documenta as etapas, a retenção e seus limites.
 
 ## O desenvolvimento local não inicia
 
-1. confira versões de Node.js e dependências;
-2. use os scripts existentes em `package.json`;
-3. para os serviços, confirme Supabase CLI e contêineres locais;
-4. verifique se variáveis privadas estão no ambiente local, não no repositório;
-5. leia o primeiro erro real antes de executar uma suíte ampla.
-
-Compare `supabase/runtime-manifest.json` com `supabase migration list --local`. Uma
-diferença entre o ambiente local e o hospedado deve ser tratada como diferença de
-versão, não como falha do contrato instalado localmente.
+Para quem executa o projeto no computador, confira as versões e os comandos do [guia de desenvolvimento](guia-desenvolvedor.md). Comece pelo primeiro erro apresentado. O ambiente dos serviços e a versão instalada também precisam corresponder ao projeto, como explica a [operação do Supabase](supabase.md).
 
 ## Registrar um defeito útil e seguro
 
-Inclua:
+Inclua a ação realizada, o resultado esperado, o resultado observado e a mensagem apresentada. Informe se estava em Estudo ou Autoria, em celular ou computador, com ou sem conexão, e se o problema continuou após outra leitura.
 
-- ação realizada e resultado esperado;
-- resultado observado;
-- modo estudo ou autoria;
-- celular ou computador e largura aproximada;
-- com ou sem conexão;
-- mensagem segura do console ou da rede;
-- se o problema se repete após nova leitura.
+Quando necessário, uma pessoa desenvolvedora pode examinar o **console**, que reúne mensagens de execução do navegador, e a área de **rede**, que mostra pedidos e respostas aos serviços. Esses registros podem conter dados sensíveis. Não publique senhas, chaves de acesso, tokens, endereços temporários de arquivos, e-mail integral ou conteúdo privado de cursos.
 
-Não inclua credenciais, tokens, URL assinada, e-mail integral, dados de outra pessoa ou
-conteúdo de curso que não possa ser divulgado.
-
-Consulte também [Uso do aplicativo](uso-do-app.md), [Persistência e
-sincronização](persistencia-relacional.md) e [Autoria por MCP](autoria-mcp.md).
+O [guia de desenvolvimento](guia-desenvolvedor.md) e os guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md) orientam a investigação técnica conforme o local da falha.

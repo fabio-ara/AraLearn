@@ -41,7 +41,9 @@ test("revisão e contribuição distinguem hipótese de eficácia comprovada", (
   const contribution = read("docs/contribuicao-originalidade.md");
   assert.match(review, /Não se trata de revisão sistemática/u);
   assert.match(review, /## Lacunas de conhecimento/u);
-  assert.match(contribution, /contribuição integrada só pode ser avaliado por comparação/u);
+  assert.match(contribution, /novidade[\s\S]*busca documentada/u);
+  assert.match(contribution, /vantagem[\s\S]*compara alternativas/u);
+  assert.match(contribution, /não estabelece superioridade universal/u);
   assert.match(contribution, /### 6\.4 Alegações que exigem comparação definida com alternativas pertinentes/u);
 });
 
@@ -96,7 +98,8 @@ test("revisão registra método prospectivo sem inventar buscas retrospectivas",
   const lines = log.split(/\r?\n/gu);
   assert.match(review, /protocolo \*\*ARA-LIT-1\*\*/u);
   assert.match(review, /não conserva um diário completo/u);
-  assert.match(review, /sem\s+linhas retrospectivas inventadas/u);
+  assert.match(review, /não é possível reconstruir retrospectivamente/u);
+  assert.match(review, /limitação[\s\S]*buscas presumidas/u);
   assert.equal(
     lines[0],
     "registro_id,data_hora_utc,eixo,base_ou_indice,consulta_exata,filtros,registros_informados,duplicatas_removidas,titulos_resumos_avaliados,textos_em_integra_avaliados,incluidos,motivos_exclusao_texto_integral,versao_criterios,responsavel,observacoes"
@@ -160,7 +163,9 @@ test("governança de pesquisa separa DBR, DSR e estados epistêmicos", () => {
   const protocol = read("docs/protocolo-avaliacao-artefato.md");
   const review = read("docs/revisao-de-literatura.md");
 
-  assert.match(foundations, /DBR e DSR são complementares, não sinônimos/u);
+  assert.match(foundations, /### Relação entre DBR e DSR/u);
+  assert.match(foundations, /combinação precisa ser justificada/u);
+  assert.match(foundations, /interpretativos ou críticos[\s\S]*sem adotar nenhuma das duas/u);
   assert.match(protocol, /Trilha educacional: Design-Based Research/u);
   assert.match(protocol, /Trilha do artefato: Design Science Research/u);
   for (const marker of ["evidência externa", "inferência", "hipótese", "decisão", "limitação"]) {

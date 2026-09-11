@@ -17,7 +17,7 @@ como reabrir uma lição no ponto alcançado. A **telemetria comportamental**
 registra eventos para analisar uso, como abertura, duração, repetição ou
 sequência temporal de ações.
 
-O AraLearn conserva o estado funcional necessário a Estudo. A plataforma não
+O AraLearn conserva o estado funcional necessário ao estudo. A plataforma não
 coleta uma trilha completa de interação para uso futuro indefinido. Dados
 educacionais exigem pergunta explícita, limites de inferência e governança
 proporcionais ao risco
@@ -26,7 +26,7 @@ proporcionais ao risco
 
 ## O que é conservado
 
-| Registro | Finalidade | unidade | Limite de interpretação |
+| Registro | Finalidade | Unidade de registro | Limite de interpretação |
 | --- | --- | --- | --- |
 | ponto de continuação | reabrir a lição na unidade alcançada | uma posição por lição | não informa tempo, atenção, dificuldade ou domínio |
 | conclusão estrutural | impedir que uma unidade avançada reapareça como inédita | identidades de unidades por lição | não informa acerto, qualidade da resposta, nota ou aprendizagem |
@@ -44,15 +44,18 @@ avanço ou comparação entre estudantes.
 
 ## Avançar e retomar
 
-Abra curso, módulo, lição, microssequência e unidade. Quando houver prática,
-responda e use **Continuar** para confirmar; depois, use **Continuar** novamente
-para avançar. Uma unidade apenas expositiva avança no primeiro uso do controle.
+Na prática, **Continuar** confirma a resposta antes de permitir o avanço; numa
+unidade apenas expositiva, o mesmo controle avança diretamente. O
+[guia do estudante](guia-estudante.md) apresenta a navegação e os modos de
+responder. Aqui, a diferença relevante para a continuidade é entre uma
+resposta em elaboração e uma unidade já avançada.
 
 O aplicativo registra a identidade da unidade concluída e o novo ponto de
 retomada. A resposta momentânea do componente não é guardada como avaliação.
 Sem conexão, a mudança entra na cópia local e aguarda sincronização.
 
-Ao interromper, preserve os dados do aplicativo. No modo automático, o retorno da
+Conservar os dados do aplicativo permite recuperar a continuidade local. Limpar
+esses dados pode remover mudanças ainda não sincronizadas. No modo automático, o retorno da
 conexão permite enviar as operações pendentes e comparar a versão remota.
 No modo manual, use a nuvem para solicitar a sincronização, conforme o
 [guia do estudante](guia-estudante.md#escolher-quando-sincronizar).
@@ -75,7 +78,7 @@ alvo.
 A pessoa estudante vê somente os próprios registros. O proprietário recebe a
 caixa de entrada necessária à triagem, sem o histórico de navegação do
 estudante. Sem conexão, o comando entra numa fila própria e o texto permanece no
-dispositivo. Progresso e **Rever** usam outro repositório.
+dispositivo. Progresso e **Rever** são guardados em outro conjunto de registros.
 
 O documento [observações e anotações
 ancoradas](observacoes-pedagogicas.md) explica respostas, retirada, retenção e
@@ -111,8 +114,9 @@ separadamente para cada pessoa e curso. Assim, uma atividade de colegas não
 provoca conflito ou aviso nas suas observações. Esse número coordena a
 atualização e não revela o texto de outra pessoa.
 
-Contadores técnicos de envio descrevem a entrega de uma operação. Eles não se
-tornam indicadores de comportamento de estudo.
+Os registros técnicos de envio permitem identificar se uma alteração chegou
+ao servidor. Seu objeto é a entrega da operação, e não a duração ou a qualidade
+do estudo.
 
 ## Quem pode acessar
 

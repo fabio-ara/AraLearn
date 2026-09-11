@@ -1,25 +1,21 @@
 # Vocabulário controlado do AraLearn
 
-Este vocabulário permite usar palavras simples na interface sem misturar conceitos de produto, pesquisa, protocolos e infraestrutura. Cada entrada liga as formas encontradas no projeto aos termos de interface e de domínio, ao símbolo técnico adotado e à definição operacional. As definições, fontes e alternativas examinadas também estão disponíveis no [registro terminológico versionado](evidence/terminologia-canonica.v1.json).
+Uma mesma coisa pode ter um nome legível no aplicativo e um identificador no código. Por exemplo, a unidade de estudo é uma etapa do percurso; `study_unit` é o nome usado para representá-la na implementação. Este vocabulário relaciona esses nomes, explica seu significado e indica as fontes. Ele ajuda quem escreve, desenvolve ou pesquisa o AraLearn a reconhecer quando duas palavras se referem ao mesmo objeto e quando representam conceitos diferentes.
 
-## Como as camadas se relacionam
+## Como consultar
 
-- **Interface e documentação:** linguagem ensinável às pessoas que estudam, criam cursos ou pesquisam.
-- **Domínio e pesquisa:** conceitos com definição operacional; eventos observáveis não recebem nomes de processos cognitivos não medidos.
-- **Código, banco, Storage e implantação:** símbolos de implementação; não criam um segundo conceito para o mesmo objeto.
-- **MCP e assistente:** distinguem instruções de sistema, pedido da tarefa, recurso MCP, ferramenta e estado persistido do curso.
-- **Segurança e acessibilidade:** qualificam permissões e estados técnicos sem convertê-los em papéis institucionais ou cognição.
+Cada entrada começa pelo significado e por um exemplo. Em **Domínio e implementação**, aparecem o conceito representado, seu equivalente em inglês e o identificador técnico. **Uso** indica a escolha terminológica e as palavras que poderiam causar confusão. **Base** aponta para a definição adotada pelo projeto ou para uma fonte externa.
 
-Um termo pode aparecer em várias camadas, mas conserva uma única definição. Termos de interface podem ser mais curtos que o símbolo técnico somente quando esta correspondência está registrada.
+Os nomes visíveis no aplicativo conservam a grafia dos rótulos. Na prosa, nomes comuns como curso, explicação e unidade de estudo ficam em minúsculas, conforme os [princípios editoriais](principios-editoriais.md). O [registro terminológico](evidence/terminologia-canonica.v1.json) conserva também as alternativas examinadas e os motivos de cada escolha.
 
-## Estatutos de decisão
+## Escolhas terminológicas
 
 - `manter`: o nome coincide com o conceito, dentro da definição registrada.
-- `restringir`: o nome permanece apenas no sentido e nas camadas declarados.
+- `restringir`: o nome permanece apenas no sentido e nos contextos de uso declarados.
 - `substituído`: a forma anterior saiu do uso corrente e o termo canônico assumiu seu lugar.
 - `retirado`: o nome ou símbolo não representa mais um conceito corrente.
 
-As decisões registram quando um nome permanece com sentido delimitado, quando deve ser usado apenas numa camada e quando uma forma histórica foi substituída ou retirada.
+Os contextos de uso distinguem, por exemplo, a interface, a documentação e o código. Um nome técnico pode continuar necessário na implementação mesmo quando o aplicativo apresenta um rótulo mais simples.
 
 ## Termos
 
@@ -45,13 +41,13 @@ Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, cor
 
 **Base.** [padrão externo](https://www.w3.org/TR/ATAG20/); [decisão de produto](visao-do-produto.md).
 
-#### Analytics
+#### Dados de autoria
 
-Área de consulta quantitativa do desenho corrente de um curso e das intervenções humanas registradas. As contagens descrevem conteúdo e autoria; não atribuem pontuação de qualidade ou de aprendizagem. Em Analytics, a pessoa proprietária escolhe curso, parte, microssequência ou unidade de estudo e confronta parâmetros aplicados, novidades, prática, fontes e intervenções humanas em números simples.
+Área de consulta ao conteúdo e às escolhas de autoria de um curso. A pessoa escolhe o que comparar, como ideias novas ou distribuição da prática, e a parte do curso a examinar. As contagens descrevem o material salvo; verificar aprendizagem exige uma avaliação com estudantes. Em Dados de autoria, a pessoa escolhe a dimensão Novidade declarada e compara quantas ideias novas foram registradas nas unidades. Pode consultar as definições usadas na contagem e exportar o curso com sua análise.
 
-**Domínio e implementação.** Analytics da Autoria; equivalente internacional: authoring analytics; símbolo: `authoring_analytics`.
+**Domínio e implementação.** análise dos dados de autoria; equivalente internacional: authoring analytics; símbolo: `authoring_analytics`.
 
-**Uso.** `restringir`. Distinguir de `Pesquisa`, `experimento`, `painel administrativo`.
+**Uso.** `restringir`; formas técnicas ou históricas: `Analytics`. Distinguir de `Pesquisa`, `experimento`, `painel administrativo`.
 
 **Base.** [decisão de produto](analytics-instrucionais.md).
 

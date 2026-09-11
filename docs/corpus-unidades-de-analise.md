@@ -1,27 +1,32 @@
 # Corpus de recortes e contraexemplos
 
-Este corpus acompanha o [protocolo de unidade de análise](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise), definição operacional 1.
-Uma unidade de análise recorta o conhecimento necessário a uma tarefa para
-um público definido. Os casos sintéticos abaixo exercitam esse recorte em
-redes, matemática, organização do trabalho, leitura
-literária e vocabulário, em português, inglês, espanhol, francês e chinês.
-Os trechos foram construídos para comparar decisões de codificação. Não são
-cursos completos, fontes disciplinares de referência ou dados de estudantes.
+Contar palavras novas não basta para identificar o conhecimento que uma tarefa
+solicita. “Switch” e “comutador” podem nomear o mesmo objeto; uma regra de
+encaminhamento acrescenta uma relação mesmo usando palavras já apresentadas.
+O primeiro caso abaixo mostra essa diferença. Os demais examinam matemática,
+organização do trabalho, leitura literária e vocabulário.
 
-Cada caso explicita contexto, recorte adotado e alternativa concorrente. Ambas
-as leituras são exemplos analíticos produzidos na mesma elaboração, não saídas
-de codificadores independentes. “Adotado” significa consistente com o contexto
-aqui fixado, não padrão-ouro validado. As traduções servem à inspeção do
-protocolo; equivalência por especialistas e estabilidade entre execuções ainda
-não foram medidas. Uma tradução não representa amostra independente de domínio.
+Uma **unidade de análise instrucional** recorta o conhecimento necessário a uma
+tarefa para um público definido. O corpus acompanha o [protocolo de unidade de
+análise](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise),
+definição operacional 1. Cada caso descreve objetivo, conhecimentos prévios,
+recorte adotado e alternativa. Chama-se **codificação** ao trabalho de
+identificar esses recortes e marcar como aparecem nos trechos.
+
+Os casos são sintéticos, construídos para discutir as decisões de análise.
+As leituras concorrentes foram elaboradas conjuntamente e ainda não constituem
+classificações de avaliadores independentes. “Adotado” indica a escolha
+justificada pelo contexto do exemplo. As traduções ajudam a inspecionar essa
+escolha; sua equivalência disciplinar e linguística ainda exige avaliação por
+especialistas e não acrescenta casos independentes à amostra.
 
 As identidades abaixo são locais a cada caso. `I` significa introdução, `U` uso,
 `R` retomada e `M` menção. `P` identifica pressuposto no repertório, não ocorrência
 textual. Desenvolvimento é informado por trecho; não se deduz dessas letras.
 Uma mesma identidade introduzida e aplicada na unidade conta uma introdução.
 
-Na comparação estrutural, conservar todos os recortes. Por exemplo, se A
-descreve uma relação X e B a divide em X1 e X2 no mesmo trecho, registrar
+A comparação conserva todos os recortes. Se a leitura A
+descreve uma relação X e a leitura B a divide em X1 e X2 no mesmo trecho, o registro mantém o
 inventário A com uma identidade, inventário B com duas e a proposta de divisão
 X → {X1, X2}, acompanhada da justificativa. Nenhuma identidade é eliminada para
 produzir pares um a um; não se calcula percentual de concordância. Se somente
@@ -106,7 +111,8 @@ A-condição é pertinente: A1 apenas a enuncia, sem desenvolver os casos de
 coeficiente zero. O plano tem uma lacuna a resolver; não se marca a condição
 como dominada nem se apaga o recorte para conservar “uma novidade”.
 
-As três expressões de A1 não justificam comparação por espaços ou tokens.
+As três expressões de A1 mostram por que palavras separadas por espaços ou
+fragmentos contados por um programa não constituem unidades de conhecimento.
 Uma contagem por padrão textual de grupos de letras/números no chinês é uma observação desse
 algoritmo, não segmentação linguística validada nem medida de conhecimento.
 
@@ -209,7 +215,7 @@ evidência precisaria especificar apoio, operação e condições antes de usar
 essas oportunidades em sua contagem.
 
 **Contraexemplo de extensão.** D3 com retorno fechado e D3 com retorno aberto
-são estados diferentes. Não foram renderizados neste corpus: altura, viewport
+são estados diferentes. Não foram renderizados neste corpus: altura, área visível da tela
 útil e telas equivalentes permanecem não medidos. É incorreto atribuir-lhes
 pixels ou tempo de estudo a partir do número de palavras, fórmulas ou campos.
 

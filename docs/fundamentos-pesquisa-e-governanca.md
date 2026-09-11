@@ -35,19 +35,7 @@ necessários, quem pode acessá-los e os limites da conclusão.
 
 ## Estados epistêmicos
 
-“Epistêmico” refere-se ao estatuto de uma afirmação como conhecimento. O corpus
-do AraLearn utiliza seis estados:
-
-| Estado | Definição | Evidência necessária | Linguagem adequada |
-| --- | --- | --- | --- |
-| **evidência externa** | resultado ou argumento publicado fora do AraLearn | fonte identificável e limites de população, tarefa e método | “a revisão encontrou...”, “o estudo observou...” |
-| **inferência teórica** | relação argumentada entre literatura e contexto do produto | encadeamento explícito e alternativas | “isso torna plausível...”, “pode ser relevante...” |
-| **hipótese de design** | relação falseável entre contexto, mecanismo e resultado | comparação, medida e critério de revisão propostos | “a hipótese é que...” |
-| **decisão de produto** | escolha pedagógica, normativa ou arquitetural vigente | problema, alternativas, fundamento e consequências | “o AraLearn adota...” |
-| **propriedade implementada** | comportamento demonstrável do artefato | código, esquema de dados, teste, inspeção ou medição | “a versão implementa...” |
-| **resultado empírico** | achado produzido em avaliação documentada | participantes ou corpus, procedimento, análise e incerteza | “nestas condições, observou-se...” |
-
-### Por que essa separação é necessária
+“Epistêmico” refere-se ao estatuto de uma afirmação como conhecimento.
 
 Considere a afirmação “o funcionamento sem conexão reduz o abandono”. Ela contém
 duas relações distintas:
@@ -58,9 +46,20 @@ duas relações distintas:
 | a disponibilidade sem rede altera continuidade ou abandono | população, comparação e medida definidas num estudo |
 
 O teste de rede pode sustentar a primeira; não pode sustentar a segunda.
-Expressões como “melhora”, “reduz”, “favorece” e “aumenta” precisam nomear
-sujeito, comparação, resultado, contexto e fonte. Quando isso ainda não existe,
-usa-se “pretende”, “pode” ou “hipótese a avaliar”.
+A conclusão sobre continuidade precisa identificar as pessoas, as condições
+comparadas e o resultado observado. Até essa avaliação, a relação permanece
+uma hipótese do projeto.
+
+A documentação distingue seis estados para tornar esse alcance reconhecível:
+
+| Estado | Definição | Evidência necessária | Linguagem adequada |
+| --- | --- | --- | --- |
+| **evidência externa** | resultado ou argumento publicado fora do AraLearn | fonte identificável e limites de população, tarefa e método | “a revisão encontrou...”, “o estudo observou...” |
+| **inferência teórica** | relação argumentada entre literatura e contexto do produto | encadeamento explícito e alternativas | “isso torna plausível...”, “pode ser relevante...” |
+| **hipótese de design** | relação falseável entre contexto, mecanismo e resultado | comparação, medida e critério de revisão propostos | “a hipótese é que...” |
+| **decisão de produto** | escolha pedagógica, normativa ou arquitetural vigente | problema, alternativas, fundamento e consequências | “o AraLearn adota...” |
+| **propriedade implementada** | comportamento demonstrável do artefato | código, esquema de dados, teste, inspeção ou medição | “a versão implementa...” |
+| **resultado empírico** | achado produzido em avaliação documentada | participantes ou corpus, procedimento, análise e incerteza | “nestas condições, observou-se...” |
 
 ## Objeto, contexto e delimitação
 
@@ -118,201 +117,77 @@ Essas perguntas podem ser investigadas separadamente. Colocá-las num único
 estudo produziria unidades, medidas e explicações rivais demais para uma análise
 coerente.
 
-## Design-Based Research
+## Escolher o enquadramento da pesquisa
 
-Construir o AraLearn ao longo do tempo não transforma sua genealogia em método
-de pesquisa. Um episódio só pode ser situado em DBR ou DSR quando pergunta,
-contexto, versão do artefato, procedimento, dados e contribuição foram
-declarados de modo compatível com a tradição metodológica. Classificar
-retroativamente toda iteração como pesquisa apagaria a diferença entre memória
-do projeto e investigação documentada.
+A pergunta orienta a escolha do método. Compreender como autores inspecionam
+fontes pode requerer observação, entrevista e análise dos materiais de um caso.
+Investigar como aperfeiçoar essa prática pode envolver ciclos de intervenção;
+estimar o efeito de uma mudança exige uma comparação capaz de examinar outras
+explicações. O [guia de investigação](guia-pesquisador.md#da-pergunta-ao-método)
+apresenta essas possibilidades, desenvolvidas no [protocolo de avaliação](protocolo-avaliacao-artefato.md#escolher-uma-estratégia-de-investigação).
 
-### Conceito
+### Design-Based Research
 
-Design-Based Research (DBR) é uma tradição de investigação de intervenções
-educacionais em contextos autênticos. Ela articula análise do problema,
-desenho, implementação, observação e revisão, buscando compreender como a
-intervenção opera em condições concretas e produzir conhecimentos de design
-transferíveis com limites explícitos ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
+A pesquisa baseada em design, ou **DBR** (*Design-Based Research*), articula a
+criação e a investigação de intervenções educacionais em contexto. Por exemplo,
+um estudo pode acompanhar autores, examinar dificuldades na inspeção de
+fontes, modificar o apoio oferecido e investigar o que muda num novo ciclo.
+A contribuição envolve tanto a intervenção quanto a compreensão das condições
+em que ela opera ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased);
+[Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
 
-DBR não significa simplesmente “desenvolver iterativamente”. Um ciclo precisa
-ter:
+### Design Science Research
 
-- problema educacional situado;
-- conjectura ou mecanismo explícito;
-- intervenção descrita e versionada;
-- participação de atores relevantes;
-- dados coerentes com a pergunta;
-- análise de processo, resultado e casos negativos;
-- revisão da intervenção e da explicação.
+A pesquisa em ciência do design, ou **DSR** (*Design Science Research*),
+relaciona um problema relevante à construção e à avaliação de um artefato.
+No AraLearn, pode investigar uma solução para conservar conteúdo e fontes
+inspecionáveis durante a autoria. Sua avaliação pode reunir testes do software
+e uso por pessoas, conforme a contribuição pretendida
+([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience);
+[Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). O posicionamento da
+contribuição considera o conhecimento anterior sobre o problema e as soluções
+([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
 
-### Aplicação ao AraLearn
+### Relação entre DBR e DSR
 
-- **Problema:** decisões didáticas e de uso só podem ser compreendidas no
-  contexto em que pessoas estudam, retomam, interpretam e revisam.
-- **Alternativas:** avaliação laboratorial isolada, coleta de satisfação ou
-  ciclos situados com mecanismos declarados.
-- **Enquadramento possível:** episódios futuros ou documentados podem usar DBR
-  para investigar progressão, representações, feedback, retomada cotidiana,
-  observações e práticas de autoria em contexto quando cumprirem as condições
-  metodológicas acima.
-- **Fundamentação:** DBR relaciona teoria, desenho e prática sem presumir que a
-  intervenção funcione da mesma forma em todos os ambientes
-  ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
-- **Operacionalização:** cada ciclo registra contexto, versão, conjectura sobre contexto, mecanismo e resultado (C–M–O),
-  processo, resultados, rivais, efeitos adversos e revisão.
-- **Consequências:** mudanças no produto tornam-se parte da explicação, e não
-  ruído ocultado.
-- **Limites:** resultados permanecem situados; abstração exige comparação entre
-  ciclos e justificativa de transferência.
+DBR e DSR podem se complementar, mas a combinação precisa ser justificada.
+Sua distinção não distribui automaticamente perguntas educacionais à primeira
+e perguntas técnicas à segunda: ambas podem examinar uso, contexto e desenho.
+O protocolo explicita a tradição adotada, a contribuição procurada e a relação
+entre procedimentos e pergunta. Estudos interpretativos ou críticos também
+podem investigar o AraLearn sem adotar nenhuma das duas.
 
-## Design Science Research
-
-### Conceito
-
-Design Science Research (DSR) investiga a construção e a avaliação de artefatos
-destinados a resolver problemas relevantes, além do conhecimento de design que
-esses artefatos incorporam ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). A contribuição pode ser o próprio artefato, um método, uma
-arquitetura, um princípio ou conhecimento sobre condições de sucesso e falha.
-
-Gregor e Hevner propõem posicionar a contribuição conforme a maturidade do
-problema e da solução ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). O quadro FEDS ajuda a
-planejar avaliações formativas ou somativas, artificiais ou naturalísticas
-([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
-
-### Aplicação ao AraLearn
-
-- **Problema:** o produto articula um núcleo que coordena o aplicativo e pacotes
-  que implementam suas representações e respostas, conforme a
-  [arquitetura de componentes](arquitetura.md). Essa organização envolve contratos, armazenamento,
-  sincronização, autoria e governança; é necessário demonstrar correção,
-  utilidade e custo sem confundir esses resultados.
-- **Alternativas:** relatar apenas implementação, executar testes sem argumento
-  de design ou organizar problema, objetivo, construção, demonstração,
-  avaliação e contribuição.
-- **Enquadramento possível:** episódios futuros ou documentados podem usar DSR
-  para investigar arquitetura de componentes, contratos, persistência
-  local-first, delimitação de autoria, validação e frugalidade quando a
-  contribuição de design e a estratégia de avaliação estiverem explícitas.
-- **Fundamentação:** DSR oferece estrutura para relacionar relevância,
-  rigor, artefato e avaliação ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm); [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)).
-- **Operacionalização:** requisitos verificáveis, versão identificada, cenário
-  nominal e adverso, comparação, medição e decisão de manter, alterar ou
-  remover.
-- **Consequências:** testes e medições tornam-se evidência do artefato, enquanto
-  resultados educacionais permanecem em episódios próprios.
-- **Limites:** construir software de qualidade não constitui automaticamente
-  pesquisa em DSR; é preciso explicitar contribuição e avaliação.
-
-## Relação entre DBR e DSR
-
-DBR e DSR são complementares, não sinônimos. A primeira parte de um problema
-educacional situado e investiga uma intervenção em contexto; a segunda parte
-de um problema de projeto e investiga a construção e a avaliação de um
-artefato. No AraLearn, as duas perspectivas podem compartilhar episódios e
-dados, mas não compartilham automaticamente a mesma pergunta nem o mesmo tipo
-de conclusão.
-
-| Tradição | Percurso da investigação | Conhecimento pretendido |
-| --- | --- | --- |
-| DBR | problema educacional situado, intervenção e uso em contexto | explicação e princípio educacional delimitado |
-| DSR | problema do artefato, construção, demonstração e avaliação | contribuição de design sustentada pela avaliação |
-
-As duas tradições podem examinar a mesma versão, mas usam os dados para
-perguntas diferentes. Um teste visual demonstra que rótulos não se sobrepõem;
-uma tarefa com participantes informa se a relação foi interpretada; uma medida
-posterior informa retenção. Nenhum desses resultados substitui os demais.
-
-### O que cada registro permite afirmar
-
-- **Genealogia do artefato** relata experiências e problemas que antecederam
-  uma decisão. Ela explica origem, não método nem efeito.
-- **Decisão de engenharia** registra problema, alternativas e mecanismo
-  adotado. Pode existir fora de qualquer estudo.
-- **Ciclo de desenho** relaciona uma versão, um problema observado e uma
-  revisão. Iteração, por si, ainda não caracteriza DBR ou DSR.
-- **Avaliação técnica** verifica contrato, segurança, geometria, desempenho ou
-  outro comportamento do artefato em condições declaradas.
-- **Avaliação de usabilidade** examina se pessoas específicas alcançam
-  objetivos específicos em contexto identificado.
-- **Investigação educacional** precisa definir constructo ou resultado, tarefa,
-  instrumento, população, comparação quando pertinente e limites de
-  inferência.
-- **Episódio DBR** acrescenta problema educacional situado, conjectura,
-  intervenção, atores relevantes, análise do processo e revisão da explicação.
-- **Episódio DSR** acrescenta problema de design, contribuição pretendida,
-  demonstração, avaliação e abstração responsável do conhecimento produzido.
-
-Um mesmo episódio pode fornecer evidência a mais de uma trilha, desde que cada
-pergunta e conclusão permaneça identificável. O rótulo metodológico não amplia
-o alcance dos dados.
+A história do projeto e suas refatorações explicam como o produto se formou.
+Para caracterizar um episódio como pesquisa, é preciso poder reconstruir a
+pergunta, a versão, o contexto, o procedimento, a análise e a contribuição.
+Uma revisão de interface pode fornecer material para um estudo; sua ocorrência,
+isoladamente, não documenta um ciclo de investigação.
 
 ## Fundamentos que orientam o desenho
 
-### Revisão focal da autoria contextual
-
-A consulta de **9 de setembro de 2026 (UTC)** foi orientada às decisões de
-nomenclatura, separação entre conteúdo e realização, controle autoral e
-acessibilidade. Partiu de referências já pertinentes ao problema, conferindo
-páginas primárias das editoras, repositório institucional dos autores e fontes
-oficiais. O critério de encerramento foi obter fundamento e limite explícitos
-para cada decisão desta seção. Não houve busca exaustiva, comparação sistemática
-de estudos ou nova avaliação de eficácia do AraLearn.
-
-O alcance efetivamente consultado está registrado abaixo. Quando uma página
-editorial não abriu diretamente, usou-se o resumo que ela disponibilizava na
-busca ou o repositório institucional indicado; isso não foi contado como leitura
-integral. Os metadados pertencem a [`referencias.bib`](referencias.bib).
-
-| fonte primária | Escopo consultado | Papel na decisão | Limite de inferência |
-| --- | --- | --- | --- |
-| [Biggs (1996)](referencias.md#ref-biggs1996alignment) | Resumo e metadados na página da Springer; texto integral não consultado | Articular objetivos, atividades e avaliação ao delimitar o desenho | Não prescreve a interface, a extensão da base ou um número de unidades |
-| [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli) | Resumo e seções 1.2, sobre níveis de análise, e 2.1, sobre eventos, no HTML da Wiley | Distinguir recorte de conhecimento, episódio instrucional e aprendizagem inferida | Não valida a unidade de análise instrucional do AraLearn como componente cognitivo nem como medida |
-| [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner) | Resumo e metadados da editora e do depósito UCL; não leitura integral | Precedente de ferramenta que representa escolhas de desenho e apoia professores como designers | Resultados do Learning Designer pertencem à ferramenta e aos contextos estudados; não são resultados deste produto |
-| [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture) | Resumo e metadados editoriais retornados pela busca; artigo integral não consultado | Separar conjectura sobre o funcionamento do desenho da relação teórica com resultados | O resumo sustenta a distinção geral; não basta para alegar aplicação integral do método |
-| [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai) e [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection) | Página da publicação dos autores e orientação oficial HAX G9 para correção; sem leitura integral do artigo ou estudo dos exemplos de produtos | Tornar intervenções de IA compreensíveis e permitir editar, corrigir e recuperar | Diretrizes de interação não comprovam inspeção crítica ou eficácia das decisões humanas no AraLearn |
-| [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel) | Página oficial, descrição dos quatro componentes | Comparação parcial entre tarefas e informações de suporte | A base explicativa é definição própria; não é equivalência canônica com *supportive information* nem adoção integral do 4C/ID |
-| [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22) | WCAG 2.2, critério 1.4.10; texto dos critérios e intenção nas páginas oficiais Understanding de 1.4.3, 1.4.11, 2.5.8 e 4.1.2, listadas abaixo | Restrições verificáveis de apresentação e operação dos controles | WCAG é referência normativa; Understanding é explicação informativa. Esta consulta não é auditoria integral de conformidade |
-| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgtoolbar), padrão Toolbar | Agrupamento, interação por teclado, foco, papéis e nomes no APG | Orientar grupos que de fato adotem o padrão de barra de ferramentas | Fileira visual de ícones não recebe automaticamente esse papel; o padrão não comprova reconhecimento do símbolo |
-| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog), padrão Dialog (Modal) | Interação por teclado, foco inicial, fechamento, retorno do foco e semântica no APG | Orientar detalhes modais que preservem a continuidade do contexto | O padrão não é componente pronto nem certificação da implementação |
-
-As páginas informativas consultadas foram
-[Contraste mínimo](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
-[Contraste não textual](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html),
-[Tamanho mínimo do alvo](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
-e [Nome, papel e valor](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html).
-As referências de interface restringem escolhas de produto: ações principais
-por ícone precisam conservar nome e estado acessíveis, ajuda acessível por
-teclado e toque e área de ativação adequada. Ícone menor não exige alvo menor;
-cinza ou corpo menor não dispensam legibilidade e contraste. A preferência
-visual por esses recursos permanece uma decisão a inspecionar com conteúdo real,
-sem alegação de redução de carga cognitiva ou melhora de aprendizagem.
-
 ### Conteúdo, desenho e evidência
 
-O [glossário](glossario-construtos.md#termos-operacionais-do-modelo-didático)
-separa quatro responsabilidades. A microssequência delimita objetivo e
-progressão. Sua **base explicativa**, chamada **Explicação** na interface,
-desenvolve conteúdo intelectual/documental e fontes. O **desenho instrucional**
-articula a intenção sobre apresentação, tarefa, evidência e prática. As
-**unidades de estudo** realizam episódios desse desenho. A **unidade de análise
-instrucional** acompanha um recorte semântico, podendo atravessar vários
-episódios, sem se tornar unidade estatística ou medida de aprendizagem.
+Considere uma microssequência destinada a interpretar uma taxa percentual.
+Sua **base explicativa** desenvolve o raciocínio e liga as afirmações às fontes.
+O **desenho instrucional** planeja como apresentar esse conhecimento e pedir
+seu uso: um exemplo pode anteceder uma comparação de taxas e uma tarefa de
+cálculo. As **unidades de estudo** realizam essas etapas no percurso. A
+[organização didática](modelo-didatico.md) apresenta a relação completa.
 
-Essa organização é uma **decisão de produto fundamentada por inferência**.
-Permite especificar bases antes das unidades, sem supor que uma base pronta
-resolve toda a realização instrucional. Objetivo, público, escopo e dependências
-delimitam o conteúdo; fontes próprias de uma tarefa continuam ligadas à unidade
-que as mobiliza. A disponibilidade de apoio e as condições de uso precisam ser
-descritas em cada investigação: abrir a explicação não demonstra domínio e não
-transforma leitura em oportunidade de prática.
+Na revisão, é possível perguntar onde está o problema: a afirmação da base
+está incorreta, falta um passo no exemplo ou a prática pede uma operação que
+não foi desenvolvida? A [análise instrucional](desenho-instrucional-parametrizado.md)
+acompanha o conhecimento que atravessa essas etapas, ajudando a localizar
+lacunas. Separar base e realização é uma decisão do AraLearn; a hipótese é que
+a distinção ajude autores a inspecionar e reformular o material.
 
-O [contrato de autoria contextual](autoria-contextual.md) define objeto dono,
-escopo, origem, persistência, acesso e efeito de cada controle. Ele distingue
-intenção para próximas produções, configuração aplicada ao conteúdo identificado
-e declaração de revisão. Essa distinção deve ser demonstrada pela releitura do
-estado e por inspeção dos fluxos; sua descrição documental não comprova que os
-clientes já executam todas as operações.
+Os registros também distinguem o que foi planejado do que foi produzido. Se a
+pessoa muda a quantidade desejada de prática, a nova intenção orienta uma
+produção posterior; a configuração das unidades já salvas conserva o que foi
+usado nelas. A base possui sua própria versão e fontes. Essa separação permite
+conferir qual conteúdo estava disponível numa avaliação e que decisão o
+orientou. As [regras de autoria contextual](autoria-contextual.md) explicam o
+alcance das mudanças e da declaração humana de revisão.
 
 ### Conjecturas da autoria contextual
 
@@ -327,69 +202,19 @@ resultados humanos exigem avaliação com participantes e instrumentos próprios
 | **Cadência transparente:** foco, cadência, revisão e diálogo independentes podem acomodar modos distintos de trabalho | A pessoa combina produção e inspeção sem perder as condições acordadas | Preferência pessoal nova não altera conteúdo ou condição fixada; cada revisão corresponde ao objeto salvo indicado | A pessoa reconhece os valores da combinação predefinida e o que realmente revisou? Pausa ou aceitação em lote podem gerar confirmação sem inspeção |
 | **Apoio no Estudo:** base salva disponível sob demanda pode ajudar a recuperar pressupostos | O estudante reconhece uma lacuna, encontra o apoio e retoma a tarefa | Abrir a instância salva sem gerar conteúdo; manter ponto do percurso e acesso conforme os direitos | Novatos reconhecem quando consultar? Há riscos de recurso invisível, leitura passiva e dependência do apoio |
 
-O programa técnico não inicia coleta com estudantes, inferência de domínio,
-randomização ou experimento de eficácia. Uma avaliação futura particulariza
-essas conjecturas e sua condição de refutação. Provas sintéticas, revisão de IA
-e integração contínua não são observação humana nem resultados de aprendizagem.
+Uma avaliação particulariza a conjectura e observa o processo humano que ela
+propõe. No exemplo do controle contextual, interessa examinar se a pessoa
+prevê corretamente o que mudará e por que aceita ou rejeita uma proposta.
 
-### Carga, segmentação e representação
+### Relação com a fundamentação educacional
 
-A teoria da carga cognitiva destaca demandas introduzidas pelo desenho
-([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). O quadro DeFT examina
-funções e tarefas de representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Evidências de
-contiguidade e segmentação sustentam atenção à integração, mas não tornam
-qualquer unidade curta ou imagem pedagogicamente adequada
-([Ginns (2006)](referencias.md#ref-ginns2006contiguity); [Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
-
-**Decisão:** uma representação especializada só se justifica quando preserva uma
-estrutura acadêmica relevante. **Hipótese:** seleção por operação e
-representação canônica podem reduzir tradução mental. **Limite:** essa relação
-precisa ser comparada por tarefa e domínio.
-
-### Aquisição inicial, recuperação e distribuição
-
-Exemplos resolvidos e retirada gradual podem favorecer novatos em determinadas
-tarefas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples); [Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). Recuperação e
-distribuição possuem suporte amplo, com efeitos condicionados por conteúdo,
-formato, intervalo e medida ([Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Intercalação possui moderadores
-próprios ([Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving)).
-
-**Decisão:** planejamento antecede a quantidade de unidades de estudo; prática é escolhida
-pela operação e retomada não segue intervalo universal. **Hipótese:** uma
-microssequência coerente pode articular apoio, produção, feedback e retomada.
-**Limite:** resultados imediatos, posteriores e de transferência permanecem
-separados.
-
-### Agência e feedback
-
-Autorregulação inclui planejamento, desempenho, monitoramento e reflexão
-([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)). Controle oferecido
-pela tecnologia apresenta efeitos heterogêneos ([Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol)).
-Feedback depende de informação, interpretação e ação
-([Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy); [Morris et al. (2021)](referencias.md#ref-morris2021formative)).
-
-**Decisão:** o estudo não converte tentativas e ajuda em punição ou diagnóstico;
-autoria e revisão permanecem reversíveis. **Hipótese:** feedback específico e
-controle compreensível podem apoiar ação posterior. **Limite:** nenhum efeito
-sobre ansiedade ou autonomia é presumido.
-
-### IA e governança de dados
-
-Lewis et al. definem geração aumentada por recuperação como uma arquitetura em
-que informação recuperada condiciona a geração
-([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)). Recuperação não garante
-factualidade: erros e formas de mitigação variam entre tarefas de geração
-([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)). A interação entre
-pessoas e IA requer comunicação de limites, correção e controle
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Orientações de risco destacam responsabilidade
-e proteção de dados ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)). A análise de dados
-educacionais, também conhecida como *learning analytics*, exige finalidade,
-transparência e proporcionalidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
-
-**Decisão:** contexto, escopo, validação e responsabilidade permanecem
-explícitos; dados só entram quando ligados a pergunta e intervenção. **Hipótese:**
-essa arquitetura pode reduzir deriva e vigilância indevida. **Limite:** esquema de dados
-válido e coleta mínima não demonstram qualidade ou confiança.
+A [revisão de literatura](revisao-de-literatura.md) discute carga cognitiva,
+representações, prática, autorregulação e retorno. O [quadro teórico](quadro-teorico.md)
+relaciona essas ideias a perguntas sobre o AraLearn. Nesta governança, interessa
+conservar a razão da escolha e o que poderia levar à sua revisão. Se uma
+representação foi escolhida para facilitar uma comparação, por exemplo,
+avaliá-la exige examinar essa operação com pessoas e conteúdo pertinentes.
+A aparência da tela informa outra dimensão da decisão.
 
 ### Responsabilidade na pesquisa assistida por IA
 
@@ -420,7 +245,7 @@ Uma revisão reproduzível futura deve registrar o protocolo fora do código do
 produto: bases, expressões de busca, datas, critérios, duplicatas, seleção, avaliação
 crítica e fluxograma ([Peters et al. (2024)](referencias.md#ref-peters2024scoping); [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)).
 
-### Proveniência das Fontes de um Curso
+### Proveniência das fontes de um curso
 
 A bibliografia desta documentação e as fontes usadas num curso cumprem funções
 diferentes. Dentro do produto, uma fonte possui identidade e estado correntes;
@@ -463,7 +288,7 @@ reconstrução fictícia de aprovação.
 
 ### Registro mínimo
 
-Toda decisão relevante deve responder, em documento versionado:
+O registro de uma decisão permite compreender a escolha e retomá-la. Ele reúne:
 
 1. **problema:** qual situação requer decisão;
 2. **alternativas e requisitos:** que soluções eram plausíveis e o que não
@@ -486,9 +311,9 @@ Uma mudança deixa rastros diferentes:
 - conformidade em testes e medições técnicas;
 - avaliação em protocolo, instrumentos e dados autorizados.
 
-Não se deve inventar retrospectivamente uma justificativa para legitimar uma
-decisão já tomada. Quando a evidência é indireta, isso precisa ser dito; quando
-uma hipótese falha, a documentação deve registrar a revisão.
+Uma justificativa formulada depois da decisão é identificada como tal. Essa
+distinção conserva a história da escolha, inclusive quando uma hipótese falha
+e o projeto precisa ser revisto.
 
 ## Governança de dados e ética
 
@@ -590,9 +415,9 @@ desenho](experimentos-instrucionais-parametrizados.md).
 | contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
 | bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |
 
-## Governança de Analytics e medidas
+## Governança dos dados de autoria
 
-**Analytics** deriva do estado corrente contagens de desenho e intervenções
+A área **Dados de autoria** deriva do estado corrente contagens de desenho e intervenções
 humanas explicitamente observáveis. A consulta é exclusiva da pessoa
 proprietária; a leitura quantitativa não inclui texto de observações, identidade
 de conta ou conversa. A ação **Exportar curso e análise** acrescenta o conteúdo
@@ -600,109 +425,83 @@ integral salvo do curso, além dos registros disponíveis de fontes, configuraç
 aplicada e revisão. Esse alcance está detalhado na
 [referência da exportação](dicionario-metricas-datasets.md#comparação-e-exportação).
 
-Uma medida só deve orientar pesquisa com pergunta, unidade, denominador,
-tratamento de ausências, interpretação permitida e limite. As contagens do
+Uma contagem precisa declarar a que conjunto se refere: esse conjunto é seu
+**denominador**. Duas correções em duas unidades e duas correções em duzentas
+unidades descrevem situações distintas. O [guia de investigação](guia-pesquisador.md#escolher-unidade-de-análise-e-medida)
+explica como relacionar esses registros à pergunta e aos dados ausentes. As contagens do
 produto não medem aprendizagem, atenção, esforço ou qualidade. Um desfecho exige
 protocolo, instrumento e finalidade próprios, com consentimento e avaliação
 ética quando aplicáveis. Mesmo sem registros de conta, o conteúdo e seus
 metadados podem identificar pessoas ou contextos. A exportação exige controle
 de acesso, retenção e avaliação de reidentificação conforme o plano do estudo.
 
-## Conceitos mínimos para interpretar uma investigação
+### Revisão focal da autoria contextual
 
-Um **estado observável** é uma condição que o produto consegue derivar do
-artefato corrente, como quantidade de unidades de estudo ou observações abertas. Ele não
-é automaticamente uma medida educacional: só ganha significado analítico
-depois que pergunta e regra de interpretação forem declaradas.
+A conferência bibliográfica de **9 de setembro de 2026 (UTC)** examinou decisões de
+nomenclatura, separação entre conteúdo e realização, controle autoral e
+acessibilidade. Partiu de referências já pertinentes ao problema, conferindo
+páginas primárias das editoras, repositório institucional dos autores e fontes
+oficiais. O critério de encerramento foi obter fundamento e limite explícitos
+para cada decisão desta seção. Não houve busca exaustiva, comparação sistemática
+de estudos ou nova avaliação de eficácia do AraLearn.
 
-O **denominador** é o conjunto de oportunidades ao qual uma contagem se refere.
-“Duas correções”, por exemplo, muda de significado se o denominador for duas,
-vinte ou duzentas unidades elegíveis. O denominador precisa declarar inclusões,
-exclusões, ausências, filtros e instante de corte.
+O alcance efetivamente consultado está registrado abaixo. Quando uma página
+editorial não abriu diretamente, usou-se o resumo que ela disponibilizava na
+busca ou o repositório institucional indicado; isso não foi contado como leitura
+integral. As [referências completas](referencias.md) permitem localizar as obras.
 
-**Confiabilidade** descreve a consistência de escores, classificações ou
-observações sob fontes de variação pertinentes, como itens, ocasiões e
-avaliadores. Ela não equivale a validade. Um instrumento pode produzir valores
-consistentes e ainda sustentar uma interpretação incorreta; validade concerne
-ao argumento que liga evidência, interpretação e uso na população e na tarefa
-de interesse ([Messick (1995)](referencias.md#ref-messick1995validity);
-[American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
+| fonte primária | Escopo consultado | Papel na decisão | Limite de inferência |
+| --- | --- | --- | --- |
+| [Biggs (1996)](referencias.md#ref-biggs1996alignment) | Resumo e metadados na página da Springer; texto integral não consultado | Articular objetivos, atividades e avaliação ao delimitar o desenho | Não prescreve a interface, a extensão da base ou um número de unidades |
+| [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli) | Resumo e seções 1.2, sobre níveis de análise, e 2.1, sobre eventos, no HTML da Wiley | Distinguir recorte de conhecimento, episódio instrucional e aprendizagem inferida | Não valida a unidade de análise instrucional do AraLearn como componente cognitivo nem como medida |
+| [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner) | Resumo e metadados da editora e do depósito UCL; não leitura integral | Precedente de ferramenta que representa escolhas de desenho e apoia professores como designers | Resultados do Learning Designer pertencem à ferramenta e aos contextos estudados; não são resultados deste produto |
+| [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture) | Resumo e metadados editoriais retornados pela busca; artigo integral não consultado | Separar conjectura sobre o funcionamento do desenho da relação teórica com resultados | O resumo sustenta a distinção geral; não basta para alegar aplicação integral do método |
+| [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai) e [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection) | Página da publicação dos autores e orientação oficial HAX G9 para correção; sem leitura integral do artigo ou estudo dos exemplos de produtos | Tornar intervenções de IA compreensíveis e permitir editar, corrigir e recuperar | Diretrizes de interação não comprovam inspeção crítica ou eficácia das decisões humanas no AraLearn |
+| [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel) | Página oficial, descrição dos quatro componentes | Comparação parcial entre tarefas e informações de suporte | A base explicativa é definição própria; não é equivalência canônica com *supportive information* nem adoção integral do 4C/ID |
+| [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22) | WCAG 2.2, critério 1.4.10; texto dos critérios e intenção nas páginas oficiais Understanding de 1.4.3, 1.4.11, 2.5.8 e 4.1.2, listadas abaixo | Restrições verificáveis de apresentação e operação dos controles | WCAG é referência normativa; Understanding é explicação informativa. Esta consulta não é auditoria integral de conformidade |
+| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgtoolbar), padrão Toolbar | Agrupamento, interação por teclado, foco, papéis e nomes no APG | Orientar grupos que de fato adotem o padrão de barra de ferramentas | Fileira visual de ícones não recebe automaticamente esse papel; o padrão não comprova reconhecimento do símbolo |
+| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog), padrão Dialog (Modal) | Interação por teclado, foco inicial, fechamento, retorno do foco e semântica no APG | Orientar detalhes modais que preservem a continuidade do contexto | O padrão não é componente pronto nem certificação da implementação |
 
-Uma **associação** indica que duas variáveis variam juntas nas condições
-observadas. **Confundimento** ocorre quando uma causa alternativa influencia a
-condição e o desfecho, oferecendo outra explicação para a associação. Inferir
-causalidade exige um desenho e pressupostos capazes de enfrentar seleção,
-história, mensuração, perdas, contaminação e outras explicações rivais
-([Shadish et al. (2002)](referencias.md#ref-shadish2002experimental)).
-
-Num **desenho experimental**, a atribuição aleatória é usada para formar
-condições comparáveis em expectativa. Num **desenho quase experimental**, a
-intervenção é estudada sem atribuição aleatória, recorrendo a comparação,
-temporalidade, modelagem e pressupostos adicionais para sustentar a inferência.
-Criar cursos separados com configurações diferentes não realiza nenhum dos dois:
-ainda faltam participantes, atribuição, exposição, instrumentos, desfechos e
-análise.
-
-**Validade externa** trata do argumento para transferir uma conclusão entre
-pessoas, tarefas, contextos, versões e momentos. **Generalização** não é um selo
-recebido por usar amostra grande nem uma promessa de universalidade; depende de
-quais dimensões mudam e de por que o mecanismo deveria permanecer aplicável.
-Resultados sobre uma ocupação, instituição ou curso precisam conservar seus
-limites antes de orientar outro contexto.
+As páginas informativas consultadas foram
+[Contraste mínimo](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),
+[Contraste não textual](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html),
+[Tamanho mínimo do alvo](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+e [Nome, papel e valor](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html).
+As referências de interface restringem escolhas de produto: ações principais
+por ícone precisam conservar nome e estado acessíveis, ajuda acessível por
+teclado e toque e área de ativação adequada. Ícone menor não exige alvo menor;
+cinza ou corpo menor não dispensam legibilidade e contraste. A preferência
+visual por esses recursos permanece uma decisão a inspecionar com conteúdo real,
+sem alegação de redução de carga cognitiva ou melhora de aprendizagem.
 
 <!-- referências locais: início -->
 
 ## Referências
 
-- [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
-- [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [ALLEA (2023)](referencias.md#ref-allea2023integrity): ALLEA (2023). **The European Code of Conduct for Research Integrity: Revised Edition 2023.** All European Academies.
-- [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
-- [Autio et al. (2024)](referencias.md#ref-nist2024genai): Chloe Autio; Reva Schwartz; Jesse Dunietz; Shomik Jain; Martin Stanley; Elham Tabassi; Patrick Hall; Kamie Roberts (2024). **Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile.** National Institute of Standards and Technology, NIST AI 600-1.
 - [Biggs (1996)](referencias.md#ref-biggs1996alignment): John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364.
 - [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao): Brasil. Ministério da Educação (2026). **Referencial para Desenvolvimento e Uso Responsáveis de Inteligência Artificial na Educação.** Ministério da Educação.
-- [Brunmair e Richter (2019)](referencias.md#ref-brunmair2019interleaving): Markus Brunmair; Tobias Richter (2019). **Similarity Matters: A Meta-Analysis of Interleaved Learning and Its Moderators.** *Psychological Bulletin*, 145(11), p. 1029–1052.
-- [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
-- [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
-- [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510): Conselho Nacional de Saúde (2016). **Resolução nº 510, de 7 de abril de 2016.** Conselho Nacional de Saúde.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Foucault (1995)](referencias.md#ref-foucault1995discipline): Michel Foucault (1995). **Discipline and Punish: The Birth of the Prison.** New York, Vintage Books.
 - [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel): Four-Component Instructional Design (s.d.). **About the 4C/ID Model.**
-- [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
-- [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
-- [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
-- [Karich et al. (2014)](referencias.md#ref-karich2014learnercontrol): Angela C. Karich; Matthew K. Burns; Kathrin E. Maki (2014). **Updated Meta-Analysis of Learner Control Within Educational Technology.** *Review of Educational Research*, 84(3), p. 392–410.
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
 - [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner): Diana Laurillard; Eileen Kennedy; Patricia Charlton; Joanna Wild; Dionisis Dimakopoulos (2018). **Using Technology to Develop Teachers as Designers of TEL: Evaluating the Learning Designer.** *British Journal of Educational Technology*, 49(6), p. 1044–1058.
-- [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
 - [Lyotard (1984)](referencias.md#ref-lyotard1984postmodern): Jean-François Lyotard (1984). **The Postmodern Condition: A Report on Knowledge.** Minneapolis, University of Minnesota Press.
-- [Messick (1995)](referencias.md#ref-messick1995validity): Samuel Messick (1995). **Validity of Psychological Assessment: Validation of Inferences from Persons' Responses and Performances as Scientific Inquiry into Score Meaning.** *American Psychologist*, 50(9), p. 741–749.
 - [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection): Microsoft (s.d.). **Guideline 9: Support Efficient Correction.**
-- [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.
-- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm): Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77.
 - [Peters et al. (2024)](referencias.md#ref-peters2024scoping): Micah D. J. Peters; Christina Godfrey; Patricia McInerney; Zachary Munn; Andrea C. Tricco; Hanan Khalil (2024). **Scoping Reviews.** In: *JBI Manual for Evidence Synthesis*, JBI.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
-- [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
-- [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
 - [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture): William Sandoval (2014). **Conjecture Mapping: An Approach to Systematic Educational Design Research.** *Journal of the Learning Sciences*, 23(1), p. 18–36.
-- [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
-- [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
-- [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
-- [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
 - [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr): Andrea C. Tricco; Erin Lillie; Wasifa Zarin; Kelly K. O'Brien; Heather Colquhoun; Danielle Levac; David Moher; Micah D. J. Peters; Tanya Horsley; Laura Weeks; Susanne Hempel; et al. (2018). **PRISMA Extension for Scoping Reviews (PRISMA-ScR): Checklist and Explanation.** *Annals of Internal Medicine*, 169(7), p. 467–473.
 - [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered): Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222.
-- [UNESCO (2023)](referencias.md#ref-unesco2023genai): UNESCO (2023). **Guidance for Generative AI in Education and Research.** UNESCO.
-- [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.
 - [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased): Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23.
 - [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22): World Wide Web Consortium (2023). **Web Content Accessibility Guidelines (WCAG) 2.2.**
 - [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog): World Wide Web Consortium (s.d.). **Dialog (Modal) Pattern: ARIA Authoring Practices Guide.**
 - [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgtoolbar): World Wide Web Consortium (s.d.). **Toolbar Pattern: ARIA Authoring Practices Guide.**
-- [Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated): Barry J. Zimmerman (2002). **Becoming a Self-Regulated Learner: An Overview.** *Theory Into Practice*, 41(2), p. 64–70.
 
 <!-- referências locais: fim -->

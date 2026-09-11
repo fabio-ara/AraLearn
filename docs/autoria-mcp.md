@@ -1,27 +1,20 @@
 # Autoria pelo MCP
 
-O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/latest)
-é um protocolo que permite a um cliente de IA descobrir e chamar ferramentas
-de um serviço. No AraLearn, essas ferramentas consultam e alteram cursos: o
-assistente pode desenvolver o mapa, salvar explicações, produzir unidades e
-revisar conteúdo conforme o pedido da pessoa autora.
+Um assistente externo precisa descobrir quais operações o AraLearn oferece
+antes de consultar ou alterar um curso. O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/latest)
+padroniza essa comunicação: o serviço apresenta ferramentas, seus argumentos e
+seus resultados; o cliente as chama conforme o trabalho autorizado.
 
-O curso salvo é a referência comum à interface, ao MCP e a Actions. A pessoa
-inspeciona o conteúdo e suas fontes no aplicativo, orienta as alterações e pode
-declarar sua revisão. As ferramentas independem do modelo usado pelo cliente;
-a compatibilidade concreta depende do suporte ao protocolo e das capacidades
-desse cliente. O [percurso de autoria por conversa](criar-cursos-pelo-chat.md)
-explica as decisões de autoria; abaixo estão o catálogo e seu funcionamento.
+No AraLearn, essas ferramentas permitem planejar o curso, desenvolver a
+explicação — o texto-base com fontes de uma microssequência —, produzir unidades
+e corrigir conteúdo. A pessoa orienta o trabalho e inspeciona o resultado no
+aplicativo. A [autoria por conversa](criar-cursos-pelo-chat.md) apresenta esse
+percurso; os [fluxos e contratos](fluxos-prompts-e-contratos.md) explicam como o
+pedido se transforma numa operação verificável.
 
-**Debater com GPT**, na Autoria, oferece um pedido copiável com o endereço exato
-do recorte e a revisão observada. O cliente deve resolver essa referência e ler
-o estado atual pelas tarefas existentes, incluindo base explicativa e fontes pertinentes.
-Se o curso mudou, explicita a diferença. O pedido inicia uma discussão: não
-autoriza escrita, não registra aprovação humana e não supõe que o link contenha
-o texto. Proposta, decisão de aplicar e releitura permanecem etapas distintas;
-a inspeção e a declaração de revisão pertencem à pessoa autora. A declaração
-expressa pode ser registrada na interface ou pela tarefa `declarar_revisao`;
-uma avaliação feita pelo assistente não a substitui.
+As ferramentas atendem a clientes compatíveis com o protocolo. O modelo usado
+pelo cliente participa da produção e da análise; o curso permanece salvo no
+AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
@@ -91,315 +84,131 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `definir_acesso_arquivos` | escolher herança, restrição ou disponibilidade dos arquivos da fonte inspecionada |
 | `definir_politica_revisao` | escolher entre conteúdo completo salvo e somente revisado sem alterar visibilidade ou direitos |
 
-Os schemas vêm do mesmo catálogo projetado para Actions. Ferramentas antigas
-não permanecem acessíveis sob nomes alternativos; cada operação corresponde
-a uma tarefa delimitada, sem expor um comando genérico sobre o banco.
-
-No contrato 4.0.0, a [explicação](explicacao-e-revisao-humana.md) é a base salva
-da microssequência:
-conteúdo desenvolvido, pressupostos, relações e fontes. `salvar_explicacoes`
-permite desenvolvê-la antes das unidades, inclusive durante o trabalho sobre um
-mapa em rascunho. Abrir a base salva lê conteúdo existente, sem chamar um modelo de linguagem. `materializar_parte` reutiliza
-as bases existentes; recebe em `explicacoes` somente aquelas que a intenção atual
-também altera. `aplicar_correcoes` pode alterar unidades, explicações ou ambas
-num conjunto coerente. `consultar_fontes` e os vínculos de `manter_fonte` aceitam
-a explicação como alvo, com suas localizações próprias. `exportar_autoria`
-preserva a base literal e a proveniência correspondente. As formas de explicação
-registradas na aplicação pedagógica de uma unidade continuam sendo medidas dessa
-unidade: não são a base explicativa compartilhada.
-
-A atribuição liga o conteúdo à fonte; a âncora localiza o trecho na obra; a
-ocorrência localiza seu uso no curso, conforme [Fontes, citações e
-referências](fontes-e-citacoes.md). Ao corrigir conteúdo com fontes explícitas, o sistema relê a atribuição do alvo
-na mesma revisão. Um vínculo com a mesma fonte, relação e âncoras conserva sua
-identidade; uma ocorrência com o mesmo recurso, seletor e trecho também a
-conserva. Alterar papéis ou trechos aplica os valores declarados, sem duplicar
-o vínculo. Omitir ocorrências preserva as existentes no vínculo correspondente;
-uma lista explicitamente vazia as retira. Vínculos omitidos continuam protegidos
-pela composição. Se mais de um vínculo corresponder, a correção pede inspeção
-em vez de escolher uma identidade. Alterações de relação ou de âncoras que
-substituam um vínculo devem usar a posição desse vínculo em `manter_fonte`.
-
-Salvar registra produção ou intervenção; uma mudança material desatualiza a
-revisão afetada. Aprovar o mapa ou autorizar um lote não revisa material futuro.
-`preparar_revisao` fornece a referência do conteúdo salvo; `declarar_revisao`
-recebe essa referência e a escolha expressa da pessoa (`revisado` ou `retirar`).
-O assistente não deduz essa declaração da correção, do estudo ou de sua própria
-avaliação. A marca registra inspeção declarada, sem provar leitura, correção ou
-eficácia. Veja o
-[contrato de explicação e revisão](explicacao-e-revisao-humana.md).
+O mesmo catálogo gera a descrição de dados aceita em Actions. Cada operação
+corresponde a uma tarefa delimitada. Atualizar o catálogo exige usar os nomes
+correntes; nomes antigos não funcionam como alternativas.
 
 ## Arquivos da conversa
 
-No cliente compatível, PDF e áudio chegam como objetos oficiais de arquivo
-declarados por `_meta["openai/fileParams"]`. Nome, caminho local ou identificador
-de artefato não substituem `{download_url, file_id, mime_type?, file_name?}`.
-O servidor aceita a origem temporária autorizada e valida bytes antes de
-persistir. Essa extensão depende da capacidade do cliente MCP; não se presume
-acesso a arquivos locais. Ingerir áudio não chama síntese ou transcrição.
+Para guardar um anexo da conversa, o servidor precisa de um endereço temporário
+que possa baixar e das informações do arquivo. O caminho no computador da pessoa
+não fornece esse acesso. Na extensão de arquivos do cliente utilizado nos testes,
+esses dados chegam como `{download_url, file_id, mime_type?, file_name?}`,
+indicados por `_meta["openai/fileParams"]`.
+
+Essa extensão depende do cliente MCP; ela não faz parte da capacidade presumida
+de todo cliente. O servidor verifica a origem autorizada e os bytes antes de
+guardar o arquivo. `guardar_audio` recebe áudio já existente, sem chamar síntese
+ou transcrição. Os formatos aceitos são WAV PCM, áudio não comprimido, e MP3.
 
 O tipo MIME é o rótulo de formato informado no envio, como `audio/wav`.
-Quando um tipo de áudio é recusado, a mensagem distingue o tipo declarado no
-descritor do anexo do tipo recebido na resposta do download. Ela informa somente
-um rótulo MIME válido e de tamanho limitado; valores inválidos não são reproduzidos. Isso
-permite identificar o ponto da rejeição sem expor a URL temporária, parâmetros
-do cabeçalho ou identificadores do arquivo. O erro continua
-`unsupported_audio_media_type` (HTTP 415); o diagnóstico não aceita tipos novos
-nem substitui a inspeção dos bytes WAV PCM/MP3. A mensagem, isoladamente, não
-afirma que o conteúdo do arquivo é inválido.
+O servidor compara o tipo declarado no descritor, o tipo recebido no download
+e os bytes do arquivo. Se houver recusa, `unsupported_audio_media_type`
+(HTTP 415) distingue os dois rótulos para ajudar a localizar a divergência.
+A mensagem mostra apenas rótulos válidos e de tamanho limitado, preservando
+URL temporária, cabeçalhos e identificadores. A rejeição de um rótulo não basta
+para concluir que os bytes do arquivo são inválidos.
 
-O rótulo de transporte `audio/x-wav`, observado na resposta real de download
-do cliente, é tratado como `audio/wav`. O descritor continua declarando
-`audio/wav` ou `audio/mpeg`, conforme o contrato da tarefa. A inspeção exige
-bytes WAV PCM válidos e coerentes com o descritor e a resposta;
-MP3, HTML, PDF ou WAV não PCM sob esse rótulo são recusados. O armazenamento
-e a referência devolvida conservam `audio/wav`. Isso não amplia formatos,
-origens autorizadas, limite de bytes nem seguimento de redirecionamentos.
+O rótulo `audio/x-wav` recebido no download é aceito como `audio/wav`, desde que
+os bytes correspondam a WAV PCM e sejam coerentes com o descritor. O descritor
+continua usando `audio/wav` ou `audio/mpeg`; o arquivo armazenado conserva o tipo
+normalizado `audio/wav`. MP3, HTML, PDF e WAV não PCM enviados sob o rótulo de
+WAV são recusados. Permanecem as verificações de origem, tamanho e
+redirecionamento aplicáveis à operação.
 
 As ferramentas do estudo, como áudio e calculadora, são componentes do catálogo
 comum, incluídos no campo `content` da unidade ou da explicação. A consulta focal de componentes fornece um contrato por vez; a de
 fontes fornece alvos lógicos de PDF; a biblioteca fornece referências de áudio
-sem endereços internos de armazenamento. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-humanos).
+sem endereços internos de armazenamento. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-de-autoria).
 
 ## Fluxo de conversa
 
-O assistente retoma o estado real e lê preferências pessoais, condições do recorte e
-pendências pertinentes antes de continuar. Define com a pessoa somente as
-decisões substantivas ainda ausentes: objetivo, público, conhecimentos prévios,
-escopo e fontes que mudam a proposta. Depois trabalha no objeto corrente:
+A retomada localiza o curso e recupera as escolhas do trabalho em andamento.
+A pessoa pode começar pelo mapa, por uma explicação ou por uma correção em
+conteúdo já existente. O serviço fornece o recorte pertinente e as referências
+necessárias às operações seguintes. O [fluxo comum](fluxos-prompts-e-contratos.md)
+relaciona planejamento, autorização para produzir e revisão do conteúdo salvo.
 
-1. salva o mapa ou um ramo coerente como rascunho e oferece o destino de inspeção;
-2. desenvolve a explicação e suas fontes na microssequência, mesmo antes de
-   existir unidade; no foco Conteúdo, essa base pode ser o resultado do mandato;
-3. quando houver decisão de aprovar o mapa, lê a versão persistida completa e
-   usa `aprovar_mapa_curricular` com `referenciaParaAprovar`, sem regenerar ou
-   reenviar outra árvore;
-4. no **Ciclo completo**, prepara o lote pertinente, apresenta sua progressão
-   e produz as unidades dentro da autorização e das condições da preparação;
-5. relê o que foi salvo, reconcilia as observações atendidas e devolve resultado,
-   link pertinente e no máximo uma próxima decisão;
-6. continua os recortes autorizados conforme foco, cadência, pontos de revisão e
-   diálogo, preservando contexto e decisões já tomadas.
+A ação **Debater com GPT**, nome atualmente usado na interface, copia um pedido
+com o endereço do objeto e a revisão observada. No cliente externo conectado,
+o assistente usa essa referência para ler o conteúdo atual. Copiar o pedido
+abre a discussão; a alteração depende da intenção expressa pela pessoa.
+A [declaração de revisão](explicacao-e-revisao-humana.md) pode ser registrada
+na interface ou pela tarefa `declarar_revisao`, sobre o conteúdo inspecionado.
 
-Esses objetos podem ser retomados no contexto. Um mapa completo não é condição
-para começar a desenvolver uma base explicativa em uma microssequência existente.
-Salvar o rascunho e declarar a aprovação da versão inspecionada são operações
-distintas; uma síntese ou página parcial não equivale à inspeção do mapa inteiro.
-
-A aprovação do mapa não aprova conteúdo futuro. A aprovação da progressão de uma
-parte não aprova automaticamente cada formulação ou exercício. Decisões
-rotineiras de redação e representação não exigem nova pergunta; mudanças
-substantivas de cobertura, ordem ou profundidade voltam à pessoa autora.
-Se a pessoa aprovar o mapa mostrado e pedir produção na mesma mensagem, o assistente
-registra essa aprovação, apresenta a progressão breve e executa o pedido. Não
-acrescenta uma confirmação obrigatória para cada lote.
-
-O mandato é o trabalho autorizado pela pessoa: escopo, lotes e restrições. `retomar_curso` e
-`preparar_materializacao` devolvem `referenciaProcesso`; o cliente conserva esse
-valor opaco — que deve ser reutilizado sem interpretação ou alteração —
-no campo `processo` ao retomar, preparar e materializar dentro do
-mesmo fluxo. Não edita a referência nem a usa como nova autorização. Alterar
-preferências pessoais vale para novos fluxos e não reescreve silenciosamente o
-processo em andamento. `preferenciasMudaram`, `conflitos` e `exigeConciliacao`
-distinguem mudança pessoal de conflito com as condições do recorte. Uma
-conciliação pendente deve ser resolvida antes da produção dependente.
-
-A granularidade do lote e a
-frequência de pausas são independentes: dividir um lote não cria novas decisões
-humanas. Uma preferência de continuidade não autoriza conteúdo fora do pedido.
-Sem continuidade autorizada, o assistente entrega o primeiro lote e aguarda orientação.
-As confirmações de segurança solicitadas pelo cliente permanecem aplicáveis;
-elas não significam que o conteúdo futuro já foi revisado.
-
-Uma parte é um lote operacional. Módulo, lição e microssequência formam a
-arquitetura curricular. Alterar limites de uma parte não deve, por si só, alterar
-essa arquitetura.
-
-Para dividir, reunir ou reordenar lotes, use `salvar_parte` com as microssequências
-já existentes e na ordem desejada. `posicao`, quando informada, escolhe a posição
-do lote entre 1 e 64. A tarefa aceita até 64 microssequências e uma intenção de
-até 4.000 caracteres. Na reunião, conserve títulos, intenções e progressões dos
-lotes na proposta para revisão; não resuma conteúdo para caber no agrupamento.
-A prévia e o retorno no aplicativo ficam em **Reorganizar lotes**. Uma revisão
-concorrente exige releitura; um envio incerto deve recuperar o mesmo pedido antes
-de preparar outra reorganização.
+Uma **parte** agrupa microssequências para produção e pode ser reorganizada
+sem mudar o currículo. `salvar_parte` recebe as referências das microssequências
+na ordem desejada; `posicao`, quando informada, escolhe a posição do agrupamento
+entre 1 e 64. São aceitas até 64 microssequências e uma intenção de até 4.000
+caracteres. A reunião conserva títulos, intenções e progressões na proposta para
+inspeção. **Reorganizar lotes** apresenta essa prévia no aplicativo.
 
 ## Repertório e materialização
 
-Antes de produzir unidades, `preparar_materializacao` traz somente o recorte
-pertinente e o repertório acumulado do percurso. O assistente distingue ideias novas,
-ideias já estabelecidas que serão utilizadas e ideias deliberadamente retomadas.
-Conceitos auxiliares, relações, condições, procedimentos e operações também
-entram no repertório quando forem necessários para aprender o percurso.
-O mesmo recorte informa, para cada microssequência, os itens de escopo cuja
-cobertura precisa ser distribuída entre as unidades do lote.
+Antes de produzir unidades, `preparar_materializacao` reúne a explicação, as
+fontes, a configuração e o repertório do percurso. O repertório identifica o
+conhecimento a introduzir, usar ou retomar, conforme o
+[fluxo de produção](fluxos-prompts-e-contratos.md#repertório-acumulado).
+`materializar_parte` recebe as unidades completas e as escolhas aplicadas a elas.
+O contrato de [desenho](aralearn-contract.md#desenho) descreve seus campos.
 
-Uma [unidade de análise instrucional](desenho-instrucional-parametrizado.md)
-identifica uma ideia, distinção, relação ou operação desse repertório. Requisitos
-de evidência descrevem o que uma atividade pede para tornar observável sua
-aplicação. Esses itens orientam o desenho; não medem aprendizagem por si mesmos. As tarefas de manutenção e vínculo
-preservam essa distinção; registrar uma aplicação descreve decisões e
-oportunidades na sequência, sem certificar eficácia pedagógica.
-
-O teto de novidades controla quantas ideias semanticamente novas uma unidade
-expositiva introduz. Ele não exige uma quantidade exata, não transforma prática
-em exposição e não autoriza alterar artificialmente a granularidade das ideias.
-
-`materializar_parte` recebe unidades completas e sua aplicação de desenho. Cada
-unidade enviada traz os valores contextuais ainda pendentes em
-`configuracao.parametros` e o motivo em `configuracao.motivo`; o papel do conteúdo determina se a aplicação é
-expositiva, prática ou mista, sem uma segunda declaração. Uma atividade
-formativa pode permanecer sem requisito formal; quando uma prática precisa de
-um requisito novo, seu texto entra no inventário já existente. O servidor
-valida propriedades determinísticas. Suficiência, progressão, ausência de
-saltos e adequação das representações continuam dependendo da produção e da
-revisão pedagógica.
-
-O assistente deve fazer uma leitura sequencial antes de concluir o lote. Uma sequência
-pode ser dividida quando estiver densa demais ou fundida quando a navegação tiver
-virado fragmentação textual. Não existe quantidade-alvo de unidades.
+As explicações existentes são reutilizadas. O campo `explicacoes` recebe
+somente bases que também serão criadas ou alteradas. `salvar_explicacoes`
+permite desenvolver a base e suas fontes antes das unidades, inclusive enquanto
+o mapa está em rascunho.
 
 ## Configuração para uso e pesquisa
 
-A [configuração instrucional](desenho-instrucional-parametrizado.md) orienta
-como desenvolver o conteúdo e a prática. Ela vem do [catálogo de parâmetros](../src/domain/courseDesignParameters.js),
-que define significado, unidade, limites, natureza e escopos de cada ajuste.
-Parâmetros curriculares ficam no curso ou ramo pertinente; análise e fontes na
-microssequência; desenho aplicado e revisão na unidade. Preferências pessoais
-de processo têm catálogo e persistência próprios. Os alvos de palavras e de
-produção orientam o trabalho; não são licença para omitir conteúdo necessário.
-
-Automático é uma intenção sem valor numérico implícito. Antes de materializar,
-o assistente escolhe os valores ainda pendentes e registra o motivo conforme conteúdo,
-função, público e planejamento. Fixações da autoria e condições de pesquisa
-prevalecem; conflitos entre escopos precisam ser resolvidos antes da produção.
-A aplicação conserva os valores e motivos daquela decisão. Alterar a
-configuração corrente não reescreve essa evidência histórica.
-
-A exigência de declarar revisão apenas sobre conteúdo inspecionado permanece
-independente dos parâmetros. As escolhas pedagógicas e editoriais orientam a
-composição e a prática sem substituir essa decisão humana.
-
-Esses parâmetros são mecanismos de calibração geral de design instrucional.
-Uma finalidade específica, como concurso, pode orientar o conteúdo e a prática
-de um curso sem se tornar padrão global do AraLearn.
+A configuração orienta como apresentar o conteúdo e organizar a prática. Cada
+escolha pode ser definida pela pessoa ou delegada ao assistente. Valores fixados
+e condições de pesquisa prevalecem sobre a escolha automática. A
+[resolução dos parâmetros](autoria-contextual.md#parâmetros-origem-e-persistência)
+explica a prioridade e a diferença entre intenção atual e configuração aplicada.
 
 ## Perfis da conta
 
-`consultar_preferencias_autoria` e `salvar_preferencias_autoria` tratam dos
-padrões pessoais de processo e diálogo. Foco Conteúdo/Ciclo completo, cadência,
-pontos de revisão e diálogo são independentes; uma opção predefinida explicita seus valores.
-Essa preferência não modifica cursos existentes nem condições de pesquisa.
-
-As tarefas `consultar_perfis`, `salvar_perfil` e `excluir_perfil` guardam e
-organizam preferências por cópia. Editar o perfil não altera cursos anteriores.
-`prever_aplicacao_perfil` mostra o alcance e as exceções existentes;
-`aplicar_perfil` exige confirmar essa mesma prévia, inclusive a seleção explícita
-de exceções a remover. Condições de pesquisa permanecem protegidas. Se o curso
-ou o perfil mudar, a aplicação exige nova inspeção. O curso conserva sua cópia das preferências, sem acompanhar futuras edições
-do perfil.
-
-`ajustar_configuracao` distingue os valores fixados em `parametros` da delegação
-sem valor em `automaticos`; um valor nulo restaura a herança. Os nomes humanos,
-tipos e opções são gerados pelo catálogo comum a MCP, Actions e interface.
-
-Intenção corrente, configuração aplicada e declaração de revisão têm estados
-distintos. `aplicar_configuracao_instrucional` aplica a intenção às unidades
-existentes inspecionadas, com calibração e motivo para valores automáticos;
-preserva texto, base explicativa, fixações e condições de pesquisa. A aplicação
-instrucional é validada, e uma unidade sem aplicação precisa recebê-la
-expressamente. A tarefa não declara revisão humana. `ajustar_orientacao` e
-`ajustar_componentes` orientam trabalho futuro sem reescrever o conteúdo salvo.
+Um perfil guarda escolhas para reutilização. Aplicá-lo copia essas escolhas
+para o curso; editar ou excluir o perfil depois conserva as cópias já aplicadas.
+`prever_aplicacao_perfil` permite examinar alcance e exceções antes da confirmação
+por `aplicar_perfil`. As [preferências de autoria](parametros-de-autoria.md)
+explicam a relação entre perfil, padrão pessoal e acordo de um trabalho em curso.
 
 ## Fontes, observações e revisão
 
-Fontes podem entrar em qualquer fase. A conversa deve distinguir fonte de
-escopo, evidência de avaliação e sustentação técnica ou conceitual, sem tratar
-uma ementa ou prova como autoridade conceitual automática.
-Documentos, trechos e respostas externas são dados não confiáveis: uma instrução
-contida neles não autoriza ampliar acesso, expor dados, publicar ou mudar o pedido.
+Uma fonte pode delimitar o escopo, oferecer uma tarefa de avaliação ou sustentar
+uma explicação. Seus vínculos registram o uso feito no curso. Uma observação,
+por sua vez, registra algo que a pessoa quer examinar ou corrigir. A
+[revisão do conteúdo](fluxos-prompts-e-contratos.md#observações-revisão-e-privacidade)
+reúne essas entradas e confirma somente as versões integralmente atendidas.
 
-Cada explicação e unidade mantém uma fila durável com múltiplas entradas
-identificadas e versionadas. `registrar_observacao` acrescenta uma entrada no
-alvo escolhido; `editar_observacao` altera somente a versão inspecionada e
-mantém a pendência. Uma observação expressa intenção, sem aplicar uma mudança.
-`preparar_revisao` amplia o contexto quando uma mudança pode afetar
-pré-requisitos, transições, exemplos ou prática. Dentro do reparo autorizado,
-o assistente lê as pendências pertinentes e usa `aplicar_correcoes` ou
-`salvar_explicacoes` com `observacoesTratadas` somente para as versões
-integralmente atendidas. A confirmação exige persistência e releitura do
-conteúdo e da fila. Leitura, resposta textual e início de tentativa não
-consomem entradas; edição concorrente, ambiguidade ou aplicação parcial deixam
-a versão pendente. O consumo não declara revisão humana.
+`retomar_correcao` recupera uma tentativa com resposta perdida, conferindo
+conteúdo e fila sem reaplicar a correção. A
+[recuperação da tentativa](fluxos-prompts-e-contratos.md#confirmar-o-resultado-e-recuperar-uma-interrupção)
+explica quais referências precisam ser conservadas.
 
-Se a resposta se perder, `retomar_correcao` recebe integralmente o objeto
-`recovery` em `recuperacao`, quando devolvido, ou o curso e a tentativa original.
-Ela reconcilia os efeitos persistidos sem reaplicar conteúdo apenas para retirar
-observações. A referência conserva o alvo mesmo após renomeação.
-
-Debater uma possibilidade não autoriza aplicá-la; uma mudança material ainda
-não decidida exige consulta. Correções rotineiras já pedidas não exigem nova aprovação.
-
-O arquivo PDF só é persistido quando a intenção de guardá-lo está inequívoca.
-Uma leitura descartável não usa `incorporar_pdf_como_fonte`.
-
-Acesso e revisão são independentes. Conteúdo completo salvo pode ser estudado
-sem revisão por quem tem acesso, inclusive visitante de curso explicitamente
-público. `definir_politica_revisao` torna a restrição a somente revisado uma
-escolha expressa; não muda visibilidade, concessões, cópia ou direitos de
-arquivos. Somente o proprietário modifica conteúdo global. Edições locais não
-salvas e arquivos sem direito não são publicados por uma declaração de revisão.
+A declaração humana de revisão pertence ao conteúdo inspecionado. Acesso ao
+curso e aos arquivos têm operações próprias; a política opcional de somente
+conteúdo revisado é explicada nas [regras de revisão e acesso](aralearn-contract.md#revisão-do-conteúdo).
 
 ## Respostas e erros
 
-Uma tarefa bem-sucedida devolve:
+Uma tarefa bem-sucedida devolve `result`, com o que ocorreu, e pode incluir
+`deepLink`, um destino de inspeção no AraLearn, e `nextDecision`, uma decisão
+ainda necessária. O MCP entrega também dados estruturados que o cliente pode
+usar nas próximas chamadas, sem precisar mostrá-los como controles técnicos à
+pessoa autora.
 
-- `result`: o que aconteceu;
-- `deepLink`: o destino útil no AraLearn, quando houver;
-- `nextDecision`: uma única decisão seguinte, quando necessária.
+`temMais: true` e `continuacao` não nula indicam uma resposta parcial. O cliente
+recupera o restante do mesmo recorte antes de avaliar seu conteúdo. A
+[continuação e reconstrução](aralearn-contract.md#continuação-e-reconstrução-do-conteúdo)
+especifica os fragmentos literais e seus limites; a configuração do canal não
+transforma uma leitura parcial em completa.
 
-O contexto estruturado pode acompanhar leituras sem ser despejado no chat.
-Identidades do banco, nomes de campos e controles de concorrência não fazem
-parte da conversa normal.
-Se a pessoa pedir texto literal de uma unidade, configuração ou fonte, o assistente
-devolve o recorte fielmente. Paginação recupera o que falta; não substitui a
-leitura por resumo nem oculta indisponibilidade. A concisão do chat não reduz a
-explicação, os exemplos ou a prática necessários no material didático.
-
-Na listagem de cursos e nas leituras de preparo, fontes e revisão, `temMais: true` e uma
-`continuacao` não nula sinalizam resposta parcial. O assistente continua o mesmo recorte usando o valor opaco devolvido, sem
-inventá-lo nem pedir decisão por página. O formato `application/json` organiza os dados em campos. Seus fragmentos mantêm
-texto literal e posições contíguas em UTF-16, a representação de texto usada
-pelo JavaScript; devem ser reunidos na ordem antes de
-interpretar o documento completo. Enquanto houver trechos pendentes, não se
-declara leitura completa. Se a revisão do curso mudar, a leitura do recorte
-precisa recomeçar. A revisão inclui observações focais e plano imediato; seu
-limite de página não define o alcance pedagógico total da análise.
-
-`exportar_autoria` usa fragmentos de JSON também quando basta uma resposta.
-O hífen inseparável U+2011 é representado pelo escape JSON `\u2011`; concatenar
-os trechos e aplicar `JSON.parse` recupera exatamente o conteúdo original.
-Posições UTF-16 e hash de continuação correspondem ao JSON com esse escape.
-
-O preparo inclui a proposta, a explicação literal, suas fontes e o estado de
-revisão de cada microssequência do lote. Essa base compartilhada também pode
-exigir continuação. A leitura preserva o conteúdo inteiro; uma mudança no curso
-ou no conteúdo entre páginas recusa a continuação para evitar combinar versões.
-
-Erros devolvem `code`, mensagem sem dados sensíveis, diagnóstico limitado e
-`recovery`, com estratégia, possibilidade de repetir o pedido e modo de conservar a
-tentativa. Tokens de acesso, URLs temporárias, cabeçalhos e conteúdo privado não são
-evidência para despejar no chat. Os dados de recuperação devolvidos devem ser
-preservados integralmente quando a tarefa os solicitar.
-
-Ambiguidade entre títulos exige referência humana mais específica. Conflito
-confirmado exige releitura e avaliação da alteração ainda pertinente. Escrita
-incerta conserva alvo, comando e identidade: ausência imediata de recibo não
-prova que a operação terminou sem efeito. O executor reconcilia e, quando
-cabível, repete o pedido original sob recibo; não há repetição cega nem nova
-identidade para disfarçar incerteza. A indisponibilidade adia a operação e seus
-dependentes, sem impedir trabalho independente. Recusa de autorização não é
-tratada como falha transitória nem resolvida por reconexão automática.
+Erros devolvem `code`, mensagem, diagnóstico limitado e `recovery`, que informa
+como retomar a operação e preservar a tentativa. Os dados técnicos necessários
+à recuperação ficam separados da mensagem breve para a pessoa. Uma recusa de
+autorização, um conflito de versão e uma indisponibilidade têm consequências
+diferentes, descritas no [fluxo de recuperação](fluxos-prompts-e-contratos.md#confirmar-o-resultado-e-recuperar-uma-interrupção).
 
 ## Confirmação de exclusão por MCP
 
@@ -408,8 +217,8 @@ Se o cliente não apresentar o retorno da ferramenta, a ação permanece incerta
 Uma descrição produzida pelo assistente não substitui o recibo nem identifica,
 por si só, a causa da falta de resposta.
 
-Antes de outra ação, confira o estado do curso e da limpeza de arquivos com
-acesso do proprietário e preserve a confirmação original. Uma resposta ausente
+A conferência do curso e da limpeza de arquivos usa o acesso do proprietário
+e conserva a confirmação original. Uma resposta ausente
 exige reconciliação; uma recusa explícita deve ser respeitada e não autoriza
 repetir a exclusão por outro canal. A exclusão também existe em
 [Actions](autoria-actions.md) e na interface, com seus controles próprios; essa
@@ -464,17 +273,18 @@ primeiros 512 caracteres autossuficientes, não limitar todo o campo a esse
 tamanho. A atualização do app recupera também instruções e descrições das
 ferramentas. [OpenAI: Developer mode](https://developers.openai.com/api/docs/guides/developer-mode).
 
-Orçamentos locais de catálogo e medições de carga não são limites universais do
-MCP. Registre o artefato efetivamente carregado e a aceitação em conversa nova;
-um teste local de protocolo não comprova essa etapa. O
+Os orçamentos locais controlam o volume de dados do catálogo. A aceitação pelo
+cliente é verificada com o artefato realmente carregado e uma conversa nova;
+um teste local examina outra etapa desse percurso. O
 [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais)
 separa medidas mecânicas, estimativas e observação do cliente real.
 
 Há também uma fronteira entre o schema servido e a validação feita pelo
 cliente. Se um campo obrigatório no catálogo corrente for rejeitado pelo cliente
-como propriedade adicional, preserve o pedido e o erro sanitizados e compare
-os contratos antes de alterar o conteúdo. Não remova uma referência pedagógica
-necessária apenas para passar nessa validação. Atualizar as ferramentas na
+como propriedade adicional, a comparação entre o catálogo servido e o
+importado permite localizar a divergência. O pedido e o erro podem ser
+registrados sem dados sensíveis para esse diagnóstico. Remover uma referência
+necessária alteraria o conteúdo sem resolver a incompatibilidade dos contratos. Atualizar as ferramentas na
 página de detalhes do app recupera ferramentas, descrições e instruções do
 servidor, conforme a [documentação de gestão do app](https://developers.openai.com/api/docs/guides/developer-mode).
 A confirmação exige uma conversa nova e nova prova da chamada.

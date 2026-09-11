@@ -27,6 +27,13 @@ A terceira exige participantes e tarefas. Um pacote tecnicamente correto não
 
 ## 2. Unidade de auditoria
 
+A unidade examinada é o pacote completo. Seu **contrato** define os dados
+aceitos e seu significado; seus **alvos de prática** são os campos que podem
+receber uma resposta do estudante. A **operação-alvo da tarefa** é o que a
+pessoa precisa fazer com o conteúdo, como comparar, calcular ou explicar.
+Essa relação entre objetivo e resposta é desenvolvida no
+[modelo didático](modelo-didatico.md#prática-orientada-pela-operação-alvo-da-tarefa).
+
 Um **componente de conteúdo** representa o objeto estudado. Um **formato de
 resposta** organiza como a pessoa manifesta uma decisão. Essa distinção evita
 tratar “lacuna” como uma figura independente ou transformar toda figura em
@@ -59,7 +66,7 @@ Um novo objeto pode ser representado por prosa, tabela, pacote existente ou
 pacote especializado. A última alternativa exige estrutura distintiva,
 convenção reconhecível, operação própria e manutenção justificável.
 
-O pacote só entra no catálogo produtivo quando responde satisfatoriamente à
+O pacote só entra no catálogo produtivo quando responde satisfatoriamente ao
 conjunto de critérios abaixo. Se a mesma informação e operação forem preservadas
 por componente mais simples, prevalece a alternativa mais simples.
 
@@ -76,7 +83,7 @@ interface não deve competir desnecessariamente com a tarefa
 3. Qual convenção acadêmica ou normativa orienta a leitura?
 4. O contrato expressa uma classe de casos ou apenas um exemplo codificado?
 5. O autor declara semântica sem fornecer pixels, cores, posições ou rotas?
-6. A representação admite rótulos longos, cardinalidade realista e casos
+6. A representação admite rótulos longos, quantidade realista de elementos e casos
    complexos?
 7. Lacuna e digitação aparecem no lugar estrutural da decisão?
 8. Vários alvos possuem identidade, opções e estado independentes?
@@ -92,7 +99,7 @@ preserve uma operação necessária. O catálogo também pode registrar lacunas 
 prosseguir com uma alternativa que preserve o objetivo; perdas relevantes
 precisam ser explicitadas para decisão humana.
 
-Esses critérios organizam julgamento e conformidade, mas não substitui revisão por
+Esses critérios organizam julgamento e conformidade, mas não substituem revisão por
 especialistas nem avaliação com estudantes. Decisões de manter, restringir,
 fundir ou retirar permanecem revisáveis.
 
@@ -161,6 +168,21 @@ O catálogo deve ser ampliado quando uma área exige outra gramática, por
 exemplo, árvore sintática com operações próprias, mapa filogenético, via
 metabólica, partitura ou estrutura cristalina, e não quando se deseja apenas
 um novo estilo para relações já preservadas.
+
+### 4.7 Áudio e ferramentas de apoio
+
+Esses cinco pacotes são componentes de conteúdo apresentados como ferramentas
+da unidade. Eles oferecem apoio à tarefa, sem receber alvos de lacuna próprios.
+As condições de reprodução e uso estão em [Áudio](audio.md) e
+[Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
+
+| Pacote | Objeto ou apoio oferecido | Adequação e limite |
+| --- | --- | --- |
+| `audio` | escuta de faixas e acesso a alternativas textuais | quando ouvir participa da tarefa; alternativa e momento de exibição precisam respeitar o objetivo |
+| `calculator` | cálculo numérico aproximado | quando conferir valores apoia o raciocínio; não substitui cálculo mental ou demonstração se forem a operação exigida |
+| `dictionary` | consulta a obras escolhidas pela autoria | quando interpretar uma palavra é necessário; a escolha da acepção depende do contexto |
+| `grammar` | consulta a explicações de construções e usos | quando comparar uma regra com exemplos ajuda a análise; não corrige a produção do estudante |
+| `reading` | leitura para ampliar ou contrastar o conteúdo | quando há orientação sobre o que procurar e como retornar à tarefa; o material essencial precisa continuar desenvolvido no curso |
 
 ## 5. Matriz dos formatos de resposta
 
@@ -330,6 +352,11 @@ notação possível nem avaliação com leitor de tela humano.
 | `gap` | contexto do alvo e opções da lacuna ativa; sem repetir o estímulo numa lista de respostas | [preenchimento independente no próprio conteúdo](../tests/resource-course/resource-test-matrix.spec.js) |
 | `ordering` | orientação da sequência e controles junto aos trechos; sem segunda lista duplicada | reconstrução da resolução no parágrafo da matriz |
 | `open` | pergunta que pede produção livre; campo inicial sem resposta-modelo | explicação do encaminhamento de um switch; [digitação e foco no celular](../tests/resource-course/resource-annotations-open.spec.js) |
+| `audio` | título, idioma, orientação e alternativa textual no momento apropriado | formatos, disponibilidade e reprodução descritos em [Áudio](audio.md) |
+| `calculator` | expressão, unidade angular, resultado aproximado e erros compreensíveis | precedência, limites e teclado descritos em [Ferramentas](ferramentas-calculo-e-consulta.md#calculadora) |
+| `dictionary` | idioma, obra e finalidade da consulta | múltiplos destinos e acesso descritos no [contrato de consulta](ferramentas-calculo-e-consulta.md#contrato-dos-recursos-de-consulta) |
+| `grammar` | construção ou uso a examinar e orientação de retorno à tarefa | mesmos controles de consulta, preservando itens e idiomas distintos |
+| `reading` | título do material, propósito da leitura e condição de acesso | destinos externos ou PDF autorizado, sem tratar a abertura como revisão da fonte |
 
 Essas escolhas não autorizam apagar legendas por correspondência de palavras.
 Também não equiparam uma alternativa textual produzida pelo pacote a um teste
@@ -390,12 +417,12 @@ O contrato deve:
 - produzir erros de validação compreensíveis;
 - admitir casos diversos dentro do escopo declarado.
 
-### Etapa 4: auditoria de renderização
+### Etapa 4: auditoria da apresentação
 
 Casos de estresse incluem:
 
 - rótulos curtos e longos;
-- cardinalidade mínima e máxima admitida;
+- quantidade mínima e máxima admitida de elementos;
 - grafos densos, ciclos, laços e paralelismo quando pertinentes;
 - maior resposta válida já preenchida;
 - idiomas com palavras mais extensas;

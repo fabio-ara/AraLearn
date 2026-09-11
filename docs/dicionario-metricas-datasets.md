@@ -18,9 +18,20 @@ contagens. Não possui conjuntos de eventos ou percurso histórico.
 | `missingData` | ausências que não podem ser convertidas em zero |
 | `deepLink` | endereço da área, quando a interface ou integração pode fornecê-lo |
 | `basis` | inventário planejado integral do curso e observações por unidade do escopo |
-| `dimensions` | distribuições calculadas pelo mesmo observador usado na comparação |
+| `dimensions` | distribuições calculadas pela mesma rotina usada na comparação |
 
 ## Base e dimensões
+
+A **base** reúne os registros usados no cálculo. Uma **dimensão** é a propriedade
+observada, como a quantidade de novidades declaradas ou a extensão em palavras.
+O mesmo conjunto de registros alimenta a consulta de um curso e a comparação
+entre cursos; assim, os cálculos usam a mesma regra.
+
+Uma **unidade de análise** identifica um recorte de conhecimento planejado;
+um **requisito de evidência** descreve o que uma prática precisa solicitar para
+examinar um objetivo. O [protocolo instrucional](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise)
+define esses registros. Eles podem estar planejados e ainda não ter sido
+aplicados ao conteúdo.
 
 `basis.inventoryScope` informa o alcance do inventário: sempre o curso inteiro,
 inclusive quando a observação está limitada a uma unidade. `analysisUnits` e
@@ -65,7 +76,7 @@ cada unidade. Uma solicitação que atende a dois requisitos contribui com dois
 pares; repetir a mesma oportunidade em outra unidade também contribui para a
 soma das observações. Portanto, o total não é uma deduplicação global de
 solicitações nem comprova sua distinção semântica. Prática informal sem essa
-declaração não é estimada pelo observador.
+declaração não é estimada pela rotina de cálculo.
 
 `wordCount` e `extent` usam o contador
 `private.count_course_component_authorial_words_v1`: ele percorre strings dos
@@ -109,7 +120,7 @@ hierarquia curricular do escopo. O cálculo não deduz função a partir de
 componentes, respostas ou tamanho do conteúdo.
 
 `practiceDistribution` é derivada dessa sequência pelo
-[observador determinístico](../src/domain/coursePracticeDistribution.js).
+[rotina de cálculo da distribuição](../src/domain/coursePracticeDistribution.js).
 `expositoryOnlyCount`, `practiceOnlyCount`, `mixedCount` e `undeclaredCount`
 são categorias exclusivas e somam `studyUnitCount`. `expositionPositions` e
 `practicePositions` incluem as unidades mistas em ambas as listas.
@@ -145,6 +156,12 @@ Esses campos contam estados explícitos. Eles não produzem percentual de autori
 pontuação de colaboração ou inferência sobre aceitação.
 
 ## Dados ausentes
+
+Se a autoria declarou que uma unidade expositiva não introduz recortes novos,
+a novidade conhecida pode ser zero. Se não há declaração sobre a unidade,
+a informação está ausente. Se ela foi declarada somente prática, essa dimensão
+não se aplica segundo o cálculo corrente. Misturar essas três situações
+produziria uma comparação enganosa.
 
 Uma contagem conhecida pode ser zero. Uma origem que o estado corrente não
 permite atribuir aparece em `missingData` e não entra numa categoria inventada.
@@ -186,4 +203,4 @@ As dimensões são calculadas em
 [courseAuthoringBasis.js](../src/domain/courseAuthoringBasis.js).
 
 Consulte [Analytics da Autoria](analytics-instrucionais.md) para interpretar os
-números e [Arquitetura](arquitetura.md#analytics) para sua derivação.
+números e [Arquitetura](arquitetura.md#dados-de-autoria) para sua derivação.

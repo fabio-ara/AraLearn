@@ -1,4 +1,4 @@
-# Preferências, resolução e configuração aplicada na autoria
+# Como preferências e decisões orientam a autoria
 
 A pessoa autora pode escolher como conversar com o assistente, organizar a
 produção e inspecionar o resultado. Essas preferências ajudam a iniciar um
@@ -12,22 +12,29 @@ O aplicativo conserva esses registros separadamente:
 | --- | --- |
 | Preferência pessoal | Como a pessoa prefere iniciar trabalhos de autoria? |
 | Configuração corrente | Quais decisões se aplicam agora a este curso ou recorte? |
-| Acordo de processo, chamado de mandato | Como foi combinado conduzir este trabalho em andamento? |
+| Acordo de processo, chamado de mandato de processo | Como foi combinado conduzir este trabalho em andamento? |
 | Configuração aplicada | Quais decisões orientaram a produção desta unidade? |
 | Base explicativa aplicada | Qual versão da explicação e de suas fontes foi usada nessa produção? |
 | Perfil salvo | Que conjunto de escolhas a pessoa guardou para aplicar expressamente em outro curso? |
 
 O [capítulo de autoria contextual](autoria-contextual.md) relaciona esses
-conceitos aos controles da interface e ao catálogo de parâmetros. Aqui, o foco
-é como as escolhas se combinam e como seus registros permitem compreender o
-conteúdo salvo.
+conceitos aos controles da interface e ao catálogo de parâmetros. Uma preferência pode orientar o início de um trabalho sem substituir as
+decisões já tomadas para o conteúdo salvo.
 
 ## Dimensões independentes
+
+Por exemplo, uma pessoa pode preferir conversar de forma breve e produzir
+uma parte de cada vez. O curso, porém, pode exigir explicações extensas e
+várias práticas. A concisão da conversa organiza a coordenação com o
+assistente; a extensão das unidades depende do que o estudante precisa
+compreender. A aplicação dessas escolhas é registrada separadamente.
 
 As preferências ficam em **Configurações → Preferências de autoria**. Na
 conversa conectada, as tarefas `consultar_preferencias_autoria` e
 `salvar_preferencias_autoria` consultam e alteram as mesmas escolhas da conta,
-por [MCP](autoria-mcp.md) ou [Actions/OpenAPI](autoria-actions.md).
+pelos canais que ligam um assistente externo às tarefas do AraLearn:
+[MCP](autoria-mcp.md), protocolo de acesso a ferramentas e contexto, ou
+[Actions/OpenAPI](autoria-actions.md), chamadas a operações descritas para o cliente.
 
 | Escolha | Significado |
 | --- | --- |
@@ -102,11 +109,16 @@ pesquisa, valores fixos e escolhas de cada nível estão no
 [catálogo contextual](autoria-contextual.md#parâmetros-origem-e-persistência).
 
 Um trabalho em andamento pode conservar uma cópia das escolhas combinadas,
-chamada de **mandato**. Ela identifica curso, revisão pessoal, preferências e
-condições do curso naquele momento. Assim, uma alteração posterior do padrão
+chamada de **mandato de processo**. Ela identifica curso, revisão pessoal,
+preferências e condições do curso naquele momento. Assim, uma alteração posterior do padrão
 pessoal não troca silenciosamente o processo em andamento. O acordo pode
 conter uma exceção expressa, como desenvolver somente as bases explicativas de
 um recorte. Condições de pesquisa continuam obrigatórias.
+
+Esse registro descreve como conduzir o trabalho. A autorização humana define o
+que pode ser feito e a quais objetos ela se aplica. Por exemplo, conservar a
+preferência por trabalhar em partes não autoriza produzir a próxima parte nem
+declarar sua revisão: essas ações dependem do alcance do pedido da pessoa.
 
 Na continuação, a resolução compara três informações: o acordo preservado, as
 preferências que resultariam dos dados atuais e as condições do curso. Uma
@@ -135,15 +147,19 @@ sua aplicação copia escolhas para um curso.
 
 ## Calibração da configuração aplicada
 
+A **calibração** explicita os valores escolhidos para parâmetros automáticos
+e os motivos da escolha diante do conteúdo. Se uma unidade precisa desenvolver
+uma relação nova, por exemplo, a autoria decide quais formas explicativas são
+pertinentes e registra essa decisão. Valores fixados pela pessoa autora e
+condições de pesquisa são preservados pelo servidor.
+
 Mudar uma intenção instrucional orienta a próxima produção. Para relacioná-la
 às unidades existentes, `aplicar_configuracao_instrucional` registra
 expressamente a configuração aplicável ao recorte inspecionado. A operação
 preserva o texto e a base explicativa aplicada; uma diferença material de
 desenho pode deixar a declaração anterior de revisão desatualizada.
 
-A **calibração** explicita valores e motivos dos parâmetros automáticos diante
-do conteúdo. Decisões fixadas e condições de pesquisa são resolvidas no
-servidor e preservadas. O alcance também importa: os três parâmetros de
+O alcance também importa: os três parâmetros de
 cadência exclusivos do curso mantêm essa origem, enquanto escolhas
 contextuais admitidas na unidade podem ter alcance local.
 
@@ -202,7 +218,7 @@ base foi aplicada nem atribuir revisão humana. A
 formato; as [regras de persistência](../supabase/migrations/20260909030823_contextual_applied_explanation_basis.sql)
 limitam sua gravação à produção e à cópia autorizada.
 
-## Verificação focal das preferências
+## Como verificar as preferências e a base aplicada
 
 Os [testes de preferências](../tests/runtime/authoring-process-preferences.test.js)
 verificam a independência das escolhas e a resolução entre conta, curso e

@@ -12,7 +12,7 @@ Um curso contém módulos, divididos em lições. Cada lição reúne microssequ
 
 Uma **microssequência didática** organiza um avanço conceitual delimitado. Suas **unidades de estudo** desenvolvem esse avanço por meio de explicações, exemplos e práticas com retorno. Uma tabela pode ajudar a comparar informações; um fluxograma, a acompanhar um processo. Atividades como preencher lacunas, selecionar alternativas ou calcular com apoio de uma calculadora permitem trabalhar sobre o conteúdo apresentado.
 
-Durante a autoria, a **explicação** constitui o texto-base da microssequência: desenvolve pressupostos, conceitos, relações e exemplos, com fontes vinculadas ao conteúdo. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante o estudo. As unidades registram as escolhas instrucionais e editoriais aplicadas à sua produção.
+Durante a autoria, a **explicação** constitui o texto-base da microssequência: desenvolve pressupostos, conceitos, relações e exemplos, com fontes vinculadas ao conteúdo. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante o estudo. As unidades conservam as escolhas feitas durante sua produção, como a forma de explicar um conceito e a prática proposta.
 
 Essa organização permite acrescentar as etapas necessárias para explicar um assunto sem depender de uma única exposição extensa ou de resumos excessivamente condensados. O [modelo didático](docs/modelo-didatico.md) apresenta os fundamentos e as decisões que orientam essa estrutura.
 
@@ -20,7 +20,7 @@ Essa organização permite acrescentar as etapas necessárias para explicar um a
 
 No estudo, é possível percorrer o curso, responder a práticas, receber retorno, marcar unidades para rever, registrar observações e retomar o ponto em que o estudo foi interrompido.
 
-Na autoria, a pessoa define o objetivo, o público e o alcance do curso, ajusta o desenho instrucional e inspeciona a estrutura, o conteúdo e as fontes. Pode pedir correções, editar o material e registrar sua revisão. A marca de revisão identifica uma decisão humana sobre o conteúdo salvo; sua relação com a disponibilização do curso está descrita em [Explicação e revisão humana](docs/explicacao-e-revisao-humana.md).
+Na autoria, a pessoa define o objetivo, o público e o alcance do curso, decide como desenvolver o assunto e inspeciona a estrutura, o conteúdo e as fontes. Pode pedir correções, editar o material e registrar sua revisão. A marca de revisão identifica uma decisão humana sobre o conteúdo salvo; sua relação com a disponibilização do curso está descrita em [Explicação e revisão humana](docs/explicacao-e-revisao-humana.md).
 
 O [guia do estudante](docs/guia-estudante.md) apresenta o percurso de estudo. O [guia do professor e autor](docs/guia-professor-autor.md) apresenta criação, planejamento, produção e revisão de cursos.
 
@@ -32,7 +32,7 @@ Um assistente externo pode consultar o curso e executar tarefas autorizadas por 
 
 ## Pesquisa em design instrucional
 
-O AraLearn permite investigar como decisões de autoria se traduzem em material didático: que explicações são necessárias, como representar um conteúdo, quais atividades propor e como a pessoa supervisiona o trabalho da IA. Parâmetros, fontes, conteúdo e revisões podem ser inspecionados e comparados. A independência em relação a modelos e fornecedores orienta a evolução das integrações; a compatibilidade de cada cliente é verificada separadamente.
+O AraLearn permite investigar como decisões de autoria se traduzem em material didático: que explicações são necessárias, como representar um conteúdo, quais atividades propor e como a pessoa supervisiona o trabalho da IA. É possível conferir como uma escolha foi aplicada ao conteúdo e comparar os materiais produzidos. A independência em relação a modelos e fornecedores orienta a evolução das integrações; a compatibilidade de cada aplicação externa é verificada separadamente.
 
 A [visão do produto](docs/visao-do-produto.md) desenvolve essas relações. A [revisão de literatura](docs/revisao-de-literatura.md) fundamenta as escolhas e as hipóteses; o [guia de investigação](docs/guia-pesquisador.md) orienta sua avaliação. Os efeitos sobre aprendizagem e uso precisam ser examinados em estudos próprios.
 

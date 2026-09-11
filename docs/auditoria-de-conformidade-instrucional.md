@@ -7,7 +7,7 @@ uma unidade de estudo, numa fonte ou numa observação. O [modelo
 didático](modelo-didatico.md) distingue a base explicativa da sequência de
 atividades e explicações que a mobiliza durante o estudo.
 
-A assistência de IA pode comparar versões, analisar fontes e propor correções.
+A assistência de inteligência artificial (IA) pode comparar versões, analisar fontes e propor correções.
 A pessoa autora orienta o trabalho, decide as mudanças substantivas e inspeciona
 o resultado. Autorizar uma correção e declarar que o conteúdo foi revisado são
 decisões distintas; a [declaração de revisão
@@ -24,8 +24,9 @@ humana](explicacao-e-revisao-humana.md) registra a segunda sobre o conteúdo sal
 
 Uma [observação](observacoes-pedagogicas.md) registra um apontamento sem alterar
 o conteúdo. Cada explicação e unidade mantém uma fila com entradas identificadas
-e versionadas. Selecionar várias unidades cria uma entrada separada em cada
-alvo. Editar uma entrada preserva sua identidade e mantém a pendência.
+e com versões: editar o texto cria uma versão da mesma entrada, preservando
+sua identidade e sua pendência. Selecionar várias unidades cria uma entrada
+separada em cada alvo.
 
 Antes de propor mudanças, o assistente usa `preparar_revisao` para reler o
 conteúdo, as observações abertas e o contexto pedagógico pertinente. Quando a
@@ -54,8 +55,10 @@ conteúdo que mudou, mas a adequação factual, pedagógica e editorial depende 
 análise do material e de suas fontes.
 
 Uma representação aceita pelo contrato ainda pode condensar uma relação que
-precisa ser ensinada. Nesse caso, a revisão identifica o que ficou implícito e
-propõe uma forma de torná-lo compreensível. A escolha de
+precisa ser ensinada. Por exemplo, um cálculo de média pode mostrar a divisão
+correta sem explicar por que o total é dividido pela quantidade de observações.
+A revisão localiza essa relação implícita e examina onde desenvolvê-la, antes
+da prática que depende dela. A escolha de
 [componentes didáticos](componentes-didaticos.md) atende à função do conteúdo;
 não há quantidade obrigatória de formatos diferentes.
 
@@ -91,7 +94,7 @@ e sua relação com o restante do percurso.
 
 `aplicar_correcoes` aceita unidades, explicações ou ambas num conjunto coerente.
 `salvar_explicacoes` permite corrigir apenas as bases e suas fontes, preservando
-as unidades existentes. A camada de execução resolve os alvos e verifica a
+as unidades existentes. O serviço identifica os alvos e verifica a
 revisão corrente antes de gravar.
 
 Quando uma correção atende a observações, `observacoesTratadas` identifica as
@@ -109,7 +112,7 @@ MCP](autoria-mcp.md#fontes-observações-e-revisão).
 
 Depois, reinspecione o percurso corrigido. A confirmação técnica prova que a
 alteração foi salva; a leitura permite avaliar se ela resolveu o problema.
-Consumir uma observação não declara revisão humana. A marca de revisão só é
+Considerar uma observação tratada não declara revisão humana. A marca de revisão só é
 registrada ou retirada por uma decisão expressa da pessoa sobre o conteúdo
 inspecionado, e uma mudança material a desatualiza.
 
@@ -122,11 +125,12 @@ um arquivo permanente de todas as versões do curso.
 
 Na área **Conteúdo**, os controles da explicação e da unidade dão acesso às
 observações e às fontes. A pessoa pode voltar a uma unidade anterior, selecionar
-várias unidades e conferir o contexto. **Analytics** apresenta medidas do desenho
+várias unidades e conferir o contexto. **Dados de autoria** apresenta medidas do desenho
 e das intervenções registradas; seus [indicadores](analytics-instrucionais.md)
 não substituem a inspeção.
 
-MCP e Actions oferecem as seguintes tarefas para esse trabalho:
+Os canais [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md) ligam
+um assistente externo às tarefas de autoria. Para revisão e correção, oferecem:
 
 | Tarefa | Efeito |
 | --- | --- |
@@ -139,7 +143,7 @@ MCP e Actions oferecem as seguintes tarefas para esse trabalho:
 | `retomar_correcao` | reconcilia a tentativa original e as pendências atendidas |
 | `declarar_revisao` | registra ou retira a declaração humana sobre o conteúdo inspecionado |
 
-A resposta de coordenação informa o resultado, o link pertinente e a próxima
-decisão, quando houver. Um pedido de texto literal recebe o conteúdo solicitado
-integralmente, com as continuações necessárias. A síntese da conversa não
-substitui o material didático salvo nem sua inspeção.
+Na conversa, o resultado deve permitir localizar o conteúdo corrigido e saber
+quais questões continuam abertas. A pessoa pode solicitar o texto integral
+salvo para conferência, além de abri-lo no aplicativo. Uma síntese do trabalho
+é útil para retomar a coordenação; a inspeção depende do próprio material.

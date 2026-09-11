@@ -1,19 +1,21 @@
 # Analytics da autoria
 
-A área **Analytics** descreve, com números simples, o estado atual de um curso:
+A área **Dados de autoria** permite inspecionar a distribuição do conteúdo e as
+intervenções registradas na autoria. Por exemplo, uma concentração de ideias
+novas numa unidade pode indicar um ponto a reler: a explicação pode precisar
+de outra organização ou reunir relações que fazem sentido juntas. O número
+localiza o trecho; a leitura permite avaliar a decisão.
 
-1. como o conteúdo foi desenhado;
-2. onde houve intervenção humana explícita.
-
-Os números caracterizam o conteúdo salvo e as ações cuja origem permanece
-registrada. A interpretação de qualidade, aprendizagem ou participação humana
-exige examinar o conteúdo e, conforme a pergunta, realizar uma avaliação com
-pessoas.
+Os dados descrevem o curso salvo. Quando o software usa uma declaração da
+autoria, como “esta unidade introduz uma ideia”, ele conserva essa origem.
+Quando conta palavras ou componentes, mede propriedades do conteúdo. Essa
+diferença é necessária para interpretar os resultados sem atribuir ao estudante
+um conhecimento ou comportamento que não foi observado.
 
 ## Como consultar
 
 1. Abra um curso próprio em **Autoria**.
-2. Entre em **Analytics**.
+2. Entre em **Dados de autoria**.
 3. A entrada mostra **Novidade declarada**, com distribuição por unidade.
 4. Use **Escolher dimensão e escopo** para mudar a propriedade observada ou
    selecionar curso, parte, microssequência ou unidade de estudo.
@@ -30,17 +32,22 @@ acrescentam níveis ao [mapa curricular](modelo-didatico.md).
 A síntese apresenta:
 
 - unidades de estudo no escopo;
-- unidades de análise, isto é, ideias semanticamente acompanhadas no percurso;
+- unidades de análise, recortes de conhecimento como ideias ou relações
+  acompanhadas no planejamento;
 - oportunidades de prática;
 - fontes relacionadas.
 
-Essas quantidades descrevem presença e distribuição. Não substituem a inspeção
-sequencial do conteúdo.
+Uma relação pode ser desenvolvida ao longo de várias unidades de estudo.
+Ela é introduzida uma vez e utilizada ou retomada depois. O
+[protocolo de análise instrucional](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise)
+explica como esses recortes são identificados.
 
 ### Configuração aplicada
 
-A tabela usa as doze definições do catálogo 1.2.1 e mostra as escolhas
-efetivamente registradas. Quatro delas são parâmetros pedagógicos:
+A configuração aplicada registra as escolhas usadas na produção de uma unidade.
+A tabela usa as doze definições do catálogo 1.2.1 e mostra os valores preservados
+nessa produção. O [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente)
+explica cada decisão e seu alcance. As primeiras quatro organizam o desenvolvimento da explicação e a prática:
 
 - teto de ideias novas por unidade expositiva;
 - formas de explicação requeridas;
@@ -66,16 +73,16 @@ observada informa total, mínimo, mediana, média e máximo de palavras por
 unidade, o que permite comparar alvo e resultado sem tratar a diferença como
 erro automático.
 
-As direções editoriais são camadas acumuladas ao longo dos escopos. Uma mesma
+A **direção editorial** é uma orientação de escrita, como desenvolver exemplos
+antes da notação. Orientações de níveis diferentes podem se acumular. Uma mesma
 unidade pode receber, por exemplo, uma direção do curso e outra da
 microssequência. Portanto, suas contagens podem se sobrepor e não formam uma
 partição das unidades do recorte.
 
-O modo automático exige uma escolha contextual registrada; a ausência de valor
-não representa uma combinação fixa de valores. Herdar e fixar são intenções distintas. Um valor
-fixado deliberadamente pelo pesquisador prevalece e aparece como definição
-explícita. Isso permite investigar diferentes desenhos sem
-transformar uma aplicação específica em padrão universal.
+No modo automático, a autoria escolhe e justifica um valor diante da tarefa.
+Uma condição fixada para pesquisa permanece explícita e tem prioridade. O
+registro de origem permite distinguir essas escolhas; as regras completas
+estão em [Preferências e configuração aplicada](parametros-de-autoria.md).
 
 Os alvos de palavras não são mínimos ou máximos, não medem qualidade e não
 autorizam comprimir conhecimento, ocultar decisões ou fragmentar unidades. A
@@ -106,7 +113,10 @@ entre unidades muda.
 
 ### Prática e fontes
 
-A última tabela de desenho apresenta:
+Um **requisito de evidência** declara o que uma prática precisa solicitar para
+examinar um objetivo, como calcular um valor e justificar sua interpretação.
+A **âncora** de uma fonte localiza o trecho usado, por exemplo por página ou
+seção. As tabelas relacionam esses registros ao conteúdo:
 
 - oportunidades por requisito de evidência;
 - oportunidades que exercitam cada dimensão de variação;
@@ -167,12 +177,13 @@ preservando repetições. Identidades diferentes em cópias não bastam para
 caracterizar mudança de conteúdo. Textos iguais tampouco comprovam equivalência
 semântica ou qualidade: a decisão pedagógica continua exigindo inspeção.
 
-O AraLearn não transforma conversa, raciocínio privado, cliques, rolagem ou
-tempo em tela numa segunda história do curso.
+A comparação usa os registros do curso; conversas e eventos de navegação não
+integram essa base.
 
 ## Exportar
 
-**Exportar curso e análise** pede uma ação explícita e salva um JSON com o
+**Exportar curso e análise** salva um arquivo JSON, formato de dados organizado
+em campos e listas, com o
 conteúdo integral do curso e a leitura quantitativa do escopo selecionado.
 Inclui configuração solicitada e aplicada, inventário planejado, declarações e
 contagens, sempre com curso e revisão identificados. Conserva também as

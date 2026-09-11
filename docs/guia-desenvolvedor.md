@@ -1,6 +1,6 @@
 # Guia do desenvolvedor
 
-O AraLearn é uma aplicação web em módulos JavaScript, distribuída também num WebView,
+O AraLearn é uma aplicação web em módulos JavaScript, distribuída também numa WebView,
 o componente que apresenta a aplicação dentro do pacote Android. Os serviços remotos
 usam [Supabase](supabase.md). A interface e os canais [MCP](autoria-mcp.md) e
 [Actions/OpenAPI](autoria-actions.md) leem e alteram os mesmos cursos. Mudanças de
@@ -13,10 +13,12 @@ alterar banco, autenticação, Storage ou Edge Functions.
 
 ## Preparação
 
-Os comandos abaixo usam PowerShell no Windows. `npm.cmd` e `npx.cmd` correspondem a
-`npm` e `npx` em outros sistemas. Instale [Node.js
-22](https://nodejs.org/en/download), que executa as ferramentas JavaScript do projeto,
-e restaure as dependências:
+Os comandos abaixo são executados na raiz de uma cópia local do repositório e usam
+PowerShell no Windows. `npm.cmd` e `npx.cmd` correspondem a `npm` e `npx` em outros
+sistemas. Instale [Node.js 22](https://nodejs.org/en/download), que executa as
+ferramentas JavaScript do projeto. O npm instala os pacotes de que o projeto depende;
+`npm ci` usa as versões registradas em `package-lock.json`. Depois da instalação,
+`dev` inicia o servidor que apresenta a aplicação local:
 
 ```powershell
 npm.cmd ci
@@ -31,10 +33,12 @@ ARALEARN_SUPABASE_URL
 ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
 
-`npm ci` instala as versões registradas no arquivo de dependências; `dev` inicia o
-servidor de desenvolvimento. Para o banco local, instale
-[Docker](https://docs.docker.com/desktop/) e o [Supabase
-CLI](https://supabase.com/docs/guides/local-development/cli/getting-started):
+Para testar banco, autenticação e arquivos sem usar o serviço hospedado, o
+[Docker](https://docs.docker.com/desktop/) executa os serviços em ambientes isolados,
+chamados contêineres. A [ferramenta de linha de comando do Supabase
+(CLI)](https://supabase.com/docs/guides/local-development/cli/getting-started)
+prepara esse conjunto. O comando `db reset` recria o banco local e seus dados de teste;
+use-o no ambiente descartável, pois ele substitui os dados locais existentes:
 
 ```powershell
 npx.cmd --yes supabase@2.115.0 start
@@ -58,8 +62,9 @@ Ao abrir um curso, o navegador busca a composição em páginas, valida o conjun
 então promove a nova revisão local. Estado pessoal e observações possuem repositórios
 próprios e podem retomar envios depois de uma falha.
 
-Uma edição de conteúdo pela interface percorre `CourseApiClient`, a Edge Function
-`aralearn-course-api`, `courseRouter`, `courseSupabaseAdapter` e a função SQL focal. O
+Uma edição de conteúdo sai pelo `CourseApiClient`. A função remota
+`aralearn-course-api` recebe o pedido; o `courseRouter` escolhe a operação e o
+`courseSupabaseAdapter` a encaminha à função SQL responsável pela gravação. O
 MCP entra por `aralearn-authoring-mcp`; Actions entra por `aralearn-authoring-action`.
 Os dois projetam o catálogo humano de `courseHumanTasks.js` e executam os mesmos casos
 de uso confiáveis.
@@ -116,9 +121,15 @@ renderizada.
 
 ## Como alterar uma capacidade
 
-Localize primeiro a autoridade do estado e percorra somente as fronteiras afetadas:
+Uma mudança pode afetar a regra do conteúdo, sua gravação e o controle que a pessoa
+usa para editá-lo. Comece pelo lugar que decide o dado alterado: as regras de domínio
+verificam o conteúdo; o banco conserva os registros e as permissões; a interface
+apresenta a operação. Por exemplo, acrescentar uma regra a uma atividade exige que
+o navegador e o servidor aceitem e recusem os mesmos casos.
 
-1. ajuste a regra pura quando houver uma propriedade de domínio;
+O percurso depende do que a mudança altera:
+
+1. ajuste a regra de domínio, independente de tela ou rede, quando mudar a validade do conteúdo;
 2. altere a migração quando a persistência ou a autorização mudarem;
 3. exponha o caso de uso pelo roteador comum;
 4. se a tarefa for conversacional, ajuste o catálogo humano canônico;
@@ -127,8 +138,8 @@ Localize primeiro a autoridade do estado e percorra somente as fronteiras afetad
 7. acrescente o menor teste que reproduz o risco em cada fronteira;
 8. valide com Supabase local ou navegador quando a propriedade depender deles.
 
-Uma nova subvisão não justifica nova ferramenta, tabela ou serviço. Prefira consulta
-focal e estado corrente quando a capacidade já cabe nas autoridades existentes.
+Uma nova tela pode reutilizar consultas e operações já existentes. A necessidade de
+outra tabela ou serviço depende do que precisa ser guardado ou executado.
 
 ## MCP e Actions
 
@@ -209,8 +220,12 @@ incluindo temas, teclado, foco, `Esc`, clique externo, voltar/avançar e deep li
 Ações representadas somente por ícones precisam de nome acessível e estado
 compreensível.
 
-Analytics possui somente Desenho e Autoria, com filtro de escopo. O JSON de **Exportar
-Analytics** deve conter o mesmo conjunto normalizado de dados exibido na tela.
+Em **Dados de autoria**, a pessoa escolhe uma dimensão e o recorte do curso. O painel
+também permite comparar cursos e localizar as unidades de uma distribuição. A ação
+**Exportar curso e análise** inclui o documento integral do curso e a análise do
+recorte selecionado, com fontes, bases explicativas, parâmetros e marcas de revisão.
+Os números precisam corresponder aos dados exibidos na mesma revisão; o formato está
+descrito em [análise de autoria](analytics-instrucionais.md).
 
 ## Fontes, PDFs e Storage
 
@@ -266,7 +281,8 @@ segurança em nível de linha.
 Uma solicitação de integração de mudanças, ou pull request (PR), reúne o diff e as
 verificações da candidata. Mantenha o PR em rascunho durante o desenvolvimento.
 Consulte o impacto e execute a preparação local antes de liberar a candidata para a
-integral:
+validação integral, a execução completa dos testes e verificadores exigidos para a
+integração:
 
 ```powershell
 npm.cmd run validate:candidate -- --base origin/main --plan
@@ -384,7 +400,7 @@ Os testes de ferramentas e navegação complementam essa leitura, conferindo
 controles, cálculo, áudio, foco e rolagem. A inspeção segue o
 [sistema visual](sistema-visual.md) e o [roteiro de verificação da interface](auditoria-front-end.md).
 
-Quando uma integral local for necessária, os comandos continuam disponíveis:
+Quando for necessário executar todos os testes e verificadores localmente, use:
 
 ```powershell
 npm.cmd test
@@ -397,8 +413,8 @@ npm.cmd run validate:example
 Uma entrega web passa ainda por `validateDeployment.ps1 -Scope Web`; Android usa
 `-Scope Full`. Mudança de banco exige instalação nova, atualização, restauração e verificação
 hospedada
-antes da publicação. A integral protegida da candidata final pode fornecer a prova
-autoritativa; não repita o mesmo conjunto local e remotamente sem uma alteração que
+antes da publicação. A validação completa exigida pelas regras de integração da
+candidata final pode fornecer a prova de referência; não repita o mesmo conjunto local e remotamente sem uma alteração que
 invalide a evidência. `test:preflight` contém os verificadores e auditorias;
 `test:runtime` contém o conjunto Node. `npm test` continua executando ambos.
 
@@ -425,8 +441,9 @@ verificados nas jornadas de integração.
 
 ## Documentação
 
-Documentação corrente explica a versão do produto a que se refere. Reescreva a
-descrição anterior em vez de manter um diário ou contrato antigo como fallback.
+Os guias de uso acompanham o comportamento atual; o histórico de mudanças conserva
+as versões anteriores. As [preferências editoriais](principios-editoriais.md)
+explicam a organização e a linguagem adotadas para contribuições humanas.
 
 ```powershell
 npm.cmd run audit:docs

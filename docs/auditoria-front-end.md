@@ -7,6 +7,10 @@ cada capacidade.
 
 ## O que precisa ser demonstrado
 
+Uma jornada é uma sequência de ações com uma finalidade, como abrir um curso,
+consultar sua explicação e voltar à atividade. A verificação acompanha esse
+percurso e confere tanto o resultado percebido pela pessoa quanto o que foi salvo.
+
 Em cada jornada, registre o estado inicial, execute as ações e confirme o efeito no
 local que conserva o dado: o servidor para o curso e as permissões; o armazenamento do
 dispositivo para rascunhos, posição e filas locais. A
@@ -33,6 +37,10 @@ Abra a visão múltipla sem selecionar nenhum alvo. Selecione unidades separadam
 para uma observação em lote e limpe a seleção sem recolher a leitura. Focalize e edite
 uma unidade de página posterior por seus próprios comandos. Verifique preservação de
 rascunho e retomada de envio parcial.
+
+Materializar é salvar o conteúdo de um lote de produção aprovado. A
+[autoria contextual](autoria-contextual.md) explica a relação entre esse lote e o
+percurso planejado.
 
 Em **Planejamento**, comece com um curso descartável ainda sem conteúdo e confirme,
 nesta ordem:
@@ -61,8 +69,10 @@ edição, texto alterado, fechamento e retomada; avisos não podem encobrir camp
 ou foco.
 
 Registre uma observação numa unidade e outra em várias unidades, peça revisão, aplique
-uma proposta aprovada e reinspecione o conjunto afetado. Abra **Analytics** em mais de
-um escopo e confira que os números coincidem com o JSON exportado. Inclua criação,
+uma proposta aprovada e reinspecione o conjunto afetado. Abra **Dados de autoria**,
+escolha dimensões e recortes diferentes e confira que os números coincidem com a
+análise incluída em **Exportar curso e análise**. Esse arquivo também contém o
+documento integral do curso. Inclua criação,
 edição e exclusão segura do curso descartável.
 
 A conversa deve acompanhar as decisões da pessoa autora: síntese do mapa, progressão
@@ -142,7 +152,7 @@ desenvolvedor](guia-desenvolvedor.md#testes-e-integração) e o procedimento de
 [implantação](implantacao.md).
 
 Uma falha pertinente impede considerar a revisão aprovada. Corrija a causa, repita o
-menor recorte afetado e então retome o gate amplo necessário.
+menor recorte afetado e então retome o conjunto de verificações exigido para a mudança.
 
 ## Limite da evidência
 

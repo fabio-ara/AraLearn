@@ -123,7 +123,7 @@ Chave bibliográfica: `allea2023integrity`.
 
 ### Amado et al. (2022)
 
-Carolina Amado; Nuno Dorotea; Ana Pedro; João Piedade (2022). **MOOCs Design: A Conceptual Framework for Continuous Teacher Training in Portugal.** *Education Sciences*, 12(5), p. 308. [DOI 10.3390/educsci12050308](https://doi.org/10.3390/educsci12050308) · [acesso ao documento](https://www.mdpi.com/2227-7102/12/5/308).
+Carolina Amado; Nuno Dorotea; Ana Pedro; João Piedade (2022). **MOOCs Design: A Conceptual Framework for Continuous Teacher Training in Portugal.** *Education Sciences*, 12(5), artigo 308. [DOI 10.3390/educsci12050308](https://doi.org/10.3390/educsci12050308) · [acesso ao documento](https://www.mdpi.com/2227-7102/12/5/308).
 
 Chave bibliográfica: `amado2022moocsdesign`.
 
@@ -174,6 +174,14 @@ Chave bibliográfica: `barrison2025flashcards`.
 Amanda Baughan; Mingrui Ray Zhang; Raveena Rao; Kai Lukoff; Anastasia Schaadhardt; Lisa D. Butler; Alexis Hiniker (2022). **I Don't Even Remember What I Read: How Design Influences Dissociation on Social Media.** In: *Proceedings of the 2022 CHI Conference on Human Factors in Computing Systems*, ACM, p. 1–13. [DOI 10.1145/3491102.3501899](https://doi.org/10.1145/3491102.3501899).
 
 Chave bibliográfica: `baughan2022dissociation`.
+
+<a id="ref-baxter2008casestudy"></a>
+
+### Baxter e Jack (2008)
+
+Pamela Baxter; Susan Jack (2008). **Qualitative Case Study Methodology: Study Design and Implementation for Novice Researchers.** *The Qualitative Report*, 13(4), p. 544–559. [DOI 10.46743/2160-3715/2008.1573](https://doi.org/10.46743/2160-3715/2008.1573) · [acesso ao documento](https://nsuworks.nova.edu/tqr/vol13/iss4/2/).
+
+Chave bibliográfica: `baxter2008casestudy`.
 
 <a id="ref-biggs1996alignment"></a>
 

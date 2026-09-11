@@ -1,6 +1,6 @@
 # Mapa da documentação
 
-O AraLearn permite criar e inspecionar cursos com assistência de IA e estudar suas trilhas no celular. Escolha o percurso de acordo com a tarefa ou a pergunta que deseja aprofundar. A [visão do produto](visao-do-produto.md) apresenta a relação entre autoria supervisionada, fontes, estudo e pesquisa em design instrucional.
+O AraLearn permite criar e inspecionar cursos com assistência de inteligência artificial (IA) e estudar suas trilhas no celular. Escolha o percurso de acordo com a tarefa ou a pergunta que deseja aprofundar. A [visão do produto](visao-do-produto.md) apresenta a relação entre autoria supervisionada, fontes, estudo e pesquisa em design instrucional.
 
 A [origem do projeto](origens-do-aralearn.md) reúne as experiências de estudo e automação que motivaram seu desenvolvimento.
 
@@ -32,14 +32,15 @@ e preferências pessoais de autoria, com o mesmo acesso em Estudo e Autoria.
 
 ## Estudar o modelo pedagógico
 
-1. [Modelo didático](modelo-didatico.md): microssequências, explicação compartilhada,
-   prática e progressão;
+1. [Modelo didático](modelo-didatico.md): como explicações, exemplos e práticas
+   formam um percurso de estudo;
 2. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
-   propriedades pedagógicas, escopo e limites, com
-   [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md);
+   como escolher a distribuição das ideias e da prática e registrar essas escolhas,
+   com [exemplos de divisão e organização do conteúdo](corpus-unidades-de-analise.md);
 3. [Revisão de literatura](revisao-de-literatura.md): bases, controvérsias e
    lacunas;
-4. [Quadro teórico](quadro-teorico.md): construtos e relações propostas;
+4. [Quadro teórico](quadro-teorico.md): conceitos que ajudam a formular perguntas
+   de pesquisa e as relações propostas entre eles;
 5. [Fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md):
    quando uma representação é justificável;
 6. [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md): retomada
@@ -47,20 +48,18 @@ e preferências pessoais de autoria, com o mesmo acesso em Estudo e Autoria.
 7. [Observações pedagógicas](observacoes-pedagogicas.md): registro de dificuldades,
    revisão e acompanhamento de correções.
 
-O [glossário de construtos](glossario-construtos.md) delimita termos
-educacionais e metodológicos. O [vocabulário controlado](vocabulario-controlado.md)
+O [glossário de construtos](glossario-construtos.md) explica os conceitos usados
+para investigar fenômenos educacionais. O [vocabulário controlado](vocabulario-controlado.md)
 registra as decisões terminológicas e seus fundamentos. A
 [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
 liga decisões, literatura, implementação e avaliação prevista.
 
-[Autoria contextual](autoria-contextual.md) reúne responsabilidades, escopos,
-origem das configurações e a relação entre explicação, desenho, revisão
-e preferências pessoais.
+[Autoria contextual](autoria-contextual.md) explica como escolher o que será
+alterado e inspecionar as decisões junto do conteúdo correspondente.
 
-O [contrato de explicação e revisão humana](explicacao-e-revisao-humana.md)
-define apoio compartilhado, preservação do percurso, fontes e aprovação do
-conteúdo inspecionado. A implementação e suas provas locais são distintas da
-verificação nos clientes hospedados e de uma avaliação de aprendizagem.
+[Explicação e revisão humana](explicacao-e-revisao-humana.md) apresenta o
+texto-base que acompanha as unidades, sua relação com as fontes e a revisão
+do conteúdo pela pessoa autora.
 
 ## Aprender no trabalho e formar profissionalmente
 
@@ -84,18 +83,18 @@ para examinar aprendizagem, transferência ao trabalho e mudanças organizaciona
 
 ## Estudar a engenharia
 
-1. [Arquitetura](arquitetura.md): curso salvo, fronteiras e fontes de
-   autoridade;
+1. [Arquitetura](arquitetura.md): o que acontece no dispositivo e no servidor,
+   e como as partes do sistema trabalham juntas;
 2. [Persistência relacional e sincronização](persistencia-relacional.md):
-   IndexedDB, PostgreSQL, Storage, cópia temporária e fila;
-3. [Supabase](supabase.md): Auth, banco, Storage, Edge Functions, migrações e
-   políticas de acesso;
+   como guardar cursos, estudar sem conexão e atualizar os dados entre dispositivos;
+3. [Supabase](supabase.md): serviços que identificam a conta, guardam dados e
+   arquivos e verificam quem pode acessá-los;
 4. [Contrato de conteúdo](aralearn-contract.md): estrutura dos dados, vínculos com
    fontes e validação;
-5. [Componentes didáticos e pacotes](componentes-didaticos.md): núcleo,
-   pacotes, catálogo e renderização;
-6. [Sistema visual](sistema-visual.md): tipografia, responsividade e
-   acessibilidade;
+5. [Componentes didáticos e pacotes](componentes-didaticos.md): como os dados de
+   uma unidade se tornam texto, representações e atividades na tela;
+6. [Sistema visual](sistema-visual.md): como tornar texto e controles legíveis,
+   adaptar a interface a diferentes telas e atender necessidades de acesso;
 7. [Privacidade](privacidade.md): finalidade, retenção e limites de acesso.
 
 O [glossário técnico](glossario-tecnico.md) define os mecanismos correntes. A
@@ -106,26 +105,25 @@ cada propriedade pode ser verificada.
 
 Para acompanhar o ciclo entre pessoa autora, assistente e aplicativo:
 
-1. [Guia do professor e autor](guia-professor-autor.md): criar e abrir cursos,
-   editar planejamento e proveniência e conceder acesso para Estudo;
-2. [Autoria por Model Context Protocol](autoria-mcp.md): ferramentas que
-   operam o mesmo curso da interface;
-3. [OpenAPI e Actions](autoria-actions.md): OpenAPI, conexão OAuth
-   e diferença em relação ao MCP;
-4. [Criar cursos pelo chat](criar-cursos-pelo-chat.md): percurso
-   conversacional e seus limites;
-5. [Assistência por modelo de linguagem](assistencia-por-ia.md): autoridade,
-   contexto e concorrência;
-6. [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md): separação
-   entre intenção textual e operação estruturada;
-7. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
-   parâmetros, orientação natural, herança e política de componentes.
+1. [Guia do professor e autor](guia-professor-autor.md): criar um curso, organizar
+   seu conteúdo, conferir fontes e decidir quem pode estudá-lo;
+2. [Criar cursos pelo chat](criar-cursos-pelo-chat.md): propor o trabalho,
+   inspecionar o resultado e orientar a produção em conversa com um assistente;
+3. [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md):
+   escolher como desenvolver as ideias, propor práticas e apresentar o conteúdo;
+4. [Revisão e correções do curso](auditoria-de-conformidade-instrucional.md):
+   reunir observações, decidir uma correção e conferir o material corrigido.
 
-O ciclo de revisão possui um capítulo próprio:
+Para compreender ou configurar a comunicação entre o assistente e o aplicativo:
 
-8. [Revisão e correções do curso](auditoria-de-conformidade-instrucional.md):
-   observações abertas, contexto pedagogicamente afetado, decisão, aplicação e
-   reinspeção.
+- [Assistência por modelo de linguagem](assistencia-por-ia.md): que conteúdo
+  chega ao modelo, quais alterações ele pode propor e como elas são conferidas;
+- [Autoria por Model Context Protocol](autoria-mcp.md): conectar uma aplicação
+  de IA às ferramentas e aos dados do AraLearn;
+- [OpenAPI e Actions](autoria-actions.md): configurar outro canal de acesso às
+  operações e compreender suas diferenças em relação ao MCP;
+- [Fluxos, instruções e contratos](fluxos-prompts-e-contratos.md): como um pedido
+  em linguagem natural se transforma em operações verificáveis sobre o curso.
 
 [Planejamento contextual](planejamento-contextual.md) apresenta a navegação e
 os controles junto ao objeto. [Parâmetros de autoria](parametros-de-autoria.md)
@@ -136,10 +134,9 @@ duplicar e reordenar estão em
 A [verificação local dos canais](prova-local-canais-autoria.md) explica como
 reproduzir os testes de autoria por MCP e OpenAPI e interpretar seu alcance.
 
-Analytics caracteriza o desenho corrente e intervenções observáveis no mesmo
-curso:
+Para examinar as escolhas usadas na produção e comparar os materiais resultantes:
 
-- [Analytics da Autoria](analytics-instrucionais.md);
+- [Dados de autoria](analytics-instrucionais.md);
 - [Referência dos dados exportados](dicionario-metricas-datasets.md);
 - [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md);
 - [Guia de investigação](guia-pesquisador.md).
@@ -158,9 +155,8 @@ resultado empírico:
    comparação reproduzível entre extensão, composição e espaço no leitor móvel;
 7. [Capacidades e limites atuais](estado-atual-e-roadmap.md).
 
-O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) prepara a
-avaliação com pessoas. Automação pode verificar contrato e geometria, mas não
-pode declarar compreensão ou eficácia educacional.
+O [roteiro de aceitação humana](roteiro-aceitacao-humana-autoria.md) propõe
+tarefas para observar como as pessoas compreendem e utilizam os controles de autoria.
 
 ## Avaliar um uso institucional
 
@@ -186,8 +182,8 @@ Para examinar uma adoção concreta, continue por:
 | Assunto | Documento |
 | --- | --- |
 | ambientes, configuração e publicação | [Implantação](implantacao.md) |
-| banco, Storage, autenticação e funções | [Supabase](supabase.md) |
-| mudanças de schema, preflight e recuperação | [Alterações do schema](schema-change-log.md) |
+| serviços que guardam os dados e controlam o acesso | [Supabase](supabase.md) |
+| histórico de mudanças na estrutura do banco e procedimentos de recuperação | [Alterações do schema](schema-change-log.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
 
 Para contribuir com código ou documentação, consulte também o
@@ -201,7 +197,6 @@ distribuídas dentro do aplicativo são identificadas em
 O [`CHANGELOG.md`](../CHANGELOG.md) registra mudanças por versão e conserva a
 terminologia do período correspondente. O histórico detalhado permanece no
 Git. A licença de uso e redistribuição está em [`LICENSE.md`](../LICENSE.md).
-Documentos correntes não repetem essa cronologia.
 
 ## Referência completa
 
@@ -214,5 +209,3 @@ Documentos correntes não repetem essa cronologia.
 | [Referências](referencias.md) | bibliografia legível e percursos temáticos gerados da fonte canônica |
 | [Cobertura da documentação](inventario-documentacao.md) | assunto e percurso de cada capítulo |
 | [Matriz de conformidade](matriz-conformidade-tecnica.md) | rastreabilidade da engenharia |
-
-A página de [capacidades e limites atuais](estado-atual-e-roadmap.md) reúne o funcionamento disponível e encaminha suas verificações. A [visão do produto](visao-do-produto.md) desenvolve a finalidade e os compromissos de desenho; o [protocolo de avaliação](protocolo-avaliacao-artefato.md) explica como investigar suas propriedades e seus possíveis efeitos.

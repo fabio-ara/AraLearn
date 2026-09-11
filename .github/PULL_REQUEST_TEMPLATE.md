@@ -5,7 +5,7 @@ Descreva o problema, a mudança e seu efeito para quem usa ou mantém o AraLearn
 ## Impacto visível
 
 - [ ] altera comportamento do app
-- [ ] altera contrato, seed ou fluxo de geração
+- [ ] altera formato de dados, conteúdo inicial ou fluxo de geração
 - [ ] altera README, `docs/` ou material público
 - [ ] não altera comportamento visível
 

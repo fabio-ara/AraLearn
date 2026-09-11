@@ -12,12 +12,11 @@ Uma contribuição não é sinônimo de funcionalidade nova. Em pesquisa orienta
    que permitem examinar o fenômeno;
 4. **resultado empírico**: evidência produzida pela avaliação do artefato.
 
-Design Science Research trata relevância do problema, rigor do conhecimento
+A pesquisa em ciência do design, ou DSR (*Design Science Research*), trata relevância do problema, rigor do conhecimento
 utilizado, construção e avaliação como atividades relacionadas
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). Uma contribuição de desenho ganha
 força quando ultrapassa a descrição da instância e explicita princípios,
-contextos e limites de transferência ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). Ciclos de
-Design-Based Research também valorizam refinamento em situações educacionais e
+contextos e limites de transferência ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)). Ciclos de pesquisa baseada em design, ou DBR (*Design-Based Research*), também valorizam refinamento em situações educacionais e
 produção de conhecimento associado ao desenho, sem supor que uma intervenção
 funcione igualmente em qualquer contexto ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased)).
 
@@ -48,128 +47,66 @@ software sejam apresentados como resultados educacionais.
 
 ## 3. Decisão sobre a unidade de contribuição
 
-### Problema
+O AraLearn articula autoria, fontes e estudo. Uma pessoa pode conferir uma
+explicação, revisar as unidades que a desenvolvem e examinar como o estudante
+é convidado a usar o conhecimento. A contribuição pretendida envolve essa
+relação: o planejamento precisa continuar reconhecível no conteúdo, nas
+representações e na prática, inclusive durante o estudo no celular.
 
-No AraLearn, o planejamento precisa orientar conteúdo, representações e prática
-que continuem utilizáveis no celular, inclusive sem conexão. Concentrar essas
-responsabilidades num único módulo de software dificultaria sua ampliação;
-separá-las sem relações explícitas poderia romper o vínculo entre intenção
-pedagógica, fontes e experiência de estudo.
+Essa coordenação aparece em três conjuntos de escolhas:
 
-### Alternativas e requisitos
+- **Desenho e realização:** o objetivo e o conhecimento necessário orientam a
+  explicação e a produção das unidades, sem quantidade fixa de etapas. O
+  [modelo didático](modelo-didatico.md) explica essas relações.
+- **Autoria e inspeção:** o assistente consulta o contexto e os recursos
+  disponíveis; a pessoa examina conteúdo, fontes e alcance das mudanças. As
+  [regras de autoria](autoria-contextual.md) tornam essas decisões
+  identificáveis.
+- **Continuidade e responsabilidade:** a cópia local sustenta o estudo; as
+  regras de acesso e de dados delimitam quem pode agir e que registros podem
+  ser usados. A [arquitetura](arquitetura.md) e os [fundamentos de governança](fundamentos-pesquisa-e-governanca.md)
+  desenvolvem essas escolhas.
 
-As alternativas principais são:
-
-- adotar uma plataforma genérica e adaptar o conteúdo aos componentes
-  existentes;
-- construir módulos independentes sem uma semântica comum;
-- definir um núcleo pequeno e contratos explícitos que coordenem componentes
-  especializados.
-
-A solução precisa preservar separação de responsabilidades, operação móvel sem
-conexão, autoria compreensível, expansão do catálogo e rastreabilidade entre
-decisão pedagógica e materialização.
-
-### Decisão
-
-O AraLearn investiga uma configuração integrada composta por:
-
-- modelo didático de progressão sem quantidade fixa de unidades de estudo;
-- catálogo semântico de componentes didáticos;
-- pacotes de componente especializados e independentes de um núcleo comum;
-- contratos recuperados sob demanda depois da escolha da representação;
-- práticas situadas dentro do objeto quando a operação assim exige;
-- estudo com cópia local e sincronização assíncrona;
-- autoria do curso e correção focal em escalas distintas;
-- propriedade do curso, acesso direto para estudo, proveniência e correções
-  revisáveis em qualquer ponto;
-- política de dados orientada pela finalidade, sem telemetria comportamental
-  automática.
-
-### Fundamentação
-
-A configuração articula problemas tratados por literaturas diferentes:
-representações externas ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)), carga cognitiva
-([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload); [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)), recuperação e prática
-distribuída ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed)), feedback
-([Shute (2008)](referencias.md#ref-shute2008feedback); [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)), autorregulação
-([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated); [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)), interação entre pessoas e IA
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai);
-[Lee e See (2004)](referencias.md#ref-lee2004trust);
-[Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai)) e governança de dados
-educacionais ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). Nenhuma dessas fontes
-avalia a configuração do AraLearn como conjunto.
-
-### Operacionalização
-
-A arquitetura, os contratos, as regras de autoria, a persistência e os
-protocolos de avaliação são documentados separadamente. A [matriz de
-rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md) relaciona
-compromissos do projeto a objetos observáveis, verificações técnicas e avaliações
-educacionais necessárias.
-
-### Consequências
-
-A unidade de análise deixa de ser uma funcionalidade isolada e passa a ser a
-coordenação entre planejamento, representação, interação, persistência e
-governança. Isso permite estudar tanto cada mecanismo quanto efeitos e custos da
-configuração completa.
-
-### Limites e evidência
-
-A integração pode aumentar complexidade, custo de manutenção e dificuldade de
-atribuir efeitos a um mecanismo. A configuração não é apresentada como única,
-superior ou eficaz. Sua originalidade depende da revisão do estado da arte; sua
-utilidade e seus efeitos dependem de avaliação.
+A [revisão de literatura](revisao-de-literatura.md) reúne fundamentos para cada
+relação; nenhuma fonte avalia a configuração do AraLearn como conjunto. É
+possível investigar um mecanismo ou a coordenação entre eles. A segunda opção
+aproxima o estudo do uso completo, mas dificulta atribuir um resultado a uma
+escolha isolada. Originalidade, utilidade, custo e efeito educacional exigem
+perguntas e comparações próprias.
 
 ## 4. Contribuições potenciais
 
 ### C1: arquitetura extensível de componentes didáticos
 
-**Problema.** Contratos monolíticos e renderizadores centrais tornam a inclusão
-de uma nova representação uma refatoração transversal.
+Incluir uma matriz, um fluxograma ou outra representação exige regras próprias
+de conteúdo, apresentação e resposta. O AraLearn reúne essas regras em pacotes
+independentes que obedecem a uma interface comum: o aplicativo sabe como
+utilizá-los sem concentrar todos os detalhes de cada representação num único
+módulo. O [catálogo de componentes](componentes-didaticos.md) descreve seus usos.
 
-**Alternativas e requisitos.** Manter um mecanismo central de renderização,
-distribuir módulos sem interface comum ou adotar pacotes autodescritivos. A
-extensão precisa preservar isolamento, validação e integração previsível.
-
-**Decisão.** Pacotes de componente autodescritivos reúnem esquema de validação,
-mecanismo de renderização, catálogo, autoria, prática e testes sob um núcleo
-comum.
-
-**Fundamentação.** A decisão aplica separação de responsabilidades ao problema
-de um artefato extensível; sua relevância e avaliação seguem a lógica de DSR
-([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)).
-
-**Operacionalização.** Cada pacote registra contrato, mecanismo de
-renderização, descrição de descoberta, campos editáveis e testes; o núcleo
-consome essa interface comum. Os pacotes disponíveis e suas funções constam no
-[catálogo de componentes](componentes-didaticos.md).
-
-**Consequências.** A contribuição potencial é um padrão arquitetural para integrar representações
-acadêmicas heterogêneas sem expor detalhes geométricos à autoria.
-
-**Limites e evidência.** Devem ser medidos dependências, esforço de inclusão, estabilidade do
-núcleo, exemplos de extensão independente e comparação com alternativa
-monolítica. Código funcional demonstra a instância, não a generalidade do
-padrão.
+A contribuição potencial é um padrão de organização que facilite acrescentar
+representações disciplinares preservando coerência e acessibilidade. Para
+examiná-la, interessa comparar esforço de inclusão, dependências e estabilidade
+com outras arquiteturas, inclusive em extensões realizadas por equipes
+independentes. A DSR oferece um enquadramento para relacionar essa solução ao
+problema e à avaliação ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience);
+[Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)).
 
 ### C2: descoberta progressiva de contratos para autoria assistida
 
-**Problema.** Enviar todos os esquemas de validação simultaneamente aumenta contexto e
-dificulta escolher a representação pela intenção.
+O assistente primeiro encontra recursos pela operação pretendida, como
+comparar valores ou representar um procedimento, e depois recebe as regras do
+componente escolhido. Essa consulta progressiva evita exigir que a autoria
+conheça previamente todos os nomes e formatos técnicos. O [catálogo](componentes-didaticos.md)
+explica as representações disponíveis.
 
-**Alternativas e requisitos.** Fornecer contrato monolítico, exigir nome exato
-do componente ou recuperar progressivamente catálogo e contrato. A autoria precisa
-encontrar uma intenção sem conhecer a sintaxe antecipadamente.
-
-**Decisão.** A autoria consulta descrições e facetas, escolhe o tipo e só então
-recebe seu contrato.
-
-**Fundamentação.** A geração aumentada por recuperação condiciona a produção a
-informação recuperada ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)),
-mas erros de geração, sua detecção e sua mitigação variam conforme a tarefa
-([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)).
+A contribuição potencial é um método para recuperar informação de autoria
+conforme a necessidade. Buscar documentos para compor o contexto de geração
+é discutido por [Lewis et al. (2020)](referencias.md#ref-lewis2020rag); os erros
+continuam dependendo da tarefa ([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)).
+Uma avaliação do AraLearn pode comparar a consulta progressiva à apresentação
+do catálogo completo, examinando adequação da escolha, volume de contexto e
+retrabalho humano.
 
 Estudos situados de autoria educacional mostram instrutores e docentes
 planejando, avaliando, adaptando e contextualizando saídas de IA
@@ -184,199 +121,118 @@ não foi estatisticamente significativo
 rejeição e reconstrução de materiais produzidos por IA
 ([Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting)).
 
-**Operacionalização.** A consulta retorna intenção, operações, limitações e
-facetas; uma segunda operação fornece apenas o contrato selecionado.
-
-**Consequências.** A contribuição potencial é um método de recuperação
-progressiva de ferramentas representacionais com menor contexto inicial.
-
-**Limites e evidência.** Precisão da seleção, custo de contexto, incidência de
-contrato inadequado, retrabalho e comparação com catálogo monolítico. O simples
-funcionamento da busca não demonstra melhor decisão.
-
 ### C3: modelo didático operacional de microssequência
 
-**Problema.** Uma unidade de estudo curta pode permanecer condensada, e uma
-quantidade fixa de teoria ou prática pode ignorar complexidade e conhecimento
-prévio.
+Uma unidade curta pode esconder pressupostos; uma sequência extensa pode
+repetir informação sem aprofundar relações. O AraLearn dimensiona as etapas
+pelo objetivo, pelos conhecimentos necessários e pela prática planejada. A
+base explicativa conserva o desenvolvimento do conteúdo e suas fontes; as
+unidades realizam o percurso de estudo.
 
-**Alternativas e requisitos.** Fixar tamanho, resumir para caber ou dimensionar
-a sequência por pré-requisitos, relações e evidência de aprendizagem. É preciso
-preservar profundidade e coerência.
+A contribuição potencial é um modelo que permita discutir e revisar essa
+passagem da base ao percurso. Os estudos sobre segmentação e microaprendizagem
+mostram resultados e condições heterogêneos, sem uma cota universal de conteúdo
+([Rey et al. (2019)](referencias.md#ref-rey2019segmenting);
+[De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
 
-**Decisão.** A microssequência declara objetivo, pré-requisitos, progressão,
-exemplos, práticas e retomadas antes de materializar as unidades de estudo.
-
-**Fundamentação.** Segmentação e microaprendizagem possuem efeitos e definições
-heterogêneos; não oferecem uma cota universal ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting); [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning)).
-
-**Operacionalização.** Plano instrucional, rubrica e auditoria verificam a
-cobertura entre teoria, exemplo, prática e feedback.
-
-**Consequências.** A contribuição potencial é um modelo operacional que distingue a base
-explicativa de sua realização em unidades de estudo e associa o tamanho dessas
-etapas à suficiência pedagógica.
-
-**Limites e evidência.** Exigem-se confiabilidade da rubrica, julgamento de especialistas,
-compreensão por novatos, retenção, transferência e casos em que a segmentação
-fragmenta relações. A base externa não valida automaticamente esse modelo.
+A avaliação pode começar pela coerência entre explicação, exemplos, prática e
+retorno, usando critérios de julgamento explícitos. Perguntas posteriores
+podem examinar compreensão, retenção ou transferência, conforme o objetivo.
+Casos em que a segmentação quebra relações ajudam a delimitar o modelo.
 
 ### C4: prática incorporada a representações disciplinares
 
-**Problema.** Exercícios genéricos deslocam a resposta do lugar em que o
-raciocínio acontece.
+Uma tarefa pode pedir que o estudante complete uma célula da matriz, um termo
+da fórmula ou uma etapa do diagrama. A resposta ocupa o lugar em que a relação
+é lida. Os [componentes didáticos](componentes-didaticos.md) coordenam a notação,
+os locais de resposta e o retorno; uma correspondência, por exemplo, pode ser
+respondida por lacunas independentes dentro de um texto ou tabela.
 
-**Alternativas e requisitos.** Responder fora do objeto, transformar toda
-representação em formulário ou autorizar alvos semânticos internos. A interação
-precisa preservar notação e identidade de cada alvo.
-
-**Decisão.** Lacuna e digitação podem ocupar folhas semânticas de código,
-matriz, tabela, fórmula ou diagrama; escolha e ordenação são usadas quando
-correspondem à operação. Quando a tarefa exige estabelecer correspondências,
-cada relação ocupa uma lacuna independente no campo textual de `paragraph` ou
-`table` em que já é lida, sem bloco autônomo de associação.
-
-**Fundamentação.** Recuperação pode beneficiar aprendizagem, mas tarefa e
-transferência são moderadores ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
-
-**Operacionalização.** O componente declara alvos, respostas e feedback; o
-formato de resposta controla estado e confirmação sem modificar a topologia.
-Lacunas que integram a mesma correspondência conservam opções e estado próprios.
-
-**Consequências.** A contribuição potencial é um mecanismo para coordenar representação
-especializada e resposta sem descaracterizar a notação.
-
-**Limites e evidência.** Devem ser examinadas independência de alvos, correção do contrato,
-interpretação por estudantes e comparação com resposta externa. Benefícios de
-recuperação não demonstram que qualquer lacuna seja válida.
+A contribuição potencial é essa coordenação entre representação e interação.
+Ela pode ser comparada a respostas apresentadas fora do objeto, observando
+interpretação, erros e adequação à operação. A literatura sobre recuperação e
+transferência ajuda a formular a tarefa, mas o benefício do mecanismo
+específico permanece por avaliar ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval);
+[Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)). A verificação técnica
+confere separadamente se cada local de resposta mantém sua identidade e estado.
 
 ### C5: autoria estrutural e correção focal com escopo explícito
 
-**Problema.** Construir um curso inteiro e corrigir uma unidade são tarefas de
-escala, risco e contexto diferentes.
+Planejar um curso e corrigir um exemplo exigem alcances diferentes. A autoria
+começa por uma estrutura que a pessoa pode inspecionar; a produção prossegue
+em partes. Ao revisar um ponto, o contexto inclui as unidades relacionadas,
+para que uma correção de conceito possa alcançar também exemplos ou práticas
+que dependem dele. As [observações](observacoes-pedagogicas.md) conservam a
+localização das dúvidas e dos problemas apontados.
 
-**Alternativas e requisitos.** Usar o mesmo fluxo para tudo, separar completamente
-as ferramentas ou coordenar autoria estrutural e correção focal. O escopo
-precisa ser visível, validável e revisável.
+A contribuição potencial é um modo de coordenar autoria ampla e revisão
+localizada, tornando visível o alcance da ação. Uma avaliação pode acompanhar
+se autores preveem corretamente o que mudará, detectam alterações indevidas e
+revisam conteúdo e fontes depois da gravação. O curso permanece editável, o que
+permite retornar a pontos anteriores; o [protocolo de avaliação](protocolo-avaliacao-artefato.md)
+explica como conservar a versão usada no estudo.
 
-**Decisão.** A autoria estrutural apresenta primeiro o mapa curricular global e
-o mantém inspecionável antes da aprovação. Depois, partes agrupam a produção
-incremental sem se tornar nível curricular. Observações ficam ancoradas no
-curso, na microssequência ou na unidade de estudo e podem ser registradas em
-vários alvos na mesma ação. Ao preparar uma revisão, o contexto inclui também as unidades afetadas por progressão,
-pré-requisitos, exemplos, prática e transições; a correção atualiza diretamente
-o curso mutável, preservando a necessidade de conferir conteúdo, configuração
-aplicada e vínculos com as fontes após a gravação.
-
-**Fundamentação.** A interação entre pessoas e IA requer limites
-compreensíveis, correção e controle
-([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)). Em uma tarefa
-de decisão assistida, funções que forçavam reflexão reduziram dependência
-excessiva e acrescentaram custo; o resultado não demonstra controle efetivo na
-autoria educacional
-([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
-
-**Operacionalização.** O servidor deriva o contexto focal, mantém as observações
-abertas consultáveis e aplica correções com controle de concorrência. Voltar a
-qualquer ponto significa abrir unidades antigas, anotar e reparar o conjunto
-coerente afetado; não requer rodadas imutáveis nem um histórico paralelo de
-mutações.
-
-**Consequências.** A contribuição potencial é um modelo de coordenação entre
-autoria ampla e correção localizada com assistência de modelos de linguagem.
-
-**Limites e evidência.** Devem ser medidos erro de escopo, qualidade da mudança,
-retrabalho, compreensão, controle percebido, verificação e capacidade de voltar
-a pontos anteriores para revisá-los. Diretrizes de interação não garantem que
-os controles sejam compreendidos.
+Diretrizes de interação entre pessoas e IA tratam de limites compreensíveis e
+correção ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)).
+Um estudo de decisão assistida mostrou que solicitar reflexão pode reduzir
+dependência excessiva e também acrescentar custo
+([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Esse
+resultado motiva examinar tanto o julgamento quanto o trabalho de inspeção,
+sem pressupor que uma confirmação na interface assegure controle efetivo.
 
 ### C6: continuidade local e sincronização não bloqueante
 
-**Problema.** Estudo móvel pode ocorrer sem conexão estável; ações locais não
-devem depender da latência da rede.
+O estudo móvel pode ocorrer sob conexão instável. O AraLearn conserva conteúdo
+já sincronizado e ponto de estudo no dispositivo; a comunicação com o servidor
+ocorre sem fazer a interação corrente esperar pela rede. A contribuição
+potencial está em tratar continuidade e retomada como requisitos da arquitetura
+educacional.
 
-**Alternativas e requisitos.** Operação centrada no servidor, cópia parcial ou
-réplica local sincronizável. A resposta do gesto corrente precisa independer da
-rede sem perder consistência posterior.
-
-**Decisão.** Conteúdo já sincronizado e estado corrente permanecem locais; a
-sincronização ocorre fora do caminho crítico.
-
-**Fundamentação.** Interrupção pode impor custo de retomada, mas a literatura não
-avalia esta arquitetura ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)).
-
-**Operacionalização.** Réplica, fila, cursor corrente e resolução de conflito
-são testados sob perda e retorno de conexão.
-
-**Consequências.** A contribuição potencial é uma aplicação educacional móvel cuja continuidade
-operacional e retomada são tratadas como requisitos arquiteturais.
-
-**Limites e evidência.** São necessários testes sem conexão, latência,
-conflitos, consumo de armazenamento e tarefas reais de interrupção e retomada.
-O funcionamento sem conexão é resultado técnico; menor esforço de retomada é
-hipótese.
+Testes de perda e retorno da conexão examinam disponibilidade, conflitos,
+tempo de resposta e armazenamento. A continuidade humana exige outra
+observação: encontrar o ponto e reconstruir o que se fazia. Estudos sobre
+interrupção ajudam a formular essa pergunta
+([Monk et al. (2008)](referencias.md#ref-monk2008resumption);
+[Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)), enquanto
+as condições específicas do AraLearn precisam ser examinadas em tarefas de
+estudo e retomada.
 
 ### C7: propriedade, proveniência e dados proporcionais
 
-**Problema.** Poder de edição difuso e telemetria abundante podem obscurecer
-responsabilidade e produzir inferências sem validade.
+Cada curso tem uma pessoa proprietária, que pode conceder acesso para estudo
+e, separadamente, permitir uma cópia privada e independente. Fontes e âncoras
+localizam os materiais usados; os [dados de autoria](analytics-instrucionais.md)
+descrevem o conteúdo e as intervenções observáveis, sem coletar o comportamento
+de estudo. Essas escolhas coordenam responsabilidade autoral, compartilhamento
+e redução dos dados coletados.
 
-**Alternativas e requisitos.** Autoria coletiva com papéis, isolamento completo
-ou propriedade do curso com acesso direto para estudo; coleta ampla ou dados
-definidos pela finalidade. A solução precisa permitir revogação, atribuição e
-proporcionalidade.
-
-**Decisão.** Cada curso possui uma pessoa proprietária, que pode autorizar acesso
-para estudo e, separadamente, permitir a criação de uma cópia. Copiar exige
-pedido e confirmação explícitos; produz outro curso privado e independente,
-conforme as [regras de autoria e acesso](autoria-contextual.md). Fontes e âncoras
-localizam materiais usados e seus vínculos com o conteúdo. A área
-[Analytics](analytics-instrucionais.md) descreve o desenho e intervenções cuja
-origem permanece observável, sem coletar o comportamento de estudo.
-
-**Fundamentação.** A ética da análise de dados educacionais exige finalidade, transparência e
-responsabilidade ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)).
-
-**Operacionalização.** A autorização é calculada por curso e operação; mudanças
-recebem origem e revisão; cada métrica declara pergunta, denominador, ausências
-e interpretações vedadas.
-
-**Consequências.** A contribuição potencial é uma política integrada de
-responsabilidade autoral, compartilhamento para estudo e minimização de dados.
-
-**Limites e evidência.** Devem ser examinados isolamento, reconstrução de
-autoria, compreensão de propriedade e acesso, custo de armazenamento,
-proporcionalidade e efeitos adversos. A fundamentação ética não prova que a
-política adotada seja suficiente.
+Sua contribuição potencial depende de como operam em contextos reais. É
+possível examinar compreensão das permissões, capacidade de revogação,
+reconstrução das relações com fontes e consequências do uso dos registros.
+Finalidade, transparência e responsabilidade são critérios pertinentes à
+análise ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
+[Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics)). Conflitos,
+trabalho adicional e interpretações indevidas também integram a avaliação.
 
 ### C8: instrumentos reprodutíveis de auditoria
 
-**Problema.** Qualidade pedagógica, fidelidade representacional e correção
-técnica podem ser confundidas em uma única afirmação de “qualidade”.
+Um teste de apresentação pode revelar texto oculto; uma análise disciplinar
+pode revelar uma relação incorreta; uma tarefa com participantes pode mostrar
+como a representação é interpretada. A [matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md)
+relaciona esses exames conservando o que cada evidência sustenta.
 
-**Alternativas e requisitos.** Usar um selo único, manter avaliações isoladas ou
-ligar instrumentos por uma matriz de evidências. Cada resultado precisa de
-definição e inferência próprias.
-
-**Decisão.** Rubricas, matrizes, casos de estresse e protocolos separam
-conformidade, julgamento de especialista, usabilidade e aprendizagem.
-
-**Fundamentação.** DBR e DSR distinguem intervenção situada, artefato e
-conhecimento de desenho ([Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased); [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Venable et al. (2016)](referencias.md#ref-venable2016feds)).
-
-**Operacionalização.** Cada instrumento declara unidade, pergunta, versão,
-procedimento, interpretação permitida e limite.
-
-**Consequências.** A contribuição potencial é um conjunto de instrumentos para investigar
-artefatos educacionais com autoria assistida e representações especializadas.
-
-**Limites e evidência.** São necessárias definições operacionais, confiabilidade entre
-avaliadores, sensibilidade a defeitos conhecidos e uso por equipes externas.
+A contribuição potencial inclui critérios, casos e procedimentos que outras
+equipes possam usar para investigar artefatos educacionais. Seu valor precisa
+ser examinado pela clareza das definições, pela capacidade de identificar
+problemas e, quando houver classificação, pela consistência entre avaliadores.
+A finalidade formativa ou somativa e o contexto da avaliação orientam essa
+escolha ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
 ## 5. Relação com classes de sistemas existentes
 
-O valor de uma contribuição integrada só pode ser avaliado por comparação
-explícita. A tabela organiza classes funcionais sem afirmar que determinada
+Uma alegação de vantagem sobre outras soluções exige comparação explícita.
+A utilidade em contexto e a compreensão dos processos também podem ser
+investigadas por outros desenhos, conforme a pergunta. A tabela organiza classes funcionais sem afirmar que determinada
 configuração inexista em outros produtos ou estudos.
 
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
@@ -417,24 +273,37 @@ Não podem ser inferidas apenas do código:
 - propriedade e acesso direto tornam a responsabilidade compreensível;
 - observações situadas produzem ação útil.
 
-### 6.3 Alegações que exigem avaliação de aprendizagem
+### 6.3 Alegações sobre aprendizagem, esforço e experiência
 
-Exigem medidas compatíveis de compreensão, retenção ou transferência:
+A medida acompanha o resultado alegado. Para examinar aprendizagem, a pesquisa
+pode observar compreensão, retenção ou transferência em tarefas pertinentes.
+Para examinar carga cognitiva ou ansiedade, precisa de definições e
+instrumentos próprios desses construtos. Tempo ou nota, isoladamente, não
+resolvem essa escolha.
 
-- microssequências melhoram aprendizagem;
-- uma representação reduz carga cognitiva extrínseca;
-- práticas internas produzem recuperação mais efetiva;
-- feedback melhora desempenho posterior;
-- o desenho não punitivo altera estratégia ou ansiedade.
+| Alegação a investigar | Evidência a planejar |
+| --- | --- |
+| a progressão ajuda a compreender relações | tarefa de explicação ou aplicação, com comparação adequada |
+| a prática favorece retenção | desempenho posterior, com intervalo e apoio identificados |
+| o retorno ajuda a usar o conhecimento em outro problema | tarefa que demande transferência e análise da ação após o retorno |
+| uma representação reduz demanda dispensável | comparação de apresentações com tarefa equivalente e avaliação da carga |
+| a política sem penalização altera estratégia ou ansiedade | observação das estratégias e instrumento pertinente à experiência afetiva |
 
 ### 6.4 Alegações que exigem comparação definida com alternativas pertinentes
 
-- o AraLearn é o primeiro ou único sistema com essa configuração;
-- a arquitetura é universalmente superior;
-- mais componentes didáticos produzem cursos melhores;
-- conteúdo gerado ou reparado por modelo é correto por ter esquema de dados válido;
-- ausência de telemetria é suficiente para garantir justiça ou privacidade;
-- uma preferência visual reduz carga cognitiva para todas as pessoas.
+Uma afirmação de novidade situa a solução entre antecedentes encontrados por
+uma busca documentada. Uma afirmação de vantagem compara alternativas segundo
+critérios relevantes, como esforço de autoria, qualidade do conteúdo ou custo
+de manutenção. O resultado conserva as versões, tarefas, pessoas e condições
+examinadas; não estabelece superioridade universal.
+
+Há também conclusões que uma comparação desse tipo não autoriza. Um esquema
+de dados válido não torna o conteúdo factualmente correto: a fidelidade às
+fontes e a correção disciplinar exigem inspeção própria. Da mesma forma,
+ausência de telemetria comportamental não basta para garantir justiça ou
+privacidade, que dependem também dos demais dados, finalidades, acessos e
+consequências do uso. Os [fundamentos de governança](fundamentos-pesquisa-e-governanca.md)
+tratam dessas relações.
 
 ## 7. Resultados contrários e contribuição negativa
 
@@ -479,11 +348,8 @@ cadeia documental. As referências completas estão em
 ## Referências
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
-- [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
-- [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
-- [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Choi et al. (2024)](referencias.md#ref-choi2024vivid): Seulgi Choi; Hyewon Lee; Yoonjoo Lee; Juho Kim (2024). **VIVID: Human–AI Collaborative Authoring of Vicarious Dialogues from Lecture Videos.** In: *Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems*, Association for Computing Machinery, p. 1–26.
 - [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
 - [Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha): Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47.
@@ -493,23 +359,16 @@ cadeia documental. As referências completas estão em
 - [Hevner et al. (2004)](referencias.md#ref-hevner2004designscience): Alan R. Hevner; Salvatore T. March; Jinsoo Park; Sudha Ram (2004). **Design Science in Information Systems Research.** *MIS Quarterly*, 28(1), p. 75–105.
 - [International Organization for Standardization (2018)](referencias.md#ref-iso2018usability): International Organization for Standardization (2018). **ISO 9241-11:2018: Ergonomics of Human-System Interaction — Part 11: Usability: Definitions and Concepts.** ISO 9241-11:2018.
 - [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
-- [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
-- [Lee e See (2004)](referencias.md#ref-lee2004trust): John D. Lee; Katrina A. See (2004). **Trust in Automation: Designing for Appropriate Reliance.** *Human Factors*, 46(1), p. 50–80.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
 - [Monk et al. (2008)](referencias.md#ref-monk2008resumption): Christopher A. Monk; J. Gregory Trafton; Deborah A. Boehm-Davis (2008). **The Effect of Interruption Duration and Demand on Resuming Suspended Goals.** *Journal of Experimental Psychology: Applied*, 14(4), p. 299–313.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
-- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm): Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
 - [Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting): Neil Selwyn; Marita Ljungqvist; Anders Sonesson (2025). **When the Prompting Stops: Exploring Teachers' Work Around the Educational Frailties of Generative AI Tools.** *Learning, Media and Technology*, 50(3), p. 310–323.
-- [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
-- [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
-- [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
 - [Vaccaro et al. (2024)](referencias.md#ref-vaccaro2024humanai): Michelle Vaccaro; Abdullah Almaatouq; Thomas Malone (2024). **When Combinations of Humans and AI Are Useful: A Systematic Review and Meta-Analysis.** *Nature Human Behaviour*, 8, p. 2293–2303.
 - [Venable et al. (2016)](referencias.md#ref-venable2016feds): John Venable; Jan Pries-Heje; Richard Baskerville (2016). **FEDS: A Framework for Evaluation in Design Science Research.** *European Journal of Information Systems*, 25(1), p. 77–89.
 - [Wang e Hannafin (2005)](referencias.md#ref-wang2005designbased): Feng Wang; Michael J. Hannafin (2005). **Design-Based Research and Technology-Enhanced Learning Environments.** *Educational Technology Research and Development*, 53(4), p. 5–23.
-- [Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated): Barry J. Zimmerman (2002). **Becoming a Self-Regulated Learner: An Overview.** *Theory Into Practice*, 41(2), p. 64–70.
 
 <!-- referências locais: fim -->

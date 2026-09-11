@@ -2,48 +2,42 @@
 
 ## Para que serve um quadro teórico
 
-Um quadro teórico organiza conceitos e relações que orientam uma investigação.
-Ele não é uma lista de funcionalidades nem uma coleção de citações. Sua função
-é explicar **por que** determinada propriedade do desenho poderia produzir uma
-manifestação observável, em quais condições essa explicação seria plausível e
-que resultado a enfraqueceria.
+Um quadro teórico relaciona conceitos que ajudam a formular uma pergunta,
+interpretar uma situação e escolher o que observar. Se uma pessoa retoma o
+estudo e não consegue continuar, por exemplo, o problema pode envolver a
+localização do ponto, a compreensão do conteúdo ou as condições de tempo e
+trabalho. Cada leitura dirige a investigação a relações diferentes.
 
-No AraLearn, a unidade de raciocínio é uma relação entre:
+Este documento desenvolve duas formas de examinar o AraLearn. As **proposições
+de desenho** formulam relações a investigar entre suas escolhas e o uso por
+pessoas. As [lentes críticas](#lentes-críticas-sobre-informação-e-poder) ajudam
+a questionar as finalidades, os critérios de valor e as relações de poder que
+podem acompanhar esse uso. A escolha e a combinação dessas perspectivas
+dependem da pergunta; uma investigação interpretativa não precisa converter
+toda relação numa previsão causal.
 
-| Elemento | Função no argumento |
-| --- | --- |
-| contexto (C) | delimita pessoas, tarefa e condições de uso |
-| mecanismo proposto (M) | explica como uma propriedade do desenho poderia atuar nesse contexto |
-| manifestação ou resultado (O) | define o que seria observado para examinar a proposição |
-| explicações rivais (R) | apresenta outras causas plausíveis para o mesmo resultado |
-| critério de revisão | indica o que exigiria manter, alterar ou abandonar a proposição |
+Para as proposições de desenho, o projeto adota o seguinte roteiro:
 
-Uma cadeia C–M–O é uma **hipótese de desenho**. Ela não autoriza linguagem
-causal antes de um desenho de avaliação compatível. O mecanismo precisa ser
-mais específico que “usar tecnologia”, e o resultado precisa ser mais preciso
-que “engajamento” ou “eficácia”.
+| Elemento | Função no argumento | Exemplo na retomada |
+| --- | --- | --- |
+| contexto | delimitar pessoas, tarefa e condições | estudante interrompe um problema de cálculo no celular |
+| mecanismo proposto | explicar como a escolha poderia atuar | conservar o ponto ajuda a reconstruir o passo suspenso |
+| manifestação ou resultado | indicar o que observar | a pessoa localiza, explica e continua o procedimento |
+| explicações rivais | considerar outras razões para o resultado | familiaridade com o conteúdo ou interrupção breve |
+| critério de revisão | indicar o que enfraqueceria a proposição | o ponto é encontrado, mas a continuação permanece incorreta |
+
+A relação entre **contexto, mecanismo e resultado**, abreviada aqui como C–M–O,
+é uma convenção de organização das hipóteses deste quadro. A observação de um
+resultado favorável ainda precisa ser confrontada com explicações alternativas
+antes de sustentar uma conclusão causal.
 
 ## Estados de conhecimento usados
 
-| Estado | Pergunta respondida | Exemplo |
-| --- | --- | --- |
-| evidência externa | o que outros estudos observaram ou argumentaram? | interrupções podem impor custo de retomada |
-| inferência teórica | como esse conhecimento pode se relacionar ao contexto do AraLearn? | um marco visível pode ajudar a reconstruir o objetivo suspenso |
-| hipótese de desenho | que relação falseável será examinada? | cursor local pode reduzir erros de retomada em tarefa móvel |
-| decisão de produto | que escolha está vigente e por quê? | manter o estado corrente no dispositivo |
-| propriedade implementada | o que código e testes demonstram? | o estado sincronizado pode ser lido sem conexão |
-| resultado empírico | o que uma avaliação observou numa versão e população? | somente pode ser preenchido após estudo documentado |
-
-Esses estados não formam uma escada automática. Uma implementação não vira
-resultado empírico pelo acúmulo de testes; uma hipótese não vira evidência
-externa porque parece coerente.
-
-As proposições relacionam decisões instrucionais a mecanismos do software.
-Quando a questão exige entender uma implementação, a
-[arquitetura](arquitetura.md) explica como o núcleo do aplicativo coordena os
-componentes de conteúdo e resposta. O estudo usa uma cópia local do conteúdo;
-a [sincronização](persistencia-relacional.md#sincronização-e-concorrência-no-dispositivo) atualiza os dados sem bloquear
-a interação corrente.
+A literatura pode tornar uma escolha plausível; o software pode demonstrar
+que ela foi implementada; uma avaliação pode examinar o que ocorre em uso.
+Esses alcances permanecem identificados ao longo do argumento. Os
+[fundamentos de governança](fundamentos-pesquisa-e-governanca.md#estados-epistêmicos)
+explicam a classificação completa e sua função na comunicação dos resultados.
 
 ## Teoria de mudança provisória
 
@@ -62,7 +56,7 @@ humana pode identificar problemas nessas escolhas e orientar sua revisão.
 Cada relação é uma hipótese. Disponibilidade local pode sustentar continuidade
 técnica sem alterar a compreensão; prática abundante pode ser irrelevante se
 exigir operações ainda não ensinadas. Inteligência artificial (IA), acesso
-compartilhado e [Analytics](analytics-instrucionais.md) modificam condições de
+compartilhado e [dados de autoria](analytics-instrucionais.md) modificam condições de
 autoria e decisão, mas seus efeitos precisam ser investigados por pergunta.
 
 ## Níveis de análise
@@ -84,48 +78,34 @@ autorregulação ou colaboração sem uma cadeia de operacionalização validada
 
 ## Camada de análise instrucional
 
-Entre fontes e materialização, o AraLearn mantém uma camada explícita de
-análise instrucional. Ela descreve unidades editoriais, conhecimento prévio
-presumido, relações, conjuntos que precisam ser coordenados e requisitos de
-explicação, evidência, prática, fidelidade e representação. Essa camada não é
-um modelo psicológico do estudante.
+Planejar uma explicação exige identificar o conhecimento que o estudante
+precisará mobilizar. Para comparar taxas percentuais, por exemplo, reconhecer
+os números pode ser insuficiente: é preciso relacionar cada taxa à sua base.
+O plano registra essa relação e verifica onde ela é explicada, exemplificada
+e solicitada numa tarefa. A [análise instrucional](desenho-instrucional-parametrizado.md)
+conserva esse percurso entre conhecimento previsto e conteúdo produzido.
 
-A distinção decorre de três limites teóricos. Componentes de conhecimento são
-latentes e sua granularidade depende da população e da tarefa
-([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli));
-interatividade de elementos depende da estrutura da informação e do
-conhecimento prévio e admite somente estimativa aproximada
-([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity));
-e uma alegação de proficiência exige argumento entre evidência e tarefa, não
-apenas cobertura editorial
-([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)).
+O recorte depende do público e do objetivo. O quadro KLI, que relaciona
+conhecimento, aprendizagem e instrução, ajuda a distinguir o conhecimento
+inferido da atividade planejada ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
+A quantidade de conhecimentos envolvidos também não resume a complexidade da
+tarefa: suas relações e o conhecimento prévio importam
+([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
+Por isso, o AraLearn mantém os itens e seus vínculos disponíveis para inspeção,
+além das contagens.
 
-Consequentemente:
+Uma prática planejada explicita o que pretende tornar observável. No exemplo
+das taxas, acertar uma seleção pode ser insuficiente para saber se a pessoa
+compreendeu a base da comparação; uma justificativa oferece outra informação.
+O argumento entre conhecimento, tarefa e evidência precisa ser construído
+([Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd)). O registro desse
+planejamento permite avaliar sua coerência; a interpretação de desempenhos
+requer instrumentos e condições definidos pelo estudo.
 
-- novidade presumida é categoria por unidade, com contagem derivada, e não
-  medida de carga;
-- coordenação descreve os conhecimentos e relações que a tarefa exige mobilizar
-  conjuntamente; a quantidade de itens desse conjunto não impõe uma representação técnica nem
-  mede, por si, demanda na memória;
-- explicação, evidência, variação, apoio e fidelidade são descritos por
-  categorias e relações quando um único número perderia informação;
-- todo número exige unidade, denominador, escopo, algoritmo e versão;
-- quantidades de unidades, palavras, caracteres e componentes descrevem o
-  conteúdo produzido; são calculadas depois da materialização, isto é, da
-  gravação das unidades que realizam o desenho.
-
-O contrato correspondente é descrito em [Desenho instrucional
-parametrizado](desenho-instrucional-parametrizado.md), com protocolo de recorte,
-pressupostos, ocorrências, desenvolvimento e denominadores. O
-[corpus sintético](corpus-unidades-de-analise.md) compara recortes em contextos,
-domínios e idiomas distintos; não constitui validação com participantes nem
-estimativa de confiabilidade. A precisão de uma contagem depende do inventário
-declarado e não certifica a interpretação semântica que o originou.
-
-O AraLearn persiste os
-itens de análise, os requisitos de evidência, os parâmetros, as orientações e a
-política de componentes. Essa implementação ainda não demonstra que autores
-compreendam o modelo nem que ele melhore resultados educacionais.
+O [corpus de recortes](corpus-unidades-de-analise.md) mostra como objetivo e
+público mudam a identificação dos conhecimentos. Seus exemplos são sintéticos:
+servem à discussão do procedimento, enquanto a consistência entre avaliadores
+e sua utilidade na autoria permanecem questões de investigação.
 
 ## Construtos centrais
 
@@ -149,9 +129,10 @@ construtos](glossario-construtos.md).
 
 ## Proposições de desenho
 
-Todas as proposições P1–P10 têm o estado de **hipótese**. Cada uma segue o
-mesmo roteiro: problema, alternativas ou requisitos, decisão, fundamentação,
-operacionalização, consequências esperadas, explicações rivais e limites.
+As proposições P1–P10 são **hipóteses** para estudos que examinem escolhas de
+desenho. Os tópicos seguintes conservam alternativas, fundamento e condições
+de avaliação de cada uma. É possível selecionar uma relação pertinente à
+pergunta, sem investigar todas as proposições no mesmo estudo.
 
 ### P1: retomada local após interrupção
 
@@ -160,7 +141,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Alternativas ou requisitos:** depender do servidor; manter apenas uma cópia temporária da
   tela; conservar réplica e estado corrente. A ação local deve responder sem
   aguardar rede.
-- **Decisão:** manter conteúdo sincronizado e cursor mínimo no dispositivo;
+- **Decisão:** manter conteúdo sincronizado e ponto de retomada no dispositivo;
   sincronizar sem bloquear a interação principal.
 - **Fundamentação:** interrupções podem impor custo de retomada
   ([Monk et al. (2008)](referencias.md#ref-monk2008resumption); [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption)).
@@ -170,7 +151,7 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   retomada.
 - **Explicações rivais:** tarefa simples, memória recente, familiaridade com o
   curso ou instrução recebida.
-- **Limite e evidência de enfraquecimento:** se o cursor não for compreendido,
+- **Limite e evidência de enfraquecimento:** se o ponto de retomada não for compreendido,
   não superar alternativa ou divergir entre dispositivos, a proposição deve ser
   revista. O funcionamento técnico sem conexão não demonstra aprendizagem.
 
@@ -204,18 +185,16 @@ operacionalização, consequências esperadas, explicações rivais e limites.
   hierárquicas se perdem em prosa; diagramas inadequados também criam carga.
 - **Alternativas ou requisitos:** texto, representação geral ou representação
   especializada; a escolha deve preservar convenção e operação-alvo da tarefa.
-- **Decisão:** admitir componentes didáticos por justificativa semântica,
-  descobrir primeiro
-  por intenção e consultar depois o contrato específico. A política vigente
-  restringe disponibilidade; seleção local e uso materializado permanecem
-  estados diferentes.
+- **Decisão:** escolher a representação pela tarefa que ela precisa apoiar.
+  O autor ou assistente consulta os componentes disponíveis e suas regras de
+  uso; a escolha é conferida no conteúdo efetivamente produzido.
 - **Fundamentação:** representações possuem funções, restrições e demandas de
   coordenação ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft); [Mayer (2009)](referencias.md#ref-mayer2009multimedia); [Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
-- **Operacionalização:** catálogo facetado, contrato específico, mecanismo de
-  renderização
-  determinístico, referência versionada do pacote de componente, caso acadêmico
-  complexo e auditoria disciplinar. Ausência de representação adequada é
-  registrada, não encoberta por equivalência.
+- **Operacionalização:** comparar representações para a mesma operação, com casos
+  disciplinares pertinentes e interpretação por participantes. A versão do
+  [componente](componentes-didaticos.md) é identificada e sua apresentação
+  técnica é verificada. Se faltar um recurso adequado, a limitação fica
+  registrada na condição avaliada.
 - **Consequência esperada:** interpretação mais precisa e menor tradução para
   prosa ou tabelas improvisadas.
 - **Explicações rivais:** novidade, familiaridade com a notação, dica no
@@ -244,8 +223,8 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 
 ### P5: prática variada por função e não por aparência
 
-- **Problema e contexto:** formatos repetidos podem medir apenas reconhecimento;
-  variedade ornamental não muda a operação.
+- **Problema e contexto:** uma tarefa pode ser resolvida por pistas superficiais,
+  qualquer que seja o formato; mudar apenas a aparência preserva esse problema.
 - **Alternativas ou requisitos:** formato fixo, rotação aleatória ou seleção
   pela evidência de aprendizagem.
 - **Decisão:** escolher entre seleção, lacuna, digitação e ordenação conforme a
@@ -255,8 +234,9 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Fundamentação:** recuperação pode beneficiar aprendizagem, com moderadores e
   limites de transferência ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 - **Operacionalização:** cada prática declara alvo, operação e o que verifica;
-  oportunidades distintas conservam assinatura semântica para que mudança
-  cosmética não infle a contagem; tarefas posteriores distinguem retenção e
+  a contagem distingue o que muda no conhecimento, na
+  operação e nos dados do problema, para que mudança cosmética não infle as
+  oportunidades distintas; tarefas posteriores distinguem retenção e
   transferência.
 - **Consequência esperada:** correspondência mais clara entre objetivo e ação do
   estudante.
@@ -336,17 +316,20 @@ operacionalização, consequências esperadas, explicações rivais e limites.
 - **Decisão:** reservar a autoria à pessoa proprietária, conceder por acesso
   direto somente o estudo e restringir a IA por catálogo, contrato, escopo e
   validação.
-- **Fundamentação:** comunidades podem habilitar ou inibir agência
-  ([Wenger (1998)](referencias.md#ref-wenger1998communities); [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)); a recuperação pode apoiar a geração com fontes,
-  conforme a arquitetura definida por Lewis et al.
-  ([Lewis et al. (2020)](referencias.md#ref-lewis2020rag)), sem eliminar erros de
-  geração dependentes da tarefa
-  ([Ji et al. (2023)](referencias.md#ref-ji2023hallucination)); governança de IA exige
-  responsabilidade e risco explícitos ([UNESCO (2023)](referencias.md#ref-unesco2023genai); [Autio et al. (2024)](referencias.md#ref-nist2024genai)).
+- **Fundamentação:** estudos de comunidades mostram relações entre participação
+  e agência ([Wenger (1998)](referencias.md#ref-wenger1998communities);
+  [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)).
+  Eles ajudam a examinar consequências das regras de acesso; reservar a edição
+  à pessoa proprietária é uma escolha específica do projeto. Para a assistência
+  de IA, orientações de governança destacam responsabilidade e explicitação
+  dos riscos ([UNESCO (2023)](referencias.md#ref-unesco2023genai);
+  [Autio et al. (2024)](referencias.md#ref-nist2024genai)). A [revisão de literatura](revisao-de-literatura.md#14-inteligência-artificial-generativa-recuperação-de-contexto-e-controle-humano)
+  discute como buscar documentos e contexto pode apoiar a geração e por que
+  essa busca ainda requer inspeção das fontes e do resultado.
 - **Operacionalização:** autorização por curso e operação, acesso revogável,
   trilha de proveniência, contrato especializado, auditoria e revisão humana.
 - **Consequência esperada:** acesso e autoria mais delimitados, com menor
-  deriva estrutural.
+  alteração indevida da estrutura.
 - **Explicações rivais:** modelo maior, instrução intensiva, cenário artificial
   ou baixa complexidade.
 - **Limite e evidência de enfraquecimento:** confusão entre propriedade e acesso, falsa sensação de
@@ -447,29 +430,26 @@ Uma avaliação pode reunir medidas, mas deve manter distintos:
 “Eficácia do AraLearn” não é uma variável única. Cada resultado exige unidade,
 instrumento, momento e interpretação próprios.
 
-## Inferências proibidas
+## Relacionar indicadores e interpretação
 
-- abertura ou tempo como atenção;
-- progresso como domínio;
-- ausência de observação como compreensão;
-- erro, ajuda ou resposta revelada como fracasso;
-- uso de IA como falta de conhecimento;
-- quantidade de unidades ou componentes como qualidade;
-- cardinalidade de unidades ou relações como carga cognitiva medida;
-- disponibilidade de um componente como prova de que ele foi selecionado ou
-  materializado;
-- acesso direto a um curso como autoria ou colaboração;
-- materialização técnica como validação pedagógica;
-- esquema de dados válido como correção factual;
-- preferência estética como usabilidade;
-- correlação de uso como efeito causal.
+Um registro só sustenta uma interpretação quando a relação entre ambos foi
+argumentada e examinada. Tratar abertura ou tempo como atenção, por exemplo,
+desconsidera interrupções e modos de uso; tomar progresso como domínio deixa
+sem exame o que a pessoa compreendeu. Quantidades de conteúdo descrevem o
+material produzido, enquanto qualidade exige critérios sobre seu conteúdo e
+sua adequação à tarefa.
+
+Os [dados de autoria](dicionario-metricas-datasets.md) delimitam o significado
+das contagens disponíveis. O [protocolo de avaliação](protocolo-avaliacao-artefato.md#resultados-e-instrumentos-candidatos)
+relaciona perguntas sobre pessoas a instrumentos e procedimentos próprios.
 
 ## Passagem do quadro à avaliação
 
 A [Matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
 relaciona compromissos do produto a objetos observáveis, verificações técnicas
 e avaliações educacionais necessárias. O [Protocolo de avaliação
-do artefato](protocolo-avaliacao-artefato.md) define episódios de DBR e DSR.
+do artefato](protocolo-avaliacao-artefato.md) ajuda a escolher uma estratégia e
+definir procedimentos compatíveis com a pergunta.
 Uma proposição só pode ser descrita como resultado sustentado quando versão,
 contexto, população, procedimento, análise, incerteza e limites estiverem
 registrados.
@@ -491,9 +471,7 @@ registrados.
 - [Foucault (1995)](referencias.md#ref-foucault1995discipline): Michel Foucault (1995). **Discipline and Punish: The Birth of the Prison.** New York, Vintage Books.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
-- [Ji et al. (2023)](referencias.md#ref-ji2023hallucination): Ziwei Ji; Nayeon Lee; Rita Frieske; Tiezheng Yu; Dan Su; Yan Xu; Etsuko Ishii; Ye Jin Bang; Andrea Madotto; Pascale Fung (2023). **Survey of Hallucination in Natural Language Generation.** *ACM Computing Surveys*, 55(12), p. 1–38.
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
-- [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
 - [Lyotard (1984)](referencias.md#ref-lyotard1984postmodern): Jean-François Lyotard (1984). **The Postmodern Condition: A Report on Knowledge.** Minneapolis, University of Minnesota Press.
 - [Mayer (2009)](referencias.md#ref-mayer2009multimedia): Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press.
 - [Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd): Robert J. Mislevy; Russell G. Almond; Janice F. Lukas (2003). **A Brief Introduction to Evidence-Centered Design.** Educational Testing Service, RR-03-16.

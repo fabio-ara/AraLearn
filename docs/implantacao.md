@@ -50,8 +50,9 @@ Para executar os scripts, são necessários [PowerShell
 [Node.js 22](https://nodejs.org/en/download), npm e npx, ferramentas de instalação e
 execução de pacotes fornecidas pelo Node.js, e [Git](https://git-scm.com/downloads). Os
 testes de autoria remota acrescentam
-[Deno](https://docs.deno.com/runtime/getting_started/installation/). Os serviços locais,
-executados em contêineres, exigem [Supabase CLI
+[Deno](https://docs.deno.com/runtime/getting_started/installation/), ambiente que
+executa as funções do servidor. Os serviços locais são executados em contêineres,
+ambientes isolados que reúnem cada serviço e suas dependências. Eles exigem [Supabase CLI
 2.115.0](https://supabase.com/docs/guides/local-development/cli/getting-started) e
 [Docker](https://docs.docker.com/desktop/); no Windows, o relatório também informa a
 disponibilidade do subsistema Linux (WSL), virtualização, espaço livre e ocupação das
@@ -91,8 +92,10 @@ painel do Supabase:
 3. [OAuth 2.1 Server](https://supabase.com/docs/guides/auth/oauth-server) com
    cadastro dinâmico de clientes e caminho de autorização `/` para a
    tela de consentimento do MCP no aplicativo;
-4. chave JWT assimétrica para assinar as credenciais e Custom Access Token Hook
-   `public.aralearn_mcp_access_token_hook`, que restringe os dados e o alcance do token;
+4. chave assimétrica para assinar as credenciais JWT, cujos campos o servidor pode
+   verificar; a chave de assinatura fica separada da chave pública de verificação.
+   O Custom Access Token Hook `public.aralearn_mcp_access_token_hook` é a função
+   chamada na emissão para restringir os dados e o alcance da credencial;
 5. anúncio de PKCE S256 na descoberta OAuth, para que a troca do código de
    autorização exija o verificador do cliente que iniciou o login.
 
@@ -239,28 +242,19 @@ O callback de Actions precisa usar HTTPS, um desses dois hosts e o formato
 registrado e precisa coincidir nas etapas seguintes do OAuth; o caminho não é
 reconstruído a partir de outro identificador do GPT.
 
-O [manifesto do serviço](../supabase/runtime-manifest.json) é um arquivo que identifica
-a revisão e as capacidades exigidas pela interface. Confronte essa fonte com as
-migrações aplicadas e com o manifesto remoto; não substitua a comparação por uma revisão
-antiga citada em instruções de instalação. A [história do esquema](schema-change-log.md)
-registra os cuidados de cada mudança. As migrações abaixo são exemplos de transições que
-exigem conferência específica; a lista atual e o manifesto continuam sendo a referência
-para escolher a versão a implantar. A migração
-`20260907031059_declare_business_conflict_runtime_manifest.sql` declara a capacidade
-`course-business-conflicts-http-409-v1` somente após a correção de conflitos estar
-aplicada. A revisão do manifesto e a última migração precisam coincidir também no ensaio
-de restauração. A migração `20260910054749_contextual_recorded_practice_integrity.sql`
-separa o registro fiel de aplicações existentes da completude de prática exigida ao
-materializar, sem regravar cursos. Ela avançou o manifesto e deve estar aplicada antes
-de validar esse comportamento pelos canais hospedados. A migração
-`20260910134141_copied_curriculum_scope_integrity.sql` remapeia a cobertura nas novas
-cópias e repara referências órfãs em cópias existentes pelos vínculos locais íntegros.
-Ela transforma dados úteis: exige backup atual, restauração e ensaio de preservação
-antes da aplicação hospedada. Ambiguidade impede o reparo; as filas de observações,
-fontes, arquivos, acesso e conteúdo devem permanecer. A migração
-`20260902234800_bind_real_chatgpt_action_callback.sql` continua sendo a autoridade do
-callback real de Actions. Reimporte o OpenAPI no GPT somente quando o próprio documento
-mudar; uma correção interna do vínculo OAuth não exige reimportação.
+O [manifesto do serviço](../supabase/runtime-manifest.json) identifica a revisão e as
+capacidades exigidas pela interface. Compare-o com o histórico de migrações do banco
+e com o manifesto remoto. A revisão do manifesto e a última migração precisam
+coincidir também no ensaio de restauração.
+
+A [história do esquema](schema-change-log.md) registra o que cada mudança transforma
+e quais cuidados exige. Por exemplo, um reparo de referências curriculares em cópias
+existentes altera dados úteis: requer backup atual, restauração e ensaio de
+preservação antes da aplicação hospedada. Referências ambíguas precisam impedir o
+reparo, preservando conteúdo, fontes, arquivos, observações e permissões.
+
+O OpenAPI precisa ser reimportado no cliente de Actions quando o próprio documento
+muda; uma correção interna do vínculo OAuth não exige essa reimportação.
 
 ```powershell
 npm.cmd run deployment:verify-hosted
@@ -393,18 +387,10 @@ atribuído à instalação (UID): instalação limpa da candidata e
 upgrade do APK público 0.0.67 (código 213). A versão candidata vem do manifesto
 aprovado e deve avançar em relação à base.
 
-O script `androidNativeGate.py` usa o SDK existente com entrada padrão fechada, verifica
-que as licenças não mudaram e exige aceleração de virtualização KVM. Não aceita novas
-licenças nem substitui a aceleração indisponível. A aplicação consulta a configuração
-pública antes do isolamento de rede, sem conta ou curso, e as ações usam os limites
-observados pela hierarquia nativa. No aplicativo corrente, os controles de tema ficam em
-**Configurações → Aparência**; na base 0.0.67, ficam em **Conta e aparência**. A prova
-confere o percurso de cada versão. No cenário de upgrade, o tema escuro é escolhido na
-interface da versão base e conferido após encerramento forçado do processo e reabertura.
-A preferência precisa sobreviver ao upgrade e à reinstalação `-r` da candidata, antes de
-qualquer nova escolha de tema. O cenário de instalação limpa verifica a preferência
-escolhida na própria candidata. Essa prova não cobre dispositivo físico, retenção de
-curso ou sessão autenticada.
+O ensaio confere a conservação do tema escolhido depois de fechar, reabrir e atualizar
+o aplicativo. O [procedimento Android](../android/README.md#verificação-automatizada-de-instalação-e-atualização)
+descreve a preparação do emulador e as ações verificadas. Dispositivo físico,
+retenção de curso e sessão autenticada exigem jornadas próprias.
 
 O JSON de prova v2 liga o APK ao manifesto, revisão, execução e tentativa da promoção;
 capturas e hierarquias XML de cada etapa têm seus hashes conferidos. Pages e Release

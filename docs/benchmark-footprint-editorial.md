@@ -1,6 +1,11 @@
 # Benchmark de extensão e ocupação visual
 
-Este ensaio compara sinais simples de extensão de uma unidade de estudo com o espaço que ela ocupa no leitor móvel. O termo técnico *footprint* designa essa ocupação visual. O benchmark fornece casos e medidas reproduzíveis para examinar a diferença entre extensão textual e espaço apresentado. Não define qualidade pedagógica, nota, limite de autoria nem política executada pelo produto.
+Uma tabela e um parágrafo podem conter a mesma quantidade de palavras e ocupar
+espaços diferentes na tela. Este ensaio compara medidas de extensão do conteúdo
+com o espaço efetivamente ocupado no leitor móvel. O termo *benchmark* designa
+a comparação com um conjunto fixo de casos; *footprint* é a ocupação visual.
+O problema investigado é quanto cada medida descreve essa ocupação, e não a
+qualidade pedagógica da unidade.
 
 ## Corpus e ambiente
 
@@ -40,22 +45,48 @@ O relatório detalhado é gravado em `test-results/editorial-footprint/measureme
 node --test tests/runtime/editorial-footprint-benchmark.test.js
 ```
 
-## Resultado do ensaio finito
+## Resultado histórico do ensaio finito
 
-Na execução de referência, a correlação de postos com os pixels realmente ocupados foi 0,654 para palavras, 0,719 para caracteres, 0,793 para o equivalente ponderado e 0,896 para a estimativa abstrata em linhas. A correlação de postos compara a ordenação dos casos por cada medida: valores mais próximos de 1 indicam maior correspondência entre as ordens. A geometria não variou entre os temas. O texto extremo ocupou em média 2,739 viewports internas; os demais casos ficaram abaixo de uma viewport, com os maiores entre eles sendo a escolha de oito alternativas, o código longo e a prática de ordenação.
+O registro da execução de referência informa que a correlação de postos com os pixels realmente ocupados foi 0,654 para palavras, 0,719 para caracteres, 0,793 para o equivalente ponderado e 0,896 para a estimativa abstrata em linhas. A correlação de postos compara a ordenação dos casos por cada medida: valores mais próximos de 1 indicam maior correspondência entre as ordens. A geometria não variou entre os temas. O texto extremo ocupou em média 2,739 viewports internas; os demais casos ficaram abaixo de uma viewport, com os maiores entre eles sendo a escolha de oito alternativas, o código longo e a prática de ordenação.
 
-O contraste responde à pergunta do ensaio: palavras ou caracteres isolados perdem diferenças importantes entre tipos. A estrutura melhora a ordenação, e a medição real continua sendo a evidência mais direta quando é possível apresentar e medir o conteúdo no navegador. O resultado não calibra uma fronteira científica entre unidade adequada e inadequada, nem demonstra que os pesos se generalizam para cursos não presentes no corpus.
+Esses valores constituem o resultado histórico registrado no capítulo; o
+relatório bruto daquela execução não está preservado no repositório. Para
+usá-los numa análise reproduzível da versão atual, é necessário executar o
+ensaio e conservar seu relatório junto da versão do código e do ambiente.
+
+No conjunto descrito, considerar a estrutura aproximou melhor a ordenação dos
+casos daquela obtida pela medição real. Essa comparação sugere uma possibilidade
+de estimativa; não estabelece uma fronteira entre unidade adequada e inadequada
+nem demonstra que os pesos se generalizam para outros cursos.
 
 ## Critério de encerramento
 
 O ensaio encerra quando todos os casos passam no catálogo, as 52 observações terminam sem erro material, cada família tem métricas lexicais, estruturais, estimadas e reais, e a ordenação permite distinguir o extremo conhecido dos casos pequenos e moderados. Satisfeitas essas condições, os pesos não são ajustados para maximizar a correlação no mesmo corpus.
 
-## Hipótese de contrato para uso futuro
+## Possível uso futuro da medida
 
-Se uma necessidade real justificar uma `EditorialPolicy`, uma possibilidade é um contrato de orientação flexível: uma origem `automatic` usa o padrão corrente do produto; uma origem `explicit` fornece, no ponto de vinculação, `target`, `preferredRange` e `softMaximum` na mesma medida de ocupação visual. A proposta não define aplicação por escopos ou herança; essas relações dependeriam de uma necessidade concreta.
+Uma medida de ocupação poderia ajudar a pessoa autora a localizar unidades
+muito extensas e examinar sua organização. Para ser útil, precisaria considerar
+a composição: uma figura larga, uma lista de alternativas e uma explicação em
+prosa ocupam a tela de maneiras diferentes. Uma estimativa equivalente a áreas
+de leitura móveis é uma candidata a investigar, tendo a medição real como
+referência de calibração.
 
-Esses valores descrevem orientação, não validação. Uma unidade dentro da faixa preferida não recebe aviso; uma ultrapassagem moderada continua permitida; somente uma ultrapassagem grande do máximo suave pode gerar alerta explicável e sugestão de decomposição. Salvar, publicar e estudar permanecem possíveis, e nenhum conteúdo é truncado.
+Uma hipótese é oferecer uma faixa de extensão preferida e alertar sobre
+ultrapassagens, mantendo a decisão com a autoria. O aviso poderia sugerir
+examinar a distribuição do conteúdo; a unidade continuaria disponível para
+salvar, publicar e estudar. A faixa não seria uma nota de qualidade nem uma
+regra para truncar explicações.
 
-O candidato mais útil para essa unidade é um equivalente de viewport móvel sensível à composição, derivado de texto e estrutura. A medição real permanece a referência de calibração. O corpus atual não é suficiente para promover os coeficientes experimentais nem escolher valores numéricos para o padrão do produto.
+A proposta técnica recebeu o nome `EditorialPolicy`. Nela, `target` seria o
+alvo, `preferredRange` a faixa preferida e `softMaximum` um máximo orientador.
+A origem `automatic` usaria um padrão do produto; `explicit` registraria a
+escolha informada no ponto de aplicação. O alcance e a combinação entre níveis
+do curso ainda dependeriam de uma necessidade definida.
 
-Essa hipótese diz respeito à forma de um possível contrato, separado dos [parâmetros de autoria já existentes](desenho-instrucional-parametrizado.md). O produto não implementa nem persiste `EditorialPolicy`, origem, faixa, máximo, alerta ou pontuação desse tipo. Uma etapa futura só deve fazê-lo quando houver consumidor e vínculo reais; o benchmark, por si só, não autoriza bloqueio, nota de qualidade ou limite rígido.
+Esse contrato é uma hipótese, separada dos
+[parâmetros de autoria existentes](desenho-instrucional-parametrizado.md).
+O produto não implementa sua faixa, alerta ou pontuação. O corpus atual também
+não fundamenta os valores de um padrão: investigar a estimativa em outros
+conteúdos e examinar a compreensão do aviso pela autoria precede uma decisão
+de implementação.

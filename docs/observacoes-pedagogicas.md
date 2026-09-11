@@ -39,8 +39,7 @@ observações tampouco demonstra compreensão.
 
 Entre numa conta com acesso ao curso. Na unidade, abra **Observações**, escreva
 o apontamento e use **Enviar observação**. Podem existir várias entradas suas
-no mesmo alvo. O campo aceita até 2.000 caracteres Unicode e verifica também o
-limite de 16 KiB do texto transmitido.
+no mesmo alvo. O campo aceita até 2.000 caracteres e informa o espaço disponível.
 
 O rascunho permanece no dispositivo até a confirmação. Se a conexão cair, a
 fila própria de observações conserva o envio, separadamente do progresso.
@@ -94,8 +93,7 @@ fontes. A proposta distingue os objetos usados para compreender o problema
 daqueles que serão alterados.
 
 Depois da decisão humana, a correção é aplicada e o resultado salvo é relido.
-Na fila autoral de explicações e unidades, somente as versões expressamente
-vinculadas à correção confirmada são tratadas. Ler, responder ou iniciar uma
+Cada explicação e unidade mantém uma lista de observações ainda pendentes, sua fila autoral. Uma entrada pode ser editada enquanto a correção é preparada; por isso o sistema conserva versões do texto. Somente as versões expressamente vinculadas à correção confirmada são tratadas. Ler, responder ou iniciar uma
 tentativa não consome a pendência. Versões editadas depois da preparação,
 conflitos e partes não atendidas continuam na fila.
 
@@ -130,7 +128,9 @@ A observação não armazena a conversa inteira do assistente. Na revisão
 conversacional, o conector fornece o recorte autorizado necessário ao trabalho.
 O resumo devolvido pode encaminhar ao conteúdo salvo sem reproduzi-lo no chat.
 
-## Analytics e pesquisa
+<a id="analytics-e-pesquisa"></a>
+
+## Dados de autoria e pesquisa
 
 A área **Dados de autoria** apresenta contagens de observações criadas, abertas e resolvidas no escopo quando
 esses estados são atribuíveis. Essas contagens descrevem contribuições e

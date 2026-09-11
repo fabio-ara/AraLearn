@@ -8,14 +8,18 @@ os contratos, testes e documentos que o descrevem.
 
 Leia o [README](README.md) para conhecer o produto e a [documentação](docs/README.md)
 para localizar a área afetada. Depois, verifique os comandos do `package.json` e os
-testes já existentes. O projeto usa [Node.js 22](https://nodejs.org/en/download) ou mais
-recente; a camada Android também exige [JDK
-17](https://developer.android.com/build/jdks) e [Android SDK
-36](https://developer.android.com/studio/intro/update#sdk-manager). O guia de
+testes já existentes. Para executar as ferramentas JavaScript do projeto, use
+[Node.js 22](https://nodejs.org/en/download) ou mais recente. Para gerar o aplicativo
+Android, são necessários também o [JDK 17](https://developer.android.com/build/jdks),
+conjunto de ferramentas de desenvolvimento Java, e o [Android SDK
+36](https://developer.android.com/studio/intro/update#sdk-manager), que fornece as
+ferramentas e interfaces da plataforma Android. O guia de
 [Implantação](docs/implantacao.md#diagnosticar-a-máquina) reúne as demais ferramentas e
 suas fontes oficiais.
 
-Instale as dependências de forma reproduzível:
+O gerenciador de pacotes npm acompanha o Node.js. O comando abaixo instala as
+versões de dependências registradas no repositório, para que diferentes pessoas
+trabalhem com o mesmo conjunto de bibliotecas:
 
 ```powershell
 npm ci
@@ -60,12 +64,9 @@ lote. Não mantenha leitura silenciosa de formatos removidos.
 
 ## Preparar uma contribuição
 
-### Pré-condição
-
 Tenha uma cópia atualizada do repositório e uma árvore de trabalho que permita
-identificar suas próprias alterações.
-
-### Passos
+identificar suas próprias alterações: a comparação com a versão salva no Git
+deve mostrar quais arquivos você modificou.
 
 1. Crie uma branch, linha de trabalho separada, a partir de `main`.
 2. Delimite um problema observável e os arquivos responsáveis por ele.
@@ -81,12 +82,8 @@ identificar suas próprias alterações.
 10. Abra uma solicitação de integração (*pull request*) com problema, solução,
     impacto e validações.
 
-### Resultado esperado
-
 Outra pessoa consegue compreender a necessidade, executar os testes e relacionar cada
 arquivo alterado ao mesmo objetivo.
-
-### Recuperação
 
 Se a branch acumulou experimentos, reorganize os commits antes da solicitação, sem
 apagar trabalho de outras pessoas. Se uma validação falhar por dependência externa
@@ -97,7 +94,7 @@ precisam ser corrigidas.
 
 Escolha as verificações pelo efeito da mudança. Para documentação, execute `npm run
 audit:docs` e confira links e afirmações alteradas. Para código, comece por testes do
-comportamento afetado e pelo lint; amplie a verificação quando houver mudança em
+comportamento afetado e pela análise automática do código, chamada *lint*; amplie a verificação quando houver mudança em
 contratos compartilhados, persistência ou autorização.
 
 ```powershell
@@ -116,11 +113,11 @@ Acrescente verificações conforme a área:
 | Área | Validações principais |
 | --- | --- |
 | Exemplo de curso | `npm run validate:example` |
-| autoria por MCP | `npm run test:authoring:mcp` |
-| autoria por Actions | `npm run test:authoring:actions` e `npm run actions:openapi:check` |
+| [Autoria por MCP](docs/autoria-mcp.md), conexão de assistentes às ferramentas do AraLearn | `npm run test:authoring:mcp` |
+| [Autoria por Actions](docs/autoria-actions.md), ações descritas para o cliente conversacional | `npm run test:authoring:actions` e `npm run actions:openapi:check` |
 | Componentes didáticos | testes do pacote, galeria visual e curso de componentes |
-| Integração Android | `npm run android:debug` e verificação do APK |
-| Banco e Edge Functions | testes Deno, pgTAP e testes integrados do ambiente local |
+| Integração Android | `npm run android:debug` e verificação do arquivo instalável (APK) |
+| Banco e funções executadas no servidor | [Testes locais](docs/supabase.md): Deno executa os testes das funções, e pgTAP verifica o banco |
 | Documentação | `npm run audit:docs` e verificação de links locais |
 
 A automação distingue alterações apenas documentais de candidatas que exigem validação
@@ -129,17 +126,15 @@ artefatos web e Android antes da publicação.
 
 ## Alterar ou criar um componente didático
 
-### Pré-condição
-
 Defina primeiro o que o estudante precisa fazer, como comparar valores ou identificar
 uma relação. Essa é a operação-alvo da tarefa. Justifique por que um texto, uma tabela
 ou um pacote existente não a atende adequadamente.
 
-### Passos
-
 1. Consulte a convenção acadêmica da área representada.
-2. Defina um contrato semântico de alto nível, sem coordenadas ou sintaxe da
-   biblioteca gráfica.
+2. Defina os dados e as relações que representam o assunto. Num fluxograma, por
+   exemplo, a autoria declara etapas e ligações; o componente calcula onde
+   desenhá-las. Esse é o papel do contrato semântico, descrito na referência de
+   [componentes](docs/componentes-didaticos.md).
 3. Implemente o pacote isolado do núcleo.
 4. Declare campos textuais editáveis e alvos de prática reais.
 5. Cubra exposição e as modalidades de resposta que façam sentido; não aplique
@@ -149,12 +144,8 @@ ou um pacote existente não a atende adequadamente.
 7. Teste uma representação complexa, não apenas o exemplo mínimo.
 8. Regenere o catálogo de teste do curso.
 
-### Resultado esperado
-
 O catálogo descreve quando escolher o componente, o modelo obtém seu contrato somente
 após a escolha, e o aplicativo renderiza sem sobreposição ou medição autoral de pixels.
-
-### Diagnóstico
 
 Se apenas um exemplo funciona, o contrato ou a disposição visual está específica demais.
 Se a correção exige uma condição no núcleo, a responsabilidade provavelmente está no
@@ -173,23 +164,17 @@ resultado.
 
 ## Alterar a documentação
 
-Determine primeiro a função do documento e o que o leitor precisa compreender. Explique
-a finalidade de um conceito antes de introduzir seu nome técnico e encaminhe ao
-documento canônico no ponto em que ele passa a ser necessário. Em tarefas operacionais,
-informe as condições necessárias, o procedimento, o resultado e a recuperação
-pertinente; explique o comportamento sem conexão quando ele afetar a tarefa.
+Os [princípios editoriais](docs/principios-editoriais.md) explicam as escolhas de
+organização, linguagem e fontes. Cada capítulo desenvolve um assunto; quando
+depende de outro, oferece contexto suficiente e um link para aprofundar. Uma
+correção pode mudar a distribuição do conteúdo entre páginas, desde que conserve
+as relações necessárias à compreensão e a profundidade disponível no conjunto.
 
-Na prosa, use minúsculas para nomes comuns como curso, explicação, fonte e unidade de
-estudo. Preserve a grafia de títulos, identificadores e rótulos reais da interface. Ao
-retirar conteúdo de uma página, confira se o destino conserva a explicação; a completude
-pertence ao conjunto da documentação. Distingua comportamento implementado, decisão de
-design e evidência de pesquisa. Após a redação, releia o documento inteiro procurando
-perdas de sentido, jargão desnecessário e conceitos que aparecem sem explicação.
-
-Preserve UTF-8 sem BOM, acentuação e links relativos válidos. Não descreva processos
-internos de conversa ou autoria do texto. Afirmações acadêmicas devem apontar para
-referências existentes; instruções técnicas devem ser confirmadas no código ou em
-documentação oficial.
+A contribuição documental inclui a conferência do comportamento descrito, das
+fontes e dos links, seguida da leitura integral do texto. Na prosa, nomes comuns
+como curso, explicação e unidade de estudo ficam em minúsculas; os rótulos da
+interface conservam sua grafia. Os arquivos usam UTF-8 sem BOM, isto é, sem a
+marca inicial de codificação que alguns editores acrescentam.
 
 ## Alterar dependências locais ou Android
 
@@ -213,9 +198,10 @@ A solicitação de integração deve registrar:
 - capturas quando houver mudança visual;
 - migração ou procedimento operacional, quando aplicável.
 
-Mantenha `main` como linha pública legível. Reorganize ou reúna commits com rebase ou
-squash quando isso tornar o histórico mais claro e evite commits de percurso sem valor
-duradouro.
+Mantenha `main` como linha pública legível. Antes da integração, o Git permite
+reorganizar os commits (*rebase*) ou reunir vários em um só (*squash*). Essas
+operações são úteis quando tornam a evolução da mudança mais clara; em branches
+compartilhadas, a reorganização precisa ser combinada com quem também trabalha nelas.
 
 ## Diagnóstico geral
 

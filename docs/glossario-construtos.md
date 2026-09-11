@@ -55,8 +55,9 @@ ajuda ou tempo em nota ou diagnóstico.
 
 ### Condição de tarefa
 
-Característica do cenário em que uma atividade ocorre. Exemplo: prática de
-baixa consequência, sem nota ou classificação.
+Característica do cenário em que uma atividade ocorre. Exemplo: prática com
+consequências reduzidas para a avaliação. No AraLearn, a opção específica é
+praticar sem nota ou classificação.
 
 ## Construtos relacionados à autonomia
 
@@ -254,13 +255,14 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 ### Prática de recuperação
 
 - **Tipo:** construto operacionalizado.
-- **Definição:** tentativa de produzir conhecimento ou decisão sem nova
-  exposição integral ao conteúdo-alvo
+- **Definição:** tentativa de trazer à memória conhecimento estudado, em vez
+  de apenas relê-lo
   ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval);
   [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)).
 - **Manifestação possível:** recordar, discriminar, explicar, completar,
   ordenar ou aplicar sem resposta já exposta.
-- **Não equivale a:** reler, tocar, reconhecer resposta visível ou avançar.
+- **Não equivale a:** reler, tocar ou avançar. Uma seleção entre alternativas pode
+  envolver recuperação; é preciso examinar como a tarefa pode ser resolvida.
 - **Evidência necessária:** especificar o que deveria ser recuperado, que apoio
   estava disponível e que resposta foi produzida.
 
@@ -457,9 +459,12 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Evidência necessária:** análise do processo, das relações e do produto
   coletivo, incluindo conflitos e casos negativos.
 
-O acesso direto ao estudo e as observações do AraLearn não oferecem coautoria
-ou construção de produto coletivo e, portanto, não operacionalizam esse
-construto.
+O AraLearn reserva a edição à pessoa proprietária. Acesso para estudo e
+observações podem mediar uma colaboração, por exemplo, quando estudantes
+questionam uma explicação e discutem sua reformulação com o autor. Para
+investigar essa prática, é necessário acompanhar a negociação e suas
+consequências; a permissão de edição e a quantidade de mensagens informam
+outras dimensões.
 
 ### Anotação ancorada
 
@@ -592,14 +597,18 @@ reler o contexto, propor o reparo e conferir seus efeitos.
 
 ### Parâmetro de desenho
 
-Decisão com natureza, objeto dono, escopos admitidos, origem, valor efetivo e
-efeito observável. Decisões de análise e prática orientam a realização
-instrucional; alvos editoriais orientam apresentação; preferências de processo
-orientam o trabalho autoral. O catálogo vigente define valores e escopos, sem
-deduzi-los apenas da hierarquia navegável. Um alvo editorial é flexível; um teto
-de ideias novas é uma restrição de desenho, sem constituir medida de carga
-cognitiva. Nenhum desses valores é dose pedagógica validada ou perfil de
-estudante. A calibração contextual deve declarar sua origem.
+Escolha que orienta a produção do conteúdo. Por exemplo, a pessoa autora pode
+fixar quantas práticas devem solicitar certa operação ou definir uma extensão
+aproximada para as unidades. O [catálogo de parâmetros](parametros-de-autoria.md)
+esclarece quais valores podem ser escolhidos, onde valem e como chegam ao
+conteúdo. Quando uma decisão do curso também vale para suas partes, diz-se que
+essas partes a herdam, nos limites admitidos pelo catálogo.
+
+Alvos editoriais orientam apresentação e extensão com flexibilidade; uma
+restrição sobre ideias novas delimita o desenho planejado. Seus valores
+expressam escolhas de autoria, cujo efeito educacional precisa ser investigado
+em relação ao público e à tarefa. Preferências de processo, como a frequência
+de pausas, organizam o trabalho autoral.
 
 ### Configuração corrente ou intenção corrente
 
@@ -612,12 +621,14 @@ salvo exige operação própria, com recorte e efeito explícitos.
 
 ### Configuração aplicada
 
-Registro das decisões que orientaram a produção efetiva de uma base ou unidade
-identificada, no alcance em que essas decisões são pertinentes. Preserva o
+Registro das decisões instrucionais e editoriais usadas para produzir uma
+unidade de estudo identificada. Preserva o
 valor e a origem conhecidos naquele momento, inclusive calibração automática
 ou aplicação solicitada pelo autor. Diferença em relação à intenção corrente
 permanece visível; uma preferência posterior não atualiza esse registro
-retroativamente. A declaração da IA sobre o que aplicou é um dado a inspecionar,
+retroativamente. A base explicativa possui registro próprio de versão e
+fontes; sua produção antecede ou acompanha a realização em unidades e não
+recebe essa configuração de unidade. A declaração da IA sobre o que aplicou é um dado a inspecionar,
 não prova de que o conteúdo realiza corretamente o desenho.
 
 ### Edição e intervenção humana
@@ -782,16 +793,19 @@ não valida a correspondência entre cada recorte e um componente de conheciment
 
 ### Conjunto de coordenação
 
-Conjunto de unidades e relações que o planejamento presume que precisam
-permanecer disponíveis simultaneamente. Sua cardinalidade pode ser calculada,
-mas não mede carga cognitiva, capacidade ou dificuldade individual.
+Conjunto de conhecimentos e relações que uma tarefa exige mobilizar
+simultaneamente. Para comparar duas taxas, por exemplo, pode ser necessário
+relacionar numerador, denominador e unidade de medida. O planejamento conserva
+esses vínculos para orientar a explicação. Contar os itens do conjunto descreve
+o plano; não mede a carga cognitiva da pessoa que realiza a tarefa.
 
 ### Requisito de explicação
 
-Necessidade contextual ligada a unidades ou relações, como definição,
-mecanismo, condição de aplicação, limite, contraste, exemplo ou justificativa
-de procedimento. É instrumento de planejamento e auditoria, não lista
-universal de verificação nem nota de qualidade.
+Necessidade de desenvolver determinado aspecto do conhecimento. Se uma
+regra vale apenas sob certa condição, explicar essa condição pode ser um
+requisito do plano. Outros casos podem pedir uma definição, um contraste ou
+a justificativa de um procedimento. A escolha acompanha objetivo, público e
+conteúdo; não existe uma lista que toda explicação precise preencher.
 
 ### Forma de explicação
 
@@ -803,9 +817,11 @@ palavra, comprimento do texto ou qualidade comprovada.
 
 ### Requisito de evidência
 
-Relação entre objetivo, alvo, operação, tarefa e forma aceitável de desempenho.
-Serve para auditar correspondência entre plano e prática; não transforma uma
-atividade em instrumento psicométrico nem demonstra domínio.
+Descrição do que uma tarefa precisa permitir observar em relação ao objetivo.
+Se o objetivo é escolher uma taxa comparável, o requisito pode pedir que a
+pessoa identifique a base e justifique a comparação. Esse registro ajuda a
+conferir a prática planejada; interpretar a resposta como medida de
+aprendizagem exige um argumento e um instrumento próprios.
 
 ### Oportunidade distinta de prática
 
@@ -870,11 +886,11 @@ Conserva a hierarquia curso → módulo → lição → microssequência → uni
 É termo operacional do AraLearn, sem duração ou quantidade fixa e sem pretensão
 de constituir unidade universal da pesquisa educacional.
 
-### Base explicativa da microssequência — Explicação
+### Base explicativa da microssequência — explicação
 
 Exposição intelectual e documental desenvolvida para o objetivo da
 microssequência, com pressupostos, conceitos, relações, mecanismos, exemplos,
-limites e fontes pertinentes. **Explicação** é seu nome na interface. Pode ser
+limites e fontes pertinentes. A interface apresenta esse texto como explicação. Pode ser
 produzida e revisada antes das unidades e, no estudo, funciona também como apoio
 sob demanda. O contrato prevê uma instância salva por microssequência,
 consultada sem geração por IA ao abrir.
@@ -914,14 +930,17 @@ quantidade universal; cada parte pode abranger várias microssequências.
 
 Termo de documentos anteriores para o conjunto de unidades teóricas que
 fundamentava práticas locais. Para nomear o conteúdo intelectual/documental
-salvo da microssequência, usar **base explicativa**; para sua realização em
-episódios do percurso, usar **unidades de estudo**. Essa distinção permite
+salvo da microssequência, o termo atual é **base explicativa**; sua realização
+em etapas do percurso ocorre nas **unidades de estudo**. Essa distinção permite
 reconhecer o vocabulário anterior sem criar outro objeto curricular.
 
 ### Baixa consequência
 
-Condição de prática sem nota, classificação ou penalização acumulada. Não significa
-ausência de desafio, retorno ou avaliação.
+Condição em que a prática tem peso ou consequências reduzidos na avaliação do
+estudante. Estudos sobre testes de baixa consequência incluem atividades que
+contribuem para a nota ([Sotola e Credé (2021)](referencias.md#ref-sotola2021quizzes)).
+O AraLearn adota a opção específica de praticar sem nota, classificação ou
+penalização acumulada, conservando desafio, resposta e retorno.
 
 ### Estado de estudo não punitivo
 
@@ -972,12 +991,12 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Definição:** exportação explícita do estado e da configuração efetivamente
   usados numa condição.
 - **Não equivale a:** curso cotidiano mutável ou leitura quantitativa isolada de
-  Analytics. A exportação de curso e análise conserva conteúdo e metadados,
+  Dados de autoria. A exportação de curso e análise conserva conteúdo e metadados,
   mas PDFs e áudios usados no estudo precisam ser guardados separadamente.
 - **Evidência necessária:** conteúdo, configuração, data, revisão e vínculo
   inequívoco com a condição exposta.
 
-### Estado observável de Autoria
+### Estado observável de autoria
 
 - **Tipo:** registro observável.
 - **Definição:** propriedade derivável do curso corrente, como configuração,
@@ -987,7 +1006,9 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Evidência necessária:** regra de derivação, escopo, revisão e indicação de
   ausência.
 
-### Escopo de Analytics
+<a id="escopo-de-analytics"></a>
+
+### Escopo dos dados de autoria
 
 - **Tipo:** recorte operacional.
 - **Definição:** curso, parte, microssequência ou unidade de estudo escolhida para
@@ -995,7 +1016,7 @@ Não equivale a painel de indicadores, predição ou vigilância.
 - **Não equivale a:** depósito analítico, população de participantes ou
   construto científico.
 - **Evidência necessária:** definição do recorte, regras de inclusão e
-  correspondência entre tela e snapshot JSON.
+  correspondência entre tela e arquivo exportado em JSON, um formato estruturado de dados.
 
 ### Intervenção explicitamente observável
 
@@ -1173,8 +1194,9 @@ explicações situadas e princípios de desenho; não é sinônimo de desenvolvi
 Construção e avaliação rigorosa de artefato e conhecimento de desenho
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience);
 [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)). Não é sinônimo de
-engenharia de software nem substitui DBR quando a pergunta é educacional e
-situada.
+engenharia de software. Pode investigar uso e contexto humano de um artefato;
+a escolha entre DSR, DBR e outros enquadramentos depende da pergunta e da
+contribuição pretendida, conforme o [protocolo de avaliação](protocolo-avaliacao-artefato.md#escolher-uma-estratégia-de-investigação).
 
 ### Avaliação formativa do artefato
 
@@ -1200,7 +1222,7 @@ Qualquer métrica, indicador ou desfecho futuro deve registrar:
 6. explicações alternativas;
 7. intervenção possível;
 8. retenção, acesso, exclusão e custo do dado;
-9. Unidade, denominador e algoritmo quando houver valor numérico;
+9. unidade, denominador e algoritmo quando houver valor numérico;
 10. versão e proveniência da operacionalização.
 
 Se essa cadeia não puder ser preenchida, o dado não deve entrar apenas por
@@ -1208,9 +1230,11 @@ estar tecnicamente disponível. Um termo operacional pode tornar-se objeto de
 investigação, mas não deve ser apresentado como construto estabelecido sem
 desenvolvimento e validação próprios.
 
-## Interpretação dos dados de Analytics
+<a id="interpretação-dos-dados-de-analytics"></a>
 
-- **Fato de Autoria** descreve uma atividade ou estado observável do processo;
+## Interpretação dos dados de autoria
+
+- **Fato de autoria** descreve uma atividade ou estado observável do processo;
   não equivale a atenção, esforço, domínio ou aprendizagem.
 - **Completude do recorte** descreve fatos presentes e ausentes segundo uma
   consulta; não mede adesão sem protocolo e população definidos.
@@ -1270,6 +1294,7 @@ desenvolvimento e validação próprios.
 - [Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation): Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860.
 - [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
 - [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
+- [Sotola e Credé (2021)](referencias.md#ref-sotola2021quizzes): Lukas K. Sotola; Marcus Credé (2021). **Regarding Class Quizzes: A Meta-Analytic Synthesis of Studies on the Relationship between Frequent Low-Stakes Testing and Class Performance.** *Educational Psychology Review*, 33(2), p. 407–426.
 - [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
 - [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered): Yi-Shan Tsai; Roberto Martinez-Maldonado (2022). **Human-Centered Approaches to Data-Informed Feedback.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 213–222.

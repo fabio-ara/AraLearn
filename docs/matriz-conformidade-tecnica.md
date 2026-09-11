@@ -1,7 +1,10 @@
 # Matriz de conformidade técnica
 
-O código precisa preservar as mesmas regras quando a pessoa usa a interface, MCP ou
-Actions. Esta matriz relaciona essas regras às partes que as executam e às
+O código precisa preservar as mesmas regras quando a pessoa usa a interface ou
+solicita autoria por um cliente externo de IA. Esses clientes enviam pedidos por
+[MCP](autoria-mcp.md), protocolo de chamada de ferramentas, ou por
+[Actions](autoria-actions.md), operações descritas em OpenAPI. Esta matriz relaciona
+as regras às partes que as executam e às
 verificações disponíveis. Um teste localizado é um caminho para reproduzir uma prova;
 seu resultado pertence à versão e à execução registradas.
 

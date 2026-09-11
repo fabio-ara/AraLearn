@@ -1,32 +1,40 @@
 # Configurações do aplicativo
 
-**Configurações** abre pelo botão de conta no cabeçalho da tela inicial, de
-Estudo e de Autoria. O botão tem o mesmo nome acessível, **Configurações**, e abre uma folha sobre o contexto corrente. Fechar devolve o foco ao acionador; Voltar e Escape saem primeiro do grupo aberto. O conteúdo de origem e os campos de edição permanecem abertos por baixo do painel.
+Abra **Configurações** pelo botão de conta no cabeçalho da tela inicial, de Estudo ou de Autoria. O painel reúne escolhas pessoais: sua identificação, a aparência, os dados deste dispositivo e o modo de conduzir a autoria. Fechar o painel devolve o contexto em que você estava; **Voltar** ou Escape sai primeiro do grupo aberto.
 
-O painel organiza **Conta**, **Aparência**, **Sincronização e dados deste dispositivo** e **Preferências de autoria**. Manutenção aparece somente depois de uma leitura autorizada confirmar o papel administrativo; as operações continuam submetidas ao controle de acesso do serviço. A foto de perfil abre como detalhe de Conta e retorna ao mesmo grupo.
+| Grupo | Para que serve | Onde a escolha vale |
+| --- | --- | --- |
+| **Conta** | Entrar, alterar identificador e foto, sair ou excluir a conta | Conta da pessoa, conforme a ação |
+| **Aparência** | Escolher tema do sistema, claro ou escuro | Dispositivo atual |
+| **Sincronização e dados deste dispositivo** | Escolher quando enviar e consultar mudanças, reunir progresso sem conta ou limpar dados locais | Dispositivo atual |
+| **Preferências de autoria** | Guardar como deseja trabalhar com o assistente | Padrão pessoal salvo na conta |
 
-A pessoa sem conta encontra os mesmos quatro grupos. Conta oferece entrada e Aparência altera o tema deste dispositivo. Sincronização explica a conservação local do progresso e permite remover somente os dados sem conta mediante confirmação expressa. A limpeza conserva os dados locais das contas existentes. Preferências de autoria explica o alcance pessoal e oferece entrada para editar as escolhas salvas na conta.
+Sem conta, os mesmos grupos informam o que está disponível. Aparência permite alterar o tema; Sincronização permite cuidar do progresso local, incluindo remover somente os dados de visitante. Essa limpeza conserva os dados das contas existentes. Para editar preferências pessoais de autoria, é necessário entrar. **Manutenção** aparece apenas para quem tem o papel administrativo autorizado.
 
 ## Preferências pessoais
 
-O foco define o trabalho: **Conteúdo** desenvolve explicações e fontes;
-**Ciclo completo** continua também o desenho e a produção das unidades. A
-cadência agrupa esse trabalho por microssequência, parte ou lote. Os pontos de
-revisão indicam o que a pessoa deseja inspecionar ao longo do processo, e os
-parâmetros de diálogo orientam a conversa. Cada escolha tem controle próprio. Os campos reutilizam o catálogo de parâmetros do produto. Escolher a cadência não define tamanhos nem frequência de pausa. Selecionar um ponto de revisão indica onde inspecionar e não declara revisão de conteúdo.
+O **foco** indica que trabalho deseja desenvolver. **Conteúdo** trata explicações e fontes. **Ciclo completo** inclui também o desenho e a produção das unidades. Essa escolha permite, por exemplo, trabalhar primeiro a explicação de um assunto antes de pedir sua organização em atividades.
 
-A origem identifica o padrão inicial do aplicativo ou as preferências salvas na conta. Escolhas expressas no curso e condições de pesquisa têm precedência sobre o padrão pessoal. Um processo já combinado com o assistente permanece vigente até uma mudança explícita. Salvar essas preferências não modifica bases, unidades, currículo ou marcas de revisão. O contrato de resolução está em [Parâmetros de autoria](parametros-de-autoria.md).
+A **cadência** indica como o trabalho será agrupado: por microssequência, parte ou lote. Uma microssequência desenvolve um objetivo do curso; uma parte reúne microssequências para produção, e um lote pode agrupar várias partes, conforme o [planejamento de autoria](planejamento-contextual.md). Escolher um agrupamento não determina sozinho seu tamanho nem a frequência das pausas. O recorte e os limites de continuidade precisam acompanhar o trabalho combinado.
 
-A folha preserva o rascunho ao trocar de grupo, fechar e reabrir. Uma consulta ou gravação tardia atualiza a informação correspondente sem trocar o painel ativo ou retirar o foco. A releitura das preferências conserva as alterações locais; se a conta mudou em outro acesso, mostra os valores salvos para comparação. A pessoa pode conservar seu rascunho sobre a revisão consultada ou carregar os valores salvos expressamente.
+Os **pontos de revisão** indicam onde você quer inspecionar propostas ou resultados. Os parâmetros de **diálogo** orientam a forma da conversa. Você pode ajustar essas escolhas separadamente; selecionar um ponto de inspeção não registra automaticamente que o conteúdo foi revisado.
 
-Depois de uma resposta de gravação incerta, a interface relê a conta na mesma tentativa. Se os valores enviados estão confirmados na revisão posterior, encerra a pendência sem repetir a escrita. Se a leitura ainda não confirma o efeito, conserva o pedido e o rascunho; a recuperação consulta novamente e reutiliza a identidade original. Edições feitas depois do envio continuam abertas para uma próxima gravação.
+O padrão inicial do aplicativo e suas preferências salvas têm sua origem indicada. Escolhas expressas no curso e condições de pesquisa prevalecem sobre o padrão pessoal. Um trabalho já combinado conserva seu acordo até uma mudança explícita. [Parâmetros de autoria](parametros-de-autoria.md) explica como essas preferências se relacionam às decisões de cada curso.
 
-O identificador de perfil também conserva sua edição entre reaberturas. Leituras anteriores não substituem uma leitura mais recente. A confirmação de um envio só normaliza o campo quando a pessoa não o editou depois daquele envio; a edição posterior permanece no campo.
+Salvar preferências não altera o currículo, as explicações, as unidades ou suas marcas de revisão. Para mudar conteúdo já produzido, é necessário solicitar e inspecionar essa alteração.
+
+## Guardar e retomar uma edição
+
+O painel conserva o rascunho quando você muda de grupo, fecha e reabre. Se os dados da conta foram alterados em outro acesso, ele apresenta os valores salvos para comparação. Você pode carregar esses valores ou conservar seu rascunho para concluir a decisão.
+
+Se uma gravação ficar sem confirmação, siga a recuperação indicada no mesmo painel antes de iniciar outro pedido. O aplicativo procura conferir o resultado e preserva as edições feitas depois do envio. [Solução de problemas](solucao-de-problemas.md#o-formulário-reapareceu-depois-de-salvar) explica esse caso.
+
+## Conta, aparência e dados locais
+
+As instruções de cadastro, perfil, tema, saída e exclusão estão em [Uso do aplicativo](uso-do-app.md). Para preparar estudo sem rede e escolher quando sincronizar, veja o [guia do estudante](guia-estudante.md#escolher-quando-sincronizar).
 
 ## Verificação
 
-O teste focal de [Autoria](../tests/runtime/course-authoring-surface.test.js) verifica que a entrada chama Configurações sem nova renderização ou mudança de rota. Os testes de [Configurações no navegador](../tests/e2e/common-settings.spec.js)
-usam os componentes reais de interface com respostas de serviço controladas: grupos e papel, foco, retorno, rascunho reaberto, leituras concorrentes, confirmação tardia, dimensões independentes, conflito e recuperação por releitura. A limpeza usa o armazenamento local real do navegador, IndexedDB, em um
-ambiente isolado e verifica a conservação dos dados de outra conta de teste.
+Os testes de [Configurações no navegador](../tests/e2e/common-settings.spec.js) exercitam retorno ao contexto, preservação de rascunhos, alterações por outra sessão e recuperação de gravação. Usam a interface e o armazenamento local reais com respostas de serviço controladas. O [teste de Autoria](../tests/runtime/course-authoring-surface.test.js) também confere a abertura do painel sem trocar de rota.
 
-Esses testes isolam o comportamento da interface. Autenticação, persistência remota e operação pelos canais são verificadas separadamente nas [validações de integração](guia-desenvolvedor.md).
+Essas verificações examinam a interface. Autenticação, gravação no servidor e integração pelos canais têm verificações próprias, descritas no [guia de desenvolvimento](guia-desenvolvedor.md).

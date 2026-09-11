@@ -95,7 +95,7 @@ const familyLabels = new Map([
 ]);
 const decisionLabels = new Map([
   ["manter", "o nome coincide com o conceito, dentro da definição registrada"],
-  ["restringir", "o nome permanece apenas no sentido e nas camadas declarados"],
+  ["restringir", "o nome permanece apenas no sentido e nos contextos de uso declarados"],
   ["substituído", "a forma anterior saiu do uso corrente e o termo canônico assumiu seu lugar"],
   ["retirado", "o nome ou símbolo não representa mais um conceito corrente"]
 ]);
@@ -245,23 +245,19 @@ export function renderControlledVocabulary(registry, bibliographyEntries = []) {
   const lines = [
     "# Vocabulário controlado do AraLearn",
     "",
-    "Este vocabulário permite usar palavras simples na interface sem misturar conceitos de produto, pesquisa, protocolos e infraestrutura. Cada entrada liga as formas encontradas no projeto aos termos de interface e de domínio, ao símbolo técnico adotado e à definição operacional. As definições, fontes e alternativas examinadas também estão disponíveis no [registro terminológico versionado](evidence/terminologia-canonica.v1.json).",
+    "Uma mesma coisa pode ter um nome legível no aplicativo e um identificador no código. Por exemplo, a unidade de estudo é uma etapa do percurso; `study_unit` é o nome usado para representá-la na implementação. Este vocabulário relaciona esses nomes, explica seu significado e indica as fontes. Ele ajuda quem escreve, desenvolve ou pesquisa o AraLearn a reconhecer quando duas palavras se referem ao mesmo objeto e quando representam conceitos diferentes.",
     "",
-    "## Como as camadas se relacionam",
+    "## Como consultar",
     "",
-    "- **Interface e documentação:** linguagem ensinável às pessoas que estudam, criam cursos ou pesquisam.",
-    "- **Domínio e pesquisa:** conceitos com definição operacional; eventos observáveis não recebem nomes de processos cognitivos não medidos.",
-    "- **Código, banco, Storage e implantação:** símbolos de implementação; não criam um segundo conceito para o mesmo objeto.",
-    "- **MCP e assistente:** distinguem instruções de sistema, pedido da tarefa, recurso MCP, ferramenta e estado persistido do curso.",
-    "- **Segurança e acessibilidade:** qualificam permissões e estados técnicos sem convertê-los em papéis institucionais ou cognição.",
+    "Cada entrada começa pelo significado e por um exemplo. Em **Domínio e implementação**, aparecem o conceito representado, seu equivalente em inglês e o identificador técnico. **Uso** indica a escolha terminológica e as palavras que poderiam causar confusão. **Base** aponta para a definição adotada pelo projeto ou para uma fonte externa.",
     "",
-    "Um termo pode aparecer em várias camadas, mas conserva uma única definição. Termos de interface podem ser mais curtos que o símbolo técnico somente quando esta correspondência está registrada.",
+    "Os nomes visíveis no aplicativo conservam a grafia dos rótulos. Na prosa, nomes comuns como curso, explicação e unidade de estudo ficam em minúsculas, conforme os [princípios editoriais](principios-editoriais.md). O [registro terminológico](evidence/terminologia-canonica.v1.json) conserva também as alternativas examinadas e os motivos de cada escolha.",
     "",
-    "## Estatutos de decisão",
+    "## Escolhas terminológicas",
     "",
     ...[...decisionLabels.entries()].map(([decision, explanation]) => `- \`${decision}\`: ${explanation}.`),
     "",
-    "As decisões registram quando um nome permanece com sentido delimitado, quando deve ser usado apenas numa camada e quando uma forma histórica foi substituída ou retirada.",
+    "Os contextos de uso distinguem, por exemplo, a interface, a documentação e o código. Um nome técnico pode continuar necessário na implementação mesmo quando o aplicativo apresenta um rótulo mais simples.",
     "",
     "## Termos",
     ""

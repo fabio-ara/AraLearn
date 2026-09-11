@@ -36,16 +36,11 @@ const FORBIDDEN_CURRENT_DOCUMENTS = Object.freeze([
   "docs/checkpoint-autoria-109.md",
   "docs/conformidade-documentacao-autoria.md"
 ]);
-const REQUIRED_STATE_COLUMNS = Object.freeze([
-  "caso de uso",
-  "existe",
-  "conectado",
-  "acessivel",
-  "uso verificado",
-  "funciona",
-  "necessario",
-  "alinhamento",
-  "limites e destino"
+const REQUIRED_STATE_DIMENSIONS = Object.freeze([
+  /capacidade|caso de uso/u,
+  /quem pode usar|acesso|acessivel/u,
+  /conexao|conectado/u,
+  /limites/u
 ]);
 const REQUIRED_RESEARCH_LOG_COLUMNS = Object.freeze([
   "registro_id",
@@ -334,14 +329,18 @@ function auditCurrentStateMatrix({ root, sources, errors }) {
   const header = source
     .split(/\r?\n/gu)
     .map(tableCells)
-    .find((cells) => REQUIRED_STATE_COLUMNS.every((required) => cells.includes(required)));
+    .find((cells) => REQUIRED_STATE_DIMENSIONS.every((dimension) => cells.some((cell) => dimension.test(cell))));
   if (!header) {
     errors.push(
-      "docs/estado-atual-e-roadmap.md: matriz corrente deve separar caso de uso, existência, conexão, acesso, uso, funcionamento, necessidade, alinhamento e destino"
+      "docs/estado-atual-e-roadmap.md: matriz corrente deve separar capacidades, condições de conexão e acesso e limites de uso"
     );
   }
   if (!/\b20\d{2}-\d{2}-\d{2}\b/u.test(source)) {
     errors.push("docs/estado-atual-e-roadmap.md: evidência corrente precisa informar data ISO");
+  }
+  const targets = markdownLinkTargets(file, source);
+  if (!targets.has(path.join(root, "docs", "matriz-conformidade-tecnica.md"))) {
+    errors.push("docs/estado-atual-e-roadmap.md: verificação precisa encaminhar às evidências técnicas");
   }
 }
 
