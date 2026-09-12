@@ -165,6 +165,20 @@ for (const authenticationKind of ["oauth", "action"]) {
     fontes[0].ocorrencias = [];
     await applyHumanCourseCorrections(input);
     assert.deepEqual(adapter.commits[3].sourceAttributionApplications[0].sourceLinks[0].occurrences, []);
+    fontes.splice(1);
+    await applyHumanCourseCorrections(input);
+    const replacement = adapter.commits[4].sourceAttributionApplications[0];
+    assert.equal(replacement.replaceExisting, true);
+    assert.equal(replacement.sourceLinks.length, 1);
+    assert.equal(replacement.sourceLinks[0].linkId, current[0].linkId);
+    fontes.splice(0);
+    await applyHumanCourseCorrections(input);
+    assert.deepEqual(adapter.commits[5].sourceAttributionApplications[0].sourceLinks, []);
+    assert.equal(adapter.commits[5].sourceAttributionApplications[0].replaceExisting, true);
+    delete input.explanations[0].fontes;
+    await applyHumanCourseCorrections(input);
+    assert.deepEqual(adapter.commits[6].sourceAttributionApplications[0].sourceLinks, current);
+    assert.equal(adapter.commits[6].sourceAttributionApplications[0].replaceExisting, undefined);
   });
 }
 

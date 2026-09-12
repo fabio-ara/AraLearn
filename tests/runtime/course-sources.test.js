@@ -782,6 +782,14 @@ test("read owner discrimina modo/cursor e Study reconstrói DTO redigido", () =>
     sourceLinks: explanationCommand.sourceLinks };
   const applications = [{ studyUnitId: "microsequence-a", sourceLinks: [] }, explanationApplication];
   assert.deepEqual(normalizeSourceAttributionApplications(applications), applications);
+  for (const replaceExisting of [true, false]) {
+    const explicit = applications.map(application => ({ ...application, replaceExisting }));
+    assert.deepEqual(normalizeSourceAttributionApplications(explicit), explicit);
+  }
+  for (const replaceExisting of [null, "true", 1]) {
+    assert.throws(() => normalizeSourceAttributionApplications([{ ...explanationApplication, replaceExisting }]),
+      { code: "invalid_course_source_attribution_application" });
+  }
   assert.throws(() => normalizeSourceAttributionApplications([explanationApplication, explanationApplication]),
     { code: "duplicate_course_source_attribution_application" });
   for (const slot of ["response", "feedback"]) {

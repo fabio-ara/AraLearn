@@ -900,16 +900,20 @@ export function normalizeSourceAttributionApplications(value) {
   }
   const ids = new Set();
   const applications = value.map((candidate) => {
+    if (candidate?.replaceExisting !== undefined && typeof candidate.replaceExisting !== "boolean") {
+      fail("invalid_course_source_attribution_application", "A substituição dos vínculos precisa ser explícita.");
+    }
+    const replacement = candidate?.replaceExisting === undefined ? {} : { replaceExisting: candidate.replaceExisting };
     if (candidate?.targetKind === "microsequence_explanation") {
-      exact(candidate, ["targetKind", "targetId", "sourceLinks"], "invalid_course_source_attribution_application", "A aplicação de proveniência da explicação");
+      exact(candidate, ["targetKind", "targetId", "sourceLinks", ...Object.keys(replacement)], "invalid_course_source_attribution_application", "A aplicação de proveniência da explicação");
       const targetId = opaqueId(candidate.targetId, 240, "invalid_course_source_target", "A identidade da microssequência");
       const key = `microsequence_explanation:${targetId}`;
       if (ids.has(key)) fail("duplicate_course_source_attribution_application", "A aplicação repete uma explicação.");
       ids.add(key);
-      return { targetKind: candidate.targetKind, targetId,
+      return { targetKind: candidate.targetKind, targetId, ...replacement,
         sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks, { targetKind: candidate.targetKind }) };
     }
-    exact(candidate, ["studyUnitId", "sourceLinks"], "invalid_course_source_attribution_application", "A aplicação de proveniência");
+    exact(candidate, ["studyUnitId", "sourceLinks", ...Object.keys(replacement)], "invalid_course_source_attribution_application", "A aplicação de proveniência");
     const studyUnitId = opaqueId(candidate.studyUnitId, 240, "invalid_course_source_target", "A identidade da Unidade de estudo");
     const key = `study_unit:${studyUnitId}`;
     if (ids.has(key)) {
@@ -918,6 +922,7 @@ export function normalizeSourceAttributionApplications(value) {
     ids.add(key);
     return {
       studyUnitId,
+      ...replacement,
       sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks)
     };
   });

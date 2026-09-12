@@ -85,5 +85,30 @@ update private.course_source_attachments set public_file_access='restricted',ver
 select ok(not private.can_read_course_file_v1('99270000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'Restrição de arquivo prevalece mesmo para recorte elegível');
 update private.course_media set status='removed' where course_id='99270000-0000-4000-8000-000000000101' and content_hash=repeat('b',64);
 select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s')->>'state','stale','Retirar áudio usado desatualiza a base que o utiliza');
+-- Correções fornecem a lista completa; a composição comum ainda preserva
+-- vínculos omitidos. Todos os passos passam pela composição transacional.
+create function pg_temp.replace_375(links jsonb, replacement boolean, request text) returns jsonb language sql as $$
+ select public.commit_course_composition_for_actor_v1(
+ '99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),
+ jsonb_build_array((select jsonb_build_object('entityType',entity_type,'entityId',entity_id,
+   'parentType',parent_type,'parentId',parent_id,'position',position,'content',content)
+   from private.course_entities where course_id='99270000-0000-4000-8000-000000000101' and entity_type='microsequence' and entity_id='s')),
+ '[]'::jsonb,jsonb_build_array(jsonb_build_object('targetKind','microsequence_explanation','targetId','s','sourceLinks',links)
+   ||case when replacement is null then '{}'::jsonb else jsonb_build_object('replaceExisting',replacement) end),request,null)
+$$;
+create function pg_temp.read_links_375() returns jsonb language sql as $$
+ select private.course_source_links_v1('99270000-0000-4000-8000-000000000101',
+ (select id from private.course_effective_source_attribution_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s')))
+$$;
+select lives_ok($q$select pg_temp.replace_375(pg_temp.links_342()||jsonb_build_array(jsonb_set(jsonb_set(pg_temp.links_342()->0,'{linkId}','"other-link"'),'{occurrences}','[]')),true,'replace-375-start')$q$,'Composição salva dois vínculos da mesma obra');
+select is(jsonb_array_length(pg_temp.read_links_375()),2,'Dois vínculos distintos persistidos');
+select lives_ok($q$select pg_temp.replace_375(pg_temp.links_342(),null,'replace-375-preserve')$q$,'Composição comum conserva vínculos omitidos');
+select is(jsonb_array_length(pg_temp.read_links_375()),2,'Guarda de preservação continua ativa sem intenção explícita');
+select lives_ok($q$select pg_temp.replace_375(pg_temp.links_342(),true,'replace-375-one')$q$,'Correção substitui atomicamente dois vínculos por um');
+select is(pg_temp.read_links_375(),pg_temp.links_342(),'Releitura contém somente o vínculo solicitado, com ocorrência intacta');
+select lives_ok($q$select pg_temp.replace_375('[]',true,'replace-375-empty')$q$,'Lista explicitamente vazia remove os vínculos');
+select is(pg_temp.read_links_375(),'[]'::jsonb,'Releitura confirma zero vínculos');
+select is((select count(*) from private.course_sources where course_id='99270000-0000-4000-8000-000000000101'),1::bigint,'Substituir vínculos conserva a obra no catálogo');
 select * from finish();
 rollback;

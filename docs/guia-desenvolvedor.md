@@ -410,7 +410,11 @@ conforme o impacto da mudança e o corte.
 Autoria corrente, dois lotes por canal HTTP, as dez jornadas reais no Chromium e cópia
 PDF/WAV. O runner não inicia, reseta nem encerra o banco. Ele serve funções próprias,
 confere se os serviços estão prontos (*readiness*) e encerra somente o processo que
-iniciou; a CI pode compartilhar seu
+iniciou. As funções próprias são servidas de uma cópia privada da configuração e
+dos arquivos, conferida por hash antes e depois da execução. Isso evita que eventos
+do checkout reiniciem o servidor durante a prova; mudanças na origem ou na cópia
+invalidam o resultado. A cópia não substitui a verificação de frescor dos serviços.
+A CI pode compartilhar seu
 processo já supervisionado. Um runtime persistente local pode ser usado com
 `--functions-existing` apenas após conferir que os arquivos estão montados somente para leitura, a origem, a
 prontidão dos serviços e

@@ -212,6 +212,7 @@ test.describe("folhas contextuais com curso local real", () => {
       await parameter.getByLabel("Justificativa").fill("Ajuste sintético para conferir a conciliação do contexto.");
       await parameter.getByRole("button", { name: "Salvar neste escopo" }).click();
       await expect.poll(revision).toBe(afterSource + 1);
+      await expect(dialog.getByRole("status").filter({ hasText: /^Parâmetro salvo neste escopo\.$/ })).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Fechar parâmetros" })).toBeEnabled();
       await page.screenshot({ path: info.outputPath("parameters-context-390.png"), fullPage: true });
       await dialog.getByRole("button", { name: "Fechar parâmetros" }).click();
