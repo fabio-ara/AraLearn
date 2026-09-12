@@ -3169,7 +3169,9 @@ HUMAN_TASK_HANDLERS.salvar_explicacoes = async ({ adapter, principal, args, dead
   const response = await applyHumanCourseCorrections({ adapter, principal, course: args.curso,
     explanations: args.explicacoes,
     observations: normalizeCourseObservationCorrectionReferences(args.observacoesTratadas ?? []), deadlineAt });
-  return { ...response, result: "Salvei as Explicações e suas fontes. As unidades existentes foram preservadas; a revisão autoral é uma declaração separada." };
+  return { ...response,
+    result: "Salvei as Explicações e suas fontes. As unidades existentes foram preservadas; a revisão autoral é uma declaração separada.",
+    nextDecision: "Inspecione as Explicações pelos links retornados. Continue conforme o foco, a cadência e os pontos de revisão combinados." };
 };
 
 HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({

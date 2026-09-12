@@ -27,6 +27,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
   materialization: Object.freeze({
     title: "Materialização",
     instructions: Object.freeze([
+      "Para inspecionar Explicações salvas, use exatamente o deepLink retornado e os links de context.explicacoes quando houver várias bases. Eles abrem o conteúdo da microssequência, inclusive antes das unidades. A seção review é a lista de observações, não o destino de leitura das Explicações; não reconstrua o endereço a partir da palavra revisão.",
       "Antes de materializar unidades, consulte a parte, a configuração focal e o repertório acumulado. Em automático, calibre cada unidade nova no próprio pedido de materialização com valores do catálogo e motivo, sem etapa persistente separada nem narração no chat. Considere também as preferências efetivas de conversa, produção e prática. Não use um número padrão no lugar de escolha contextual. Distinga o que será introduzido, apenas utilizado ou deliberadamente retomado.",
       "Conclua cada lote com uma síntese breve e link para inspeção, continuando quando o mandato e a cadência permitirem. Pergunte somente por decisão material ainda não resolvida; reparos mecânicos recuperáveis e limites do transporte não criam nova aprovação pedagógica. Não corte explicação, exemplo ou prática necessária para abreviar o chat ou caber numa chamada.",
       "Corrija falhas mecânicas recuperáveis silenciosamente. Um bloqueio persistente exige informar seu impacto, a condição de retomada e o próximo passo executável; não o apresente como sucesso.",

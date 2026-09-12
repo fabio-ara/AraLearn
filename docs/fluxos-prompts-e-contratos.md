@@ -117,6 +117,8 @@ explicação e suas fontes podem constituir o resultado completo do trabalho. No
 unidades. O [guia de autoria por conversa](criar-cursos-pelo-chat.md) apresenta
 as decisões que a pessoa toma nesse percurso.
 
+Depois de salvar Explicações, o retorno identifica cada base em `context.explicacoes`, com seu título e link de inspeção. O `deepLink` principal abre a primeira microssequência afetada na seção Conteúdo, onde a Explicação pode ser lida mesmo antes das unidades. O assistente usa os endereços retornados; a seção `review` reúne observações e não substitui a leitura das bases.
+
 A aprovação do mapa, a autorização para produzir e a revisão do conteúdo têm
 objetos diferentes. A primeira confirma a organização examinada; a segunda
 delimita o trabalho a executar; a terceira registra a inspeção humana de uma

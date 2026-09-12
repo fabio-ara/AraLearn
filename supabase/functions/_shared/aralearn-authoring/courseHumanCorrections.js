@@ -326,6 +326,7 @@ export async function applyHumanCourseCorrections({
   catch (error) { fail(error.code ?? "invalid_course_observation_correction", error.message); }
   let correctedCourseId = null;
   let firstCorrectedStudyUnitId = null;
+  let correctedExplanations = [];
   let pendingObservationCount = 0;
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
@@ -340,6 +341,9 @@ export async function applyHumanCourseCorrections({
       });
       correctedCourseId = state.course.id;
       firstCorrectedStudyUnitId = state.prepared[0]?.unit.studyUnit.id ?? null;
+      correctedExplanations = state.preparedExplanations.map(({ entity, support }) => ({
+        id: entity.entityId, title: support.title
+      }));
       pendingObservationCount = state.pendingObservations.length;
       return state;
     },
@@ -399,20 +403,29 @@ export async function applyHumanCourseCorrections({
       reconcile: async ({ request }) => ({ status: "confirmed", result: await confirmPersistedObservationCorrection({
         adapter, principal, courseId: request.courseId, requestId: request.requestId, deadlineAt }) }) } : {})
   });
+  const contentDeepLink = correctedCourseId && adapter.publicAppUrl
+    ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
+      `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}?section=content`
+    : null;
+  const explanationLinks = correctedExplanations.map(({ id, title }) => ({
+    titulo: title,
+    deepLink: contentDeepLink
+      ? `${contentDeepLink}&didacticMicrosequenceId=${encodeURIComponent(id)}`
+      : null
+  }));
   return {
     result: explanations.length ? "Corrigi o conteúdo e as Explicações indicados; a revisão humana afetada precisa ser atualizada."
       : corrections.length === 1
       ? "A correção foi aplicada à unidade de estudo afetada."
       : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`,
-    deepLink: correctedCourseId && firstCorrectedStudyUnitId && adapter.publicAppUrl
-      ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
-        `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}` +
-        `?section=content&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
-      : receipt.deepLink ?? null,
+    deepLink: contentDeepLink && firstCorrectedStudyUnitId
+      ? `${contentDeepLink}&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
+      : explanationLinks[0]?.deepLink ?? receipt.deepLink ?? null,
     nextDecision: "Quer reinspecionar o reparo ou rematerializar a parte para aplicar uma configuração alterada?",
     context: {
       correctionCount: corrections.length,
       explanationCorrectionCount: explanations.length,
+      ...(explanationLinks.length ? { explicacoes: explanationLinks } : {}),
       ...(observations.length ? { correctionRequestId: receipt.requestId,
         confirmedObservationCount: receipt.observations.filter((entry) => entry.confirmed).length,
         pendingObservationCount: pendingObservationCount - receipt.observations.filter((entry) => entry.confirmed).length }
