@@ -898,7 +898,7 @@ function renderInspectionReferences(item, state) {
     (state.canEditSources ? '<div class="course-source-compact-actions">' +
       `<button type="button" data-inspection-edit-sources data-study-unit-id="${id}"` +
       ` data-inspection-control-key="sources:${id}" aria-label="Editar referências de ${escapeHtml(item.studyUnit.title)}"` +
-      ` title="Editar referências"${state.manualStudyUnitId ? " disabled" : ""}>` +
+      ` title="Editar referências"${state.manualSaving ? " disabled" : ""}>` +
       `${renderUiIcon("edit", "course-authoring-button-icon")}</button></div>` : "") + '</section>';
 }
 

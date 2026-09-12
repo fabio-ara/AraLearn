@@ -621,7 +621,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Nova fonte", exact: true }).click();
       const form = page.locator('[data-source-form="source"]');
       await form.getByLabel("Título, quando conhecido", { exact: true }).fill(title);
-      await form.getByLabel("Link", { exact: true }).fill("https://example.test/estudo-sintetico");
+      await form.getByLabel("Link da página ou do PDF", { exact: true }).fill("https://example.test/estudo-sintetico");
       await form.getByText("Dados da referência", { exact: true }).click();
       await form.getByRole("combobox", { name: "Tipo", exact: true }).selectOption("article");
       await form.locator('[data-source-action="add-contributor"][data-contributor-list="authors"]').click();
@@ -1528,10 +1528,14 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Explicação", exact: true }).click();
       await expect(page.getByText("Documento usado na prova local de acesso.", { exact: true })).toBeVisible();
       const openedDocument = page.waitForEvent("popup");
+      const downloadedDocument = page.waitForEvent("download");
       await page.locator('[data-action="download-citation-attachment"][title="Abrir Documento público de teste em p. 1"]').click();
       const documentPage = await openedDocument;
-      await expect.poll(() => documentPage.url()).toContain("#page=1");
-      const transfer = await documentPage.request.get(documentPage.url());
+      // O Chromium móvel sem interface entrega a navegação PDF como download.
+      const download = await downloadedDocument;
+      expect(download.url()).toContain("#page=1");
+      expect(await download.failure()).toBeNull();
+      const transfer = await page.request.get(download.url());
       expect(transfer.ok()).toBe(true);
       expect(transfer.headers()["content-type"]).toContain("application/pdf");
       const transferredBytes = await transfer.body();

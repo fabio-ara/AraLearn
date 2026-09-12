@@ -1817,6 +1817,8 @@ test("contexto preserva rascunho e só atualiza CAS depois de reler texto e hier
   });
   await sequence.open();
   await editInspectionTitle(root, "unit-01", "Título local ainda em edição");
+  assert.doesNotMatch(root.innerHTML, /<button[^>]*data-inspection-edit-sources[^>]*\sdisabled\b/u,
+    "referências permanecem acessíveis com rascunho pendente");
   await clickInspection(root, "[data-inspection-open-parameters]", { studyUnitId: "unit-01" });
   await clickInspection(root, "[data-inspection-edit-sources]", { studyUnitId: "unit-01" });
   assert.equal(contexts.length, 2);
