@@ -351,6 +351,7 @@ export async function applyHumanCourseCorrections({
       const sourceCache = new Map();
       const applications = await Promise.all(state.prepared.map(async (entry, index) => ({
         studyUnitId: entry.unit.studyUnit.id,
+        ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({
           adapter, principal, courseContext: state, requested: entry.requestedSources,
           content: entry.content, newId, identityPrefix: `correction:${index}:source-link`,
@@ -359,6 +360,7 @@ export async function applyHumanCourseCorrections({
       })));
       applications.push(...await Promise.all(state.preparedExplanations.map(async (entry, index) => ({
         targetKind: "microsequence_explanation", targetId: entry.entity.entityId,
+        ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
           requested: entry.requestedSources, content: entry.support, newId,
           identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache }), entry.currentLinks, entry.requestedSources)

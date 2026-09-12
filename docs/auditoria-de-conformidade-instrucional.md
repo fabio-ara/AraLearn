@@ -95,6 +95,9 @@ e sua relação com o restante do percurso.
 ## Aplicação e reinspeção
 
 `aplicar_correcoes` aceita unidades, explicações ou ambas num conjunto coerente.
+Quando `fontes` é fornecido para um alvo, a lista substitui seus vínculos na mesma
+transação do conteúdo; uma lista vazia os remove. Omitir o campo preserva os
+vínculos atuais. Remover um vínculo não exclui a obra nem seu arquivo do catálogo.
 `salvar_explicacoes` permite corrigir apenas as bases e suas fontes, preservando
 as unidades existentes. O serviço identifica os alvos e verifica a
 revisão corrente antes de gravar.

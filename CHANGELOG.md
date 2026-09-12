@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.70] - 2026-09-12
+
+### Corrigido
+
+- a correção de uma explicação ou unidade substitui a lista de referências quando ela é fornecida explicitamente, permitindo retirar vínculos duplicados sem excluir a obra ou o arquivo; quando a lista não é enviada, as referências existentes são preservadas.
+
 ## [0.0.69] - 2026-09-12
 
 ### Corrigido
