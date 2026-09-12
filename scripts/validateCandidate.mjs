@@ -90,16 +90,21 @@ export function buildCandidatePlan(impact) {
     { gate: "runtime-contract", args: ["scripts/validateCourseRuntime.mjs"] }
   ];
   if (impact.runtimeFiles.length) gates.push({ gate: "runtime-focal", args: ["scripts/runTests.mjs", "--focal", ...impact.runtimeFiles] });
-  if (impact.requires.supabase) gates.push({ gate: "local-database", command: "pwsh", args: ["-NoProfile", "-File", "scripts/validateLocalSupabase.ps1", "-DatabaseOnly"], reusable: false });
   if (impact.e2eFiles.length) gates.push({
     gate: "frontend-e2e", args: ["scripts/runE2eTests.mjs", ...impact.e2eFiles, "--retries=0", "--forbid-only", "--reporter=json"],
     env: { PLAYWRIGHT_JSON_OUTPUT_NAME: ".validation/frontend-e2e.playwright.json" }
   });
-  if (impact.requires.supabase) gates.push({ gate: "local-integration", args: ["scripts/runLocalIntegration.mjs"], reusable: false });
   if (impact.requires.android) gates.push({
     gate: "android", command: process.platform === "win32" ? "cmd.exe" : "bash",
     args: [...(process.platform === "win32" ? ["/d", "/c", "android\\gradlew.bat"] : ["android/gradlew"]), "-p", "android", ":app:assembleDebug", ":app:lintDebug", "--no-daemon"]
   });
+  // Primeiro estabilizar as provas reutilizáveis. Banco e integração dependem de
+  // estado mutável: mantê-los juntos ao fim evita repeti-los após falha de UI
+  // ou Android, sem transformar um recibo antigo em prova de frescor.
+  if (impact.requires.supabase) gates.push(
+    { gate: "local-database", command: "pwsh", args: ["-NoProfile", "-File", "scripts/validateLocalSupabase.ps1", "-DatabaseOnly"], reusable: false },
+    { gate: "local-integration", args: ["scripts/runLocalIntegration.mjs"], reusable: false }
+  );
   return gates;
 }
 
