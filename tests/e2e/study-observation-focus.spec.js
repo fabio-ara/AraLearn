@@ -130,6 +130,10 @@ for (const theme of ["light", "dark"]) {
     await expect(submit).toBeEnabled();
     await field.click();
     await page.keyboard.press("Tab");
+    const category = page.locator(".study-observation-category-disclosure > summary");
+    await expect(category).toHaveAccessibleName("Categoria da observação (opcional)");
+    await expect(category).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(submit).toBeFocused();
     const measure = async () => {
       await submit.evaluate(async element => {

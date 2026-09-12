@@ -86,7 +86,7 @@ test("ocorrência repetida retorna ao trecho exato e vínculo geral não oferece
   const marker = page.getByRole("button", { name: "Referência 2", exact: true });
   await expect(marker).toBeVisible();
   expect(await marker.evaluate(node => node.closest("[data-package-manual-field-path]").textContent))
-    .toBe("Um quadro liga duas interfaces. Outro quadro2 recebe dados.");
+    .toBe("Um quadro liga duas interfaces. Outro quadro\u20602 recebe dados.");
   await marker.click();
   const bibliography = page.getByRole("dialog", { name: "Explicação", exact: true });
   await expect(bibliography.locator('[data-citation-reference-id="whole"] [data-action="return-citation"]')).toHaveCount(0);

@@ -2621,7 +2621,9 @@ test("#304 ferramentas ficam à esquerda e preservam D4 nas oito combinações",
     expect(tools.x + tools.width).toBeLessThanOrEqual(usual.x);
 
     const geometry = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => { const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height }; }));
-    expect(geometry).toHaveLength(7);
+    expect(geometry).toHaveLength(6);
+    await expect(card.locator(".course-inspection-item-actions").getByRole("button", { name: /^Editar referências de /u })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: /^Editar referências de /u })).toBeVisible();
     const cardFrame = await card.boundingBox();
     for (const control of geometry) {
       expect(Math.abs(control.y - geometry[0].y)).toBeLessThanOrEqual(1);

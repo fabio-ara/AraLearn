@@ -107,7 +107,9 @@ test("acervo sem base mantém fontes existentes na folha proporcional ao conteú
   await openButton(page).tap();
   await expect(overlay(page)).toContainText("Esta microssequência ainda não tem explicação");
   const source = overlay(page).locator('[data-citation-reference-id="support-link"]');
-  await expect(source).toContainText("Fonte sintética do mecanismo");
+  await expect(source.getByRole("button", {
+    name: "Autoria sintética. Referência local para inspeção da interface. 2026.", exact: true
+  })).toBeVisible();
   await expect(source.getByRole("button", { name: /Voltar ao trecho/u })).toHaveCount(0);
   await source.locator('[data-action="download-citation-attachment"][title="Abrir Fonte sintética do mecanismo em p. 3"]').tap();
   await expect.poll(() => page.evaluate(() => globalThis.__explanationFixture.probe.opened.length)).toBe(1);
@@ -127,7 +129,9 @@ test("apoio ausente, rascunho, offline e erro têm estados explícitos", async (
   await mount(page, "?state=offline"); await openButton(page).click();
   await expect(page.locator(".study-explanation-body > h3")).toContainText("Processos, interfaces e transporte");
   await overlay(page).locator(".study-bibliography").first().scrollIntoViewIfNeeded();
-  await expect(overlay(page)).toContainText("Fonte sintética do mecanismo");
+  await expect(overlay(page).getByRole("button", {
+    name: "Autoria sintética. Referência local para inspeção da interface. 2026.", exact: true
+  })).toBeVisible();
   await page.locator('[data-action="download-citation-attachment"][title="Abrir Fonte sintética do mecanismo em p. 3"]').click();
   await expect(overlay(page)).toContainText("este PDF externo precisa de conexão");
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.opened)).toEqual([]);

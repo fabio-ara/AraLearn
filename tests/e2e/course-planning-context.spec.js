@@ -73,7 +73,7 @@ test("Explicação salva abre diretamente pelo mapa sem unidades e retorna ao me
   await expand(page);
   await microAction(page, "explanation").click();
   const dialog = page.locator('[data-review-close]').locator('..').locator('..');
-  const paragraph = dialog.locator('.runtime-markdown-paragraph').filter({ hasText: /^Um socket é a interface local usada pelo processo\.\s*1$/u });
+  const paragraph = dialog.locator('.runtime-markdown-paragraph').filter({ hasText: /^Um socket é a interface local usada pelo processo\.\u20601$/u });
   await expect(paragraph).toBeVisible();
   await expect(paragraph.getByRole("button", { name: "Referência 1", exact: true })).toBeVisible();
   await expect(page.locator('[data-review-unit]')).toHaveCount(0);
