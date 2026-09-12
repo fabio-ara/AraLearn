@@ -122,6 +122,8 @@ Para um pedido explícito de curso público, execute `definir_visibilidade` no g
 `acesso_do_curso` e confirme o estado persistido com `consultar_acesso` antes de
 anunciar sucesso. Não é necessário pedir uma decisão separada sobre arquivos:
 a publicação os disponibiliza por padrão, preservando restrições explícitas.
+Envie `confirmado: true` para representar esse pedido expresso; não omita o campo.
+Se faltar um argumento obrigatório, a resposta identifica o campo a completar.
 
 ## Resultado comum
 

@@ -1017,7 +1017,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:38d72fe3fb1d111f31ec95b29c37c40c3ca3aa7d080ac965982969ed04eb2027";
+  "sha256:3ccf79bb66dfb16a7a5854cb951800007b7358f39d3e9d433abe46994c61f316";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

@@ -51,8 +51,13 @@ export function decodeCourseActionTaskRequest(operationName, payload) {
   // The existing task handler validates the complete canonical argument
   // contract. Check envelope/pair membership before invoking any handler.
   const schema = courseHumanTaskDefinition(payload.tarefa).inputSchema;
-  if (Object.keys(payload.argumentos).some(name => !Object.hasOwn(schema.properties, name)) ||
-      schema.required?.some(name => !Object.hasOwn(payload.argumentos, name))) throw invalidBinding();
+  if (Object.keys(payload.argumentos).some(name => !Object.hasOwn(schema.properties, name))) throw invalidBinding();
+  for (const required of schema.required || []) {
+    if (!Object.hasOwn(payload.argumentos, required)) {
+      throw new AuthoringApiError(422, "missing_human_task_argument",
+        `Informe ${required} para a tarefa ${payload.tarefa}.`, { field: required });
+    }
+  }
   return { taskName: payload.tarefa, arguments: payload.argumentos };
 }
 
