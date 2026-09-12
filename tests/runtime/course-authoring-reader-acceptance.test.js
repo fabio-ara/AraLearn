@@ -13,6 +13,7 @@ import {
 } from "../../src/ui/courseAuthoringRoute.js";
 import { renderPackageStudyUnitBlocksWithDock } from
   "../../src/render/renderPackageStudyUnit.js";
+import { listCourseSourceOccurrenceTargets } from "../../src/domain/courseSourceOccurrences.js";
 
 const fixture = JSON.parse(await fs.readFile(new URL(
   "../fixtures/course-authoring-reader-acceptance.v1.json",
@@ -305,7 +306,8 @@ test("#270 leitor mantém uma Unit completa, salta para antiga, retorna e preser
   assert.doesNotMatch(root.innerHTML, /Parte 1 — Fundamentos|Parte 12 — Síntese/u);
   const expectedStudy = renderPackageStudyUnitBlocksWithDock(
     studyUnit(fixture.initialStudyUnitOrdinal),
-    { omitRepeatedHeading: true, blockKeyPrefix: `inspection:${unitId(76)}` }
+    { omitRepeatedHeading: true, blockKeyPrefix: `inspection:${unitId(76)}`,
+      sourceTextTargets: listCourseSourceOccurrenceTargets(studyUnit(fixture.initialStudyUnitOrdinal)) }
   );
   assert.ok(expectedStudy.bodyHtml);
   assert.equal(root.innerHTML.includes(expectedStudy.bodyHtml), true);
