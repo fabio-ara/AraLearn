@@ -138,7 +138,7 @@ function contrastRatio(first, second) {
 test("leitura e apoio mantêm contraste AA nos fundos reais de cards, ferramentas e opções", () => {
   for (const dark of [false, true]) {
     const resolve = themeTokens(dark);
-    for (const foreground of ["--resource-text", "--resource-text-secondary"]) {
+    for (const foreground of ["--resource-text", "--resource-text-secondary", "--text-secondary"]) {
       for (const background of ["--surface-canvas", "--resource-surface", "--resource-surface-subtle", "--resource-surface-sunken",
         "--resource-accent-subtle", "--resource-correct-subtle", "--resource-error-subtle", "--resource-warning-subtle"]) {
         const ratio = contrastRatio(resolve(foreground), resolve(background));
@@ -149,7 +149,7 @@ test("leitura e apoio mantêm contraste AA nos fundos reais de cards, ferramenta
   assert.match(styles, /\.card-sheet-content\s*\{[^}]*color:\s*var\(--resource-text\)/u);
   assert.match(styles, /\.multiple-choice-option\s*\{[^}]*color:\s*var\(--resource-text\)/u);
   assert.match(references, /\.study-explanation-body\s*\{[^}]*color:\s*var\(--resource-text\)/u);
-  assert.match(references, /\.study-citation-reference\s*\{[^}]*color:\s*var\(--resource-text\)/u);
+  assert.match(references, /\.study-citation-reference\s*\{[^}]*color:\s*var\(--text-secondary\)/u);
 });
 
 test("convenções de código, títulos, notação matemática e texto ampliável permanecem na origem comum", () => {

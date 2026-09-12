@@ -4977,7 +4977,7 @@ button.account-settings-back[hidden] {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-control);
   background: var(--surface-raised);
-  box-shadow: 0 4px 16px #0002;
+  box-shadow: var(--shadow-floating);
 }
 
 .study-observation-category-panel .field > span {

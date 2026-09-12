@@ -399,7 +399,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     /falhas mecânicas recuperáveis silenciosamente.*bloqueio persistente exige informar seu impacto.*condição de retomada.*próximo passo executável.*não o apresente como sucesso/iu
   );
   assert.match(knowledgeGuidance, /pessoa autora.*público/iu);
-  assert.match(knowledgeGuidance, /curso, parte, fonte e unidade em minúsculas/iu);
+  assert.match(knowledgeGuidance, /curso, parte, explicação, fonte e unidade em minúsculas/iu);
   assert.match(knowledgeGuidance, /mapa mostra conteúdo.*em vez de contagens/iu);
   assert.match(
     openApi.info.description,

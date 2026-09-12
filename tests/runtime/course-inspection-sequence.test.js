@@ -2708,7 +2708,7 @@ test("Inspeção preserva rascunho de criação e edição após validação e r
     target: { matches(selector) { return selector === "[data-observation-composer]"; } }
   });
   assert.match(root.innerHTML, /&lt;rascunho&gt;&amp;/u);
-  assert.match(root.innerHTML, /value="suggestion" checked/u);
+  assert.match(root.innerHTML, /<option value="suggestion" selected>Sugestão<\/option>/u);
   assert.match(root.innerHTML, /A observação pode ter no máximo 2\.000 caracteres/u);
   assert.equal(focused.at(-1), "[data-field='study-unit-observation']");
 
