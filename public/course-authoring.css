@@ -1278,54 +1278,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   gap: 6px;
 }
 
-.course-authoring-debate {
-  min-width: 0;
-  margin-block: 10px;
-}
-
-.course-authoring-debate > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: var(--tap);
-  cursor: pointer;
-  color: var(--action-primary-hover);
-}
-
-.course-authoring-debate > div {
-  display: grid;
-  gap: 12px;
-  padding-block: 10px;
-  line-height: 1.5;
-}
-
-.course-authoring-debate :is(p, label) {
-  margin: 0;
-  overflow-wrap: break-word;
-}
-
-.course-authoring-debate textarea {
-  display: block;
-  box-sizing: border-box;
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px;
-  border: 1px solid var(--input-border);
-  border-radius: var(--radius-control);
-  color: var(--text-primary);
-  background: var(--input-surface);
-  font: inherit;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-.course-authoring-debate button {
-  min-height: var(--tap);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .course-curriculum-map-body h6 {
   margin: 12px 0 6px;
   font: inherit;

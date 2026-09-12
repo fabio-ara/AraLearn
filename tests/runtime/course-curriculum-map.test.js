@@ -14,8 +14,7 @@ test("Explicação prevista revela pressupostos, relações e fontes sem aprovar
   for (const literal of [ms.explanationPlan.purpose, ...ms.explanationPlan.prerequisites, ...ms.explanationPlan.relations]) assert.ok(html.includes(literal));
   assert.match(html, /section=sources&amp;sourceId=fonte%3Asint%C3%A9tica/u);
   assert.match(html, /o conteúdo produzido exige sua própria revisão/u);
-  assert.match(html, /Revisão observada: 7/u);
-  assert.match(html, /não autoriza escrita/u);
+  assert.doesNotMatch(html, /Debater com GPT|data-authoring-debate-prompt|data-copy-authoring-debate/u);
   assert.match(html, /O apoio desta microssequência ainda não foi planejado/u);
   assert.deepEqual(fixture, before);
 });

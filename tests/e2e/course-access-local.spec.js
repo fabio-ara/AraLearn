@@ -684,25 +684,40 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
       await expect(page.locator("[data-source-detail-dialog]")).toBeHidden();
       await page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true }).click();
-      await page.getByRole("button", { name: "Fontes e âncoras de Primeira Unidade compartilhada", exact: true }).click();
+      await page.getByRole("button", { name: "Editar referências de Primeira Unidade compartilhada", exact: true }).click();
       const dialog = page.locator("[data-source-target-dialog]");
       await dialog.getByRole("button", { name: `Vincular fonte: ${title}`, exact: true }).click();
       let links = dialog.locator(".course-source-target-link");
-      await links.first().getByRole("button", { name: "Vincular a um trecho", exact: true }).click();
+      const citedText = "Conteúdo privado liberado somente para a pessoa escolhida.";
       const selection = links.first().getByRole("textbox", { name: "Selecione o trecho", exact: true });
+      await expect(selection).toBeFocused();
+      await expect(selection).toHaveValue(citedText);
+      await expect(dialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeDisabled();
       await selection.focus(); await page.keyboard.press("ControlOrMeta+A");
-      const relation = links.first().getByRole("combobox", { name: "Relação com o item", exact: true });
+      await links.first().locator(".course-source-use-details > summary").click();
+      const relation = links.first().getByRole("combobox", { name: "Como esta fonte é usada", exact: true });
       await relation.focus(); await relation.selectOption("adapted_from");
       await expect(relation).toBeFocused();
       expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
-        .toBe("Conteúdo privado liberado somente para a pessoa escolhida.");
-      await links.first().getByRole("button", { name: "Usar trecho selecionado", exact: true }).click();
+        .toBe(citedText);
+      await links.first().getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
       await expect(links.first()).toContainText("Trecho localizado");
+      await expect(links.first().getByRole("button", { name: "Selecionar trecho citado", exact: true })).toBeVisible();
       await dialog.getByRole("button", { name: `Adicionar outro vínculo: ${title}`, exact: true }).click();
       links = dialog.locator(".course-source-target-link");
       await expect(links).toHaveCount(2);
-      await links.nth(1).getByRole("combobox", { name: "Relação com o item", exact: true }).selectOption("quoted_from");
+      const secondSelection = links.nth(1).getByRole("textbox", { name: "Selecione o trecho", exact: true });
+      await expect(secondSelection).toBeFocused();
+      await expect(secondSelection).toHaveValue(citedText);
+      await secondSelection.focus(); await page.keyboard.press("ControlOrMeta+A");
+      await links.nth(1).locator(".course-source-use-details > summary").click();
+      await links.nth(1).getByRole("combobox", { name: "Como esta fonte é usada", exact: true }).selectOption("quoted_from");
       await links.nth(1).getByLabel(/Página usada no ensaio local/u).check();
+      await expect(dialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeDisabled();
+      expect(await secondSelection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd))).toBe(citedText);
+      await links.nth(1).getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
+      await expect(links.nth(1)).toContainText("Trecho localizado");
+      await expect(dialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeEnabled();
       await expectNoHorizontalOverflow(page);
       await attachScreenshot(page, testInfo, "source-links-390-dark.png");
       await dialog.getByRole("button", { name: "Salvar fontes", exact: true }).click();
@@ -711,7 +726,13 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         targetId: "study-unit-access-local-1", expectedRevision: await revision() });
       expect(attribution.items[0].sourceLinks).toHaveLength(2);
       expect(new Set(attribution.items[0].sourceLinks.map(link => link.linkId)).size).toBe(2);
-      expect(attribution.items[0].sourceLinks[0].occurrences[0].quote).toBe("Conteúdo privado liberado somente para a pessoa escolhida.");
+      expect(attribution.items[0].sourceLinks.map(link => link.relation)).toEqual(["adapted_from", "quoted_from"]);
+      for (const link of attribution.items[0].sourceLinks) {
+        expect(link.occurrences).toHaveLength(1);
+        expect(link.occurrences[0]).toMatchObject({ slot: "content", resourceId: "content-study-unit-access-local-1",
+          path: "text", quote: citedText, prefix: null, suffix: null });
+      }
+      expect(new Set(attribution.items[0].sourceLinks.map(link => link.occurrences[0].occurrenceId)).size).toBe(2);
       expect(attribution.items[0].sourceLinks[1].anchors[0].anchorId).toBe(sourceWithAnchor.anchors[0].anchorId);
       await page.goto(`/#/estudo/${courseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`);
       await page.getByRole("button", { name: "Referência 1", exact: true }).click();

@@ -9,6 +9,9 @@ import {
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { normalizeCourseMediaRead } from "../domain/courseMedia.js";
 import { normalizeCourseSourcePdfDownload } from "../domain/courseSources.js";
+import { listCourseSourceOccurrenceTargets } from "../domain/courseSourceOccurrences.js";
+import { placeStudyCitationMarkers, renderStudyCitations } from "../study/studyCitations.js";
+import { buildSourceDocumentUrl } from "../study/sourceDocumentUrl.js";
 import { readCourseMediaBlob } from "../supabase/readCourseMediaBlob.js";
 import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "../study/studyTools.js";
 import { renderPackageStudyUnitBlocksWithDock } from
@@ -30,6 +33,7 @@ import { CourseAuthoringObservationQueue, authoringObservationQuery, orderAuthor
   isPendingAuthoringObservation } from "./courseAuthoringObservationQueue.js";
 import { renderCourseInspectionMetadata, contentReviewLabel } from "./renderCourseInspectionMetadata.js";
 import { createCourseInspectionPracticePreview } from "./courseInspectionPracticePreview.js";
+import { createCourseInspectionCitations } from "./courseInspectionCitations.js";
 import {
   formatObservationTextBudget,
   isObservationTextOverLimit,
@@ -574,13 +578,6 @@ function renderManualModeActions(item, state, editing, observationCount) {
     ' title="Observações autorais pendentes">' +
     renderUiIcon("prompt", "course-authoring-button-icon") +
     (observationCount === 0 ? "" : `<span class="course-inspection-observation-count" aria-hidden="true">${observationCount === null ? "…" : Number(observationCount)}</span>`) + '</button>' +
-    (state.canEditSources
-      ? `<button type="button" data-inspection-edit-sources data-study-unit-id="${id}"` +
-        ` data-inspection-control-key="sources:${id}" aria-label="Fontes e âncoras de ${escapeHtml(
-          item.studyUnit.title
-        )}" title="Fontes e âncoras">` +
-        `${renderUiIcon("study", "course-authoring-button-icon")}</button>`
-      : "") +
     `<button type="button" data-inspection-view-action="toggle-multiple"` +
     ` data-study-unit-id="${id}" data-inspection-control-key="view:${id}"` +
     ` aria-pressed="${state.multipleView}"` +
@@ -874,6 +871,37 @@ function renderManualEditDock(item, state, editing, resourceTargetIds) {
     "</div></footer>";
 }
 
+function inspectionCitationEntry(item, state) {
+  const entry = state.citations.get(item.studyUnit.id);
+  return entry?.revision === state.pinnedRevision && entry.version === item.version ? entry : null;
+}
+
+function renderInspectionBibliography(item, state) {
+  const entry = inspectionCitationEntry(item, state);
+  if (state.manualStudyUnitId && !entry?.applied) return "";
+  if (entry?.status === "ready" && entry.snapshot.value.citations.length) {
+    return renderStudyCitations({ open: true, value: entry.snapshot.value, courseId: state.courseId, studyUnit: item.studyUnit,
+      formattedReferences: entry.snapshot.formattedReferences, heading: "Referências desta unidade", contextId: "unit" });
+  }
+  return entry?.status === "error"
+    ? '<p class="course-authoring-notice is-error" role="status">Não foi possível carregar as referências.</p>' +
+      '<div class="course-source-compact-actions"><button type="button" data-inspection-retry-citations' +
+      ' aria-label="Tentar carregar referências novamente" title="Tentar novamente">' +
+      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div>`
+    : "";
+}
+
+function renderInspectionReferences(item, state) {
+  const id = escapeHtml(item.studyUnit.id);
+  return '<section data-inspection-references aria-label="Referências da unidade">' +
+    `<div data-inspection-citations>${renderInspectionBibliography(item, state)}</div>` +
+    (state.canEditSources ? '<div class="course-source-compact-actions">' +
+      `<button type="button" data-inspection-edit-sources data-study-unit-id="${id}"` +
+      ` data-inspection-control-key="sources:${id}" aria-label="Editar referências de ${escapeHtml(item.studyUnit.title)}"` +
+      ` title="Editar referências"${state.manualStudyUnitId ? " disabled" : ""}>` +
+      `${renderUiIcon("edit", "course-authoring-button-icon")}</button></div>` : "") + '</section>';
+}
+
 function renderStudyUnit(
   item,
   totalCount,
@@ -891,6 +919,7 @@ function renderStudyUnit(
     : [];
   const runtime = renderPackageStudyUnitBlocksWithDock(item.studyUnit, {
     omitRepeatedHeading: true,
+    sourceTextTargets: listCourseSourceOccurrenceTargets(item.studyUnit),
     blockKeyPrefix: `inspection:${item.studyUnit.id}`,
     resourceSelectionEnabled: editing,
     resourceSelectionDisabled: state.manualSaving,
@@ -937,6 +966,7 @@ function renderStudyUnit(
     '<div class="runtime-card-rendered-content course-inspection-runtime">' +
     `<div class="card-sheet-content">${runtime.bodyHtml}</div>${runtime.dockHtml}</div>` +
     renderManualEditDock(item, state, editing, resourceTargetIds) +
+    renderInspectionReferences(item, state) +
     `<footer><small>Unidade ${item.ordinal}</small></footer></article></li>`;
 }
 
@@ -1302,6 +1332,7 @@ export function createCourseInspectionSequence({
     stale: false,
     hydrationFailure: "",
     observationCounts: {},
+    citations: new Map(),
     emptyMicrosequences: [],
     multipleView: false,
     modeBlock: null,
@@ -1382,6 +1413,8 @@ export function createCourseInspectionSequence({
       void loadInitial({ anchorStudyUnitId: anchor.studyUnitId, offset: anchor.offsetFromStickyTop, returnAnchor: anchor });
     } });
   const practicePreview = createCourseInspectionPracticePreview({ render });
+  const citations = createCourseInspectionCitations({ controller });
+  let citationRevision = state.pinnedRevision;
   const studyTools = createStudyTools({
     root,
     getStudyUnit(button) {
@@ -1683,6 +1716,110 @@ export function createCourseInspectionSequence({
     });
   }
 
+  function resetCitationRevision() {
+    if (citationRevision === state.pinnedRevision) return;
+    citationRevision = state.pinnedRevision;
+    citations.clear();
+    state.citations.clear();
+  }
+
+  function paintInspectionCitations(scope, item, entry, epoch, { updateReferences = false } = {}) {
+    if (state.destroyed || epoch !== renderEpoch || !scope.isConnected ||
+        inspectionCitationEntry(item, state) !== entry || state.manualStudyUnitId && !entry.applied) return;
+    const snapshot = captureAnchor();
+    if (updateReferences) {
+      const host = scope.querySelector("[data-inspection-citations]");
+      if (host) host.innerHTML = renderInspectionBibliography(item, state);
+    }
+    if (entry.status === "ready") {
+      const unit = state.manualStudyUnitId === item.studyUnit.id && state.manualPreview || item.studyUnit;
+      placeStudyCitationMarkers(scope, unit, entry.snapshot.value);
+      if (state.manualStudyUnitId) scope.querySelectorAll('[data-action="open-citation"]').forEach(node => {
+        node.disabled = true;
+      });
+      entry.applied = true;
+    }
+    // This patch keeps the current DOM, focus and draft. Only compensate layout.
+    restoreAnchor({ ...snapshot, controlKey: "" });
+  }
+
+  function hydrateInspectionCitations(epoch, { load = false } = {}) {
+    if (state.destroyed || epoch !== renderEpoch) return;
+    resetCitationRevision();
+    for (const scope of root.querySelectorAll?.('[data-inspection-study-unit]') || []) {
+      const item = state.items.find(value => value.studyUnit.id === scope.dataset.inspectionStudyUnit);
+      if (!item) continue;
+      let entry = inspectionCitationEntry(item, state);
+      if (entry) {
+        if (!load) paintInspectionCitations(scope, item, entry, epoch);
+        continue;
+      }
+      if (!load || typeof controller.loadCourseSources !== "function") continue;
+      entry = { revision: state.pinnedRevision, version: item.version, status: "loading", applied: false };
+      state.citations.set(item.studyUnit.id, entry);
+      void citations.load({ courseId: state.courseId, courseRevision: entry.revision,
+        studyUnitId: item.studyUnit.id, studyUnitVersion: item.version, studyUnit: item.studyUnit
+      }).then(snapshot => { entry.status = "ready"; entry.snapshot = snapshot; }, () => {
+        entry.status = "error";
+      }).then(() => {
+        // A later render may still display this unit. Resolve its current node,
+        // while an edit begun during the read leaves the new references deferred.
+        if (state.destroyed || inspectionCitationEntry(item, state) !== entry || state.manualStudyUnitId) return;
+        const currentScope = [...(root.querySelectorAll?.('[data-inspection-study-unit]') || [])]
+          .find(node => node.dataset.inspectionStudyUnit === item.studyUnit.id);
+        if (currentScope) paintInspectionCitations(currentScope, item, entry, renderEpoch, { updateReferences: true });
+      });
+    }
+  }
+
+  async function handleCitationAction(button) {
+    if (button.disabled || button.getAttribute("aria-disabled") === "true" || state.manualStudyUnitId) return false;
+    const scope = button.closest("[data-inspection-study-unit]");
+    const item = state.items.find(value => value.studyUnit.id === scope?.dataset.inspectionStudyUnit);
+    const entry = item && inspectionCitationEntry(item, state);
+    if (!entry || entry.status !== "ready") return false;
+    if (button.dataset.action === "open-citation" || button.dataset.action === "return-citation") {
+      const backwards = button.dataset.action === "return-citation";
+      const target = [...scope.querySelectorAll(backwards ? '[data-action="open-citation"]' : '[data-citation-reference-id]')]
+        .find(node => backwards
+          ? node.dataset.citationLinkId === button.dataset.citationLinkId &&
+            node.dataset.citationOccurrenceId === button.dataset.citationOccurrenceId
+          : node.dataset.citationReferenceId === button.dataset.citationLinkId);
+      target?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
+      target?.focus?.({ preventScroll: true });
+      return Boolean(target);
+    }
+    const index = value => typeof value === "string" && /^\d+$/u.test(value) ? Number(value) : -1;
+    const citation = entry.snapshot.value.citations[index(button.dataset.citationIndex)];
+    const attachment = citation?.attachments[index(button.dataset.attachmentIndex)];
+    if (!attachment || typeof controller.getCourseSourceAttachmentDownload !== "function") return false;
+    const isCurrent = () => !state.destroyed && scope.isConnected && button.isConnected &&
+      inspectionCitationEntry(item, state) === entry && !state.manualStudyUnitId;
+    button.disabled = true;
+    button.setAttribute("aria-disabled", "true");
+    try {
+      const result = normalizeCourseSourcePdfDownload(await controller.getCourseSourceAttachmentDownload({
+        courseId: state.courseId, expectedCourseRevision: entry.revision, sourceId: citation.sourceId,
+        sourceRevision: citation.sourceRevision, contentHash: attachment.contentHash
+      }));
+      if (!isCurrent()) return false;
+      if (result.courseId !== state.courseId || result.courseRevision !== entry.revision ||
+          result.sourceId !== citation.sourceId || result.sourceRevision !== citation.sourceRevision ||
+          result.attachment.contentHash !== attachment.contentHash) {
+        throw new Error("O PDF autorizado não corresponde à referência escolhida.");
+      }
+      openStudyResourceUrl(buildSourceDocumentUrl(result.signedUrl, {
+        attachment, anchor: citation.anchors[index(button.dataset.citationAnchorIndex)] || null
+      }), documentValue);
+      return true;
+    } catch (error) {
+      if (isCurrent()) reportFeedback(publicErrorMessage(error, "Não foi possível abrir a referência."), { error: true });
+      return false;
+    } finally {
+      if (button.isConnected) { button.disabled = false; button.removeAttribute("aria-disabled"); }
+    }
+  }
+
   async function hydrate(epoch) {
     try {
       if (state.destroyed || epoch !== renderEpoch) return;
@@ -1698,6 +1835,7 @@ export function createCourseInspectionSequence({
         const unit = state.manualStudyUnitId === item.studyUnit.id && state.manualPreview || item.studyUnit;
         practicePreview.bind(scope, unit, `inspection:${item.studyUnit.id}`, { editing });
       });
+      hydrateInspectionCitations(epoch);
     } catch {
       if (state.destroyed || epoch !== renderEpoch) return;
       state.hydrationFailure = "Uma representação não pôde ser materializada.";
@@ -1761,6 +1899,7 @@ export function createCourseInspectionSequence({
       if (!restorePosition && scrollTarget && "scrollTop" in scrollTarget) {
         scrollTarget.scrollTop = 0;
       }
+      hydrateInspectionCitations(epoch, { load: true });
     });
   }
 
@@ -2750,6 +2889,7 @@ export function createCourseInspectionSequence({
     renderNow = true
   } = {}) {
     const studyUnitId = state.manualStudyUnitId;
+    closeOpenMenus();
     if (state.manualUnknownSignature && !confirmUnknownDiscard) {
       state.manualDiscardArmed = true;
       state.manualError = "A gravação pode ter sido aceita. Salve novamente para confirmar ou descarte explicitamente este rascunho.";
@@ -2788,6 +2928,7 @@ export function createCourseInspectionSequence({
   ) {
     if (!state.canEditManually) return false;
     if (!canFocusUnit(studyUnitId, { editing: true })) return false;
+    closeOpenMenus();
     if (state.multipleView && !focusUnit(studyUnitId, { renderNow: false, controlKey: "" })) return false;
     if (state.manualStudyUnitId === studyUnitId && (state.manualPreview || manualDraftChanged())) {
       captureManualDraft();
@@ -2814,8 +2955,12 @@ export function createCourseInspectionSequence({
   }
 
   function previewManualEdit(studyUnitId) {
-    if (state.manualStudyUnitId !== studyUnitId) return focusUnit(studyUnitId);
+    if (state.manualStudyUnitId !== studyUnitId) {
+      closeOpenMenus();
+      return focusUnit(studyUnitId);
+    }
     if (state.manualSaving) return false;
+    closeOpenMenus();
     if (state.manualUnknownSignature) {
       state.manualError = "Confirme a mesma gravação antes de visualizar. Seu rascunho foi preservado.";
       state.manualRestoreFocus = "save";
@@ -3056,6 +3201,19 @@ export function createCourseInspectionSequence({
   }
 
   async function handleClick(event) {
+    const citationAction = event.target.closest?.('[data-action="open-citation"], [data-action="return-citation"], [data-action="download-citation-attachment"]');
+    if (citationAction?.closest("[data-inspection-study-unit]")) {
+      event.preventDefault?.();
+      return handleCitationAction(citationAction);
+    }
+    const retryCitations = event.target.closest?.("[data-inspection-retry-citations]");
+    if (retryCitations && !state.manualStudyUnitId) {
+      const id = retryCitations.closest("[data-inspection-study-unit]")?.dataset.inspectionStudyUnit;
+      state.citations.delete(id);
+      retryCitations.disabled = true;
+      hydrateInspectionCitations(renderEpoch, { load: true });
+      return true;
+    }
     const explanationButton = event.target.closest?.("[data-inspection-open-explanation], [data-inspection-review-unit]");
     if (explanationButton) {
       if (!state.canReviewContent || hasPendingDraft()) return false;
@@ -3795,6 +3953,8 @@ export function createCourseInspectionSequence({
       onReadState({ syncing: false });
       studyTools.destroy();
       practicePreview.clear();
+      citations.clear();
+      state.citations.clear();
       contentReview.destroy();
       ++requestEpoch;
       manualInlineController?.destroy?.();

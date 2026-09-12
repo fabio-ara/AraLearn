@@ -19,7 +19,7 @@ explica os termos usados na implementação atual.
 - as referências usam apresentação acadêmica, com cadastro e edição dos dados bibliográficos e vínculo aos trechos que sustentam; citações junto ao texto levam à referência e permitem retornar à ocorrência;
 - as referências abrem a fonte por hiperlinks; PDFs com localização textual podem abrir no trecho usado, com destaque no leitor compatível;
 - observações podem ser acrescentadas diretamente no Conteúdo a uma ou mais unidades selecionadas, mantendo a fila persistente de cada objeto;
-- a revisão autoral é independente do acesso ao conteúdo salvo; mudanças apenas no desenho das práticas preservam a revisão da explicação, enquanto alterações materiais desatualizam as marcas pertinentes;
+- a revisão autoral é independente do acesso ao conteúdo salvo; acrescentar requisitos e análise para as práticas preserva a revisão da explicação quando seu conteúdo e suas fontes continuam iguais, enquanto alterações materiais desatualizam as marcas pertinentes;
 - a prévia de lacunas permite escolher ou digitar respostas e conferir o resultado sem registrar progresso de estudo; a edição manual inclui respostas, alternativas e rótulos, preservando seus vínculos com o conteúdo;
 - a lista de microssequências mantém títulos e ações alinhados, com quebra natural de linhas;
 - as orientações dos canais apresentam uma explicação completa compartilhada pela microssequência e unidades como episódios instrucionais; comentários de resposta ficam distintos dessa base, e o debate permanece na conversa;

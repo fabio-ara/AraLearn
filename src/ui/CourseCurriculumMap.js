@@ -1,6 +1,5 @@
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 
 const MAP_STATUS = Object.freeze({ absent: "Ainda não definido", draft: "Rascunho", approved: "Aprovado" });
 const COVERAGE_STATUS = Object.freeze({ planned: "Planejado", developed: "Desenvolvido" });
@@ -111,10 +110,7 @@ function renderMicrosequence(courseId, microsequence, nodes, expansion) {
     objective("microsequence", microsequence, expansion) + dependencies +
     (microsequence.role ? `<p class="course-curriculum-map-caption">Função no percurso: ${escapeHtml({ explain: "explicação e desenvolvimento teórico", practice: "prática", review: "revisão", support: "apoio" }[microsequence.role] || microsequence.role)}</p>` : "") +
     details(key("explanation", microsequence.id), "Explicação prevista",
-      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id, nodes.sourceTitles), expansion) +
-    (nodes.courseRevision ? renderCourseAuthoringDebate({ courseId, courseRevision: nodes.courseRevision,
-      title: microsequence.title, contextLabel: "o planejamento e a Explicação desta microssequência",
-      route: buildCourseAuthoringRoute(courseId, { section: "content", didacticMicrosequenceId: microsequence.id }) }) : "") + '</li>';
+      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id, nodes.sourceTitles), expansion) + '</li>';
 }
 
 function renderExplanationPlan(courseId, plan, microsequenceId, sourceTitles) {
@@ -182,7 +178,6 @@ export function renderCourseCurriculumMap({
   contextual = false, courseTitle = "Curso", query = "", pendingOnly = false, completeness = null, approval = null
 }) {
   const nodes = indexCurriculum(curriculum);
-  nodes.courseRevision = courseRevision;
   nodes.sourceTitles = sourceTitles;
   nodes.scopeItems = new Map(curriculumScopeItems.map(item => [item.id, item]));
   nodes.contextual = contextual;

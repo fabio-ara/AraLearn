@@ -323,7 +323,7 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   await page.getByRole("button", { name: "Tentar novamente Curso A" }).press("Enter");
   await openFirstStudyUnitByClicks(page);
   await page.getByRole("button", { name: "Explicação" }).click();
-  await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toBeVisible();
+  await expect(page.getByText("Fonte exibida apenas para comprovar o isolamento entre Cursos.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
   await page.evaluate(() => {
     for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
@@ -348,7 +348,7 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   await page.evaluate(() => globalThis.__home148Probe.releaseCourseLoad());
   await openFirstStudyUnitByClicks(page);
   await expect(page.getByText("Conteúdo inicial de Curso B.", { exact: true })).toBeVisible();
-  await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Fonte exibida apenas para comprovar o isolamento entre Cursos.", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__home148Probe.loads)).toEqual([
     HOME_COURSE_IDS.a,
     HOME_COURSE_IDS.b
@@ -723,12 +723,13 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect.poll(() => page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.locator("[data-action='open-explanation']").click();
   await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeVisible();
-  await expect(page.locator(".study-citation-reference").filter({ hasText: "Fonte somente citada" })).toBeVisible();
+  await expect(page.getByText("Autoria. Fonte somente citada. 2026.", { exact: true })).toBeVisible();
   await expect(page.getByText("Capítulo 4, seção 2 · pp. 8–9", {
     exact: true
   })).toBeVisible();
-  await expect(page.locator(".study-citation-reference").filter({ hasText: "Fonte com link público" })).toBeVisible();
-  await expect(page.locator('.study-citation-reference a[href="https://example.test/fonte-publica"]')).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Autoria. Fonte com link público. 2026.", exact: true }))
+    .toHaveAttribute("href", "https://example.test/fonte-publica");
+  await expect(page.getByRole("link", { name: "Autoria. Fonte com link público. 2026.", exact: true })).toBeVisible();
   await expect(page.locator(".study-explanation-panel"))
     .not.toContainText("Fonte oculta");
   await expect(page.locator(".study-explanation-panel"))
@@ -750,12 +751,12 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await page.locator(".study-explanation-body").evaluate((content) => {
     content.scrollTop = content.scrollHeight;
   });
-  await expect(page.getByText("Fonte extensa 18", { exact: true })).toBeInViewport();
+  await expect(page.getByText("Autoria. Fonte extensa 18. 2026.", { exact: true })).toBeInViewport();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Explicação", exact: true }).click();
-  await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Autoria. Fonte com link público. 2026.", exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.getByRole("button", { name: "Fechar explicação" }).click();
 
@@ -765,8 +766,10 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   }, project);
   await expect(page.locator(".study-explanation-panel")).toHaveCount(0);
   await page.locator("[data-action='open-explanation']").click();
-  await expect(page.getByText("Fonte somente citada atualizada", { exact: true })).toBeVisible();
-  await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toBeVisible();
+  await expect(page.getByText("Autoria. Fonte somente citada atualizada. 2026.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Autoria. Fonte com link público atualizada. 2026.", exact: true }))
+    .toHaveAttribute("href", "https://example.test/fonte-publica");
+  await expect(page.getByRole("link", { name: "Autoria. Fonte com link público atualizada. 2026.", exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(2);
   await page.getByRole("button", { name: "Fechar explicação" }).click();
 
@@ -1021,7 +1024,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.locator(".study-observation-sheet")).toHaveCount(0);
   await expect(page.locator(".study-explanation-panel")).toHaveCount(0);
   await expect(page.getByText("A conjunção só é verdadeira", { exact: false })).toHaveCount(0);
-  await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Autoria. Fonte com link público atualizada. 2026.", { exact: true })).toHaveCount(0);
 });
 
 test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280", async ({ page }, testInfo) => {

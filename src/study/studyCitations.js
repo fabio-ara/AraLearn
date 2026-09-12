@@ -80,8 +80,9 @@ export function placeStudyCitationMarkers(root, studyUnit, citations, sourceOpti
     const instance = [...root.querySelectorAll(".package-instance")].find(node =>
       node.dataset.packageInstanceId === marker.target.resourceId && node.dataset.packageSlot === marker.target.slot);
     if (!instance) continue;
-    const fields = [...instance.querySelectorAll("[data-package-manual-field-path]")].filter(node =>
-      node.dataset.packageManualFieldPath === encodeURIComponent(marker.target.path));
+    const fields = [...instance.querySelectorAll("[data-package-manual-field-path], [data-manual-edit-path]")].filter(node =>
+      node.dataset.packageManualFieldPath === encodeURIComponent(marker.target.path) ||
+      node.dataset.manualEditPath === marker.target.path);
     const field = fields.at(-1);
     const target = field && !field.closest("svg") ? field : instance;
     const group = root.ownerDocument.createElement("span");
@@ -167,7 +168,7 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
         ` title="Voltar ao trecho ${index + 1}">${renderUiIcon("arrow-left", "home-tab-icon")}</button>`).join("");
     const useDetails = (citation.roles || []).length || !citation.occurrences?.length
       ? '<details class="study-citation-info">' +
-        `<summary aria-label="Informações sobre o uso da referência ${citationIndex + 1}" title="Uso da referência"><span aria-hidden="true">ⓘ</span></summary>` +
+        `<summary aria-label="Informações sobre o uso da referência ${citationIndex + 1}" title="Uso da referência">${renderUiIcon("more", "study-citation-format-icon")}</summary>` +
         ((citation.roles || []).length ? `<p>${citation.roles.map(role => escape(ROLE_LABELS[role] || role)).join(" · ")}</p>` : "") +
         (!citation.occurrences?.length ? '<p>Referência do conteúdo; sem trecho específico vinculado.</p>' : "") + "</details>" : "";
     return `<li value="${citationIndex + 1}" data-citation-reference-id="${escape(citation.linkId)}" tabindex="-1"><article>` +

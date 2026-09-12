@@ -70,7 +70,12 @@ de tempo ou um elemento identificado, como uma figura. Ao criar uma âncora
 relacionada a um PDF anexado, escolha o arquivo correspondente. Essa ligação
 conserva o arquivo correto mesmo quando seu endereço temporário de acesso muda.
 
-No conteúdo, abra o controle de fontes da unidade ou da explicação. Ao adicionar
+Na autoria, as citações aparecem no texto das unidades e das explicações. O
+número leva à referência no fim do texto, e a referência permite voltar à mesma
+ocorrência. Na unidade, o controle para editar as fontes fica junto das
+referências, no rodapé, inclusive quando ainda não há fonte ou explicação salva.
+
+Abra o controle de fontes da unidade ou da explicação. Ao adicionar
 uma obra, a seleção de **Trecho citado neste texto** abre no próprio painel.
 Escolha a parte do texto e selecione a passagem literal que a referência sustenta.
 Confirme em **Vincular trecho selecionado** e depois em **Salvar fontes**. O

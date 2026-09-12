@@ -12,6 +12,7 @@ import {
 } from "../../src/ui/CourseInspectionSequence.js";
 import { renderPackageStudyUnitBlocksWithDock } from
   "../../src/render/renderPackageStudyUnit.js";
+import { listCourseSourceOccurrenceTargets } from "../../src/domain/courseSourceOccurrences.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const PART_ID = "20000000-0000-4000-8000-000000000002";
@@ -542,7 +543,7 @@ test("Unidade oferece parâmetros, fontes e observações imediatas e revisão n
     /<button type="button" data-inspection-open-parameters data-study-unit-id="unit-01" data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/button>/u
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, contagem ainda não disponível" title="Observações autorais pendentes"><svg/u);
-  assert.match(root.innerHTML, /aria-label="Fontes e âncoras de Unidade 1" title="Fontes e âncoras"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Editar referências de Unidade 1" title="Editar referências"><svg/u);
   assert.match(root.innerHTML, /data-inspection-control-key="review:unit-01" aria-label="Revisar unidade" title="Revisar unidade"><svg/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-provider-assistance/u);
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
@@ -1078,6 +1079,7 @@ test("Inspeção incorpora sem tradução o mesmo renderer de Unidade usado no E
   assert.doesNotMatch(root.innerHTML, />Inspeção<|Navegação na Inspeção/u);
   const expected = renderPackageStudyUnitBlocksWithDock(studyUnit(1), {
     omitRepeatedHeading: true,
+    sourceTextTargets: listCourseSourceOccurrenceTargets(studyUnit(1)),
     blockKeyPrefix: "inspection:unit-01"
   });
   assert.notEqual(expected.bodyHtml, "");

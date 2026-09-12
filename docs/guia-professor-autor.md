@@ -100,7 +100,7 @@ Cada explicação e unidade conserva sua própria revisão, vinculada à versão
 
 Você pode voltar a um ponto antigo do curso e registrar o que precisa mudar. Se o problema está na explicação, registre a observação nela; se está no enunciado ou no retorno de uma atividade, registre na unidade. [Observações](observacoes-pedagogicas.md) explica como acompanhar cada contribuição.
 
-**Debater com GPT** copia uma referência do ponto em exame para você levar a uma conversa externa conectada. Depois de colá-la, peça ao assistente que leia o conteúdo salvo, discuta a mudança e confira o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
+Na conversa com o assistente conectado, indique o curso e o ponto que deseja discutir. Peça que ele leia o conteúdo salvo, discuta a mudança e confira o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
 
 Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. As observações atendidas saem da fila depois da confirmação do conteúdo salvo; uma contribuição alterada ou parcialmente atendida permanece para tratamento posterior. Se a resposta de uma gravação se perder, [confira primeiro se aquela alteração já foi salva](solucao-de-problemas.md#não-consigo-aplicar-uma-correção).
 
