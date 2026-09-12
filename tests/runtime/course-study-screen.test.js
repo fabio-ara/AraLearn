@@ -775,7 +775,7 @@ test("Study preserva a unidade e concentra referências no corpo da Explicação
   assert.equal(renderStudyCitations({ ...sheet, open: false }), "");
   const open = renderStudyCitations({ ...sheet, open: true });
   assert.match(open, /class="study-bibliography" data-citation-context="unit"/u);
-  assert.match(open, /data-action="return-citation"/u);
+  assert.doesNotMatch(open, /data-action="return-citation"/u);
   assert.doesNotMatch(open, /Proveniência desta Unidade/u);
   assert.match(open, /<h3>Referências<\/h3>/u);
   assert.match(open, /Fonte somente citada/u);
@@ -783,9 +783,9 @@ test("Study preserva a unidade e concentra referências no corpo da Explicação
   assert.match(open, /pp\. 8–9/u);
   assert.match(open, /Capítulo 2 · Figura 4 · pp\. 8–9/u);
   assert.match(open, /href="https:\/\/example\.test\/fonte"/u);
-  assert.equal((open.match(/>Abrir fonte<\/a>/gu) || []).length, 1);
+  assert.match(open, /href="https:\/\/example\.test\/fonte"[^>]*>Autoria\. Fonte com link público\. 2026\.<\/a>/u);
   assert.equal((open.match(/data-action="download-citation-attachment"/gu) || []).length, 1);
-  assert.match(open, /aria-label="Abrir PDF em pp\. 8–9 de Fonte somente citada"/u);
+  assert.match(open, /title="Abrir Fonte somente citada em pp\. 8–9"/u);
   assert.match(open, /data-citation-page="8"/u);
   assert.match(open, /Autoria\. Fonte somente citada\. 2026\./u);
   assert.doesNotMatch(open, /storagePath|signedUrl|contentHash/u);

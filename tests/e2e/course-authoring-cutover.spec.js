@@ -1878,7 +1878,7 @@ async function mountCourseAuthoring(page, {
           error.code = "course_revision_changed";
           throw error;
         }
-        const cursorOffset = options.cursor === null
+        const cursorOffset = options.cursor == null
           ? 0
           : Number(String(options.cursor).replace(/^source-page-/u, ""));
         if (!Number.isSafeInteger(cursorOffset) || cursorOffset < 0) {
@@ -1899,8 +1899,8 @@ async function mountCourseAuthoring(page, {
           nextCursor = null;
           query = {
             sourceId: options.sourceId,
-            targetKind: options.targetKind,
-            targetId: options.targetId
+            targetKind: options.targetKind ?? null,
+            targetId: options.targetId ?? null
           };
         } else {
           const current = sourceTargets.get(sourceTargetKey(
@@ -2469,7 +2469,7 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
   }
 });
 
-test("#345 Planejamento revela apoio e debate exatos, Parte reserva espaço sem botão vazio", async ({ page }, info) => {
+test("#345 Planejamento revela apoio e fontes no contexto, Parte reserva espaço sem botão vazio", async ({ page }, info) => {
   await page.setViewportSize({ width: 360, height: 780 });
   const errors = captureClientErrors(page);
   await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=planning` });
@@ -2486,10 +2486,9 @@ test("#345 Planejamento revela apoio e debate exatos, Parte reserva espaço sem 
   await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
   await page.getByRole("button", { name: "Voltar para Planejamento", exact: true }).click();
   await expect(source).toBeFocused();
-  const debate = page.locator('.course-curriculum-map-microsequence .course-authoring-debate');
-  await debate.locator('summary').click();
-  await expect(debate.locator('textarea')).toHaveValue(/didacticMicrosequenceId=microsequence-a/u);
-  await expect(debate.locator('textarea')).toHaveValue(/não autoriza escrita/u);
+  await expect(support).toBeVisible();
+  await expect(support).toContainText("O critério comum permite comparar os casos");
+  await expect(page.locator('.course-authoring-debate, [data-authoring-debate-prompt]')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: info.outputPath('345-planejamento-360.png'), fullPage: true });
   await page.locator('[data-course-authoring-part-card]').first().getByRole('link', { name: 'Relações iniciais', exact: true }).click();
@@ -2585,7 +2584,7 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await expect(dialog.getByRole("heading", { name: "Cálculo da unidade 13" })).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(secondCalculator).toBeFocused();
-  await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione ao menos duas unidades");
+  await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione uma ou mais unidades para comentar");
   await card.locator('[data-inspection-view-action="toggle-multiple"]').tap();
 
   await card.getByRole("button", { name: "Editar", exact: true }).click();
@@ -2622,7 +2621,9 @@ test("#304 ferramentas ficam à esquerda e preservam D4 nas oito combinações",
     expect(tools.x + tools.width).toBeLessThanOrEqual(usual.x);
 
     const geometry = await card.locator(".course-inspection-item-actions :is(button,a)").evaluateAll(nodes => nodes.map(node => { const { x, y, width, height } = node.getBoundingClientRect(); return { x, y, width, height }; }));
-    expect(geometry).toHaveLength(7);
+    expect(geometry).toHaveLength(6);
+    await expect(card.locator(".course-inspection-item-actions").getByRole("button", { name: /^Editar referências de /u })).toHaveCount(0);
+    await expect(card.getByRole("button", { name: /^Editar referências de /u })).toBeVisible();
     const cardFrame = await card.boundingBox();
     for (const control of geometry) {
       expect(Math.abs(control.y - geometry[0].y)).toBeLessThanOrEqual(1);
@@ -2939,16 +2940,10 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator(".course-source-card")).toHaveCount(50);
       await page.getByRole("button", { name: "Carregar mais fontes" }).click();
       await expect(page.locator(".course-source-card")).toHaveCount(60);
-      await expect(page.getByRole("button", {
-        name: "Abrir fonte: Fonte verificável 1",
-        exact: true
-      })).toBeVisible();
+      await expect(page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]')).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
-      await page.getByRole("button", {
-        name: "Abrir fonte: Fonte verificável 1",
-        exact: true
-      }).click();
+      await page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]').click();
       await expect(page.locator("#course-source-detail-title")).toHaveText(
         "Fonte"
       );
@@ -2957,7 +2952,7 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText(
         "Autoria 1. Fonte verificável 1. 2026."
       );
-      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras$/u }).click();
+      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();
       await expect(page.getByText("Capítulo 2, seção 3 · Páginas 10–12", {
         exact: true
       })).toBeVisible();
@@ -3155,10 +3150,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             }
           }
           if (area.section === "sources") {
-            await page.getByRole("button", {
-              name: "Abrir fonte: Fonte verificável 1",
-              exact: true
-            }).click();
+            await page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]').click();
             await expect(page.locator("#course-source-detail-title")).toHaveText(
               "Fonte"
             );
@@ -3287,7 +3279,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
     await page.getByRole("button", { name: "Próxima unidade", exact: true }).click();
     await expect(page.locator("[data-inspection-context-position]")).toHaveText("2/60");
     await expect(page.locator('section[aria-label="Unidades de estudo"]')).toBeVisible();
-    await expect(page.locator('section[aria-label="Unidades de estudo"] [data-authoring-debate-prompt]')).toBeHidden();
+    await expect(page.locator('[data-authoring-debate-prompt]')).toHaveCount(0);
     const nestedVerticalScrollers = await page.locator(
       'section[aria-label="Unidades de estudo"]'
     ).evaluate((section) => [...section.querySelectorAll("*")].filter((element) => {
@@ -3470,7 +3462,7 @@ test("Conteúdo mantém cabeçalho compacto e revela o título completo do curso
   expect(clientErrors).toEqual([]);
 });
 
-test("Inspeção substitui o conjunto completo da versão exata da Unidade", async ({ page }) => {
+test("Inspeção substitui o conjunto completo da versão exata da Unidade", async ({ page }, info) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 820 });
   const inspectionHash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
@@ -3486,15 +3478,16 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
   await expect(details).not.toHaveAttribute("open", "");
   await expect(detailsTrigger).toBeFocused();
   const sourcesAction = page.getByRole("button", {
-    name: "Fontes e âncoras de Exemplo guiado com diagrama",
+    name: "Editar referências de Exemplo guiado com diagrama",
     exact: true
   });
   await sourcesAction.click();
   await expect(details).not.toHaveAttribute("open", "");
   const targetDialog = page.getByRole("dialog", {
-    name: "Fontes de Exemplo guiado com diagrama"
+    name: "Fontes", exact: true
   });
   await expectModalDialogOwnsTopLayer(targetDialog);
+  await expect(targetDialog.locator('.course-source-target-context')).toHaveText('Exemplo guiado com diagrama');
   await page.keyboard.press("Escape");
   await expect(targetDialog).toHaveCount(0);
   await expect(sourcesAction).toBeFocused();
@@ -3505,10 +3498,22 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
     name: "Vincular fonte: Fonte verificável 1",
     exact: true
   }).click();
+  await targetDialog.getByText("Uso e trecho da fonte", { exact: true }).click();
   await page.getByRole("checkbox", {
     name: "Capítulo 2, seção 3 · Páginas 10–12"
   }).check();
-  await page.getByRole("button", { name: "Salvar fontes" }).click();
+  const saveSources = targetDialog.getByRole("button", { name: "Salvar fontes", exact: true });
+  await expect(saveSources).toBeDisabled();
+  const passage = targetDialog.getByRole("textbox", { name: "Selecione o trecho", exact: true });
+  await expect(passage).toHaveValue("Compare os conjuntos.");
+  await passage.focus();
+  await page.keyboard.press("ControlOrMeta+A");
+  expect(await passage.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
+    .toBe("Compare os conjuntos.");
+  await targetDialog.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
+  await expect(targetDialog.getByText("Trecho localizado", { exact: true })).toBeVisible();
+  await expect(saveSources).toBeEnabled();
+  await saveSources.click();
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
   await expect(targetDialog).toHaveCount(0);
@@ -3527,10 +3532,21 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
       sourceId: "source-01",
       relation: "supported_by",
       roles: ["technical_conceptual"],
-      occurrences: [],
+      occurrences: [{ occurrenceId: expect.any(String), slot: "content", resourceId: "set-diagram-1",
+        path: "prompt", quote: "Compare os conjuntos.", prefix: null, suffix: null }],
       anchors: [{ anchorId: "anchor-source-01" }]
     }]
   });
+  const unit = page.locator('[data-inspection-study-unit="study-unit-01"]');
+  const references = unit.getByRole('region', { name: 'Referências da unidade', exact: true });
+  await expect(references.getByRole('link', { name: 'Autoria 1. Fonte verificável 1. 2026.', exact: true }))
+    .toHaveAttribute('href', 'https://example.test/fontes/1');
+  const marker = unit.locator('.package-set-diagram').getByRole('button', { name: 'Referência 1', exact: true });
+  await expect(marker).toBeVisible();
+  await expect(marker).toHaveAttribute('data-citation-link-id', command.sourceLinks[0].linkId);
+  await expect(marker).toHaveAttribute('data-citation-occurrence-id', command.sourceLinks[0].occurrences[0].occurrenceId);
+  await expect(unit.locator('[data-inspection-retry-citations]')).toHaveCount(0);
+  await page.screenshot({ path: info.outputPath('unit-saved-reference-inline-390.png'), fullPage: true });
   expect(clientErrors).toEqual([]);
 });
 
@@ -3568,7 +3584,7 @@ test.describe("visão múltipla, seleção independente e retorno contextual", (
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
         await expect(initialView).toHaveAttribute("aria-pressed", "true");
-        await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione ao menos duas unidades");
+        await expect(page.locator('[data-inspection-selection-bar]')).toContainText("Selecione uma ou mais unidades para comentar");
         await reference.locator('[data-inspection-selection-action="toggle-unit"]').tap();
         await page.getByRole("button", { name: "Carregar unidades anteriores", exact: true }).tap();
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(23);
@@ -3618,7 +3634,7 @@ test.describe("visão múltipla, seleção independente e retorno contextual", (
         await page.getByRole("button", { name: "Limpar seleção", exact: true }).focus();
         await page.keyboard.press("Enter");
         await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(36);
-        await expect(selection).toContainText("Selecione ao menos duas unidades");
+        await expect(selection).toContainText("Selecione uma ou mais unidades para comentar");
         const search = page.getByRole("combobox", { name: "Ir para" });
         await search.fill("12");
         await page.locator('[data-inspection-search-option="study_unit:study-unit-12"]').click();
@@ -3833,11 +3849,25 @@ test("Minipainel mostra desenho aplicado, evidência, origem e revisão por obje
     };
     await harness.surface.refresh();
   });
-  await expect(page.locator(".course-inspection-authorship")).toContainText("Revisão autoral desatualizada");
+  const reviewState = page.locator('.course-inspection-authorship [data-inspection-review-state="stale"]');
+  await expect(reviewState).toBeVisible();
+  await expect(reviewState).toHaveAttribute("aria-label", "Revisão autoral desatualizada");
+  await expect(reviewState).toHaveText("");
   await page.screenshot({ path: info.outputPath("unit-instructional-summary-390.png") });
   const details = page.locator(".course-inspection-item-details").first();
   await details.locator(":scope > summary").tap();
-  await expect(details.getByRole("heading", { name: "Desenho aplicado e estado autoral", exact: true })).toBeVisible();
+  await expect(details.getByRole("heading", { name: "Sobre esta unidade", exact: true })).toBeVisible();
+  await expect(details).not.toContainText("Debater com GPT");
+  for (const button of await details.locator(".course-inspection-item-menu").getByRole("button").all()) {
+    expect((await button.textContent()).trim()).toBe("");
+    const box = await button.boundingBox();
+    expect(box.width).toBe(44); expect(box.height).toBe(44);
+    await expect(button).toHaveAttribute("aria-label", /.+/u);
+  }
+  const firstField = details.locator(".course-inspection-metadata-values > div").first();
+  const label = await firstField.locator("dt").boundingBox();
+  const value = await firstField.locator("dd").boundingBox();
+  expect(value.y - label.y - label.height).toBeGreaterThanOrEqual(3);
   await expect(details).toContainText("Justificar a inclusão");
   await expect(details).toContainText("3 pendentes");
   await expect(details).toContainText("GPT");
@@ -3934,37 +3964,31 @@ test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observ
   expect(clientErrors).toEqual([]);
 });
 
-test("Observação em lote contém o foco, fecha com Escape e retorna à seleção", async ({
-  page
-}) => {
+test("Observação na seleção fica no conteúdo e conserva rascunho ao recolher", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 820 });
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash });
-
   await page.locator('[data-inspection-view-action="toggle-multiple"]').click();
-  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
   await page.locator('[data-inspection-study-unit="study-unit-01"] [data-inspection-selection-action="toggle-unit"]').click();
-  await page.locator('[data-inspection-study-unit="study-unit-02"] [data-inspection-selection-action="toggle-unit"]').click();
-  const batchTrigger = page.getByRole("button", {
-    name: "Registrar observação nas unidades selecionadas"
-  });
-  await batchTrigger.click();
-
-  const dialog = page.getByRole("dialog", { name: "Observação em 2 unidades" });
-  const close = dialog.getByRole("button", { name: "Fechar" });
-  const text = dialog.getByRole("textbox", { name: "Observação" });
-  const send = dialog.getByRole("button", { name: "Enviar observação" });
-  await expectModalDialogOwnsTopLayer(dialog);
+  const selection = page.locator('[data-inspection-selection-bar]');
+  const text = selection.getByRole('textbox', { name: 'Observação', exact: true });
+  await expect(text).toBeVisible();
+  await expect(selection).toContainText('1 unidade selecionada');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await text.fill('Comentário sintético na unidade escolhida.');
+  await selection.getByRole('button', { name: 'Recolher caixa de observação' }).click();
+  await expect(text).toHaveCount(0);
+  await selection.getByRole('button', { name: 'Escrever observação nas unidades selecionadas' }).click();
+  await expect(text).toHaveValue('Comentário sintético na unidade escolhida.');
   await expect(text).toBeFocused();
-  await close.focus();
-  await page.keyboard.press("Shift+Tab");
-  await expect(send).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect(close).toBeFocused();
-  await text.focus();
-  await page.keyboard.press("Escape");
-  await expect(dialog).toHaveCount(0);
-  await expect(batchTrigger).toBeFocused();
+  await selection.getByRole('button', { name: 'Enviar observação' }).click();
+  await expect(selection).toContainText('Observação registrada nesta unidade.');
+  await expect(text).toHaveValue('');
+  const mutations = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.annotationMutations);
+  expect(mutations).toHaveLength(1);
+  expect(mutations[0].command.target).toEqual({ kind: 'study_unit', id: 'study-unit-01' });
+  await selection.getByRole('button', { name: 'Limpar seleção' }).click();
+  await expect(text).toHaveCount(0);
 });
 
 test("Inspeção abre os Parâmetros da StudyUnit em folha e retorna ao mesmo controle", async ({
@@ -5057,7 +5081,7 @@ test("Fonte retorna ao catálogo e restaura o foco sem alterar metadados", async
   await page.setViewportSize({ width: 390, height: 820 });
   await mountCourseAuthoring(page, { cardinality: "many",
     hash: `#/authoring/courses/${COURSE_IDS[0]}?section=sources` });
-  await page.getByRole("button", { name: "Abrir fonte: Fonte verificável 1", exact: true }).click();
+  await page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]').click();
   const dialog = page.getByRole("dialog", { name: "Fonte", exact: true });
   await expect(dialog).toBeVisible();
   await expectSourceMetadataDoesNotOverlap(page);
@@ -5066,7 +5090,7 @@ test("Fonte retorna ao catálogo e restaura o foco sem alterar metadados", async
   await expect.poll(() => new URL(page.url()).hash).toBe(
     `#/authoring/courses/${COURSE_IDS[0]}?section=sources`
   );
-  await expect(page.getByRole("button", { name: "Abrir fonte: Fonte verificável 1", exact: true })).toBeFocused();
+  await expect(page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]')).toBeFocused();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations)).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("source-return-catalog-390-light.png"), animations: "disabled" });
   expect(errors).toEqual([]);
@@ -5077,7 +5101,7 @@ test("Fonte conserva edição e pedido incerto ao cancelar fechamento", async ({
   await page.setViewportSize({ width: 390, height: 820 });
   await mountCourseAuthoring(page, { cardinality: "many", sourceMutationScenario: "ambiguous-once",
     hash: `#/authoring/courses/${COURSE_IDS[0]}?section=sources` });
-  await page.getByRole("button", { name: "Abrir fonte: Fonte verificável 1", exact: true }).click();
+  await page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]').click();
   const dialog = page.getByRole("dialog", { name: "Fonte", exact: true });
   await dialog.getByRole("button", { name: "Editar fonte", exact: true }).click();
   const title = dialog.getByRole("textbox", { name: "Título, quando conhecido", exact: true });
@@ -5100,7 +5124,7 @@ test("Fonte conserva edição e pedido incerto ao cancelar fechamento", async ({
   expect(mutations[1]).toEqual(mutations[0]);
   await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Abrir fonte: Referência revisada sem perder o trabalho", exact: true })).toBeFocused();
+  await expect(page.locator('.course-source-card a[data-source-action="open-source"][data-source-id="source-01"]')).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -5408,17 +5432,18 @@ test("ocorrências iguais em blocos distintos mantêm escolha e caminho inequív
   const open = page.locator('[data-inspection-study-unit="study-unit-12"] [data-inspection-open-explanation]');
   await open.click();
   const review = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
-  await review.getByRole('button', { name: 'Fontes da Explicação', exact: true }).click();
-  const sources = page.getByRole('dialog', { name: 'Fontes de Explicação · Comparação orientada', exact: true });
+  await review.getByRole('button', { name: 'Fontes da explicação', exact: true }).click();
+  const sources = page.getByRole('dialog', { name: 'Fontes', exact: true });
+  await expect(sources.locator('.course-source-target-context')).toContainText('Comparação orientada');
   await sources.getByRole('button', { name: 'Localizar trecho', exact: true }).click();
-  const select = sources.getByRole('combobox', { name: 'Parte do item', exact: true });
+  const select = sources.getByRole('combobox', { name: 'Parte do texto', exact: true });
   const labels = await select.locator('option').allTextContents();
   expect(labels).toHaveLength(2);
   expect(new Set(labels).size).toBe(2);
   await select.selectOption('1');
   const path = sources.locator('[data-source-occurrence-location]');
   await expect(path).toContainText('Bloco 2');
-  await expect(path).toContainText('content / support-comparison-second / text');
+  await expect(path).toContainText('Texto');
   const text = sources.getByRole('textbox', { name: 'Selecione o trecho', exact: true });
   await text.click(); await expect(text).toBeFocused(); await page.keyboard.press('ControlOrMeta+A');
   expect(await text.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd))).toBe(await text.inputValue());
@@ -5428,13 +5453,17 @@ test("ocorrências iguais em blocos distintos mantêm escolha e caminho inequív
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.width + 1);
   expect(geometry.box.x).toBeGreaterThanOrEqual(0); expect(geometry.box.right).toBeLessThanOrEqual(361);
   await page.screenshot({ path: info.outputPath('occurrence-identical-blocks-360.png') });
-  await sources.getByRole('button', { name: 'Usar trecho selecionado', exact: true }).click();
+  await sources.getByRole('button', { name: 'Vincular trecho selecionado', exact: true }).click();
   await expect(text).toHaveCount(0);
   await sources.getByRole('button', { name: 'Salvar fontes', exact: true }).click();
   await expect.poll(() => page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations.length)).toBe(1);
   const mutation = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations[0]);
-  expect(JSON.stringify(mutation)).toContain('support-comparison-second');
-  expect(JSON.stringify(mutation)).toContain('Um critério comum');
+  expect(mutation.command).toMatchObject({ type: 'set_target_sources', targetKind: 'microsequence_explanation',
+    targetId: 'microsequence-a', expectedTargetVersion: 1, sourceLinks: [{ linkId: 'support-link',
+      sourceId: 'source-01', anchors: [{ anchorId: 'anchor-source-01' }], occurrences: [{
+        occurrenceId: 'support-occurrence', slot: 'content', resourceId: 'support-comparison-second', path: 'text',
+        quote: 'Um critério comum permite comparar relações sem confundir associação e causa.', prefix: null, suffix: null
+      }] }] });
   await expect(sources).toHaveCount(0);
   await expect(open).toBeFocused();
   await context.close();
@@ -5464,18 +5493,20 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await card.locator('.course-inspection-item-details > summary').click();
   const viewInMenu = card.locator('.course-inspection-view-menu');
   await expect(viewInMenu).toBeVisible(); await viewInMenu.click();
+  await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
   await expect(card).toContainText('Prévia da edição. As alterações ainda não foram salvas.');
+  await page.screenshot({ path: info.outputPath('unit-manual-preview-menu-closed-360.png') });
   await card.getByRole('button', { name: 'Cancelar edição', exact: true }).click();
   await expect(card.locator('.study-tool-actions button:disabled')).toHaveCount(0);
   await expect(open).toBeEnabled();
-  await card.locator('.course-inspection-item-details > summary').click();
   await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
   const details = card.locator('.course-inspection-item-details > summary');
   await details.click();
   await card.getByRole('button', { name: 'Revisão autoral desta unidade', exact: true }).click();
-  const unitReview = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
-  await expect(unitReview.getByRole('heading', { name: 'Unidade de estudo', exact: true })).toBeVisible();
-  await expect(unitReview).toContainText('Unidade curricular 12');
+  const unitReview = page.getByRole('dialog', { name: 'Revisão da unidade de estudo', exact: true });
+  await expect(unitReview.getByRole('heading', { name: 'Revisão da unidade', exact: true })).toBeVisible();
+  await expect(unitReview.locator('[aria-label="Revisão humana do conteúdo"]')).toContainText('Unidade · Unidade curricular 12');
+  await expect(unitReview.locator('.package-instance, [data-review-explanation-content], [data-review-unit-sources]')).toHaveCount(0);
   await unitReview.getByRole('button', { name: 'Fechar inspeção da unidade', exact: true }).click();
   await expect(details).toBeFocused();
   await expect(card.locator('.course-inspection-item-details')).not.toHaveAttribute('open', '');
@@ -5483,15 +5514,16 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await open.click();
   const review = page.getByRole('dialog', { name: 'Explicação e revisão do conteúdo', exact: true });
   await expect(review.getByRole('heading', { name: 'Critérios de comparação', exact: true })).toBeVisible();
-  await review.getByRole('button', { name: 'Fontes da Explicação', exact: true }).click();
+  await review.getByRole('button', { name: 'Fontes da explicação', exact: true }).click();
   await expect(review).toHaveCount(0);
-  const sources = page.getByRole('dialog', { name: 'Fontes de Explicação · Comparação orientada', exact: true });
+  const sources = page.getByRole('dialog', { name: 'Fontes', exact: true });
   await expect(sources).toBeVisible();
+  await expect(sources.locator('.course-source-target-context')).toContainText('Comparação orientada');
   await expect(sources).toContainText('Um critério comum');
   await sources.getByRole('button', { name: 'Localizar trecho', exact: true }).click();
   await expect(sources.getByRole('textbox', { name: 'Selecione o trecho', exact: true })).toHaveValue(
     'Um critério comum permite comparar relações sem confundir associação e causa.');
-  await sources.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await sources.getByRole('button', { name: 'Cancelar seleção', exact: true }).click();
   await sources.getByRole('button', { name: 'Fechar', exact: true }).click();
   await expect(sources).toHaveCount(0); await expect(open).toBeFocused();
   await expect(card).toBeVisible();
@@ -5503,12 +5535,21 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
       const rect = button.getBoundingClientRect();
       if (!rect.width || !rect.height) return [];
       return [{ x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+        label: button.getAttribute('aria-label'),
         hit: [[.5, .5], [.15, .5], [.85, .5], [.5, .15], [.5, .85]].every(([x, y]) =>
           button.contains(document.elementFromPoint(rect.x + rect.width * x, rect.y + rect.height * y))) }];
     });
     return { left: bounds.left, right: bounds.right, controls };
   });
-  expect(narrowActions.controls).toHaveLength(8);
+  expect(narrowActions.controls.map(({ label }) => label)).toEqual([
+    'Abrir explicação', 'Ferramentas da unidade', 'Parâmetros aplicáveis a Unidade curricular 12',
+    'Observações de Unidade curricular 12, 0 pendentes', 'Mostrar somente esta unidade',
+    'Adicionar Unidade curricular 12 à seleção para observação', 'Editar'
+  ]);
+  await expect(card.locator('.course-inspection-item-actions [data-inspection-edit-sources]')).toHaveCount(0);
+  await expect(card.getByRole('region', { name: 'Referências da unidade', exact: true })
+    .getByRole('button', { name: 'Editar referências de Unidade curricular 12', exact: true })).toBeVisible();
+  await expect(card.locator('[data-inspection-retry-citations]')).toHaveCount(0);
   for (const control of narrowActions.controls) {
     expect(control.width).toBeGreaterThanOrEqual(44);
     expect(control.height).toBeGreaterThanOrEqual(44);

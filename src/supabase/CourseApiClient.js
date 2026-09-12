@@ -1494,7 +1494,7 @@ export class CourseApiClient {
   async saveMicrosequenceExplanation(value = {}) {
     const source = exactObject(value, new Set([
       "courseId", "microsequenceId", "expectedRevision", "expectedEntityVersion", "requestId", "entity", "sourceLinks"
-    ]), "Edição manual da Explicação");
+    ]), "Edição manual da explicação");
     const courseId = uuid(source.courseId, "Curso");
     const microsequenceId = boundedIdentifier(source.microsequenceId, "Microssequência");
     const expectedRevision = positiveInteger(source.expectedRevision, "Versão do Curso");
@@ -1514,12 +1514,12 @@ export class CourseApiClient {
       method: "POST", body: boundedJsonObject({ requestId, expectedRevision,
         expectedMicrosequenceVersion: expectedEntityVersion, applicationOrigin: "manual",
         upserts: [entity], deletes: [], sourceAttributionApplications: applications
-      }, "Edição manual da Explicação", 480 * 1024)
+      }, "Edição manual da explicação", 480 * 1024)
     });
     exactObject(result, new Set(["courseId", "revision", "operation", "createdCount", "updatedCount",
       "upsertedCount", "deletedCount", "idempotent", "updatedAt", "channel", "applicationOrigin",
       "expectedStudyUnitVersion", "expectedMicrosequenceVersion", "microsequenceId", "microsequenceVersion",
-      "changeOrigin", "deepLink"]), "Confirmação da edição da Explicação");
+      "changeOrigin", "deepLink"]), "Confirmação da edição da explicação");
     if (result?.courseId !== courseId || result?.operation !== "commit_course_composition" ||
         result?.microsequenceId !== microsequenceId || result?.channel !== "application" ||
         result?.applicationOrigin !== "manual" || result?.changeOrigin !== "human" ||
@@ -1532,7 +1532,7 @@ export class CourseApiClient {
         typeof result?.deepLink !== "string" || !result.deepLink ||
         !Number.isSafeInteger(result?.microsequenceVersion) ||
         result.microsequenceVersion !== expectedEntityVersion + result.updatedCount) {
-      throw new TypeError("A confirmação não corresponde à edição manual da Explicação.");
+      throw new TypeError("A confirmação não corresponde à edição manual da explicação.");
     }
     return { ...structuredClone(result), requestId, changed: result.revision !== expectedRevision };
   }

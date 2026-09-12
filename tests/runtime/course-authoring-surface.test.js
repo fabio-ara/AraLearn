@@ -1099,7 +1099,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     /course-authoring-(?:materialization|recent-activity)|Etapas e resultados|Fatos da etapa|resultFacts|contextHash|>MCP<|>Actions</iu
   );
   assert.doesNotMatch(root.innerHTML, /materialize-part|context-chat|Trabalhar no ChatGPT/u);
-  assert.match(root.innerHTML, /Debater com GPT/u);
+  assert.doesNotMatch(root.innerHTML, /Debater com GPT|data-authoring-debate-prompt|data-copy-authoring-debate/u);
   assert.doesNotMatch(root.innerHTML, /course-authoring-part-tools|Adicionar Parte|Editar Parte/u);
   assert.doesNotMatch(root.innerHTML, /<img|authoringState|mandate|receipt|fila|já materializ/iu);
   assert.doesNotMatch(root.innerHTML, /\{[^}]*"parts"/u);
@@ -2227,7 +2227,7 @@ test("aviso de unidades sem parte usa totais do planejamento com lotes ausentes 
   }
 });
 
-test("Planejamento sem estrutura oferece referência copiável para debate sem escritor paralelo", async () => {
+test("Planejamento sem estrutura preserva o estado vazio e os controles do curso", async () => {
   const root = new FakeRoot();
   const emptyPlan = structuredClone(authoringPlanFixture());
   emptyPlan.plan.parts = [{
@@ -2264,8 +2264,7 @@ test("Planejamento sem estrutura oferece referência copiável para debate sem e
     root.innerHTML,
     /Trabalhar no ChatGPT|context-chat|prepare-structure|materialize-part/u
   );
-  assert.match(root.innerHTML, /data-copy-authoring-debate/u);
-  assert.match(root.innerHTML, /não autoriza escrita/u);
+  assert.doesNotMatch(root.innerHTML, /Debater com GPT|data-authoring-debate-prompt|data-copy-authoring-debate/u);
 });
 
 

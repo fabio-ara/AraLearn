@@ -1,5 +1,4 @@
 import { renderUiIcon } from "./renderUiIcons.js";
-import { bindCourseAuthoringDebate, renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 import { renderRuntimeStatusControl } from "./renderHomeScreen.js";
 import { createUuid } from "../domain/identifiers.js";
 import { captureRenderState, restoreRenderState } from "./renderState.js";
@@ -351,10 +350,6 @@ function renderCourseHeader(course, state) {
         `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar curso</span></button>`
       : "") +
     renderTaskLinks(course, state.section, { primary: null }) +
-    (canAccessPlanning(course) ? renderCourseAuthoringDebate({ courseId: course.courseId,
-      courseRevision: course.revision, title: course.title,
-      route: state.routeKey || buildCourseAuthoringRoute(course.courseId, { section: state.section }),
-      contextLabel: title }) : "") +
     "</nav></details>" + renderSettingsEntry(state) + "</div></header>";
 }
 
@@ -1138,7 +1133,7 @@ export function createCourseAuthoringSurface({
             state.section !== "planning" || state.parameterTarget || state.sourceTarget || planningExplanation?.hasPendingDraft()) return false;
         const explanation = entity.content?.explanation || null;
         if (!explanation) {
-          setRequestFeedback("A base explicativa ainda não tem conteúdo salvo. Abra Explicação para consultar seu planejamento.");
+          setRequestFeedback("A base explicativa ainda não tem conteúdo salvo. Abra explicação para consultar seu planejamento.");
           return false;
         }
         button?.focus?.({ preventScroll: true });
@@ -3579,7 +3574,6 @@ export function createCourseAuthoringSurface({
   }
 
   root.addEventListener("keydown", handleRootKeyDown);
-  bindCourseAuthoringDebate(root, { navigatorValue, locationValue });
   root.addEventListener("input", preserveDesignFormDraft);
   root.addEventListener("change", preserveDesignFormDraft);
   root.addEventListener("reset", resetDesignFormDraft);

@@ -27,7 +27,7 @@ conserva sua identidade e cria uma nova versão.
 
 ## Categorias
 
-As categorias ajudam a organizar a triagem. **Dúvida**, **Possível erro**,
+As categorias permitem agrupar e filtrar observações durante a triagem. **Dúvida**, **Possível erro**,
 **Trecho confuso**, **Sugestão** e **Pedido de reformulação** descrevem o tipo de
 apontamento; **Sem categoria** permite registrar o texto sem classificá-lo.
 A categoria pode ser corrigida depois sem apagar o texto ou trocar seu alvo.
@@ -35,6 +35,18 @@ A categoria pode ser corrigida depois sem apagar o texto ou trocar seu alvo.
 Uma categoria expressa a interpretação de quem registrou a observação.
 **Possível erro** exige conferência do conteúdo e das fontes. A ausência de
 observações tampouco demonstra compreensão.
+
+Esses rótulos são uma convenção operacional do produto, não uma escala validada
+de qualidade ou um método de revisão comprovado. A classificação é opcional;
+o texto e seu alvo bastam para registrar e tratar um apontamento. Usar uma
+categoria não autoriza correção automática nem determina a resposta do GPT.
+
+A revisão de [Shute (2008)](referencias.md#ref-shute2008feedback) discute a
+importância de feedback claro e específico para a aprendizagem. Esse trabalho
+trata de feedback ao estudante; ele não valida este conjunto de categorias para
+revisar materiais didáticos. Demonstrar que a classificação melhora a revisão
+no AraLearn exigiria uma avaliação própria, comparando resultados e esforço com
+o registro de texto livre.
 
 ## Registrar durante o Estudo
 
@@ -60,6 +72,13 @@ depois de uma mudança no alvo, registre-a sobre o conteúdo atual.
 
 Em **Conteúdo**, a pessoa autora pode registrar uma observação na unidade focal
 ou selecionar várias unidades quando o mesmo apontamento se aplica a todas.
+
+Ao mostrar várias unidades, selecione uma ou mais: a caixa de observação aparece
+na própria tela, com os alvos consultáveis pelo contador. Escreva e envie pelo
+ícone da caixa. Recolher a caixa conserva o texto; trocar ou limpar alvos com
+rascunho ou envio pendente exige concluir esse registro. A fila de cada unidade
+continua acessível pelo seu ícone, para consultar e editar observações existentes.
+
 A seleção cria uma entrada independente por alvo. Cada uma pode receber
 resposta, ser resolvida ou retirada separadamente; a seleção não cria um novo
 lote de produção.
@@ -144,3 +163,11 @@ refletir mais problemas, maior disposição para contribuir ou uma tarefa
 diferente. A contagem isolada não distingue essas explicações. Consulte
 [Analytics da Autoria](analytics-instrucionais.md) e o
 [guia de investigação](guia-pesquisador.md).
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
+
+<!-- referências locais: fim -->

@@ -66,9 +66,31 @@ test('retomada focal inclui preferências atuais, condições, base e pendência
   assert.equal(output.context.processoCorrente.cadencia,'batch');
   assert.deepEqual(output.context.observations.items[0].referenciaObservacao,reference);
   assert.equal(output.context.explicacoes[0].revisao,'Rascunho');
-  assert.match(output.nextDecision,/Explicação/u);
+  assert.match(output.nextDecision,/explicação/u);
   assert.ok(events.includes('preferences')&&events.includes('design'));
   assert.equal(events.some(value=>Array.isArray(value)&&value[0]==='write'),false);
+});
+test('retomada e preparação leem marcas já salvas no app sem redeclarar revisão',async()=>{
+  for (const [state,label] of [['current','Revisado nesta versão'],['stale','Revisão precisa ser atualizada'],['draft','Rascunho']]) {
+    const {adapter,events,read}=harness();
+    adapter.getCourseContentReview=async request=>{
+      events.push(['read-saved-review',request.targetKind,request.targetId]);
+      return {...read(),contentReview:state==='draft'?{state}:{state,reviewedAt:'2026-09-10T00:00:00Z'}};
+    };
+    const resumed=await execute(adapter,'retomar_curso',{titulo:'Curso',microssequencia:'Relações'});
+    const prepared=await execute(adapter,'preparar_revisao',{curso:'Curso',microssequencia:'Relações'});
+    for (const output of [resumed,prepared]) {
+      const explanation=output.context.explicacoes[0];
+      assert.equal(explanation.revisao,label);
+      assert.equal(explanation.conteudo.content[0].data.text,'Base desenvolvida antes das unidades.');
+      const savedReference=openContentReviewReference(explanation.referenciaRevisao,principal);
+      assert.equal(savedReference.targetKind,'microsequence_explanation');
+      assert.equal(savedReference.targetId,'micro');
+      assert.equal(savedReference.basisHash,'a'.repeat(64));
+    }
+    assert.equal(events.filter(value=>Array.isArray(value)&&value[0]==='read-saved-review').length,2);
+    assert.equal(events.some(value=>Array.isArray(value)&&value[0]==='write'),false);
+  }
 });
 test('processo combinado conserva preferências do fluxo e informa mudança pessoal sem alterar condições do curso',async()=>{
   const {adapter}=harness();const args={titulo:'Curso',microssequencia:'Relações'};

@@ -38,7 +38,7 @@ Para cada parte, combine o que será desenvolvido e examine a progressão propos
 
 Em **Conteúdo**, você pode percorrer as unidades na ordem ou usar **Mostrar várias unidades** para compará-las. Essa leitura permite verificar a continuidade do percurso e o ciclo completo de cada atividade, da tarefa ao retorno. Selecionar unidades para registrar uma observação em lote é uma ação própria.
 
-O controle de explicação abre a base compartilhada pela microssequência. Ela pode existir antes das unidades. **Editar Explicação** permite alterar os campos textuais disponíveis; examine a prévia e escolha **Salvar Explicação** ou **Cancelar edição**. Para acrescentar componentes ou produzir uma base ainda ausente, use o fluxo de autoria correspondente. Os [controles de edição](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) distinguem edição manual e assistência.
+O controle de explicação abre a base compartilhada pela microssequência. Ela pode existir antes das unidades. **Editar explicação** permite alterar os campos textuais disponíveis; examine a prévia e escolha **Salvar explicação** ou **Cancelar edição**. Para acrescentar componentes ou produzir uma base ainda ausente, use o fluxo de autoria correspondente. Os [controles de edição](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) distinguem edição manual e assistência.
 
 Depois de uma produção por conversa, volte ao aplicativo e confira o conteúdo salvo. Os controles de atualização e a recuperação de rascunhos estão em [Uso do aplicativo](uso-do-app.md#trabalhar-com-um-assistente-a-partir-da-autoria) e [Solução de problemas](solucao-de-problemas.md#a-alteração-por-mcp-ou-actions-não-aparece-na-interface).
 
@@ -100,7 +100,7 @@ Cada explicação e unidade conserva sua própria revisão, vinculada à versão
 
 Você pode voltar a um ponto antigo do curso e registrar o que precisa mudar. Se o problema está na explicação, registre a observação nela; se está no enunciado ou no retorno de uma atividade, registre na unidade. [Observações](observacoes-pedagogicas.md) explica como acompanhar cada contribuição.
 
-**Debater com GPT** copia uma referência do ponto em exame para você levar a uma conversa externa conectada. Depois de colá-la, peça ao assistente que leia o conteúdo salvo, discuta a mudança e confira o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
+Na conversa com o assistente conectado, indique o curso e o ponto que deseja discutir. Peça que ele leia o conteúdo salvo, discuta a mudança e confira o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
 
 Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. As observações atendidas saem da fila depois da confirmação do conteúdo salvo; uma contribuição alterada ou parcialmente atendida permanece para tratamento posterior. Se a resposta de uma gravação se perder, [confira primeiro se aquela alteração já foi salva](solucao-de-problemas.md#não-consigo-aplicar-uma-correção).
 

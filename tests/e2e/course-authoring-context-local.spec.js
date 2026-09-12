@@ -131,8 +131,20 @@ test.describe("folhas contextuais com curso local real", () => {
       await expect(sourceDialog).toBeVisible();
       await expect(page.locator(".course-authoring-layout")).toHaveAttribute("inert", "");
       await sourceDialog.getByRole("button", { name: "Vincular fonte: Documento de consulta sintético", exact: true }).click();
+      const citedText = units[0].content[0].data.text;
+      const selection = sourceDialog.getByRole("textbox", { name: "Selecione o trecho", exact: true });
+      await expect(selection).toBeFocused();
+      await expect(sourceDialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeDisabled();
+      await expect(selection).toHaveValue(citedText);
+      await selection.focus();
+      await selection.press("ControlOrMeta+A");
+      expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
+        .toBe(citedText);
+      await sourceDialog.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
+      await expect(sourceDialog.getByText("Trecho localizado", { exact: true })).toBeVisible();
+      await expect(sourceDialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeEnabled();
       await verifySheetGeometry(page, sourceDialog, "sources-context", info);
-      await sourceDialog.locator('[data-source-action="open-source"]').click();
+      await sourceDialog.locator('.course-source-target-link [data-source-action="open-source"]').click();
       await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");
       // Antes de salvar, a fonte é consultada pela autoria no catálogo; o vínculo
       // ainda local não pode filtrar a leitura como se estivesse no servidor.
@@ -146,8 +158,13 @@ test.describe("folhas contextuais com curso local real", () => {
       const attribution = await client.loadCourseSources(courseId, { expectedRevision: afterSource, mode: "target",
         targetKind: "study_unit", targetId: UNIT_ID, limit: 1 });
       expect(attribution.items[0].sourceLinks.map(link => link.sourceId)).toEqual(["fonte-contextual-sintetica"]);
+      expect(attribution.items[0].sourceLinks[0].occurrences).toHaveLength(1);
+      expect(attribution.items[0].sourceLinks[0].occurrences[0]).toMatchObject({
+        slot: "content", resourceId: units[0].content[0].id, path: "text", quote: citedText, prefix: null, suffix: null
+      });
+      expect(attribution.items[0].sourceLinks[0].anchors).toEqual([]);
       await sources.click();
-      await sourceDialog.locator('[data-source-action="open-source"]').click();
+      await sourceDialog.locator('.course-source-target-link [data-source-action="open-source"]').click();
       await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");
       expect(sourceReads.at(-1)).toEqual({ sourceId: "fonte-contextual-sintetica", targetKind: "study_unit", targetId: UNIT_ID });
       await sourceDialog.getByRole("button", { name: "Voltar ao catálogo" }).click();

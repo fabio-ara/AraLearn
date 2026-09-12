@@ -169,19 +169,19 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
   const normalizedDocument = composeCourseDocument(flattened.course, flattened.rows, { allowIncompleteCurriculum: true });
   const supportIds = new Set(flattened.rows.filter(row => row.entityType === "microsequence" && row.content.explanation).map(row => row.entityId));
   const seen = new Set();
-  if (!Array.isArray(explanationSources)) fail("A proveniência da Explicação é inválida.");
+  if (!Array.isArray(explanationSources)) fail("A proveniência da explicação é inválida.");
   explanationSources = explanationSources.map(value => {
     const read = normalizeCourseSourcesRead(value);
     if (read.courseId !== analytics.course.id || read.courseRevision !== analytics.course.revision ||
         read.mode !== "target" || read.query.targetKind !== "microsequence_explanation" ||
         !supportIds.has(read.query.targetId) || seen.has(read.query.targetId) || read.nextCursor !== null ||
         read.items.length > 1 || read.items.some(item => item.targetKind !== "microsequence_explanation" || item.targetId !== read.query.targetId)) {
-      fail("A proveniência da Explicação mistura alvos ou revisões.");
+      fail("A proveniência da explicação mistura alvos ou revisões.");
     }
     seen.add(read.query.targetId);
     return read;
   });
-  if (seen.size !== supportIds.size) fail("A exportação precisa incluir a proveniência de cada Explicação.");
+  if (seen.size !== supportIds.size) fail("A exportação precisa incluir a proveniência de cada explicação.");
   const unitIds = new Set(flattened.rows.filter(row => row.entityType === "study_unit").map(row => row.entityId));
   const appliedIds = new Set();
   if (!Array.isArray(appliedExplanationBases) || !Array.isArray(contentReviews)) fail("Os metadados autorais precisam formar listas.");

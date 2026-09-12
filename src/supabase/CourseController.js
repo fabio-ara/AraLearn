@@ -2428,7 +2428,7 @@ export class CourseController {
   async getMicrosequenceForExplanation(courseId, microsequenceId, { expectedRevision } = {}) {
     if (!this.ownerOnly || !UUID_PATTERN.test(courseId) || !courseSourceOpaqueId(microsequenceId) ||
         !Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
-      throw new TypeError("A leitura da Explicação exige um recorte de Autoria válido.");
+      throw new TypeError("A leitura da explicação exige um recorte de Autoria válido.");
     }
     let cursor = null;
     const cursors = new Set();
@@ -2483,7 +2483,7 @@ export class CourseController {
 
   async saveMicrosequenceExplanation(value = {}) {
     if (!this.ownerOnly || typeof this.api.saveMicrosequenceExplanation !== "function") {
-      throw new TypeError("Somente a Autoria permite editar a Explicação.");
+      throw new TypeError("Somente a Autoria permite editar a explicação.");
     }
     const fields = new Set(["courseId", "microsequenceId", "expectedRevision", "expectedEntityVersion", "explanation", "requestId"]);
     if (!value || typeof value !== "object" || Array.isArray(value) ||
@@ -2492,7 +2492,7 @@ export class CourseController {
         !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision < 1 ||
         !Number.isSafeInteger(value.expectedEntityVersion) || value.expectedEntityVersion < 1 ||
         !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(value.requestId)) {
-      throw new TypeError("Edição manual da Explicação inválida.");
+      throw new TypeError("Edição manual da explicação inválida.");
     }
     const intent = { ...value, explanation: normalizeMicrosequenceExplanation(value.explanation) };
     const signature = JSON.stringify(intent);

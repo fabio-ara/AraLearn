@@ -2875,6 +2875,7 @@ test("Adapter assina somente download autorizado da Fonte exata", async () => {
   assert.equal("storageOriginCourseId" in downloaded, false);
   assert.equal("storagePath" in downloaded.attachment, false);
   assert.match(downloaded.signedUrl, /token=sealed/u);
+  assert.equal(new URL(downloaded.signedUrl).searchParams.has("download"), false);
   assert.deepEqual(calls[0].body, {
     p_actor_id: USER_ID,
     p_course_id: COURSE_ID,

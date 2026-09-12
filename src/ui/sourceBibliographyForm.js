@@ -112,10 +112,15 @@ export function renderSourceBibliographyForm(state) {
   const draft = state.sourceEditor.draft || createSourceBibliographyDraft(state.sourceEditor.source);
   const isManual = draft.citationMode === "manual";
   return '<form class="course-source-form" data-source-form="source">' +
-    `<h3>${state.sourceEditor.source ? "Editar referência" : "Nova fonte"}</h3>` +
+    `<h3>${state.sourceEditor.source ? "Editar referência" : "PDF ou link"}</h3>` +
     `<input type="hidden" name="sourceId" value="${escape(draft.sourceId)}">` +
     input("title", "Título, quando conhecido", draft.title, { maximum: 600 }) +
-    input("url", "Link", draft.url, { maximum: 4096, placeholder: "https://…", type: "url" }) +
+    input("url", "Link da página ou do PDF", draft.url, { maximum: 4096, placeholder: "https://…", type: "url" }) +
+    (!state.sourceEditor.source && state.canUploadPdf ? '<label class="course-source-new-pdf">PDF deste dispositivo' +
+      '<span class="course-source-new-pdf-picker">' + renderUiIcon("upload", "course-authoring-button-icon") +
+      `<span>${state.sourceEditor.pdfFile ? escape(state.sourceEditor.pdfFile.name) : "Escolher PDF"}</span>` +
+      `<input type="file" accept="application/pdf,.pdf" aria-label="PDF deste dispositivo" data-source-new-pdf-input${state.busy ? " disabled" : ""}></span></label>` +
+      '<p class="course-source-intake-help">O arquivo será enviado ao salvar. Um link abre o documento no endereço informado.</p>' : "") +
     select("citationMode", "Referência", draft.citationMode, { generated: "Gerar no estilo do curso", manual: "Escrita pelo autor" }, "data-source-citation-mode") +
     (isManual ? '<label for="source-field-citationText">Referência escrita pelo autor' +
       `<textarea id="source-field-citationText" name="citationText" rows="4" maxlength="4096">${escape(draft.citationText)}</textarea></label>` : "") +

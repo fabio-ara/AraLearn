@@ -32,7 +32,8 @@ test("sheet não usa maxlength UTF-16 e preserva o texto bruto", () => {
   assert.match(html, /24\/2\.000 caracteres · 29 B\/16 KiB/u);
   assert.match(html, />[ ]{2}Dúvida 😀 com espaços[ ]{2}<\/textarea>/u);
   assert.match(html, /id="study-observation-title">Observações da unidade<\/p>/u);
-  assert.match(html, /<summary title="Categoria: Dúvida" aria-label="Categoria: Dúvida">[\s\S]*?<\/summary>/u);
+  assert.match(html, /<summary title="Categoria da observação \(opcional\)" aria-label="Categoria da observação \(opcional\)">[\s\S]*?<\/summary>/u);
+  assert.match(html, /<select data-field="study-unit-observation-category"[^>]*>[\s\S]*?<option value="question" selected>Dúvida<\/option>[\s\S]*?<\/select>/u);
   assert.match(html, /placeholder="Observação"/u);
   assert.match(html, /class="open-mini study-observation-submit"[\s\S]*?aria-label="Enviar observação"/u);
   assert.doesNotMatch(html, /Nova observação|observação curta|>Adicionar<|class="study-observation-count"/u);

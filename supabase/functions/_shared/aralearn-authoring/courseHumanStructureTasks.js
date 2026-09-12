@@ -23,7 +23,7 @@ export const COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS = [
   definition("excluir_curso", "Excluir curso próprio", "Prepara uma referência inequívoca. Após a decisão de excluir, use a confirmação original; a limpeza de arquivos segue o ciclo de vida existente.", ["curso"], {
     confirmacao: continuation
   }, true),
-  definition("salvar_ramo_curricular", "Incluir ou editar ramo curricular", "Inclui ou edita um módulo, lição ou microssequência por recorte. Alvo ausente inclui; destino identifica o pai. Dependências, cobertura e fontes usam referências humanas. A base salva e os descendentes são preservados.", ["curso", "tipo"], {
+  definition("salvar_ramo_curricular", "Incluir ou editar ramo curricular", "Constrói mapas extensos por recortes: módulo, lição e microssequência, após salvar contexto e escopo. Alvo ausente inclui; destino identifica o pai. Dependências, cobertura e fontes usam referências humanas. Campos omitidos e descendentes são preservados.", ["curso", "tipo"], {
     tipo: { type: "string", enum: Object.keys(kindByHuman) }, alvo: path, destino: path,
     titulo: { type: "string", minLength: 1, maxLength: 300 }, objetivo: { type: "string", minLength: 1, maxLength: 2000 },
     posicao: { type: "integer", minimum: 1, maximum: 64 }, dependencias: refs, cobertura: refs,
@@ -163,12 +163,12 @@ async function sliceFor(state, args, context, dependencies) {
     if (parent.kind !== expected) fail("O destino não é o pai necessário para esse tipo de ramo.");
     command[`${expected}Id`] = parent.item[`${expected}Id`];
   } else if (!selected && kind !== "module") fail("Indique o destino do novo ramo.");
-  if (kind !== "microsequence" && ["dependencias", "cobertura", "explicacao"].some(key => args[key] !== undefined)) fail("Dependências, cobertura e plano de Explicação pertencem à microssequência.");
+  if (kind !== "microsequence" && ["dependencias", "cobertura", "explicacao"].some(key => args[key] !== undefined)) fail("Dependências, cobertura e plano de explicação pertencem à microssequência.");
   if (args.dependencias !== undefined) command.dependencyMicrosequenceIds = (await resolvedReferences(args.dependencias,
     map.modules.flatMap(module => module.lessons.flatMap(lesson => lesson.microsequences)), "dependências", item => item.title)).map(item => item.microsequenceId);
   if (args.cobertura !== undefined) command.scopeItemIds = (await resolvedReferences(args.cobertura, map.scopeItems, "cobertura", item => item.statement)).map(item => item.id);
   if (args.explicacao !== undefined) {
-    if (!plain(args.explicacao) || !Object.keys(args.explicacao).length || Object.keys(args.explicacao).some(key => !["proposito", "pressupostos", "relacoes", "fontes"].includes(key))) fail("O plano de Explicação é inválido.");
+    if (!plain(args.explicacao) || !Object.keys(args.explicacao).length || Object.keys(args.explicacao).some(key => !["proposito", "pressupostos", "relacoes", "fontes"].includes(key))) fail("O plano de explicação é inválido.");
     command.explanationPlan = structuredClone(selected?.item.explanationPlan ?? { purpose: command.objective, prerequisites: [], relations: [], sourceIds: [] });
     for (const [human, field] of [["proposito", "purpose"], ["pressupostos", "prerequisites"], ["relacoes", "relations"]]) {
       if (args.explicacao[human] !== undefined) command.explanationPlan[field] = args.explicacao[human];

@@ -122,9 +122,9 @@ Se outra sessão tiver modificado o curso, a proposta permanece disponível para
 
 ## Trabalhar com um assistente a partir da Autoria
 
-Em **Conteúdo**, localize o que deseja discutir e abra **Debater com GPT**. O controle copia um pedido que identifica aquele ponto exato do curso. No Planejamento, a microssequência oferece o mesmo recurso junto da explicação prevista.
+Na conversa com o assistente conectado, indique o curso e o que deseja discutir: o planejamento, uma explicação ou uma unidade de estudo. Peça que ele leia o conteúdo salvo e o contexto necessário antes de propor uma mudança.
 
-Cole o pedido na conversa externa conectada e peça ao assistente que leia o conteúdo salvo. Discuta a proposta, autorize a mudança e volte ao aplicativo para conferir o resultado. Até ser colado, o pedido permanece apenas na área de transferência. O [guia por conversa](criar-cursos-pelo-chat.md) ensina esse percurso e a configuração dos canais.
+Discuta a proposta, autorize a mudança e abra o link retornado para conferir o resultado no aplicativo. O [guia por conversa](criar-cursos-pelo-chat.md) ensina esse percurso e a configuração dos canais.
 
 Ao voltar para o AraLearn, aguarde a atualização. Se necessário, use **Atualizar** no cabeçalho do curso. Um formulário ainda em edição pode adiar essa leitura para conservar seu trabalho. Conclua ou descarte o rascunho indicado antes de atualizar.
 

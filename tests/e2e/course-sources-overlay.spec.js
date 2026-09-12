@@ -127,6 +127,151 @@ async function mountSources(page, { theme = "light", mode = "catalog", initialAn
   }, { theme, mode, initialAnchorId, fileAccess, retired, deferredTarget, deferredUpload });
 }
 
+async function mountCitationEditor(page, { theme, targetKind, bibliographyStyle }) {
+  await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
+  await page.goto("/");
+  await page.evaluate(async ({ theme, targetKind, bibliographyStyle }) => {
+    document.documentElement.dataset.colorMode = theme;
+    document.body.innerHTML = '<div class="course-source-target-overlay"><div data-sources-host></div></div>';
+    const { createCourseSourcesPanel } = await import("/src/ui/CourseSourcesPanel.js");
+    const { createEmptyCourseSourceBibliographicMetadata, normalizeCourseSourceCommand } = await import("/src/domain/courseSources.js");
+    const { resolveCourseSourceOccurrence } = await import("/src/domain/courseSourceOccurrences.js");
+    const courseId = "e3060000-0000-4000-8000-000000000031";
+    const targetId = "e3060000-0000-4000-8000-000000000032";
+    const createdAt = "2026-09-11T10:00:00.000Z";
+    const content = { title: "As camadas e suas relações", content: [{ id: "text-a", package: "aralearn.resource.paragraph",
+      version: "1.0.0", data: { text: "No primeiro caso, regras compartilhadas permitem a comunicação. No segundo caso, regras compartilhadas exigem uma interpretação comum." } }],
+      response: null, feedback: [] };
+    const source = { sourceId: "source-existing", revision: 1, status: "active", kind: "book", defaultRoles: ["technical_conceptual"],
+      bibliographic: { ...createEmptyCourseSourceBibliographicMetadata(), publisher: "Editora Sintética", publisherPlace: "São Paulo" },
+      citationMode: "generated", title: "Redes e comunicação", authors: [{ family: "Silva", given: "Ana" }], publicationDate: "2026",
+      identifier: null, language: "pt-BR", citationText: null, url: "https://example.test/redes.pdf", editionOrVersion: null,
+      origin: "external", availability: "restricted", verificationStatus: "author_verified", studyVisibility: "citation_and_link",
+      publicFileAccess: "inherit", anchorCount: 0, createdAt, anchors: [], attachments: [] };
+    const sources = new Map([[source.sourceId, source]]);
+    const original = { linkId: "existing-general", sourceId: source.sourceId, relation: "supported_by", roles: ["technical_conceptual"], anchors: [], occurrences: [] };
+    let links = [original];
+    let revision = 5;
+    window.sourceEditorProof = { writes: [], uploads: [], reads: [], documents: [], saved: null, original: structuredClone(original) };
+    const receipt = (requestId, type, subjectId, subjectRevision) => ({ contract: "aralearn.course-source-change.v1", courseId,
+      courseRevision: revision, requestId, changed: true, idempotent: false,
+      change: { type, subjectId, ...(type === "set_target_sources" ? { targetVersion: subjectRevision } : { revision: subjectRevision }) } });
+    const controller = {
+      async loadCourseSources(_courseId, options) {
+        const items = options.mode === "target" ? [{ targetKind, targetId, targetVersion: 3, sourceLinks: links, createdAt }]
+          : options.mode === "source" ? [sources.get(options.sourceId)]
+          : [...sources.values()].map(value => Object.fromEntries(Object.entries(value).filter(([key]) => !["anchors", "attachments"].includes(key))));
+        return structuredClone({ contract: "aralearn.course-sources.v3", bibliographyStyle, courseId, courseRevision: revision,
+          mode: options.mode, query: { sourceId: options.sourceId ?? null, targetKind: options.targetKind ?? null, targetId: options.targetId ?? null },
+          pdfStorage: { uniqueBytes: 0, maxUniqueBytes: 64 * 1024 * 1024 }, items, nextCursor: null });
+      },
+      async loadCourseAnchoredAnnotations(_courseId, options) {
+        return { contract: "aralearn.course-anchored-annotation-page.v1", courseId, courseRevision: revision,
+          annotationSetVersion: 0, query: structuredClone(options.query), items: [], hasMore: false, nextCursor: null,
+          summary: { matchingTotal: 0, byOrigin: {}, byChannel: {}, byState: {}, unclassifiedTotal: 0 } };
+      },
+      async mutateCourseSources(request) {
+        if (request.expectedCourseRevision !== revision) throw new Error("CAS de curso inválido.");
+        const command = normalizeCourseSourceCommand(request.command);
+        window.sourceEditorProof.writes.push(structuredClone(request));
+        if (command.type === "save_source") {
+          if (command.expectedSourceRevision !== 0 || sources.has(command.sourceId)) throw new Error("Fonte já existe.");
+          sources.set(command.sourceId, { ...source, ...command.source, sourceId: command.sourceId, anchors: [], attachments: [] });
+          revision++;
+          return receipt(request.requestId, command.type, command.sourceId, 1);
+        }
+        if (command.type === "set_target_sources") {
+          if (command.targetKind !== targetKind || command.targetId !== targetId || command.expectedTargetVersion !== 3) throw new Error("Alvo incorreto.");
+          for (const link of command.sourceLinks) for (const occurrence of link.occurrences) {
+            if (resolveCourseSourceOccurrence(content, occurrence, { targetKind }).status !== "resolved") throw new Error("Trecho não localizado.");
+          }
+          links = structuredClone(command.sourceLinks);
+          window.sourceEditorProof.saved = structuredClone(links);
+          revision++;
+          return receipt(request.requestId, command.type, targetId, 3);
+        }
+        throw new Error("Comando fora desta prova.");
+      },
+      async uploadCourseSourcePdf(request) {
+        const item = sources.get(request.sourceId);
+        if (request.expectedCourseRevision !== revision || request.sourceRevision !== item.revision) throw new Error("CAS de PDF inválido.");
+        const bytes = await request.file.arrayBuffer();
+        const contentHash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(value => value.toString(16).padStart(2, "0")).join("");
+        window.sourceEditorProof.uploads.push({ sourceId: item.sourceId, filename: request.file.name, bytes: [...new Uint8Array(bytes)], contentHash });
+        item.attachments.push({ contentHash, byteSize: bytes.byteLength, mediaType: "application/pdf", storagePath: `${courseId}/${contentHash}.pdf`, createdAt, publicFileAccess: "inherit" });
+        item.revision++; revision++;
+        return receipt(request.requestId, "ingest_pdf", item.sourceId, item.revision);
+      },
+      async getCourseSourceAttachmentDownload(request) {
+        window.sourceEditorProof.reads.push(structuredClone(request));
+        return { signedUrl: "https://example.test/authorized.pdf?token=synthetic&download=" };
+      }
+    };
+    window.sourcesPanel = createCourseSourcesPanel({ root: document.querySelector("[data-sources-host]"), controller,
+      courseId, courseRevision: revision, mode: "target", targetKind, targetId, targetVersion: 3,
+      targetLabel: `${targetKind === "microsequence_explanation" ? "Explicação" : "Unidade"} · As camadas e suas relações`,
+      targetExplanation: content, targetStudyUnit: content,
+      downloadUrl: (url, attachment) => window.sourceEditorProof.documents.push({ url, contentHash: attachment.contentHash }) });
+    await window.sourcesPanel.open();
+  }, { theme, targetKind, bibliographyStyle });
+}
+
+for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_explanation", "abnt-2025"], ["dark", "study_unit", "apa7"]]) {
+  test(`Fonte nova recebe PDF e link e exige trecho exato em ${targetKind}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mountCitationEditor(page, { theme, targetKind, bibliographyStyle });
+    await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
+    const catalogReference = page.locator('.course-source-card [data-source-action="open-source"]');
+    await expect(catalogReference).toContainText(bibliographyStyle === "abnt-2025" ? "SILVA, A." : "Silva, A. (2026)");
+    await expect(catalogReference).toContainText("Redes e comunicação");
+    await page.screenshot({ path: testInfo.outputPath(`citation-catalog-390-${theme}.png`) });
+    await page.getByRole("button", { name: "Nova fonte: PDF ou link", exact: true }).click();
+    const form = page.locator('[data-source-form="source"]');
+    await expect(form.getByRole("heading", { name: "PDF ou link", exact: true })).toBeVisible();
+    await form.getByLabel("Título, quando conhecido", { exact: true }).fill("Leitura complementar sintética");
+    await form.getByLabel("Link da página ou do PDF", { exact: true }).fill("https://example.test/leitura.pdf");
+    const pdf = Buffer.from("%PDF-1.4\n% Arquivo sintético da prova de envio\n%%EOF\n");
+    await form.locator("[data-source-new-pdf-input]").setInputFiles({ name: "leitura.pdf", mimeType: "application/pdf", buffer: pdf });
+    await expect(form).toContainText("leitura.pdf");
+    await page.screenshot({ path: testInfo.outputPath(`citation-intake-390-${theme}.png`) });
+    await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.sourceEditorProof.uploads.length)).toBe(1);
+    const document = page.getByRole("link", { name: /Documento PDF/ });
+    await expect(document).toBeVisible();
+    await document.click();
+    await expect.poll(() => page.evaluate(() => window.sourceEditorProof.documents.length)).toBe(1);
+    await page.getByRole("button", { name: "Citar esta fonte no texto", exact: true }).click();
+    const selectedText = page.locator("[data-source-occurrence-selection]");
+    await expect(selectedText).toBeFocused();
+    await expect(selectedText).toBeInViewport({ ratio: 0.5 });
+    await expect(page.getByRole("button", { name: "Salvar fontes", exact: true })).toBeDisabled();
+    const quote = "regras compartilhadas";
+    await selectedText.evaluate((node, quote) => {
+      const start = node.value.lastIndexOf(quote);
+      node.setSelectionRange(start, start + quote.length);
+    }, quote);
+    await expect(page.getByText("O número 2 aparecerá automaticamente após o trecho.", { exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`citation-selection-390-${theme}.png`) });
+    await page.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
+    await expect(page.getByText(quote, { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Salvar fontes", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.sourceEditorProof.saved?.length)).toBe(2);
+    const proof = await page.evaluate(() => window.sourceEditorProof);
+    expect(proof.saved[0]).toEqual(proof.original);
+    expect(proof.saved[1].anchors).toEqual([]);
+    expect(proof.saved[1].occurrences).toHaveLength(1);
+    expect(proof.saved[1].occurrences[0]).toMatchObject({ slot: "content", resourceId: "text-a", path: "text", quote,
+      suffix: " exigem uma interpretação comum." });
+    expect(proof.saved[1].occurrences[0].prefix).toContain("No segundo caso, ");
+    expect(proof.uploads[0].bytes).toEqual([...pdf]);
+    expect(proof.reads[0].contentHash).toBe(proof.uploads[0].contentHash);
+    expect(proof.documents[0].url).toBe("https://example.test/authorized.pdf?token=synthetic");
+    expect(proof.writes.find(item => item.command.type === "save_source").command.source.url).toBe("https://example.test/leitura.pdf");
+    await expect.poll(() => page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(false);
+    await expect(page.locator('[data-source-target-dialog]')).not.toContainText("content / text-a / text");
+  });
+}
+
 for (const theme of ["light", "dark"]) {
   test(`Acesso a PDFs usa tokens da área de fontes em 390 ${theme}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -227,8 +372,8 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     await mountSources(page, { theme });
     const opener = page.locator('[data-source-action="open-source"]');
     const catalog = page.locator(".course-source-catalog");
-    await expect(catalog).not.toContainText("Referência literal preservada");
-    await expect(catalog.locator(".course-source-status")).toHaveAttribute("aria-label", "Ativa");
+    await expect(catalog).toContainText("Referência literal preservada");
+    await expect(catalog.locator(".course-source-status")).toHaveCount(0);
     await opener.focus();
     await page.keyboard.press("Enter");
     const dialog = page.locator("[data-source-detail-dialog]");
@@ -236,13 +381,13 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     await expect(dialog.getByRole("heading", { name: "Fonte", exact: true })).toBeVisible();
     expect(await dialog.locator("h2").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(16);
     await expect(page.locator(".course-sources-panel")).toHaveAttribute("inert", "");
-    await expect(dialog.getByText("FIM DA REFERÊNCIA", { exact: false })).not.toBeVisible();
+    await expect(dialog.getByText("FIM DA REFERÊNCIA", { exact: false })).toBeVisible();
     const before = await dialog.boundingBox();
     await dialog.locator(".course-source-display-title").focus();
     await page.keyboard.press("End");
     await dialog.getByText("Referência e dados", { exact: true }).click();
     await expect(dialog.getByText("FIM DA REFERÊNCIA", { exact: false })).toBeVisible();
-    await dialog.getByText("Âncoras", { exact: true }).first().click();
+    await dialog.getByText("Trechos na fonte", { exact: true }).first().click();
     await dialog.getByText("Observações", { exact: true }).first().click();
     const after = await dialog.boundingBox();
     for (const key of ["x", "y", "width", "height"]) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
@@ -302,7 +447,7 @@ test("Fonte mantém vínculo contextual e abre âncora de entrada", async ({ pag
   await mountSources(page, { mode: "target" });
   await page.locator('[data-source-action="add-target-source"]').click();
   const linkId = await page.locator('[data-source-action="remove-target-source"]').getAttribute("data-link-id");
-  const opener = page.locator('[data-source-action="open-source"]');
+  const opener = page.locator('.course-source-target-link [data-source-action="open-source"]');
   await opener.click();
   await page.keyboard.press("Escape");
   await expect(opener).toBeFocused();

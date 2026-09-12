@@ -8,7 +8,8 @@ import {
 import { normalizeCourseSourceCommand, normalizeCourseSourceDocument } from "../domain/courseSources.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { renderBibliographicReference } from "./renderBibliographicReference.js";
-import { listCourseSourceOccurrenceTargets } from "../domain/courseSourceOccurrences.js";
+import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrence } from "../domain/courseSourceOccurrences.js";
+import { buildSourceDocumentUrl } from "../study/sourceDocumentUrl.js";
 import { renderSourceOccurrenceForm, sourceOccurrenceFromSelection } from "./sourceOccurrenceForm.js";
 import {
   SOURCE_KIND_LABELS as SOURCE_KINDS,
@@ -272,8 +273,8 @@ function referenceMarkup(source, state) {
   const key = referenceKey(source, state);
   const result = state.references?.get(key);
   return `<span class="source-formatted-reference" data-source-reference-key="${escapeHtml(key)}">` +
-    (result ? renderBibliographicReference(result) || "A referência ainda não tem dados suficientes."
-      : source.citationMode === "manual" ? escapeHtml(source.citationText || "Referência não informada.") : "Preparando referência…") + '</span>';
+    (result ? renderBibliographicReference(result) || escapeHtml(sourceTitle(source))
+      : source.citationMode === "manual" ? escapeHtml(source.citationText || sourceTitle(source)) : escapeHtml(sourceTitle(source))) + '</span>';
 }
 
 function renderNotice(state) {
@@ -671,6 +672,8 @@ function renderAnchor(anchor, sourceRevision, state) {
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
     (editable ? '<div class="course-source-compact-actions">' +
+      (anchor.contentHash && state.detail?.items?.[0]?.attachments?.some(file => file.contentHash === anchor.contentHash)
+        ? `<a href="#source-document" data-source-action="download-attachment" data-source-revision="${sourceRevision}" data-content-hash="${escapeHtml(anchor.contentHash)}" data-anchor-id="${escapeHtml(anchor.anchorId)}" aria-label="Abrir trecho no PDF" title="Abrir trecho no PDF">${renderUiIcon("book-text", "course-authoring-button-icon")}</a>` : "") +
       `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Editar âncora" title="Editar âncora"${state.busy ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
           `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora"${state.busy ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         + "</div>"
@@ -736,30 +739,31 @@ function renderSourceAttachments(source, index, state) {
         "</label>"
       : "") + "</header>" + renderFileAccessSettings(source, attachments, state) +
     (attachments.length
-      ? '<div class="course-source-attachment-list">' + attachments.map((attachment) =>
-        '<button type="button" data-source-action="download-attachment" ' +
+      ? '<div class="course-source-attachment-list">' + attachments.map((attachment, attachmentIndex) =>
+        '<div class="course-source-document-row"><a href="#source-document" data-source-action="download-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
-          `${state.busy ? " disabled" : ""}>${renderUiIcon("arrow-down", "course-authoring-button-icon")}` +
-          `<span><strong>PDF disponível</strong><small>Baixar · ${escapeHtml(byteSizeLabel(attachment.byteSize))}</small></span></button>` +
+          ` title="Abrir PDF: ${escapeHtml(sourceTitle(source))}"${state.busy ? ' aria-disabled="true"' : ""}>${renderUiIcon("book-text", "course-authoring-button-icon")}` +
+          `<span>Documento PDF${attachments.length > 1 ? ` ${attachmentIndex + 1}` : ""} · ${escapeHtml(byteSizeLabel(attachment.byteSize))}</span></a>` +
         '<button type="button" data-source-action="remove-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
-          `${state.busy || source.status !== "active" ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}` +
-          '<span><strong>Remover PDF</strong><small>Manter fonte e referências</small></span></button>'
+          ` aria-label="Remover PDF ${attachmentIndex + 1}" title="Remover PDF"${state.busy || source.status !== "active" ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button></div>`
       ).join("") + "</div>"
       : "") + "</section>";
 }
 
 function sourceAvailabilityNote(source) {
+  if (source.studyVisibility === "hidden") return "Esta referência não aparece no estudo.";
+  if (source.studyVisibility === "citation") return "No estudo, a referência aparece sem endereço externo. PDFs seguem suas permissões de acesso.";
   const attachmentCount = Array.isArray(source.attachments) ? source.attachments.length : 0;
   if (attachmentCount > 0) {
     return safeHttpUrl(source.url)
-      ? "A fonte oferece PDF e endereço web."
-      : "PDF disponível como forma de acesso à fonte.";
+      ? "No estudo, a referência oferece o endereço da obra e o PDF autorizado."
+      : "No estudo, o PDF completo abre conforme as permissões de acesso.";
   }
   if (safeHttpUrl(source.url)) {
-    return "Referência remota: o endereço pode mudar ou deixar de estar disponível.";
+    return "No estudo, a referência abre o endereço informado. O acesso depende da página de destino.";
   }
-  return "A fonte continua registrada sem PDF ou endereço de acesso.";
+  return "Sem documento para consulta no estudo. Adicione um PDF ou endereço à ficha.";
 }
 
 function renderSource(source, state) {
@@ -775,8 +779,12 @@ function renderSource(source, state) {
         ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         : "") + "</div>" : "") + "</header>" +
     `<p class="course-source-display-title" tabindex="0">${escapeHtml(sourceTitle(source))}</p>` +
+    `<p class="course-source-display-reference">${referenceMarkup(source, state)}</p>` +
+    `<p class="course-source-availability-note">${escapeHtml(sourceAvailabilityNote(source))}</p>` +
+    (state.mode === "target" && source.status === "active"
+      ? `<button type="button" class="course-source-cite-action" data-source-action="add-target-source" data-source-id="${escapeHtml(source.sourceId)}" aria-label="Citar esta fonte no texto" title="Citar esta fonte no texto"${state.busy || state.pendingAttachment ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button>` : "") +
     `<details class="source-reference-fields"${sourceDisclosure(state, "reference")}><summary>Referência e dados</summary>` +
-    referenceMarkup(source, state) + '<dl class="course-source-metadata">' +
+    '<dl class="course-source-metadata">' +
         `<div><dt>Tipo</dt><dd>${escapeHtml(SOURCE_KINDS[source.kind] || "Fonte")}</dd></div>` +
         `<div><dt>Papéis sugeridos</dt><dd>${escapeHtml(source.defaultRoles.map(role => SOURCE_ROLES[role]).join(", ") || "Nenhum")}</dd></div>` +
         `<div><dt>Autoria</dt><dd>${escapeHtml(source.authors.map(name => name.literal || [name.given, name.family].filter(Boolean).join(" ")).join("; ") || "Não informada")}</dd></div>` +
@@ -792,10 +800,10 @@ function renderSource(source, state) {
         Object.entries(BIBLIOGRAPHIC_FIELD_LABELS).filter(([key]) => source.bibliographic[key]).map(([key, label]) =>
           `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(source.bibliographic[key])}</dd></div>`).join("") +
         `<div><dt>Link</dt><dd>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(source.url)}</a>` : escapeHtml(source.url || "Não informado")}</dd></div></dl>` +
-        `<p class="course-source-availability-note">${escapeHtml(sourceAvailabilityNote(source))}</p></details>` +
+        '</details>' +
     `<details class="course-source-detail-section"${sourceDisclosure(state, "files")}><summary>Arquivos</summary>` +
     renderSourceAttachments(source, 0, state) + '</details>' +
-    `<details class="course-source-detail-section"${sourceDisclosure(state, "anchors")}><summary>Âncoras</summary>` +
+    `<details class="course-source-detail-section"${sourceDisclosure(state, "anchors")}><summary>Trechos na fonte</summary>` +
     `<section class="course-source-anchors"><header><div><h4 class="visually-hidden">Âncoras</h4><p>${source.anchors.length}</p></div>` +
     (source.status === "active"
       ? `<button type="button" data-source-action="add-anchor" aria-label="Adicionar âncora" title="Adicionar âncora"${state.busy ? " disabled" : ""}>` +
@@ -821,22 +829,23 @@ function renderSourceDetail(state) {
     '<section class="course-source-detail" data-source-detail-dialog role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="course-source-detail-title">' +
     `<header class="course-source-detail-heading"><button type="button" data-source-action="close-detail" aria-label="Voltar ao catálogo" title="Voltar ao catálogo"${state.busy ? " disabled" : ""}>` +
     `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button><div>` +
-    '<h2 id="course-source-detail-title">Fonte</h2></div></header>' +
+    `<h2 id="course-source-detail-title">${state.sourceEditor && !state.sourceEditor.source ? "Nova fonte" : "Fonte"}</h2></div></header>` +
     '<div class="course-source-detail-body">' + renderNotice(state) + content + '</div>' +
     '</section>' + renderSourceConfirmation(state) + '</div>';
 }
 
 function renderCatalogCard(source, state, { selectable = false, selected = false } = {}) {
-  const action = selectable ? "add-target-source" : "open-source";
   const disabled = state.busy || selectable && !targetAttributionReady(state);
+  const url = safeHttpUrl(source.url);
   return `<article class="course-source-card${selected ? " is-selected" : ""}">` +
-    '<div class="course-source-card-copy" tabindex="0" role="region" aria-label="Fonte">' +
-    sourceStatusMarkup(source) + `<strong>${escapeHtml(sourceTitle(source))}</strong>` +
-    (selectable && selected ? '<small>Já usada neste item</small>' : '') + '</div>' +
-    `<button type="button" data-source-action="${action}" data-source-id="${escapeHtml(source.sourceId)}"` +
-    ` aria-label="${selectable ? selected ? "Adicionar outro vínculo" : "Vincular fonte" : "Abrir fonte"}: ${escapeHtml(sourceTitle(source))}" title="${selectable ? "Vincular fonte" : "Abrir fonte"}"${disabled ? " disabled" : ""}>` +
-    (selectable ? selected ? renderUiIcon("save", "course-authoring-arrow") : renderUiIcon("add", "course-authoring-arrow") : renderUiIcon("arrow-right", "course-authoring-arrow")) +
-    "</button></article>";
+    '<div class="course-source-card-copy">' +
+    `<a href="#source-detail" data-source-action="open-source" data-source-id="${escapeHtml(source.sourceId)}" title="Abrir ficha da fonte"${state.busy ? ' aria-disabled="true" tabindex="-1"' : ""}>${referenceMarkup(source, state)}</a>` +
+    (source.status !== "active" ? sourceStatusMarkup(source) : "") +
+    (selectable && selected ? '<small>Já citada neste texto</small>' : '') + '</div><div class="course-source-compact-actions">' +
+    (url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir endereço: ${escapeHtml(sourceTitle(source))}" title="Abrir endereço da fonte">${renderUiIcon("cloud", "course-authoring-button-icon")}</a>` : "") +
+    (selectable ? `<button type="button" data-source-action="add-target-source" data-source-id="${escapeHtml(source.sourceId)}"` +
+      ` aria-label="${selected ? "Adicionar outro vínculo" : "Vincular fonte"}: ${escapeHtml(sourceTitle(source))}" title="Citar no texto"${disabled || source.status !== "active" ? " disabled" : ""}>` +
+      renderUiIcon("add", "course-authoring-arrow") + "</button>" : "") + '</div></article>';
 }
 
 function renderCatalog(state, { selectable = false } = {}) {
@@ -917,19 +926,20 @@ function renderTargetLink(state, link, index) {
     `<option value="${value}"${link.relation === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
   return '<article class="course-source-target-link">' +
-    '<header><div>' + (source ? sourceStatusMarkup(source) : "") +
-    `<strong>${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}</strong>` +
-    `<span>${unavailableReference || unavailable ? "Atualização necessária" : "Fonte corrente"}</span></div>` +
+    '<header><div>' +
+    `<span class="course-source-reference-number">${index + 1}.</span>` +
+    `<a href="#source-detail" data-source-action="open-source" data-source-id="${escapeHtml(link.sourceId)}" data-link-id="${escapeHtml(link.linkId)}" title="Abrir ficha da fonte">${source ? referenceMarkup(source, state) : "Fonte vinculada"}</a>` +
+    `${unavailableReference || unavailable ? '<span>Atualização necessária</span>' : ""}</div>` +
     '<div class="course-source-compact-actions">' +
     `<button type="button" data-source-action="move-target-source-up" data-link-id="${escapeHtml(link.linkId)}"${index === 0 ? " disabled" : ""} aria-label="Mover fonte para cima">${renderUiIcon("arrow-up", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="move-target-source-down" data-link-id="${escapeHtml(link.linkId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
-    `<button type="button" data-source-action="open-source" data-source-id="${escapeHtml(link.sourceId)}" aria-label="Abrir fonte: ${escapeHtml(source ? sourceTitle(source) : "Fonte vinculada")}" title="Abrir fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("study", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="remove-target-source" data-link-id="${escapeHtml(link.linkId)}" aria-label="Remover vínculo">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
-    (source ? referenceMarkup(source, state) : "") +
     (unavailableReference
       ? '<p class="course-authoring-notice is-error">A fonte ou uma âncora vinculada não está mais ativa. Ajuste o vínculo.</p>'
       : "") +
-    `<label class="course-source-relation"><span>Relação com o item</span><select data-source-target-relation data-link-id="${escapeHtml(link.linkId)}">${relationOptions}</select></label>` +
+    renderSourceOccurrenceForm(state, link) +
+    `<details class="course-source-use-details" data-source-use-link="${escapeHtml(link.linkId)}"${state.openSourceUses?.includes(link.linkId) ? " open" : ""}><summary>Uso e trecho da fonte</summary>` +
+    `<label class="course-source-relation"><span>Como esta fonte é usada</span><select data-source-target-relation data-link-id="${escapeHtml(link.linkId)}">${relationOptions}</select></label>` +
     '<fieldset class="source-default-roles"><legend>Papéis neste uso</legend>' + Object.entries(SOURCE_ROLES).map(([role, label]) =>
       `<label><input type="checkbox" data-source-target-role="${role}" data-link-id="${escapeHtml(link.linkId)}"${link.roles.includes(role) ? " checked" : ""}>${escapeHtml(label)}</label>`).join("") + '</fieldset>' +
     (unavailable
@@ -937,17 +947,29 @@ function renderTargetLink(state, link, index) {
       : loading
         ? '<p class="course-authoring-loading">Carregando âncoras…</p>'
         : anchors.filter(({ status }) => status === "active").length
-          ? '<fieldset class="course-source-anchor-choices"><legend>Âncoras usadas</legend>' +
+          ? '<fieldset class="course-source-anchor-choices"><legend>Trecho na fonte (PDF ou página)</legend>' +
             anchors.filter(({ status }) => status === "active").map((anchor) =>
               `<label><input type="checkbox" data-source-target-anchor data-link-id="${escapeHtml(link.linkId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
               `<span>${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
-          : '<p class="course-source-empty">Referência à obra inteira. Uma citação direta exige um localizador na fonte.</p>') +
-    renderSourceOccurrenceForm(state, link) +
-    "</article>";
+          : '<p class="course-source-empty">A obra está vinculada sem página ou passagem específica. Você pode indicar o trecho na ficha da fonte.</p>') +
+    "</details></article>";
 }
 
 function targetAttributionReady(state) {
   return !state.targetLoading && !state.targetFailure && state.targetAttribution !== undefined;
+}
+
+function targetOccurrenceIssue(state) {
+  if (!["study_unit", "microsequence_explanation"].includes(state.targetKind)) return "";
+  const content = state.targetKind === "microsequence_explanation" ? state.targetExplanation : state.targetStudyUnit;
+  for (const link of state.sourceLinks) {
+    const previous = state.initialSourceLinks.find(item => item.linkId === link.linkId && item.sourceId === link.sourceId);
+    if (!previous && !link.occurrences.some(item => resolveCourseSourceOccurrence(content, item, { targetKind: state.targetKind }).status === "resolved") ||
+        previous?.occurrences.length && !link.occurrences.length) {
+      return "Selecione o trecho deste texto que cada nova referência sustenta antes de salvar.";
+    }
+  }
+  return "";
 }
 
 function renderTargetPanel(state) {
@@ -959,12 +981,11 @@ function renderTargetPanel(state) {
     ' role="dialog" aria-modal="true" aria-labelledby="course-source-target-title">' +
     '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
     '<div>' +
-    `<h2 id="course-source-target-title">${state.targetLabel
-      ? `Fontes de ${escapeHtml(state.targetLabel)}`
-      : "Fontes deste item"}</h2></div>` +
+    '<h2 id="course-source-target-title">Fontes</h2>' +
+    (state.targetLabel ? `<p class="course-source-target-context">${escapeHtml(state.targetLabel)}</p>` : "") + '</div>' +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>`;
-  if (state.selectedSourceId) {
+  if (state.selectedSourceId || state.sourceEditor) {
     return renderSourceDetail(state);
   }
   return header +
@@ -976,13 +997,14 @@ function renderTargetPanel(state) {
         ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.targetFailure)}</p>` +
           '<button type="button" data-source-action="retry-target" aria-label="Tentar novamente" title="Tentar novamente">' +
           `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
-        : '<section class="course-source-selected"><h3>Vinculadas</h3>' + selected +
+        : '<section class="course-source-selected"><h3>Referências deste texto</h3>' + selected +
           '<div class="course-source-target-actions">' +
           `<button type="button" class="course-source-export-target" data-source-action="export-target" aria-label="Exportar proveniência" title="Exportar proveniência"${targetExportReady(state) && !state.busy ? "" : " disabled"}>` +
           `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
-          `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy || !targetAttributionReady(state) ? " disabled" : ""}>` +
+          `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy || !targetAttributionReady(state) || targetOccurrenceIssue(state) ? " disabled" : ""}>` +
           `${renderUiIcon("save", "course-authoring-button-icon")}</button></div></section>`) +
-    '<section class="course-source-available"><h3>Catálogo</h3>' +
+    '<section class="course-source-available"><header><h3>Fontes do curso</h3>' +
+    `<button type="button" data-source-action="add-source" aria-label="Nova fonte: PDF ou link" title="Nova fonte: PDF ou link"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderCatalog(state, { selectable: true }) + "</section></div></section>";
 }
 
@@ -1116,8 +1138,8 @@ export function createCourseSourcesPanel({
     const anchor = globalThis.document?.createElement?.("a");
     if (!anchor) throw new TypeError("O navegador não oferece download de arquivos.");
     anchor.href = url;
-    anchor.download = "";
-    anchor.rel = "noreferrer";
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
     anchor.click();
   },
   downloadJson = (value, filename) => downloadTextFile({
@@ -1151,6 +1173,7 @@ export function createCourseSourcesPanel({
     coursePublicFileAccess: ["restricted", "available"].includes(coursePublicFileAccess)
       ? coursePublicFileAccess : null,
     canSetFileAccess: typeof controller.setCourseSourceFileAccess === "function",
+    canUploadPdf: typeof controller.uploadCourseSourcePdf === "function",
     catalog: null,
     catalogLoading: false,
     catalogFailure: "",
@@ -1162,6 +1185,7 @@ export function createCourseSourcesPanel({
     detailLoading: false,
     detailFailure: "",
     detailSections: [],
+    detailReturnIdentity: null,
     sourceEditor: null,
     anchorEditor: null,
     targetKind,
@@ -1171,6 +1195,7 @@ export function createCourseSourcesPanel({
     targetStudyUnit,
     targetExplanation,
     occurrenceEditor: null,
+    openSourceUses: [],
     references: new Map(),
     bibliographyStyleDraft: null,
     styleSettingsOpen: false,
@@ -1202,11 +1227,16 @@ export function createCourseSourcesPanel({
     const active = documentValue?.activeElement;
     const detailBody = root.querySelector?.(".course-source-detail-body");
     const detailScroll = Number(detailBody?.scrollTop || 0);
+    const targetBody = root.querySelector?.(".course-source-target-body");
+    if (targetBody) state.targetScroll = Number(targetBody.scrollTop || 0);
     const activeAction = active?.dataset?.sourceAction;
     const detailAction = active?.closest?.("[data-source-detail-dialog]") && activeAction
       ? { action: activeAction, anchorId: active.dataset.anchorId } : null;
     if (typeof root.querySelectorAll === "function" && root.querySelector?.("[data-source-disclosure]")) {
       state.detailSections = [...root.querySelectorAll("[data-source-disclosure][open]")].map(node => node.dataset.sourceDisclosure);
+    }
+    if (root.querySelector?.("[data-source-use-link]")) {
+      state.openSourceUses = [...(root.querySelectorAll?.("[data-source-use-link][open]") || [])].map(node => node.dataset.sourceUseLink);
     }
     const styleSettings = root.querySelector?.("[data-source-bibliography-settings]");
     if (typeof styleSettings?.open === "boolean") state.styleSettingsOpen = styleSettings.open;
@@ -1234,6 +1264,8 @@ export function createCourseSourcesPanel({
     root.innerHTML = renderCourseSourcesPanel(state);
     const nextDetailBody = root.querySelector?.(".course-source-detail-body");
     if (nextDetailBody) nextDetailBody.scrollTop = detailScroll;
+    const nextTargetBody = root.querySelector?.(".course-source-target-body");
+    if (nextTargetBody) nextTargetBody.scrollTop = state.targetScroll || 0;
     void hydrateReferences();
     const currentSelection = root.querySelector?.("[data-source-occurrence-selection]");
     if (state.occurrenceEditor?.selection && currentSelection?.setSelectionRange) {
@@ -1242,7 +1274,7 @@ export function createCourseSourcesPanel({
     if (editorFocus && !state.confirmation && focusEditorField(editorFocus.kind, editorFocus.name)) {
       if (editorFocus.selection) root.querySelector?.(`[data-source-form="${editorFocus.kind}"] [name="${editorFocus.name}"]`)
         ?.setSelectionRange?.(...editorFocus.selection);
-    } else if ((state.selectedSourceId || state.mode === "catalog" && state.sourceEditor) && !state.confirmation) {
+    } else if ((state.selectedSourceId || state.sourceEditor) && !state.confirmation) {
       const restored = detailAction && [...(root.querySelectorAll?.("[data-source-action]") || [])]
         .find(node => node.dataset.sourceAction === detailAction.action && node.dataset.anchorId === detailAction.anchorId);
       if (restored) restored.focus?.({ preventScroll: true });
@@ -1268,7 +1300,7 @@ export function createCourseSourcesPanel({
       if (!state.opened) return;
       for (const element of root.querySelectorAll?.("[data-source-reference-key]") || []) {
         if (element.dataset.sourceReferenceKey === key) {
-          element.innerHTML = renderBibliographicReference(state.references.get(key)) || "A referência ainda não tem dados suficientes.";
+          element.innerHTML = renderBibliographicReference(state.references.get(key)) || escapeHtml(sourceTitle(source));
         }
       }
     }));
@@ -1349,6 +1381,12 @@ export function createCourseSourcesPanel({
     const control = root.querySelector?.(selector);
     control?.focus?.({ preventScroll: true });
     return Boolean(control);
+  }
+
+  function focusOccurrenceSelection() {
+    const selection = root.querySelector?.("[data-source-occurrence-selection]");
+    selection?.focus?.({ preventScroll: true });
+    selection?.closest?.(".source-occurrence-editor")?.scrollIntoView?.({ block: "start", inline: "nearest" });
   }
 
   function focusEditorField(kind, fieldName) {
@@ -1432,7 +1470,7 @@ export function createCourseSourcesPanel({
       invokeSafely(onNavigate, buildCourseAuthoringRoute(state.courseId, { section: "sources" }), { sourceReturnFocusId: sourceId });
     } else {
       const restore = () => sourceId
-        ? focusByIdentity({ selector: '[data-source-action="open-source"]', datasetKey: "sourceId", datasetValue: sourceId })
+        ? focusByIdentity(state.detailReturnIdentity || { selector: '[data-source-action="open-source"]', datasetKey: "sourceId", datasetValue: sourceId })
         : focus('[data-source-action="add-source"]');
       if (!state.catalog) void loadCatalog().then(restore);
       else restore();
@@ -1519,11 +1557,11 @@ export function createCourseSourcesPanel({
       });
       return;
     }
-    if (!state.confirmation && (state.selectedSourceId || state.mode === "catalog" && state.sourceEditor || state.mode === "target") && event.key === "Tab") {
+    if (!state.confirmation && (state.selectedSourceId || state.sourceEditor || state.mode === "target") && event.key === "Tab") {
       trapAuthoringConfirmationTab({
         event,
         root,
-        confirmationSelector: state.selectedSourceId || state.mode === "catalog" && state.sourceEditor
+        confirmationSelector: state.selectedSourceId || state.sourceEditor
           ? "[data-source-detail-dialog]" : "[data-source-target-dialog]",
         documentValue
       });
@@ -1531,7 +1569,7 @@ export function createCourseSourcesPanel({
     }
     if (event.key !== "Escape") return;
     const handled = state.confirmation ? cancelConfirmation() :
-      state.selectedSourceId || state.mode === "catalog" && state.sourceEditor ? requestDetailClose() : requestTargetClose();
+      state.selectedSourceId || state.sourceEditor ? requestDetailClose() : requestTargetClose();
     if (handled) {
       event.preventDefault?.();
       event.stopPropagation?.();
@@ -2065,6 +2103,15 @@ export function createCourseSourcesPanel({
       state.anchorEditor = null;
     }
     if (pending.command.type === "set_bibliography_style") state.bibliographyStyleDraft = null;
+    const createdSource = pending.command.type === "save_source" && pending.command.expectedSourceRevision === 0;
+    if (createdSource) {
+      state.selectedSourceId = pending.command.sourceId;
+      state.detailSections = ["files"];
+      if (confirmedEditor?.pdfFile) state.pendingAttachment = {
+        requestId: createUuid(), expectedCourseRevision: result.courseRevision,
+        sourceId: pending.command.sourceId, sourceRevision: result.change.revision, file: confirmedEditor.pdfFile
+      };
+    }
     if (state.mode === "target" && pending.command.type === "set_target_sources") {
       state.initialSourceLinks = structuredClone(pending.command.sourceLinks);
     }
@@ -2078,6 +2125,7 @@ export function createCourseSourcesPanel({
     }
     state.busy = false;
     render();
+    if (createdSource && confirmedEditor?.pdfFile && refreshed) await uploadPdf(confirmedEditor.pdfFile, state.pendingAttachment);
     return true;
   }
 
@@ -2140,14 +2188,14 @@ export function createCourseSourcesPanel({
     return true;
   }
 
-  async function downloadAttachment(sourceRevision, contentHash) {
+  async function downloadAttachment(sourceRevision, contentHash, anchorId = null) {
     if (state.busy) return false;
     const source = state.detail?.items.find(({ revision }) => revision === sourceRevision);
     const attachment = source?.attachments.find((item) => item.contentHash === contentHash);
     if (!source || !attachment) return false;
     state.busy = true;
     state.failure = "";
-    state.message = "Preparando o download…";
+    state.message = "Abrindo PDF…";
     render();
     try {
       if (typeof controller.getCourseSourceAttachmentDownload !== "function") {
@@ -2161,8 +2209,9 @@ export function createCourseSourcesPanel({
         contentHash
       });
       if (!state.opened) return false;
-      downloadUrl(access.signedUrl, attachment);
-      state.message = "Download iniciado.";
+      const anchor = source.anchors.find(item => item.anchorId === anchorId) || null;
+      downloadUrl(buildSourceDocumentUrl(access.signedUrl, { attachment, anchor }), attachment);
+      state.message = "PDF aberto.";
       return true;
     } catch (error) {
       if (!state.opened) return false;
@@ -2380,6 +2429,7 @@ export function createCourseSourcesPanel({
   }
 
   function targetLinksValid() {
+    if (targetOccurrenceIssue(state)) return false;
     if (JSON.stringify(state.sourceLinks) === JSON.stringify(state.initialSourceLinks)) {
       return true;
     }
@@ -2457,6 +2507,12 @@ export function createCourseSourcesPanel({
       if (file) void uploadPdf(file);
       return;
     }
+    if (event.target.matches?.("[data-source-new-pdf-input]") && state.sourceEditor) {
+      if (state.busy || state.pendingCommand) return;
+      state.sourceEditor.pdfFile = event.target.files?.[0] || null;
+      render();
+      return;
+    }
     if (event.target.matches?.("[data-source-anchor-kind]") && state.anchorEditor) {
       state.anchorEditor.draft = {
         ...(state.anchorEditor.draft || anchorDraft(state.anchorEditor.anchor)),
@@ -2498,7 +2554,7 @@ export function createCourseSourcesPanel({
       state.occurrenceEditor.targetIndex = Number(event.target.value);
       delete state.occurrenceEditor.selection;
       render();
-      focus("[data-source-occurrence-selection]");
+      focusOccurrenceSelection();
     }
   });
 
@@ -2556,6 +2612,9 @@ export function createCourseSourcesPanel({
       state.failure = "";
       render();
     } else if (action === "open-source") {
+      state.detailReturnIdentity = node.dataset.linkId
+        ? { selector: '[data-source-action="open-source"][data-link-id]', datasetKey: "linkId", datasetValue: node.dataset.linkId }
+        : { selector: '.course-source-card [data-source-action="open-source"]', datasetKey: "sourceId", datasetValue: node.dataset.sourceId };
       state.sourceEditor = null;
       state.anchorEditor = null;
       const sourceId = String(node.dataset.sourceId || "");
@@ -2667,7 +2726,7 @@ export function createCourseSourcesPanel({
     } else if (action === "download-attachment") {
       void downloadAttachment(
         Number(node.dataset.sourceRevision),
-        String(node.dataset.contentHash || "")
+        String(node.dataset.contentHash || ""), node.dataset.anchorId || null
       );
     } else if (action === "remove-attachment") {
       const sourceRevision = Number(node.dataset.sourceRevision);
@@ -2711,25 +2770,42 @@ export function createCourseSourcesPanel({
     } else if (action === "close-target") {
       requestTargetClose();
     } else if (action === "add-target-source") {
-      if (state.busy || !targetAttributionReady(state)) return;
+      if (state.busy || state.pendingAttachment || !targetAttributionReady(state)) return;
       const sourceId = String(node.dataset.sourceId || "");
-      const source = state.catalog?.items.find((item) => item.sourceId === sourceId);
+      const source = state.detail?.items.find(item => item.sourceId === sourceId) ||
+        state.catalog?.items.find((item) => item.sourceId === sourceId);
       if (!source || source.status !== "active") return;
       if (state.sourceLinks.length >= 32) {
         state.failure = "Cada item aceita no máximo 32 vínculos com fontes.";
         render();
         return;
       }
-      state.sourceLinks.push({
+      const targets = ["study_unit", "microsequence_explanation"].includes(state.targetKind)
+        ? listCourseSourceOccurrenceTargets(state.targetKind === "microsequence_explanation" ? state.targetExplanation : state.targetStudyUnit,
+          { targetKind: state.targetKind }) : null;
+      if (targets && !targets.length) {
+        state.failure = "Salve o texto da unidade ou da explicação antes de indicar o trecho citado.";
+        render();
+        return;
+      }
+      const link = {
         linkId: createUuid(),
         sourceId,
         relation: "supported_by",
         roles: [...source.defaultRoles],
         anchors: [],
         occurrences: []
-      });
+      };
+      state.sourceLinks.push(link);
+      state.selectedSourceId = "";
+      state.detail = null;
+      state.sourceEditor = null;
+      state.failure = "";
+      state.message = "";
+      if (targets) state.occurrenceEditor = { linkId: link.linkId, targetIndex: 0 };
       void loadDetail(sourceId, { target: true });
       render();
+      if (targets) focusOccurrenceSelection();
     } else if (action === "remove-target-source") {
       state.sourceLinks = state.sourceLinks.filter((link) => link.linkId !== node.dataset.linkId);
       state.failure = "";
@@ -2775,12 +2851,12 @@ export function createCourseSourcesPanel({
         } catch (error) { state.failure = error.message; }
       }
       render();
-      if (state.occurrenceEditor) focus("[data-source-occurrence-selection]");
+      if (state.occurrenceEditor) focusOccurrenceSelection();
       else focusByIdentity({ selector: '[data-source-action="add-occurrence"]', datasetKey: "linkId", datasetValue: link.linkId });
     } else if (action === "save-target") {
       if (state.busy || !targetAttributionReady(state)) return;
       if (!targetLinksValid()) {
-        state.failure = "Confira as fontes e os localizadores ativos. Uma citação direta exige ao menos um localizador na fonte.";
+        state.failure = targetOccurrenceIssue(state) || "Confira as fontes e os localizadores ativos. Uma citação direta exige ao menos um localizador na fonte.";
         render();
         return;
       }

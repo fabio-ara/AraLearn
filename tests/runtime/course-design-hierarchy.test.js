@@ -87,7 +87,7 @@ test("inspeção separa ajuste herdado vigente do valor registrado na produção
   assert.match(html, /Motivo registrado:<\/strong> Escolha feita para a primeira produção/u);
   assert.match(html, /O valor aplicado difere da configuração atual/u);
   assert.match(html, /Onde se aplica:<\/strong> Unidade de estudo: study_unit sintético/u);
-  assert.match(html, /não reescreve as unidades nem a Explicação/u);
+  assert.match(html, /não reescreve as unidades nem a explicação/u);
   assert.ok(html.indexOf("Definição e origem") < html.indexOf("data-course-design-parameter "));
   assert.deepEqual(state, before);
 });

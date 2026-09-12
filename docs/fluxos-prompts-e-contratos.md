@@ -106,12 +106,23 @@ ramos e salvo como rascunho. A pessoa inspeciona a hierarquia completa, com suas
 dependências e a cobertura dos conteúdos obrigatórios, e declara a aprovação da
 versão que examinou.
 
+Para construir um mapa extenso nos canais, `salvar_mapa_curricular` recebe primeiro público, pré-requisitos e todos os itens de escopo, com `modulos: []`. Esse início só é aceito enquanto o mapa não contém módulos. Em seguida, `salvar_ramo_curricular` acrescenta cada módulo, suas lições e suas microssequências, em ordem de dependência. Em Actions, essa tarefa está no grupo `estrutura_curricular`. Dependências, cobertura e fontes previstas usam as referências humanas do planejamento salvo.
+
+Ao concluir `materializar_parte`, o link de resultado abre Conteúdo com o recorte
+da parte produzida. A expressão “revisar a parte” na conversa conserva esse
+destino. A seção de observações é usada para inspecionar apontamentos, enquanto
+a declaração de revisão se refere a cada objeto salvo e à sua base pertinente.
+
+Cada chamada conserva o conteúdo integral do objeto. Campos independentes podem ser acrescentados em chamadas posteriores, pois a edição de ramo preserva os campos omitidos. Dividir o trabalho dessa forma evita exigir a árvore inteira numa única chamada; não autoriza resumir objetivos, explicações ou relações para satisfazer o transporte. `salvar_mapa_curricular` com módulos preenchidos continua sendo uma substituição completa, não uma forma de acrescentar somente o próximo ramo. Ao terminar, o assistente consulta o planejamento completo e apresenta a versão salva para inspeção. Um rascunho ainda sem ramos ou com cobertura pendente não está pronto para aprovação.
+
 A explicação pode ser desenvolvida numa microssequência existente enquanto o
 mapa ainda está em rascunho e antes de haver unidades. No foco **Conteúdo**, a
 explicação e suas fontes podem constituir o resultado completo do trabalho. No
 **Ciclo completo**, essa base sustenta também o desenho e a produção das
 unidades. O [guia de autoria por conversa](criar-cursos-pelo-chat.md) apresenta
 as decisões que a pessoa toma nesse percurso.
+
+Depois de salvar explicações, o retorno identifica cada base em `context.explicacoes`, com seu título e link de inspeção. O `deepLink` principal abre a primeira microssequência afetada na seção Conteúdo, onde a explicação pode ser lida mesmo antes das unidades. O assistente usa os endereços retornados; a seção `review` reúne observações e não substitui a leitura das bases.
 
 A aprovação do mapa, a autorização para produzir e a revisão do conteúdo têm
 objetos diferentes. A primeira confirma a organização examinada; a segunda
@@ -267,6 +278,8 @@ associa a tentativa a um **recibo**, registro que permite recuperar seu resultad
 Antes de repetir a operação, o cliente relê o conteúdo e o recibo correspondente.
 A recuperação conserva alvo, alteração e identidade originais; uma nova
 identidade criaria outro pedido e poderia duplicar seus efeitos.
+
+Se o cliente não conseguir formar o JSON da chamada, o serviço pode nem ter recebido o pedido. Esse erro, sozinho, não identifica sua causa nem estabelece um limite de tamanho. O assistente relê o planejamento: se já houver ramos salvos, preserva-os e continua apenas o que falta. Se houver uma referência de recuperação, usa a tentativa original. Para um mapa ainda sem módulos, pode iniciar contexto e escopo e continuar por ramos. Uma nova sessão precisa fazer essa mesma conciliação antes de gravar.
 
 Para correções, `retomar_correcao` recebe o objeto `recovery` integral no campo
 `recuperacao`, quando disponível, ou o curso e a tentativa original. Essa

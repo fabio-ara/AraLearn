@@ -334,7 +334,7 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
 });
 
 const EXPLANATIONS_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
-  description: "Uma Explicação previamente autorada por microssequência, compartilhada pelas unidades. Produzir não aprova conteúdo.",
+  description: "Uma explicação previamente autorada por microssequência, compartilhada pelas unidades. Produzir não aprova conteúdo.",
   items: { type: "object", additionalProperties: false, required: ["microssequencia", "conteudo", "fontes"],
     properties: { microssequencia: HUMAN_REFERENCE_SCHEMA,
       conteudo: { type: "object", additionalProperties: false, required: ["title", "content"],
@@ -723,7 +723,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Salva o mapa como rascunho para inspeção. A aprovação usa a referência da versão persistida.",
+    "Salva um rascunho. Para mapa extenso ainda sem módulos, envie contexto e escopo com modulos: []; continue em salvar_ramo_curricular sem reduzir conteúdo. Uma árvore preenchida substitui o mapa completo. A aprovação usa a referência persistida.",
     inputSchema({
       curso: COURSE_SCHEMA,
       publico: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
@@ -736,7 +736,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
       }),
       modulos: Object.freeze({
-        type: "array", minItems: 1, maxItems: 64,
+        type: "array", minItems: 0, maxItems: 64,
+        description: "Árvore completa, ou [] para iniciar contexto e escopo somente se ainda não houver módulos. Depois acrescente os ramos por salvar_ramo_curricular; não reenvie uma árvore parcial como substituição.",
         items: CURRICULAR_MAP_MODULE_SCHEMA
       })
     }, ["curso", "publico", "preRequisitos", "itensDeEscopo", "modulos"]),
@@ -767,7 +768,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Materializar uma parte",
-    "Produz unidades do recorte preparado. Reutiliza as Explicações salvas; inclua somente bases que deseja alterar. Registra o desenho aplicado e mantém revisão independente.",
+    "Produz unidades do recorte preparado. Reutiliza as explicações salvas; inclua somente bases que deseja alterar. Registra o desenho aplicado e mantém revisão independente.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -811,7 +812,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "registrar_observacao",
     "Registrar observação",
-    "Acrescenta à fila da Explicação ou das unidades; não aplica correção nem declara revisão.",
+    "Acrescenta à fila da explicação ou das unidades; não aplica correção nem declara revisão.",
     { ...inputSchema({
       curso: COURSE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
@@ -834,7 +835,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     }, ["curso", "observacao", "texto"]), { readOnly: false }),
   task(
     "salvar_explicacoes",
-    "Salvar Explicações",
+    "Salvar explicações",
     "Produz ou edita bases e fontes antes ou depois das unidades. Preserva unidades existentes; salvar não declara revisão.",
     inputSchema({ curso: COURSE_SCHEMA, explicacoes: EXPLANATIONS_SCHEMA,
       observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA }, ["curso", "explicacoes"]),
@@ -843,7 +844,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Corrige unidades ou Explicações no curso corrente; a aprovação afetada precisa de nova revisão humana.",
+    "Corrige unidades ou explicações no curso corrente; a aprovação afetada precisa de nova revisão humana.",
     Object.freeze({ ...inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -1016,7 +1017,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:c6554a774e5350f1cecbfd543b5be0cabf6e6faddde339e8e25fc3601983477c";
+  "sha256:6d7c9bf865b844d7c9e5b259ac77d49e7655037519dfd3daf504dfe0b9abb479";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1559,8 +1560,8 @@ function normalizeCurricularMapArguments(args) {
     minimum: 1,
     maximum: 256
   });
-  if (!Array.isArray(args.modulos) || args.modulos.length < 1 || args.modulos.length > 64) {
-    fail("invalid_human_task_argument", "modulos precisa conter de 1 a 64 módulos.", {
+  if (!Array.isArray(args.modulos) || args.modulos.length > 64) {
+    fail("invalid_human_task_argument", "modulos precisa conter de 0 a 64 módulos.", {
       field: "modulos"
     });
   }
@@ -1867,6 +1868,11 @@ function matchingInternalChild(items, title) {
 
 async function buildCurricularMapWrite({ state, input, newId }) {
   const currentMap = curricularMapFromPlan(state.plan);
+  if (input.modules.length === 0 && internalMapCollections(currentMap).modules.length > 0) {
+    fail("curricular_map_bootstrap_conflict",
+      "O mapa já contém módulos. Retome o planejamento salvo e use salvar_ramo_curricular para continuar sem apagar os ramos existentes.",
+      null, 409);
+  }
   if (input.approved && (!currentMap || currentMap.approval === "absent" ||
       !sameCurricularMap(currentMap, input))) {
     fail(
@@ -2274,7 +2280,7 @@ async function readObservations({ adapter, principal, resolved, args, deadlineAt
     : [resolved.microsequence
       ? { target: { kind: "didactic_microsequence", id: resolved.microsequence.id }, includeDescendants: true }
       : { target: { kind: "course", id: resolved.course.id }, includeDescendants: true }];
-  // A microssequência e sua Explicação têm alvos distintos na fila.
+  // A microssequência e sua explicação têm alvos distintos na fila.
   if (selected.length || resolved.microsequence) hierarchies.push(...micros.map(value => ({
     target: { kind: "microsequence_explanation", id: value.id }, includeDescendants: false
   })));
@@ -2665,7 +2671,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
   return result(`Retomei o curso “${resolved.course.title}”.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: process.processoCorrente.foco === "content" ? "Continue a Explicação e as fontes da microssequência no foco e na cadência vigentes."
+    nextDecision: process.processoCorrente.foco === "content" ? "Continue a explicação e as fontes da microssequência no foco e na cadência vigentes."
       : map && map.approval !== "approved" ? "Inspecione o mapa salvo e suas pendências antes da aprovação." : null,
     context: await paginateHumanReadContext(withoutTechnicalState({ ...projectedPlanContext(plan, part),
       ...process, observations, explicacoes: explanations }), { state: continuation })
@@ -2903,7 +2909,7 @@ async function resolveHumanSourceContentTarget({ adapter, principal, resolved, d
     throw new AuthoringApiError(503, "course_service_unavailable", "A versão da microssequência é inválida.");
   }
   if (requireExplanation && !entity.content?.explanation) {
-    throw new AuthoringApiError(422, "explanation_not_materialized", "Produza a Explicação antes de atribuir suas fontes de conteúdo.");
+    throw new AuthoringApiError(422, "explanation_not_materialized", "Produza a explicação antes de atribuir suas fontes de conteúdo.");
   }
   return { kind: "microsequence_explanation", id: microsequenceId,
     version: entity.version, content: entity.content?.explanation ?? null };
@@ -2949,7 +2955,7 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
     ? []
     : [humanReference(args.unidade, "unidade")];
   if (args.unidade !== undefined && args.explicacao !== undefined) {
-    fail("invalid_human_task_argument", "Escolha a unidade ou a Explicação da microssequência para consultar fontes.");
+    fail("invalid_human_task_argument", "Escolha a unidade ou a explicação da microssequência para consultar fontes.");
   }
   const resolved = await resolveTaskContext({ adapter, principal,
     args: { ...args, microssequencia: args.explicacao }, deadlineAt, units });
@@ -3163,7 +3169,9 @@ HUMAN_TASK_HANDLERS.salvar_explicacoes = async ({ adapter, principal, args, dead
   const response = await applyHumanCourseCorrections({ adapter, principal, course: args.curso,
     explanations: args.explicacoes,
     observations: normalizeCourseObservationCorrectionReferences(args.observacoesTratadas ?? []), deadlineAt });
-  return { ...response, result: "Salvei as Explicações e suas fontes. As unidades existentes foram preservadas; a revisão autoral é uma declaração separada." };
+  return { ...response,
+    result: "Salvei as explicações e suas fontes. As unidades existentes foram preservadas; a revisão autoral é uma declaração separada.",
+    nextDecision: "Convide a ler e marcar a revisão das explicações pelos links retornados. Se a pessoa pedir para avançar, produza o próximo passo autorizado e informe que as bases ainda sem marca permanecem pendentes de revisão." };
 };
 
 HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
@@ -3204,9 +3212,14 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
     })
   });
   const persisted = await loadPlan(adapter, principal, savedCourse, deadlineAt);
-  return result("Salvei o mapa curricular como rascunho para inspeção.", {
+  const startingMap = input.modules.length === 0;
+  return result(startingMap
+    ? "Salvei o público, os pré-requisitos e o escopo. O rascunho ainda precisa dos ramos curriculares."
+    : "Salvei o mapa curricular como rascunho para inspeção.", {
     deepLink: courseDeepLink(adapter, savedCourse, "planning"),
-    nextDecision: "Inspecione a cobertura, a ordem e a ênfase; a aprovação usa a referência desta versão salva.",
+    nextDecision: startingMap
+      ? "Continue com salvar_ramo_curricular: módulos, lições e microssequências em ordem de dependência, preservando detalhes e cobertura. Ao concluir, consulte o planejamento completo para inspeção."
+      : "Inspecione a cobertura, a ordem e a ênfase; a aprovação usa a referência desta versão salva.",
     context: projectedPlanContext(persisted, null)
   });
 };
@@ -3291,9 +3304,9 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
     explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
     nextDecision: process.processoCorrente.pontosDeRevisao.includes("study_unit")
-      ? "Ofereça a inspeção das unidades no ponto de revisão escolhido. A declaração de revisão pertence à pessoa autora."
+      ? "Convide a ler e marcar a revisão das unidades. Consulte as marcas já feitas no app; um pedido para avançar autoriza o próximo passo do mandato, deixando o conteúdo anterior sem marca pendente de revisão."
       : process.processoCorrente.foco === "content"
-      ? "Continue as Explicações e fontes no recorte autorizado, seguindo a cadência vigente."
+      ? "Continue as explicações e fontes no recorte autorizado, seguindo a cadência vigente."
       : "Continue o ciclo autorizado na cadência vigente, respeitando os pontos de revisão e as condições do recorte." };
 };
 
@@ -3595,7 +3608,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
 }) => {
   const course = humanCourseTitle(args);
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
-  if (Boolean(units.length) === (args.microssequencia !== undefined)) fail("invalid_human_task_argument", "Escolha uma Explicação ou as unidades para acrescentar a observação.");
+  if (Boolean(units.length) === (args.microssequencia !== undefined)) fail("invalid_human_task_argument", "Escolha uma explicação ou as unidades para acrescentar a observação.");
   const rawText = text(args.texto, "texto", 2000);
   const capturedAt = new Date().toISOString();
   const category = args.categoria === undefined || args.categoria === null
@@ -3639,7 +3652,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
       })
   });
   return result(
-    args.microssequencia !== undefined ? "Acrescentei a observação à fila da Explicação." : units.length === 1
+    args.microssequencia !== undefined ? "Acrescentei a observação à fila da explicação." : units.length === 1
       ? "Registrei a observação na unidade selecionada."
       : `Registrei a observação separadamente em ${units.length} unidades.`,
     {
@@ -4022,11 +4035,11 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
     const binding = plainObject(bindings[index], `vinculos[${index}]`);
     exactFields(binding, new Set(["unidade", "explicacao", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
     if ((binding.unidade === undefined) === (binding.explicacao === undefined)) {
-      fail("invalid_human_task_argument", "Cada vínculo deve escolher uma unidade ou a Explicação de uma microssequência.");
+      fail("invalid_human_task_argument", "Cada vínculo deve escolher uma unidade ou a explicação de uma microssequência.");
     }
     const isExplanation = binding.explicacao !== undefined;
     if (isExplanation && Array.isArray(binding.ocorrencias) && binding.ocorrencias.some(item => item?.lugar !== "conteudo")) {
-      fail("invalid_human_source_occurrence", "As ocorrências da Explicação usam somente o conteúdo.");
+      fail("invalid_human_source_occurrence", "As ocorrências da explicação usam somente o conteúdo.");
     }
     const targetReference = humanReference(isExplanation ? binding.explicacao : binding.unidade, `vinculos[${index}].alvo`);
     await executeTrustedCourseWrite({

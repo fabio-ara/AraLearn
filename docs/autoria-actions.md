@@ -78,15 +78,17 @@ unidades, mesmo com mapa em rascunho. `salvar_explicacoes` conserva as unidades
 existentes. Na produção de unidades, `materializar_parte` reutiliza as bases
 salvas e recebe somente aquelas que também serão criadas ou alteradas.
 
+Para mapas extensos ainda sem módulos, `salvar_mapa_curricular` aceita público, pré-requisitos, escopo completo e `modulos: []`. A construção continua com `salvar_ramo_curricular`, no grupo `estrutura_curricular`, preservando o texto de cada ramo. O [fluxo de construção do mapa](fluxos-prompts-e-contratos.md#mapa-curricular-e-bases-explicativas) explica a sequência e a proteção do planejamento já salvo.
+
 Aprovação do mapa, autorização para produzir e revisão do conteúdo correspondem
 a decisões diferentes da pessoa. O [percurso comum](fluxos-prompts-e-contratos.md#mapa-curricular-e-bases-explicativas)
 relaciona essas etapas e a [referência de processo](fluxos-prompts-e-contratos.md#conservar-o-acordo-durante-a-retomada)
 conserva o acordo de trabalho durante a retomada.
 
-A ação **Debater com GPT**, rótulo atual do aplicativo, copia um pedido com o
-endereço do objeto. O cliente conectado precisa ler esse objeto pelas operações
-de Actions. Copiar o pedido abre a discussão; o conteúdo só muda mediante uma
-operação autorizada.
+O debate sobre uma explicação acontece na conversa normal com o GPT conectado.
+Ao concluir a produção, ele pode sugerir brevemente a leitura e o debate, conforme
+o processo combinado. O cliente lê o objeto pelas operações de Actions; a discussão
+só altera o conteúdo mediante uma operação autorizada.
 
 ## Materialização e parâmetros
 

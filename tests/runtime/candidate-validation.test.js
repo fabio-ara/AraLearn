@@ -190,6 +190,42 @@ test("impacto visual não prepara banco; integração mutável não usa cache de
   assert.equal(buildCandidatePlan({ ...visual, requires: { supabase: true } }).at(-1).reusable, false);
 });
 
+test("falhas de frontend e Android não executam banco; retomada conserva provas e exige banco fresco", async t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "src/ui"), { recursive: true });
+  fs.mkdirSync(path.join(root, "android"));
+  fs.writeFileSync(path.join(root, "src/ui/example.js"), "export const example = 1;");
+  fs.writeFileSync(path.join(root, "android/build.gradle"), "// candidate");
+  fs.writeFileSync(path.join(root, "tests/e2e/example.spec.js"), "// ordinary browser fixture");
+  let failing = "frontend-e2e";
+  let calls = [];
+  const execute = async step => {
+    calls.push(step.gate);
+    if (step.gate === failing) return { result: "failed", exitCode: 1 };
+    if (step.gate === "frontend-e2e") {
+      fs.writeFileSync(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME), JSON.stringify({
+        stats: { expected: 1, unexpected: 0, skipped: 0, flaky: 0 }, errors: []
+      }));
+    }
+    return { result: "passed", exitCode: 0 };
+  };
+  const run = () => validateCandidate({ root, base: "HEAD", execute, env: {} });
+  assert.equal((await run()).result, "failed");
+  assert.equal(calls.includes("local-database"), false);
+  assert.equal(calls.includes("local-integration"), false);
+  failing = "android";
+  calls = [];
+  assert.equal((await run()).result, "failed");
+  assert.deepEqual(calls, ["frontend-e2e", "android"]);
+  failing = null;
+  calls = [];
+  assert.equal((await run()).result, "passed");
+  assert.deepEqual(calls, ["android", "local-database", "local-integration"]);
+  calls = [];
+  assert.equal((await run()).result, "passed");
+  assert.deepEqual(calls, ["local-database", "local-integration"], "estado mutável exige nova prova mesmo com bytes idênticos");
+});
+
 test("processo real preserva exit code e escreve log redigido sem saída narrativa", async t => {
   const root = fixture(t);
   const logPath = path.join(root, "test.log");

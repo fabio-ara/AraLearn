@@ -83,8 +83,13 @@ export function renderPackageStudyUnitBlocks(studyUnit, options = {}) {
   const response = studyUnit.response
     ? renderInstance(studyUnit, studyUnit.response, "response", 0, options, dockExerciseParts)
     : "";
-  const authoringFeedback = studyUnit.feedback.length && (options.resourceSelectionEnabled || options.revealPracticeAnswers)
-    ? '<section class="runtime-authoring-support-resources" aria-label="Explicações da unidade de estudo"><span class="runtime-authoring-support-title">Explicações</span>' +
+  const previewFeedback = options.authoringPracticePreview &&
+    (options.authoringPracticeEditing || options.responseStateByBlockKey?.[responseBlockKey(studyUnit, String(options.blockKeyPrefix || "runtime-study-unit"))]?.feedback);
+  const showFeedback = options.authoringPracticePreview
+    ? previewFeedback
+    : options.resourceSelectionEnabled || options.revealPracticeAnswers;
+  const authoringFeedback = studyUnit.feedback.length && showFeedback
+    ? '<section class="runtime-authoring-support-resources" aria-label="Comentário da resposta"><span class="runtime-authoring-support-title">Comentário da resposta</span>' +
       studyUnit.feedback.map((instance, index) => renderInstance(studyUnit, instance, "feedback", index, options, dockExerciseParts)).join("") +
       "</section>"
     : "";

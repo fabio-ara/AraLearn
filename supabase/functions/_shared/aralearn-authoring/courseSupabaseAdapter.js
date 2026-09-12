@@ -2637,7 +2637,7 @@ export class CourseSupabaseAdapter {
         signedUrl: signedStorageUrl(
           publicStorageBaseUrl,
           signed?.signedURL,
-          { download: true, expectedPath: `/storage/v1/object/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/${storageObjectPath(attachment.storagePath)}` }
+          { expectedPath: `/storage/v1/object/sign/${COURSE_SOURCE_ATTACHMENT_BUCKET}/${storageObjectPath(attachment.storagePath)}` }
         ),
         expiresAt: new Date(
           Date.now() + COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS * 1_000

@@ -185,15 +185,57 @@ test("correção só do apoio preserva percurso e fontes, sem transportar aprova
   assert.equal(receipt.context.explanationCorrectionCount, 1);
 });
 
+for (const authenticationKind of ["oauth", "action"]) {
+  test(`Explicações ${authenticationKind} devolvem todos os destinos de conteúdo sem herdar revisão do recibo`, async () => {
+    const adapter = adapterFixture();
+    const originalListEntities = adapter.listCourseEntities;
+    const originalCommit = adapter.commitCourseComposition;
+    adapter.listCourseStudyUnits = async () => ({ items: [], hasMore: false, nextCursor: null });
+    adapter.getCourseInstructionalPlan = async () => ({ courseRevision: 7, plan: {
+      title: "Curso de Redes", parts: [{ id: "part-a", position: 0, title: "Parte A",
+        microsequences: ["A", "B"].map((suffix, position) => ({
+          id: `micro-${suffix.toLowerCase()}`, title: `Microssequência ${suffix}`, position
+        })) }]
+    } });
+    adapter.listCourseEntities = async () => {
+      const page = await originalListEntities();
+      return { ...page, items: [page.items[0], { ...structuredClone(page.items[0]),
+        entityId: "micro-b", position: 1,
+        content: { ...structuredClone(page.items[0].content), title: "Microssequência B" } }] };
+    };
+    adapter.commitCourseComposition = async request => ({ ...await originalCommit(request),
+      deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=review` });
+    const explanations = ["A", "B"].map(suffix => {
+      const { title, content } = correctedContent(`Base ${suffix}`);
+      return { microssequencia: `Microssequência ${suffix}`, conteudo: { title, content } };
+    });
+    const receipt = await applyHumanCourseCorrections({ adapter,
+      principal: { actorId: COURSE_ID, authenticationKind }, course: "Curso de Redes", explanations });
+    const expected = ["A", "B"].map(suffix => ({ titulo: `Base ${suffix}`,
+      deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}` +
+        `?section=content&didacticMicrosequenceId=micro-${suffix.toLowerCase()}` }));
+    assert.equal(receipt.deepLink, expected[0].deepLink);
+    assert.deepEqual(receipt.context.explicacoes, expected);
+    assert.equal(adapter.commits.length, 1);
+    assert.deepEqual(adapter.commits[0].upserts.map(({ entityId }) => entityId), ["micro-a", "micro-b"]);
+    assert.deepEqual(adapter.commits[0].upserts.map(({ content }) => content.explanation),
+      explanations.map(({ conteudo }) => conteudo));
+    assert.doesNotMatch(JSON.stringify(receipt), /section=review/u);
+  });
+}
+
 test("correção conjunta escreve unidade e apoio atomicamente e recusa resposta no apoio", async () => {
   const adapter = adapterFixture();
   const { title, content } = correctedContent("Apoio conjunto");
   const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" }, course: "Curso de Redes",
     corrections: [{ unidade: 1, conteudo: correctedContent("Unidade revista") }],
     explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content }, fontes: [] }] };
-  await applyHumanCourseCorrections(input);
+  const receipt = await applyHumanCourseCorrections(input);
   assert.equal(adapter.commits.length, 1);
   assert.deepEqual(adapter.commits[0].upserts.map(row => row.entityType), ["study_unit", "microsequence"]);
+  assert.equal(receipt.deepLink, `https://app.example/#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-1`);
+  assert.deepEqual(receipt.context.explicacoes, [{ titulo: title,
+    deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=content&didacticMicrosequenceId=micro-a` }]);
   input.explanations[0].conteudo.response = {};
   await assert.rejects(() => applyHumanCourseCorrections(input), { code: "invalid_human_explanation" });
   assert.equal(adapter.commits.length, 1);

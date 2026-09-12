@@ -129,10 +129,9 @@ conteúdo já existente. O serviço fornece o recorte pertinente e as referênci
 necessárias às operações seguintes. O [fluxo comum](fluxos-prompts-e-contratos.md)
 relaciona planejamento, autorização para produzir e revisão do conteúdo salvo.
 
-A ação **Debater com GPT**, nome atualmente usado na interface, copia um pedido
-com o endereço do objeto e a revisão observada. No cliente externo conectado,
-o assistente usa essa referência para ler o conteúdo atual. Copiar o pedido
-abre a discussão; a alteração depende da intenção expressa pela pessoa.
+Na conversa com o assistente conectado, a pessoa indica o curso e o objeto
+que deseja discutir. O assistente lê o conteúdo atual e o contexto necessário
+antes de propor uma mudança. A alteração depende da intenção expressa pela pessoa.
 A [declaração de revisão](explicacao-e-revisao-humana.md) pode ser registrada
 na interface ou pela tarefa `declarar_revisao`, sobre o conteúdo inspecionado.
 

@@ -1,6 +1,5 @@
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 
 const MAP_STATUS = Object.freeze({ absent: "Ainda não definido", draft: "Rascunho", approved: "Aprovado" });
 const COVERAGE_STATUS = Object.freeze({ planned: "Planejado", developed: "Desenvolvido" });
@@ -111,10 +110,7 @@ function renderMicrosequence(courseId, microsequence, nodes, expansion) {
     objective("microsequence", microsequence, expansion) + dependencies +
     (microsequence.role ? `<p class="course-curriculum-map-caption">Função no percurso: ${escapeHtml({ explain: "explicação e desenvolvimento teórico", practice: "prática", review: "revisão", support: "apoio" }[microsequence.role] || microsequence.role)}</p>` : "") +
     details(key("explanation", microsequence.id), "Explicação prevista",
-      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id, nodes.sourceTitles), expansion) +
-    (nodes.courseRevision ? renderCourseAuthoringDebate({ courseId, courseRevision: nodes.courseRevision,
-      title: microsequence.title, contextLabel: "o planejamento e a Explicação desta microssequência",
-      route: buildCourseAuthoringRoute(courseId, { section: "content", didacticMicrosequenceId: microsequence.id }) }) : "") + '</li>';
+      renderExplanationPlan(courseId, microsequence.explanationPlan, microsequence.id, nodes.sourceTitles), expansion) + '</li>';
 }
 
 function renderExplanationPlan(courseId, plan, microsequenceId, sourceTitles) {
@@ -182,7 +178,6 @@ export function renderCourseCurriculumMap({
   contextual = false, courseTitle = "Curso", query = "", pendingOnly = false, completeness = null, approval = null
 }) {
   const nodes = indexCurriculum(curriculum);
-  nodes.courseRevision = courseRevision;
   nodes.sourceTitles = sourceTitles;
   nodes.scopeItems = new Map(curriculumScopeItems.map(item => [item.id, item]));
   nodes.contextual = contextual;
@@ -213,7 +208,7 @@ export function renderCourseCurriculumMap({
     (completeness ? `<details class="course-curriculum-pending-list"${nodes.pending.length ? " open" : ""}><summary>Pendências do mapa · ${nodes.pending.length}</summary>` +
       (nodes.pending.length ? `<ul>${nodes.pending.map(item => `<li>${escapeHtml(pendingDescription(item, nodes))}</li>`).join("")}</ul>` : '<p>As referências e a cobertura atendem aos critérios estruturais do mapa.</p>') +
       '<p>Base explicativa e revisão são verificadas ao abrir cada objeto.</p></details>' : "") +
-    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a Explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
+    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
     '<p data-curriculum-search-status role="status" hidden></p>' + content + coverage +
     (approval ? `<section class="course-curriculum-approval" aria-label="Aprovação do mapa"><p>Mapa salvo · versão ${approval.planVersion} · revisão do curso ${courseRevision}.</p>` +
       '<p>A aprovação declara sua inspeção do mapa completo, incluindo ramos recolhidos e resultados fora da busca.</p>' +

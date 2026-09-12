@@ -295,6 +295,15 @@ segurança em nível de linha.
 
 Uma solicitação de integração de mudanças, ou pull request (PR), reúne o diff e as
 verificações da candidata. Mantenha o PR em rascunho durante o desenvolvimento.
+Durante uma correção, reproduza a falha e execute os testes do comportamento alterado
+e dos consumidores pertinentes com `npm.cmd run test:focal -- caminho/do/teste.test.js`
+(arquivos de `tests/runtime` ou `tests/kernel`) ou a spec de navegador correspondente.
+Inspecione também o cliente real quando a falha depender dele. A seleção automática
+por área pode abranger muitos arquivos; ela não substitui esse diagnóstico focal.
+Execute a preparação ampla quando a candidata estiver estabilizada. Após uma falha,
+corrija e confirme primeiro o recorte afetado; então retome a preparação usando os
+recibos ainda válidos, sem `--force` por padrão.
+
 Consulte o impacto e execute a preparação local antes de liberar a candidata para a
 validação integral, a execução completa dos testes e verificadores exigidos para a
 integração:
@@ -316,8 +325,10 @@ locais e o gate obrigatório na validação integral final.
 
 A preparação começa por verificações rápidas de arquivos e análise estática do código
 (*lint*) e avança para testes de execução, jornadas de ponta a ponta no navegador
-(E2E) e
-integração com os serviços. A primeira falha interrompe o percurso. O resumo em
+(E2E) e Android, conforme o impacto. Banco e integração com os serviços vêm juntos
+ao fim, nessa ordem. Assim, uma falha anterior no navegador ou Android é corrigida
+antes de consumir as provas que dependem de estado mutável. A primeira falha
+interrompe o percurso. O resumo em
 `.validation/candidate.json` identifica a árvore e a configuração da candidata, os
 gates selecionados, o resultado e as falhas, com referências aos logs. Como o diretório
 é ignorado pelo Git, leia esse resumo local antes de abrir o log necessário ao
@@ -326,7 +337,10 @@ diagnóstico.
 Resultados locais podem ser reutilizados quando arquivos, dependências e
 configuração relevantes permanecem iguais. `--force` repete as verificações.
 A integração com banco é executada novamente quando necessária, pois a igualdade
-do código não comprova o estado dos dados. Os critérios de seleção estão no
+do código não comprova o estado dos dados. A ordem evita repetição por falhas anteriores;
+ela não reduz o conjunto de testes nem altera o alcance dos fingerprints: gates que
+ainda incluem toda a árvore podem ser invalidados por uma edição documental.
+Os critérios de seleção estão no
 [orquestrador da candidata](../scripts/validateCandidate.mjs); o resultado local
 prepara o PR, enquanto a validação integral autoriza sua promoção.
 

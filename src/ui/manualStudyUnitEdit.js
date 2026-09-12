@@ -1,6 +1,7 @@
 
 import { validateStudyUnitEnvelope } from "../resources/kernel/studyUnitEnvelope.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
+import { reconcileGapResponseAnswerEdit } from "../resources/packages/gap-response/authoring.js";
 import {
   activateManualInlineFields,
   materializePackageManualEditFields,
@@ -157,6 +158,9 @@ export function applyManualStudyUnitEdit(studyUnit = {}, targetId = "study_unit"
     if (!allowedPaths.has(path)) return;
     const oldValue = readPath(resolved.value, path);
     const newValue = String(value ?? "");
+    if (resolved.slot === "response" && resolved.targetKind === "aralearn.response.gap") {
+      reconcileGapResponseAnswerEdit(nextStudyUnit, path, newValue, RESOURCE_PACKAGE_REGISTRY);
+    }
     if (!writePath(resolved.value, path, newValue)) return;
     if (resolved.slot === "content") {
       RESOURCE_PACKAGE_REGISTRY.reconcileResponseTextEdit(nextStudyUnit, {

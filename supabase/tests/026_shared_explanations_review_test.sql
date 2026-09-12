@@ -110,6 +110,17 @@ select set_config('aralearn.content_review_write','',true);
 create temporary table legacy_basis as select private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','b') value;
 update private.course_instructional_plan_items set statement='Conexão entre pontos' where course_id=pg_temp.review_course() and id='99260000-0000-4000-8000-000000000201';
 select is(pg_temp.review_state('microsequence_explanation','b'),'unregistered','Alterar intenção pertinente não inventa revisão do acervo antigo');
-select isnt(private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','b'),(select value from legacy_basis),'Mudança de ideia atribuída participa da impressão focal');
+select is(private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','b'),(select value from legacy_basis),'Atualizar análise instrucional não muda a impressão da base explicativa');
+insert into private.course_instructional_plan_items(id,course_id,instructional_plan_id,item_kind,position,statement,description)
+select '99260000-0000-4000-8000-000000000202',course_id,id,'evidence_requirement',0,'Comparar condições da conexão','Exigência da prática sintética.' from private.course_instructional_plans where course_id=pg_temp.review_course();
+insert into private.course_design_target_plan_items(course_id,didactic_microsequence_id,plan_item_id,plan_item_kind)
+values(pg_temp.review_course(),'b','99260000-0000-4000-8000-000000000202','evidence_requirement');
+select is(private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','b'),(select value from legacy_basis),'Vincular requisito da prática conserva a impressão da base explicativa');
+insert into private.course_instructional_plan_items(id,course_id,instructional_plan_id,item_kind,position,statement,description)
+select '99260000-0000-4000-8000-000000000203',course_id,id,'curriculum_scope_item',0,'Relações entre elementos','Escopo curricular sintético.' from private.course_instructional_plans where course_id=pg_temp.review_course();
+insert into private.course_design_target_plan_items(course_id,didactic_microsequence_id,plan_item_id,plan_item_kind)
+values(pg_temp.review_course(),'b','99260000-0000-4000-8000-000000000203','curriculum_scope_item');
+select isnt(private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','b'),(select value from legacy_basis),'Vincular escopo curricular continua material para a impressão da base');
+select is(pg_temp.review_state('microsequence_explanation','b'),'unregistered','Alteração curricular não inventa revisão do acervo antigo');
 select * from finish();
 rollback;

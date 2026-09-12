@@ -1168,20 +1168,20 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
   const microsequences = partMicrosequences(context.part);
   explanations ??= [];
   if (!Array.isArray(explanations) || explanations.length > microsequences.length) {
-    fail("human_materialization_missing_explanation", "Informe somente as Explicações que deseja produzir ou alterar nesta parte.");
+    fail("human_materialization_missing_explanation", "Informe somente as explicações que deseja produzir ou alterar nesta parte.");
   }
   const seen = new Set();
   const prepared = [];
   for (const [index, entry] of explanations.entries()) {
     if (!plainObject(entry) || !Array.isArray(entry.fontes) || Object.keys(entry).some((key) =>
       !["microssequencia", "conteudo", "fontes"].includes(key))) {
-      fail("invalid_human_explanation", "A Explicação precisa indicar microssequência, conteúdo e fontes utilizadas.");
+      fail("invalid_human_explanation", "A explicação precisa indicar microssequência, conteúdo e fontes utilizadas.");
     }
     const microsequence = resolveReference(microsequences, entry.microssequencia, {
       position: (item) => item.productionPosition ?? item.position,
-      texts: (item) => [item.title], label: "microssequência da Explicação"
+      texts: (item) => [item.title], label: "microssequência da explicação"
     });
-    if (seen.has(microsequence.id)) fail("invalid_human_explanation", "A parte repete a Explicação de uma microssequência.");
+    if (seen.has(microsequence.id)) fail("invalid_human_explanation", "A parte repete a explicação de uma microssequência.");
     seen.add(microsequence.id);
     let content;
     try { content = normalizeMicrosequenceExplanation(entry.conteudo); }
@@ -1189,7 +1189,7 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
     if (entry.fontes.some((link) => !plainObject(link) ||
       link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
         link.ocorrencias.some((occurrence) => !plainObject(occurrence) || occurrence.lugar !== "conteudo")))) {
-      fail("invalid_human_explanation", "A fonte da Explicação deve apontar ao seu conteúdo, sem resposta ou feedback de uma unidade.");
+      fail("invalid_human_explanation", "A fonte da explicação deve apontar ao seu conteúdo, sem resposta ou feedback de uma unidade.");
     }
     const sourceLinks = await resolveHumanSourceLinks({ adapter, principal, courseContext: context,
       requested: entry.fontes ?? [], deadlineAt, newId, content, identityPrefix: `explanation:${index}` });
@@ -1200,7 +1200,7 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
   for (const microsequence of microsequences.filter(item => !seen.has(item.id))) {
     const persisted = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id) ?? microsequence;
     if (!persisted.explanation) {
-      fail("human_materialization_missing_explanation", `Salve a Explicação de “${microsequence.title}” antes de produzir suas unidades, ou inclua-a neste pedido.`);
+      fail("human_materialization_missing_explanation", `Salve a explicação de “${microsequence.title}” antes de produzir suas unidades, ou inclua-a neste pedido.`);
     }
     const content = normalizeMicrosequenceExplanation(persisted.explanation);
     const sources = await adapter.getCourseSources({ principal, courseId: context.course.id,
@@ -1226,6 +1226,7 @@ export async function materializeHumanCoursePart({
 }) {
   validateUnits(units);
   let producedPartPosition = null;
+  let producedContentTarget = null;
   let practiceObservations = [];
   const receipt = await executeTrustedCourseWrite({
     load: () => resolveHumanCourseContext({
@@ -1340,6 +1341,7 @@ export async function materializeHumanCoursePart({
         }
       }
       preparedUnits.sort((left, right) => left.inputIndex - right.inputIndex);
+      producedContentTarget = { courseId: context.course.id, partId: context.part.id };
       return {
         principal,
         courseId: context.course.id,
@@ -1363,8 +1365,12 @@ export async function materializeHumanCoursePart({
     result: producedPartPosition === 1
       ? "Primeira parte produzida."
       : `Parte ${producedPartPosition} produzida.`,
-    deepLink: receipt.deepLink ?? null,
-    nextDecision: "Inspecione as unidades, a Explicação e as fontes; o conteúdo produzido aguarda revisão humana.",
+    deepLink: producedContentTarget
+      ? `${adapter.publicAppUrl ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}/` : ""}` +
+        `#/authoring/courses/${encodeURIComponent(producedContentTarget.courseId)}?section=content` +
+        `&authoringPartId=${encodeURIComponent(producedContentTarget.partId)}`
+      : receipt.deepLink ?? null,
+    nextDecision: "Inspecione as unidades produzidas pelo link retornado, conforme o processo combinado. A revisão de uma explicação só precisa ser retomada se seu conteúdo pertinente mudou.",
     context: { distribuicaoDaPratica: practiceObservations }
   };
 }

@@ -36,14 +36,14 @@ function validateCorrections(corrections, explanations) {
     if (!plainObject(explanation) || !Object.hasOwn(explanation, "microssequencia") ||
         Object.keys(explanation).some((key) => !["microssequencia", "conteudo", "fontes"].includes(key)) ||
         explanation.fontes !== undefined && !Array.isArray(explanation.fontes)) {
-      fail("invalid_human_explanation", "A correção da Explicação precisa indicar microssequência, conteúdo e fontes pertinentes.");
+      fail("invalid_human_explanation", "A correção da explicação precisa indicar microssequência, conteúdo e fontes pertinentes.");
     }
     try { normalizeMicrosequenceExplanation(explanation.conteudo); }
     catch (error) { fail("invalid_human_explanation", error.message); }
     if ((explanation.fontes ?? []).some((link) => !plainObject(link) ||
       link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
         link.ocorrencias.some((occurrence) => !plainObject(occurrence) || occurrence.lugar !== "conteudo")))) {
-      fail("invalid_human_explanation", "A ocorrência da Explicação pertence somente ao conteúdo do apoio.");
+      fail("invalid_human_explanation", "A ocorrência da explicação pertence somente ao conteúdo do apoio.");
     }
   }
 }
@@ -56,10 +56,10 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
     const result = await adapter.listCourseEntities({ principal, courseId: course.id,
       expectedRevision: course.revision, limit: 200, afterEntityType: cursor?.entityType ?? null,
       afterEntityId: cursor?.entityId ?? null, deadlineAt });
-    if (!result || !Array.isArray(result.items)) fail("course_service_unavailable", "A leitura da Explicação está incompleta; releia o recorte.", 503);
+    if (!result || !Array.isArray(result.items)) fail("course_service_unavailable", "A leitura da explicação está incompleta; releia o recorte.", 503);
     entities.push(...result.items);
     if (!result.hasMore) break;
-    if (!result.nextCursor || page === 99) fail("course_service_unavailable", "A leitura da Explicação está incompleta; releia o recorte.", 503);
+    if (!result.nextCursor || page === 99) fail("course_service_unavailable", "A leitura da explicação está incompleta; releia o recorte.", 503);
     cursor = result.nextCursor;
   }
   const seen = new Set();
@@ -67,8 +67,8 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
     const context = await resolveHumanCourseContext({ adapter, principal, course: course.title,
       microsequence: entry.microssequencia, deadlineAt });
     const entity = entities.find((row) => row.entityType === "microsequence" && row.entityId === context.microsequence.id);
-    if (context.course.revision !== course.revision || !entity) fail("course_revision_conflict", "O curso mudou; releia a Explicação antes de corrigir.", 409);
-    if (seen.has(entity.entityId)) fail("invalid_human_explanation", "Uma correção não pode repetir a mesma Explicação.");
+    if (context.course.revision !== course.revision || !entity) fail("course_revision_conflict", "O curso mudou; releia a explicação antes de corrigir.", 409);
+    if (seen.has(entity.entityId)) fail("invalid_human_explanation", "Uma correção não pode repetir a mesma explicação.");
     seen.add(entity.entityId);
     const support = normalizeMicrosequenceExplanation(entry.conteudo);
     const content = { ...structuredClone(entity.content), explanation: support };
@@ -326,6 +326,7 @@ export async function applyHumanCourseCorrections({
   catch (error) { fail(error.code ?? "invalid_course_observation_correction", error.message); }
   let correctedCourseId = null;
   let firstCorrectedStudyUnitId = null;
+  let correctedExplanations = [];
   let pendingObservationCount = 0;
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
@@ -340,6 +341,9 @@ export async function applyHumanCourseCorrections({
       });
       correctedCourseId = state.course.id;
       firstCorrectedStudyUnitId = state.prepared[0]?.unit.studyUnit.id ?? null;
+      correctedExplanations = state.preparedExplanations.map(({ entity, support }) => ({
+        id: entity.entityId, title: support.title
+      }));
       pendingObservationCount = state.pendingObservations.length;
       return state;
     },
@@ -399,20 +403,29 @@ export async function applyHumanCourseCorrections({
       reconcile: async ({ request }) => ({ status: "confirmed", result: await confirmPersistedObservationCorrection({
         adapter, principal, courseId: request.courseId, requestId: request.requestId, deadlineAt }) }) } : {})
   });
+  const contentDeepLink = correctedCourseId && adapter.publicAppUrl
+    ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
+      `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}?section=content`
+    : null;
+  const explanationLinks = correctedExplanations.map(({ id, title }) => ({
+    titulo: title,
+    deepLink: contentDeepLink
+      ? `${contentDeepLink}&didacticMicrosequenceId=${encodeURIComponent(id)}`
+      : null
+  }));
   return {
-    result: explanations.length ? "Corrigi o conteúdo e as Explicações indicados; a revisão humana afetada precisa ser atualizada."
+    result: explanations.length ? "Corrigi o conteúdo e as explicações indicados; a revisão humana afetada precisa ser atualizada."
       : corrections.length === 1
       ? "A correção foi aplicada à unidade de estudo afetada."
       : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`,
-    deepLink: correctedCourseId && firstCorrectedStudyUnitId && adapter.publicAppUrl
-      ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
-        `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}` +
-        `?section=content&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
-      : receipt.deepLink ?? null,
+    deepLink: contentDeepLink && firstCorrectedStudyUnitId
+      ? `${contentDeepLink}&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
+      : explanationLinks[0]?.deepLink ?? receipt.deepLink ?? null,
     nextDecision: "Quer reinspecionar o reparo ou rematerializar a parte para aplicar uma configuração alterada?",
     context: {
       correctionCount: corrections.length,
       explanationCorrectionCount: explanations.length,
+      ...(explanationLinks.length ? { explicacoes: explanationLinks } : {}),
       ...(observations.length ? { correctionRequestId: receipt.requestId,
         confirmedObservationCount: receipt.observations.filter((entry) => entry.confirmed).length,
         pendingObservationCount: pendingObservationCount - receipt.observations.filter((entry) => entry.confirmed).length }

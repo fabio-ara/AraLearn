@@ -86,7 +86,7 @@ Ao encontrar um problema, descreva o efeito sobre a compreensão e delimite o qu
 
 Em uma conversa nova, peça ao assistente que localize o curso e leia o que ficou salvo. Esse estado oferece o ponto de continuidade do trabalho.
 
-Você pode levar uma referência direta do ponto em exame. Na Autoria, **Debater com GPT** apenas copia esse pedido; a conversa acontece na aplicação conectada em que você o cola. Peça a leitura da explicação ou unidade e do contexto necessário antes da proposta.
+Na conversa atual ou em uma nova conversa com o assistente conectado, indique o curso e a explicação ou unidade que deseja discutir. Peça a leitura do conteúdo salvo e do contexto necessário antes da proposta.
 
 Uma correção deve identificar o que será alterado e os pontos usados apenas como contexto. Depois da autorização, volte ao curso para conferir o resultado. O [fluxo de observações](observacoes-pedagogicas.md#da-observação-à-revisão) explica como uma contribuição é vinculada à correção e quando permanece pendente.
 

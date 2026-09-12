@@ -113,7 +113,6 @@ export function createCourseStudyApplication({
     anchor.href = url;
     anchor.target = "_blank";
     anchor.rel = "noopener noreferrer";
-    anchor.download = "fonte.pdf";
     anchor.click();
   }
 } = {}) {

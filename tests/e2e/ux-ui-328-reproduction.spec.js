@@ -285,6 +285,7 @@ for (const target of ["título", "conteúdo"]) {
     await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(1);
     const originalUnit = await page.evaluate(() => structuredClone(globalThis.uxUi328.units[1]));
     const paragraph = unit.locator(".runtime-paragraph-block > p");
+    const title = unit.locator(".course-inspection-item-heading > div:first-child > h3");
     if (target === "conteúdo") await unit.getByRole("button", { name: "Selecionar recurso para edição", exact: true }).click();
     const field = target === "título"
       ? unit.getByRole("textbox", { name: "Título da unidade de estudo", exact: true })
@@ -299,7 +300,7 @@ for (const target of ["título", "conteúdo"]) {
     expect(await page.evaluate(() => globalThis.uxUi328.inputCount)).toBe(1);
     await unit.getByRole("button", { name: "Visualizar", exact: true }).click();
     await expect(unit.locator('[contenteditable="plaintext-only"]')).toHaveCount(0);
-    await expect(target === "título" ? unit.locator("h3") : paragraph).toHaveText(draft);
+    await expect(target === "título" ? title : paragraph).toHaveText(draft);
     await expect(unit.getByRole("button", { name: "Visualizar", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(unit.getByRole("button", { name: "Visualizar", exact: true })).toBeFocused();
     expect(await page.evaluate(() => globalThis.uxUi328.units[1])).toEqual(originalUnit);
@@ -307,7 +308,7 @@ for (const target of ["título", "conteúdo"]) {
     await expect(field).toHaveText(draft);
     await expect(field).toBeFocused();
     await unit.getByRole("button", { name: "Cancelar edição", exact: true }).click();
-    await expect(target === "título" ? unit.locator("h3") : paragraph).toHaveText(original);
+    await expect(target === "título" ? title : paragraph).toHaveText(original);
     await unit.getByRole("button", { name: "Editar", exact: true }).click();
     if (target === "conteúdo") await unit.getByRole("button", { name: "Selecionar recurso para edição", exact: true }).click();
     await expect(field).toHaveText(original);

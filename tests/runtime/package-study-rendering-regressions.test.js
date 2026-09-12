@@ -278,7 +278,7 @@ test("edição manual de choice conserva seleção e feedback sem ativar escolha
   assert.match(rendered.dockHtml, /inline-feedback/u);
 });
 
-test("edição manual conserva lacuna e não inventa folhas na response", () => {
+test("edição manual conserva lacuna e expõe somente as alternativas textuais da response", () => {
   const responseId = "gap";
   const blockKeyPrefix = "lesson::card";
   const blockKey = `${blockKeyPrefix}::response:${responseId}`;
@@ -317,9 +317,16 @@ test("edição manual conserva lacuna e não inventa folhas na response", () => 
     }
   });
   assert.match(rendered.bodyHtml, /text-gap-open-choice/u);
-  assert.doesNotMatch(rendered.bodyHtml, /data-manual-edit-path|data-package-manual-field-path/u);
-  assert.doesNotMatch(rendered.bodyHtml, /package-manual-(?:editor|field)|textarea/u);
-  assert.equal(rendered.dockHtml, renderPackageStudyUnitBlocksWithDock(card, {
+  const paths = [...rendered.bodyHtml.matchAll(/data-package-manual-field-path="([^"]+)"/gu)]
+    .map((match) => decodeURIComponent(match[1])).sort();
+  assert.deepEqual(paths, ["blanks[0].answer", "blanks[0].distractors[0]"]);
+  assert.doesNotMatch(rendered.bodyHtml, /class="package-manual-(?:editor|field)|textarea/u);
+  // Editable leaves add only transient inline spans; values, actions and feedback
+  // of the practice controls remain identical to the reading renderer.
+  const withoutEditableSpans = rendered.dockHtml.replace(
+    /<span data-package-manual-field-path="[^"]+">([^<]*)<\/span>/gu, "$1"
+  );
+  assert.equal(withoutEditableSpans, renderPackageStudyUnitBlocksWithDock(card, {
     blockKeyPrefix,
     activeTextGapPrompt: { blockKey, blankIndex: 0 },
     responseStateByBlockKey: { [blockKey]: { values: [""], feedback: "wrong" } }

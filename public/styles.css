@@ -4741,55 +4741,14 @@ button.account-settings-back[hidden] {
   font-family: inherit;
 }
 
-.study-observation-category-list {
-  display: flex;
-  gap: 6px;
-  min-width: 0;
-  overflow-x: auto;
-  padding: 1px;
-  scrollbar-width: thin;
-}
-
-.study-observation-category-chip {
-  flex: 0 0 auto;
-  min-height: 44px;
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: var(--surface-raised);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.study-observation-category-chip input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.study-observation-category-chip span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0 12px;
-  font-size: var(--type-xs);
-  font-weight: 700;
-}
-
-.study-observation-category-chip.is-selected {
-  border-color: var(--action-primary);
-  background: var(--action-primary-subtle);
-  color: var(--action-primary);
-}
-
-.study-observation-category-chip:focus-within {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 /* Observações pessoais: lista plural, estado de sincronização e composição no mesmo sheet. */
+.study-observation-overlay {
+  padding-inline: 0;
+}
+
 .study-observation-sheet {
+  width: min(100dvw, 430px);
+  max-width: 100%;
   height: auto;
   max-height: min(86dvh, 760px, calc(100dvh - max(var(--safe-top), 6px) - var(--safe-bottom-tappable) - 12px));
   overflow: hidden;
@@ -4830,29 +4789,20 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-review-action {
-  display: inline-flex;
-  align-items: center;
+  display: inline-grid;
+  place-items: center;
   justify-self: start;
-  gap: 7px;
+  width: var(--tap);
+  min-width: var(--tap);
+  height: var(--tap);
   min-height: var(--tap);
-  max-width: 100%;
   color: var(--text-secondary);
-  font-size: var(--type-xs);
-  line-height: var(--leading-normal);
   text-decoration: none;
   border-radius: var(--radius-control);
 }
 
-.study-observation-review-action > svg {
-  flex: 0 0 auto;
-}
-
-.study-observation-review-action > span {
-  overflow-wrap: anywhere;
-}
-
-.study-observation-review-action:hover > span {
-  text-decoration: underline;
+.study-observation-review-action:hover {
+  background: var(--surface-sunken);
 }
 
 .study-observation-review-action:focus-visible {
@@ -5012,7 +4962,33 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-category-disclosure {
+  flex: 0 0 var(--tap);
   min-width: 0;
+}
+
+.study-observation-category-panel {
+  position: absolute;
+  z-index: 5;
+  inset-inline-start: 0;
+  bottom: calc(100% + 6px);
+  width: min(100%, 320px);
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-floating);
+}
+
+.study-observation-category-panel .field > span {
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+}
+
+.study-observation-category-panel select {
+  min-height: var(--tap);
+  font: inherit;
+  font-size: var(--type-sm);
 }
 
 .study-observation-category-disclosure > summary {
@@ -5043,14 +5019,15 @@ button.account-settings-back[hidden] {
   display: none;
 }
 
-.study-observation-category-disclosure.is-selected > summary {
+.study-observation-category-disclosure:has(option:checked:not([value=""])) > summary {
   border-color: var(--action-primary);
   color: var(--action-primary);
   background: var(--action-soft);
 }
 
-.study-observation-category-disclosure[open] > summary {
-  margin-bottom: 6px;
+.study-observation-category-disclosure > summary:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 0;
 }
 
 .study-observation-composer h3 {
@@ -5061,6 +5038,8 @@ button.account-settings-back[hidden] {
 .study-observation-composer .study-observation-textarea {
   min-height: min(120px, 24dvh);
   max-height: 34dvh;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
 }
 
 .study-observation-textarea:focus-visible {
@@ -5082,20 +5061,26 @@ button.account-settings-back[hidden] {
 }
 
 .study-observation-composer-actions {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: end;
+  align-items: center;
   gap: 7px;
 }
 
+.study-observation-action-spacer {
+  flex: 1 1 auto;
+}
+
 .study-observation-composer-actions button {
+  width: var(--tap);
   min-width: var(--tap);
+  height: var(--tap);
   min-height: var(--tap);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 11px;
+  padding: 0;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-control);
 }
@@ -5192,13 +5177,12 @@ button.account-settings-back[hidden] {
 .study-citation-list h3 { margin: 0 0 8px; font-size: 1rem; }
 .study-citation-reference { line-height: 1.65; margin-block: 8px; }
 .study-citation-quote { margin: 8px 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--border-default); white-space: pre-wrap; }
-.study-citation-roles, .study-citations-status { color: var(--text-secondary); font-size: .88rem; line-height: 1.5; }
+.study-citations-status { color: var(--text-secondary); font-size: .88rem; line-height: 1.5; }
 .study-citations-status.is-error { color: var(--status-danger); }
 .study-citation-locations { padding-inline-start: 1.2em; }
 .study-citation-locations > li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-block: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .study-citation-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.study-citation-actions a, .study-citation-download { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
-.study-citation-download { padding: 6px 10px; margin: 4px; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-subtle); color: var(--text-primary); font: inherit; cursor: pointer; }
+.study-citation-actions a { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
 .source-marker-group { display: inline-flex; flex-wrap: wrap; align-items: center; vertical-align: baseline; gap: 2px; }
 .source-marker { min-width: 44px; min-height: 44px; padding: 4px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--action-primary); font-size: .8rem; cursor: pointer; }
 .source-marker sup { font-size: inherit; font-weight: 700; }
@@ -5206,10 +5190,6 @@ button.account-settings-back[hidden] {
 .source-marker:hover { background: var(--action-secondary-hover); }
 
 @media (max-width: 390px) {
-  .study-observation-overlay {
-    padding-inline: max(4px, var(--safe-left));
-  }
-
   .study-observation-sheet {
     width: 100%;
     max-height: calc(100dvh - max(10px, var(--safe-top)) - max(8px, var(--safe-bottom)));

@@ -407,12 +407,12 @@ async function openStudyUnit(page, ownership, { duplicateMicrosequence = false, 
   await expect(page.getByLabel("Unidade de estudo 2 de 2")).toBeVisible();
 }
 
-async function openInspectionUnit(page, ownership, { longTitles = false } = {}) {
+async function openInspectionUnit(page, ownership, { longTitles = false, variant = "paragraph" } = {}) {
   await page.goto("/");
   await page.setContent('<!doctype html><html lang="pt-BR"><head>' +
     STYLES.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
     '</head><body><main class="course-authoring-root"><div id="inspection-root"></div></main></body></html>');
-  await page.evaluate(async ({ ownership, longTitles }) => {
+  await page.evaluate(async ({ ownership, longTitles, variant }) => {
     const { createCourseInspectionSequence } = await import(
       "/src/ui/CourseInspectionSequence.js"
     );
@@ -434,6 +434,22 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
       feedback: [],
       topics: ["Relações"]
     };
+    if (variant === "table") {
+      studyUnit.content = [{ id: "inspection-table-1", package: "aralearn.resource.table", version: "1.0.0",
+        data: { columns: ["Camada do ambiente", "Responsabilidade"], rows: [["Computador hospedeiro", "Oferece os recursos físicos."], ["Hipervisor", "Cria e controla máquinas virtuais."]], layout: "compact" } }];
+    }
+    if (variant === "gap" || variant === "gap-text") {
+      studyUnit.role = "practice";
+      studyUnit.content[0].data.text = "O VirtualBox atua como hipervisor no computador hospedeiro.";
+      studyUnit.response = { id: "inspection-gap-1", package: "aralearn.response.gap", version: "1.0.0",
+        data: { prompt: "Escolha a função do VirtualBox.", blanks: [{ id: "virtualbox-role", targetInstanceId: "inspection-paragraph-1", targetPath: "text:role", label: "Função do VirtualBox", responseMode: "choice", answer: "hipervisor", distractors: ["distribuição", "sistema convidado"] }] } };
+      studyUnit.feedback = [{ id: "inspection-comment-1", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "O hipervisor cria e controla as máquinas virtuais." } }];
+      if (variant === "gap-text") {
+        studyUnit.response.data.blanks[0].responseMode = "text";
+        studyUnit.response.data.blanks[0].acceptedAnswers = ["monitor de máquinas virtuais"];
+        delete studyUnit.response.data.blanks[0].distractors;
+      }
+    }
     const requests = [];
     let courseRevision = 7;
     let studyUnitVersion = 1;
@@ -544,6 +560,7 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
       }
     };
     globalThis.__inspectionManualRequests = requests;
+    globalThis.__inspectionManualSnapshot = () => structuredClone(studyUnit);
     const course = { courseId, revision: 7,
       title: longTitles ? "Relações conceituais e condições para resolver problemas com clareza" : "Curso de relações",
       ownership, canEdit: ownership === "owned" };
@@ -560,7 +577,7 @@ async function openInspectionUnit(page, ownership, { longTitles = false } = {}) 
       navigatorValue: navigator
     });
     await globalThis.__inspectionManualSequence.open();
-  }, { ownership, longTitles });
+  }, { ownership, longTitles, variant });
 }
 
 async function installContextualAssistanceResponses(page, {
@@ -1169,10 +1186,10 @@ test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como r
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Assistência por IA" })).toHaveCount(0);
   const reviewState = page.locator(".course-inspection-authorship");
-  const instructionalDetails = page.locator(".course-inspection-instructional-details");
+  const instructionalDetails = page.locator('.course-inspection-metadata-group[aria-label="Autoria"]');
   const lastIntervention = instructionalDetails.getByText("Última intervenção", { exact: true })
     .locator("..").locator("dd");
-  await expect(reviewState).toContainText("Revisão autoral declarada");
+  await expect(reviewState.getByRole("img", { name: "Revisão autoral declarada", exact: true })).toBeVisible();
   await expect(lastIntervention).toHaveText("GPT");
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
@@ -1180,8 +1197,8 @@ test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como r
   await field.fill("Texto de inspeção revisado.");
   await page.getByRole("button", { name: "Salvar edição" }).click();
   await expect(page.getByText("Edição salva.", { exact: true })).toBeAttached();
-  await expect(reviewState).toContainText("Revisão autoral desatualizada");
-  await expect(reviewState).not.toContainText("Revisão autoral declarada");
+  await expect(reviewState.getByRole("img", { name: "Revisão autoral desatualizada", exact: true })).toBeVisible();
+  await expect(reviewState.getByRole("img", { name: "Revisão autoral declarada", exact: true })).toHaveCount(0);
   await page.locator(".course-inspection-item-details > summary").click();
   await expect(lastIntervention).toBeVisible();
   await expect(lastIntervention).toHaveText("Autoria humana");
@@ -1401,6 +1418,96 @@ test("inspeção preserva título e cabeçalho ao editar nos temas e quatro larg
       });
     }
   }
+});
+
+test("inspeção conserva as células da tabela ao editar e cancelar sem mudanças", async ({ page }, testInfo) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    await openInspectionUnit(page, "owned", { variant: "table" });
+    const selectors = [".course-inspection-item-heading", ".runtime-table", ".runtime-table th:first-child",
+      ".runtime-table td:first-child", ".runtime-table tr:last-child td:last-child"];
+    const before = await elementGeometry(page, selectors);
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/entrada`);
+    await page.locator('[data-resource-target-id="content:inspection-table-1"]').click();
+    await expect(page.locator('[data-manual-edit-path="rows[0][0]"]')).toBeEditable();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/células`);
+    await testInfo.attach(`tabela-editavel-${width}`, { body: await page.screenshot({ path: testInfo.outputPath(`tabela-editavel-${width}.png`) }), contentType: "image/png" });
+    await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/cancelar`);
+    expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+});
+
+test("prévia da lacuna permite tentar respostas e editar alternativas sem gravar progresso", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await openInspectionUnit(page, "owned", { variant: "gap" });
+  const before = await page.evaluate(() => globalThis.__inspectionManualSnapshot());
+  await expect(page.getByText("Prática exibida com as respostas esperadas.", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("O hipervisor cria e controla as máquinas virtuais.", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Escolher resposta", exact: true }).click();
+  await expect(page.locator(".token-option")).toHaveCount(3);
+  await page.locator('.token-option[data-text-gap-value="distribuição"]').click();
+  await page.getByRole("button", { name: "Conferir resposta", exact: true }).click();
+  await expect(page.getByText("Incorreto. Tente novamente.", { exact: true })).toBeVisible();
+  await expect(page.getByText("O hipervisor cria e controla as máquinas virtuais.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Tentar de novo", exact: true }).click();
+  await page.getByRole("button", { name: "Escolher resposta", exact: true }).click();
+  await page.locator('.token-option[data-text-gap-value="hipervisor"]').click();
+  await page.getByRole("button", { name: "Conferir resposta", exact: true }).click();
+  await expect(page.getByText("Correto.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toEqual([]);
+  expect(await page.evaluate(() => globalThis.__inspectionManualSnapshot())).toEqual(before);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  const label = page.locator('[data-manual-edit-path="blanks[0].label"]');
+  const option = page.locator('[data-manual-edit-path="blanks[0].distractors[1]"]');
+  await expect(label).toBeEditable();
+  await expect(option).toBeEditable();
+  await expect(page.locator('[data-manual-edit-path="blanks[0].answer"]')).toBeEditable();
+  await option.fill("sistema visitante");
+  await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+  expect(await page.evaluate(() => globalThis.__inspectionManualSnapshot())).toEqual(before);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await label.fill("Papel do VirtualBox");
+  await option.fill("sistema visitante");
+  await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveAttribute("aria-pressed", "false");
+  const saved = await page.evaluate(() => globalThis.__inspectionManualSnapshot());
+  expect(saved.response.data.blanks[0]).toEqual({ ...before.response.data.blanks[0], label: "Papel do VirtualBox", distractors: ["distribuição", "sistema visitante"] });
+  expect(saved.content).toEqual(before.content);
+  expect(await page.evaluate(() => globalThis.__inspectionManualRequests.length)).toBe(1);
+  await page.evaluate(() => globalThis.__inspectionManualSequence.open());
+  await page.locator('.runtime-authoring-gap-options > summary').click();
+  await expect(page.locator('.runtime-authoring-gap-fields')).toContainText("Papel do VirtualBox");
+  await expect(page.locator('.runtime-authoring-gap-fields')).toContainText("sistema visitante");
+  const optionsBounds = await page.locator('.runtime-authoring-practice-controls').evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    const fields = element.querySelector('.runtime-authoring-gap-fields').getBoundingClientRect();
+    const buttons = [element.querySelector('summary'), element.querySelector('.runtime-authoring-practice-check')]
+      .map(node => { const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; });
+    return { left: bounds.left, right: bounds.right, fieldsLeft: fields.left, fieldsRight: fields.right, buttons };
+  });
+  expect(Math.abs(optionsBounds.left - optionsBounds.fieldsLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(optionsBounds.right - optionsBounds.fieldsRight)).toBeLessThanOrEqual(1);
+  expect(optionsBounds.buttons[0].y).toBe(optionsBounds.buttons[1].y);
+  expect(optionsBounds.buttons.map(({ width, height }) => [width, height])).toEqual([[44, 44], [44, 44]]);
+  await testInfo.attach("lacuna-alternativas-salvas-390", { body: await page.screenshot({ path: testInfo.outputPath("lacuna-alternativas-salvas-390.png") }), contentType: "image/png" });
+});
+
+test("prévia da lacuna digitada aceita equivalentes sem iniciar edição ou salvar tentativa", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await openInspectionUnit(page, "owned", { variant: "gap-text" });
+  const field = page.locator('[data-action="complete-input"]');
+  await field.fill("distribuição");
+  await page.getByRole("button", { name: "Conferir resposta", exact: true }).click();
+  await expect(page.getByText("Incorreto. Tente novamente.", { exact: true })).toBeVisible();
+  await field.fill("monitor de máquinas virtuais");
+  await page.getByRole("button", { name: "Conferir resposta", exact: true }).click();
+  await expect(page.getByText("Correto.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveAttribute("aria-pressed", "false");
+  expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toEqual([]);
+  expect(await page.evaluate(() => globalThis.__inspectionManualSnapshot().response.data.blanks[0].answer)).toBe("hipervisor");
 });
 
 test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", async ({ page }) => {

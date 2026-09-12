@@ -65,7 +65,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       return { ...unitCitations, studyUnitId: reference.studyUnitId, citations: [] };
     },
     loadExplanationContext: reference => {
-      if (probe.state === "error") throw new Error("A Explicação desta cópia está indisponível.");
+      if (probe.state === "error") throw new Error("A explicação desta cópia está indisponível.");
       return { courseId: course.id, courseRevision: 1, microsequenceId: ms.id, entityPath: [...path, reference.studyUnitId],
         targetKind: "microsequence_explanation", targetId: ms.id,
         explanation: probe.state === "missing" ? null : structuredClone(support),

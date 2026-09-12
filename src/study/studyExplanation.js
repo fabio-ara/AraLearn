@@ -9,6 +9,7 @@ import { captureRenderState, restoreRenderState } from "../ui/renderState.js";
 import { publicErrorMessage } from "../ui/publicErrorMessage.js";
 import { placeStudyCitationMarkers, renderStudyCitations, renderStudySourceMarkers, studyCitationMarkers } from "./studyCitations.js";
 import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "./studyTools.js";
+import { buildSourceDocumentUrl } from "./sourceDocumentUrl.js";
 
 const SOURCE_OPTIONS = Object.freeze({ targetKind: "microsequence_explanation" });
 const citationStatusNotice = status => status?.serviceUnavailable ? "Serviço indisponível. Exibindo as fontes salvas desta revisão." :
@@ -104,7 +105,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       return;
     }
     if (event.key !== "Tab") return;
-    const nodes = [...panel().querySelectorAll("button, a[href], input, textarea, select, [tabindex='0']")]
+    const nodes = [...panel().querySelectorAll("button, a[href], input, textarea, select, summary, [tabindex='0']")]
       .filter(node => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length);
     if (!nodes.length) return;
     const index = nodes.indexOf(root.ownerDocument.activeElement);
@@ -134,7 +135,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     const host = overlay.querySelector("[data-explanation-references]");
     const scrollTop = body().scrollTop;
     const previous = captureRenderState(host);
-    host.innerHTML = renderStudyCitations({ open: true, heading: "Referências da Explicação",
+    host.innerHTML = renderStudyCitations({ open: true, heading: "Referências da explicação",
       loading, value: citations, error: sourceError, courseId: contextValue.courseId,
       canAuthorSources: canAuthorSources(), downloadPending, downloadError,
       selectedOccurrenceId, formattedReferences: references, studyUnit: contextValue.explanation,
@@ -151,7 +152,10 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     restoreRenderState(host, previous, { restorePageScroll: false });
     host.querySelectorAll("[data-action='retry-citations']").forEach(node => node.addEventListener("click", () => void loadSources({ retry: true })));
     host.querySelectorAll("[data-action='download-citation-attachment']").forEach(node =>
-      node.addEventListener("click", () => void downloadAttachment(node)));
+      node.addEventListener("click", event => {
+        event.preventDefault();
+        if (node.getAttribute("aria-disabled") !== "true") void downloadAttachment(node);
+      }));
     host.querySelectorAll("[data-action='return-citation']").forEach(node => node.addEventListener("click", () => returnToOccurrence(node)));
     if (requestedCitation && !requestedCitation.focused && !loading && unitSources) {
       requestedCitation.focused = true;
@@ -224,8 +228,8 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       placeSources();
     } catch (error) {
       if (!overlay || ownEpoch !== epoch) return;
-      sourceError = publicErrorMessage(error, "Não foi possível consultar as fontes da Explicação.", {
-        conflict: "O curso mudou. Reabra a Explicação para consultar as fontes atuais.",
+      sourceError = publicErrorMessage(error, "Não foi possível consultar as fontes da explicação.", {
+        conflict: "O curso mudou. Reabra a explicação para consultar as fontes atuais.",
         network: "As fontes não estão salvas nesta cópia e não foi possível consultá-las."
       });
     } finally {
@@ -250,17 +254,14 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
         sourceRevision: citation.sourceRevision, attachment: structuredClone(attachment)
       });
       if (!overlay || ownEpoch !== epoch) return;
-      const url = new URL(result.signedUrl);
-      const local = url.protocol === "http:" && ["127.0.0.1", "localhost", "10.0.2.2"].includes(url.hostname);
-      if ((url.protocol !== "https:" && !local) || url.username || url.password) throw new TypeError("URL do PDF inválida.");
-      const page = Number(node.dataset.citationPage);
-      if (Number.isSafeInteger(page) && page > 0 && page <= 1_000_000) url.hash = `page=${page}`;
-      downloadPdf(url.href, attachment);
+      const anchorIndex = Number(node.dataset.citationAnchorIndex);
+      const anchor = Number.isSafeInteger(anchorIndex) && anchorIndex >= 0 ? citation.anchors?.[anchorIndex] ?? null : null;
+      downloadPdf(buildSourceDocumentUrl(result.signedUrl, { attachment, anchor }), attachment);
     } catch (error) {
       if (!overlay || ownEpoch !== epoch) return;
       downloadError = publicErrorMessage(error, "Não foi possível abrir este PDF.", {
         network: "O texto está salvo, mas este PDF externo precisa de conexão e acesso autorizado.",
-        conflict: "O curso mudou. Reabra a Explicação para consultar o PDF atual."
+        conflict: "O curso mudou. Reabra a explicação para consultar o PDF atual."
       });
       if (unit) { unitSources.downloadError = downloadError; downloadError = ""; }
     } finally {
@@ -290,16 +291,16 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
         renderPackageStudyUnitBlocks(renderingUnit, { toolsInActionBar: true,
           sourceTextTargets: listCourseSourceOccurrenceTargets(contextValue.explanation, SOURCE_OPTIONS),
           blockKeyPrefix: `explanation:${contextKey}` }) :
-        '<p role="status">Esta microssequência ainda não tem Explicação. Você pode continuar o estudo.</p>';
+        '<p role="status">Esta microssequência ainda não tem explicação. Você pode continuar o estudo.</p>';
     } catch (error) {
       renderingUnit = null;
-      content = `<p role="alert">${escape(publicErrorMessage(error, "Não foi possível abrir a Explicação desta cópia."))}</p>`;
+      content = `<p role="alert">${escape(publicErrorMessage(error, "Não foi possível abrir a explicação desta cópia."))}</p>`;
     }
     overlay = root.ownerDocument.createElement("section");
     overlay.className = "editor-overlay study-explanation-overlay";
     overlay.innerHTML = '<article class="editor-sheet study-explanation-panel" role="dialog" aria-modal="true" aria-labelledby="study-explanation-title">' +
       '<div class="study-explanation-reading"><header class="editor-head">' +
-      '<h2 id="study-explanation-title">Explicação</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="Fechar Explicação" title="Fechar Explicação">' +
+      '<h2 id="study-explanation-title">Explicação</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="Fechar explicação" title="Fechar explicação">' +
       renderUiIcon("remove-state", "home-tab-icon") + '</button></header>' +
       `<div class="editor-body study-explanation-body" tabindex="0">${content}<div data-explanation-source-markers></div><div data-explanation-references></div></div>` +
       (renderingUnit ? `<footer class="study-explanation-tools">${renderStudyToolActions(renderingUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true })}</footer>` : "") +
@@ -329,7 +330,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     if (renderingUnit) void RESOURCE_PACKAGE_REGISTRY.hydrate(body()).then(() => {
       if (overlay === currentOverlay) placeSources();
     }).catch(() => {
-      if (overlay === currentOverlay) body().insertAdjacentHTML("beforeend", '<p role="alert">Um componente não pôde ser preparado. Feche e reabra a Explicação para tentar novamente.</p>');
+      if (overlay === currentOverlay) body().insertAdjacentHTML("beforeend", '<p role="alert">Um componente não pôde ser preparado. Feche e reabra a explicação para tentar novamente.</p>');
     });
     if (contextValue) void loadSources();
     return true;

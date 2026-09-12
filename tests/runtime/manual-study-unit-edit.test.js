@@ -161,6 +161,47 @@ test("edição textual reconcilia a resposta praticada sem editor paralelo", () 
   assert.deepEqual(edited.response.data.blanks[0].distractors, ["DNS"]);
 });
 
+test("editar alternativas da lacuna preserva identidades e reconcilia apenas a ocorrência da resposta", () => {
+  const unit = {
+    id: "answer-options", position: 1, title: "Lacunas", role: "practice", topics: [], feedback: [],
+    content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "O hipervisor controla a VM. Outro hipervisor também controla a VM." } }],
+    response: { id: "response", package: "aralearn.response.gap", version: "1.0.0", data: { blanks: [0, 1].map(index => ({
+      id: `blank-${index}`, targetInstanceId: "body", targetPath: `text:blank-${index}`, label: `Lacuna ${index + 1}`,
+      responseMode: "choice", answer: "hipervisor", distractors: ["sistema convidado", "distribuição"]
+    })) } }
+  };
+  const changed = applyManualStudyUnitEdit(unit, "response:response", { pathValues: {
+    "blanks[1].answer": "monitor de máquinas virtuais",
+    "blanks[1].label": "Segundo ambiente",
+    "blanks[1].distractors[0]": "sistema visitante",
+    "blanks[1].targetInstanceId": "not-allowed"
+  } });
+  assert.equal(changed.content[0].data.text, "O hipervisor controla a VM. Outro monitor de máquinas virtuais também controla a VM.");
+  assert.deepEqual(changed.response.data.blanks[0], unit.response.data.blanks[0]);
+  assert.equal(changed.response.data.blanks[1].targetInstanceId, "body");
+  assert.equal(changed.response.data.blanks[1].id, "blank-1");
+  assert.equal(changed.response.data.blanks[1].label, "Segundo ambiente");
+  assert.equal(changed.response.data.blanks[1].distractors[0], "sistema visitante");
+  assert.equal(unit.content[0].data.text, "O hipervisor controla a VM. Outro hipervisor também controla a VM.");
+  assert.throws(() => applyManualStudyUnitEdit(unit, "response:response", { pathValues: {
+    "blanks[0].distractors[0]": "hipervisor"
+  } }), /incompleta ou inválida/u);
+  assert.deepEqual(applyManualStudyUnitEdit(changed, "response:response", { pathValues: {
+    "blanks[1].label": "Segundo ambiente"
+  } }), changed);
+});
+
+test("alternativas editáveis são restritas à autoria e preservam o renderer de Estudo", () => {
+  const unit = structuredClone(fixture.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1]);
+  const ordinary = renderPackageStudyUnitBlocks(unit);
+  assert.doesNotMatch(ordinary, /runtime-authoring-gap-options|Conferir resposta/u);
+  const editable = renderPackageStudyUnitBlocks(unit, { authoringPracticePreview: true, authoringPracticeEditing: true,
+    resourceSelectionEnabled: true, manualEditingTargetId: `response:${unit.response.id}` });
+  assert.match(editable, /runtime-authoring-gap-options" open/u);
+  assert.match(editable, /data-package-manual-field-path="blanks%5B0%5D.answer"/u);
+  assert.match(editable, /Resposta correta/u);
+});
+
 test("todo package de conteúdo usa o mesmo contrato de folhas textuais", () => {
   const catalog = RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" });
   assert.ok(catalog.length >= 20);

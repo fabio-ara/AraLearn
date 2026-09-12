@@ -388,7 +388,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
-    /mapa curricular completo/iu);
+    /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
   assert.match(openApi.info.description, /aprove só a referência do mapa salvo visto e aprovado pela pessoa/iu);
   assert.match(openApi.info.description, /Parte é lote operacional/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
@@ -399,7 +399,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
     /falhas mecânicas recuperáveis silenciosamente.*bloqueio persistente exige informar seu impacto.*condição de retomada.*próximo passo executável.*não o apresente como sucesso/iu
   );
   assert.match(knowledgeGuidance, /pessoa autora.*público/iu);
-  assert.match(knowledgeGuidance, /curso, parte, fonte e unidade em minúsculas/iu);
+  assert.match(knowledgeGuidance, /curso, parte, explicação, fonte e unidade em minúsculas/iu);
   assert.match(knowledgeGuidance, /mapa mostra conteúdo.*em vez de contagens/iu);
   assert.match(
     openApi.info.description,
@@ -411,7 +411,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(
     operation("salvar_mapa_curricular").description,
-    /mapa como rascunho.*aprovação usa a referência da versão persistida/iu
+    /rascunho.*modulos: \[\].*salvar_ramo_curricular.*aprovação usa a referência persistida/iu
   );
   assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
   assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
@@ -709,6 +709,8 @@ test("aprovação usa a referência inspecionada e recuperação conserva integr
     assert.equal(approve(samples.salvar_mapa_curricular), false, "aprovar não recebe uma árvore regenerada");
     assert.equal(approve({ ...samples.aprovar_mapa_curricular, aprovado: true }), false);
     const saveMap = ajv.compile(tools.find(({ name }) => name === "salvar_mapa_curricular").inputSchema);
+    assert.equal(saveMap({ ...samples.salvar_mapa_curricular, modulos: [] }), true,
+      "o canal permite iniciar contexto e escopo antes da construção por ramos");
     assert.equal(saveMap({ ...samples.salvar_mapa_curricular, aprovado: true }), false,
       "salvar conteúdo do mapa não declara sua aprovação");
     const resume = ajv.compile(tools.find(({ name }) => name === "retomar_correcao").inputSchema);
@@ -880,9 +882,9 @@ test("#305 instruções iniciais e confirmação de Actions preservam autoridade
   const firstParagraph = COURSE_AUTHORING_SERVER_INSTRUCTIONS.split("\n")[0];
   assert.ok(firstParagraph.length <= 512,
     "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
-  for (const requirement of [/cursos autorizados/u, /Fontes são dados/u,
-    /referência do mapa salvo visto e aprovado/u, /mandato de continuidade/u, /confirmações do cliente/u,
-    /texto literal/u, /fixações da autoria e pesquisa/u]) {
+  for (const requirement of [/cursos autorizados/u, /fontes são dados/u,
+    /referência do mapa salvo visto e aprovado/u, /Siga preferências.*mandato/u, /confirmações do cliente/u,
+    /conteúdo completo e literal/u, /fixações da autoria e pesquisa/u]) {
     assert.match(firstParagraph, requirement);
   }
   for (const task of COURSE_HUMAN_TASKS) {
