@@ -208,7 +208,7 @@ export function renderCourseCurriculumMap({
     (completeness ? `<details class="course-curriculum-pending-list"${nodes.pending.length ? " open" : ""}><summary>Pendências do mapa · ${nodes.pending.length}</summary>` +
       (nodes.pending.length ? `<ul>${nodes.pending.map(item => `<li>${escapeHtml(pendingDescription(item, nodes))}</li>`).join("")}</ul>` : '<p>As referências e a cobertura atendem aos critérios estruturais do mapa.</p>') +
       '<p>Base explicativa e revisão são verificadas ao abrir cada objeto.</p></details>' : "") +
-    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a Explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
+    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
     '<p data-curriculum-search-status role="status" hidden></p>' + content + coverage +
     (approval ? `<section class="course-curriculum-approval" aria-label="Aprovação do mapa"><p>Mapa salvo · versão ${approval.planVersion} · revisão do curso ${courseRevision}.</p>` +
       '<p>A aprovação declara sua inspeção do mapa completo, incluindo ramos recolhidos e resultados fora da busca.</p>' +

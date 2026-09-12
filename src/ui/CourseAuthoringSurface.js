@@ -1133,7 +1133,7 @@ export function createCourseAuthoringSurface({
             state.section !== "planning" || state.parameterTarget || state.sourceTarget || planningExplanation?.hasPendingDraft()) return false;
         const explanation = entity.content?.explanation || null;
         if (!explanation) {
-          setRequestFeedback("A base explicativa ainda não tem conteúdo salvo. Abra Explicação para consultar seu planejamento.");
+          setRequestFeedback("A base explicativa ainda não tem conteúdo salvo. Abra explicação para consultar seu planejamento.");
           return false;
         }
         button?.focus?.({ preventScroll: true });

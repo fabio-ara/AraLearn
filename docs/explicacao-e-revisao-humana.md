@@ -188,7 +188,7 @@ Uma cópia independente conserva conteúdo, fontes e configuração, mas começa
 
 O controle **Explicação** aparece tanto na leitura quanto na prática. Abrir consulta o texto salvo; não chama um modelo de linguagem. Abrir conserva o ponto do percurso e a resposta ainda não enviada. Revelar a resposta de uma atividade é uma ação separada.
 
-O painel conserva a unidade de origem. Você pode ler, seguir uma referência e voltar ao trecho que a acionou. **Fechar Explicação** ou Escape retorna à unidade com posição, foco e resposta preservados. As referências da base e da unidade permanecem em grupos distintos. Se ainda não houver base salva, o painel informa a ausência e mantém as referências disponíveis.
+O painel conserva a unidade de origem. Você pode ler, seguir uma referência e voltar ao trecho que a acionou. **Fechar explicação** ou Escape retorna à unidade com posição, foco e resposta preservados. As referências da base e da unidade permanecem em grupos distintos. Se ainda não houver base salva, o painel informa a ausência e mantém as referências disponíveis.
 
 Depois de carregar o curso, o texto da explicação acompanha sua cópia local. Referências já consultadas podem ser lidas na revisão guardada; arquivos e páginas externas podem continuar exigindo conexão. Falta de rede, falta de acesso e ausência de conteúdo são situações distintas, como explica o [guia do estudante](guia-estudante.md#preparar-o-dispositivo-para-estudar-sem-conexão).
 

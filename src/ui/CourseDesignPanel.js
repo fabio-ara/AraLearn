@@ -195,7 +195,7 @@ function renderParameterCard(design, definition, resolution, busy, { editing = f
   if (editing) return `<section class="course-design-parameter-editor" data-parameter-id="${escapeHtml(definition.id)}">` +
     `<h3>${escapeHtml(definition.label)}</h3><p>${escapeHtml(definition.construct)}</p>` +
     renderParameterInspection(design, definition, resolution, { appliedParameters, appliedFailure }) +
-    '<p class="course-design-context-note">Salvar ajusta a orientação; não reescreve as unidades nem a Explicação já produzidas.</p>' +
+    '<p class="course-design-context-note">Salvar ajusta a orientação; não reescreve as unidades nem a explicação já produzidas.</p>' +
     editor + '</section>';
   return `<article class="course-design-parameter" data-parameter-id="${escapeHtml(definition.id)}">` +
     '<header tabindex="0"><div>' +

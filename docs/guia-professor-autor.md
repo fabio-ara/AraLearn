@@ -38,7 +38,7 @@ Para cada parte, combine o que será desenvolvido e examine a progressão propos
 
 Em **Conteúdo**, você pode percorrer as unidades na ordem ou usar **Mostrar várias unidades** para compará-las. Essa leitura permite verificar a continuidade do percurso e o ciclo completo de cada atividade, da tarefa ao retorno. Selecionar unidades para registrar uma observação em lote é uma ação própria.
 
-O controle de explicação abre a base compartilhada pela microssequência. Ela pode existir antes das unidades. **Editar Explicação** permite alterar os campos textuais disponíveis; examine a prévia e escolha **Salvar Explicação** ou **Cancelar edição**. Para acrescentar componentes ou produzir uma base ainda ausente, use o fluxo de autoria correspondente. Os [controles de edição](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) distinguem edição manual e assistência.
+O controle de explicação abre a base compartilhada pela microssequência. Ela pode existir antes das unidades. **Editar explicação** permite alterar os campos textuais disponíveis; examine a prévia e escolha **Salvar explicação** ou **Cancelar edição**. Para acrescentar componentes ou produzir uma base ainda ausente, use o fluxo de autoria correspondente. Os [controles de edição](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) distinguem edição manual e assistência.
 
 Depois de uma produção por conversa, volte ao aplicativo e confira o conteúdo salvo. Os controles de atualização e a recuperação de rascunhos estão em [Uso do aplicativo](uso-do-app.md#trabalhar-com-um-assistente-a-partir-da-autoria) e [Solução de problemas](solucao-de-problemas.md#a-alteração-por-mcp-ou-actions-não-aparece-na-interface).
 

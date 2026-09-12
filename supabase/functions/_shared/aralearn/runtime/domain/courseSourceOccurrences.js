@@ -64,7 +64,7 @@ function slotInstances(studyUnit, slot) {
   return Array.isArray(studyUnit?.[slot]) ? studyUnit[slot] : [];
 }
 
-// A superfície recebida é a unidade ou a Explicação, sem copiar o apoio na unidade.
+// A superfície recebida é a unidade ou a explicação, sem copiar o apoio na unidade.
 export function listCourseSourceOccurrenceTargets(studyUnit, options) {
   return targetSlots(options).flatMap((slot) => slotInstances(studyUnit, slot).flatMap((instance) => {
     if (RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, slot).valid !== true) return [];

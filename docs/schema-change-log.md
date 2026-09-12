@@ -112,11 +112,11 @@ lista vazia, `items: []`.
 A função escalar que resolve a atribuição produzia uma linha composta nula no
 `FROM`; a agregação transformava essa ausência em item com identidade e versão
 nulas, recusado corretamente pelo cliente. O filtro por identidade da atribuição
-corrige a leitura para item do plano, unidade e Explicação, sem inventar versão,
+corrige a leitura para item do plano, unidade e explicação, sem inventar versão,
 apagar vínculos existentes ou confundir alvo inexistente com alvo sem fontes.
 
 A mesma migração corrige a codificação das mensagens de erro do ramo manual da
-Explicação. As funções preservam assinaturas, autorização e permissões. Não há
+explicação. As funções preservam assinaturas, autorização e permissões. Não há
 transformação dos dados armazenados. Testes sintéticos locais distinguem os três
 alvos sem atribuição, atribuição existente, alvo inexistente e mensagem UTF-8.
 
@@ -126,13 +126,13 @@ O recibo informa a versão real; o avanço do curso não significa que a entidad
 foi reescrita. Essa distinção é coberta na prova local, sem afirmar revisão humana
 de conteúdo real ou aplicação hospedada.
 
-## 20260908002120 — edição manual da Explicação
+## 20260908002120 — edição manual da explicação
 
 Esta mudança permite que a pessoa proprietária edite somente a explicação da
 microssequência que está inspecionando, preservando o restante do curso.
 
 A composição existente recebe um ramo focal para a pessoa proprietária editar
-somente a Explicação da microssequência inspecionada. O serviço exige versão da
+somente a explicação da microssequência inspecionada. O serviço exige versão da
 microssequência e revisão do curso, conserva pai, posição, demais campos e vínculos
 bibliográficos atuais, e confirma conteúdo e proveniência na mesma transação.
 Não aceita esse ato como MCP ou assistência por provedor, nem como edição de
@@ -161,7 +161,7 @@ A microssequência corrente conserva `explanationPlan` e uma `explanation` com
 título e recursos do catálogo comum. Materializar uma parte exige um apoio por
 microssequência produzida; unidades, aplicações e vínculos são confirmados na
 mesma transação e no recibo existente. Uma falha do apoio desfaz o lote. Salvar
-o mapa preserva a Explicação existente e altera somente sua proposta.
+o mapa preserva a explicação existente e altera somente sua proposta.
 
 `content_review` é metadado protegido, separado do conteúdo importável. O corte
 mantém o acervo anterior sem revisão registrada; novas microssequências e cópias

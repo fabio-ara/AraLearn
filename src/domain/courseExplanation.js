@@ -13,7 +13,7 @@ export function normalizeMicrosequenceExplanation(value, registry = RESOURCE_PAC
   const ids = new Set();
   const content = value.content.map((instance) => {
     if (!text(instance?.id) || ids.has(instance.id)) {
-      throw new TypeError("Cada elemento da Explicação precisa de uma identidade própria.");
+      throw new TypeError("Cada elemento da explicação precisa de uma identidade própria.");
     }
     ids.add(instance.id);
     const result = registry.validateInstance(instance, "content");
@@ -25,7 +25,7 @@ export function normalizeMicrosequenceExplanation(value, registry = RESOURCE_PAC
 
 export function normalizeMicrosequenceExplanationPlan(value) {
   if (!exact(value, ["purpose", "prerequisites", "relations", "sourceIds"]) || !text(value.purpose)) {
-    throw new TypeError("O planejamento da Explicação exige um propósito explícito.");
+    throw new TypeError("O planejamento da explicação exige um propósito explícito.");
   }
   const result = { purpose: value.purpose.trim() };
   for (const field of ["prerequisites", "relations", "sourceIds"]) {

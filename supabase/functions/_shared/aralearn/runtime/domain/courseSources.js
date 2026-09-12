@@ -901,10 +901,10 @@ export function normalizeSourceAttributionApplications(value) {
   const ids = new Set();
   const applications = value.map((candidate) => {
     if (candidate?.targetKind === "microsequence_explanation") {
-      exact(candidate, ["targetKind", "targetId", "sourceLinks"], "invalid_course_source_attribution_application", "A aplicação de proveniência da Explicação");
+      exact(candidate, ["targetKind", "targetId", "sourceLinks"], "invalid_course_source_attribution_application", "A aplicação de proveniência da explicação");
       const targetId = opaqueId(candidate.targetId, 240, "invalid_course_source_target", "A identidade da microssequência");
       const key = `microsequence_explanation:${targetId}`;
-      if (ids.has(key)) fail("duplicate_course_source_attribution_application", "A aplicação repete uma Explicação.");
+      if (ids.has(key)) fail("duplicate_course_source_attribution_application", "A aplicação repete uma explicação.");
       ids.add(key);
       return { targetKind: candidate.targetKind, targetId,
         sourceLinks: normalizeCourseSourceLinks(candidate.sourceLinks, { targetKind: candidate.targetKind }) };

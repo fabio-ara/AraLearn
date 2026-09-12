@@ -26,11 +26,11 @@ Quando houver uma resposta incorreta, a atividade pode permitir outra tentativa 
 
 Nas lacunas com alternativas, toque em uma lacuna vazia para escolher seu preenchimento. Para mudar uma escolha, toque na lacuna preenchida: somente aquele valor será limpo.
 
-## Consultar a Explicação
+## Consultar a explicação
 
 Quando precisar desenvolver melhor o assunto, abra **Explicação** na fileira de ações da unidade. A explicação é o texto-base da microssequência: desenvolve o assunto e o liga às fontes que sustentam o percurso. Todas as unidades daquela microssequência consultam o mesmo texto, preparado durante a autoria.
 
-Você pode abri-la durante uma atividade; a resposta que começou a escrever permanece guardada. Essa ação consulta o texto já salvo pela autoria: não gera uma nova resposta de IA nem envia ou conclui a atividade. Ao terminar, use **Fechar Explicação** ou a tecla Escape para voltar à unidade.
+Você pode abri-la durante uma atividade; a resposta que começou a escrever permanece guardada. Essa ação consulta o texto já salvo pela autoria: não gera uma nova resposta de IA nem envia ou conclui a atividade. Ao terminar, use **Fechar explicação** ou a tecla Escape para voltar à unidade.
 
 A indicação de revisão autoral informa que o autor declarou ter inspecionado aquele conteúdo salvo. Alguns cursos permitem estudar material ainda sem essa declaração; outros exigem conteúdo revisado. Essa escolha pertence ao proprietário. A [revisão humana](explicacao-e-revisao-humana.md#revisão-independente-por-objeto) é diferente da marca pessoal **Rever**.
 
