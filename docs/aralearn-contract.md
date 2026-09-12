@@ -252,8 +252,11 @@ Cada pessoa autora dispõe de até 60 buscas e 10 tentativas de concessão por
 janela de dez minutos. Ao vencer a janela, a próxima operação inicia uma nova
 contagem, preservando as concessões existentes.
 
-Cursos começam privados. Tornar público exige confirmação e política de acesso
-a arquivos. Visitantes recebem somente projeções de estudo e não podem editar
+Cursos começam privados. Tornar público exige confirmação e disponibiliza os arquivos
+por padrão (`publicFileAccess=available`). Uma escolha explícita pode restringi-los
+no curso; exceções de fonte e arquivo são preservadas e a mais específica prevalece.
+Tornar privado bloqueia visitantes independentemente da política latente de arquivos.
+Visitantes recebem somente projeções de estudo e não podem editar
 nem registrar observações. Pessoas autenticadas com acesso podem enviar suas observações;
 somente o proprietário altera o curso.
 

@@ -221,6 +221,14 @@ test("Actions aplica o escopo da tarefa escolhida dentro de um grupo com escrita
   assert.equal(writes[0].courseId, ACTOR_ID);
   assert.equal(writes[0].expectedRevision, 3);
   assert.match(writes[0].requestId, /^[A-Za-z0-9_-]{8,128}$/u);
+  const publish = { ...argumentsForWrite };
+  delete publish.arquivos;
+  const publicByDefault = await writer(request("definir_visibilidade", publish));
+  assert.equal(publicByDefault.status, 200);
+  assert.deepEqual((await publicByDefault.json()).context, { visibilidade: "public", arquivos: "available" });
+  const invalidPolicy = await writer(request("definir_visibilidade", { ...publish, arquivos: "inherit" }));
+  assert.equal(invalidPolicy.status, 422);
+  assert.equal(writes.length, 2);
 });
 
 test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técnico", async () => {

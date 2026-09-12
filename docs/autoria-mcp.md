@@ -79,7 +79,7 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `manter_fonte` | salvar ou retirar fonte, PDFs, âncoras, verificação e vínculos de proveniência |
 | `incorporar_pdf_como_fonte` | guardar um PDF anexado como fonte ou vinculá-lo a uma fonte existente |
 | `guardar_audio` | guardar WAV PCM ou MP3 já existente na biblioteca do curso |
-| `definir_visibilidade` | escolher visibilidade do curso e política de seus arquivos dentro dos direitos existentes |
+| `definir_visibilidade` | tornar o curso público com arquivos disponíveis por padrão, ou privado; permite restringir os arquivos explicitamente |
 | `alterar_acesso` | conceder ou revogar acesso da pessoa identificada, com escolha expressa sobre cópia |
 | `definir_acesso_arquivos` | escolher herança, restrição ou disponibilidade dos arquivos da fonte inspecionada |
 | `definir_politica_revisao` | escolher entre conteúdo completo salvo e somente revisado sem alterar visibilidade ou direitos |

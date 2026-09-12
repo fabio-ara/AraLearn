@@ -599,7 +599,7 @@ Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhame
 
 #### Disponibilização pública
 
-Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. A política de arquivos é confirmada separadamente; tornar o curso público não concede edição nem cria uma versão imutável. O proprietário confirma o acesso público e a política de arquivos; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.
+Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. Os arquivos ficam disponíveis por padrão, preservando restrições explícitas; tornar o curso público não concede edição nem cria uma versão imutável. O proprietário confirma o acesso público, com arquivos disponíveis por padrão ou restrição explícita; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.
 
 **Domínio e implementação.** Disponibilização pública; equivalente internacional: public course availability; símbolo: `courses.visibility`.
 

@@ -271,6 +271,13 @@ se baseia em cliques ou tempo de tela. O capítulo de
 [privacidade](privacidade.md) distingue as informações do aplicativo das
 enviadas aos serviços externos de IA.
 
+Quando a pessoa pede “crie um curso público”, o curso ainda nasce privado. O assistente
+conclui o pedido com `definir_visibilidade` e confirma por `consultar_acesso` que o
+estado persistido é público antes de anunciar sucesso. Publicar sem outra escolha
+disponibiliza os arquivos por padrão; uma restrição explícita pode ser indicada no
+curso, e as exceções de fonte e arquivo permanecem. Em Actions, essas tarefas usam
+o grupo `acesso_do_curso`, cada uma com seus próprios argumentos.
+
 ## Confirmar o resultado e recuperar uma interrupção
 
 Uma falha de resposta pode ocorrer depois de a gravação terminar. O serviço

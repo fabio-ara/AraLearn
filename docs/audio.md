@@ -42,7 +42,7 @@ A reprodução de arquivos usa os controles do navegador para pausar, percorrer 
 
 ## Acesso e uso sem conexão
 
-Num curso privado, o proprietário consulta a biblioteca inteira. Uma pessoa com acesso compartilhado recebe somente os arquivos associados ao conteúdo que está autorizada a abrir. Para visitantes de um curso público, o áudio também precisa estar associado ao conteúdo e ter sua disponibilidade pública autorizada. Tornar o curso público não libera automaticamente os arquivos da biblioteca.
+Num curso privado, o proprietário consulta a biblioteca inteira. Uma pessoa com acesso compartilhado recebe somente os arquivos associados ao conteúdo que está autorizada a abrir. Para visitantes de um curso público, o áudio também precisa estar associado ao conteúdo e ter sua disponibilidade pública autorizada. Tornar o curso público disponibiliza os arquivos por padrão, preservando restrições explícitas aplicáveis; isso não expõe a visitantes a biblioteca autoral inteira nem áudios sem associação ao conteúdo de estudo.
 
 Cada abertura de um arquivo confirma o acesso pela rede. Depois de recebido, ele pode continuar tocando enquanto a ferramenta está aberta, mas não passa a integrar uma biblioteca permanente para uso sem conexão. Uma falha não aciona outro serviço de voz. Já a voz local pode funcionar offline nas condições explicadas acima.
 

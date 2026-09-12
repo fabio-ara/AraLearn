@@ -118,6 +118,11 @@ a explicação ou unidade salva. O [fluxo de revisão](fluxos-prompts-e-contrato
 e as [regras de acesso](aralearn-contract.md#revisão-do-conteúdo) distinguem
 essas operações de tornar um curso acessível e disponibilizar seus arquivos.
 
+Para um pedido explícito de curso público, execute `definir_visibilidade` no grupo
+`acesso_do_curso` e confirme o estado persistido com `consultar_acesso` antes de
+anunciar sucesso. Não é necessário pedir uma decisão separada sobre arquivos:
+a publicação os disponibiliza por padrão, preservando restrições explícitas.
+
 ## Resultado comum
 
 As operações devolvem `result`, com o resultado, e podem incluir `deepLink`,

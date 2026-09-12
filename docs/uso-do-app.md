@@ -171,7 +171,7 @@ Em **Pessoas e acesso**, use **Conceder acesso**, digite ao menos dois caractere
 
 O acesso permite estudar e enviar observações; a edição do original continua com o proprietário. A permissão de criar uma cópia é separada. Para revogar, use a ação junto ao identificador e confirme. O aplicativo remove a cópia compartilhada quando a próxima conferência pela rede constatar que a pessoa perdeu acesso. Uma cópia independente já criada continua sendo outro curso.
 
-O proprietário também pode tornar o curso público, permitindo leitura e prática sem conta. Ao confirmar, escolha a regra dos arquivos. Exceções por fonte e PDF ficam em **Fontes**: a regra do arquivo prevalece sobre a da fonte, que prevalece sobre a do curso.
+O proprietário também pode tornar o curso público, permitindo leitura e prática sem conta. Ao escolher **Público**, a opção inicial dos arquivos é **Disponíveis para estudo**. Para restringi-los, altere essa opção antes de confirmar. Exceções por fonte e PDF ficam em **Fontes**: a regra do arquivo prevalece sobre a da fonte, que prevalece sobre a do curso.
 
 Retirar uma concessão individual não impede a leitura pública. Voltar o curso a privado encerra novos acessos públicos e conserva as concessões individuais. Arquivos já recebidos por alguém não podem ser recolhidos pelo aplicativo. [Privacidade](privacidade.md) desenvolve acesso e conservação dos dados.
 

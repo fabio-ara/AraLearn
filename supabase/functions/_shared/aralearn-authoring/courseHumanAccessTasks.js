@@ -8,9 +8,9 @@ const task=(name,title,description,properties,required,readOnly=false)=>({name,t
 export const COURSE_HUMAN_ACCESS_TASK_DEFINITIONS=[
   task('consultar_acesso','Consultar acesso ao curso','Lê visibilidade, política de arquivos e pessoas autorizadas no curso próprio.',
     {curso:course},['curso'],true),
-  task('definir_visibilidade','Definir visibilidade do curso','Aplica a escolha expressa de curso público ou privado. A política de arquivos é independente e deve ser escolhida explicitamente.',
-    {curso:course,visibilidade:{type:'string',enum:['private','public']},arquivos:{type:'string',enum:['restricted','available']},confirmado:{type:'boolean',const:true}},
-    ['curso','visibilidade','arquivos','confirmado']),
+  task('definir_visibilidade','Definir visibilidade do curso','Aplica a escolha expressa de curso público ou privado. Publicar disponibiliza arquivos por padrão, preservando exceções de fonte e arquivo. Restrição do curso pode ser escolhida explicitamente; tornar privado bloqueia visitantes.',
+    {curso:course,visibilidade:{type:'string',enum:['private','public']},arquivos:{type:'string',enum:['restricted','available'],description:'Opcional: ao publicar, omitir disponibiliza arquivos; restricted restringe explicitamente. Ao tornar privado, omitir conserva a política latente. inherit pertence somente à tarefa definir_acesso_arquivos.'},confirmado:{type:'boolean',const:true}},
+    ['curso','visibilidade','confirmado']),
   task('alterar_acesso','Conceder ou revogar acesso','Usa o identificador exato da pessoa e autorização expressa. Concessão inclui a escolha sobre copiar; revogação preserva cópias independentes já existentes.',
     {curso:course,pessoa:{type:'string',minLength:3,maxLength:30},operacao:{type:'string',enum:['conceder','revogar']},
       permitirCopia:{type:'boolean'},confirmado:{type:'boolean',const:true}},['curso','pessoa','operacao','confirmado']),
@@ -58,13 +58,14 @@ export const COURSE_HUMAN_ACCESS_TASK_HANDLERS={
   },
   async definir_visibilidade(values) {
     const {adapter,principal,args,deadlineAt}=values;confirmed(args);
-    if(!['private','public'].includes(args.visibilidade)||!['restricted','available'].includes(args.arquivos))fail('Escolha visibilidade e política de arquivos válidas.');
+    if(!['private','public'].includes(args.visibilidade)||args.arquivos!==undefined&&!['restricted','available'].includes(args.arquivos))fail('Escolha visibilidade e política de arquivos válidas.');
     const resolved=await context(values);const courseId=resolved.course.id;
-    const saved=await executeTrustedCourseWrite({operation:'set_course_visibility',maxCasRetries:0,
+    const saved=await executeTrustedCourseWrite({operation:'set_course_visibility',maxCasRetries:1,
       load:()=>currentCourse(adapter,principal,courseId,deadlineAt),
-      build:current=>({courseId,expectedRevision:current.revision,visibility:args.visibilidade,publicFileAccess:args.arquivos,confirmed:true}),
+      build:current=>({courseId,expectedRevision:current.revision,visibility:args.visibilidade,
+        publicFileAccess:args.arquivos??(args.visibilidade==='public'?'available':current.publicFileAccess),confirmed:true}),
       commit:async request=>receipt(await adapter.setCourseVisibility({principal,...request,deadlineAt}),
-        'aralearn.course-visibility-change.v1',{courseId,visibility:args.visibilidade,publicFileAccess:args.arquivos})});
+        'aralearn.course-visibility-change.v1',{courseId,visibility:request.visibility,publicFileAccess:request.publicFileAccess})});
     return envelope('Confirmei a visibilidade e a política de arquivos escolhidas.',{visibilidade:saved.visibility,arquivos:saved.publicFileAccess});
   },
   async alterar_acesso(values) {
