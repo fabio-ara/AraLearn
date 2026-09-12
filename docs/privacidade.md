@@ -179,8 +179,9 @@ perfis ou diretório completo acessível ao visitante.
 ## Propriedade, acesso público e recuperação
 
 Todo curso nasce privado. O proprietário controla conteúdo, parâmetros, fontes,
-observações recebidas e áreas autorais. Torná-lo público exige confirmação e uma
-política explícita para arquivos. Visitantes recebem somente estrutura e conteúdo de
+observações recebidas e áreas autorais. Torná-lo público exige confirmação e
+disponibiliza seus arquivos por padrão, preservando restrições explícitas por curso,
+fonte ou arquivo. Visitantes recebem somente estrutura e conteúdo de
 estudo permitidos; não recebem plano privado, notas de verificação, observações,
 identidades de edição ou metadados de recuperação.
 
@@ -241,8 +242,10 @@ O inventário administrativo permite examinar esses casos antes de qualquer remo
 [guia de Supabase](supabase.md) descreve as verificações e a recuperação operacional.
 
 A política efetiva de arquivos prioriza a exceção do PDF, depois a da fonte e por fim a
-do curso. Fonte e arquivo podem herdar, restringir ou disponibilizar; o curso começa com
-arquivos restritos. O bucket continua privado. Cada novo download confere a autorização
+do curso. Fonte e arquivo podem herdar, restringir ou disponibilizar. O curso nasce
+privado e com arquivos restritos; ao publicar, a opção padrão passa a ser disponíveis,
+permitindo escolher restrito expressamente e preservando as exceções de fonte e arquivo.
+O bucket continua privado. Cada novo download confere a autorização
 e o vínculo vigente antes de assinar, sem expor caminho do Storage na projeção de
 estudo.
 

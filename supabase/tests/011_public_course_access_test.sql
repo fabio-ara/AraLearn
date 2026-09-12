@@ -121,7 +121,7 @@ insert into private.course_sources(course_id,source_id,revision,status,kind,titl
 insert into private.course_source_attachments(course_id,source_id,source_revision,content_hash,byte_size,media_type,storage_path)
  values('93000000-0000-4000-8000-000000000101','source',1,repeat('a',64),64,'application/pdf',
  '93000000-0000-4000-8000-000000000101/'||repeat('a',64)||'.pdf');
-select ok(not private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'curso público não torna PDF disponível por padrão');
+select ok(not private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'restrição explícita do curso público bloqueia PDF herdado');
 select throws_ok($t$select public.get_course_source_pdf_download_for_actor_v1(null,'93000000-0000-4000-8000-000000000101',3,'source',1,repeat('a',64))$t$,
  '42501','Arquivo não disponível para este acesso.','RPC de download verifica política');
 select is(public.set_course_source_file_access_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',3,'source',1,'available','source-allow-01')->>'sourceRevision','2','exceção de fonte incrementa sua revisão');
@@ -132,6 +132,19 @@ select ok(not private.can_read_course_file_v1('93000000-0000-4000-8000-000000000
 select ok(private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101','93000000-0000-4000-8000-000000000001','source',repeat('a',64)),'proprietário mantém acesso ao arquivo restrito');
 select is(public.get_owned_course_sources_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',5,'source','source')->'items'->0->>'publicFileAccess','available','owner lê política de fonte para editar');
 select is(public.get_owned_course_sources_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',5,'source','source')->'items'->0->'attachments'->0->>'publicFileAccess','restricted','owner lê exceção do arquivo');
+select is(public.set_course_visibility_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',5,'public','available',true,'publish-files-377')->>'courseRevision','6','curso público passa a disponibilizar arquivos herdados');
+select ok(not private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'restrição explícita do arquivo sobrevive ao curso disponível');
+select is(public.set_course_source_file_access_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',6,'source',3,'restricted','source-deny-377')->>'sourceRevision','4','fonte pode restringir arquivos no curso disponível');
+select is(public.set_course_source_file_access_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',7,'source',4,'inherit','file-inherit-377',repeat('a',64))->>'sourceRevision','5','arquivo volta a herdar a política da fonte');
+select ok(not private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'fonte restrita bloqueia arquivo herdado apesar do curso disponível');
+select throws_ok($t$select public.get_course_source_pdf_download_for_actor_v1(null,'93000000-0000-4000-8000-000000000101',8,'source',5,repeat('a',64))$t$,
+ '42501','Arquivo não disponível para este acesso.','download aplica restrição explícita da fonte');
+select is(public.set_course_source_file_access_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',8,'source',5,'inherit','source-inherit-377')->>'sourceRevision','6','fonte volta a herdar a política do curso');
+select ok(private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'fonte e arquivo herdados permitem acesso no curso disponível');
+select is(public.set_course_visibility_for_actor_v1('93000000-0000-4000-8000-000000000001','93000000-0000-4000-8000-000000000101',9,'private','available',true,'private-files-377')->>'courseRevision','10','curso pode ficar privado conservando política latente disponível');
+select ok(not private.can_read_course_file_v1('93000000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'curso privado bloqueia acesso público apesar da política latente disponível');
+select throws_ok($t$select public.get_course_source_pdf_download_for_actor_v1(null,'93000000-0000-4000-8000-000000000101',10,'source',6,repeat('a',64))$t$,
+ 'PT404','Curso inexistente.','download respeita visibilidade privada sem revelar o curso');
 select ok(not (select public from storage.buckets where id='course-source-pdfs'),'bucket PDF continua privado');
 
 select is(public.recover_owned_course_copy_for_actor_v1('93000000-0000-4000-8000-000000000002','93000000-0000-4000-8000-000000000101',1,1,

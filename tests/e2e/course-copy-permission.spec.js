@@ -4,6 +4,60 @@ const courseId = "e3060000-0000-4000-8000-000000000001";
 const personId = "e3060000-0000-4000-8000-000000000002";
 const handle = "estudante.com.identificador306";
 
+test("publicar seleciona arquivos disponíveis e permite restrição expressa", async ({ page }, testInfo) => {
+  await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
+  await page.goto("/");
+  await page.evaluate(async ({ courseId }) => {
+    document.body.innerHTML = '<div id="app-root"><main id="course-authoring-root" class="course-authoring-root"></main></div>';
+    const { createCourseAuthoringSurface } = await import("/src/ui/CourseAuthoringSurface.js");
+    const { buildCourseAuthoringRoute } = await import("/src/ui/courseAuthoringRoute.js");
+    const current = { courseId, revision: 1, title: "Publicação sintética", goal: "Provar a publicação.",
+      ownership: "owned", canEdit: true, canObserve: true, visibility: "private", publicFileAccess: "restricted" };
+    window.visibilityRequests = [];
+    const unused = async () => { throw new Error("Fora do recorte de publicação."); };
+    const controller = Object.fromEntries(["listCourses", "loadAuthoringOutline", "loadAuthoringStudyUnits",
+      "loadAuthoringInspectionPosition", "saveAuthoringInspectionPosition", "createCourse", "loadAuthoringPlan",
+      "loadCourseDesign", "mutateCourseDesign"].map(name => [name, unused]));
+    Object.assign(controller, {
+      async getCourse() { return { ...current }; },
+      async listCourseAccess() { return { contract: "aralearn.course-people.v3", courseId,
+        owner: { userId: courseId, handle: "autor377", avatarObjectKey: null }, people: [] }; },
+      async setCourseVisibility(request) {
+        window.visibilityRequests.push(request);
+        Object.assign(current, { visibility: request.visibility, publicFileAccess: request.publicFileAccess, revision: current.revision + 1 });
+        return { changed: true, courseRevision: current.revision };
+      }
+    });
+    window.peopleSurface = createCourseAuthoringSurface({ root: document.querySelector("#course-authoring-root"),
+      controller, locationValue: { pathname: "/", search: "", hash: buildCourseAuthoringRoute(courseId, { section: "people" }) } });
+    await window.peopleSurface.open();
+  }, { courseId });
+  await page.getByText("Acesso e cópia", { exact: true }).click();
+  const visibility = page.getByRole("combobox", { name: "Acesso ao curso", exact: true });
+  await visibility.selectOption("public");
+  const files = page.getByRole("combobox", { name: "Arquivos para visitantes" });
+  await expect(files).toHaveValue("available");
+  await page.screenshot({ path: testInfo.outputPath("publicacao-padrao-377.png") });
+  const save = page.getByRole("button", { name: "Salvar acesso ao curso", exact: true });
+  await save.click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toContainText("disponíveis a visitantes");
+  await dialog.getByRole("button", { name: "Tornar público", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.visibilityRequests.length)).toBe(1);
+  await expect(files).toHaveValue("available");
+  await files.selectOption("restricted");
+  await save.click();
+  await expect(dialog).toContainText("restritos a pessoas autorizadas");
+  await dialog.getByRole("button", { name: "Tornar público", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.visibilityRequests.length)).toBe(2);
+  await expect(files).toHaveValue("restricted");
+  expect((await page.evaluate(() => window.visibilityRequests)).map(({ visibility, publicFileAccess, confirmed }) =>
+    ({ visibility, publicFileAccess, confirmed }))).toEqual([
+    { visibility: "public", publicFileAccess: "available", confirmed: true },
+    { visibility: "public", publicFileAccess: "restricted", confirmed: true }
+  ]);
+});
+
 for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]) {
   test(`Pessoas permite e revoga somente cópia com foco e alcance em ${width} ${theme}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });

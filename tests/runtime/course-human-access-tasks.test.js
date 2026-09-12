@@ -52,6 +52,39 @@ test('resposta perdida relê e consulta o escritor transacional com a mesma iden
   const writes=events.filter(item=>typeof item==='object');assert.equal(writes.length,2);assert.deepEqual(writes[0],writes[1]);
   assert.equal(events[events.indexOf(writes[1])-1],'read');assert.equal(output.context.visibilidade,'public');
 });
+test('publicar sem política adicional disponibiliza arquivos; restrição expressa prevalece',async()=>{
+  for(const arquivos of [undefined,'restricted']) {
+    const {adapter,events}=harness();
+    const output=await execute(adapter,'definir_visibilidade',{curso:'Curso',visibilidade:'public',confirmado:true,
+      ...(arquivos===undefined?{}:{arquivos})});
+    assert.deepEqual(output.context,{visibilidade:'public',arquivos:arquivos??'available'});
+    assert.equal(events.find(item=>typeof item==='object').publicFileAccess,arquivos??'available');
+  }
+});
+test('publicação relê um conflito focal e preserva a escolha sem repetir indefinidamente',async()=>{
+  for(const persistent of [false,true]) {
+    const {adapter,events}=harness();let revision=4;const write=adapter.setCourseVisibility;
+    adapter.getCourse=async()=>{events.push('read');return{courseId,title:'Curso',revision,visibility:'private',publicFileAccess:'restricted'};};
+    adapter.setCourseVisibility=async request=>{
+      if(revision===4||persistent){events.push(request);revision++;throw Object.assign(new Error('Revisão avançou'),{code:'stale_course_state',status:409});}
+      return write(request);
+    };
+    const pending=execute(adapter,'definir_visibilidade',{curso:'Curso',visibilidade:'public',arquivos:'available',confirmado:true});
+    if(persistent)await assert.rejects(pending,{code:'stale_course_state'});
+    else assert.deepEqual((await pending).context,{visibilidade:'public',arquivos:'available'});
+    const writes=events.filter(item=>typeof item==='object');assert.equal(writes.length,2);
+    assert.deepEqual(writes.map(item=>item.expectedRevision),[4,5]);
+    assert.notEqual(writes[0].requestId,writes[1].requestId);
+    for(const item of writes)assert.equal(item.publicFileAccess,'available');
+    assert.equal(events[events.indexOf(writes[1])-1],'read');
+  }
+});
+test('tornar privado sem política adicional conserva a política latente',async()=>{
+  const {adapter}=harness();const read=adapter.getCourse;
+  adapter.getCourse=async()=>({...await read(),visibility:'public',publicFileAccess:'available'});
+  assert.deepEqual((await execute(adapter,'definir_visibilidade',{curso:'Curso',visibilidade:'private',confirmado:true})).context,
+    {visibilidade:'private',arquivos:'available'});
+});
 test('falha persistente conserva tentativa e não anuncia alteração',async()=>{
   const {adapter,events}=harness();adapter.setCourseVisibility=async request=>{events.push(request);throw Object.assign(new Error('Rede'),{status:503});};
   let failure;try{await execute(adapter,'definir_visibilidade',{curso:'Curso',visibilidade:'public',arquivos:'restricted',confirmado:true});}catch(error){failure=error;}

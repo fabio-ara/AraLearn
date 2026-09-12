@@ -134,7 +134,7 @@ A fonte pode ter uma das seguintes opções:
 | **Mostrar citação** | Identificação e localização, sem endereço externo. |
 | **Mostrar citação e link** | A identificação pode oferecer também o endereço do material. |
 
-O acesso aos arquivos tem sua própria regra. Tornar o curso público não libera automaticamente seus PDFs. As regras podem ser definidas no curso, na fonte e no arquivo; a mais específica prevalece. O catálogo privado e os trechos de verificação da autoria não acompanham automaticamente a leitura estudantil.
+Tornar o curso público disponibiliza seus PDFs por padrão, salvo restrição explícita no curso, na fonte ou no arquivo. As regras podem ser definidas no curso, na fonte e no arquivo; a mais específica prevalece. O catálogo privado e os trechos de verificação da autoria não acompanham automaticamente a leitura estudantil.
 
 Confira o acesso da pessoa que vai estudar: abrir um PDF como proprietário não
 prova que um estudante possa consultá-lo. Em curso privado compartilhado, a fonte

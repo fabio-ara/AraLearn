@@ -505,6 +505,7 @@ test("as instruções primárias preservam mandato, leitura literal e segurança
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Ensine dependências antes do uso/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Foco Conteúdo.*Explicação e fontes antes das unidades/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Cadência, revisão e diálogo são independentes/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Curso público exige definir_visibilidade e releitura antes do sucesso/iu);
   const planning = courseAuthoringGuidanceForCall("aprovar_mapa_curricular").instructions.join(" ");
   assert.match(planning, /curso, parte, explicação, fonte e unidade em minúsculas/iu);
   assert.match(planning, /conteúdo e relações, em vez de contagens/iu);

@@ -2042,7 +2042,7 @@
       ],
       "productTerm": "Disponibilização pública",
       "technicalSymbol": "courses.visibility",
-      "definition": "Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. A política de arquivos é confirmada separadamente; tornar o curso público não concede edição nem cria uma versão imutável.",
+      "definition": "Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. Os arquivos ficam disponíveis por padrão, preservando restrições explícitas; tornar o curso público não concede edição nem cria uma versão imutável.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2064,7 +2064,7 @@
       "interfaceTerm": "Disponibilização pública",
       "domainTerm": "Disponibilização pública",
       "englishEquivalent": "public course availability",
-      "araLearnExample": "O proprietário confirma o acesso público e a política de arquivos; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.",
+      "araLearnExample": "O proprietário confirma o acesso público, com arquivos disponíveis por padrão ou restrição explícita; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.",
       "ambiguityRisk": "Sem esta delimitação, “disponibilização pública” pode ser confundido com materialização, salvamento, curso pronto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [

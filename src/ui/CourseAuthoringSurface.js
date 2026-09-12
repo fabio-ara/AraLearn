@@ -3547,7 +3547,10 @@ export function createCourseAuthoringSurface({
       const form = event.target.closest("form");
       state.visibilityDraft = {
         visibility: form.elements.visibility.value,
-        publicFileAccess: form.elements.publicFileAccess?.value || state.visibilityDraft?.publicFileAccess || state.course.publicFileAccess || "restricted"
+        publicFileAccess: form.elements.visibility.value === "public" &&
+          (state.visibilityDraft?.visibility || state.course.visibility) !== "public"
+          ? "available"
+          : form.elements.publicFileAccess?.value || state.visibilityDraft?.publicFileAccess || state.course.publicFileAccess || "restricted"
       };
       if (event.type === "change" && event.target.matches("[data-course-visibility]")) render({ focus: "[data-course-visibility]" });
       return;

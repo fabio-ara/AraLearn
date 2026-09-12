@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.71] - 2026-09-12
+
+### Corrigido
+
+- publicar um curso disponibiliza seus arquivos por padrão na interface, MCP e Actions, preservando restrições explícitas de curso, fonte e arquivo;
+- uma mudança concorrente de revisão durante a publicação é relida e repetida uma vez, preservando a escolha solicitada sem anunciar sucesso quando a gravação não for confirmada.
+
 ## [0.0.70] - 2026-09-12
 
 ### Corrigido
