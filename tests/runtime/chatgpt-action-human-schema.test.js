@@ -388,7 +388,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
       COURSE_AUTHORING_SERVER_INSTRUCTIONS
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
-    /mapa curricular completo/iu);
+    /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
   assert.match(openApi.info.description, /aprove só a referência do mapa salvo visto e aprovado pela pessoa/iu);
   assert.match(openApi.info.description, /Parte é lote operacional/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
@@ -411,7 +411,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(
     operation("salvar_mapa_curricular").description,
-    /mapa como rascunho.*aprovação usa a referência da versão persistida/iu
+    /rascunho.*modulos: \[\].*salvar_ramo_curricular.*aprovação usa a referência persistida/iu
   );
   assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
   assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
@@ -709,6 +709,8 @@ test("aprovação usa a referência inspecionada e recuperação conserva integr
     assert.equal(approve(samples.salvar_mapa_curricular), false, "aprovar não recebe uma árvore regenerada");
     assert.equal(approve({ ...samples.aprovar_mapa_curricular, aprovado: true }), false);
     const saveMap = ajv.compile(tools.find(({ name }) => name === "salvar_mapa_curricular").inputSchema);
+    assert.equal(saveMap({ ...samples.salvar_mapa_curricular, modulos: [] }), true,
+      "o canal permite iniciar contexto e escopo antes da construção por ramos");
     assert.equal(saveMap({ ...samples.salvar_mapa_curricular, aprovado: true }), false,
       "salvar conteúdo do mapa não declara sua aprovação");
     const resume = ajv.compile(tools.find(({ name }) => name === "retomar_correcao").inputSchema);

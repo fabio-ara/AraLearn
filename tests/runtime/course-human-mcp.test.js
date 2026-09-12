@@ -26,6 +26,8 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { applyCurricularMapSlice, inspectCurricularMapCompleteness } from
+  "../../src/domain/courseCurricularMapSlices.js";
 
 const ORIGIN = "https://client.example";
 const RESOURCE_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
@@ -577,6 +579,162 @@ test("mapa salvo é relido e a aprovação referencia a versão persistida", asy
   assert.match(JSON.stringify(approved.context), /aprovado/iu);
   assert.match(approved.nextDecision, /foco|cadência/iu);
   assert.doesNotMatch(approved.nextDecision, /\?/u);
+});
+
+function incrementalCurricularMapAdapter() {
+  const state = { courseRevision: 7, planVersion: 3, approval: "absent", loseNextSliceResponse: false,
+    map: { audience: "", prerequisites: [], scopeItems: [], modules: [] } };
+  const writes = [], receipts = new Map();
+  const persist = (kind, input, map) => {
+    writes.push({ kind, input: structuredClone(input) });
+    if (receipts.has(input.requestId)) return { ...receipts.get(input.requestId), idempotent: true };
+    if (input.expectedCourseRevision !== state.courseRevision || input.expectedPlanVersion !== state.planVersion) {
+      throw new AuthoringApiError(409, "stale_course_state", "O mapa mudou.");
+    }
+    state.map = structuredClone(map);
+    state.approval = "draft";
+    const receipt = { contract: "aralearn.course-curricular-map-change.v1", courseId: COURSE_ID,
+      courseRevision: ++state.courseRevision, planVersion: ++state.planVersion,
+      approval: "draft", changed: true, idempotent: false };
+    receipts.set(input.requestId, receipt);
+    if (kind === "slice" && state.loseNextSliceResponse) {
+      state.loseNextSliceResponse = false;
+      throw new AuthoringApiError(503, "request_timeout", "A resposta do recorte se perdeu.");
+    }
+    return receipt;
+  };
+  return {
+    ...adapter(), ...globalCourseIdentity(() => state.courseRevision), state, writes,
+    async getCourseInstructionalPlan() {
+      const read = mapPlanRead({ artifactId: null, courseRevision: state.courseRevision, planVersion: state.planVersion });
+      return { ...read, mapApprovalReference: `persisted-map-${state.planVersion}`, plan: {
+        ...read.plan, curriculumMapStatus: state.approval, audience: state.map.audience,
+        declaredPrerequisites: structuredClone(state.map.prerequisites),
+        curriculumScopeItems: structuredClone(state.map.scopeItems),
+        curriculum: { modules: state.map.modules.map(module => ({ ...structuredClone(module), id: module.moduleId,
+          lessons: module.lessons.map(lesson => ({ ...structuredClone(lesson), id: lesson.lessonId,
+            microsequences: lesson.microsequences.map(micro => ({ ...structuredClone(micro), id: micro.microsequenceId })) })) })) }
+      } };
+    },
+    async getCourseCurricularMap() {
+      return { courseId: COURSE_ID, courseRevision: state.courseRevision, planVersion: state.planVersion,
+        map: structuredClone(state.map) };
+    },
+    async saveCourseCurricularMap(input) {
+      return persist("map", input, input.curricularMap);
+    },
+    async saveCourseCurricularMapSlice(input) {
+      const map = receipts.has(input.requestId) ? state.map : applyCurricularMapSlice(state.map, input.command);
+      return persist("slice", input, map);
+    }
+  };
+}
+
+test("mapa incremental começa pelo contexto e preserva detalhes, cobertura e dependências por ramos", async () => {
+  const value = incrementalCurricularMapAdapter();
+  const full = { curso: GLOBAL_AUTHORING_FIXTURE.course.title,
+    publico: "Pessoas que desejam compreender comunicação em redes a partir de situações concretas.",
+    preRequisitos: ["Distinguir processos e mensagens em um computador."],
+    itensDeEscopo: ["Origem e destino", "Mensagens e meios", "Portas e serviços", "Comunicação entre processos"],
+    modulos: Array.from({ length: 2 }, (_, moduleIndex) => ({
+      titulo: `Módulo ${moduleIndex + 1}`, objetivo: `Explicar as relações do módulo ${moduleIndex + 1}.`,
+      licoes: [{ titulo: `Lição ${moduleIndex + 1}`, objetivo: `Investigar os casos da lição ${moduleIndex + 1}.`,
+        microssequencias: Array.from({ length: 2 }, (_, microIndex) => {
+          const index = moduleIndex * 2 + microIndex;
+          const detail = `Relação ${index + 1}: compare origem, destino e função no mesmo caso concreto. `.repeat(16).trim();
+          return { titulo: `Microssequência ${index + 1}`, objetivo: detail,
+            dependencias: index ? [`Microssequência ${index}`] : [],
+            cobertura: [["Origem e destino", "Mensagens e meios", "Portas e serviços", "Comunicação entre processos"][index]],
+            explicacao: { proposito: detail, pressupostos: [`Pressuposto específico: ${detail}`],
+              relacoes: [`Relação a desenvolver: ${detail}`], fontesPrevistas: [] } };
+        }) }]
+    })) };
+  assert.ok(JSON.stringify(full).length > 16000, "o mapa desenvolvido excede o tamanho das chamadas relatadas no incidente");
+  const calls = [];
+  const run = async (name, rawArguments) => {
+    calls.push({ name, rawArguments: structuredClone(rawArguments) });
+    return executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name, rawArguments });
+  };
+  const started = await run("salvar_mapa_curricular", { ...full, modulos: [] });
+  assert.equal(value.state.map.audience, full.publico);
+  assert.deepEqual(value.state.map.prerequisites, full.preRequisitos);
+  assert.deepEqual(value.state.map.scopeItems.map(item => item.statement), full.itensDeEscopo);
+  assert.deepEqual(value.state.map.modules, []);
+  assert.match(started.nextDecision, /salvar_ramo_curricular/u);
+  assert.doesNotMatch(started.nextDecision, /aprov/iu);
+  assert.equal(inspectCurricularMapCompleteness(value.state.map).complete, false);
+
+  for (const module of full.modulos) {
+    await run("salvar_ramo_curricular", { curso: full.curso, tipo: "modulo", titulo: module.titulo, objetivo: module.objetivo });
+    for (const lesson of module.licoes) {
+      const parent = { modulo: module.titulo, licao: lesson.titulo };
+      await run("salvar_ramo_curricular", { curso: full.curso, tipo: "licao", destino: { modulo: module.titulo },
+        titulo: lesson.titulo, objetivo: lesson.objetivo });
+      for (const micro of lesson.microssequencias) {
+        if (micro.titulo === "Microssequência 1") value.state.loseNextSliceResponse = true;
+        await run("salvar_ramo_curricular", { curso: full.curso, tipo: "microssequencia", destino: parent,
+          titulo: micro.titulo, objetivo: micro.objetivo, dependencias: micro.dependencias, cobertura: micro.cobertura,
+          explicacao: { proposito: micro.explicacao.proposito, pressupostos: micro.explicacao.pressupostos,
+            relacoes: micro.explicacao.relacoes, fontes: [] } });
+      }
+    }
+  }
+  assert.ok(calls.every(call => JSON.stringify(call.rawArguments).length < 8000), "o exemplo conserva detalhes em chamadas menores");
+  assert.equal(value.writes.filter(write => write.kind === "map").length, 1, "continuar não retransmite a árvore inteira");
+  const firstMicroWrites = value.writes.filter(write => write.input.command?.title === "Microssequência 1");
+  assert.equal(firstMicroWrites.length, 2);
+  assert.deepEqual(firstMicroWrites[0], firstMicroWrites[1], "a resposta perdida conserva a mesma tentativa e identidade");
+  assert.equal(inspectCurricularMapCompleteness(value.state.map).complete, true);
+  const reread = await run("consultar_planejamento", { curso: full.curso });
+  assert.equal(reread.context.mapaCurricular.modulos.length, full.modulos.length);
+  const expectedMicros = full.modulos.flatMap(module => module.licoes.flatMap(lesson => lesson.microssequencias));
+  const savedMicros = value.state.map.modules.flatMap(module => module.lessons.flatMap(lesson => lesson.microsequences));
+  assert.equal(savedMicros.length, expectedMicros.length);
+  for (const [index, micro] of expectedMicros.entries()) {
+    const saved = savedMicros[index];
+    assert.equal(saved.title, micro.titulo);
+    assert.equal(saved.objective, micro.objetivo);
+    assert.deepEqual(saved.explanationPlan, { purpose: micro.explicacao.proposito,
+      prerequisites: micro.explicacao.pressupostos, relations: micro.explicacao.relacoes, sourceIds: [] });
+    assert.deepEqual(saved.dependencyMicrosequenceIds, index ? [savedMicros[index - 1].microsequenceId] : []);
+    assert.deepEqual(saved.scopeItemIds, [value.state.map.scopeItems[index].id]);
+  }
+});
+
+test("mapa incremental recusa reiniciar contexto vazio quando um ramo planejado já existe", async () => {
+  const value = incrementalCurricularMapAdapter();
+  value.state.map.modules = [{ moduleId: fixtureUuid("6", 0), position: 0,
+    title: "Planejamento preservado", objective: "Desenvolver relações úteis.", lessons: [] }];
+  value.state.approval = "draft";
+  const before = structuredClone(value.state);
+  await assert.rejects(executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "salvar_mapa_curricular", rawArguments: { ...curricularMapArguments("mapa-global-v1"), modulos: [] }
+  }), error => error.code === "curricular_map_bootstrap_conflict");
+  assert.equal(value.writes.length, 0);
+  assert.deepEqual(value.state, before);
+});
+
+test("mapa incremental relê conflito de versão e preserva ramo criado por outra sessão", async () => {
+  const value = incrementalCurricularMapAdapter();
+  let attempts = 0;
+  const concurrentModule = { moduleId: fixtureUuid("6", 0), position: 0,
+    title: "Ramo da outra sessão", objective: "Preservar a decisão já salva.", lessons: [] };
+  value.saveCourseCurricularMap = async () => {
+    attempts += 1;
+    assert.equal(attempts, 1, "a releitura deve impedir outra tentativa de substituir o ramo");
+    value.state.map.modules = [structuredClone(concurrentModule)];
+    value.state.approval = "draft";
+    value.state.courseRevision += 1;
+    value.state.planVersion += 1;
+    throw new AuthoringApiError(409, "stale_course_state", "Outra sessão acrescentou um ramo.");
+  };
+  await assert.rejects(executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "salvar_mapa_curricular", rawArguments: { ...curricularMapArguments("mapa-global-v1"), modulos: [] }
+  }), error => error.code === "curricular_map_bootstrap_conflict");
+  assert.equal(attempts, 1);
+  assert.deepEqual(value.state.map.modules, [concurrentModule]);
+  assert.equal(value.state.courseRevision, 8);
+  assert.equal(value.state.planVersion, 4);
 });
 
 test("salvar_parte permanece bloqueada enquanto o mapa curricular é rascunho", async () => {

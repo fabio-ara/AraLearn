@@ -78,6 +78,8 @@ unidades, mesmo com mapa em rascunho. `salvar_explicacoes` conserva as unidades
 existentes. Na produção de unidades, `materializar_parte` reutiliza as bases
 salvas e recebe somente aquelas que também serão criadas ou alteradas.
 
+Para mapas extensos ainda sem módulos, `salvar_mapa_curricular` aceita público, pré-requisitos, escopo completo e `modulos: []`. A construção continua com `salvar_ramo_curricular`, no grupo `estrutura_curricular`, preservando o texto de cada ramo. O [fluxo de construção do mapa](fluxos-prompts-e-contratos.md#mapa-curricular-e-bases-explicativas) explica a sequência e a proteção do planejamento já salvo.
+
 Aprovação do mapa, autorização para produzir e revisão do conteúdo correspondem
 a decisões diferentes da pessoa. O [percurso comum](fluxos-prompts-e-contratos.md#mapa-curricular-e-bases-explicativas)
 relaciona essas etapas e a [referência de processo](fluxos-prompts-e-contratos.md#conservar-o-acordo-durante-a-retomada)

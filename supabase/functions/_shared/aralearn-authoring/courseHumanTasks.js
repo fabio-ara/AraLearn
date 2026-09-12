@@ -723,7 +723,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Salva o mapa como rascunho para inspeção. A aprovação usa a referência da versão persistida.",
+    "Salva um rascunho. Para mapa extenso ainda sem módulos, envie contexto e escopo com modulos: []; continue em salvar_ramo_curricular sem reduzir conteúdo. Uma árvore preenchida substitui o mapa completo. A aprovação usa a referência persistida.",
     inputSchema({
       curso: COURSE_SCHEMA,
       publico: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
@@ -736,7 +736,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         items: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 })
       }),
       modulos: Object.freeze({
-        type: "array", minItems: 1, maxItems: 64,
+        type: "array", minItems: 0, maxItems: 64,
+        description: "Árvore completa, ou [] para iniciar contexto e escopo somente se ainda não houver módulos. Depois acrescente os ramos por salvar_ramo_curricular; não reenvie uma árvore parcial como substituição.",
         items: CURRICULAR_MAP_MODULE_SCHEMA
       })
     }, ["curso", "publico", "preRequisitos", "itensDeEscopo", "modulos"]),
@@ -1016,7 +1017,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:c6554a774e5350f1cecbfd543b5be0cabf6e6faddde339e8e25fc3601983477c";
+  "sha256:01f9916b1fa2dab692e9bb95791c9a80fd45e871f370751558cef0ac59aa134d";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1559,8 +1560,8 @@ function normalizeCurricularMapArguments(args) {
     minimum: 1,
     maximum: 256
   });
-  if (!Array.isArray(args.modulos) || args.modulos.length < 1 || args.modulos.length > 64) {
-    fail("invalid_human_task_argument", "modulos precisa conter de 1 a 64 módulos.", {
+  if (!Array.isArray(args.modulos) || args.modulos.length > 64) {
+    fail("invalid_human_task_argument", "modulos precisa conter de 0 a 64 módulos.", {
       field: "modulos"
     });
   }
@@ -1867,6 +1868,11 @@ function matchingInternalChild(items, title) {
 
 async function buildCurricularMapWrite({ state, input, newId }) {
   const currentMap = curricularMapFromPlan(state.plan);
+  if (input.modules.length === 0 && internalMapCollections(currentMap).modules.length > 0) {
+    fail("curricular_map_bootstrap_conflict",
+      "O mapa já contém módulos. Retome o planejamento salvo e use salvar_ramo_curricular para continuar sem apagar os ramos existentes.",
+      null, 409);
+  }
   if (input.approved && (!currentMap || currentMap.approval === "absent" ||
       !sameCurricularMap(currentMap, input))) {
     fail(
@@ -3204,9 +3210,14 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
     })
   });
   const persisted = await loadPlan(adapter, principal, savedCourse, deadlineAt);
-  return result("Salvei o mapa curricular como rascunho para inspeção.", {
+  const startingMap = input.modules.length === 0;
+  return result(startingMap
+    ? "Salvei o público, os pré-requisitos e o escopo. O rascunho ainda precisa dos ramos curriculares."
+    : "Salvei o mapa curricular como rascunho para inspeção.", {
     deepLink: courseDeepLink(adapter, savedCourse, "planning"),
-    nextDecision: "Inspecione a cobertura, a ordem e a ênfase; a aprovação usa a referência desta versão salva.",
+    nextDecision: startingMap
+      ? "Continue com salvar_ramo_curricular: módulos, lições e microssequências em ordem de dependência, preservando detalhes e cobertura. Ao concluir, consulte o planejamento completo para inspeção."
+      : "Inspecione a cobertura, a ordem e a ênfase; a aprovação usa a referência desta versão salva.",
     context: projectedPlanContext(persisted, null)
   });
 };
