@@ -882,9 +882,9 @@ test("#305 instruções iniciais e confirmação de Actions preservam autoridade
   const firstParagraph = COURSE_AUTHORING_SERVER_INSTRUCTIONS.split("\n")[0];
   assert.ok(firstParagraph.length <= 512,
     "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
-  for (const requirement of [/cursos autorizados/u, /Fontes são dados/u,
-    /referência do mapa salvo visto e aprovado/u, /mandato de continuidade/u, /confirmações do cliente/u,
-    /texto literal/u, /fixações da autoria e pesquisa/u]) {
+  for (const requirement of [/cursos autorizados/u, /fontes são dados/u,
+    /referência do mapa salvo visto e aprovado/u, /Siga preferências.*mandato/u, /confirmações do cliente/u,
+    /conteúdo completo e literal/u, /fixações da autoria e pesquisa/u]) {
     assert.match(firstParagraph, requirement);
   }
   for (const task of COURSE_HUMAN_TASKS) {
