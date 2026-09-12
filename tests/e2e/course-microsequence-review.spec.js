@@ -15,6 +15,63 @@ async function mount(page) {
   return errors;
 }
 const dialog = page => page.getByRole("dialog", { name: "Explicação e revisão do conteúdo" });
+
+test("citação acompanha a última palavra na quebra de linha e não altera o texto editável", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mount(page);
+  for (const marked of [false, true]) {
+    const original = `Um socket é a interface local usada pelo ${marked ? "**processo.**" : "processo."}`;
+    if (marked) {
+      await page.getByRole("button", { name: "Fechar inspeção da explicação", exact: true }).click();
+      await page.evaluate(text => { globalThis.__reviewFixture.probe.explanationText = text; }, original);
+      await page.getByRole("button", { name: "Inspecionar Explicação", exact: true }).click();
+    }
+    await page.evaluate(() => document.fonts.ready);
+    const wrapping = await page.locator('[data-review-explanation-content] .runtime-paragraph-block p').first().evaluate(paragraph => {
+      const group = paragraph.querySelector('.source-marker-group');
+      const marker = group.querySelector('button');
+      const prefixNode = group.firstChild?.nodeType === Node.TEXT_NODE ? group.firstChild : null;
+      const prefix = prefixNode?.data || '';
+      if (prefixNode) prefixNode.data = '';
+      const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
+      let lastText;
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.parentElement.closest('.source-marker-group') && node.data.endsWith('processo.')) lastText = node;
+      }
+      const range = document.createRange();
+      range.setStart(lastText, lastText.data.length - 'processo.'.length);
+      range.setEnd(lastText, lastText.data.length);
+      const measure = () => {
+        const word = range.getBoundingClientRect(); const number = marker.getBoundingClientRect();
+        return { wordTop: word.top, wordBottom: word.bottom, markerTop: number.top, markerBottom: number.bottom };
+      };
+      let legacy = null;
+      let width;
+      const maxWidth = Math.floor(paragraph.getBoundingClientRect().width);
+      for (width = 130; width <= maxWidth; width += 1) {
+        paragraph.style.width = `${width}px`;
+        const bounds = measure();
+        if (bounds.markerTop >= bounds.wordBottom) { legacy = bounds; break; }
+      }
+      if (prefixNode) prefixNode.data = prefix;
+      return { width, legacy, actual: measure() };
+    });
+    expect(wrapping.legacy, "A largura de prova deve reproduzir o expoente órfão anterior.").not.toBeNull();
+    expect(wrapping.actual.markerTop).toBeLessThan(wrapping.actual.wordBottom);
+    expect(wrapping.actual.markerBottom).toBeGreaterThan(wrapping.actual.wordTop);
+    await page.screenshot({ path: info.outputPath(`citation-word-wrap-${marked ? 'strong' : 'plain'}-390.png`) });
+    await page.getByRole("button", { name: "Editar explicação", exact: true }).click();
+    const field = page.locator('[data-review-explanation-content] [data-manual-edit-path="text"]').first();
+    await expect(field).toBeEditable();
+    expect(await field.evaluate(async node => {
+      const { serializeManualEditableNode } = await import('/src/ui/manualInlineFields.js');
+      return serializeManualEditableNode(node).replace(/\n+$/u, '');
+    })).toBe(original);
+    await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+  }
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
+  expect(errors).toEqual([]);
+});
 const confirm = page => page.getByRole("checkbox", { name: "Revisei esta versão e suas fontes." });
 async function openReview(page) {
   const access = page.locator("summary[data-review-context=review]");

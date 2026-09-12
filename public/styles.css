@@ -5177,13 +5177,12 @@ button.account-settings-back[hidden] {
 .study-citation-list h3 { margin: 0 0 8px; font-size: 1rem; }
 .study-citation-reference { line-height: 1.65; margin-block: 8px; }
 .study-citation-quote { margin: 8px 0; padding-inline-start: 12px; border-inline-start: 2px solid var(--border-default); white-space: pre-wrap; }
-.study-citation-roles, .study-citations-status { color: var(--text-secondary); font-size: .88rem; line-height: 1.5; }
+.study-citations-status { color: var(--text-secondary); font-size: .88rem; line-height: 1.5; }
 .study-citations-status.is-error { color: var(--status-danger); }
 .study-citation-locations { padding-inline-start: 1.2em; }
 .study-citation-locations > li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-block: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .study-citation-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-.study-citation-actions a, .study-citation-download { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
-.study-citation-download { padding: 6px 10px; margin: 4px; border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-subtle); color: var(--text-primary); font: inherit; cursor: pointer; }
+.study-citation-actions a { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
 .source-marker-group { display: inline-flex; flex-wrap: wrap; align-items: center; vertical-align: baseline; gap: 2px; }
 .source-marker { min-width: 44px; min-height: 44px; padding: 4px 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--action-primary); font-size: .8rem; cursor: pointer; }
 .source-marker sup { font-size: inherit; font-weight: 700; }

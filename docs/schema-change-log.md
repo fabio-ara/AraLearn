@@ -17,6 +17,30 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260911232152 — alcance da revisão da explicação durante a produção
+
+O hash da explicação passa a excluir vínculos de análise instrucional
+(`instructional_analysis_unit`) e requisitos de prática (`evidence_requirement`),
+incluindo seus enunciados e fontes exclusivas. Produzir esses elementos conserva
+a revisão da base e de suas dependentes. Texto, objetivo, dependências, escopo
+curricular e fontes pertinentes continuam materiais; o alcance das unidades
+permanece completo.
+
+As marcas atuais recebem o hash correspondente ao alcance corrigido, mantendo
+pessoa, data e versão inspecionada. Marcas desatualizadas não são reescritas:
+quando somente os vínculos excluídos causavam a diferença, o hash pode voltar a
+coincidir com a declaração original. Alterações materiais restantes continuam
+desatualizadas; rascunhos e conteúdos sem declaração não recebem revisão.
+Conteúdo, aplicações, recibos e direitos de acesso permanecem preservados.
+
+A migração exige a definição precursora esperada e estabiliza os dados com
+bloqueios de escrita na mesma transação da transformação e do avanço de
+`schemaRevision` para `20260911232152`. A espera por bloqueios é limitada a cinco
+segundos e cada comando, a cinco minutos; falhas revertem a transação. Antes da
+aplicação hospedada, são exigidos backup verificável, ensaio de restauração e
+upgrade com conferência das marcas e dos dados úteis preservados. Testes locais
+de preservação e rollback não substituem essa prova hospedada.
+
 ## 20260910134141 — cobertura curricular de cópias independentes
 
 A cópia remapeia a cobertura das microssequências para os itens de escopo do

@@ -3542,12 +3542,6 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   background: var(--surface-sunken);
 }
 
-.course-inspection-response-notice {
-  margin: -3px 0;
-  color: var(--text-tertiary);
-  font-size: var(--type-xs);
-}
-
 .course-inspection-runtime {
   flex: 1 0 auto;
   overflow: visible;
@@ -5088,7 +5082,6 @@ dialog.course-microsequence-review {
 .course-source-cite-action { width: var(--tap); min-height: var(--tap); padding: 0; display: grid; place-items: center; }
 .course-source-display-reference { font-size: var(--type-sm); line-height: 1.6; color: var(--text-secondary); }
 .course-source-intake-help,
-.course-source-file-selection,
 .source-occurrence-editor > p,
 .source-occurrences > p {
   margin-block: 4px 8px;

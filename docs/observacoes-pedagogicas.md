@@ -163,3 +163,11 @@ refletir mais problemas, maior disposição para contribuir ou uma tarefa
 diferente. A contagem isolada não distingue essas explicações. Consulte
 [Analytics da Autoria](analytics-instrucionais.md) e o
 [guia de investigação](guia-pesquisador.md).
+
+<!-- referências locais: início -->
+
+## Referências
+
+- [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
+
+<!-- referências locais: fim -->

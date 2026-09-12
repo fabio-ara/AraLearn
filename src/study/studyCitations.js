@@ -28,7 +28,9 @@ export function studyCitationMarkers(studyUnit, citations, sourceOptions = {}) {
 
 export function renderStudySourceMarkers(markers) {
   if (!markers.length) return "";
-  return '<span class="source-marker-group">' + markers.map(marker =>
+  // Keep the superscript with the preceding word. The joiner stays inside the
+  // transient marker group so copying/editing the authored text excludes it.
+  return '<span class="source-marker-group">&#8288;' + markers.map(marker =>
     '<button type="button" class="source-marker" data-action="open-citation"' +
     ` data-citation-link-id="${escape(marker.linkId)}" data-citation-occurrence-id="${escape(marker.occurrenceId)}"` +
     ` aria-label="Referência ${marker.number}${marker.needsReview ? ", trecho a revisar" : ""}" title="Referência ${marker.number}">` +
