@@ -525,6 +525,9 @@ test("Actions vincula cada tarefa agrupada a seus argumentos e conserva chamadas
   const access = ajv.compile(operation("definir_visibilidade").requestBody.content["application/json"].schema);
   assert.equal(access({ tarefa: "definir_visibilidade", argumentos: {
     curso: "Curso público sintético", visibilidade: "public", confirmado: true } }), true);
+  assert.equal(access({ tarefa: "definir_visibilidade", argumentos: {
+    curso: "Curso público sintético", visibilidade: "public" } }), false,
+  "Publicar ainda exige a confirmação expressa no argumento da tarefa.");
   assert.equal(access({ tarefa: "definir_visibilidade", argumentos: samples.alterar_acesso }), false,
     "O discriminador de visibilidade não admite o schema de concessão de acesso.");
   assert.equal(access({ tarefa: "alterar_acesso", argumentos: samples.definir_visibilidade }), false,

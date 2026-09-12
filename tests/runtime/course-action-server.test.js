@@ -146,7 +146,8 @@ test("Actions rejeita tarefa externa ao grupo, cruzamento e campos extras antes 
     const objectPayload = payload !== null && !Array.isArray(payload);
     assert.equal(response.status, objectPayload ? 422 : 400, JSON.stringify(payload));
     const result = await response.json();
-    assert.equal(result.error.code, objectPayload ? "invalid_action_task_binding" : "invalid_json");
+    assert.equal(result.error.code, !objectPayload ? "invalid_json"
+      : payload.tarefa === "definir_visibilidade" ? "missing_human_task_argument" : "invalid_action_task_binding");
     assert.equal(result.error.retryable, false);
   }
   assert.equal(authenticated, 0);
@@ -172,7 +173,9 @@ test("Actions lê perfis com objeto vazio e repertório com curso sem reparar en
   ]) {
     const response = await handler(wireRequest(operationName, payload));
     assert.equal(response.status, 422, JSON.stringify(payload));
-    assert.equal((await response.json()).error.code, "invalid_action_task_binding");
+    assert.equal((await response.json()).error.code,
+      payload.tarefa === "consultar_repertorio_instrucional" && Object.keys(payload.argumentos).length === 0
+        ? "missing_human_task_argument" : "invalid_action_task_binding");
   }
   assert.equal(authenticated, 0);
   assert.equal(profileReads, 0);
@@ -185,6 +188,32 @@ test("Actions lê perfis com objeto vazio e repertório com curso sem reparar en
   assert.equal(repertoire.status, 200);
   assert.equal(authenticated, 2);
   assert.equal(profileReads, 1);
+});
+
+test("#377 Actions identifica confirmação ausente sem declarar a tarefa indisponível", async () => {
+  const writes = [];
+  const handler = createHandler({
+    async setCourseVisibility(value) {
+      writes.push(value);
+      return { contract: "aralearn.course-visibility-change.v1", courseId: value.courseId,
+        visibility: value.visibility, publicFileAccess: value.publicFileAccess, changed: true, idempotent: false };
+    }
+  });
+  for (const policy of [{}, { arquivos: "available" }]) {
+    const args = { curso: "Redes para iniciantes", visibilidade: "public", ...policy };
+    const response = await handler(request("definir_visibilidade", args));
+    assert.equal(response.status, 422);
+    const error = (await response.json()).error;
+    assert.equal(error.code, "missing_human_task_argument");
+    assert.match(error.message, /confirmado/u);
+    assert.equal(writes.length, 0);
+  }
+  const saved = await handler(request("definir_visibilidade", {
+    curso: "Redes para iniciantes", visibilidade: "public", confirmado: true
+  }));
+  assert.equal(saved.status, 200);
+  assert.deepEqual((await saved.json()).context, { visibilidade: "public", arquivos: "available" });
+  assert.equal(writes.length, 1);
 });
 
 test("Actions aplica o escopo da tarefa escolhida dentro de um grupo com escrita", async () => {

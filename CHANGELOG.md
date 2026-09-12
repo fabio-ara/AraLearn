@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.72] - 2026-09-12
+
+### Corrigido
+
+- a Action de publicação orienta o envio da confirmação quando a pessoa pede para tornar o curso público; argumentos obrigatórios ausentes são identificados pelo nome, permitindo corrigir a chamada sem confundir a tarefa com uma operação indisponível.
+
 ## [0.0.71] - 2026-09-12
 
 ### Corrigido
