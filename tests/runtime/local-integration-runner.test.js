@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createHash, randomUUID } from "node:crypto";
-import { captureLocalCommand, readLocalMigrationVersions, runLocalIntegration, localIntegrationSummary } from "../../scripts/runLocalIntegration.mjs";
+import { captureLocalCommand, readLocalMigrationVersions, runLocalIntegration, localIntegrationSummary, prepareIsolatedFunctions } from "../../scripts/runLocalIntegration.mjs";
 
 const URL = "http://127.0.0.1:54321";
 const VERSION = "20260908000000";
@@ -45,8 +45,8 @@ async function fixture(t, options = {}) {
       headers: { "access-control-allow-origin": "*", "x-aralearn-authoring-contract": "synthetic-local-contract" } });
     return await options.probe?.({ input, init, response, call: probes.length, stop: () => { alive = false; } }) ?? response;
   };
-  const start = (command, args) => {
-    started.push({ command, args }); active = true;
+  const start = (command, args, settings) => {
+    started.push({ command, args, cwd: settings.cwd }); active = true;
     return { alive: () => alive, serving: () => true, output: () => `Bearer ${HOSTED_SECRET}`,
       stop: async () => { stopped.push(true); alive = false; if (options.stopFailure) throw new Error("cleanup sintético falhou"); } };
   };
@@ -103,6 +103,7 @@ async function fixture(t, options = {}) {
         checks: ["bytes", "copia", "remocao"], cleanup: [{ courseId: "a", status: "completed" },
           { courseId: "b", status: "completed" }, { userId: "c", status: "deleted" }] }));
       if (options.changeEdgeDuringProof) await fs.writeFile(path.join(cwd, "supabase/functions/index.ts"), "// mudou");
+      if (options.changeSnapshotDuringProof) await fs.writeFile(path.join(started[0].cwd, "supabase/functions/index.ts"), "// cópia mudou");
       return { status: 0, stdout: options.skippedCopy ? "# tests 1\n# pass 0\n# skipped 1\n" : "# tests 1\n# pass 1\n# skipped 0\n" };
     }
     return { status: 0, stdout: "smoke sintético com teardown" };
@@ -111,6 +112,48 @@ async function fixture(t, options = {}) {
     processAlive: pid => pid === 1234 && options.externalAlive !== false, pause: async () => {}, signal: options.signal });
   return { cwd, calls, started, stopped, probes, environment, execute };
 }
+
+test("cópia isolada conserva bytes e .env de função sem compartilhar arquivo com a origem", async t => {
+  const f = await fixture(t);
+  const envPath = "supabase/functions/.env";
+  await fs.writeFile(path.join(f.cwd, envPath), "LOCAL_FIXTURE=private-value\n");
+  const destination = path.join(f.cwd, "snapshot");
+  const digest = await prepareIsolatedFunctions(f.cwd, destination);
+  assert.match(digest, /^[a-f0-9]{64}$/u);
+  assert.deepEqual(await fs.readFile(path.join(destination, envPath)), await fs.readFile(path.join(f.cwd, envPath)));
+  await fs.writeFile(path.join(f.cwd, "supabase/functions/index.ts"), "// edição posterior");
+  assert.equal(await fs.readFile(path.join(destination, "supabase/functions/index.ts"), "utf8"), "// fixture");
+  if (process.platform !== "win32") assert.equal((await fs.stat(path.join(destination, envPath))).mode & 0o777, 0o600);
+});
+
+test("cópia isolada recusa ambiente de projeto, entradas externas e diretório simbólico", async t => {
+  for (const kind of ["environment", "config", "import", "symlink"]) {
+    const f = await fixture(t);
+    if (kind === "environment") await fs.writeFile(path.join(f.cwd, ".env"), "PRIVATE=value");
+    if (kind === "config") await fs.appendFile(path.join(f.cwd, "supabase/config.toml"), '\nentrypoint="../external.ts"');
+    if (kind === "import") await fs.writeFile(path.join(f.cwd, "supabase/functions/index.ts"), 'import "../../external.js";');
+    if (kind === "symlink") {
+      const outside = path.join(f.cwd, "outside");
+      await fs.mkdir(outside);
+      await fs.symlink(outside, path.join(f.cwd, "supabase/functions/external"), process.platform === "win32" ? "junction" : "dir");
+    }
+    const report = await f.execute();
+    assert.equal(report.result, "failed", kind);
+    assert.equal(f.started.length, 0, kind);
+    assert.ok(report.stages.every(stage => stage.result === "not_run"), kind);
+  }
+});
+
+test("mudança da origem ou cópia invalida prova isolada depois de encerrar funções próprias", async t => {
+  for (const options of [{ changeEdgeDuringProof: true }, { changeSnapshotDuringProof: true }]) {
+    const f = await fixture(t, options);
+    const report = await f.execute();
+    assert.equal(report.result, "failed");
+    assert.match(report.error, /mudou durante a prova/u);
+    assert.equal(f.stopped.length, 1);
+    assert.equal(report.cleanup.fixtures, "completed");
+  }
+});
 
 test("integração prepara ambiente uma vez, executa todas as provas locais serialmente e encerra só suas funções", async t => {
   const f = await fixture(t);
@@ -121,6 +164,10 @@ test("integração prepara ambiente uma vez, executa todas as provas locais seri
   assert.ok(report.stages.every(stage => stage.result === "passed"));
   assert.equal(f.calls.filter(call => call.args.join(" ").includes("status --output json")).length, 1);
   assert.equal(f.started.length, 1); assert.equal(f.stopped.length, 1);
+  assert.notEqual(f.started[0].cwd, f.cwd);
+  assert.equal(f.started[0].cwd, path.join(f.cwd, report.runtime.workdir));
+  assert.match(f.started[0].args.join(" "), /--workdir \./u);
+  assert.equal(await fs.readFile(path.join(f.started[0].cwd, "supabase/functions/index.ts"), "utf8"), "// fixture");
   for (const call of f.calls) {
     assert.equal(call.env.SUPABASE_SECRET_KEY, undefined);
     assert.equal(call.env.OPENAI_API_KEY, undefined);

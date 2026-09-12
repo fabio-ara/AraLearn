@@ -167,6 +167,7 @@ export async function readLocalMigrationVersions(cwd = ROOT) {
 async function edgeFingerprint(cwd) {
   const hash = createHash("sha256");
   async function add(directory) {
+    if (!(await fs.lstat(path.join(cwd, directory))).isDirectory()) throw new Error("A impressão do runtime não aceita caminhos simbólicos.");
     for (const entry of (await fs.readdir(path.join(cwd, directory), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
       const relative = `${directory}/${entry.name}`;
       if (entry.isDirectory()) await add(relative);
@@ -174,9 +175,57 @@ async function edgeFingerprint(cwd) {
       else throw new Error("A impressão do runtime não aceita caminhos simbólicos.");
     }
   }
+  if (!(await fs.lstat(path.join(cwd, "supabase/config.toml"))).isFile()) throw new Error("Configuração de Edge precisa ser arquivo regular.");
   hash.update(await fs.readFile(path.join(cwd, "supabase/config.toml")));
   await add("supabase/functions");
   return hash.digest("hex");
+}
+
+export async function prepareIsolatedFunctions(cwd, destination) {
+  // A CLI observa os arquivos servidos. A cópia fica fora das leituras dos
+  // testes do checkout; não modificar nem reler seus bytes enquanto serve.
+  for (const file of [".env", ".env.local", "supabase/.env", "supabase/.env.local"]) {
+    try { await fs.lstat(path.join(cwd, file)); }
+    catch (error) { if (error.code === "ENOENT") continue; throw error; }
+    throw new Error("A integração isolada não aceita .env de projeto; configure explicitamente o ambiente local.");
+  }
+  const fingerprint = await edgeFingerprint(cwd); // Também recusa symlinks antes da cópia.
+  const config = await fs.readFile(path.join(cwd, "supabase/config.toml"), "utf8");
+  if (/^\s*(?:entrypoint|import_map|static_files|signing_keys_path)\s*=/mu.test(config)) {
+    throw new Error("A integração isolada exige entradas de funções e configuração autocontidas em supabase/functions.");
+  }
+  const sourceRoot = path.resolve(cwd, "supabase/functions");
+  await fs.mkdir(path.join(destination, "supabase"), { recursive: true, mode: 0o700 });
+  await fs.writeFile(path.join(destination, "supabase/config.toml"), config, { mode: 0o600, flag: "wx" });
+  async function copy(directory) {
+    await fs.mkdir(path.join(destination, directory), { mode: 0o700 });
+    for (const entry of await fs.readdir(path.join(cwd, directory), { withFileTypes: true })) {
+      const relative = path.join(directory, entry.name);
+      if (entry.isDirectory()) { await copy(relative); continue; }
+      if (!entry.isFile()) throw new Error("A cópia de Edge não aceita caminhos simbólicos.");
+      const bytes = await fs.readFile(path.join(cwd, relative));
+      if (/\.(?:js|ts|json|jsonc)$/u.test(entry.name)) {
+        const source = bytes.toString("utf8");
+        // Abrange imports estáticos/dinâmicos literais e destinos de import maps.
+        for (const [, target] of source.matchAll(/["']((?:\.\.?\/|file:|[A-Za-z]:[\\/]|\/)[^"'\r\n]*)["']/gu)) {
+          if (!target.startsWith(".")) {
+            if (/^(?:file:|[A-Za-z]:[\\/])/u.test(target)) throw new Error("Import de Edge fora da árvore isolada.");
+            continue; // Paths HTTP da aplicação não são imports.
+          }
+          const resolved = path.resolve(cwd, directory, target);
+          if (resolved !== sourceRoot && !resolved.startsWith(`${sourceRoot}${path.sep}`)) {
+            throw new Error("Referência relativa de Edge fora de supabase/functions.");
+          }
+        }
+      }
+      await fs.writeFile(path.join(destination, relative), bytes, { mode: 0o600, flag: "wx" });
+    }
+  }
+  await copy("supabase/functions");
+  if (await edgeFingerprint(destination) !== fingerprint || await edgeFingerprint(cwd) !== fingerprint) {
+    throw new Error("Os bytes de Edge mudaram durante a preparação da cópia isolada.");
+  }
+  return fingerprint;
 }
 
 function hostMountPath(source) {
@@ -236,7 +285,7 @@ export async function runLocalIntegration({
     stages: ["current-local", "channels-local", "e2e-local", "copy-files-local"].map(name => ({ name, result: "not_run" })),
     failed_tests: [], log_refs: [], cleanup: { fixtures: "not_started", functions: "not_started" }
   };
-  let secrets = { ...environment }, functions, persistentFingerprint;
+  let secrets = { ...environment }, functions, persistentFingerprint, isolatedDirectory;
   const redact = value => redactLocalIntegrationOutput(value, secrets);
   const relative = file => path.relative(cwd, file).split(path.sep).join("/");
   const save = () => fs.writeFile(reportPath, `${redact(JSON.stringify(report, null, 2))}\n`, { mode: 0o600 });
@@ -334,8 +383,11 @@ export async function runLocalIntegration({
         report.cleanup.functions = "foreign_preserved";
         throw new Error("Edge Functions já estão ativas; este gate não substitui nem encerra um processo alheio.");
       }
-      const serve = supabaseCommand(["functions", "serve", "--no-verify-jwt"], baseEnvironment);
-      functions = start(serve.command, serve.args, { cwd, env: baseEnvironment });
+      isolatedDirectory = path.join(privateDirectory, "functions-workdir");
+      persistentFingerprint = await prepareIsolatedFunctions(cwd, isolatedDirectory);
+      report.runtime = { mode: "isolated", edge_sha256: persistentFingerprint, workdir: relative(isolatedDirectory) };
+      const serve = supabaseCommand(["functions", "serve", "--no-verify-jwt", "--workdir", "."], baseEnvironment);
+      functions = start(serve.command, serve.args, { cwd: isolatedDirectory, env: baseEnvironment });
       alive = functions.alive;
       report.cleanup.functions = "pending";
     }
@@ -457,16 +509,21 @@ export async function runLocalIntegration({
       if (!report.failed_tests.includes(row.name)) report.failed_tests.push(row.name);
     }
   } finally {
-    if (persistentFingerprint && persistentFingerprint !== await edgeFingerprint(cwd)) {
-      report.result = "failed";
-      report.error = "O código/configuração de Edge mudou durante a prova persistente; a evidência foi invalidada.";
-    }
     if (functions) {
       try { await functions.stop(); report.cleanup.functions = "stopped"; }
       catch (error) { report.result = "failed"; report.cleanup.functions = "failed"; report.cleanup.error = redact(error.message); }
       const functionsLog = path.join(privateDirectory, "functions.log");
       await fs.writeFile(functionsLog, redact(functions.output()), { mode: 0o600 });
       report.log_refs.push(relative(functionsLog));
+    }
+    if (persistentFingerprint) {
+      try {
+        if (persistentFingerprint !== await edgeFingerprint(cwd) ||
+            (isolatedDirectory && persistentFingerprint !== await edgeFingerprint(isolatedDirectory))) {
+          report.result = "failed";
+          report.error = "O código/configuração de Edge mudou durante a prova; a evidência foi invalidada.";
+        }
+      } catch (error) { report.result = "failed"; report.error = redact(error.message); }
     }
     report.finished_at = new Date().toISOString();
     await save();

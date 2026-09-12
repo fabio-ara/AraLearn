@@ -14,6 +14,7 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - a correção de uma explicação ou unidade substitui a lista de referências quando ela é fornecida explicitamente, permitindo retirar vínculos duplicados sem excluir a obra ou o arquivo; quando a lista não é enviada, as referências existentes são preservadas.
+- a integração local serve funções de uma cópia privada verificada, evitando reinícios provocados por eventos do diretório de trabalho durante os testes.
 
 ## [0.0.69] - 2026-09-12
 
