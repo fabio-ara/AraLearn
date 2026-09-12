@@ -163,12 +163,12 @@ async function sliceFor(state, args, context, dependencies) {
     if (parent.kind !== expected) fail("O destino não é o pai necessário para esse tipo de ramo.");
     command[`${expected}Id`] = parent.item[`${expected}Id`];
   } else if (!selected && kind !== "module") fail("Indique o destino do novo ramo.");
-  if (kind !== "microsequence" && ["dependencias", "cobertura", "explicacao"].some(key => args[key] !== undefined)) fail("Dependências, cobertura e plano de Explicação pertencem à microssequência.");
+  if (kind !== "microsequence" && ["dependencias", "cobertura", "explicacao"].some(key => args[key] !== undefined)) fail("Dependências, cobertura e plano de explicação pertencem à microssequência.");
   if (args.dependencias !== undefined) command.dependencyMicrosequenceIds = (await resolvedReferences(args.dependencias,
     map.modules.flatMap(module => module.lessons.flatMap(lesson => lesson.microsequences)), "dependências", item => item.title)).map(item => item.microsequenceId);
   if (args.cobertura !== undefined) command.scopeItemIds = (await resolvedReferences(args.cobertura, map.scopeItems, "cobertura", item => item.statement)).map(item => item.id);
   if (args.explicacao !== undefined) {
-    if (!plain(args.explicacao) || !Object.keys(args.explicacao).length || Object.keys(args.explicacao).some(key => !["proposito", "pressupostos", "relacoes", "fontes"].includes(key))) fail("O plano de Explicação é inválido.");
+    if (!plain(args.explicacao) || !Object.keys(args.explicacao).length || Object.keys(args.explicacao).some(key => !["proposito", "pressupostos", "relacoes", "fontes"].includes(key))) fail("O plano de explicação é inválido.");
     command.explanationPlan = structuredClone(selected?.item.explanationPlan ?? { purpose: command.objective, prerequisites: [], relations: [], sourceIds: [] });
     for (const [human, field] of [["proposito", "purpose"], ["pressupostos", "prerequisites"], ["relacoes", "relations"]]) {
       if (args.explicacao[human] !== undefined) command.explanationPlan[field] = args.explicacao[human];

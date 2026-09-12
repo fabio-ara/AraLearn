@@ -714,7 +714,7 @@ async function validateCompositionChange(body, request) {
       body.expectedMicrosequenceVersion != null && (body.expectedStudyUnitVersion != null ||
         body.applicationOrigin !== "manual" || upserts.length !== 1 || deletes.length !== 0 ||
         upserts[0].entityType !== "microsequence" || explanationApplications.length !== 1)) {
-    fail("invalid_course_composition_origin", "A edição da Explicação exige somente a microssequência e sua proveniência.");
+    fail("invalid_course_composition_origin", "A edição da explicação exige somente a microssequência e sua proveniência.");
   }
   return {
     requestId: requestIdFrom(request, body),

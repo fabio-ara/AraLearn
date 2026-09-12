@@ -46,7 +46,7 @@ test("materialização pelo catálogo relê processo pessoal e mantém cadência
     assert.equal(output.context.processoCorrente.foco, focus);
     assert.equal(output.context.processoCorrente.cadencia, "batch");
     assert.deepEqual(output.context.processoCorrente.pontosDeRevisao, []);
-    assert.match(output.nextDecision, focus === "content" ? /Explicações e fontes/u : /ciclo autorizado/u);
+    assert.match(output.nextDecision, focus === "content" ? /explicações e fontes/u : /ciclo autorizado/u);
     assert.equal(adapter.calls.length, 1);
     assert.equal(Object.hasOwn(adapter.calls[0], "preferences"), false);
     assert.equal(Object.hasOwn(adapter.calls[0], "reviewed"), false);
@@ -462,14 +462,27 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
     anchors: [{ anchorId: "anchor-rfc-1035-section-2" }]
   }]);
   assert.equal(receipt.result, "Primeira parte produzida.");
-  assert.equal(receipt.deepLink, `#/authoring/courses/${COURSE_ID}?section=content`);
-  assert.match(receipt.nextDecision, /aguarda revisão humana/u);
+  assert.equal(receipt.deepLink, `#/authoring/courses/${COURSE_ID}?section=content&authoringPartId=${PART_ID}`);
+  assert.match(receipt.nextDecision, /Inspecione as unidades produzidas/u);
   assert.equal(write.explanations.length, 1);
   assert.equal(write.explanations[0].microsequenceId, "micro-dns");
   assert.equal(write.explanations[0].content.title, "Explicação sintética de DNS");
   assert.equal(Object.hasOwn(write.explanations[0], "contentReview"), false);
   assert.equal(receipt.context.distribuicaoDaPratica[0].observacao.studyUnitCount, 1);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes(COURSE_ID), false);
+});
+
+for (const authenticationKind of ["oauth", "action"]) test(`materialização ${authenticationKind} devolve a parte em conteúdo sem herdar link de observações`, async () => {
+  const adapter = adapterFixture();
+  adapter.publicAppUrl = "https://aralearn.example/app/";
+  const materialize = adapter.materializeCourseAuthoringPart;
+  adapter.materializeCourseAuthoringPart = async (request) => ({
+    ...await materialize(request), deepLink: `${adapter.publicAppUrl}#/authoring/courses/${COURSE_ID}?section=review`
+  });
+  const receipt = await materializeHumanCoursePart({ adapter, principal: { ...PRINCIPAL, authenticationKind },
+    course: "Curso de Redes", part: 1, units: [unit()] });
+  assert.equal(receipt.deepLink,
+    `https://aralearn.example/app/#/authoring/courses/${COURSE_ID}?section=content&authoringPartId=${PART_ID}`);
 });
 
 test("materializa prática de resposta aberta na primeira tentativa sem resposta-modelo", async () => {

@@ -5,13 +5,12 @@ import { normalizeCourseContentReview, normalizeCourseContentReviewChange } from
 import { explanationRenderingUnit, explanationReviewMessage } from "../study/studyExplanation.js";
 import { placeStudyCitationMarkers, renderStudyCitations, renderStudySourceMarkers, studyCitationMarkers } from "../study/studyCitations.js";
 import { openStudyResourceUrl } from "../study/studyTools.js";
+import { buildSourceDocumentUrl } from "../study/sourceDocumentUrl.js";
 import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrences } from "../domain/courseSourceOccurrences.js";
 import { renderPackageStudyUnitBlocks } from "../render/renderPackageStudyUnit.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { activateManualStudyUnitEdit, applyManualStudyUnitEdit, isAmbiguousManualStudyUnitWriteFailure,
   listManualStudyUnitEditablePaths, listManualStudyUnitTargetIds, readManualStudyUnitEditPathValues } from "./manualStudyUnitEdit.js";
-import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
-import { bindCourseAuthoringDebate, renderCourseAuthoringDebate } from "./courseAuthoringDebate.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
 import { renderUiIcon } from "./renderUiIcons.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
@@ -132,7 +131,7 @@ export class CourseMicrosequenceReviewSession {
   }
   async saveExplanation(explanation) {
     if (this.targetKind !== "microsequence_explanation" || this.busy || this.pending || !this.snapshot && !this.pendingEdit || typeof this.controller.saveMicrosequenceExplanation !== "function") {
-      throw new Error("A edição da Explicação não está disponível neste momento.");
+      throw new Error("A edição da explicação não está disponível neste momento.");
     }
     const normalized = normalizeMicrosequenceExplanation(explanation);
     if (this.pendingEdit && JSON.stringify(this.pendingEdit.explanation) !== JSON.stringify(normalized)) {
@@ -176,11 +175,10 @@ export function applyExplanationTextFields(explanation, fields) {
 }
 
 export function createCourseMicrosequenceReview({ root, controller, onEditSources, onChanged = () => {},
-  onFeedback = () => {}, navigatorValue = globalThis.navigator, locationValue = globalThis.location,
   openSourceUrl = url => openStudyResourceUrl(url, root.ownerDocument) }) {
   let dialog = null; let session = null; let returnButton = null; let editing = false;
   let fields = []; let confirmed = false; let message = ""; let failure = false;
-  let epoch = 0; let changedRevision = null; let debate = null;
+  let epoch = 0; let changedRevision = null;
   let componentsReady = false; let observationQueue = null;
   let inlineEditors = [];
   let focusEditing = false; let focusEditAction = false;
@@ -190,13 +188,13 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
   function close({ force = false } = {}) {
     if (!dialog) return true;
     if (!force && dirty()) { if (editing) captureFields(); status("Conclua ou cancele a edição; confirme o resultado de qualquer pedido pendente antes de sair.", true); render(); return false; }
-    ++epoch; debate?.destroy(); debate = null; observationQueue?.destroy(); observationQueue = null; stopInlineEditors();
+    ++epoch; observationQueue?.destroy(); observationQueue = null; stopInlineEditors();
     dialog.close(); dialog.remove(); dialog = null;
     returnButton?.isConnected && returnButton.focus({ preventScroll: true });
     if (changedRevision) onChanged(changedRevision);
     return true;
   }
-  function citationsFor(links, content, base) {
+  function citationsFor(links, content) {
     const inventory = session.snapshot.sources;
     return { citations: links.map(link => {
       const record = inventory.find(value => value.sourceRef === (link.sourceId || link.sourceRef));
@@ -204,18 +202,18 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         ...link, sourceId: link.sourceId || link.sourceRef, sourceRevision: record?.revision,
         attachments: record?.attachments || [],
         anchors: (link.anchors || []).map(({ anchorId }) => record?.anchors.find(value => value.anchorRef === anchorId)).filter(Boolean),
-        occurrences: resolveCourseSourceOccurrences(content, link.occurrences || [], base ? { targetKind: "microsequence_explanation" } : {}) };
+        occurrences: resolveCourseSourceOccurrences(content, link.occurrences || [], { targetKind: "microsequence_explanation" }) };
     }) };
   }
-  function sourceLinks(links, content, base) {
-    const value = citationsFor(links, content, base);
+  function sourceLinks(links, content) {
+    const value = citationsFor(links, content);
     const formattedReferences = Object.fromEntries(value.citations.map(citation => [citation.linkId,
       session.snapshot.references.find(item => item.sourceId === citation.sourceId)?.reference]));
-    const options = base ? { targetKind: "microsequence_explanation" } : {};
+    const options = { targetKind: "microsequence_explanation" };
     return renderStudySourceMarkers(studyCitationMarkers(content, value, options).filter(marker => !marker.target)) +
       renderStudyCitations({ open: true, value, courseId: session.snapshot.courseId,
         studyUnit: content, sourceOptions: options, formattedReferences,
-        contextId: base ? "explanation" : "unit", heading: base ? "Referências da Explicação" : "Referências desta unidade" });
+        contextId: "explanation", heading: "Referências da explicação" });
   }
   function render() {
     if (!dialog) return;
@@ -223,7 +221,11 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     const active = dialog.contains(dialog.ownerDocument.activeElement) ? dialog.ownerDocument.activeElement : null;
     const manualPath = active?.dataset.manualEditPath;
     const manualTarget = active?.closest?.("[data-review-edit-target]")?.dataset.reviewEditTarget;
-    const openedDetails = [...dialog.querySelectorAll("details[open]")].map(node => node.querySelector(":scope > summary")?.textContent);
+    const detailKey = node => {
+      const summary = node.querySelector(":scope > summary");
+      return summary?.getAttribute("aria-label") || summary?.textContent;
+    };
+    const openedDetails = [...dialog.querySelectorAll("details[open]")].map(detailKey);
     const focusAttribute = active && [...active.attributes].find(attribute =>
       attribute.name.startsWith("data-review-") || attribute.name === "data-inspection-edit-explanation-sources");
     const restoreFocus = () => {
@@ -254,48 +256,51 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       const ms = snapshot.microsequence; const explanation = ms.explanation;
       const baseTarget = snapshot.targetKind === "microsequence_explanation";
       const reviewLabel = baseTarget ? `Base explicativa · ${ms.title}` : `Unidade · ${snapshot.targetUnit.title}`;
-      const units = baseTarget ? ms.studyUnits : [snapshot.targetUnit];
       const hasSavedContent = baseTarget ? Boolean(ms.explanation) : Boolean(snapshot.targetUnit);
-      const route = buildCourseAuthoringRoute(snapshot.courseId, { section: "content", didacticMicrosequenceId: snapshot.microsequenceId });
-      content = `<p>${escape(snapshot.moduleTitle)} › ${escape(snapshot.lessonTitle)} › ${escape(ms.title)}</p>` +
-        `<p>Revisão ${snapshot.courseRevision}. ${escape(explanationReviewMessage(snapshot.contentReview))}</p>` +
-        `<details><summary>Objetivo e proposta da microssequência</summary><p>${escape(ms.goal)}</p>` +
+      const reviewState = session.pending ? "pending" : snapshot.contentReview.state;
+      const reviewStateLabel = { current: "Revisão autoral atual", stale: "Revisão autoral desatualizada",
+        pending: "Resultado da revisão ainda não confirmado" }[reviewState] || "Revisão autoral pendente";
+      const reviewStateIcon = { current: "ready-state", stale: "rotate", pending: "cloud-alert" }[reviewState] || "draft-state";
+      const reviewDeclaration = '<section class="course-review-context-body" aria-label="Revisão humana do conteúdo">' +
+        `<div class="course-review-target-heading"><h3>${escape(reviewLabel)}</h3>` +
+        `<span class="course-review-state" data-content-review-state="${escape(reviewState)}" role="img" aria-label="${reviewStateLabel}" title="${reviewStateLabel}">${renderUiIcon(reviewStateIcon, "course-authoring-button-icon")}</span></div>` +
+        (hasSavedContent ? `<label title="A marca registra sua declaração de revisão do conteúdo salvo e de suas fontes."><input type="checkbox" data-review-confirm${confirmed ? " checked" : ""} disabled> Revisei esta versão e suas fontes.</label>` : '<p>Salve a base explicativa antes de declarar sua revisão.</p>') +
+        (hasSavedContent || session.pending ? `<button type="button" data-review-set aria-label="${session.pending ? "Confirmar resultado da mesma decisão" : "Marcar como revisado"}" title="${session.pending ? "Confirmar resultado da mesma decisão" : "Marcar como revisado"}" disabled>${renderUiIcon(session.pending ? "rotate" : "ready-state", "course-authoring-button-icon")}</button>` : '') +
+        (["current", "stale"].includes(snapshot.contentReview.state) && !session.pending
+          ? `<button type="button" data-review-withdraw aria-label="Retirar marca de revisão" title="Retirar marca de revisão" disabled>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` : '') + '</section>';
+      content = !baseTarget
+        ? '<section class="course-review-unit-declaration">' + reviewDeclaration + '</section>'
+        : '<section class="course-review-authoring-context" aria-label="Contexto autoral">' +
+        `<p class="course-review-authoring-path">${escape(snapshot.moduleTitle)} › ${escape(snapshot.lessonTitle)} › ${escape(ms.title)}</p>` +
+        `<details><summary data-review-context="metadata" aria-label="Contexto autoral" title="Contexto autoral">${renderUiIcon("intent", "course-authoring-button-icon")}</summary>` +
+        '<dl class="course-review-authoring-state">' +
+        `<div><dt>Versão do curso</dt><dd>${snapshot.courseRevision}</dd></div>` +
+        `<div><dt>Revisão autoral</dt><dd>${escape(explanationReviewMessage(snapshot.contentReview))}</dd></div></dl>` +
+        `<h4>Objetivo e proposta da microssequência</h4><p>${escape(ms.goal)}</p>` +
         (ms.explanationPlan ? `<p>Propósito: ${escape(ms.explanationPlan.purpose)}</p>` +
           [["Pressupostos", ms.explanationPlan.prerequisites], ["Relações", ms.explanationPlan.relations],
             ["Fontes previstas", ms.explanationPlan.sourceIds.map(id => snapshot.sources.find(value => value.sourceRef === id)?.document.title || id)]]
             .map(([label, values]) => `<h4>${label}</h4>` + (values.length ? '<ul>' + values.map(value => `<li>${escape(value)}</li>`).join("") + '</ul>' : '<p>Nenhum registro.</p>')).join("")
-          : '<p>Proposta da Explicação não registrada.</p>') + '</details>' +
-        (!baseTarget ? '<details><summary>Base explicativa usada como apoio à inspeção</summary>' : '') +
+          : '<p>Proposta da explicação não registrada.</p>') + '</details></section>' +
         '<section aria-label="Base explicativa" class="course-explanation-context">' +
-        (explanation ? renderExplanation(explanation, { editable: baseTarget && editing, busy })
-          : '<p>Esta microssequência ainda não tem Explicação.</p>') + sourceLinks(snapshot.explanationSources, explanation, true) +
-        '<nav class="course-explanation-actions" aria-label="Ações da Explicação">' +
-        (explanation ? `<button type="button" data-inspection-edit-explanation-sources data-microsequence-id="${escape(snapshot.microsequenceId)}" aria-label="Fontes da Explicação" title="Fontes da Explicação"${busy || editing || session.pending || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +
-        (baseTarget && explanation && typeof controller.saveMicrosequenceExplanation === "function" && !editing
-          ? `<button type="button" data-review-edit aria-label="Editar Explicação" title="Editar Explicação"${busy || session.pending ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` : "") +
-        (editing ? `<button type="button" data-review-save aria-label="${session.pendingEdit ? "Confirmar resultado da gravação" : "Salvar Explicação"}" title="${session.pendingEdit ? "Confirmar resultado da gravação" : "Salvar Explicação"}"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+        '<div class="course-explanation-tools"><nav class="course-explanation-actions" aria-label="Ações da explicação">' +
+        (explanation ? `<button type="button" data-inspection-edit-explanation-sources data-microsequence-id="${escape(snapshot.microsequenceId)}" aria-label="Fontes da explicação" title="Fontes da explicação"${busy || editing || session.pending || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +
+        (explanation && typeof controller.saveMicrosequenceExplanation === "function" && !editing
+          ? `<button type="button" data-review-edit aria-label="Editar explicação" title="Editar explicação"${busy || session.pending ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` : "") +
+        (editing ? `<button type="button" data-review-save aria-label="${session.pendingEdit ? "Confirmar resultado da gravação" : "Salvar explicação"}" title="${session.pendingEdit ? "Confirmar resultado da gravação" : "Salvar explicação"}"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
           `<button type="button" data-review-cancel-edit aria-label="Cancelar edição" title="Cancelar edição"${busy || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` : '') + '</nav>' +
-        (baseTarget ? '<div data-review-observation-queue></div>' : '') + '</section>' + (!baseTarget ? '</details>' : '') +
-        `<section aria-label="${baseTarget ? 'Unidades desta microssequência para contexto' : 'Unidade em revisão'}"><h3>${baseTarget ? `Unidades (${units.length}) · contexto` : 'Unidade em revisão'}</h3>` + units.map((unit, index) =>
-          `<article data-review-unit-context="${escape(unit.id)}"><h4>${index + 1}. ${escape(unit.title)} · ${unit.role === "practice" ? "Prática" : "Teoria"}</h4>` +
-          renderPackageStudyUnitBlocks(unit, { revealPracticeAnswers: true, sourceTextTargets: listCourseSourceOccurrenceTargets(unit) }) +
-          (!baseTarget ? '<div data-review-observation-queue></div>' : '') +
-          sourceLinks(snapshot.unitSources.find(value => value.studyUnitId === unit.id)?.sourceLinks || [], unit, false) +
-          (typeof controller.loadAuthoringStudyUnits === "function" ? `<button type="button" data-review-unit-sources="${escape(unit.id)}"${busy || editing || session.pending || session.pendingEdit ? " disabled" : ""}>Fontes de ${escape(unit.title)}</button>` : "") + '</article>').join("") + '</section>' +
-        renderCourseAuthoringInspectionEvidence(snapshot.analytics) +
-        renderCourseAuthoringDebate({ courseId: snapshot.courseId, courseRevision: snapshot.courseRevision, title: snapshot.courseTitle,
-          route, contextLabel: reviewLabel }) +
-        '<section aria-label="Revisão humana do conteúdo"><h3>Revisão humana do conteúdo</h3>' +
-        `<p><strong>${escape(reviewLabel)}</strong> · conteúdo salvo e vínculos de fontes.</p>` +
-        '<p>Esta declaração registra uma inspeção, sem atestar correção ou eficácia.</p>' +
-        (hasSavedContent ? `<label><input type="checkbox" data-review-confirm${confirmed ? " checked" : ""} disabled> Inspecionei este objeto e suas fontes nesta versão salva.</label>` : '<p>Salve a base explicativa antes de declarar sua revisão.</p>') +
-        (hasSavedContent || session.pending ? `<button type="button" data-review-set disabled>${session.pending ? "Confirmar resultado da mesma decisão" : "Marcar como revisado"}</button>` : '') +
-        (["current", "stale"].includes(snapshot.contentReview.state) && !session.pending
-          ? '<button type="button" data-review-withdraw disabled>Retirar marca de revisão</button>' : '') + '</section>';
+        '<div data-review-observation-queue></div></div>' +
+        (explanation ? renderExplanation(explanation, { editable: editing, busy })
+          : '<p>Esta microssequência ainda não tem explicação.</p>') + sourceLinks(snapshot.explanationSources, explanation) +
+        '</section>' +
+        '<section class="course-review-authoring-tools" aria-label="Contexto e revisão"><h3>Contexto e revisão</h3><div class="course-review-authoring-panels">' +
+        renderCourseAuthoringInspectionEvidence(snapshot.analytics, { compact: true }) +
+        `<details class="course-review-context-panel"${session.pending ? ' open' : ''}><summary data-review-context="review" data-content-review-state="${escape(reviewState)}" aria-label="Revisão autoral do conteúdo" title="${reviewStateLabel}">${renderUiIcon(reviewStateIcon, "course-authoring-button-icon")}</summary>` +
+        reviewDeclaration + '</details></div></section>';
     }
     const scroll = dialog.querySelector(".editor-body")?.scrollTop || 0;
     stopInlineEditors();
-    dialog.innerHTML = `<header class="editor-head"><h2>${snapshot?.targetKind === "study_unit" ? "Unidade de estudo" : "Explicação"}</h2><button type="button" data-review-close aria-label="Fechar inspeção ${snapshot?.targetKind === "study_unit" ? "da unidade" : "da Explicação"}" title="Fechar">${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
+    dialog.innerHTML = `<header class="editor-head"><h2>${snapshot?.targetKind === "study_unit" ? "Revisão da unidade" : "Explicação"}</h2><button type="button" data-review-close aria-label="Fechar inspeção ${snapshot?.targetKind === "study_unit" ? "da unidade" : "da explicação"}" title="Fechar">${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
       `<div class="editor-body"><p role="${failure ? "alert" : "status"}" data-review-status>${escape(message)}</p>${content}</div>`;
     const queueHost = dialog.querySelector("[data-review-observation-queue]");
     if (queueHost && snapshot && typeof controller.loadCourseAnchoredAnnotations === "function") {
@@ -303,7 +308,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         observationQueue = createAuthoringObservationQueue({ document: dialog.ownerDocument, controller,
           courseId: snapshot.courseId, targetKind: snapshot.targetKind, targetId: snapshot.targetId,
           expectedRevision: snapshot.courseRevision, label: snapshot.targetKind === "microsequence_explanation"
-            ? `Explicação · ${snapshot.microsequence.title}` : snapshot.targetUnit.title });
+            ? `explicação · ${snapshot.microsequence.title}` : snapshot.targetUnit.title });
         void observationQueue.load();
       }
       observationQueue.queue.expectedRevision = snapshot.courseRevision;
@@ -311,7 +316,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     }
     dialog.querySelector(".editor-body").scrollTop = scroll;
     dialog.querySelectorAll("details").forEach(node => {
-      if (openedDetails.includes(node.querySelector(":scope > summary")?.textContent)) node.open = true;
+      if (openedDetails.includes(detailKey(node))) node.open = true;
     });
     dialog.querySelectorAll('.package-instance[data-package^="aralearn.response."], .card-answer-dock').forEach(container => {
       container.querySelectorAll("button, input, select, textarea, [contenteditable]").forEach(control => {
@@ -326,13 +331,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       const explanation = snapshot?.microsequence.explanation;
       const explanationHost = dialog.querySelector(".course-explanation-context");
       if (explanation && explanationHost) placeStudyCitationMarkers(explanationHost, explanation,
-        citationsFor(snapshot.explanationSources, explanation, true), { targetKind: "microsequence_explanation" });
+        citationsFor(snapshot.explanationSources, explanation), { targetKind: "microsequence_explanation" });
       if (editing) explanationHost?.querySelectorAll("[data-action='open-citation']").forEach(node => { node.disabled = true; });
-      dialog.querySelectorAll("[data-review-unit-context]").forEach(container => {
-        const unit = snapshot.microsequence.studyUnits.find(item => item.id === container.dataset.reviewUnitContext);
-        const links = snapshot.unitSources.find(item => item.studyUnitId === unit.id)?.sourceLinks || [];
-        placeStudyCitationMarkers(container, unit, citationsFor(links, unit, false));
-      });
       if (editing) {
         const original = editingFields(snapshot.microsequence.explanation);
         inlineEditors = [...dialog.querySelectorAll("[data-review-edit-target]")].map(container => {
@@ -375,7 +375,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     const unit = explanationRenderingUnit(explanation);
     const title = editable ? fields.find(field => field.targetId === "study_unit" && field.path === "title")?.value ?? explanation.title : explanation.title;
     return '<div class="course-explanation-inline" data-review-explanation-content>' +
-      `<h3 data-review-title${editable ? ` contenteditable="${busy || session.pendingEdit ? "false" : "plaintext-only"}" role="textbox" aria-label="Título da Explicação"` : ''}>${escape(title)}</h3>` +
+      `<h3 data-review-title${editable ? ` contenteditable="${busy || session.pendingEdit ? "false" : "plaintext-only"}" role="textbox" aria-label="Título da explicação"` : ''}>${escape(title)}</h3>` +
       unit.content.map(instance => {
         const targetId = `content:${instance.id}`;
         return `<div class="course-explanation-component${editable ? ' is-editing' : ''}" data-review-edit-target="${escape(targetId)}">` +
@@ -391,8 +391,9 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     const stillOpen = () => session === clickedSession && dialog === clickedDialog;
     const citationAction = event.target.closest("[data-action='open-citation'], [data-action='return-citation'], [data-action='download-citation-attachment']");
     if (citationAction) {
-      if (editing) return;
-      const container = citationAction.closest(".course-explanation-context, [data-review-unit-context]");
+      event.preventDefault();
+      if (editing || citationAction.getAttribute("aria-disabled") === "true") return;
+      const container = citationAction.closest(".course-explanation-context");
       if (!container) return;
       if (citationAction.dataset.action === "open-citation" || citationAction.dataset.action === "return-citation") {
         const backwards = citationAction.dataset.action === "return-citation";
@@ -401,28 +402,27 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
           node.dataset.citationOccurrenceId === citationAction.dataset.citationOccurrenceId : node.dataset.citationReferenceId === citationAction.dataset.citationLinkId);
         target?.scrollIntoView({ block: "nearest" }); target?.focus({ preventScroll: true }); return;
       }
-      const snapshot = session.snapshot; const base = container.classList.contains("course-explanation-context");
-      const unit = base ? snapshot.microsequence.explanation : snapshot.microsequence.studyUnits.find(item => item.id === container.dataset.reviewUnitContext);
-      const links = base ? snapshot.explanationSources : snapshot.unitSources.find(item => item.studyUnitId === unit.id)?.sourceLinks || [];
-      const citation = citationsFor(links, unit, base).citations[Number(citationAction.dataset.citationIndex)];
+      const snapshot = session.snapshot;
+      const citation = citationsFor(snapshot.explanationSources, snapshot.microsequence.explanation)
+        .citations[Number(citationAction.dataset.citationIndex)];
       const attachment = citation?.attachments[Number(citationAction.dataset.attachmentIndex)];
       if (!attachment || typeof controller.getCourseSourceAttachmentDownload !== "function") return;
       citationAction.disabled = true;
+      citationAction.setAttribute("aria-disabled", "true");
       try {
         const result = await controller.getCourseSourceAttachmentDownload({ courseId: snapshot.courseId,
           expectedCourseRevision: snapshot.courseRevision, sourceId: citation.sourceId,
           sourceRevision: citation.sourceRevision, contentHash: attachment.contentHash });
         if (!stillOpen() || session.snapshot !== snapshot) return;
-        const url = new URL(result.signedUrl);
-        if (url.protocol !== "https:" && !(url.protocol === "http:" && ["127.0.0.1", "localhost", "10.0.2.2"].includes(url.hostname)) || url.username || url.password) throw new TypeError("Endereço do PDF inválido.");
-        const page = Number(citationAction.dataset.citationPage);
-        if (Number.isSafeInteger(page) && page > 0 && page <= 1_000_000) url.hash = `page=${page}`;
-        openSourceUrl(url.href, attachment);
+        const rawAnchorIndex = citationAction.dataset.citationAnchorIndex;
+        const anchorIndex = typeof rawAnchorIndex === "string" && /^\d+$/u.test(rawAnchorIndex) ? Number(rawAnchorIndex) : null;
+        const anchor = Number.isSafeInteger(anchorIndex) ? citation.anchors[anchorIndex] ?? null : null;
+        openSourceUrl(buildSourceDocumentUrl(result.signedUrl, { attachment, anchor }), attachment);
       } catch (error) {
         if (!stillOpen()) return;
         status(publicErrorMessage(error, "Não foi possível abrir este PDF. A referência foi preservada."), true);
         const live = dialog.querySelector("[data-review-status]"); live.textContent = message; live.setAttribute("role", "alert");
-      } finally { if (stillOpen() && citationAction.isConnected) citationAction.disabled = false; }
+      } finally { if (stillOpen() && citationAction.isConnected) { citationAction.disabled = false; citationAction.removeAttribute("aria-disabled"); } }
       return;
     }
     if (event.target.closest("[data-review-edit]")) {
@@ -454,24 +454,9 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     if (event.target.closest("[data-inspection-edit-explanation-sources]")) {
       const snapshot = session.snapshot;
       const target = { mode: "target", targetKind: "microsequence_explanation", targetId: snapshot.microsequenceId,
-        targetVersion: snapshot.microsequenceVersion, targetLabel: `Explicação · ${snapshot.microsequence.title}`,
+        targetVersion: snapshot.microsequenceVersion, targetLabel: `explicação · ${snapshot.microsequence.title}`,
         targetExplanation: clone(snapshot.microsequence.explanation) };
       if (close()) onEditSources(target); return;
-    }
-    const unitSources = event.target.closest("[data-review-unit-sources]");
-    if (unitSources) {
-      try {
-        const snapshot = session.snapshot; const id = unitSources.dataset.reviewUnitSources;
-        const page = await controller.loadAuthoringStudyUnits(snapshot.courseId, { expectedRevision: snapshot.courseRevision,
-          scope: { kind: "didactic_microsequence", id: snapshot.microsequenceId }, anchorStudyUnitId: id, limit: 1 });
-        if (!stillOpen()) return;
-        const item = page.items.find(value => value.studyUnit.id === id);
-        if (page.courseRevision !== snapshot.courseRevision || page.stale || page.offline || !item ||
-            JSON.stringify(item.studyUnit) !== JSON.stringify(snapshot.microsequence.studyUnits.find(value => value.id === id))) throw changed();
-        if (close()) onEditSources({ targetKind: "study_unit", targetId: id, targetVersion: item.version,
-          targetLabel: item.studyUnit.title, targetStudyUnit: clone(item.studyUnit), returnFocusKey: `explanation:${id}` });
-      } catch (error) { if (!stillOpen()) return; status(publicErrorMessage(error, "Não foi possível abrir as fontes desta revisão."), true); render(); }
-      return;
     }
     if (event.target.closest("[data-review-set], [data-review-withdraw]")) {
       if (!componentsReady && !session.pending) return;
@@ -495,13 +480,13 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       editing = false; fields = []; confirmed = false; message = ""; failure = false; changedRevision = null;
       focusEditing = false; focusEditAction = false;
       returnButton = button;
-      dialog = root.ownerDocument.createElement("dialog"); dialog.className = "editor-sheet course-microsequence-review";
-      dialog.setAttribute("aria-label", "Explicação e revisão do conteúdo"); root.ownerDocument.body.append(dialog);
+      dialog = root.ownerDocument.createElement("dialog");
+      dialog.className = "editor-sheet course-microsequence-review" + (targetKind === "study_unit" ? " is-unit-review" : "");
+      dialog.setAttribute("aria-label", targetKind === "study_unit" ? "Revisão da unidade de estudo" : "Explicação e revisão do conteúdo"); root.ownerDocument.body.append(dialog);
       dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
       dialog.addEventListener("click", event => void click(event));
       dialog.addEventListener("change", event => { if (event.target.matches("[data-review-confirm]")) { confirmed = event.target.checked; render(); } });
       dialog.addEventListener("input", event => { if (event.target.closest("[data-review-explanation-content]")) captureFields(); });
-      debate = bindCourseAuthoringDebate(dialog, { navigatorValue, locationValue, onFeedback });
       render(); dialog.showModal();
       const openingSession = session; const openingDialog = dialog;
       try { await openingSession.load(); if (dialog === openingDialog && session === openingSession) { if (session.pendingEdit) { editing = true; fields = editingFields(session.pendingEdit.explanation); } render(); } }

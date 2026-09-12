@@ -1,6 +1,15 @@
 .course-authoring-observation-context { margin-block: 12px; }
-.course-authoring-observation-toggle { display: inline-flex; align-items: center; gap: 6px; }
-.course-authoring-observation-toggle > span { font-size: var(--type-sm); font-variant-numeric: tabular-nums; }
+.course-authoring-observation-toggle { display: inline-grid; place-items: center; width: var(--tap); min-width: var(--tap); height: var(--tap); min-height: var(--tap); padding: 0; }
+.course-authoring-observation-toggle,
+[data-inspection-observations] { position: relative; }
+.course-authoring-observation-count,
+.course-inspection-observation-count {
+  position: absolute; inset-block-start: 1px; inset-inline-end: 0;
+  min-width: 14px; height: 14px; box-sizing: border-box; padding-inline: 3px;
+  border-radius: 7px; background: var(--surface-sunken); color: var(--action-primary-hover);
+  font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 14px; text-align: center;
+  pointer-events: none;
+}
 .course-authoring-observation-panel { margin-block-start: 8px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 12px; }
 .course-authoring-observation-panel > header,
 .course-authoring-observation-entries li > div,
@@ -15,9 +24,64 @@
 .course-authoring-observation-panel small { font-size: var(--type-sm); color: var(--text-secondary); }
 .course-authoring-observation-context :focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
 .course-microsequence-review > .editor-head { grid-template-columns: minmax(0, 1fr) var(--tap); }
-.course-inspection-observation-count { font-size: var(--type-sm); font-variant-numeric: tabular-nums; }
 .course-explanation-actions { display: flex; align-items: center; gap: 6px; min-height: var(--tap); margin-block: 12px; }
 .course-explanation-actions > button { min-width: var(--tap); min-height: var(--tap); display: grid; place-items: center; padding: 8px; }
+.course-microsequence-review .editor-body > .course-review-authoring-context {
+  position: relative; margin-block: 0 16px; padding: 8px 12px; border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control); background: var(--surface-sunken);
+  font-size: var(--type-sm); line-height: 1.5;
+}
+.course-review-authoring-path { display: flex; align-items: center; min-height: var(--tap); margin: 0; padding-inline-end: calc(var(--tap) + 8px); color: var(--text-secondary); overflow-wrap: anywhere; }
+.course-review-authoring-state { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 0; }
+.course-review-authoring-state > div { min-width: 0; }
+.course-review-authoring-state > div:last-child { flex: 1 1 180px; }
+.course-review-authoring-state dt { color: var(--text-secondary); }
+.course-review-authoring-state dd { margin: 0; color: var(--text-primary); }
+.course-review-authoring-context > details > summary { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; min-width: var(--tap); width: var(--tap); min-height: var(--tap); display: grid; place-items: center; cursor: pointer; list-style: none; }
+.course-review-authoring-context > details > :is(p, h4, ul) { margin-block: 8px; }
+.course-explanation-tools {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 6px;
+  margin-block: 0 12px; padding-block-end: 8px; border-bottom: 1px solid var(--border-subtle);
+}
+.course-explanation-tools > .course-explanation-actions { margin: 0; }
+.course-explanation-tools :is([data-review-observation-queue], [data-author-queue], .course-authoring-observation-context) { display: contents; }
+.course-microsequence-review .course-explanation-tools :is(.course-explanation-actions > button, .course-authoring-observation-toggle) { margin: 0; }
+.course-explanation-tools .course-authoring-observation-toggle { justify-self: start; }
+.course-explanation-tools .course-authoring-observation-panel { grid-column: 1 / -1; margin-block-start: 2px; min-width: 0; }
+.course-microsequence-review .course-review-authoring-tools {
+  padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: var(--surface-sunken);
+}
+.course-review-authoring-tools > h3 { margin: 0 0 8px; font-size: var(--type-sm); color: var(--text-secondary); }
+.course-review-authoring-panels { display: grid; grid-template-columns: repeat(2, var(--tap)) minmax(0, 1fr); align-items: start; gap: 8px; }
+.course-review-authoring-panels > details { display: contents; }
+.course-review-authoring-panels > details::details-content { display: contents; }
+.course-review-authoring-panels > details > summary { grid-row: 1; }
+.course-review-authoring-panels > details:nth-child(1) > summary { grid-column: 1; }
+.course-review-authoring-panels > details:nth-child(2) > summary { grid-column: 2; }
+.course-review-authoring-panels > details > :not(summary) { grid-column: 1 / -1; min-width: 0; }
+.course-review-authoring-panels > details:not([open]) > :not(summary) { display: none; }
+.course-review-context-panel > summary {
+  display: grid; place-items: center; width: var(--tap); min-width: var(--tap); min-height: var(--tap);
+  border: 1px solid var(--border-default); border-radius: var(--radius-control); background: var(--surface-raised);
+  color: var(--action-primary-hover); cursor: pointer; list-style: none;
+}
+.course-review-context-panel > summary::-webkit-details-marker,
+.course-review-authoring-context > details > summary::-webkit-details-marker { display: none; }
+.course-review-context-panel[open] > summary { border-color: var(--action-primary); }
+.course-review-context-body { margin-block-start: 8px; padding: 12px; border-radius: var(--radius-control); background: var(--surface-raised); overflow-wrap: anywhere; }
+.course-review-unit-declaration > .course-review-context-body { margin: 0; padding: 0; }
+.course-review-target-heading { display: flex; align-items: center; gap: 8px; margin-block-end: 10px; }
+.course-review-target-heading > h3 { min-width: 0; flex: 1; margin: 0; font-size: var(--type-base); }
+.course-review-state { display: inline-grid; place-items: center; flex: 0 0 var(--tap); width: var(--tap); height: var(--tap); color: var(--text-secondary); }
+.course-microsequence-review [data-content-review-state="current"] { color: var(--status-success); }
+.course-microsequence-review [data-content-review-state="stale"],
+.course-microsequence-review [data-content-review-state="pending"] { color: var(--status-warning); }
+dialog.course-microsequence-review.is-unit-review { height: fit-content; }
+.course-review-context-body > h3,
+.course-review-context-body > section > h3 { margin-block: 0 10px; font-size: var(--type-base); }
+.course-microsequence-review .course-review-context-body > button { min-width: var(--tap); width: var(--tap); padding: 8px; }
+.course-review-authoring-context summary:focus-visible,
+.course-review-authoring-panels summary:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
 .course-explanation-inline { display: grid; gap: 0; }
 .course-explanation-component { min-width: 0; position: relative; }
 .course-explanation-component [data-manual-edit-path],
@@ -26,16 +90,6 @@
 }
 .course-explanation-component [data-manual-edit-path]:focus,
 .course-explanation-inline [data-review-title][contenteditable="plaintext-only"]:focus { outline: 2px solid var(--action-primary); }
-.course-inspection-empty-explanations { display: grid; gap: 8px; width: min(100%, 640px); margin: 0; padding: 0; list-style: none; }
-.course-inspection-empty-explanations > li { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: start; }
-.course-inspection-empty-explanations button { flex: 0 0 var(--tap); min-height: var(--tap); display: grid; place-items: center; }
-.course-inspection-instructional-details dl { display: grid; gap: 8px; }
-.course-inspection-instructional-details dl > div { display: grid; gap: 2px; }
-.course-inspection-instructional-details dt { color: var(--text-secondary); font-size: var(--type-sm); }
-.course-inspection-instructional-details dd { margin: 0; }
-.course-inspection-item-detail-panel:has(.course-inspection-instructional-details) {
-  max-height: min(52dvh, 520px); overflow-y: auto; overscroll-behavior: contain;
-}
 .course-inspection-authorship > .course-inspection-summary-label {
   display: inline; width: auto; min-width: 0; height: auto; max-width: 100%; padding: 0; border: 0;
   border-radius: 0; background: transparent; color: var(--text-secondary); font-size: var(--type-sm); overflow-wrap: anywhere;

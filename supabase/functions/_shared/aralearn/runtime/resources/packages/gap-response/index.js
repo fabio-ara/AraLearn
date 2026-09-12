@@ -1,5 +1,6 @@
 import { reconcilePackageTextAnswers } from "../../sdk/reconcileTextAnswers.js";
 import { gapResponseInteraction } from "./interaction.js";
+import { gapAuthoringEditableTargets, renderGapAuthoringOptions } from "./authoring.js";
 import {
   createPackageGapMarker,
   escapePackageAttribute,
@@ -261,6 +262,7 @@ export const gapResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
+    const authoringOptions = renderGapAuthoringOptions(data, options);
     const prompt = choicePrompt(data, options);
     const feedback = options.revealPracticeAnswers === true
       ? '<div class="inline-feedback ok"><p class="tiny">Respostas esperadas exibidas.</p></div>'
@@ -268,11 +270,11 @@ export const gapResponsePackage = Object.freeze({
     if (Array.isArray(options.dockExerciseParts)) {
       if (prompt) options.dockExerciseParts.push(prompt);
       if (feedback) options.dockExerciseParts.push(feedback);
-      return "";
+      return authoringOptions;
     }
-    return prompt + feedback;
+    return authoringOptions + prompt + feedback;
   },
   accessibleText(data) { return `${data.prompt || "Complete as lacunas."} ${data.blanks.map((blank) => blank.label || blank.id).join("; ")}`; },
-  editableTargets() { return []; },
+  editableTargets(data) { return gapAuthoringEditableTargets(data); },
   evaluate(data, answer) { const values = answer?.values && typeof answer.values === "object" ? answer.values : {}; const results = data.blanks.map((blank) => { const received = normalizeAnswer(values[blank.id]); const accepted = [blank.answer, ...(blank.acceptedAnswers || [])].map(normalizeAnswer); return { id: blank.id, correct: accepted.includes(received), received, expected: blank.answer }; }); return { correct: results.every(({ correct }) => correct), results }; }
 });

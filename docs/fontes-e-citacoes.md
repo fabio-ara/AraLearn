@@ -8,8 +8,18 @@ Esses registros ajudam a voltar ao material durante a revisão. Conferir a inter
 
 ## Registrar a obra e seu papel
 
-Em **Fontes**, use **Nova fonte** para informar o que já conhece sobre o
-material. **Dados da referência** abre campos adicionais, como autoria, título
+Em **Fontes**, o nome da explicação ou unidade aparece abaixo do cabeçalho para
+identificar o texto em edição. **Referências deste texto** reúne seus vínculos;
+**Fontes do curso** apresenta o acervo em linhas bibliográficas, no estilo ABNT
+ou APA escolhido para o curso. Abrir uma referência leva à ficha da obra. O
+ícone de endereço abre sua página ou PDF remoto; o sinal de adição inicia uma
+citação no texto em edição.
+
+Use **Nova fonte: PDF ou link** para informar o que já conhece sobre o material.
+É possível selecionar um PDF do dispositivo, colar o endereço de uma página ou
+PDF, ou informar ambos. O arquivo escolhido é enviado depois de salvar a ficha;
+um endereço conserva o acesso remoto à obra, sem copiar seu arquivo para o curso.
+**Dados da referência** abre campos adicionais, como autoria, título
 e publicação. Esses dados que descrevem a obra são chamados de **metadados**.
 Preencha apenas o que puder conferir; um campo vazio preserva melhor a incerteza
 do que uma data inventada ou um nome institucional decomposto sem base.
@@ -60,11 +70,33 @@ de tempo ou um elemento identificado, como uma figura. Ao criar uma âncora
 relacionada a um PDF anexado, escolha o arquivo correspondente. Essa ligação
 conserva o arquivo correto mesmo quando seu endereço temporário de acesso muda.
 
-No conteúdo, abra **Fontes e âncoras** da unidade ou o controle de fontes da explicação. Escolha a obra e indique como ela foi utilizada. Uma adaptação reconhece o material que serviu de base a uma formulação; um contraste coloca a afirmação em relação com outra posição; uma citação direta identifica a origem das palavras reproduzidas. O papel e a relação precisam corresponder ao que foi realmente feito.
+No conteúdo, abra o controle de fontes da unidade ou da explicação. Ao adicionar
+uma obra, a seleção de **Trecho citado neste texto** abre no próprio painel.
+Escolha a parte do texto e selecione a passagem literal que a referência sustenta.
+Confirme em **Vincular trecho selecionado** e depois em **Salvar fontes**. O
+número é gerado conforme a posição da referência e aparece junto ao trecho na
+leitura; não é necessário digitar o marcador no conteúdo.
 
-O vínculo pode se referir ao item inteiro ou a um trecho. Para localizar uma ocorrência, selecione o texto literal no componente correspondente. Se houver textos iguais, a posição do componente distingue os lugares; o caminho completo do alvo ajuda a conferir a escolha. Uma citação direta também precisa de localização na fonte.
+Novos vínculos de uma unidade ou explicação precisam de um trecho localizado no
+texto salvo. A seleção conserva contexto suficiente para distinguir passagens
+repetidas. Vínculos gerais já salvos continuam disponíveis, mesmo sem ocorrência;
+podem receber uma seleção quando a passagem for conferida. Fontes previstas em
+itens do planejamento podem continuar relacionadas ao item inteiro.
 
-Use **Adicionar outro vínculo** quando a mesma obra sustentar outro trecho ou cumprir outro uso. **Salvar** confirma o conjunto exibido para aquele item. Os papéis sugeridos no cadastro não substituem escolhas já salvas nos vínculos.
+Em **Uso e trecho da fonte**, indique como a obra foi utilizada e, quando
+conhecido, onde conferir a passagem no material original. Uma adaptação reconhece
+o material que serviu de base a uma formulação; um contraste coloca a afirmação
+em relação com outra posição; uma citação direta identifica a origem das palavras
+reproduzidas e exige localização na fonte. O papel e a relação precisam
+corresponder ao que foi realmente feito.
+
+O trecho do curso e o trecho da obra são escolhas distintas. A ficha da fonte
+reúne **Trechos na fonte**, onde é possível indicar páginas ou uma passagem
+textual e associá-las ao PDF correspondente. Depois, escolha essa localização no
+vínculo. Selecionar palavras na explicação não estabelece, por si só, onde essas
+palavras ou sua fundamentação aparecem no livro.
+
+Use **Adicionar outro vínculo** quando a mesma obra sustentar outro trecho ou cumprir outro uso. **Salvar fontes** confirma o conjunto exibido para aquele item. Os papéis sugeridos no cadastro não substituem escolhas já salvas nos vínculos.
 
 Uma fonte selecionada para um vínculo ainda em rascunho pode ser aberta para inspeção. Fechar sua ficha conserva a seleção e o texto em edição. Durante a gravação e a atualização do resultado, aguarde a conclusão ou a mensagem de falha antes de mudar de contexto. Uma resposta incerta exige conferir a mesma tentativa antes de criar outra alteração, como explica [Solução de problemas](solucao-de-problemas.md#não-consigo-salvar-uma-atribuição-de-fontes).
 
@@ -72,7 +104,14 @@ Se uma edição impedir localizar o trecho citado com precisão, o vínculo é c
 
 ## Anexar e consultar PDFs
 
-No detalhe da fonte, use **Anexar PDF**. Em uma conversa conectada, envie o arquivo e peça expressamente que seja guardado como fonte. As instruções de envio estão nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
+O PDF pode ser escolhido no cadastro inicial ou acrescentado depois em
+**Arquivos → Anexar PDF**, na ficha da fonte. O link **Documento PDF** abre o
+arquivo autorizado; uma localização vinculada ao arquivo oferece também
+**Abrir trecho no PDF**. Cadastrar ou anexar a obra conserva seu lugar no acervo;
+**Citar esta fonte no texto** inicia a seleção necessária para vinculá-la à
+explicação ou unidade.
+
+Em uma conversa conectada, envie o arquivo e peça expressamente que seja guardado como fonte. As instruções de envio estão nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
 
 A fonte identifica a obra; página externa e PDF são formas de acesso a ela. O arquivo fica em armazenamento privado e só é oferecido conforme a autorização. Remover o PDF encerra novas autorizações de leitura sem apagar a fonte, as âncoras e os vínculos. O mesmo conteúdo pode ser reativado por uma nova incorporação confirmada. Retirar a fonte inteira também retira os PDFs ativos associados, conforme a operação escolhida.
 
@@ -92,7 +131,32 @@ A fonte pode ter uma das seguintes opções:
 
 O acesso aos arquivos tem sua própria regra. Tornar o curso público não libera automaticamente seus PDFs. As regras podem ser definidas no curso, na fonte e no arquivo; a mais específica prevalece. O catálogo privado e os trechos de verificação da autoria não acompanham automaticamente a leitura estudantil.
 
-O PDF autorizado é obtido quando a pessoa o abre, na página indicada pela âncora quando ela existe. Uma falha de rede ou acesso é informada como tal. O endereço temporário de download não é a identidade da obra nem deve ser guardado como referência bibliográfica.
+Confira o acesso da pessoa que vai estudar: abrir um PDF como proprietário não
+prova que um estudante possa consultá-lo. Em curso privado compartilhado, a fonte
+precisa oferecer **Referência e acesso**; em curso público, a permissão efetiva
+do PDF também precisa permitir consulta pública. Um endereço remoto pode exigir
+autenticação ou assinatura no destino. Preserve esses limites e prefira, quando
+possível, uma obra que o público do curso consiga consultar integralmente.
+
+As referências usam a formatação bibliográfica do curso. O hiperlink abre a obra;
+um ícone discreto identifica o tipo de material. O acesso ao arquivo autorizado é
+obtido no clique, preservando os direitos e sem impor um download. O marcador
+sobrescrito fica junto à ocorrência salva no texto; seu retorno só aparece quando
+há um trecho localizado. Vínculos gerais permanecem identificados nas referências.
+
+Uma âncora de páginas abre a página indicada. Uma âncora textual vinculada ao
+arquivo exato acrescenta um fragmento de texto à abertura: leitores compatíveis,
+como o Chrome verificado, localizam e destacam o trecho. O suporte a esses
+fragmentos é documentado no [leitor de PDF do Chromium](https://github.com/chromium/chromium/blob/main/chrome/browser/resources/pdf/open_pdf_params_parser.ts).
+Outros leitores podem abrir apenas o documento. Uma referência sem localização
+na fonte permite consultar a obra completa; ela não recebe um destaque inventado.
+Uma falha de rede ou acesso é informada como tal. O endereço temporário de acesso
+não é a identidade da obra nem deve ser guardado como referência bibliográfica.
+
+O localizador textual usa o menor fragmento literal que distingue a passagem;
+prefixo e sufixo só são necessários para desfazer ambiguidades. O PDF continua
+armazenado uma única vez por conteúdo: localizar uma citação não exige guardar
+outra cópia do documento ou transcrever uma página inteira.
 
 Uma microssequência sem explicação salva mantém o acesso às referências já vinculadas às unidades. A política do curso define se é possível estudar conteúdo salvo sem declaração de revisão atual. Veja [Explicação e revisão humana](explicacao-e-revisao-humana.md#acesso-migração-e-cópia).
 

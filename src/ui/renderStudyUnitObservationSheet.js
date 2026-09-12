@@ -90,35 +90,36 @@ function categoryLabel(value) {
   return CATEGORY_LABELS[value || "none"] || "Sem categoria";
 }
 
+function renderObservationReviewAction({ actionHref, actionLabel, actionControlKey }) {
+  if (!actionHref || !actionLabel) return "";
+  return `<a class="study-observation-review-action" href="${escapeHtml(actionHref)}"` +
+    ` aria-label="${escapeHtml(actionLabel)}" title="${escapeHtml(actionLabel)}"` +
+    ` data-inspection-route${actionControlKey
+      ? ` data-inspection-control-key="${escapeHtml(actionControlKey)}"`
+      : ""}>${renderUiIcon("preview", "home-tab-icon")}</a>`;
+}
+
 export function renderStudyUnitObservationComposer({
   draft = { rawText: "", category: null },
   editingId = null,
   error = "",
   saving = false,
   compact = false,
-  studyUnitId = ""
+  studyUnitId = "",
+  actionHref = "",
+  actionLabel = "",
+  actionControlKey = ""
 } = {}) {
   const category = draft.category ?? null;
-  const categoryTitle = category
-    ? `Categoria: ${categoryLabel(category)}`
-    : "Escolher categoria";
-  const categories = [null, ...COURSE_ANCHORED_ANNOTATION_CATEGORIES].map((value) => {
-    const checked = value === category;
-    return '<label class="study-observation-category-chip' + (checked ? " is-selected" : "") + '">' +
-      '<input type="radio" name="observation-category" data-field="study-unit-observation-category" value="' +
-      escapeHtml(value ?? "") + '"' + (checked ? " checked" : "") +
-      (saving ? " disabled" : "") + "><span>" + escapeHtml(categoryLabel(value)) + "</span></label>";
-  }).join("");
+  const categories = [null, ...COURSE_ANCHORED_ANNOTATION_CATEGORIES].map((value) =>
+    '<option value="' + escapeHtml(value ?? "") + '"' + (value === category ? " selected" : "") +
+    ">" + escapeHtml(categoryLabel(value)) + "</option>"
+  ).join("");
   return '<form class="study-observation-composer' + (compact ? " is-compact" : "") +
     '" data-observation-composer' + (studyUnitId
       ? ' data-study-unit-id="' + escapeHtml(studyUnitId) + '"'
       : "") + ">" +
     (editingId ? '<h3>Editar observação</h3>' : "") +
-    '<details class="study-observation-category-disclosure' + (category ? " is-selected" : "") +
-    '"><summary title="' + escapeHtml(categoryTitle) + '" aria-label="' +
-    escapeHtml(categoryTitle) + '">' + renderUiIcon("tags", "home-tab-icon") + '</summary>' +
-    '<div class="study-observation-category-list" role="radiogroup" aria-label="Categoria da observação">' +
-    categories + "</div></details>" +
     '<label class="field">' +
     '<textarea data-field="study-unit-observation" class="study-observation-textarea" rows="4" aria-label="Observação"' +
     ' data-max-scalars="' + String(STUDY_UNIT_OBSERVATION_MAX_SCALARS) +
@@ -129,9 +130,16 @@ export function renderStudyUnitObservationComposer({
     escapeHtml(formatObservationTextBudget(draft.rawText)) + "</span></label>" +
     (error ? '<p class="field-error" id="study-observation-error" role="alert">' + escapeHtml(error) + "</p>" : "") +
     '<div class="study-observation-composer-actions">' +
+    '<details class="study-observation-category-disclosure"><summary title="Categoria da observação (opcional)"' +
+    ' aria-label="Categoria da observação (opcional)">' + renderUiIcon("tags", "home-tab-icon") + '</summary>' +
+    '<div class="study-observation-category-panel"><label class="field"><span>Categoria (opcional)</span>' +
+    '<select data-field="study-unit-observation-category" aria-label="Categoria da observação (opcional)"' +
+    (saving ? " disabled" : "") + ">" + categories + "</select></label></div></details>" +
+    renderObservationReviewAction({ actionHref, actionLabel, actionControlKey }) +
+    '<span class="study-observation-action-spacer" aria-hidden="true"></span>' +
     (editingId
-      ? '<button type="button" data-observation-action="cancel-edit"' +
-        (saving ? " disabled" : "") + ">Cancelar edição</button>"
+      ? '<button type="button" data-observation-action="cancel-edit" title="Cancelar edição" aria-label="Cancelar edição"' +
+        (saving ? " disabled" : "") + ">" + renderUiIcon("remove-state", "home-tab-icon") + "</button>"
       : "") +
     '<button type="submit" class="open-mini study-observation-submit" data-observation-action="save"' +
     ' title="' + (saving ? "Salvando observação" : editingId ? "Salvar edição" : "Enviar observação") +
@@ -246,11 +254,8 @@ export function renderStudyUnitObservationSheet({
     (contextMessage
       ? `<p class="study-observation-stale" role="status">${escapeHtml(contextMessage)}</p>`
       : "") +
-    (actionHref && actionLabel
-      ? `<a class="study-observation-review-action" href="${escapeHtml(actionHref)}"` +
-        ` data-inspection-route${actionControlKey
-          ? ` data-inspection-control-key="${escapeHtml(actionControlKey)}"`
-          : ""}>${renderUiIcon("preview", "home-tab-icon")}<span>${escapeHtml(actionLabel)}</span></a>`
+    (!showComposer && actionHref && actionLabel
+      ? renderObservationReviewAction({ actionHref, actionLabel, actionControlKey })
       : "") +
     (!showComposer && error
       ? '<p class="field-error" role="alert">' + escapeHtml(error) + "</p>"
@@ -271,6 +276,7 @@ export function renderStudyUnitObservationSheet({
           : '<p class="study-observation-empty">' + escapeHtml(emptyLabel) + "</p>") + "</div>"
       : "") +
     (showComposer ? renderStudyUnitObservationComposer({
-      draft, editingId, error, saving, studyUnitId: composerStudyUnitId
+      draft, editingId, error, saving, studyUnitId: composerStudyUnitId,
+      actionHref, actionLabel, actionControlKey
     }) : "") + "</div></article></section>";
 }

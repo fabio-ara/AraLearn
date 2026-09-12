@@ -29,21 +29,27 @@ export function renderSourceOccurrenceForm(state, link) {
   const location = item => {
     const instances = Array.isArray(content?.[item.slot]) ? content[item.slot] : [content?.[item.slot]];
     const position = instances.findIndex(instance => instance?.id === item.resourceId) + 1;
-    return `${SLOT_LABELS[item.slot]} · Bloco ${position} · ${item.label}`;
+    const fieldLabel = item.path === "text" ? "Texto" : item.label.replace(/^Editar\s+/iu, "");
+    return `${SLOT_LABELS[item.slot]} · Bloco ${position} · ${fieldLabel}`;
   };
-  return '<section class="source-occurrences"><h4>Onde aparece no item</h4>' +
+  const referenceNumber = (state.sourceLinks || []).findIndex(item => item.linkId === link.linkId) + 1;
+  const previouslyGeneral = state.initialSourceLinks?.some(item => item.linkId === link.linkId && !item.occurrences.length);
+  return '<section class="source-occurrences" aria-label="Trecho citado neste texto">' +
     (link.occurrences.length ? '<ul>' + link.occurrences.map(occurrence => {
       const resolved = content && resolveCourseSourceOccurrence(content, occurrence, options).status === "resolved";
       return `<li><blockquote>${escape(occurrence.quote)}</blockquote><span>${resolved ? "Trecho localizado" : "Trecho a conferir"}</span>` +
         `<button type="button" data-source-action="edit-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Localizar trecho">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
         `<button type="button" data-source-action="remove-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Remover trecho">${renderUiIcon("trash", "course-authoring-button-icon")}</button></li>`;
-    }).join("") + '</ul>' : '<p>A referência vale para o item inteiro.</p>') +
+    }).join("") + '</ul>' : `<p>${previouslyGeneral ? "Vínculo geral já salvo, sem trecho indicado." : "Selecione o trecho que esta fonte sustenta."}</p>`) +
     (editor ? '<div class="source-occurrence-editor">' +
-      `<label>Parte do item<select data-source-occurrence-target data-link-id="${escape(link.linkId)}">` + targets.map((item, index) =>
-        `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(location(item))} · ${escape(item.text.slice(0, 70))}</option>`).join("") + '</select></label>' +
-      (target ? `<p class="source-occurrence-location" data-source-occurrence-location>${escape(location(target))}<br><span>Caminho: ${escape(`${target.slot} / ${target.resourceId} / ${target.path}`)}</span></p>` : '') +
+      (targets.length > 1 ? `<label>Parte do texto<select data-source-occurrence-target data-link-id="${escape(link.linkId)}">` + targets.map((item, index) =>
+        `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(location(item))} · ${escape(item.text.slice(0, 70))}</option>`).join("") + '</select></label>' : '') +
+      (target ? `<p class="source-occurrence-location" data-source-occurrence-location>${escape(location(target))}</p>` : '') +
       `<label>Selecione o trecho<textarea data-source-occurrence-selection data-link-id="${escape(link.linkId)}" data-source-occurrence-index="${editor.targetIndex ?? 0}" rows="6" readonly>${escape(target?.text || "")}</textarea></label>` +
-      `<button type="button" data-source-action="save-occurrence" data-link-id="${escape(link.linkId)}">Usar trecho selecionado</button>` +
-      '<button type="button" data-source-action="cancel-occurrence">Cancelar</button></div>' :
-      targets.length ? `<button type="button" data-source-action="add-occurrence" data-link-id="${escape(link.linkId)}"${link.occurrences.length >= 16 ? " disabled" : ""}>Vincular a um trecho</button>` : '') + '</section>';
+      `<p>O número${referenceNumber > 0 ? ` ${referenceNumber}` : " da referência"} aparecerá automaticamente após o trecho.</p>` +
+      '<div class="course-source-compact-actions">' +
+      `<button type="button" data-source-action="save-occurrence" data-link-id="${escape(link.linkId)}" aria-label="Vincular trecho selecionado" title="Vincular trecho selecionado">${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+      `<button type="button" data-source-action="cancel-occurrence" aria-label="Cancelar seleção" title="Cancelar seleção">${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></div></div>` :
+      targets.length ? `<button type="button" data-source-action="add-occurrence" data-link-id="${escape(link.linkId)}" aria-label="Selecionar trecho citado" title="Selecionar trecho citado"${link.occurrences.length >= 16 ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button>` :
+        '<p>Este conteúdo ainda não tem um trecho textual disponível para selecionar.</p>') + '</section>';
 }

@@ -543,7 +543,7 @@ test("Unidade oferece parâmetros, fontes e observações imediatas e revisão n
   );
   assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, contagem ainda não disponível" title="Observações autorais pendentes"><svg/u);
   assert.match(root.innerHTML, /aria-label="Fontes e âncoras de Unidade 1" title="Fontes e âncoras"><svg/u);
-  assert.match(root.innerHTML, /data-inspection-control-key="review:unit-01">[\s\S]*?<span>Revisar unidade<\/span>/u);
+  assert.match(root.innerHTML, /data-inspection-control-key="review:unit-01" aria-label="Revisar unidade" title="Revisar unidade"><svg/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-provider-assistance/u);
   assert.doesNotMatch(root.innerHTML, /course-inspection-design-comparison|Usado nesta versão|Vigente agora/u);
   assert.doesNotMatch(root.innerHTML, /Produção|Materialização|materializationId|data-inspection-review-state="materialization"/iu);
@@ -575,7 +575,7 @@ test("detalhes da unidade apresentam ideias em português sem expor metamodelo n
   assert.equal(await sequence.open(), true);
   assert.match(
     root.innerHTML,
-    /<details class="course-inspection-item-details">[\s\S]*?course-inspection-item-detail-panel[\s\S]*?Ideias introduzidas aqui[\s\S]*?Ideias já estabelecidas usadas aqui[\s\S]*?Ideias retomadas[\s\S]*?<\/details>/u,
+    /<details class="course-inspection-item-details">[\s\S]*?course-inspection-item-detail-panel[\s\S]*?Ideias trabalhadas[\s\S]*?Introduzidas aqui[\s\S]*?Já estabelecidas[\s\S]*?Retomadas[\s\S]*?<\/details>/u,
     "As ideias devem ficar nos detalhes progressivos da unidade, e não disputar espaço com o conteúdo."
   );
   for (const visibleIdea of [
@@ -1307,7 +1307,7 @@ test("Inspeção abre atribuição completa da versão exata da Unidade", async 
   sequence.destroy();
 });
 
-test("Unidade conserva link e oferece debate contextual sem escritor nem pedido antigo", async () => {
+test("Unidade conserva link e revisão contextual sem duplicar o debate no chat", async () => {
   const root = new FakeRoot();
   const requests = [];
   const sequence = createCourseInspectionSequence({
@@ -1324,8 +1324,8 @@ test("Unidade conserva link e oferece debate contextual sem escritor nem pedido 
   await sequence.open();
 
   assert.doesNotMatch(root.innerHTML, /data-inspection-request-chat|Trabalhar com o ChatGPT/u);
-  assert.ok(root.innerHTML.includes("Debater com GPT"));
-  assert.ok(root.innerHTML.includes("não autoriza escrita"));
+  assert.doesNotMatch(root.innerHTML, /Debater com GPT|data-copy-authoring-debate/u);
+  assert.match(root.innerHTML, /data-inspection-copy-link[^>]*aria-label="Copiar link"/u);
   assert.deepEqual(requests, []);
   assert.match(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
   sequence.destroy();
@@ -1651,9 +1651,8 @@ test("seleção temporária registra Observação em lote por chamadas individua
     /data-inspection-selection-action="observe-selected"[^>]*disabled/iu
   );
 
-  assert.equal(await clickSelection("observe-selected"), true);
-  assert.match(root.innerHTML, /Observação em 2 unidades/u);
-  assert.match(root.innerHTML, /registrado separadamente em cada unidade selecionada/iu);
+  assert.match(root.innerHTML, /data-inspection-selection-composer/u);
+  assert.match(root.innerHTML, /2 unidades selecionadas/u);
   root.listeners.get("input")({
     target: {
       value: "Rever a transição entre as duas Unidades.",
@@ -1661,7 +1660,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
       closest() { return null; }
     }
   });
-  assert.equal(await clickInspection(root, "[data-observation-action]", { observationAction: "close" }), true);
+  assert.equal(await clickSelection("observe-selected"), true);
   assert.equal(await clickSelection("observe-selected"), true);
   assert.match(root.innerHTML, /Rever a transição entre as duas Unidades\./u,
     "reabrir o conjunto não apaga o texto ainda não enviado");
@@ -1690,12 +1689,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(requests[2].command.target.id, "unit-02");
   assert.equal(requests[2].requestId, failedRequestId, "retry precisa reutilizar a chamada individual incerta");
-  assert.match(root.innerHTML, /registrada separadamente em 2 Unidades/iu);
-  assert.match(root.innerHTML, /Você pode registrar outra/iu);
-  assert.match(
-    root.innerHTML,
-    /section=review[^>]*data-inspection-control-key="selection:observe"[^>]*>[\s\S]*?<span>Revisar observações abertas no curso<\/span>/u
-  );
+  assert.match(root.innerHTML, /Observação registrada nas 2 unidades selecionadas/iu);
   assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
 
   root.listeners.get("input")({
@@ -1785,7 +1779,7 @@ test("ações de revisão autoral identificam base e unidade individualmente", a
     course: { courseId: COURSE_ID, revision: REVISION, ownership: "owned", canEdit: true },
     windowValue: new FakeWindow(), documentValue: { activeElement: null }, navigatorValue: null });
   assert.equal(await sequence.open(), true);
-  assert.match(root.innerHTML, /data-inspection-open-explanation[^>]*data-study-unit-id="unit-01"[^>]*aria-label="Base explicativa e revisão"/u);
+  assert.match(root.innerHTML, /data-inspection-open-explanation[^>]*data-study-unit-id="unit-01"[^>]*aria-label="Abrir explicação"/u);
   assert.match(root.innerHTML, /data-inspection-review-unit[^>]*data-study-unit-id="unit-01"[^>]*data-inspection-control-key="content-review:unit-01"[^>]*aria-label="Revisão autoral desta unidade"/u);
   assert.doesNotMatch(root.innerHTML, /aria-label="Explicação e revisão da microssequência"/u);
   sequence.destroy();

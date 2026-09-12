@@ -14,9 +14,42 @@ o [modelo didático](modelo-didatico.md).
 
 A mesma explicação pode ser consultada a partir de todas as unidades daquela microssequência. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante a leitura e a prática. Na interface, o controle recebe o nome **Explicação**.
 
+Há uma única instância salva por microssequência. Ela funciona como material de
+referência extensa: desenvolve integralmente o contexto e o conteúdo da
+microssequência, passo a passo, com exemplos e sustentação auditável nas fontes.
+A escrita é simples, clara e concisa, com explicações suficientes para consulta
+autônoma, sem pedantismo ou complexidade gratuita. O comentário que
+acompanha uma resposta pertence àquela prática; ele não é outra instância da
+explicação. As unidades compõem o percurso em episódios menores de ensino e
+prática, sem dividir a base por uma quantidade mecânica de palavras.
+
+Essa cobertura é autossuficiente: com o conteúdo salvo no dispositivo, o aluno
+deve conseguir compreender o essencial mesmo sem conexão para abrir as fontes.
+As referências sustentam e aprofundam a explicação; não substituem o contexto,
+as relações ou o desenvolvimento necessário. As unidades menores também situam
+a tarefa no assunto e dão sentido ao que se aprende e pratica.
+
+Clareza, cobertura, contexto, progressão e fontes auditáveis são critérios de
+qualidade. A organização didática se adapta ao assunto e ao aluno, sem uma
+sequência obrigatória de seções ou fórmulas repetidas. As restrições de
+persistência, identidade e acesso pertencem à engenharia do produto e não
+ditam a redação didática.
+
+Na autoria, a explicação conserva a largura da coluna de celular também no
+computador. Os controles por ícone ficam junto ao conteúdo; editar permite
+alterar o título e os campos textuais no próprio formato de leitura. Salvar e
+cancelar conservam o contexto. O percurso, a proposta, as configurações e a
+declaração de revisão ficam em painéis autorais visualmente separados do texto.
+
 ## Responsabilidades pedagógicas
 
 A explicação e as unidades realizam trabalhos relacionados. A explicação desenvolve o assunto de modo que o estudante possa recuperar uma definição, acompanhar um exemplo ou conferir uma fonte. As unidades organizam a progressão: apresentam relações, propõem atividades e permitem aplicar o que foi ensinado.
+
+Revisar um lado exige examinar possíveis efeitos no outro. Uma correção na base
+pode mudar enunciados, exemplos ou práticas; uma alteração nas unidades pode
+revelar uma lacuna na base. Autor e GPT discutem os ajustes substantivos na
+conversa e aplicam o que estiver acordado. Conteúdo sem impacto material é
+preservado, em vez de ser reescrito apenas para acompanhar a revisão.
 
 Uma unidade precisa conter ensino ou uma tarefa inteligível. Escrever apenas “leia a explicação” não substitui a relação que o percurso precisa desenvolver. Se a atividade pede identificar a origem de uma mensagem e depois explicar a inversão dos papéis na resposta, essa relação deve ser ensinada, e a explicação pode desenvolvê-la com maior profundidade.
 
@@ -25,6 +58,12 @@ recuperar um pressuposto deve conseguir encontrar ali uma definição, um exempl
 e sua relação com a tarefa. A inspeção autoral procura uma distribuição em que
 a unidade continue inteligível e a explicação ofereça o aprofundamento que pode
 ser consultado durante o percurso.
+
+O texto dos cards ensina o assunto ou propõe a atividade, sem comentar os
+materiais e as instruções usados na produção do curso. As citações pertinentes
+mantêm a sustentação consultável. A explicação pode apresentar o papel de um
+livro, da ementa ou das escolhas do percurso quando esse contexto orientar o
+aluno. Esse conteúdo didático continua distinto dos controles autorais da tela.
 
 ### Parâmetros e declarações de aplicação
 
@@ -76,6 +115,19 @@ Cada explicação e cada unidade tem sua própria marca de revisão. A pessoa au
 
 Depois de inspecionar o texto salvo, as fontes e as atividades pertinentes, use **Marcar como revisado** no objeto correspondente. **Retirar marca de revisão** desfaz essa declaração sem apagar o conteúdo. Se houver uma edição aberta, salve ou descarte o rascunho antes de marcar: a declaração se refere ao conteúdo salvo que foi examinado.
 
+A marca registrada no app já informa a revisão ao GPT na leitura seguinte; não é
+necessário repeti-la no chat. Uma aprovação expressa na conversa também permite
+registrar a revisão dos objetos e versões identificados. Ao entregar conteúdo,
+o GPT convida brevemente à leitura e à marcação. Se a pessoa pedir para avançar,
+ele continua a produção autorizada e informa que o conteúdo anterior sem marca
+permanece pendente de revisão. Essa pendência não bloqueia a próxima produção
+nem o estudo sob a política padrão de acesso. Uma pausa expressamente pedida
+pela pessoa continua sendo respeitada.
+
+Os estados aparecem por ícones distintos, com nomes acessíveis e ajuda: pendente,
+revisado e alterado após a revisão. Salvar uma edição não marca revisão. Retirar
+a marca mantém o texto, as fontes e as observações disponíveis.
+
 A marca registra uma declaração humana sobre o conteúdo inspecionado. A
 qualidade dessa inspeção depende do trabalho realizado pela pessoa autora.
 Salvar uma edição, resolver uma observação e receber uma resposta tecnicamente
@@ -97,6 +149,32 @@ Uma mudança no conteúdo ou em uma fonte usada pode pedir nova revisão. O alca
 Esse acompanhamento usa os vínculos explícitos do curso. Cabe à pessoa autora perceber relações que ainda não foram registradas e ampliar a inspeção quando necessário. Mudar a aparência do aplicativo, o progresso pessoal ou uma preferência para produção futura não equivale a alterar o conteúdo aplicado.
 
 Quando duas sessões editam o curso, a conferência da versão evita gravar uma declaração sobre conteúdo que mudou durante a inspeção. O texto em edição permanece disponível para comparação. A mecânica de concorrência e os estados de revisão estão no [contrato de conteúdo](aralearn-contract.md).
+
+### Alcance da revisão durante o desenho das unidades
+
+Uma unidade de análise instrucional registra um recorte usado para planejar o
+ensino; um requisito formativo registra o que uma atividade deve permitir
+demonstrar. Vincular esses itens à microssequência prepara a produção das
+unidades. Esses vínculos, seus enunciados e as fontes ligadas somente a eles
+conservam a revisão da explicação já salva e das explicações que dependem dela.
+Assim, desenvolver o desenho das unidades não exige outra inspeção do mesmo
+texto-base apenas para registrar a análise e os requisitos de prática.
+
+As unidades mantêm seu próprio alcance de revisão, incluindo análise,
+requisitos, suas fontes e aplicação instrucional. Alterar esses dados continua
+podendo desatualizar a revisão da unidade. O texto-base, o objetivo, as
+dependências e os itens de escopo curricular permanecem no alcance da revisão
+da explicação, assim como suas fontes e âncoras pertinentes. Uma fonte ligada
+também à explicação continua material para a base mesmo quando sustenta um
+item de análise ou requisito de prática.
+
+A atualização desse comportamento conserva as declarações que já estavam
+atuais, com a mesma pessoa, data e versão inspecionada. Rascunhos e conteúdos
+sem declaração permanecem assim. Uma marca que ficou desatualizada somente
+pela inclusão de vínculos de análise ou requisitos de prática pode voltar a
+aparecer atual quando a base relevante ainda coincide com a declaração
+original. Mudanças materiais restantes continuam pendentes de revisão; a
+atualização não registra uma nova inspeção humana.
 
 ### Acesso, migração e cópia
 

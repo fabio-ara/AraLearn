@@ -142,7 +142,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     canvas.dataset.diagramViewportMode = expanded ? "explore" : "inline";
     toggleExpanded.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggleExpanded.setAttribute("aria-label", expanded
-      ? figure.closest(".study-explanation-body") ? "Voltar à Explicação" : "Voltar à Unidade de estudo"
+      ? figure.closest(".study-explanation-body") ? "Voltar à explicação" : "Voltar à Unidade de estudo"
       : "Explorar diagrama em tela inteira");
   };
 

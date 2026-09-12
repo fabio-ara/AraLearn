@@ -180,8 +180,9 @@ test("resposta tardia de um painel encerrado preserva o objeto do painel ativo",
   await ready; assert.equal(ui.close(), true);
   await ui.open({ courseId, microsequenceId, expectedRevision: 7, targetKind: "study_unit", targetId: "unit-theory" });
   const html = dialogs.at(-1).innerHTML;
-  assert.match(html, /<h2>Unidade de estudo<\/h2>/u);
-  assert.match(html, /data-review-unit-context="unit-theory"><h4>1\. Interface local/u);
+  assert.match(html, /<h2>Revisão da unidade<\/h2>/u);
+  assert.match(html, /<h3>Unidade · Interface local<\/h3>/u);
+  assert.doesNotMatch(html, /data-review-unit-context|data-review-explanation-content|data-review-observation-queue|package-instance/u);
   assert.match(html, /aria-label="Fechar inspeção da unidade"/u);
   assert.doesNotMatch(html, /2\. Distinguir interface e relação/u);
   rejectFirst(new Error("Resposta atrasada do primeiro painel")); await first;

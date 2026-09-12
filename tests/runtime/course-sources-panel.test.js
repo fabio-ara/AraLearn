@@ -415,6 +415,11 @@ test("fontes da Explicação conservam trecho literal, versão da MS e retorno a
   click(root, "add-target-source", { sourceId: "source-01" });
   await settle();
   const linkId = root.innerHTML.match(/data-link-id="([^"]+)"/u)[1];
+  assert.match(root.innerHTML, /data-source-occurrence-selection/u, "a seleção abre ao acrescentar a citação");
+  click(root, "save-target");
+  await settle();
+  assert.equal(writes.length, 0, "uma nova fonte precisa indicar o trecho sustentado");
+  assert.match(root.innerHTML, /Selecione o trecho deste texto/u);
   click(root, "add-occurrence", { linkId });
   assert.ok(root.innerHTML.includes(text));
   assert.doesNotMatch(root.innerHTML, /Resposta ·|Retorno ·/u);
@@ -427,7 +432,8 @@ test("fontes da Explicação conservam trecho literal, versão da MS e retorno a
   await settle();
   assert.equal(navigations.length, 0);
   click(root, "close-detail");
-  assert.match(root.innerHTML, /Fontes de Explicação/u);
+  assert.match(root.innerHTML, /<h2 id="course-source-target-title">Fontes<\/h2>/u);
+  assert.match(root.innerHTML, /course-source-target-context">Explicação · Ligações/u);
   assert.ok(root.innerHTML.includes(text.slice(0, 25)));
   click(root, "save-target");
   await settle();
@@ -442,6 +448,81 @@ test("fontes da Explicação conservam trecho literal, versão da MS e retorno a
   await settle();
   assert.equal(closed, 1);
   assert.equal(focused, true);
+  panel.destroy();
+});
+
+for (const targetKind of ["study_unit", "microsequence_explanation"]) {
+  test(`fonte geral já salva permanece íntegra ao exigir trecho para um novo vínculo em ${targetKind}`, async () => {
+    const original = { linkId: "existing-general", sourceId: "source-01", relation: "supported_by", roles: [], anchors: [], occurrences: [] };
+    const writes = [];
+    const root = new FakeRoot();
+    const controller = controllerFixture({ links: [original], onMutate: value => writes.push(value) });
+    const load = controller.loadCourseSources;
+    controller.loadCourseSources = async (courseId, options) => {
+      const result = await load(courseId, options);
+      if (options.mode === "target") {
+        result.query.targetKind = targetKind;
+        result.query.targetId = "target-a";
+        for (const item of result.items) Object.assign(item, { targetKind, targetId: "target-a" });
+      }
+      return result;
+    };
+    const content = { title: "Texto alvo", content: [{ id: "p", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Um trecho que pode ser citado." } }], response: null, feedback: [] };
+    const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5,
+      mode: "target", targetKind, targetId: "target-a", targetVersion: 3,
+      targetExplanation: content, targetStudyUnit: content });
+    await panel.open(); await settle();
+    assert.match(root.innerHTML, /Vínculo geral já salvo, sem trecho indicado/u);
+    click(root, "add-target-source", { sourceId: "source-01" }); await settle();
+    click(root, "save-target"); await settle();
+    assert.equal(writes.length, 0);
+    const addedId = [...root.innerHTML.matchAll(/data-link-id="([^"]+)"/gu)].map(match => match[1]).find(id => id !== original.linkId);
+    click(root, "cancel-occurrence");
+    click(root, "remove-target-source", { linkId: addedId });
+    click(root, "save-target"); await settle();
+    assert.deepEqual(writes[0].command.sourceLinks, [original]);
+    panel.destroy();
+  });
+}
+
+test("nova fonte com PDF conserva arquivo e identidade da ingestão após resposta perdida", async () => {
+  const root = new FakeRoot();
+  const catalog = [];
+  const details = new Map();
+  const uploads = [];
+  const controller = controllerFixture({ catalog, details });
+  const file = new File(["%PDF-synthetic"], "fonte-local.pdf", { type: "application/pdf" });
+  controller.mutateCourseSources = async request => {
+    assert.equal(request.command.type, "save_source");
+    assert.equal(request.command.expectedSourceRevision, 0);
+    const created = { ...source(), ...request.command.source, sourceId: request.command.sourceId, revision: 1, anchorCount: 0, anchors: [], attachments: [] };
+    catalog.push(created); details.set(created.sourceId, created);
+    return { ...changeResult(request.requestId, 6), changed: true,
+      change: { type: "save_source", subjectId: created.sourceId, revision: 1 } };
+  };
+  controller.uploadCourseSourcePdf = async request => {
+    uploads.push(request);
+    if (uploads.length === 1) throw Object.assign(new TypeError("Resposta perdida"), { ambiguous: true });
+    return { ...changeResult(request.requestId, 7), changed: true, idempotent: true,
+      change: { type: "ingest_pdf", subjectId: request.sourceId, revision: 2 } };
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5 });
+  await panel.open();
+  click(root, "add-source");
+  const sourceId = root.innerHTML.match(/name="sourceId" value="([^"]+)"/u)[1];
+  change(root, "[data-source-new-pdf-input]", { files: [file] });
+  submit(root, "source", { sourceId, title: "Fonte verificada", citationMode: "generated" });
+  await settle();
+  assert.equal(uploads.length, 1);
+  assert.equal(uploads[0].file, file);
+  assert.equal(uploads[0].sourceId, sourceId);
+  assert.equal(uploads[0].sourceRevision, 1);
+  assert.equal(uploads[0].expectedCourseRevision, 6);
+  assert.equal(panel.hasPendingDraft(), true);
+  click(root, "retry-attachment"); await settle();
+  assert.equal(uploads.length, 2);
+  assert.deepEqual(uploads[1], uploads[0]);
+  assert.equal(panel.hasPendingDraft(), false);
   panel.destroy();
 });
 
@@ -549,7 +630,7 @@ test("PDF pendente impede abertura e troca de editor até terminar a releitura",
     function assertBlocked() {
       for (const action of ["add-source", "open-source", "edit-source", "retire-source",
         "add-anchor", "edit-anchor", "retire-anchor"]) {
-        assert.match(root.innerHTML, new RegExp(`data-source-action="${action}"[^>]* disabled`, "u"));
+        assert.match(root.innerHTML, new RegExp(`data-source-action="${action}"[^>]*(?: disabled|aria-disabled="true")`, "u"));
         const before = root.innerHTML;
         click(root, action, { sourceId: "source-02", sourceRevision: "1", anchorId: "anchor-a", anchorRevision: "1" });
         assert.equal(root.innerHTML, before, `${action} deve conservar o contexto ocupado`);
@@ -1454,7 +1535,8 @@ test("atribuição lê uma Fonte corrente uma vez e salva o conjunto completo", 
   assert.equal(await panel.open(), true);
   await settle();
   assert.equal(reads.filter(({ mode }) => mode === "source").length, 1);
-  assert.match(root.innerHTML, /Fonte corrente/u);
+  assert.match(root.innerHTML, /source-formatted-reference/u);
+  assert.doesNotMatch(root.innerHTML, />Fonte corrente</u);
   click(root, "save-target");
   await settle();
 
@@ -1484,7 +1566,7 @@ test("referência à obra inteira dispensa localizador, mas citação direta exi
   });
 
   await panel.open();
-  assert.match(root.innerHTML, /Fontes deste item/u);
+  assert.match(root.innerHTML, /<h2 id="course-source-target-title">Fontes<\/h2>/u);
   click(root, "add-target-source", { sourceId: current.sourceId });
   await settle();
   const linkId = root.innerHTML.match(/data-link-id="([^"]+)"/u)[1];
@@ -1603,7 +1685,8 @@ test("falhas de exportação nomeiam o resultado sem expor o erro interno", asyn
 });
 
 test("PDF usa ingestão server-side e download autorizado do estado corrente", async () => {
-  const current = source(1, { attachments: [attachment()] });
+  const current = source(1, { attachments: [attachment()], anchors: [anchor({ contentHash: HASH,
+    selector: { kind: "text_quote", exact: "Passagem da obra", prefix: "Contexto anterior", suffix: "Contexto seguinte" } })] });
   const uploads = [];
   const downloads = [];
   const opened = [];
@@ -1636,6 +1719,10 @@ test("PDF usa ingestão server-side e download autorizado do estado corrente", a
   await settle();
   assert.equal(downloads.length, 1);
   assert.deepEqual(opened, ["https://storage.example.test/object.pdf?token=sealed"]);
+  click(root, "download-attachment", { sourceRevision: "1", contentHash: HASH, anchorId: "anchor-a" });
+  await settle();
+  assert.deepEqual(downloads[1], downloads[0], "a passagem usa a mesma autorização do arquivo integral");
+  assert.equal(opened[1], "https://storage.example.test/object.pdf?token=sealed#:~:text=Contexto%20anterior-,Passagem%20da%20obra,-Contexto%20seguinte");
 });
 
 test("confirmações destrutivas mantêm nome acessível e foco", async () => {

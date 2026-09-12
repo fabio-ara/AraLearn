@@ -642,9 +642,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await attachScreenshot(page, testInfo, "source-form-390-dark.png");
       await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
-      await expect(page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true })).toBeVisible();
+      await expect(page.locator(".course-source-display-title")).toHaveText(title);
       sourceId = (await catalog()).items[0].sourceId;
-      await page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true }).click();
       await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
       await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("manual");
       await form.getByLabel("Referência escrita pelo autor", { exact: true }).fill(manual);
@@ -657,7 +656,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Salvar estilo", exact: true }).click();
       await expect.poll(async () => (await catalog()).bibliographyStyle).toBe("apa7");
       expect(await detail()).toEqual(beforeStyle);
-      await page.getByRole("button", { name: `Abrir fonte: ${title}`, exact: true }).click();
+      await page.locator(`.course-source-card a[data-source-action="open-source"][data-source-id="${sourceId}"]`).click();
       await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
       await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("generated");
       await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
@@ -669,7 +668,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
       await expect.poll(async () => (await detail()).attachments.length).toBe(1);
       const attached = await detail();
-      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras$/u }).click();
+      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();
       await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
       await page.getByLabel("Página inicial", { exact: true }).fill("1");
@@ -1298,9 +1297,9 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await observationsLoaded;
       await expect(learnerPage.locator(".study-observation-loading")).toHaveCount(0);
       await learnerPage.locator(".study-observation-category-disclosure > summary").click();
-      await learnerPage.locator(".study-observation-category-chip", { hasText: "Dúvida" })
-        .click();
-      await expect(learnerPage.getByRole("radio", { name: "Dúvida" })).toBeChecked();
+      await learnerPage.getByRole("combobox", { name: "Categoria da observação (opcional)" })
+        .selectOption("question");
+      await expect(learnerPage.getByRole("combobox", { name: "Categoria da observação (opcional)" })).toHaveValue("question");
       await learnerPage.getByRole("textbox", { name: "Observação", exact: true }).fill(
         "Esta observação pertence ao estudante e deve sobreviver à revogação."
       );
@@ -1507,19 +1506,23 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
       await page.getByRole("button", { name: "Explicação", exact: true }).click();
       await expect(page.getByText("Documento usado na prova local de acesso.", { exact: true })).toBeVisible();
-      const browserDownload = page.waitForEvent("download");
-      await page.getByRole("button", { name: "Abrir PDF em p. 1 de Documento público de teste", exact: true }).click();
-      const transfer = await browserDownload;
-      expect(await transfer.failure()).toBeNull();
-      const transferredBytes = await readFile(await transfer.path());
+      const openedDocument = page.waitForEvent("popup");
+      await page.locator('[data-action="download-citation-attachment"][title="Abrir Documento público de teste em p. 1"]').click();
+      const documentPage = await openedDocument;
+      await expect.poll(() => documentPage.url()).toContain("#page=1");
+      const transfer = await documentPage.request.get(documentPage.url());
+      expect(transfer.ok()).toBe(true);
+      expect(transfer.headers()["content-type"]).toContain("application/pdf");
+      const transferredBytes = await transfer.body();
       expect(Buffer.from(await crypto.subtle.digest("SHA-256", transferredBytes)).toString("hex")).toBe(hash);
+      await documentPage.close();
       await expectNoHorizontalOverflow(page, ".study-reader-screen");
       await attachScreenshot(page, testInfo, "visitante-publico-390.png");
       expect(writes).toEqual([]);
       expect(failures.failures).toEqual([]);
       const databases = await page.evaluate(() => indexedDB.databases());
       expect(databases.map(({ name }) => name)).toContain("aralearn-course-v1-visitor");
-      await page.getByRole("button", { name: "Fechar Explicação" }).click();
+      await page.getByRole("button", { name: "Fechar explicação" }).click();
       await page.getByRole("button", { name: "Entre para enviar observações" }).click();
       await page.getByLabel("E-mail").fill(outsider.email);
       await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);

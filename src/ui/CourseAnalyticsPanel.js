@@ -473,8 +473,61 @@ function inventoryHtml(inventory) {
     }).join("");
 }
 
+function inspectionRows(rows) {
+  return '<dl class="course-inspection-evidence-values">' + rows.map(({ label, value }) =>
+    `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("") + '</dl>';
+}
+
+function inspectionGroup(title, rows, description = "") {
+  if (!rows.length) return "";
+  return `<section class="course-inspection-evidence-group" aria-label="${escapeHtml(title)}"><h4>${escapeHtml(title)}</h4>` +
+    (description ? `<p class="course-inspection-evidence-note">${escapeHtml(description)}</p>` : "") +
+    inspectionRows(rows) + '</section>';
+}
+
+function inspectionParameters(parameters) {
+  const entries = parameters.filter(({ left }) => left.values.length || left.missingCount);
+  if (!entries.length) return '<p class="course-inspection-evidence-note">Ainda não há configuração registrada nas unidades deste contexto.</p>';
+  return '<dl class="course-inspection-evidence-values">' + entries.map((entry) =>
+    `<div><dt>${escapeHtml(entry.label)}</dt><dd>` +
+    entry.left.values.map((value) => '<div class="course-inspection-evidence-value">' +
+      `<span>${escapeHtml(value.value === null ? "Escolha automática ainda não aplicada" : appliedValue(value.value))}</span>` +
+      `<small>${escapeHtml(humanLabel(value.origin))} · ${plural(value.studyUnitRefs.length, "unidade", "unidades")}` +
+      (value.sourceScope ? ` · ${escapeHtml(SOURCE_SCOPE_LABELS[value.sourceScope.kind] || "")}` : "") + '</small>' +
+      (value.reason ? `<p class="course-inspection-evidence-note">${escapeHtml(value.reason)}</p>` : "") + '</div>').join("") +
+    (entry.left.missingCount ? `<p class="course-inspection-evidence-note">${plural(entry.left.missingCount, "unidade sem configuração registrada", "unidades sem configuração registrada")}.</p>` : "") +
+    '</dd></div>').join("") + '</dl>';
+}
+
+function compactInspectionEvidence(page) {
+  const { design, basis } = page;
+  const parameters = buildCourseAuthoringComparison({ left: page, right: page }).requestedParameters;
+  const sourceCount = new Set(basis.studyUnits.flatMap(({ sourceLinks }) => sourceLinks.map(({ sourceId }) => sourceId))).size;
+  const summary = [
+    { label: "Unidades de estudo", value: formatCount(design.studyUnitCount) },
+    { label: "Unidades de análise", value: formatCount(basis.analysisUnits.length) },
+    { label: "Oportunidades de prática", value: formatCount(sum(design.practiceByRequirement.map(({ opportunityCount }) => opportunityCount))) },
+    { label: "Fontes relacionadas às unidades", value: formatCount(sourceCount) }
+  ];
+  return '<details class="course-inspection-evidence"><summary aria-label="Configuração solicitada e aplicada" title="Configuração solicitada e aplicada">' +
+    renderUiIcon("intent", "course-authoring-button-icon") + '</summary><div class="course-analytics-inspection-panel">' +
+    '<p class="course-inspection-evidence-title">Configuração das unidades</p>' +
+    `<p class="course-inspection-evidence-note">${escapeHtml(page.scope.selected.label)}</p>` +
+    '<section class="course-inspection-evidence-group" aria-label="Configuração solicitada"><h4>Solicitado</h4>' +
+    inspectionParameters(parameters) + '</section>' +
+    inspectionGroup("Aplicado", configurationRows(design)) +
+    inspectionGroup("Composição", summary) +
+    inspectionGroup("Conteúdo e representações", structureRows(design)) +
+    (design.studyUnitCount ? inspectionGroup("Explicação e prática", practiceDistributionRows(design),
+      "Funções declaradas, na ordem das unidades. As contagens não avaliam qualidade nem atendimento às preferências de distribuição.") : "") +
+    inspectionGroup("Prática e fontes", practiceAndSourceRows(design)) +
+    (page.missingData.length ? `<aside class="course-inspection-evidence-note" aria-label="Dados ausentes">${escapeHtml(page.missingData.join(" "))}</aside>` : "") +
+    '</div></details>';
+}
+
 /** Evidência somente leitura do mesmo snapshot usado na revisão humana. */
-export function renderCourseAuthoringInspectionEvidence(page) {
+export function renderCourseAuthoringInspectionEvidence(page, { compact = false } = {}) {
+  if (compact) return compactInspectionEvidence(page);
   return '<details class="course-analytics-details"><summary>Configuração solicitada e aplicada</summary>' +
     parametersHtml(buildCourseAuthoringComparison({ left: page, right: page }).requestedParameters, { single: true }) +
     renderDesign(page.design, page.basis) + renderMissingData(page.missingData) + '</details>';

@@ -198,7 +198,8 @@ test("rascunho em lote fechado mantém alvos e texto ao bloquear foco e retomar"
     assert.equal(await app.view(2), false);
     assert.equal(await app.select(3), false);
     await app.click("[data-inspection-pending-action]", { inspectionPendingAction: "resume" });
-    assert.match(app.root.innerHTML, /Observação em 2 unidades/);
+    assert.match(app.root.innerHTML, /2 unidades selecionadas/);
+    assert.match(app.root.innerHTML, /data-inspection-selection-composer/);
     assert.match(app.root.innerHTML, />Rascunho do conjunto preservado<\/textarea>/);
     assert.equal((app.root.innerHTML.match(/aria-checked="true"/g) || []).length, 2);
     assert.equal(cards(app.root), 12);

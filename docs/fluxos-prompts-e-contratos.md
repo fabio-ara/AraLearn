@@ -108,6 +108,11 @@ versão que examinou.
 
 Para construir um mapa extenso nos canais, `salvar_mapa_curricular` recebe primeiro público, pré-requisitos e todos os itens de escopo, com `modulos: []`. Esse início só é aceito enquanto o mapa não contém módulos. Em seguida, `salvar_ramo_curricular` acrescenta cada módulo, suas lições e suas microssequências, em ordem de dependência. Em Actions, essa tarefa está no grupo `estrutura_curricular`. Dependências, cobertura e fontes previstas usam as referências humanas do planejamento salvo.
 
+Ao concluir `materializar_parte`, o link de resultado abre Conteúdo com o recorte
+da parte produzida. A expressão “revisar a parte” na conversa conserva esse
+destino. A seção de observações é usada para inspecionar apontamentos, enquanto
+a declaração de revisão se refere a cada objeto salvo e à sua base pertinente.
+
 Cada chamada conserva o conteúdo integral do objeto. Campos independentes podem ser acrescentados em chamadas posteriores, pois a edição de ramo preserva os campos omitidos. Dividir o trabalho dessa forma evita exigir a árvore inteira numa única chamada; não autoriza resumir objetivos, explicações ou relações para satisfazer o transporte. `salvar_mapa_curricular` com módulos preenchidos continua sendo uma substituição completa, não uma forma de acrescentar somente o próximo ramo. Ao terminar, o assistente consulta o planejamento completo e apresenta a versão salva para inspeção. Um rascunho ainda sem ramos ou com cobertura pendente não está pronto para aprovação.
 
 A explicação pode ser desenvolvida numa microssequência existente enquanto o

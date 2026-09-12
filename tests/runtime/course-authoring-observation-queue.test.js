@@ -126,3 +126,14 @@ test("renderer mostra objeto, contagem e versões, protege texto e oferece somen
   assert.match(html, /Adicionar observação/u); assert.match(html, /Editar observação 1, versão 1/u);
   assert.doesNotMatch(html, /resolve|withdraw|Marcar como revisado/u);
 });
+
+test("badge omite zero visual e conserva a contagem acessível da fila", () => {
+  const empty = renderAuthoringObservationQueue({ label: "explicação", total: 0 });
+  assert.match(empty, /aria-label="Observações autorais de explicação, 0 pendentes"/u);
+  assert.doesNotMatch(empty, /course-authoring-observation-count/u);
+  const pending = renderAuthoringObservationQueue({ label: "explicação", total: 12 });
+  assert.match(pending, /aria-label="Observações autorais de explicação, 12 pendentes"/u);
+  assert.match(pending, /class="course-authoring-observation-count" aria-hidden="true">12<\/span>/u);
+  const unknown = renderAuthoringObservationQueue({ label: "explicação" });
+  assert.match(unknown, /contagem ainda não disponível/u);
+});

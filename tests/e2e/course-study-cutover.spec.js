@@ -324,7 +324,7 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   await openFirstStudyUnitByClicks(page);
   await page.getByRole("button", { name: "Explicação" }).click();
   await expect(page.getByText("Fonte exclusiva do Curso anterior", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Fechar Explicação", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
   await page.evaluate(() => {
     for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
@@ -723,19 +723,19 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect.poll(() => page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.locator("[data-action='open-explanation']").click();
   await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeVisible();
-  await expect(page.getByText("Fonte somente citada", { exact: true })).toBeVisible();
+  await expect(page.locator(".study-citation-reference").filter({ hasText: "Fonte somente citada" })).toBeVisible();
   await expect(page.getByText("Capítulo 4, seção 2 · pp. 8–9", {
     exact: true
   })).toBeVisible();
-  await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Abrir fonte" })).toHaveCount(1);
+  await expect(page.locator(".study-citation-reference").filter({ hasText: "Fonte com link público" })).toBeVisible();
+  await expect(page.locator('.study-citation-reference a[href="https://example.test/fonte-publica"]')).toHaveCount(1);
   await expect(page.locator(".study-explanation-panel"))
     .not.toContainText("Fonte oculta");
   await expect(page.locator(".study-explanation-panel"))
     .not.toContainText("Legado não resolvido");
   await expect(page.locator(".study-explanation-panel [data-source-action]")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Fechar Explicação" })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Fechar Explicação" })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "Fechar explicação" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Fechar explicação" })).toBeInViewport();
   await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeInViewport();
   expect(await page.locator(".study-explanation-panel").evaluate((panel) =>
     panel.parentElement?.classList.contains("study-explanation-overlay"))).toBe(true);
@@ -752,12 +752,12 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   });
   await expect(page.getByText("Fonte extensa 18", { exact: true })).toBeInViewport();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fechar Explicação", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Explicação", exact: true }).click();
   await expect(page.getByText("Fonte com link público", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fechar Explicação" }).click();
+  await page.getByRole("button", { name: "Fechar explicação" }).click();
 
   await page.evaluate(async (documentValue) => {
     globalThis.__courseStudyProbe.citationRevision = 5;
@@ -768,7 +768,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByText("Fonte somente citada atualizada", { exact: true })).toBeVisible();
   await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(2);
-  await page.getByRole("button", { name: "Fechar Explicação" }).click();
+  await page.getByRole("button", { name: "Fechar explicação" }).click();
 
   await page.evaluate(() => globalThis.__courseStudyApp.setOfflineStatus(true));
   await page.getByRole("button", { name: "Sem conexão" }).click();
@@ -1024,7 +1024,7 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.getByText("Fonte com link público atualizada", { exact: true })).toHaveCount(0);
 });
 
-test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280", async ({ page }) => {
+test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280", async ({ page }, testInfo) => {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
     contentType: "text/javascript",
@@ -1070,14 +1070,33 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
     await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
     await expect(page.locator("#study-observation-counter"))
       .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
-    const stableHeight = await page.locator(".study-observation-sheet")
-      .evaluate((sheet) => sheet.getBoundingClientRect().height);
+    const positions = () => page.locator(".study-observation-sheet").evaluate(sheet =>
+      [sheet, sheet.querySelector("textarea"), sheet.querySelector(".study-observation-composer-actions")]
+        .map(node => { const rect = node.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; }));
+    const beforeCategory = await positions();
+    expect(beforeCategory[0].width).toBe(Math.min(width, 430));
+    const categoryAccess = page.locator(".study-observation-category-disclosure > summary");
+    await categoryAccess.click();
+    const category = page.getByRole("combobox", { name: "Categoria da observação (opcional)" });
+    await expect(category).toBeVisible();
+    await category.selectOption("question");
+    await expect(category).toHaveValue("question");
+    expect(await positions()).toEqual(beforeCategory);
+    const panel = await page.locator(".study-observation-category-panel").boundingBox();
+    expect(panel.x).toBeGreaterThanOrEqual(beforeCategory[0].x);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(beforeCategory[0].x + beforeCategory[0].width);
+    expect(panel.y).toBeGreaterThanOrEqual(beforeCategory[0].y);
+    if (width === 430) await page.screenshot({ path: testInfo.outputPath("observations-category-open.png") });
+    await categoryAccess.click();
+    expect(await positions()).toEqual(beforeCategory);
+    const stableHeight = beforeCategory[0].height;
     await page.getByRole("textbox", { name: "Observação" }).fill("observação ".repeat(180));
     const geometry = await page.locator(".study-observation-sheet").evaluate((sheet) => {
       const rect = sheet.getBoundingClientRect();
       const body = sheet.querySelector(".study-observation-body");
       const textarea = sheet.querySelector(".study-observation-textarea");
-      const controls = [...sheet.querySelectorAll("button, textarea, .study-observation-category-chip")]
+      const controls = [...sheet.querySelectorAll("button, textarea, select, summary")]
         .filter((node) => {
           const nodeRect = node.getBoundingClientRect();
           return nodeRect.width > 0 && nodeRect.height > 0;
@@ -1097,7 +1116,44 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
     expect(geometry.bodyOverflowY).toBe("auto");
     expect(geometry.internalScrollable).toBe(true);
     expect(geometry.minimumTouch).toBeGreaterThanOrEqual(43);
+    if (width === 430) await page.screenshot({ path: testInfo.outputPath("observations-category-closed.png") });
     await page.getByRole("button", { name: "Fechar" }).click();
+  }
+});
+
+test("sheet em edição agrupa revisão e envio por ícone, com categoria sem deslocamento", async ({ page }, testInfo) => {
+  await page.route("**/main.js", route => route.fulfill({ status: 200, contentType: "text/javascript", body: "" }));
+  await page.goto("/");
+  for (const width of [360, 1280]) {
+    await page.setViewportSize({ width, height: 780 });
+    await page.evaluate(async () => {
+      const { renderStudyUnitObservationSheet } = await import("/src/ui/renderStudyUnitObservationSheet.js");
+      document.body.innerHTML = '<main class="app-shell">' + renderStudyUnitObservationSheet({
+        editingId: "annotation-synthetic", draft: { rawText: "Rascunho em edição, preservado.", category: "suggestion" },
+        actionHref: "#/authoring/courses/synthetic?section=review&studyUnitId=unit-synthetic",
+        actionLabel: "Revisar observações abertas desta unidade", actionControlKey: "observations:unit-synthetic"
+      }) + '</main>';
+    });
+    const actions = page.locator(".study-observation-composer-actions");
+    const before = await actions.boundingBox();
+    const textarea = await page.getByRole("textbox", { name: "Observação" }).boundingBox();
+    expect(before.y - textarea.y - textarea.height).toBeLessThanOrEqual(12);
+    const review = page.getByRole("link", { name: "Revisar observações abertas desta unidade" });
+    await expect(review).toHaveText("");
+    await expect(review).toHaveAttribute("title", "Revisar observações abertas desta unidade");
+    await expect(review).toHaveAttribute("href", /section=review&studyUnitId=unit-synthetic$/);
+    for (const control of await actions.locator("button, a, summary").all()) {
+      const box = await control.boundingBox();
+      expect(box.width).toBe(44); expect(box.height).toBe(44); expect(box.y).toBe(before.y);
+    }
+    await actions.locator("summary").focus(); await page.keyboard.press("Enter");
+    const category = page.getByRole("combobox", { name: "Categoria da observação (opcional)" });
+    await expect(category).toHaveValue("suggestion");
+    await category.selectOption("reformulation_request");
+    expect(await actions.boundingBox()).toEqual(before);
+    await expect(page.getByRole("textbox", { name: "Observação" })).toHaveValue("Rascunho em edição, preservado.");
+    await expect(page.getByRole("button", { name: "Cancelar edição" })).toHaveText("");
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("observations-edit-category.png") });
   }
 });
 

@@ -51,12 +51,14 @@ test("referência e ocorrência hostis são texto, com marcação restrita ao fo
   assert.doesNotMatch(markup, /<script>/u);
 });
 
-test("ocorrências em blocos iguais têm posição e caminho completos sem depender do recorte do seletor", () => {
+test("ocorrências em blocos iguais têm posição legível e identidade interna preservada", () => {
   const content = ["first", "second"].map(id => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0",
     data: { text: "O mesmo trecho literal nos dois blocos." } }));
   const html = renderSourceOccurrenceForm({ targetKind: "microsequence_explanation", targetExplanation: { content },
     occurrenceEditor: { linkId: "link", targetIndex: 1 } }, { linkId: "link", occurrences: [] });
   assert.match(html, /Conteúdo · Bloco 1/u);
   assert.match(html, /Conteúdo · Bloco 2/u);
-  assert.match(html, /data-source-occurrence-location[\s\S]*content \/ second \/ text/u);
+  assert.match(html, /data-source-occurrence-location>Conteúdo · Bloco 2/u);
+  assert.match(html, /data-source-occurrence-index="1"/u);
+  assert.doesNotMatch(html, /Caminho:|content \/ second \/ text/u);
 });

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { courseAuthoringAnalyticsFixture, ANALYTICS_COURSE_ID } from "../helpers/courseAuthoringAnalyticsFixture.js";
-import { createCourseAnalyticsPanel } from "../../src/ui/CourseAnalyticsPanel.js";
+import { createCourseAnalyticsPanel, renderCourseAuthoringInspectionEvidence } from "../../src/ui/CourseAnalyticsPanel.js";
+import { normalizeCourseAuthoringAnalyticsPage } from "../../src/domain/courseAuthoringAnalytics.js";
 import { assembleCourseAuthoringExport, buildCourseAuthoringComparison } from "../../src/domain/courseAuthoringComparison.js";
 
 class FakeRoot {
@@ -85,4 +86,34 @@ test("revogação retira leitura antiga da tela", async () => {
   const panel = createCourseAnalyticsPanel({ root, course, controller: { loadCourseAuthoringAnalytics: async () => { if (forbidden) throw Object.assign(new Error("Negado"), { status: 404 }); return page(); } } });
   await panel.open(); forbidden = true; await panel.refresh();
   assert.doesNotMatch(root.innerHTML, /Distribuição por unidade/u); assert.match(root.innerHTML, /Atualizar leitura/u);
+});
+
+test("configuração contextual preserva valores e motivos sem uma cascata de controles", () => {
+  const snapshot = page();
+  Object.assign(snapshot.basis.studyUnits[0].requestedParameters[0], {
+    mode: "fixed", value: 3, origin: "author", reason: "Começar pelas relações <essenciais>.",
+    sourceScope: { kind: "didactic_microsequence", ref: "micro-one" }
+  });
+  snapshot.design.parameters[0].effectiveValues = [{
+    value: 2, origin: "automatic", reason: null, sourceScopeKind: "didactic_microsequence", studyUnitCount: 1
+  }];
+  const html = renderCourseAuthoringInspectionEvidence(normalizeCourseAuthoringAnalyticsPage(snapshot), { compact: true });
+  assert.equal((html.match(/<details\b/gu) || []).length, 1);
+  assert.equal((html.match(/<summary\b/gu) || []).length, 1);
+  assert.match(html, /<summary aria-label="Configuração solicitada e aplicada"[^>]*><svg/u);
+  assert.doesNotMatch(html, /Escopo atual|<h3\b/u);
+  assert.match(html, /<dt>Novas unidades de análise<\/dt><dd><div[^>]+><span>3<\/span>/u);
+  assert.match(html, /Pessoa autora · 1 unidade · na microssequência/u);
+  assert.match(html, /Começar pelas relações &lt;essenciais&gt;\./u);
+  assert.match(html, /aria-label="Aplicado"/u);
+  assert.match(html, /2 · 1 unidade de estudo · calibração automática · origem na microssequência/u);
+  assert.match(html, /Há unidades sem configuração aplicada\./u);
+});
+
+test("configuração contextual vazia explica a ausência sem apresentar parâmetros vazios", () => {
+  const snapshot = normalizeCourseAuthoringAnalyticsPage(courseAuthoringAnalyticsFixture());
+  const html = renderCourseAuthoringInspectionEvidence(snapshot, { compact: true });
+  assert.match(html, /Ainda não há configuração registrada nas unidades deste contexto\./u);
+  assert.doesNotMatch(html, /Novas unidades de análise|Escopo atual|Funções declaradas/u);
+  assert.match(html, /Unidades de estudo<\/dt><dd>0<\/dd>/u);
 });

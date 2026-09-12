@@ -29,7 +29,8 @@ test("ação secundária conserva rota, chave de retorno e nome acessível da re
     actionLabel: "Revisar observações abertas desta unidade", actionControlKey: "observations:unit-1" });
   assert.match(html, /<a class="study-observation-review-action" href="[^"]*&amp;studyUnitId=unit-1"/);
   assert.match(html, /data-inspection-route data-inspection-control-key="observations:unit-1"/);
-  assert.match(html, /<span>Revisar observações abertas desta unidade<\/span><\/a>/);
+  assert.match(html, /aria-label="Revisar observações abertas desta unidade" title="Revisar observações abertas desta unidade"/);
+  assert.doesNotMatch(html, /<span>Revisar observações/);
 });
 
 test("erro identifica campo e mantém texto, categoria e cancelamento da edição", () => {
@@ -38,8 +39,10 @@ test("erro identifica campo e mantém texto, categoria e cancelamento da ediçã
   assert.match(html, /aria-describedby="study-observation-counter study-observation-error" aria-invalid="true"/);
   assert.match(html, /id="study-observation-error" role="alert">Não foi possível salvar/);
   assert.match(html, /> {2}Texto &lt;preservado&gt; 😀 {2}<\/textarea>/);
-  assert.match(html, /value="question" checked/);
+  assert.match(html, /<option value="question" selected>Dúvida<\/option>/);
   assert.match(html, /data-observation-action="cancel-edit"/);
+  assert.match(html, /aria-label="Cancelar edição"/);
+  assert.doesNotMatch(html, /study-observation-category-chip|type="radio"/);
 });
 
 test("lista longa mantém texto completo e composição; envio em andamento preserva controles desabilitados", () => {
@@ -52,6 +55,7 @@ test("lista longa mantém texto completo e composição; envio em andamento pres
   assert.match(html, /aria-label="Salvando observação" disabled aria-disabled="true"/);
   assert.match(html, /disabled>Rascunho em envio<\/textarea>/);
   assert.match(html, /data-observation-action="withdraw"[^>]*disabled/);
+  assert.match(html, /<select data-field="study-unit-observation-category"[^>]* disabled>/);
 });
 
 test("foco revela grupo que cabe rolando somente a folha, inclusive com ampliação", () => {

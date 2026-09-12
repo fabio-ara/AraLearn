@@ -15,7 +15,8 @@ export function renderAuthoringObservationQueue({ label, items = [], total = nul
   return '<div class="course-authoring-observation-context">' +
     `<button type="button" class="course-authoring-observation-toggle" data-author-queue-action="toggle"` +
     ` aria-expanded="${opened}" aria-label="Observações autorais de ${escape(label)}, ${accessibleCount}" title="Observações autorais pendentes">` +
-    renderUiIcon("prompt", "course-authoring-button-icon") + `<span aria-hidden="true">${count}</span></button>` +
+    renderUiIcon("prompt", "course-authoring-button-icon") +
+    (total === 0 ? "" : `<span class="course-authoring-observation-count" aria-hidden="true">${count}</span>`) + '</button>' +
     (opened ? `<section class="course-authoring-observation-panel" aria-label="Observações autorais de ${escape(label)}">` +
       `<header><h3>Observações autorais · ${escape(label)}</h3>` +
       '<button type="button" data-author-queue-action="refresh" title="Atualizar fila" aria-label="Atualizar fila"' +
