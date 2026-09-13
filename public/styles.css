@@ -6489,20 +6489,41 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 }
 
 /* Ajuda expansível: o marcador fica à esquerda da coluna comum de título e conteúdo. */
-:is(.study-device-settings details, .authoring-process-settings details,
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
     .study-tool-body details, .course-design-explanation,
     .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
     .course-source-detail-section, .course-source-use-details, .course-source-file-access) {
-  padding-inline-start: var(--space-section);
+  padding-inline-start: calc(var(--space-section) + var(--space-copy));
 }
-:is(.study-device-settings details, .authoring-process-settings details,
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
     .study-tool-body details, .course-design-explanation,
     .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
     .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary {
-  display: list-item;
-  list-style-position: outside;
+  position: relative;
+  display: block;
+  list-style: none;
+  margin-inline-start: calc(-1 * var(--space-section));
+  padding-inline-start: var(--space-section);
 }
 
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary::before {
+  content: "▶";
+  position: absolute;
+  inset-inline-start: 0;
+  width: var(--space-section);
+  font-size: 0.8em;
+}
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access)[open] > summary::before { content: "▼"; }
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary::-webkit-details-marker { display: none; }
 .study-tool-error { color: var(--status-danger); }
 
 .account-settings-view .theme-choice { display: grid; width: max-content; margin-inline: auto; margin-block: var(--space-section); }

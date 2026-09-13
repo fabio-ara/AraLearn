@@ -330,7 +330,14 @@ for (const width of [390, 430, 1280]) for (const theme of ["light", "dark"]) {
     expect(colors.border).toBe(colors.expectedBorder);
     expect(colors.text).toBe(colors.expectedText);
     expect(colors.focusColor).toBe(colors.expectedFocus);
-    expect(colors.focusWidth).toBeGreaterThanOrEqual(2);
+    expect(colors.focusWidth).toBe(2);
+    const focusInset = await access.evaluate(node => {
+      const summary = node.querySelector("summary");
+      const style = getComputedStyle(summary);
+      return summary.getBoundingClientRect().left - node.getBoundingClientRect().left
+        - parseFloat(style.outlineWidth) - parseFloat(style.outlineOffset);
+    });
+    expect(focusInset).toBeGreaterThanOrEqual(4);
     expect(colors.controls[0].background).toBe(colors.expectedSurface);
     expect(Math.abs(colors.controls[0].y - colors.controls[1].y)).toBeLessThanOrEqual(1);
     expect(Math.abs(colors.controls[0].bottom - colors.controls[1].bottom)).toBeLessThanOrEqual(1);
