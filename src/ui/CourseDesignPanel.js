@@ -93,10 +93,11 @@ function renderScopeContext(design) {
       ' data-course-authoring-action="load-more-design-scopes" aria-label="Carregar mais escopos"' +
       ' title="Carregar mais escopos">' + renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
     : "";
-  return '<details class="course-design-scope"><summary title="Alterar alcance dos ajustes">' +
+  return '<details class="course-design-scope"><summary title="Trocar objeto dos parâmetros">' +
     renderUiIcon("intent", "course-authoring-button-icon") +
-    `<span><small>Alcance dos ajustes · ${escapeHtml(SCOPE_LABELS[context.current.kind])}</small>` +
-    `<strong>${escapeHtml(context.current.label)}</strong></span></summary>` +
+    `<span><strong>${escapeHtml(context.current.label)}</strong>` +
+    `<small>${escapeHtml(SCOPE_LABELS[context.current.kind])}</small></span>` +
+    renderUiIcon("arrow-down", "course-authoring-button-icon") + '</summary>' +
     '<div class="course-design-scope-target"><p id="course-design-scope-title">Aplicar em</p>' +
     `<strong>${escapeHtml(SCOPE_LABELS[context.current.kind])}: ` +
     `${escapeHtml(context.current.label)}</strong>` +
@@ -237,7 +238,7 @@ function renderGuidance(design, busy) {
       `${escapeHtml(sourceScopeLabel(design, assignment.sourceScope))}</span>` +
       `<small>${escapeHtml(originLabel(assignment.origin))}</small></header>` +
       renderGuidanceAssignmentCopy(assignment) + "</article></li>").join("") + "</ol>"
-    : '<p class="course-design-empty-copy">Nenhuma direção editorial foi definida no caminho deste escopo.</p>';
+    : '<p class="course-design-empty-copy">Sem orientações de estilo.</p>';
   const local = guidance.localAssignment;
   return '<section class="course-design-guidance" aria-labelledby="course-design-guidance-title">' +
     '<header class="course-design-subheading"><div><h3 id="course-design-guidance-title">Direção editorial</h3>' +
@@ -329,7 +330,7 @@ function renderInstructionalContext(state) {
   const context = state.designInstructionalContext;
   if (!context) return '<p role="status">Carregando explicação e aprendizagem…</p>';
   const entity = context.entity;
-  const reviewLabels = { unregistered: "Revisão pendente", draft: "Revisão pendente", current: "Revisão em dia", stale: "Revisão desatualizada" };
+  const reviewLabels = { unregistered: "Pendente", draft: "Pendente", current: "Em dia", stale: "Desatualizada" };
   const basis = context.basis;
   const units = basis?.studyUnits || [];
   const declarations = units.flatMap(unit => unit.declaration ? [unit.declaration] : []);
@@ -338,12 +339,17 @@ function renderInstructionalContext(state) {
   const evidenceRefs = new Set(declarations.flatMap(value => value.practiceApplications.map(item => item.evidenceRequirementId)));
   const intendedAnalysis = new Set(state.courseDesign.targetPlanItems?.instructionalAnalysisUnitIds || []);
   const intendedEvidence = new Set(state.courseDesign.targetPlanItems?.evidenceRequirementIds || []);
+  const status = (label, rows) => `<details class="course-design-item-status"><summary aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">` +
+    renderUiIcon("info", "course-authoring-button-icon") + `</summary><dl>${rows.map(([term, value]) =>
+      `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl></details>`;
   const inventory = (items, intended, selected, label) => {
     if (!items.length) return "";
     const relevant = item => intended.has(item.ref) || selected.has(item.ref);
-    const list = values => `<ul>${values.map(item => `<li><strong>${escapeHtml(item.statement)}</strong>` +
+    const list = values => `<ul>${values.map(item => `<li class="course-design-instructional-item"><strong>${escapeHtml(item.statement)}</strong>` +
       (item.description ? `<p>${escapeHtml(item.description)}</p>` : "") +
-      `<p class="course-design-instructional-status">${intended.has(item.ref) ? "Planejado aqui" : "Não planejado aqui"} · ${selected.has(item.ref) ? "Uso registrado" : "Uso não registrado"}</p></li>`).join("")}</ul>`;
+      status(`Situação de ${item.statement}`, [
+        ["Neste planejamento", intended.has(item.ref) ? "Incluído" : "Não incluído"],
+        ["Nas unidades", selected.has(item.ref) ? "Uso registrado" : "Sem uso registrado"]]) + '</li>').join("")}</ul>`;
     const current = items.filter(relevant);
     const other = items.filter(item => !relevant(item));
     return `<section><h3>${label}</h3>` + (current.length ? list(current) : '<p>Nenhum item associado a esta microssequência.</p>') +
@@ -352,16 +358,17 @@ function renderInstructionalContext(state) {
   const plan = entity?.content?.explanationPlan;
   return '<section class="course-design-instructional-context" aria-label="Explicação e aprendizagem da microssequência">' +
     (context.errors.length ? `<div role="status">${context.errors.map(error => `<p>${escapeHtml(error)}</p>`).join("")}</div>` : "") +
-    '<section><h3>Explicação</h3>' +
+    '<section class="course-design-instructional-item"><h3>Explicação</h3>' +
     (plan ? `<p>${escapeHtml(plan.purpose)}</p>` : "") +
-    '<p class="course-design-instructional-status">' + (entity ? entity.content?.explanation ? "Salva" : "Ainda não produzida" : "Não foi possível consultar a explicação") +
-    ` · ${context.review ? escapeHtml(reviewLabels[context.review.state]) : "Revisão indisponível"}</p>` +
+    status("Situação da explicação", [
+      ["Explicação", entity ? entity.content?.explanation ? "Disponível para leitura" : "Ainda não produzida" : "Consulta indisponível"],
+      ["Revisão", context.review ? reviewLabels[context.review.state] : "Consulta indisponível"],
+      ...(basis ? [["Unidades produzidas", String(units.length)]] : [])]) +
     (plan && (plan.prerequisites.length || plan.relations.length) ? '<details><summary>O que a explicação deve abordar</summary>' +
       (plan.prerequisites.length ? `<h4>Conhecimentos prévios</h4><ul>${plan.prerequisites.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul>` : "") +
       (plan.relations.length ? `<h4>Relações a explicar</h4><ul>${plan.relations.map(value => `<li>${escapeHtml(value)}</li>`).join("")}</ul>` : "") + '</details>' : "") + '</section>' +
     (basis ? inventory(basis.analysisUnits, intendedAnalysis, analysisRefs, "O que desenvolver") +
-      inventory(basis.evidenceRequirements, intendedEvidence, evidenceRefs, "Como verificar a aprendizagem") +
-      (!units.length ? '<p class="course-design-instructional-status">Ainda não há conteúdo produzido.</p>' : "") : "") + '</section>';
+      inventory(basis.evidenceRequirements, intendedEvidence, evidenceRefs, "Como verificar a aprendizagem") : "") + '</section>';
 }
 
 export function renderCourseDesignPanel(state) {

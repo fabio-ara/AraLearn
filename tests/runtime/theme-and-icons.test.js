@@ -116,6 +116,7 @@ test("interface usa SVG temável e recusa nomes desconhecidos", () => {
     "cloud",
     "drag",
     "more",
+    "info",
     "panel",
     "play",
     "theme-system",

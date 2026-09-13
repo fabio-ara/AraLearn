@@ -259,10 +259,25 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     expect(await page.locator("#study-sync-title").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(17);
     await expect(page.locator(".study-sync-explanation")).not.toHaveAttribute("open", "");
     await page.getByText("Como sincroniza", { exact: true }).click();
-    await expect(page.locator(".study-sync-explanation")).toContainText("Edições salvas em Autoria são enviadas em ambos os modos");
+    await expect(page.locator(".study-sync-explanation")).toContainText("Na Autoria, as alterações são sincronizadas ao salvar");
     sameBox(await box(page, ".account-settings-sheet"), settings, "Ajuda de sincronização");
     await page.getByText("Progresso sem conta", { exact: true }).click();
     sameBox(await box(page, ".account-settings-sheet"), settings, "Adoção revelada");
+    const disclosureAlignment = await page.locator(".study-device-settings details").evaluateAll(nodes => nodes.map(node => {
+      const summary = node.querySelector("summary");
+      const text = document.createRange();
+      text.selectNodeContents(summary);
+      const body = node.querySelector("p");
+      return { offset: body.getBoundingClientRect().left - text.getBoundingClientRect().left,
+        inset: text.getBoundingClientRect().left - node.getBoundingClientRect().left,
+        overflow: node.scrollWidth - node.clientWidth };
+    }));
+    for (const result of disclosureAlignment) {
+      expect(Math.abs(result.offset)).toBeLessThanOrEqual(1);
+      expect(result.inset).toBeGreaterThanOrEqual(12);
+      expect(result.overflow).toBeLessThanOrEqual(1);
+    }
+
     await page.screenshot({ path: testInfo.outputPath(`settings-${width}-${theme}.png`) });
   });
 }

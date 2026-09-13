@@ -29,11 +29,11 @@ export function mountStudyDeviceSettings(root, {
       <option value="automatic">Automática</option><option value="manual">Manual</option>
     </select>
     <details class="study-sync-explanation"><summary>Como sincroniza</summary>
-      <p>No modo manual, toque na nuvem para enviar o progresso e atualizar os cursos. Edições salvas em Autoria são enviadas em ambos os modos.</p>
+      <p>No modo manual, atualize cursos e progresso pela nuvem. Na Autoria, as alterações são sincronizadas ao salvar.</p>
     </details>
     <p data-study-sync-message role="status"></p>
     <details class="study-state-adoption"><summary>Progresso sem conta</summary>
-      <p>Acrescente à conta o progresso e as marcas Rever deste dispositivo. O estado sem conta será mantido.</p>
+      <p>Traga seu progresso e suas marcas Rever para a conta. A cópia neste dispositivo será mantida.</p>
       <button class="account-settings-subview-entry" type="button" data-study-adoption-preview>Examinar progresso sem conta</button>
       <div data-study-adoption-content></div>
       <p data-study-adoption-message role="status"></p>

@@ -21,11 +21,10 @@
 .course-curriculum-approval input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--action-primary); }
 .course-curriculum-approval button { min-width: 44px; min-height: 44px; }
 .course-curriculum-approval [role="status"]:empty { display: none; }
-.course-design-instructional-context { display: grid; gap: var(--space-section); padding-inline: 38px 10px; }
+.course-design-instructional-context { display: grid; gap: var(--space-section); }
 .course-design-instructional-context > section { min-width: 0; }
 .course-design .course-design-instructional-context :is(h3, h4, strong) { font-size: var(--type-sm); font-weight: var(--weight-title); color: var(--text-primary); }
 .course-design .course-design-instructional-context p { margin: var(--space-copy) 0 0; font-size: var(--type-sm); font-weight: var(--weight-body); line-height: var(--leading-normal); }
-.course-design .course-design-instructional-context .course-design-instructional-status { font-size: var(--type-xs); }
 .course-design-instructional-context ul { margin: 8px 0 0; padding: 0; list-style: none; }
 .course-design .course-design-instructional-context summary { font-size: var(--type-sm); font-weight: var(--weight-body); }
 .course-design-instructional-context :is(p, li) { overflow-wrap: anywhere; }
@@ -33,3 +32,16 @@
 .course-design-instructional-context li { font-size: var(--type-sm); font-weight: var(--weight-body); line-height: var(--leading-normal); color: var(--text-secondary); }
 .course-design-instructional-context ul + h4 { margin-top: var(--space-section); }
 .course-design-instructional-context summary { min-height: 44px; padding-block: 10px; cursor: pointer; }
+
+.course-design-instructional-item { position: relative; }
+.course-design-instructional-item > :is(h3, strong) { display: flex; align-items: center; min-height: var(--tap); padding-inline-end: calc(var(--tap) + var(--space-copy)); }
+.course-design .course-design-item-status { border: 0; padding: 0; margin: 0; }
+.course-design .course-design-item-status > summary { position: absolute; inset-block-start: 0; inset-inline-end: 0; display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; list-style: none; color: var(--text-secondary); border-radius: var(--radius-control); }
+.course-design-item-status > summary::-webkit-details-marker { display: none; }
+.course-design-item-status > summary::marker { content: ""; }
+.course-design-item-status > summary:hover { background: var(--surface-sunken); }
+.course-design-item-status > summary:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 2px; }
+.course-design-item-status dl { margin-block: var(--space-copy); display: grid; gap: var(--space-copy); font-size: var(--type-xs); color: var(--text-secondary); }
+.course-design-item-status dl > div { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-copy); }
+.course-design-item-status dt { font-weight: var(--weight-label); }
+.course-design-item-status dd { margin: 0; font-weight: var(--weight-body); }

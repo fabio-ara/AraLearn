@@ -46,13 +46,13 @@ test("base sem unidades distingue intenção corrente, inventário e aplicação
   const fixture = coursePlanningContextFixture();
   const html = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { entity: fixture.entity, review: fixture.review.contentReview, basis: fixture.analytics.basis, errors: [] } });
-  assert.match(html, /Salva · Revisão pendente/u);
-  assert.match(html, /Planejado aqui/u);
-  assert.match(html, /Uso não registrado/u);
-  assert.match(html, /Ainda não há conteúdo produzido/u);
+  assert.match(html, /Disponível para leitura/u);
+  assert.match(html, /Neste planejamento<\/dt><dd>Incluído/u);
+  assert.match(html, /Sem uso registrado/u);
+  assert.match(html, /Unidades produzidas<\/dt><dd>0/u);
   const unavailable = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { errors: ["Leitura indisponível."] } });
-  assert.match(unavailable, /Não foi possível consultar a explicação/u);
+  assert.match(unavailable, /Consulta indisponível/u);
   assert.doesNotMatch(unavailable, /Ainda não produzida/u);
 });
 
@@ -66,8 +66,8 @@ test("Parâmetros mantém inventário não associado recolhido e destaca aplica�
     usedInstructionalAnalysisUnitIds: [], explanationApplications: [], practiceApplications: [] } });
   const html = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { entity: fixture.entity, review: fixture.review.contentReview, basis, errors: [] } });
-  assert.match(html, /Conhecimento aplicado<\/strong><p[^>]*>Não planejado aqui · Uso registrado/u);
-  assert.match(html, /<details><summary>Outros itens do curso · 1<\/summary><ul><li><strong>Outro conhecimento/u);
+  assert.match(html, /Conhecimento aplicado[\s\S]*Não incluído[\s\S]*Uso registrado/u);
+  assert.match(html, /<details><summary>Outros itens do curso · 1<\/summary><ul><li[^>]*><strong>Outro conhecimento/u);
   assert.match(html, /Descrição preservada/u);
-  assert.doesNotMatch(html, /Ainda não há conteúdo produzido/u);
+  assert.doesNotMatch(html, /Unidades produzidas<\/dt><dd>0/u);
 });

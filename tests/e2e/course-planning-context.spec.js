@@ -180,12 +180,31 @@ for (const width of [390, 430, 1280]) test(`overlays com hierarquia e alinhament
   expect(hierarchy.overflow).toBeLessThanOrEqual(1);
   await panel.getByText('O que a explicação deve abordar', { exact: true }).click();
   await expect(panel.getByText('Distinguir causa e coincidência.', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Disponível para leitura', { exact: true })).toBeHidden();
+  const statusToggle = panel.locator('summary[aria-label="Situação da explicação"]');
+  await statusToggle.focus();
+  await page.keyboard.press('Space');
+  await expect(panel.getByText('Disponível para leitura', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`parameters-status-${width}.png`) });
+  await page.keyboard.press('Space');
+  await expect(panel.getByText('Disponível para leitura', { exact: true })).toBeHidden();
   await page.screenshot({ path: info.outputPath(`parameters-${width}.png`) });
   await panel.getByText('O que a explicação deve abordar', { exact: true }).click();
   await panel.getByText('Explicação e aprendizagem', { exact: true }).first().click();
   await panel.locator('[data-design-category="editorial"]').click();
   await expect(panel.locator('.course-design-instructional-context')).toHaveCount(0);
   await expect(panel.locator('[data-course-authoring-action="edit-design-parameter"]').first()).toBeVisible();
+  const parameter = panel.locator('.course-design-parameter').first();
+  expect(await parameter.locator('header > strong').evaluate(node => getComputedStyle(node).fontWeight)).toBe('400');
+  const parameterLeft = await parameter.locator('h3').evaluate(node => node.getBoundingClientRect().left);
+  const scopeLeft = await panel.locator('.course-design-scope > summary strong').evaluate(node => node.getBoundingClientRect().left);
+  expect(Math.abs(parameterLeft - scopeLeft)).toBeLessThanOrEqual(2);
+
+  const editRight = await parameter.locator('button').evaluate(node => node.getBoundingClientRect().right);
+  const addRight = await panel.locator('.course-design-local-editor > summary').evaluate(node => node.getBoundingClientRect().right);
+  expect(Math.abs(editRight - addRight)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath(`parameters-options-${width}.png`) });
+
   await panel.getByRole('button', { name: 'Fechar parâmetros', exact: true }).click();
   await microAction(page, 'explanation').click();
   const review = page.locator('dialog.course-microsequence-review');
@@ -249,9 +268,12 @@ test("mapa rascunho encontra pendência, mantém expansões e abre ajustes sem e
   await expand(page);
   await microAction(page, "instruction").click();
   const panel = page.locator('[data-course-design-context-dialog]');
-  await expect(panel.getByText("Salva · Revisão pendente")).toBeVisible();
-  await expect(panel.getByText("Planejado aqui · Uso não registrado")).toBeVisible();
-  await expect(panel.getByText("Ainda não há conteúdo produzido.")).toBeVisible();
+  await expect(panel.getByText("Disponível para leitura", { exact: true })).toBeHidden();
+  await panel.locator('summary[aria-label="Situação da explicação"]').click();
+  await expect(panel.getByText("Disponível para leitura", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Pendente", { exact: true })).toBeVisible();
+  await panel.locator('summary[aria-label="Situação de Relação causal"]').click();
+  await expect(panel.getByText("Sem uso registrado", { exact: true })).toBeVisible();
   expect(new URL(page.url()).hash).toContain("section=planning");
   await page.screenshot({ path: testInfo.outputPath("planning-base-context-393.png") });
   await panel.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();

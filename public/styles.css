@@ -6485,3 +6485,20 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .study-tools-panel :is(button, input, select) {
   font-size: var(--type-sm);
 }
+
+/* Ajuda expansível: o marcador fica à esquerda da coluna comum de título e conteúdo. */
+:is(.study-device-settings details, .authoring-process-settings details,
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details) {
+  padding-inline-start: var(--space-section);
+}
+:is(.study-device-settings details, .authoring-process-settings details,
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details) > summary {
+  display: list-item;
+  list-style-position: outside;
+}
+
+.study-tool-error { color: var(--status-danger); }

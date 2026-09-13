@@ -445,6 +445,11 @@ export function renderUiIcon(iconName, className = "ui-icon") {
     );
   }
 
+  if (iconName === "info") {
+    return `<svg class="${classes}" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round">` +
+      '<circle cx="8" cy="8" r="6"/><path d="M8 7v4"/><circle cx="8" cy="4.5" r=".65" fill="currentColor" stroke="none"/></svg>';
+  }
+
   if (iconName === "more") {
     return (
       '<svg class="' + classes + '" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +

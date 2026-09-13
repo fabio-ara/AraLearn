@@ -1501,6 +1501,7 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   font-weight: var(--weight-title);
   letter-spacing: 0;
   text-transform: none;
+  font-weight: var(--weight-body);
 }
 
 .course-authoring-part h4 {
@@ -5323,19 +5324,19 @@ dialog.course-microsequence-review {
 .course-design-settings-nav .course-design-scope { min-width: 0; margin: 0; padding: 0 10px; box-shadow: none; }
 .course-design-settings-nav .course-design-scope > summary { min-height: var(--tap); display: flex; align-items: center; gap: 8px; padding-block: 8px; font-size: var(--type-sm); cursor: pointer; }
 .course-design-scope > summary > svg { flex: 0 0 auto; }
-.course-design-scope > summary > span { min-width: 0; display: grid; gap: 3px; }
+.course-design-scope > summary > span { min-width: 0; flex: 1; display: grid; gap: var(--space-copy); }
 .course-design-scope > summary small { font-size: var(--type-xs); font-weight: var(--weight-body); color: var(--text-secondary); }
 .course-design-scope > summary strong { font-size: var(--type-sm); font-weight: var(--weight-title); overflow-wrap: anywhere; }
 .course-design-settings-nav .course-design-scope[open] { padding-bottom: 10px; }
 .course-design-feedback { min-height: 0; }
 .course-design-feedback:empty { display: none; }
 .course-design-feedback .course-authoring-notice { position: static; margin: 0; padding: 4px; font-size: var(--type-xs); }
-.course-design-settings-body { min-height: 0; min-width: 0; }
+.course-design-settings-body { min-height: 0; min-width: 0; padding-inline: 38px 10px; }
 .course-design-settings-body :is(h3, strong) { font-size: var(--type-sm); font-weight: var(--weight-title); }
 .course-design-settings-body :is(p, small, .course-design-reason, .course-design-context-note, .course-design-explanation) { font-size: var(--type-xs); color: var(--text-secondary); }
 .course-design-settings-body .course-design-subheading { display: none; }
-.course-design-settings-body .course-design-parameter { padding: 10px; display: flex; align-items: center; gap: 8px; }
-.course-design-settings-body .course-design-parameter > header { min-width: 0; flex: 1; display: grid; gap: 4px; }
+.course-design-settings-body .course-design-parameter { padding-block: 10px; padding-inline: 0; display: flex; align-items: center; gap: 8px; }
+.course-design-settings-body .course-design-parameter > header { min-width: 0; flex: 1; display: grid; gap: var(--space-copy); }
 .course-design-settings-body .course-design-parameter > button { flex: 0 0 var(--tap); }
 .course-design-parameter-editor > h3 { margin: 0 0 12px; }
 .course-design-parameter-editor > form > .course-design-form-actions {
@@ -5343,6 +5344,7 @@ dialog.course-microsequence-review {
   border-top: 1px solid var(--border-default);
 }
 .course-design-settings-body .course-design-form-actions { justify-content: flex-end; }
+.course-design-settings-body details > summary.course-authoring-icon-action { display: flex; margin-inline-start: auto; }
 .course-design-settings-body .course-design-parameter-form { margin: 0; }
 .course-design-explanation { margin-top: 16px; }
 .course-design-explanation > summary { min-height: var(--tap); align-content: center; cursor: pointer; }
@@ -5485,7 +5487,7 @@ dialog.course-microsequence-review {
   min-height: var(--tap);
   padding-block: 10px;
   cursor: pointer;
-  list-style-position: inside;
+  list-style-position: outside;
   font-weight: var(--weight-label);
 }
 .course-source-status { display: inline-grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; background: transparent; }
@@ -5832,3 +5834,5 @@ dialog.course-microsequence-review {
   letter-spacing: normal;
   text-transform: none;
 }
+
+.course-design-settings-body .course-design-parameter > header > strong { color: var(--text-primary); font-size: var(--type-sm); font-weight: var(--weight-body); }
