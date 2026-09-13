@@ -174,7 +174,7 @@ function renderCoverageItem(courseId, item, nodes, expansion) {
 
 /** Receives the already normalized planning projection; expansion is temporary UI state. */
 export function renderCourseCurriculumMap({
-  courseId, courseRevision = null, sourceTitles = new Map(), curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = [],
+  courseId, sourceTitles = new Map(), curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = [],
   contextual = false, courseTitle = "Curso", query = "", pendingOnly = false, completeness = null, approval = null
 }) {
   const nodes = indexCurriculum(curriculum);
@@ -210,8 +210,8 @@ export function renderCourseCurriculumMap({
       '<p>Base explicativa e revisão são verificadas ao abrir cada objeto.</p></details>' : "") +
     '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
     '<p data-curriculum-search-status role="status" hidden></p>' + content + coverage +
-    (approval ? `<section class="course-curriculum-approval" aria-label="Aprovação do mapa"><p>Mapa salvo · versão ${approval.planVersion} · revisão do curso ${courseRevision}.</p>` +
-      '<p>A aprovação declara sua inspeção do mapa completo, incluindo ramos recolhidos e resultados fora da busca.</p>' +
+    (approval ? '<section class="course-curriculum-approval" aria-label="Aprovação do mapa"><h4>Aprovação do mapa</h4>' +
+      '<p>Revise o mapa completo antes de aprovar.</p>' +
       `<label><input type="checkbox" data-curriculum-inspected${approval.inspected ? " checked" : ""}${approval.busy || !completeness?.complete || approval.pending ? " disabled" : ""}> Inspecionei esta versão do mapa completo.</label>` +
       `<button class="course-authoring-icon-action" type="button" data-curriculum-approve data-curriculum-key="approve"` +
       ` aria-label="${approvalLabel}" title="${approvalLabel}"` +

@@ -598,16 +598,15 @@ function renderPartNavigator(state, parts, activePart) {
 }
 
 function renderParts(state, planning) {
+  if (!planning.parts.length) return "";
   return '<section class="course-authoring-parts" aria-labelledby="course-authoring-parts-title">' +
     '<header class="course-authoring-subsection-heading"><div>' +
-    '<h3 id="course-authoring-parts-title">Lotes de produção</h3>' +
+    '<h3 id="course-authoring-parts-title">Organização da produção</h3>' +
     '<p>Esta divisão organiza a produção em blocos manejáveis e pode ser ajustada sem mudar o mapa curricular.</p>' +
     '</div><button type="button" class="course-authoring-icon-action" data-course-authoring-action="reorganize-parts"' +
     ' aria-label="Reorganizar lotes" title="Reorganizar lotes">' + renderUiIcon("edit", "course-authoring-button-icon") + '</button></header>' +
-    (planning.parts.length
-      ? `<div class="course-authoring-part-list">${planning.parts.map((part, index) =>
-          renderPart(state, part, index, planning.parts)).join("")}</div>`
-      : '<p class="course-authoring-empty-copy">Nenhum lote de produção foi definido ainda.</p>') +
+    `<div class="course-authoring-part-list">${planning.parts.map((part, index) =>
+      renderPart(state, part, index, planning.parts)).join("")}</div>` +
     "</section>";
 }
 

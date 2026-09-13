@@ -4,6 +4,14 @@ import { microsequenceReviewExport, REVIEW_COURSE_ID, REVIEW_MS_ID } from "../he
 
 async function mount(page, options = {}) {
   const fixture = coursePlanningContextFixture(options);
+  if (options.longObjectives) {
+    const objective = "Compreender as relações entre mecanismos e evidências, comparar explicações e aplicar esse conhecimento em situações novas com autonomia.";
+    fixture.course.goal = fixture.plan.plan.objective = objective;
+    for (const curriculum of [fixture.read.map, fixture.plan.plan.curriculum]) {
+      const module = curriculum.modules[0];
+      module.objective = module.lessons[0].objective = module.lessons[0].microsequences[0].objective = objective;
+    }
+  }
   const identities = new Map([[REVIEW_COURSE_ID, fixture.courseId], [REVIEW_MS_ID, "micro-context"],
     ["module-review", "module-context"], ["lesson-review", "lesson-context"], ["Curso sintético", fixture.course.title]]);
   const replaceIdentities = value => Array.isArray(value) ? value.map(replaceIdentities) : value && typeof value === "object"
@@ -67,6 +75,58 @@ async function expand(page) {
   await page.locator('[data-curriculum-expansion="module:module-context"] > summary').click();
   await page.locator('[data-curriculum-expansion="lesson:lesson-context"] > summary').click();
 }
+
+for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento em ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 });
+  const errors = await mount(page, { longObjectives: true });
+  await page.evaluate(width => { document.documentElement.dataset.colorMode = width === 1280 ? "light" : "dark"; }, width);
+  await expect(page.locator('.course-authoring-parts')).toHaveCount(0);
+  await expect(page.locator('[data-course-authoring-action="reorganize-parts"]')).toHaveCount(0);
+  await expand(page);
+  for (const summary of await page.locator('.course-curriculum-map-objective > summary').all()) await summary.click();
+  const geometry = await page.evaluate(() => {
+    const style = node => ({ size: parseFloat(getComputedStyle(node).fontSize), weight: Number(getComputedStyle(node).fontWeight) });
+    const card = document.querySelector('.is-objective .course-authoring-planning-card');
+    return {
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      objectives: [{ label: style(card.querySelector('h3')), body: style(card.querySelector('p')) },
+        ...[...document.querySelectorAll('.course-curriculum-map-objective')].map(node => ({ label: style(node.querySelector('summary')), body: style(node.querySelector('p')) }))],
+      groups: [...document.querySelectorAll('.course-curriculum-context-actions')].map(node => ({
+        gap: node.getBoundingClientRect().right - node.lastElementChild.getBoundingClientRect().right,
+        targets: [...node.children].map(button => ({ width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height, text: button.textContent.trim() }))
+      }))
+    };
+  });
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  for (const { label, body } of geometry.objectives) { expect(body.size).toBeLessThan(label.size); expect(body.weight).toBeLessThan(label.weight); }
+  for (const group of geometry.groups) {
+    expect(Math.abs(group.gap)).toBeLessThanOrEqual(1);
+    for (const target of group.targets) { expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44); expect(target.text).toBe(""); }
+  }
+  await page.evaluate(() => { document.querySelector('main').scrollTop = 0; });
+  await page.screenshot({ path: testInfo.outputPath(`planning-objectives-${width}.png`) });
+  await microAction(page, 'parameters').click();
+  await page.locator('[data-course-design-context-dialog]').getByRole('button', { name: 'Fechar parâmetros', exact: true }).click();
+  await expect(microAction(page, 'parameters')).toBeFocused();
+  await microAction(page, 'guidance').click();
+  await page.locator('[data-course-design-context-dialog]').getByRole('button', { name: 'Fechar parâmetros', exact: true }).click();
+  await expect(microAction(page, 'guidance')).toBeFocused();
+  const approval = page.getByRole('region', { name: 'Aprovação do mapa', exact: true });
+  await expect(approval).not.toContainText(/Mapa salvo|revisão do curso|ramos recolhidos|resultados fora da busca/u);
+  await expect(approval.getByRole('heading', { name: 'Aprovação do mapa' })).toBeVisible();
+  const approve = approval.getByRole('button', { name: 'Aprovar mapa inspecionado' });
+  await expect(approve).toBeDisabled();
+  await approval.getByRole('checkbox').focus();
+  await page.keyboard.press('Space');
+  await expect(approve).toBeEnabled();
+  await approval.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath(`planning-approval-${width}.png`) });
+  await approve.click();
+  expect(await page.evaluate(() => window.planningHarness.requests[0].reference)).toBe('inspected_map_1_1');
+  await page.evaluate(() => window.planningHarness.requests[0].resolve());
+  await expect(approve).toBeDisabled();
+  expect(errors).toEqual([]);
+});
 
 test("Explicação salva abre diretamente pelo mapa sem unidades e retorna ao mesmo ramo", async ({ page }, testInfo) => {
   const errors = await mount(page);
@@ -139,7 +199,8 @@ test("aprovação usa referência inspecionada e resposta tardia conserva painel
   await expect(draft).toHaveValue("Edição posterior ao envio da aprovação.");
   await expect(draft).toBeFocused();
   await panel.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
-  await expect(page.getByText("Mapa salvo · versão 2 · revisão do curso 2.")).toBeVisible();
+  await expect(page.getByText("Mapa inspecionado aprovado.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => [window.planningHarness.data.read.planVersion, window.planningHarness.data.read.courseRevision])).toEqual([2, 2]);
   await expect(microAction(page, "guidance")).toBeFocused();
   await expect(approve).toBeDisabled();
   await page.evaluate(() => { document.querySelector("main").scrollTop = 0; document.documentElement.dataset.colorMode = "dark"; });
@@ -156,7 +217,8 @@ test("resposta perdida retoma referência original mesmo depois de o servidor av
   await expect.poll(() => page.evaluate(() => window.planningHarness.requests.length)).toBe(2);
   expect(await page.evaluate(() => window.planningHarness.requests.map(item => item.reference))).toEqual(["inspected_map_1_1", "inspected_map_1_1"]);
   await page.evaluate(() => window.planningHarness.requests[1].resolve({ advance: false }));
-  await expect(page.getByText("Mapa salvo · versão 2 · revisão do curso 2.")).toBeVisible();
+  await expect(page.getByText("Mapa inspecionado aprovado.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => [window.planningHarness.data.read.planVersion, window.planningHarness.data.read.courseRevision])).toEqual([2, 2]);
   await expect(page.getByRole("button", { name: "Aprovar mapa inspecionado", exact: true })).toBeDisabled();
   expect(errors).toEqual([]);
 });

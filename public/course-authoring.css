@@ -1050,6 +1050,11 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
   line-height: var(--leading-normal);
 }
 
+.course-authoring-planning-details.is-objective .course-authoring-planning-card h3 {
+  font-size: var(--type-md);
+  margin-bottom: 6px;
+}
+
 .course-authoring-planning-details.is-objective .course-authoring-planning-card p {
   color: var(--text-secondary);
   font-weight: 400;
@@ -1207,6 +1212,17 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 .course-curriculum-map-prose {
   margin: 0;
   white-space: pre-line;
+}
+
+.course-curriculum-map-objective > summary {
+  font-weight: 600;
+}
+
+.course-curriculum-map-objective .course-curriculum-map-prose {
+  font-size: var(--type-sm);
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
 }
 
 .course-curriculum-map a {
