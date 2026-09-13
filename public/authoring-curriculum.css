@@ -5,24 +5,31 @@
 .course-curriculum-map .course-authoring-icon-action:hover { background: var(--action-primary-subtle); }
 .course-curriculum-map .course-authoring-icon-action:disabled { color: var(--text-secondary); opacity: .65; cursor: default; }
 .course-curriculum-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-block: 16px; }
-.course-curriculum-search label { grid-column: 1 / -1; font-weight: 600; }
+.course-curriculum-search label { grid-column: 1 / -1; font-weight: var(--weight-title); }
 .course-curriculum-search input { width: 100%; min-width: 0; min-height: 44px; padding: 8px 12px; font: inherit; border: 1px solid var(--input-border); border-radius: var(--radius-control); background: var(--input-surface); color: var(--text-primary); }
 .course-curriculum-search :focus-visible, .course-curriculum-context-actions :focus-visible, .course-curriculum-approval :focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
 .course-curriculum-search button[aria-pressed="true"] { color: var(--action-primary); background: var(--action-primary-subtle); }
 .course-curriculum-pending-list { margin-block: 12px; }
-.course-curriculum-pending-list summary { min-height: 44px; padding-block: 10px; cursor: pointer; font-weight: 600; }
+.course-curriculum-pending-list summary { min-height: 44px; padding-block: 10px; cursor: pointer; font-weight: var(--weight-title); }
+.course-curriculum-pending-list > p { margin-block: 0 8px; margin-inline: 1rem 0; font-size: var(--type-sm); color: var(--text-secondary); font-weight: var(--weight-body); }
 .course-curriculum-pending-list li + li { margin-top: 7px; }
 .course-curriculum-pending-reference { color: var(--text-secondary); }
 .course-curriculum-approval { border-top: 1px solid var(--border-default); margin-top: 20px; padding-top: 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .course-curriculum-approval p { margin: 0; }
 .course-curriculum-approval > p { grid-column: 1 / -1; font-size: var(--type-sm); color: var(--text-secondary); }
-.course-curriculum-approval label { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; font-size: var(--type-sm); font-weight: 400; }
+.course-curriculum-approval label { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 44px; font-size: var(--type-sm); font-weight: var(--weight-body); }
 .course-curriculum-approval input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--action-primary); }
 .course-curriculum-approval button { min-width: 44px; min-height: 44px; }
 .course-curriculum-approval [role="status"]:empty { display: none; }
-.course-design-instructional-context { display: grid; gap: 20px; }
+.course-design-instructional-context { display: grid; gap: var(--space-section); padding-inline: 38px 10px; }
 .course-design-instructional-context > section { min-width: 0; }
-.course-design-instructional-context h3 { font-size: var(--type-md); }
+.course-design .course-design-instructional-context :is(h3, h4, strong) { font-size: var(--type-sm); font-weight: var(--weight-title); color: var(--text-primary); }
+.course-design .course-design-instructional-context p { margin: var(--space-copy) 0 0; font-size: var(--type-sm); font-weight: var(--weight-body); line-height: var(--leading-normal); }
+.course-design .course-design-instructional-context .course-design-instructional-status { font-size: var(--type-xs); }
+.course-design-instructional-context ul { margin: 8px 0 0; padding: 0; list-style: none; }
+.course-design .course-design-instructional-context summary { font-size: var(--type-sm); font-weight: var(--weight-body); }
 .course-design-instructional-context :is(p, li) { overflow-wrap: anywhere; }
-.course-design-instructional-context li + li { margin-top: 14px; }
+.course-design-instructional-context li + li { margin-top: var(--space-copy); }
+.course-design-instructional-context li { font-size: var(--type-sm); font-weight: var(--weight-body); line-height: var(--leading-normal); color: var(--text-secondary); }
+.course-design-instructional-context ul + h4 { margin-top: var(--space-section); }
 .course-design-instructional-context summary { min-height: 44px; padding-block: 10px; cursor: pointer; }

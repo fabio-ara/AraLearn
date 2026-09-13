@@ -46,12 +46,28 @@ test("base sem unidades distingue intenção corrente, inventário e aplicação
   const fixture = coursePlanningContextFixture();
   const html = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { entity: fixture.entity, review: fixture.review.contentReview, basis: fixture.analytics.basis, errors: [] } });
-  assert.match(html, /Há uma base explicativa salva/u);
-  assert.match(html, /Previsto na intenção corrente desta microssequência/u);
-  assert.match(html, /vínculo aplicado não registrado/u);
-  assert.match(html, /Ainda não há unidades neste recorte/u);
+  assert.match(html, /Salva · Revisão pendente/u);
+  assert.match(html, /Planejado aqui/u);
+  assert.match(html, /Uso não registrado/u);
+  assert.match(html, /Ainda não há conteúdo produzido/u);
   const unavailable = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { errors: ["Leitura indisponível."] } });
-  assert.match(unavailable, /O estado da base não pôde ser confirmado/u);
-  assert.doesNotMatch(unavailable, /ainda não tem base explicativa salva/u);
+  assert.match(unavailable, /Não foi possível consultar a explicação/u);
+  assert.doesNotMatch(unavailable, /Ainda não produzida/u);
+});
+
+
+test("Parâmetros mantém inventário não associado recolhido e destaca aplicação registrada", () => {
+  const fixture = coursePlanningContextFixture();
+  const basis = structuredClone(fixture.analytics.basis);
+  basis.analysisUnits.push({ ref: "outro", statement: "Outro conhecimento", description: "Descrição preservada" });
+  basis.analysisUnits.push({ ref: "aplicado", statement: "Conhecimento aplicado", description: "" });
+  basis.studyUnits.push({ declaration: { introducedInstructionalAnalysisUnitIds: ["aplicado"],
+    usedInstructionalAnalysisUnitIds: [], explanationApplications: [], practiceApplications: [] } });
+  const html = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
+    designInstructionalContext: { entity: fixture.entity, review: fixture.review.contentReview, basis, errors: [] } });
+  assert.match(html, /Conhecimento aplicado<\/strong><p[^>]*>Não planejado aqui · Uso registrado/u);
+  assert.match(html, /<details><summary>Outros itens do curso · 1<\/summary><ul><li><strong>Outro conhecimento/u);
+  assert.match(html, /Descrição preservada/u);
+  assert.doesNotMatch(html, /Ainda não há conteúdo produzido/u);
 });

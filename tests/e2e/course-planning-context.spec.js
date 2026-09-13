@@ -82,6 +82,15 @@ for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento
   await page.evaluate(width => { document.documentElement.dataset.colorMode = width === 1280 ? "light" : "dark"; }, width);
   await expect(page.locator('.course-authoring-parts')).toHaveCount(0);
   await expect(page.locator('[data-course-authoring-action="reorganize-parts"]')).toHaveCount(0);
+  await expect(page.getByText('Abra um módulo e uma lição para examinar', { exact: false })).toHaveCount(0);
+  await page.locator('.course-curriculum-pending-list > summary').click();
+  await expect(page.getByText('Nenhuma pendência encontrada.')).toBeVisible();
+  const pendingOffset = await page.locator('.course-curriculum-pending-list').evaluate(node => {
+    const range = document.createRange(); range.selectNodeContents(node.querySelector('summary'));
+    return node.querySelector('p').getBoundingClientRect().left - range.getBoundingClientRect().left;
+  });
+  expect(Math.abs(pendingOffset)).toBeLessThanOrEqual(1);
+  await page.locator('.course-curriculum-pending-list > summary').click();
   await expand(page);
   for (const summary of await page.locator('.course-curriculum-map-objective > summary').all()) await summary.click();
   const geometry = await page.evaluate(() => {
@@ -147,6 +156,64 @@ for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento
   expect(errors).toEqual([]);
 });
 
+for (const width of [390, 430, 1280]) test(`overlays com hierarquia e alinhamento em ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 844 });
+  const errors = await mount(page);
+  await expand(page);
+  await microAction(page, 'instruction').click();
+  const panel = page.locator('[data-course-design-context-dialog]');
+  await expect(panel.getByText('Desenvolver a relação entre mecanismo e evidência.', { exact: true })).toBeVisible();
+  await expect(panel.getByText('Relação causal', { exact: true })).toBeVisible();
+  await expect(panel.getByText('A configuração corrente orienta próximas produções.', { exact: false })).toHaveCount(0);
+  const hierarchy = await panel.evaluate(node => {
+    const group = node.querySelector('.course-design-category-menu > summary');
+    const heading = node.querySelector('.course-design-instructional-context h3');
+    const body = node.querySelector('.course-design-instructional-context p');
+    const scope = node.querySelector('.course-design-scope > summary strong');
+    return { shellTitle: parseFloat(getComputedStyle(node.querySelector("#course-design-context-title")).fontSize), group: parseFloat(getComputedStyle(group).fontSize), heading: parseFloat(getComputedStyle(heading).fontSize),
+      bodyWeight: getComputedStyle(body).fontWeight, offset: body.getBoundingClientRect().left - scope.getBoundingClientRect().left,
+      overflow: node.scrollWidth - node.clientWidth };
+  });
+  expect(hierarchy.group).toBeGreaterThan(hierarchy.heading);
+  expect(hierarchy.bodyWeight).toBe('400');
+  expect(Math.abs(hierarchy.offset)).toBeLessThanOrEqual(2);
+  expect(hierarchy.overflow).toBeLessThanOrEqual(1);
+  await panel.getByText('O que a explicação deve abordar', { exact: true }).click();
+  await expect(panel.getByText('Distinguir causa e coincidência.', { exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath(`parameters-${width}.png`) });
+  await panel.getByText('O que a explicação deve abordar', { exact: true }).click();
+  await panel.getByText('Explicação e aprendizagem', { exact: true }).first().click();
+  await panel.locator('[data-design-category="editorial"]').click();
+  await expect(panel.locator('.course-design-instructional-context')).toHaveCount(0);
+  await expect(panel.locator('[data-course-authoring-action="edit-design-parameter"]').first()).toBeVisible();
+  await panel.getByRole('button', { name: 'Fechar parâmetros', exact: true }).click();
+  await microAction(page, 'explanation').click();
+  const review = page.locator('dialog.course-microsequence-review');
+  await expect(review.locator('[data-review-title]')).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Referências da explicação', exact: true })).toBeVisible();
+  const geometry = await review.evaluate(node => {
+    const rect = selector => node.querySelector(selector).getBoundingClientRect();
+    const size = selector => parseFloat(getComputedStyle(node.querySelector(selector)).fontSize);
+    return { shellTitle: size('.editor-head h2'), contentTitle: size('[data-review-title]'), referenceTitle: size('.study-bibliography > h3'),
+      actionsRight: rect('.course-explanation-tools').right - rect('.course-explanation-actions button:last-child').right,
+      locationOffset: rect('.study-citation-locations').left - rect('.study-citation-reference').left,
+      overflow: node.scrollWidth - node.clientWidth };
+  });
+  expect(geometry.shellTitle).toBe(hierarchy.shellTitle);
+  expect(geometry.shellTitle).toBeGreaterThanOrEqual(geometry.contentTitle);
+  expect(geometry.contentTitle).toBeGreaterThan(geometry.referenceTitle);
+  expect(Math.abs(geometry.actionsRight)).toBeLessThanOrEqual(8);
+  expect(Math.abs(geometry.locationOffset)).toBeLessThanOrEqual(1);
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  await review.getByRole('button', { name: 'Referência 1', exact: true }).click();
+  await review.getByRole('button', { name: 'Voltar ao trecho 1 da referência 1 na explicação', exact: true }).click();
+  await expect(review.getByRole('button', { name: 'Referência 1', exact: true })).toBeFocused();
+  await page.screenshot({ path: info.outputPath(`explanation-${width}.png`) });
+  await review.getByRole('button', { name: 'Fechar inspeção da explicação', exact: true }).click();
+  await expect(microAction(page, 'explanation')).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
 test("Explicação salva abre diretamente pelo mapa sem unidades e retorna ao mesmo ramo", async ({ page }, testInfo) => {
   const errors = await mount(page);
   await expand(page);
@@ -182,9 +249,9 @@ test("mapa rascunho encontra pendência, mantém expansões e abre ajustes sem e
   await expand(page);
   await microAction(page, "instruction").click();
   const panel = page.locator('[data-course-design-context-dialog]');
-  await expect(panel.getByText("Há uma base explicativa salva.")).toBeVisible();
-  await expect(panel.getByText("Previsto na intenção corrente desta microssequência.")).toBeVisible();
-  await expect(panel.getByText("Ainda não há unidades neste recorte para consultar declarações de aplicação.")).toBeVisible();
+  await expect(panel.getByText("Salva · Revisão pendente")).toBeVisible();
+  await expect(panel.getByText("Planejado aqui · Uso não registrado")).toBeVisible();
+  await expect(panel.getByText("Ainda não há conteúdo produzido.")).toBeVisible();
   expect(new URL(page.url()).hash).toContain("section=planning");
   await page.screenshot({ path: testInfo.outputPath("planning-base-context-393.png") });
   await panel.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();

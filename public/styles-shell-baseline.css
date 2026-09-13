@@ -65,7 +65,7 @@
   text-align: center;
   font-family: var(--font-display);
   font-size: var(--type-md);
-  font-weight: 700;
+  font-weight: var(--weight-title);
   letter-spacing: 0.015em;
   white-space: nowrap;
   overflow: hidden;
@@ -141,7 +141,7 @@ img[src$="aralearn-mark-monochrome.svg"] {
   background: var(--action-primary);
   color: var(--text-on-action);
   border-color: var(--action-primary);
-  font-weight: 700;
+  font-weight: var(--weight-title);
   box-shadow: var(--shadow-card);
 }
 
@@ -226,7 +226,7 @@ img[src$="aralearn-mark-monochrome.svg"] {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--type-base);
-  font-weight: 600;
+  font-weight: var(--weight-title);
   line-height: var(--leading-snug);
   letter-spacing: 0.08em;
   font-variant-caps: all-small-caps;

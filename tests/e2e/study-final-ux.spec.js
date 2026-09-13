@@ -586,6 +586,9 @@ test("níveis e cards compartilham tipografia e a Unidade preserva a descrição
       return {
         textAlignment: [getComputedStyle(level).textAlign, getComputedStyle(child).textAlign],
         titleSize: [getComputedStyle(parentTitle).fontSize, getComputedStyle(childTitle).fontSize],
+        titleWeights: [parentTitle, childTitle].map(node => getComputedStyle(node).fontWeight),
+        bodyWeights: [parentDescription, childDescription].map(node => getComputedStyle(node).fontWeight),
+        bodyLeading: [parentDescription, childDescription].map(node => getComputedStyle(node).lineHeight),
         descriptionSize: [
           getComputedStyle(parentDescription).fontSize,
           getComputedStyle(childDescription).fontSize
@@ -596,7 +599,10 @@ test("níveis e cards compartilham tipografia e a Unidade preserva a descrição
     expect(geometry.textAlignment, step[0]).toEqual(["center", "center"]);
     expect(new Set(geometry.titleSize).size, step[0]).toBe(1);
     expect(new Set(geometry.descriptionSize).size, step[0]).toBe(1);
-    expect(geometry.titleDescriptionGap, step[0]).toBeGreaterThanOrEqual(5);
+    expect(geometry.titleWeights, step[0]).toEqual(["600", "600"]);
+    expect(geometry.bodyWeights, step[0]).toEqual(["400", "400"]);
+    expect(new Set(geometry.bodyLeading).size, step[0]).toBe(1);
+    expect(geometry.titleDescriptionGap, step[0]).toBeGreaterThanOrEqual(8);
   }
 
   const unitCard = page.locator(".navigation-list-card").first();
