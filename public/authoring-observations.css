@@ -33,12 +33,11 @@
   border-radius: var(--radius-control); background: var(--surface-sunken);
   font-size: var(--type-sm); line-height: 1.5;
 }
-.course-review-authoring-path { display: flex; align-items: center; min-height: var(--tap); margin: 0; padding-inline-end: calc(var(--tap) + 8px); color: var(--text-secondary); overflow-wrap: anywhere; }
-.course-review-authoring-state { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 0; }
-.course-review-authoring-state > div { min-width: 0; }
-.course-review-authoring-state > div:last-child { flex: 1 1 180px; }
-.course-review-authoring-state dt { color: var(--text-secondary); }
-.course-review-authoring-state dd { margin: 0; color: var(--text-primary); }
+.course-review-authoring-path { display: grid; align-content: center; gap: 4px; min-height: var(--tap); margin: 0; padding-inline-end: calc(var(--tap) + 8px); color: var(--text-secondary); overflow-wrap: anywhere; }
+.course-review-authoring-state { display: grid; gap: var(--space-copy); margin: var(--space-section) 0; font-size: var(--type-xs); }
+.course-review-authoring-state > div { min-width: 0; display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-copy); }
+.course-review-authoring-state dt { font-weight: var(--weight-label); color: var(--text-secondary); }
+.course-review-authoring-state dd { margin: 0; font-weight: var(--weight-body); color: var(--text-primary); }
 .course-review-authoring-context > details > summary { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; min-width: var(--tap); width: var(--tap); min-height: var(--tap); display: grid; place-items: center; cursor: pointer; list-style: none; }
 .course-review-authoring-context > details > :is(p, h4, ul) { margin-block: 8px; }
 .course-explanation-tools {
@@ -98,3 +97,6 @@ dialog.course-microsequence-review.is-unit-review { height: fit-content; }
   border-radius: 0; background: transparent; color: var(--text-secondary); font-size: var(--type-sm); overflow-wrap: anywhere;
 }
 .course-inspection-authorship > .course-inspection-summary-label + .course-inspection-summary-label::before { content: "· "; }
+
+.course-review-authoring-path strong { font-size: var(--type-sm); font-weight: var(--weight-title); color: var(--text-primary); }
+.course-review-authoring-path small { font-size: var(--type-xs); font-weight: var(--weight-body); }

@@ -2,7 +2,7 @@ import { createUuid } from "../domain/identifiers.js";
 import { normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewChange } from "../domain/courseContentReview.js";
-import { explanationRenderingUnit, explanationReviewMessage } from "../study/studyExplanation.js";
+import { explanationRenderingUnit } from "../study/studyExplanation.js";
 import { placeStudyCitationMarkers, renderStudyCitations, renderStudySourceMarkers, studyCitationMarkers } from "../study/studyCitations.js";
 import { openStudyResourceUrl } from "../study/studyTools.js";
 import { buildSourceDocumentUrl } from "../study/sourceDocumentUrl.js";
@@ -271,17 +271,18 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       content = !baseTarget
         ? '<section class="course-review-unit-declaration">' + reviewDeclaration + '</section>'
         : '<section class="course-review-authoring-context" aria-label="Contexto autoral">' +
-        `<p class="course-review-authoring-path">${escape(snapshot.moduleTitle)} › ${escape(snapshot.lessonTitle)} › ${escape(ms.title)}</p>` +
-        `<details><summary data-review-context="metadata" aria-label="Contexto autoral" title="Contexto autoral">${renderUiIcon("intent", "course-authoring-button-icon")}</summary>` +
+        `<div class="course-review-authoring-path"><strong>${escape(ms.title)}</strong><small>Microssequência</small></div>` +
+        `<details><summary data-review-context="metadata" aria-label="Contexto autoral" title="Contexto autoral">${renderUiIcon("info", "course-authoring-button-icon")}</summary>` +
         '<dl class="course-review-authoring-state">' +
-        `<div><dt>Versão do curso</dt><dd>${snapshot.courseRevision}</dd></div>` +
-        `<div><dt>Revisão autoral</dt><dd>${escape(explanationReviewMessage(snapshot.contentReview))}</dd></div></dl>` +
-        `<h4>Objetivo e proposta da microssequência</h4><p>${escape(ms.goal)}</p>` +
-        (ms.explanationPlan ? `<p>Propósito: ${escape(ms.explanationPlan.purpose)}</p>` +
+        `<div><dt>Módulo</dt><dd>${escape(snapshot.moduleTitle)}</dd></div>` +
+        `<div><dt>Lição</dt><dd>${escape(snapshot.lessonTitle)}</dd></div>` +
+        `<div><dt>Revisão autoral</dt><dd>${escape({ current: "Em dia", stale: "Desatualizada", pending: "Aguardando confirmação" }[reviewState] || "Pendente")}</dd></div></dl>` +
+        (ms.goal ? `<h4>Objetivo</h4><p>${escape(ms.goal)}</p>` : "") +
+        (ms.explanationPlan ? `<h4>Explicação prevista</h4><p>${escape(ms.explanationPlan.purpose)}</p>` +
           [["Pressupostos", ms.explanationPlan.prerequisites], ["Relações", ms.explanationPlan.relations],
             ["Fontes previstas", ms.explanationPlan.sourceIds.map(id => snapshot.sources.find(value => value.sourceRef === id)?.document.title || id)]]
-            .map(([label, values]) => `<h4>${label}</h4>` + (values.length ? '<ul>' + values.map(value => `<li>${escape(value)}</li>`).join("") + '</ul>' : '<p>Nenhum registro.</p>')).join("")
-          : '<p>Proposta da explicação não registrada.</p>') + '</details></section>' +
+            .filter(([, values]) => values.length).map(([label, values]) => `<h4>${label}</h4>` + (values.length ? '<ul>' + values.map(value => `<li>${escape(value)}</li>`).join("") + '</ul>' : '<p>Nenhum registro.</p>')).join("")
+          : "") + '</details></section>' +
         '<section aria-label="Base explicativa" class="course-explanation-context">' +
         '<div class="course-explanation-tools"><nav class="course-explanation-actions" aria-label="Ações da explicação">' +
         (explanation ? `<button type="button" data-inspection-edit-explanation-sources data-microsequence-id="${escape(snapshot.microsequenceId)}" aria-label="Fontes da explicação" title="Fontes da explicação"${busy || editing || session.pending || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +

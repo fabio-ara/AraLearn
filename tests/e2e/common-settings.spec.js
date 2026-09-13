@@ -225,3 +225,18 @@ test("Manutenção só aparece após leitura autorizada e limpeza visitante pres
   expect(result.account).toEqual({ preserved: true });
   expect(result.visitor).toBeNull();
 });
+
+for (const width of [390, 430, 1280]) test(`Aparência alinha opções à direita em ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 850 }); await mount(page);
+  await page.getByRole("button", { name: "Aparência", exact: true }).click();
+  const view = page.locator("[data-settings-view=appearance]");
+  const choice = view.locator(".theme-choice");
+  const copy = view.locator(".account-settings-group-copy").first();
+  const a = await choice.boundingBox(); const b = await copy.boundingBox();
+  expect(Math.abs(a.x + a.width - b.x - b.width)).toBeLessThanOrEqual(1);
+  for (const theme of ["light", "dark"]) {
+    await choice.locator(`[data-theme-choice=${theme}]`).click();
+    await expect(choice.locator(`[data-theme-choice=${theme}]`)).toHaveAttribute("aria-pressed", "true");
+    await page.screenshot({ path: info.outputPath(`appearance-${width}-${theme}.png`) });
+  }
+});

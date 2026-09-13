@@ -374,7 +374,7 @@ function renderSettings(root, authClient, controller, {
               <button class="theme-choice-button" type="button" data-theme-choice="light" title="Tema claro" aria-label="Tema claro">${renderUiIcon("theme-light", "theme-choice-icon")}</button>
               <button class="theme-choice-button" type="button" data-theme-choice="dark" title="Tema escuro" aria-label="Tema escuro">${renderUiIcon("theme-dark", "theme-choice-icon")}</button>
             </div>
-            <p class="account-settings-group-copy">Sistema acompanha o tema do dispositivo; claro e escuro mantêm a escolha indicada.</p>
+            <p class="account-settings-group-copy">Sistema acompanha o tema do dispositivo.</p>
           </section>
           <section class="account-settings-view account-device-data" data-settings-view="device" hidden aria-label="Sincronização e dados deste dispositivo">
             <div data-study-device-settings></div>

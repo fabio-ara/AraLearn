@@ -29,7 +29,7 @@ export function renderVisitorSettings(root, {
           <div class="theme-choice" role="group" aria-label="Aparência">
             ${[["system", "do sistema"], ["light", "claro"], ["dark", "escuro"]].map(([value, label]) => `<button class="theme-choice-button" type="button" data-visitor-theme="${value}" title="Tema ${label}" aria-label="Tema ${label}">${renderUiIcon(`theme-${value}`, "theme-choice-icon")}</button>`).join("")}
           </div>
-          <p class="account-settings-group-copy">Sistema acompanha o tema do dispositivo; claro e escuro mantêm a escolha indicada.</p>
+          <p class="account-settings-group-copy">Sistema acompanha o tema do dispositivo.</p>
         </section>
         <section class="account-settings-view account-device-data" data-visitor-view="device" hidden aria-label="Sincronização e dados deste dispositivo">
           <p class="account-settings-group-copy">O estudo sem conta fica neste dispositivo. Para sincronizar o progresso entre dispositivos, entre em uma conta e acrescente o progresso sem conta em Configurações.</p>

@@ -1152,7 +1152,7 @@ test("acesso público de fonte e de cada PDF fica em ajustes e depende de confir
     courseId: COURSE_ID, courseRevision: 5, coursePublicFileAccess: "available", initialSourceId: item.sourceId });
   await panel.open();
   assert.match(root.innerHTML, /<details class="course-source-file-access">/u);
-  assert.match(root.innerHTML, /exceção no PDF prevalece sobre a fonte e o curso/u);
+  assert.match(root.innerHTML, /Cada documento pode ter uma escolha de acesso própria/u);
   assert.equal((root.innerHTML.match(/data-source-form="file-access"/gu) || []).length, 3);
   assert.match(root.innerHTML, /Herdar da fonte · restringir/u);
   assert.match(root.innerHTML, /Disponível no curso público/u);
@@ -1292,7 +1292,7 @@ test("catálogo e detalhe mostram somente Fonte, Âncoras e PDF correntes", asyn
   assert.match(root.innerHTML, /course-source-current/u);
   assert.match(root.innerHTML, /Fonte 1/u);
   assert.match(root.innerHTML, /Capítulo 2/u);
-  assert.match(root.innerHTML, /PDF disponível/u);
+  assert.match(root.innerHTML, /Documento disponível/u);
   assert.match(root.innerHTML, /Papéis sugeridos.*Sustentação do conteúdo/u);
   assert.doesNotMatch(root.innerHTML,
     /course-source-revisions|Revisão anterior|Histórico|actorId|targetHash|legacy/iu);

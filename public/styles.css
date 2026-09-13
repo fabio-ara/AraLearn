@@ -6490,15 +6490,17 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 :is(.study-device-settings details, .authoring-process-settings details,
     .study-tool-body details, .course-design-explanation,
     .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
-    .course-source-detail-section, .course-source-use-details) {
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) {
   padding-inline-start: var(--space-section);
 }
 :is(.study-device-settings details, .authoring-process-settings details,
     .study-tool-body details, .course-design-explanation,
     .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
-    .course-source-detail-section, .course-source-use-details) > summary {
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary {
   display: list-item;
   list-style-position: outside;
 }
 
 .study-tool-error { color: var(--status-danger); }
+
+.account-settings-view .theme-choice { display: grid; width: max-content; margin-inline-start: auto; margin-block-end: var(--space-copy); }

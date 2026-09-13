@@ -236,7 +236,7 @@ for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_e
     await page.screenshot({ path: testInfo.outputPath(`citation-intake-390-${theme}.png`) });
     await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.uploads.length)).toBe(1);
-    const document = page.getByRole("link", { name: /Documento PDF/ });
+    const document = page.getByRole("link", { name: /^Documento/ });
     await expect(document).toBeVisible();
     await document.click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.documents.length)).toBe(1);
@@ -272,9 +272,9 @@ for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_e
   });
 }
 
-for (const theme of ["light", "dark"]) {
-  test(`Acesso a PDFs usa tokens da área de fontes em 390 ${theme}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+for (const width of [390, 430, 1280]) for (const theme of ["light", "dark"]) {
+  test(`Acesso a documentos usa tokens da área de fontes em ${width} ${theme}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
     await mountSources(page, { theme, fileAccess: true });
     const opener = page.locator('[data-source-action="open-source"]');
     await opener.focus();
@@ -287,7 +287,13 @@ for (const theme of ["light", "dark"]) {
     await page.keyboard.press("Enter");
     await expect(access).toHaveAttribute("open", "");
     await expect(access.locator("select")).toBeVisible();
-    await expect(access).toContainText("Uma exceção no PDF prevalece sobre a fonte e o curso.");
+    await expect(access).toContainText("Cada documento pode ter uma escolha de acesso própria.");
+    const alignment = await access.evaluate(node => {
+      const range = document.createRange(); range.selectNodeContents(node.querySelector("summary"));
+      return [range.getBoundingClientRect().left, node.querySelector("p").getBoundingClientRect().left, node.querySelector("label").getBoundingClientRect().left];
+    });
+    expect(Math.max(...alignment) - Math.min(...alignment)).toBeLessThanOrEqual(1);
+    await expect(dialog.getByRole("heading", { name: "Documentos", exact: true })).toBeVisible();
     expect(await access.evaluate(node => node.closest(".course-authoring-section"))).toBeNull();
     expect(await access.locator("option").evaluateAll(nodes => nodes.map(node => node.value))).toEqual(["inherit", "restricted", "available"]);
     const colors = await access.evaluate(node => {
@@ -346,7 +352,7 @@ for (const theme of ["light", "dark"]) {
     }
     await access.locator("summary").focus();
     await access.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: testInfo.outputPath(`source-file-tokens-390-${theme}.png`) });
+    await page.screenshot({ path: testInfo.outputPath(`source-file-tokens-${width}-${theme}.png`) });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.keyboard.press("Escape");
     await expect(opener).toBeFocused();
