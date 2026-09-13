@@ -5054,7 +5054,6 @@ dialog.course-microsequence-review {
 .course-source-available > header > button,
 .course-source-cite-action { width: var(--tap); min-height: var(--tap); padding: 0; display: grid; place-items: center; }
 .course-source-display-reference { font-size: var(--type-sm); line-height: 1.6; color: var(--text-secondary); }
-.course-source-intake-help,
 .source-occurrence-editor > p,
 .source-occurrences > p {
   margin-block: 4px 8px;

@@ -6543,7 +6543,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .study-tool-body .runtime-block > p { margin-block: 0 var(--space-section); }
 .package-calculator form { gap: var(--space-section); margin-block-start: var(--space-section); }
 .package-calculator-actions { justify-content: flex-end; }
-.package-calculator output:empty, .package-tool-status:empty { display: none; }
+.package-calculator output, .package-tool-status { box-sizing: border-box; display: block; height: 64px; min-height: 64px; overflow: auto; overscroll-behavior: contain; }
 .package-calculator output { font-size: var(--type-sm); margin: 0; }
 .package-calculator-limits { margin-block-start: var(--space-section); }
 .package-calculator-limits dl { display: grid; gap: var(--space-copy); margin-block: var(--space-copy) 0; }
