@@ -225,3 +225,36 @@ test("Manutenção só aparece após leitura autorizada e limpeza visitante pres
   expect(result.account).toEqual({ preserved: true });
   expect(result.visitor).toBeNull();
 });
+
+for (const width of [390, 430, 1280]) test(`Aparência centraliza opções em ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 850 }); await mount(page);
+  await page.getByRole("button", { name: "Aparência", exact: true }).click();
+  const view = page.locator("[data-settings-view=appearance]");
+  const choice = view.locator(".theme-choice");
+  const copy = view;
+  await expect(view.locator("p")).toHaveCount(0);
+  const a = await choice.boundingBox(); const b = await copy.boundingBox();
+  expect(Math.abs(a.x + a.width / 2 - b.x - b.width / 2)).toBeLessThanOrEqual(1);
+  for (const theme of ["light", "dark"]) {
+    await choice.locator(`[data-theme-choice=${theme}]`).click();
+    await expect(choice.locator(`[data-theme-choice=${theme}]`)).toHaveAttribute("aria-pressed", "true");
+    await page.screenshot({ path: info.outputPath(`appearance-${width}-${theme}.png`) });
+  }
+});
+
+for (const width of [390, 430]) test(`Preferências vinculam ajuda ao campo em ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 850 }); await mount(page);
+  await page.getByRole("button", { name: "Preferências de autoria", exact: true }).click();
+  const field = page.locator(".authoring-process-parameter").last();
+  await field.scrollIntoViewIfNeeded();
+  const help = field.locator("summary"); await help.click();
+  await expect(help).toHaveText(""); await expect(field.locator("details p")).toBeVisible();
+  const group = await field.locator("..").boundingBox(); const box = await field.boundingBox();
+  expect(box.x - group.x).toBeGreaterThanOrEqual(16);
+  expect(await field.locator("legend").evaluate(n => getComputedStyle(n).fontWeight)).toBe("500");
+  expect(await field.locator("details p").evaluate(n => getComputedStyle(n).fontWeight)).toBe("400");
+  const save = await page.locator("[data-process-save]").boundingBox();
+  const reload = await page.locator("[data-process-reload]").boundingBox();
+  expect(save.x).toBeLessThan(reload.x);
+  await page.screenshot({ path: info.outputPath(`preferences-help-${width}.png`) });
+});

@@ -67,7 +67,7 @@ export function validateAuxiliaryLinks(data) {
 }
 
 export function renderAuxiliaryLinks(data) {
-  return `<section class="runtime-block package-auxiliary-links"><h3>${renderPackageLiteral(data.title)}</h3>${data.prompt ? renderPackageProse(data.prompt) : ""}<ol>${data.items.map((item, index) => `<li><button type="button" data-tool-link-index="${index}"${item.languageTag ? ` lang="${escapePackageAttribute(item.languageTag)}"` : ""} dir="auto">${renderPackageLiteral(item.label)}</button>${item.description ? `<div class="package-tool-description" dir="auto">${renderPackageProse(item.description)}</div>` : ""}<p class="package-tool-status" data-tool-link-status="${index}" role="status" aria-live="polite" aria-atomic="true"></p></li>`).join("")}</ol></section>`;
+  return `<section class="runtime-block package-auxiliary-links"><h3>${renderPackageLiteral(data.title)}</h3>${data.prompt ? renderPackageProse(data.prompt) : ""}<ol>${data.items.map((item, index) => `<li><div class="package-tool-resource"><span${item.languageTag ? ` lang="${escapePackageAttribute(item.languageTag)}"` : ""} dir="auto">${renderPackageLiteral(item.label)}</span><button class="icon-ghost" type="button" data-tool-link-index="${index}" aria-label="${escapePackageAttribute(item.label)}" title="${escapePackageAttribute(item.label)}"><svg class="home-tab-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div>${item.description ? `<div class="package-tool-description" dir="auto">${renderPackageProse(item.description)}</div>` : ""}<p class="package-tool-status" data-tool-link-status="${index}" role="status" aria-live="polite" aria-atomic="true"></p></li>`).join("")}</ol></section>`;
 }
 
 export const auxiliaryLinksInteraction = Object.freeze({ bind(root, data, host) {
@@ -94,9 +94,9 @@ export const auxiliaryLinksInteraction = Object.freeze({ bind(root, data, host) 
           result = await host.openSourceAttachment({ sourceId, sourceRevision, contentHash });
         }
         if (result === false) throw new Error("opening_failed");
-        if (active) status.textContent = "Recurso aberto. Volte ao estudo quando terminar a consulta.";
+        if (active) status.textContent = "Recurso aberto.";
       } catch {
-        if (active) status.textContent = "Não foi possível abrir o recurso. Confira sua conexão e acesso e tente novamente pelo mesmo botão.";
+        if (active) status.textContent = "Não foi possível abrir. Confira sua conexão e acesso e tente novamente.";
       } finally { if (active) button.disabled = false; }
     };
     button.addEventListener("click", open);

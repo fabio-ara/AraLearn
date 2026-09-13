@@ -59,23 +59,33 @@ test("calculadora móvel calcula por teclado, explica erro e invalida resultado 
   await page.setViewportSize({ width: 390, height: 844 });
   await mount(page, "calculator");
   const input = page.getByRole("textbox", { name: "Expressão" });
+  for (const name of ["Calcular", "Limpar"]) {
+    const action = page.getByRole("button", { name, exact: true });
+    await expect(action).toHaveText("");
+    await expect(action.locator("svg[aria-hidden=true]")).toHaveAttribute("stroke", "currentColor");
+  }
+  const limitsTop = (await page.locator(".package-calculator-limits").boundingBox()).y;
+  const stableResult = async () => expect((await page.locator(".package-calculator-limits").boundingBox()).y).toBe(limitsTop);
   await input.focus(); await page.keyboard.press("Enter");
   await expect(page.getByRole("status")).toHaveText("Resultado aproximado: 5");
   await expect(input).toBeFocused();
+  await stableResult();
   await input.fill("1/0"); await page.keyboard.press("Enter");
   await expect(page.getByRole("status")).toContainText("dividir por zero");
   await expect(input).toHaveAttribute("aria-invalid", "true");
+  await stableResult();
   await input.fill("sin(90)");
   await page.getByRole("combobox", { name: "Unidade dos ângulos" }).selectOption("degrees");
   await page.getByRole("button", { name: "Calcular", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Resultado aproximado: 1");
   await page.getByRole("combobox", { name: "Unidade dos ângulos" }).selectOption("radians");
-  await expect(page.getByRole("status")).toBeEmpty();
+  await expect(page.locator("[data-calculator-output]")).toBeEmpty();
   await input.fill("<img src=x onerror=alert(1)>"); await page.keyboard.press("Enter");
   await expect(page.getByRole("status")).toContainText("símbolo não aceito");
-  expect(await page.locator("img,iframe,svg,script").count()).toBe(0);
+  expect(await page.locator("img,iframe,script").count()).toBe(0);
   await page.getByRole("button", { name: "Limpar", exact: true }).click();
   await expect(input).toBeEmpty(); await expect(input).toBeFocused();
+  await stableResult();
   await input.fill("sqrt(3^2 + 4^2)"); await page.keyboard.press("Enter");
   await page.getByText("Operações e precisão", { exact: true }).click();
   for (const theme of ["light", "dark"]) {
@@ -91,8 +101,12 @@ test("auxiliares plurais abrem pelo host, conservam alvo lógico e permitem tent
   for (const kind of ["grammar", "dictionary", "reading"]) {
     await mount(page, kind);
     const external = page.getByRole("button", { name: "語法 — gramática /ɐ/ العربية" });
+    await expect(external).toHaveText("");
+    await expect(page.locator(".package-tool-resource").first().locator("span")).toHaveText("語法 — gramática /ɐ/ العربية");
+    const secondTop = (await page.locator(".package-tool-resource").nth(1).boundingBox()).y;
     await external.focus(); await page.keyboard.press("Enter");
     await expect.poll(() => page.evaluate(() => window.__opened.length)).toBe(1);
+    expect((await page.locator(".package-tool-resource").nth(1).boundingBox()).y).toBe(secondTop);
     const pdf = page.getByRole("button", { name: "Leitura complementar em PDF" });
     await pdf.click();
     await expect(page.getByRole("status").last()).toContainText("tente novamente");

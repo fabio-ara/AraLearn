@@ -123,8 +123,8 @@ for (const width of [360, 1280]) test(`contexto autoral e ações ficam separado
   const base = dialog(page).getByRole("region", { name: "Base explicativa", exact: true });
   const tools = base.locator(".course-explanation-tools");
   const content = base.locator("[data-review-explanation-content]");
-  await expect(context).toContainText("Módulo › Lição › Interfaces");
-  await expect(context).toContainText("Versão do curso");
+  await expect(context).toContainText("Interfaces");
+  await expect(context).not.toContainText("Versão do curso");
   await expect(context).toContainText("Revisão autoral");
   await expect(context.locator("[contenteditable], [data-review-edit-target]")).toHaveCount(0);
   await expect(tools.getByRole("button", { name: "Fontes da explicação", exact: true })).toBeVisible();
@@ -209,6 +209,8 @@ for (const width of [360, 390, 430, 1280]) test(`inspeção completa e decisão 
   await expect(dialog(page).getByRole("img", { name: "Revisão autoral pendente", exact: true })).toBeVisible();
   await page.locator("summary[data-review-context=metadata]").click();
   await expect(dialog(page)).toContainText("Distinguir interface e conexão.");
+  await expect(dialog(page)).not.toContainText("Proposta da explicação não registrada.");
+  await page.screenshot({ path: info.outputPath(`explanation-context-${width}.png`) });
   await page.locator("summary[aria-label='Configuração solicitada e aplicada']").click();
   await expect(dialog(page).locator(".course-analytics-inspection-panel").getByText("Aplicado", { exact: true })).toBeVisible();
   await expectContextRow(page, initialRow);

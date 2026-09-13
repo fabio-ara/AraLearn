@@ -9,6 +9,16 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.73] - 2026-09-13
+
+### Melhorado
+
+- títulos, rótulos, valores e informações de apoio seguem uma hierarquia visual mais consistente em Planejamento, configurações, fontes e ferramentas de estudo;
+- o Planejamento apresenta objetivos e aprovação com menos texto de bastidor e mostra a organização da produção somente quando há partes;
+- os controles de visualização e edição ficam centralizados; a assistência de IA usa o ícone de estrelinhas;
+- fontes usam a linguagem de documentos, com ações compactas e contornos de foco inteiros;
+- mensagens de envio, sucesso e recuperação conservam o espaço dos painéis; atualizações de documentos preservam a posição, o foco e a seleção do campo em edição.
+
 ## [0.0.72] - 2026-09-12
 
 ### Corrigido

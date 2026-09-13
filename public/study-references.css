@@ -105,3 +105,9 @@
   min-width: 0;
 }
 .course-microsequence-review .study-citation-actions a { color: var(--action-primary); }
+.course-microsequence-review .study-bibliography > h3 { font-size: var(--type-sm); }
+.course-microsequence-review .study-citation-list { padding-inline-start: 1.4em; }
+.course-microsequence-review .study-citation-list > li::marker { font-size: var(--type-sm); color: var(--text-secondary); }
+.course-microsequence-review .study-citation-locations { padding-inline-start: 0; font-size: var(--type-sm); color: var(--text-secondary); }
+.course-microsequence-review .study-citation-actions { justify-content: flex-end; }
+.course-microsequence-review .study-citation-actions > button { margin: 0; }

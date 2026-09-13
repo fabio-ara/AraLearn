@@ -586,6 +586,9 @@ test("níveis e cards compartilham tipografia e a Unidade preserva a descrição
       return {
         textAlignment: [getComputedStyle(level).textAlign, getComputedStyle(child).textAlign],
         titleSize: [getComputedStyle(parentTitle).fontSize, getComputedStyle(childTitle).fontSize],
+        titleWeights: [parentTitle, childTitle].map(node => getComputedStyle(node).fontWeight),
+        bodyWeights: [parentDescription, childDescription].map(node => getComputedStyle(node).fontWeight),
+        bodyLeading: [parentDescription, childDescription].map(node => getComputedStyle(node).lineHeight),
         descriptionSize: [
           getComputedStyle(parentDescription).fontSize,
           getComputedStyle(childDescription).fontSize
@@ -596,7 +599,10 @@ test("níveis e cards compartilham tipografia e a Unidade preserva a descrição
     expect(geometry.textAlignment, step[0]).toEqual(["center", "center"]);
     expect(new Set(geometry.titleSize).size, step[0]).toBe(1);
     expect(new Set(geometry.descriptionSize).size, step[0]).toBe(1);
-    expect(geometry.titleDescriptionGap, step[0]).toBeGreaterThanOrEqual(5);
+    expect(geometry.titleWeights, step[0]).toEqual(["600", "600"]);
+    expect(geometry.bodyWeights, step[0]).toEqual(["400", "400"]);
+    expect(new Set(geometry.bodyLeading).size, step[0]).toBe(1);
+    expect(geometry.titleDescriptionGap, step[0]).toBeGreaterThanOrEqual(8);
   }
 
   const unitCard = page.locator(".navigation-list-card").first();
@@ -697,4 +703,21 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-five-actions-360.png"), fullPage: true });
   }
+});
+
+for (const width of [390, 430]) test(`modos de estudo centralizados com assistência distinta em ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 850 }); await mountStudy(page);
+  for (const action of ["open-course", "open-module", "open-lesson", "open-microsequence", "open-study-unit"]) {
+    await page.locator(`[data-action=${action}]`).first().click();
+    const modes = page.locator(".study-mode-actions");
+    if (await modes.count()) {
+      const alignment = await modes.evaluate(n => { const a = n.getBoundingClientRect(); const b = n.parentElement.getBoundingClientRect(); return Math.abs(a.x + a.width / 2 - b.x - b.width / 2); });
+      expect(alignment).toBeLessThanOrEqual(1);
+      await expect(modes.getByRole("button", { name: "Visualizar", exact: true })).toBeVisible();
+    }
+  }
+  const assist = await modeButton(page, "Assistência por IA").locator("svg").innerHTML();
+  const observations = await page.locator("[data-action=open-observation] svg").innerHTML();
+  expect(assist).not.toBe(observations);
+  await page.screenshot({ path: info.outputPath(`study-modes-${width}.png`) });
 });

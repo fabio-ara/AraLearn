@@ -241,7 +241,7 @@ function commandErrorContext(command) {
     retire_source: "retirar a fonte",
     save_anchor: "salvar a âncora",
     retire_anchor: "retirar a âncora",
-    remove_pdf: "remover o PDF",
+    remove_pdf: "remover o documento",
     set_target_sources: "salvar as fontes deste item"
   }[command?.type] || "salvar a alteração";
   return operationErrorContext(action);
@@ -278,23 +278,16 @@ function referenceMarkup(source, state) {
 }
 
 function renderNotice(state) {
-  return (state.message
-    ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.message)}</p>`
-    : "") + (state.failure
-    ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>`
-    : "") + (state.pendingFileAccess
-    ? '<button type="button" class="course-source-retry" data-source-action="retry-file-access">' +
-      `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma permissão</span></button>`
-    : state.pendingCommand
-    ? '<button type="button" class="course-source-retry" data-source-action="retry-command">' +
-      `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma operação</span></button>`
-    : state.pendingAnnotation?.sourceId === state.selectedSourceId
-      ? '<button type="button" class="course-source-retry" data-source-action="retry-annotation">' +
-        `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar a mesma observação</span></button>`
-    : state.pendingAttachment
-      ? '<button type="button" class="course-source-retry" data-source-action="retry-attachment">' +
-        `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Confirmar o mesmo PDF</span></button>`
-    : "");
+  const retry = state.pendingFileAccess ? ["retry-file-access", "Confirmar a mesma permissão"]
+    : state.pendingCommand ? ["retry-command", "Confirmar a mesma operação"]
+    : state.pendingAnnotation?.sourceId === state.selectedSourceId ? ["retry-annotation", "Confirmar a mesma observação"]
+    : state.pendingAttachment ? ["retry-attachment", "Confirmar o mesmo documento"] : null;
+  return '<div class="course-operation-feedback"><div class="course-operation-feedback-copy">' +
+    (state.message ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.message)}</p>` : "") +
+    (state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : "") +
+    '</div>' + (retry ? `<button type="button" class="course-source-retry" data-source-action="${retry[0]}"` +
+      ` aria-label="${retry[1]}" title="${retry[1]}"${state.busy ? " disabled" : ""}>` +
+      renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : '') + '</div>';
 }
 
 function renderSourceConfirmation(state) {
@@ -620,7 +613,7 @@ function renderAnchorForm(state) {
     '<label for="course-anchor-file">Arquivo a que este trecho se refere</label>' +
     `<select id="course-anchor-file" name="contentHash"><option value="">Obra sem arquivo específico</option>` +
     (state.detail?.items?.[0]?.attachments || []).map((attachment, index) =>
-      `<option value="${escapeHtml(attachment.contentHash)}"${draft.contentHash === attachment.contentHash ? " selected" : ""}>PDF ${index + 1} · ${byteSizeLabel(attachment.byteSize)}</option>`).join("") +
+      `<option value="${escapeHtml(attachment.contentHash)}"${draft.contentHash === attachment.contentHash ? " selected" : ""}>Documento ${index + 1} · ${byteSizeLabel(attachment.byteSize)}</option>`).join("") +
     (draft.contentHash && !(state.detail?.items?.[0]?.attachments || []).some(file => file.contentHash === draft.contentHash)
       ? `<option value="${escapeHtml(draft.contentHash)}" selected>Arquivo anteriormente vinculado</option>` : "") + '</select>' +
     '<label for="course-anchor-human-locator">Localizador para pessoas</label>' +
@@ -667,13 +660,13 @@ function renderAnchor(anchor, sourceRevision, state) {
     (deepLinked ? '<span class="course-source-deep-link-label">Âncora indicada</span>' : "") +
     "</div>" +
     (anchor.needsReverification
-      ? '<p>O PDF mudou. Confira a paginação e o trecho antes de reutilizar esta âncora.</p>'
+      ? '<p>O documento mudou. Confira a paginação e o trecho antes de reutilizar esta âncora.</p>'
       : anchor.verificationExcerpt
       ? `<p>${escapeHtml(anchor.verificationExcerpt)}</p>`
       : '<p class="course-source-empty">Sem trecho adicional de conferência.</p>') +
     (editable ? '<div class="course-source-compact-actions">' +
       (anchor.contentHash && state.detail?.items?.[0]?.attachments?.some(file => file.contentHash === anchor.contentHash)
-        ? `<a href="#source-document" data-source-action="download-attachment" data-source-revision="${sourceRevision}" data-content-hash="${escapeHtml(anchor.contentHash)}" data-anchor-id="${escapeHtml(anchor.anchorId)}" aria-label="Abrir trecho no PDF" title="Abrir trecho no PDF">${renderUiIcon("book-text", "course-authoring-button-icon")}</a>` : "") +
+        ? `<a href="#source-document" data-source-action="download-attachment" data-source-revision="${sourceRevision}" data-content-hash="${escapeHtml(anchor.contentHash)}" data-anchor-id="${escapeHtml(anchor.anchorId)}" aria-label="Abrir trecho no documento" title="Abrir trecho no documento">${renderUiIcon("book-text", "course-authoring-button-icon")}</a>` : "") +
       `<button type="button" data-source-action="edit-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-source-revision="${sourceRevision}" aria-label="Editar âncora" title="Editar âncora"${state.busy ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
           `<button type="button" data-source-action="retire-anchor" data-anchor-id="${escapeHtml(anchor.anchorId)}" data-anchor-revision="${anchor.revision}" aria-label="Aposentar âncora" title="Aposentar âncora"${state.busy ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         + "</div>"
@@ -691,7 +684,7 @@ function fileAccessDescription(policy, inheritedPolicy, inheritedLabel) {
     const effective = PUBLIC_FILE_ACCESS[inheritedPolicy];
     return `Herdar ${inheritedLabel}${effective ? ` · ${effective.toLowerCase()}` : ""}`;
   }
-  return policy === "available" ? "Disponível no curso público" : "Sem acesso público ao PDF";
+  return policy === "available" ? "Disponível no curso público" : "Sem acesso público ao documento";
 }
 
 function renderFileAccessForm(source, attachment, state, label) {
@@ -719,51 +712,51 @@ function renderFileAccessSettings(source, attachments, state) {
   const opened = state.fileAccessDraft?.sourceId === source.sourceId ||
     state.pendingFileAccess?.sourceId === source.sourceId;
   return `<details class="course-source-file-access"${opened ? " open" : ""}>` +
-    '<summary>Acesso público aos PDFs</summary>' +
-    '<p>Vale apenas com o curso público. Uma exceção no PDF prevalece sobre a fonte e o curso.</p>' +
+    '<summary>Acesso público aos documentos</summary>' +
+    '<p>Disponível em cursos públicos. Cada documento pode ter uma escolha de acesso própria.</p>' +
     renderFileAccessForm(source, null, state, "Padrão desta fonte") +
     attachments.map((attachment, index) => renderFileAccessForm(source, attachment, state,
-      `PDF ${index + 1} · ${byteSizeLabel(attachment.byteSize)}`)).join("") + "</details>";
+      `Documento ${index + 1} · ${byteSizeLabel(attachment.byteSize)}`)).join("") + "</details>";
 }
 
 function renderSourceAttachments(source, index, state) {
   if (index !== 0) return "";
   const attachments = Array.isArray(source.attachments) ? source.attachments : [];
   const canUpload = index === 0 && source.status === "active" && attachments.length < 8;
-  return '<section class="course-source-attachments"><header><div><h4>PDFs</h4>' +
-    `<p>${attachments.length ? "PDF disponível" : "Sem PDF"}</p></div>` +
+  return '<section class="course-source-attachments"><header><div><h4>Documentos</h4>' +
+    `<p>${attachments.length ? "Documento disponível" : "Sem documento"}</p></div>` +
     (canUpload
-      ? `<label class="course-source-pdf-picker" title="${state.busy ? "Aguarde" : "Anexar PDF"}">` +
-        `${renderUiIcon("upload", "course-authoring-button-icon")}<span class="visually-hidden">${state.busy ? "Aguarde" : "Anexar PDF"}</span>` +
-        `<input type="file" accept="application/pdf,.pdf" aria-label="Anexar PDF" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
+      ? `<label class="course-source-pdf-picker" title="${state.busy ? "Aguarde" : "Anexar documento"}">` +
+        `${renderUiIcon("upload", "course-authoring-button-icon")}<span class="visually-hidden">${state.busy ? "Aguarde" : "Anexar documento"}</span>` +
+        `<input type="file" accept="application/pdf,.pdf" aria-label="Anexar documento" data-source-pdf-input${state.busy ? " disabled" : ""}>` +
         "</label>"
       : "") + "</header>" + renderFileAccessSettings(source, attachments, state) +
     (attachments.length
       ? '<div class="course-source-attachment-list">' + attachments.map((attachment, attachmentIndex) =>
         '<div class="course-source-document-row"><a href="#source-document" data-source-action="download-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
-          ` title="Abrir PDF: ${escapeHtml(sourceTitle(source))}"${state.busy ? ' aria-disabled="true"' : ""}>${renderUiIcon("book-text", "course-authoring-button-icon")}` +
-          `<span>Documento PDF${attachments.length > 1 ? ` ${attachmentIndex + 1}` : ""} · ${escapeHtml(byteSizeLabel(attachment.byteSize))}</span></a>` +
+          ` title="Abrir documento: ${escapeHtml(sourceTitle(source))}"${state.busy ? ' aria-disabled="true"' : ""}>${renderUiIcon("book-text", "course-authoring-button-icon")}` +
+          `<span>Documento${attachments.length > 1 ? ` ${attachmentIndex + 1}` : ""} · ${escapeHtml(byteSizeLabel(attachment.byteSize))}</span></a>` +
         '<button type="button" data-source-action="remove-attachment" ' +
           `data-source-revision="${source.revision}" data-content-hash="${escapeHtml(attachment.contentHash)}"` +
-          ` aria-label="Remover PDF ${attachmentIndex + 1}" title="Remover PDF"${state.busy || source.status !== "active" ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button></div>`
+          ` aria-label="Remover documento ${attachmentIndex + 1}" title="Remover documento"${state.busy || source.status !== "active" ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button></div>`
       ).join("") + "</div>"
       : "") + "</section>";
 }
 
 function sourceAvailabilityNote(source) {
   if (source.studyVisibility === "hidden") return "Esta referência não aparece no estudo.";
-  if (source.studyVisibility === "citation") return "No estudo, a referência aparece sem endereço externo. PDFs seguem suas permissões de acesso.";
+  if (source.studyVisibility === "citation") return "No estudo, a referência aparece sem endereço externo. Documentos seguem suas permissões de acesso.";
   const attachmentCount = Array.isArray(source.attachments) ? source.attachments.length : 0;
   if (attachmentCount > 0) {
     return safeHttpUrl(source.url)
-      ? "No estudo, a referência oferece o endereço da obra e o PDF autorizado."
-      : "No estudo, o PDF completo abre conforme as permissões de acesso.";
+      ? "No estudo, a referência oferece o endereço da obra e o documento autorizado."
+      : "No estudo, o documento completo abre conforme as permissões de acesso.";
   }
   if (safeHttpUrl(source.url)) {
     return "No estudo, a referência abre o endereço informado. O acesso depende da página de destino.";
   }
-  return "Sem documento para consulta no estudo. Adicione um PDF ou endereço à ficha.";
+  return "Sem documento para consulta no estudo. Adicione um documento ou endereço à ficha.";
 }
 
 function renderSource(source, state) {
@@ -892,7 +885,7 @@ function renderCatalogPanel(state) {
     `<button type="submit" aria-label="Salvar estilo" title="Salvar estilo"${state.busy || state.pendingCommand || state.sourceEditor ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></form>` +
     (state.sourceEditor ? '<p>Salve ou cancele a referência aberta antes de aplicar outro estilo.</p>' : "") +
     '<p>O estilo formata as referências geradas. As referências escritas pelo autor são preservadas.</p>' +
-    (pdfStorage ? `<p>Arquivos do curso (PDFs e áudios): ${byteSizeLabel(pdfStorage.uniqueBytes)} de ${byteSizeLabel(pdfStorage.maxUniqueBytes)}.</p>` : "") + '</details>' +
+    (pdfStorage ? `<p>Arquivos do curso (documentos e áudios): ${byteSizeLabel(pdfStorage.uniqueBytes)} de ${byteSizeLabel(pdfStorage.maxUniqueBytes)}.</p>` : "") + '</details>' +
     renderCatalog(state) + "</section>" + overlay;
 }
 
@@ -947,7 +940,7 @@ function renderTargetLink(state, link, index) {
       : loading
         ? '<p class="course-authoring-loading">Carregando âncoras…</p>'
         : anchors.filter(({ status }) => status === "active").length
-          ? '<fieldset class="course-source-anchor-choices"><legend>Trecho na fonte (PDF ou página)</legend>' +
+          ? '<fieldset class="course-source-anchor-choices"><legend>Trecho na fonte (documento ou página)</legend>' +
             anchors.filter(({ status }) => status === "active").map((anchor) =>
               `<label><input type="checkbox" data-source-target-anchor data-link-id="${escapeHtml(link.linkId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
               `<span>${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
@@ -982,7 +975,7 @@ function renderTargetPanel(state) {
     '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
     '<div>' +
     '<h2 id="course-source-target-title">Fontes</h2>' +
-    (state.targetLabel ? `<p class="course-source-target-context">${escapeHtml(state.targetLabel)}</p>` : "") + '</div>' +
+    (state.targetLabel ? `<div class="course-source-target-context"><strong>${escapeHtml(state.targetLabel.replace(/^(?:Unidade|Explicação)\s*·\s*/u, ""))}</strong><small>${state.targetKind === "microsequence_explanation" ? "Explicação" : state.targetKind === "study_unit" ? "Unidade" : "Planejamento"}</small></div>` : "") + '</div>' +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>`;
   if (state.selectedSourceId || state.sourceEditor) {
@@ -1004,7 +997,7 @@ function renderTargetPanel(state) {
           `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy || !targetAttributionReady(state) || targetOccurrenceIssue(state) ? " disabled" : ""}>` +
           `${renderUiIcon("save", "course-authoring-button-icon")}</button></div></section>`) +
     '<section class="course-source-available"><header><h3>Fontes do curso</h3>' +
-    `<button type="button" data-source-action="add-source" aria-label="Nova fonte: PDF ou link" title="Nova fonte: PDF ou link"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
+    `<button type="button" data-source-action="add-source" aria-label="Nova fonte: documento ou link" title="Nova fonte: documento ou link"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderCatalog(state, { selectable: true }) + "</section></div></section>";
 }
 
@@ -1248,6 +1241,7 @@ export function createCourseSourcesPanel({
     }
     const editorFocus = root.contains?.(active) && active?.form?.dataset?.sourceForm && active.name ? {
       kind: active.form.dataset.sourceForm, name: active.name,
+      viewportTop: active.getBoundingClientRect?.().top,
       selection: Number.isInteger(active.selectionStart) ? [active.selectionStart, active.selectionEnd] : null
     } : null;
     const targetFocus = state.mode === "target" && root.contains?.(active) ? {
@@ -1272,8 +1266,12 @@ export function createCourseSourcesPanel({
       currentSelection.setSelectionRange(...state.occurrenceEditor.selection);
     }
     if (editorFocus && !state.confirmation && focusEditorField(editorFocus.kind, editorFocus.name)) {
-      if (editorFocus.selection) root.querySelector?.(`[data-source-form="${editorFocus.kind}"] [name="${editorFocus.name}"]`)
-        ?.setSelectionRange?.(...editorFocus.selection);
+      const restoredField = root.querySelector?.(`[data-source-form="${editorFocus.kind}"] [name="${editorFocus.name}"]`);
+      if (editorFocus.selection) restoredField?.setSelectionRange?.(...editorFocus.selection);
+      const scrollBody = restoredField?.closest?.(".course-source-detail-body, .course-source-target-body");
+      if (scrollBody && Number.isFinite(editorFocus.viewportTop)) {
+        scrollBody.scrollTop += restoredField.getBoundingClientRect().top - editorFocus.viewportTop;
+      }
     } else if ((state.selectedSourceId || state.sourceEditor) && !state.confirmation) {
       const restored = detailAction && [...(root.querySelectorAll?.("[data-source-action]") || [])]
         .find(node => node.dataset.sourceAction === detailAction.action && node.dataset.anchorId === detailAction.anchorId);
@@ -1963,12 +1961,12 @@ export function createCourseSourcesPanel({
     }
     requestConfirmation({
       action: "confirm-file-access",
-      title: draft.contentHash === null ? "Alterar acesso aos PDFs da fonte?" : "Alterar acesso a este PDF?",
+      title: draft.contentHash === null ? "Alterar acesso aos documentos da fonte?" : "Alterar acesso a este documento?",
       message: draft.publicFileAccess === "available"
         ? "O arquivo poderá ser baixado por visitantes enquanto o curso estiver público. Confirme que você pode disponibilizá-lo."
         : draft.publicFileAccess === "restricted"
           ? "O arquivo ficará disponível somente para quem tem acesso concedido ao curso."
-          : `O acesso seguirá a escolha ${draft.contentHash === null ? "do curso" : "da fonte"}, respeitando as escolhas próprias de cada PDF.`,
+          : `O acesso seguirá a escolha ${draft.contentHash === null ? "do curso" : "da fonte"}, respeitando as escolhas próprias de cada documento.`,
       confirmLabel: "Confirmar permissão",
       request: { courseId: state.courseId, expectedRevision: state.courseRevision,
         sourceRevision: source.revision, ...structuredClone(draft), requestId: createUuid() },
@@ -2016,7 +2014,7 @@ export function createCourseSourcesPanel({
       state.message = "";
       state.failure = ambiguous
         ? "A confirmação da permissão não chegou. Confirme a mesma permissão antes de fazer outra alteração."
-        : errorMessage(error, operationErrorContext("alterar o acesso ao PDF"));
+        : errorMessage(error, operationErrorContext("alterar o acesso ao documento"));
       state.busy = false;
       render();
       return false;
@@ -2148,12 +2146,12 @@ export function createCourseSourcesPanel({
     state.pendingAttachment = operation;
     state.busy = true;
     state.failure = "";
-    state.message = "Enviando e confirmando o PDF…";
+    state.message = "Enviando e confirmando o documento…";
     render();
     let result;
     try {
       if (typeof controller.uploadCourseSourcePdf !== "function") {
-        throw new TypeError("O envio de PDF não está disponível.");
+        throw new TypeError("O envio de documento não está disponível.");
       }
       result = normalizeCourseSourceChange(await controller.uploadCourseSourcePdf({
         requestId: operation.requestId,
@@ -2172,8 +2170,8 @@ export function createCourseSourcesPanel({
       if (!ambiguous) state.pendingAttachment = null;
       state.message = "";
       state.failure = ambiguous
-        ? `${errorMessage(error, operationErrorContext("enviar o PDF"))} Confirme novamente para verificar o resultado com segurança.`
-        : errorMessage(error, operationErrorContext("enviar o PDF"));
+        ? `${errorMessage(error, operationErrorContext("enviar o documento"))} Confirme novamente para verificar o resultado com segurança.`
+        : errorMessage(error, operationErrorContext("enviar o documento"));
       state.busy = false;
       render();
       return false;
@@ -2195,11 +2193,11 @@ export function createCourseSourcesPanel({
     if (!source || !attachment) return false;
     state.busy = true;
     state.failure = "";
-    state.message = "Abrindo PDF…";
+    state.message = "Abrindo documento…";
     render();
     try {
       if (typeof controller.getCourseSourceAttachmentDownload !== "function") {
-        throw new TypeError("O download de PDF não está disponível.");
+        throw new TypeError("O download de documento não está disponível.");
       }
       const access = await controller.getCourseSourceAttachmentDownload({
         courseId: state.courseId,
@@ -2211,12 +2209,12 @@ export function createCourseSourcesPanel({
       if (!state.opened) return false;
       const anchor = source.anchors.find(item => item.anchorId === anchorId) || null;
       downloadUrl(buildSourceDocumentUrl(access.signedUrl, { attachment, anchor }), attachment);
-      state.message = "PDF aberto.";
+      state.message = "Documento aberto.";
       return true;
     } catch (error) {
       if (!state.opened) return false;
       state.message = "";
-      state.failure = errorMessage(error, operationErrorContext("baixar o PDF"));
+      state.failure = errorMessage(error, operationErrorContext("baixar o documento"));
       return false;
     } finally {
       if (state.opened) {
@@ -2647,7 +2645,7 @@ export function createCourseSourcesPanel({
       };
       requestConfirmation({
         title: "Aposentar fonte?",
-        message: "A fonte ficará indisponível para novos vínculos. O cadastro e as referências já vinculadas serão preservados. Remova os PDFs separadamente se quiser retirar o acesso aos arquivos.",
+        message: "A fonte ficará indisponível para novos vínculos. O cadastro e as referências já vinculadas serão preservados. Remova os documentos separadamente se quiser retirar o acesso aos arquivos.",
         confirmLabel: "Aposentar",
         command,
         draft: command,
@@ -2742,9 +2740,9 @@ export function createCourseSourcesPanel({
         contentHash
       };
       requestConfirmation({
-        title: "Remover PDF?",
-        message: "Somente o arquivo PDF será removido. A fonte, sua citação, as âncoras e os vínculos pedagógicos serão preservados.",
-        confirmLabel: "Remover PDF",
+        title: "Remover documento?",
+        message: "Somente o documento será removido. A fonte, sua citação, as âncoras e os vínculos pedagógicos serão preservados.",
+        confirmLabel: "Remover documento",
         command,
         draft: command,
         returnFocusIdentity: {

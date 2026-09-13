@@ -1027,6 +1027,7 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
   assertCompleteCurriculumMap(mapOnlyRoot.innerHTML);
   assertScopeCoverage(mapOnlyRoot.innerHTML, { foundationsState: "Planejado" });
   assert.doesNotMatch(mapOnlyRoot.innerHTML, /Desenvolvido/u);
+  assert.doesNotMatch(mapOnlyRoot.innerHTML, /course-authoring-parts|reorganize-parts|Nenhum lote de produção/u);
   assert.equal(
     (mapOnlyRoot.innerHTML.match(/data-course-authoring-part-card=/gu) || []).length,
     0,
@@ -1063,7 +1064,8 @@ test("Planejamento mostra o mapa curricular completo antes e separado dos lotes 
     "O mapa curricular deve vir antes dos lotes operacionais de produção."
   );
   const productionParts = root.innerHTML.slice(productionPartsStart);
-  assert.match(productionParts, /Lotes de produção/u);
+  assert.match(productionParts, /Organização da produção/u);
+  assert.match(productionParts, /data-course-authoring-action="reorganize-parts"/u);
   assert.match(
     productionParts,
     /divisão[\s\S]*produção[\s\S]*(?:não altera|sem mudar)[\s\S]*mapa curricular/iu,
@@ -2223,7 +2225,7 @@ test("aviso de unidades sem parte usa totais do planejamento com lotes ausentes 
     const label = scenario.expected === 1 ? "Unidade de estudo sem parte" : "Unidades de estudo sem parte";
     assert.ok(notice.includes(`aria-label="${scenario.expected} ${label}"`), JSON.stringify(scenario));
     assert.ok(notice.includes(`<strong>${scenario.expected}</strong><span>${label}</span>`), JSON.stringify(scenario));
-    if (scenario.withoutParts) assert.match(markup, /Nenhum lote de produção foi definido ainda/u);
+    if (scenario.withoutParts) assert.doesNotMatch(markup, /course-authoring-parts|reorganize-parts|Nenhum lote de produção/u);
   }
 });
 

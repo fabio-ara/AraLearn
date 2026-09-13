@@ -27,16 +27,47 @@ test("árvore inspecionada vem do mapa persistido e só associa produção da me
   assert.equal(projectPersistedCurricularMap(fixture.read, { ...plan, courseRevision: 9 }).curriculum.modules[0].lessons[0].microsequences[0].role, null);
 });
 
+test("aprovação apresenta a decisão humana sem expor versões e preserva seus inputs", () => {
+  const fixture = coursePlanningContextFixture();
+  const input = { courseId: fixture.courseId, courseRevision: 38,
+    ...projectPersistedCurricularMap(fixture.read, normalizeCourseAuthoringPlan(fixture.plan)),
+    approval: { planVersion: 34, inspected: false }, contextual: true };
+  const before = structuredClone(input);
+  const html = renderCourseCurriculumMap(input);
+  assert.match(html, /aria-label="Aprovação do mapa"/u);
+  assert.match(html, /Revisei o mapa completo/u);
+  assert.doesNotMatch(html, /<h4>Aprovação|Revise o mapa completo antes|Inspecionei esta versão/u);
+  assert.match(html, /data-curriculum-approve[^>]* disabled/u);
+  assert.doesNotMatch(html, /Mapa salvo|revisão do curso|ramos recolhidos|resultados fora da busca|versão 34/u);
+  assert.deepEqual(input, before);
+});
+
 test("base sem unidades distingue intenção corrente, inventário e aplicação não registrada", () => {
   const fixture = coursePlanningContextFixture();
   const html = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { entity: fixture.entity, review: fixture.review.contentReview, basis: fixture.analytics.basis, errors: [] } });
-  assert.match(html, /Há uma base explicativa salva/u);
-  assert.match(html, /Previsto na intenção corrente desta microssequência/u);
-  assert.match(html, /vínculo aplicado não registrado/u);
-  assert.match(html, /Ainda não há unidades neste recorte/u);
+  assert.match(html, /Disponível para leitura/u);
+  assert.match(html, /Neste planejamento<\/dt><dd>Incluído/u);
+  assert.match(html, /Sem uso registrado/u);
+  assert.match(html, /Unidades produzidas<\/dt><dd>0/u);
   const unavailable = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
     designInstructionalContext: { errors: ["Leitura indisponível."] } });
-  assert.match(unavailable, /O estado da base não pôde ser confirmado/u);
-  assert.doesNotMatch(unavailable, /ainda não tem base explicativa salva/u);
+  assert.match(unavailable, /Consulta indisponível/u);
+  assert.doesNotMatch(unavailable, /Ainda não produzida/u);
+});
+
+
+test("Parâmetros mantém inventário não associado recolhido e destaca aplicação registrada", () => {
+  const fixture = coursePlanningContextFixture();
+  const basis = structuredClone(fixture.analytics.basis);
+  basis.analysisUnits.push({ ref: "outro", statement: "Outro conhecimento", description: "Descrição preservada" });
+  basis.analysisUnits.push({ ref: "aplicado", statement: "Conhecimento aplicado", description: "" });
+  basis.studyUnits.push({ declaration: { introducedInstructionalAnalysisUnitIds: ["aplicado"],
+    usedInstructionalAnalysisUnitIds: [], explanationApplications: [], practiceApplications: [] } });
+  const html = renderCourseDesignPanel({ courseDesign: fixture.designs.didactic_microsequence, designCategory: "instruction",
+    designInstructionalContext: { entity: fixture.entity, review: fixture.review.contentReview, basis, errors: [] } });
+  assert.match(html, /Conhecimento aplicado[\s\S]*Não incluído[\s\S]*Uso registrado/u);
+  assert.match(html, /<details><summary>Outros itens do curso · 1<\/summary><ul><li[^>]*><strong>Outro conhecimento/u);
+  assert.match(html, /Descrição preservada/u);
+  assert.doesNotMatch(html, /Unidades produzidas<\/dt><dd>0/u);
 });

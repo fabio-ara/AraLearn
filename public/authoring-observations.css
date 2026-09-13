@@ -7,7 +7,7 @@
   position: absolute; inset-block-start: 1px; inset-inline-end: 0;
   min-width: 14px; height: 14px; box-sizing: border-box; padding-inline: 3px;
   border-radius: 7px; background: var(--surface-sunken); color: var(--action-primary-hover);
-  font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 14px; text-align: center;
+  font-size: 10px; font-weight: var(--weight-title); font-variant-numeric: tabular-nums; line-height: 14px; text-align: center;
   pointer-events: none;
 }
 .course-authoring-observation-panel { margin-block-start: 8px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 12px; }
@@ -23,7 +23,9 @@
 .course-authoring-observation-panel textarea { box-sizing: border-box; width: 100%; min-height: 96px; resize: vertical; }
 .course-authoring-observation-panel small { font-size: var(--type-sm); color: var(--text-secondary); }
 .course-authoring-observation-context :focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
-.course-microsequence-review > .editor-head { grid-template-columns: minmax(0, 1fr) var(--tap); }
+.course-microsequence-review > .editor-head { grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap); }
+.course-microsequence-review > .editor-head > h2 { grid-column: 2; text-align: center; font-size: var(--type-md); font-weight: var(--weight-title); }
+.course-microsequence-review > .editor-head > button { grid-column: 3; }
 .course-explanation-actions { display: flex; align-items: center; gap: 6px; min-height: var(--tap); margin-block: 12px; }
 .course-explanation-actions > button { min-width: var(--tap); min-height: var(--tap); display: grid; place-items: center; padding: 8px; }
 .course-microsequence-review .editor-body > .course-review-authoring-context {
@@ -31,33 +33,32 @@
   border-radius: var(--radius-control); background: var(--surface-sunken);
   font-size: var(--type-sm); line-height: 1.5;
 }
-.course-review-authoring-path { display: flex; align-items: center; min-height: var(--tap); margin: 0; padding-inline-end: calc(var(--tap) + 8px); color: var(--text-secondary); overflow-wrap: anywhere; }
-.course-review-authoring-state { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 10px 0; }
-.course-review-authoring-state > div { min-width: 0; }
-.course-review-authoring-state > div:last-child { flex: 1 1 180px; }
-.course-review-authoring-state dt { color: var(--text-secondary); }
-.course-review-authoring-state dd { margin: 0; color: var(--text-primary); }
+.course-review-authoring-path { display: grid; align-content: center; gap: 4px; min-height: var(--tap); margin: 0; padding-inline-end: calc(var(--tap) + 8px); color: var(--text-secondary); overflow-wrap: anywhere; }
+.course-review-authoring-state { display: grid; gap: var(--space-copy); margin: var(--space-section) 0; font-size: var(--type-xs); }
+.course-review-authoring-state > div { min-width: 0; display: grid; grid-template-columns: 1fr 2fr; gap: var(--space-copy); }
+.course-review-authoring-state dt { font-weight: var(--weight-label); color: var(--text-secondary); }
+.course-review-authoring-state dd { margin: 0; font-weight: var(--weight-body); color: var(--text-primary); }
 .course-review-authoring-context > details > summary { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; min-width: var(--tap); width: var(--tap); min-height: var(--tap); display: grid; place-items: center; cursor: pointer; list-style: none; }
 .course-review-authoring-context > details > :is(p, h4, ul) { margin-block: 8px; }
 .course-explanation-tools {
-  display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 6px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px;
   margin-block: 0 12px; padding-block-end: 8px; border-bottom: 1px solid var(--border-subtle);
 }
-.course-explanation-tools > .course-explanation-actions { margin: 0; }
+.course-explanation-tools > .course-explanation-actions { margin: 0; justify-content: flex-end; }
 .course-explanation-tools :is([data-review-observation-queue], [data-author-queue], .course-authoring-observation-context) { display: contents; }
 .course-microsequence-review .course-explanation-tools :is(.course-explanation-actions > button, .course-authoring-observation-toggle) { margin: 0; }
-.course-explanation-tools .course-authoring-observation-toggle { justify-self: start; }
+.course-explanation-tools .course-authoring-observation-toggle { justify-self: end; }
 .course-explanation-tools .course-authoring-observation-panel { grid-column: 1 / -1; margin-block-start: 2px; min-width: 0; }
 .course-microsequence-review .course-review-authoring-tools {
   padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: var(--surface-sunken);
 }
 .course-review-authoring-tools > h3 { margin: 0 0 8px; font-size: var(--type-sm); color: var(--text-secondary); }
-.course-review-authoring-panels { display: grid; grid-template-columns: repeat(2, var(--tap)) minmax(0, 1fr); align-items: start; gap: 8px; }
+.course-review-authoring-panels { display: grid; grid-template-columns: minmax(0, 1fr) repeat(2, var(--tap)); align-items: start; gap: 8px; }
 .course-review-authoring-panels > details { display: contents; }
 .course-review-authoring-panels > details::details-content { display: contents; }
 .course-review-authoring-panels > details > summary { grid-row: 1; }
-.course-review-authoring-panels > details:nth-child(1) > summary { grid-column: 1; }
-.course-review-authoring-panels > details:nth-child(2) > summary { grid-column: 2; }
+.course-review-authoring-panels > details:nth-child(1) > summary { grid-column: 2; }
+.course-review-authoring-panels > details:nth-child(2) > summary { grid-column: 3; }
 .course-review-authoring-panels > details > :not(summary) { grid-column: 1 / -1; min-width: 0; }
 .course-review-authoring-panels > details:not([open]) > :not(summary) { display: none; }
 .course-review-context-panel > summary {
@@ -83,6 +84,7 @@ dialog.course-microsequence-review.is-unit-review { height: fit-content; }
 .course-review-authoring-context summary:focus-visible,
 .course-review-authoring-panels summary:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
 .course-explanation-inline { display: grid; gap: 0; }
+.course-microsequence-review .course-explanation-inline > [data-review-title] { margin: 0 0 8px; font-size: var(--type-md); font-weight: var(--weight-title); line-height: var(--leading-normal); }
 .course-explanation-component { min-width: 0; position: relative; }
 .course-explanation-component [data-manual-edit-path],
 .course-explanation-inline [data-review-title][contenteditable="plaintext-only"] {
@@ -95,3 +97,6 @@ dialog.course-microsequence-review.is-unit-review { height: fit-content; }
   border-radius: 0; background: transparent; color: var(--text-secondary); font-size: var(--type-sm); overflow-wrap: anywhere;
 }
 .course-inspection-authorship > .course-inspection-summary-label + .course-inspection-summary-label::before { content: "· "; }
+
+.course-review-authoring-path strong { font-size: var(--type-sm); font-weight: var(--weight-title); color: var(--text-primary); }
+.course-review-authoring-path small { font-size: var(--type-xs); font-weight: var(--weight-body); }

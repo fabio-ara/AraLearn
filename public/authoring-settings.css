@@ -9,16 +9,16 @@
 .contextual-settings .account-settings-groups .account-settings-subview-entry { margin: 0; min-height: 60px; }
 .contextual-settings .account-settings-subview-entry > span { min-width: 0; }
 .contextual-settings .account-settings-subview-entry strong { overflow-wrap: anywhere; line-height: 1.4; }
-.contextual-settings .account-settings-view > h2 { font-size: var(--type-md); margin: 0 0 12px; }
-.contextual-settings .account-profile-form { margin-bottom: 18px; }
-.contextual-settings .account-settings-group-copy { margin: 0 0 14px; color: var(--text-secondary); }
-.contextual-settings .account-settings-status:empty { display: none; }
+.contextual-settings .account-settings-view > h2 { font-size: var(--type-md); margin: 0 0 var(--space-section); }
+.contextual-settings .account-profile-form { margin-bottom: var(--space-section); }
+.contextual-settings .account-settings-group-copy { margin: 0 0 var(--space-section); color: var(--text-secondary); }
+.contextual-settings .account-settings-status:empty { visibility: hidden; }
 .contextual-settings .account-settings-status { margin: 8px 2px 0; }
 .contextual-settings .account-settings-view :is(button, select, input:not([type=checkbox])) { min-height: 44px; }
 .contextual-settings .account-settings-view .icon-ghost { min-width: 44px; }
-.contextual-settings .study-device-settings { margin: 0 0 20px; padding: 0; border: 0; }
-.contextual-settings .study-device-settings h2 { font-size: var(--type-sm); margin-top: 0; }
-.authoring-process-settings { display: grid; gap: 14px; }
+.contextual-settings .study-device-settings { margin: 0 0 var(--space-section); padding: 0; border: 0; }
+.contextual-settings .study-device-settings h2 { font-size: var(--type-md); margin-top: 0; }
+.authoring-process-settings { display: grid; gap: var(--space-section); }
 .authoring-process-settings :is(fieldset, section, div) { min-width: 0; }
 .authoring-process-settings :is(p, h3) { margin: 0; }
 .authoring-process-settings :is(input, select) { max-width: 100%; font: inherit; }
@@ -29,21 +29,21 @@
 .authoring-process-settings :is(input, select, button, summary):focus-visible {
   outline: 2px solid var(--action-primary); outline-offset: 3px;
 }
-.authoring-process-origin { font-weight: 600; }
+.authoring-process-origin { font-weight: var(--weight-title); }
 .authoring-process-settings :is(.authoring-process-scope, .authoring-process-field p, .authoring-process-review p, .authoring-process-help) {
   color: var(--text-secondary); font-size: var(--type-sm); line-height: var(--leading-normal);
 }
 .authoring-process-help summary { cursor: pointer; padding-block: 10px; min-height: 44px; }
 .authoring-process-help p + p { margin-top: 8px; }
-.authoring-process-fields { display: grid; gap: 22px; border: 0; padding: 0; margin: 0; }
+.authoring-process-fields { display: grid; gap: var(--space-section); border: 0; padding: 0; margin: 0; }
 .authoring-process-fields:disabled { opacity: .7; }
 .authoring-process-field { display: grid; gap: 8px; }
-.authoring-process-field > label, .authoring-process-settings legend { font-weight: 600; }
+.authoring-process-field > label, .authoring-process-settings legend { font-weight: var(--weight-label); }
 .authoring-process-review { border: 0; padding: 0; margin: 0; display: grid; gap: 3px; }
-.authoring-process-review legend { margin-bottom: 7px; }
+.authoring-process-review legend { margin-bottom: var(--space-copy); }
 .authoring-process-review label { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .authoring-process-review input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--action-primary); }
-.authoring-process-group { display: grid; gap: 16px; border-top: 1px solid var(--border-subtle); padding-top: 18px; }
+.authoring-process-group { display: grid; gap: 16px; border-top: 1px solid var(--border-subtle); padding-top: var(--space-section); }
 .authoring-process-group h3 { font-size: var(--type-md); }
 .authoring-process-parameter { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
 .authoring-process-parameter legend { margin-bottom: 8px; }
@@ -51,9 +51,9 @@
 .authoring-process-conflict { border: 1px solid var(--border-default); padding: 12px; border-radius: 10px; }
 .authoring-process-conflict:not([hidden]) { display: grid; gap: 10px; }
 .authoring-process-conflict dl { display: grid; gap: 5px; margin: 10px 0; }
-.authoring-process-conflict dt { font-weight: 600; }
+.authoring-process-conflict dt { font-weight: var(--weight-label); }
 .authoring-process-conflict dd { margin: 0 0 6px; }
-.authoring-process-actions { display: grid; grid-template-columns: 44px 44px minmax(0,1fr); align-items: center; gap: 8px; }
+.authoring-process-actions { display: grid; grid-template-columns: minmax(0,1fr) 44px 44px; align-items: center; gap: 8px; }
 .authoring-process-actions button { width: 44px; height: 44px; }
 .authoring-process-actions p { overflow-wrap: anywhere; font-size: var(--type-sm); color: var(--text-secondary); }
 .course-authoring-list-header:has([data-course-authoring-action="open-settings"]) {
@@ -78,3 +78,13 @@
   .course-authoring-context-shell .course-authoring-context-topbar { height: auto; }
   .course-authoring-course-header:has([data-action="open-settings"]) .course-authoring-primary-navigation { margin-right: auto; }
 }
+
+.authoring-process-actions [data-process-status] { grid-column: 1; grid-row: 1; font-size: var(--type-xs); height: var(--tap); overflow: auto; }
+.authoring-process-actions [data-process-save] { grid-column: 2; grid-row: 1; }
+.authoring-process-actions [data-process-reload] { grid-column: 3; grid-row: 1; }
+.authoring-process-group > .authoring-process-parameter { margin-inline-start: var(--space-section); }
+.authoring-process-group > h3 { font-weight: var(--weight-title); }
+.authoring-process-parameter legend { color: var(--text-primary); font-size: var(--type-sm); }
+.authoring-process-settings .authoring-process-parameter-help { padding-inline-start: 0; }
+.authoring-process-settings .authoring-process-parameter-help > summary { display: grid; place-items: center; width: var(--tap); margin-inline-start: auto; padding: 0; list-style: none; }
+.authoring-process-parameter-help > p { padding-block: var(--space-copy); font-size: var(--type-xs); font-weight: var(--weight-body); }

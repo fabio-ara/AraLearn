@@ -540,23 +540,23 @@ function sheetContent(state) {
   if (state.sheet === "compare") return '<form data-course-analytics-compare><label>Curso para comparar<select name="comparisonCourse"><option value="">Escolha um curso próprio</option>' +
     state.courses.map((course, index) => `<option value="${index}"${course.courseId === state.opponent?.course.id ? " selected" : ""}>${escapeHtml(course.title)}</option>`).join("") + '</select></label>' +
     (state.courseCursor ? '<button type="button" data-course-analytics-action="more-courses">Carregar mais cursos</button>' : '') +
-    (state.opponent ? `<p class="course-analytics-caption">${escapeHtml(state.opponent.course.title)} · edição ${state.opponent.course.revision}</p><label>Escopo comparado<select name="comparisonScope">` +
+    (state.opponent ? `<label>Parte do curso<select name="comparisonScope">` +
       state.opponent.scope.options.map((scope, index) => `<option value="${index}"${scope.kind === state.opponent.scope.selected.kind && scope.ref === state.opponent.scope.selected.ref ? " selected" : ""}>${escapeHtml(scope.label)}</option>`).join("") + '</select></label>' : '') +
-    `<p class="course-analytics-caption">Referência: ${escapeHtml(state.page.scope.selected.label)} · edição ${state.page.course.revision}. As duas edições serão conferidas novamente.</p></form>` +
+    `<dl class="course-analytics-context"><div><dt>Comparar com</dt><dd>${escapeHtml(state.page.scope.selected.label)}</dd></div></dl></form>` +
     (state.comparison ? '<details class="course-analytics-details"><summary>Inventário planejado</summary>' + inventoryHtml(state.comparison.inventory) + '</details>' +
       '<details class="course-analytics-details"><summary>Configuração solicitada</summary>' + parametersHtml(state.comparison.requestedParameters) + '</details>' +
       '<details class="course-analytics-details"><summary>Configuração aplicada</summary>' + parametersHtml(state.comparison.appliedParameters) + '</details>' +
-      `<p class="course-analytics-caption">${escapeHtml(state.comparison.semanticVerification.message)}</p>` : '');
+      '<p class="course-analytics-caption">Compara contagens e textos, sem avaliar a qualidade.</p>' : '');
   if (state.sheet === "drill") {
     const page = state.drill?.side === "right" ? state.opponent : state.page;
-    return `<p class="course-analytics-caption">${escapeHtml(page.course.title)} · ${escapeHtml(page.scope.selected.label)} · edição ${page.course.revision}</p><ol class="course-analytics-unit-list">` +
+    return `<p class="course-analytics-caption">${escapeHtml(page.scope.selected.label)}</p><ol class="course-analytics-unit-list">` +
       state.drill.refs.map((ref) => {
         const unit = page.basis.studyUnits.find((entry) => entry.studyUnitRef === ref);
         return unit ? `<li><a href="${escapeHtml(buildCourseAuthoringRoute(page.course.id, { section: "content", studyUnitId: ref }))}"><span>${unit.position}</span>${escapeHtml(unit.title)}</a></li>` : '';
       }).join("") + '</ol>';
   }
   if (state.sheet === "export") return '<p>Exportar o curso e a leitura de autoria desta edição?</p><p class="course-analytics-caption">O arquivo inclui o conteúdo integral do curso, o inventário planejado, os parâmetros solicitados e aplicados e as declarações e contagens do escopo escolhido. Não inclui arquivos PDF ou áudio, credenciais, pessoas, progresso pessoal ou conversas.</p>' +
-    `<p>${escapeHtml(state.page.course.title)} · ${escapeHtml(state.page.scope.selected.label)} · edição ${state.page.course.revision}</p>`;
+    `<p>${escapeHtml(state.page.course.title)} · ${escapeHtml(state.page.scope.selected.label)}</p>`;
   return '';
 }
 function renderPanel(state) {
@@ -567,20 +567,21 @@ function renderPanel(state) {
   const status = busy ? '<p class="course-analytics-caption" role="status">Carregando leitura…</p>' : '';
   const titles = { configuration: "Dimensão e escopo", compare: "Comparar cursos", details: "Dados e definições", drill: "Unidades desta distribuição", export: "Exportar curso e análise" };
   return '<section class="course-analytics" aria-label="Dados de autoria">' +
-    '<header class="course-analytics-toolbar"><div>' + (dimension ? `<h3>${escapeHtml(dimension.label)}</h3><p class="course-analytics-caption">${escapeHtml(state.page.scope.selected.label)} · edição ${state.page.course.revision}</p>` : '<h3>Dados de autoria</h3>') + '</div><nav aria-label="Ações da análise">' +
+    '<header class="course-analytics-toolbar"><div>' + (dimension ? `<h3>${escapeHtml(dimension.label)}</h3><p class="course-analytics-caption">${escapeHtml(state.page.scope.selected.label)}</p>` : '<h3>Dados de autoria</h3>') + '</div><nav aria-label="Ações da análise">' +
     iconAction("configuration", "Escolher dimensão e escopo", "tags", busy || !state.page) + iconAction("compare", "Comparar cursos", "copy", busy || !state.page) +
     iconAction("details", "Abrir dados e definições", "review", busy || !state.page) + iconAction("export", "Exportar curso e análise", "download", busy || !state.page) + '</nav></header>' +
-    (!state.sheet ? status + failure : '') +
-    (dimension ? `<p class="course-analytics-caption">${escapeHtml(dimension.definition)}</p>` +
+    '<div class="course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' +
+    (!state.sheet ? status + failure : '') + '</div>' +
+    (!state.sheet && (!state.page || state.failure) && !busy ? iconAction("reload", "Atualizar leitura", "rotate") : '') + '</div>' +
+    (dimension ? `<p class="course-analytics-caption">${escapeHtml(dimension.id === "novelty" ? "Novas unidades de análise em cada unidade de estudo." : dimension.definition)}</p>` +
       (state.comparison ? '<div class="course-analytics-comparison"><section><h4>' + escapeHtml(state.comparison.left.course.title) + '</h4>' + dimensionReading(dimension, comparisonDimension.left, "left") + '</section><section><h4>' + escapeHtml(state.comparison.right.course.title) + '</h4>' + dimensionReading(dimension, comparisonDimension.right, "right") + '</section></div>' +
-        `<p class="course-analytics-caption">${comparisonDimension.delta === null ? "Diferença numérica não aplicável." : `Diferença entre os totais: ${formatCount(comparisonDimension.delta)}.`} As contagens não avaliam qualidade ou equivalência semântica.</p>` +
+        `<p class="course-analytics-caption">${comparisonDimension.delta === null ? "Diferença numérica não aplicável." : `Diferença entre os totais: ${formatCount(comparisonDimension.delta)}.`} Contagens não medem qualidade.</p>` +
         iconAction("clear-comparison", "Encerrar comparação", "remove-state", busy) : dimensionReading(dimension, dimension)) : '') +
-    ((!state.page || state.failure) && !busy ? iconAction("reload", "Atualizar leitura", "rotate") : '') +
-    (state.sheet ? `<dialog class="course-analytics-sheet" aria-labelledby="course-analytics-sheet-title"><header><h2 id="course-analytics-sheet-title">${titles[state.sheet]}</h2>` + iconAction("close-sheet", "Fechar análise contextual", "remove-state", busy) + '</header><div class="course-analytics-sheet-feedback" aria-live="polite">' + status + failure + '</div>' +
+    (state.sheet ? `<dialog class="course-analytics-sheet" aria-labelledby="course-analytics-sheet-title"><header><h2 id="course-analytics-sheet-title">${titles[state.sheet]}</h2>` + iconAction("close-sheet", "Fechar análise contextual", "remove-state", busy) + '</header><div class="course-analytics-sheet-feedback course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' + status + failure + '</div></div>' +
       '<div class="course-analytics-sheet-body"><fieldset' + (busy ? ' disabled' : '') + '>' + sheetContent(state) + '</fieldset></div><footer>' +
-      (state.sheet === "configuration" ? '<button type="button" data-course-analytics-action="apply-configuration"' + (busy ? ' disabled' : '') + '>Aplicar leitura</button>' : '') +
-      (state.sheet === "compare" ? '<button type="button" data-course-analytics-action="apply-comparison"' + (busy || !state.opponent ? ' disabled' : '') + '>Comparar estas edições</button>' : '') +
-      (state.sheet === "export" ? '<button type="button" data-course-analytics-action="export-json"' + (busy ? ' disabled' : '') + '>Baixar arquivo JSON</button>' : '') + '</footer></dialog>' : '') + '</section>';
+      (state.sheet === "configuration" ? iconAction("apply-configuration", "Aplicar leitura", "ready-state", busy) : '') +
+      (state.sheet === "compare" ? iconAction("apply-comparison", "Comparar cursos", "copy", busy || !state.opponent) : '') +
+      (state.sheet === "export" ? iconAction("export-json", "Baixar arquivo JSON", "download", busy) : '') + '</footer></dialog>' : '') + '</section>';
 }
 
 export function createCourseAnalyticsPanel({ root, controller, course, initialQuery = undefined, expectedCourseRevision = course?.revision, onSnapshotDisplayed = null, download = downloadTextFile } = {}) {

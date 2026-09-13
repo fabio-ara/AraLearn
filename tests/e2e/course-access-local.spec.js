@@ -621,7 +621,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Nova fonte", exact: true }).click();
       const form = page.locator('[data-source-form="source"]');
       await form.getByLabel("Título, quando conhecido", { exact: true }).fill(title);
-      await form.getByLabel("Link da página ou do PDF", { exact: true }).fill("https://example.test/estudo-sintetico");
+      await form.getByLabel("Link", { exact: true }).fill("https://example.test/estudo-sintetico");
       await form.getByText("Dados da referência", { exact: true }).click();
       await form.getByRole("combobox", { name: "Tipo", exact: true }).selectOption("article");
       await form.locator('[data-source-action="add-contributor"][data-contributor-list="authors"]').click();
@@ -665,7 +665,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       const pdfPath = new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url);
       const pdfHash = Buffer.from(await crypto.subtle.digest("SHA-256", await readFile(pdfPath))).toString("hex");
       await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, courseId, files: [{ kind: "source-pdf", contentHash: pdfHash }] });
-      await page.getByLabel("Anexar PDF", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
+      await page.getByLabel("Anexar documento", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
       await expect.poll(async () => (await detail()).attachments.length).toBe(1);
       const attached = await detail();
       await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();

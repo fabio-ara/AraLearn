@@ -43,6 +43,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-ui);
   font-size: var(--type-base);
+  font-weight: var(--weight-body);
   line-height: var(--leading-relaxed);
   letter-spacing: var(--tracking-normal);
   -webkit-font-smoothing: antialiased;
@@ -124,8 +125,8 @@ textarea {
 .handle-onboarding-description {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
 }
 
 .auth-brand [data-auth-cancel] {
@@ -611,7 +612,10 @@ textarea {
 }
 
 .account-settings-status {
-  min-height: calc(0.78rem * 1.35);
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  overflow: auto;
   padding: 2px 4px 0;
 }
 
@@ -758,8 +762,10 @@ button.account-settings-back[hidden] {
 }
 
 .study-mode-actions {
-  display: inline-grid;
-  grid-template-columns: repeat(3, var(--tap));
+  display: grid;
+  width: max-content;
+  margin-inline: auto;
+  grid-template-columns: none;
   grid-auto-flow: column;
   grid-auto-columns: var(--tap);
   align-items: center;
@@ -1018,7 +1024,7 @@ button.account-settings-back[hidden] {
 
 .entity-summary-card {
   display: grid;
-  gap: 7px;
+  gap: var(--space-copy);
   height: 160px;
   flex: 0 0 160px;
   align-content: start;
@@ -1035,7 +1041,7 @@ button.account-settings-back[hidden] {
 
 .entity-summary-card .card-subtitle {
   font-size: var(--type-sm);
-  line-height: 1.38;
+  line-height: var(--leading-normal);
 }
 
 .card-title {
@@ -1233,7 +1239,7 @@ button.account-settings-back[hidden] {
 .navigation-list-card .card-subtitle {
   display: block;
   font-size: var(--type-sm);
-  line-height: 1.38;
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
   overflow: visible;
   overflow-wrap: anywhere;
@@ -1289,8 +1295,8 @@ button.account-settings-back[hidden] {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  font-size: 0.95rem;
-  line-height: 1.38;
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
 }
 
@@ -4281,7 +4287,7 @@ button.account-settings-back[hidden] {
 [data-maintenance-status] {
   color: var(--text-secondary);
   font-size: var(--type-sm);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 .account-maintenance-actions button {
@@ -4704,7 +4710,7 @@ button.account-settings-back[hidden] {
 
 .field {
   display: grid;
-  gap: 6px;
+  gap: var(--space-copy);
   min-width: 0;
 }
 
@@ -5679,7 +5685,7 @@ button.account-settings-back[hidden] {
   min-width: 0;
   color: var(--text-primary);
   font-size: var(--type-sm);
-  font-weight: 700;
+  font-weight: var(--weight-label);
 }
 
 .home-course-selector-card > select {
@@ -5727,7 +5733,7 @@ button.account-settings-back[hidden] {
   background: transparent;
   font: inherit;
   font-size: var(--type-sm);
-  font-weight: 700;
+  font-weight: var(--weight-label);
   cursor: pointer;
 }
 
@@ -5753,7 +5759,7 @@ button.account-settings-back[hidden] {
   background: var(--surface-subtle);
   color: var(--text-secondary);
   font-size: var(--type-sm);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   overflow-wrap: anywhere;
 }
 
@@ -5887,7 +5893,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .study-review-open > span {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--space-copy);
 }
 
 .study-review-item :is(strong, small) {
@@ -5937,7 +5943,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
   overflow-y: auto;
   overscroll-behavior: contain;
   display: grid;
-  gap: 6px;
+  gap: var(--space-copy);
   min-width: 0;
   padding-inline: 2px;
 }
@@ -5985,7 +5991,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
   overflow: visible;
   color: var(--text-secondary);
   font-size: var(--type-sm);
-  line-height: 1.38;
+  line-height: var(--leading-normal);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: unset;
 }
@@ -6342,7 +6348,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
   font-size: var(--type-sm);
   line-height: var(--leading-normal);
 }
-.study-tool-body :is(h3, h4) { font-size: var(--type-base); line-height: var(--leading-snug); }
+.study-tool-body :is(h3, h4) { font-size: var(--type-base); line-height: var(--leading-snug); font-weight: var(--weight-title); }
 .study-tool-body details { font-size: var(--type-xs); line-height: var(--leading-normal); }
 
 .study-tool-body :is(input, select, textarea, button, audio) {
@@ -6451,6 +6457,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 /* Interface compacta; a prosa e as convenções dos recursos mantêm seus próprios estilos. */
 :is(.topbar, .account-settings-overlay, .account-device-data, .account-maintenance, .study-device-settings, .editor-head, .auth-panel) :is(h1, h2, h3, h4),
 .topbar-title,
+.study-review-queue strong,
 .account-settings-title,
 .card-title,
 .section-heading,
@@ -6461,7 +6468,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .runtime-card-title,
 .runtime-card-title.course-inspection-title-edit-target {
   font-size: var(--type-base);
-  font-weight: 600;
+  font-weight: var(--weight-title);
   color: var(--text-secondary);
   line-height: var(--leading-snug);
 }
@@ -6471,7 +6478,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .study-device-settings :is(label, summary),
 .study-tools-panel :is(label, summary),
 .home-course-selector-preview strong {
-  font-weight: 550;
+  font-weight: var(--weight-label);
 }
 
 .account-settings-content,
@@ -6482,4 +6489,79 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .account-settings-content :is(button, input, select),
 .study-tools-panel :is(button, input, select) {
   font-size: var(--type-sm);
+}
+
+/* Ajuda expansível: o marcador fica à esquerda da coluna comum de título e conteúdo. */
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) {
+  padding-inline-start: calc(var(--space-section) + var(--space-copy));
+}
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary {
+  position: relative;
+  display: block;
+  list-style: none;
+  margin-inline-start: calc(-1 * var(--space-section));
+  padding-inline-start: var(--space-section);
+}
+
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary::before {
+  content: "▶";
+  position: absolute;
+  inset-inline-start: 0;
+  width: var(--space-section);
+  font-size: inherit;
+  line-height: inherit;
+  transform: scale(0.8);
+  transform-origin: left center;
+}
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access)[open] > summary::before { content: "▼"; }
+:is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
+    .study-tool-body details, .course-design-explanation,
+    .course-design-instructional-context details:not(.course-design-item-status), .source-reference-fields,
+    .course-source-detail-section, .course-source-use-details, .course-source-file-access) > summary::-webkit-details-marker { display: none; }
+.study-tool-error { color: var(--status-danger); }
+
+.account-settings-view .theme-choice { display: grid; width: max-content; margin-inline: auto; margin-block: var(--space-section); }
+
+/* Ferramentas compartilham hierarquia e ações com os demais painéis. */
+.study-tools-panel > .editor-head { grid-template-columns: var(--tap) minmax(0,1fr) var(--tap); }
+.study-tools-panel > .editor-head > h2 { grid-column: 2; text-align: center; }
+.study-tools-panel > .editor-head > button { grid-column: 3; grid-row: 1; }
+.study-tool-body { font-size: var(--type-sm); line-height: var(--leading-normal); font-weight: var(--weight-body); }
+.study-tool-body .runtime-block > h3 { margin-block: 0 var(--space-copy); }
+.study-tool-body .runtime-block > p { margin-block: 0 var(--space-section); }
+.package-calculator form { gap: var(--space-section); margin-block-start: var(--space-section); }
+.package-calculator-actions { justify-content: flex-end; }
+.package-calculator output, .package-tool-status { box-sizing: border-box; display: block; height: 64px; min-height: 64px; overflow: auto; overscroll-behavior: contain; }
+.package-calculator output { font-size: var(--type-sm); margin: 0; }
+.package-calculator-limits { margin-block-start: var(--space-section); }
+.package-calculator-limits dl { display: grid; gap: var(--space-copy); margin-block: var(--space-copy) 0; }
+.package-calculator-limits dt { font-weight: var(--weight-label); }
+.package-calculator-limits dd { margin: 0; font-weight: var(--weight-body); }
+.package-calculator-limits code { font: inherit; }
+.package-tool-resource { display: flex; align-items: center; justify-content: space-between; gap: var(--space-copy); }
+.package-tool-resource > span { min-width: 0; font-weight: var(--weight-label); }
+.package-tool-resource > button { flex: 0 0 var(--tap); }
+.study-tool-body button.icon-ghost, .package-calculator-actions button.icon-ghost { width: var(--tap); height: var(--tap); padding: 0; display: inline-flex; align-items: center; justify-content: center; color: var(--accent); }
+.package-auxiliary-links li { margin-block: var(--space-section); }
+
+.study-tool-body :is(input, select, textarea) { font-weight: var(--weight-body); }
+
+.study-device-settings :is([data-study-sync-message], [data-study-adoption-message]) {
+  box-sizing: border-box;
+  height: 64px;
+  margin-block: var(--space-copy);
+  overflow: auto;
+  font-size: var(--type-xs);
 }

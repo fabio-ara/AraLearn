@@ -140,11 +140,13 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
     clearPreview();
     const sheet = state.section !== "files" || state.confirmingHash;
     const disabled = state.busy || state.pending || state.loading || !state.baseline;
-    const feedback = '<div class="course-audio-feedback" aria-live="polite">' +
+    const feedback = '<div class="course-audio-feedback course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' +
       (state.message ? `<p role="status">${escape(state.message)}</p>` : "") +
       (state.error ? `<p role="alert">${escape(state.error)}</p>` : "") +
       (state.loading ? '<p role="status">Carregando áudios…</p>' : "") +
-      (state.busy ? '<p role="status">Processando áudio…</p>' : "") + '</div>';
+      (state.busy ? '<p role="status">Processando áudio…</p>' : "") + '</div>' +
+      (sheet && state.pending ? '<button type="button" data-audio-action="retry" aria-label="Confirmar operação pendente" title="Confirmar operação pendente"' +
+        (state.busy ? ' disabled' : '') + '>' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : '') + '</div>';
     root.innerHTML = '<section class="course-audio-panel" aria-label="Áudio"><header>' +
       '<nav class="course-audio-tabs" aria-label="Tarefas de áudio">' +
       [["configuration", "Configuração", "tags"], ["upload", "Enviar áudio", "upload"], ["generation", "Gerar voz", "audio"]]
@@ -161,7 +163,6 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
         '<button type="button" data-audio-action="close-section" aria-label="Fechar ajustes de áudio" title="Fechar"' +
         (state.busy ? " disabled" : "") + '>' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></header>' +
         feedback + '<div class="course-audio-sheet-body">' +
-        (state.pending ? '<button type="button" data-audio-action="retry">Confirmar operação pendente</button>' : "") +
         '<fieldset class="course-audio-content"' + (disabled ? " disabled" : "") + '>' +
         (state.confirmingHash ? '<p>Remover o arquivo? As faixas que o usam precisarão de outro áudio. Outras cópias do curso são preservadas.</p>' :
           state.section === "configuration" ? configHtml() : state.section === "upload" ? uploadHtml() : generationHtml()) + '</fieldset>' +

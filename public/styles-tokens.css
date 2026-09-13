@@ -81,6 +81,11 @@
   --type-base: 1rem;
   --type-md: 1rem;
   --type-lg: 1.16rem;
+  --weight-title: 600;
+  --weight-label: 500;
+  --weight-body: 400;
+  --space-copy: 8px;
+  --space-section: 16px;
   --leading-snug: 1.32;
   --leading-dense: 1.44;
   --leading-prose: 1.5;

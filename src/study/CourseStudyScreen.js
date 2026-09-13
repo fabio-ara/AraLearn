@@ -188,7 +188,7 @@ function renderAssistanceModeButton({ action, pressed, disabled = false }) {
   return '<button class="study-mode-button" type="button" data-action="' + escapeHtml(action) + '"' +
     ` aria-pressed="${String(pressed)}" aria-label="Assistência por IA" title="Assistência por IA"` +
     `${disabled ? ' disabled aria-disabled="true"' : ""}>` +
-    `${renderUiIcon("prompt", "home-tab-icon")}</button>`;
+    `${renderUiIcon("sparkles", "home-tab-icon")}</button>`;
 }
 
 function renderModeControls({

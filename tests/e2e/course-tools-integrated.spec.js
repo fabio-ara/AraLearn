@@ -71,7 +71,10 @@ test("ferramentas integradas preservam card, foco e calculadora em oito combinaÃ
     const dimensions = await page.locator(".study-tool-body button, .study-tool-body input, .study-tool-body select")
       .evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })));
     expect(dimensions.every(({ height }) => height >= 44)).toBe(true);
-    if (width === 390 && mode === "dark") await page.screenshot({ path: testInfo.outputPath("calculator-390-dark.png"), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath(`calculator-${width}-${mode}.png`), fullPage: true });
+    await page.locator(".package-calculator-limits > summary").click();
+    await expect(page.locator(".package-calculator-limits dl")).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath(`calculator-help-${width}-${mode}.png`), fullPage: true });
     await page.keyboard.press("Escape");
     await expect(launcher).toBeFocused();
     expect(Math.abs(await page.locator(".card-sheet-content").evaluate(node => node.scrollTop) - before)).toBeLessThanOrEqual(1);

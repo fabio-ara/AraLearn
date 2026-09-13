@@ -216,27 +216,29 @@ async function mountCitationEditor(page, { theme, targetKind, bibliographyStyle 
   }, { theme, targetKind, bibliographyStyle });
 }
 
-for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_explanation", "abnt-2025"], ["dark", "study_unit", "apa7"]]) {
-  test(`Fonte nova recebe PDF e link e exige trecho exato em ${targetKind}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+for (const width of [390, 430, 1280]) for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_explanation", "abnt-2025"], ["dark", "study_unit", "apa7"]]) {
+  test(`Fonte nova recebe documento e link e exige trecho exato em ${targetKind} ${width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
     await mountCitationEditor(page, { theme, targetKind, bibliographyStyle });
     await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
     const catalogReference = page.locator('.course-source-card [data-source-action="open-source"]');
     await expect(catalogReference).toContainText(bibliographyStyle === "abnt-2025" ? "SILVA, A." : "Silva, A. (2026)");
     await expect(catalogReference).toContainText("Redes e comunicação");
-    await page.screenshot({ path: testInfo.outputPath(`citation-catalog-390-${theme}.png`) });
-    await page.getByRole("button", { name: "Nova fonte: PDF ou link", exact: true }).click();
+    await page.screenshot({ path: testInfo.outputPath(`citation-catalog-${width}-${theme}.png`) });
+    await page.getByRole("button", { name: "Nova fonte: documento ou link", exact: true }).click();
     const form = page.locator('[data-source-form="source"]');
-    await expect(form.getByRole("heading", { name: "PDF ou link", exact: true })).toBeVisible();
+    await expect(form.getByRole("heading", { name: "Documento ou link", exact: true })).toBeVisible();
     await form.getByLabel("Título, quando conhecido", { exact: true }).fill("Leitura complementar sintética");
-    await form.getByLabel("Link da página ou do PDF", { exact: true }).fill("https://example.test/leitura.pdf");
+    await form.getByLabel("Link", { exact: true }).fill("https://example.test/leitura.pdf");
     const pdf = Buffer.from("%PDF-1.4\n% Arquivo sintético da prova de envio\n%%EOF\n");
     await form.locator("[data-source-new-pdf-input]").setInputFiles({ name: "leitura.pdf", mimeType: "application/pdf", buffer: pdf });
     await expect(form).toContainText("leitura.pdf");
-    await page.screenshot({ path: testInfo.outputPath(`citation-intake-390-${theme}.png`) });
+    await expect(form.locator("input[name=title]")).toHaveCSS("font-weight", "400");
+    await expect(form.locator("select[name=citationMode]")).toHaveCSS("font-weight", "400");
+    await page.screenshot({ path: testInfo.outputPath(`citation-intake-${width}-${theme}.png`) });
     await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.uploads.length)).toBe(1);
-    const document = page.getByRole("link", { name: /Documento PDF/ });
+    const document = page.getByRole("link", { name: /^Documento/ });
     await expect(document).toBeVisible();
     await document.click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.documents.length)).toBe(1);
@@ -250,8 +252,12 @@ for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_e
       const start = node.value.lastIndexOf(quote);
       node.setSelectionRange(start, start + quote.length);
     }, quote);
-    await expect(page.getByText("O número 2 aparecerá automaticamente após o trecho.", { exact: true })).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath(`citation-selection-390-${theme}.png`) });
+    await expect(page.getByText("O número 2 aparecerá automaticamente após o trecho.", { exact: true })).toHaveCount(0);
+    const geometry = await selectedText.evaluate(node => { const box = node.getBoundingClientRect(); const parent = node.closest(".course-source-target-body").getBoundingClientRect(); return { left: box.left - parent.left, right: parent.right - box.right, weight: getComputedStyle(node).fontWeight }; });
+    expect(geometry.left).toBeGreaterThanOrEqual(6);
+    expect(geometry.right).toBeGreaterThanOrEqual(6);
+    expect(geometry.weight).toBe("400");
+    await page.screenshot({ path: testInfo.outputPath(`citation-selection-${width}-${theme}.png`) });
     await page.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
     await expect(page.getByText(quote, { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Salvar fontes", exact: true }).click();
@@ -272,9 +278,9 @@ for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_e
   });
 }
 
-for (const theme of ["light", "dark"]) {
-  test(`Acesso a PDFs usa tokens da área de fontes em 390 ${theme}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+for (const width of [390, 430, 1280]) for (const theme of ["light", "dark"]) {
+  test(`Acesso a documentos usa tokens da área de fontes em ${width} ${theme}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
     await mountSources(page, { theme, fileAccess: true });
     const opener = page.locator('[data-source-action="open-source"]');
     await opener.focus();
@@ -287,7 +293,18 @@ for (const theme of ["light", "dark"]) {
     await page.keyboard.press("Enter");
     await expect(access).toHaveAttribute("open", "");
     await expect(access.locator("select")).toBeVisible();
-    await expect(access).toContainText("Uma exceção no PDF prevalece sobre a fonte e o curso.");
+    await expect(access).toContainText("Cada documento pode ter uma escolha de acesso própria.");
+    const alignment = await access.evaluate(node => {
+      const range = document.createRange(); range.selectNodeContents(node.querySelector("summary"));
+      return [range.getBoundingClientRect().left, node.querySelector("p").getBoundingClientRect().left, node.querySelector("label").getBoundingClientRect().left];
+    });
+    expect(Math.max(...alignment) - Math.min(...alignment)).toBeLessThanOrEqual(1);
+    const markerLine = await access.locator("summary").evaluate(node => {
+      const text = getComputedStyle(node), marker = getComputedStyle(node, "::before");
+      return { text: text.lineHeight, marker: marker.lineHeight };
+    });
+    expect(markerLine.marker).toBe(markerLine.text);
+    await expect(dialog.getByRole("heading", { name: "Documentos", exact: true })).toBeVisible();
     expect(await access.evaluate(node => node.closest(".course-authoring-section"))).toBeNull();
     expect(await access.locator("option").evaluateAll(nodes => nodes.map(node => node.value))).toEqual(["inherit", "restricted", "available"]);
     const colors = await access.evaluate(node => {
@@ -318,7 +335,14 @@ for (const theme of ["light", "dark"]) {
     expect(colors.border).toBe(colors.expectedBorder);
     expect(colors.text).toBe(colors.expectedText);
     expect(colors.focusColor).toBe(colors.expectedFocus);
-    expect(colors.focusWidth).toBeGreaterThanOrEqual(2);
+    expect(colors.focusWidth).toBe(2);
+    const focusInset = await access.evaluate(node => {
+      const summary = node.querySelector("summary");
+      const style = getComputedStyle(summary);
+      return summary.getBoundingClientRect().left - node.getBoundingClientRect().left
+        - parseFloat(style.outlineWidth) - parseFloat(style.outlineOffset);
+    });
+    expect(focusInset).toBeGreaterThanOrEqual(4);
     expect(colors.controls[0].background).toBe(colors.expectedSurface);
     expect(Math.abs(colors.controls[0].y - colors.controls[1].y)).toBeLessThanOrEqual(1);
     expect(Math.abs(colors.controls[0].bottom - colors.controls[1].bottom)).toBeLessThanOrEqual(1);
@@ -346,7 +370,7 @@ for (const theme of ["light", "dark"]) {
     }
     await access.locator("summary").focus();
     await access.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: testInfo.outputPath(`source-file-tokens-390-${theme}.png`) });
+    await page.screenshot({ path: testInfo.outputPath(`source-file-tokens-${width}-${theme}.png`) });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.keyboard.press("Escape");
     await expect(opener).toBeFocused();
@@ -495,8 +519,8 @@ test("Vincular fonte aguarda a atribuição inicial e conserva vínculo e foco a
   expect(await page.evaluate(() => window.sourceRequests)).toEqual([]);
 });
 
-test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas releituras atrasadas", async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+for (const width of [390, 430]) test(`Upload documento conserva rascunho e geometria nas releituras atrasadas em ${width}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 });
   await mountSources(page, { deferredUpload: true });
   await page.locator('[data-source-action="open-source"]').click();
   const dialog = page.locator("[data-source-detail-dialog]");
@@ -512,6 +536,15 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
   await form.locator('[name="humanLocator"]').fill(locatorText);
   await excerpt.fill(excerptText);
   expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
+  const stableGeometry = async () => page.evaluate(() => {
+    const selectors = [".course-sources-panel > header", "[data-source-bibliography-settings]", "[data-source-detail-dialog]"];
+    return selectors.map(selector => {
+      const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect();
+      return { x, y, width, height };
+    });
+  });
+  const idleGeometry = await stableGeometry();
+  await page.screenshot({ path: testInfo.outputPath(`source-anchor-document-idle-${width}.png`) });
   const pdfPath = fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url));
   await dialog.locator("[data-source-pdf-input]").setInputFiles(pdfPath);
   await expect.poll(() => page.evaluate(() => window.sourceUploadRequests.length)).toBe(1);
@@ -521,8 +554,18 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
   await excerpt.focus();
   await excerpt.evaluate(node => node.setSelectionRange(7, 24));
   const scrollBefore = await dialog.locator(".course-source-detail-body").evaluate(node => node.scrollTop);
+  const excerptBox = await excerpt.boundingBox();
+  const assertGeometry = async () => {
+    const current = await stableGeometry();
+    for (let index = 0; index < current.length; index += 1) {
+      for (const key of ["x", "y", "width", "height"]) expect(Math.abs(current[index][key] - idleGeometry[index][key])).toBeLessThanOrEqual(1);
+    }
+    const box = await excerpt.boundingBox();
+    for (const key of ["x", "y", "width", "height"]) expect(Math.abs(box[key] - excerptBox[key])).toBeLessThanOrEqual(1);
+  };
   expect(scrollBefore).toBeGreaterThan(0);
   const assertDraft = async () => {
+    await assertGeometry();
     await expect(form).toBeVisible();
     await expect(form.locator('[name="selectorKind"]')).toHaveValue("page_range");
     await expect(form.locator('[name="startPage"]')).toHaveValue("11");
@@ -533,11 +576,11 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
     await expect(excerpt).toBeFocused();
     expect(await excerpt.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([7, 24]);
     const scrollAfter = await dialog.locator(".course-source-detail-body").evaluate(node => node.scrollTop);
-    expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThanOrEqual(1);
+    expect(scrollAfter).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
   };
   await assertDraft();
-  await page.screenshot({ path: testInfo.outputPath("source-anchor-pdf-pending-390.png") });
+  await page.screenshot({ path: testInfo.outputPath(`source-anchor-document-pending-${width}.png`) });
   expect(await page.evaluate(() => window.sourceAsyncControls.snapshot().revision)).toBe(5);
   await page.evaluate(() => window.sourceAsyncControls.releaseUpload());
   await expect.poll(() => page.evaluate(() => window.sourceAsyncControls.pendingReads())).toEqual(["catalog"]);
@@ -549,7 +592,7 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
   await expect(dialog.locator('[data-source-action="download-attachment"]')).toHaveCount(1);
   await expect(form.getByRole("button", { name: "Salvar âncora", exact: true })).toBeEnabled();
   await assertDraft();
-  await page.screenshot({ path: testInfo.outputPath("source-anchor-pdf-refreshed-390.png") });
+  await page.screenshot({ path: testInfo.outputPath(`source-anchor-document-refreshed-${width}.png`) });
   const result = await page.evaluate(() => ({ ...window.sourceAsyncControls.snapshot(),
     uploads: window.sourceUploadRequests, reads: window.sourceReadRequests, writes: window.sourceRequests }));
   expect(result.uploads).toHaveLength(1);

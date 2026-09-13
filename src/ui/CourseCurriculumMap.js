@@ -174,7 +174,7 @@ function renderCoverageItem(courseId, item, nodes, expansion) {
 
 /** Receives the already normalized planning projection; expansion is temporary UI state. */
 export function renderCourseCurriculumMap({
-  courseId, courseRevision = null, sourceTitles = new Map(), curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = [],
+  courseId, sourceTitles = new Map(), curriculum, curriculumScopeItems = [], curriculumMapStatus = "absent", expansion = [],
   contextual = false, courseTitle = "Curso", query = "", pendingOnly = false, completeness = null, approval = null
 }) {
   const nodes = indexCurriculum(curriculum);
@@ -206,13 +206,10 @@ export function renderCourseCurriculumMap({
     (completeness ? `<button class="course-authoring-icon-action" type="button" data-curriculum-pending-only data-curriculum-key="pending-filter" aria-pressed="${pendingOnly}"` +
       ` aria-label="Mostrar somente pendências do mapa, ${nodes.pending.length}" title="Pendências do mapa">${renderUiIcon("draft-state", "course-authoring-button-icon")}</button>` : "") + '</div>' +
     (completeness ? `<details class="course-curriculum-pending-list"${nodes.pending.length ? " open" : ""}><summary>Pendências do mapa · ${nodes.pending.length}</summary>` +
-      (nodes.pending.length ? `<ul>${nodes.pending.map(item => `<li>${escapeHtml(pendingDescription(item, nodes))}</li>`).join("")}</ul>` : '<p>As referências e a cobertura atendem aos critérios estruturais do mapa.</p>') +
-      '<p>Base explicativa e revisão são verificadas ao abrir cada objeto.</p></details>' : "") +
-    '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
+      (nodes.pending.length ? `<ul>${nodes.pending.map(item => `<li>${escapeHtml(pendingDescription(item, nodes))}</li>`).join("")}</ul>` : '<p>Nenhuma pendência encontrada.</p>') + '</details>' : "") +
     '<p data-curriculum-search-status role="status" hidden></p>' + content + coverage +
-    (approval ? `<section class="course-curriculum-approval" aria-label="Aprovação do mapa"><p>Mapa salvo · versão ${approval.planVersion} · revisão do curso ${courseRevision}.</p>` +
-      '<p>A aprovação declara sua inspeção do mapa completo, incluindo ramos recolhidos e resultados fora da busca.</p>' +
-      `<label><input type="checkbox" data-curriculum-inspected${approval.inspected ? " checked" : ""}${approval.busy || !completeness?.complete || approval.pending ? " disabled" : ""}> Inspecionei esta versão do mapa completo.</label>` +
+    (approval ? '<section class="course-curriculum-approval" aria-label="Aprovação do mapa">' +
+      `<label><input type="checkbox" data-curriculum-inspected${approval.inspected ? " checked" : ""}${approval.busy || !completeness?.complete || approval.pending ? " disabled" : ""}> Revisei o mapa completo</label>` +
       `<button class="course-authoring-icon-action" type="button" data-curriculum-approve data-curriculum-key="approve"` +
       ` aria-label="${approvalLabel}" title="${approvalLabel}"` +
       `${approval.busy || !approval.pending && (!approval.inspected || !completeness?.complete || curriculumMapStatus === "approved") ? " disabled" : ""}>${renderUiIcon(approval.pending ? "rotate" : "ready-state", "course-authoring-button-icon")}</button>` +
