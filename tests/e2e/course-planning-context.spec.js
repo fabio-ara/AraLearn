@@ -89,6 +89,12 @@ for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento
     const card = document.querySelector('.is-objective .course-authoring-planning-card');
     return {
       overflow: document.documentElement.scrollWidth - innerWidth,
+      disclosureIndents: [...document.querySelectorAll('.course-curriculum-map-details[open]')].map(node => {
+        const label = document.createRange();
+        label.selectNodeContents(node.querySelector(':scope > summary').firstChild);
+        const body = node.querySelector(':scope > .course-curriculum-map-body');
+        return body.getBoundingClientRect().left + parseFloat(getComputedStyle(body).paddingLeft) - label.getBoundingClientRect().left;
+      }),
       objectives: [{ label: style(card.querySelector('h3')), body: style(card.querySelector('p')) },
         ...[...document.querySelectorAll('.course-curriculum-map-objective')].map(node => ({ label: style(node.querySelector('summary')), body: style(node.querySelector('p')) }))],
       groups: [...document.querySelectorAll('.course-curriculum-context-actions')].map(node => ({
@@ -98,6 +104,7 @@ for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento
     };
   });
   expect(geometry.overflow).toBeLessThanOrEqual(1);
+  for (const indent of geometry.disclosureIndents) expect(indent).toBeGreaterThanOrEqual(6);
   for (const { label, body } of geometry.objectives) { expect(body.size).toBeLessThan(label.size); expect(body.weight).toBeLessThan(label.weight); }
   for (const group of geometry.groups) {
     expect(Math.abs(group.gap)).toBeLessThanOrEqual(1);

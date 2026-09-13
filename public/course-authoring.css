@@ -1195,7 +1195,8 @@ dialog.course-copy-dialog::backdrop { background: color-mix(in srgb, var(--surfa
 
 .course-curriculum-map-body {
   min-width: 0;
-  padding: 0 10px 10px;
+  padding-block: 0 10px;
+  padding-inline: calc(8px + 1.5em) 10px;
 }
 
 .course-curriculum-map-lesson,
