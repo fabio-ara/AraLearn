@@ -5508,7 +5508,7 @@ dialog.course-microsequence-review {
   line-height: var(--leading-snug);
 }
 
-.course-authoring-surface :is(label, summary):not(.course-inspection-runtime *):not(.course-design *),
+.course-authoring-surface :is(label, summary):not(.course-inspection-runtime *):not(.course-design *):not(.course-curriculum-approval *),
 .course-authoring-person strong,
 .course-source-card strong {
   font-weight: 550;

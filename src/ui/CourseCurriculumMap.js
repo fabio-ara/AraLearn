@@ -210,9 +210,8 @@ export function renderCourseCurriculumMap({
       '<p>Base explicativa e revisão são verificadas ao abrir cada objeto.</p></details>' : "") +
     '<p class="course-curriculum-map-orientation">Abra um módulo e uma lição para examinar a progressão, os objetivos, os pré-requisitos e a explicação prevista. A aprovação do mapa se refere ao plano; o conteúdo produzido exige sua própria revisão.</p>' +
     '<p data-curriculum-search-status role="status" hidden></p>' + content + coverage +
-    (approval ? '<section class="course-curriculum-approval" aria-label="Aprovação do mapa"><h4>Aprovação do mapa</h4>' +
-      '<p>Revise o mapa completo antes de aprovar.</p>' +
-      `<label><input type="checkbox" data-curriculum-inspected${approval.inspected ? " checked" : ""}${approval.busy || !completeness?.complete || approval.pending ? " disabled" : ""}> Inspecionei esta versão do mapa completo.</label>` +
+    (approval ? '<section class="course-curriculum-approval" aria-label="Aprovação do mapa">' +
+      `<label><input type="checkbox" data-curriculum-inspected${approval.inspected ? " checked" : ""}${approval.busy || !completeness?.complete || approval.pending ? " disabled" : ""}> Revisei o mapa completo</label>` +
       `<button class="course-authoring-icon-action" type="button" data-curriculum-approve data-curriculum-key="approve"` +
       ` aria-label="${approvalLabel}" title="${approvalLabel}"` +
       `${approval.busy || !approval.pending && (!approval.inspected || !completeness?.complete || curriculumMapStatus === "approved") ? " disabled" : ""}>${renderUiIcon(approval.pending ? "rotate" : "ready-state", "course-authoring-button-icon")}</button>` +

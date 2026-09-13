@@ -120,8 +120,20 @@ for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento
   await expect(microAction(page, 'guidance')).toBeFocused();
   const approval = page.getByRole('region', { name: 'Aprovação do mapa', exact: true });
   await expect(approval).not.toContainText(/Mapa salvo|revisão do curso|ramos recolhidos|resultados fora da busca/u);
-  await expect(approval.getByRole('heading', { name: 'Aprovação do mapa' })).toBeVisible();
+  await expect(approval.getByRole('heading')).toHaveCount(0);
   const approve = approval.getByRole('button', { name: 'Aprovar mapa inspecionado' });
+  const approvalGeometry = await approval.evaluate(node => {
+    const label = node.querySelector('label').getBoundingClientRect();
+    const button = node.querySelector('button').getBoundingClientRect();
+    return { weight: getComputedStyle(node.querySelector('label')).fontWeight,
+      rightGap: node.getBoundingClientRect().right - button.right,
+      centerDifference: label.top + label.height / 2 - button.top - button.height / 2,
+      separation: button.left - label.right };
+  });
+  expect(Math.abs(approvalGeometry.rightGap)).toBeLessThanOrEqual(1);
+  expect(approvalGeometry.weight).toBe('400');
+  expect(Math.abs(approvalGeometry.centerDifference)).toBeLessThanOrEqual(1);
+  expect(approvalGeometry.separation).toBeGreaterThanOrEqual(12);
   await expect(approve).toBeDisabled();
   await approval.getByRole('checkbox').focus();
   await page.keyboard.press('Space');
@@ -156,7 +168,7 @@ test("Explicação salva abre diretamente pelo mapa sem unidades e retorna ao me
 
 test("mapa rascunho encontra pendência, mantém expansões e abre ajustes sem etapa de Conteúdo", async ({ page }, testInfo) => {
   const errors = await mount(page, { incomplete: true });
-  await expect(page.getByRole("checkbox", { name: "Inspecionei esta versão do mapa completo." })).toBeDisabled();
+  await expect(page.getByRole("checkbox", { name: "Revisei o mapa completo" })).toBeDisabled();
   const query = page.getByRole("searchbox", { name: "Buscar no mapa" });
   await query.fill("base antes");
   await expect(microAction(page, "parameters")).toBeVisible();
@@ -192,7 +204,7 @@ test("aprovação usa referência inspecionada e resposta tardia conserva painel
   await expand(page);
   const approve = page.getByRole("button", { name: "Aprovar mapa inspecionado", exact: true });
   await expect(approve).toBeDisabled();
-  await page.getByRole("checkbox", { name: "Inspecionei esta versão do mapa completo." }).check();
+  await page.getByRole("checkbox", { name: "Revisei o mapa completo" }).check();
   await approve.click();
   await expect.poll(() => page.evaluate(() => window.planningHarness.requests.length)).toBe(1);
   expect(await page.evaluate(() => window.planningHarness.requests[0].reference)).toBe("inspected_map_1_1");
@@ -217,7 +229,7 @@ test("aprovação usa referência inspecionada e resposta tardia conserva painel
 
 test("resposta perdida retoma referência original mesmo depois de o servidor avançar", async ({ page }) => {
   const errors = await mount(page);
-  await page.getByRole("checkbox", { name: "Inspecionei esta versão do mapa completo." }).check();
+  await page.getByRole("checkbox", { name: "Revisei o mapa completo" }).check();
   await page.getByRole("button", { name: "Aprovar mapa inspecionado", exact: true }).click();
   await page.evaluate(() => window.planningHarness.requests[0].resolve({ lost: true }));
   await page.getByRole("button", { name: "Confirmar aprovação pendente", exact: true }).click();

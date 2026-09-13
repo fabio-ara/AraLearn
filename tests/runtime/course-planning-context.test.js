@@ -34,9 +34,9 @@ test("aprovação apresenta a decisão humana sem expor versões e preserva seus
     approval: { planVersion: 34, inspected: false }, contextual: true };
   const before = structuredClone(input);
   const html = renderCourseCurriculumMap(input);
-  assert.match(html, /<h4>Aprovação do mapa<\/h4>/u);
-  assert.match(html, /Revise o mapa completo antes de aprovar\./u);
-  assert.match(html, /Inspecionei esta versão do mapa completo\./u);
+  assert.match(html, /aria-label="Aprovação do mapa"/u);
+  assert.match(html, /Revisei o mapa completo/u);
+  assert.doesNotMatch(html, /<h4>Aprovação|Revise o mapa completo antes|Inspecionei esta versão/u);
   assert.match(html, /data-curriculum-approve[^>]* disabled/u);
   assert.doesNotMatch(html, /Mapa salvo|revisão do curso|ramos recolhidos|resultados fora da busca|versão 34/u);
   assert.deepEqual(input, before);
