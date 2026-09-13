@@ -494,11 +494,14 @@ test("#331 detalhes e Parâmetros mantêm reflow e hierarquia com ampliação", 
     overflow: node.scrollWidth - node.clientWidth,
     groupWeight: getComputedStyle(node.querySelector(".course-design-category-menu > summary")).fontWeight,
     itemWeight: getComputedStyle(node.querySelector(".course-design-parameter h3")).fontWeight,
+    valueWeight: getComputedStyle(node.querySelector(".course-design-parameter > header > strong")).fontWeight,
     emptyFeedback: node.querySelector(".course-design-feedback").getBoundingClientRect().height
   }));
   expect(geometry.overflow).toBeLessThanOrEqual(1);
-  expect(Number(geometry.groupWeight)).toBeGreaterThan(Number(geometry.itemWeight));
-  expect(geometry.emptyFeedback).toBe(0);
+  expect(Number(geometry.groupWeight)).toBe(600);
+  expect(Number(geometry.itemWeight)).toBe(600);
+  expect(Number(geometry.valueWeight)).toBe(400);
+  expect(geometry.emptyFeedback).toBe(128); // A área de 64px acompanha a ampliação 2x.
 });
 
 for (const [width, theme, zoom] of [[360, "dark", 2], [1366, "light", 1]]) {

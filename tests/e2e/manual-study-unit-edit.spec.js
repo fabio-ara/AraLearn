@@ -1517,6 +1517,14 @@ test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", as
     'header [data-action="open-settings"]'];
   const levelModeSelectors = ['header [aria-label="Visualizar"]', 'header [aria-label="Editar"]'];
   const evidence = [];
+  const expectCenteredModes = async () => {
+    const offset = await page.locator('.study-mode-actions').evaluate(node => {
+      const group = node.getBoundingClientRect();
+      const parent = node.parentElement.getBoundingClientRect();
+      return Math.abs(group.x + group.width / 2 - parent.x - parent.width / 2);
+    });
+    expect(offset).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
+  };
   for (const theme of ["light", "dark"]) {
     for (const width of VIEWPORTS) {
       await page.setViewportSize({ width, height: 900 });
@@ -1525,10 +1533,12 @@ test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", as
       await expect(page.locator('header .study-mode-actions')).toHaveCount(0);
       await expect(page.locator('.study-contextual-authoring').getByRole("button", { name: "Visualizar", exact: true })).toBeVisible();
       await expect(page.locator('.study-contextual-authoring').getByRole("button", { name: "Editar", exact: true })).toBeVisible();
+      await expectCenteredModes();
       const reference = await elementGeometry(page, selectors);
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
       const microsequence = await elementGeometry(page, selectors);
       const levelModeReference = await elementGeometry(page, levelModeSelectors);
+      await expectCenteredModes();
       expectSameGeometry(reference, microsequence, `${width}/${theme}/microssequência`);
       evidence.push({ width, theme, level: "microssequência", controls: { ...microsequence, ...levelModeReference } });
       await page.evaluate(() => globalThis.__manualStudyApp.openCourse("10000000-0000-4000-8000-000000000001"));
@@ -1537,7 +1547,13 @@ test("controles equivalentes mantêm coordenadas entre os níveis de Estudo", as
         const actual = await elementGeometry(page, selectors);
         expectSameGeometry(reference, actual, `${width}/${theme}/${level}`);
         const levelModes = await elementGeometry(page, levelModeSelectors);
-        expectSameGeometry(levelModeReference, levelModes, `${width}/${theme}/${level}/modos`);
+        await expectCenteredModes();
+        for (const selector of levelModeSelectors) {
+          for (const property of ["y", "width", "height"]) {
+            expect(Math.abs(levelModeReference[selector][property] - levelModes[selector][property]),
+              `${width}/${theme}/${level}/modos: ${selector} ${property}`).toBeLessThanOrEqual(GEOMETRY_TOLERANCE);
+          }
+        }
         evidence.push({ width, theme, level, controls: { ...actual, ...levelModes } });
         await page.getByRole("button", { name: next, exact: true }).first().click({ timeout: 5000 });
       }

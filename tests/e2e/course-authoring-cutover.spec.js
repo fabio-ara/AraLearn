@@ -3487,7 +3487,8 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
     name: "Fontes", exact: true
   });
   await expectModalDialogOwnsTopLayer(targetDialog);
-  await expect(targetDialog.locator('.course-source-target-context')).toHaveText('Exemplo guiado com diagrama');
+  await expect(targetDialog.locator('.course-source-target-context strong')).toHaveText('Exemplo guiado com diagrama');
+  await expect(targetDialog.locator('.course-source-target-context small')).toHaveText('Unidade');
   await page.keyboard.press("Escape");
   await expect(targetDialog).toHaveCount(0);
   await expect(sourcesAction).toBeFocused();
@@ -5214,7 +5215,7 @@ test("Dados de autoria em 390 px preservam escopo, números e exportação do re
   });
   await expect(scopeDialog).toHaveCount(0);
   await expect(analytics.locator(".course-analytics-toolbar")).toContainText(
-    "Microssequência · Comparação orientada · edição 5"
+    "Microssequência · Comparação orientada"
   );
   await analytics.getByRole("button", { name: "Abrir dados e definições" }).click();
   await expect(analytics.locator(
@@ -5321,7 +5322,7 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
   const analytics = page.locator(".course-analytics");
   await expect(analytics).toBeVisible();
   await expect(analytics.locator(".course-analytics-toolbar")).toContainText(
-    "Microssequência · Comparação orientada · edição 5"
+    "Microssequência · Comparação orientada"
   );
   await expect.poll(() => page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.analyticsReads.length)).toBe(1);
