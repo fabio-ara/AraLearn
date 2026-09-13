@@ -74,13 +74,14 @@ export function renderCourseAuthoringProfiles(state) {
   const list = state.authoringProfiles || [];
   return `<details class="course-authoring-profiles"${state.profilesOpen ? " open" : ""}>` +
     '<summary>Perfis de autoria</summary><p>Preferências reutilizáveis da sua conta. Aplicar copia valores e decisões automáticas; não muda a identidade, o acesso ou o conteúdo do curso.</p>' +
+    '<div class="course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' +
     (state.profileFailure ? `<p role="alert" class="course-authoring-notice is-error">${escapeHtml(state.profileFailure)}</p>` : "") +
-    (state.pendingProfileMutation && !state.profileBusy ? button("retry-profile-mutation", "Repetir gravação do perfil", { icon: "rotate", disabled: state.designBusy }) : "") +
     (state.profileMessage ? `<p role="status">${escapeHtml(state.profileMessage)}</p>` : "") +
+    (state.profilesLoading ? '<p role="status">Carregando perfis…</p>' : "") + '</div>' +
+    (state.pendingProfileMutation && !state.profileBusy ? button("retry-profile-mutation", "Repetir gravação do perfil", { icon: "rotate", disabled: state.designBusy }) : "") + '</div>' +
     '<div class="course-design-form-actions">' +
     button("new-authoring-profile", "Criar perfil", { icon: "add", disabled: busy || list.length >= 32 }) +
     button("refresh-authoring-profiles", "Recarregar perfis", { icon: "rotate", disabled: busy }) + '</div>' +
-    (state.profilesLoading ? '<p role="status">Carregando perfis…</p>' : "") +
     '<ul class="course-profile-list">' + list.map((profile) => '<li><span>' + escapeHtml(profile.name) +
       '</span><div class="course-design-form-actions">' +
       button("preview-authoring-profile", `Aplicar perfil ${profile.name}`, { icon: "preview", disabled: busy, attributes: ` data-profile-id="${profile.profileId}"` }) +

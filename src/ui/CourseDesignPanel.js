@@ -417,14 +417,14 @@ export function renderCourseDesignPanel(state) {
     '<div class="course-design-group-heading">' +
     (edited ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="design-group-back" aria-label="Voltar aos ajustes" title="Voltar aos ajustes">' +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button><span>' + escapeHtml(selected.label) + '</span>' : categoryMenu) +
-    '</div></div><div class="course-design-feedback" aria-live="polite">' +
+    '</div></div><div class="course-design-feedback course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' +
     (state.designMessage
       ? `<p class="course-authoring-notice" role="status">${escapeHtml(state.designMessage)}</p>`
       : "") +
     (state.designFailure
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.designFailure)}</p>`
       : "") +
-    (state.pendingDesignCommands?.size && !state.designBusy ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="retry-design-mutation" aria-label="Repetir gravação" title="Repetir gravação">' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : "") +
+    '</div>' + (state.pendingDesignCommands?.size && !state.designBusy ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="retry-design-mutation" aria-label="Repetir gravação" title="Repetir gravação">' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : "") +
     '</div><div class="course-design-settings-body">' +
     (conflicts.length ? '<aside class="course-authoring-notice is-error" role="alert">' +
       'Resolva as exceções incompatíveis antes de produzir ou aplicar um perfil.' +

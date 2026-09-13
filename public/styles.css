@@ -612,7 +612,10 @@ textarea {
 }
 
 .account-settings-status {
-  min-height: calc(0.78rem * 1.35);
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  overflow: auto;
   padding: 2px 4px 0;
 }
 
@@ -6554,3 +6557,11 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .package-auxiliary-links li { margin-block: var(--space-section); }
 
 .study-tool-body :is(input, select, textarea) { font-weight: var(--weight-body); }
+
+.study-device-settings :is([data-study-sync-message], [data-study-adoption-message]) {
+  box-sizing: border-box;
+  height: 64px;
+  margin-block: var(--space-copy);
+  overflow: auto;
+  font-size: var(--type-xs);
+}

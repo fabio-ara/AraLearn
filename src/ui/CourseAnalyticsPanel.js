@@ -570,13 +570,14 @@ function renderPanel(state) {
     '<header class="course-analytics-toolbar"><div>' + (dimension ? `<h3>${escapeHtml(dimension.label)}</h3><p class="course-analytics-caption">${escapeHtml(state.page.scope.selected.label)}</p>` : '<h3>Dados de autoria</h3>') + '</div><nav aria-label="Ações da análise">' +
     iconAction("configuration", "Escolher dimensão e escopo", "tags", busy || !state.page) + iconAction("compare", "Comparar cursos", "copy", busy || !state.page) +
     iconAction("details", "Abrir dados e definições", "review", busy || !state.page) + iconAction("export", "Exportar curso e análise", "download", busy || !state.page) + '</nav></header>' +
-    (!state.sheet ? status + failure : '') +
+    '<div class="course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' +
+    (!state.sheet ? status + failure : '') + '</div>' +
+    (!state.sheet && (!state.page || state.failure) && !busy ? iconAction("reload", "Atualizar leitura", "rotate") : '') + '</div>' +
     (dimension ? `<p class="course-analytics-caption">${escapeHtml(dimension.id === "novelty" ? "Novas unidades de análise em cada unidade de estudo." : dimension.definition)}</p>` +
       (state.comparison ? '<div class="course-analytics-comparison"><section><h4>' + escapeHtml(state.comparison.left.course.title) + '</h4>' + dimensionReading(dimension, comparisonDimension.left, "left") + '</section><section><h4>' + escapeHtml(state.comparison.right.course.title) + '</h4>' + dimensionReading(dimension, comparisonDimension.right, "right") + '</section></div>' +
         `<p class="course-analytics-caption">${comparisonDimension.delta === null ? "Diferença numérica não aplicável." : `Diferença entre os totais: ${formatCount(comparisonDimension.delta)}.`} Contagens não medem qualidade.</p>` +
         iconAction("clear-comparison", "Encerrar comparação", "remove-state", busy) : dimensionReading(dimension, dimension)) : '') +
-    ((!state.page || state.failure) && !busy ? iconAction("reload", "Atualizar leitura", "rotate") : '') +
-    (state.sheet ? `<dialog class="course-analytics-sheet" aria-labelledby="course-analytics-sheet-title"><header><h2 id="course-analytics-sheet-title">${titles[state.sheet]}</h2>` + iconAction("close-sheet", "Fechar análise contextual", "remove-state", busy) + '</header><div class="course-analytics-sheet-feedback" aria-live="polite">' + status + failure + '</div>' +
+    (state.sheet ? `<dialog class="course-analytics-sheet" aria-labelledby="course-analytics-sheet-title"><header><h2 id="course-analytics-sheet-title">${titles[state.sheet]}</h2>` + iconAction("close-sheet", "Fechar análise contextual", "remove-state", busy) + '</header><div class="course-analytics-sheet-feedback course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' + status + failure + '</div></div>' +
       '<div class="course-analytics-sheet-body"><fieldset' + (busy ? ' disabled' : '') + '>' + sheetContent(state) + '</fieldset></div><footer>' +
       (state.sheet === "configuration" ? iconAction("apply-configuration", "Aplicar leitura", "ready-state", busy) : '') +
       (state.sheet === "compare" ? iconAction("apply-comparison", "Comparar cursos", "copy", busy || !state.opponent) : '') +

@@ -166,10 +166,12 @@ test("Áudio conserva rascunho, pedido incerto e posição de salvar após mensa
   await expect(page.getByLabel("Idioma padrão")).toHaveValue("en-US");
   const save = page.getByRole("button", { name: "Salvar configuração de áudio" });
   const before = await save.boundingBox();
+  const fieldBefore = await page.getByLabel("Idioma padrão").boundingBox();
   await page.evaluate(() => { window.audioProbe.fail = true; });
   await save.click();
   await expect(page.getByRole("alert")).toBeVisible();
   expect(await save.boundingBox()).toEqual(before);
+  expect(await page.getByLabel("Idioma padrão").boundingBox()).toEqual(fieldBefore);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   const retry = page.getByRole("button", { name: "Confirmar operação pendente" });
@@ -179,6 +181,7 @@ test("Áudio conserva rascunho, pedido incerto e posição de salvar após mensa
   await expect(page.getByRole("status")).toHaveText("Áudio atualizado.");
   await trigger.click();
   expect(await save.boundingBox()).toEqual(before);
+  expect(await page.getByLabel("Idioma padrão").boundingBox()).toEqual(fieldBefore);
   const writes = await page.evaluate(() => window.audioProbe.writes);
   expect(writes).toHaveLength(2);
   expect(writes[0]).toEqual(writes[1]);

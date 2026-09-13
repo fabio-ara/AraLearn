@@ -68,6 +68,7 @@ test("Análise: distribuição, comparação, teclado e exportação nas oito ge
     const frame = await dialog.boundingBox(); expect(frame.width).toBeLessThanOrEqual(Math.min(430, width - 16)); expect(frame.height).toBe(640);
     expect(await dialog.evaluate(node => getComputedStyle(node).backgroundColor)).toBe(theme === "dark" ? "rgb(27, 31, 36)" : "rgb(255, 255, 255)");
     const footer = await dialog.locator("footer").boundingBox();
+    const bodyFrame = await dialog.locator(".course-analytics-sheet-body").boundingBox();
     await dialog.getByRole("button", { name: "Aplicar leitura" }).focus(); await page.keyboard.press("Tab");
     await expect(dialog.getByRole("button", { name: "Fechar análise contextual" })).toBeFocused();
     await page.screenshot({ path: info.outputPath(`analytics-${width}-${theme}-configuration.png`) });
@@ -77,6 +78,7 @@ test("Análise: distribuição, comparação, teclado e exportação nas oito ge
     expect(await dialog.locator(".course-analytics-sheet-body").evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
     await dialog.locator(".course-analytics-sheet-body").evaluate(node => { node.scrollTop = node.scrollHeight; });
     expect(await dialog.boundingBox()).toEqual(frame); expect(await dialog.locator("footer").boundingBox()).toEqual(footer);
+    expect(await dialog.locator(".course-analytics-sheet-body").boundingBox()).toEqual(bodyFrame);
     await page.keyboard.press("Escape");
     await panel.getByRole("button", { name: "Comparar cursos", exact: true }).click();
     await dialog.getByRole("combobox", { name: "Curso para comparar", exact: true }).selectOption("1");
@@ -92,6 +94,7 @@ test("Análise: distribuição, comparação, teclado e exportação nas oito ge
     await page.screenshot({ path: info.outputPath(`analytics-${width}-${theme}-comparison-closed.png`) });
     await dialog.getByText("Configuração solicitada", { exact: true }).click();
     expect(await dialog.boundingBox()).toEqual(frame); expect(await dialog.locator("footer").boundingBox()).toEqual(footer);
+    expect(await dialog.locator(".course-analytics-sheet-body").boundingBox()).toEqual(bodyFrame);
     await page.screenshot({ path: info.outputPath(`analytics-${width}-${theme}-comparison.png`) });
     await page.keyboard.press("Escape"); await expect(panel.locator(".course-analytics-comparison")).toBeVisible();
     await panel.getByRole("button", { name: "Exportar curso e análise", exact: true }).click();

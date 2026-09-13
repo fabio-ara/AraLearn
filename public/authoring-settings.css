@@ -12,7 +12,7 @@
 .contextual-settings .account-settings-view > h2 { font-size: var(--type-md); margin: 0 0 var(--space-section); }
 .contextual-settings .account-profile-form { margin-bottom: var(--space-section); }
 .contextual-settings .account-settings-group-copy { margin: 0 0 var(--space-section); color: var(--text-secondary); }
-.contextual-settings .account-settings-status:empty { display: none; }
+.contextual-settings .account-settings-status:empty { visibility: hidden; }
 .contextual-settings .account-settings-status { margin: 8px 2px 0; }
 .contextual-settings .account-settings-view :is(button, select, input:not([type=checkbox])) { min-height: 44px; }
 .contextual-settings .account-settings-view .icon-ghost { min-width: 44px; }
@@ -79,7 +79,7 @@
   .course-authoring-course-header:has([data-action="open-settings"]) .course-authoring-primary-navigation { margin-right: auto; }
 }
 
-.authoring-process-actions [data-process-status] { grid-column: 1; grid-row: 1; font-size: var(--type-xs); }
+.authoring-process-actions [data-process-status] { grid-column: 1; grid-row: 1; font-size: var(--type-xs); height: var(--tap); overflow: auto; }
 .authoring-process-actions [data-process-save] { grid-column: 2; grid-row: 1; }
 .authoring-process-actions [data-process-reload] { grid-column: 3; grid-row: 1; }
 .authoring-process-group > .authoring-process-parameter { margin-inline-start: var(--space-section); }

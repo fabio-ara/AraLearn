@@ -519,8 +519,8 @@ test("Vincular fonte aguarda a atribuição inicial e conserva vínculo e foco a
   expect(await page.evaluate(() => window.sourceRequests)).toEqual([]);
 });
 
-test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas releituras atrasadas", async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+for (const width of [390, 430]) test(`Upload documento conserva rascunho e geometria nas releituras atrasadas em ${width}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 844 });
   await mountSources(page, { deferredUpload: true });
   await page.locator('[data-source-action="open-source"]').click();
   const dialog = page.locator("[data-source-detail-dialog]");
@@ -536,6 +536,15 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
   await form.locator('[name="humanLocator"]').fill(locatorText);
   await excerpt.fill(excerptText);
   expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
+  const stableGeometry = async () => page.evaluate(() => {
+    const selectors = [".course-sources-panel > header", "[data-source-bibliography-settings]", "[data-source-detail-dialog]"];
+    return selectors.map(selector => {
+      const { x, y, width, height } = document.querySelector(selector).getBoundingClientRect();
+      return { x, y, width, height };
+    });
+  });
+  const idleGeometry = await stableGeometry();
+  await page.screenshot({ path: testInfo.outputPath(`source-anchor-document-idle-${width}.png`) });
   const pdfPath = fileURLToPath(new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url));
   await dialog.locator("[data-source-pdf-input]").setInputFiles(pdfPath);
   await expect.poll(() => page.evaluate(() => window.sourceUploadRequests.length)).toBe(1);
@@ -545,8 +554,18 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
   await excerpt.focus();
   await excerpt.evaluate(node => node.setSelectionRange(7, 24));
   const scrollBefore = await dialog.locator(".course-source-detail-body").evaluate(node => node.scrollTop);
+  const excerptBox = await excerpt.boundingBox();
+  const assertGeometry = async () => {
+    const current = await stableGeometry();
+    for (let index = 0; index < current.length; index += 1) {
+      for (const key of ["x", "y", "width", "height"]) expect(Math.abs(current[index][key] - idleGeometry[index][key])).toBeLessThanOrEqual(1);
+    }
+    const box = await excerpt.boundingBox();
+    for (const key of ["x", "y", "width", "height"]) expect(Math.abs(box[key] - excerptBox[key])).toBeLessThanOrEqual(1);
+  };
   expect(scrollBefore).toBeGreaterThan(0);
   const assertDraft = async () => {
+    await assertGeometry();
     await expect(form).toBeVisible();
     await expect(form.locator('[name="selectorKind"]')).toHaveValue("page_range");
     await expect(form.locator('[name="startPage"]')).toHaveValue("11");
@@ -557,11 +576,11 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
     await expect(excerpt).toBeFocused();
     expect(await excerpt.evaluate(node => [node.selectionStart, node.selectionEnd])).toEqual([7, 24]);
     const scrollAfter = await dialog.locator(".course-source-detail-body").evaluate(node => node.scrollTop);
-    expect(Math.abs(scrollAfter - scrollBefore)).toBeLessThanOrEqual(1);
+    expect(scrollAfter).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.sourcesPanel.hasPendingDraft())).toBe(true);
   };
   await assertDraft();
-  await page.screenshot({ path: testInfo.outputPath("source-anchor-pdf-pending-390.png") });
+  await page.screenshot({ path: testInfo.outputPath(`source-anchor-document-pending-${width}.png`) });
   expect(await page.evaluate(() => window.sourceAsyncControls.snapshot().revision)).toBe(5);
   await page.evaluate(() => window.sourceAsyncControls.releaseUpload());
   await expect.poll(() => page.evaluate(() => window.sourceAsyncControls.pendingReads())).toEqual(["catalog"]);
@@ -573,7 +592,7 @@ test("Upload PDF conserva rascunho de âncora, seleção, foco e scroll nas rele
   await expect(dialog.locator('[data-source-action="download-attachment"]')).toHaveCount(1);
   await expect(form.getByRole("button", { name: "Salvar âncora", exact: true })).toBeEnabled();
   await assertDraft();
-  await page.screenshot({ path: testInfo.outputPath("source-anchor-pdf-refreshed-390.png") });
+  await page.screenshot({ path: testInfo.outputPath(`source-anchor-document-refreshed-${width}.png`) });
   const result = await page.evaluate(() => ({ ...window.sourceAsyncControls.snapshot(),
     uploads: window.sourceUploadRequests, reads: window.sourceReadRequests, writes: window.sourceRequests }));
   expect(result.uploads).toHaveLength(1);
