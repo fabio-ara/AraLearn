@@ -104,7 +104,7 @@ for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento
     };
   });
   expect(geometry.overflow).toBeLessThanOrEqual(1);
-  for (const indent of geometry.disclosureIndents) expect(indent).toBeGreaterThanOrEqual(6);
+  for (const indent of geometry.disclosureIndents) expect(Math.abs(indent)).toBeLessThanOrEqual(1);
   for (const { label, body } of geometry.objectives) { expect(body.size).toBeLessThan(label.size); expect(body.weight).toBeLessThan(label.weight); }
   for (const group of geometry.groups) {
     expect(Math.abs(group.gap)).toBeLessThanOrEqual(1);
