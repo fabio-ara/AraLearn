@@ -159,8 +159,8 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
     overlay.className = "editor-overlay study-tools-overlay";
     overlay.innerHTML = '<article class="editor-sheet study-tools-panel" role="dialog" aria-modal="true"' +
       ' aria-labelledby="study-tool-title"><header class="editor-head">' +
-      '<button class="icon-ghost" type="button" data-close-study-tool aria-label="Fechar ferramenta" title="Fechar ferramenta">' +
-      renderUiIcon("remove-state", "home-tab-icon") + '</button><h2 id="study-tool-title">Ferramenta</h2>' +
+      '<h2 id="study-tool-title">Ferramenta</h2><button class="icon-ghost" type="button" data-close-study-tool aria-label="Fechar ferramenta" title="Fechar ferramenta">' +
+      renderUiIcon("remove-state", "home-tab-icon") + '</button>' +
       '</header><div class="editor-body study-tool-body"></div></article>';
     getOverlayHost().append(overlay);
     inertScreen(true);

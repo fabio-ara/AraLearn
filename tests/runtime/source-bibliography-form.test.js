@@ -58,7 +58,7 @@ test("ocorrências em blocos iguais têm posição legível e identidade interna
     occurrenceEditor: { linkId: "link", targetIndex: 1 } }, { linkId: "link", occurrences: [] });
   assert.match(html, /Conteúdo · Bloco 1/u);
   assert.match(html, /Conteúdo · Bloco 2/u);
-  assert.match(html, /data-source-occurrence-location>Conteúdo · Bloco 2/u);
+  assert.match(html, /data-source-occurrence-location><div><dt>Parte<\/dt><dd>Conteúdo · Bloco 2/u);
   assert.match(html, /data-source-occurrence-index="1"/u);
   assert.doesNotMatch(html, /Caminho:|content \/ second \/ text/u);
 });

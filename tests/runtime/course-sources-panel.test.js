@@ -433,7 +433,7 @@ test("fontes da Explicação conservam trecho literal, versão da MS e retorno a
   assert.equal(navigations.length, 0);
   click(root, "close-detail");
   assert.match(root.innerHTML, /<h2 id="course-source-target-title">Fontes<\/h2>/u);
-  assert.match(root.innerHTML, /course-source-target-context">Explicação · Ligações/u);
+  assert.match(root.innerHTML, /course-source-target-context"><strong>Ligações<\/strong><small>Explicação/u);
   assert.ok(root.innerHTML.includes(text.slice(0, 25)));
   click(root, "save-target");
   await settle();
@@ -472,7 +472,7 @@ for (const targetKind of ["study_unit", "microsequence_explanation"]) {
       mode: "target", targetKind, targetId: "target-a", targetVersion: 3,
       targetExplanation: content, targetStudyUnit: content });
     await panel.open(); await settle();
-    assert.match(root.innerHTML, /Vínculo geral já salvo, sem trecho indicado/u);
+    assert.match(root.innerHTML, /Referência do texto completo/u);
     click(root, "add-target-source", { sourceId: "source-01" }); await settle();
     click(root, "save-target"); await settle();
     assert.equal(writes.length, 0);

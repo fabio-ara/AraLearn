@@ -77,8 +77,9 @@ test("exportação explícita busca o artefato completo do servidor e recusa res
 test("resposta tardia não substitui nova revisão ou repopula painel destruído", async () => {
   const root = new FakeRoot(); const pending = [];
   const panel = createCourseAnalyticsPanel({ root, course, controller: { loadCourseAuthoringAnalytics: () => new Promise((resolve) => pending.push(resolve)) } });
-  const first = panel.open(); const second = panel.refresh(8); pending[1](page({ revision: 8 })); await second; pending[0](page()); await first;
-  assert.match(root.innerHTML, /edição 8/u);
+  const first = panel.open(); const second = panel.refresh(8); pending[1](page({ revision: 8, title: "Leitura atual" })); await second; pending[0](page()); await first;
+  assert.match(root.innerHTML, /Leitura atual/u);
+  assert.doesNotMatch(root.innerHTML, /edição 8/u);
   const third = panel.refresh(9); panel.destroy(); pending[2](page({ revision: 9 })); await third; assert.equal(root.innerHTML, "");
 });
 test("revogação retira leitura antiga da tela", async () => {

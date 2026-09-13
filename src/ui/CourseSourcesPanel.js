@@ -982,7 +982,7 @@ function renderTargetPanel(state) {
     '<header><span class="course-source-target-header-space" aria-hidden="true"></span>' +
     '<div>' +
     '<h2 id="course-source-target-title">Fontes</h2>' +
-    (state.targetLabel ? `<p class="course-source-target-context">${escapeHtml(state.targetLabel)}</p>` : "") + '</div>' +
+    (state.targetLabel ? `<div class="course-source-target-context"><strong>${escapeHtml(state.targetLabel.replace(/^(?:Unidade|Explicação)\s*·\s*/u, ""))}</strong><small>${state.targetKind === "microsequence_explanation" ? "Explicação" : state.targetKind === "study_unit" ? "Unidade" : "Planejamento"}</small></div>` : "") + '</div>' +
     '<button type="button" data-source-action="close-target" aria-label="Fechar" title="Fechar">' +
     `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>`;
   if (state.selectedSourceId || state.sourceEditor) {
@@ -1004,7 +1004,7 @@ function renderTargetPanel(state) {
           `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy || !targetAttributionReady(state) || targetOccurrenceIssue(state) ? " disabled" : ""}>` +
           `${renderUiIcon("save", "course-authoring-button-icon")}</button></div></section>`) +
     '<section class="course-source-available"><header><h3>Fontes do curso</h3>' +
-    `<button type="button" data-source-action="add-source" aria-label="Nova fonte: PDF ou link" title="Nova fonte: PDF ou link"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
+    `<button type="button" data-source-action="add-source" aria-label="Nova fonte: documento ou link" title="Nova fonte: documento ou link"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderCatalog(state, { selectable: true }) + "</section></div></section>";
 }
 

@@ -119,3 +119,20 @@ test("render de títulos e rótulos hostis não cria elementos ou atributos exec
     assert(!html.includes(' onerror="'));
   }
 });
+
+
+test("controles das ferramentas têm nomes acessíveis sem confundir ações com conteúdo autoral", () => {
+  const calculator = calculatorPackage.render(calculatorPackage.authoringContract.example);
+  assert.match(calculator, /aria-label="Calcular" title="Calcular"><svg/u);
+  assert.match(calculator, /data-calculator-clear aria-label="Limpar"/u);
+  assert.match(calculator, /<label for="[^"]+">Expressão<input/u);
+  assert.match(calculator, /<dt>Precisão<\/dt><dd>Até 12/u);
+  const data = structuredClone(grammarPackage.authoringContract.example);
+  const grammar = grammarPackage.render(data);
+  assert(grammar.includes(data.title));
+  assert(grammar.includes(data.prompt));
+  assert(grammar.includes(data.items[0].description));
+  assert.match(grammar, /class="package-tool-resource"/u);
+  assert(grammar.includes(`aria-label="${data.items[0].label}"`));
+  assert(grammarPackage.editableTargets(data).some(({ path }) => path === "prompt"));
+});

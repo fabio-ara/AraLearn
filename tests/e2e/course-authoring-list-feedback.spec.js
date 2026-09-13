@@ -92,7 +92,7 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
         return { visible: node.matches(":focus-visible"), width: style.outlineWidth,
           offset: style.outlineOffset, color: style.outlineColor, expectedColor };
       });
-      expect(focus).toMatchObject({ visible: true, width: "2px", offset: "-2px", color: focus.expectedColor });
+      expect(focus).toMatchObject({ visible: true, width: "2px", offset: "2px", color: focus.expectedColor });
     };
     await assertTextFocus(title);
     await page.keyboard.press("End");

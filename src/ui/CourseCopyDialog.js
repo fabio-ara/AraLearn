@@ -1,4 +1,5 @@
 import { createCourseCopyRequestIdentity, normalizeCourseCopyRequest } from "../domain/courseCopy.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
 
 const escapeHtml = value => String(value ?? "").replaceAll("&", "&amp;")
@@ -21,8 +22,7 @@ export function createCourseCopyDialog({ root, controller, onCopied }) {
     const ready = state.source || state.pending;
     dialog.innerHTML = '<h2 id="course-copy-title">Copiar curso</h2>' +
       '<form data-course-copy-form><div class="course-copy-body">' +
-      '<p id="course-copy-description">Cópia privada e independente do conteúdo, mapa, parâmetros e arquivos. ' +
-      'Sem acessos, progresso ou observações.</p>' +
+      '<p id="course-copy-description">Uma cópia privada do curso, sem progresso ou observações.</p>' +
       '<div class="course-copy-field">' +
         '<label for="course-copy-name">Título da cópia</label>' +
         `<input id="course-copy-name" name="title" maxlength="300" required autocomplete="off"` +
@@ -30,13 +30,12 @@ export function createCourseCopyDialog({ root, controller, onCopied }) {
         '<div class="course-copy-feedback" aria-live="polite">' +
         (state.loading ? '<p role="status">Conferindo o curso…</p>' : "") +
         (state.failure ? `<p role="alert">${escapeHtml(state.failure)}</p>` : "") +
-        (state.pending ? '<p>Repetir confirma a mesma cópia.</p>' : "") +
         '</div></div>' +
         '<div class="course-authoring-confirm-actions">' +
-        `<button type="button" data-copy-close${state.busy ? " disabled" : ""}>Cancelar</button>` +
-        (ready ? `<button type="submit" class="is-primary"${state.busy ? " disabled" : ""}>` +
-        `${state.busy ? "Confirmando…" : state.pending ? "Repetir pedido" : "Criar cópia"}</button></div></form>` :
-        `<button type="button" data-copy-reload${state.loading ? " disabled" : ""}>Conferir novamente</button></div></form>`);
+        `<button type="button" data-copy-close aria-label="Cancelar" title="Cancelar"${state.busy ? " disabled" : ""}>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
+        (ready ? `<button type="submit" class="is-primary" aria-label="${state.busy ? "Confirmando…" : state.pending ? "Repetir pedido" : "Criar cópia"}" title="${state.pending ? "Repetir pedido" : "Criar cópia"}"${state.busy ? " disabled" : ""}>` +
+        `${renderUiIcon(state.pending ? "rotate" : "copy", "course-authoring-button-icon")}</button></div></form>` :
+        `<button type="button" data-copy-reload aria-label="Conferir novamente" title="Conferir novamente"${state.loading ? " disabled" : ""}>${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div></form>`);
   };
   const close = () => {
     if (state.busy) return;
@@ -100,7 +99,7 @@ export function createCourseCopyDialog({ root, controller, onCopied }) {
       close();
       onCopied(result.course);
     }, async error => {
-      state.failure = publicErrorMessage(error, "Não foi possível confirmar a cópia. Repita o mesmo pedido.");
+      state.failure = publicErrorMessage(error, "Cópia não confirmada. Tente novamente.");
       // The controller clears only a definitive rejection. An uncertain response
       // retains its original identity across this dialog and application reloads.
       try { state.pending = await controller.loadPendingCourseCopy(request.sourceCourseId); }

@@ -27,11 +27,11 @@ function parameterField(definition) {
       `<option value="${option}"${option === definition.defaultValue ? " selected" : ""}>${escapeHtml(definition.optionLabels[option] || option)}</option>`).join("")}</select>`;
   return `<fieldset class="authoring-process-parameter" data-process-parameter="${definition.id}">
     <legend>${escapeHtml(definition.label)}</legend>
-    <label for="${id}-mode">Escolha pessoal</label>
+    <label class="visually-hidden" for="${id}-mode">Escolha para ${escapeHtml(definition.label)}</label>
     <select id="${id}-mode" data-process-mode="${definition.id}"><option value="automatic">Automática</option><option value="fixed">Definir valor</option></select>
     <div data-process-value-group="${definition.id}" hidden><label for="${id}-value">${escapeHtml(definition.unitLabel)}</label>${value}</div>
-    <details class="authoring-process-help"><summary>Significado e alcance</summary>
-      <p>${escapeHtml(definition.construct)}</p><p>${escapeHtml(definition.operationalization)}</p><p>${escapeHtml(definition.limitations)}</p>
+    <details class="authoring-process-help authoring-process-parameter-help"><summary aria-label="Sobre ${escapeHtml(definition.label)}" title="Sobre ${escapeHtml(definition.label)}">${renderUiIcon("info", "account-settings-action-icon")}</summary>
+      <p>${escapeHtml(definition.construct)}</p>
     </details>
   </fieldset>`;
 }
@@ -46,11 +46,11 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
   let editVersion = 0;
   let readGeneration = 0;
   root.innerHTML = `<form class="authoring-process-settings" data-process-form>
-    <p class="authoring-process-origin" data-process-origin>Preferências da sua conta</p>
-    <p class="authoring-process-scope">Padrão pessoal para iniciar trabalhos de autoria. Alterações ficam disponíveis na próxima leitura do assistente.</p>
+    <p class="authoring-process-origin visually-hidden" data-process-origin>Preferências da sua conta</p>
+    <p class="authoring-process-scope">Suas preferências para novos trabalhos.</p>
     <details class="authoring-process-help"><summary>Alcance das preferências</summary>
-      <p>Escolhas do curso e condições de pesquisa continuam ligadas aos seus objetos e prevalecem quando aplicáveis. Um trabalho já combinado conserva seu acordo até uma mudança expressa.</p>
-      <p>Salvar aqui não altera cursos, bases, unidades, perfis salvos ou declarações de revisão.</p>
+      <p>Escolhas específicas do curso têm prioridade.</p>
+      <p>Cursos existentes não são alterados.</p>
     </details>
     <fieldset class="authoring-process-fields" data-process-fields disabled>
       <legend class="visually-hidden">Processo pessoal de autoria</legend>
@@ -59,27 +59,27 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
         <p>Conteúdo trabalha bases e fontes. Ciclo completo inclui também desenho e unidades no recorte combinado.</p></div>
       <div class="authoring-process-field"><label for="authoring-process-cadence">Cadência do trabalho</label>
         <select id="authoring-process-cadence" data-process-cadence><option value="microsequence">Microssequência</option><option value="part">Parte</option><option value="batch">Lote</option></select>
-        <p>Organiza o fluxo. Tamanhos e frequência de pausa têm escolhas próprias abaixo.</p></div>
+        </div>
       <fieldset class="authoring-process-review"><legend>Pontos de revisão</legend>
         ${Object.entries(reviewLabels).map(([key, label]) => `<label><input type="checkbox" data-process-review="${key}"><span>${label}</span></label>`).join("")}
-        <p>Indicam onde inspecionar; selecionar um ponto não declara revisão.</p>
+
       </fieldset>
       ${["conversation", "cadence"].map(group => `<section class="authoring-process-group" aria-label="${group === "conversation" ? "Diálogo com o assistente" : "Organização da produção"}">
         <h3>${group === "conversation" ? "Diálogo com o assistente" : "Organização da produção"}</h3>
         ${AUTHORING_PROCESS_PARAMETER_DEFINITIONS.filter(definition => definition.group === group).map(parameterField).join("")}</section>`).join("")}
     </fieldset>
     <section class="authoring-process-conflict" data-process-conflict hidden aria-label="Preferências salvas em outro acesso">
-      <p>As preferências da conta mudaram em outro acesso. Seu rascunho está preservado.</p>
+      <p>Preferências alteradas em outro acesso. Escolha qual manter.</p>
       <details><summary>Comparar com o que está salvo</summary><dl data-process-remote-values></dl></details>
-      <button type="button" data-process-keep-draft>Continuar com meu rascunho</button>
-      <button type="button" data-process-use-saved>Usar preferências salvas</button>
+      <button class="icon-ghost" type="button" data-process-keep-draft aria-label="Continuar com meu rascunho" title="Continuar com meu rascunho">${renderUiIcon("edit", "account-settings-action-icon")}</button>
+      <button class="icon-ghost" type="button" data-process-use-saved aria-label="Usar preferências salvas" title="Usar preferências salvas">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
     </section>
     <div class="authoring-process-actions">
       <button class="icon-ghost is-primary" type="submit" data-process-save disabled title="Salvar preferências" aria-label="Salvar preferências">${renderUiIcon("save", "account-settings-action-icon")}</button>
       <button class="icon-ghost" type="button" data-process-reload title="Atualizar preferências salvas" aria-label="Atualizar preferências salvas">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
       <p data-process-status role="status" aria-live="polite"></p>
     </div>
-    <details class="authoring-process-help"><summary>Ajuda das ações</summary><p>Salvar confirma suas escolhas na conta. Atualizar consulta o que está salvo e conserva alterações ainda não enviadas.</p></details>
+
   </form>`;
   const form = root.querySelector("[data-process-form]");
   const fields = root.querySelector("[data-process-fields]");
@@ -154,12 +154,12 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
       if (destroyed || generation !== readGeneration) return;
       if (read && (wasDirty || editVersion !== version)) {
         if (next.revision !== read.revision || !equal(next.preferences, read.preferences)) showIncoming(next);
-        status.textContent = "Preferências consultadas. Seu rascunho foi preservado.";
+        status.textContent = "Rascunho mantido.";
       } else {
         read = next;
         incoming = null;
         applyPreferences(next.preferences);
-        status.textContent = next.revision ? "Preferências salvas na conta." : "Padrão inicial disponível. Altere os campos para salvar sua preferência.";
+        status.textContent = next.revision ? "Preferências salvas na conta." : "";
       }
     } catch (error) {
       if (!destroyed && generation === readGeneration) status.textContent = publicErrorMessage(error, "Não foi possível consultar as preferências. Tente atualizar.");
@@ -168,7 +168,7 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
   const onEdit = () => {
     editVersion += 1;
     syncModes();
-    status.textContent = pending ? "Há uma gravação pendente de confirmação. Suas alterações posteriores continuam neste rascunho." : "Alterações ainda não salvas.";
+    status.textContent = pending ? "Salvamento não confirmado." : "Alterações ainda não salvas.";
     updateState();
   };
   const reconcilePending = async command => {
@@ -206,7 +206,7 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
       read = normalizeAuthoringProcessPreferencesRead({ contract: AUTHORING_PROCESS_PREFERENCES_CONTRACT,
         revision: result.revision, preferences: result.preferences, updatedAt: result.updatedAt });
       pending = null;
-      status.textContent = dirty() ? "Preferências enviadas salvas. Há alterações posteriores no rascunho." : "Preferências salvas na conta.";
+      status.textContent = dirty() ? "Salvo. Há novas alterações." : "Preferências salvas na conta.";
     } catch (error) {
       if (destroyed || pending !== command) return;
       const statusCode = Number(error?.status || 0);
@@ -225,7 +225,7 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
         try { if (await reconcilePending(command)) return; }
         catch { /* A falha de leitura mantém a mesma tentativa e o rascunho. */ }
         if (destroyed || pending !== command) return;
-        status.textContent = "A gravação ainda não foi confirmada. Use Confirmar gravação pendente para recuperar o mesmo pedido.";
+        status.textContent = "Salvamento não confirmado. Tente confirmar.";
       }
     } finally { if (!destroyed) { saving = false; updateState(); } }
   });
@@ -236,7 +236,7 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
       incoming = null;
       if (useSaved) applyPreferences(read.preferences);
       editVersion += 1;
-      status.textContent = useSaved ? "Preferências salvas carregadas." : "Rascunho preservado. Salvar substituirá as preferências da conta que você acabou de comparar.";
+      status.textContent = useSaved ? "Preferências salvas carregadas." : "Rascunho mantido. Salve para aplicar.";
       updateState();
     });
   }

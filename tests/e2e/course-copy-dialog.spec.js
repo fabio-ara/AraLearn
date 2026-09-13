@@ -50,6 +50,9 @@ test("cópia mantém quadro e ações entre carregamento, recusa e repetição d
     expect(844 - initial.frame.bottom).toBe(8);
     expect(initial.actions[0].y).toBe(initial.actions[1].y);
     expect(initial.actions[1].height).toBe(44);
+    expect(initial.actions[1].width).toBe(44);
+    await expect(dialog.locator(".course-authoring-confirm-actions button").first()).toHaveText("");
+    await expect(dialog.locator(".course-authoring-confirm-actions button").last()).toHaveText("");
     expect(initial.frame.bottom - initial.actions[1].bottom).toBe(17);
     await title.fill("Cópia própria com título extenso " + "teste ".repeat(40));
     expect(await geometry()).toEqual(initial);

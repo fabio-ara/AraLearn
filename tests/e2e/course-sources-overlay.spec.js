@@ -216,24 +216,26 @@ async function mountCitationEditor(page, { theme, targetKind, bibliographyStyle 
   }, { theme, targetKind, bibliographyStyle });
 }
 
-for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_explanation", "abnt-2025"], ["dark", "study_unit", "apa7"]]) {
-  test(`Fonte nova recebe PDF e link e exige trecho exato em ${targetKind}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+for (const width of [390, 430, 1280]) for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_explanation", "abnt-2025"], ["dark", "study_unit", "apa7"]]) {
+  test(`Fonte nova recebe documento e link e exige trecho exato em ${targetKind} ${width}`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
     await mountCitationEditor(page, { theme, targetKind, bibliographyStyle });
     await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
     const catalogReference = page.locator('.course-source-card [data-source-action="open-source"]');
     await expect(catalogReference).toContainText(bibliographyStyle === "abnt-2025" ? "SILVA, A." : "Silva, A. (2026)");
     await expect(catalogReference).toContainText("Redes e comunicação");
-    await page.screenshot({ path: testInfo.outputPath(`citation-catalog-390-${theme}.png`) });
-    await page.getByRole("button", { name: "Nova fonte: PDF ou link", exact: true }).click();
+    await page.screenshot({ path: testInfo.outputPath(`citation-catalog-${width}-${theme}.png`) });
+    await page.getByRole("button", { name: "Nova fonte: documento ou link", exact: true }).click();
     const form = page.locator('[data-source-form="source"]');
-    await expect(form.getByRole("heading", { name: "PDF ou link", exact: true })).toBeVisible();
+    await expect(form.getByRole("heading", { name: "Documento ou link", exact: true })).toBeVisible();
     await form.getByLabel("Título, quando conhecido", { exact: true }).fill("Leitura complementar sintética");
-    await form.getByLabel("Link da página ou do PDF", { exact: true }).fill("https://example.test/leitura.pdf");
+    await form.getByLabel("Link", { exact: true }).fill("https://example.test/leitura.pdf");
     const pdf = Buffer.from("%PDF-1.4\n% Arquivo sintético da prova de envio\n%%EOF\n");
     await form.locator("[data-source-new-pdf-input]").setInputFiles({ name: "leitura.pdf", mimeType: "application/pdf", buffer: pdf });
     await expect(form).toContainText("leitura.pdf");
-    await page.screenshot({ path: testInfo.outputPath(`citation-intake-390-${theme}.png`) });
+    await expect(form.locator("input[name=title]")).toHaveCSS("font-weight", "400");
+    await expect(form.locator("select[name=citationMode]")).toHaveCSS("font-weight", "400");
+    await page.screenshot({ path: testInfo.outputPath(`citation-intake-${width}-${theme}.png`) });
     await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.uploads.length)).toBe(1);
     const document = page.getByRole("link", { name: /^Documento/ });
@@ -250,8 +252,12 @@ for (const [theme, targetKind, bibliographyStyle] of [["light", "microsequence_e
       const start = node.value.lastIndexOf(quote);
       node.setSelectionRange(start, start + quote.length);
     }, quote);
-    await expect(page.getByText("O número 2 aparecerá automaticamente após o trecho.", { exact: true })).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath(`citation-selection-390-${theme}.png`) });
+    await expect(page.getByText("O número 2 aparecerá automaticamente após o trecho.", { exact: true })).toHaveCount(0);
+    const geometry = await selectedText.evaluate(node => { const box = node.getBoundingClientRect(); const parent = node.closest(".course-source-target-body").getBoundingClientRect(); return { left: box.left - parent.left, right: parent.right - box.right, weight: getComputedStyle(node).fontWeight }; });
+    expect(geometry.left).toBeGreaterThanOrEqual(6);
+    expect(geometry.right).toBeGreaterThanOrEqual(6);
+    expect(geometry.weight).toBe("400");
+    await page.screenshot({ path: testInfo.outputPath(`citation-selection-${width}-${theme}.png`) });
     await page.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
     await expect(page.getByText(quote, { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Salvar fontes", exact: true }).click();

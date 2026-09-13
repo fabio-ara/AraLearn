@@ -53,7 +53,7 @@
 .authoring-process-conflict dl { display: grid; gap: 5px; margin: 10px 0; }
 .authoring-process-conflict dt { font-weight: var(--weight-label); }
 .authoring-process-conflict dd { margin: 0 0 6px; }
-.authoring-process-actions { display: grid; grid-template-columns: 44px 44px minmax(0,1fr); align-items: center; gap: 8px; }
+.authoring-process-actions { display: grid; grid-template-columns: minmax(0,1fr) 44px 44px; align-items: center; gap: 8px; }
 .authoring-process-actions button { width: 44px; height: 44px; }
 .authoring-process-actions p { overflow-wrap: anywhere; font-size: var(--type-sm); color: var(--text-secondary); }
 .course-authoring-list-header:has([data-course-authoring-action="open-settings"]) {
@@ -78,3 +78,13 @@
   .course-authoring-context-shell .course-authoring-context-topbar { height: auto; }
   .course-authoring-course-header:has([data-action="open-settings"]) .course-authoring-primary-navigation { margin-right: auto; }
 }
+
+.authoring-process-actions [data-process-status] { grid-column: 1; grid-row: 1; font-size: var(--type-xs); }
+.authoring-process-actions [data-process-save] { grid-column: 2; grid-row: 1; }
+.authoring-process-actions [data-process-reload] { grid-column: 3; grid-row: 1; }
+.authoring-process-group > .authoring-process-parameter { margin-inline-start: var(--space-section); }
+.authoring-process-group > h3 { font-weight: var(--weight-title); }
+.authoring-process-parameter legend { color: var(--text-primary); font-size: var(--type-sm); }
+.authoring-process-settings .authoring-process-parameter-help { padding-inline-start: 0; }
+.authoring-process-settings .authoring-process-parameter-help > summary { display: grid; place-items: center; width: var(--tap); margin-inline-start: auto; padding: 0; list-style: none; }
+.authoring-process-parameter-help > p { padding-block: var(--space-copy); font-size: var(--type-xs); font-weight: var(--weight-body); }
