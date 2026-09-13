@@ -299,6 +299,11 @@ for (const width of [390, 430, 1280]) for (const theme of ["light", "dark"]) {
       return [range.getBoundingClientRect().left, node.querySelector("p").getBoundingClientRect().left, node.querySelector("label").getBoundingClientRect().left];
     });
     expect(Math.max(...alignment) - Math.min(...alignment)).toBeLessThanOrEqual(1);
+    const markerLine = await access.locator("summary").evaluate(node => {
+      const text = getComputedStyle(node), marker = getComputedStyle(node, "::before");
+      return { text: text.lineHeight, marker: marker.lineHeight };
+    });
+    expect(markerLine.marker).toBe(markerLine.text);
     await expect(dialog.getByRole("heading", { name: "Documentos", exact: true })).toBeVisible();
     expect(await access.evaluate(node => node.closest(".course-authoring-section"))).toBeNull();
     expect(await access.locator("option").evaluateAll(nodes => nodes.map(node => node.value))).toEqual(["inherit", "restricted", "available"]);

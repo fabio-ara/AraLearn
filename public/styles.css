@@ -6514,7 +6514,10 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
   position: absolute;
   inset-inline-start: 0;
   width: var(--space-section);
-  font-size: 0.8em;
+  font-size: inherit;
+  line-height: inherit;
+  transform: scale(0.8);
+  transform-origin: left center;
 }
 :is(.study-device-settings details, .authoring-process-settings details:not(.authoring-process-parameter-help),
     .study-tool-body details, .course-design-explanation,
