@@ -123,9 +123,10 @@ Acrescente verificações conforme a área:
 | Banco e funções executadas no servidor | [Testes locais](docs/supabase.md): Deno executa os testes das funções, e pgTAP verifica o banco |
 | Documentação | `npm run audit:docs` e verificação de links locais |
 
-A automação distingue alterações apenas documentais de candidatas que exigem validação
-integral. Nesta última, usa Node.js 22 e Java 17 e verifica o aplicativo, o banco e os
-artefatos web e Android antes da publicação.
+A automação classifica o delta e mantém um único check protegido, **Testar e validar**.
+Web, Android e Supabase executam somente quando aplicáveis; caminhos desconhecidos,
+orquestração e classificação inconclusiva exigem o conjunto completo. O certificado
+liga essas decisões ao SHA e não aceita falha, cancelamento ou ausência como dispensa.
 
 ## Alterar ou criar um componente didático
 

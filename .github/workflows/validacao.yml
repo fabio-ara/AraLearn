@@ -22,6 +22,9 @@ jobs:
     outputs:
       docs_only: ${{ steps.paths.outputs.docs_only }}
       requires_supabase: ${{ steps.paths.outputs.requires_supabase }}
+      requires_web: ${{ steps.paths.outputs.requires_web }}
+      requires_android: ${{ steps.paths.outputs.requires_android }}
+      applicability: ${{ steps.paths.outputs.applicability }}
       trusted_origin: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       ready_for_integral: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     steps:
@@ -74,15 +77,16 @@ jobs:
         run: node ./scripts/validateCourseRuntime.mjs
 
   web:
-    name: Testar web e Android
+    name: Testar web
     needs: preparar
-    if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.ready_for_integral == 'true'
+    if: needs.preparar.outputs.requires_web == 'true' && needs.preparar.outputs.ready_for_integral == 'true'
     runs-on: windows-latest
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.validation/playwright-browsers
     outputs:
       pages_id: ${{ steps.pages.outputs.artifact-id }}
       pages_digest: ${{ steps.pages.outputs.artifact-digest }}
+      toolchain: ${{ steps.toolchain.outputs.value }}
 
     steps:
       - name: Baixar repositório
@@ -96,18 +100,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Preparar Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17
-          cache: gradle
-          cache-dependency-path: |
-            android/**/*.gradle.kts
-            android/gradle/wrapper/gradle-wrapper.properties
-
       - name: Instalar dependências
         run: npm ci
+
+      - name: Registrar ferramentas web
+        id: toolchain
+        shell: bash
+        run: |
+          node --input-type=module -e 'import fs from "node:fs"; fs.appendFileSync(process.env.GITHUB_OUTPUT, "value=" + JSON.stringify({node:process.version,runner:process.env.ImageOS,image:process.env.ImageVersion,architecture:process.arch}) + "\n");'
 
       - name: Executar testes
         run: npm run test:runtime
@@ -159,6 +159,49 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Validar exemplo público
+        run: npm run validate:example
+
+  android:
+    name: Testar Android
+    needs: preparar
+    if: needs.preparar.outputs.requires_android == 'true' && needs.preparar.outputs.ready_for_integral == 'true'
+    runs-on: windows-latest
+    outputs:
+      artifact_id: ${{ steps.runtime.outputs.artifact-id }}
+      artifact_digest: ${{ steps.runtime.outputs.artifact-digest }}
+      toolchain: ${{ steps.toolchain.outputs.value }}
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Preparar Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle.kts
+            android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Registrar ferramentas Android
+        id: toolchain
+        shell: pwsh
+        run: >-
+          node --input-type=module -e 'import fs from "node:fs"; import {spawnSync} from "node:child_process"; const java=spawnSync("java",["-version"],{encoding:"utf8"}); if(java.status!==0)process.exit(java.status||1); fs.appendFileSync(process.env.GITHUB_OUTPUT, "value=" + JSON.stringify({node:process.version,java:(java.stdout+java.stderr).trim(),runner:process.env.ImageOS,image:process.env.ImageVersion,architecture:process.arch}) + "\n");'
+
       - name: Compilar aplicativo Android
         env:
           ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
@@ -171,14 +214,13 @@ jobs:
           pwsh -NoProfile -File .\scripts\verifyDeploymentArtifacts.ps1
           -Target Android -RequireRuntimeConfig
 
-      - name: Guardar APK de teste da candidata
-        if: >-
-          ${{ needs.preparar.outputs.docs_only == 'false' &&
-              (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
+      - name: Guardar runtime Android da candidata
+        id: runtime
         uses: actions/upload-artifact@v4
         with:
-          name: aralearn-android-debug-candidate-${{ github.run_attempt }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: aralearn-android-runtime-candidate-${{ github.run_attempt }}
+          path: android/app/build/generated/web-assets/main/www
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
@@ -189,30 +231,10 @@ jobs:
           ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
         run: .\gradlew.bat :app:lintDebug --no-daemon
 
-      - name: Validar exemplo público
-        run: npm run validate:example
-
-      - name: Registrar identidade e bytes da candidata
-        if: needs.preparar.outputs.trusted_origin == 'true'
-        env:
-          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
-          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
-        run: node ./scripts/releaseCandidate.mjs record
-
-      - name: Guardar identidade para o gate
-        if: needs.preparar.outputs.trusted_origin == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: aralearn-candidate-metadata-${{ github.run_attempt }}
-          path: .candidate/candidate.json
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 7
-
   supabase:
     name: Testar Supabase local
     needs: preparar
-    if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.ready_for_integral == 'true'
+    if: needs.preparar.outputs.requires_supabase == 'true' && needs.preparar.outputs.ready_for_integral == 'true'
     runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.validation/playwright-browsers
@@ -551,62 +573,77 @@ jobs:
 
   validacao:
     name: Testar e validar
-    needs: [preparar, web, supabase]
+    needs: [preparar, web, android, supabase]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Exigir todas as provas aplicáveis
-        env:
-          PREPARATION_RESULT: ${{ needs.preparar.result }}
-          WEB_RESULT: ${{ needs.web.result }}
-          SUPABASE_RESULT: ${{ needs.supabase.result }}
-          DOCS_ONLY: ${{ needs.preparar.outputs.docs_only }}
-          READY_FOR_INTEGRAL: ${{ needs.preparar.outputs.ready_for_integral }}
-        run: |
-          node --input-type=module <<'NODE'
-          import assert from "node:assert/strict";
-          const { PREPARATION_RESULT, DOCS_ONLY, READY_FOR_INTEGRAL, WEB_RESULT, SUPABASE_RESULT } = process.env;
-          assert.equal(PREPARATION_RESULT, "success", "O preflight da candidata não passou.");
-          assert.ok(["true", "false"].includes(DOCS_ONLY), "Classificação ausente ou inválida.");
-          if (DOCS_ONLY === "false") {
-            assert.equal(READY_FOR_INTEGRAL, "true", "PR em rascunho: falta concluir candidate:ready antes da integral.");
-            assert.equal(WEB_RESULT, "success", "A prova integral web e Android não passou.");
-            assert.equal(SUPABASE_RESULT, "success", "A prova integral Supabase não passou.");
-          }
-          NODE
-
       - name: Baixar repositório
-        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Preparar Node.js
-        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 22
 
-      - name: Baixar identidade da candidata
-        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
+      - name: Exigir todas as provas aplicáveis
+        env:
+          APPLICABILITY: ${{ needs.preparar.outputs.applicability }}
+          PREPARATION_RESULT: ${{ needs.preparar.result }}
+          WEB_RESULT: ${{ needs.web.result }}
+          ANDROID_RESULT: ${{ needs.android.result }}
+          SUPABASE_RESULT: ${{ needs.supabase.result }}
+          READY_FOR_INTEGRAL: ${{ needs.preparar.outputs.ready_for_integral }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { certifyGateResults } from "./scripts/candidateApplicability.mjs";
+          const applicability = JSON.parse(process.env.APPLICABILITY || "null");
+          if (Object.entries(applicability.gates).some(([gate, required]) => gate !== "preparation" && required) &&
+              process.env.READY_FOR_INTEGRAL !== "true") throw new Error("PR em rascunho: falta concluir candidate:ready antes dos gates aplicáveis.");
+          certifyGateResults(applicability, {
+            preparation: process.env.PREPARATION_RESULT,
+            web: process.env.WEB_RESULT,
+            android: process.env.ANDROID_RESULT,
+            supabase: process.env.SUPABASE_RESULT
+          });
+          NODE
+
+      - name: Baixar artefato Pages aplicável
+        if: needs.preparar.outputs.trusted_origin == 'true' && needs.preparar.outputs.requires_web == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: aralearn-candidate-metadata-${{ github.run_attempt }}
-          path: .candidate
+          artifact-ids: ${{ needs.web.outputs.pages_id }}
+          path: .pages
 
-      - name: Vincular manifesto ao gate integral
-        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
+      - name: Baixar runtime Android aplicável
+        if: needs.preparar.outputs.trusted_origin == 'true' && needs.preparar.outputs.requires_android == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          path: .candidate/android-runtime
+
+      - name: Registrar certificado proporcional da candidata
+        if: needs.preparar.outputs.trusted_origin == 'true'
         env:
-          DOCS_ONLY: ${{ needs.preparar.outputs.docs_only }}
+          APPLICABILITY: ${{ needs.preparar.outputs.applicability }}
+          PREPARATION_RESULT: ${{ needs.preparar.result }}
           WEB_RESULT: ${{ needs.web.result }}
+          ANDROID_RESULT: ${{ needs.android.result }}
           SUPABASE_RESULT: ${{ needs.supabase.result }}
           PAGES_ARTIFACT_ID: ${{ needs.web.outputs.pages_id }}
           PAGES_ARTIFACT_DIGEST: ${{ needs.web.outputs.pages_digest }}
+          ANDROID_ARTIFACT_ID: ${{ needs.android.outputs.artifact_id }}
+          ANDROID_ARTIFACT_DIGEST: ${{ needs.android.outputs.artifact_digest }}
+          WEB_TOOLCHAIN: ${{ needs.web.outputs.toolchain }}
+          ANDROID_TOOLCHAIN: ${{ needs.android.outputs.toolchain }}
           SUPABASE_TOOLCHAIN: ${{ needs.supabase.outputs.toolchain }}
-        run: node ./scripts/releaseCandidate.mjs seal
+          ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
+          ARALEARN_SUPABASE_PUBLISHABLE_KEY: ${{ vars.ARALEARN_SUPABASE_PUBLISHABLE_KEY }}
+        run: node ./scripts/releaseCandidate.mjs record
 
-      - name: Guardar prova integral da candidata
-        if: needs.preparar.outputs.docs_only == 'false' && needs.preparar.outputs.trusted_origin == 'true'
+      - name: Guardar certificado da candidata
+        if: needs.preparar.outputs.trusted_origin == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: aralearn-candidate-manifest-${{ github.run_attempt }}

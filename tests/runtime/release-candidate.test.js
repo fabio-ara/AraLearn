@@ -14,6 +14,7 @@ import {
   GITHUB_RELEASE_ASSET_ACCEPT,
   githubApiAccept,
   output,
+  requiredCandidateArtifacts,
   releasePlan,
   releaseAssetUploadUrl,
   selectReleaseByTag,
@@ -27,8 +28,14 @@ import {
   validateRun,
   validateVersionProgress,
   verifyAndroid,
+  verifyCandidatePages,
   verifyDirectory
 } from "../../scripts/releaseCandidate.mjs";
+import {
+  certifyGateResults,
+  createCandidateApplicability,
+  validateCandidateApplicability
+} from "../../scripts/candidateApplicability.mjs";
 import { DEFAULT_ASSIST_ALLOWED_ORIGINS } from "../../src/assist/providerRuntimeSecurity.js";
 
 const REPOSITORY = "fabio-ara/AraLearn";
@@ -106,30 +113,47 @@ test("retomada exige promoção concluída da mesma main e as etapas reais da fa
     ["Instalar e atualizar APK assinado", "Provar instalação e upgrade sem conta"]]
     .map(([name, step]) => ({ name, conclusion: "success", steps: [{ name: step, conclusion: "success" }] }));
   const identity = { repository: REPOSITORY, sha: TARGET_SHA, attempt: 2, phase: "preparar" };
-  validatePromotionRun(info, jobs, identity);
+  const manifest = candidate();
+  validatePromotionRun(info, jobs, identity, manifest);
   for (const change of [{ head_sha: HEAD_SHA }, { run_attempt: 3 }, { conclusion: "failure" },
     { status: "in_progress" }, { head_branch: "other" }, { event: "push" }, { path: ".github/workflows/validacao.yml" },
     { head_repository: { full_name: "fork/app" } }]) {
-    assert.throws(() => validatePromotionRun({ ...info, ...change }, jobs, identity));
+    assert.throws(() => validatePromotionRun({ ...info, ...change }, jobs, identity, manifest));
   }
   for (const invalid of [jobs.slice(1), [...jobs, jobs[1]], [jobs[0], { ...jobs[1], steps: [] }]]) {
-    assert.throws(() => validatePromotionRun(info, invalid, identity));
+    assert.throws(() => validatePromotionRun(info, invalid, identity, manifest));
   }
-  assert.throws(() => validatePromotionRun(info, jobs, { ...identity, phase: "publicar_site" }));
-  validatePromotionRun(info, [{ name: "Publicar Pages aprovado", conclusion: "success", steps: [
-    { name: "Conferir bytes efetivamente publicados", conclusion: "success" }] }], { ...identity, phase: "publicar_site" });
+  assert.throws(() => validatePromotionRun(info, jobs, { ...identity, phase: "publicar_site" }, manifest));
+  validatePromotionRun(info, [{ name: "Publicar superfícies aprovadas", conclusion: "success", steps: [
+    { name: "Registrar promoção das superfícies aplicáveis", conclusion: "success" },
+    { name: "Conferir bytes efetivamente publicados", conclusion: "success" },
+    { name: "Conferir backend hospedado depois do corte", conclusion: "success" },
+    { name: "Guardar os mesmos bytes na Release em rascunho", conclusion: "success" }
+  ] }], { ...identity, phase: "publicar_site" }, manifest);
+  const proportional = candidate({ web: true, android: false, supabase: false });
+  validatePromotionRun(info, [{ name: "Publicar superfícies aprovadas", conclusion: "success", steps: [
+    { name: "Registrar promoção das superfícies aplicáveis", conclusion: "success" },
+    { name: "Conferir bytes efetivamente publicados", conclusion: "success" }
+  ] }], { ...identity, phase: "publicar_site" }, proportional);
 });
 
 test("backend pendente não é prova e verificação posterior não muda manifesto nativo", () => {
-  const candidate = { preparation: "synthetic-immutable" };
-  const before = structuredClone(candidate);
-  for (const proof of [null, {}, { manifestSha256: digest(JSON.stringify(candidate)), backend: null },
-    { manifestSha256: "0".repeat(64), backend: { schemaRevision: "20260908003749" } }]) {
-    assert.throws(() => validateBackendProof(candidate, proof));
+  const manifest = candidate();
+  const before = structuredClone(manifest);
+  for (const proof of [null, {}, { manifestSha256: digest(JSON.stringify(manifest)), backend: null },
+    { manifestSha256: "0".repeat(64), status: "verified", backend: { schemaRevision: "20260908003749" } }]) {
+    assert.throws(() => validateBackendProof(manifest, proof));
   }
   const backend = { schemaRevision: "20260908003749" };
-  assert.equal(validateBackendProof(candidate, { manifestSha256: digest(JSON.stringify(candidate)), backend }), backend);
-  assert.deepEqual(candidate, before);
+  assert.equal(validateBackendProof(manifest, { manifestSha256: digest(JSON.stringify(manifest)), status: "verified", backend }), backend);
+  assert.deepEqual(manifest, before);
+  const withoutBackend = candidate({ web: true, android: false, supabase: false });
+  assert.equal(validateBackendProof(withoutBackend, {
+    manifestSha256: digest(JSON.stringify(withoutBackend)), status: "not_applicable"
+  }), null);
+  assert.throws(() => validateBackendProof(withoutBackend, {
+    manifestSha256: digest(JSON.stringify(withoutBackend)), status: "verified", backend
+  }));
 });
 
 test("finalização recusa outro APK e recibo coerentes entre si mas alheios à prova nativa", () => {
@@ -185,9 +209,22 @@ function fileList(bodies) {
     path: name, sha256: digest(bodies[name]), size: bodies[name].length
   }));
 }
-function candidate() {
-  return {
+function candidate({ web = true, android = true, supabase = true } = {}) {
+  const applicability = createCandidateApplicability({
     schemaVersion: 1,
+    categories: web && android && supabase ? ["orchestration"] : [],
+    unknownPaths: [],
+    requires: { web, android, supabase }
+  }, { baseSha: "e".repeat(40), headSha: HEAD_SHA });
+  const status = applicable => applicable ? "success" : "not_applicable";
+  const available = (applicable, files, id) => applicable
+    ? { status: "available", files, id, digest: `sha256:${digest(`uploaded ZIP ${id}`)}` }
+    : { status: "not_applicable" };
+  const toolchain = (applicable, extra = {}) => applicable
+    ? { status: "available", node: process.version, runner: "synthetic", image: "20260901.1", architecture: process.arch, ...extra }
+    : { status: "not_applicable" };
+  return {
+    schemaVersion: 2,
     version: VERSION,
     source: {
       repository: REPOSITORY, headRepository: REPOSITORY,
@@ -199,14 +236,18 @@ function candidate() {
     lockfileSha256: digest("lockfile"),
     backendManifestSha256: digest("backend manifest"),
     android: { versionCode: 211, certificateSha256: CERTIFICATE },
-    toolchain: {
-      web: { node: process.version, java: "openjdk 21", runner: "windows-2022", image: "20260901.1", architecture: process.arch },
-      supabase: { deno: "deno 2.2.1", runner: "ubuntu-24.04", image: "20260901.1", cli: "2.75.0" }
+    applicability,
+    gateResults: {
+      preparation: "success", web: status(web), android: status(android), supabase: status(supabase)
     },
-    gate: { scope: "integral", web: "success", supabase: "success" },
+    toolchains: {
+      web: toolchain(web),
+      android: toolchain(android, { java: "openjdk 21" }),
+      supabase: toolchain(supabase, { deno: "deno 2.2.1", supabase: "2.115.0" })
+    },
     artifacts: {
-      pages: { files: fileList(PAGES), id: 42, digest: `sha256:${digest("uploaded ZIP")}` },
-      android: { files: fileList(ANDROID) }
+      pages: available(web, fileList(PAGES), 42),
+      android: available(android, fileList(ANDROID), 43)
     }
   };
 }
@@ -219,13 +260,15 @@ function runInfo() {
     pull_requests: [{ number: 123 }]
   };
 }
-function requiredJobs() {
+function requiredJobs(manifest = candidate()) {
   return [
-    { name: "Testar web e Android", steps: ["Executar testes", "Gerar e testar o artefato web no navegador", "Compilar aplicativo Android", "Analisar aplicativo Android"] },
-    { name: "Testar Supabase local", steps: ["Executar testes pgTAP", "Testar concorrência real dos pedidos de Curso", "Servir e testar o gateway MCP e a Autoria real"] },
-    { name: "Testar e validar", steps: [] }
+    { gate: "preparation", name: "Preparar candidata", steps: [] },
+    { gate: "web", name: "Testar web", steps: ["Executar testes", "Gerar e testar o artefato web no navegador"] },
+    { gate: "android", name: "Testar Android", steps: ["Compilar aplicativo Android", "Analisar aplicativo Android"] },
+    { gate: "supabase", name: "Testar Supabase local", steps: ["Executar testes pgTAP", "Testar concorrência real dos pedidos de Curso", "Servir e testar o gateway MCP e a Autoria real"] },
+    { gate: null, name: "Testar e validar", steps: ["Exigir todas as provas aplicáveis"] }
   ].map((job) => ({
-    ...job, status: "completed", conclusion: "success",
+    ...job, status: "completed", conclusion: job.gate && !manifest.applicability.gates[job.gate] ? "skipped" : "success",
     steps: job.steps.map((name, index) => ({ name, number: index + 1, status: "completed", conclusion: "success" }))
   }));
 }
@@ -281,37 +324,72 @@ function packZip(archive, directory) {
     "import pathlib,sys,zipfile\nroot=pathlib.Path(sys.argv[2])\nwith zipfile.ZipFile(sys.argv[1],'w') as archive:\n for file in sorted(root.rglob('*')):\n  if file.is_file(): archive.write(file,file.relative_to(root).as_posix())", archive, directory], { encoding: "utf8" });
 }
 
-test("manifesto completo distingue bytes da candidata, dependências e ambiente", () => {
-  const manifest = candidate();
-  assert.equal(validateManifest(manifest), manifest);
-  const unsealed = structuredClone(manifest);
-  delete unsealed.gate;
-  delete unsealed.artifacts.pages.id;
-  delete unsealed.artifacts.pages.digest;
-  delete unsealed.toolchain.supabase;
-  assert.equal(validateManifest(unsealed, { sealed: false }), unsealed);
-  assert.throws(() => validateManifest(unsealed), /Gate integral/u);
+test("manifesto proporcional válido distingue bytes, resultados e dispensas", () => {
+  const complete = candidate();
+  assert.equal(validateManifest(complete), complete);
+  const proportional = candidate({ web: true, android: false, supabase: false });
+  assert.equal(validateManifest(proportional), proportional);
+  assert.deepEqual(proportional.artifacts.android, { status: "not_applicable" });
+  assert.deepEqual(proportional.toolchains.supabase, { status: "not_applicable" });
 });
 
-test("manifesto recusa gate omitido, focal, pulado, cancelado ou falho", async (context) => {
+test("manifesto recusa gate aplicável falho e tentativa de fabricar not_applicable", async (context) => {
   const variants = [
-    ["ausente", (manifest) => { delete manifest.gate; }],
-    ["focal", (manifest) => { manifest.gate.scope = "focal"; }],
-    ["candidate-ready", (manifest) => { manifest.gate.scope = "candidate-ready"; }],
-    ...["web", "supabase"].flatMap((job) => [undefined, "skipped", "failure", "cancelled"]
-      .map((result) => [`${job}: ${result}`, (manifest) => { manifest.gate[job] = result; }]))
+    ["resultados ausentes", (manifest) => { delete manifest.gateResults; }],
+    ["web aplicável ausente", (manifest) => { delete manifest.gateResults.web; }],
+    ["web aplicável marcado inaplicável", (manifest) => { manifest.gateResults.web = "not_applicable"; }],
+    ["web aplicável falho", (manifest) => { manifest.gateResults.web = "failure"; }],
+    ["Supabase cancelado", (manifest) => { manifest.gateResults.supabase = "cancelled"; }],
+    ["dispensa sem classificação", (manifest) => {
+      manifest.applicability.gates.android = false;
+      manifest.gateResults.android = "not_applicable";
+    }]
   ];
   for (const [name, mutate] of variants) {
     await context.test(name, () => {
       const manifest = candidate(); mutate(manifest);
-      assert.throws(() => validateManifest(manifest), /Gate integral/u);
+      assert.throws(() => validateManifest(manifest));
     });
   }
 });
 
+test("agregador deriva not_applicable somente de job pulado e classificação do mesmo SHA", () => {
+  const manifest = candidate({ web: true, android: false, supabase: false });
+  assert.equal(validateCandidateApplicability(manifest.applicability), manifest.applicability);
+  const raw = { preparation: "success", web: "success", android: "skipped", supabase: "skipped" };
+  assert.deepEqual(certifyGateResults(manifest.applicability, raw, {
+    baseSha: manifest.source.baseSha, headSha: manifest.source.headSha
+  }), manifest.gateResults);
+  for (const result of [undefined, "failure", "cancelled", "success", "not_applicable"]) {
+    assert.throws(() => certifyGateResults(manifest.applicability, { ...raw, android: result }));
+  }
+  assert.throws(() => certifyGateResults(manifest.applicability, raw, {
+    baseSha: manifest.source.baseSha, headSha: "f".repeat(40)
+  }), /outro delta/u);
+});
+
+test("manifesto proporcional incompleto é recusado sem exigir superfícies inaplicáveis", async () => {
+  const manifest = candidate({ web: false, android: true, supabase: false });
+  assert.doesNotThrow(() => validateManifest(manifest));
+  const missing = structuredClone(manifest);
+  delete missing.artifacts.android.id;
+  assert.throws(() => validateManifest(missing), /Artefato android/u);
+  await assert.rejects(() => verifyCandidatePages("unused", manifest), /não é aplicável/u);
+});
+
+test("consumidor de release busca somente artefatos exigidos pelo certificado", () => {
+  assert.deepEqual(requiredCandidateArtifacts(candidate({ web: false, android: false, supabase: true })), []);
+  assert.deepEqual(requiredCandidateArtifacts(candidate({ web: true, android: false, supabase: false })), [
+    { key: "pages", name: "aralearn-pages-candidate", destination: ".pages" }
+  ]);
+  assert.deepEqual(requiredCandidateArtifacts(candidate({ web: false, android: true, supabase: false })), [
+    { key: "android", name: "aralearn-android-runtime-candidate", destination: ".candidate/android-runtime" }
+  ]);
+});
+
 test("manifesto recusa identidade incompleta e artefatos sem procedência", async (context) => {
   const variants = [
-    ["schema", (manifest) => { manifest.schemaVersion = 2; }],
+    ["schema", (manifest) => { manifest.schemaVersion = 3; }],
     ["fork", (manifest) => { manifest.source.headRepository = "fork/AraLearn"; }],
     ["SHA testado ausente", (manifest) => { delete manifest.source.testedSha; }],
     ["SHA de origem inválido", (manifest) => { manifest.source.headSha = "invalid"; }],
@@ -330,7 +408,7 @@ test("manifesto recusa identidade incompleta e artefatos sem procedência", asyn
     ["upload Pages digest inválido", (manifest) => { manifest.artifacts.pages.digest = "sha256:invalid"; }],
     ["runtime manifest ausente", (manifest) => { manifest.artifacts.pages.files.shift(); }],
     ["Android sem lista", (manifest) => { manifest.artifacts.android.files = []; }],
-    ["Deno ausente", (manifest) => { delete manifest.toolchain.supabase.deno; }],
+    ["Deno ausente", (manifest) => { delete manifest.toolchains.supabase.deno; }],
     ["digest de arquivo inválido", (manifest) => { manifest.artifacts.pages.files[0].sha256 = "invalid"; }],
     ["digest de arquivo não textual", (manifest) => {
       manifest.artifacts.pages.files[0].sha256 = [manifest.artifacts.pages.files[0].sha256];
@@ -350,7 +428,8 @@ test("manifesto recusa identidade incompleta e artefatos sem procedência", asyn
 });
 
 test("run integral exige origem, conclusão e tentativa exatas", async (context) => {
-  assert.doesNotThrow(() => validateRun(runInfo(), requiredJobs(), REPOSITORY, 2));
+  const manifest = candidate();
+  assert.doesNotThrow(() => validateRun(runInfo(), requiredJobs(manifest), REPOSITORY, 2, manifest));
   const variants = [
     ["outro repositório", (info) => { info.repository.full_name = "other/project"; }],
     ["fork", (info) => { info.head_repository.full_name = "fork/AraLearn"; }],
@@ -364,31 +443,32 @@ test("run integral exige origem, conclusão e tentativa exatas", async (context)
   for (const [name, mutate] of variants) {
     await context.test(name, () => {
       const info = runInfo(); mutate(info);
-      assert.throws(() => validateRun(info, requiredJobs(), REPOSITORY, 2));
+      assert.throws(() => validateRun(info, requiredJobs(manifest), REPOSITORY, 2, manifest));
     });
   }
 });
 
-test("run verde não substitui job nem etapa integral ausente ou malsucedida", async (context) => {
-  for (let index = 0; index < 3; index += 1) {
+test("run verde não substitui job, resultado ou etapa aplicável ausente", async (context) => {
+  const manifest = candidate();
+  for (let index = 0; index < 5; index += 1) {
     for (const result of ["omitted", "skipped", "failure", "cancelled", "duplicated"]) {
       await context.test(`${requiredJobs()[index].name}: ${result}`, () => {
-        const jobs = requiredJobs();
+        const jobs = requiredJobs(manifest);
         if (result === "omitted") jobs.splice(index, 1);
         else if (result === "duplicated") jobs.push(structuredClone(jobs[index]));
         else jobs[index].conclusion = result;
-        assert.throws(() => validateRun(runInfo(), jobs, REPOSITORY, 2), /Prova obrigatória/u);
+        assert.throws(() => validateRun(runInfo(), jobs, REPOSITORY, 2, manifest));
       });
     }
   }
-  for (const [jobIndex, job] of requiredJobs().entries()) {
+  for (const [jobIndex, job] of requiredJobs(manifest).entries()) {
     for (const [stepIndex, step] of job.steps.entries()) {
       for (const result of ["omitted", "skipped", "failure"]) {
         await context.test(`${step.name}: ${result}`, () => {
-          const jobs = requiredJobs();
+          const jobs = requiredJobs(manifest);
           if (result === "omitted") jobs[jobIndex].steps.splice(stepIndex, 1);
           else jobs[jobIndex].steps[stepIndex].conclusion = result;
-          assert.throws(() => validateRun(runInfo(), jobs, REPOSITORY, 2), /Etapa integral/u);
+          assert.throws(() => validateRun(runInfo(), jobs, REPOSITORY, 2, manifest));
         });
       }
     }
@@ -399,10 +479,11 @@ test("preflight aprovado em PR rascunho não certifica a candidata para promoç�
   const preparation = { name: "Preparar candidata", status: "completed", conclusion: "success", steps: [] };
   const info = runInfo();
   info.pull_requests[0].draft = true;
-  assert.throws(() => validateRun(info, [preparation], REPOSITORY, 2), /Prova obrigatória/u);
+  const manifest = candidate();
+  assert.throws(() => validateRun(info, [preparation], REPOSITORY, 2, manifest));
   const partialJobs = requiredJobs().map(job => ({ ...job, conclusion: "skipped" }));
-  assert.throws(() => validateRun(info, [preparation, ...partialJobs], REPOSITORY, 2), /Prova obrigatória/u);
-  assert.doesNotThrow(() => validateRun(runInfo(), [preparation, ...requiredJobs()], REPOSITORY, 2));
+  assert.throws(() => validateRun(info, [preparation, ...partialJobs], REPOSITORY, 2, manifest));
+  assert.doesNotThrow(() => validateRun(runInfo(), requiredJobs(manifest), REPOSITORY, 2, manifest));
 });
 
 test("identidade admite SHA de merge distinto quando árvore e entradas são as mesmas", () => {
@@ -417,7 +498,7 @@ test("vínculo do PR usa o registro persistente mesmo quando o run perde a assoc
   const manifest = candidate();
   const info = runInfo();
   info.pull_requests = [];
-  assert.doesNotThrow(() => validateRun(info, requiredJobs(), REPOSITORY, 2));
+  assert.doesNotThrow(() => validateRun(info, requiredJobs(manifest), REPOSITORY, 2, manifest));
   const pullRequest = {
     number: manifest.source.pullRequest,
     merged: true,

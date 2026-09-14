@@ -142,35 +142,36 @@ ampliam o alcance.
 | Momento | Gatilho e prova | Artefato | Publicação |
 | --- | --- | --- | --- |
 | Desenvolvimento | testes focais afetados; solicitação em rascunho executa preparação inicial | recibos locais ignorados pelo Git | nenhuma |
-| Documentação pura | PR e auditorias documentais | sem manifesto publicável | nenhuma |
-| Candidata estável | `candidate:ready` libera a solicitação após provas locais; validação integral em Windows e Supabase; acionamento manual somente na `main` para recuperação | site testado, APK de depuração e manifesto de aprovação | nenhuma |
-| Promoção | fases de `pages.yml` na `main`, com execução e tentativa exatas | Pages aprovado e APK assinado verificado | preparação imutável; corte e Pages; finalização após provas reais |
+| Documentação pura | PR e auditorias documentais | certificado sem superfícies publicáveis | nenhuma |
+| Candidata estável | `candidate:ready` libera a solicitação após provas locais; CI protegida executa somente os gates aplicáveis; acionamento manual somente na `main` para recuperação | certificado e artefatos aplicáveis | nenhuma |
+| Promoção | fases de `pages.yml` na `main`, com execução e tentativa exatas | Pages e/ou APK somente quando declarados pelo certificado | preparação imutável; promoção das superfícies aplicáveis; finalização após provas reais |
 
-Na candidata estabilizada, `validate:candidate` prepara os gates locais por impacto. Uma mudança web não seleciona automaticamente todos os E2E comuns: a preparação executa as specs comuns alteradas, enquanto o desenvolvimento cobre os E2E focais afetados. A suíte integral permanece na CI protegida. Metadados puros de versão são comparados semanticamente; outras alterações de dependências, configuração ou caminhos desconhecidos mantêm impacto conservador.
+Na candidata estabilizada, `validate:candidate` prepara os gates locais por impacto. Uma mudança web não seleciona automaticamente todos os E2E comuns: a preparação executa as specs comuns alteradas, enquanto o desenvolvimento cobre os E2E focais afetados. A CI protegida usa a mesma classificação para decidir web, Android e Supabase. Metadados puros de versão em npm, OpenAPI e Android são comparados semanticamente; outras alterações de dependências, configuração, orquestração, caminhos desconhecidos ou classificação inconclusiva mantêm impacto conservador e exigem todos os gates.
 
 `candidate:ready` consome a preparação verde já gravada, sem executar gates. Exige árvore limpa e idêntica, HEAD local igual ao remoto, base e merge-base concretas preservadas, configuração e dependências instaladas idênticas, além de PR ainda em rascunho contra `main`. Relatório ausente ou obsoleto exige nova preparação explícita. Gates estáveis usam recibos indexados por inputs; o runtime conserva helpers, fixtures e specs potencialmente lidas pelos testes selecionados. Banco e integração continuam exigindo prova fresca em cada preparação; a transição para pronta reutiliza somente aquela preparação exata.
 
-O GitHub reúne os resultados na verificação obrigatória **Testar e validar**. Para uma
-candidata com mudanças funcionais, seu sucesso depende das provas **Testar web e
-Android**, **Testar Supabase local** e **Preparar candidata**. Falha, cancelamento ou
-omissão de prova aplicável impede seu sucesso. Somente a validação integral produz o
-manifesto publicável. A regra da branch exige esse resultado para permitir integração.
+O GitHub reúne os resultados na única verificação obrigatória **Testar e validar**. O
+classificador vincula a matriz de aplicabilidade aos SHAs de base e cabeça da PR. Cada
+gate aplicável precisa terminar com sucesso; um job só vira `not_applicable` quando a
+mesma matriz o dispensou e o GitHub o registrou inequivocamente como pulado. Falha,
+cancelamento, ausência ou resultado ambíguo nunca viram dispensa. O certificado registra
+a matriz, os resultados, os artefatos e as ferramentas aplicáveis. A regra da branch
+continua exigindo o check agregado para permitir integração.
 
-Uma solicitação de integração (*pull request*, PR) em rascunho com mudança não
-documental executa apenas a preparação inicial; a verificação obrigatória não aprova uma
-validação integral omitida. O evento `ready_for_review`, emitido ao retirar a
-solicitação do rascunho, libera os trabalhos completos. `synchronize` preserva a
-integral para PRs já prontos; retorne a rascunho antes de enviar correções ainda em
-desenvolvimento. O controle de concorrência cancela a execução superada da mesma
-referência. O acionamento manual de uma execução não deve duplicar esse caminho na
-branch da solicitação.
+Uma solicitação de integração (*pull request*, PR) em rascunho com gate caro aplicável
+executa apenas a preparação inicial; a verificação obrigatória não aprova a prova
+omitida. O evento `ready_for_review`, emitido ao retirar a solicitação do rascunho,
+libera os trabalhos aplicáveis. `synchronize` preserva essa seleção para PRs já prontos;
+retorne a rascunho antes de enviar correções ainda em desenvolvimento. O controle de
+concorrência cancela a execução superada da mesma referência. O acionamento manual de
+uma execução não deve duplicar esse caminho na branch da solicitação.
 
 A preparação comum executa auditorias e verificadores antes dos trabalhos mais demorados
-com a interface, o Android e o Supabase local. O trabalho web reutiliza essa preparação
-e testa o código de execução. Os *caches* de npm, Chromium e Gradle evitam baixar de novo
-dependências idênticas; eles não substituem os testes. A promoção só aceita o manifesto
-produzido pelo conjunto integral de provas da candidata. A integração acrescenta seus
-cenários ao mesmo conjunto de serviços locais e ao processo de funções já preparado.
+com a interface, o Android e o Supabase local. Web, Android e Supabase são jobs separados
+e só executam quando a matriz os exige. Os *caches* de npm, Chromium e Gradle evitam
+baixar de novo dependências idênticas; eles não substituem os testes. A promoção só
+aceita o certificado e os bytes exatos da candidata, sem reconstruir Pages nem repetir
+suítes por estar publicando.
 
 Instale exatamente as dependências fixadas:
 
@@ -278,7 +279,7 @@ permanecem fora do artefato.
 A automação (*workflow*) [`pages.yml`](../.github/workflows/pages.yml) coordena a
 publicação em três fases. Nesse fluxo, promoção é a passagem de uma versão validada para
 o ambiente público; enviar commits ao repositório não inicia essa passagem. Depois da
-integração, a fase de preparação recebe os identificadores da execução integral e de
+integração, a fase de preparação recebe os identificadores da execução protegida e de
 sua tentativa no GitHub. Assim, um sucesso antigo ou de outra candidata não pode ser
 usado por engano. Os artefatos são preparados enquanto o serviço remoto e o site
 publicado ainda permanecem compatíveis. Os comandos usam a
@@ -287,7 +288,7 @@ publicado ainda permanecem compatíveis. Os comandos usam a
 ```powershell
 gh workflow run pages.yml --ref main `
   -f phase=preparar `
-  -f candidate_run_id=<run-integral> -f candidate_run_attempt=<tentativa>
+  -f candidate_run_id=<run-protegido> -f candidate_run_attempt=<tentativa>
 ```
 
 `releaseCandidate.mjs` confere origem, conclusão dos trabalhos e das etapas
@@ -308,8 +309,9 @@ Cada commit Git tem um identificador SHA. O manifesto registra separadamente o c
 testado e o commit resultante da integração. Um merge com SHA diferente só reutiliza a
 prova quando o conteúdo dos arquivos e a configuração são iguais; a relação com o PR
 também é conferida. Se essa equivalência não puder ser comprovada, execute a validação
-integral na revisão integrada antes de tentar promovê-la. O publicador reutiliza os
-bytes Pages testados, sem gerar novamente os arquivos.
+protegida na revisão integrada antes de tentar promovê-la. O publicador recupera somente
+Pages e Android declarados aplicáveis e reutiliza seus bytes testados; uma dispensa
+explícita é distinta de artefato aplicável ausente, que continua sendo erro.
 
 Concluída a preparação e os cuidados de backup/restauração, aplique o backend e publique
 prontamente o site a partir daquele registro exato de execução:
@@ -321,9 +323,10 @@ gh workflow run pages.yml --ref main `
 ```
 
 Essa fase recupera artefatos e prova nativa pela origem, sem recompilar ou abrir o
-emulador. Verifica o backend já aplicado, publica Pages e conserva a Release em
-rascunho. A prova de backend fica separada do manifesto e do recibo imutáveis que
-identificaram o APK testado; preparar os bytes não declara backend pronto.
+emulador. Verifica o backend, publica Pages e conserva a Release em rascunho somente
+quando essas superfícies forem aplicáveis. A prova de backend fica separada do manifesto
+e do recibo imutáveis que identificaram o APK testado; preparar os bytes não declara
+backend pronto.
 
 Depois das jornadas e provas reais requeridas da mesma candidata, finalize usando a
 execução que publicou o site:
@@ -464,10 +467,11 @@ reconhece o site já correspondente e reutiliza o APK. Ela completa somente os a
 de publicação ausentes, verifica os existentes e não substitui tag ou arquivo
 divergente. Uma tag correta sem Release permite criar o rascunho faltante. O rascunho
 permanece visível apenas para quem tem acesso enquanto alguma parte ainda falha; não
-constitui conclusão da publicação. Essa retomada é do workflow de promoção. As provas da
-validação integral precisam pertencer à mesma tentativa: repetir somente um trabalho de
-validação não reúne automaticamente provas de tentativas diferentes. Uma nova candidata
-deve produzir o conjunto exigido e seus artefatos vinculados antes de ser promovida.
+constitui conclusão da publicação. Essa retomada é do workflow de promoção. As provas
+aplicáveis e as dispensas certificadas precisam pertencer à mesma tentativa: repetir
+somente um trabalho de validação não reúne automaticamente provas de tentativas
+diferentes. Uma nova candidata deve produzir o conjunto exigido e seus artefatos
+vinculados antes de ser promovida.
 
 Uma falha antes de `db push` não altera o esquema. Depois de uma resposta ambígua, liste
 migrações e confronte o manifesto antes de repetir. Migrações versionadas não devem ser

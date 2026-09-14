@@ -305,8 +305,7 @@ corrija e confirme primeiro o recorte afetado; então retome a preparação usan
 recibos ainda válidos, sem `--force` por padrão.
 
 Consulte o impacto e execute a preparação local antes de liberar a candidata para a
-validação integral, a execução completa dos testes e verificadores exigidos para a
-integração:
+validação protegida, que executa os testes e verificadores aplicáveis à integração:
 
 ```powershell
 npm.cmd run validate:candidate -- --base origin/main --plan
@@ -321,7 +320,7 @@ estilo (CSS), por exemplo, seleciona provas de interface; contratos e banco exig
 integração local; caminhos desconhecidos ampliam a verificação. Como essa classificação
 não reconstrói todas as dependências do código, acrescente o teste focal do comportamento
 alterado quando ele ainda não estiver representado. Mudanças Android recebem suas provas
-locais e o gate obrigatório na validação integral final.
+locais e o gate Android obrigatório na validação protegida final.
 
 A preparação começa por verificações rápidas de arquivos e análise estática do código
 (*lint*) e avança para testes de execução, jornadas de ponta a ponta no navegador
@@ -342,7 +341,9 @@ ela não reduz o conjunto de testes nem altera o alcance dos fingerprints: gates
 ainda incluem toda a árvore podem ser invalidados por uma edição documental.
 Os critérios de seleção estão no
 [orquestrador da candidata](../scripts/validateCandidate.mjs); o resultado local
-prepara o PR, enquanto a validação integral autoriza sua promoção.
+prepara o PR, enquanto o check protegido agrega a matriz de gates aplicáveis e autoriza
+sua promoção. Orquestração, caminhos desconhecidos e classificação inconclusiva mantêm
+o conjunto integral por segurança.
 
 Depois de resolver falhas, revisar, fazer commit, enviar a branch e abrir o PR em
 rascunho, libere a candidata pelo mesmo caminho:

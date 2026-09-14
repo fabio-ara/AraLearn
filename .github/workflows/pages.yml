@@ -44,6 +44,9 @@ jobs:
     outputs:
       version: ${{ steps.candidate.outputs.version }}
       promotion_artifact_id: ${{ steps.promotion.outputs.artifact-id }}
+      requires_pages: ${{ steps.candidate.outputs.requires_pages }}
+      requires_android: ${{ steps.candidate.outputs.requires_android }}
+      requires_supabase: ${{ steps.candidate.outputs.requires_supabase }}
     env:
       GH_TOKEN: ${{ github.token }}
       ARALEARN_SUPABASE_URL: ${{ vars.ARALEARN_SUPABASE_URL }}
@@ -67,6 +70,7 @@ jobs:
         shell: pwsh
         run: node ./scripts/releaseCandidate.mjs prepare $env:CANDIDATE_RUN_ID $env:CANDIDATE_RUN_ATTEMPT
       - name: Conferir configuração e segurança do site aprovado
+        if: steps.candidate.outputs.requires_pages == 'true'
         run: pwsh -NoProfile -File ./scripts/verifyDeploymentArtifacts.ps1 -Target Pages -RequireRuntimeConfig
       - name: Guardar artefatos exatos da promoção
         id: promotion
@@ -83,6 +87,7 @@ jobs:
   android:
     name: Preparar Android
     needs: candidate
+    if: needs.candidate.outputs.requires_android == 'true'
     permissions:
       contents: read
     uses: ./.github/workflows/android-release.yml
@@ -98,6 +103,7 @@ jobs:
   android-native:
     name: Instalar e atualizar APK assinado
     needs: [candidate, android]
+    if: needs.candidate.outputs.requires_android == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
@@ -166,7 +172,7 @@ jobs:
           retention-days: 7
 
   pages:
-    name: Publicar Pages aprovado
+    name: Publicar superfícies aprovadas
     if: github.ref == 'refs/heads/main' && inputs.phase == 'publicar_site'
     runs-on: ubuntu-latest
     permissions:
@@ -198,10 +204,12 @@ jobs:
           PROMOTION_RUN_ATTEMPT: ${{ inputs.promotion_run_attempt }}
         run: node ./scripts/releaseCandidate.mjs resume-preparation "$PROMOTION_RUN_ID" "$PROMOTION_RUN_ATTEMPT"
       - name: Reconfirmar revisão e artefato antes de publicar
-        run: |
-          node ./scripts/releaseCandidate.mjs current
-          node ./scripts/releaseCandidate.mjs verify-pages
+        run: node ./scripts/releaseCandidate.mjs current
+      - name: Conferir artefato Pages aplicável
+        if: steps.preparation.outputs.requires_pages == 'true'
+        run: node ./scripts/releaseCandidate.mjs verify-pages
       - name: Conferir instalação antes de Pages
+        if: steps.preparation.outputs.requires_android == 'true'
         env:
           PROOF_SHA256: ${{ steps.preparation.outputs.proof_sha256 }}
           SOURCE_RUN_ID: ${{ steps.preparation.outputs.preparation_run_id }}
@@ -213,23 +221,25 @@ jobs:
         id: site
         run: node ./scripts/releaseCandidate.mjs site-current
       - name: Configurar Pages
-        if: steps.site.outputs.site_current != 'true'
+        if: steps.preparation.outputs.requires_pages == 'true' && steps.site.outputs.site_current != 'true'
         uses: actions/configure-pages@v5
       - name: Enviar artefato Pages
-        if: steps.site.outputs.site_current != 'true'
+        if: steps.preparation.outputs.requires_pages == 'true' && steps.site.outputs.site_current != 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .pages
       - name: Publicar no GitHub Pages
-        if: steps.site.outputs.site_current != 'true'
+        if: steps.preparation.outputs.requires_pages == 'true' && steps.site.outputs.site_current != 'true'
         uses: actions/deploy-pages@v4
       - name: Conferir bytes efetivamente publicados
+        if: steps.preparation.outputs.requires_pages == 'true'
         run: node ./scripts/verifyPublishedSite.mjs --url https://fabio-ara.github.io/AraLearn/ --candidate-manifest .candidate/candidate.json
       - name: Guardar os mesmos bytes na Release em rascunho
+        if: steps.preparation.outputs.requires_android == 'true'
         env:
           RELEASE_VERSION: ${{ steps.preparation.outputs.version }}
         run: node ./scripts/releaseCandidate.mjs stage-release ".candidate/android-release/AraLearn-$RELEASE_VERSION.apk"
-      - name: Registrar promoção do site sem finalizar a Release
+      - name: Registrar promoção das superfícies aplicáveis
         run: node ./scripts/releaseCandidate.mjs record-site-promotion
       - name: Guardar origem e prova do corte
         uses: actions/upload-artifact@v4
@@ -268,6 +278,7 @@ jobs:
           PROMOTION_RUN_ATTEMPT: ${{ inputs.promotion_run_attempt }}
         run: node ./scripts/releaseCandidate.mjs resume-site "$PROMOTION_RUN_ID" "$PROMOTION_RUN_ATTEMPT"
       - name: Reconfirmar prova nativa antes da Release
+        if: steps.preparation.outputs.requires_android == 'true'
         env:
           PROOF_SHA256: ${{ steps.preparation.outputs.proof_sha256 }}
           SOURCE_RUN_ID: ${{ steps.preparation.outputs.preparation_run_id }}
