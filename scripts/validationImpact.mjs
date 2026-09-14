@@ -1,9 +1,10 @@
 import fs from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const CATEGORY_ORDER = ["docs", "web", "contracts", "backend", "database", "android", "orchestration", "unknown"];
+const CATEGORY_ORDER = ["release", "parity", "docs", "web", "contracts", "backend", "database", "android", "orchestration", "unknown"];
 const ROOT_DOCUMENTS = new Set(["README.md", "LICENSE.md", "CHANGELOG.md", "CONTRIBUTING.md"]);
 const CONTRACT_DOCUMENTS = new Set(["docs/aralearn-contract.md", "docs/autoria-actions.md", "docs/autoria-mcp.md"]);
 const STYLE_TESTS = new Set([
@@ -40,8 +41,31 @@ function testInventory(root, directory, suffix) {
     .map(entry => `${directory}/${entry.name}`).sort();
 }
 
+// O OpenAPI gerado é JSON (também YAML válido). Sem conteúdo comparável,
+// inclusive remoção/adição ou outro formato, manter o impacto conservador.
+export function isReleaseMetadataOnly(file, before, after) {
+  const fields = file === "package.json" ? [["version"]]
+    : file === "package-lock.json" ? [["version"], ["packages", "", "version"]]
+      : file === "docs/downloads/aralearn-chatgpt-action-openapi.yaml" ? [["info", "version"]] : null;
+  if (!fields) return false;
+  try {
+    const oldValue = JSON.parse(before);
+    const newValue = JSON.parse(after);
+    let changed = false;
+    for (const keys of fields) {
+      const parent = (value) => keys.slice(0, -1).reduce((item, key) => item?.[key], value);
+      const left = parent(oldValue), right = parent(newValue), key = keys.at(-1);
+      if (typeof left?.[key] !== "string" || typeof right?.[key] !== "string") return false;
+      changed ||= left[key] !== right[key];
+      delete left[key];
+      delete right[key];
+    }
+    return changed && isDeepStrictEqual(oldValue, newValue);
+  } catch { return false; }
+}
+
 /** Seleciona gates; o resultado não é um recibo de execução nem atesta PASS. */
-export function classifyValidationImpact(paths, { root = repositoryRoot } = {}) {
+export function classifyValidationImpact(paths, { root = repositoryRoot, readBase = null } = {}) {
   const runtime = [
     ...testInventory(root, "tests/kernel", ".test.js"),
     ...testInventory(root, "tests/runtime", ".test.js")
@@ -67,6 +91,14 @@ export function classifyValidationImpact(paths, { root = repositoryRoot } = {}) 
   for (const value of input || []) {
     const file = normalizeRepositoryPath(value);
     if (!file) { unknown(typeof value === "string" ? value : "<invalid path>"); continue; }
+    if (readBase && ["package.json", "package-lock.json", "docs/downloads/aralearn-chatgpt-action-openapi.yaml"].includes(file)) {
+      try {
+        if (isReleaseMetadataOnly(file, readBase(file), fs.readFileSync(path.join(root, file), "utf8"))) {
+          add("release"); continue;
+        }
+      } catch { /* Conteúdo ausente mantém a classificação conservadora. */ }
+    }
+    if (file === "docs/evidence/paridade-vertical.v1.json") { add("parity"); continue; }
     if (isDocumentationPath(file)) { add("docs"); continue; }
     if (CONTRACT_DOCUMENTS.has(file) || file === "docs/downloads/aralearn-chatgpt-action-openapi.yaml") {
       add("contracts", "backend"); styleOnly = false; continue;
@@ -136,7 +168,8 @@ export function classifyValidationImpact(paths, { root = repositoryRoot } = {}) 
     if (broad || changedRuntime.has(file)) return true;
     const source = sources.get(file);
     const name = path.basename(file);
-    return categories.has("docs") && DOC_TESTS.has(name) ||
+    return categories.has("parity") && name === "vertical-parity-audit.test.js" ||
+      categories.has("docs") && DOC_TESTS.has(name) ||
       categories.has("web") && (STYLE_TESTS.has(name) || !styleOnly && WEB_REFERENCES.test(source)) ||
       requires.contracts && (file.startsWith("tests/kernel/") || CONTRACT_REFERENCES.test(source)) ||
       requires.supabase && DATABASE_REFERENCES.test(source) ||
@@ -149,7 +182,7 @@ export function classifyValidationImpact(paths, { root = repositoryRoot } = {}) 
     unknownPaths: [...unknownPaths].sort(),
     requires,
     runtimeFiles,
-    e2eFiles: e2e.filter(file => !realSet.has(file) && (requires.web || changedE2e.has(file))),
+    e2eFiles: e2e.filter(file => !realSet.has(file) && changedE2e.has(file)),
     realE2eFiles: real.filter(file => requires.supabase || changedE2e.has(file))
   };
 }

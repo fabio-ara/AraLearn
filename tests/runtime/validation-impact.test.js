@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { classifyValidationImpact } from "../../scripts/validationImpact.mjs";
+import { classifyValidationImpact, isReleaseMetadataOnly } from "../../scripts/validationImpact.mjs";
 
 const REAL_E2E = [
   "tests/e2e/course-access-local.spec.js", "tests/e2e/course-audio-local.spec.js",
@@ -28,7 +28,7 @@ test("CSS isolado mantém prova visual sem reproduzir banco ou exigir opt-ins re
   assert.deepEqual(result.requires, { web: true, contracts: false, supabase: false, android: false });
   assert.ok(result.runtimeFiles.includes("tests/runtime/frontend-style-audit.test.js"));
   assert.ok(!result.runtimeFiles.some(file => file.includes("pglite")));
-  assert.ok(result.e2eFiles.includes("tests/e2e/study-explanation.spec.js"));
+  assert.deepEqual(result.e2eFiles, []);
   assert.deepEqual(result.realE2eFiles, []);
 });
 
@@ -117,9 +117,41 @@ test("inventário reconhece opt-in novo pelo contrato, não por nome, e falha se
     const result = classifyValidationImpact(["src/ui/Example.js"], { root });
     assert.deepEqual(result.runtimeFiles, ["tests/runtime/new.test.js"]);
     assert.deepEqual(result.realE2eFiles, ["tests/e2e/new.spec.js"]);
-    assert.deepEqual(result.e2eFiles, ["tests/e2e/local-looking.spec.js"]);
+    assert.deepEqual(result.e2eFiles, []);
     assert.throws(() => classifyValidationImpact(["README.md"], { root: path.join(root, "missing") }), /ENOENT/u);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+
+test("metadados de versão são semânticos e qualquer outro campo mantém impacto", () => {
+  const cases = [
+    ["package.json", { version: "1", scripts: { test: "node test.js" }, dependencies: { a: "1" } }, value => { value.version = "2"; }],
+    ["package-lock.json", { version: "1", packages: { "": { version: "1" }, "node_modules/a": { version: "1" } } }, value => { value.version = "2"; value.packages[""].version = "2"; }],
+    ["docs/downloads/aralearn-chatgpt-action-openapi.yaml", { info: { version: "1" }, paths: {} }, value => { value.info.version = "2"; }]
+  ];
+  for (const [file, before, bump] of cases) {
+    const after = structuredClone(before);
+    bump(after);
+    assert.equal(isReleaseMetadataOnly(file, JSON.stringify(before), JSON.stringify(after, null, 2)), true);
+    after.extra = true;
+    assert.equal(isReleaseMetadataOnly(file, JSON.stringify(before), JSON.stringify(after)), false);
+    assert.equal(isReleaseMetadataOnly(file, null, JSON.stringify(after)), false);
+  }
+  assert.equal(isReleaseMetadataOnly("package-lock.json", '{"version":"1","packages":{"":{"version":"1"},"a":{"version":"1"}}}',
+    '{"version":"2","packages":{"":{"version":"2"},"a":{"version":"2"}}}'), false);
+});
+
+test("registro de paridade seleciona seu consumidor sem impacto sistêmico", () => {
+  const impact = classifyValidationImpact(["docs/evidence/paridade-vertical.v1.json"]);
+  assert.deepEqual(impact.categories, ["parity"]);
+  assert.deepEqual(impact.runtimeFiles, ["tests/runtime/vertical-parity-audit.test.js"]);
+  assert.ok(Object.values(impact.requires).every(value => value === false));
+});
+
+test("mudança web não agenda suíte E2E local; spec comum alterada é selecionada", () => {
+  assert.deepEqual(classifyValidationImpact(["src/ui/Example.js"]).e2eFiles, []);
+  const spec = "tests/e2e/study-explanation.spec.js";
+  assert.deepEqual(classifyValidationImpact(["src/ui/Example.js", spec]).e2eFiles, [spec]);
 });

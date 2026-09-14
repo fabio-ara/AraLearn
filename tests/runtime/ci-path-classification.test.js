@@ -152,7 +152,7 @@ test("CLI JSON expõe seleção completa e outputs de impacto sem alterar stdout
     const impact = JSON.parse(result.stdout);
     assert.equal(impact.schemaVersion, 1);
     assert.deepEqual(impact.requires, { web: true, contracts: false, supabase: false, android: false });
-    assert.ok(impact.e2eFiles.includes("tests/e2e/frame-content-geometry.spec.js"));
+    assert.deepEqual(impact.e2eFiles, []);
     assert.deepEqual(impact.realE2eFiles, []);
     assert.equal(fs.readFileSync(outputPath, "utf8"), [
       "docs_only=false", "requires_supabase=false", "requires_web=true", "requires_android=false",
@@ -160,5 +160,17 @@ test("CLI JSON expõe seleção completa e outputs de impacto sem alterar stdout
     ].join("\n"));
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+
+test("CI protegida conserva runtime e E2E integrais após ready no SHA da candidata", () => {
+  const workflow = fs.readFileSync(path.join(repositoryRoot, ".github/workflows/validacao.yml"), "utf8");
+  assert.match(workflow, /run: npm run test:runtime\r?\n/u);
+  assert.match(workflow, /run: npm run test:e2e -- --forbid-only --output=test-results-stub/u);
+  assert.match(workflow, /ready_for_review/u);
+  assert.match(workflow, /!github.event.pull_request.draft/u);
+  for (const file of ["scripts/validateCandidate.mjs", "package.json", "docs/evidence/paridade-vertical.v1.json"]) {
+    assert.equal(classifyChangedPaths([file]), false);
   }
 });
