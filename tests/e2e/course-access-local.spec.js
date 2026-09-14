@@ -367,7 +367,7 @@ async function browserSignIn(page, email) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await page.locator("[data-handle-onboarding], [data-action='open-settings']").first().waitFor();
+  await expect(page.locator("[data-handle-onboarding], [data-action='open-settings']").first()).toBeVisible();
   if (await page.locator("[data-handle-onboarding]").count()) {
     await expect(page.getByRole("heading", { name: "Escolha seu identificador" })).toBeVisible();
     await page.getByLabel("Identificador", { exact: true }).fill(email === owner.email ? ownerHandle : learnerHandle);
