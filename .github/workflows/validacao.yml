@@ -614,6 +614,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.web.outputs.pages_id }}
+          merge-multiple: true
           path: .pages
 
       - name: Baixar runtime Android aplicável
@@ -621,6 +622,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ needs.android.outputs.artifact_id }}
+          merge-multiple: true
           path: .candidate/android-runtime
 
       - name: Registrar certificado proporcional da candidata

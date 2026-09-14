@@ -1304,6 +1304,8 @@ test("PR conserva somente artefatos aplicáveis e o check agregado certifica a m
   assert.match(source, /aralearn-candidate-manifest-\$\{\{ github\.run_attempt \}\}/u);
   assert.match(source, /releaseCandidate\.mjs record/u);
   assert.match(source, /PAGES_ARTIFACT_DIGEST: \$\{\{ needs\.web\.outputs\.pages_digest \}\}/u);
+  assert.match(source, /artifact-ids: \$\{\{ needs\.web\.outputs\.pages_id \}\}\s+merge-multiple: true\s+path: \.pages/u);
+  assert.match(source, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}\s+merge-multiple: true\s+path: \.candidate\/android-runtime/u);
   assert.match(source, /aralearn-android-runtime-candidate/u);
   assert.doesNotMatch(source, /releaseCandidate\.mjs seal/u);
   assert.doesNotMatch(source, /actions\/deploy-pages|gh release create|app-release\.apk|secrets\.ARALEARN_ANDROID/u);
