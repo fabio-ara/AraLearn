@@ -111,7 +111,7 @@ function createPublishedSiteFetch({
   ]);
   for (const [name, entry] of Object.entries(additionalFiles)) bodies.set(name, entry);
   const candidateManifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     version: VERSION,
     artifacts: {
       pages: {
@@ -176,7 +176,8 @@ test("confere todos os bytes da candidata, incluindo binário e mapa omitido do 
 test("recusa manifesto de candidata inválido antes de consultar o host", async (context) => {
   const invalidManifests = [
     ["null", () => null],
-    ["schema desconhecido", (manifest) => { manifest.schemaVersion = 2; }],
+    ["schema antigo", (manifest) => { manifest.schemaVersion = 1; }],
+    ["schema desconhecido", (manifest) => { manifest.schemaVersion = 3; }],
     ["versão inválida", (manifest) => { manifest.version = "01.0.0"; }],
     ["versão diferente", (manifest) => { manifest.version = "9.9.9"; }],
     ["arquivos ausentes", (manifest) => { delete manifest.artifacts.pages.files; }],
