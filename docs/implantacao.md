@@ -141,10 +141,14 @@ ampliam o alcance.
 
 | Momento | Gatilho e prova | Artefato | Publicação |
 | --- | --- | --- | --- |
-| Desenvolvimento | impacto e `validate:candidate`; solicitação em rascunho executa preparação inicial | recibos locais ignorados pelo Git | nenhuma |
+| Desenvolvimento | testes focais afetados; solicitação em rascunho executa preparação inicial | recibos locais ignorados pelo Git | nenhuma |
 | Documentação pura | PR e auditorias documentais | sem manifesto publicável | nenhuma |
 | Candidata estável | `candidate:ready` libera a solicitação após provas locais; validação integral em Windows e Supabase; acionamento manual somente na `main` para recuperação | site testado, APK de depuração e manifesto de aprovação | nenhuma |
 | Promoção | fases de `pages.yml` na `main`, com execução e tentativa exatas | Pages aprovado e APK assinado verificado | preparação imutável; corte e Pages; finalização após provas reais |
+
+Na candidata estabilizada, `validate:candidate` prepara os gates locais por impacto. Uma mudança web não seleciona automaticamente todos os E2E comuns: a preparação executa as specs comuns alteradas, enquanto o desenvolvimento cobre os E2E focais afetados. A suíte integral permanece na CI protegida. Metadados puros de versão são comparados semanticamente; outras alterações de dependências, configuração ou caminhos desconhecidos mantêm impacto conservador.
+
+`candidate:ready` consome a preparação verde já gravada, sem executar gates. Exige árvore limpa e idêntica, HEAD local igual ao remoto, base e merge-base concretas preservadas, configuração e dependências instaladas idênticas, além de PR ainda em rascunho contra `main`. Relatório ausente ou obsoleto exige nova preparação explícita. Gates estáveis usam recibos indexados por inputs; o runtime conserva helpers, fixtures e specs potencialmente lidas pelos testes selecionados. Banco e integração continuam exigindo prova fresca em cada preparação; a transição para pronta reutiliza somente aquela preparação exata.
 
 O GitHub reúne os resultados na verificação obrigatória **Testar e validar**. Para uma
 candidata com mudanças funcionais, seu sucesso depende das provas **Testar web e

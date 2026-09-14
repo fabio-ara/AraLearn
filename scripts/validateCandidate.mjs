@@ -57,7 +57,34 @@ function selectedBrowserSpecs(args) {
   return specs.length ? specs : null;
 }
 
-export function selectGateInputs(files, gate, args = null) {
+export function selectGateInputs(files, gate, args = null, root = repositoryRoot) {
+  if (gate === "runtime-focal" && args?.[0] === "scripts/runTests.mjs" && args[1] === "--focal" && args.length > 2) {
+    // Specs não são executadas pelo runner runtime. Conservar as potencialmente
+    // lidas por testes/auditores: referências em dados e dependências locais.
+    // runTests inventaria somente kernel/runtime; seu arquivo permanece no hash.
+    const queue = [...args.slice(2)];
+    const visited = new Set();
+    const referenced = new Set();
+    try {
+      for (const file of files.filter(file => /\.(?:json|ya?ml)$/u.test(file))) {
+        if (file === "node_modules/.package-lock.json" && !fs.existsSync(path.join(root, file))) continue;
+        const source = fs.readFileSync(path.join(root, file), "utf8");
+        for (const match of source.matchAll(/tests\/e2e\/[^"'\s]+\.spec\.js/gu)) referenced.add(match[0]);
+      }
+      while (queue.length) {
+        const file = queue.pop();
+        if (visited.has(file)) continue;
+        visited.add(file);
+        const source = fs.readFileSync(path.join(root, file), "utf8");
+        // Inventário/diretório ou carregamento dinâmico não permite excluir specs.
+        if (/e2e|readdir|glob|import\s*\(|require\s*\(/u.test(source)) return [...files];
+        for (const match of source.matchAll(/(?:from\s*|import\s*)["'](\.[^"']+)["']/gu)) {
+          queue.push(path.relative(root, path.resolve(root, path.dirname(file), match[1])).replaceAll("\\", "/"));
+        }
+      }
+      return files.filter(file => !/^tests\/e2e\/[^/]+\.spec\.js$/u.test(file) || referenced.has(file));
+    } catch { return [...files]; }
+  }
   if (gate !== "frontend-e2e") return [...files];
   const specs = selectedBrowserSpecs(args);
   // O E2E ordinário usa o runtime web e seus fixtures. Contratos publicados,
@@ -69,12 +96,12 @@ export function selectGateInputs(files, gate, args = null) {
 }
 
 export function reusableInputReceipt(previous, { root, inputs, step, configuration, fingerprint }) {
-  if (previous?.result !== "passed") return false;
+  if (step.reusable === false || ["local-database", "local-integration"].includes(step.gate) || previous?.result !== "passed") return false;
   if (previous.fingerprint === fingerprint) return true;
   if (previous.schemaVersion !== 2 || previous.configuration !== configuration ||
       previous.command !== digest(JSON.stringify(step)) || !previous.inputs) return false;
   // A união detecta inputs removidos, além de arquivos novos ou alterados.
-  const consumed = selectGateInputs([...new Set([...inputs, ...Object.keys(previous.inputs)])], step.gate, step.args);
+  const consumed = selectGateInputs([...new Set([...inputs, ...Object.keys(previous.inputs)])], step.gate, step.args, root);
   return consumed.every(file => previous.inputs[file] === fingerprintInputs(root, [file]));
 }
 
@@ -167,9 +194,10 @@ function configuration(env) {
 }
 
 export async function validateCandidate({ root = repositoryRoot, base = "origin/main", planOnly = false, force = false, execute = executeGate, env = process.env } = {}) {
-  const paths = changedPaths(root, base);
+  const identity = preparationIdentity(root, base, env);
+  const paths = changedPaths(root, identity.baseHead);
   if (!paths.length) throw new Error("Nenhuma alteração em relação à base; escolha a base da candidata existente.");
-  const impact = classifyValidationImpact(paths, { root });
+  const impact = classifyValidationImpact(paths, { root, readBase: file => git(root, ["show", `${identity.mergeBase}:${file}`]) });
   const gates = buildCandidatePlan(impact);
   if (planOnly) return { scope: "preparation", base, paths, impact, gates };
   const output = path.join(root, ".validation");
@@ -184,9 +212,9 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
     const dependencyState = "node_modules/.package-lock.json";
     const inputs = [...files, dependencyState];
     const tree = fingerprintInputs(root, files);
-    const report = { schemaVersion: 1, scope: "preparation", tree, configuration: digest(JSON.stringify(config)), base, paths, impact, result: "passed", gates: [], failed_tests: [], log_refs: [] };
+    const report = { schemaVersion: 2, scope: "preparation", identity, tree, configuration: digest(JSON.stringify(config)), base, paths, impact, result: "passed", gates: [], failed_tests: [], log_refs: [] };
     for (const step of gates) {
-      const fingerprint = fingerprintInputs(root, selectGateInputs(inputs, step.gate, step.args), { config, step });
+      const fingerprint = fingerprintInputs(root, selectGateInputs(inputs, step.gate, step.args, root), { config, step });
       const receiptPath = path.join(output, `${step.gate}.receipt.json`);
       const previous = readJson(receiptPath);
       if (!force && step.reusable !== false && reusableInputReceipt(previous, { root, inputs, step, configuration: report.configuration, fingerprint })) {
@@ -205,15 +233,15 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
         try { result.tests = verifyBrowserReport(readJson(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME))); }
         catch (error) { result.result = "failed"; result.failed_tests = [error.message]; }
       }
-      if (fingerprintInputs(root, selectGateInputs([...candidateFiles(root), dependencyState], step.gate, step.args), { config, step }) !== fingerprint) {
+      if (fingerprintInputs(root, selectGateInputs([...candidateFiles(root), dependencyState], step.gate, step.args, root), { config, step }) !== fingerprint) {
         result.result = "failed";
         result.failed_tests = [...(result.failed_tests || []), "Inputs mudaram durante a prova; execute novamente."];
       }
-      const indexed = step.gate === "frontend-e2e" ? {
+      const indexed = step.reusable !== false ? {
         command: digest(JSON.stringify(step)),
-        inputs: Object.fromEntries(selectGateInputs(inputs, step.gate, step.args).map(file => [file, fingerprintInputs(root, [file])]))
+        inputs: Object.fromEntries(selectGateInputs(inputs, step.gate, step.args, root).map(file => [file, fingerprintInputs(root, [file])]))
       } : {};
-      const receipt = { schemaVersion: step.gate === "frontend-e2e" ? 2 : 1, scope: "preparation", gate: step.gate, fingerprint, tree, configuration: report.configuration, ...indexed, ...result, elapsedMs: Date.now() - started, finishedAt: new Date().toISOString(), log_refs: [logRef] };
+      const receipt = { schemaVersion: step.reusable !== false ? 2 : 1, scope: "preparation", gate: step.gate, fingerprint, tree, configuration: report.configuration, ...indexed, ...result, elapsedMs: Date.now() - started, finishedAt: new Date().toISOString(), log_refs: [logRef] };
       fs.writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);
       report.gates.push(receipt);
       if (receipt.result !== "passed") {
@@ -222,6 +250,10 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
         report.log_refs = receipt.log_refs;
         break;
       }
+    }
+    if (JSON.stringify(preparationIdentity(root, base, env)) !== JSON.stringify(identity)) {
+      report.result = "failed";
+      report.failed_tests.push("Identidade mudou durante a preparação; execute novamente.");
     }
     fs.writeFileSync(path.join(output, "candidate.json"), `${JSON.stringify(report, null, 2)}\n`);
     return report;
@@ -247,14 +279,39 @@ export function assertReadyBase(selectedMergeBase, pullRequestMergeBase) {
   if (!selectedMergeBase || selectedMergeBase !== pullRequestMergeBase) throw new Error("A preparação precisa cobrir o delta inteiro do PR contra sua base real.");
 }
 
-function markReady(root, report, preparedPr) {
-  const pr = readyPullRequest(root);
+export function preparationIdentity(root, base, env = process.env) {
+  return {
+    localHead: git(root, ["rev-parse", "HEAD"]).trim(),
+    baseHead: git(root, ["rev-parse", `${base}^{commit}`]).trim(),
+    mergeBase: git(root, ["merge-base", "HEAD", base]).trim(),
+    tree: fingerprintInputs(root, candidateFiles(root)),
+    configuration: fingerprintInputs(root, ["node_modules/.package-lock.json"], configuration(env))
+  };
+}
+
+export function consumePreparation({ root = repositoryRoot, base, env = process.env, query = readyPullRequest,
+  transition = (root, number) => spawnSync("gh", ["pr", "ready", String(number)], { cwd: root, stdio: "inherit" }).status } = {}) {
+  const report = readJson(path.join(root, ".validation/candidate.json"));
+  const pr = query(root);
+  const stale = () => { throw new Error("Preparação ausente ou obsoleta; execute nova preparação antes de candidate:ready."); };
+  if (report?.schemaVersion !== 2 || report.scope !== "preparation" || report.result !== "passed" ||
+      !report.gates?.length || report.gates.some(gate => gate.result !== "passed") || !pr.baseRefOid) stale();
+  const actual = preparationIdentity(root, pr.baseRefOid, env);
+  if (base && git(root, ["rev-parse", `${base}^{commit}`]).trim() !== actual.baseHead) stale();
+  if (JSON.stringify(actual) !== JSON.stringify(report.identity) || actual.tree !== report.tree ||
+      report.configuration !== digest(JSON.stringify(configuration(env)))) stale();
+  const paths = changedPaths(root, actual.baseHead);
+  const impact = classifyValidationImpact(paths, { root, readBase: file => git(root, ["show", `${actual.mergeBase}:${file}`]) });
+  const expected = buildCandidatePlan(impact);
+  if (expected.length !== report.gates.length || expected.some((step, index) => report.gates[index].gate !== step.gate)) stale();
   const clean = !git(root, ["status", "--porcelain", "--untracked-files=normal"]).trim();
-  assertReadyIdentity({ result: report.result, clean, localHead: git(root, ["rev-parse", "HEAD"]).trim(), remoteHead: pr.headRefOid, baseBranch: pr.baseRefName, draft: pr.isDraft });
-  if (pr.number !== preparedPr.number || pr.baseRefOid !== preparedPr.baseRefOid) throw new Error("A base do PR mudou durante a preparação; atualize e execute novamente.");
-  if (fingerprintInputs(root, candidateFiles(root)) !== report.tree) throw new Error("Árvore mudou após a preparação.");
-  const ready = spawnSync("gh", ["pr", "ready", String(pr.number)], { cwd: root, stdio: "inherit" });
-  if (ready.status !== 0) throw new Error("GitHub não confirmou a transição do PR para pronto.");
+  assertReadyIdentity({ result: report.result, clean, localHead: actual.localHead, remoteHead: pr.headRefOid, baseBranch: pr.baseRefName, draft: pr.isDraft });
+  // Reler imediatamente antes da escrita: nenhuma execução de gate neste fluxo.
+  const current = query(root);
+  if (JSON.stringify(current) !== JSON.stringify(pr) ||
+      JSON.stringify(preparationIdentity(root, pr.baseRefOid, env)) !== JSON.stringify(actual)) stale();
+  if (transition(root, pr.number) !== 0) throw new Error("GitHub não confirmou a transição do PR para pronto.");
+  return report;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase()) {
@@ -270,17 +327,8 @@ if (process.argv[1] && path.resolve(process.argv[1]).toLowerCase() === fileURLTo
       else throw new Error("Uso: validate:candidate [--base origin/main] [--plan] [--force] [--ready].");
     }
     if (ready && options.planOnly) throw new Error("--plan não pode marcar PR pronto.");
-    let preparedPr;
-    if (ready) {
-      preparedPr = readyPullRequest(repositoryRoot);
-      const selected = git(repositoryRoot, ["merge-base", "HEAD", options.base || preparedPr.baseRefOid]).trim();
-      const actual = git(repositoryRoot, ["merge-base", "HEAD", preparedPr.baseRefOid]).trim();
-      assertReadyBase(selected, actual);
-      options.base = preparedPr.baseRefOid;
-      assertReadyIdentity({ result: "passed", clean: !git(repositoryRoot, ["status", "--porcelain", "--untracked-files=normal"]).trim(), localHead: git(repositoryRoot, ["rev-parse", "HEAD"]).trim(), remoteHead: preparedPr.headRefOid, baseBranch: preparedPr.baseRefName, draft: preparedPr.isDraft });
-    }
-    const report = await validateCandidate(options);
-    if (ready && report.result === "passed") markReady(repositoryRoot, report, preparedPr);
+    if (ready && options.force) throw new Error("--ready reutiliza preparação exata; --force exige preparação separada.");
+    const report = ready ? consumePreparation(options) : await validateCandidate(options);
     process.stdout.write(`${JSON.stringify(options.planOnly ? report : { result: report.result, scope: report.scope, categories: report.impact.categories, gates: report.gates.map(({ gate, result, reused = false, elapsedMs }) => ({ gate, result, reused, elapsedMs })), failed_tests: report.failed_tests, log_refs: report.log_refs, report: ".validation/candidate.json" }, null, 2)}\n`);
     process.exitCode = report.result && report.result !== "passed" ? 1 : 0;
   } catch (error) {

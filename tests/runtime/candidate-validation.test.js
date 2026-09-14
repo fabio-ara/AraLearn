@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
-  assertReadyBase, assertReadyIdentity, buildCandidatePlan, executeGate, fingerprintInputs,
+  consumePreparation, assertReadyBase, assertReadyIdentity, buildCandidatePlan, executeGate, fingerprintInputs,
   redactOutput, reusableInputReceipt, selectGateInputs, validateCandidate, verifyBrowserReport
 } from "../../scripts/validateCandidate.mjs";
 
@@ -263,4 +263,107 @@ test("Android aplicável compila e analisa antes de pronto; E2E recusa test.only
   const android = gates.find(gate => gate.gate === "android");
   assert.ok(android.args.includes(":app:assembleDebug"));
   assert.ok(android.args.includes(":app:lintDebug"));
+});
+
+
+function commit(root) {
+  for (const args of [["add", "."], ["-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "candidate"]]) {
+    assert.equal(spawnSync("git", args, { cwd: root }).status, 0);
+  }
+  return spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+}
+
+test("ready consome preparação idêntica sem gates e rejeita identidades ausentes ou divergentes", async t => {
+  const root = fixture(t);
+  const base = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+  const head = commit(root);
+  let gates = 0, transitions = 0;
+  const execute = async () => { gates++; return { result: "passed", exitCode: 0 }; };
+  const report = await validateCandidate({ root, base, env: {}, execute });
+  const pr = { number: 1, headRefOid: head, baseRefOid: base, baseRefName: "main", isDraft: true };
+  const options = { root, env: {}, query: () => pr, transition: () => { transitions++; return 0; } };
+  assert.equal(consumePreparation(options).result, "passed");
+  assert.equal(gates, 3);
+  assert.equal(transitions, 1);
+  assert.throws(() => consumePreparation({ ...options, env: { NODE_OPTIONS: "--no-warnings" } }), /nova preparação/u);
+  assert.throws(() => consumePreparation({ ...options, query: () => ({ ...pr, baseRefOid: head }) }), /nova preparação/u);
+  assert.throws(() => consumePreparation({ ...options, query: () => ({ ...pr, headRefOid: base }) }));
+  assert.throws(() => consumePreparation({ ...options, query: () => ({ ...pr, isDraft: false }) }));
+  fs.writeFileSync(path.join(root, "docs/guide.md"), "divergent");
+  assert.throws(() => consumePreparation(options), /nova preparação/u);
+  fs.writeFileSync(path.join(root, "docs/guide.md"), "after\n");
+  for (const mutation of [{ identity: undefined }, { result: "failed" }, { gates: [] }, { schemaVersion: 1 }]) {
+    fs.writeFileSync(path.join(root, ".validation/candidate.json"), JSON.stringify({ ...report, ...mutation }));
+    assert.throws(() => consumePreparation(options), /nova preparação/u);
+  }
+  assert.equal(transitions, 1);
+  assert.equal(gates, 3);
+});
+
+test("versão pura não seleciona runtime integral; dependência real mantém seleção ampla", async t => {
+  const root = fixture(t);
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ version: "1", dependencies: { a: "1" } }));
+  fs.writeFileSync(path.join(root, "tests/runtime/example.test.js"), "// fixture");
+  commit(root);
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ version: "2", dependencies: { a: "1" } }));
+  const pure = await validateCandidate({ root, base: "HEAD", planOnly: true });
+  assert.deepEqual(pure.impact.categories, ["release"]);
+  assert.deepEqual(pure.impact.runtimeFiles, []);
+  fs.writeFileSync(path.join(root, "package.json"), JSON.stringify({ version: "2", dependencies: { a: "2" } }));
+  const real = await validateCandidate({ root, base: "HEAD", planOnly: true });
+  assert.deepEqual(real.impact.categories, ["orchestration"]);
+  assert.deepEqual(real.impact.runtimeFiles, ["tests/runtime/example.test.js"]);
+  assert.ok(Object.values(real.impact.requires).every(Boolean));
+});
+
+test("recibo runtime indexado conserva E2E não consumido, mas invalida helpers, fontes e configuração", async t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "scripts"));
+  fs.mkdirSync(path.join(root, "tests/helpers"));
+  fs.writeFileSync(path.join(root, "scripts/runTests.mjs"), 'import { readdirSync } from "node:fs"; // kernel/runtime inventory');
+  fs.writeFileSync(path.join(root, "tests/runtime/example.test.js"), "// ordinary runtime");
+  fs.writeFileSync(path.join(root, "tests/e2e/example.spec.js"), "// browser");
+  fs.writeFileSync(path.join(root, "tests/helpers/shared.js"), "// shared");
+  let runtimes = 0;
+  const execute = async step => {
+    if (step.gate === "runtime-focal") runtimes++;
+    if (step.gate === "frontend-e2e") fs.writeFileSync(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME), JSON.stringify({ stats: { expected: 1, unexpected: 0, skipped: 0, flaky: 0 } }));
+    return { result: "passed", exitCode: 0 };
+  };
+  const run = env => validateCandidate({ root, base: "HEAD", execute, env: env || {} });
+  await run();
+  const receipt = JSON.parse(fs.readFileSync(path.join(root, ".validation/runtime-focal.receipt.json"), "utf8"));
+  assert.equal(receipt.schemaVersion, 2);
+  assert.equal(receipt.inputs["tests/e2e/example.spec.js"], undefined);
+  fs.writeFileSync(path.join(root, "tests/e2e/example.spec.js"), "// browser repair");
+  assert.equal((await run()).gates.find(gate => gate.gate === "runtime-focal").reused, true);
+  assert.equal(runtimes, 1);
+  fs.writeFileSync(path.join(root, "tests/helpers/shared.js"), "// changed input");
+  await run();
+  assert.equal(runtimes, 2);
+  await run({ ARALEARN_MODE: "new" });
+  assert.equal(runtimes, 3);
+  fs.writeFileSync(path.join(root, "tests/runtime/example.test.js"), 'import "../../scripts/reader.mjs";');
+  fs.writeFileSync(path.join(root, "scripts/reader.mjs"), 'const directory = "tests/e2e";');
+  const files = ["tests/runtime/example.test.js", "tests/e2e/example.spec.js", "scripts/reader.mjs"];
+  assert.deepEqual(selectGateInputs(files, "runtime-focal", ["scripts/runTests.mjs", "--focal", files[0]], root), files);
+});
+
+
+test("runtime conserva specs lidas por inventário transitivo e por registros de evidência", t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "scripts"));
+  fs.writeFileSync(path.join(root, "scripts/runTests.mjs"), "// runner");
+  const selected = "tests/runtime/example.test.js";
+  const spec = "tests/e2e/example.spec.js";
+  const args = ["scripts/runTests.mjs", "--focal", selected];
+  fs.writeFileSync(path.join(root, selected), 'import "../../scripts/audit.mjs";');
+  fs.writeFileSync(path.join(root, "scripts/audit.mjs"), 'import { readdir } from "node:fs/promises";');
+  fs.writeFileSync(path.join(root, spec), "// browser proof");
+  let files = [selected, spec, "scripts/audit.mjs"];
+  assert.deepEqual(selectGateInputs(files, "runtime-focal", args, root), files);
+  fs.writeFileSync(path.join(root, selected), "// runtime");
+  fs.writeFileSync(path.join(root, "docs/evidence.json"), JSON.stringify({ tests: [spec] }));
+  files = [...files, "docs/evidence.json"];
+  assert.deepEqual(selectGateInputs(files, "runtime-focal", args, root), files);
 });
