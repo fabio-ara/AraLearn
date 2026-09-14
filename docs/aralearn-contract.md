@@ -633,6 +633,10 @@ pedagógica. Ambas exigem acesso de autoria aos cursos selecionados.
 
 ## Limites de tamanho
 
+`salvar_mapa_curricular` confirma a persistência com situação, revisão do curso e referência para aprovação, sem devolver a árvore curricular. `consultar_planejamento` com `resumo: true` recupera essa referência vigente quando a resposta se perde. A referência não substitui a inspeção nem a aprovação explícita da pessoa. A leitura sem resumo preserva o mapa integral por continuação; `parte` ou `microssequencia` restringem o planejamento ao foco e às dependências pertinentes. A retomada também respeita o foco informado.
+
+O contexto paginado usa até 12 mil unidades UTF-16 e 16 KiB por trecho serializado, reservando espaço para o envelope do canal. Textos maiores permanecem recuperáveis integralmente por fragmentos; o tamanho de uma confirmação de mapa não cresce com a árvore do curso.
+
 Cada camada limita corpo, resposta, listas e texto antes de alocar trabalho
 desnecessário. PDFs aceitam até 20 MiB e são lidos como fluxo limitado. Páginas
 de composição, fontes e observações possuem limites próprios.

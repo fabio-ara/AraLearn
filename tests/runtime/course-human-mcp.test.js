@@ -26,6 +26,8 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
+import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { applyCurricularMapSlice, inspectCurricularMapCompleteness } from
   "../../src/domain/courseCurricularMapSlices.js";
 
@@ -581,6 +583,23 @@ test("mapa salvo é relido e a aprovação referencia a versão persistida", asy
   assert.doesNotMatch(approved.nextDecision, /\?/u);
 });
 
+async function completeTaskRead(input) {
+  let output = await executeHumanCourseTask(input);
+  const first = output;
+  if (!output.context.fragmento) return output;
+  let literal = "";
+  for (let page = 0; page < 100; page++) {
+    assert.equal(output.context.fragmento.inicio, literal.length);
+    literal += output.context.fragmento.texto;
+    if (output.context.fragmento.fim === output.context.fragmento.total) {
+      return { ...first, context: JSON.parse(literal) };
+    }
+    output = await executeHumanCourseTask({ ...input,
+      rawArguments: { ...input.rawArguments, continuacao: output.context.continuacao } });
+  }
+  assert.fail("A leitura precisa terminar.");
+}
+
 function incrementalCurricularMapAdapter() {
   const state = { courseRevision: 7, planVersion: 3, approval: "absent", loseNextSliceResponse: false,
     map: { audience: "", prerequisites: [], scopeItems: [], modules: [] } };
@@ -629,6 +648,51 @@ function incrementalCurricularMapAdapter() {
     }
   };
 }
+
+test("escrita de mapa grande confirma e recupera referência sem repetir a escrita em MCP e Actions", async () => {
+  for (const channel of ["mcp", "actions"]) {
+    const value = incrementalCurricularMapAdapter();
+    value.resolveActionPrincipal = async () => PRINCIPAL;
+    const handler = channel === "mcp" ? createAuthoringMcpHandler({ adapter: value,
+      allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1" }) : createAuthoringActionHandler({ adapter: value,
+      allowedOrigins: new Set([ORIGIN]), actionBaseUrl: "https://edge.example/functions/v1/aralearn-authoring-action",
+      publicAppUrl: value.publicAppUrl });
+    const call = async (name, args) => {
+      const binding = encodeCourseActionTaskRequest(name, args);
+      const response = await handler(channel === "mcp" ? request("tools/call", { name, arguments: args })
+        : new Request(`https://edge.example/functions/v1/aralearn-authoring-action/${binding.operationName}`, {
+          method: "POST", headers: { Origin: ORIGIN, Authorization: "Bearer synthetic-token", "Content-Type": "application/json" },
+          body: JSON.stringify(binding.arguments) }));
+      const serialized = await response.text();
+      assert.equal(response.status, 200, serialized);
+      assert.ok(serialized.length < 4000, "a confirmação independe do tamanho do mapa");
+      const body = JSON.parse(serialized);
+      assert.notEqual(body.result?.isError, true, serialized);
+      return channel === "mcp" ? body.result.structuredContent : body;
+    };
+    const args = curricularMapArguments("mapa-global-v1");
+    args.modulos = [args.modulos[0]];
+    args.modulos[0].licoes = [args.modulos[0].licoes[0]];
+    const prototype = args.modulos[0].licoes[0].microssequencias[0];
+    args.modulos[0].licoes[0].microssequencias = Array.from({ length: 20 }, (_, i) => ({ ...structuredClone(prototype),
+      titulo: `Microssequência ${i + 1}`, objetivo: "Objetivo com detalhes. ".repeat(60).trim(), dependencias: [],
+      cobertura: [...args.itensDeEscopo] }));
+    assert.ok(JSON.stringify(args).length > 30000);
+    const saved = await call("salvar_mapa_curricular", args);
+    const revision = value.state.courseRevision;
+    assert.equal(value.writes.length, 1);
+    const recovered = await call("consultar_planejamento", { curso: args.curso, resumo: true });
+    assert.equal(recovered.context.referenciaParaAprovar, saved.context.referenciaParaAprovar);
+    assert.equal(recovered.context.revisaoDoCurso, revision);
+    assert.equal(value.writes.length, 1, "resposta perdida é reconciliada por leitura");
+    const complete = await completeTaskRead({ adapter: value, principal: PRINCIPAL,
+      name: "consultar_planejamento", rawArguments: { curso: args.curso } });
+    assert.equal(complete.context.mapaCurricular.modulos[0].licoes[0].microssequencias.length, 20);
+    assert.equal(complete.context.mapaCurricular.modulos[0].licoes[0].microssequencias[19].objetivo,
+      args.modulos[0].licoes[0].microssequencias[19].objetivo);
+  }
+});
 
 test("mapa incremental começa pelo contexto e preserva detalhes, cobertura e dependências por ramos", async () => {
   const value = incrementalCurricularMapAdapter();
@@ -685,7 +749,8 @@ test("mapa incremental começa pelo contexto e preserva detalhes, cobertura e de
   assert.equal(firstMicroWrites.length, 2);
   assert.deepEqual(firstMicroWrites[0], firstMicroWrites[1], "a resposta perdida conserva a mesma tentativa e identidade");
   assert.equal(inspectCurricularMapCompleteness(value.state.map).complete, true);
-  const reread = await run("consultar_planejamento", { curso: full.curso });
+  const reread = await completeTaskRead({ adapter: value, principal: PRINCIPAL,
+    name: "consultar_planejamento", rawArguments: { curso: full.curso } });
   assert.equal(reread.context.mapaCurricular.modulos.length, full.modulos.length);
   const expectedMicros = full.modulos.flatMap(module => module.licoes.flatMap(lesson => lesson.microssequencias));
   const savedMicros = value.state.map.modules.flatMap(module => module.lessons.flatMap(lesson => lesson.microsequences));
@@ -1206,7 +1271,7 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
     }
   };
 
-  const output = await executeHumanCourseTask({
+  const output = await completeTaskRead({
     adapter: value,
     principal: PRINCIPAL,
     name: "preparar_materializacao",

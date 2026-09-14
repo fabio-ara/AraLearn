@@ -349,8 +349,8 @@ test('fragmentos grandes conservam conteúdo e referências estáveis até a lei
     const output=await execute(adapter,'preparar_revisao',{...args,...(continuation?{continuacao:continuation}:{})});
     assert.ok(output.context.fragmento);literal+=output.context.fragmento.texto;pages++;
     continuation=output.context.continuacao;
-  } while(continuation&&pages<10);
-  assert.ok(pages>1&&pages<10);assert.equal(continuation,null);
+  } while(continuation&&pages<40);
+  assert.ok(pages>1&&pages<40);assert.equal(continuation,null);
   const read=JSON.parse(literal);
   assert.equal(read.explicacoes[0].conteudo.content.length,20);
   assert.ok(read.explicacoes[0].conteudo.content.every(item=>item.data.text==='Conhecimento e relações. '.repeat(400).trim()));

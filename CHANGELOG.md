@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.74] - 2026-09-14
+
+### Corrigido
+
+- a gravação do mapa curricular confirma o resultado sem devolver o planejamento inteiro; uma consulta resumida permite recuperar a referência vigente quando a resposta se perde;
+- consultas de planejamento e retomadas por parte ou microssequência respeitam o foco, e leituras extensas usam trechos menores, preservando o conteúdo integral por continuação em MCP e Actions.
+
 ## [0.0.73] - 2026-09-13
 
 ### Melhorado

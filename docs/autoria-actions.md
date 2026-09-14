@@ -234,6 +234,7 @@ leitura grande usa recorte ou paginação, e uma escrita possivelmente concluíd
 [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
 
 Respostas extensas de preparo e inspeção usam a continuação comum aos canais.
+Para recuperar uma confirmação perdida de `salvar_mapa_curricular`, use `consultar_planejamento` com `resumo: true`: a situação, revisão e referência vigente cabem numa resposta pequena. Inspecione o mapa antes de aprovar; recuperar a referência não constitui aprovação.
 Cada página conserva uma parte literal do conteúdo e a referência necessária
 para obter a seguinte. A reunião das páginas recupera o documento completo;
 o assistente precisa concluí-la antes de avaliar ou alterar o recorte. O

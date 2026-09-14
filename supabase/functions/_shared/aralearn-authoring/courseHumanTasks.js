@@ -605,8 +605,10 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_planejamento",
     "Consultar o planejamento",
-    "Lê mapa e lote.",
-    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA }, ["curso"]),
+    "Lê o mapa completo por continuação, ou somente o foco. resumo recupera a situação e a referência vigente sem o mapa; inspecione o conteúdo antes de aprovar.",
+    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA,
+      resumo: { type: "boolean", description: "Devolve somente confirmação, situação e referência vigente do mapa." },
+      continuacao: READ_CONTINUATION_SCHEMA }, ["curso"]),
     { readOnly: true }
   ),
   task(
@@ -1017,7 +1019,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:3ccf79bb66dfb16a7a5854cb951800007b7358f39d3e9d433abe46994c61f316";
+  "sha256:cf34d967f3b1ae05367c5ea507728754c8f001f21532c165929adf72e3039958";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2099,6 +2101,16 @@ function humanCurricularMap(map, status) {
   };
 }
 
+function planConfirmationContext(plan) {
+  const status = plan?.plan?.curriculumMapStatus;
+  return {
+    titulo: plan?.plan?.title ?? null,
+    revisaoDoCurso: plan.courseRevision,
+    mapaCurricular: { situacao: status === "approved" ? "aprovado" : status === "draft" ? "rascunho" : "ainda não proposto" },
+    ...(plan.mapApprovalReference ? { referenciaParaAprovar: plan.mapApprovalReference } : {})
+  };
+}
+
 function projectedPlanContext(plan, part) {
   const source = plan?.plan || {};
   const storedMap = curricularMapFromPlan(plan);
@@ -2167,8 +2179,10 @@ function focusedReviewPlan(plan, part, units, microsequences = []) {
         microssequencias: lesson.microssequencias.filter(micro => relevant.has(micro.titulo))
       })).filter(lesson => lesson.microssequencias.length)
     })).filter(module => module.licoes.length) },
-    cobertura: projected.cobertura.filter(item => item.previstaEm.some(location => titles.has(location.microssequencia))),
-    parteEmFoco: projected.parteEmFoco
+    cobertura: projected.cobertura.filter(item => item.previstaEm.some(location => titles.has(location.microssequencia)))
+      .map(item => ({ ...item, previstaEm: item.previstaEm.filter(location => titles.has(location.microssequencia)) })),
+    parteEmFoco: projected.parteEmFoco ? { ...projected.parteEmFoco,
+      microssequencias: projected.parteEmFoco.microssequencias.filter(item => titles.has(item.titulo)) } : null
   };
 }
 function humanCourseSelectionSchema() {
@@ -2659,7 +2673,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
     microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null, deadlineAt
   });
   const plan = resolved.plan ?? await loadPlan(adapter, principal, resolved.course, deadlineAt);
-  const part = focusedPart(plan, resolved.part);
+  const part = resolved.microsequence && !resolved.part ? null : focusedPart(plan, resolved.part);
   const focal = { ...resolved, plan, part };
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "retomar_curso" });
   const [process, observations, explanations] = await Promise.all([
@@ -2673,7 +2687,8 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
       part?.id ? [["authoringPartId", part.id]] : []),
     nextDecision: process.processoCorrente.foco === "content" ? "Continue a explicação e as fontes da microssequência no foco e na cadência vigentes."
       : map && map.approval !== "approved" ? "Inspecione o mapa salvo e suas pendências antes da aprovação." : null,
-    context: await paginateHumanReadContext(withoutTechnicalState({ ...projectedPlanContext(plan, part),
+    context: await paginateHumanReadContext(withoutTechnicalState({ ...(args.parte !== undefined || args.microssequencia !== undefined
+      ? focusedReviewPlan(plan, part, [], focalMicrosequences(focal)) : projectedPlanContext(plan, part)),
       ...process, observations, explicacoes: explanations }), { state: continuation })
   });
 };
@@ -2683,16 +2698,23 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
   const plan = resolved.plan || await loadPlan(adapter, principal, resolved.course, deadlineAt);
-  const part = focusedPart(plan, resolved.part);
+  const part = resolved.microsequence && !resolved.part ? null : focusedPart(plan, resolved.part);
   const map = curricularMapFromPlan(plan);
   const mapStatus = map?.approval === "approved" ? "aprovado" : map ? "em rascunho" : "ausente";
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "consultar_planejamento" });
-  return result(`Li o mapa curricular global; ele está ${mapStatus}.`, {
+  if (args.resumo !== undefined && typeof args.resumo !== "boolean") fail("invalid_human_task_argument", "resumo precisa ser booleano.");
+  const context = args.resumo === true ? planConfirmationContext(plan)
+    : args.parte !== undefined || args.microssequencia !== undefined
+      ? focusedReviewPlan(plan, part, [], focalMicrosequences({ ...resolved, plan, part }))
+      : projectedPlanContext(plan, part);
+  return result(args.resumo === true ? `Consultei a situação do mapa curricular; ele está ${mapStatus}.`
+    : args.parte !== undefined || args.microssequencia !== undefined ? `Li o planejamento no foco solicitado; o mapa está ${mapStatus}.`
+      : `Li o mapa curricular global; ele está ${mapStatus}.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
     nextDecision: map && map.approval !== "approved"
-      ? "Quer aprovar o mapa ou mudar cobertura, ordem ou ênfase?" : null,
-    context: await paginateHumanReadContext(withoutTechnicalState(projectedPlanContext(plan, part)), { state: continuation })
+      ? "Inspecione o mapa completo no AraLearn ou por continuação antes de aprovar ou mudar cobertura, ordem ou ênfase." : null,
+    context: await paginateHumanReadContext(withoutTechnicalState(context), { state: continuation })
   });
 };
 
@@ -3220,7 +3242,7 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
     nextDecision: startingMap
       ? "Continue com salvar_ramo_curricular: módulos, lições e microssequências em ordem de dependência, preservando detalhes e cobertura. Ao concluir, consulte o planejamento completo para inspeção."
       : "Inspecione a cobertura, a ordem e a ênfase; a aprovação usa a referência desta versão salva.",
-    context: projectedPlanContext(persisted, null)
+    context: planConfirmationContext(persisted)
   });
 };
 

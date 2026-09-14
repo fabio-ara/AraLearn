@@ -3,8 +3,8 @@ import { sha256Hex } from './security.js';
 
 // Internal focal budget, below the Actions envelope limit. Larger literal data
 // remains recoverable through contiguous JSON fragments, never through a summary.
-const MAX_CONTEXT_CHARACTERS = 88_000;
-const MAX_CONTEXT_BYTES = 128 * 1024;
+const MAX_CONTEXT_CHARACTERS = 12_000;
+const MAX_CONTEXT_BYTES = 16 * 1024;
 const encoder = new TextEncoder();
 const fail = (message, status = 422) => { throw new AuthoringApiError(status,
   status === 409 ? 'human_read_context_changed' : 'invalid_read_continuation', message); };
