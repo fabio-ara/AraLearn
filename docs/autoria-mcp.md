@@ -29,10 +29,10 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `consultar_preferencias_autoria` | ler foco, cadência, pontos de revisão e diálogo pessoais, com as condições do curso quando indicado |
 | `consultar_perfis` | listar perfis de preferências desta conta |
 | `prever_aplicacao_perfil` | examinar alcance e exceções antes de aplicar um perfil ao curso |
-| `retomar_curso` | localizar ou continuar um curso pelo título |
+| `retomar_curso` | localizar ou continuar um curso pelo título, conservando o recorte quando há parte ou microssequência indicada |
 | `comparar_cursos` | confrontar inventário, configuração e dimensões declaradas de dois recortes próprios |
 | `exportar_autoria` | obter o artefato literal e a leitura autoral de um recorte próprio |
-| `consultar_planejamento` | ler o mapa curricular completo e, quando pertinente, uma parte operacional |
+| `consultar_planejamento` | ler o mapa completo por continuação, o foco em uma parte ou microssequência, ou recuperar situação e referência vigente com `resumo: true` |
 | `preparar_materializacao` | reunir base explicativa, fontes, repertório acumulado e configuração do lote antes de produzir unidades |
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_repertorio_instrucional` | ler unidades de análise, requisitos de evidência, vínculos e aplicações salvas |
@@ -53,7 +53,7 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `alterar_curso` | renomear ou alterar objetivo, conservando os metadados não indicados |
 | `excluir_curso` | preparar e confirmar exclusão do curso próprio por alvo inequívoco, com a limpeza pertinente de arquivos |
 | `copiar_curso` | preparar e confirmar cópia independente de curso próprio ou explicitamente autorizado |
-| `salvar_mapa_curricular` | salvar uma proposta completa como rascunho para inspeção |
+| `salvar_mapa_curricular` | salvar uma proposta como rascunho para inspeção e receber uma confirmação pequena da revisão persistida |
 | `aprovar_mapa_curricular` | registrar a aprovação da versão persistida inspecionada, usando sua referência opaca |
 | `salvar_ramo_curricular` | incluir ou editar módulo, lição ou microssequência por recorte, inclusive dependências, cobertura e fontes previstas |
 | `mover_ramo_curricular` | mover ou reordenar ramo completo preservando descendentes, identidades e registros |
@@ -196,6 +196,10 @@ Uma tarefa bem-sucedida devolve `result`, com o que ocorreu, e pode incluir
 ainda necessária. O MCP entrega também dados estruturados que o cliente pode
 usar nas próximas chamadas, sem precisar mostrá-los como controles técnicos à
 pessoa autora.
+
+`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa.
+
+Em `retomar_curso` e `consultar_planejamento`, indicar `parte` ou `microssequencia` limita o contexto ao ramo selecionado e às dependências pertinentes. O planejamento integral continua disponível sem esse foco, com continuação quando necessário. Essas regras são compartilhadas com Actions.
 
 `temMais: true` e `continuacao` não nula indicam uma resposta parcial. O cliente
 recupera o restante do mesmo recorte antes de avaliar seu conteúdo. A

@@ -142,8 +142,21 @@ test("seleção humana de unidade usa a identidade do reader curricular", async 
   exported.scope = selected; exported.analytics.scope = { selected, options: [selected] };
   adapter.listCourseStudyUnits = async () => ({ items: [{ ordinal: 1, studyUnit: { id: "unit-selected", title: "Unidade escolhida" } }], hasMore: false });
   adapter.getCourseAuthoringExport = async request => { assert.deepEqual(request.scope, { kind: "study_unit", ref: "unit-selected" }); return exported; };
-  const output = await call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda", unidade: 1 } }, readPrincipal);
-  assert.equal(JSON.parse(output.context.fragmento.texto).authoringExport.scope.ref, "unit-selected");
+  let continuation, literal = "", pages = 0;
+  do {
+    const output = await call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda", unidade: 1 },
+      ...(continuation ? { continuacao: continuation } : {}) }, readPrincipal);
+    const fragment = output.context.fragmento;
+    assert.equal(fragment.inicio, literal.length);
+    assert.ok(fragment.fim > fragment.inicio);
+    literal += fragment.texto;
+    assert.equal(fragment.fim, literal.length);
+    continuation = output.context.continuacao;
+    assert.equal(output.context.temMais, continuation !== null);
+    assert.ok(++pages <= Math.ceil(fragment.total / 1000) + 1);
+  } while (continuation);
+  assert.deepEqual(JSON.parse(literal), { authoringExport: exported });
+  assert.equal(JSON.parse(literal).authoringExport.scope.ref, "unit-selected");
 });
 
 for (const channel of ["actions", "mcp"]) for (const large of [false, true]) {
@@ -177,13 +190,14 @@ for (const channel of ["actions", "mcp"]) for (const large of [false, true]) {
       const received = channel === "actions" ? retainedPayload : retainedPayload.result.structuredContent;
       if (channel === "mcp") assert.ok(retainedPayload.result.content[0].text.startsWith(received.result));
       assert.ok(JSON.stringify(value).length < 99_999);
-      assert.ok(JSON.stringify(value.context).length <= 88_000);
-      assert.ok(Buffer.byteLength(JSON.stringify(value.context)) <= 128 * 1024);
+      assert.ok(JSON.stringify(value.context).length <= 12_000);
+      assert.ok(Buffer.byteLength(JSON.stringify(value.context)) <= 16 * 1024);
       const fragment = received.context.fragmento;
       allFragmented &&= Boolean(fragment);
       if (fragment) {
         assert.equal(fragment.formato, "application/json");
         assert.equal(fragment.inicio, retainedLiteral.length);
+        assert.ok(fragment.fim > fragment.inicio);
         assert.equal(fragment.fim, fragment.inicio + fragment.texto.length);
         rawLiteral += value.context.fragmento.texto;
         retainedLiteral += fragment.texto;
@@ -198,14 +212,14 @@ for (const channel of ["actions", "mcp"]) for (const large of [false, true]) {
       continuation = received.context.continuacao;
       assert.equal(received.context.temMais, continuation !== null);
       if (continuation) digests.add(JSON.parse(Buffer.from(continuation, "base64url").toString("utf8")).h);
-      assert.ok(++pages < 40);
+      assert.ok(++pages <= Math.ceil((fragment?.total ?? retainedLiteral.length) / 1000) + 1);
     } while (continuation);
     assert.deepEqual(JSON.parse(retainedLiteral), { authoringExport: original });
     assert.ok(allFragmented, "export pequeno também usa JSON literal protegido");
     assert.match(retainedLiteral, /\\u2011/u);
     assert.equal(sha256(retainedLiteral), sha256(rawLiteral));
-    if (large) { assert.ok(pages > 1); assert.deepEqual([...digests], [sha256(retainedLiteral)]); }
-    else assert.equal(pages, 1);
+    if (large) assert.ok(pages > 1);
+    if (pages > 1) assert.deepEqual([...digests], [sha256(retainedLiteral)]);
     assert.deepEqual(exported, original, "a representação não altera os dados entregues pelo adapter");
     assert.ok(reads.every(request => request.courseId === LEFT && request.expectedRevision === 7 &&
       request.scope.kind === "course" && request.scope.ref === null));
@@ -220,9 +234,10 @@ test("exportação humana grande reconstrói JSON literal por fragmentos e recus
     const output = await call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" }, ...(continuation ? { continuacao: continuation } : {}) }, readPrincipal);
     assert.ok(JSON.stringify(output).length < 99_999);
     const fragment = output.context.fragmento;
-    assert.equal(fragment.inicio, literal.length); literal += fragment.texto; assert.equal(fragment.fim, literal.length);
+    assert.equal(fragment.inicio, literal.length); assert.ok(fragment.fim > fragment.inicio);
+    literal += fragment.texto; assert.equal(fragment.fim, literal.length);
     continuation = output.context.continuacao; firstContinuation ??= continuation; pages++;
-    assert.ok(pages < 30);
+    assert.ok(pages <= Math.ceil(fragment.total / 1000) + 1);
   } while (continuation);
   assert.ok(pages > 1); assert.deepEqual(JSON.parse(literal), { authoringExport: exported });
   const text = exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].data;

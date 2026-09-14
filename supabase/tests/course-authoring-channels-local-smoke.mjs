@@ -22,13 +22,21 @@ function fixtures(course) {
   const map = curricularMap(course, false);
   const names = CASES.map(label => `Socket no ${label}`);
   const coverage = CASES.map(label => `Identificar a interface local no ${label}.`);
+  const detail = (index, field) => `${field} no ${CASES[index]}. ` +
+    "Distinguir o processo em execução, sua interface local e a relação entre as pontas preserva as condições de cada caso. ".repeat(15).trimEnd();
   map.itensDeEscopo = coverage;
   map.modulos[0].licoes[0].microssequencias = names.map((titulo, index) => ({ titulo,
-    objetivo: coverage[index], dependencias: index ? [names[index - 1]] : [], cobertura: [coverage[index]],
-    explicacao: { proposito: `Relacionar processo, socket e transporte no ${CASES[index]}.`,
-      pressupostos: ["Um processo é um programa em execução."],
-      relacoes: ["O socket é a interface local; a conexão relaciona as pontas da comunicação."],
+    objetivo: detail(index, "Objetivo"), dependencias: index ? [names[index - 1]] : [], cobertura: [coverage[index]],
+    explicacao: { proposito: detail(index, "Propósito"),
+      pressupostos: [1, 2, 3].map(position => detail(index, `Pressuposto ${position}`)),
+      relacoes: [1, 2, 3].map(position => detail(index, `Relação ${position}`)),
       fontesPrevistas: [SOURCE] } }));
+  assert.ok(JSON.stringify(encodeCourseActionTaskRequest("salvar_mapa_curricular", map).arguments).length < 99_999);
+  assert.ok(JSON.stringify(map).length > 80_000, "A fixture exercita um mapa extenso sem exceder a entrada Actions.");
+  for (const microsequence of map.modulos[0].licoes[0].microssequencias) {
+    for (const text of [microsequence.objetivo, microsequence.explicacao.proposito,
+      ...microsequence.explicacao.pressupostos, ...microsequence.explicacao.relacoes]) assert.ok(text.length <= 2000);
+  }
   const links = () => [{ fonte: SOURCE, relacao: "supported_by", papeis: ["tecnica_conceitual"], ancoras: [1] }];
   const lots = [0, 1].map(lot => {
     const indexes = [lot * 3, lot * 3 + 1, lot * 3 + 2];
@@ -152,8 +160,38 @@ export async function runLocalAuthoringChannels(environment = process.env) {
         verificacao: "nao_verificada", visibilidadeNoEstudo: "citacao" }, ancoras: [{
         seletor: { tipo: "paginas", paginaInicial: 1, paginaFinal: 1 }, localizadorHumano: "p. 1 da fixture",
         trechoDeVerificacao: "Um socket liga o processo ao transporte." }] });
-      await client.call("salvar_mapa_curricular", fixture.map);
+      const confirmation = await client.call("salvar_mapa_curricular", fixture.map);
+      assert.ok(measurements.at(-1).response.utf8Bytes < 4000, "A confirmação de escrita não deve repetir o mapa.");
+      const recovered = await client.call("consultar_planejamento", { curso: title, resumo: true });
+      assert.ok(measurements.at(-1).response.utf8Bytes < 4000, "A recuperação deve permanecer pequena.");
+      assert.equal(recovered.context.referenciaParaAprovar, confirmation.context.referenciaParaAprovar);
+      assert.equal(recovered.context.revisaoDoCurso, confirmation.context.revisaoDoCurso);
+      assert.ok(recovered.context.referenciaParaAprovar);
+      assert.ok(Number.isInteger(recovered.context.revisaoDoCurso));
       const savedMap = await completeRead(client, "consultar_planejamento", { curso: title });
+      assert.ok(savedMap.pages > 1, "O planejamento extenso precisa de continuação.");
+      assert.equal(savedMap.context.referenciaParaAprovar, recovered.context.referenciaParaAprovar);
+      const expectedMicros = fixture.map.modulos[0].licoes[0].microssequencias;
+      const savedMicros = savedMap.context.mapaCurricular.modulos[0].licoes[0].microssequencias;
+      assert.equal(savedMicros.length, expectedMicros.length);
+      for (const [index, expected] of expectedMicros.entries()) {
+        assert.equal(savedMicros[index].objetivo, expected.objetivo);
+        for (const field of ["proposito", "pressupostos", "relacoes"]) {
+          assert.deepEqual(savedMicros[index].explicacao[field], expected.explicacao[field]);
+        }
+      }
+      for (const task of ["consultar_planejamento", "retomar_curso"]) {
+        const start = measurements.length;
+        const focused = await completeRead(client, task, { ...(task === "retomar_curso" ? { titulo: title } : { curso: title }),
+          microssequencia: expectedMicros[0].titulo });
+        const focalLiteral = JSON.stringify(focused.context);
+        assert.ok(focalLiteral.includes(expectedMicros[0].objetivo), "O foco conserva seu objetivo integral.");
+        assert.ok(!focalLiteral.includes(expectedMicros.at(-1).titulo), "A retomada focal não inclui o último ramo do curso.");
+        assert.ok(focused.pages < savedMap.pages, "O foco não deve transportar o mapa completo.");
+        for (const measurement of measurements.slice(start)) {
+          assert.ok(measurement.response.utf8Bytes < 20_000, "Cada resposta focal deve caber no orçamento de transporte.");
+        }
+      }
       await client.call("aprovar_mapa_curricular", { referencia: savedMap.context.referenciaParaAprovar });
       let firstLot; let firstSourceLinks; const lots = [];
       for (const [index, lot] of fixture.lots.entries()) {

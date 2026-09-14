@@ -76,13 +76,15 @@ conteúdo necessária varia com o trabalho.
 
 | Leitura | Conteúdo necessário à decisão |
 | --- | --- |
-| planejamento | mapa completo e, quando solicitado, a parte de produção |
+| planejamento | mapa completo por continuação; com parte ou microssequência indicada, somente o ramo e as dependências pertinentes |
 | preparação de materialização | lote, explicações salvas, repertório, configuração e fontes pertinentes |
 | configuração | escolhas aplicáveis, sua origem e registros da produção anterior |
 | observações | entradas pendentes da explicação ou das unidades selecionadas |
 | preparação de revisão | conteúdo e percurso que a correção pode afetar |
 | fontes | página do catálogo, fonte selecionada ou vínculos de um conteúdo |
 | componentes | candidatos adequados à função e contrato do componente escolhido |
+
+`retomar_curso` também conserva o recorte de `parte` ou `microssequencia`, sem acrescentar o mapa inteiro à retomada focal. Para apenas conferir a situação do planejamento e recuperar sua referência vigente, `consultar_planejamento` aceita `resumo: true`. Essa leitura pequena não contém o mapa e não comprova sua inspeção.
 
 Uma resposta pode conter apenas parte desses dados. A **continuação** é uma
 referência devolvida pelo serviço para obter a parte seguinte do mesmo recorte.
@@ -113,7 +115,9 @@ da parte produzida. A expressão “revisar a parte” na conversa conserva esse
 destino. A seção de observações é usada para inspecionar apontamentos, enquanto
 a declaração de revisão se refere a cada objeto salvo e à sua base pertinente.
 
-Cada chamada conserva o conteúdo integral do objeto. Campos independentes podem ser acrescentados em chamadas posteriores, pois a edição de ramo preserva os campos omitidos. Dividir o trabalho dessa forma evita exigir a árvore inteira numa única chamada; não autoriza resumir objetivos, explicações ou relações para satisfazer o transporte. `salvar_mapa_curricular` com módulos preenchidos continua sendo uma substituição completa, não uma forma de acrescentar somente o próximo ramo. Ao terminar, o assistente consulta o planejamento completo e apresenta a versão salva para inspeção. Um rascunho ainda sem ramos ou com cobertura pendente não está pronto para aprovação.
+Cada chamada conserva o conteúdo integral do objeto. Campos independentes podem ser acrescentados em chamadas posteriores, pois a edição de ramo preserva os campos omitidos. Dividir o trabalho dessa forma evita exigir a árvore inteira numa única chamada; não autoriza resumir objetivos, explicações ou relações para satisfazer o transporte. `salvar_mapa_curricular` com módulos preenchidos continua sendo uma substituição completa, não uma forma de acrescentar somente o próximo ramo. Ao terminar, o assistente consulta todas as páginas do planejamento completo e apresenta a versão salva para inspeção. Um rascunho ainda sem ramos ou com cobertura pendente não está pronto para aprovação.
+
+A resposta de `salvar_mapa_curricular` confirma a persistência com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem repetir a árvore do curso. Se essa resposta se perder, o assistente usa `consultar_planejamento` com `curso` e `resumo: true` para recuperar a situação e a referência vigentes antes de decidir se falta alguma escrita. A referência recuperada não substitui a inspeção do mapa nem autoriza aprová-lo sem a decisão explícita da pessoa. MCP e Actions usam o mesmo comportamento.
 
 A explicação pode ser desenvolvida numa microssequência existente enquanto o
 mapa ainda está em rascunho e antes de haver unidades. No foco **Conteúdo**, a

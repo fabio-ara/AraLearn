@@ -220,6 +220,26 @@ function sharedExplanations() {
   }, fontes: [] }];
 }
 
+async function completePreparation(input) {
+  let continuation, literal = "", pages = 0, result;
+  do {
+    result = await executeHumanCourseTask({ ...input, rawArguments: { ...input.rawArguments,
+      ...(continuation ? { continuacao: continuation } : {}) } });
+    const fragment = result.context.fragmento;
+    if (fragment) {
+      assert.equal(fragment.inicio, literal.length);
+      assert.ok(fragment.fim > fragment.inicio);
+      literal += fragment.texto;
+      assert.equal(fragment.fim, literal.length);
+      if (fragment.fim === fragment.total) assert.equal(result.context.continuacao, null);
+    }
+    continuation = result.context.continuacao;
+    assert.equal(result.context.temMais, continuation !== null);
+    assert.ok(++pages < 80, "O preparo integral não terminou em 80 páginas.");
+  } while (continuation);
+  return { ...result, context: literal ? JSON.parse(literal) : result.context };
+}
+
 export async function runLocalCourseAuthoringCurrent(environment = process.env) {
   const config = localSupabaseConfiguration(environment);
   const marker = randomUUID();
@@ -284,7 +304,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: approvedPart(title)
     });
 
-    const prepared = await executeHumanCourseTask({
+    const prepared = await completePreparation({
       adapter,
       principal,
       name: "preparar_materializacao",

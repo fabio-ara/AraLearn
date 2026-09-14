@@ -27,6 +27,28 @@ const execute = (adapter, name, args) => executeHumanCourseTask({
   adapter, principal: PRINCIPAL, name, rawArguments: { curso: TITLE, ...args }
 });
 
+async function readLogicalPage(adapter, name, args = {}) {
+  let continuation = args.continuacao, literal = "", calls = 0;
+  while (true) {
+    const read = await execute(adapter, name, { ...args,
+      ...(continuation ? { continuacao: continuation } : {}) });
+    calls++;
+    const { fragmento, continuacao, temMais } = read.context;
+    assert.ok(JSON.stringify(read.context).length <= 12_000);
+    assert.ok(Buffer.byteLength(JSON.stringify(read.context)) <= 16 * 1024);
+    if (!fragmento) return { ...read, calls };
+    assert.equal(fragmento.inicio, literal.length);
+    assert.ok(fragmento.fim > fragmento.inicio);
+    literal += fragmento.texto;
+    assert.equal(fragmento.fim, literal.length);
+    assert.ok(calls <= Math.ceil(fragmento.total / 1000) + 1, "a página lógica termina sem repetir fragmentos");
+    if (fragmento.fim === fragmento.total) return { ...read, calls,
+      context: { ...JSON.parse(literal), continuacao, temMais } };
+    assert.ok(continuacao);
+    continuation = continuacao;
+  }
+}
+
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
   const calls = { units: [], sources: [], annotations: [], reviews: [] };
   const adapter = {
@@ -132,6 +154,67 @@ function materializationPreparationFixture(blocks = 32) {
   return { adapter, support, plan };
 }
 
+test("planejamento grande tem resumo recuperável, foco local e leitura integral limitada nos dois canais", async () => {
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter, plan } = materializationPreparationFixture(1);
+    Object.assign(plan, { curriculumMapStatus: "draft", audience: "Iniciantes", declaredPrerequisites: [] });
+    const lesson = plan.curriculum.modules[0].lessons[0];
+    Object.assign(plan.curriculum.modules[0], { title: "Módulo", objective: "Objetivo" });
+    Object.assign(lesson, { title: "Lição", objective: "Objetivo" });
+    const focal = lesson.microsequences[0];
+    focal.objective = "Relacionar interfaces";
+    plan.curriculumScopeItems = [{ id: "shared-scope", statement: "Cobertura compartilhada" }];
+    focal.scopeItemIds = ["shared-scope"];
+    for (let i = 0; i < 160; i++) lesson.microsequences.push({ id: `other-${i}`, title: `Outro ${i}`,
+      objective: "Conteúdo alheio ao foco. ".repeat(100), dependencies: [], scopeItemIds: ["shared-scope"] });
+    plan.parts.push({ id: "other-part", position: 1, title: "Lote alheio", intent: "Conteúdo alheio ao foco.",
+      microsequences: lesson.microsequences.slice(1) });
+    adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision,
+      mapApprovalReference: `persisted-map-${adapter.revision}`, plan: structuredClone(plan) });
+    const summary = await channelCall(channel, adapter, "consultar_planejamento", { curso: TITLE, resumo: true });
+    assert.equal(summary.status, 200, summary.envelope);
+    assert.ok(summary.envelope.length < 4000);
+    assert.equal(summary.value.context.referenciaParaAprovar, "persisted-map-7");
+    const readFocus = async (name, args) => {
+      let continuation, literal = "";
+      for (let page = 0; page < 5; page++) {
+        const read = await channelCall(channel, adapter, name, { ...args,
+          ...(continuation ? { continuacao: continuation } : {}) });
+        assert.equal(read.status, 200, read.envelope);
+        assert.ok(read.envelope.length < 16000);
+        assert.doesNotMatch(read.envelope, /Conteúdo alheio|Outro 159|Lote alheio/u);
+        if (!read.value.context.fragmento) return read.value.context;
+        assert.equal(read.value.context.fragmento.inicio, literal.length);
+        literal += read.value.context.fragmento.texto;
+        continuation = read.value.context.continuacao;
+        if (!continuation) return JSON.parse(literal);
+      }
+      assert.fail("O foco não deve percorrer os outros 160 ramos.");
+    };
+    for (const name of ["consultar_planejamento", "retomar_curso"]) {
+      const args = name === "retomar_curso" ? { titulo: TITLE } : { curso: TITLE };
+      const focused = await readFocus(name, { ...args, microssequencia: "Interfaces" });
+      assert.deepEqual(focused.cobertura[0].previstaEm.map(item => item.microssequencia), ["Interfaces"]);
+      const partRead = await readFocus(name, { ...args, parte: 1 });
+      assert.deepEqual(partRead.parteEmFoco.microssequencias.map(item => item.titulo), ["Interfaces"]);
+    }
+    let continuation, literal = "", calls = 0;
+    do {
+      const read = await channelCall(channel, adapter, "consultar_planejamento", { curso: TITLE,
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(read.status, 200, read.envelope);
+      assert.ok(Buffer.byteLength(read.envelope) < 20000);
+      assert.equal(read.value.context.fragmento.inicio, literal.length);
+      literal += read.value.context.fragmento.texto;
+      continuation = read.value.context.continuacao;
+      assert.ok(++calls < 100);
+    } while (continuation);
+    const restored = JSON.parse(literal);
+    assert.equal(restored.mapaCurricular.modulos[0].licoes[0].microssequencias.length, 161);
+    assert.equal(restored.mapaCurricular.modulos[0].licoes[0].microssequencias[160].objetivo, lesson.microsequences[160].objective);
+  }
+});
+
 test("vínculos da Explicação conservam referências humanas e paginação nos dois transportes", async () => {
   const anchors = Array.from({ length: 8 }, (_, index) => ({ anchorId: `private-anchor-${index}`,
     status: "active", humanLocator: `seção ${index + 1}`, verificationExcerpt: "Trecho sintético α. ".repeat(90),
@@ -159,7 +242,7 @@ test("vínculos da Explicação conservam referências humanas e paginação nos
       assert.equal(response.value.context.fragmento.inicio, literal.length);
       literal += response.value.context.fragmento.texto;
       continuation = response.value.context.continuacao;
-      assert.ok(++calls < 20);
+      assert.ok(++calls <= links.length * anchors.length);
     } while (continuation);
     assert.ok(calls > 1);
     assert.doesNotMatch(literal, /private-source|private-link|private-anchor|sourceId|linkId|anchorId|requestId/u);
@@ -191,10 +274,10 @@ test("preparo recupera apoio acima do envelope Actions por continuação literal
       expectedStart = context.fragmento.fim;
       continuation = context.continuacao;
       assert.equal(context.temMais, continuation !== null);
-      assert.ok(++calls < 10, "continuação precisa terminar sem repetir trecho");
+      assert.ok(++calls <= support.content.length * 2, "continuação precisa terminar sem repetir trecho");
     } while (continuation);
     const restored = JSON.parse(literal);
-    assert.equal(calls, 2);
+    assert.ok(calls > 2, "o apoio atravessa vários fragmentos do orçamento focal");
     assert.equal(restored.explicacoes.length, 1);
     assert.deepEqual(restored.explicacoes[0].conteudo, support);
     assert.equal(restored.explicacoes[0].revisao, "Rascunho");
@@ -223,7 +306,7 @@ test("preparo conserva repertório disponível extenso sem introduzir nem vincul
       literal += read.value.context.fragmento.texto;
       continuation = read.value.context.continuacao;
       assert.equal(read.value.context.temMais, continuation !== null);
-      assert.ok(++calls < 10);
+      assert.ok(++calls <= plan.instructionalAnalysisUnits.length * 2);
     } while (continuation);
     assert.ok(calls > 1, "o repertório extenso precisa de continuação");
     const part = JSON.parse(literal).parte;
@@ -241,9 +324,9 @@ test("preparo conserva repertório disponível extenso sem introduzir nem vincul
   }
 });
 
-test("preparo pequeno é terminal; continuação não mistura revisão, apoio ou repertório alterado", async () => {
+test("preparo termina após reconstrução; continuação não mistura revisão, apoio ou repertório alterado", async () => {
   const small = materializationPreparationFixture(4);
-  const complete = await execute(small.adapter, "preparar_materializacao", { parte: 1 });
+  const complete = await readLogicalPage(small.adapter, "preparar_materializacao", { parte: 1 });
   assert.equal(complete.context.temMais, false);
   assert.equal(complete.context.continuacao, null);
   assert.deepEqual(complete.context.explicacoes[0].conteudo, small.support);
@@ -339,7 +422,17 @@ test("fragmento pendente rejeita conteúdo alterado e só avança página depois
   assert.equal(state.p, null);
   await assert.rejects(() => paginateHumanReadContext({ text: "y".repeat(130_000) }, { state, nextPage: "unit-12" }),
     error => error.status === 409 && error.code === "human_read_context_changed");
-  const final = await paginateHumanReadContext(context, { state, nextPage: "unit-12" });
+  let final = first, current = state, literal = first.fragmento.texto, calls = 1;
+  while (final.fragmento.fim < final.fragmento.total) {
+    assert.equal(current.p, null, "o cursor de backend não avança antes do último fragmento");
+    final = await paginateHumanReadContext(context, { state: current, nextPage: "unit-12" });
+    assert.equal(final.fragmento.inicio, literal.length);
+    literal += final.fragmento.texto;
+    assert.ok(++calls <= Math.ceil(JSON.stringify(context).length / 1000));
+    current = await openHumanReadContinuation({ args: { ...args, continuacao: final.continuacao },
+      course: COURSE, task: "preparar_revisao" });
+  }
+  assert.deepEqual(JSON.parse(literal), context);
   assert.equal(final.fragmento.fim, JSON.stringify(context).length);
   const next = await openHumanReadContinuation({ args: { ...args, continuacao: final.continuacao },
     course: COURSE, task: "preparar_revisao" });
@@ -395,7 +488,7 @@ test("lista autorizada revela o curso 13 e recusa a continuação em outra conta
 test("revisão lê uma página de 12, conserva cada studyUnit literal e remove maquinaria dos metadados", async () => {
   const units = Array.from({ length: 24 }, (_, i) => studyUnit(i + 1));
   const adapter = fixture({ units, totalUnits: 1200 });
-  const first = await execute(adapter, "preparar_revisao", {});
+  const first = await readLogicalPage(adapter, "preparar_revisao");
   assert.deepEqual(first.context.studyUnits.map(item => item.studyUnit), units.slice(0, 12).map(item => item.studyUnit));
   for (const item of first.context.studyUnits) {
     const metadata = { ...item };
@@ -406,19 +499,22 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
     assert.match(metadata.referenciaRevisao, /^[A-Za-z0-9_-]+$/u);
     assert.doesNotMatch(JSON.stringify(metadata), /literal-json-field|requestId|payload|steps|version/u);
   }
-  assert.equal(adapter.calls.units.length, 1, "não varrer as cem páginas do curso");
+  assert.equal(adapter.calls.units.length, first.calls, "cada fragmento relê somente a mesma página lógica");
+  assert.ok(adapter.calls.units.every(input => input.cursorStudyUnitId === null), "não varrer as cem páginas do curso");
   assert.equal(adapter.calls.units[0].limit, 12);
   assert.equal(adapter.calls.units[0].expectedRevision, 7);
   assert.deepEqual(adapter.calls.annotations.map(input => input.query.hierarchy.target.id),
-    units.slice(0, 12).map(item => item.studyUnit.id));
+    Array.from({ length: first.calls }, () => units.slice(0, 12).map(item => item.studyUnit.id)).flat());
   assert.deepEqual(adapter.calls.reviews.map(({ courseId, targetKind, targetId }) => ({ courseId, targetKind, targetId })),
-    units.slice(0, 12).map(item => ({ courseId: COURSE.id, targetKind: "study_unit", targetId: item.studyUnit.id })));
-  const second = await execute(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
+    Array.from({ length: first.calls }, () => units.slice(0, 12).map(item => ({ courseId: COURSE.id,
+      targetKind: "study_unit", targetId: item.studyUnit.id }))).flat());
+  const second = await readLogicalPage(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
   assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit), units.slice(12).map(item => item.studyUnit));
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
-  assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId), [null, "unit-12"]);
-  assert.equal(adapter.calls.annotations.length, 24);
-  assert.equal(adapter.calls.reviews.length, 24);
+  assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId),
+    [...Array(first.calls).fill(null), ...Array(second.calls).fill("unit-12")]);
+  assert.equal(adapter.calls.annotations.length, (first.calls + second.calls) * 12);
+  assert.equal(adapter.calls.reviews.length, (first.calls + second.calls) * 12);
 });
 
 test("revisão inclui um apoio literal por microssequência, com proposta e situação separadas", async () => {
@@ -461,7 +557,7 @@ test("backend que repete cursor de fontes ou unidades falha sem devolver página
   for (const name of ["consultar_fontes", "preparar_revisao"]) {
     const adapter = fixture({ sources: Array.from({ length: 25 }, (_, i) => ({ title: `Fonte ${i}` })),
       units: Array.from({ length: 24 }, (_, i) => studyUnit(i + 1)) });
-    const first = await execute(adapter, name, {});
+    const first = await readLogicalPage(adapter, name);
     if (name === "consultar_fontes") {
       adapter.getCourseSources = async ({ cursor }) => ({ items: [{ title: "PRIVATE_DUPLICATE" }], nextCursor: cursor });
     } else {
@@ -509,7 +605,7 @@ test("fontes extensas atravessam ambos os transportes em envelopes Actions abaix
       if (channel === "actions") assert.ok(response.envelope.length < 100_000);
       pages.push(response.value);
       cursor = response.value.context.continuacao;
-      assert.ok(pages.length < 30);
+      assert.ok(pages.length <= sources.length * 4);
     } while (cursor);
     assert.ok(pages.length > 1);
     assert.deepEqual(JSON.parse(pages.map(page => page.context.fragmento.texto).join("")),
