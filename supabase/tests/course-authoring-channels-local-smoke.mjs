@@ -23,7 +23,7 @@ function fixtures(course) {
   const names = CASES.map(label => `Socket no ${label}`);
   const coverage = CASES.map(label => `Identificar a interface local no ${label}.`);
   const detail = (index, field) => `${field} no ${CASES[index]}. ` +
-    "Distinguir o processo em execução, sua interface local e a relação entre as pontas preserva as condições de cada caso. ".repeat(15);
+    "Distinguir o processo em execução, sua interface local e a relação entre as pontas preserva as condições de cada caso. ".repeat(15).trimEnd();
   map.itensDeEscopo = coverage;
   map.modulos[0].licoes[0].microssequencias = names.map((titulo, index) => ({ titulo,
     objetivo: detail(index, "Objetivo"), dependencias: index ? [names[index - 1]] : [], cobertura: [coverage[index]],
