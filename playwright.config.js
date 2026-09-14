@@ -11,6 +11,8 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   workers: 1,
+  // Escritas reais incluem confirmação e releitura; o prazo sintético não cobre esse percurso.
+  ...(process.env.ARALEARN_E2E_REAL_SUPABASE === "1" ? { expect: { timeout: 30_000 } } : {}),
   reporter: "line",
   projects: [
     {

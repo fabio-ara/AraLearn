@@ -350,7 +350,7 @@ function isSafeRelativePath(value) {
 function validateCandidateManifest(manifest, siteUrl, expectedVersion) {
   const files = manifest?.artifacts?.pages?.files;
   const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
-  if (manifest?.schemaVersion !== 1 || typeof manifest.version !== "string" ||
+  if (manifest?.schemaVersion !== 2 || typeof manifest.version !== "string" ||
       !semver.test(manifest.version) || !Array.isArray(files) ||
       files.length === 0 || files.length > MAX_ASSET_COUNT) {
     throw new Error("O manifesto da candidata não contém schema, versão ou lista Pages válidos.");
