@@ -80,7 +80,9 @@ test("E2E reutiliza prova após texto documental e invalida após alteração de
   assert.notEqual(fingerprintInputs(root, frontendInputs), frontendBefore);
 });
 
-test("seleção E2E conserva contratos, scripts e raízes desconhecidas; demais gates conservam tudo", () => {
+test("seleção E2E conserva contratos, scripts e raízes desconhecidas; demais gates conservam tudo", t => {
+  const root = fixture(t);
+  fs.writeFileSync(path.join(root, "tests/e2e/example.spec.js"), "// browser");
   const irrelevant = ["README.md", "docs/guide.md", "android/app/build.gradle.kts",
     "supabase/migrations/new.sql", "supabase/tests/new.sql", ".github/workflows/validacao.yml",
     "scripts/runLocalIntegration.mjs", "scripts/validateLocalSupabase.ps1", "scripts/validateCandidate.mjs",
@@ -90,23 +92,25 @@ test("seleção E2E conserva contratos, scripts e raízes desconhecidas; demais 
     "docs/autoria-mcp.md", "docs/downloads/aralearn-chatgpt-action-openapi.yaml",
     "supabase/functions/_shared/example.js", "unknown/input.txt", ".github/actions/custom/action.yml"];
   const files = [...irrelevant, ...relevant];
-  assert.deepEqual(selectGateInputs(files, "frontend-e2e"), relevant);
+  assert.deepEqual(selectGateInputs(files, "frontend-e2e", null, root), relevant);
   for (const gate of ["preflight", "lint", "runtime-focal", "unknown-gate"]) {
     assert.deepEqual(selectGateInputs(files, gate), files);
   }
 });
 
-test("specs E2E seguem a seleção efetiva e comandos desconhecidos conservam todos os inputs", () => {
+test("specs E2E seguem a seleção efetiva e comandos desconhecidos conservam todos os inputs", t => {
+  const root = fixture(t);
   const selected = "tests/e2e/example.spec.js";
   const unselected = "tests/e2e/course-authoring-context-local.spec.js";
   const regexOverlap = "tests/e2e/example.spec.js-extra.spec.js";
   const files = [selected, unselected, regexOverlap, "tests/e2e/helper.js", "tests/fixtures/course.json",
     "tests/helpers/browser.js", "scripts/runE2eTests.mjs", "unknown/input.js"];
+  for (const file of [selected, unselected, regexOverlap]) fs.writeFileSync(path.join(root, file), "// browser");
   const args = ["scripts/runE2eTests.mjs", selected, "--retries=0", "--forbid-only", "--reporter=json"];
-  assert.deepEqual(selectGateInputs(files, "frontend-e2e", args), files.filter(file => file !== unselected));
+  assert.deepEqual(selectGateInputs(files, "frontend-e2e", args, root), files.filter(file => file !== unselected));
   for (const alternate of [null, ["scripts/runE2eTests.mjs", "--reporter=json"],
     [...args, "--config=custom.config.js"], ["another-runner.mjs", selected]]) {
-    assert.deepEqual(selectGateInputs(files, "frontend-e2e", alternate), files);
+    assert.deepEqual(selectGateInputs(files, "frontend-e2e", alternate, root), files);
   }
   assert.deepEqual(selectGateInputs(files, "runtime-focal", args), files);
 });
@@ -358,12 +362,67 @@ test("runtime conserva specs lidas por inventário transitivo e por registros de
   const spec = "tests/e2e/example.spec.js";
   const args = ["scripts/runTests.mjs", "--focal", selected];
   fs.writeFileSync(path.join(root, selected), 'import "../../scripts/audit.mjs";');
-  fs.writeFileSync(path.join(root, "scripts/audit.mjs"), 'import { readdir } from "node:fs/promises";');
+  fs.writeFileSync(path.join(root, "scripts/audit.mjs"), 'import { readdir } from "node:fs/promises"; readdir("tests/e2e");');
   fs.writeFileSync(path.join(root, spec), "// browser proof");
   let files = [selected, spec, "scripts/audit.mjs"];
   assert.deepEqual(selectGateInputs(files, "runtime-focal", args, root), files);
-  fs.writeFileSync(path.join(root, selected), "// runtime");
+  fs.writeFileSync(path.join(root, selected), 'import { readFileSync } from "node:fs"; readFileSync("docs/evidence.json");');
   fs.writeFileSync(path.join(root, "docs/evidence.json"), JSON.stringify({ tests: [spec] }));
   files = [...files, "docs/evidence.json"];
   assert.deepEqual(selectGateInputs(files, "runtime-focal", args, root), files);
+});
+
+test("runtime focal ignora comentários, documentação e testes não consumidos", t => {
+  const root = fixture(t);
+  const selected = "tests/runtime/example.test.js";
+  const other = "tests/runtime/other.test.js";
+  const browser = "tests/e2e/example.spec.js";
+  fs.writeFileSync(path.join(root, selected), '// e2e, readdir, glob e import() não são leituras\nconst label = "e2e";');
+  fs.writeFileSync(path.join(root, other), 'throw new Error("not selected");');
+  fs.writeFileSync(path.join(root, browser), "// browser");
+  fs.writeFileSync(path.join(root, "docs/unread.json"), JSON.stringify({ tests: [browser] }));
+  const files = [selected, other, browser, "docs/guide.md", "docs/unread.json"];
+  const step = { gate: "runtime-focal", args: ["scripts/runTests.mjs", "--focal", selected] };
+  const inputs = selectGateInputs(files, step.gate, step.args, root);
+  assert.deepEqual(inputs, [selected, "docs/unread.json"]);
+  const previous = { schemaVersion: 2, result: "passed", configuration: "same", fingerprint: "old",
+    command: createHash("sha256").update(JSON.stringify(step)).digest("hex"),
+    inputs: Object.fromEntries(files.map(file => [file, fingerprintInputs(root, [file])])) };
+  for (const file of [other, browser, "docs/guide.md"]) fs.appendFileSync(path.join(root, file), "\nchanged");
+  assert.equal(reusableInputReceipt(previous, { root, inputs: files, step, configuration: "same", fingerprint: "new" }), true);
+  fs.appendFileSync(path.join(root, selected), "\nconst changed = true;");
+  assert.equal(reusableInputReceipt(previous, { root, inputs: files, step, configuration: "same", fingerprint: "new" }), false);
+});
+
+test("leituras literais e importadas conservam documentos, specs e registros efetivamente usados", t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "tests/helpers"));
+  const selected = "tests/runtime/example.test.js", helper = "tests/helpers/reader.js", browser = "tests/e2e/example.spec.js";
+  fs.writeFileSync(path.join(root, selected), 'import "../helpers/reader.js";');
+  fs.writeFileSync(path.join(root, helper), 'import { readFileSync } from "node:fs"; readFileSync(new URL("../../docs/guide.md", import.meta.url), "utf8"); readFileSync("docs/evidence.json", "utf8");');
+  fs.writeFileSync(path.join(root, "docs/evidence.json"), JSON.stringify({ tests: [browser] }));
+  fs.writeFileSync(path.join(root, browser), "// read through evidence");
+  fs.writeFileSync(path.join(root, "docs/unused.md"), "unused");
+  const files = [selected, helper, "docs/guide.md", "docs/unused.md", "docs/evidence.json", browser];
+  const args = ["scripts/runTests.mjs", "--focal", selected];
+  const inputs = selectGateInputs(files, "runtime-focal", args, root);
+  assert.deepEqual(inputs, files.filter(file => file !== "docs/unused.md"));
+  const before = fingerprintInputs(root, inputs);
+  fs.appendFileSync(path.join(root, "docs/guide.md"), "consumed change");
+  assert.notEqual(fingerprintInputs(root, selectGateInputs(files, "runtime-focal", args, root)), before);
+  fs.writeFileSync(path.join(root, helper), 'import { readFileSync } from "node:fs"; readFileSync(process.env.INPUT_FILE);');
+  assert.deepEqual(selectGateInputs(files, "runtime-focal", args, root), files, "leitura dinâmica desconhecida permanece ampla");
+  fs.writeFileSync(path.join(root, helper), 'import fs from "node:fs"; const load = fs.readFileSync; load(process.env.INPUT_FILE);');
+  assert.deepEqual(selectGateInputs(files, "runtime-focal", args, root), files, "alias de leitura não resolvido permanece amplo");
+});
+
+test("E2E não descarta documentação nem outro teste lido pelo spec selecionado", t => {
+  const root = fixture(t);
+  const selected = "tests/e2e/example.spec.js", other = "tests/runtime/read.test.js";
+  fs.writeFileSync(path.join(root, selected), 'import { readFileSync } from "node:fs"; readFileSync("docs/guide.md"); readFileSync("tests/runtime/read.test.js");');
+  fs.writeFileSync(path.join(root, other), "// source audited by browser spec");
+  const files = [selected, other, "docs/guide.md"];
+  assert.deepEqual(selectGateInputs(files, "frontend-e2e", ["scripts/runE2eTests.mjs", selected], root), files);
+  fs.writeFileSync(path.join(root, selected), "// no reads");
+  assert.deepEqual(selectGateInputs(files, "frontend-e2e", ["scripts/runE2eTests.mjs", selected, "--config=other.js"], root), files);
 });

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { classifyValidationImpact, isReleaseMetadataOnly } from "../../scripts/validationImpact.mjs";
+import { buildCandidatePlan } from "../../scripts/validateCandidate.mjs";
 
 const REAL_E2E = [
   "tests/e2e/course-access-local.spec.js", "tests/e2e/course-audio-local.spec.js",
@@ -97,6 +98,38 @@ test("desconhecido, entrada inválida e orquestração ampliam gates sem dispens
     assert.ok(result.runtimeFiles.includes("tests/runtime/course-supabase-adapter.test.js"));
     assert.deepEqual(result.realE2eFiles, REAL_E2E);
   }
+});
+
+test("verificador de publicação e sua regressão selecionam somente os consumidores focais", () => {
+  const result = classifyValidationImpact([
+    "scripts/verifyPublishedSite.mjs", "tests/runtime/published-site-verification.test.js"
+  ]);
+  assert.deepEqual(result.categories, ["verification"]);
+  assert.deepEqual(result.runtimeFiles, ["tests/runtime/published-site-verification.test.js"]);
+  assert.deepEqual(result.requires, { web: true, contracts: false, supabase: false, android: false });
+  assert.deepEqual(result.e2eFiles, []);
+  assert.deepEqual(result.realE2eFiles, []);
+  const native = classifyValidationImpact(["scripts/androidNativeGate.py", "tests/helpers/androidNativeGateTests.py"]);
+  assert.deepEqual(native.runtimeFiles, ["tests/runtime/android-native-gate.test.js", "tests/runtime/deployment-automation.test.js"]);
+  assert.equal(native.requires.android, false, "verificar recibos não altera o aplicativo Android");
+  assert.equal(native.requires.supabase, false);
+  assert.deepEqual(classifyValidationImpact(["scripts/verifyDeploymentArtifacts.ps1"]).runtimeFiles,
+    ["tests/runtime/deployment-automation.test.js"]);
+  assert.deepEqual(buildCandidatePlan(result).map(step => step.gate), ["preflight", "lint", "runtime-contract", "runtime-focal"]);
+  assert.deepEqual(buildCandidatePlan(result).at(-1).args,
+    ["scripts/runTests.mjs", "--focal", "tests/runtime/published-site-verification.test.js"]);
+});
+
+test("papel focal não encobre mecanismo transversal, script desconhecido ou alteração de produto", () => {
+  for (const file of ["scripts/releaseCandidate.mjs", "scripts/candidateApplicability.mjs", "scripts/newVerifier.mjs"]) {
+    const result = classifyValidationImpact(["scripts/verifyPublishedSite.mjs", file]);
+    assert.ok(Object.values(result.requires).every(Boolean), file);
+    assert.ok(result.runtimeFiles.length > 100, file);
+  }
+  const mixed = classifyValidationImpact(["scripts/verifyPublishedSite.mjs", "src/domain/courseSources.js"]);
+  assert.equal(mixed.requires.supabase, true);
+  assert.ok(mixed.runtimeFiles.includes("tests/runtime/published-site-verification.test.js"));
+  assert.ok(mixed.runtimeFiles.includes("tests/kernel/resource-package-kernel.test.js"));
 });
 
 test("união de paths preserva impacto da origem removida e resultado determinístico", () => {

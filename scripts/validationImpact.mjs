@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const CATEGORY_ORDER = ["release", "parity", "docs", "web", "contracts", "backend", "database", "android", "orchestration", "unknown"];
+const CATEGORY_ORDER = ["release", "parity", "docs", "verification", "web", "contracts", "backend", "database", "android", "orchestration", "unknown"];
 const ROOT_DOCUMENTS = new Set(["README.md", "LICENSE.md", "CHANGELOG.md", "CONTRIBUTING.md"]);
 const CONTRACT_DOCUMENTS = new Set(["docs/aralearn-contract.md", "docs/autoria-actions.md", "docs/autoria-mcp.md"]);
 const STYLE_TESTS = new Set([
@@ -19,6 +19,15 @@ const WEB_REFERENCES = /(?:src\/(?:ui|study|persistence|supabase|storage|runtime
 const CONTRACT_REFERENCES = /(?:src\/(?:domain|core|contract|resources|flowchart|model)\/|supabase\/functions\/|buildChatGptActionOpenApi|projectHumanAuthoringActions)/u;
 const DATABASE_REFERENCES = /(?:supabase\/(?:migrations|tests)\/|@electric-sql\/pglite|scripts\/(?:runLocalMcpOAuthSmoke|verifyBackupRestoreUpgrade))/u;
 const ANDROID_REFERENCES = /(?:android\/|["']android["']|buildAndroid|androidNativeGate)/u;
+// Estes consumidores verificam artefatos/recibos; não constroem o produto nem
+// mudam a seleção/certificação dos gates. Scripts sem papel conhecido continuam amplos.
+const PUBLICATION_VERIFIERS = new Map([
+  ["scripts/verifyPublishedSite.mjs", ["tests/runtime/published-site-verification.test.js"]],
+  ["scripts/verifyDeploymentArtifacts.ps1", ["tests/runtime/deployment-automation.test.js"]],
+  ["scripts/androidNativeGate.py", ["tests/runtime/android-native-gate.test.js", "tests/runtime/deployment-automation.test.js"]],
+  ["tests/helpers/androidNativeGateTests.py", ["tests/runtime/android-native-gate.test.js", "tests/runtime/deployment-automation.test.js"]]
+]);
+const VERIFIER_TESTS = new Set([...PUBLICATION_VERIFIERS.values()].flat());
 
 export function normalizeRepositoryPath(value) {
   if (typeof value !== "string" || !value || value !== value.trim() ||
@@ -115,6 +124,13 @@ export function classifyValidationImpact(paths, { root = repositoryRoot, readBas
       } catch { /* Conteúdo ausente mantém a classificação conservadora. */ }
     }
     if (file === "docs/evidence/paridade-vertical.v1.json") { add("parity"); continue; }
+    if (PUBLICATION_VERIFIERS.has(file) || VERIFIER_TESTS.has(file)) {
+      const consumers = PUBLICATION_VERIFIERS.get(file) || [file];
+      if (consumers.some(test => !runtime.includes(test))) { unknown(file); continue; }
+      add("verification");
+      consumers.forEach(test => changedRuntime.add(test));
+      continue;
+    }
     if (isDocumentationPath(file)) { add("docs"); continue; }
     if (CONTRACT_DOCUMENTS.has(file) || file === "docs/downloads/aralearn-chatgpt-action-openapi.yaml") {
       add("contracts", "backend"); styleOnly = false; continue;
@@ -175,7 +191,9 @@ export function classifyValidationImpact(paths, { root = repositoryRoot, readBas
   const broad = categories.has("unknown") || categories.has("orchestration");
   const backend = categories.has("backend") || categories.has("database");
   const requires = {
-    web: broad || categories.has("web") || backend,
+    // O job web da CI também executa runtime. Conservá-lo evita certificar
+    // o verificador sem seus testes; a preparação local usa runtimeFiles abaixo.
+    web: broad || categories.has("verification") || categories.has("web") || backend,
     contracts: broad || categories.has("contracts"),
     supabase: broad || backend || behavioralWeb,
     android: broad || categories.has("android")
