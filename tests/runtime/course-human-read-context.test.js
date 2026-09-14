@@ -163,20 +163,40 @@ test("planejamento grande tem resumo recuperável, foco local e leitura integral
     Object.assign(lesson, { title: "Lição", objective: "Objetivo" });
     const focal = lesson.microsequences[0];
     focal.objective = "Relacionar interfaces";
+    plan.curriculumScopeItems = [{ id: "shared-scope", statement: "Cobertura compartilhada" }];
+    focal.scopeItemIds = ["shared-scope"];
     for (let i = 0; i < 160; i++) lesson.microsequences.push({ id: `other-${i}`, title: `Outro ${i}`,
-      objective: "Conteúdo alheio ao foco. ".repeat(100), dependencies: [], coverage: [] });
+      objective: "Conteúdo alheio ao foco. ".repeat(100), dependencies: [], scopeItemIds: ["shared-scope"] });
+    plan.parts.push({ id: "other-part", position: 1, title: "Lote alheio", intent: "Conteúdo alheio ao foco.",
+      microsequences: lesson.microsequences.slice(1) });
     adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision,
       mapApprovalReference: `persisted-map-${adapter.revision}`, plan: structuredClone(plan) });
     const summary = await channelCall(channel, adapter, "consultar_planejamento", { curso: TITLE, resumo: true });
     assert.equal(summary.status, 200, summary.envelope);
     assert.ok(summary.envelope.length < 4000);
     assert.equal(summary.value.context.referenciaParaAprovar, "persisted-map-7");
+    const readFocus = async (name, args) => {
+      let continuation, literal = "";
+      for (let page = 0; page < 5; page++) {
+        const read = await channelCall(channel, adapter, name, { ...args,
+          ...(continuation ? { continuacao: continuation } : {}) });
+        assert.equal(read.status, 200, read.envelope);
+        assert.ok(read.envelope.length < 16000);
+        assert.doesNotMatch(read.envelope, /Conteúdo alheio|Outro 159|Lote alheio/u);
+        if (!read.value.context.fragmento) return read.value.context;
+        assert.equal(read.value.context.fragmento.inicio, literal.length);
+        literal += read.value.context.fragmento.texto;
+        continuation = read.value.context.continuacao;
+        if (!continuation) return JSON.parse(literal);
+      }
+      assert.fail("O foco não deve percorrer os outros 160 ramos.");
+    };
     for (const name of ["consultar_planejamento", "retomar_curso"]) {
       const args = name === "retomar_curso" ? { titulo: TITLE } : { curso: TITLE };
-      const focused = await channelCall(channel, adapter, name, { ...args, microssequencia: "Interfaces" });
-      assert.equal(focused.status, 200, focused.envelope);
-      assert.ok(focused.envelope.length < 16000);
-      assert.doesNotMatch(focused.envelope, /Conteúdo alheio|Outro 159/u);
+      const focused = await readFocus(name, { ...args, microssequencia: "Interfaces" });
+      assert.deepEqual(focused.cobertura[0].previstaEm.map(item => item.microssequencia), ["Interfaces"]);
+      const partRead = await readFocus(name, { ...args, parte: 1 });
+      assert.deepEqual(partRead.parteEmFoco.microssequencias.map(item => item.titulo), ["Interfaces"]);
     }
     let continuation, literal = "", calls = 0;
     do {
