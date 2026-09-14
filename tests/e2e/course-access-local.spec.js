@@ -1,4 +1,4 @@
-import { expect as playwrightExpect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -11,8 +11,6 @@ import { buildCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js"
 import { createConfirmedLocalUser, createLocalFixtureClient, recordLocalFixtureFiles, removeLocalUser,
   signInLocalUser, trackLocalFixtureCreation, verifyLocalFixtureFilesAbsent } from "../support/localSupabaseE2e.js";
 
-// Asserções de persistência aguardam o mesmo prazo das ações contra a stack real.
-const expect = playwrightExpect.configure({ timeout: 15_000 });
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
 const PROJECT_URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
 const PUBLISHABLE_KEY = String(process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "").trim();

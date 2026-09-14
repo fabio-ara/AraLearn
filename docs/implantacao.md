@@ -204,6 +204,12 @@ npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
+Na validação funcional, o runtime local usa `edge_runtime.policy = "oneshot"`, com um
+worker por requisição. Esse modo evita compartilhar o ciclo de vida do worker entre
+os percursos e é o padrão de desenvolvimento da [Supabase](https://supabase.com/docs/guides/local-development/cli/config#edge_runtime.policy).
+As asserções da integração real aguardam até 30 segundos por estado confirmado,
+incluindo gravação e releitura; as condições de aceite permanecem as mesmas.
+
 O reset local recria o banco e aplica os dados de teste (*seed*). O projeto hospedado
 nunca recebe seed nem reset pelo procedimento de promoção.
 

@@ -68,7 +68,7 @@ async function verifySheetGeometry(page, dialog, name, info, { groups = false } 
 
 test.describe("folhas contextuais com curso local real", () => {
   test.skip(process.env.ARALEARN_E2E_REAL_SUPABASE !== "1", "Exige stack local explícita.");
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   test("fontes e parâmetros conservam edição e reconciliam a revisão antes de salvar", async ({ browser }, info) => {
     expect(PROJECT_URL).toMatch(/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/u);
     const email = `context304-${Date.now()}-${process.pid}@aralearn.test`;
