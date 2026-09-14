@@ -141,6 +141,22 @@ test("metadados de versão são semânticos e qualquer outro campo mantém impac
   }
   assert.equal(isReleaseMetadataOnly("package-lock.json", '{"version":"1","packages":{"":{"version":"1"},"a":{"version":"1"}}}',
     '{"version":"2","packages":{"":{"version":"2"},"a":{"version":"2"}}}'), false);
+  const androidBefore = 'defaultConfig {\n  versionCode = 219\n  versionName = "0.0.73"\n}\n';
+  const androidAfter = 'defaultConfig {\n  versionCode = 220\n  versionName = "0.0.74"\n}\n';
+  assert.equal(isReleaseMetadataOnly("android/app/build.gradle.kts", androidBefore, androidAfter), true);
+  assert.equal(isReleaseMetadataOnly("android/app/build.gradle.kts", androidBefore,
+    androidAfter.replace("defaultConfig", "defaultConfig // comportamento alterado")), false);
+  assert.equal(isReleaseMetadataOnly("android/app/build.gradle.kts", androidBefore,
+    androidBefore.replace("versionCode = 219", "versionCode = 220\n  versionCode = 221")), false);
+});
+
+test("incremento Android exclusivamente de release não seleciona gate nativo", () => {
+  const current = fs.readFileSync(path.join(path.resolve(import.meta.dirname, "../.."), "android/app/build.gradle.kts"), "utf8");
+  const previous = current.replace(/versionCode = (\d+)/u, (_match, value) => `versionCode = ${Number(value) - 1}`)
+    .replace(/versionName = "\d+\.\d+\.\d+"/u, 'versionName = "999.999.999"');
+  const result = classifyValidationImpact(["android/app/build.gradle.kts"], { readBase: () => previous });
+  assert.deepEqual(result.categories, ["release"]);
+  assert.deepEqual(result.requires, { web: false, contracts: false, supabase: false, android: false });
 });
 
 test("registro de paridade seleciona seu consumidor sem impacto sistêmico", () => {

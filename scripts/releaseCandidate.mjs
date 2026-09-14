@@ -5,6 +5,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  certifyGateResults,
+  validateCandidateApplicability,
+  validateGateCertificate
+} from "./candidateApplicability.mjs";
 import { buildAssistAllowedOrigins } from "../src/assist/providerRuntimeSecurity.js";
 import { verifyHostedBackend, validatePublicProjectConfiguration } from "./verifyHostedBackend.mjs";
 import { verifyPublishedSite } from "./verifyPublishedSite.mjs";
@@ -16,6 +21,7 @@ const CANDIDATE = ".candidate/candidate.json";
 const BACKEND_PROOF = ".candidate/backend.json";
 const PREPARATION_ORIGIN = ".candidate/preparation-origin.json";
 const PAGES_NAME = "aralearn-pages-candidate";
+const ANDROID_NAME = "aralearn-android-runtime-candidate";
 const METADATA_NAME = "aralearn-candidate-manifest";
 const CERTIFICATE = "c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296";
 export const GITHUB_API_ACCEPT = "application/vnd.github+json";
@@ -46,11 +52,6 @@ export async function sourceFileDigest(file, repositoryRoot = ROOT) {
 }
 function python(code, args = []) {
   return run(process.platform === "win32" ? "python" : "python3", ["-c", code, ...args]);
-}
-function toolVersion(command, args) {
-  const result = spawnSync(command, args, { cwd: ROOT, encoding: "utf8" });
-  demand(result.status === 0 && !result.error, `Não foi possível registrar a versão de ${command}.`);
-  return `${result.stdout || ""}${result.stderr || ""}`.trim();
 }
 function demand(condition, message) { if (!condition) throw new Error(message); }
 function positive(value, label) {
@@ -116,25 +117,68 @@ export async function verifyDirectory(directory, expected) {
   assert.deepEqual(await filesIn(directory), expected, "Os arquivos não correspondem aos bytes da candidata aprovada.");
 }
 
-export function validateManifest(manifest, { sealed = true } = {}) {
-  demand(manifest?.schemaVersion === 1 && /^\d+\.\d+\.\d+$/u.test(manifest.version), "Manifesto de candidata inválido.");
+export function validateManifest(manifest) {
+  demand(manifest?.schemaVersion === 2 && /^\d+\.\d+\.\d+$/u.test(manifest.version), "Manifesto de candidata inválido.");
   demand(SHA.test(manifest.source?.testedSha) && SHA.test(manifest.source?.headSha) && SHA.test(manifest.source?.tree), "Identidade Git incompleta.");
   demand(/^[\w.-]+\/[\w.-]+$/u.test(manifest.source.repository) && manifest.source.headRepository === manifest.source.repository, "Candidata de fork recusada.");
   positive(manifest.run?.id, "Run"); positive(manifest.run?.attempt, "Tentativa");
   demand(manifest.run.workflow === ".github/workflows/validacao.yml" && ["pull_request", "workflow_dispatch"].includes(manifest.run.event), "Origem de validação não autorizada.");
   demand(HASH.test(manifest.configurationSha256) && HASH.test(manifest.lockfileSha256) && HASH.test(manifest.backendManifestSha256), "Configuração ou dependências sem identidade.");
   demand(Number.isSafeInteger(manifest.android?.versionCode) && manifest.android.versionCode > 0 && manifest.android.certificateSha256 === CERTIFICATE, "Identidade Android inválida.");
-  validateFiles(manifest.artifacts?.pages?.files);
-  validateFiles(manifest.artifacts?.android?.files);
-  demand(manifest.artifacts.pages.files.some((file) => file.path === "asset-manifest.json") &&
-    manifest.artifacts.pages.files.some((file) => file.path === "index.html"), "Manifesto Pages incompleto.");
-  if (sealed) {
-    demand(manifest.gate?.scope === "integral" && manifest.gate.web === "success" && manifest.gate.supabase === "success", "Gate integral ausente ou incompleto.");
-    positive(manifest.artifacts.pages.id, "Artefato Pages");
-    demand(/^sha256:[a-f0-9]{64}$/u.test(manifest.artifacts.pages.digest), "Digest do upload Pages ausente.");
-    demand(manifest.toolchain?.web?.node && manifest.toolchain?.supabase?.deno, "Ambiente de validação não registrado.");
+  const expectedSource = { baseSha: manifest.source.baseSha, headSha: manifest.source.headSha };
+  validateCandidateApplicability(manifest.applicability, expectedSource);
+  validateGateCertificate(manifest.applicability, manifest.gateResults, expectedSource);
+  for (const name of ["pages", "android"]) {
+    const artifact = manifest.artifacts?.[name];
+    if (!manifest.applicability.artifacts[name]) {
+      demand(artifact?.status === "not_applicable" && Object.keys(artifact).length === 1,
+        `Artefato ${name} precisa registrar not_applicable sem conteúdo ambíguo.`);
+      continue;
+    }
+    demand(artifact?.status === "available", `Artefato aplicável ausente: ${name}.`);
+    demand(Object.keys(artifact).sort().join("\0") === "digest\0files\0id\0status",
+      `Artefato ${name} contém campos ausentes ou desconhecidos.`);
+    validateFiles(artifact.files);
+    positive(artifact.id, `Artefato ${name}`);
+    demand(/^sha256:[a-f0-9]{64}$/u.test(artifact.digest), `Digest do artefato ${name} ausente.`);
+  }
+  if (manifest.applicability.artifacts.pages) {
+    demand(manifest.artifacts.pages.files.some((file) => file.path === "asset-manifest.json") &&
+      manifest.artifacts.pages.files.some((file) => file.path === "index.html"), "Manifesto Pages incompleto.");
+  }
+  for (const name of ["web", "android", "supabase"]) {
+    const toolchain = manifest.toolchains?.[name];
+    if (!manifest.applicability.toolchains[name]) {
+      demand(toolchain?.status === "not_applicable" && Object.keys(toolchain).length === 1,
+        `Toolchain ${name} precisa registrar not_applicable sem conteúdo ambíguo.`);
+      continue;
+    }
+    const expectedKeys = name === "web" ? ["architecture", "image", "node", "runner", "status"]
+      : name === "android" ? ["architecture", "image", "java", "node", "runner", "status"]
+        : ["architecture", "deno", "image", "node", "runner", "status", "supabase"];
+    demand(Object.keys(toolchain || {}).sort().join("\0") === expectedKeys.sort().join("\0"),
+      `Toolchain ${name} contém campos ausentes ou desconhecidos.`);
+    demand(toolchain?.status === "available" && toolchain.node && toolchain.runner && toolchain.image && toolchain.architecture,
+      `Toolchain aplicável ausente: ${name}.`);
+    if (name === "android") demand(toolchain.java, "Java Android não registrado.");
+    if (name === "supabase") demand(toolchain.deno && toolchain.supabase, "Toolchain Supabase incompleta.");
   }
   return manifest;
+}
+
+export function requiredCandidateArtifacts(manifest) {
+  validateManifest(manifest);
+  return [
+    ...(manifest.applicability.artifacts.pages ? [{ key: "pages", name: PAGES_NAME, destination: ".pages" }] : []),
+    ...(manifest.applicability.artifacts.android
+      ? [{ key: "android", name: ANDROID_NAME, destination: ".candidate/android-runtime" }] : [])
+  ];
+}
+
+export async function verifyCandidatePages(directory, manifest) {
+  validateManifest(manifest);
+  demand(manifest.applicability.artifacts.pages, "Artefato Pages não é aplicável à candidata.");
+  await verifyDirectory(directory, manifest.artifacts.pages.files);
 }
 
 async function record() {
@@ -146,33 +190,41 @@ async function record() {
   const packageInfo = await jsonFile(path.join(ROOT, "package.json"));
   const android = await fs.readFile(path.join(ROOT, "android/app/build.gradle.kts"), "utf8");
   demand(android.match(/versionName\s*=\s*"([^"]+)"/u)?.[1] === packageInfo.version, "Versão Android divergente.");
+  const baseSha = event.pull_request?.base?.sha || null;
+  const headSha = event.pull_request?.head?.sha || testedSha;
+  const applicability = validateCandidateApplicability(JSON.parse(process.env.APPLICABILITY || "null"), { baseSha, headSha });
+  const gateResults = certifyGateResults(applicability, {
+    preparation: process.env.PREPARATION_RESULT,
+    web: process.env.WEB_RESULT,
+    android: process.env.ANDROID_RESULT,
+    supabase: process.env.SUPABASE_RESULT
+  }, { baseSha, headSha });
+  const artifact = async (name, directory, idName, digestName) => applicability.artifacts[name]
+    ? { status: "available", files: await filesIn(directory), id: positive(process.env[idName], `Artefato ${name}`),
+      digest: `sha256:${process.env[digestName]}` }
+    : { status: "not_applicable" };
+  const toolchain = name => applicability.toolchains[name]
+    ? { status: "available", ...JSON.parse(process.env[`${name.toUpperCase()}_TOOLCHAIN`] || "null") }
+    : { status: "not_applicable" };
   const manifest = {
-    schemaVersion: 1, version: packageInfo.version,
+    schemaVersion: 2, version: packageInfo.version,
     source: { repository, headRepository: event.pull_request?.head?.repo?.full_name || repository,
-      testedSha, headSha: event.pull_request?.head?.sha || testedSha, tree: git("rev-parse", "HEAD^{tree}"),
-      pullRequest: event.pull_request?.number || null, baseSha: event.pull_request?.base?.sha || null },
+      testedSha, headSha, tree: git("rev-parse", "HEAD^{tree}"),
+      pullRequest: event.pull_request?.number || null, baseSha },
     run: { id: positive(process.env.GITHUB_RUN_ID, "Run"), attempt: positive(process.env.GITHUB_RUN_ATTEMPT, "Tentativa"),
       workflow: ".github/workflows/validacao.yml", event: process.env.GITHUB_EVENT_NAME },
     configurationSha256: configurationDigest(),
     lockfileSha256: await sourceFileDigest("package-lock.json"),
     backendManifestSha256: await sourceFileDigest("supabase/runtime-manifest.json"),
     android: { versionCode: Number(android.match(/versionCode\s*=\s*(\d+)/u)?.[1]), certificateSha256: CERTIFICATE },
-    toolchain: { web: { node: process.version, java: toolVersion("java", ["-version"]),
-      runner: process.env.ImageOS, image: process.env.ImageVersion, architecture: process.arch } },
-    artifacts: { pages: { files: await filesIn(path.join(ROOT, ".pages")) },
-      android: { files: await filesIn(path.join(ROOT, "android/app/build/generated/web-assets/main/www")) } }
+    applicability,
+    gateResults,
+    toolchains: { web: toolchain("web"), android: toolchain("android"), supabase: toolchain("supabase") },
+    artifacts: {
+      pages: await artifact("pages", path.join(ROOT, ".pages"), "PAGES_ARTIFACT_ID", "PAGES_ARTIFACT_DIGEST"),
+      android: await artifact("android", path.join(ROOT, ".candidate/android-runtime"), "ANDROID_ARTIFACT_ID", "ANDROID_ARTIFACT_DIGEST")
+    }
   };
-  validateManifest(manifest, { sealed: false });
-  await writeJson(CANDIDATE, manifest);
-}
-
-async function seal() {
-  demand(process.env.DOCS_ONLY === "false" && process.env.WEB_RESULT === "success" && process.env.SUPABASE_RESULT === "success", "As duas provas integrais são obrigatórias.");
-  const manifest = await jsonFile(CANDIDATE);
-  manifest.gate = { scope: "integral", web: process.env.WEB_RESULT, supabase: process.env.SUPABASE_RESULT };
-  manifest.artifacts.pages.id = positive(process.env.PAGES_ARTIFACT_ID, "Artefato Pages");
-  manifest.artifacts.pages.digest = `sha256:${process.env.PAGES_ARTIFACT_DIGEST}`;
-  manifest.toolchain.supabase = JSON.parse(process.env.SUPABASE_TOOLCHAIN);
   validateManifest(manifest);
   await writeJson(CANDIDATE, manifest);
 }
@@ -197,18 +249,34 @@ async function api(route, { method = "GET", body, missing = false, binary = fals
   return binary ? Buffer.from(await response.arrayBuffer()) : response.status === 204 ? null : response.json();
 }
 
-export function validateRun(runInfo, jobs, repository, attempt) {
+export function validateRun(runInfo, jobs, repository, attempt, manifest) {
   demand(runInfo.repository?.full_name === repository && runInfo.head_repository?.full_name === repository, "Run de outro repositório ou fork recusado.");
   demand(runInfo.path === ".github/workflows/validacao.yml" && ["pull_request", "workflow_dispatch"].includes(runInfo.event), "Workflow de origem não autorizado.");
-  demand(runInfo.status === "completed" && runInfo.conclusion === "success" && runInfo.run_attempt === attempt, "Run integral incompleto, obsoleto ou malsucedido.");
-  for (const name of ["Testar web e Android", "Testar Supabase local", "Testar e validar"]) {
-    const selected = jobs.filter((job) => job.name === name);
-    demand(selected.length === 1 && selected[0].conclusion === "success", `Prova obrigatória ausente: ${name}.`);
+  demand(runInfo.status === "completed" && runInfo.conclusion === "success" && runInfo.run_attempt === attempt, "Run protegido incompleto, obsoleto ou malsucedido.");
+  validateManifest(manifest);
+  const expectedSource = { baseSha: manifest.source.baseSha, headSha: manifest.source.headSha };
+  const definitions = {
+    preparation: ["Preparar candidata", []],
+    web: ["Testar web", ["Executar testes", "Gerar e testar o artefato web no navegador"]],
+    android: ["Testar Android", ["Compilar aplicativo Android", "Analisar aplicativo Android"]],
+    supabase: ["Testar Supabase local", ["Executar testes pgTAP", "Testar concorrência real dos pedidos de Curso", "Servir e testar o gateway MCP e a Autoria real"]]
+  };
+  const selected = {};
+  for (const [gate, [name]] of Object.entries(definitions)) {
+    const matches = jobs.filter(job => job.name === name);
+    demand(matches.length === 1, `Job do gate ausente ou duplicado: ${name}.`);
+    selected[gate] = matches[0];
   }
-  const web = jobs.find((job) => job.name === "Testar web e Android");
-  const database = jobs.find((job) => job.name === "Testar Supabase local");
-  for (const [job, names] of [[web, ["Executar testes", "Gerar e testar o artefato web no navegador", "Compilar aplicativo Android", "Analisar aplicativo Android"]],
-    [database, ["Executar testes pgTAP", "Testar concorrência real dos pedidos de Curso", "Servir e testar o gateway MCP e a Autoria real"]]]) {
+  const aggregate = jobs.filter(job => job.name === "Testar e validar");
+  demand(aggregate.length === 1 && aggregate[0].conclusion === "success" &&
+    aggregate[0].steps?.some(step => step.name === "Exigir todas as provas aplicáveis" && step.conclusion === "success"),
+  "Check protegido ausente ou incompleto.");
+  const certified = certifyGateResults(manifest.applicability,
+    Object.fromEntries(Object.entries(selected).map(([gate, job]) => [gate, job.conclusion])), expectedSource);
+  assert.deepEqual(certified, manifest.gateResults, "Resultados do manifesto divergem dos jobs da tentativa.");
+  for (const [gate, [, names]] of Object.entries(definitions)) {
+    if (!manifest.applicability.gates[gate]) continue;
+    const job = selected[gate];
     for (const name of names) demand(job.steps?.some((step) => step.name === name && step.conclusion === "success"), `Etapa integral não executada: ${name}.`);
   }
 }
@@ -292,7 +360,6 @@ async function prepare(runId, attempt) {
   const info = await api(`actions/runs/${id}`);
   const jobResponse = await api(`actions/runs/${id}/attempts/${number}/jobs?per_page=100`);
   demand(jobResponse.total_count <= 100, "Quantidade inesperada de jobs.");
-  validateRun(info, jobResponse.jobs, process.env.GITHUB_REPOSITORY, number);
   const artifactResponse = await api(`actions/runs/${id}/artifacts?per_page=100`);
   demand(artifactResponse.total_count <= 100, "Quantidade inesperada de artefatos.");
   const findArtifact = (name) => {
@@ -302,6 +369,7 @@ async function prepare(runId, attempt) {
   };
   await downloadArtifact(findArtifact(METADATA_NAME), ".candidate");
   const manifest = await jsonFile(CANDIDATE);
+  validateRun(info, jobResponse.jobs, process.env.GITHUB_REPOSITORY, number, manifest);
   validateCandidateIdentity(manifest, info, { repository: process.env.GITHUB_REPOSITORY,
     targetTree: git("rev-parse", "HEAD^{tree}"), configurationSha256: configurationDigest(),
     lockfileSha256: await sourceFileDigest("package-lock.json"), backendManifestSha256: await sourceFileDigest("supabase/runtime-manifest.json") });
@@ -313,17 +381,24 @@ async function prepare(runId, attempt) {
     validateIntegratedPullRequest(manifest, pr, target, process.env.GITHUB_REPOSITORY);
   } else demand(info.head_branch === "main" && info.head_sha === target, "Dispatch de candidata não corresponde à main corrente.");
   await verifyVersionProgress(manifest);
-  const pages = findArtifact(PAGES_NAME);
-  demand(pages.id === manifest.artifacts.pages.id && pages.digest === manifest.artifacts.pages.digest, "Identidade do upload Pages diverge do gate.");
-  await downloadArtifact(pages, ".pages", manifest.artifacts.pages.files);
+  for (const required of requiredCandidateArtifacts(manifest)) {
+    const artifact = findArtifact(required.name);
+    demand(artifact.id === manifest.artifacts[required.key].id && artifact.digest === manifest.artifacts[required.key].digest,
+      `Identidade do upload ${required.key} diverge do gate.`);
+    await downloadArtifact(artifact, required.destination, manifest.artifacts[required.key].files);
+  }
   manifest.promotion = { targetSha: target, tree: git("rev-parse", "HEAD^{tree}"), candidateRun: id, candidateAttempt: number };
   await writeJson(CANDIDATE, manifest);
   await output("version", manifest.version);
   await output("target_sha", target);
+  await output("requires_pages", manifest.applicability.artifacts.pages);
+  await output("requires_android", manifest.applicability.artifacts.android);
+  await output("requires_supabase", manifest.applicability.gates.supabase);
 }
 
 export async function verifyAndroid(apk, manifest) {
   validateManifest(manifest);
+  demand(manifest.applicability.artifacts.android, "Artefato Android não é aplicável à candidata.");
   const files = JSON.parse(python("import hashlib,json,sys,zipfile\nprefix='assets/www/'\nwith zipfile.ZipFile(sys.argv[1]) as archive:\n print(json.dumps(sorted([{'path':i.filename[len(prefix):],'size':i.file_size,'sha256':hashlib.sha256(archive.read(i)).hexdigest()} for i in archive.infolist() if i.filename.startswith(prefix) and not i.is_dir()],key=lambda x:x['path'])))", [apk]));
   assert.deepEqual(files.map(file => file.path), manifest.artifacts.android.files.map(file => file.path), "Runtime do APK difere da candidata.");
   assert.deepEqual(files, manifest.artifacts.android.files, "Bytes do APK divergem da candidata.");
@@ -393,16 +468,21 @@ async function requirePromotion() {
   return manifest;
 }
 
-export function validatePromotionRun(info, jobs, { repository, sha, attempt, phase }) {
+export function validatePromotionRun(info, jobs, { repository, sha, attempt, phase }, manifest) {
   demand(info?.repository?.full_name === repository && info.head_repository?.full_name === repository,
     "Promoção de outro repositório ou fork recusada.");
   demand(info.path === ".github/workflows/pages.yml" && info.event === "workflow_dispatch" &&
     info.head_branch === "main" && info.head_sha === sha && info.run_attempt === attempt &&
     info.status === "completed" && info.conclusion === "success", "Origem da promoção incompleta, superada ou incompatível.");
+  validateManifest(manifest);
   const required = phase === "preparar"
     ? [["Conferir candidata integrada", "Verificar run, árvore, configuração e digests"],
-      ["Instalar e atualizar APK assinado", "Provar instalação e upgrade sem conta"]]
-    : phase === "publicar_site" ? [["Publicar Pages aprovado", "Conferir bytes efetivamente publicados"]] : [];
+      ...(manifest.applicability.artifacts.android
+        ? [["Instalar e atualizar APK assinado", "Provar instalação e upgrade sem conta"]] : [])]
+    : phase === "publicar_site" ? [["Publicar superfícies aprovadas", "Registrar promoção das superfícies aplicáveis"],
+      ...(manifest.applicability.artifacts.pages ? [["Publicar superfícies aprovadas", "Conferir bytes efetivamente publicados"]] : []),
+      ...(manifest.applicability.gates.supabase ? [["Publicar superfícies aprovadas", "Conferir backend hospedado depois do corte"]] : []),
+      ...(manifest.applicability.artifacts.android ? [["Publicar superfícies aprovadas", "Guardar os mesmos bytes na Release em rascunho"]] : [])] : [];
   demand(required.length > 0, "Fase de origem inválida.");
   for (const [name, step] of required) {
     const matches = jobs.filter(job => job.name === name);
@@ -412,7 +492,7 @@ export function validatePromotionRun(info, jobs, { repository, sha, attempt, pha
   }
 }
 
-async function promotionArtifacts(runId, attempt, phase) {
+async function promotionArtifacts(runId, attempt) {
   const id = positive(runId, "Run de promoção"); const number = positive(attempt, "Tentativa de promoção");
   const sha = await currentMain();
   const [info, response, artifacts] = await Promise.all([
@@ -421,8 +501,7 @@ async function promotionArtifacts(runId, attempt, phase) {
   ]);
   demand(info.id === id, "Resposta do GitHub pertence a outro run de promoção.");
   demand(response.total_count <= 100 && artifacts.total_count <= 100, "Inventário da promoção excedeu o limite.");
-  validatePromotionRun(info, response.jobs, { repository: process.env.GITHUB_REPOSITORY, sha, attempt: number, phase });
-  return { id, attempt: number, find(name) {
+  return { id, attempt: number, sha, info, jobs: response.jobs, find(name) {
     const matches = artifacts.artifacts.filter(item => item.name === `${name}-${number}`);
     demand(matches.length === 1, `Artefato único da promoção ausente: ${name}.`);
     return matches[0];
@@ -430,43 +509,58 @@ async function promotionArtifacts(runId, attempt, phase) {
 }
 
 async function resumePreparation(runId, attempt, expectedOrigin = null) {
-  const origin = await promotionArtifacts(runId, attempt, "preparar");
-  const artifacts = { promotion: origin.find("aralearn-promotion"),
-    signed: origin.find("aralearn-android-signed"), native: origin.find("aralearn-android-native") };
-  const binding = { runId: origin.id, runAttempt: origin.attempt,
-    artifacts: Object.fromEntries(Object.entries(artifacts).map(([name, value]) => [name, { id: value.id, digest: value.digest }])) };
-  if (expectedOrigin) assert.deepEqual(binding, expectedOrigin, "A preparação mudou desde a publicação de Pages.");
+  const origin = await promotionArtifacts(runId, attempt);
+  const promotion = origin.find("aralearn-promotion");
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-promotion-"));
   try {
-    await downloadArtifact(artifacts.promotion, path.join(temporary, "promotion"), null,
+    await downloadArtifact(promotion, path.join(temporary, "promotion"), null,
       name => name === ".candidate/candidate.json" || name.startsWith(".pages/"));
     const manifest = validateManifest(await jsonFile(path.join(temporary, "promotion/.candidate/candidate.json")));
+    validatePromotionRun(origin.info, origin.jobs, { repository: process.env.GITHUB_REPOSITORY,
+      sha: origin.sha, attempt: origin.attempt, phase: "preparar" }, manifest);
+    const artifacts = { promotion };
+    if (manifest.applicability.artifacts.android) {
+      artifacts.signed = origin.find("aralearn-android-signed");
+      artifacts.native = origin.find("aralearn-android-native");
+    }
+    const binding = { runId: origin.id, runAttempt: origin.attempt,
+      artifacts: Object.fromEntries(Object.entries(artifacts).map(([name, value]) => [name, { id: value.id, digest: value.digest }])) };
+    if (expectedOrigin) assert.deepEqual(binding, expectedOrigin, "A preparação mudou desde a publicação das superfícies.");
     demand(manifest.promotion?.backend == null && manifest.promotion?.targetSha === process.env.GITHUB_SHA &&
       manifest.source.repository === process.env.GITHUB_REPOSITORY && manifest.promotion.tree === git("rev-parse", "HEAD^{tree}") &&
       manifest.source.tree === manifest.promotion.tree && manifest.configurationSha256 === configurationDigest() &&
       manifest.lockfileSha256 === await sourceFileDigest("package-lock.json") &&
       manifest.backendManifestSha256 === await sourceFileDigest("supabase/runtime-manifest.json"),
     "Preparação pertence a outra árvore/configuração ou antecipa prova de backend.");
-    await verifyDirectory(path.join(temporary, "promotion/.pages"), manifest.artifacts.pages.files);
+    if (manifest.applicability.artifacts.pages) {
+      await verifyDirectory(path.join(temporary, "promotion/.pages"), manifest.artifacts.pages.files);
+    }
     await fs.mkdir(".candidate", { recursive: true });
     await fs.copyFile(path.join(temporary, "promotion/.candidate/candidate.json"), CANDIDATE);
-    await fs.cp(path.join(temporary, "promotion/.pages"), ".pages", { recursive: true });
-    const name = `AraLearn-${manifest.version}`;
-    await downloadArtifact(artifacts.signed, ".candidate/android-release", null,
-      file => [`${name}.apk`, `${name}.apk.sha256`, `${name}.json`].includes(file));
-    await downloadArtifact(artifacts.native, ".candidate/android-native", null,
-      file => file === "proof.json" || file.startsWith("evidence/") || file.startsWith("diagnostics/"));
+    if (manifest.applicability.artifacts.pages) {
+      await fs.cp(path.join(temporary, "promotion/.pages"), ".pages", { recursive: true });
+    }
+    if (manifest.applicability.artifacts.android) {
+      const name = `AraLearn-${manifest.version}`;
+      await downloadArtifact(artifacts.signed, ".candidate/android-release", null,
+        file => [`${name}.apk`, `${name}.apk.sha256`, `${name}.json`].includes(file));
+      await downloadArtifact(artifacts.native, ".candidate/android-native", null,
+        file => file === "proof.json" || file.startsWith("evidence/") || file.startsWith("diagnostics/"));
+      await output("proof_sha256", sha256(await fs.readFile(".candidate/android-native/proof.json")));
+    }
     await writeJson(PREPARATION_ORIGIN, binding);
     await output("version", manifest.version);
     await output("preparation_run_id", origin.id);
     await output("preparation_run_attempt", origin.attempt);
-    await output("proof_sha256", sha256(await fs.readFile(".candidate/android-native/proof.json")));
+    await output("requires_pages", manifest.applicability.artifacts.pages);
+    await output("requires_android", manifest.applicability.artifacts.android);
+    await output("requires_supabase", manifest.applicability.gates.supabase);
     return manifest;
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
 async function resumeSite(runId, attempt) {
-  const origin = await promotionArtifacts(runId, attempt, "publicar_site");
+  const origin = await promotionArtifacts(runId, attempt);
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "aralearn-site-promotion-"));
   try {
     await downloadArtifact(origin.find("aralearn-site-promotion"), path.join(temporary, "receipt"), null,
@@ -475,6 +569,8 @@ async function resumeSite(runId, attempt) {
     const preparation = await jsonFile(path.join(temporary, "receipt/preparation-origin.json"));
     const manifest = await resumePreparation(preparation.runId, preparation.runAttempt, preparation);
     assert.deepEqual(manifest, prior, "O site foi publicado com outra preparação.");
+    validatePromotionRun(origin.info, origin.jobs, { repository: process.env.GITHUB_REPOSITORY,
+      sha: origin.sha, attempt: origin.attempt, phase: "publicar_site" }, manifest);
     const backend = await jsonFile(path.join(temporary, "receipt/backend.json"));
     validateBackendProof(manifest, backend);
     await writeJson(BACKEND_PROOF, backend);
@@ -482,20 +578,35 @@ async function resumeSite(runId, attempt) {
 }
 
 export function validateBackendProof(manifest, proof) {
-  demand(proof?.manifestSha256 === sha256(JSON.stringify(manifest)) && proof.backend?.schemaRevision,
+  validateManifest(manifest);
+  const sameManifest = proof?.manifestSha256 === sha256(JSON.stringify(manifest));
+  if (!manifest.applicability.gates.supabase) {
+    demand(sameManifest && proof.status === "not_applicable" && Object.keys(proof).sort().join("\0") === "manifestSha256\0status",
+      "Backend inaplicável sem registro inequívoco da mesma preparação.");
+    return null;
+  }
+  demand(sameManifest && proof.status === "verified" && proof.backend?.schemaRevision,
     "Prova de backend ausente ou de outra preparação.");
   return proof.backend;
 }
 
 async function verifyBackend() {
   const manifest = await requirePromotion();
+  if (!manifest.applicability.gates.supabase) {
+    await writeJson(BACKEND_PROOF, { manifestSha256: sha256(JSON.stringify(manifest)), status: "not_applicable" });
+    return;
+  }
   const backend = await verifyHostedBackend({ projectUrl: process.env.ARALEARN_SUPABASE_URL,
     publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY });
-  await writeJson(BACKEND_PROOF, { manifestSha256: sha256(JSON.stringify(manifest)), backend });
+  await writeJson(BACKEND_PROOF, { manifestSha256: sha256(JSON.stringify(manifest)), status: "verified", backend });
 }
 
 async function siteCurrent() {
   const manifest = await requirePromotion();
+  if (!manifest.applicability.artifacts.pages) {
+    await output("site_current", true);
+    return;
+  }
   let current = false;
   try {
     await verifyPublishedSite({ siteUrl: "https://fabio-ara.github.io/AraLearn/", candidateManifest: manifest });
@@ -517,6 +628,7 @@ async function releaseAsset(release, name, expectedBytes = null) {
 
 async function reuseApk() {
   const manifest = await requirePromotion();
+  demand(manifest.applicability.artifacts.android, "A candidata não exige artefato Android.");
   const state = await releaseState(manifest);
   const name = `AraLearn-${manifest.version}.apk`;
   const bytes = state.release ? await releaseAsset(state.release, name) : null;
@@ -541,6 +653,7 @@ export function buildReleaseNotes(changelog, version) {
 
 async function prepareSignedBundle(apk) {
   const manifest = await requirePromotion();
+  demand(manifest.applicability.artifacts.android, "A candidata não exige artefato Android.");
   demand(manifest.promotion.backend == null, "A preparação nativa não antecipa verificação de backend.");
   await verifyAndroid(apk, manifest);
   const name = `AraLearn-${manifest.version}.apk`;
@@ -556,6 +669,7 @@ async function prepareSignedBundle(apk) {
 
 async function stageRelease(apk) {
   const manifest = await requirePromotion();
+  demand(manifest.applicability.artifacts.android, "A candidata não exige artefato Android.");
   validateBackendProof(manifest, await jsonFile(BACKEND_PROOF));
   const { name, checksumName, receiptName } = await prepareSignedBundle(apk);
   let state = await releaseState(manifest);
@@ -586,10 +700,18 @@ export function validateReleaseBundleAssets(remote, approved) {
 async function finalizeRelease() {
   const manifest = await requirePromotion();
   const expectedBackend = validateBackendProof(manifest, await jsonFile(BACKEND_PROOF));
-  const backend = await verifyHostedBackend({ projectUrl: process.env.ARALEARN_SUPABASE_URL,
-    publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY });
-  assert.deepEqual(backend, expectedBackend, "Backend mudou durante a promoção.");
-  await verifyPublishedSite({ siteUrl: "https://fabio-ara.github.io/AraLearn/", candidateManifest: manifest });
+  if (manifest.applicability.gates.supabase) {
+    const backend = await verifyHostedBackend({ projectUrl: process.env.ARALEARN_SUPABASE_URL,
+      publishableKey: process.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY });
+    assert.deepEqual(backend, expectedBackend, "Backend mudou durante a promoção.");
+  }
+  if (manifest.applicability.artifacts.pages) {
+    await verifyPublishedSite({ siteUrl: "https://fabio-ara.github.io/AraLearn/", candidateManifest: manifest });
+  }
+  if (!manifest.applicability.artifacts.android) {
+    console.log("Candidata sem Release Android aplicável; superfícies certificadas verificadas.");
+    return;
+  }
   const state = await releaseState(manifest);
   demand(state.release, "Release preparada ausente.");
   const name = `AraLearn-${manifest.version}.apk`;
@@ -616,7 +738,6 @@ async function finalizeRelease() {
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "record") await record();
-  else if (command === "seal") await seal();
   else if (command === "prepare") await prepare(args[0], args[1]);
   else if (command === "verify-backend") await verifyBackend();
   else if (command === "resume-preparation") await resumePreparation(args[0], args[1]);
@@ -631,7 +752,7 @@ async function main() {
     }
   }
   else if (command === "site-current") await siteCurrent();
-  else if (command === "verify-pages") await verifyDirectory(".pages", validateManifest(await jsonFile(CANDIDATE)).artifacts.pages.files);
+  else if (command === "verify-pages") await verifyCandidatePages(".pages", await jsonFile(CANDIDATE));
   else if (command === "verify-android") await verifyAndroid(args[0], await jsonFile(CANDIDATE));
   else if (command === "reuse-apk") await reuseApk();
   else if (command === "stage-release") await stageRelease(args[0]);

@@ -44,6 +44,21 @@ function testInventory(root, directory, suffix) {
 // O OpenAPI gerado é JSON (também YAML válido). Sem conteúdo comparável,
 // inclusive remoção/adição ou outro formato, manter o impacto conservador.
 export function isReleaseMetadataOnly(file, before, after) {
+  if (file === "android/app/build.gradle.kts") {
+    const normalize = value => {
+      if (typeof value !== "string") return null;
+      const codes = [...value.matchAll(/\bversionCode\s*=\s*(\d+)/gu)];
+      const names = [...value.matchAll(/\bversionName\s*=\s*"(\d+\.\d+\.\d+)"/gu)];
+      if (codes.length !== 1 || names.length !== 1) return null;
+      return {
+        code: codes[0][1], name: names[0][1],
+        content: value.replace(codes[0][0], "versionCode = <release>").replace(names[0][0], "versionName = <release>")
+      };
+    };
+    const oldValue = normalize(before), newValue = normalize(after);
+    return Boolean(oldValue && newValue && (oldValue.code !== newValue.code || oldValue.name !== newValue.name) &&
+      oldValue.content === newValue.content);
+  }
   const fields = file === "package.json" ? [["version"]]
     : file === "package-lock.json" ? [["version"], ["packages", "", "version"]]
       : file === "docs/downloads/aralearn-chatgpt-action-openapi.yaml" ? [["info", "version"]] : null;
@@ -91,7 +106,8 @@ export function classifyValidationImpact(paths, { root = repositoryRoot, readBas
   for (const value of input || []) {
     const file = normalizeRepositoryPath(value);
     if (!file) { unknown(typeof value === "string" ? value : "<invalid path>"); continue; }
-    if (readBase && ["package.json", "package-lock.json", "docs/downloads/aralearn-chatgpt-action-openapi.yaml"].includes(file)) {
+    if (readBase && ["package.json", "package-lock.json", "docs/downloads/aralearn-chatgpt-action-openapi.yaml",
+      "android/app/build.gradle.kts"].includes(file)) {
       try {
         if (isReleaseMetadataOnly(file, readBase(file), fs.readFileSync(path.join(root, file), "utf8"))) {
           add("release"); continue;

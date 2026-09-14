@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   classifyChangedPaths,
+  classifyCiImpact,
   classifyGitDiff,
   parseGitDiffPaths,
   isDocumentationPath
@@ -14,6 +15,47 @@ import {
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const classifierPath = path.join(repositoryRoot, "scripts", "classifyCiPaths.mjs");
+const BASE_SHA = "a".repeat(40);
+const HEAD_SHA = "b".repeat(40);
+
+function gates(paths, options = {}) {
+  return classifyCiImpact(paths, { baseSha: BASE_SHA, headSha: HEAD_SHA, ...options }).applicability.gates;
+}
+
+test("matriz de gates representa impactos focais e amplia unknown ou orquestração", () => {
+  const packageAfter = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
+  const packageBefore = JSON.stringify({ ...packageAfter, version: "999.999.999" });
+  const androidAfter = fs.readFileSync(path.join(repositoryRoot, "android/app/build.gradle.kts"), "utf8");
+  const androidBefore = androidAfter.replace(/versionCode = (\d+)/u, (_match, value) => `versionCode = ${Number(value) - 1}`)
+    .replace(/versionName = "\d+\.\d+\.\d+"/u, 'versionName = "999.999.999"');
+  const scenarios = [
+    ["documentação", ["docs/arquitetura.md"], { preparation: true, web: false, android: false, supabase: false }],
+    ["metadado de release", ["package.json", "android/app/build.gradle.kts"],
+      { preparation: true, web: false, android: false, supabase: false },
+      { readBase: file => file === "package.json" ? packageBefore : androidBefore }],
+    ["runner", ["scripts/runTests.mjs"], { preparation: true, web: true, android: true, supabase: true }],
+    ["CSS", ["public/styles.css"], { preparation: true, web: true, android: false, supabase: false }],
+    ["Android", ["android/app/build.gradle.kts"], { preparation: true, web: false, android: true, supabase: false }],
+    ["migration", ["supabase/migrations/20260909000000_example.sql"], { preparation: true, web: true, android: false, supabase: true }],
+    ["Edge Function", ["supabase/functions/aralearn-course-api/index.ts"], { preparation: true, web: true, android: false, supabase: true }],
+    ["runtime compartilhado", ["src/domain/courseSources.js"], { preparation: true, web: true, android: false, supabase: true }],
+    ["unknown", ["unknown/input.bin"], { preparation: true, web: true, android: true, supabase: true }],
+    ["web + backend", ["public/styles.css", "supabase/functions/aralearn-course-api/index.ts"],
+      { preparation: true, web: true, android: false, supabase: true }]
+  ];
+  for (const [name, paths, expected, options] of scenarios) {
+    assert.deepEqual(gates(paths, options), expected, name);
+  }
+});
+
+test("classificação inconclusiva exige integral e conserva a identidade do delta", () => {
+  const result = classifyCiImpact(["docs/arquitetura.md"], {
+    baseSha: BASE_SHA, headSha: HEAD_SHA, conclusive: false
+  });
+  assert.deepEqual(result.applicability.gates, { preparation: true, web: true, android: true, supabase: true });
+  assert.deepEqual(result.applicability.source, { baseSha: BASE_SHA, headSha: HEAD_SHA });
+  assert.equal(result.applicability.classification.conclusive, false);
+});
 
 test("classificador aceita somente conteúdo documental reconhecido", () => {
   assert.equal(classifyChangedPaths(["docs/principios-editoriais.md"]), true);
@@ -129,10 +171,15 @@ test("falha na leitura do evento do GitHub produz fallback integral", () => {
     });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stderr, /Classificação inconclusiva; usando pipeline integral/u);
-    assert.equal(fs.readFileSync(outputPath, "utf8"), [
-      "docs_only=false", "requires_supabase=true", "requires_web=true", "requires_android=true",
-      'categories=["unknown"]', ""
-    ].join("\n"));
+    const outputs = Object.fromEntries(fs.readFileSync(outputPath, "utf8").trim().split("\n").map(line => {
+      const separator = line.indexOf("="); return [line.slice(0, separator), line.slice(separator + 1)];
+    }));
+    assert.equal(outputs.docs_only, "false");
+    assert.equal(outputs.requires_supabase, "true");
+    assert.equal(outputs.requires_web, "true");
+    assert.equal(outputs.requires_android, "true");
+    assert.ok(Object.values(JSON.parse(outputs.applicability).gates).every(Boolean));
+    assert.equal(outputs.categories, '["unknown"]');
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -154,20 +201,29 @@ test("CLI JSON expõe seleção completa e outputs de impacto sem alterar stdout
     assert.deepEqual(impact.requires, { web: true, contracts: false, supabase: false, android: false });
     assert.deepEqual(impact.e2eFiles, []);
     assert.deepEqual(impact.realE2eFiles, []);
-    assert.equal(fs.readFileSync(outputPath, "utf8"), [
-      "docs_only=false", "requires_supabase=false", "requires_web=true", "requires_android=false",
-      'categories=["web"]', ""
-    ].join("\n"));
+    const outputs = fs.readFileSync(outputPath, "utf8");
+    assert.match(outputs, /docs_only=false\n/u);
+    assert.match(outputs, /requires_supabase=false\n/u);
+    assert.match(outputs, /requires_web=true\n/u);
+    assert.match(outputs, /requires_android=false\n/u);
+    assert.match(outputs, /applicability=\{/u);
+    assert.match(outputs, /categories=\["web"\]\n/u);
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
 });
 
 
-test("CI protegida conserva runtime e E2E integrais após ready no SHA da candidata", () => {
+test("CI protegida mantém check único e torna jobs caros condicionais à matriz", () => {
   const workflow = fs.readFileSync(path.join(repositoryRoot, ".github/workflows/validacao.yml"), "utf8");
   assert.match(workflow, /run: npm run test:runtime\r?\n/u);
   assert.match(workflow, /run: npm run test:e2e -- --forbid-only --output=test-results-stub/u);
+  assert.match(workflow, /name: Testar e validar/u);
+  assert.match(workflow, /needs: \[preparar, web, android, supabase\]/u);
+  assert.match(workflow, /needs\.preparar\.outputs\.requires_web == 'true'/u);
+  assert.match(workflow, /needs\.preparar\.outputs\.requires_android == 'true'/u);
+  assert.match(workflow, /needs\.preparar\.outputs\.requires_supabase == 'true'/u);
+  assert.match(workflow, /certifyGateResults/u);
   assert.match(workflow, /ready_for_review/u);
   assert.match(workflow, /!github.event.pull_request.draft/u);
   for (const file of ["scripts/validateCandidate.mjs", "package.json", "docs/evidence/paridade-vertical.v1.json"]) {

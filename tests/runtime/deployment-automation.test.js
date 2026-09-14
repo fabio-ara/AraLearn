@@ -1064,7 +1064,7 @@ test("lint Android preserva a configuração pública usada ao gerar a candidata
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   const lintStep = source.slice(
     source.indexOf("- name: Analisar aplicativo Android"),
-    source.indexOf("- name: Validar exemplo público")
+    source.indexOf("  supabase:")
   );
   assert.match(lintStep, /ARALEARN_SUPABASE_URL:\s*\$\{\{ vars\.ARALEARN_SUPABASE_URL \}\}/u);
   assert.match(lintStep, /ARALEARN_SUPABASE_PUBLISHABLE_KEY:\s*\$\{\{ vars\.ARALEARN_SUPABASE_PUBLISHABLE_KEY \}\}/u);
@@ -1182,11 +1182,12 @@ test("validação do repositório usa permissão mínima", () => {
   assert.doesNotMatch(source, /run: npm test/u);
 });
 
-test("preflight único prepara o PR e só candidata pronta inicia os jobs integrais", () => {
+test("preflight único prepara o PR e só candidata pronta inicia os jobs aplicáveis", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
   const triggers = source.slice(source.indexOf("on:"), source.indexOf("permissions:"));
   const preparation = source.slice(source.indexOf("  preparar:"), source.indexOf("  web:"));
-  const web = source.slice(source.indexOf("  web:"), source.indexOf("  supabase:"));
+  const web = source.slice(source.indexOf("  web:"), source.indexOf("  android:"));
+  const android = source.slice(source.indexOf("  android:"), source.indexOf("  supabase:"));
   const supabase = source.slice(source.indexOf("  supabase:"), source.indexOf("  validacao:"));
   assert.match(triggers, /pull_request:\s*\n\s*branches:\s*\n\s*- main\s*\n\s*- release\/\*\*/u);
   assert.match(triggers, /types: \[opened, synchronize, reopened, ready_for_review, converted_to_draft\]/u);
@@ -1209,12 +1210,15 @@ test("preflight único prepara o PR e só candidata pronta inicia os jobs integr
   }
   assert.match(preparation, /git diff --check/u);
   assert.doesNotMatch(preparation, /npm run test:runtime|playwright|supabase@|Preparar Java|android:debug/u);
-  for (const job of [web, supabase]) {
-    assert.match(job, /needs: preparar\s*\n\s*if: needs\.preparar\.outputs\.docs_only == 'false' && needs\.preparar\.outputs\.ready_for_integral == 'true'/u);
+  for (const [job, output] of [[web, "requires_web"], [android, "requires_android"], [supabase, "requires_supabase"]]) {
+    assert.match(job, new RegExp(`needs: preparar\\s*\\n\\s*if: needs\\.preparar\\.outputs\\.${output} == 'true' && needs\\.preparar\\.outputs\\.ready_for_integral == 'true'`, "u"));
     assert.doesNotMatch(job, /steps\.paths\.outputs|test:preflight|npm run lint/u);
   }
-  assert.match(web, /name: Testar web e Android/u);
+  assert.match(web, /name: Testar web/u);
   assert.match(web, /name: Executar testes\s*\n\s*run: npm run test:runtime/u);
+  assert.doesNotMatch(web, /Compilar aplicativo Android|Preparar Java/u);
+  assert.match(android, /name: Testar Android/u);
+  assert.match(android, /Compilar aplicativo Android/u);
   assert.match(supabase, /name: Testar Supabase local/u);
   assert.match(
     supabase,
@@ -1223,31 +1227,37 @@ test("preflight único prepara o PR e só candidata pronta inicia os jobs integr
   assert.match(supabase, /name: Encerrar stack Supabase\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
 });
 
-test("agregador executável recusa rascunho, preflight falho e qualquer integral incompleta", () => {
+test("agregador executável exige sucesso aplicável e skip inequívoco para dispensa", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8").replaceAll("\r\n", "\n");
   const gate = source.match(/node --input-type=module <<'NODE'\n([\s\S]+?)\n\s*NODE\n/u)?.[1];
   assert.ok(gate, "O gate executável precisa estar presente no workflow.");
-  const complete = { PREPARATION_RESULT: "success", DOCS_ONLY: "false", READY_FOR_INTEGRAL: "true",
-    WEB_RESULT: "success", SUPABASE_RESULT: "success" };
+  const identity = { baseSha: "a".repeat(40), headSha: "b".repeat(40) };
+  const applicability = gates => JSON.stringify({ schemaVersion: 1, source: identity,
+    classification: { conclusive: true, categories: [], unknownPaths: [] }, gates,
+    artifacts: { pages: gates.web, android: gates.android },
+    toolchains: { web: gates.web, android: gates.android, supabase: gates.supabase } });
+  const all = { preparation: true, web: true, android: true, supabase: true };
+  const complete = { APPLICABILITY: applicability(all), PREPARATION_RESULT: "success", READY_FOR_INTEGRAL: "true",
+    WEB_RESULT: "success", ANDROID_RESULT: "success", SUPABASE_RESULT: "success" };
   const evaluate = values => spawnSync(process.execPath, ["--input-type=module", "--eval", gate], {
     encoding: "utf8", env: { ...process.env, ...complete, ...values }
   });
   assert.equal(evaluate({}).status, 0);
-  assert.equal(evaluate({ DOCS_ONLY: "true", READY_FOR_INTEGRAL: "false",
-    WEB_RESULT: "skipped", SUPABASE_RESULT: "skipped" }).status, 0);
-  for (const field of ["PREPARATION_RESULT", "WEB_RESULT", "SUPABASE_RESULT"]) {
+  const docs = { preparation: true, web: false, android: false, supabase: false };
+  assert.equal(evaluate({ APPLICABILITY: applicability(docs), READY_FOR_INTEGRAL: "false",
+    WEB_RESULT: "skipped", ANDROID_RESULT: "skipped", SUPABASE_RESULT: "skipped" }).status, 0);
+  for (const field of ["PREPARATION_RESULT", "WEB_RESULT", "ANDROID_RESULT", "SUPABASE_RESULT"]) {
     for (const result of ["", "skipped", "failure", "cancelled"]) {
       const execution = evaluate({ [field]: result });
       assert.equal(execution.status, 1, `${field}=${result}: ${execution.stderr}`);
     }
   }
-  for (const classification of ["", "unknown"]) {
-    assert.equal(evaluate({ DOCS_ONLY: classification }).status, 1);
-  }
-  const draft = evaluate({ READY_FOR_INTEGRAL: "false", WEB_RESULT: "skipped", SUPABASE_RESULT: "skipped" });
+  for (const classification of ["", "null", "{}"] ) assert.equal(evaluate({ APPLICABILITY: classification }).status, 1);
+  const draft = evaluate({ READY_FOR_INTEGRAL: "false", WEB_RESULT: "skipped", ANDROID_RESULT: "skipped", SUPABASE_RESULT: "skipped" });
   assert.equal(draft.status, 1);
   assert.match(draft.stderr, /PR em rascunho/u);
-  assert.equal(evaluate({ DOCS_ONLY: "true", PREPARATION_RESULT: "failure" }).status, 1);
+  assert.equal(evaluate({ APPLICABILITY: applicability(docs), WEB_RESULT: "skipped", ANDROID_RESULT: "skipped",
+    SUPABASE_RESULT: "skipped", PREPARATION_RESULT: "failure" }).status, 1);
 });
 
 test("env dos jobs usa contextos aceitos antes da alocação do runner", () => {
@@ -1268,10 +1278,12 @@ test("env dos jobs usa contextos aceitos antes da alocação do runner", () => {
 
 test("cache é por dependência e somente traces sintéticos podem virar artefato", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
-  const web = source.slice(source.indexOf("  web:"), source.indexOf("  supabase:"));
+  const web = source.slice(source.indexOf("  web:"), source.indexOf("  android:"));
+  const android = source.slice(source.indexOf("  android:"), source.indexOf("  supabase:"));
   const supabase = source.slice(source.indexOf("  supabase:"), source.indexOf("  validacao:"));
-  assert.equal(source.match(/cache: npm/gu)?.length, 3);
-  assert.match(web, /cache: gradle/u);
+  assert.equal(source.match(/cache: npm/gu)?.length, 4);
+  assert.doesNotMatch(web, /cache: gradle/u);
+  assert.match(android, /cache: gradle/u);
   assert.equal(source.match(/key: \$\{\{ runner\.os \}\}-playwright-\$\{\{ hashFiles\('package-lock\.json'\) \}\}/gu)?.length, 2);
   assert.match(web, /ARALEARN_E2E_REAL_SUPABASE: '0'/u);
   assert.match(web, /npm run test:e2e -- --forbid-only --output=test-results-stub/u);
@@ -1283,17 +1295,19 @@ test("cache é por dependência e somente traces sintéticos podem virar artefat
   assert.match(supabase, /ARALEARN_LOCAL_FUNCTIONS_PID="\$FUNCTIONS_PID"/u);
 });
 
-test("PR conserva artefatos e apenas o gate integral sela a candidata", () => {
+test("PR conserva somente artefatos aplicáveis e o check agregado certifica a matriz", () => {
   const source = fs.readFileSync(scripts.validationWorkflow, "utf8");
-  assert.match(source, /name: Testar e validar\s*\n\s*needs: \[preparar, web, supabase\]\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
-  assert.match(source, /assert\.equal\(WEB_RESULT, "success"/u);
-  assert.match(source, /assert\.equal\(SUPABASE_RESULT, "success"/u);
+  assert.match(source, /name: Testar e validar\s*\n\s*needs: \[preparar, web, android, supabase\]\s*\n\s*if: \$\{\{ always\(\) \}\}/u);
+  assert.match(source, /certifyGateResults/u);
+  assert.match(source, /APPLICABILITY: \$\{\{ needs\.preparar\.outputs\.applicability \}\}/u);
   assert.match(source, /aralearn-pages-candidate-\$\{\{ github\.run_attempt \}\}/u);
   assert.match(source, /aralearn-candidate-manifest-\$\{\{ github\.run_attempt \}\}/u);
   assert.match(source, /releaseCandidate\.mjs record/u);
-  assert.match(source, /releaseCandidate\.mjs seal/u);
   assert.match(source, /PAGES_ARTIFACT_DIGEST: \$\{\{ needs\.web\.outputs\.pages_digest \}\}/u);
-  assert.match(source, /aralearn-android-debug-candidate/u);
+  assert.match(source, /artifact-ids: \$\{\{ needs\.web\.outputs\.pages_id \}\}\s+merge-multiple: true\s+path: \.pages/u);
+  assert.match(source, /artifact-ids: \$\{\{ needs\.android\.outputs\.artifact_id \}\}\s+merge-multiple: true\s+path: \.candidate\/android-runtime/u);
+  assert.match(source, /aralearn-android-runtime-candidate/u);
+  assert.doesNotMatch(source, /releaseCandidate\.mjs seal/u);
   assert.doesNotMatch(source, /actions\/deploy-pages|gh release create|app-release\.apk|secrets\.ARALEARN_ANDROID/u);
 });
 
