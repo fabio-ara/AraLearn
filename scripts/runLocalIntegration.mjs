@@ -480,7 +480,7 @@ export async function runLocalIntegration({
     await stage("channels-local", ["supabase/tests/course-authoring-channels-local-smoke.mjs"], {},
       smokeReceipt("aralearn.local-authoring-channels-proof.v1"));
     const playwrightPath = path.join(privateDirectory, "playwright.json");
-    await stage("e2e-local", ["scripts/runE2eTests.mjs", ...SPECS, "--project=android-chromium", "--workers=1", "--retries=0", "--forbid-only",
+    await stage("e2e-local", ["scripts/runE2eTests.mjs", ...SPECS, "--project=android-chromium", "--workers=1", "--retries=0", "--max-failures=1", "--forbid-only",
       "--reporter=json", `--output=${path.join(privateDirectory, "playwright-results")}`], {
       PLAYWRIGHT_JSON_OUTPUT_NAME: playwrightPath
     }, async () => {
