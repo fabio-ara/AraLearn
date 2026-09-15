@@ -367,7 +367,7 @@ async function browserSignIn(page, email) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
-  await page.locator("[data-handle-onboarding], [data-action='open-settings']").first().waitFor();
+  await expect(page.locator("[data-handle-onboarding], [data-action='open-settings']").first()).toBeVisible();
   if (await page.locator("[data-handle-onboarding]").count()) {
     await expect(page.getByRole("heading", { name: "Escolha seu identificador" })).toBeVisible();
     await page.getByLabel("Identificador", { exact: true }).fill(email === owner.email ? ownerHandle : learnerHandle);
@@ -609,6 +609,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     const catalog = () => readSources({ mode: "catalog" });
     let sourceId;
     const detail = async () => (await readSources({ mode: "source", sourceId })).items[0];
+    const saveSources = async action => {
+      const saved = page.waitForResponse(response => response.request().method() === "POST" &&
+        new URL(response.url()).pathname === `/functions/v1/aralearn-course-api/v1/courses/${courseId}/sources/changes`);
+      await action();
+      const response = await saved;
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ ok: true, data: {
+        courseRevision: response.request().postDataJSON().expectedCourseRevision + 1
+      } });
+    };
     try {
       const rows = courseRows(courseId);
       await courseApi(`/v1/courses/${courseId}/composition`, { method: "POST", body: {
@@ -653,21 +663,27 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
       await page.getByText("Estilo das referências", { exact: true }).click();
       await page.getByRole("combobox", { name: "Estilo do curso", exact: true }).selectOption("apa7");
-      await page.getByRole("button", { name: "Salvar estilo", exact: true }).click();
+      await saveSources(() => page.getByRole("button", { name: "Salvar estilo", exact: true }).click());
       await expect.poll(async () => (await catalog()).bibliographyStyle).toBe("apa7");
       expect(await detail()).toEqual(beforeStyle);
       await page.locator(`.course-source-card a[data-source-action="open-source"][data-source-id="${sourceId}"]`).click();
       await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
       await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("generated");
-      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await saveSources(() => form.getByRole("button", { name: "Salvar fonte", exact: true }).click());
       await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText("(2025)");
       expect((await detail()).citationText).toBe(manual);
       const pdfPath = new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url);
       const pdfHash = Buffer.from(await crypto.subtle.digest("SHA-256", await readFile(pdfPath))).toString("hex");
       await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, courseId, files: [{ kind: "source-pdf", contentHash: pdfHash }] });
+      const uploaded = page.waitForResponse(response => response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte");
       await page.getByLabel("Anexar documento", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
-      await expect.poll(async () => (await detail()).attachments.length).toBe(1);
-      const attached = await detail();
+      expect((await uploaded).status()).toBe(200);
+      let attached;
+      await expect.poll(async () => {
+        attached = await detail();
+        return attached.attachments.length;
+      }).toBe(1);
       await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();
       await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
@@ -677,8 +693,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Localizador para pessoas", { exact: true }).fill("Página usada no ensaio local");
       await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
       await expect(page.locator('[data-source-form="anchor"]')).toBeHidden();
-      await expect.poll(async () => (await detail()).anchors.length).toBe(1);
-      const sourceWithAnchor = await detail();
+      let sourceWithAnchor;
+      await expect.poll(async () => {
+        sourceWithAnchor = await detail();
+        return sourceWithAnchor.anchors.length;
+      }).toBe(1);
       expect(sourceWithAnchor.anchors[0].contentHash).toBe(attached.attachments[0].contentHash);
       await expect(page.getByRole("button", { name: "Voltar ao catálogo", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
@@ -722,6 +741,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await attachScreenshot(page, testInfo, "source-links-390-dark.png");
       await dialog.getByRole("button", { name: "Salvar fontes", exact: true }).click();
       await expect(dialog).toBeHidden();
+      await expect(page.locator("[data-course-inspection-host]")
+        .getByRole("button", { name: "Referência 1", exact: true })).toBeVisible();
       const attribution = await client.loadCourseSources(courseId, { mode: "target", targetKind: "study_unit",
         targetId: "study-unit-access-local-1", expectedRevision: await revision() });
       expect(attribution.items[0].sourceLinks).toHaveLength(2);
@@ -831,7 +852,13 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.locator('[data-resource-target-id="content:rich-explanation"]').click();
       const revisedText = "A razão expressa a comparação de duas grandezas. Em ";
       await page.locator('[data-manual-edit-path="blocks[0].inlines[0].text"]').fill(revisedText);
+      const savedComposition = page.waitForResponse((response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === `/functions/v1/aralearn-course-api/v1/courses/${notationCourseId}/composition`);
       await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+      const savedResponse = await savedComposition;
+      expect(savedResponse.status()).toBe(200);
+      expect(await savedResponse.json()).toMatchObject({ data: { revision: 3 } });
       await expect.poll(async () => (await currentRich()).data.blocks[0].inlines[0].text).toBe(revisedText);
       const expected = structuredClone(richParagraphInstance);
       expected.data.blocks[0].inlines[0].text = revisedText;

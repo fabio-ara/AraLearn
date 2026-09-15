@@ -108,15 +108,22 @@ class NativeGateTests(unittest.TestCase):
         self.evidence.mkdir()
         self.env = {"GITHUB_ACTIONS": "true", "GITHUB_REF": "refs/heads/main", "GITHUB_REPOSITORY": "fixture/app",
                     "GITHUB_SHA": "1" * 40, "GITHUB_RUN_ID": "901", "GITHUB_RUN_ATTEMPT": "2"}
-        self.manifest = {"version": "0.0.68", "source": {"repository": "fixture/app"},
+        source = {"baseSha": "2" * 40, "headSha": "3" * 40}
+        self.manifest = {"schemaVersion": 2, "version": "0.0.68", "source": {"repository": "fixture/app", **source},
                          "promotion": {"targetSha": "1" * 40}, "run": {"id": 801, "attempt": 3},
                          "android": {"versionCode": 214, "certificateSha256": gate.CERTIFICATE},
-                         "gate": {"scope": "integral", "web": "success", "supabase": "success"}}
+                         "applicability": {"schemaVersion": 1, "source": source,
+                             "classification": {"conclusive": True, "categories": ["orchestration"], "unknownPaths": []},
+                             "gates": {"preparation": True, "web": True, "android": True, "supabase": True},
+                             "artifacts": {"pages": True, "android": True},
+                             "toolchains": {"web": True, "android": True, "supabase": True}},
+                         "gateResults": {"preparation": "success", "web": "success", "android": "success", "supabase": "success"}}
         self.receipt = {**copy.deepcopy(self.manifest), "release": {"apk": "AraLearn-0.0.68.apk",
                          "sha256": "a" * 64, "certificateSha256": gate.CERTIFICATE}}
         installed = {"package": gate.PACKAGE, "version": "0.0.68", "versionCode": 214, "uid": 10101}
         self.proof = {"schema": "aralearn.android-native-proof.v2", "promotion": {
-            **gate.promotion_identity(self.manifest, self.env), "apkSha256": "a" * 64,
+            "repository": "fixture/app", "sha": "1" * 40, "runId": 901, "runAttempt": 2,
+            "candidateRunId": 801, "candidateRunAttempt": 3, "apkSha256": "a" * 64,
             "manifestSha256": gate.digest(json.dumps(self.manifest, sort_keys=True, separators=(",", ":")).encode())},
             "environment": {"runner": "ubuntu24", "imageVersion": "synthetic-test", "kvm": True,
                 "networkPolicy": "public-bootstrap-then-offline", "offlineAfterHydration": True,
@@ -275,9 +282,10 @@ class NativeGateTests(unittest.TestCase):
                     self.validate()
                 self.proof["promotion"][key] = old
 
-    def test_requires_main_integral_and_exact_candidate(self):
+    def test_requires_main_current_certificate_and_exact_candidate(self):
         cases = [(self.env, "GITHUB_REF", "refs/heads/other"), (self.env, "GITHUB_ACTIONS", "false"),
-                 (self.manifest, "gate", {"scope": "focal", "web": "success", "supabase": "success"}),
+                 (self.manifest, "schemaVersion", 1), (self.manifest, "schemaVersion", 3),
+                 (self.manifest, "gateResults", {}),
                  (self.manifest, "version", "0.0.67"), (self.manifest["android"], "versionCode", 213)]
         for target, key, value in cases:
             with self.subTest(key=key):
@@ -286,6 +294,36 @@ class NativeGateTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     self.validate()
                 target[key] = original
+
+    def test_rejects_missing_failed_or_foreign_gate_certificate(self):
+        for name in self.manifest["gateResults"]:
+            for result in ["failure", "skipped", "cancelled", "not_applicable", None]:
+                with self.subTest(gate=name, result=result):
+                    manifest = copy.deepcopy(self.manifest)
+                    manifest["gateResults"][name] = result
+                    with self.assertRaises(RuntimeError):
+                        gate.promotion_identity(manifest, self.env)
+        manifest = copy.deepcopy(self.manifest)
+        manifest["applicability"]["source"]["headSha"] = "4" * 40
+        with self.assertRaises(RuntimeError):
+            gate.promotion_identity(manifest, self.env)
+
+    def test_accepts_non_android_gates_only_when_explicitly_not_applicable(self):
+        manifest = copy.deepcopy(self.manifest)
+        applicability = manifest["applicability"]
+        applicability["classification"]["categories"] = ["android"]
+        for name in ["web", "supabase"]:
+            applicability["gates"][name] = False
+            applicability["toolchains"][name] = False
+            manifest["gateResults"][name] = "not_applicable"
+        applicability["artifacts"]["pages"] = False
+        self.assertEqual(gate.promotion_identity(manifest, self.env)["candidateRunId"], 801)
+        applicability["gates"]["android"] = False
+        applicability["toolchains"]["android"] = False
+        applicability["artifacts"]["android"] = False
+        manifest["gateResults"]["android"] = "not_applicable"
+        with self.assertRaises(RuntimeError):
+            gate.promotion_identity(manifest, self.env)
 
     def test_future_candidate_derives_version_from_approved_manifest(self):
         self.manifest["version"] = "0.0.69"
@@ -468,11 +506,12 @@ class NativeGateTests(unittest.TestCase):
             calls.append((args, options))
             return subprocess.CompletedProcess(args, 1, b"", b"License not accepted")
 
+        identity = gate.promotion_identity(self.manifest, self.env)
         with patch.object(gate.sys, "platform", "linux"), patch.dict(os.environ, {"ImageOS": "ubuntu24", "ANDROID_HOME": str(sdk)}), \
                 patch.object(gate.Path, "exists", return_value=True), patch.object(gate.os, "access", return_value=True), patch.object(gate, "command", denied):
             with patch.object(gate, "candidate_bundle", return_value=(self.receipt, b"candidate")), \
                     self.assertRaisesRegex(RuntimeError, "stdin fechado"):
-                gate.run_gate(self.manifest, gate.promotion_identity(self.manifest, self.env), self.folder, self.folder / "candidate")
+                gate.run_gate(self.manifest, identity, self.folder, self.folder / "candidate")
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0][1:], ["--install", "emulator", gate.SYSTEM_IMAGE, "--channel=0"])
         self.assertNotIn("input_bytes", calls[0][1])

@@ -83,7 +83,17 @@ def promotion_identity(manifest, env):
     require(re.fullmatch(r"[\w.-]+/[\w.-]+", repo) and re.fullmatch(r"[a-f0-9]{40}", sha), "Identidade Git inválida.")
     require(manifest.get("source", {}).get("repository") == repo and manifest.get("promotion", {}).get("targetSha") == sha,
             "Manifesto pertence a outra promoção.")
-    require(manifest.get("gate") == {"scope": "integral", "web": "success", "supabase": "success"}, "Gate integral ausente.")
+    require(manifest.get("schemaVersion") == 2
+            and manifest.get("applicability", {}).get("artifacts", {}).get("android") is True,
+            "Manifesto vigente com Android aplicável ausente.")
+    validator = Path(__file__).resolve().with_name("candidateApplicability.mjs").as_uri()
+    command(["node", "--input-type=module", "-e",
+             f"import {{ validateGateCertificate }} from {json.dumps(validator)};"
+             "import { readFileSync } from 'node:fs';"
+             "const manifest = JSON.parse(readFileSync(0, 'utf8'));"
+             "validateGateCertificate(manifest.applicability, manifest.gateResults,"
+             " { baseSha: manifest.source.baseSha, headSha: manifest.source.headSha });"],
+            input_bytes=json.dumps(manifest).encode("utf-8"))
     version, code = manifest.get("version", ""), manifest.get("android", {}).get("versionCode")
     require(isinstance(version, str) and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
             and tuple(map(int, version.split("."))) > tuple(map(int, BASE_VERSION.split(".")))

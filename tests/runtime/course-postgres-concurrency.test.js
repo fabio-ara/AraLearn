@@ -379,9 +379,9 @@ test("PostgreSQL mantém a ordem pessoa antes de Curso entre anotação e exclus
     const courseBlocker = psql([
       `begin;
        select 1 from public.courses where id='${courseId}' for update;`,
-      "select 'annotation-course-locked';",
-      "select pg_sleep(6); commit;"
-    ]);
+      "select 'annotation-course-locked';"
+    ], { keepOpen: true });
+    const courseBlockerResult = result(courseBlocker);
     await marker(courseBlocker, "annotation-course-locked");
 
     const mutation = psql(`
@@ -406,16 +406,19 @@ test("PostgreSQL mantém a ordem pessoa antes de Curso entre anotação e exclus
       where application_name='aralearn-annotation-mutation-lock-probe'
         and state='active'
         and wait_event_type='Lock';
-    `);
+    `).catch(error => { courseBlocker.stdin.end("rollback;\n"); throw error; });
     const accountDeletion = psql(`
+      set application_name='aralearn-annotation-account-delete-lock-probe';
       begin;
       set local deadlock_timeout='250ms';
       delete from auth.users where id='${learnerId}';
       commit;
     `);
-
+    await waitForDatabaseCondition(`select (count(*)=1)::integer from pg_stat_activity
+      where application_name='aralearn-annotation-account-delete-lock-probe' and wait_event_type='Lock';`)
+      .finally(() => courseBlocker.stdin.end("commit;\n"));
     await Promise.all([
-      result(courseBlocker), result(mutation), result(accountDeletion)
+      courseBlockerResult, result(mutation), result(accountDeletion)
     ]);
     assert.equal(await result(psql(`
       select state || '|' || version || '|' || (actor_id is null)::text || '|' ||
@@ -485,9 +488,9 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
          '${avatarOwnerId}','${avatarOwnerId}',
          '{"size":9,"mimetype":"image/webp"}'::jsonb
        );`,
-      "select 'avatar-storage-lock-held';",
-      "select pg_sleep(3); commit;"
-    ]);
+      "select 'avatar-storage-lock-held';"
+    ], { keepOpen: true });
+    const avatarWriterResult = result(avatarWriter);
     await marker(avatarWriter, "avatar-storage-lock-held");
 
     const avatarAccountDeletion = psql(`
@@ -503,9 +506,9 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
       from pg_stat_activity
       where application_name='aralearn-avatar-account-delete-lock-probe'
         and state='active' and wait_event_type='Lock';
-    `);
+    `).finally(() => avatarWriter.stdin.end("commit;\n"));
     await Promise.all([
-      result(avatarWriter),
+      avatarWriterResult,
       assert.rejects(
         result(avatarAccountDeletion),
         /Remova os objetos privados de avatar/iu
@@ -538,9 +541,9 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
        set local role authenticated;
        ${authenticatedContext(pdfOwnerId, pdfSessionId)}
        select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
-      "select 'pdf-account-delete-lock-held';",
-      "select pg_sleep(3); commit;"
-    ]);
+      "select 'pdf-account-delete-lock-held';"
+    ], { keepOpen: true });
+    const pdfAccountDeletionResult = result(pdfAccountDeletion);
     await marker(pdfAccountDeletion, "pdf-account-delete-lock-held");
 
     const pdfWriter = psql(`
@@ -572,9 +575,9 @@ test("PostgreSQL serializa Storage sensível e exclusão da conta pelo mesmo loc
       from pg_stat_activity
       where application_name='aralearn-pdf-write-lock-probe'
         and state='active' and wait_event_type='Lock';
-    `);
+    `).finally(() => pdfAccountDeletion.stdin.end("commit;\n"));
     await Promise.all([
-      result(pdfAccountDeletion),
+      pdfAccountDeletionResult,
       assert.rejects(
         result(pdfWriter),
         /não autorizada|inexistente|inacessível/iu
@@ -658,9 +661,9 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
        set local role authenticated;
        ${authenticatedContext(grantTargetId, grantSessionId)}
        select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
-      "select 'grant-target-delete-lock-held';",
-      "select pg_sleep(3); commit;"
-    ]);
+      "select 'grant-target-delete-lock-held';"
+    ], { keepOpen: true });
+    const grantTargetDeletionResult = result(grantTargetDeletion);
     await marker(grantTargetDeletion, "grant-target-delete-lock-held");
     const concurrentGrant = psql(`
       set application_name='aralearn-concurrent-grant-lock-probe';
@@ -678,9 +681,9 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
       from pg_stat_activity
       where application_name='aralearn-concurrent-grant-lock-probe'
         and state='active' and wait_event_type='Lock';
-    `);
+    `).finally(() => grantTargetDeletion.stdin.end("commit;\n"));
     await Promise.all([
-      result(grantTargetDeletion),
+      grantTargetDeletionResult,
       assert.rejects(result(concurrentGrant), /Pessoa selecionada mudou/iu)
     ]);
     assert.equal(await result(psql(`
@@ -703,9 +706,9 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
        set local role authenticated;
        ${authenticatedContext(revokeTargetId, revokeSessionId)}
        select public.delete_my_account_v1('EXCLUIR MINHA CONTA');`,
-      "select 'revoke-target-delete-lock-held';",
-      "select pg_sleep(3); commit;"
-    ]);
+      "select 'revoke-target-delete-lock-held';"
+    ], { keepOpen: true });
+    const revokeTargetDeletionResult = result(revokeTargetDeletion);
     await marker(revokeTargetDeletion, "revoke-target-delete-lock-held");
     const concurrentRevoke = psql(`
       set application_name='aralearn-concurrent-revoke-lock-probe';
@@ -723,9 +726,9 @@ test("PostgreSQL não recria acesso quando concessão ou revogação perde para 
       from pg_stat_activity
       where application_name='aralearn-concurrent-revoke-lock-probe'
         and state='active' and wait_event_type='Lock';
-    `);
+    `).finally(() => revokeTargetDeletion.stdin.end("commit;\n"));
     await Promise.all([
-      result(revokeTargetDeletion),
+      revokeTargetDeletionResult,
       assert.rejects(result(concurrentRevoke), /Pessoa selecionada mudou/iu)
     ]);
     assert.equal(await result(psql(`
@@ -779,20 +782,13 @@ test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
        select pg_advisory_xact_lock(hashtextextended(
          'course-change-request:${ownerId}:${requestId}', 0
        ));`,
-      "select 'first-locked';",
-      `select pg_sleep(1.2);
-       select public.create_course_for_actor_v1(
-         '${ownerId}',
-         'Curso concorrente',
-         'Provar serialização idempotente',
-         '${requestId}'
-       );
-       commit;`
-    ]);
+      "select 'first-locked';"
+    ], { keepOpen: true });
+    const firstCompleted = result(first);
     await marker(first, "first-locked");
 
-    const startedAt = Date.now();
     const second = psql(`
+      set application_name='aralearn-create-course-lock-probe';
       begin;
       select set_config('request.jwt.claim.role','service_role',true);
       select public.create_course_for_actor_v1(
@@ -803,11 +799,11 @@ test("PostgreSQL serializa a criação idempotente do mesmo Curso", {
       );
       commit;
     `);
-    const [firstResult, secondResult] = await Promise.all([result(first), result(second)]);
-    assert.ok(
-      Date.now() - startedAt >= 800,
-      "a segunda transação deveria aguardar o lock do mesmo requestId"
-    );
+    await waitForDatabaseCondition(`select (count(*)=1)::integer from pg_stat_activity
+      where application_name='aralearn-create-course-lock-probe' and wait_event_type='Lock';`)
+      .finally(() => first.stdin.end(`select public.create_course_for_actor_v1(
+        '${ownerId}','Curso concorrente','Provar serialização idempotente','${requestId}'); commit;\n`));
+    const [firstResult, secondResult] = await Promise.all([firstCompleted, result(second)]);
     const firstCourseId = firstResult.match(/[0-9a-f]{8}-[0-9a-f-]{27}/iu)?.[0];
     const secondCourseId = secondResult.match(/[0-9a-f]{8}-[0-9a-f-]{27}/iu)?.[0];
     assert.ok(firstCourseId, "a primeira criação deve devolver o UUID do Curso");
@@ -1322,9 +1318,9 @@ test("runner limita lock, instrução e processo sem confirmar escrita parcial",
   try {
     const holder = psql([
       "begin; lock table public.courses in access exclusive mode;",
-      "select 'cutover-lock-held';",
-      "select pg_sleep(2); rollback;"
-    ]);
+      "select 'cutover-lock-held';"
+    ], { keepOpen: true });
+    const holderCompleted = result(holder);
     await marker(holder, "cutover-lock-held");
     await assert.rejects(runPsql(`
       \\set ON_ERROR_STOP on
@@ -1335,8 +1331,9 @@ test("runner limita lock, instrução e processo sem confirmar escrita parcial",
       lock table public.courses in access exclusive mode;
       commit;
     `, { ...runnerOptions, processTimeoutMs: 3_000 }),
-    (error) => error.code === "database_command_failed");
-    await result(holder);
+    (error) => error.code === "database_command_failed")
+      .finally(() => holder.stdin.end("rollback;\n"));
+    await holderCompleted;
     assert.equal(await result(psql(`select count(*) from ${probe};`)), "0");
 
     await assert.rejects(runPsql(`

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parse } from "espree";
 import { classifyValidationImpact, isDocumentationPath } from "./validationImpact.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -57,39 +58,118 @@ function selectedBrowserSpecs(args) {
   return specs.length ? specs : null;
 }
 
-export function selectGateInputs(files, gate, args = null, root = repositoryRoot) {
-  if (gate === "runtime-focal" && args?.[0] === "scripts/runTests.mjs" && args[1] === "--focal" && args.length > 2) {
-    // Specs não são executadas pelo runner runtime. Conservar as potencialmente
-    // lidas por testes/auditores: referências em dados e dependências locais.
-    // runTests inventaria somente kernel/runtime; seu arquivo permanece no hash.
-    const queue = [...args.slice(2)];
-    const visited = new Set();
-    const referenced = new Set();
-    try {
-      for (const file of files.filter(file => /\.(?:json|ya?ml)$/u.test(file))) {
-        if (file === "node_modules/.package-lock.json" && !fs.existsSync(path.join(root, file))) continue;
-        const source = fs.readFileSync(path.join(root, file), "utf8");
-        for (const match of source.matchAll(/tests\/e2e\/[^"'\s]+\.spec\.js/gu)) referenced.add(match[0]);
+// Apenas documentação e testes não selecionados podem sair do recibo. Fontes,
+// helpers, runners, dependências e configuração continuam conservados.
+function referencedTestInputs(files, selected, root) {
+  const referenced = new Set(selected), visited = new Set(), queue = selected.map(file => [file, true]);
+  const reads = /^(?:readFile(?:Sync)?|readdir(?:Sync)?|open(?:Sync)?|glob(?:Sync)?|readJson|readJSON)$/u;
+  const method = node => node?.type === "Identifier" ? node.name
+    : node?.type === "MemberExpression" ? (node.computed ? node.property.value : node.property.name) : null;
+  const literal = node => {
+    if (typeof node?.value === "string") return node.value;
+    if (node?.type === "TemplateLiteral" && !node.expressions.length) return node.quasis[0].value.cooked;
+    if (["CallExpression", "NewExpression"].includes(node?.type)) {
+      const name = method(node.callee);
+      if (["URL", "fileURLToPath"].includes(name)) return literal(node.arguments[0]);
+      if (["join", "resolve"].includes(name)) {
+        const parts = node.arguments.map(literal);
+        if (parts.every(part => part !== null)) return parts.join("/");
       }
-      while (queue.length) {
-        const file = queue.pop();
-        if (visited.has(file)) continue;
-        visited.add(file);
-        const source = fs.readFileSync(path.join(root, file), "utf8");
-        // Inventário/diretório ou carregamento dinâmico não permite excluir specs.
-        if (/e2e|readdir|glob|import\s*\(|require\s*\(/u.test(source)) return [...files];
-        for (const match of source.matchAll(/(?:from\s*|import\s*)["'](\.[^"']+)["']/gu)) {
-          queue.push(path.relative(root, path.resolve(root, path.dirname(file), match[1])).replaceAll("\\", "/"));
+    }
+    return null;
+  };
+  const reference = (value, from, executable = false) => {
+    if (typeof value !== "string" || !value) return;
+    const relative = value.startsWith(".");
+    const bases = relative ? [path.dirname(from), ...(!executable ? [""] : [])] : [""];
+    for (const base of bases) {
+      const target = path.relative(root, path.resolve(root, base, value)).replaceAll("\\", "/");
+      for (const file of files) {
+        if (target && file !== target && !file.startsWith(`${target}/`)) continue;
+        referenced.add(file);
+        if (file === target && (executable || /\.(?:json|ya?ml)$/u.test(file))) queue.push([file, executable]);
+      }
+      if (executable && relative && !files.includes(target)) throw new Error("Dependência local ausente.");
+    }
+  };
+  try {
+    while (queue.length) {
+      const [file, executable] = queue.pop(), key = `${file}:${executable}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      const source = fs.readFileSync(path.join(root, file), "utf8");
+      if (!executable) {
+        // Somente registros alcançados pela prova podem acrescentar referências.
+        const values = /\.json$/u.test(file) ? [JSON.parse(source)]
+          : [...source.matchAll(/(?:docs|tests)\/[^"'\s,\]}]+/gu)].map(match => match[0]);
+        while (values.length) {
+          const value = values.pop();
+          if (typeof value === "string") reference(value, file);
+          else if (value && typeof value === "object") values.push(...Object.values(value));
+        }
+        continue;
+      }
+      const tree = parse(source, { ecmaVersion: "latest", sourceType: "module" });
+      const aliases = new Map();
+      for (const node of tree.body) {
+        if (node.type === "ImportDeclaration") for (const item of node.specifiers) {
+          if (item.imported?.name) aliases.set(item.local.name, item.imported.name);
         }
       }
-      return files.filter(file => !/^tests\/e2e\/[^/]+\.spec\.js$/u.test(file) || referenced.has(file));
-    } catch { return [...files]; }
+      const pending = [{ node: tree, parent: null }];
+      while (pending.length) {
+        const { node, parent } = pending.pop();
+        if (!node || typeof node !== "object") continue;
+        const readName = aliases.get(method(node)) || method(node);
+        if (reads.test(readName) && !["ImportSpecifier", "ImportDeclaration"].includes(parent?.type) &&
+            !(parent?.type === "MemberExpression" && parent.property === node) &&
+            !(parent?.type === "CallExpression" && parent.callee === node)) return null;
+        if (["ImportDeclaration", "ExportNamedDeclaration", "ExportAllDeclaration", "ImportExpression"].includes(node.type) && node.source) {
+          const value = literal(node.source);
+          if (value === null) return null;
+          if (value.startsWith(".")) reference(value, file, /\.[cm]?js$/u.test(value));
+        }
+        if (["CallExpression", "NewExpression"].includes(node.type)) {
+          const name = aliases.get(method(node.callee)) || method(node.callee);
+          if (["eval", "Function", "spawn", "spawnSync", "exec", "execSync", "execFile", "execFileSync"].includes(name)) return null;
+          if (node.callee?.type === "MemberExpression" && node.callee.computed && !name) return null;
+          if (reads.test(name) || name === "require") {
+            const value = literal(node.arguments[0]);
+            if (value === null) return null;
+            if (name === "require" && value.startsWith(".") && !/\.[cm]?js$|\.json$/u.test(value)) return null;
+            reference(value, file, name === "require" && value.startsWith(".") && /\.[cm]?js$/u.test(value));
+          }
+        }
+        if (node.type === "Literal" && typeof node.value === "string") reference(node.value, file);
+        for (const value of Object.values(node)) {
+          if (Array.isArray(value)) pending.push(...value.map(child => ({ node: child, parent: node })));
+          else if (value && typeof value === "object") pending.push({ node: value, parent: node });
+        }
+      }
+    }
+    return referenced;
+  } catch { return null; }
+}
+
+export function selectGateInputs(files, gate, args = null, root = repositoryRoot) {
+  if (gate === "runtime-focal" && args?.[0] === "scripts/runTests.mjs" && args[1] === "--focal" && args.length > 2) {
+    const selected = args.slice(2);
+    if (selected.some(file => !/^tests\/(?:kernel|runtime)\/[^/]+\.test\.js$/u.test(file))) return [...files];
+    const referenced = referencedTestInputs(files, selected, root);
+    if (!referenced) return [...files];
+    return files.filter(file => referenced.has(file) || !(isDocumentationPath(file) ||
+      /^tests\/(?:kernel|runtime)\/[^/]+\.test\.js$/u.test(file) || /^tests\/e2e\/[^/]+\.spec\.js$/u.test(file)));
   }
   if (gate !== "frontend-e2e") return [...files];
   const specs = selectedBrowserSpecs(args);
+  if (args && !specs && (args[0] !== "scripts/runE2eTests.mjs" ||
+      args.slice(1).some(arg => !/^--(?:retries=\d+|forbid-only|reporter=json)$/u.test(arg)))) return [...files];
+  const selected = files.filter(file => /^tests\/e2e\/[^/]+\.spec\.js$/u.test(file) && (!specs || specs.some(pattern => pattern.test(file))));
+  const referenced = referencedTestInputs(files, selected, root);
+  if (!referenced) return [...files];
   // O E2E ordinário usa o runtime web e seus fixtures. Contratos publicados,
   // scripts de build/browser e raízes desconhecidas continuam incluídos.
-  return files.filter(file => !isDocumentationPath(file) &&
+  return files.filter(file => referenced.has(file) || !isDocumentationPath(file) &&
     (!specs || !/^tests\/e2e\/[^/]+\.spec\.js$/u.test(file) || specs.some(pattern => pattern.test(file))) &&
     !/^(?:android\/|supabase\/(?:migrations|tests)\/|\.github\/workflows\/|tests\/(?:runtime|kernel)\/)/u.test(file) &&
     !/^scripts\/(?:runLocalIntegration\.mjs|validateLocalSupabase\.ps1|validateCandidate\.mjs|classifyCiPaths\.mjs|validationImpact\.mjs|runPreflight\.mjs)$/u.test(file));

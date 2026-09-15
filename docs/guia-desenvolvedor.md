@@ -322,6 +322,13 @@ não reconstrói todas as dependências do código, acrescente o teste focal do 
 alterado quando ele ainda não estiver representado. Mudanças Android recebem suas provas
 locais e o gate Android obrigatório na validação protegida final.
 
+Verificadores de publicação com consumidores conhecidos (`verifyPublishedSite`,
+`verifyDeploymentArtifacts` e `androidNativeGate`) selecionam seus testes focais na
+preparação local, sem exigir banco ou compilação Android apenas por estarem em
+`scripts/`. A CI conserva o job web, que também executa os testes de runtime.
+Mudanças nos mecanismos de seleção/certificação, scripts sem papel conhecido e
+deltas mistos com impacto transversal continuam amplos.
+
 A preparação começa por verificações rápidas de arquivos e análise estática do código
 (*lint*) e avança para testes de execução, jornadas de ponta a ponta no navegador
 (E2E) e Android, conforme o impacto. Banco e integração com os serviços vêm juntos
@@ -336,9 +343,13 @@ diagnóstico.
 Resultados locais podem ser reutilizados quando arquivos, dependências e
 configuração relevantes permanecem iguais. `--force` repete as verificações.
 A integração com banco é executada novamente quando necessária, pois a igualdade
-do código não comprova o estado dos dados. A ordem evita repetição por falhas anteriores;
-ela não reduz o conjunto de testes nem altera o alcance dos fingerprints: gates que
-ainda incluem toda a árvore podem ser invalidados por uma edição documental.
+do código não comprova o estado dos dados. Nos recibos de runtime focal e E2E,
+documentos e testes não selecionados podem ser excluídos quando não são alcançados
+pela prova. Imports, leituras literais e registros de evidência consumidos conservam
+as referências pertinentes; um comentário com `e2e` não é leitura. Carregamento
+dinâmico, inventário inconclusivo ou fonte indisponível mantêm os inputs amplos.
+Fontes, helpers, dependências, comando e configuração continuam protegidos; gates
+não especializados conservam seus inputs anteriores.
 Os critérios de seleção estão no
 [orquestrador da candidata](../scripts/validateCandidate.mjs); o resultado local
 prepara o PR, enquanto o check protegido agrega a matriz de gates aplicáveis e autoriza

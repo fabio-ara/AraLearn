@@ -571,6 +571,7 @@ export function createCourseStudyApplication({
   function resetCitations() {
     studyTools.close({ restore: false });
     ++citationsEpoch;
+    citationsLoad = null;
     state.citationsLoading = false;
     state.citations = null;
     state.citationsError = "";

@@ -472,6 +472,12 @@ function global:node {
     if ($env:GATE_SCENARIO -eq 'skip') {
       Write-Output '# pass 1'
       Write-Output '# skipped 1'
+    } elseif ($env:GATE_SCENARIO -eq 'concurrency-failure') {
+      Write-Output 'not ok 2 - lock probe'
+      Write-Output '  error: lock probe ended early'
+      Write-Output '# pass 1'
+      Write-Output '# skipped 0'
+      $global:LASTEXITCODE = 1
     } else {
       Write-Output '# pass 2'
       Write-Output '# skipped 0'
@@ -513,10 +519,11 @@ if ($failed) { exit 1 }
     const rejected = execute("remote");
     assert.equal(rejected.exitCode, 1);
     assert.deepEqual(rejected.calls, ["status"]);
-    for (const scenario of ["pgtap-failure", "lint-error", "skip"]) {
+    for (const scenario of ["pgtap-failure", "lint-error", "skip", "concurrency-failure"]) {
       const result = execute(scenario, false);
       assert.equal(result.exitCode, 1);
       assert.equal(result.calls.includes("integration"), false);
+      if (scenario === "concurrency-failure") assert.match(result.output, /error: lock probe ended early/u);
       if (scenario === "pgtap-failure") assert.equal(result.calls.includes("inventory"), false);
       if (scenario === "lint-error") {
         assert.match(result.output, /error: erro sintético bloqueante/u);

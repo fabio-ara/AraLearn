@@ -12,7 +12,7 @@ test("prova Android distingue Configurações da candidata e da base e recusa pe
     env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" }
   });
   assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
-  assert.match(result.stderr, /Ran 37 tests/u);
+  assert.match(result.stderr, /Ran 39 tests/u);
 });
 
 test("Pages e Release exigem prova do APK exato, sem reconstrução ou permissões de assinatura no emulador", () => {

@@ -86,14 +86,14 @@ async function fixture(t, options = {}) {
     if (args[0].includes("course-storage-lifecycle")) return { status: 0,
       stdout: JSON.stringify({ contract: "aralearn.course-storage-lifecycle-proof.v1", orphanCollected: true }) };
     if (args[0].includes("runE2eTests")) {
-      const skipped = options.skippedE2e ? 1 : 0;
+      const skipped = options.earlyStopE2e ? 9 : options.skippedE2e ? 1 : 0;
       const failed = options.e2eFailure ? 1 : 0;
       await fs.writeFile(settings.env.PLAYWRIGHT_JSON_OUTPUT_NAME, JSON.stringify({
         stats: { expected: 10 - skipped - failed, skipped, unexpected: failed, flaky: 0 }, errors: [],
         suites: [{ specs: Array.from({ length: 10 }, (_, index) => ({ file: "synthetic.spec.js", title: `jornada ${index}`,
           line: 12, column: 3,
-          tests: [{ status: failed && index === 0 ? "unexpected" : skipped && index === 0 ? "skipped" : "expected",
-            results: [{ status: failed && index === 0 ? "failed" : skipped && index === 0 ? "skipped" : "passed",
+          tests: [{ status: failed && index === 0 ? "unexpected" : options.earlyStopE2e || skipped && index === 0 ? "skipped" : "expected",
+            results: [{ status: failed && index === 0 ? "failed" : options.earlyStopE2e || skipped && index === 0 ? "skipped" : "passed",
               retry: 0, ...(failed && index === 0 ? options.e2eFailure : {}) }] }] })) }]
       }));
       return { status: failed ? 1 : 0, stdout: "build sintético" };
@@ -177,6 +177,8 @@ test("integração prepara ambiente uma vez, executa todas as provas locais seri
   assert.equal(e2e.env.ARALEARN_E2E_REAL_SUPABASE, "1");
   assert.equal(e2e.env.ARALEARN_E2E_REUSE_SERVER, "0");
   assert.ok(e2e.args.includes("--forbid-only"));
+  assert.ok(e2e.args.includes("--max-failures=1"));
+  assert.ok(e2e.args.includes("--retries=0"));
   assert.ok(e2e.env.PLAYWRIGHT_JSON_OUTPUT_NAME.startsWith(path.join(f.cwd, ".validation/private")));
   assert.deepEqual(report.cleanup, { fixtures: "completed", functions: "stopped" });
   assert.ok(f.probes.filter(probe => probe.input.includes("aralearn-authoring-action")).every(probe => probe.method === "GET"));
@@ -359,6 +361,17 @@ test("falha funcional conserva limpeza confirmada e mantém o gate reprovado e o
   assert.equal(f.stopped.length, 1);
   const stored = JSON.parse(await fs.readFile(path.join(f.cwd, ".validation/local-integration.json"), "utf8"));
   assert.equal(stored.result, "failed"); assert.equal(stored.cleanup.fixtures, "completed");
+});
+
+test("primeira falha E2E com nove jornadas ignoradas reprova e conserva a limpeza", async t => {
+  const f = await fixture(t, { earlyStopE2e: true, e2eFailure: { errors: [{ message: "Falha focal" }] } });
+  const report = await f.execute();
+  const e2e = report.stages.find(stage => stage.name === "e2e-local");
+  assert.equal(report.result, "failed");
+  assert.equal(e2e.result, "failed");
+  assert.equal(e2e.exit_code, 1);
+  assert.deepEqual(report.cleanup, { fixtures: "completed", functions: "stopped" });
+  assert.equal(report.stages.find(stage => stage.name === "copy-files-local").result, "not_run");
 });
 
 test("diagnóstico E2E preserva erro, localização e tentativa sem segredo ou alteração do gate/cleanup", async t => {

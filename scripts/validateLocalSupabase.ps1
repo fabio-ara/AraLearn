@@ -130,6 +130,7 @@ try {
   $passCount = [regex]::Match(($concurrency -join "`n"), '(?m)^# pass ([0-9]+)\r?$').Groups[1].Value
   $skipCount = [regex]::Match(($concurrency -join "`n"), '(?m)^# skipped ([0-9]+)\r?$').Groups[1].Value
   if ($concurrencyExit -ne 0 -or -not $testCount -or $testCount -ne $passCount -or $skipCount -ne '0') {
+    $concurrency | ForEach-Object { Write-Host $_ }
     throw 'A concorrência PostgreSQL exige todos os casos aprovados, sem skips.'
   }
   if (-not $DatabaseOnly) {
