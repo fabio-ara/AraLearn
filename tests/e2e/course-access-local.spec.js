@@ -609,6 +609,16 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     const catalog = () => readSources({ mode: "catalog" });
     let sourceId;
     const detail = async () => (await readSources({ mode: "source", sourceId })).items[0];
+    const saveSources = async action => {
+      const saved = page.waitForResponse(response => response.request().method() === "POST" &&
+        new URL(response.url()).pathname === `/functions/v1/aralearn-course-api/v1/courses/${courseId}/sources/changes`);
+      await action();
+      const response = await saved;
+      expect(response.status()).toBe(200);
+      expect(await response.json()).toMatchObject({ ok: true, data: {
+        courseRevision: response.request().postDataJSON().expectedCourseRevision + 1
+      } });
+    };
     try {
       const rows = courseRows(courseId);
       await courseApi(`/v1/courses/${courseId}/composition`, { method: "POST", body: {
@@ -653,19 +663,22 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
       await page.getByText("Estilo das referências", { exact: true }).click();
       await page.getByRole("combobox", { name: "Estilo do curso", exact: true }).selectOption("apa7");
-      await page.getByRole("button", { name: "Salvar estilo", exact: true }).click();
+      await saveSources(() => page.getByRole("button", { name: "Salvar estilo", exact: true }).click());
       await expect.poll(async () => (await catalog()).bibliographyStyle).toBe("apa7");
       expect(await detail()).toEqual(beforeStyle);
       await page.locator(`.course-source-card a[data-source-action="open-source"][data-source-id="${sourceId}"]`).click();
       await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
       await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("generated");
-      await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
+      await saveSources(() => form.getByRole("button", { name: "Salvar fonte", exact: true }).click());
       await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText("(2025)");
       expect((await detail()).citationText).toBe(manual);
       const pdfPath = new URL("../fixtures/pdf/edital-dataprev-2026-perfil-13-pagina-44.pdf", import.meta.url);
       const pdfHash = Buffer.from(await crypto.subtle.digest("SHA-256", await readFile(pdfPath))).toString("hex");
       await recordLocalFixtureFiles(FIXTURE_CONFIG, { ownerId: owner.id, courseId, files: [{ kind: "source-pdf", contentHash: pdfHash }] });
+      const uploaded = page.waitForResponse(response => response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte");
       await page.getByLabel("Anexar documento", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
+      expect((await uploaded).status()).toBe(200);
       await expect.poll(async () => (await detail()).attachments.length).toBe(1);
       const attached = await detail();
       await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();

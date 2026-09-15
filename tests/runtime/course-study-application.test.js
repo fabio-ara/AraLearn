@@ -494,6 +494,29 @@ test("visitante consulta fontes por objeto sem resolver PDF ao abrir o conteúdo
   app.destroy();
 });
 
+test("atualização do curso renova a leitura de citações ainda pendente", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const reads = [];
+  repository.loadStudyUnitCitations = () => new Promise(resolve => reads.push(resolve));
+  const root = new FakeStudyRoot();
+  const query = root.querySelector.bind(root);
+  root.querySelector = selector => selector === ".study-reader-screen" && root.innerHTML.includes("study-reader-screen")
+    ? Object.assign(new FakeActionNode(), { querySelectorAll: () => [] }) : query(selector);
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  try {
+    await openFirstStudyUnit(app);
+    assert.equal(reads.length, 1);
+    await app.replaceProject(document);
+    assert.equal(reads.length, 2, "a leitura invalidada não pode impedir a leitura da versão atual");
+    reads[0]({ bibliographyStyle: "apa7", citations: [] });
+    await nextTurn();
+    assert.equal(reads.length, 2);
+    reads[1]({ bibliographyStyle: "apa7", citations: [] });
+    await nextTurn();
+  } finally { app.destroy(); }
+});
+
 test("rascunho anterior sem destino comprovado fica visível até descarte explícito", async () => {
   const document = project();
   const repository = applicationRepository(document, async () => {});
