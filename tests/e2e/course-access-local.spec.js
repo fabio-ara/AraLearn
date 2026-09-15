@@ -679,8 +679,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         new URL(response.url()).pathname === "/functions/v1/aralearn-course-api/app/ingerirPdfDaFonte");
       await page.getByLabel("Anexar documento", { exact: true }).setInputFiles(fileURLToPath(pdfPath));
       expect((await uploaded).status()).toBe(200);
-      await expect.poll(async () => (await detail()).attachments.length).toBe(1);
-      const attached = await detail();
+      let attached;
+      await expect.poll(async () => {
+        attached = await detail();
+        return attached.attachments.length;
+      }).toBe(1);
       await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();
       await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
@@ -690,8 +693,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Localizador para pessoas", { exact: true }).fill("Página usada no ensaio local");
       await page.getByRole("button", { name: "Salvar âncora", exact: true }).click();
       await expect(page.locator('[data-source-form="anchor"]')).toBeHidden();
-      await expect.poll(async () => (await detail()).anchors.length).toBe(1);
-      const sourceWithAnchor = await detail();
+      let sourceWithAnchor;
+      await expect.poll(async () => {
+        sourceWithAnchor = await detail();
+        return sourceWithAnchor.anchors.length;
+      }).toBe(1);
       expect(sourceWithAnchor.anchors[0].contentHash).toBe(attached.attachments[0].contentHash);
       await expect(page.getByRole("button", { name: "Voltar ao catálogo", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Voltar ao catálogo", exact: true }).click();
@@ -735,6 +741,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await attachScreenshot(page, testInfo, "source-links-390-dark.png");
       await dialog.getByRole("button", { name: "Salvar fontes", exact: true }).click();
       await expect(dialog).toBeHidden();
+      await expect(page.locator("[data-course-inspection-host]")
+        .getByRole("button", { name: "Referência 1", exact: true })).toBeVisible();
       const attribution = await client.loadCourseSources(courseId, { mode: "target", targetKind: "study_unit",
         targetId: "study-unit-access-local-1", expectedRevision: await revision() });
       expect(attribution.items[0].sourceLinks).toHaveLength(2);
