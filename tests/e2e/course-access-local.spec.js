@@ -831,7 +831,13 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.locator('[data-resource-target-id="content:rich-explanation"]').click();
       const revisedText = "A razão expressa a comparação de duas grandezas. Em ";
       await page.locator('[data-manual-edit-path="blocks[0].inlines[0].text"]').fill(revisedText);
+      const savedComposition = page.waitForResponse((response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === `/functions/v1/aralearn-course-api/v1/courses/${notationCourseId}/composition`);
       await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+      const savedResponse = await savedComposition;
+      expect(savedResponse.status()).toBe(200);
+      expect(await savedResponse.json()).toMatchObject({ data: { revision: 3 } });
       await expect.poll(async () => (await currentRich()).data.blocks[0].inlines[0].text).toBe(revisedText);
       const expected = structuredClone(richParagraphInstance);
       expected.data.blocks[0].inlines[0].text = revisedText;
