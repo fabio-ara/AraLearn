@@ -1210,14 +1210,6 @@ export function createCourseAuthoringSurface({
   }
 
   async function closeContextSheet() {
-    const debugValue = {
-      designBusy: state.designBusy,
-      profileBusy: state.profileBusy,
-      pendingDesignCommands: state.pendingDesignCommands.size,
-      pendingProfileMutation: Boolean(state.pendingProfileMutation)
-    };
-    root.dataset.contextCloseDebug = JSON.stringify(debugValue);
-    globalThis.__ARALEARN_CONTEXT_DEBUG = debugValue;
     if (state.designBusy || state.profileBusy || state.pendingDesignCommands.size || state.pendingProfileMutation) {
       state.designFailure = 'Conclua ou confirme a gravação pendente antes de fechar os parâmetros.';
       renderContextSheet(); return false;

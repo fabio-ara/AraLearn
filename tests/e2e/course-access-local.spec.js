@@ -770,14 +770,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(page.getByRole("button", { name: "Referência 1", exact: true })).toBeFocused();
       expect(failures).toEqual([]);
     } catch (error) {
-      console.log("ARALEARN_TARGET_DEBUG", await page.locator("[data-course-source-target-host]").getAttribute("data-target-save-debug").catch(() => null));
-      console.log("ARALEARN_VALIDATION_DEBUG", await page.locator("[data-course-source-target-host]").getAttribute("data-target-validation-debug").catch(() => null));
-      console.log("ARALEARN_DIALOG_DEBUG", await page.locator("[data-source-target-dialog]").getAttribute("data-target-save-debug").catch(() => null));
-      console.log("ARALEARN_DIALOG_VALIDATION_DEBUG", await page.locator("[data-source-target-dialog]").getAttribute("data-target-validation-debug").catch(() => null));
-      console.log("ARALEARN_GLOBAL_DEBUG", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_DEBUG || null)).catch(() => null));
-      console.log("ARALEARN_GLOBAL_VALIDATION_DEBUG", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_VALIDATION_DEBUG || null)).catch(() => null));
-      console.log("ARALEARN_GLOBAL_CONTEXT_DEBUG", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_CONTEXT_DEBUG || null)).catch(() => null));
-      console.log("ARALEARN_CONTEXT_DEBUG", await page.locator("[data-course-authoring-root], main").first().getAttribute("data-context-close-debug").catch(() => null));
+      console.log("ARALEARN_SAVE_TARGET_CLICK", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_SAVE_TARGET_CLICK || null)).catch(() => null));
+      console.log("ARALEARN_SAVE_TARGET_RESULT", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_SAVE_TARGET_RESULT || null)).catch(() => null));
       await testInfo.attach("fontes-failure-state", { body: (await page.locator("main").allInnerTexts()).join("\n\n"), contentType: "text/plain" }).catch(() => {});
       await attachScreenshot(page, testInfo, "source-failure.png").catch(() => {});
       throw error;
