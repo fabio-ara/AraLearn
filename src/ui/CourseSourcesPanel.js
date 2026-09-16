@@ -2169,13 +2169,15 @@ export function createCourseSourcesPanel({
       pending.command.type === "set_target_sources" &&
       targetSaveDraftStillMatches;
     if (state.mode === "target" && pending.command.type === "set_target_sources") {
-      root.dataset.targetSaveDebug = JSON.stringify({
+      const debug = JSON.stringify({
         targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
         occurrenceEditor: Boolean(state.occurrenceEditor),
         sourceLinksEqual: targetSaveDraftStillMatches,
         sourceLinks: state.sourceLinks,
         commandSourceLinks: pending.command.sourceLinks
       });
+      root.dataset.targetSaveDebug = debug;
+      root.querySelector?.("[data-source-target-dialog]")?.setAttribute("data-target-save-debug", debug);
     }
     let targetSavedNotified = false;
     if (targetSaveHasNoConcurrentDraft) {
@@ -2505,7 +2507,9 @@ export function createCourseSourcesPanel({
   function targetLinksValid() {
     const occurrenceIssue = targetOccurrenceIssue(state);
     if (occurrenceIssue) {
-      root.dataset.targetValidationDebug = JSON.stringify({ reason: occurrenceIssue, links: state.sourceLinks });
+      const debug = JSON.stringify({ reason: occurrenceIssue, links: state.sourceLinks });
+      root.dataset.targetValidationDebug = debug;
+      root.querySelector?.("[data-source-target-dialog]")?.setAttribute("data-target-validation-debug", debug);
       return false;
     }
     if (JSON.stringify(state.sourceLinks) === JSON.stringify(state.initialSourceLinks)) {
@@ -2527,12 +2531,14 @@ export function createCourseSourcesPanel({
         });
     });
     if (!valid) {
-      root.dataset.targetValidationDebug = JSON.stringify({
+      const debug = JSON.stringify({
         reason: "source_or_anchor_not_active",
         links: state.sourceLinks,
         details: [...state.targetDetails.entries()],
         loading: [...state.targetDetailsLoading]
       });
+      root.dataset.targetValidationDebug = debug;
+      root.querySelector?.("[data-source-target-dialog]")?.setAttribute("data-target-validation-debug", debug);
     }
     return valid;
   }
