@@ -1211,6 +1211,12 @@ export function createCourseAuthoringSurface({
 
   async function closeContextSheet() {
     if (state.designBusy || state.profileBusy || state.pendingDesignCommands.size || state.pendingProfileMutation) {
+      console.error("AraLearn: fechamento contextual bloqueado por gravação", {
+        designBusy: state.designBusy,
+        profileBusy: state.profileBusy,
+        pendingDesignCommands: state.pendingDesignCommands.size,
+        pendingProfileMutation: Boolean(state.pendingProfileMutation)
+      });
       state.designFailure = 'Conclua ou confirme a gravação pendente antes de fechar os parâmetros.';
       renderContextSheet(); return false;
     }
