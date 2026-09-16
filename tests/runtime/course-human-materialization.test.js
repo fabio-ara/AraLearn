@@ -68,13 +68,55 @@ test("Explicação conserva fonte e âncora na mesma operação das unidades", a
   const adapter = adapterFixture();
   const support = explanationFixtures([unit()])[0];
   support.fontes = [{ fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"],
-    ancoras: ["Seção 2 — Introdução"] }];
+    ancoras: ["Seção 2 — Introdução"], ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "O DNS associa nomes a endereços." }] }];
   await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [unit()], explanations: [support] });
   assert.equal(adapter.calls.length, 1);
   assert.deepEqual(adapter.calls[0].explanations[0].content, support.conteudo);
   assert.equal(adapter.calls[0].explanations[0].sourceLinks[0].sourceId, "source-rfc-1035");
   assert.deepEqual(adapter.calls[0].explanations[0].sourceLinks[0].anchors, [{ anchorId: "anchor-rfc-1035-section-2" }]);
+});
+
+test("explicação rejeita vínculo técnico genérico e reutiliza um PDF com âncoras distintas", async () => {
+  const support = explanationFixtures([unit()])[0];
+  const occurrence = { lugar: "conteudo", recurso: 1, folha: "text", trecho: "O DNS associa nomes a endereços." };
+  for (const sourceLink of [
+    { fonte: "RFC 1035", relacao: "informed_by", papeis: ["tecnica_conceitual"] },
+    { fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"], ocorrencias: [occurrence] },
+    { fonte: "RFC 1035", relacao: "supported_by", papeis: ["escopo_curricular"], ocorrencias: [occurrence], ancoras: [1] }
+  ]) {
+    const adapter = adapterFixture();
+    await assert.rejects(() => materializeCompletePart({ adapter, principal: PRINCIPAL,
+      course: "Curso de Redes", part: 1, units: [unit()], explanations: [{ ...support, fontes: [sourceLink] }] }),
+    { code: "incomplete_course_source_evidence" });
+    assert.equal(adapter.calls.length, 0);
+  }
+  const adapter = adapterFixture();
+  const readSources = adapter.getCourseSources;
+  let detailReads = 0;
+  const hash = "a".repeat(64);
+  adapter.getCourseSources = async input => {
+    const read = await readSources(input);
+    if (input.mode === "source") {
+      detailReads++;
+      read.items[0].attachments = [{ contentHash: hash }];
+      read.items[0].anchors = [
+        { anchorId: "retired-anchor", status: "retired", humanLocator: "Antiga" },
+        ...[2, 3].map(page => ({ anchorId: `pdf-page-${page}`, sourceRevision: 1, status: "active",
+          contentHash: hash, humanLocator: `Página ${page}`, selector: { kind: "page_range", startPage: page, endPage: page } }))
+      ];
+    }
+    return read;
+  };
+  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()],
+    explanations: [{ ...support, fontes: [2, 3].map((position, index) => ({ fonte: "RFC 1035", relacao: "supported_by",
+      papeis: ["tecnica_conceitual"], ancoras: [position], ocorrencias: [{ ...occurrence,
+        trecho: index ? "Uma consulta usa o nome para obter a informação correspondente." : occurrence.trecho }] })) }] });
+  const links = adapter.calls[0].explanations[0].sourceLinks;
+  assert.equal(detailReads, 1, "a mesma fonte/PDF é reutilizada, sem ingestão por citação");
+  assert.equal(links[0].sourceId, links[1].sourceId);
+  assert.deepEqual(links.map(link => link.anchors), [[{ anchorId: "pdf-page-2" }], [{ anchorId: "pdf-page-3" }]],
+    "a posição consultada não muda quando há âncoras retiradas antes dela");
 });
 
 test("unidades reutilizam base salva antes da produção e vínculos exatos, sem pedir nova Explicação", async () => {
@@ -422,7 +464,8 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
       fonte: "RFC 1035",
       relacao: "supported_by",
       papeis: ["tecnica_conceitual"],
-      ancoras: ["Seção 2 — Introdução"]
+      ancoras: ["Seção 2 — Introdução"],
+      ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Um resolvedor consulta registros para obter o endereço associado." }]
     }])]
   });
 
@@ -456,7 +499,8 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   assert.deepEqual(stored.sourceLinks, [{
     linkId: stored.sourceLinks[0].linkId,
     roles: ["technical_conceptual"],
-    occurrences: [],
+    occurrences: [{ occurrenceId: stored.sourceLinks[0].occurrences[0].occurrenceId, slot: "content", resourceId: "dns-paragraph", path: "text",
+      quote: "Um resolvedor consulta registros para obter o endereço associado.", prefix: null, suffix: null }],
     sourceId: "source-rfc-1035",
     relation: "supported_by",
     anchors: [{ anchorId: "anchor-rfc-1035-section-2" }]

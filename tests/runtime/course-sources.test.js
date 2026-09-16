@@ -15,6 +15,8 @@ import {
   normalizeCourseSourcePdfIngestionRequest,
   normalizeCourseSourcePdfSourceIntent,
   normalizeCourseSourceLinks,
+  inspectCourseSourceEvidence,
+  requireCourseSourceEvidence,
   normalizeCourseSourceSelector,
   normalizeCourseSourcesRead,
   normalizeCourseStudyCitationsRead,
@@ -27,6 +29,36 @@ const IDS = {
   planItem: "10000000-0000-4000-8000-000000000003"
 };
 const HASH_A = "a".repeat(64);
+
+test("evidência exige ambas as localizações e não confunde currículo ou pendência com sustentação", () => {
+  const source = { revision: 3, anchors: [{ anchorId: "a", sourceRevision: 3, status: "active",
+    humanLocator: "Capítulo 2, seção Memória, segundo parágrafo", contentHash: null }] };
+  const link = { relation: "supported_by", roles: ["technical_conceptual"],
+    anchors: [{ anchorId: "a" }], occurrences: [{ occurrenceId: "claim" }] };
+  assert.deepEqual(inspectCourseSourceEvidence(link, source), { located: true, issues: [] });
+  for (const [change, issue] of [
+    [{ anchors: [] }, "missing_anchor"], [{ occurrences: [] }, "missing_occurrence"],
+    [{ roles: ["curricular_scope"] }, "curricular_only"]
+  ]) {
+    assert.throws(() => requireCourseSourceEvidence({ ...link, ...change }, source), error =>
+      error.code === "incomplete_course_source_evidence" && error.details.issues.includes(issue));
+  }
+  assert.throws(() => requireCourseSourceEvidence({ ...link, relation: "informed_by", anchors: [], occurrences: [] }, source),
+    { code: "incomplete_course_source_evidence" });
+  assert.equal(inspectCourseSourceEvidence(link, { ...source, revision: 4 }).located, true,
+    "revisão bibliográfica posterior não invalida a passagem presa à revisão original");
+  for (const change of [{ needsReverification: true }, { status: "retired" },
+    { humanLocator: null }, { contentHash: HASH_A }]) {
+    assert.throws(() => requireCourseSourceEvidence(link, { ...source, anchors: [{ ...source.anchors[0], ...change }] }),
+      { code: "incomplete_course_source_evidence" });
+  }
+  const pending = { ...link, relation: "needs_verification", anchors: [], occurrences: [] };
+  assert.doesNotThrow(() => requireCourseSourceEvidence(pending, source));
+  assert.equal(inspectCourseSourceEvidence(pending, source).located, false);
+  const curricular = { ...link, relation: "informed_by", roles: ["curricular_scope"] };
+  assert.doesNotThrow(() => requireCourseSourceEvidence(curricular, source));
+  assert.equal(inspectCourseSourceEvidence(curricular, source).located, false);
+});
 
 function anchor(anchorId = "anchor-a") {
   return { anchorId };

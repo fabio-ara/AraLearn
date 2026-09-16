@@ -129,7 +129,8 @@ for (const authenticationKind of ["oauth", "action"]) {
       path: "text", quote: "Conteúdo corrigido", prefix: null, suffix: null };
     const current = [
       { ...sourceLink("rfc"), occurrences: [occurrence] },
-      { ...sourceLink("second"), relation: "quoted_from", roles: ["recommended_reading"] }
+      { ...sourceLink("second"), relation: "quoted_from", roles: ["recommended_reading"],
+        occurrences: [{ ...occurrence, occurrenceId: "occ-second" }] }
     ];
     adapter.getCourseSources = async ({ mode, sourceId }) => {
       if (mode === "target") return { items: [{ sourceLinks: structuredClone(current) }] };
@@ -163,22 +164,24 @@ for (const authenticationKind of ["oauth", "action"]) {
     assert.deepEqual(adapter.commits[2].sourceAttributionApplications[0].sourceLinks[0].occurrences,
       current[0].occurrences, "Ocorrências omitidas no vínculo correspondente permanecem intactas.");
     fontes[0].ocorrencias = [];
-    await applyHumanCourseCorrections(input);
-    assert.deepEqual(adapter.commits[3].sourceAttributionApplications[0].sourceLinks[0].occurrences, []);
+    await assert.rejects(() => applyHumanCourseCorrections(input), error =>
+      error.code === "incomplete_course_source_evidence" && error.details.issues.includes("missing_occurrence"));
+    assert.equal(adapter.commits.length, 3, "Remover a ocorrência não pode conservar uma alegação de sustentação.");
+    delete fontes[0].ocorrencias;
     fontes.splice(1);
     await applyHumanCourseCorrections(input);
-    const replacement = adapter.commits[4].sourceAttributionApplications[0];
+    const replacement = adapter.commits[3].sourceAttributionApplications[0];
     assert.equal(replacement.replaceExisting, true);
     assert.equal(replacement.sourceLinks.length, 1);
     assert.equal(replacement.sourceLinks[0].linkId, current[0].linkId);
     fontes.splice(0);
     await applyHumanCourseCorrections(input);
-    assert.deepEqual(adapter.commits[5].sourceAttributionApplications[0].sourceLinks, []);
-    assert.equal(adapter.commits[5].sourceAttributionApplications[0].replaceExisting, true);
+    assert.deepEqual(adapter.commits[4].sourceAttributionApplications[0].sourceLinks, []);
+    assert.equal(adapter.commits[4].sourceAttributionApplications[0].replaceExisting, true);
     delete input.explanations[0].fontes;
     await applyHumanCourseCorrections(input);
-    assert.deepEqual(adapter.commits[6].sourceAttributionApplications[0].sourceLinks, current);
-    assert.equal(adapter.commits[6].sourceAttributionApplications[0].replaceExisting, undefined);
+    assert.deepEqual(adapter.commits[5].sourceAttributionApplications[0].sourceLinks, current);
+    assert.equal(adapter.commits[5].sourceAttributionApplications[0].replaceExisting, undefined);
   });
 }
 
@@ -320,7 +323,8 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
         fonte: "RFC 1035",
         relacao: "supported_by",
         papeis: ["tecnica_conceitual"],
-        ancoras: ["Seção 2"]
+        ancoras: ["Seção 2"],
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Conteúdo corrigido" }]
       }]
     }]
   });
@@ -335,7 +339,9 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
     sourceId: "source-rfc",
     relation: "supported_by",
     roles: ["technical_conceptual"],
-    occurrences: [],
+    occurrences: [{ occurrenceId: link.occurrences[0].occurrenceId, slot: "content",
+      resourceId: correctedContent("Unidade 1 com Fonte revista").content[0].id, path: "text",
+      quote: "Conteúdo corrigido", prefix: null, suffix: null }],
     anchors: [{ anchorId: "anchor-rfc-section-2" }]
   }]);
   assert.equal(receipt.context.sourceMode, "explicit");

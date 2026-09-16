@@ -4,6 +4,7 @@ import {
   resolveHumanCourseContext
 } from "./courseHumanTaskExecutor.js";
 import { resolveHumanSourceLinks } from "./courseHumanMaterialization.js";
+import { requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
@@ -355,7 +356,7 @@ export async function applyHumanCourseCorrections({
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({
           adapter, principal, courseContext: state, requested: entry.requestedSources,
           content: entry.content, newId, identityPrefix: `correction:${index}:source-link`,
-          deadlineAt, sourceCache
+          deadlineAt, sourceCache, allowMissingOccurrences: true
         }), entry.currentLinks, entry.requestedSources)
       })));
       applications.push(...await Promise.all(state.preparedExplanations.map(async (entry, index) => ({
@@ -363,8 +364,13 @@ export async function applyHumanCourseCorrections({
         ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
           requested: entry.requestedSources, content: entry.support, newId,
-          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache }), entry.currentLinks, entry.requestedSources)
+          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache, allowMissingOccurrences: true }), entry.currentLinks, entry.requestedSources)
       }))));
+      for (const application of applications.filter(item => item.replaceExisting)) {
+        for (const link of application.sourceLinks) {
+          requireCourseSourceEvidence(link, [...sourceCache.values()].find(source => source.sourceId === link.sourceId));
+        }
+      }
       const contextualApplication = principal.authenticationKind === "application" &&
         state.prepared.length === 1 && !state.preparedExplanations.length;
       return {

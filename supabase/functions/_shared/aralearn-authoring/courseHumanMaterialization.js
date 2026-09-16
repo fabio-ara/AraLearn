@@ -7,7 +7,7 @@ import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import { observeCoursePracticeDistribution } from
   "../aralearn/runtime/domain/coursePracticeDistribution.js";
-import { normalizeCourseSourceLinks } from "../aralearn/runtime/domain/courseSources.js";
+import { normalizeCourseSourceLinks, requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
 import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import {
@@ -319,6 +319,7 @@ export async function resolveHumanSourceLinks({
   sourceCache = new Map(),
   newId,
   content,
+  allowMissingOccurrences = false,
   identityPrefix = "source-link"
 }) {
   if (!Array.isArray(requested) || requested.length > 32) {
@@ -362,9 +363,9 @@ export async function resolveHumanSourceLinks({
         fail("human_reference_not_found", "A fonte corrente não foi localizada.", 404);
       }
       source = {
+        ...current,
         sourceId: current.sourceId,
-        anchors: (Array.isArray(current.anchors) ? current.anchors : [])
-          .filter((anchor) => anchor.status == null || anchor.status === "active")
+        anchors: Array.isArray(current.anchors) ? current.anchors : []
       };
       sourceCache.set(cacheKey, source);
     }
@@ -376,7 +377,7 @@ export async function resolveHumanSourceLinks({
     if (entry.relacao === "quoted_from" && !selectedAnchors.length) {
       fail("invalid_human_source_anchor", "Uma citação direta exige a localização informada na fonte.");
     }
-    links.push({
+    const link = {
       linkId: await newId(`${identityPrefix}:${index}`),
       sourceId: source.sourceId,
       relation: entry.relacao,
@@ -386,7 +387,9 @@ export async function resolveHumanSourceLinks({
       anchors: selectedAnchors.map((anchor) => ({
         anchorId: anchor.anchorId
       }))
-    });
+    };
+    requireCourseSourceEvidence(link, source, { allowMissingOccurrences });
+    links.push(link);
   }
   return normalizeCourseSourceLinks(links);
 }

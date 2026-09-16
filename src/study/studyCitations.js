@@ -3,6 +3,7 @@ import { renderPackageInline } from "../resources/sdk/html.js";
 import { renderBibliographicReference } from "../ui/renderBibliographicReference.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
+import { buildSourceWebUrl } from "./sourceDocumentUrl.js";
 
 const escape = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -155,8 +156,12 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
       const locator = selectorLabel(anchor.selector);
       const label = anchor.humanLocator && anchor.humanLocator !== locator ? `${anchor.humanLocator} · ${locator}` : locator;
       const attachmentIndex = references.findIndex(attachment => attachment.contentHash === anchor.contentHash);
+      const webUrl = !anchor.contentHash && citation.url ? buildSourceWebUrl(citation.url, anchor) : null;
       return "<li>" + (anchor.contentHash && attachmentIndex >= 0 && anchorIndex !== primaryAnchorIndex
         ? pdfReferenceAction(citation, citationIndex, attachmentIndex, downloadPending, escape(label), anchorIndex)
+        : webUrl && webUrl !== citation.url
+          ? `<a class="study-citation-link" href="${escape(webUrl)}" target="_blank" rel="noopener noreferrer"` +
+            ` title="Abrir localização na fonte">${escape(label)}</a>`
         : `<span>${escape(label)}</span>` + (anchor.contentHash && attachmentIndex < 0
           ? '<span class="study-citations-status">Documento indisponível para abrir.</span>' : "")) + "</li>";
     }).join("");
@@ -177,6 +182,8 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
       `<p class="study-citation-reference">${linkedReference}</p>` +
       (citation.relation === "needs_verification" ? '<p class="study-citations-status">O uso desta fonte ainda precisa ser verificado.</p>' : "") +
       (anchors ? `<ul class="study-citation-locations">${anchors}</ul>` : "") +
+      (citation.url && (citation.anchors || []).some(anchor => !anchor.contentHash)
+        ? '<p class="study-citations-status">Se o trecho não abrir automaticamente, use a localização indicada na página original.</p>' : "") +
       '<div class="study-citation-actions">' + useDetails +
       (citation.url && primaryAttachmentIndex >= 0 ? `<a class="study-citation-web-link" href="${escape(citation.url)}" target="_blank" rel="noopener noreferrer"` +
         ` aria-label="Endereço de ${escape(citation.title || "referência")}" title="Endereço da fonte">${renderUiIcon("cloud", "study-citation-format-icon")}</a>` : "") +

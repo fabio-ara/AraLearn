@@ -520,6 +520,31 @@ test("as instruções primárias preservam mandato, leitura literal e segurança
   assert.doesNotMatch(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /concurso|banca|macete de prova/iu);
 });
 
+test("fontes e produção compartilham a regra geral de evidência e reutilizam âncoras consultadas", () => {
+  for (const task of ["consultar_fontes", "manter_fonte", "incorporar_pdf_como_fonte",
+    "salvar_explicacoes", "preparar_materializacao", "materializar_parte", "aplicar_correcoes"]) {
+    const instructions = courseAuthoringGuidanceForCall(task).instructions.join("\n");
+    assert.match(instructions, /Toda afirmação substantiva factual, conceitual, histórica, científica ou técnica precisa de evidência/u);
+    assert.match(instructions, /ocorrência no conteúdo à âncora da passagem/u);
+    assert.match(instructions, /Afirmações contíguas.*mesma passagem podem compartilhar uma citação/u);
+    assert.match(instructions, /Exemplos construídos, transições pedagógicas e instruções não exigem citação artificial/u);
+    assert.match(instructions, /Vínculo genérico sem ocorrência ou sem âncora não comprova sustentação/u);
+    assert.match(instructions, /fonte exclusivamente curricular não conta como evidência técnica/u);
+    assert.match(instructions, /validação estrutural não determina se cada afirmação foi sustentada/u);
+  }
+  const sources = courseAuthoringGuidanceForCall("consultar_fontes").instructions;
+  assert.deepEqual(courseAuthoringGuidanceForCall("manter_fonte").instructions, sources);
+  const text = sources.join("\n");
+  assert.match(text, /consultar_fontes.*posição, localizador ou trecho.*não a seleciona automaticamente no vínculo/u);
+  assert.match(text, /manter_fonte ou nas fontes de salvar_explicacoes/u);
+  assert.match(text, /URL original.*localizadorHumano preciso.*seção, subtítulo e parágrafo.*não crie snapshot nem cópia persistida/u);
+  assert.match(text, /PDF indisponível.*sugira obras ou alternativas.*arquivo ao qual tenha acesso/u);
+  assert.match(text, /mesmo arquivo e hashDoPdf com múltiplas âncoras e destaques independentes/u);
+  assert.match(text, /pesquisa do assistente têm origin external.*author_provided.*efetivamente fornecido/u);
+  const resource = readCourseAuthoringKnowledgeResource("aralearn://authoring/sources");
+  for (const instruction of sources) assert.ok(resource.text.includes(instruction));
+});
+
 test("os guias focais distinguem continuidade, revisão factual e conteúdo externo não confiável", () => {
   const planning = courseAuthoringGuidanceForCall("salvar_parte");
   const planningText = planning.instructions.join("\n");

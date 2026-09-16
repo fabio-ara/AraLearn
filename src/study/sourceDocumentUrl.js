@@ -1,3 +1,29 @@
+function textFragment(selector) {
+  // Escape '-' as well: it separates the optional context from the quote.
+  const encode = value => encodeURIComponent(value).replaceAll("-", "%2D");
+  const prefix = selector.prefix ? `${encode(selector.prefix)}-,` : "";
+  const suffix = selector.suffix ? `,-${encode(selector.suffix)}` : "";
+  return `:~:text=${prefix}${encode(selector.exact)}${suffix}`;
+}
+
+// Keep the original web location as the fallback; no stored page copy is needed.
+export function buildSourceWebUrl(originalUrl, anchor = null) {
+  const url = new URL(originalUrl);
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new TypeError("Endereço da fonte inválido.");
+  }
+  if (!anchor || anchor.contentHash || anchor.needsReverification === true ||
+      (anchor.status && anchor.status !== "active")) return originalUrl;
+  const selector = anchor.selector;
+  if (selector?.kind === "uri_fragment" && typeof selector.fragment === "string" && selector.fragment.trim()) {
+    url.hash = selector.fragment;
+  } else if (selector?.kind === "text_quote" && typeof selector.exact === "string" && selector.exact.trim()) {
+    // Preserve any element fragment as fallback when text matching is unavailable.
+    url.hash = url.hash.split(":~:")[0] + textFragment(selector);
+  } else return originalUrl;
+  return url.href;
+}
+
 // A source anchor locates text in the source, independently of its occurrence
 // in the explanation. Native PDF readers can use page and text fragments.
 export function buildSourceDocumentUrl(signedUrl, { attachment, anchor = null } = {}) {
@@ -17,11 +43,7 @@ export function buildSourceDocumentUrl(signedUrl, { attachment, anchor = null } 
       selector.startPage > 0 && selector.startPage <= 1_000_000) {
     url.hash = `page=${selector.startPage}`;
   } else if (selector?.kind === "text_quote" && typeof selector.exact === "string" && selector.exact.trim()) {
-    // Escape '-' as well: it separates the optional context from the quote.
-    const encode = value => encodeURIComponent(value).replaceAll("-", "%2D");
-    const prefix = selector.prefix ? `${encode(selector.prefix)}-,` : "";
-    const suffix = selector.suffix ? `,-${encode(selector.suffix)}` : "";
-    url.hash = `:~:text=${prefix}${encode(selector.exact)}${suffix}`;
+    url.hash = textFragment(selector);
   }
   return url.href;
 }

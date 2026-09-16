@@ -17,6 +17,8 @@ import {
   createEmptyCourseSourceBibliographicMetadata,
   normalizeCourseSourceAttachment,
   normalizeCourseSourceCommand,
+  inspectCourseSourceEvidence,
+  requireCourseSourceEvidence,
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
 import {
@@ -246,8 +248,10 @@ const SOURCE_OCCURRENCES_SCHEMA = Object.freeze({
 const SOURCE_LINK_PROPERTIES = Object.freeze({
   relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
   papeis: Object.freeze({ ...SOURCE_ROLES_SCHEMA, minItems: 1 }),
-  ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA }),
-  ocorrencias: SOURCE_OCCURRENCES_SCHEMA
+  ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA,
+    description: "Posição na ficha consultada, localizador humano ou trecho de verificação da âncora existente. Evidência exige âncora vigente; não basta cadastrar a fonte." }),
+  ocorrencias: Object.freeze({ ...SOURCE_OCCURRENCES_SCHEMA,
+    description: "Afirmações sustentadas no conteúdo. Evidência exige ocorrência e âncora; afirmações contíguas da mesma passagem podem compartilhar uma ocorrência." })
 });
 const SOURCE_LINKS_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
@@ -1019,7 +1023,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:cf34d967f3b1ae05367c5ea507728754c8f001f21532c165929adf72e3039958";
+  "sha256:68233e76c6acb6f11428388ef4830ef30c6e54efd031ee287a32fc638f867078";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2955,7 +2959,7 @@ async function humanTargetSourceReferences({ adapter, principal, course, sources
   return { ...sources, items: await Promise.all(sources.items.map(async (item) => ({
     ...item, sourceLinks: await Promise.all(item.sourceLinks.map(async (link, index) => {
       const source = await readSource(link.sourceId);
-      return { ...link, posicao: index + 1,
+      return { ...link, posicao: index + 1, evidencia: inspectCourseSourceEvidence(link, source),
         fonte: source ? { localizada: true, titulo: source.title, citacao: source.citationText,
           status: source.status } : { localizada: false },
         anchors: link.anchors.map((reference) => {
@@ -2999,7 +3003,8 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   if (!Array.isArray(sources?.items)) fail('course_service_unavailable', 'A página de fontes é inválida.', null, 503);
   const readableSources = mode === "target"
     ? await humanTargetSourceReferences({ adapter, principal, course: resolved.course, sources, deadlineAt })
-    : sources;
+    : mode === "source" ? { ...sources, items: sources.items.map(source => ({ ...source,
+      anchors: (source.anchors ?? []).map((anchor, index) => ({ ...anchor, posicao: index + 1 })) })) } : sources;
   const context = args.busca === undefined
     ? readableSources
     : {
@@ -3728,7 +3733,7 @@ HUMAN_TASK_HANDLERS.editar_observacao = async ({ adapter, principal, args, deadl
   } });
 };
 
-function sourceDocument(publicValue, previous = null) {
+function sourceDocument(publicValue, previous = null, origin = "external") {
   const value = plainObject(publicValue, "metadados");
   exactFields(value, new Set(Object.keys(SOURCE_METADATA_SCHEMA.properties)));
   const availability = Object.freeze({
@@ -3792,7 +3797,7 @@ function sourceDocument(publicValue, previous = null) {
     editionOrVersion: value.edicaoOuVersao === undefined
       ? previous?.editionOrVersion ?? null
       : value.edicaoOuVersao,
-    origin: previous?.origin ?? "author_provided",
+    origin: previous?.origin ?? origin,
     availability: mapped(availability, "disponibilidade", previous?.availability ?? "unknown"),
     verificationStatus: mapped(verification, "verificacao", previous?.verificationStatus ?? "unverified"),
     studyVisibility: mapped(visibility, "visibilidadeNoEstudo", previous?.studyVisibility ?? "hidden")
@@ -4128,6 +4133,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
             await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: target.content,
               newId, identityPrefix: `source-link:${index}` })
         };
+        requireCourseSourceEvidence(requestedLink, state.sourceDetail);
         return {
           courseId: state.course.id,
           expectedCourseRevision: state.course.revision,
@@ -4216,7 +4222,7 @@ HUMAN_TASK_HANDLERS.incorporar_pdf_como_fonte = async ({
               disponibilidade: "desconhecida",
               verificacao: "nao_verificada",
               visibilidadeNoEstudo: "oculta"
-            })
+            }, null, "author_provided")
           }
         : {
             mode: "existing",
