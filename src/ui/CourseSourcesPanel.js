@@ -1211,7 +1211,6 @@ export function createCourseSourcesPanel({
     targetFailure: "",
     sourceLinks: [],
     initialSourceLinks: [],
-    targetDraftRevision: 0,
     targetDraftChangedDuringWrite: false,
     targetDetails: new Map(),
     targetDetailsLoading: new Set(),
@@ -1931,7 +1930,6 @@ export function createCourseSourcesPanel({
 
   function markTargetDraftChanged() {
     if (state.mode === "target") {
-      state.targetDraftRevision++;
       if (state.busy) state.targetDraftChangedDuringWrite = true;
     }
   }
@@ -2084,9 +2082,7 @@ export function createCourseSourcesPanel({
         command: normalizeCourseSourceCommand(command),
         draft: structuredClone(draft),
         editor,
-        editorDraft: editor ? structuredClone(editor.draft) : null,
-        targetDraftRevision: state.mode === "target" && command.type === "set_target_sources"
-          ? state.targetDraftRevision : null
+        editorDraft: editor ? structuredClone(editor.draft) : null
       };
     } catch (error) {
       state.message = "";
@@ -2158,7 +2154,6 @@ export function createCourseSourcesPanel({
     // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
-      pending.targetDraftRevision === state.targetDraftRevision &&
       !state.targetDraftChangedDuringWrite &&
       !state.occurrenceEditor;
     let targetSavedNotified = false;
