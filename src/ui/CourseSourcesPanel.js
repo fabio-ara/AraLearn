@@ -2169,13 +2169,15 @@ export function createCourseSourcesPanel({
       pending.command.type === "set_target_sources" &&
       targetSaveDraftStillMatches;
     if (state.mode === "target" && pending.command.type === "set_target_sources") {
-      const debug = JSON.stringify({
+      const debugValue = {
         targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
         occurrenceEditor: Boolean(state.occurrenceEditor),
         sourceLinksEqual: targetSaveDraftStillMatches,
         sourceLinks: state.sourceLinks,
         commandSourceLinks: pending.command.sourceLinks
-      });
+      };
+      const debug = JSON.stringify(debugValue);
+      globalThis.__ARALEARN_TARGET_DEBUG = debugValue;
       root.dataset.targetSaveDebug = debug;
       root.querySelector?.("[data-source-target-dialog]")?.setAttribute("data-target-save-debug", debug);
     }
@@ -2507,7 +2509,9 @@ export function createCourseSourcesPanel({
   function targetLinksValid() {
     const occurrenceIssue = targetOccurrenceIssue(state);
     if (occurrenceIssue) {
-      const debug = JSON.stringify({ reason: occurrenceIssue, links: state.sourceLinks });
+      const debugValue = { reason: occurrenceIssue, links: state.sourceLinks };
+      const debug = JSON.stringify(debugValue);
+      globalThis.__ARALEARN_VALIDATION_DEBUG = debugValue;
       root.dataset.targetValidationDebug = debug;
       root.querySelector?.("[data-source-target-dialog]")?.setAttribute("data-target-validation-debug", debug);
       return false;
@@ -2531,12 +2535,14 @@ export function createCourseSourcesPanel({
         });
     });
     if (!valid) {
-      const debug = JSON.stringify({
+      const debugValue = {
         reason: "source_or_anchor_not_active",
         links: state.sourceLinks,
         details: [...state.targetDetails.entries()],
         loading: [...state.targetDetailsLoading]
-      });
+      };
+      const debug = JSON.stringify(debugValue);
+      globalThis.__ARALEARN_VALIDATION_DEBUG = debugValue;
       root.dataset.targetValidationDebug = debug;
       root.querySelector?.("[data-source-target-dialog]")?.setAttribute("data-target-validation-debug", debug);
     }
