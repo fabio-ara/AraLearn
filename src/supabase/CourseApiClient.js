@@ -1076,6 +1076,16 @@ export class CourseApiClient {
             globalThis.__ARALEARN_TARGET_MUTATION_API = { phase: "after-http", hasData: Boolean(response?.data) };
           }
           return response;
+        }).catch((error) => {
+          if (isTargetSourceMutation) {
+            globalThis.__ARALEARN_TARGET_MUTATION_API = {
+              phase: "http-error",
+              status: error?.status ?? error?.response?.status ?? null,
+              code: error?.code ?? error?.response?.code ?? null,
+              message: String(error?.message || "").slice(0, 240)
+            };
+          }
+          throw error;
         });
       };
       let response;
