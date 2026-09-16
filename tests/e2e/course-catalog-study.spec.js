@@ -259,7 +259,9 @@ test("Curso de catÃ¡logo exercita todos os pacotes no Estudo e permanece disponÃ
   test.setTimeout(120_000);
   expect(packageIds).toHaveLength(37);
   expect(packageIds).not.toContain("aralearn.response.open");
-  expect(packageIds).toEqual(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id).sort());
+  expect(packageIds).toEqual(RESOURCE_PACKAGE_REGISTRY.listCatalog()
+    .filter(({ authoringEligibility }) => authoringEligibility === "current")
+    .map(({ id }) => id).sort());
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.setViewportSize({ width: 390, height: 844 });

@@ -1653,6 +1653,15 @@ async function mountCourseAuthoring(page, {
             channel: "authoring_interface"
           });
           item.timestamps.capturedAt = command.capturedAt;
+          if (command.targets) {
+            item.targetSetVersion = 1;
+            item.targets = command.targets.map(target => ({ ...target, state: "pending",
+              path: annotationPath(input.courseId, target),
+              basis: { hash: "a".repeat(64), deferred: true },
+              current: { hash: "a".repeat(64), deferred: true } }));
+            item.capabilities.canResolve = false;
+            item.capabilities.canWithdraw = false;
+          }
           annotations.push(item);
         } else {
           item = structuredClone(annotations[index]);
@@ -1746,7 +1755,7 @@ async function mountCourseAuthoring(page, {
         const items = selected.map((studyUnit, index) => ({
           studyUnit: structuredClone(studyUnit),
           pendingAuthoringObservationCount: annotations.filter(item => item.courseId === courseId &&
-            item.provenance.origin === "author" && item.target.kind === "study_unit" && item.target.id === studyUnit.id &&
+            item.provenance.origin === "author" &&
             ["open", "considered"].includes(item.state)).length,
           version: studyUnitVersions.get(studyUnit.id),
           updatedAt: studyUnit.id === "study-unit-50"
@@ -3869,7 +3878,9 @@ test("Minipainel mostra desenho aplicado, evidência, origem e revisão por obje
   expect(value.y - label.y - label.height).toBeGreaterThanOrEqual(3);
   await expect(details).toContainText("Justificar a inclusão");
   await expect(details).toContainText("3 pendentes");
-  await expect(details).toContainText("GPT");
+  const authorship = details.locator('.course-inspection-metadata-group[aria-label="Autoria"]');
+  await expect(authorship.getByText("Origem", { exact: true }).locator("..").locator("dd")).toHaveText("IA");
+  await expect(authorship.getByText("Última intervenção", { exact: true }).locator("..").locator("dd")).toHaveText("IA");
   const panel = details.locator(".course-inspection-item-detail-panel");
   const panelBounds = await panel.boundingBox();
   expect(panelBounds.y + panelBounds.height).toBeLessThanOrEqual(821);
@@ -3882,7 +3893,7 @@ test("Minipainel mostra desenho aplicado, evidência, origem e revisão por obje
   expect(errors).toEqual([]);
 });
 
-test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observações", async ({ page }) => {
+test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observações", async ({ page }, info) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 820 });
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
@@ -3898,14 +3909,14 @@ test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observ
   await expect(details).not.toHaveAttribute("open", "");
   await expect(detailsTrigger).toBeFocused();
   const observationsAction = page.getByRole("button", {
-    name: "Observações de Exemplo guiado com diagrama, 0 pendentes",
+    name: "Observações autorais do curso, 0 pendentes",
     exact: true
   });
   await observationsAction.click();
   await expect(details).not.toHaveAttribute("open", "");
-  const observationDialog = page.getByRole("dialog", { name: "Observações · Exemplo guiado com diagrama" });
+  const observationDialog = page.getByRole("dialog", { name: "Observações do curso", exact: true });
   await expectModalDialogOwnsTopLayer(observationDialog);
-  const observationText = page.getByRole("textbox", { name: "Observação" });
+  const observationText = observationDialog.getByRole("textbox", { name: "Observação", exact: true });
   await expect(observationText).toBeFocused();
   await observationText.press("Escape");
   await expect(observationDialog).toHaveCount(0);
@@ -3920,7 +3931,7 @@ test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observ
   )).toHaveCount(0);
   expect(await page.evaluate(() =>
     globalThis.__courseAuthoringHarness.probe.annotationReads.length)).toBe(2);
-  await page.getByRole("textbox", { name: "Observação" }).fill("😀a");
+  await observationText.fill("😀a");
   await expect(page.locator("#study-observation-counter"))
     .toHaveText("2/2.000 caracteres · 5 B/16 KiB");
   await page.getByRole("button", { name: "Enviar observação" }).click();
@@ -3932,7 +3943,7 @@ test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observ
   await observationDialog
     .getByRole("button", { name: "Fechar" }).click();
   const observationsWithCount = page.getByRole("button", {
-    name: "Observações de Exemplo guiado com diagrama, 2 pendentes",
+    name: "Observações autorais do curso, 2 pendentes",
     exact: true
   }).first();
   await expect(observationDialog).toHaveCount(0);
@@ -3944,6 +3955,7 @@ test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observ
     globalThis.__courseAuthoringHarness.probe.annotationMutations[0]);
   expect(mutation.expectedCourseRevision).toBe(5);
   expect(mutation.command.target).toEqual({ kind: "study_unit", id: "study-unit-01" });
+  expect(mutation.command.targets).toEqual([{ kind: "study_unit", id: "study-unit-01" }]);
 
   await observationsWithCount.click();
   await expect(details).not.toHaveAttribute("open", "");
@@ -3958,12 +3970,18 @@ test("Inspeção mostra contagem da fila autoral sem N+1, acumula e edita observ
   await expect(observationDialog.locator(".study-observation-item")).toHaveCount(2);
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.annotationMutations.map(value => value.command.type)))
     .toEqual(["create_anchored_annotation", "create_anchored_annotation", "revise_anchored_annotation"]);
+  const revision = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.annotationMutations.at(-1));
+  expect(revision.command.expectedAnnotationVersion).toBe(1);
+  expect(revision.command.annotationId).toBe(mutation.command.annotationId);
+  await expect.poll(() => observationDialog.locator('.editor-body').evaluate(node =>
+    node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath("authoring-observation-central-390.png") });
   await expect.poll(() => page.evaluate(() =>
     document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   expect(clientErrors).toEqual([]);
 });
 
-test("Observação na seleção fica no conteúdo e conserva rascunho ao recolher", async ({ page }) => {
+test("Observação na seleção conserva rascunho ao recolher e retoma na central", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 820 });
   const hash = `#/authoring/courses/${COURSE_IDS[0]}?section=content`;
   await mountCourseAuthoring(page, { cardinality: "many", hash });
@@ -3978,14 +3996,26 @@ test("Observação na seleção fica no conteúdo e conserva rascunho ao recolhe
   await selection.getByRole('button', { name: 'Recolher caixa de observação' }).click();
   await expect(text).toHaveCount(0);
   await selection.getByRole('button', { name: 'Escrever observação nas unidades selecionadas' }).click();
-  await expect(text).toHaveValue('Comentário sintético na unidade escolhida.');
-  await expect(text).toBeFocused();
-  await selection.getByRole('button', { name: 'Enviar observação' }).click();
-  await expect(selection).toContainText('Observação registrada nesta unidade.');
-  await expect(text).toHaveValue('');
+  const central = page.getByRole('dialog', { name: 'Observações do curso', exact: true });
+  const resumedText = central.getByRole('textbox', { name: 'Observação', exact: true });
+  await expectModalDialogOwnsTopLayer(central);
+  await expect(text).toHaveCount(0);
+  await expect(resumedText).toHaveValue('Comentário sintético na unidade escolhida.');
+  await expect(resumedText).toBeFocused();
+  await expect(central.getByRole('listbox', { name: 'Alvos da nova observação', exact: true }))
+    .toHaveValues(['study_unit:study-unit-01']);
+  await expect.poll(() => central.locator('.editor-body').evaluate(node =>
+    node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: info.outputPath('selection-draft-central-390.png') });
+  await central.getByRole('button', { name: 'Enviar observação' }).click();
+  await expect(central).toContainText('Observação adicionada.');
+  await expect(resumedText).toHaveValue('');
   const mutations = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.annotationMutations);
   expect(mutations).toHaveLength(1);
   expect(mutations[0].command.target).toEqual({ kind: 'study_unit', id: 'study-unit-01' });
+  expect(mutations[0].command.targets).toEqual([{ kind: 'study_unit', id: 'study-unit-01' }]);
+  await central.getByRole('button', { name: 'Fechar', exact: true }).click();
+  await expect(central).toHaveCount(0);
   await selection.getByRole('button', { name: 'Limpar seleção' }).click();
   await expect(text).toHaveCount(0);
 });
@@ -5541,7 +5571,7 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   });
   expect(narrowActions.controls.map(({ label }) => label)).toEqual([
     'Abrir explicação', 'Ferramentas da unidade', 'Parâmetros aplicáveis a Unidade curricular 12',
-    'Observações de Unidade curricular 12, 0 pendentes', 'Mostrar somente esta unidade',
+    'Observações autorais do curso, 0 pendentes', 'Mostrar somente esta unidade',
     'Adicionar Unidade curricular 12 à seleção para observação', 'Editar'
   ]);
   await expect(card.locator('.course-inspection-item-actions [data-inspection-edit-sources]')).toHaveCount(0);

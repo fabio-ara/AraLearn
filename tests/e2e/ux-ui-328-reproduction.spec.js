@@ -346,15 +346,22 @@ test("#329 nuvem da Autoria executa nova leitura e preserva unidade focal", asyn
   await expect(page.locator('[data-authoring-runtime-status] [aria-busy="true"]')).toHaveCount(0);
 });
 
-test("#328 Observações válidas: existentes, longa, lista vazia e envio separado", async ({ page }) => {
+test("#328 Observações válidas: central do curso, texto longo e envio ao alvo selecionado", async ({ page }) => {
   for (const ordinal of [1, 2, 3]) {
     await open(page, "content", `?observation=${ordinal}`, ordinal);
     await card(page, ordinal).locator("[data-inspection-observations]").click();
-    await expect(page.locator('[data-field="study-unit-observation"]')).toHaveValue("");
+    const central = page.getByRole("dialog", { name: "Observações do curso", exact: true });
+    await expect(central.locator('[data-field="study-unit-observation"]')).toHaveValue("");
+    await expect(central.locator('[data-observation-composer]')).toHaveAttribute("data-study-unit-id", `ux328-unit-${String(ordinal).padStart(2, "0")}`);
+    await expect(central.locator(".study-observation-text")).toHaveCount(2);
     await expect(page.getByText("Não foi possível carregar as observações.", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Carregando observações…", { exact: true })).toHaveCount(0);
     if (ordinal === 1) await expect(page.getByText("Conferir a relação entre o endereço de origem e a porta aprendida.", { exact: true })).toBeVisible();
-    if (ordinal === 2) await expect(page.locator(".study-observation-text")).toContainText("Observação longa sintética");
+    if (ordinal === 2) {
+      const longText = central.locator(".study-observation-text").filter({ hasText: "Observação longa sintética" });
+      await expect(longText).toHaveCount(1);
+      await expect(longText).toContainText("Observação longa sintética");
+    }
     if (ordinal === 3) {
       await page.locator('[data-field="study-unit-observation"]').fill("Registro sintético separado para a unidade 3.");
       await page.locator('[data-observation-composer] button[type="submit"]').click();
@@ -362,6 +369,8 @@ test("#328 Observações válidas: existentes, longa, lista vazia e envio separa
       const observations = await page.evaluate(() => globalThis.uxUi328.annotations.map(item => ({ target: item.target.id, text: item.rawText })));
       expect(observations).toHaveLength(3);
       expect(observations.at(-1)).toEqual({ target: "ux328-unit-03", text: "Registro sintético separado para a unidade 3." });
+      const command = await page.evaluate(() => globalThis.uxUi328.requests.filter(item => item.kind === "annotation-mutation").at(-1).input.command);
+      expect(command.targets).toEqual([{ kind: "study_unit", id: "ux328-unit-03" }]);
     }
   }
 });
@@ -388,8 +397,8 @@ for (const [width, height, theme, zoom, ordinal = 3] of [[360, 640, "light", 1],
     await page.setViewportSize({ width, height });
     const origin = card(page, ordinal).locator("[data-inspection-observations]");
     await origin.click();
-    const title = await card(page, ordinal).locator("h3").first().innerText();
-    const dialog = page.getByRole("dialog", { name: `Observações · ${title}`, exact: true });
+    const dialog = page.getByRole("dialog", { name: "Observações do curso", exact: true });
+    await expect(dialog.locator("[data-observation-composer]")).toHaveAttribute("data-study-unit-id", `ux328-unit-${String(ordinal).padStart(2, "0")}`);
     const field = dialog.getByRole("textbox", { name: "Observação", exact: true });
     await expect(field).toBeFocused();
     const focus = await field.evaluate(node => {
@@ -413,6 +422,7 @@ for (const [width, height, theme, zoom, ordinal = 3] of [[360, 640, "light", 1],
     });
     expect(hit.visible).toBe(true);
     await info.attach("focus-and-hit", { body: JSON.stringify({ focus, hit }), contentType: "application/json" });
+    await page.screenshot({ path: info.outputPath(`observations-course-${width}x${height}-${theme}-${zoom}x-unit${ordinal}.png`), fullPage: true });
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(origin).toBeFocused();

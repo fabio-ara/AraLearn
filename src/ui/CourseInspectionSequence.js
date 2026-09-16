@@ -2206,7 +2206,7 @@ export function createCourseInspectionSequence({
     const anchor = captureAnchor();
     anchor.controlKey = "";
     anchor.openControlKeys = [];
-    ++observationEpoch;
+    const epoch = ++observationEpoch;
     state.observationStudyUnitId = targetIds[0];
     state.observationTargetIds = targetIds;
     state.observationSelectedTargets = targetIds.map(id => ({ kind: "study_unit", id }));
@@ -2227,13 +2227,22 @@ export function createCourseInspectionSequence({
     render({ anchor });
     try {
       const observations = await loadTargetObservations();
+      if (state.destroyed || epoch !== observationEpoch) return false;
       state.observationItems = observations.items; state.observationCollectionSummary = observations;
       if (typeof controller.loadCourseDocument === "function") {
         const loaded = await loadCourseSearchIndex();
+        if (state.destroyed || epoch !== observationEpoch) return false;
         state.observationTargetCatalog = observationTargetCatalog(loaded.project, state.courseId);
       }
-      render();
-    } catch (error) { state.observationError = publicErrorMessage(error, "Não foi possível carregar a central."); render(); }
+    } catch (error) {
+      if (state.destroyed || epoch !== observationEpoch) return false;
+      state.observationError = publicErrorMessage(error, "Não foi possível carregar a central.");
+    } finally {
+      if (!state.destroyed && epoch === observationEpoch) {
+        state.restoreObservationFocus = true;
+        render();
+      }
+    }
     return true;
   }
 

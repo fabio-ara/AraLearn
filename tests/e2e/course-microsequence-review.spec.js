@@ -111,7 +111,7 @@ async function expectObservationIcon(button, peer) {
   expect(Math.abs(icon.y + icon.height / 2 - other.y - other.height / 2)).toBeLessThanOrEqual(1);
 }
 
-for (const width of [360, 1280]) test(`contexto autoral e ações ficam separados da base longa em ${width}px`, async ({ page }) => {
+for (const width of [360, 1280]) test(`contexto autoral e ações ficam separados da base longa em ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 850 });
   const errors = await mount(page);
   await page.getByRole("button", { name: "Fechar inspeção da explicação", exact: true }).click();
@@ -125,7 +125,9 @@ for (const width of [360, 1280]) test(`contexto autoral e ações ficam separado
   const content = base.locator("[data-review-explanation-content]");
   await expect(context).toContainText("Interfaces");
   await expect(context).not.toContainText("Versão do curso");
-  await expect(context).toContainText("Revisão autoral");
+  await expect(context).not.toContainText("Revisão autoral");
+  await expect(dialog(page).locator('[data-review-context="review"]')).toHaveAccessibleName("Revisão autoral do conteúdo");
+  await expect(dialog(page).locator('[data-review-context="review"]')).toHaveAttribute("title", "Revisão autoral pendente");
   await expect(context.locator("[contenteditable], [data-review-edit-target]")).toHaveCount(0);
   await expect(tools.getByRole("button", { name: "Fontes da explicação", exact: true })).toBeVisible();
   await expect(tools.getByRole("button", { name: "Editar explicação", exact: true })).toBeVisible();
@@ -156,6 +158,7 @@ for (const width of [360, 1280]) test(`contexto autoral e ações ficam separado
     expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
   }
   await expect(base.getByRole("heading", { name: "Referências da explicação", exact: true })).toBeAttached();
+  await page.screenshot({ path: info.outputPath(`explanation-authoring-context-${width}.png`), fullPage: true });
   await tools.getByRole("button", { name: "Editar explicação", exact: true }).click();
   await expect(tools.getByRole("button", { name: "Salvar explicação", exact: true })).toBeVisible();
   await expect(tools.getByRole("button", { name: "Cancelar edição", exact: true })).toBeVisible();
@@ -489,7 +492,10 @@ test("Conteúdo abre Explicação salva sem unidades e retorna ao objeto vazio",
   await page.getByRole("button", { name: "Conteúdo sem unidades", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Nenhuma unidade de estudo materializada" })).toBeVisible();
   const trigger = page.getByRole("button", { name: "Explicação de Interfaces", exact: true });
-  await expect(trigger).toBeVisible(); await trigger.click();
+  // A rota da microssequência vazia abre sua explicação salva diretamente.
+  await expect(dialog(page)).toBeVisible();
+  await expect(dialog(page)).toHaveCount(1);
+  await expect(trigger).toBeAttached();
   await expect(dialog(page)).toContainText("Um socket é a interface local");
   await expect(dialog(page).locator("[data-review-context=units], [data-review-unit-context]")).toHaveCount(0);
   await expect(dialog(page).getByRole("button", { name: "Editar explicação", exact: true })).toBeVisible();
@@ -497,6 +503,9 @@ test("Conteúdo abre Explicação salva sem unidades e retorna ao objeto vazio",
   await expect(page.locator("[data-review-status]")).toContainText("Revisão declarada para este objeto");
   await page.screenshot({ path: info.outputPath("explanation-before-units.png"), fullPage: true });
   await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await trigger.click(); await expect(dialog(page)).toBeVisible();
+  await page.getByRole("button", { name: "Fechar inspeção da explicação", exact: true }).click();
   await expect(trigger).toBeFocused();
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls.map(value => [value.kind, value.request.targetKind])))
     .toEqual([["review", "microsequence_explanation"]]);
