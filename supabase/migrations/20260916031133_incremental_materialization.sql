@@ -336,8 +336,19 @@ end $part_consumers$;
 -- A identidade do vínculo já é composta por (source_ordinal, anchor_ordinal);
 -- a restrição histórica por anchor_id impedia a materialização de dois
 -- usos legítimos do mesmo trecho no mesmo alvo.
-alter table private.course_source_attribution_anchors
-  drop constraint if exists course_source_attribution_anchors_course_id_attribution_id_anchor_id_key;
+do $drop_legacy_anchor_identity$
+declare constraint_name text;
+begin
+  select pg_constraint.conname into constraint_name
+  from pg_constraint
+  where pg_constraint.conrelid='private.course_source_attribution_anchors'::regclass
+    and pg_constraint.contype='u'
+    and replace(lower(pg_get_constraintdef(pg_constraint.oid)),' ','')=
+      'unique(course_id,attribution_id,anchor_id)';
+  if constraint_name is not null then
+    execute format('alter table private.course_source_attribution_anchors drop constraint %I', constraint_name);
+  end if;
+end $drop_legacy_anchor_identity$;
 
 -- Reconciliation is an authoring declaration, not part of the study document.
 -- Keep the private/owner readers intact for export, editing and course copies.
