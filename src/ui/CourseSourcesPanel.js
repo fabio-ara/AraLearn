@@ -2161,12 +2161,21 @@ export function createCourseSourcesPanel({
       pending.targetDraftRevision === state.targetDraftRevision &&
       !state.targetDraftChangedDuringWrite &&
       !state.occurrenceEditor;
+    let targetSavedNotified = false;
+    if (targetSaveHasNoConcurrentDraft) {
+      // O recibo da mutação já é a confirmação do vínculo. Feche a folha antes
+      // da releitura de inspeção, que pode ser lenta; o fluxo pai fará a
+      // atualização do contexto com a nova revisão.
+      onTargetSaved(result);
+      targetSavedNotified = true;
+    }
+    if (!state.opened) return true;
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
     if (!refreshed) {
       reportConfirmedRefreshFailure(sourceChangeMessage(result));
     }
-    if (targetSaveHasNoConcurrentDraft) {
+    if (targetSaveHasNoConcurrentDraft && !targetSavedNotified) {
       onTargetSaved(result);
     }
     state.busy = false;
