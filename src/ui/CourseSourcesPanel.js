@@ -5,7 +5,7 @@ import {
   normalizeCourseAnchoredAnnotationPage,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
-import { normalizeCourseSourceCommand, normalizeCourseSourceDocument } from "../domain/courseSources.js";
+import { normalizeCourseSourceCommand, normalizeCourseSourceDocument, normalizeCourseSourceLinks } from "../domain/courseSources.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { renderBibliographicReference } from "./renderBibliographicReference.js";
 import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrence } from "../domain/courseSourceOccurrences.js";
@@ -2142,10 +2142,14 @@ export function createCourseSourcesPanel({
     // A mutação já foi confirmada pelo backend. Uma releitura secundária pode
     // falhar sem invalidar essa confirmação; nesse caso, feche a folha somente
     // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
-    const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
-      pending.command.type === "set_target_sources" &&
-      JSON.stringify(state.sourceLinks) === JSON.stringify(pending.command.sourceLinks) &&
-      !state.occurrenceEditor;
+    let targetSaveHasNoConcurrentDraft = false;
+    if (state.mode === "target" && pending.command.type === "set_target_sources" && !state.occurrenceEditor) {
+      try {
+        targetSaveHasNoConcurrentDraft = JSON.stringify(normalizeCourseSourceLinks(state.sourceLinks, {
+          targetKind: state.targetKind
+        })) === JSON.stringify(pending.command.sourceLinks);
+      } catch { /* Um rascunho inválido continua aberto para correção. */ }
+    }
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
     if (!refreshed) {
