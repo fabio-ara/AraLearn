@@ -1042,25 +1042,13 @@ export class CourseApiClient {
       new Error("Entre para realizar esta operação."), { code: "AUTH_REQUIRED", status: 401 }
     );
     try {
-      const isTargetSourceMutation = normalizedMethod === "POST" &&
-        /\/sources\/changes$/u.test(pathname) &&
-        body?.command?.type === "set_target_sources";
-      if (isTargetSourceMutation) {
-        globalThis.__ARALEARN_TARGET_MUTATION_API = { phase: "before-token" };
-      }
       const accessToken = publicRead ? null : await this.#authenticatedAccessToken({ timeoutMs, signal });
-      if (isTargetSourceMutation) {
-        globalThis.__ARALEARN_TARGET_MUTATION_API = { phase: "after-token", hasToken: Boolean(accessToken) };
-      }
       if (!accessToken && !publicRead) {
         const error = new Error("Entre novamente para continuar.");
         error.status = 401;
         throw error;
       }
       const execute = () => {
-        if (isTargetSourceMutation) {
-          globalThis.__ARALEARN_TARGET_MUTATION_API = { phase: "before-http" };
-        }
         return this.http.request(
         courseApiPath(pathname, query),
         {
@@ -1071,22 +1059,7 @@ export class CourseApiClient {
           timeoutMs,
           signal
         }
-        ).then((response) => {
-          if (isTargetSourceMutation) {
-            globalThis.__ARALEARN_TARGET_MUTATION_API = { phase: "after-http", hasData: Boolean(response?.data) };
-          }
-          return response;
-        }).catch((error) => {
-          if (isTargetSourceMutation) {
-            globalThis.__ARALEARN_TARGET_MUTATION_API = {
-              phase: "http-error",
-              status: error?.status ?? error?.response?.status ?? null,
-              code: error?.code ?? error?.response?.code ?? null,
-              message: String(error?.message || "").slice(0, 240)
-            };
-          }
-          throw error;
-        });
+        );
       };
       let response;
       try {

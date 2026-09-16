@@ -2864,28 +2864,12 @@ export class CourseController {
       throw new TypeError("Alteração de Fontes inválida.");
     }
     const command = normalizeCourseSourceCommand(value.command);
-    if (command.type === "set_target_sources") {
-      globalThis.__ARALEARN_TARGET_MUTATION_CONTROLLER = {
-        phase: "before-api",
-        targetKind: command.targetKind,
-        targetId: command.targetId,
-        expectedRevision: expectedCourseRevision,
-        sourceLinks: command.sourceLinks.length
-      };
-    }
     const result = normalizeCourseSourceChange(await this.api.mutateCourseSources({
       requestId,
       courseId,
       expectedRevision: expectedCourseRevision,
       sourceCommand: command
     }));
-    if (command.type === "set_target_sources") {
-      globalThis.__ARALEARN_TARGET_MUTATION_CONTROLLER = {
-        phase: "after-api",
-        courseRevision: result.courseRevision,
-        changed: result.changed
-      };
-    }
     if (result.courseId !== courseId || result.requestId !== requestId ||
         result.courseRevision !== expectedCourseRevision + (result.changed ? 1 : 0) ||
         result.change != null && (

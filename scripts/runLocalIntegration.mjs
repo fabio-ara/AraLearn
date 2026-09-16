@@ -451,9 +451,6 @@ export async function runLocalIntegration({
       report.cleanup.fixtures = report.stages.filter(stage => stage.result !== "not_run")
         .every(stage => stage.cleanup === "completed") ? "completed" : "unverified";
       if (row.result === "failed") {
-        const diagnostics = `${result.stdout || ""}\n${result.stderr || ""}`
-          .split(/\r?\n/u).filter(line => /ARALEARN_(?:SAVE_TARGET_(?:CLICK|RESULT)|TARGET_(?:AFTER_MUTATION|CALLBACK|MUTATION(?:_CONTROLLER|_API)))/u.test(line));
-        if (diagnostics.length) console.error(diagnostics.join("\n"));
         report.failed_tests.push(...(receipt.failed_tests?.length ? receipt.failed_tests : [name]));
         await save(); throw new Error(`O gate ${name} falhou; consulte seu log privado redigido.`);
       }

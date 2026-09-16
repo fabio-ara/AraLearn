@@ -770,12 +770,6 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(page.getByRole("button", { name: "Referência 1", exact: true })).toBeFocused();
       expect(failures).toEqual([]);
     } catch (error) {
-      console.log("ARALEARN_SAVE_TARGET_CLICK", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_SAVE_TARGET_CLICK || null)).catch(() => null));
-      console.log("ARALEARN_SAVE_TARGET_RESULT", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_SAVE_TARGET_RESULT || null)).catch(() => null));
-      console.log("ARALEARN_TARGET_AFTER_MUTATION", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_AFTER_MUTATION || null)).catch(() => null));
-      console.log("ARALEARN_TARGET_CALLBACK", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_CALLBACK || null)).catch(() => null));
-      console.log("ARALEARN_TARGET_MUTATION_CONTROLLER", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_MUTATION_CONTROLLER || null)).catch(() => null));
-      console.log("ARALEARN_TARGET_MUTATION_API", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_MUTATION_API || null)).catch(() => null));
       await testInfo.attach("fontes-failure-state", { body: (await page.locator("main").allInnerTexts()).join("\n\n"), contentType: "text/plain" }).catch(() => {});
       await attachScreenshot(page, testInfo, "source-failure.png").catch(() => {});
       throw error;
@@ -1512,6 +1506,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     } });
     await ownerClient.setCourseVisibility({ courseId: publicCourseId, expectedRevision: 6,
       visibility: "public", publicFileAccess: "restricted", confirmed: true });
+    // A leitura pública respeita a projeção de revisão da microssequência.
+    // Aprovar a base sintética antes de abrir o percurso torna explícita a
+    // decisão necessária para que o conteúdo completo fique disponível.
+    const approvedRevision = await approveSyntheticContent(publicCourseId);
     const publicDescriptor = await guestClient.getCourse(publicCourseId);
     expect(publicDescriptor.ownership).toBe("public");
     expect(publicDescriptor.canEdit).toBe(false);
@@ -1520,10 +1518,9 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     expect(publicDescriptor).not.toHaveProperty("isPersonalCopy");
     const publicList = await guestClient.listCourses({ query: "Curso público local" });
     expect(publicList.items.some((course) => course.courseId === publicCourseId)).toBe(true);
-    const savedCitations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 });
+    const savedCitations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: approvedRevision });
     expect(savedCitations.citations[0].attachments).toEqual([]);
     expect((await ownerClient.getContentReview(publicCourseId, "study_unit", "study-unit-access-local-1")).contentReview.state).toBe("draft");
-    const approvedRevision = await approveSyntheticContent(publicCourseId);
     const restricted = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: approvedRevision });
     expect(restricted.citations[0].attachments).toEqual([]);
     await expect(guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
