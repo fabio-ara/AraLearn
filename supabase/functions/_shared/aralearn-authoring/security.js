@@ -31,7 +31,7 @@ export function preflightHeaders(request, allowedOrigins) {
     // O cliente web do Supabase envia a publishable key neste cabeçalho. Sem
     // declará-lo no preflight, o navegador bloqueia a consulta antes que a
     // função possa verificar a sessão do usuário.
-    "Access-Control-Allow-Headers": "apikey, Authorization, Content-Type, Idempotency-Key, If-None-Match",
+    "Access-Control-Allow-Headers": "apikey, Authorization, Content-Type, Idempotency-Key, If-None-Match, X-AraLearn-App-Contract",
     "Access-Control-Max-Age": "600"
   };
 }

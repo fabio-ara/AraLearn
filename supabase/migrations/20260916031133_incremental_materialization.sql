@@ -332,6 +332,35 @@ begin
 $after$||before_fragment);
 end $part_consumers$;
 
+-- Reconciliation is an authoring declaration, not part of the study document.
+-- Keep the private/owner readers intact for export, editing and course copies.
+-- Replacing this existing wrapper also retains its anon/authenticated grants.
+create or replace function public.list_course_entities_v1(
+  p_course_id uuid,
+  p_expected_revision bigint,
+  p_limit integer default 500,
+  p_after_entity_type text default null,
+  p_after_entity_id text default null
+)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = pg_catalog, private, auth
+as $function$
+  with page as materialized (
+    select private.list_course_entities_for_actor_v1(
+      auth.uid(), p_course_id, p_expected_revision, p_limit,
+      p_after_entity_type, p_after_entity_id
+    ) as value
+  )
+  select jsonb_set(page.value, '{items}', coalesce((
+    select jsonb_agg(case when item->>'entityType'='microsequence'
+      then item #- '{content,explanation,reconciliation}' else item end order by ordinal)
+    from jsonb_array_elements(page.value->'items') with ordinality as entries(item,ordinal)
+  ), '[]'::jsonb)) from page
+$function$;
+
 do $manifest$ declare manifest jsonb; begin
   manifest:=public.get_aralearn_runtime_manifest()||jsonb_build_object('schemaRevision','20260916031133');
   execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',

@@ -1030,7 +1030,7 @@ export class CourseApiClient {
     if (normalizedMethod === "GET" && normalizedBody !== null) {
       throw new TypeError("Leitura de Curso não aceita corpo.");
     }
-    const requestHeaders = { ...headers };
+    const requestHeaders = { ...headers, "X-AraLearn-App-Contract": "authoring-v3" };
     if (typeof normalizedBody?.requestId === "string") {
       requestHeaders["Idempotency-Key"] = requestIdentity(normalizedBody.requestId);
     }

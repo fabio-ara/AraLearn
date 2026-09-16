@@ -317,14 +317,33 @@ function applyMigrationFiles(container, migrationNames, containerDirectory) {
   ], { timeout: 15 * 60_000, input });
 }
 
+export function orderCourseBackupRestoreList(archiveList) {
+  const lines = archiveList.split("\n");
+  const catalog = /^\d+; \d+ \d+ TABLE DATA private course_design_parameter_definitions /u;
+  const consumer = /^\d+; \d+ \d+ TABLE DATA private (?:authoring_profiles|authoring_process_preferences|course_design_parameter_assignments) /u;
+  const catalogIndexes = lines.flatMap((line, index) => catalog.test(line) ? [index] : []);
+  const firstConsumer = lines.findIndex(line => consumer.test(line));
+  if (firstConsumer < 0) return archiveList;
+  if (catalogIndexes.length !== 1) throw new Error("A restauração exige uma única entrada de dados do catálogo de parâmetros.");
+  if (catalogIndexes[0] < firstConsumer) return archiveList;
+  const [catalogLine] = lines.splice(catalogIndexes[0], 1);
+  lines.splice(firstConsumer, 0, catalogLine);
+  return lines.join("\n");
+}
+
 async function restoreBackupFile(source, backupPath, target) {
+  // CHECKs in assignments and both preference tables consult catalog rows.
+  // Keep every archive item and constraint, loading that data dependency first.
+  const archiveList = command("docker", ["exec", source, "pg_restore", "--list", backupPath]).stdout;
+  const orderedList = orderCourseBackupRestoreList(archiveList);
   await resetPostgresDatabase(target);
+  command("docker", ["exec", "-i", target, "sh", "-c", "cat > /tmp/aralearn-restore-order.list"], { input: orderedList });
   await pipeProcesses(
     "docker",
     ["exec", source, "cat", backupPath],
     "docker",
     ["exec", "-i", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
-      "--no-owner", "--exit-on-error"]
+      "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list"]
   );
 }
 

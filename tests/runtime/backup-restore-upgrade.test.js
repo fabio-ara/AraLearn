@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
 import { pendingUpgradeMigrations, normalizeApplicationSchemaDump, contextualUpgradeStages, assertContextualPreservation,
-  assertCurrentAuthoringRestoration, assertPreservedCourseState } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
+  assertCurrentAuthoringRestoration, assertPreservedCourseState,
+  orderCourseBackupRestoreList } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = fs.readFileSync(path.join(
@@ -73,7 +74,9 @@ test("preparação histórica clona somente schema, mas a restauração do backu
   const calls = [];
   const context = vm.createContext({
     resetPostgresDatabase: async (target) => calls.push(["reset", target]),
-    pipeProcesses: async (...args) => calls.push(structuredClone(args))
+    pipeProcesses: async (...args) => calls.push(structuredClone(args)),
+    orderCourseBackupRestoreList,
+    command: (...args) => { calls.push(structuredClone(args)); return { stdout: "; historical archive\n" }; }
   });
   const clone = script.slice(script.indexOf("async function cloneDatabase("),
     script.indexOf("function resetDisposableApplicationState("));
@@ -86,13 +89,34 @@ test("preparação histórica clona somente schema, mas a restauração do backu
   assert.ok(calls[1][3].includes("--exit-on-error"));
   calls.length = 0;
   await context.restoreBackupFile("synthetic-history", "/tmp/proof.dump", "restored-proof");
-  assert.deepEqual(calls[0], ["reset", "restored-proof"]);
-  assert.deepEqual(calls[1], ["docker", ["exec", "synthetic-history", "cat", "/tmp/proof.dump"],
+  assert.deepEqual(calls[0], ["docker", ["exec", "synthetic-history", "pg_restore", "--list", "/tmp/proof.dump"]]);
+  assert.deepEqual(calls[1], ["reset", "restored-proof"]);
+  assert.deepEqual(calls[2], ["docker", ["exec", "-i", "restored-proof", "sh", "-c", "cat > /tmp/aralearn-restore-order.list"],
+    { input: "; historical archive\n" }]);
+  assert.deepEqual(calls[3], ["docker", ["exec", "synthetic-history", "cat", "/tmp/proof.dump"],
     "docker", ["exec", "-i", "restored-proof", "pg_restore", "-U", "supabase_admin", "-d", "postgres",
-      "--no-owner", "--exit-on-error"]]);
+      "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list"]]);
   const proof = script.slice(script.indexOf("export async function verifyBackupRestoreUpgrade("));
   assert.match(proof, /"pg_dump"[\s\S]*?"-Fc", "--no-owner", "-f", backupPath/u);
   assert.doesNotMatch(proof, /--schema-only|--exclude-table-data|--disable-triggers/u);
+});
+
+test("restauração carrega catálogo antes dos três CHECKs consumidores sem omitir ou alterar itens do arquivo", () => {
+  const lines = ["; archive header", "1; 2615 1 SCHEMA - private postgres", "2; 1259 2 TABLE private authoring_profiles postgres",
+    "3; 0 3 TABLE DATA private authoring_process_preferences postgres", "4; 0 4 TABLE DATA private authoring_profiles postgres",
+    "5; 0 5 TABLE DATA private course_design_parameter_assignments postgres",
+    "6; 0 6 TABLE DATA private course_design_parameter_definitions postgres",
+    "7; 2606 7 CONSTRAINT private authoring_profiles preferences_check postgres", ""];
+  for (const newline of ["\n", "\r\n"]) {
+    const archive = lines.join(newline);
+    const ordered = orderCourseBackupRestoreList(archive);
+    assert.deepEqual(ordered.split(newline), [...lines.slice(0, 3), lines[6], ...lines.slice(3, 6), ...lines.slice(7)]);
+    assert.deepEqual(ordered.split(newline).sort(), archive.split(newline).sort());
+    assert.equal(orderCourseBackupRestoreList(ordered), ordered);
+    assert.throws(() => orderCourseBackupRestoreList(lines.filter((_, index) => index !== 6).join(newline)), /catálogo/u);
+    assert.throws(() => orderCourseBackupRestoreList([...lines, lines[6]].join(newline)), /catálogo/u);
+  }
+  assert.equal(orderCourseBackupRestoreList("; old archive\n"), "; old archive\n");
 });
 
 test("história pré-corte é registrada pela cadeia reaplicada, incluindo migration 001", () => {
@@ -100,7 +124,7 @@ test("história pré-corte é registrada pela cadeia reaplicada, incluindo migra
   const context = vm.createContext({ path, command: (...args) => calls.push(structuredClone(args)),
     migrationDirectory: "/repo/supabase/migrations" });
   const apply = script.slice(script.indexOf("function applyMigrationFiles("),
-    script.indexOf("async function restoreBackupFile("));
+    script.indexOf("export function orderCourseBackupRestoreList("));
   const record = script.slice(script.indexOf("function migrationRecordSql("),
     script.indexOf("function queryJson("));
   vm.runInContext(`${apply}\n${record}`, context);

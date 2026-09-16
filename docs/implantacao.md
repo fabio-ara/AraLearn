@@ -498,6 +498,15 @@ implantação, sem permissões extras herdadas do conjunto de serviços usado no
 Uma restrição `CHECK` verifica se cada linha satisfaz uma regra do banco. Se essa
 verificação houver consulta a um catálogo salvo, restaure o catálogo antes das linhas
 dependentes, conservando todas as entradas da cópia de segurança e a própria restrição.
+No AraLearn, mova apenas a entrada `TABLE DATA private course_design_parameter_definitions`
+do índice obtido por `pg_restore --list backup.dump` para antes das entradas de dados de
+`authoring_profiles`, `authoring_process_preferences` e `course_design_parameter_assignments`.
+Passe o índice completo reordenado com `pg_restore --use-list=restauracao.list`, conservando
+os demais argumentos de autenticação, propriedade e destino adequados ao ambiente.
+O helper `orderCourseBackupRestoreList` de
+[`verifyBackupRestoreUpgrade.mjs`](../scripts/verifyBackupRestoreUpgrade.mjs) realiza essa
+mesma ordenação no ensaio automatizado. Ela preserva todos os itens e restrições; após
+restaurar, confira dados, permissões, manifesto e arquivos do Storage antes do upgrade.
 
 Se o site foi publicado antes do backend compatível, interrompa a promoção e republique
 o cliente anterior pelo Git. Se o backend novo já foi aplicado, investigue

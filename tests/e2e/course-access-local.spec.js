@@ -62,10 +62,12 @@ async function request(path, {
   method = "GET",
   token = PUBLISHABLE_KEY,
   body,
-  origin = null
+  origin = null,
+  appContract = false
 } = {}) {
   const requestHeaders = headers(token, { json: body !== undefined });
   if (origin) requestHeaders.Origin = origin;
+  if (appContract) requestHeaders["X-AraLearn-App-Contract"] = "authoring-v3";
   const response = await fetch(`${PROJECT_URL}${path}`, {
     method,
     headers: requestHeaders,
@@ -101,7 +103,8 @@ async function signIn(email) {
 async function courseApi(path, { method = "GET", body = undefined } = {}, token) {
   const execute = async () => {
     const result = await request(`/functions/v1/aralearn-course-api${path}`, {
-      method, token, ...(body === undefined ? {} : { body }), origin: APPLICATION_ORIGIN
+      method, token, ...(body === undefined ? {} : { body }), origin: APPLICATION_ORIGIN,
+      appContract: true
     });
     expect(result.response.status, failure(`Course API${path}`, result)).toBe(200);
     return result.payload;
