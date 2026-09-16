@@ -2503,11 +2503,15 @@ export function createCourseSourcesPanel({
   }
 
   function targetLinksValid() {
-    if (targetOccurrenceIssue(state)) return false;
+    const occurrenceIssue = targetOccurrenceIssue(state);
+    if (occurrenceIssue) {
+      root.dataset.targetValidationDebug = JSON.stringify({ reason: occurrenceIssue, links: state.sourceLinks });
+      return false;
+    }
     if (JSON.stringify(state.sourceLinks) === JSON.stringify(state.initialSourceLinks)) {
       return true;
     }
-    return state.sourceLinks.every((link) => {
+    const valid = state.sourceLinks.every((link) => {
       const source = sourceForLink(state, link);
       const activeAnchors = new Map(anchorsForLink(state, link)
         .filter(({ status }) => status === "active")
@@ -2522,6 +2526,15 @@ export function createCourseSourcesPanel({
           return Boolean(currentAnchor);
         });
     });
+    if (!valid) {
+      root.dataset.targetValidationDebug = JSON.stringify({
+        reason: "source_or_anchor_not_active",
+        links: state.sourceLinks,
+        details: [...state.targetDetails.entries()],
+        loading: [...state.targetDetailsLoading]
+      });
+    }
+    return valid;
   }
 
   root.addEventListener("submit", (event) => {
