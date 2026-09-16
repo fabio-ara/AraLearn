@@ -332,6 +332,13 @@ begin
 $after$||before_fragment);
 end $part_consumers$;
 
+-- Um mesmo trecho pode sustentar vínculos independentes da mesma Fonte.
+-- A identidade do vínculo já é composta por (source_ordinal, anchor_ordinal);
+-- a restrição histórica por anchor_id impedia a materialização de dois
+-- usos legítimos do mesmo trecho no mesmo alvo.
+alter table private.course_source_attribution_anchors
+  drop constraint if exists course_source_attribution_anchors_course_id_attribution_id_anchor_id_key;
+
 -- Reconciliation is an authoring declaration, not part of the study document.
 -- Keep the private/owner readers intact for export, editing and course copies.
 -- Replacing this existing wrapper also retains its anon/authenticated grants.
