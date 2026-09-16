@@ -2168,6 +2168,15 @@ export function createCourseSourcesPanel({
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
       targetSaveDraftStillMatches;
+    if (state.mode === "target" && pending.command.type === "set_target_sources") {
+      root.dataset.targetSaveDebug = JSON.stringify({
+        targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
+        occurrenceEditor: Boolean(state.occurrenceEditor),
+        sourceLinksEqual: targetSaveDraftStillMatches,
+        sourceLinks: state.sourceLinks,
+        commandSourceLinks: pending.command.sourceLinks
+      });
+    }
     let targetSavedNotified = false;
     if (targetSaveHasNoConcurrentDraft) {
       // Propague a nova revisão antes de fechar: o fluxo pai usa a diferença
