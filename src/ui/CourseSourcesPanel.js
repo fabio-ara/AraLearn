@@ -1211,6 +1211,7 @@ export function createCourseSourcesPanel({
     targetFailure: "",
     sourceLinks: [],
     initialSourceLinks: [],
+    targetDraftRevision: 0,
     targetDetails: new Map(),
     targetDetailsLoading: new Set(),
     busy: false,
@@ -1927,6 +1928,10 @@ export function createCourseSourcesPanel({
     onCourseRevisionChange(nextRevision);
   }
 
+  function markTargetDraftChanged() {
+    if (state.mode === "target") state.targetDraftRevision++;
+  }
+
   function sourceChangeMessage(change) {
     return change.idempotent
       ? "A operação já estava confirmada."
@@ -2076,8 +2081,8 @@ export function createCourseSourcesPanel({
         draft: structuredClone(draft),
         editor,
         editorDraft: editor ? structuredClone(editor.draft) : null,
-        targetDraftSignature: state.mode === "target" && command.type === "set_target_sources"
-          ? JSON.stringify(state.sourceLinks) : null
+        targetDraftRevision: state.mode === "target" && command.type === "set_target_sources"
+          ? state.targetDraftRevision : null
       };
     } catch (error) {
       state.message = "";
@@ -2146,7 +2151,7 @@ export function createCourseSourcesPanel({
     // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
-      pending.targetDraftSignature === JSON.stringify(state.sourceLinks) &&
+      pending.targetDraftRevision === state.targetDraftRevision &&
       !state.occurrenceEditor;
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
@@ -2562,6 +2567,7 @@ export function createCourseSourcesPanel({
       link.anchors = event.target.checked
         ? [...link.anchors.filter((anchor) => anchor.anchorId !== anchorId), { anchorId }]
         : link.anchors.filter((anchor) => anchor.anchorId !== anchorId);
+      markTargetDraftChanged();
       state.failure = "";
       render();
       return;
@@ -2571,6 +2577,7 @@ export function createCourseSourcesPanel({
         item.linkId === event.target.dataset.linkId);
       if (!link || !Object.hasOwn(SOURCE_RELATIONS, event.target.value)) return;
       link.relation = event.target.value;
+      markTargetDraftChanged();
       state.failure = "";
       render();
       return;
@@ -2580,6 +2587,7 @@ export function createCourseSourcesPanel({
       const role = event.target.dataset.sourceTargetRole;
       if (!link || !Object.hasOwn(SOURCE_ROLES, role)) return;
       link.roles = Object.keys(SOURCE_ROLES).filter(value => value === role ? event.target.checked : link.roles.includes(value));
+      markTargetDraftChanged();
       state.failure = "";
       return;
     }
@@ -2833,6 +2841,7 @@ export function createCourseSourcesPanel({
         occurrences: []
       };
       state.sourceLinks.push(link);
+      markTargetDraftChanged();
       state.selectedSourceId = "";
       state.detail = null;
       state.sourceEditor = null;
@@ -2844,6 +2853,7 @@ export function createCourseSourcesPanel({
       if (targets) focusOccurrenceSelection();
     } else if (action === "remove-target-source") {
       state.sourceLinks = state.sourceLinks.filter((link) => link.linkId !== node.dataset.linkId);
+      markTargetDraftChanged();
       state.failure = "";
       render();
     } else if (["move-target-source-up", "move-target-source-down"].includes(action)) {
@@ -2852,6 +2862,7 @@ export function createCourseSourcesPanel({
       if (index < 0 || target < 0 || target >= state.sourceLinks.length) return;
       [state.sourceLinks[index], state.sourceLinks[target]] =
         [state.sourceLinks[target], state.sourceLinks[index]];
+      markTargetDraftChanged();
       render();
     } else if (["add-occurrence", "edit-occurrence", "remove-occurrence", "save-occurrence", "cancel-occurrence"].includes(action)) {
       if (action === "cancel-occurrence") {
@@ -2874,6 +2885,7 @@ export function createCourseSourcesPanel({
           state.sourceLinks = state.sourceLinks.filter(item => item.linkId !== link.linkId);
           state.occurrenceEditor = null;
         }
+        markTargetDraftChanged();
         state.failure = "";
       }
       else if (["add-occurrence", "edit-occurrence"].includes(action)) {
@@ -2889,6 +2901,7 @@ export function createCourseSourcesPanel({
             root.querySelector?.("[data-source-occurrence-selection]"), editor.occurrenceId);
           const index = link.occurrences.findIndex(item => item.occurrenceId === selected.occurrenceId);
           if (index < 0) link.occurrences.push(selected); else link.occurrences[index] = selected;
+          markTargetDraftChanged();
           state.occurrenceEditor = null;
           state.failure = "";
         } catch (error) { state.failure = error.message; }
