@@ -807,10 +807,6 @@
       "caseId": "course-source-provenance"
     },
     {
-      "object": "constraint:private.course_source_attribution_anchors/course_source_attribution_anc_course_id_attribution_id_anch_key[unique]",
-      "caseId": "course-source-provenance"
-    },
-    {
       "object": "constraint:private.course_source_attribution_anchors/course_source_attribution_anchors_current_anchor_fk_v1[foreign_key]",
       "caseId": "course-source-provenance"
     },
@@ -2412,10 +2408,6 @@
     },
     {
       "object": "index:private.course_source_attachments/course_source_attachments_storage_path_v1_idx",
-      "caseId": "course-source-provenance"
-    },
-    {
-      "object": "index:private.course_source_attribution_anchors/course_source_attribution_anc_course_id_attribution_id_anch_key",
       "caseId": "course-source-provenance"
     },
     {
