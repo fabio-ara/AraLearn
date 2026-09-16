@@ -199,9 +199,16 @@ test("rascunho em lote fechado mantém alvos e texto ao bloquear foco e retomar"
     assert.equal(await app.select(3), false);
     await app.click("[data-inspection-pending-action]", { inspectionPendingAction: "resume" });
     assert.match(app.root.innerHTML, /2 unidades selecionadas/);
-    assert.match(app.root.innerHTML, /data-inspection-selection-composer/);
+    assert.match(app.root.innerHTML, /role="dialog" data-course-authoring-draft-managed/);
+    assert.match(app.root.innerHTML, /Observações do curso/);
+    assert.doesNotMatch(app.root.innerHTML, /data-inspection-selection-composer/);
     assert.match(app.root.innerHTML, />Rascunho do conjunto preservado<\/textarea>/);
     assert.equal((app.root.innerHTML.match(/aria-checked="true"/g) || []).length, 2);
+    const selectedTargets = [...app.root.innerHTML.matchAll(
+      /data-inspection-selection-action="toggle-unit" data-study-unit-id="([^"]+)"[^>]*aria-checked="true"/gu
+    )].map(match => match[1]);
+    assert.deepEqual(selectedTargets, [unit(1), unit(2)]);
+    assert.equal(app.sequence.hasPendingDraft(), true);
     assert.equal(cards(app.root), 12);
   } finally { app.sequence.destroy(); }
 });

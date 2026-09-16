@@ -129,7 +129,7 @@
             "answerIds": ["two-directions"]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"auditorium-prediction-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Uma indicação horizontal e outra vertical permitem localizar o assento pelo encontro das duas. Uma cor comum ou números sem ordem não fornecem esse caminho."}}],
         "topics": ["organização espacial"]
       },
       "aplicacaoPedagogica": {
@@ -202,7 +202,7 @@
             "answerIds": ["b"]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"row-practice-choice-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"A linha é B: a letra permanece igual em B1, B2, B3 e B4, enquanto os números distinguem as colunas desse conjunto horizontal."}}],
         "topics": ["linha"]
       },
       "aplicacaoPedagogica": {
@@ -279,7 +279,7 @@
             "answerIds": ["column"]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"row-column-choice-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"O número 4 indica a coluna. Nesta organização, a letra C identifica a linha horizontal e o número identifica a coluna vertical."}}],
         "topics": ["linha e coluna"]
       },
       "aplicacaoPedagogica": {
@@ -360,7 +360,7 @@
             "answerIds": ["b3"]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"intersection-practice-choice-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"O assento é B3: localize a linha B e acompanhe-a até a coluna 3. B2 troca a coluna e C3 troca a linha."}}],
         "topics": ["interseção"]
       },
       "aplicacaoPedagogica": {

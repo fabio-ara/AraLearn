@@ -54,12 +54,19 @@ test("#271 guidance conduz Observações abertas até reparo contextual e reinsp
     .instructions.join(" ");
   const reviewText = courseAuthoringGuidanceForCall("preparar_revisao")
     .instructions.join(" ");
+  const decisionText = courseAuthoringGuidanceForCall("decidir_observacao")
+    .instructions.join(" ");
   const sourceText = courseAuthoringGuidanceForCall("consultar_fontes")
     .instructions.join(" ");
   const componentText = courseAuthoringGuidanceForCall("consultar_componentes")
     .instructions.join(" ");
   assert.match(inspectionText, /fila autoral da Explicação e das unidades/iu);
-  assert.match(inspectionText, /abertas ou consideradas.*versão exata.*persistida.*confirmada por releitura/iu);
+  assert.match(inspectionText, /identidade única e vários alvos/iu);
+  assert.match(inspectionText, /aberta ou considerada continua pendente depois da correção vigente, até decisão humana explícita sobre suas incidências/iu);
+  assert.match(inspectionText, /observações distintas.*todas as páginas.*sem multiplicar por alvo/iu);
+  assert.match(decisionText, /versões exatas.*confirmar persistência.*não aprova nem elimina observações/iu);
+  assert.match(decisionText, /decidir_observacao.*autorização humana inequívoca.*versões e alvos apresentados/iu);
+  assert.match(decisionText, /Aprovação parcial conserva as demais incidências/iu);
   assert.match(inspectionText, /sem entidade de lote de inspeção/iu);
   assert.match(inspectionText, /progressão, pré-requisitos, transições, exemplos ou prática/iu);
   assert.match(reviewText, /inspecionar, observar, pedir revisão.*propor reparo.*reinspecionar/iu);

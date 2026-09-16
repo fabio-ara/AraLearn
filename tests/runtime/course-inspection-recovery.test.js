@@ -106,14 +106,14 @@ test("consulta de Observações sobrevive ao refresh e apenas texto modificado m
     assert.equal(sequence.hasPendingDraft(), false);
     fixture.course.revision++;
     assert.equal(await sequence.refresh(6), true);
-    assert.match(root.innerHTML, /Observações da unidade/);
+    assert.match(root.innerHTML, /Observações do curso/);
     assert.match(root.innerHTML, /Conferir a relação entre o endereço/);
     root.listeners.get("input")({ target: {
       matches(selector) { return selector === "[data-field='study-unit-observation']"; },
       value: "Rascunho preservado", closest() { return { dataset: { studyUnitId: "ux328-unit-01" } }; }
     } });
     assert.equal(sequence.hasPendingDraft(), true);
-    assert.match(root.innerHTML, /Observações da unidade/);
+    assert.match(root.innerHTML, /Observações do curso/);
   } finally { sequence.destroy(); }
 });
 

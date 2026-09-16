@@ -446,11 +446,11 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
     openApi.info.description,
-    /Preserve fixações da autoria e pesquisa/iu
+    /Siga preferências, fixações da autoria e pesquisa e mandato/iu
   );
   assert.match(
     openApi.info.description,
-    /devolva resultado breve[\s\S]*link[\s\S]*próxima etapa/iu
+    /Chat breve; conteúdo completo e literal[\s\S]*link exato em Markdown e próxima etapa no mandato/iu
   );
   assert.match(
     materializationGuidance,

@@ -490,7 +490,8 @@ test("as instruções primárias preservam mandato, leitura literal e segurança
     /Chat breve; conteúdo completo e literal/iu,
     /fixações da autoria e pesquisa/iu,
     /Declare revisão só por pedido humano expresso/iu,
-    /fila.*versões corrigidas, persistidas e relidas/iu,
+    /fila.*persistência não aprova observações/iu,
+    /decisões humanas explícitas sobre alvos e versões apresentados/iu,
     /Escrita incerta exige a mesma tentativa/iu
   ]) assert.match(first512, requirement);
   assert.doesNotMatch(
