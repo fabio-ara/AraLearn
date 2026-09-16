@@ -2157,7 +2157,7 @@ export function createCourseSourcesPanel({
       !state.targetDraftChangedDuringWrite;
     if (state.mode === "target" && pending.command.type === "set_target_sources" &&
         !targetSaveHasNoConcurrentDraft) {
-      console.warn("AraLearn: vínculo confirmado com rascunho concorrente", {
+      console.error("AraLearn: vínculo confirmado com rascunho concorrente", {
         targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
         occurrenceEditor: Boolean(state.occurrenceEditor)
       });
