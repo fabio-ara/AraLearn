@@ -1564,8 +1564,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
           html: document.body.innerHTML.slice(0, 12000),
           resources: performance.getEntriesByType("resource").map(({ name }) => name).filter((name) => name.includes("supabase") || name.includes("rest/v1")).slice(-40)
         })).catch(() => null);
-        console.log(`PUBLIC_STUDY_FAILURE ${JSON.stringify({ diagnostic, failures: failures.failures })}`);
-        throw error;
+        throw new Error(`PUBLIC_STUDY_FAILURE ${JSON.stringify({ diagnostic, failures: failures.failures })}`, { cause: error });
       }
       await expect(page.locator(".study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Entre para enviar observações" })).toBeVisible();
