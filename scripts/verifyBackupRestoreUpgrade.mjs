@@ -331,7 +331,7 @@ export function orderCourseBackupRestoreList(archiveList) {
   return lines.join("\n");
 }
 
-async function restoreBackupFile(source, backupPath, target) {
+export async function restoreBackupFile(source, backupPath, target) {
   // CHECKs in assignments and both preference tables consult catalog rows.
   // Keep every archive item and constraint, loading that data dependency first.
   const archiveList = command("docker", ["exec", source, "pg_restore", "--list", backupPath]).stdout;
@@ -342,9 +342,12 @@ async function restoreBackupFile(source, backupPath, target) {
     "docker",
     ["exec", source, "cat", backupPath],
     "docker",
-    ["exec", "-i", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
-      "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list"]
+    ["exec", "-i", target, "sh", "-c", "cat > /tmp/aralearn-restore.dump"]
   );
+  // Reordered custom archives require a seekable file; stdin cannot revisit
+  // a data block that appears earlier in the original archive.
+  command("docker", ["exec", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
+    "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list", "/tmp/aralearn-restore.dump"]);
 }
 
 function copyAndApply(container, localPath, containerPath) {

@@ -94,8 +94,9 @@ test("preparação histórica clona somente schema, mas a restauração do backu
   assert.deepEqual(calls[2], ["docker", ["exec", "-i", "restored-proof", "sh", "-c", "cat > /tmp/aralearn-restore-order.list"],
     { input: "; historical archive\n" }]);
   assert.deepEqual(calls[3], ["docker", ["exec", "synthetic-history", "cat", "/tmp/proof.dump"],
-    "docker", ["exec", "-i", "restored-proof", "pg_restore", "-U", "supabase_admin", "-d", "postgres",
-      "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list"]]);
+    "docker", ["exec", "-i", "restored-proof", "sh", "-c", "cat > /tmp/aralearn-restore.dump"]]);
+  assert.deepEqual(calls[4], ["docker", ["exec", "restored-proof", "pg_restore", "-U", "supabase_admin", "-d", "postgres",
+    "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list", "/tmp/aralearn-restore.dump"]]);
   const proof = script.slice(script.indexOf("export async function verifyBackupRestoreUpgrade("));
   assert.match(proof, /"pg_dump"[\s\S]*?"-Fc", "--no-owner", "-f", backupPath/u);
   assert.doesNotMatch(proof, /--schema-only|--exclude-table-data|--disable-triggers/u);

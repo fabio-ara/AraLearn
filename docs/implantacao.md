@@ -501,8 +501,11 @@ dependentes, conservando todas as entradas da cópia de segurança e a própria 
 No AraLearn, mova apenas a entrada `TABLE DATA private course_design_parameter_definitions`
 do índice obtido por `pg_restore --list backup.dump` para antes das entradas de dados de
 `authoring_profiles`, `authoring_process_preferences` e `course_design_parameter_assignments`.
-Passe o índice completo reordenado com `pg_restore --use-list=restauracao.list`, conservando
+Passe o índice completo reordenado com `pg_restore --use-list=restauracao.list backup.dump`, conservando
 os demais argumentos de autenticação, propriedade e destino adequados ao ambiente.
+O arquivo customizado precisa estar disponível localmente ao processo de restauração:
+a ordem alterada exige poder buscar blocos anteriores. Transfira o dump completo antes
+de executar `pg_restore`; uma entrada padrão por pipe não permite essa busca.
 O helper `orderCourseBackupRestoreList` de
 [`verifyBackupRestoreUpgrade.mjs`](../scripts/verifyBackupRestoreUpgrade.mjs) realiza essa
 mesma ordenação no ensaio automatizado. Ela preserva todos os itens e restrições; após
