@@ -2139,12 +2139,19 @@ export function createCourseSourcesPanel({
     if (state.mode === "target" && pending.command.type === "set_target_sources") {
       state.initialSourceLinks = structuredClone(pending.command.sourceLinks);
     }
+    // A mutação já foi confirmada pelo backend. Uma releitura secundária pode
+    // falhar sem invalidar essa confirmação; nesse caso, feche a folha somente
+    // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
+    const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
+      pending.command.type === "set_target_sources" &&
+      JSON.stringify(state.sourceLinks) === JSON.stringify(pending.command.sourceLinks) &&
+      !state.occurrenceEditor;
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
     if (!refreshed) {
       reportConfirmedRefreshFailure(sourceChangeMessage(result));
-    } else if (state.mode === "target" && pending.command.type === "set_target_sources" &&
-        !hasPendingDraft() && !state.occurrenceEditor) {
+    }
+    if (targetSaveHasNoConcurrentDraft) {
       onTargetSaved(result);
     }
     state.busy = false;

@@ -1058,6 +1058,34 @@ test("confirmação dos vínculos não declara salvo um rascunho alterado durant
   }
 });
 
+test("confirmação dos vínculos fecha o alvo quando a releitura secundária falha", async () => {
+  const root = new FakeRoot();
+  const writes = [];
+  let targetReads = 0;
+  let saved = 0;
+  const controller = controllerFixture({ onMutate: request => writes.push(request) });
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (...args) => {
+    if (args[1].mode === "target" && ++targetReads === 2) throw new TypeError("Failed to fetch");
+    return load(...args);
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3,
+    onTargetSaved: () => { saved++; panel.destroy(); } });
+  try {
+    await panel.open();
+    click(root, "add-target-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "save-target");
+    await settle();
+    assert.equal(writes.length, 1);
+    assert.equal(saved, 1);
+    assert.equal(root.innerHTML, "");
+  } finally {
+    panel.destroy();
+  }
+});
+
 test("salvar a referência encerra seu editor e conserva a âncora ainda não salva", async () => {
   const root = new FakeRoot();
   const writes = [];
