@@ -4724,7 +4724,8 @@ button.account-settings-back[hidden] {
 
 .field input,
 .field textarea,
-.field select {
+.field select,
+.study-observation-category-direct select {
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -4736,7 +4737,8 @@ button.account-settings-back[hidden] {
   color-scheme: inherit;
 }
 
-.field select option {
+.field select option,
+.study-observation-category-direct option {
   background: var(--input-surface);
   color: var(--text-primary);
 }
@@ -4967,51 +4969,18 @@ button.account-settings-back[hidden] {
   max-height: 180px;
 }
 
-.study-observation-category-disclosure {
-  flex: 0 0 var(--tap);
+.study-observation-category-direct {
+  flex: 0 1 14rem;
   min-width: 0;
 }
 
-.study-observation-category-panel {
-  position: absolute;
-  z-index: 5;
-  inset-inline-start: 0;
-  bottom: calc(100% + 6px);
-  width: min(100%, 320px);
+.study-observation-category-direct select {
+  width: 100%;
   min-width: 0;
-  padding: 9px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-floating);
-}
-
-.study-observation-category-panel .field > span {
-  color: var(--text-secondary);
-  font-size: var(--type-xs);
-}
-
-.study-observation-category-panel select {
   min-height: var(--tap);
+  height: var(--tap);
   font: inherit;
   font-size: var(--type-sm);
-}
-
-.study-observation-category-disclosure > summary {
-  width: var(--tap);
-  min-width: var(--tap);
-  height: var(--tap);
-  min-height: var(--tap);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-control);
-  background: var(--surface-raised);
-  color: var(--text-secondary);
-  cursor: pointer;
-  list-style: none;
 }
 
 .study-observation-head-slot {
@@ -5019,21 +4988,6 @@ button.account-settings-back[hidden] {
   min-width: 48px;
   height: 48px;
   min-height: 48px;
-}
-
-.study-observation-category-disclosure > summary::-webkit-details-marker {
-  display: none;
-}
-
-.study-observation-category-disclosure:has(option:checked:not([value=""])) > summary {
-  border-color: var(--action-primary);
-  color: var(--action-primary);
-  background: var(--action-soft);
-}
-
-.study-observation-category-disclosure > summary:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 0;
 }
 
 .study-observation-composer h3 {

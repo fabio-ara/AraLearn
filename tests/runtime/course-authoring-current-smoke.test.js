@@ -16,7 +16,8 @@ const source = fs.readFileSync(smokePath, "utf8");
 test("#274 prova a jornada autoral corrente no Supabase local", () => {
   for (const task of [
     "criar_curso", "salvar_mapa_curricular", "salvar_parte", "preparar_materializacao",
-    "materializar_parte", "registrar_observacao"
+    "materializar_parte", "registrar_observacao", "manter_unidade_analise",
+    "manter_requisito_evidencia", "vincular_repertorio_instrucional"
   ]) {
     assert.match(source, new RegExp(`name: "${task}"`, "u"));
   }
@@ -45,7 +46,10 @@ test("#274 prova substituição idempotente e Observações multi-alvo atômicas
   assert.match(source, /createCourseAnchoredAnnotations/u);
   assert.match(source, /unidade-inexistente/u);
   assert.match(source, /\.items\.length, 0/u);
-  assert.match(source, /observationCount: 2/u);
+  assert.match(source, /observationCount: 1/u);
+  assert.match(source, /observationTargetCount: 2/u);
+  assert.match(source, /preflight\.state, "ready"/u);
+  assert.match(source, /referenciaPreparo: prepared\.context\.preflight\.referencia/u);
   assert.match(source, /explicitParameterOverrideCount, 0/u);
   assert.match(source, /afterEditAttribution/u);
   assert.match(source, /retiredAnchorCitationCount/u);

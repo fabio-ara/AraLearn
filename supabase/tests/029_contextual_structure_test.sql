@@ -51,7 +51,7 @@ update private.course_entities set design_snapshot='{
  {"parameterId":"study_unit_content_word_target","value":180,"origin":"automatic","reason":null,"sourceScopeKind":"study_unit"}],
  "editorialDirections":[],"componentPolicy":{"policy":{"catalogVersion":"1-4616b2e5","availability":"all","allowedRefs":[],"excludedRefs":[],"preferredRefs":[]},"origin":"system_default","sourceScopeKind":null},"appliedAt":"2026-09-01T00:00:00+00:00"}',
  design_application='{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":["93570000-0000-4000-8000-000000000201"],"usedInstructionalAnalysisUnitIds":["93570000-0000-4000-8000-000000000201"],"curriculumScopeItemIds":[],"explanationApplications":[{"instructionalAnalysisUnitId":"93570000-0000-4000-8000-000000000201","developedForms":["plain_definition"],"notApplicable":[]}],"practiceApplications":[],"componentRefs":["aralearn.resource.paragraph@1.0.0"]}',
- created_origin='gpt',last_revision_origin='human'
+ created_origin='ai',last_revision_origin='human'
 where course_id=pg_temp.sc() and entity_type='study_unit' and entity_id='u-a1';
 insert into private.course_design_target_plan_items(course_id,didactic_microsequence_id,plan_item_id,plan_item_kind)
 values(pg_temp.sc(),'a','93570000-0000-4000-8000-000000000201','instructional_analysis_unit');

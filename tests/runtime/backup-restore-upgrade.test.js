@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
 import { pendingUpgradeMigrations, normalizeApplicationSchemaDump, contextualUpgradeStages, assertContextualPreservation,
-  assertCurrentAuthoringRestoration } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
+  assertCurrentAuthoringRestoration, assertPreservedCourseState } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = fs.readFileSync(path.join(
@@ -329,13 +329,19 @@ function contextualState() {
   return { before: state, after };
 }
 
-test("comparação contextual aceita só a transformação explícita da revisão anterior", () => {
+test("comparação contextual aceita só as transformações explícitas da revisão e origem anteriores", () => {
   const { before, after } = contextualState();
+  before.entities[0].created_origin = "gpt";
+  before.entities[0].last_revision_origin = "human";
+  after.entities[0].created_origin = "ai";
+  after.entities[0].last_revision_origin = "human";
   assert.doesNotThrow(() => assertContextualPreservation(before, after));
   assert.ok(before.reviews[0].value.approvedBasisHash, "Comparação não altera o snapshot anterior.");
   for (const mutate of [
     (value) => { value.courses[0].visibility = "public"; },
     (value) => { value.entities[0].content.text = "Reescrito"; },
+    (value) => { value.entities[0].created_origin = "gpt"; },
+    (value) => { value.entities[0].last_revision_origin = "ai"; },
     (value) => { value.observations[0].state = "resolved"; },
     (value) => { value.observations[1].version += 1; },
     (value) => { value.observations[2].target_kind = "microsequence_explanation"; },
@@ -355,6 +361,31 @@ test("comparação contextual aceita só a transformação explícita da revisã
   const empty = structuredClone(before);
   empty.observations = [];
   assert.throws(() => assertContextualPreservation(empty, empty), assert.AssertionError);
+});
+
+test("preservação histórica permite gpt para ai apenas nos dois campos de origem e mantém conteúdo e versões", () => {
+  const before = { entities: [
+    { entity_id: "old-ai", created_origin: "gpt", last_revision_origin: "gpt", version: 4, content: { title: "Texto literal", provider: "gpt" } },
+    { entity_id: "human", created_origin: "human", last_revision_origin: null, version: 2, content: { title: "Decisão humana" } }
+  ], sources: [{ origin: "author_provided", citation_text: "gpt é texto literal nesta referência." }] };
+  const after = structuredClone(before);
+  after.entities[0].created_origin = "ai";
+  after.entities[0].last_revision_origin = "ai";
+  assert.doesNotThrow(() => assertPreservedCourseState(before, after));
+  assert.equal(before.entities[0].created_origin, "gpt", "A comparação não modifica a evidência anterior.");
+  for (const mutate of [
+    state => { state.entities[0].content.title = "Texto reescrito"; },
+    state => { state.entities[0].content.provider = "ai"; },
+    state => { state.entities[0].version++; },
+    state => { state.entities[0].created_origin = "gpt"; },
+    state => { state.entities[0].last_revision_origin = "provider"; },
+    state => { state.entities[1].created_origin = "ai"; },
+    state => { state.entities[1].last_revision_origin = "human"; },
+    state => { state.sources[0].citation_text = "ai é texto literal nesta referência."; }
+  ]) {
+    const changed = structuredClone(after); mutate(changed);
+    assert.throws(() => assertPreservedCourseState(before, changed), assert.AssertionError);
+  }
 });
 
 test("backup atual detecta perda de bases compartilhadas, incidências, inspeção, intervenções e PDF retido", () => {

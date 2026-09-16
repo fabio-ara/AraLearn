@@ -130,7 +130,7 @@ for (const theme of ["light", "dark"]) {
     await expect(submit).toBeEnabled();
     await field.click();
     await page.keyboard.press("Tab");
-    const category = page.locator(".study-observation-category-disclosure > summary");
+    const category = page.getByRole("combobox", { name: "Categoria da observação (opcional)" });
     await expect(category).toHaveAccessibleName("Categoria da observação (opcional)");
     await expect(category).toBeFocused();
     await page.keyboard.press("Tab");

@@ -826,6 +826,17 @@ const contextualStateSql = `select jsonb_build_object(
   'changeReceipts',(select jsonb_agg(to_jsonb(v) order by request_id) from private.course_change_receipts v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}'))
 )`;
 
+function migratedEntityOrigins(entities) {
+  return entities.map(entity => ({ ...entity,
+    ...(entity.created_origin === "gpt" ? { created_origin: "ai" } : {}),
+    ...(entity.last_revision_origin === "gpt" ? { last_revision_origin: "ai" } : {}) }));
+}
+
+export function assertPreservedCourseState(before, after) {
+  assert.deepEqual(after, { ...before, entities: migratedEntityOrigins(before.entities) },
+    "O upgrade corrente alterou conteúdo, identidade ou decisão aplicada da fixture.");
+}
+
 export function assertContextualPreservation(before, after) {
   assert.equal(before.courses.length, 2, "A prova contextual exige os cursos privado e explicitamente público.");
   assert.deepEqual(before.courses.map(({ id, visibility }) => ({ id, visibility })), [
@@ -861,9 +872,7 @@ export function assertContextualPreservation(before, after) {
   assert.equal(oldReview.value.approvedBy, CONTEXT_OWNER);
   const migratedReviews = before.reviews.map((review) => ({ ...review,
     value: review.value?.approvedBasisHash ? { legacyMicrosequenceReview: review.value } : review.value }));
-  const migratedEntities = before.entities.map(entity => ({ ...entity,
-    ...(entity.created_origin === "gpt" ? { created_origin: "ai" } : {}),
-    ...(entity.last_revision_origin === "gpt" ? { last_revision_origin: "ai" } : {}) }));
+  const migratedEntities = migratedEntityOrigins(before.entities);
   const migratedObservations = before.observations.map(observation => ({ ...observation, target_set_version: 1 }));
   assert.deepEqual(after, { ...before, entities: migratedEntities, observations: migratedObservations, reviews: migratedReviews },
     "Upgrade contextual alterou dados úteis ou inventou revisão por objeto.");
@@ -1114,8 +1123,7 @@ export async function verifyBackupRestoreUpgrade({
     const contextual = verifyContextualUpgrade(restored, contextualBefore);
     const currentState = queryJson(restored, afterStateSql);
     assertCurrentState(after.state, currentState, expectedManifest.schemaRevision);
-    assert.deepEqual(queryJson(restored, preservedStateSql), preserved,
-      "O upgrade corrente alterou conteúdo, identidade ou decisão aplicada da fixture.");
+    assertPreservedCourseState(preserved, queryJson(restored, preservedStateSql));
     const currentRead = queryJson(restored, `with claims as materialized (
       select set_config('request.jwt.claim.role','service_role',true),
         set_config('request.jwt.claims','{"role":"service_role","sub":"${ACTOR_ID}"}',true)

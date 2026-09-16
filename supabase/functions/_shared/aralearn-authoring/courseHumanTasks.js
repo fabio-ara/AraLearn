@@ -467,7 +467,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
             properties: Object.freeze({
               requisito: Object.freeze({
                 ...HUMAN_REFERENCE_SCHEMA,
-                description: "Posição/título listado; um texto novo cria um requisito formal no repertório."
+                description: "Posição/título de requisito já persistido e vinculado à microssequência antes do preparo."
               }),
               oportunidade: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
               dimensoesVariadas: Object.freeze({
@@ -1089,7 +1089,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "5.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:3e55e15216aae5f19e34ac6f0feb2a33e77a39f179639d4bc1cc3154aa5426ae";
+  "sha256:ce57a0b80a95733b363121f28b22c2bfa247cb49e442bf494013f053e7eeb54d";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

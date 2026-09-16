@@ -761,7 +761,7 @@ test("MCP e Actions não expõem modo como decisão duplicada", () => {
   }
 });
 
-test("MCP e Actions orientam a mobilização do repertório e a criação de prática", () => {
+test("MCP e Actions exigem repertório persistido e vinculado antes da prática", () => {
   const schemas = [
     COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
     actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
@@ -775,7 +775,7 @@ test("MCP e Actions orientam a mobilização do repertório e a criação de pr�
     );
     assert.match(
       String(application.properties.praticas.items.properties.requisito.description ?? ""),
-      /texto.*(?:cria|novo).*requisito/iu
+      /requisito.*persistido.*vinculado.*antes do preparo/iu
     );
   }
 });

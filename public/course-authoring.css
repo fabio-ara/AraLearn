@@ -5908,7 +5908,6 @@ dialog.course-microsequence-review::backdrop { background: rgb(0 0 0 / 55%); }
   place-items: center;
 }
 
-.study-observation-category-direct select { max-width: 14rem; }
 .study-observation-central-controls { display: grid; gap: .5rem; }
 .study-observation-central-controls > div, .study-observation-decisions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .study-observation-targets { min-width: 0; border: 1px solid var(--line, #d6dbe1); border-radius: .5rem; padding: .5rem; }

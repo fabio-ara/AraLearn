@@ -41,12 +41,21 @@ for (const width of [360, 1280]) test(`observação inline em uma ou duas unidad
   const bounds = await dock.boundingBox();
   expect(bounds.width).toBe(Math.min(width - 24, 406));
   expect(Math.abs(bounds.x + bounds.width / 2 - width / 2)).toBeLessThanOrEqual(1);
-  for (const action of await dock.locator("button, .study-observation-category-disclosure > summary").all()) {
+  for (const action of await dock.locator("button").all()) {
     const box = await action.boundingBox();
     expect(box.width).toBe(44); expect(box.height).toBe(44);
     expect(box.x).toBeGreaterThanOrEqual(bounds.x);
     expect(box.x + box.width).toBeLessThanOrEqual(bounds.x + bounds.width);
   }
+  const category = dock.getByRole("combobox", { name: "Categoria da observação (opcional)" });
+  const categoryBox = await category.boundingBox();
+  expect(categoryBox.width).toBeGreaterThanOrEqual(44); expect(categoryBox.height).toBe(44);
+  expect(categoryBox.x).toBeGreaterThanOrEqual(bounds.x);
+  expect(categoryBox.x + categoryBox.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+  await category.selectOption("reformulation_request");
+  await expect(category).toHaveValue("reformulation_request");
+  expect(await dock.boundingBox()).toEqual(bounds);
+  await expect(field).toHaveValue(text);
   await page.locator("#course-authoring-root").evaluate(node => { node.scrollTop = node.scrollHeight; });
   await expect.poll(() => page.locator("#course-authoring-root").evaluate(node => node.scrollTop)).toBeGreaterThan(400);
   await expect(field).toBeInViewport();

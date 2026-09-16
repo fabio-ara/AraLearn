@@ -1345,7 +1345,6 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerPage.getByRole("button", { name: "Observações" }).click();
       await observationsLoaded;
       await expect(learnerPage.locator(".study-observation-loading")).toHaveCount(0);
-      await learnerPage.locator(".study-observation-category-disclosure > summary").click();
       await learnerPage.getByRole("combobox", { name: "Categoria da observação (opcional)" })
         .selectOption("question");
       await expect(learnerPage.getByRole("combobox", { name: "Categoria da observação (opcional)" })).toHaveValue("question");
