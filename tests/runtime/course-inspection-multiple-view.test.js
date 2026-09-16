@@ -199,12 +199,60 @@ test("rascunho em lote fechado mantém alvos e texto ao bloquear foco e retomar"
     assert.equal(await app.select(3), false);
     await app.click("[data-inspection-pending-action]", { inspectionPendingAction: "resume" });
     assert.match(app.root.innerHTML, /2 unidades selecionadas/);
-    assert.match(app.root.innerHTML, /data-inspection-selection-composer/);
+    assert.match(app.root.innerHTML, /role="dialog" data-course-authoring-draft-managed/);
+    assert.match(app.root.innerHTML, /Observações do curso/);
+    assert.doesNotMatch(app.root.innerHTML, /data-inspection-selection-composer/);
     assert.match(app.root.innerHTML, />Rascunho do conjunto preservado<\/textarea>/);
     assert.equal((app.root.innerHTML.match(/aria-checked="true"/g) || []).length, 2);
+    const selectedTargets = [...app.root.innerHTML.matchAll(
+      /data-inspection-selection-action="toggle-unit" data-study-unit-id="([^"]+)"[^>]*aria-checked="true"/gu
+    )].map(match => match[1]);
+    assert.deepEqual(selectedTargets, [unit(1), unit(2)]);
+    assert.equal(app.sequence.hasPendingDraft(), true);
     assert.equal(cards(app.root), 12);
   } finally { app.sequence.destroy(); }
 });
+
+for (const selection of [false, true]) for (const failedRead of [false, true]) {
+  test(`central ${selection ? "da seleção" : "da unidade"} restaura foco após leitura ${failedRead ? "falhar" : "concluir"}`, async () => {
+    const fixture = createUxUi328Fixture();
+    const read = fixture.controller.loadCourseAnchoredAnnotations;
+    let release;
+    const pendingRead = new Promise(resolve => { release = resolve; });
+    const app = mount(fixture, { controller: { ...fixture.controller,
+      async loadCourseAnchoredAnnotations(...args) {
+        await pendingRead;
+        if (failedRead) throw Object.assign(new Error("Serviço indisponível"), { status: 503 });
+        return read(...args);
+      }
+    } });
+    let html = "", focused = null;
+    Object.defineProperty(app.root, "innerHTML", {
+      get: () => html,
+      // Replacing the DOM detaches the previously focused textarea.
+      set: value => { html = value; focused = null; }
+    });
+    const field = "[data-field='study-unit-observation']";
+    app.root.querySelector = selector => selector === field && html.includes("<textarea")
+      ? { focus() { focused = field; } } : null;
+    try {
+      await app.sequence.open();
+      if (selection) {
+        await app.view(1); await app.select(1);
+        await app.root.listeners.get("input")({ target: { value: "Rascunho preservado durante a leitura",
+          matches: selector => selector === field, closest: () => null } });
+        await app.click("[data-inspection-selection-action]", { inspectionSelectionAction: "observe-selected" });
+      }
+      const opening = selection
+        ? app.click("[data-inspection-selection-action]", { inspectionSelectionAction: "observe-selected" })
+        : app.click("[data-inspection-observations]", { studyUnitId: unit(1) });
+      assert.equal(focused, field);
+      release(); await opening; await turn();
+      assert.equal(focused, field, "A renderização final precisa focar o novo campo, não o nó removido.");
+      if (selection) assert.match(html, />Rascunho preservado durante a leitura<\/textarea>/u);
+    } finally { app.sequence.destroy(); }
+  });
+}
 
 test("observação sendo enviada não fecha nem perde texto quando se tenta focalizar outra unidade", async () => {
   const fixture = createUxUi328Fixture();

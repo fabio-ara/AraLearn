@@ -3,13 +3,16 @@ import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
 } from "./courseHumanTaskExecutor.js";
-import { resolveHumanSourceLinks } from "./courseHumanMaterialization.js";
+import { resolveHumanSourceLinks, reconcileHumanExplanation } from "./courseHumanMaterialization.js";
+import { requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
+import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
-import { normalizeCourseObservationCorrectionReferences, normalizeCourseObservationCorrection } from
+import { courseObservationTargets, normalizeCourseObservationCorrectionReferences, normalizeCourseObservationCorrection } from
   "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
+import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -34,7 +37,7 @@ function validateCorrections(corrections, explanations) {
   }
   for (const explanation of explanations) {
     if (!plainObject(explanation) || !Object.hasOwn(explanation, "microssequencia") ||
-        Object.keys(explanation).some((key) => !["microssequencia", "conteudo", "fontes"].includes(key)) ||
+        Object.keys(explanation).some((key) => !["microssequencia", "conteudo", "fontes", "reconciliacao"].includes(key)) ||
         explanation.fontes !== undefined && !Array.isArray(explanation.fontes)) {
       fail("invalid_human_explanation", "A correção da explicação precisa indicar microssequência, conteúdo e fontes pertinentes.");
     }
@@ -70,7 +73,7 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
     if (context.course.revision !== course.revision || !entity) fail("course_revision_conflict", "O curso mudou; releia a explicação antes de corrigir.", 409);
     if (seen.has(entity.entityId)) fail("invalid_human_explanation", "Uma correção não pode repetir a mesma explicação.");
     seen.add(entity.entityId);
-    const support = normalizeMicrosequenceExplanation(entry.conteudo);
+    const support = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context);
     const content = { ...structuredClone(entity.content), explanation: support };
     const page = await adapter.getCourseSources({ principal, courseId: course.id, expectedRevision: course.revision,
       mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: entity.entityId,
@@ -148,6 +151,8 @@ async function loadCorrectionState({
       );
     }
     const currentRole = unit.studyUnit?.role;
+    try { requireCoursePracticeAuthoring(validation.normalized, unit.studyUnit); }
+    catch (error) { fail(error.code, error.message); }
     if (!new Set(["theory", "practice"]).has(currentRole)) {
       fail(
         "course_service_unavailable",
@@ -176,24 +181,33 @@ async function loadCorrectionState({
     if (!targets.some((target) => target.targetKind === reference.targetKind && target.targetId === reference.targetId)) {
       fail("invalid_course_observation_correction", "A observação indicada não pertence ao recorte corrigido.");
     }
-    if (!pendingObservations.some((annotation) => annotation.annotationId === reference.annotationId &&
-        annotation.annotationVersion === reference.annotationVersion && annotation.target.kind === reference.targetKind &&
-        annotation.target.id === reference.targetId)) {
+    if (!pendingObservations.some((annotation) => matchesPendingIncidence(annotation, reference))) {
       fail("course_observation_version_conflict", "A observação mudou; releia a fila antes de corrigir a versão indicada.", 409);
     }
   }
   return { ...resolved, prepared, preparedExplanations, pendingObservations };
 }
 
+function hasPendingTarget(annotation, targetKind, targetId) {
+  return courseObservationTargets(annotation).some(target => target.kind === targetKind &&
+    target.id === targetId && target.state === "pending");
+}
+
+function matchesPendingIncidence(annotation, reference) {
+  return annotation.annotationId === reference.annotationId &&
+    annotation.annotationVersion === reference.annotationVersion &&
+    hasPendingTarget(annotation, reference.targetKind, reference.targetId);
+}
+
 async function readPendingObservations({ adapter, principal, course, targets, deadlineAt }) {
   if (typeof adapter.getCourseAnchoredAnnotations !== "function") {
     fail("course_service_unavailable", "A fila de observações precisa ser lida antes da correção.", 503);
   }
-  const result = [];
+  const result = new Map();
   const unique = new Map(targets.map((target) => [`${target.targetKind}\0${target.targetId}`, target]));
+  let annotationSetVersion = null;
   for (const { targetKind, targetId } of unique.values()) {
     let cursor = null;
-    let annotationSetVersion = null;
     const cursors = new Set();
     for (let pageIndex = 0; pageIndex < 32; pageIndex += 1) {
       const page = await adapter.getCourseAnchoredAnnotations({ principal, courseId: course.id,
@@ -201,11 +215,17 @@ async function readPendingObservations({ adapter, principal, course, targets, de
         query: { mode: "target", origins: ["author"], channels: [], states: ["open", "considered"], categories: [],
           includeUncategorized: true, subjectIds: [], hierarchy: { target: { kind: targetKind, id: targetId }, includeDescendants: false }, annotationId: null } });
       if (!Array.isArray(page?.items) || page.items.some((entry) => entry.provenance?.origin !== "author" ||
-          !["open", "considered"].includes(entry.state) || entry.target?.kind !== targetKind || entry.target?.id !== targetId) ||
+          !["open", "considered"].includes(entry.state) || !hasPendingTarget(entry, targetKind, targetId)) ||
           annotationSetVersion !== null && page.annotationSetVersion !== annotationSetVersion) {
         fail("course_service_unavailable", "A fila de observações está incompleta; releia o recorte.", 503);
       }
-      result.push(...page.items);
+      for (const entry of page.items) {
+        const previous = result.get(entry.annotationId);
+        if (previous && canonicalAuthoringValue(previous) !== canonicalAuthoringValue(entry)) {
+          fail("course_service_unavailable", "A observação mudou entre os alvos; releia o recorte.", 503);
+        }
+        result.set(entry.annotationId, entry);
+      }
       annotationSetVersion = page.annotationSetVersion;
       if (!page.hasMore) break;
       if (!page.nextCursor || cursors.has(page.nextCursor) || pageIndex === 31) {
@@ -215,7 +235,7 @@ async function readPendingObservations({ adapter, principal, course, targets, de
       cursors.add(cursor);
     }
   }
-  return result;
+  return [...result.values()];
 }
 
 function correctionUncertain(courseId, requestId) {
@@ -258,23 +278,26 @@ async function confirmPersistedObservationCorrection({ adapter, principal, cours
   if (receipt.status !== "persisted" || receipt.courseId !== courseId || receipt.requestId !== requestId) correctionUncertain(courseId, requestId);
   const confirmations = receipt.observations.filter((entry) => entry.changed && !entry.confirmed &&
     entry.currentEffectHash === entry.effectHash && seenTargets.has(`${entry.targetKind}\0${entry.targetId}`) &&
-    pending.some((annotation) => annotation.annotationId === entry.annotationId && annotation.annotationVersion === entry.annotationVersion &&
-      annotation.target.kind === entry.targetKind && annotation.target.id === entry.targetId))
-    .map(({ annotationId, annotationVersion, effectHash }) => ({ annotationId, annotationVersion, effectHash }));
-  if (!confirmations.length) return receipt;
+    pending.some((annotation) => matchesPendingIncidence(annotation, entry)))
+    .map(({ annotationId, annotationVersion, targetKind, targetId, effectHash }) =>
+      ({ annotationId, annotationVersion, targetKind, targetId, effectHash }));
+  if (!confirmations.length) return { receipt, pendingObservationCount: pending.length };
   const confirmed = normalizeCourseObservationCorrection(await adapter.confirmCourseObservationCorrection({ principal, courseId, requestId, confirmations, deadlineAt }));
   if (confirmed.status !== "persisted" || confirmed.courseId !== courseId || confirmed.requestId !== requestId) correctionUncertain(courseId, requestId);
-  return confirmed;
+  return { receipt: confirmed, pendingObservationCount: pending.length };
 }
 
 export async function resumeHumanCourseObservationCorrection({ adapter, principal, courseId, requestId, deadlineAt = null }) {
   try {
-    const receipt = await confirmPersistedObservationCorrection({ adapter, principal, courseId, requestId, deadlineAt });
+    const { receipt, pendingObservationCount } = await confirmPersistedObservationCorrection({ adapter, principal, courseId, requestId, deadlineAt });
     const confirmed = receipt.observations.filter((entry) => entry.confirmed).length;
-    return { result: `Reconciliada a correção salva: ${confirmed} observações confirmadas; ${receipt.observations.length - confirmed} permanecem pendentes.`,
-      deepLink: adapter.publicAppUrl ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}/#/authoring/courses/${encodeURIComponent(courseId)}?section=content` : null,
-      nextDecision: "Inspecione as pendências que continuaram na fila.",
-      context: { correctionRequestId: requestId, confirmedObservationCount: confirmed, pendingObservationCount: receipt.observations.length - confirmed } };
+    const targets = [...new Map(receipt.observations.map(entry => [`${entry.targetKind}\0${entry.targetId}`,
+      { kind: entry.targetKind, id: entry.targetId }])).values()];
+    const links = targets.map(target => createHumanNavigation(adapter, { courseId, relation: "content", target }));
+    return { result: `Reconciliada a correção salva. ${pendingObservationCount} observações aguardam decisão humana no recorte.`,
+      ...buildHumanNavigationEnvelope(links[0], links.slice(1), {
+        nextDecision: "Leia o conteúdo corrigido e decida sobre as observações pendentes." }),
+      context: { correctionRequestId: requestId, confirmedObservationCount: confirmed, pendingObservationCount } };
   } catch (error) {
     if (error instanceof AuthoringApiError && [401, 403, 404].includes(error.status)) throw error;
     throw new AuthoringApiError(409, "course_write_uncertain", "A retomada ainda não confirmou o resultado; conserve a mesma tentativa.",
@@ -325,7 +348,7 @@ export async function applyHumanCourseCorrections({
   try { observations = normalizeCourseObservationCorrectionReferences(observations); }
   catch (error) { fail(error.code ?? "invalid_course_observation_correction", error.message); }
   let correctedCourseId = null;
-  let firstCorrectedStudyUnitId = null;
+  let correctedStudyUnits = [];
   let correctedExplanations = [];
   let pendingObservationCount = 0;
   const receipt = await executeTrustedCourseWrite({
@@ -340,7 +363,7 @@ export async function applyHumanCourseCorrections({
         deadlineAt
       });
       correctedCourseId = state.course.id;
-      firstCorrectedStudyUnitId = state.prepared[0]?.unit.studyUnit.id ?? null;
+      correctedStudyUnits = state.prepared.map(({ unit, content }) => ({ id: unit.studyUnit.id, title: content.title }));
       correctedExplanations = state.preparedExplanations.map(({ entity, support }) => ({
         id: entity.entityId, title: support.title
       }));
@@ -355,7 +378,7 @@ export async function applyHumanCourseCorrections({
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({
           adapter, principal, courseContext: state, requested: entry.requestedSources,
           content: entry.content, newId, identityPrefix: `correction:${index}:source-link`,
-          deadlineAt, sourceCache
+          deadlineAt, sourceCache, allowMissingOccurrences: true
         }), entry.currentLinks, entry.requestedSources)
       })));
       applications.push(...await Promise.all(state.preparedExplanations.map(async (entry, index) => ({
@@ -363,8 +386,13 @@ export async function applyHumanCourseCorrections({
         ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
           requested: entry.requestedSources, content: entry.support, newId,
-          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache }), entry.currentLinks, entry.requestedSources)
+          identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache, allowMissingOccurrences: true }), entry.currentLinks, entry.requestedSources)
       }))));
+      for (const application of applications.filter(item => item.replaceExisting)) {
+        for (const link of application.sourceLinks) {
+          requireCourseSourceEvidence(link, [...sourceCache.values()].find(source => source.sourceId === link.sourceId));
+        }
+      }
       const contextualApplication = principal.authenticationKind === "application" &&
         state.prepared.length === 1 && !state.preparedExplanations.length;
       return {
@@ -399,38 +427,38 @@ export async function applyHumanCourseCorrections({
       const correction = { ...request };
       delete correction.deletes;
       await adapter.commitCourseObservationCorrections({ ...correction, requestId });
-      return await confirmPersistedObservationCorrection({ adapter, principal, courseId: request.courseId, requestId, deadlineAt });
+      const confirmed = await confirmPersistedObservationCorrection({ adapter, principal, courseId: request.courseId, requestId, deadlineAt });
+      pendingObservationCount = confirmed.pendingObservationCount;
+      return confirmed.receipt;
     },
     ...(observations.length ? { maxCasRetries: 0, operation: "course_observation_correction",
-      reconcile: async ({ request }) => ({ status: "confirmed", result: await confirmPersistedObservationCorrection({
-        adapter, principal, courseId: request.courseId, requestId: request.requestId, deadlineAt }) }) } : {})
+      reconcile: async ({ request }) => {
+        const confirmed = await confirmPersistedObservationCorrection({
+          adapter, principal, courseId: request.courseId, requestId: request.requestId, deadlineAt });
+        pendingObservationCount = confirmed.pendingObservationCount;
+        return { status: "confirmed", result: confirmed.receipt };
+      } } : {})
   });
-  const contentDeepLink = correctedCourseId && adapter.publicAppUrl
-    ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}` +
-      `/#/authoring/courses/${encodeURIComponent(correctedCourseId)}?section=content`
-    : null;
-  const explanationLinks = correctedExplanations.map(({ id, title }) => ({
-    titulo: title,
-    deepLink: contentDeepLink
-      ? `${contentDeepLink}&didacticMicrosequenceId=${encodeURIComponent(id)}`
-      : null
-  }));
+  const unitLinks = correctedStudyUnits.map(({ id, title }) => createHumanNavigation(adapter,
+    { courseId: correctedCourseId, relation: "content", target: { kind: "study_unit", id }, label: title }));
+  const supportLinks = correctedExplanations.map(({ id, title }) => createHumanNavigation(adapter,
+    { courseId: correctedCourseId, relation: "content", target: { kind: "microsequence_explanation", id }, label: title }));
+  const links = [...unitLinks, ...supportLinks];
+  const explanationLinks = correctedExplanations.map(({ title }, index) => ({ titulo: title, deepLink: supportLinks[index]?.url ?? null }));
   return {
     result: explanations.length ? "Corrigi o conteúdo e as explicações indicados; a revisão humana afetada precisa ser atualizada."
       : corrections.length === 1
       ? "A correção foi aplicada à unidade de estudo afetada."
       : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`,
-    deepLink: contentDeepLink && firstCorrectedStudyUnitId
-      ? `${contentDeepLink}&studyUnitId=${encodeURIComponent(firstCorrectedStudyUnitId)}`
-      : explanationLinks[0]?.deepLink ?? receipt.deepLink ?? null,
-    nextDecision: "Quer reinspecionar o reparo ou rematerializar a parte para aplicar uma configuração alterada?",
+    ...buildHumanNavigationEnvelope(links[0], links.slice(1), {
+      nextDecision: "Leia o conteúdo corrigido e decida sobre as observações pendentes." }),
     context: {
       correctionCount: corrections.length,
       explanationCorrectionCount: explanations.length,
       ...(explanationLinks.length ? { explicacoes: explanationLinks } : {}),
       ...(observations.length ? { correctionRequestId: receipt.requestId,
         confirmedObservationCount: receipt.observations.filter((entry) => entry.confirmed).length,
-        pendingObservationCount: pendingObservationCount - receipt.observations.filter((entry) => entry.confirmed).length }
+        pendingObservationCount }
         : { pendingObservationCount }),
       sourceMode: [...corrections, ...explanations].some(({ fontes }) => fontes !== undefined)
         ? "explicit"

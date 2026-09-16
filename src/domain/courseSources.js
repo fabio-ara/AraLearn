@@ -490,6 +490,46 @@ export function normalizeCourseSourceLinks(value, options) {
   return links;
 }
 
+// Structural provenance only. The producer must still compare each substantive
+// claim with the passage; a located link does not certify semantic coverage.
+export function inspectCourseSourceEvidence(link, source) {
+  const issues = [];
+  if (link.relation === "needs_verification") issues.push("pending_verification");
+  if (!link.roles?.some(role => role !== "curricular_scope")) issues.push("curricular_only");
+  if (!link.occurrences?.length) issues.push("missing_occurrence");
+  if (!link.anchors?.length) issues.push("missing_anchor");
+  if (!source || source.status === "retired") issues.push("source_unavailable");
+  for (const reference of link.anchors ?? []) {
+    const anchor = source?.anchors?.find(item => item.anchorId === reference.anchorId);
+    if (!anchor || anchor.status === "retired" || anchor.needsReverification === true) {
+      issues.push("anchor_needs_review");
+      continue;
+    }
+    if (anchor.contentHash != null) {
+      if (!source.attachments?.some(attachment => attachment.contentHash === anchor.contentHash)) {
+        issues.push("anchor_pdf_unavailable");
+      }
+    } else if (!anchor.humanLocator?.trim()) {
+      issues.push("missing_human_locator");
+    }
+  }
+  return { located: issues.length === 0, issues: [...new Set(issues)] };
+}
+
+export function requireCourseSourceEvidence(link, source, { allowMissingOccurrences = false } = {}) {
+  // General reading and curricular associations remain useful, but are never
+  // counted as evidence. Pending links explicitly retain their unfinished state.
+  const claimsEvidence = link.relation !== "needs_verification" &&
+    (link.roles.includes("technical_conceptual") ||
+      ["supported_by", "quoted_from"].includes(link.relation));
+  if (!claimsEvidence) return;
+  const { issues } = inspectCourseSourceEvidence(link, source);
+  const blocking = issues.filter(issue => !(allowMissingOccurrences && issue === "missing_occurrence"));
+  if (blocking.length) fail("incomplete_course_source_evidence",
+    "A sustentação exige ocorrência no conteúdo e âncora vigente da fonte, com PDF correspondente ou localização humana precisa. Fonte exclusivamente curricular não sustenta afirmação técnica.",
+    { issues: blocking });
+}
+
 const NEW_PDF_SOURCE_DEFAULTS = Object.freeze({
   kind: "document",
   defaultRoles: [],

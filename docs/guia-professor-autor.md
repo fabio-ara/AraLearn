@@ -32,6 +32,8 @@ Em **Configurações → Preferências de autoria**, escolha se o trabalho dever
 
 Para cada parte, combine o que será desenvolvido e examine a progressão proposta. Inspecione a explicação e suas fontes; quando o trabalho incluir unidades, confira como elas ensinam e exercitam aquele conteúdo. O assistente avança até o próximo ponto de conferência definido para o trabalho.
 
+Antes de produzir as unidades, o assistente relaciona os ensinamentos da explicação ao repertório e aos requisitos de prática, distingue prévias e apoios e reúne os impedimentos previsíveis numa preparação conjunta. A produção pode continuar em várias chamadas: as unidades omitidas permanecem, e uma substituição identifica expressamente a unidade existente. A conclusão confere o percurso acumulado, incluindo o que ainda falta ensinar ou exercitar.
+
 ## Inspecionar e ajustar no aplicativo
 
 **Explicação prevista**, no Planejamento, apresenta o que a microssequência deverá desenvolver e as fontes propostas. A proposta ajuda a avaliar a direção do trabalho. Depois da produção, abra a explicação salva para ler o desenvolvimento efetivo; uma fonte prevista no plano ainda precisa ter seu uso conferido no texto.
@@ -102,7 +104,9 @@ Você pode voltar a um ponto antigo do curso e registrar o que precisa mudar. Se
 
 Na conversa com o assistente conectado, indique o curso e o ponto que deseja discutir. Peça que ele leia o conteúdo salvo, discuta a mudança e confira o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
 
-Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. As observações atendidas saem da fila depois da confirmação do conteúdo salvo; uma contribuição alterada ou parcialmente atendida permanece para tratamento posterior. Se a resposta de uma gravação se perder, [confira primeiro se aquela alteração já foi salva](solucao-de-problemas.md#não-consigo-aplicar-uma-correção).
+Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. Uma observação pode abranger a explicação e várias unidades. Depois de conferir o resultado salvo e a comparação com a base anterior, aprove os alvos que examinou; os demais continuam pendentes. Você também pode encerrar explicitamente uma observação sem alterar o conteúdo. Confirmar que a gravação funcionou não substitui essa decisão. Se a resposta de uma gravação se perder, [confira primeiro se aquela alteração já foi salva](solucao-de-problemas.md#não-consigo-aplicar-uma-correção).
+
+Uma edição manual permanece vigente e pode aparecer como **Inspeção por IA pendente**. Na próxima inspeção autorizada, o assistente examina o texto e suas fontes e registra o parecer da versão lida. Você pode manter uma preferência editorial diferente da sugestão. Esse parecer não declara sua revisão humana nem atribui à IA a edição feita por você.
 
 Durante o estudo, **Assistência por IA** oferece outro caminho para discutir uma mudança, examinar a prévia e só então levá-la ao rascunho. O [guia de edição no conteúdo](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) apresenta os controles e o salvamento.
 

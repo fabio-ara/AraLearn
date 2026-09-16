@@ -1,4 +1,5 @@
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
+import { normalizeExplanationReconciliation } from "./courseExplanationReconciliation.js";
 
 const plain = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const text = (value) => typeof value === "string" && value.trim().length > 0;
@@ -6,7 +7,7 @@ const exact = (value, fields) => plain(value) && Object.keys(value).every((key) 
 
 /** Shared authored content. It has neither a response nor learning/progress facts. */
 export function normalizeMicrosequenceExplanation(value, registry = RESOURCE_PACKAGE_REGISTRY) {
-  if (!exact(value, ["title", "content"]) || !text(value.title) || value.title.length > 300 || /\p{Cc}/u.test(value.title) ||
+  if (!exact(value, ["title", "content", "reconciliation"]) || !text(value.title) || value.title.length > 300 || /\p{Cc}/u.test(value.title) ||
       !Array.isArray(value.content) || value.content.length === 0) {
     throw new TypeError("A Explicação exige título e conteúdo previamente produzido.");
   }
@@ -20,7 +21,8 @@ export function normalizeMicrosequenceExplanation(value, registry = RESOURCE_PAC
     if (!result.valid) throw new TypeError(result.errors.join(" "));
     return registry.normalizeInstance(instance, "content");
   });
-  return { title: value.title.trim(), content };
+  return { title: value.title.trim(), content,
+    ...(value.reconciliation === undefined ? {} : { reconciliation: normalizeExplanationReconciliation(value.reconciliation) }) };
 }
 
 export function normalizeMicrosequenceExplanationPlan(value) {

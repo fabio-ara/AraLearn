@@ -15,22 +15,28 @@ const content = (text = "Conteúdo corrigido.") => ({ title: "Unidade", role: "t
   content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } }] });
 const failure = () => new AuthoringApiError(503, "course_service_unavailable", "Resposta perdida.");
 
-function fixture({ lostCommit = false, lostConfirmation = false, absentReceipt = false, edited = false, noop = false, changedContent = false } = {}) {
+function fixture({ lostCommit = false, lostConfirmation = false, absentReceipt = false, edited = false, noop = false, changedContent = false,
+  multitarget = false, readOnlyConfirmation = false } = {}) {
   let revision = 1;
   let currentContent = content("Texto original.");
   let receipt = null;
-  let queue = [OBSERVATION, OTHER_OBSERVATION].map(annotationId => ({ annotationId, annotationVersion: 1,
+  const queue = [OBSERVATION, OTHER_OBSERVATION].map(annotationId => ({ annotationId, annotationVersion: 1,
     provenance: { origin: "author" }, target: { kind: "study_unit", id: "unit" }, state: "open", rawText: "Corrigir sem perder a observação seguinte." }));
+  if (multitarget) queue[0].targets = ["unit", "unit-b"].map(id => ({ kind: "study_unit", id, state: "pending" }));
   const calls = [];
   const adapter = {
     calls,
+    queue,
+    publicAppUrl: "https://app.example/",
     async listCourses() { return { items: [{ courseId: COURSE, title: "Curso" }], hasMore: false }; },
     async getCourse() { calls.push("course"); return { courseId: COURSE, revision, title: "Curso" }; },
-    async listCourseStudyUnits() { calls.push("units"); return { items: [{ ordinal: 1, version: revision,
-      curriculumPath: { didacticMicrosequence: { id: "micro" } }, studyUnit: { ...currentContent, id: "unit", position: 1 } }], hasMore: false }; },
-    async listCourseEntities() { calls.push("entities"); return { items: [{ entityType: "study_unit", entityId: "unit", content: currentContent }], hasMore: false }; },
+    async listCourseStudyUnits() { calls.push("units"); return { items: (multitarget ? ["unit", "unit-b"] : ["unit"]).map((id, index) => ({ ordinal: index + 1, version: revision,
+      curriculumPath: { didacticMicrosequence: { id: "micro" } }, studyUnit: { ...currentContent, id, position: index + 1 } })), hasMore: false }; },
+    async listCourseEntities() { calls.push("entities"); return { items: (multitarget ? ["unit", "unit-b"] : ["unit"]).map(id => ({ entityType: "study_unit", entityId: id, content: currentContent })), hasMore: false }; },
     async getCourseSources() { calls.push("sources"); return { items: [{ sourceLinks: [] }] }; },
-    async getCourseAnchoredAnnotations() { calls.push("queue"); return { items: structuredClone(queue), annotationSetVersion: revision, hasMore: false }; },
+    async getCourseAnchoredAnnotations({ query }) { calls.push("queue"); return { items: structuredClone(queue.filter(entry =>
+      (entry.targets ?? [entry.target]).some(target => target.kind === query.hierarchy.target.kind && target.id === query.hierarchy.target.id &&
+        (target.state ?? "pending") === "pending"))), annotationSetVersion: revision, hasMore: false }; },
     async commitCourseComposition() { calls.push("generic-commit"); return { revision }; },
     async commitCourseObservationCorrections(request) {
       calls.push("commit");
@@ -53,8 +59,8 @@ function fixture({ lostCommit = false, lostConfirmation = false, absentReceipt =
       calls.push("confirm");
       adapter.confirmations = structuredClone(confirmations);
       for (const confirmation of confirmations) {
-        receipt.observations.find(entry => entry.annotationId === confirmation.annotationId).confirmed = true;
-        queue = queue.filter(entry => entry.annotationId !== confirmation.annotationId);
+        if (!readOnlyConfirmation) receipt.observations.find(entry => entry.annotationId === confirmation.annotationId &&
+          entry.targetKind === confirmation.targetKind && entry.targetId === confirmation.targetId).confirmed = true;
       }
       if (lostConfirmation) throw failure();
       return structuredClone(receipt);
@@ -65,7 +71,7 @@ function fixture({ lostCommit = false, lostConfirmation = false, absentReceipt =
 const apply = (adapter, observations = [reference]) => applyHumanCourseCorrections({ adapter, principal, course: "Curso",
   corrections: [{ unidade: 1, conteudo: content() }], observations });
 
-test("correção lê fila antes da escrita, relê conteúdo/fontes/fila e consome somente referência declarada", async () => {
+test("correção lê fila antes da escrita e a confirmação técnica preserva toda decisão humana pendente", async () => {
   const adapter = fixture();
   const result = await apply(adapter);
   assert.ok(adapter.calls.indexOf("queue") < adapter.calls.indexOf("commit"));
@@ -73,7 +79,9 @@ test("correção lê fila antes da escrita, relê conteúdo/fontes/fila e consom
   assert.deepEqual(adapter.request.observations, [reference]);
   assert.equal(Object.hasOwn(adapter.request, "deletes"), false);
   assert.equal(result.context.confirmedObservationCount, 1);
-  assert.equal(result.context.pendingObservationCount, 1, "A aplicação parcial da fila não consome a outra entrada.");
+  assert.equal(result.context.pendingObservationCount, 2, "A confirmação técnica não consome nenhuma decisão humana.");
+  assert.equal(adapter.queue.length, 2);
+  assert.deepEqual(adapter.confirmations, [{ ...reference, effectHash: "a".repeat(64) }]);
   assert.equal(adapter.calls.includes("generic-commit"), false);
 });
 
@@ -87,9 +95,42 @@ test("respostas perdidas de escrita ou confirmação recuperam pelo recibo sem r
     const before = adapter.calls.length;
     const resumed = await resumeHumanCourseObservationCorrection({ adapter, principal, courseId: COURSE, requestId: adapter.request.requestId });
     assert.equal(resumed.context.confirmedObservationCount, 1);
+    assert.equal(resumed.context.pendingObservationCount, 2);
+    assert.deepEqual(resumed.links.map(link => link.target), [{ kind: "study_unit", id: "unit" }]);
     assert.equal(adapter.calls.slice(before).includes("commit"), false);
     assert.equal(adapter.calls.slice(before).includes("confirm"), false);
   }
+});
+
+test("a mesma observação pode ser corrigida em dois alvos sem duplicar a contagem de pendências", async () => {
+  const adapter = fixture({ multitarget: true });
+  const otherTarget = { ...reference, targetId: "unit-b" };
+  const result = await applyHumanCourseCorrections({ adapter, principal, course: "Curso",
+    corrections: [1, 2].map(unidade => ({ unidade, conteudo: content() })), observations: [reference, otherTarget] });
+  assert.deepEqual(adapter.confirmations, [reference, otherTarget].map(entry => ({ ...entry, effectHash: "a".repeat(64) })));
+  assert.equal(result.context.confirmedObservationCount, 2);
+  assert.equal(result.context.pendingObservationCount, 2, "A nota multialvo é uma pendência, além da outra nota.");
+  assert.deepEqual(adapter.queue[0].targets.map(target => target.state), ["pending", "pending"]);
+  const resumed = await resumeHumanCourseObservationCorrection({ adapter, principal, courseId: COURSE, requestId: adapter.request.requestId });
+  assert.equal(resumed.context.pendingObservationCount, 2);
+  assert.deepEqual(resumed.links.map(link => link.target), [{ kind: "study_unit", id: "unit" }, { kind: "study_unit", id: "unit-b" }]);
+});
+
+test("correção no segundo alvo usa a incidência pendente e recusa incidência já decidida", async () => {
+  const adapter = fixture({ multitarget: true, readOnlyConfirmation: true });
+  adapter.queue[0].targets[0].state = "approved";
+  const request = { adapter, principal, course: "Curso", corrections: [{ unidade: 2, conteudo: content() }],
+    observations: [{ ...reference, targetId: "unit-b" }] };
+  const result = await applyHumanCourseCorrections(request);
+  assert.equal(result.context.pendingObservationCount, 1);
+  assert.equal(result.context.confirmedObservationCount, 0, "A RPC atual só relê persistência; aprovação é decisão separada.");
+  assert.deepEqual(adapter.confirmations[0], { ...reference, targetId: "unit-b", effectHash: "a".repeat(64) });
+  const resumed = await resumeHumanCourseObservationCorrection({ adapter, principal, courseId: COURSE, requestId: adapter.request.requestId });
+  assert.equal(resumed.context.pendingObservationCount, 1);
+  assert.doesNotMatch(resumed.result, /observações confirmadas/u);
+  await assert.rejects(applyHumanCourseCorrections({ ...request, corrections: [{ unidade: 1, conteudo: content() }], observations: [reference] }),
+    { code: "course_observation_version_conflict" });
+  assert.equal(adapter.calls.filter(call => call === "commit").length, 1);
 });
 
 test("no-op, edição posterior e alteração posterior do conteúdo mantêm versão pendente", async () => {
@@ -128,13 +169,18 @@ test("fila obrigatória, alvo e versão inválidos bloqueiam antes de salvar; re
   assert.equal(unselected.calls.includes("confirm"), false);
 });
 
-test("normalização exige identidades/versionamento, confirmação exata e efeito material para consumo", () => {
+test("normalização exige identidades/versionamento e confirmação técnica exata por incidência", () => {
   assert.deepEqual(normalizeCourseObservationCorrectionReferences([reference]), [reference]);
+  assert.deepEqual(normalizeCourseObservationCorrectionReferences([reference, { ...reference, targetId: "unit-b" }]),
+    [reference, { ...reference, targetId: "unit-b" }]);
   for (const references of [[reference, reference], [{ ...reference, annotationVersion: 0 }], [{ ...reference, targetKind: "didactic_microsequence" }], [{ ...reference, unknown: true }]]) {
     assert.throws(() => normalizeCourseObservationCorrectionReferences(references));
   }
   const confirmation = { annotationId: OBSERVATION, annotationVersion: 1, effectHash: "a".repeat(64) };
   assert.deepEqual(normalizeCourseObservationCorrectionConfirmations([confirmation]), [confirmation]);
+  const incidences = [reference, { ...reference, targetId: "unit-b" }].map(entry => ({ ...entry, effectHash: confirmation.effectHash }));
+  assert.deepEqual(normalizeCourseObservationCorrectionConfirmations(incidences), incidences);
+  assert.throws(() => normalizeCourseObservationCorrectionConfirmations([incidences[0], incidences[0]]));
   assert.throws(() => normalizeCourseObservationCorrectionConfirmations([{ ...confirmation, rawText: "excesso" }]));
   assert.throws(() => normalizeCourseObservationCorrection({ contract: "aralearn.course-observation-correction.v1", status: "persisted", courseId: COURSE,
     requestId: "correction-request-001", revision: 2, idempotent: true, observations: [{ ...reference, effectHash: "a".repeat(64), currentEffectHash: "a".repeat(64), changed: false, confirmed: true }] }));

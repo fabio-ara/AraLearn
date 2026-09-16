@@ -37,14 +37,14 @@ test("pacote compatível novo percorre catálogo, persistência e interação se
   const extensionDirectory = path.join(sourceRoot, "resources", "packages", "extension-probe");
   await mkdir(extensionDirectory);
   await writeFile(path.join(extensionDirectory, "index.js"), `
-import { openResponsePackage } from "../open-response/index.js";
+import { choiceResponsePackage } from "../choice-response/index.js";
 export const extensionProbePackage = Object.freeze({
-  ...openResponsePackage,
+  ...choiceResponsePackage,
   manifest: Object.freeze({
-    ...openResponsePackage.manifest,
+    ...choiceResponsePackage.manifest,
     id: ${JSON.stringify(extensionId)},
     label: "Resposta de extensão isolada",
-    purpose: "Provar descoberta de extensão isolada com produção textual."
+    purpose: "Provar descoberta de extensão isolada com avaliação e feedback offline."
   })
 });
 `, "utf8");
@@ -63,6 +63,7 @@ export const extensionProbePackage = Object.freeze({
   ]);
   const manifest = registry.listCatalog({ slot: "response" }).find(({ id }) => id === extensionId);
   assert.ok(manifest, "O índice gerado precisa descobrir a pasta acrescentada.");
+  assert.equal(manifest.authoringEligibility, "current");
   assert.ok(catalog.search({ slot: "response", query: "extensão isolada" }).candidates.some(({ packageId }) => packageId === extensionId));
   const identity = { packageId: extensionId, version: manifest.version };
   assert.ok(designDomain.COURSE_COMPONENT_CATALOG.options.some(({ ref }) => ref === `${extensionId}@${manifest.version}`));
@@ -73,14 +74,18 @@ export const extensionProbePackage = Object.freeze({
 
   const response = registry.normalizeInstance({
     id: "extension-answer", package: extensionId, version: manifest.version,
-    data: { prompt: "  Explique por que as duas proposições precisam ser verdadeiras.  " }
+    data: { question: "  Quando a conjunção é verdadeira?  ", selectionMode: "single", selectionCriterion: "correct",
+      options: [{ id: "both", text: "Quando ambas são verdadeiras.", feedback: "A conjunção exige as duas proposições verdadeiras." },
+        { id: "one", text: "Quando ao menos uma é verdadeira.", feedback: "Uma só proposição verdadeira não satisfaz a conjunção." }],
+      answerIds: ["both"] }
   }, "response");
-  assert.equal(response.data.prompt, "Explique por que as duas proposições precisam ser verdadeiras.");
-  assert.throws(() => registry.normalizeInstance({ ...response, data: { prompt: "" } }, "response"), /prompt/u);
+  assert.equal(response.data.question, "Quando a conjunção é verdadeira?");
+  assert.throws(() => registry.normalizeInstance({ ...response, data: { ...response.data, question: "" } }, "response"), /question/u);
   assert.equal(registry.validateInstance(response, "content").valid, false);
   const studyUnit = envelope.normalizeStudyUnitEnvelope({
-    id: "extension-unit", position: 1, title: "Explique a conjunção", role: "practice",
-    content: [], response, feedback: [], topics: []
+    id: "extension-unit", position: 1, title: "Identifique a condição da conjunção", role: "practice",
+    content: [], response, feedback: [{ id: "extension-feedback", package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: "A conjunção só é verdadeira quando as duas proposições são verdadeiras; uma condição isolada não basta." } }], topics: []
   }, registry);
   assert.equal(envelope.validateStudyUnitEnvelope(studyUnit, registry).valid, true);
 
@@ -97,34 +102,37 @@ export const extensionProbePackage = Object.freeze({
   delete expected.scope;
   assert.deepEqual(restored, expected);
   const restoredUnit = restored.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0];
-  assert.match(envelope.renderStudyUnitEnvelope(restoredUnit, registry).responseHtml, /<textarea\b/u);
+  assert.match(envelope.renderStudyUnitEnvelope(restoredUnit, registry).responseHtml, /role="radiogroup"/u);
   const html = renderer.renderPackageStudyUnitBlocks(restoredUnit);
   assert.ok(html.includes(`data-package="${extensionId}"`));
-  assert.match(html, /data-action="open-response-input"/u);
+  assert.match(html, /data-action="choice-toggle"/u);
 
   const state = registry.createResponseState(response);
   const focused = [];
-  const host = { getState: () => state, focus: (selector) => focused.push(selector) };
+  const host = { getState: () => state, focus: (selector) => focused.push(selector), render() {} };
   assert.equal(registry.submitResponseState(response, state, host), false);
   assert.equal(state.feedback, "incomplete");
   assert.equal(focused.length, 1);
   const input = new EventTarget();
-  input.value = "";
+  input.getAttribute = name => name === "data-choice-option-id" ? "both" : null;
   let stateReads = 0;
   const root = { querySelectorAll: (selector) => {
-    assert.equal(selector, "[data-action='open-response-input']");
-    return [input];
+    assert.ok(["[data-action='choice-toggle']", "[data-action='choice-validate']",
+      "[data-action='choice-try-again']", "[data-action='choice-view-answer']"].includes(selector));
+    return selector === "[data-action='choice-toggle']" ? [input] : [];
   } };
   const bindingHost = { ...host, getState: () => { stateReads += 1; return state; } };
   registry.bindResponseInteraction(response, root, bindingHost);
   registry.bindResponseInteraction(response, root, bindingHost);
-  input.value = "A conjunção exige que ambas sejam verdadeiras.";
-  input.dispatchEvent(new Event("input"));
+  input.dispatchEvent(new Event("click"));
   assert.equal(stateReads, 1, "Uma nova hidratação não duplica o listener.");
-  assert.equal(state.text, input.value);
+  assert.deepEqual(state.selected, ["both"]);
   assert.equal(registry.submitResponseState(response, state, host), true);
-  assert.equal(state.feedback, "recorded");
-  assert.equal(registry.evaluateResponse(response, { text: input.value }).complete, true);
+  assert.equal(state.feedback, "correct");
+  const evaluated = registry.evaluateResponse(response, { selectedIds: state.selected });
+  assert.equal(evaluated.correct, true);
+  assert.equal(evaluated.selectedFeedback[0].feedback, response.data.options[0].feedback);
+  assert.equal(registry.evaluateResponse(response, { selectedIds: ["one"] }).correct, false);
 
   const after = await sourceDigests(sourceRoot);
   const generated = path.join("resources", "packages", "generated.js");

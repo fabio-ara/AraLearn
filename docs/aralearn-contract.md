@@ -569,7 +569,7 @@ ferramentas antigas.
 
 ## Projeção Actions
 
-O gerador `buildChatGptActionOpenApi.mjs` projeta as 54 tarefas do catálogo em
+O gerador `buildChatGptActionOpenApi.mjs` projeta as 56 tarefas do catálogo em
 30 operações HTTP, ou formas de pedido ao serviço: seis grupos com argumentos
 validados e 24 operações diretas. O mapeamento
 `courseActionBindings.js` vincula `tarefa` e `argumentos` nos grupos e conserva

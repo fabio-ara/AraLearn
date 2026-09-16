@@ -152,11 +152,13 @@ não decididas voltam à pessoa. Sem continuidade autorizada, a produção termi
 ao entregar o primeiro lote. Confirmações de segurança próprias do cliente
 continuam aplicáveis.
 
-A preparação recupera as condições vigentes antes de produzir. A materialização
-recebe as unidades completas e as escolhas aplicadas a elas. Explicações já
-salvas são reutilizadas; o campo `explicacoes` inclui somente bases que também
-serão criadas ou alteradas. Depois da gravação, a releitura permite conferir a
-sequência e oferecer à pessoa o resultado salvo.
+Antes da escrita, a Explicação salva é reconciliada por passagens com o repertório persistido. Cada ensinamento é identificado como introdução, conhecimento estabelecido, retomada, exemplo, apoio ou dependência adiada com destino. O inventário inclui as relações necessárias: seis ensinamentos sob teto dois precisam aparecer no percurso completo, sem desaparecer em um tópico agregado.
+
+`preparar_materializacao` recebe `plano`, uma declaração compacta das unidades, e confere conjuntamente repertório, vínculos, requisitos, formas, componentes, fontes, práticas e cobertura. Um resultado `blocked` traz todas as causas previsíveis; resolva-as antes de escrever. `ready` fornece a referência para `referenciaPreparo` em `materializar_parte`. Alterar a base, configuração ou intenção exige novo preparo. A escrita não serve para descobrir incompatibilidades uma a uma.
+
+`materializar_parte` recebe somente unidades novas ou explicitamente alteradas. `unidade` identifica uma existente a substituir; sua ausência cria uma nova. `posicao` é a posição final. As unidades omitidas permanecem e podem ser deslocadas sem reenvio do conteúdo. `concluir: false` conserva produção parcial; `concluir: true` verifica a cobertura do acumulado salvo e solicitado. Explicações salvas são reutilizadas; `explicacoes` contém somente bases criadas ou alteradas.
+
+Prática nova tem resposta avaliável e feedback explicativo local, utilizáveis offline. `aralearn.response.open` permanece legível como legado e não é oferecido para criação. `gap.text` serve para respostas curtas e canônicas, com equivalentes explícitos; comparação literal não substitui avaliação semântica de uma redação.
 
 ### Conservar o acordo durante a retomada
 
@@ -256,18 +258,15 @@ arquivo entra na biblioteca do curso, sem síntese ou transcrição automática.
 
 ## Observações, revisão e privacidade
 
-Uma observação é uma entrada persistente ligada à explicação ou à unidade.
-Selecionar várias unidades gera entradas separadas. Cada uma mantém sua
-identidade e versão; editar seu texto conserva a pendência. A preparação de
-revisão reúne as entradas pertinentes e o conteúdo que pode ser afetado.
+Uma observação possui uma identidade e pode incidir sobre várias unidades e Explicações. A central conta observações distintas do curso, incluindo todas as páginas; selecionar três alvos cria uma pendência com três incidências. Editar o texto ou os alvos controla suas versões sem reescrever o conteúdo. Retirar um alvo não desfaz uma correção; encerrar o último exige uma decisão explícita.
 
-Uma correção pode atender conjuntamente a várias observações compatíveis. Os
-campos `observacoesTratadas` de `aplicar_correcoes` e `salvar_explicacoes`
-identificam somente as versões integralmente atendidas. A gravação e a
-releitura confirmam o resultado; entradas vagas, editadas por outra operação ou
-atendidas apenas parcialmente continuam pendentes. A
-[declaração humana de revisão](explicacao-e-revisao-humana.md) permanece uma
-decisão expressa sobre o conteúdo salvo, separada do tratamento dessas entradas.
+Correções autorizadas tornam-se vigentes ao salvar. `observacoesTratadas` vincula o atendimento às versões exatas; persistência, releitura e `retomar_correcao` não aprovam nem consomem observações. A comparação preserva conteúdo e fontes anteriores enquanto houver incidência pendente. Edição humana deixa inspeção por IA pendente; `preparar_revisao` fornece a referência da base lida e `registrar_inspecao` registra o parecer sem editar nem contar intervenção. Não há IA executando automaticamente em segundo plano.
+
+A fila entrega `referenciasComparacao` por alvo, sem repetir todos os documentos na lista. `preparar_revisao.comparacao` recebe a referência com as versões da observação e do conjunto de alvos; sua continuação recupera literalmente as bases anteriores e vigentes, seus vínculos e fontes. Conclua essa leitura antes da decisão. Uma versão alterada exige reler a fila e inspecionar a base atual.
+
+Se o alvo foi removido, a fila conserva a incidência e informa sua ausência com `expectedBasisHash: null`. A decisão explícita pode cancelá-la usando as versões recebidas; a ausência nunca representa conteúdo aprovado. Se o alvo reaparecer ou a observação mudar, releia antes de decidir.
+
+`decidir_observacao` executa a aprovação expressa do vigente ou o encerramento sem alteração. A decisão identifica observação, versão, conjunto de alvos e base examinada. Aprovação parcial conserva as demais incidências; “todas” exige leitura completa e um conjunto fixado, sem alcançar novas entradas ou versões posteriores. Cancelar uma observação de teste ou engano dispensa correção artificial e não declara aprovação. Após a última decisão, o conteúdo operacional e as bases dispensáveis são liberados; arquivos ainda usados pelo vigente ou por outra pendência permanecem. A [declaração humana de revisão](explicacao-e-revisao-humana.md) continua distinta dessas decisões.
 
 O curso conserva os dados necessários à autoria e ao estudo. Os dados de autoria
 derivam desses registros salvos; a conversa permanece na sessão, e o painel não

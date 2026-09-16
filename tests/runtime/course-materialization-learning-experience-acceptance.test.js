@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { courseDesignFixture, fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
+import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
+import { resolveHumanCourseContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 
 import {
-  materializeHumanCoursePart
+  materializeHumanCoursePart, humanMaterializationUnitPlan, preflightHumanCourseMaterialization
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import {
   validateCourseEntityContent
@@ -227,12 +229,12 @@ function validateAndRender(units) {
   });
 }
 
-async function materializeFixture(value) {
+async function prepareFixture(value) {
   const adapter = adapterForFixture(value);
   const units = structuredClone(value.units);
   for (const unit of units) unit.aplicacaoPedagogica.cobertura = [];
   units.at(-1).aplicacaoPedagogica.cobertura = [value.part.title];
-  await materializeHumanCoursePart({
+  const request = {
     adapter,
     principal: PRINCIPAL,
     course: value.course.title,
@@ -248,7 +250,27 @@ async function materializeFixture(value) {
       content: [{ id: "support-switch", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
         text: "Uma interface identifica sua participação na rede local por um endereço MAC. Um quadro Ethernet informa os endereços de origem e destino. Ao receber o quadro, o switch associa o endereço de origem à porta de entrada. Se conhece a porta do destino, encaminha o quadro por ela; se ainda não a conhece, difunde pelas outras portas permitidas. Essa difusão não equivale a aprender o destino: a aprendizagem depende da origem dos quadros recebidos. A tabela muda com o tráfego e com o envelhecimento das entradas."
       } }] }, fontes: [] }]
-  });
+  };
+  const support = request.explanations[0].conteudo;
+  // The persisted repertoire is independent of the units requested below.
+  // Keep the contextual explanation and reconcile every declared teaching.
+  request.explanations[0].conteudo = reconciledExplanationFixture([
+    { text: support.content[0].data.text, role: "support" },
+    ...value.repertoire.map(idea => ({ text: idea.description, analysisUnitIds: [idea.id],
+      role: idea.status === "established" ? "established" : "introduced" }))
+  ], { title: support.title });
+  const context = await resolveHumanCourseContext(request);
+  const preflight = await preflightHumanCourseMaterialization({ adapter, principal: PRINCIPAL, context,
+    planUnits: units.map(humanMaterializationUnitPlan), explanations: request.explanations });
+  return { request, preflight };
+}
+
+async function materializeFixture(value) {
+  const { request, preflight } = await prepareFixture(value);
+  assert.equal(preflight.state, "ready", JSON.stringify(preflight.blockers));
+  assert.match(preflight.referencia, /^materialization-v1:/u);
+  await materializeHumanCoursePart({ ...request, preparationReference: preflight.referencia });
+  const { adapter } = request;
   assert.equal(adapter.calls.length, 1);
   const committed = adapter.calls[0].units;
   assert.deepEqual(
@@ -498,10 +520,12 @@ test("uma ideia só pode ser usada ou retomada depois de existir no repertório 
   const mac = withoutPriorMac.repertoire.find(({ name }) => name === "endereço MAC");
   mac.status = "new";
   delete mac.introducedAt;
-  await assert.rejects(
-    () => materializeFixture(withoutPriorMac),
-    (error) => error.code === "human_materialization_use_before_introduction"
-  );
+  const { request, preflight } = await prepareFixture(withoutPriorMac);
+  assert.equal(preflight.state, "blocked");
+  assert.equal(preflight.referencia, null);
+  assert.ok(preflight.blockers.some(blocker => blocker.code === "human_materialization_use_before_introduction"),
+    JSON.stringify(preflight.blockers));
+  assert.deepEqual(request.adapter.calls, [], "O preflight identifica o problema antes de escrever.");
 });
 
 test("cadeia para iniciantes é autocontida, progride, retoma e chega a uma aplicação praticada", async () => {

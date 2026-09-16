@@ -5,7 +5,7 @@ import {
   normalizeCourseAnchoredAnnotationPage,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
-import { normalizeCourseSourceCommand, normalizeCourseSourceDocument } from "../domain/courseSources.js";
+import { normalizeCourseSourceCommand, normalizeCourseSourceDocument, normalizeCourseSourceLinks } from "../domain/courseSources.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { renderBibliographicReference } from "./renderBibliographicReference.js";
 import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrence } from "../domain/courseSourceOccurrences.js";
@@ -22,6 +22,7 @@ import {
   appendSourceContributor
 } from "./sourceBibliographyForm.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { renderCourseContentInspection } from "./renderCourseContentInspection.js";
 import { downloadTextFile } from "./downloadTextFile.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
@@ -926,15 +927,10 @@ function renderTargetLink(state, link, index) {
     '<div class="course-source-compact-actions">' +
     `<button type="button" data-source-action="move-target-source-up" data-link-id="${escapeHtml(link.linkId)}"${index === 0 ? " disabled" : ""} aria-label="Mover fonte para cima">${renderUiIcon("arrow-up", "course-authoring-button-icon")}</button>` +
     `<button type="button" data-source-action="move-target-source-down" data-link-id="${escapeHtml(link.linkId)}"${index === state.sourceLinks.length - 1 ? " disabled" : ""} aria-label="Mover fonte para baixo">${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
-    `<button type="button" data-source-action="remove-target-source" data-link-id="${escapeHtml(link.linkId)}" aria-label="Remover vínculo">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
+    `<button type="button" data-source-action="remove-target-source" data-link-id="${escapeHtml(link.linkId)}" aria-label="Remover deste texto">${renderUiIcon("trash", "course-authoring-button-icon")}</button></div></header>` +
     (unavailableReference
       ? '<p class="course-authoring-notice is-error">A fonte ou uma âncora vinculada não está mais ativa. Ajuste o vínculo.</p>'
       : "") +
-    renderSourceOccurrenceForm(state, link) +
-    `<details class="course-source-use-details" data-source-use-link="${escapeHtml(link.linkId)}"${state.openSourceUses?.includes(link.linkId) ? " open" : ""}><summary>Uso e trecho da fonte</summary>` +
-    `<label class="course-source-relation"><span>Como esta fonte é usada</span><select data-source-target-relation data-link-id="${escapeHtml(link.linkId)}">${relationOptions}</select></label>` +
-    '<fieldset class="source-default-roles"><legend>Papéis neste uso</legend>' + Object.entries(SOURCE_ROLES).map(([role, label]) =>
-      `<label><input type="checkbox" data-source-target-role="${role}" data-link-id="${escapeHtml(link.linkId)}"${link.roles.includes(role) ? " checked" : ""}>${escapeHtml(label)}</label>`).join("") + '</fieldset>' +
     (unavailable
       ? '<p class="course-authoring-notice is-error">A fonte corrente não está disponível. Remova este vínculo e escolha outra fonte.</p>'
       : loading
@@ -944,12 +940,25 @@ function renderTargetLink(state, link, index) {
             anchors.filter(({ status }) => status === "active").map((anchor) =>
               `<label><input type="checkbox" data-source-target-anchor data-link-id="${escapeHtml(link.linkId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
               `<span>${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
-          : '<p class="course-source-empty">A obra está vinculada sem página ou passagem específica. Você pode indicar o trecho na ficha da fonte.</p>') +
-    "</details></article>";
+          : '<p class="course-source-empty">Indique a passagem na ficha da fonte antes de salvar a referência neste texto.</p>') +
+    renderSourceOccurrenceForm(state, link) +
+    `<details class="course-source-use-details" data-source-use-link="${escapeHtml(link.linkId)}"${state.openSourceUses?.includes(link.linkId) ? " open" : ""}><summary>Opções da referência</summary>` +
+    `<label class="course-source-relation"><span>Como esta fonte é usada</span><select data-source-target-relation data-link-id="${escapeHtml(link.linkId)}">${relationOptions}</select></label>` +
+    '<fieldset class="source-default-roles"><legend>Papéis neste uso</legend>' + Object.entries(SOURCE_ROLES).map(([role, label]) =>
+      `<label><input type="checkbox" data-source-target-role="${role}" data-link-id="${escapeHtml(link.linkId)}"${link.roles.includes(role) ? " checked" : ""}>${escapeHtml(label)}</label>`).join("") + '</fieldset></details></article>';
 }
 
 function targetAttributionReady(state) {
   return !state.targetLoading && !state.targetFailure && state.targetAttribution !== undefined;
+}
+
+function sameTargetSourceLinks(left, right, targetKind) {
+  try {
+    return JSON.stringify(normalizeCourseSourceLinks(left, { targetKind })) ===
+      JSON.stringify(normalizeCourseSourceLinks(right, { targetKind }));
+  } catch {
+    return false;
+  }
 }
 
 function targetOccurrenceIssue(state) {
@@ -957,10 +966,18 @@ function targetOccurrenceIssue(state) {
   const content = state.targetKind === "microsequence_explanation" ? state.targetExplanation : state.targetStudyUnit;
   for (const link of state.sourceLinks) {
     const previous = state.initialSourceLinks.find(item => item.linkId === link.linkId && item.sourceId === link.sourceId);
-    if (!previous && !link.occurrences.some(item => resolveCourseSourceOccurrence(content, item, { targetKind: state.targetKind }).status === "resolved") ||
-        previous?.occurrences.length && !link.occurrences.length) {
+    if (previous && JSON.stringify(previous) === JSON.stringify(link)) continue;
+    if (!link.occurrences.length || link.occurrences.some(item =>
+      resolveCourseSourceOccurrence(content, item, { targetKind: state.targetKind }).status !== "resolved")) {
       return "Selecione o trecho deste texto que cada nova referência sustenta antes de salvar.";
     }
+    const source = sourceForLink(state, link);
+    if (!link.anchors.length || link.anchors.some(({ anchorId }) => {
+      const anchor = source?.anchors?.find(item => item.anchorId === anchorId);
+      return !anchor || anchor.status !== "active" || anchor.needsReverification ||
+        (anchor.contentHash ? !source.attachments?.some(item => item.contentHash === anchor.contentHash)
+          : !anchor.humanLocator?.trim());
+    })) return "Indique a passagem vigente da fonte, com o documento correspondente ou uma localização precisa, antes de salvar.";
   }
   return "";
 }
@@ -996,9 +1013,12 @@ function renderTargetPanel(state) {
           `${renderUiIcon("arrow-down", "course-authoring-button-icon")}</button>` +
           `<button type="button" class="course-source-save-target" data-source-action="save-target" aria-label="Salvar fontes" title="Salvar fontes"${state.busy || !targetAttributionReady(state) || targetOccurrenceIssue(state) ? " disabled" : ""}>` +
           `${renderUiIcon("save", "course-authoring-button-icon")}</button></div></section>`) +
-    '<section class="course-source-available"><header><h3>Fontes do curso</h3>' +
+    renderCourseContentInspection(state.inspection, state.inspectionFailure) +
+    `<button type="button" class="course-source-primary-action" data-source-action="show-source-catalog" aria-label="Adicionar fonte" title="Adicionar fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button>` +
+    (state.sourceCatalogOpen ? '<section class="course-source-available"><header><h3>Fontes do curso</h3>' +
+    '<button type="button" data-source-action="hide-source-catalog" aria-label="Fechar acervo" title="Fechar acervo">' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>' +
     `<button type="button" data-source-action="add-source" aria-label="Nova fonte: documento ou link" title="Nova fonte: documento ou link"${state.busy ? " disabled" : ""}>${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
-    renderCatalog(state, { selectable: true }) + "</section></div></section>";
+    renderCatalog(state, { selectable: true }) + "</section>" : "") + "</div></section>";
 }
 
 function targetExportReady(state) {
@@ -1188,6 +1208,9 @@ export function createCourseSourcesPanel({
     targetStudyUnit,
     targetExplanation,
     occurrenceEditor: null,
+    sourceCatalogOpen: false,
+    inspection: null,
+    inspectionFailure: "",
     openSourceUses: [],
     references: new Map(),
     bibliographyStyleDraft: null,
@@ -1197,6 +1220,7 @@ export function createCourseSourcesPanel({
     targetFailure: "",
     sourceLinks: [],
     initialSourceLinks: [],
+    targetDraftChangedDuringWrite: false,
     targetDetails: new Map(),
     targetDetailsLoading: new Set(),
     busy: false,
@@ -1877,6 +1901,18 @@ export function createCourseSourcesPanel({
         ? structuredClone(state.sourceLinks) : null;
       state.initialSourceLinks = structuredClone(attribution?.sourceLinks || []);
       state.sourceLinks = draft || structuredClone(state.initialSourceLinks);
+      if (["study_unit", "microsequence_explanation"].includes(state.targetKind) && controller.getContentInspection) {
+        state.inspection = null; state.inspectionFailure = "";
+        try {
+          const result = await controller.getContentInspection(state.courseId, state.targetKind, state.targetId);
+          if (!state.opened || requestEpoch !== epoch) return false;
+          if (result.courseRevision !== state.courseRevision) throw new Error("A versão do conteúdo mudou.");
+          state.inspection = result.inspection;
+        } catch (error) {
+          if (!state.opened || requestEpoch !== epoch) return false;
+          state.inspectionFailure = error.message;
+        }
+      }
       void Promise.all(state.sourceLinks.map(({ sourceId }) =>
         loadDetail(sourceId, {
           target: true,
@@ -1899,6 +1935,12 @@ export function createCourseSourcesPanel({
   function applyCourseRevision(nextRevision) {
     state.courseRevision = nextRevision;
     onCourseRevisionChange(nextRevision);
+  }
+
+  function markTargetDraftChanged() {
+    if (state.mode === "target") {
+      if (state.busy) state.targetDraftChangedDuringWrite = true;
+    }
   }
 
   function sourceChangeMessage(change) {
@@ -2059,6 +2101,9 @@ export function createCourseSourcesPanel({
     }
     state.pendingCommand = pending;
     state.busy = true;
+    if (state.mode === "target" && pending.command.type === "set_target_sources") {
+      state.targetDraftChangedDuringWrite = false;
+    }
     state.failure = "";
     state.message = "Salvando…";
     render();
@@ -2113,12 +2158,34 @@ export function createCourseSourcesPanel({
     if (state.mode === "target" && pending.command.type === "set_target_sources") {
       state.initialSourceLinks = structuredClone(pending.command.sourceLinks);
     }
+    // A mutação já foi confirmada pelo backend. Uma releitura secundária pode
+    // falhar sem invalidar essa confirmação; nesse caso, feche a folha somente
+    // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
+    const targetSaveDraftStillMatches = state.mode === "target" &&
+      pending.command.type === "set_target_sources" &&
+      sameTargetSourceLinks(state.sourceLinks, pending.command.sourceLinks, state.targetKind) &&
+      !state.occurrenceEditor;
+    const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
+      pending.command.type === "set_target_sources" &&
+      targetSaveDraftStillMatches;
+    let targetSavedNotified = false;
+    if (targetSaveHasNoConcurrentDraft) {
+      // Propague a nova revisão antes de fechar: o fluxo pai usa a diferença
+      // de revisão para reler a inspeção que receberá os vínculos confirmados.
+      applyCourseRevision(result.courseRevision);
+      // O recibo da mutação já é a confirmação do vínculo. Feche a folha antes
+      // da releitura de inspeção, que pode ser lenta; o fluxo pai fará a
+      // atualização do contexto com a nova revisão.
+      await onTargetSaved(result);
+      targetSavedNotified = true;
+    }
+    if (!state.opened) return true;
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
     if (!refreshed) {
       reportConfirmedRefreshFailure(sourceChangeMessage(result));
-    } else if (state.mode === "target" && pending.command.type === "set_target_sources" &&
-        !hasPendingDraft() && !state.occurrenceEditor) {
+    }
+    if (targetSaveHasNoConcurrentDraft && !targetSavedNotified) {
       onTargetSaved(result);
     }
     state.busy = false;
@@ -2427,11 +2494,14 @@ export function createCourseSourcesPanel({
   }
 
   function targetLinksValid() {
-    if (targetOccurrenceIssue(state)) return false;
+    const occurrenceIssue = targetOccurrenceIssue(state);
+    if (occurrenceIssue) {
+      return false;
+    }
     if (JSON.stringify(state.sourceLinks) === JSON.stringify(state.initialSourceLinks)) {
       return true;
     }
-    return state.sourceLinks.every((link) => {
+    const valid = state.sourceLinks.every((link) => {
       const source = sourceForLink(state, link);
       const activeAnchors = new Map(anchorsForLink(state, link)
         .filter(({ status }) => status === "active")
@@ -2446,6 +2516,7 @@ export function createCourseSourcesPanel({
           return Boolean(currentAnchor);
         });
     });
+    return valid;
   }
 
   root.addEventListener("submit", (event) => {
@@ -2527,6 +2598,7 @@ export function createCourseSourcesPanel({
       link.anchors = event.target.checked
         ? [...link.anchors.filter((anchor) => anchor.anchorId !== anchorId), { anchorId }]
         : link.anchors.filter((anchor) => anchor.anchorId !== anchorId);
+      markTargetDraftChanged();
       state.failure = "";
       render();
       return;
@@ -2536,6 +2608,7 @@ export function createCourseSourcesPanel({
         item.linkId === event.target.dataset.linkId);
       if (!link || !Object.hasOwn(SOURCE_RELATIONS, event.target.value)) return;
       link.relation = event.target.value;
+      markTargetDraftChanged();
       state.failure = "";
       render();
       return;
@@ -2545,6 +2618,7 @@ export function createCourseSourcesPanel({
       const role = event.target.dataset.sourceTargetRole;
       if (!link || !Object.hasOwn(SOURCE_ROLES, role)) return;
       link.roles = Object.keys(SOURCE_ROLES).filter(value => value === role ? event.target.checked : link.roles.includes(value));
+      markTargetDraftChanged();
       state.failure = "";
       return;
     }
@@ -2598,6 +2672,9 @@ export function createCourseSourcesPanel({
       }
       render();
       focus(`[data-source-action="add-contributor"][data-contributor-list="${list === "editors" ? "editors" : "authors"}"]`);
+    } else if (action === "show-source-catalog" || action === "hide-source-catalog") {
+      state.sourceCatalogOpen = action === "show-source-catalog";
+      render();
     } else if (action === "add-source") {
       state.sourceEditor = {
         source: null,
@@ -2795,6 +2872,7 @@ export function createCourseSourcesPanel({
         occurrences: []
       };
       state.sourceLinks.push(link);
+      markTargetDraftChanged();
       state.selectedSourceId = "";
       state.detail = null;
       state.sourceEditor = null;
@@ -2806,6 +2884,7 @@ export function createCourseSourcesPanel({
       if (targets) focusOccurrenceSelection();
     } else if (action === "remove-target-source") {
       state.sourceLinks = state.sourceLinks.filter((link) => link.linkId !== node.dataset.linkId);
+      markTargetDraftChanged();
       state.failure = "";
       render();
     } else if (["move-target-source-up", "move-target-source-down"].includes(action)) {
@@ -2814,6 +2893,7 @@ export function createCourseSourcesPanel({
       if (index < 0 || target < 0 || target >= state.sourceLinks.length) return;
       [state.sourceLinks[index], state.sourceLinks[target]] =
         [state.sourceLinks[target], state.sourceLinks[index]];
+      markTargetDraftChanged();
       render();
     } else if (["add-occurrence", "edit-occurrence", "remove-occurrence", "save-occurrence", "cancel-occurrence"].includes(action)) {
       if (action === "cancel-occurrence") {
@@ -2830,12 +2910,21 @@ export function createCourseSourcesPanel({
         { targetKind: state.targetKind });
       const occurrenceId = node.dataset.occurrenceId;
       const occurrence = link.occurrences.find(item => item.occurrenceId === occurrenceId);
-      if (action === "remove-occurrence") link.occurrences = link.occurrences.filter(item => item.occurrenceId !== occurrenceId);
+      if (action === "remove-occurrence") {
+        link.occurrences = link.occurrences.filter(item => item.occurrenceId !== occurrenceId);
+        if (!link.occurrences.length) {
+          state.sourceLinks = state.sourceLinks.filter(item => item.linkId !== link.linkId);
+          state.occurrenceEditor = null;
+        }
+        markTargetDraftChanged();
+        state.failure = "";
+      }
       else if (["add-occurrence", "edit-occurrence"].includes(action)) {
         if (action === "add-occurrence" && link.occurrences.length >= 16) return;
         state.occurrenceEditor = { linkId: link.linkId, occurrenceId: occurrence?.occurrenceId,
           targetIndex: Math.max(0, targets.findIndex(target => target.slot === occurrence?.slot &&
             target.resourceId === occurrence?.resourceId && target.path === occurrence?.path)) };
+        markTargetDraftChanged();
       } else {
         try {
           const editor = state.occurrenceEditor;
@@ -2844,6 +2933,7 @@ export function createCourseSourcesPanel({
             root.querySelector?.("[data-source-occurrence-selection]"), editor.occurrenceId);
           const index = link.occurrences.findIndex(item => item.occurrenceId === selected.occurrenceId);
           if (index < 0) link.occurrences.push(selected); else link.occurrences[index] = selected;
+          markTargetDraftChanged();
           state.occurrenceEditor = null;
           state.failure = "";
         } catch (error) { state.failure = error.message; }

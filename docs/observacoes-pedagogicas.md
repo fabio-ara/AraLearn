@@ -39,7 +39,7 @@ observações tampouco demonstra compreensão.
 Esses rótulos são uma convenção operacional do produto, não uma escala validada
 de qualidade ou um método de revisão comprovado. A classificação é opcional;
 o texto e seu alvo bastam para registrar e tratar um apontamento. Usar uma
-categoria não autoriza correção automática nem determina a resposta do GPT.
+categoria não autoriza correção automática nem determina a resposta da IA.
 
 A revisão de [Shute (2008)](referencias.md#ref-shute2008feedback) discute a
 importância de feedback claro e específico para a aprendizagem. Esse trabalho
@@ -70,8 +70,7 @@ depois de uma mudança no alvo, registre-a sobre o conteúdo atual.
 
 ## Registrar durante a Autoria
 
-Em **Conteúdo**, a pessoa autora pode registrar uma observação na unidade focal
-ou selecionar várias unidades quando o mesmo apontamento se aplica a todas.
+Em **Conteúdo**, a pessoa autora pode registrar uma observação na unidade focal ou escolher várias unidades e a explicação quando o mesmo apontamento se aplica a esses objetos.
 
 Ao mostrar várias unidades, selecione uma ou mais: a caixa de observação aparece
 na própria tela, com os alvos consultáveis pelo contador. Escreva e envie pelo
@@ -79,21 +78,17 @@ na própria tela, com os alvos consultáveis pelo contador. Escreva e envie pelo
 rascunho ou envio pendente exige concluir esse registro. A fila de cada unidade
 continua acessível pelo seu ícone, para consultar e editar observações existentes.
 
-A seleção cria uma entrada independente por alvo. Cada uma pode receber
-resposta, ser resolvida ou retirada separadamente; a seleção não cria um novo
-lote de produção.
+A seleção cria uma única observação com vários alvos. A central conta essa observação uma vez, mesmo quando ela aparece em mais de um objeto. Cada alvo conserva sua própria pendência: aprovar o resultado em uma unidade não aprova os demais. Incluir ou retirar um alvo altera o alcance da observação e preserva o conteúdo vigente; retirar um alvo não desfaz uma edição já salva.
 
-A explicação compartilhada também tem sua própria fila. Um apontamento sobre
-a base inteira pertence a ela; um problema restrito ao enunciado ou ao retorno
-de uma prática pertence à unidade. Essa escolha conserva o objeto que precisará
-ser relido antes de uma correção.
+A explicação compartilhada participa da mesma central. Um apontamento sobre a base pertence a ela; um problema restrito ao enunciado ou ao retorno de uma prática pertence à unidade. Uma mesma intenção pode abranger ambos. Essa escolha conserva os objetos que precisarão ser relidos antes de uma correção.
 
 ## Caixa de Observações
 
-A caixa autoral permite filtrar e abrir o detalhe dos registros. O papel da
-pessoa, a permissão e o estado determinam quais ações ficam disponíveis, como
-responder, encerrar a triagem ou editar a própria entrada. O link do objeto
-retorna ao alvo enquanto ele estiver acessível.
+A caixa autoral permite filtrar e abrir o detalhe dos registros, consultar seus alvos e comparar a base anterior com o conteúdo vigente. A contagem geral conserva o total de observações autorais pendentes do curso; o filtro mostra o recorte selecionado. O papel da pessoa, a permissão e o estado determinam as ações disponíveis. O link do objeto retorna ao alvo enquanto ele estiver acessível.
+
+Na observação autoral, **aprovar** aceita o resultado apresentado nos alvos selecionados. **Encerrar sem alteração** registra que aquela pendência não exige outra mudança, por exemplo porque era um teste ou porque a pessoa decidiu manter o vigente. Essas decisões podem abranger parte dos alvos, observações selecionadas ou todas as pendências do recorte apresentado. Uma observação alterada depois da leitura exige nova conferência.
+
+Os estados abaixo também são usados na triagem das contribuições de estudantes e em registros anteriores. Nas novas observações autorais, salvar uma correção não encerra a pendência: é necessária uma decisão explícita sobre seus alvos.
 
 | Estado | Significado |
 | --- | --- |
@@ -113,16 +108,15 @@ a progressão, a base oferecida ao estudante e as fontes usadas. A proposta
 distingue os objetos consultados para compreender o problema daqueles que serão
 alterados.
 
-Depois da decisão humana, a correção é aplicada e o resultado salvo é relido.
-Cada explicação e unidade mantém uma lista de observações ainda pendentes, sua fila autoral. Uma entrada pode ser editada enquanto a correção é preparada; por isso o sistema conserva versões do texto. Somente as versões expressamente vinculadas à correção confirmada são tratadas. Ler, responder ou iniciar uma
-tentativa não consome a pendência. Versões editadas depois da preparação,
-conflitos e partes não atendidas continuam na fila.
+Depois da autorização para corrigir, a alteração é aplicada e o resultado salvo é relido. A observação continua pendente até a pessoa aprovar os alvos apresentados ou encerrá-los explicitamente. A comparação conserva a base anterior necessária a essa decisão. Uma entrada pode ser editada enquanto a correção é preparada; versões novas, conflitos e alvos ainda não decididos permanecem na fila.
 
 Nos canais [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md),
 `preparar_revisao` obtém o contexto, `aplicar_correcoes` grava a alteração
 aprovada e `retomar_correcao` reconcilia uma tentativa cujo resultado ficou
 incerto. A retomada confere o conteúdo e a fila sem reaplicar a correção.
 Editar o texto de uma entrada, por `editar_observacao`, conserva a pendência.
+
+`preparar_revisao` também permite recuperar a comparação literal de um alvo a partir da referência devolvida pela fila. `decidir_observacao` executa a decisão expressa da pessoa sobre as versões apresentadas. Quando uma edição manual pede inspeção por IA, o parecer precisa corresponder ao conteúdo e às fontes vigentes antes da aprovação; `registrar_inspecao` conserva esse parecer. Salvar e continuar trabalhando permanece disponível, e encerrar uma observação de teste não declara que a inspeção foi realizada.
 
 Tratar uma observação não declara que a pessoa revisou todo o objeto. A
 [revisão autoral](explicacao-e-revisao-humana.md#revisão-independente-por-objeto)
@@ -148,6 +142,8 @@ permitem. O acesso e a retenção seguem a [política de privacidade](privacidad
 A observação não armazena a conversa inteira do assistente. Na revisão
 conversacional, o conector fornece o recorte autorizado necessário ao trabalho.
 O resumo devolvido pode encaminhar ao conteúdo salvo sem reproduzi-lo no chat.
+
+Após a decisão do último alvo, o texto operacional dispensável é removido. Metadados mínimos permanecem por 14 dias para conferir a decisão e reconciliar respostas perdidas. Bases e arquivos compartilhados permanecem enquanto outra pendência ou o conteúdo vigente precisar deles; a limpeza não apaga o PDF ainda usado por outro objeto. Observações antigas sem uma cópia anterior verdadeira informam essa ausência.
 
 <a id="analytics-e-pesquisa"></a>
 

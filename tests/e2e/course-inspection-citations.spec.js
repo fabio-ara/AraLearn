@@ -162,6 +162,7 @@ for (const width of [390, 1280]) test(`citações da unidade preservam trecho, v
   const sourceDialog = page.getByRole("dialog", { name: "Fontes", exact: true });
   await expect(sourceDialog).toBeVisible();
   await expect(sourceDialog).toContainText("Sem fontes vinculadas");
+  await sourceDialog.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
   await expect(sourceDialog.getByRole("button", { name: "Nova fonte: documento ou link", exact: true })).toBeVisible();
   await sourceDialog.getByRole("button", { name: "Fechar", exact: true }).click();
   await expect(emptyReferences.locator("[data-inspection-edit-sources]")).toBeFocused();

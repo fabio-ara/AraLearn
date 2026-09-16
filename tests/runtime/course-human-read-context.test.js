@@ -5,9 +5,11 @@ import {
   paginateHumanReadContext
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { largeObservationComparison } from "../helpers/largeObservationComparisonFixture.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
@@ -17,6 +19,8 @@ import {
 
 const COURSE = { id: "10000000-0000-4000-8000-000000000001", revision: 7 };
 const OTHER_COURSE = "10000000-0000-4000-8000-000000000002";
+const PART = "30000000-0000-4000-8000-000000000001";
+const OTHER_PART = "30000000-0000-4000-8000-000000000002";
 const TITLE = "Leitura literal";
 const PRINCIPAL = { actorId: "20000000-0000-4000-8000-000000000001", scopes: ["authoring:read"] };
 const ORIGIN = "https://chatgpt.com";
@@ -50,7 +54,7 @@ async function readLogicalPage(adapter, name, args = {}) {
 }
 
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
-  const calls = { units: [], sources: [], annotations: [], reviews: [] };
+  const calls = { units: [], sources: [], annotations: [], reviews: [], inspections: [] };
   const adapter = {
     calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
@@ -82,6 +86,13 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
       return { contract: "aralearn.course-content-review.v1", courseId,
         courseRevision: adapter.revision, targetKind, targetId, entityVersion: unit?.version ?? 1,
         basisHash: "a".repeat(64), contentReview: { state: "draft" }, reviewPolicy: "saved" };
+    },
+    async getCourseContentInspection(input) {
+      calls.inspections.push(input);
+      const { courseId, targetKind, targetId } = input;
+      return { contract: "aralearn.course-ai-inspection.v1", courseId,
+        courseRevision: adapter.revision, targetKind, targetId, basisHash: "b".repeat(64),
+        inspection: { state: "unregistered", basisHash: "b".repeat(64) } };
     },
     async listCourseStudyUnits(input) {
       calls.units.push(input);
@@ -149,10 +160,34 @@ function materializationPreparationFixture(blocks = 32) {
     explanation: support, explanationPlan: { purpose: "Explicitar a relação.", prerequisites: [], relations: [], sourceIds: [] }, contentReview: { state: "draft" } };
   const plan = { title: TITLE, instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
     curriculum: { modules: [{ lessons: [{ microsequences: [microsequence] }] }] },
-    parts: [{ id: "part", position: 0, title: "Interfaces", intent: "Relacionar conceitos.", microsequences: [microsequence] }] };
+    parts: [{ id: PART, position: 0, title: "Interfaces", intent: "Relacionar conceitos.", microsequences: [microsequence] }] };
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
   return { adapter, support, plan };
 }
+
+test("comparação maior que 1 MiB atravessa MCP e Actions por fragmentos literais pequenos", async () => {
+  const annotationId = '30000000-0000-4000-8000-000000000001';
+  const comparison = largeObservationComparison({ courseId: COURSE.id, courseRevision: COURSE.revision, annotationId });
+  const reference = { annotationId, annotationVersion: 2, targetSetVersion: 1, targetKind: 'study_unit', targetId: 'unit-a' };
+  for (const channel of ['actions', 'mcp']) {
+    const adapter = fixture();
+    adapter.getCourseObservationComparison = async () => comparison;
+    let continuation; let literal = ''; let pages = 0;
+    do {
+      const response = await channelCall(channel, adapter, 'preparar_revisao', { curso: TITLE, comparacao: reference,
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(response.status, 200);
+      assert.ok(response.envelope.length < 100000);
+      assert.equal(response.value.context.fragmento.formato, 'application/json');
+      literal += response.value.context.fragmento.texto;
+      continuation = response.value.context.continuacao;
+      pages++;
+      assert.ok(pages < 200);
+    } while (continuation);
+    assert.ok(pages > 30);
+    assert.deepEqual(JSON.parse(literal).comparacaoDeObservacao, comparison);
+  }
+});
 
 test("planejamento grande tem resumo recuperável, foco local e leitura integral limitada nos dois canais", async () => {
   for (const channel of ["actions", "mcp"]) {
@@ -167,7 +202,7 @@ test("planejamento grande tem resumo recuperável, foco local e leitura integral
     focal.scopeItemIds = ["shared-scope"];
     for (let i = 0; i < 160; i++) lesson.microsequences.push({ id: `other-${i}`, title: `Outro ${i}`,
       objective: "Conteúdo alheio ao foco. ".repeat(100), dependencies: [], scopeItemIds: ["shared-scope"] });
-    plan.parts.push({ id: "other-part", position: 1, title: "Lote alheio", intent: "Conteúdo alheio ao foco.",
+    plan.parts.push({ id: OTHER_PART, position: 1, title: "Lote alheio", intent: "Conteúdo alheio ao foco.",
       microsequences: lesson.microsequences.slice(1) });
     adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision,
       mapApprovalReference: `persisted-map-${adapter.revision}`, plan: structuredClone(plan) });
@@ -493,9 +528,15 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   for (const item of first.context.studyUnits) {
     const metadata = { ...item };
     delete metadata.studyUnit;
-    assert.deepEqual(Object.keys(metadata).sort(), ["authorship", "ordinal", "referenciaRevisao", "revisao"]);
+    assert.deepEqual(Object.keys(metadata).sort(), ["authorship", "inspecaoIA", "ordinal", "referenciaInspecao", "referenciaRevisao", "revisao"]);
     assert.deepEqual(metadata.authorship, {});
     assert.equal(metadata.revisao, "Rascunho");
+    assert.deepEqual(metadata.inspecaoIA, { state: "unregistered" });
+    const inspection = openContentReviewReference(metadata.referenciaInspecao, PRINCIPAL);
+    assert.equal(inspection.courseId, COURSE.id);
+    assert.equal(inspection.targetKind, "study_unit");
+    assert.equal(inspection.targetId, item.studyUnit.id);
+    assert.equal(inspection.basisHash, "b".repeat(64));
     assert.match(metadata.referenciaRevisao, /^[A-Za-z0-9_-]+$/u);
     assert.doesNotMatch(JSON.stringify(metadata), /literal-json-field|requestId|payload|steps|version/u);
   }
@@ -508,6 +549,7 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   assert.deepEqual(adapter.calls.reviews.map(({ courseId, targetKind, targetId }) => ({ courseId, targetKind, targetId })),
     Array.from({ length: first.calls }, () => units.slice(0, 12).map(item => ({ courseId: COURSE.id,
       targetKind: "study_unit", targetId: item.studyUnit.id }))).flat());
+  assert.deepEqual(adapter.calls.inspections, adapter.calls.reviews);
   const second = await readLogicalPage(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
   assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit), units.slice(12).map(item => item.studyUnit));
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
@@ -515,6 +557,7 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
     [...Array(first.calls).fill(null), ...Array(second.calls).fill("unit-12")]);
   assert.equal(adapter.calls.annotations.length, (first.calls + second.calls) * 12);
   assert.equal(adapter.calls.reviews.length, (first.calls + second.calls) * 12);
+  assert.equal(adapter.calls.inspections.length, (first.calls + second.calls) * 12);
 });
 
 test("revisão inclui um apoio literal por microssequência, com proposta e situação separadas", async () => {
@@ -524,7 +567,7 @@ test("revisão inclui um apoio literal por microssequência, com proposta e situ
   const support = { title: "Relação completa", content: [{ id: "support", package: "aralearn.resource.paragraph",
     version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
-    parts: [{ id: "part", position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
+    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
       explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds: [] },
       explanation: support, contentReview: { state: "draft" } }] }] } });
   const read = await execute(adapter, "preparar_revisao", {});

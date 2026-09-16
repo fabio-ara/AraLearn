@@ -149,7 +149,8 @@ test("edição textual reconcilia a resposta praticada sem editor paralelo", () 
         }]
       }
     },
-    feedback: [],
+    feedback: [{ id: "feedback", package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: "A resposta identifica o protocolo do caso." } }],
     topics: []
   };
   const edited = applyManualStudyUnitEdit(unit, "content:body", {
@@ -163,7 +164,9 @@ test("edição textual reconcilia a resposta praticada sem editor paralelo", () 
 
 test("editar alternativas da lacuna preserva identidades e reconcilia apenas a ocorrência da resposta", () => {
   const unit = {
-    id: "answer-options", position: 1, title: "Lacunas", role: "practice", topics: [], feedback: [],
+    id: "answer-options", position: 1, title: "Lacunas", role: "practice", topics: [],
+    feedback: [{ id: "feedback", package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: "O monitor coordena os recursos compartilhados pelas máquinas virtuais." } }],
     content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "O hipervisor controla a VM. Outro hipervisor também controla a VM." } }],
     response: { id: "response", package: "aralearn.response.gap", version: "1.0.0", data: { blanks: [0, 1].map(index => ({
       id: `blank-${index}`, targetInstanceId: "body", targetPath: `text:blank-${index}`, label: `Lacuna ${index + 1}`,

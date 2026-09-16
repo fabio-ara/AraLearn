@@ -35,6 +35,17 @@ const errorSchema = {
         code: { type: "string", minLength: 1, maxLength: 120 },
         message: { type: "string", minLength: 1, maxLength: 1000 },
         retryable: { type: "boolean" },
+        details: { type: "object", additionalProperties: false, required: ["preflight"], properties: {
+          preflight: { type: "object", additionalProperties: false, required: ["state", "referencia", "completion", "blockers"], properties: {
+            state: { type: "string", enum: ["ready", "blocked"] },
+            referencia: { type: ["string", "null"] }, completion: { type: "string", enum: ["complete", "partial"] },
+            blockers: { type: "array", items: { type: "object", additionalProperties: false, required: ["code", "message"], properties: {
+              code: { type: "string" }, message: { type: "string" }, unit: { type: "integer" }, explanation: { type: "integer" },
+              entry: { type: "integer" }, microsequence: { type: "string" }, idea: { type: "string" }, requirement: { type: "string" },
+              studyUnit: { type: "string" }, component: { type: "string" }, resourceId: { type: "string" }, path: { type: "string" }
+            } } }
+          } }
+        } },
         recovery: {
           type: "object", additionalProperties: false, required: ["requestId", "operation"],
           properties: {
@@ -53,9 +64,13 @@ const errorSchema = {
 // Local artifact budgets for the complete contextual catalog (#357), measured
 // after shared-schema projection. They are not OpenAPI import limits: the
 // documented 100,000-character limit concerns each Actions call's payload.
+// Catalog 5.0.0 adds aggregate preflight, exact-basis inspection and multialvo
+// decisions and paged comparison. After shared-fragment factoring the measured
+// baseline is 98.974 minified / 204.676 pretty-printed characters. The per-call
+// 100k guard is unchanged.
 // Acceptance in the actual editor remains a separate hosted release gate.
-const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 180_000;
-const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 90_000;
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
+const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 100_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!resultSchema || actionTools.some(({ outputSchema }) => (
@@ -329,6 +344,33 @@ do {
   for (const entry of repeated.values()) if (Object.hasOwn(document.components.schemas, entry.name) &&
       !all.includes(`"$ref":"#/components/schemas/${entry.name}"`)) {
     delete document.components.schemas[entry.name]; removed = true;
+  }
+} while (removed);
+// Sharing a parent can reduce a generated child's use to one. Inline those
+// single-use fragments after factoring so the final document does not pay for
+// both a reference and a definition that no longer remove any repetition.
+function inlineReference(value, reference, definition) {
+  if (Array.isArray(value)) return value.map(item => inlineReference(item, reference, definition));
+  if (!value || typeof value !== "object") return value;
+  if (value.$ref === reference) {
+    const { $ref: ignored, ...siblings } = value;
+    void ignored;
+    return { ...structuredClone(definition), ...siblings };
+  }
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, inlineReference(item, reference, definition)]));
+}
+do {
+  removed = false;
+  for (const entry of repeated.values()) {
+    const definition = document.components.schemas[entry.name];
+    if (!definition) continue;
+    const reference = `#/components/schemas/${entry.name}`;
+    const occurrences = JSON.stringify(document).split(`"$ref":"${reference}"`).length - 1;
+    if (occurrences !== 1) continue;
+    document.paths = inlineReference(document.paths, reference, definition);
+    document.components.schemas = inlineReference(document.components.schemas, reference, definition);
+    delete document.components.schemas[entry.name];
+    removed = true;
   }
 } while (removed);
 const editorProjectionLength = JSON.stringify(document, null, 2).length;

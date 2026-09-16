@@ -35,6 +35,7 @@ test("referência acadêmica abre PDF sob demanda e vínculo geral não inventa 
   assert.match(html, /Editora sintética/u);
   assert.match(html, /role="img" aria-label="Documento PDF"/u);
   assert.match(html, /Referência do conteúdo; sem trecho específico vinculado/u);
+  assert.doesNotMatch(html, /study-citation-info|Sustentação conceitual|Escopo do conteúdo/u);
   assert.doesNotMatch(html, /data-action="return-citation"|<h3>Relações|Abrir PDF 1|>Trecho 1</u);
   assert.deepEqual(studyCitationMarkers(content, { citations: [source] }), []);
   assert.match(html, /href="https:\/\/example.test\/fonte"[^>]*aria-label="Endereço de Relações entre interfaces"/u);
@@ -77,4 +78,36 @@ test("hiperlink mantém índices da âncora e do anexo correto, sem inventar des
   const web = render(citation({ attachments: [], citationMode: "manual", citationText: "Referência web literal." }));
   assert.match(web, /<a class="study-citation-link" href="https:\/\/example.test\/fonte"/u);
   assert.doesNotMatch(web, /download-citation-attachment/u);
+});
+
+test("um mesmo PDF oferece locais independentes sem duplicar o anexo", () => {
+  const source = citation({ anchors: [3, 18].map((page, index) => ({ anchorId: `page-${page}`,
+    selector: { kind: "page_range", startPage: page, endPage: page }, contentHash: hash,
+    humanLocator: `Capítulo ${index + 1}` })) });
+  const html = render(source);
+  for (const [index, page] of [3, 18].entries()) {
+    assert.match(html, new RegExp(`data-attachment-index="0" data-citation-page="${page}" data-citation-anchor-index="${index}"`, "u"));
+  }
+  assert.equal((html.match(/data-action="download-citation-attachment"/gu) || []).length, 2);
+  assert.equal(source.attachments.length, 1);
+});
+
+test("web oferece locais diretos e conserva a página original com orientação humana de fallback", () => {
+  const source = citation({ attachments: [], url: "https://example.test/fonte?lang=pt#introducao", anchors: [
+    { anchorId: "quote", contentHash: null, selector: { kind: "text_quote", exact: "interfaces & quadros" },
+      humanLocator: "Seção 2 · segundo parágrafo" },
+    { anchorId: "section", contentHash: null, selector: { kind: "uri_fragment", fragment: "definicao" },
+      humanLocator: "Seção Definição" },
+    { anchorId: "fallback", contentHash: null,
+      selector: { kind: "time_range", startMilliseconds: 15000, endMilliseconds: 22000 },
+      humanLocator: "Vídeo na seção Demonstração · 15 a 22 segundos" }
+  ] });
+  const html = render(source);
+  assert.match(html, /href="https:\/\/example.test\/fonte\?lang=pt#introducao"/u);
+  assert.match(html, /href="https:\/\/example.test\/fonte\?lang=pt#introducao:~:text=interfaces%20%26%20quadros"[^>]*rel="noopener noreferrer"/u);
+  assert.match(html, /href="https:\/\/example.test\/fonte\?lang=pt#definicao"/u);
+  assert.match(html, /Seção 2 · segundo parágrafo · “interfaces &amp; quadros”/u);
+  assert.match(html, /<span>Vídeo na seção Demonstração · 15 a 22 segundos · 15–22 s<\/span>/u);
+  assert.match(html, /Se o trecho não abrir automaticamente, use a localização indicada na página original/u);
+  assert.doesNotMatch(html, /download-citation-attachment|destaque confirmado|snapshot/iu);
 });

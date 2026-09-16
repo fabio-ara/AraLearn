@@ -1,4 +1,5 @@
 import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
+import { normalizeEditorialOrigin, normalizeEditorialInterventions } from "../domain/courseEditorialProvenance.js";
 import { normalizeCourseContentReviewState } from "../domain/courseContentReview.js";
 import {
   normalizeCourseAnchoredAnnotationChange,
@@ -30,7 +31,7 @@ import { buildCourseAuthoringRoute } from "./courseAuthoringRoute.js";
 import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 import { createCourseMicrosequenceReview } from "./CourseMicrosequenceReview.js";
 import { CourseAuthoringObservationQueue, authoringObservationQuery, orderAuthoringObservations,
-  isPendingAuthoringObservation } from "./courseAuthoringObservationQueue.js";
+  isPendingAuthoringObservation, observationTargetCatalog, observationDecisionSelection, filterAuthoringObservations, loadObservationComparison } from "./courseAuthoringObservationQueue.js";
 import { renderCourseInspectionMetadata, contentReviewLabel } from "./renderCourseInspectionMetadata.js";
 import { createCourseInspectionPracticePreview } from "./courseInspectionPracticePreview.js";
 import { createCourseInspectionCitations } from "./courseInspectionCitations.js";
@@ -39,6 +40,7 @@ import {
   isObservationTextOverLimit,
   renderStudyUnitObservationComposer,
   renderStudyUnitObservationSheet,
+  renderObservationComparison,
   revealStudyObservationControl,
   validateStudyUnitObservationText
 } from "./renderStudyUnitObservationSheet.js";
@@ -49,8 +51,7 @@ const MAX_PAGE_SIZE = 24;
 const MAX_WINDOW_ITEMS = 36;
 const MAX_PAGE_BYTES = 1_500_000;
 const ANNOTATION_PAGE_SIZE = 24;
-const MAX_ANNOTATIONS_PER_TARGET = 128;
-const MAX_ANNOTATION_PAGES_PER_TARGET = 128;
+const MAX_ANNOTATION_PAGES_PER_TARGET = 512;
 const ENTITY_ID_MAX_LENGTH = 240;
 const DEEP_LINK_MAX_LENGTH = 2_048;
 const POSITION_CHANNEL_NAME = "aralearn.course-authoring-inspection.v1";
@@ -239,13 +240,11 @@ function normalizeAnalysisIdeas(value) {
 function normalizeAuthorship(value) {
   exactRecord(
     value,
-    ["createdOrigin", "lastRevisionOrigin", "design"],
+    ["createdOrigin", "lastRevisionOrigin", "design", ...(Object.hasOwn(value || {}, "interventions") ? ["interventions"] : [])],
     "O estado autoral da unidade é inválido."
   );
-  if (![null, "human", "gpt"].includes(value.createdOrigin) ||
-      ![null, "human", "gpt"].includes(value.lastRevisionOrigin)) {
-    throw new TypeError("A origem autoral da unidade é inválida.");
-  }
+  const createdOrigin = normalizeEditorialOrigin(value.createdOrigin);
+  const lastRevisionOrigin = normalizeEditorialOrigin(value.lastRevisionOrigin);
   exactRecord(value.design, ["application"], "O desenho aplicado é inválido.");
   const application = value.design.application === null
     ? null
@@ -268,19 +267,25 @@ function normalizeAuthorship(value) {
       application.practiceEvidence.map(item => normalizeAnalysisIdea(item, "Uma evidência da prática"));
   }
   return Object.freeze({
-    createdOrigin: value.createdOrigin,
-    lastRevisionOrigin: value.lastRevisionOrigin,
+    createdOrigin,
+    lastRevisionOrigin,
+    ...(value.interventions ? { interventions: normalizeEditorialInterventions(value.interventions) } : {}),
     design: Object.freeze({ application })
   });
 }
 
 function normalizeInspectionItem(value, totalCount) {
+  const optionalFields = [
+    ...(Object.hasOwn(value, "pendingAuthoringObservationCount") ? ["pendingAuthoringObservationCount"] : []),
+    ...(Object.hasOwn(value, "contentReview") ? ["contentReview"] : []),
+    ...(Object.hasOwn(value, "designApplication") ? ["designApplication"] : []),
+    ...(Object.hasOwn(value, "designSnapshot") ? ["designSnapshot"] : [])
+  ];
   exactRecord(
     value,
     [
       "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath",
-      "authoringPart", "authorship", "deepLink", ...(Object.hasOwn(value, "pendingAuthoringObservationCount") ? ["pendingAuthoringObservationCount"] : []),
-      ...(Object.hasOwn(value, "contentReview") ? ["contentReview"] : [])
+      "authoringPart", "authorship", "deepLink", ...optionalFields
     ],
     "Um item de conteúdo é inválido."
   );
@@ -321,6 +326,8 @@ function normalizeInspectionItem(value, totalCount) {
     contentReview: value.contentReview == null ? null : normalizeCourseContentReviewState(value.contentReview),
     pendingAuthoringObservationCount: value.pendingAuthoringObservationCount == null ? null :
       natural(value.pendingAuthoringObservationCount, "A quantidade de observações autorais pendentes"),
+    ...(Object.hasOwn(value, "designApplication") ? { designApplication: value.designApplication == null ? null : structuredClone(value.designApplication) } : {}),
+    ...(Object.hasOwn(value, "designSnapshot") ? { designSnapshot: value.designSnapshot == null ? null : structuredClone(value.designSnapshot) } : {}),
     deepLink
   });
 }
@@ -394,6 +401,10 @@ export function inspectionRequestFromTarget(target) {
       anchorStudyUnitId: target.id
     });
   }
+  if (target.kind === "microsequence_explanation") return Object.freeze({
+    scope: normalizeScope({ kind: "didactic_microsequence", id: target.id }),
+    anchorStudyUnitId: null
+  });
   if (!SCOPE_KINDS.has(target.kind)) throw new TypeError("O alvo de conteúdo é inválido.");
   return Object.freeze({
     scope: normalizeScope({ kind: target.kind, id: target.id }),
@@ -572,9 +583,7 @@ function renderManualModeActions(item, state, editing, observationCount) {
         `${renderUiIcon("tags", "course-authoring-button-icon")}</button>`
       : "") +
     `<button type="button" data-inspection-observations data-study-unit-id="${id}"` +
-    ` data-inspection-control-key="observations:${id}" aria-label="Observações de ${escapeHtml(
-      item.studyUnit.title
-    )}${observationCount === null ? ", contagem ainda não disponível" : `, ${Number(observationCount)} pendentes`}"` +
+    ` data-inspection-control-key="observations:${id}" aria-label="Observações autorais do curso${observationCount === null ? ", contagem ainda não disponível" : `, ${Number(observationCount)} pendentes`}"` +
     ' title="Observações autorais pendentes">' +
     renderUiIcon("prompt", "course-authoring-button-icon") +
     (observationCount === 0 ? "" : `<span class="course-inspection-observation-count" aria-hidden="true">${observationCount === null ? "…" : Number(observationCount)}</span>`) + '</button>' +
@@ -995,26 +1004,32 @@ function renderInspectionObservationSheet(state) {
         studyUnitId: state.observationStudyUnitId
       });
   const sheet = renderStudyUnitObservationSheet({
-    items: batch ? [] : state.observationItems,
+    items: state.observationItems,
     authoringQueue: true,
     draft: state.observationDraft,
     editingId: state.observationEditingId,
     error: state.observationError,
     saving: state.observationSaving,
-    loading: batch ? false : state.observationLoading,
-    title: batch ? `Observação em ${targetCount} unidades` : `Observações · ${state.items.find(item => item.studyUnit.id === state.observationStudyUnitId)?.studyUnit.title || "Unidade"}`,
-    ariaLabel: batch
-      ? `Observação em ${targetCount} unidades de estudo`
-      : "Observações da unidade de estudo",
+    pending: Boolean(state.pendingObservationMutation),
+    recoveryExpired: state.observationRecoveryExpired,
+    loading: state.observationLoading,
+    title: "Observações do curso",
+    ariaLabel: "Central de observações autorais",
     listLabel: "Observações autorais pendentes",
     emptyLabel: "Nenhuma observação autoral pendente neste contexto.",
-    showContributor: true,
+    showContributor: false,
+    availableTargets: state.observationTargetCatalog,
+    filters: state.observationFilters,
+    selectedObservationIds: state.observationSelectedIds,
+    selectedTargetKeysByAnnotation: state.observationDecisionTargets,
+    cancelReason: state.observationCancelReason,
+    selectedTargets: state.observationSelectedTargets || state.observationTargetIds.map(id => ({ kind: "study_unit", id })),
     collectionSummary: state.observationCollectionSummary,
     canonicalHref: buildCourseAuthoringRoute(state.courseId, { section: "review" }),
     showComposer: true,
     composerStudyUnitId: batch ? "" : state.observationStudyUnitId,
     contextMessage: state.observationMessage || (batch
-      ? "O mesmo texto será registrado separadamente em cada unidade selecionada."
+      ? "Uma observação será vinculada aos alvos selecionados."
       : ""),
     actionHref: reviewHref,
     actionLabel: batch
@@ -1154,6 +1169,8 @@ function renderSequence(state, practicePreview) {
       ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.initialFailure)}</p>`
       : state.hydrationFailure
           ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.hydrationFailure)}</p>`
+          : state.intendedRevision != null && state.intendedRevision !== state.pinnedRevision
+              ? '<p class="course-authoring-notice" role="status">O conteúdo mudou desde este link. Você está lendo a versão atual.</p>'
           : "";
   const navigationFailure = state.previousFailure || state.nextFailure;
   let body;
@@ -1162,7 +1179,7 @@ function renderSequence(state, practicePreview) {
   } else if (state.targetMissing) {
     body = '<section class="course-authoring-state is-error" role="alert">' +
       `${renderUiIcon("remove-state", "course-authoring-state-icon")}<h3>Ponto não encontrado</h3>` +
-      '<p>Esta unidade não pertence mais à sequência corrente de conteúdo.</p>' +
+      '<p>O conteúdo solicitado foi removido ou não está disponível neste curso.</p>' +
       '<button type="button" data-inspection-action="start" aria-label="Ir ao início da sequência"' +
       ` title="Ir ao início da sequência">${renderUiIcon(
         "arrow-left",
@@ -1230,8 +1247,8 @@ function renderSequence(state, practicePreview) {
     renderInspectionObservationSheet(state) + "</section>";
 }
 
-function annotationTargetQuery(studyUnitId) {
-  return authoringObservationQuery("study_unit", studyUnitId);
+function annotationTargetQuery() {
+  return authoringObservationQuery();
 }
 
 function normalizeInspectionPosition(value, expectedCourseRevision = null) {
@@ -1260,6 +1277,7 @@ export function createCourseInspectionSequence({
   controller,
   course,
   routeTarget = null,
+  intendedRevision = null,
   initialPosition = null,
   initialFocusKey = "",
   onNavigate = () => {},
@@ -1311,6 +1329,7 @@ export function createCourseInspectionSequence({
     scope: requested.scope,
     explicitTarget: Boolean(routeTarget),
     explicitAnchor: routeTarget?.kind === "study_unit",
+    intendedRevision,
     requestedAnchorStudyUnitId: requested.anchorStudyUnitId,
     items: [],
     emptyScopeContext: null,
@@ -1332,6 +1351,13 @@ export function createCourseInspectionSequence({
     stale: false,
     hydrationFailure: "",
     observationCounts: {},
+    observationTargetCatalog: [],
+    observationSelectedTargets: null,
+    observationFilters: {},
+    observationSelectedIds: [],
+    observationDecisionTargets: {},
+    observationCancelReason: "withdrawal",
+    observationRecoveryExpired: false,
     citations: new Map(),
     emptyMicrosequences: [],
     multipleView: false,
@@ -2053,8 +2079,8 @@ export function createCourseInspectionSequence({
     );
   }
 
-  async function loadTargetObservations(studyUnitId) {
-    const query = annotationTargetQuery(studyUnitId);
+  async function loadTargetObservations() {
+    const query = annotationTargetQuery();
     const items = [];
     let annotationSetVersion = null;
     let cursor = null;
@@ -2076,12 +2102,12 @@ export function createCourseInspectionSequence({
           page.hasMore && seenCursors.has(page.nextCursor)) {
         throw new Error("A paginação de observações não avançou de forma válida.");
       }
-      const available = MAX_ANNOTATIONS_PER_TARGET - items.length;
-      items.push(...page.items.slice(0, available));
+      items.push(...page.items);
       annotationSetVersion = page.annotationSetVersion;
       const pendingTotal = (summary.byState.open || 0) + (summary.byState.considered || 0);
       const activeTotal = pendingTotal + (summary.byState.resolved || 0);
-      if (items.length === MAX_ANNOTATIONS_PER_TARGET || !page.hasMore) {
+      if (!page.hasMore) {
+        if (items.length !== summary.matchingTotal) throw new Error("A central está incompleta; atualize antes de decidir.");
         return {
           items: orderAuthoringObservations(items.filter(isPendingAuthoringObservation)),
           matchingTotal: summary.matchingTotal,
@@ -2115,6 +2141,7 @@ export function createCourseInspectionSequence({
     state.selectionComposerOpen = false;
     state.observationStudyUnitId = studyUnitId;
     state.observationTargetIds = [studyUnitId];
+    state.observationSelectedTargets = [{ kind: "study_unit", id: studyUnitId }];
     state.observationSheetOpen = true;
     state.observationItems = [];
     state.observationCollectionSummary = null;
@@ -2141,6 +2168,10 @@ export function createCourseInspectionSequence({
         state.observationMessage = "Confirme o resultado do envio pendente antes de adicionar outra observação.";
       }
       const observations = await loadTargetObservations(studyUnitId);
+      if (typeof controller.loadCourseDocument === "function") {
+        const loaded = await loadCourseSearchIndex();
+        state.observationTargetCatalog = observationTargetCatalog(loaded.project, state.courseId);
+      }
       if (state.destroyed || epoch !== observationEpoch) return false;
       state.observationItems = observations.items;
       state.observationCollectionSummary = observations;
@@ -2163,7 +2194,7 @@ export function createCourseInspectionSequence({
     }
   }
 
-  function openBatchObservations() {
+  async function openBatchObservations() {
     const targetIds = [...state.selectedStudyUnitIds];
     if (targetIds.length < 1 || state.observationSaving) return false;
     if (state.manualSaving || state.manualUnknownSignature || state.manualStudyUnitId && manualDraftChanged()) {
@@ -2182,10 +2213,11 @@ export function createCourseInspectionSequence({
     const anchor = captureAnchor();
     anchor.controlKey = "";
     anchor.openControlKeys = [];
-    ++observationEpoch;
+    const epoch = ++observationEpoch;
     state.observationStudyUnitId = targetIds[0];
     state.observationTargetIds = targetIds;
-    state.observationSheetOpen = false;
+    state.observationSelectedTargets = targetIds.map(id => ({ kind: "study_unit", id }));
+    state.observationSheetOpen = true;
     state.observationSelectionDraft = true;
     state.selectionComposerOpen = true;
     state.observationItems = [];
@@ -2200,6 +2232,24 @@ export function createCourseInspectionSequence({
     state.observationLoading = false;
     state.restoreObservationFocus = true;
     render({ anchor });
+    try {
+      const observations = await loadTargetObservations();
+      if (state.destroyed || epoch !== observationEpoch) return false;
+      state.observationItems = observations.items; state.observationCollectionSummary = observations;
+      if (typeof controller.loadCourseDocument === "function") {
+        const loaded = await loadCourseSearchIndex();
+        if (state.destroyed || epoch !== observationEpoch) return false;
+        state.observationTargetCatalog = observationTargetCatalog(loaded.project, state.courseId);
+      }
+    } catch (error) {
+      if (state.destroyed || epoch !== observationEpoch) return false;
+      state.observationError = publicErrorMessage(error, "Não foi possível carregar a central.");
+    } finally {
+      if (!state.destroyed && epoch === observationEpoch) {
+        state.restoreObservationFocus = true;
+        render();
+      }
+    }
     return true;
   }
 
@@ -2222,11 +2272,12 @@ export function createCourseInspectionSequence({
     }
     state.pendingBatchObservation ||= {
       draft: structuredClone(draft),
-      requests: targetIds.map((targetId) => {
+      requests: targetIds.slice(0, 1).map((targetId) => {
         const command = normalizeCourseAnchoredAnnotationCommand({
           type: "create_anchored_annotation",
           annotationId: createUuid(),
           target: { kind: "study_unit", id: targetId },
+          targets: state.observationSelectedTargets || targetIds.map(id => ({ kind: "study_unit", id })),
           rawText,
           category,
           briefSummary: null,
@@ -2314,7 +2365,7 @@ export function createCourseInspectionSequence({
     if (!state.pendingObservationMutation) {
       state.pendingObservationMutation = null;
     }
-    const expectedCourseRevision = normalized.type === "create_anchored_annotation"
+    const expectedCourseRevision = ["create_anchored_annotation", "retarget_anchored_annotation"].includes(normalized.type)
       ? state.pinnedRevision
       : null;
     const request = state.pendingObservationMutation?.request || {
@@ -2413,8 +2464,9 @@ export function createCourseInspectionSequence({
     try {
       const page = await readCoherentPage(pageOptions({ anchorStudyUnitId, entry }), epoch);
       if (state.destroyed || epoch !== requestEpoch) return false;
-      if (anchorStudyUnitId && page.items.length === 0 && page.totalCount > 0) {
+      if (anchorStudyUnitId && !page.items.some(item => item.studyUnit.id === anchorStudyUnitId)) {
         if (state.explicitAnchor) {
+          state.items = [];
           state.targetMissing = true;
           state.totalCount = page.totalCount;
           state.scopeOptions = page.scopeOptions;
@@ -2433,8 +2485,17 @@ export function createCourseInspectionSequence({
           const scopeId = state.scope.kind === "course" ? state.courseId : state.scope.id;
           state.emptyScopeContext = index.find(({ kind, id }) =>
             kind === state.scope.kind && id === scopeId) || null;
+          let partMembers = null;
+          if (state.scope.kind === "authoring_part") {
+            const plan = await controller.loadAuthoringPlan(state.courseId);
+            if (state.destroyed || epoch !== requestEpoch) return false;
+            if (plan.courseId !== state.courseId || plan.courseRevision !== state.pinnedRevision) {
+              throw new Error("O planejamento mudou durante a leitura.");
+            }
+            partMembers = new Set(plan.plan.parts.find(part => part.id === scopeId)?.microsequences.map(item => item.id) || []);
+          }
           state.emptyMicrosequences = index.filter(entry => entry.kind === "didactic_microsequence" &&
-            (state.scope.kind === "course" || entry.entityPath.includes(scopeId)));
+            (partMembers ? partMembers.has(entry.id) : state.scope.kind === "course" || entry.entityPath.includes(scopeId)));
         } catch {
           state.emptyScopeContext = null;
         }
@@ -3443,6 +3504,55 @@ export function createCourseInspectionSequence({
     if (observationAction) {
       const action = observationAction.dataset.observationAction;
       const annotationId = observationAction.dataset.observationId;
+      if (action === "compare") {
+        const item = state.observationItems.find(value => value.annotationId === annotationId);
+        const panel = observationAction.closest('[data-observation-comparison]'); observationAction.disabled = true;
+        try {
+          const target = await loadObservationComparison(controller, state.courseId, item, observationAction.dataset.observationTargetKey);
+          if (panel.isConnected) panel.innerHTML = renderObservationComparison(target);
+        } catch (error) { observationAction.disabled = false; observationAction.textContent = publicErrorMessage(error, 'Não foi possível carregar. Tente novamente.'); }
+        return true;
+      }
+      if (action === "refresh") return openObservations(state.observationStudyUnitId);
+      if (action === "retry" || action === "abandon-expired") {
+        const queue = new CourseAuthoringObservationQueue({ controller, courseId: state.courseId, targetKind: "study_unit",
+          targetId: state.observationStudyUnitId, expectedRevision: state.pinnedRevision });
+        try {
+          await queue.restorePending();
+          if (action === 'abandon-expired') await queue.abandonExpiredAttempt(); else await queue.resumeDecisions();
+          state.pendingObservationMutation = null; state.observationRecoveryExpired = false; return openObservations(state.observationStudyUnitId);
+        } catch (error) { state.observationRecoveryExpired = error.code === 'observation_recovery_expired'; state.observationError = publicErrorMessage(error, "A mesma tentativa continua pendente."); render(); return true; }
+      }
+      if (/^(approve|cancel)(-|$)/u.test(action) && action !== "cancel-edit") {
+        if (state.observationSaving) return true;
+        const selectedIds = new Set([...root.querySelectorAll("[data-observation-select]:checked")].map(node => node.dataset.observationId));
+        const presented = filterAuthoringObservations(state.observationItems, state.observationFilters).filter(value => value.targetSetVersion);
+        const items = annotationId ? presented.filter(item => item.annotationId === annotationId)
+          : action.endsWith("-all") ? presented : presented.filter(item => selectedIds.has(item.annotationId));
+        if (!items.length) { state.observationError = "Selecione as observações que deseja decidir."; render(); return true; }
+        const targetKeysByAnnotation = observationDecisionSelection(root);
+        const decision = action.startsWith("approve") ? "approve" : "cancel";
+        const reason = decision === "cancel" ? root.querySelector("[data-observation-cancel-reason]").value : null;
+        const queue = new CourseAuthoringObservationQueue({ controller, courseId: state.courseId, targetKind: "study_unit",
+          targetId: state.observationStudyUnitId, expectedRevision: state.pinnedRevision });
+        state.observationSaving = true; state.observationError = ""; render();
+        try {
+          await queue.restorePending(); await queue.decide(items, { decision, reason, targetKeysByAnnotation });
+          const observations = await loadTargetObservations(); state.observationItems = observations.items;
+          state.observationCollectionSummary = observations; state.observationMessage = "Decisão salva.";
+        } catch (error) { state.observationError = publicErrorMessage(error, "A decisão não pôde ser confirmada; a pendência foi preservada."); }
+        finally { state.observationSaving = false; render(); }
+        return true;
+      }
+      if (action === "retarget") {
+        const item = state.observationItems.find(value => value.annotationId === annotationId);
+        const select = [...root.querySelectorAll("[data-observation-retarget]")].find(node => node.dataset.observationRetarget === annotationId);
+        const targets = [...(select?.selectedOptions || [])].map(option => {
+          const split = option.value.indexOf(":"); return { kind: option.value.slice(0, split), id: option.value.slice(split + 1) };
+        });
+        return mutateObservation({ type: "retarget_anchored_annotation", annotationId, expectedAnnotationVersion: item.annotationVersion,
+          expectedTargetSetVersion: item.targetSetVersion, targets }, "Alvos atualizados.");
+      }
       if (action === "close") {
         if (state.pendingBatchObservation || state.pendingObservationMutation || state.observationSaving) {
           state.observationError = state.pendingBatchObservation
@@ -3542,6 +3652,22 @@ export function createCourseInspectionSequence({
   }
 
   function handleChange(event) {
+    if (event.target.matches?.('[data-observation-filter]')) {
+      state.observationFilters[event.target.dataset.observationFilter] = event.target.value; render(); return;
+    }
+    if (event.target.matches?.('[data-observation-select]')) {
+      state.observationSelectedIds = [...root.querySelectorAll('[data-observation-select]:checked')].map(node => node.dataset.observationId); return;
+    }
+    if (event.target.matches?.('[data-observation-target-select]')) {
+      state.observationDecisionTargets = { ...state.observationDecisionTargets, ...observationDecisionSelection(root) }; return;
+    }
+    if (event.target.matches?.('[data-observation-cancel-reason]')) { state.observationCancelReason = event.target.value; return; }
+    if (event.target.matches?.("[data-observation-new-targets]")) {
+      state.observationSelectedTargets = [...event.target.selectedOptions].map(option => {
+        const split = option.value.indexOf(":"); return { kind: option.value.slice(0, split), id: option.value.slice(split + 1) };
+      });
+      return;
+    }
     if (event.target.matches?.("[data-field='study-unit-observation-category']")) {
       state.observationDraft.category = event.target.value || null;
       state.observationDraftStudyUnitId = String(
@@ -3585,7 +3711,7 @@ export function createCourseInspectionSequence({
       render();
       return;
     }
-    if (state.observationSelectionDraft && !state.observationSheetOpen || state.observationTargetIds.length > 1) {
+    if (!state.observationEditingId && (state.observationSelectionDraft && !state.observationSheetOpen || state.observationTargetIds.length > 1)) {
       void mutateBatchObservation(
         state.observationTargetIds,
         rawText,
@@ -3613,7 +3739,8 @@ export function createCourseInspectionSequence({
       briefSummary: editing.briefSummary
     } : {
       type: "create_anchored_annotation",
-      target: { kind: "study_unit", id: submittedStudyUnitId },
+      target: state.observationSelectedTargets?.[0] || { kind: "study_unit", id: submittedStudyUnitId },
+      ...(state.observationSelectedTargets ? { targets: state.observationSelectedTargets } : {}),
       rawText,
       category: state.observationDraft.category,
       briefSummary: null
@@ -3773,16 +3900,30 @@ export function createCourseInspectionSequence({
         (!routeTarget || routeTarget.id === position.studyUnitId)
       );
       if (restorePersistedPosition) {
-        state.scope = normalizeScope(position.scope);
+        // A saved scope is only contextual. An explicit link identifies the object,
+        // including when that object has moved to another part since the last visit.
+        state.scope = routeTarget?.kind === "study_unit" && position.courseRevision !== state.pinnedRevision
+          ? requested.scope : normalizeScope(position.scope);
         state.requestedAnchorStudyUnitId = canonicalId(
           position.studyUnitId,
           "A unidade de estudo da posição"
         );
       }
-      return loadInitial({
+      const opened = await loadInitial({
         anchorStudyUnitId: state.requestedAnchorStudyUnitId,
         offset: restorePersistedPosition ? Number(position.offsetFromStickyTop || 0) : 0
       });
+      if (opened && state.canReviewContent && (routeTarget?.kind === "microsequence_explanation" ||
+          state.items.length === 0 && state.emptyMicrosequences.length > 0 &&
+          ["authoring_part", "didactic_microsequence"].includes(routeTarget?.kind))) {
+        const microsequenceId = routeTarget.kind === "microsequence_explanation"
+          ? routeTarget.id : state.emptyMicrosequences[0].id;
+        await contentReview.open({ courseId: state.courseId, microsequenceId,
+          expectedRevision: state.pinnedRevision, intendedRevision,
+          button: [...(root.querySelectorAll?.("[data-microsequence-id]") || [])]
+            .find(node => node.dataset.microsequenceId === microsequenceId) || null });
+      }
+      return opened;
     },
     loadMore(direction = "forward") {
       return loadDirection(direction);

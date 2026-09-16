@@ -439,6 +439,24 @@ function courseSourcePdfDownloadQuery(request) {
   };
 }
 
+function courseObservationComparisonQuery(request) {
+  const url = new URL(request.url);
+  if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength > ANCHORED_ANNOTATIONS_REQUEST_TARGET_LIMIT_BYTES) {
+    fail("course_anchored_annotations_query_too_large", "A consulta de comparação excede 8 KiB.", null, 414);
+  }
+  const allowed = new Set(["targetKind", "targetId", "expectedAnnotationVersion", "expectedTargetSetVersion"]);
+  if ([...url.searchParams.keys()].some(key => !allowed.has(key) || url.searchParams.getAll(key).length !== 1)) {
+    fail("invalid_course_observation_comparison", "A comparação recebeu parâmetros incompatíveis.");
+  }
+  const targetKind = url.searchParams.get("targetKind"), targetId = url.searchParams.get("targetId");
+  if (!["study_unit", "microsequence_explanation"].includes(targetKind) || !boundedCourseSourceId(targetId)) {
+    fail("invalid_course_observation_comparison", "O alvo da comparação é inválido.");
+  }
+  return { targetKind, targetId,
+    expectedAnnotationVersion: positiveInteger(url.searchParams.get("expectedAnnotationVersion"), "expectedAnnotationVersion"),
+    expectedTargetSetVersion: positiveInteger(url.searchParams.get("expectedTargetSetVersion"), "expectedTargetSetVersion") };
+}
+
 function courseAnchoredAnnotationsQuery(request, courseId) {
   const url = new URL(request.url);
   if (new TextEncoder().encode(`${url.pathname}${url.search}`).byteLength >
@@ -1272,6 +1290,12 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
         deadlineAt
       })
     };
+  }
+  if (route.name === "getCourseObservationComparison") {
+    assertPrincipal(principal);
+    return { requestId: null, data: await adapter.getCourseObservationComparison({ principal,
+      courseId: route.courseId, annotationId: route.annotationId,
+      ...courseObservationComparisonQuery(request), deadlineAt }) };
   }
   if (route.name === "getCourseAnchoredAnnotations") {
     assertPrincipal(principal);

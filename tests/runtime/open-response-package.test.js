@@ -43,7 +43,7 @@ function practiceUnit() {
   };
 }
 
-test("resposta aberta é um componente genuíno, consultável pela função didática", () => {
+test("resposta aberta permanece legível como legado e sai da descoberta para nova autoria", () => {
   const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(({ id }) =>
     id === "aralearn.response.open");
   assert.equal(manifest.label, "Resposta aberta");
@@ -57,7 +57,8 @@ test("resposta aberta é um componente genuíno, consultável pela função did�
     taskOperationIds: ["task_operation.explain"],
     practiceModeIds: ["practice.typing"]
   });
-  assert.equal(search.candidates[0].packageId, "aralearn.response.open");
+  assert.equal(manifest.authoringEligibility, "legacy_only");
+  assert.equal(search.candidates.some(item => item.packageId === "aralearn.response.open"), false);
   const openProfile = RESOURCE_CATALOG.getProfile(
     "aralearn.response.open",
     "1.0.0"

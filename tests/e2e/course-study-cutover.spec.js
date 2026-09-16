@@ -1079,19 +1079,21 @@ test("sheet de Observações preserva toque e enquadramento em 360/390/430/1280"
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; }));
     const beforeCategory = await positions();
     expect(beforeCategory[0].width).toBe(Math.min(width, 430));
-    const categoryAccess = page.locator(".study-observation-category-disclosure > summary");
-    await categoryAccess.click();
     const category = page.getByRole("combobox", { name: "Categoria da observação (opcional)" });
     await expect(category).toBeVisible();
     await category.selectOption("question");
     await expect(category).toHaveValue("question");
     expect(await positions()).toEqual(beforeCategory);
-    const panel = await page.locator(".study-observation-category-panel").boundingBox();
-    expect(panel.x).toBeGreaterThanOrEqual(beforeCategory[0].x);
-    expect(panel.x + panel.width).toBeLessThanOrEqual(beforeCategory[0].x + beforeCategory[0].width);
-    expect(panel.y).toBeGreaterThanOrEqual(beforeCategory[0].y);
-    if (width === 430) await page.screenshot({ path: testInfo.outputPath("observations-category-open.png") });
-    await categoryAccess.click();
+    const categoryBox = await category.boundingBox();
+    expect(categoryBox.x).toBeGreaterThanOrEqual(beforeCategory[0].x);
+    expect(categoryBox.x + categoryBox.width).toBeLessThanOrEqual(beforeCategory[0].x + beforeCategory[0].width);
+    expect(categoryBox.y).toBeGreaterThanOrEqual(beforeCategory[0].y);
+    expect(categoryBox.height).toBe(44);
+    await category.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(category).toHaveValue("possible_error");
+    await expect(category).toBeFocused();
+    if (width === 430) await page.screenshot({ path: testInfo.outputPath("observations-category-selected.png") });
     expect(await positions()).toEqual(beforeCategory);
     const stableHeight = beforeCategory[0].height;
     await page.getByRole("textbox", { name: "Observação" }).fill("observação ".repeat(180));
@@ -1145,12 +1147,18 @@ test("sheet em edição agrupa revisão e envio por ícone, com categoria sem de
     await expect(review).toHaveText("");
     await expect(review).toHaveAttribute("title", "Revisar observações abertas desta unidade");
     await expect(review).toHaveAttribute("href", /section=review&studyUnitId=unit-synthetic$/);
-    for (const control of await actions.locator("button, a, summary").all()) {
+    for (const control of await actions.locator("button, a").all()) {
       const box = await control.boundingBox();
       expect(box.width).toBe(44); expect(box.height).toBe(44); expect(box.y).toBe(before.y);
     }
-    await actions.locator("summary").focus(); await page.keyboard.press("Enter");
     const category = page.getByRole("combobox", { name: "Categoria da observação (opcional)" });
+    const categoryBox = await category.boundingBox();
+    expect(categoryBox.width).toBeGreaterThanOrEqual(44); expect(categoryBox.height).toBe(44);
+    expect(categoryBox.y).toBe(before.y);
+    expect(categoryBox.x).toBeGreaterThanOrEqual(before.x);
+    expect(categoryBox.x + categoryBox.width).toBeLessThanOrEqual(before.x + before.width);
+    await category.focus();
+    await expect(category).toBeFocused();
     await expect(category).toHaveValue("suggestion");
     await category.selectOption("reformulation_request");
     expect(await actions.boundingBox()).toEqual(before);

@@ -21,6 +21,24 @@ const MCP_RESOURCE =
   "https://project.example/functions/v1/aralearn-authoring-mcp";
 const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
 
+test("comparação lê apenas o alvo autorizado e valida as identidades da resposta", async () => {
+  const calls = [];
+  const comparison = { contract: "aralearn.course-observation-comparison.v1", courseId: COURSE_ID, courseRevision: 7,
+    annotationId: PART_ID, annotationVersion: 3, targetSetVersion: 2, target: { kind: "study_unit", id: "unit-a" },
+    basis: null, current: { hash: "a".repeat(64), content: { id: "unit-a", title: "Vigente" }, sourceLinks: [], sources: [] } };
+  const value = adapter(async (url, init) => {
+    assert.ok(url.endsWith("/get_course_observation_comparison_for_actor_v1"));
+    calls.push(JSON.parse(init.body)); return json(comparison);
+  });
+  const args = { principal: { actorId: USER_ID }, courseId: COURSE_ID, annotationId: PART_ID,
+    targetKind: "study_unit", targetId: "unit-a", expectedAnnotationVersion: 3, expectedTargetSetVersion: 2 };
+  assert.deepEqual(await value.getCourseObservationComparison(args), comparison);
+  assert.deepEqual(calls[0], { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_annotation_id: PART_ID,
+    p_target_kind: "study_unit", p_target_id: "unit-a", p_expected_annotation_version: 3, p_expected_target_set_version: 2 });
+  comparison.target.id = "other";
+  await assert.rejects(value.getCourseObservationComparison(args), error => error.code === "course_service_unavailable");
+});
+
 function analyticsSnapshot() {
   const scope = { kind: "course", ref: null, label: "Curso" };
   return {
@@ -1552,15 +1570,44 @@ test("materialização envia repertório e alvos no mesmo commit das unidades", 
     planItemUpserts,
     targetPlanItems,
     units,
-    explanations
+    explanations,
+    placements: [{ studyUnitId: "unit-a", didacticMicrosequenceId: "micro-a", position: 1 }],
+    complete: false
   });
 
   assert.deepEqual(payload.p_plan_item_upserts, planItemUpserts);
   assert.deepEqual(payload.p_target_plan_items, targetPlanItems);
   assert.deepEqual(payload.p_units, units);
   assert.deepEqual(payload.p_explanations, explanations);
+  assert.deepEqual(payload.p_placements, [{ studyUnitId: "unit-a", didacticMicrosequenceId: "micro-a", position: 1 }]);
+  assert.equal(payload.p_complete, false);
   assert.equal(typeof payload.p_request_hash, "string");
   assert.equal(payload.p_request_hash.length, 64);
+});
+
+test("parecer IA usa base/identidade do alvo e recusa resposta de outro objeto", async () => {
+  const calls = [];
+  const report = { summary: "Explicação inspecionada.", outcome: "consistent", findings: [] };
+  const basisHash = "a".repeat(64);
+  const read = { contract: "aralearn.course-ai-inspection.v1", courseId: COURSE_ID, courseRevision: 7,
+    targetKind: "microsequence_explanation", targetId: "micro-a", basisHash,
+    inspection: { state: "pending", basisHash } };
+  const value = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body); calls.push({ url, payload });
+    if (url.endsWith("/rpc/get_course_ai_inspection_for_actor_v1")) return json(read);
+    assert.match(url, /\/rpc\/record_course_ai_inspection_for_actor_v1$/u);
+    return json({ ...read, contract: "aralearn.course-ai-inspection-change.v1", courseRevision: 8, changed: true, idempotent: false,
+      inspection: { state: "current", basisHash, inspectedAt: "2026-09-16T00:00:00Z", report } });
+  });
+  const request = { principal: { actorId: USER_ID }, courseId: COURSE_ID, targetKind: "microsequence_explanation", targetId: "micro-a" };
+  assert.equal((await value.getCourseContentInspection(request)).inspection.state, "pending");
+  const result = await value.recordCourseContentInspection({ ...request, expectedBasisHash: basisHash, report, requestId: "request-inspection-1" });
+  assert.equal(result.inspection.state, "current");
+  assert.deepEqual(calls[1].payload.p_report, report);
+  assert.equal(calls[1].payload.p_expected_basis_hash, basisHash);
+  assert.equal(Object.hasOwn(calls[1].payload, "p_reviewed"), false);
+  const wrong = adapter(async () => json({ ...read, targetId: "other-object" }));
+  await assert.rejects(wrong.getCourseContentInspection(request), error => error.code === "course_service_unavailable");
 });
 
 test("lê inspeção curricular com revisão, fila, evidência da prática e link exato da Unidade", async () => {
@@ -1601,6 +1648,11 @@ test("lê inspeção curricular com revisão, fila, evidência da prática e lin
         },
         version: 2,
         contentReview: { state: "draft" },
+        designApplication: { contract: "aralearn.study-unit-design-application.v1", mode: "expository",
+          introducedInstructionalAnalysisUnitIds: [PLAN_ID], usedInstructionalAnalysisUnitIds: [], curriculumScopeItemIds: [],
+          explanationApplications: [{ instructionalAnalysisUnitId: PLAN_ID, developedForms: ["plain_definition"], notApplicable: [] }],
+          practiceApplications: [], componentRefs: ["aralearn.resource.paragraph@1.0.0"] },
+        designSnapshot: { contract: "aralearn.study-unit-design-snapshot.v2", instructionalAnalysisUnitIds: [PLAN_ID], evidenceRequirementIds: [] },
         pendingAuthoringObservationCount: 2,
         updatedAt: "2026-08-17T10:00:00Z",
         ordinal: 1,
@@ -1666,6 +1718,9 @@ test("lê inspeção curricular com revisão, fila, evidência da prática e lin
   assert.equal(payload.p_anchor_study_unit_id, "unit-a");
   assert.equal(payload.p_max_bytes, 262144);
   assert.deepEqual(result.items[0].contentReview, { state: "draft" });
+  assert.equal(result.items[0].authorship.createdOrigin, "ai");
+  assert.deepEqual(result.items[0].designApplication.introducedInstructionalAnalysisUnitIds, [PLAN_ID]);
+  assert.equal(result.items[0].designSnapshot.contract, "aralearn.study-unit-design-snapshot.v2");
   assert.equal(result.items[0].pendingAuthoringObservationCount, 2);
   assert.deepEqual(result.items[0].authorship.design.application.practiceEvidence,
     [{ name: "Justificar a porta escolhida", description: "Relacionar a tabela MAC à porta de saída." }]);

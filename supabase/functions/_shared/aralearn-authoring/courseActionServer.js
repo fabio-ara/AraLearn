@@ -1,4 +1,5 @@
 import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
+import { normalizeHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 import { createAuthoringActionOAuthHandler } from "./actionOAuthServer.js";
 import {
   COURSE_HUMAN_TASK_CATALOG_HEADER,
@@ -14,7 +15,7 @@ import {
 } from "./security.js";
 import { isTrustedOpenAiFileHost } from "./openAiTemporaryFile.js";
 import { readActionPayload, serializeActionPayload } from "./courseActionPayload.js";
-import { projectHumanWriteRecovery } from "./toolErrorEnvelope.js";
+import { projectHumanWriteRecovery, projectHumanMaterializationPreflight } from "./toolErrorEnvelope.js";
 import { decodeCourseActionTaskRequest, isCourseActionOperation } from "./courseActionBindings.js";
 
 const JSON_HEADERS = Object.freeze({
@@ -115,11 +116,12 @@ function normalizedResult(value) {
       !(value.deepLink === null || typeof value.deepLink === "string") ||
       !(value.nextDecision === null || typeof value.nextDecision === "string") ||
       Object.keys(value).some((field) => !new Set([
-        "result", "deepLink", "nextDecision", "context"
+        "result", "deepLink", "nextDecision", "context", "links"
       ]).has(field))) {
     throw new AuthoringApiError(502, "invalid_human_task_result", "A tarefa devolveu um resultado inválido.");
   }
-  return value;
+  try { return { ...value, ...normalizeHumanNavigationEnvelope(value) }; }
+  catch { throw new AuthoringApiError(502, "invalid_human_task_result", "A tarefa devolveu destinos incompatíveis com o conteúdo indicado."); }
 }
 
 function retryableError(error) {
@@ -131,6 +133,7 @@ function retryableError(error) {
 }
 
 function nextDecisionForError(error, retryable) {
+  if (projectHumanMaterializationPreflight(error)) return "Resolva os bloqueios e releia preparar_materializacao antes de produzir na mesma base.";
   if (error.code === "ambiguous_human_reference") {
     return "Informe um título mais específico ou a posição humana do objeto.";
   }
@@ -183,6 +186,7 @@ function publicError(error, { writeTaskStarted = false } = {}) {
     };
   }
   const retryable = retryableError(error);
+  const preflight = projectHumanMaterializationPreflight(error);
   return {
     error: {
       code: retryable
@@ -191,7 +195,8 @@ function publicError(error, { writeTaskStarted = false } = {}) {
       message: retryable
         ? "Não consegui concluir esta etapa."
         : String(error.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
-      retryable
+      retryable,
+      ...(preflight ? { details: { preflight } } : {})
     },
     nextDecision: nextDecisionForError(error, retryable)
   };

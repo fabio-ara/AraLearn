@@ -348,8 +348,8 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   canonical.content[0].data.text = "Conteúdo canônico reconciliado.";
   const originalReview = { state: "current", reviewedAt: "2026-08-20T12:00:00.000Z" };
   const originalAuthorship = {
-    createdOrigin: "gpt",
-    lastRevisionOrigin: "gpt",
+    createdOrigin: "ai",
+    lastRevisionOrigin: "ai",
     design: {
       application: {
         mode: "expository",
@@ -365,7 +365,7 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   };
   const canonicalReview = { ...originalReview, state: "stale" };
   const canonicalAuthorship = {
-    createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null }
+    createdOrigin: "ai", lastRevisionOrigin: "human", design: { application: null }
   };
   let online = true;
   const navigatorValue = { get onLine() { return online; } };
@@ -499,7 +499,7 @@ test("receipt confirmado sobrevive ao reload offline e a releitura canônica sub
   assert.deepEqual(offlineInspection.items[0].studyUnit, submitted);
   assert.equal(offlineInspection.items[0].contentReview, null);
   assert.deepEqual(offlineInspection.items[0].authorship, {
-    createdOrigin: "gpt", lastRevisionOrigin: null, design: { application: null }
+    createdOrigin: "ai", lastRevisionOrigin: null, design: { application: null }
   });
   assert.deepEqual(offlineInspection.items[0].curriculumPath, {
     module: { id: "module-a", position: 0, title: "Módulo A" },

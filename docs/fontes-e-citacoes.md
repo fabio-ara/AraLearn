@@ -6,12 +6,21 @@ No AraLearn, a **fonte** é o cadastro da obra ou material. A **referência bibl
 
 Esses registros ajudam a voltar ao material durante a revisão. Conferir a interpretação exige ler a fonte e compará-la com a afirmação. Formatar uma referência ou anexar um PDF realiza outra parte do trabalho: torna o material identificável e, quando autorizado, acessível.
 
+Toda afirmação substantiva factual, conceitual, histórica, científica ou técnica
+precisa de evidência. Afirmações contíguas sustentadas pela mesma passagem podem
+compartilhar uma citação. Exemplos construídos, transições pedagógicas e
+instruções não exigem citação artificial. Um vínculo geral, sem ocorrência no
+texto ou sem âncora na obra, não comprova sustentação; uma fonte exclusivamente
+curricular também não conta como evidência técnica. A autoria precisa conferir
+a cobertura e a correspondência entre afirmação e passagem: a validação dos
+registros não substitui essa leitura.
+
 ## Registrar a obra e seu papel
 
 Em **Fontes**, o nome da explicação ou unidade aparece abaixo do cabeçalho para
 identificar o texto em edição. **Referências deste texto** reúne seus vínculos;
-**Fontes do curso** apresenta o acervo em linhas bibliográficas, no estilo ABNT
-ou APA escolhido para o curso. Abrir uma referência leva à ficha da obra. O
+**Adicionar fonte** abre **Fontes do curso**, com o acervo em linhas bibliográficas,
+no estilo ABNT ou APA escolhido para o curso. Abrir uma referência leva à ficha da obra. O
 ícone de endereço abre sua página ou PDF remoto; o sinal de adição inicia uma
 citação no texto em edição.
 
@@ -83,13 +92,14 @@ número é gerado conforme a posição da referência e aparece junto ao trecho 
 leitura; não é necessário digitar o marcador no conteúdo.
 
 Novos vínculos de uma unidade ou explicação precisam de um trecho localizado no
-texto salvo. A seleção conserva contexto suficiente para distinguir passagens
+texto salvo e de uma passagem vigente na obra, ligada ao PDF correspondente ou
+com localização humana precisa. A seleção conserva contexto suficiente para distinguir passagens
 repetidas. Vínculos gerais já salvos continuam disponíveis, mesmo sem ocorrência;
 podem receber uma seleção quando a passagem for conferida. Fontes previstas em
 itens do planejamento podem continuar relacionadas ao item inteiro.
 
-Em **Uso e trecho da fonte**, indique como a obra foi utilizada e, quando
-conhecido, onde conferir a passagem no material original. Uma adaptação reconhece
+Em **Trecho na fonte**, escolha onde conferir a passagem no material original.
+Em **Opções da referência**, indique como a obra foi utilizada. Uma adaptação reconhece
 o material que serviu de base a uma formulação; um contraste coloca a afirmação
 em relação com outra posição; uma citação direta identifica a origem das palavras
 reproduzidas e exige localização na fonte. O papel e a relação precisam
@@ -107,6 +117,30 @@ Uma fonte selecionada para um vínculo ainda em rascunho pode ser aberta para in
 
 Se uma edição impedir localizar o trecho citado com precisão, o vínculo é conservado para conferência. Acrescentar dados bibliográficos ou corrigir uma localização deve preservar a identidade da fonte. Aposentar uma fonte impede novos vínculos, mas conserva referências existentes; retirar acesso a um arquivo é uma ação diferente.
 
+**Mover citação para outro trecho** abre uma nova seleção de texto e conserva a
+passagem da obra. **Remover esta citação** retira apenas aquela ocorrência; ao
+retirar a última, o vínculo sai do texto. **Remover deste texto** retira todas
+as ocorrências daquele vínculo. Essas ações conservam a prosa, a fonte no
+acervo e seus outros usos; os números se ajustam à lista restante.
+
+## Inspeção por IA
+
+A edição humana salva continua vigente. Alterar conteúdo, citações, metadados
+utilizados ou o estilo de suas referências deixa uma única inspeção pendente
+por objeto afetado. A ficha de fontes e a revisão do conteúdo mostram essa
+pendência; nenhuma chamada paga é disparada ao editar.
+
+Na conversa conectada, peça à IA que leia o conteúdo e suas fontes atuais e
+registre o parecer. O registro conserva a versão inspecionada, o resumo e os
+pontos a conferir. A IA pode registrar a decisão de preservar uma preferência
+editorial humana; o mesmo parecer continua disponível enquanto essa base não
+mudar. Uma nova alteração material exige reinspeção. Conteúdo antigo sem
+parecer permanece identificado como não inspecionado, sem validação inventada.
+
+O parecer é julgamento do produtor e não certificação automática de verdade.
+Uma lacuna deve aparecer como ponto a conferir. A aprovação humana é outra
+decisão e pode ocorrer na mesma conversa quando explicitamente solicitada.
+
 ## Anexar e consultar PDFs
 
 O PDF pode ser escolhido no cadastro inicial ou acrescentado depois em
@@ -117,6 +151,11 @@ arquivo autorizado; uma localização vinculada ao arquivo oferece também
 explicação ou unidade.
 
 Em uma conversa conectada, envie o arquivo e peça expressamente que seja guardado como fonte. As instruções de envio estão nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
+
+Se uma fonte relevante exigir um PDF ainda indisponível, o assistente pode
+sugerir obras ou alternativas e pedir à pessoa autora um arquivo ao qual tenha
+acesso. Depois de incorporado, o mesmo PDF serve a múltiplas âncoras e destaques
+independentes, sem novo envio para cada citação.
 
 A fonte identifica a obra; página externa e PDF são formas de acesso a ela. O arquivo fica em armazenamento privado e só é oferecido conforme a autorização. Remover o PDF encerra novas autorizações de leitura sem apagar a fonte, as âncoras e os vínculos. O mesmo conteúdo pode ser reativado por uma nova incorporação confirmada. Retirar a fonte inteira também retira os PDFs ativos associados, conforme a operação escolhida.
 
@@ -163,6 +202,12 @@ prefixo e sufixo só são necessários para desfazer ambiguidades. O PDF continu
 armazenado uma única vez por conteúdo: localizar uma citação não exige guardar
 outra cópia do documento ou transcrever uma página inteira.
 
+Para páginas web, use destaque direto quando houver um mecanismo confiável e
+a passagem tiver sido conferida. Quando isso não for possível, a referência
+preserva o link original e oferece uma localização humana precisa, como seção,
+subtítulo e parágrafo. Esse caminho não cria snapshot nem cópia persistida da
+página, e não promete destaque automático.
+
 Uma microssequência sem explicação salva mantém o acesso às referências já vinculadas às unidades. A política do curso define se é possível estudar conteúdo salvo sem declaração de revisão atual. Veja [Explicação e revisão humana](explicacao-e-revisao-humana.md#acesso-migração-e-cópia).
 
 As referências consultadas podem continuar legíveis sem rede na mesma versão guardada do curso. As que ainda não foram obtidas aparecem como não disponíveis localmente; isso não afirma que não existam fontes. Atualizações e perda de acesso seguem as [regras de persistência](persistencia-relacional.md).
@@ -180,10 +225,20 @@ Para implementar um cliente, os campos e operações têm as seguintes relaçõe
 | `papeisSugeridos` na ficha e `papeis` no vínculo | O primeiro oferece preferências para um novo uso; o segundo declara os papéis daquele vínculo. |
 | `consultar_fontes` com `explicacao` | Consulta os vínculos da base pelo título ou pela posição da microssequência. |
 | `manter_fonte`, itens de `vinculos` | Cada item escolhe `unidade` ou `explicacao`; a operação conserva os outros vínculos ao editar um uso pela posição apresentada. |
+| `ancoras` no vínculo | Seleciona explicitamente as âncoras existentes pela posição, localizador ou trecho retornados na consulta. Cadastrar a âncora na fonte não a associa automaticamente ao texto. |
 | Ocorrência | Registra lugar, posição do componente, campo textual e trecho literal no curso. A âncora guarda separadamente a localização na obra. |
 | `apa7` e `abnt-2025` | Selecionam o estilo do curso sem reescrever o conteúdo ou apagar referências manuais. |
 
 A posição do vínculo pertence à consulta atual; não é o número da fonte no catálogo. Fichas e âncoras são relidas na mesma revisão do curso, com continuações quando necessário. O estado de localização de uma ocorrência é calculado na leitura, não aceito como uma confirmação fornecida pelo cliente. Os contratos dos canais estão em [Autoria por MCP](autoria-mcp.md) e [Autoria por Actions](autoria-actions.md).
+
+O fluxo é o mesmo em Actions e MCP: consultar a fonte e suas âncoras, selecionar
+as passagens no vínculo e registrar as ocorrências no conteúdo. Essa seleção
+pode acompanhar as fontes de `salvar_explicacoes` ou os vínculos de
+`manter_fonte`. Ao terminar, releia os vínculos para conferir os dois destinos.
+As referências humanas são resolvidas para as identidades existentes da fonte
+e da âncora, preservando revisões e a associação ao conteúdo exato do PDF.
+Fontes pesquisadas pelo assistente têm origem `external`; `author_provided`
+identifica material efetivamente fornecido pela pessoa autora.
 
 ## Referência de implementação bibliográfica
 

@@ -1,5 +1,6 @@
 import { AuthoringApiError } from "./errors.js";
 import { normalizeCourseContentReview } from "../aralearn/runtime/domain/courseContentReview.js";
+import { normalizeCourseContentInspection } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { sha256Hex } from "./security.js";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u;
@@ -9,7 +10,8 @@ const invalid = () => { throw new AuthoringApiError(422, "invalid_content_review
 // A referência conserva a base e a tentativa. O banco exige o proprietário e
 // verifica o hash corrente; este transporte não concede acesso nem prova leitura.
 export async function createContentReviewReference({ principal, read, requestId = null }) {
-  const value = normalizeCourseContentReview(read);
+  const value = read?.contract === "aralearn.course-ai-inspection.v1"
+    ? normalizeCourseContentInspection(read) : normalizeCourseContentReview(read);
   if (requestId === null) {
     const hash = await sha256Hex(JSON.stringify({ actor: principal?.actorId, read: value }));
     requestId = `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;

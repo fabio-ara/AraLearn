@@ -124,6 +124,10 @@ export function assertPackageDefinition(definition) {
   if (!PACKAGE_VERSION_PATTERN.test(text(manifest.version))) {
     throw new TypeError(`Versão inválida em ${manifest.id}.`);
   }
+  if (manifest.authoringEligibility !== undefined &&
+      !["current", "legacy_only"].includes(manifest.authoringEligibility)) {
+    throw new TypeError(`${manifest.id} declara elegibilidade de autoria inválida.`);
+  }
   if (!text(manifest.label) || !text(manifest.purpose)) {
     throw new TypeError(`${manifest.id} precisa de label e purpose.`);
   }
@@ -184,6 +188,7 @@ function publicManifest(definition) {
     version: manifest.version,
     label: manifest.label,
     purpose: manifest.purpose,
+    authoringEligibility: manifest.authoringEligibility ?? "current",
     slots: manifest.slots,
     taskOperations: manifest.taskOperations,
     responseCompatibility: manifest.responseCompatibility || [],

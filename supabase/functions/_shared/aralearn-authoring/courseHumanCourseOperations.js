@@ -3,6 +3,7 @@ import { resolveHumanCourseContext } from "./courseHumanTaskExecutor.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from "./courseHumanReadContext.js";
 import { createCourseCopyRequestIdentity, normalizeCourseCopyRequest } from "../aralearn/runtime/domain/courseCopy.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 
 const fail = message => { throw new AuthoringApiError(422, "invalid_human_course_operation", message); };
 function humanText(value, field) {
@@ -32,7 +33,8 @@ export async function copyHumanCourse({ adapter, principal, args, deadlineAt }) 
     const resolved = await resolveHumanCourseContext({ adapter, principal, course: courseTitle, copySourcesOnly: true, deadlineAt });
     const request = normalizeCourseCopyRequest({ sourceCourseId: resolved.course.id, expectedSourceRevision: resolved.course.revision,
       title, confirmed: true, ...createCourseCopyRequestIdentity() });
-    return { result: "Preparei uma cópia independente, privada e com arquivos restritos.", deepLink: resolved.course.deepLink,
+    return { result: "Preparei uma cópia independente, privada e com arquivos restritos.",
+      ...buildHumanNavigationEnvelope(createHumanNavigation(adapter, { courseId: resolved.course.id, relation: "content" })),
       nextDecision: "Após a escolha de copiar, repita a tarefa com a confirmação devolvida. Reutilize-a se a resposta se perder.",
       context: { curso: resolved.course.title, titulo: title,
         inclui: "Mapa, conteúdo, configuração, fontes, PDFs e áudios autorizados.",
@@ -41,9 +43,8 @@ export async function copyHumanCourse({ adapter, principal, args, deadlineAt }) 
   }
   const request = decodeCopy(args.confirmacao, principal, courseTitle, title);
   const receipt = await adapter.copyCourse({ principal, ...request, deadlineAt });
-  const base = String(adapter.publicAppUrl || "").replace(/\/+$/u, "");
   return { result: receipt.idempotent ? "Recuperei a mesma cópia já criada." : "Criei a cópia independente.",
-    deepLink: base ? `${base}/#/authoring/courses/${encodeURIComponent(receipt.targetCourseId)}?section=planning` : null,
+    ...buildHumanNavigationEnvelope(createHumanNavigation(adapter, { courseId: receipt.targetCourseId, relation: "planning" })),
     nextDecision: null, context: { titulo: title, confirmacao: args.confirmacao } };
 }
 
@@ -58,6 +59,10 @@ async function selection(adapter, principal, input, deadlineAt) {
       : resolved.microsequence ? { kind: "didactic_microsequence", ref: resolved.microsequence.id }
         : resolved.part ? { kind: "authoring_part", ref: resolved.part.id } : { kind: "course", ref: null } };
 }
+function selectedContentLink(adapter, selected) {
+  return createHumanNavigation(adapter, { courseId: selected.courseId, relation: "content",
+    target: selected.scope.kind === "course" ? null : { kind: selected.scope.kind, id: selected.scope.ref } });
+}
 export async function compareHumanCourses({ adapter, principal, args, deadlineAt }) {
   const left = await selection(adapter, principal, args.esquerda, deadlineAt);
   const right = await selection(adapter, principal, args.direita, deadlineAt);
@@ -66,7 +71,7 @@ export async function compareHumanCourses({ adapter, principal, args, deadlineAt
   const comparison = normalizeCourseAuthoringComparison(await adapter.compareCourseAuthoring({ principal, left, right, deadlineAt }),
     { expectedRequest: { left, right } });
   return { result: "Comparei os recortes pelo inventário e pelas dimensões declaradas, sem certificar equivalência pedagógica.",
-    deepLink: comparison.left.deepLink, nextDecision: null,
+    ...buildHumanNavigationEnvelope(selectedContentLink(adapter, left), [selectedContentLink(adapter, right)]),
     context: await paginateHumanReadContext({ authoringComparison: comparison }, { state }) };
 }
 export async function exportHumanCourse({ adapter, principal, args, deadlineAt }) {
@@ -76,6 +81,6 @@ export async function exportHumanCourse({ adapter, principal, args, deadlineAt }
   const exported = normalizeCourseAuthoringExport(await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt }),
     { expectedSelection: selected });
   return { result: "Preparei a exportação literal do artefato e da leitura autoral; continue até receber todos os trechos.",
-    deepLink: exported.analytics.deepLink, nextDecision: null,
+    ...buildHumanNavigationEnvelope(selectedContentLink(adapter, selected)),
     context: await paginateHumanReadContext({ authoringExport: exported }, { state, escapeNonbreakingHyphen: true }) };
 }

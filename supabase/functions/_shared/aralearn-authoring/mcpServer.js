@@ -5,7 +5,7 @@ import {
   readCourseAuthoringKnowledgeResource
 } from "./courseKnowledge.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
-import { projectHumanWriteRecovery } from "./toolErrorEnvelope.js";
+import { projectHumanWriteRecovery, projectHumanMaterializationPreflight } from "./toolErrorEnvelope.js";
 import {
   COURSE_HUMAN_TASKS,
   COURSE_HUMAN_TASK_CATALOG_HEADER,
@@ -275,6 +275,7 @@ function toolFailure(
   const normalized = asAuthoringApiError(error);
   const retryable = retryableError(normalized);
   const recovery = projectHumanWriteRecovery(normalized);
+  const preflight = projectHumanMaterializationPreflight(normalized);
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
   const publicError = {
     code: retryable
@@ -286,7 +287,8 @@ function toolFailure(
       ? "Não consegui concluir esta etapa."
       : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable,
-    ...(recovery ? { recovery } : {})
+    ...(recovery ? { recovery } : {}),
+    ...(preflight ? { details: { preflight } } : {})
   };
   let nextDecision = normalized.code === "ambiguous_human_reference"
     ? "Informe um título mais específico ou a posição humana do objeto."
@@ -303,6 +305,9 @@ function toolFailure(
             : retryable
               ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
               : null;
+  if (preflight) {
+    nextDecision = "Resolva os bloqueios e releia preparar_materializacao antes de produzir na mesma base.";
+  }
   if (normalized.code === "course_write_uncertain") {
     nextDecision = "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração.";
   } else if (recovery) {

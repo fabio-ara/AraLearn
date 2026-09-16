@@ -23,7 +23,7 @@ const contentSignature = value => JSON.stringify(value && {
 /** Apenas entrada de apresentação para o renderer comum; nunca é persistida como unidade. */
 export function explanationRenderingUnit(explanation, id = "explanation") {
   const content = normalizeMicrosequenceExplanation(explanation);
-  return { id, position: 1, ...content, role: "theory", response: null, feedback: [], topics: [] };
+  return { id, position: 1, title: content.title, content: content.content, role: "theory", response: null, feedback: [], topics: [] };
 }
 
 export function explanationReviewMessage(review) {

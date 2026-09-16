@@ -13,6 +13,15 @@ const PDF_BODY_TIMEOUT_MS = 100_000;
 const PDF_INGESTION_TIMEOUT_MS = 40_000;
 const PDF_REQUEST_TIMEOUT_MS = 140_000;
 const RESPONSE_LIMIT = 2 * 1024 * 1024;
+// These authoring DTOs/commands changed together. Study RPCs and personal data
+// keep their own contracts, including the installed client's offline copy.
+const CURRENT_APP_AUTHORING_ROUTES = new Set([
+  "listCourseStudyUnits", "getCourseAuthoringAnalytics", "getCourseInstructionalPlan",
+  "getCourseDesign", "getCourseCurricularMap", "getCourseSources", "getCourseAnchoredAnnotations",
+  "getCourseObservationComparison", "saveCourseAuthoringPart", "saveCourseCurricularMapSlice",
+  "approveCourseCurricularMap", "applyCourseDesignCommand", "executeCourseSourceCommand",
+  "executeCourseAnchoredAnnotationCommand", "commitCourseComposition", "applyCourseAuthoringProfile"
+]);
 const ACCOUNT_DELETION_ACTION = "excluirMinhaConta";
 const PDF_INGESTION_ACTION = "ingerirPdfDaFonte";
 const AUDIO_INGESTION_ACTION = "ingerirAudio";
@@ -342,6 +351,11 @@ export function createCourseApiHandler({ adapter, allowedOrigins = new Set() } =
         const principal = publicDownload
           ? { actorId: null, authenticationKind: "public", scopes: [] }
           : await adapter.resolveApplicationPrincipal(authentication.credential, { deadlineAt });
+        if (CURRENT_APP_AUTHORING_ROUTES.has(route?.name) && principal?.actorId &&
+            request.headers.get("X-AraLearn-App-Contract") !== "authoring-v3") {
+          throw new AuthoringApiError(426, "app_update_required",
+            "Atualize o AraLearn para continuar a autoria. Seus dados e progresso estão preservados.");
+        }
         if ((pdfIngestion || audioIngestion) && !(principal?.actorId && new Set(
           Array.isArray(principal.scopes) ? principal.scopes : []
         ).has("authoring:write"))) {

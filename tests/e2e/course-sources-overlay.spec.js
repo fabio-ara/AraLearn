@@ -180,6 +180,15 @@ async function mountCitationEditor(page, { theme, targetKind, bibliographyStyle 
           revision++;
           return receipt(request.requestId, command.type, command.sourceId, 1);
         }
+        if (command.type === 'save_anchor') {
+          const item = sources.get(command.sourceId);
+          if (command.sourceRevision !== item.revision || command.expectedAnchorRevision !== 0) throw new Error('CAS da passagem inválido.');
+          item.anchors.push({anchorId: command.anchorId, revision: 1, sourceRevision: item.revision,
+            status: 'active', selector: command.selector, contentHash: command.contentHash, humanLocator: command.humanLocator,
+            verificationExcerpt: command.verificationExcerpt, needsReverification: false, createdAt});
+          item.anchorCount = item.anchors.length; revision++;
+          return receipt(request.requestId, command.type, command.anchorId, 1);
+        }
         if (command.type === "set_target_sources") {
           if (command.targetKind !== targetKind || command.targetId !== targetId || command.expectedTargetVersion !== 3) throw new Error("Alvo incorreto.");
           for (const link of command.sourceLinks) for (const occurrence of link.occurrences) {
@@ -221,6 +230,11 @@ for (const width of [390, 430, 1280]) for (const [theme, targetKind, bibliograph
     await page.setViewportSize({ width, height: 844 });
     await mountCitationEditor(page, { theme, targetKind, bibliographyStyle });
     await expect(page.getByRole("heading", { name: "Fontes", exact: true })).toBeVisible();
+    const addSource = page.getByRole("button", { name: "Adicionar fonte", exact: true });
+    const addSourceBox = await addSource.boundingBox();
+    expect(addSourceBox.width).toBeGreaterThanOrEqual(44);
+    expect(addSourceBox.height).toBeGreaterThanOrEqual(44);
+    await addSource.click();
     const catalogReference = page.locator('.course-source-card [data-source-action="open-source"]');
     await expect(catalogReference).toContainText(bibliographyStyle === "abnt-2025" ? "SILVA, A." : "Silva, A. (2026)");
     await expect(catalogReference).toContainText("Redes e comunicação");
@@ -242,6 +256,16 @@ for (const width of [390, 430, 1280]) for (const [theme, targetKind, bibliograph
     await expect(document).toBeVisible();
     await document.click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.documents.length)).toBe(1);
+    await page.getByText('Trechos na fonte', {exact: true}).click();
+    await page.getByRole('button', {name: 'Adicionar âncora', exact: true}).click();
+    const anchorForm = page.locator('[data-source-form="anchor"]');
+    await anchorForm.locator('[name="startPage"]').fill('1');
+    await anchorForm.locator('[name="endPage"]').fill('1');
+    await anchorForm.getByLabel('Arquivo a que este trecho se refere').selectOption({index: 1});
+    await anchorForm.getByLabel('Localizador para pessoas').fill('Página 1, segundo parágrafo');
+    await anchorForm.getByLabel('Trecho para conferência').fill('Regras compartilhadas exigem uma interpretação comum.');
+    await anchorForm.getByRole('button', {name: 'Salvar âncora', exact: true}).click();
+    await expect(anchorForm).toHaveCount(0);
     await page.getByRole("button", { name: "Citar esta fonte no texto", exact: true }).click();
     const selectedText = page.locator("[data-source-occurrence-selection]");
     await expect(selectedText).toBeFocused();
@@ -260,11 +284,12 @@ for (const width of [390, 430, 1280]) for (const [theme, targetKind, bibliograph
     await page.screenshot({ path: testInfo.outputPath(`citation-selection-${width}-${theme}.png`) });
     await page.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
     await expect(page.getByText(quote, { exact: true })).toBeVisible();
+    await page.locator('[data-source-target-anchor]').check();
     await page.getByRole("button", { name: "Salvar fontes", exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.saved?.length)).toBe(2);
     const proof = await page.evaluate(() => window.sourceEditorProof);
     expect(proof.saved[0]).toEqual(proof.original);
-    expect(proof.saved[1].anchors).toEqual([]);
+    expect(proof.saved[1].anchors).toEqual([{anchorId: proof.writes.find(item => item.command.type === 'save_anchor').command.anchorId}]);
     expect(proof.saved[1].occurrences).toHaveLength(1);
     expect(proof.saved[1].occurrences[0]).toMatchObject({ slot: "content", resourceId: "text-a", path: "text", quote,
       suffix: " exigem uma interpretação comum." });
@@ -469,6 +494,8 @@ test("Fonte conserva rascunho, CAS e pedido após resposta perdida", async ({ pa
 
 test("Fonte mantém vínculo contextual e abre âncora de entrada", async ({ page }) => {
   await mountSources(page, { mode: "target" });
+  await expect(page.locator(".course-source-catalog")).toHaveCount(0);
+  await page.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
   await page.locator('[data-source-action="add-target-source"]').click();
   const linkId = await page.locator('[data-source-action="remove-target-source"]').getAttribute("data-link-id");
   const opener = page.locator('.course-source-target-link [data-source-action="open-source"]');
@@ -485,6 +512,7 @@ test("Fonte mantém vínculo contextual e abre âncora de entrada", async ({ pag
 test("Vincular fonte aguarda a atribuição inicial e conserva vínculo e foco após a leitura", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountSources(page, { mode: "target", deferredTarget: true });
+  await page.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
   const add = page.locator('[data-source-action="add-target-source"]');
   await expect(add).toBeVisible();
   await expect(add).toBeDisabled();

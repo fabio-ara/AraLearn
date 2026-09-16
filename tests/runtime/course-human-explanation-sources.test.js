@@ -8,12 +8,15 @@ const PRINCIPAL = { actorId: "99270000-0000-4000-8000-000000000001", scopes: ["a
 const explanation = { title: "Quadros e interfaces", content: [{ id: "shared-p", package: "aralearn.resource.paragraph", version: "1.0.0",
   data: { text: "Um quadro transporta dados entre interfaces." } }] };
 const binding = { explicacao: "Quadros", relacao: "supported_by", papeis: ["tecnica_conceitual"],
+  ancoras: [1],
   ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Um quadro", sufixo: " transporta" }] };
 
 function fixture({ content = explanation } = {}) {
   let revision = 7;
   const reads = [], writes = [];
-  const source = { sourceId: "source", revision: 1, title: "Fonte sintética", anchors: [], attachments: [] };
+  const source = { sourceId: "source", revision: 1, title: "Fonte sintética", anchors: [
+    { anchorId: "anchor", status: "active", sourceRevision: 1, humanLocator: "Seção Quadros", contentHash: null }
+  ], attachments: [] };
   const retainedLink = { linkId: "another", sourceId: "another-source", relation: "informed_by", roles: ["technical_conceptual"], anchors: [], occurrences: [] };
   const adapter = {
     publicAppUrl: "https://app.example/", reads, writes,

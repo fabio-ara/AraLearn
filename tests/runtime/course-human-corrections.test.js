@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHash } from "node:crypto";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
@@ -129,7 +130,8 @@ for (const authenticationKind of ["oauth", "action"]) {
       path: "text", quote: "Conteúdo corrigido", prefix: null, suffix: null };
     const current = [
       { ...sourceLink("rfc"), occurrences: [occurrence] },
-      { ...sourceLink("second"), relation: "quoted_from", roles: ["recommended_reading"] }
+      { ...sourceLink("second"), relation: "quoted_from", roles: ["recommended_reading"],
+        occurrences: [{ ...occurrence, occurrenceId: "occ-second" }] }
     ];
     adapter.getCourseSources = async ({ mode, sourceId }) => {
       if (mode === "target") return { items: [{ sourceLinks: structuredClone(current) }] };
@@ -163,22 +165,24 @@ for (const authenticationKind of ["oauth", "action"]) {
     assert.deepEqual(adapter.commits[2].sourceAttributionApplications[0].sourceLinks[0].occurrences,
       current[0].occurrences, "Ocorrências omitidas no vínculo correspondente permanecem intactas.");
     fontes[0].ocorrencias = [];
-    await applyHumanCourseCorrections(input);
-    assert.deepEqual(adapter.commits[3].sourceAttributionApplications[0].sourceLinks[0].occurrences, []);
+    await assert.rejects(() => applyHumanCourseCorrections(input), error =>
+      error.code === "incomplete_course_source_evidence" && error.details.issues.includes("missing_occurrence"));
+    assert.equal(adapter.commits.length, 3, "Remover a ocorrência não pode conservar uma alegação de sustentação.");
+    delete fontes[0].ocorrencias;
     fontes.splice(1);
     await applyHumanCourseCorrections(input);
-    const replacement = adapter.commits[4].sourceAttributionApplications[0];
+    const replacement = adapter.commits[3].sourceAttributionApplications[0];
     assert.equal(replacement.replaceExisting, true);
     assert.equal(replacement.sourceLinks.length, 1);
     assert.equal(replacement.sourceLinks[0].linkId, current[0].linkId);
     fontes.splice(0);
     await applyHumanCourseCorrections(input);
-    assert.deepEqual(adapter.commits[5].sourceAttributionApplications[0].sourceLinks, []);
-    assert.equal(adapter.commits[5].sourceAttributionApplications[0].replaceExisting, true);
+    assert.deepEqual(adapter.commits[4].sourceAttributionApplications[0].sourceLinks, []);
+    assert.equal(adapter.commits[4].sourceAttributionApplications[0].replaceExisting, true);
     delete input.explanations[0].fontes;
     await applyHumanCourseCorrections(input);
-    assert.deepEqual(adapter.commits[6].sourceAttributionApplications[0].sourceLinks, current);
-    assert.equal(adapter.commits[6].sourceAttributionApplications[0].replaceExisting, undefined);
+    assert.deepEqual(adapter.commits[5].sourceAttributionApplications[0].sourceLinks, current);
+    assert.equal(adapter.commits[5].sourceAttributionApplications[0].replaceExisting, undefined);
   });
 }
 
@@ -227,9 +231,11 @@ for (const authenticationKind of ["oauth", "action"]) {
       principal: { actorId: COURSE_ID, authenticationKind }, course: "Curso de Redes", explanations });
     const expected = ["A", "B"].map(suffix => ({ titulo: `Base ${suffix}`,
       deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}` +
-        `?section=content&didacticMicrosequenceId=micro-${suffix.toLowerCase()}` }));
+        `?section=content&explanationId=micro-${suffix.toLowerCase()}` }));
     assert.equal(receipt.deepLink, expected[0].deepLink);
     assert.deepEqual(receipt.context.explicacoes, expected);
+    assert.deepEqual(receipt.links.map(link => ({ relation: link.relation, target: link.target, url: link.url })),
+      expected.map((entry, index) => ({ relation: "content", target: { kind: "microsequence_explanation", id: `micro-${index ? "b" : "a"}` }, url: entry.deepLink })));
     assert.equal(adapter.commits.length, 1);
     assert.deepEqual(adapter.commits[0].upserts.map(({ entityId }) => entityId), ["micro-a", "micro-b"]);
     assert.deepEqual(adapter.commits[0].upserts.map(({ content }) => content.explanation),
@@ -249,7 +255,10 @@ test("correção conjunta escreve unidade e apoio atomicamente e recusa resposta
   assert.deepEqual(adapter.commits[0].upserts.map(row => row.entityType), ["study_unit", "microsequence"]);
   assert.equal(receipt.deepLink, `https://app.example/#/authoring/courses/${COURSE_ID}?section=content&studyUnitId=unit-1`);
   assert.deepEqual(receipt.context.explicacoes, [{ titulo: title,
-    deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=content&didacticMicrosequenceId=micro-a` }]);
+    deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}?section=content&explanationId=micro-a` }]);
+  assert.deepEqual(receipt.links.map(link => link.target), [
+    { kind: "study_unit", id: "unit-1" }, { kind: "microsequence_explanation", id: "micro-a" }
+  ]);
   input.explanations[0].conteudo.response = {};
   await assert.rejects(() => applyHumanCourseCorrections(input), { code: "invalid_human_explanation" });
   assert.equal(adapter.commits.length, 1);
@@ -294,13 +303,63 @@ test("#272 correções MCP multi-Unit preservam Fontes e usam composição gené
   assert.match(commit.requestId, /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u);
   assert.equal(receipt.context.correctionCount, 2);
   assert.equal(receipt.context.sourceMode, "preserved");
-  assert.match(receipt.nextDecision, /rematerializar a parte/u);
+  assert.match(receipt.nextDecision, /conteúdo corrigido.*observações pendentes/u);
   assert.equal(
     receipt.deepLink,
     `https://app.example/#/authoring/courses/${COURSE_ID}` +
       "?section=content&studyUnitId=unit-1"
   );
-  assert.equal(JSON.stringify({ ...receipt, deepLink: null }).includes("unit-"), false);
+  assert.deepEqual(receipt.links.map(link => link.target), [
+    { kind: "study_unit", id: "unit-1" }, { kind: "study_unit", id: "unit-2" }
+  ]);
+  assert.equal(JSON.stringify({ ...receipt, deepLink: null, links: [] }).includes("unit-"), false);
+});
+
+test("correção da explicação persiste reconciliação humana ligada à base exata", async () => {
+  const adapter = adapterFixture();
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const result = await readPlan();
+    result.plan.instructionalAnalysisUnits = [{ id: "idea-dns", statement: "DNS resolve nomes" }];
+    result.plan.evidenceRequirements = [{ id: "evidence-dns", statement: "Distinguir nome de endereço" }];
+    return result;
+  };
+  const { title, content } = correctedContent("Explicação reconciliada");
+  await applyHumanCourseCorrections({ adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content },
+      reconciliacao: [{ recurso: 1, folha: "text", trecho: content[0].data.text, papel: "introduced",
+        ideias: ["DNS resolve nomes"], requisitos: ["Distinguir nome de endereço"], motivo: "Este trecho ensina a relação central." }] }] });
+  const saved = adapter.commits[0].upserts[0].content.explanation;
+  assert.deepEqual(saved.reconciliation, { contract: "aralearn.explanation-reconciliation.v1",
+    contentBasis: createHash("sha256").update(JSON.stringify({ title, content })).digest("hex"), entries: [{
+      resourceId: content[0].id, path: "text", quote: content[0].data.text, prefix: null, suffix: null,
+      role: "introduced", analysisUnitIds: ["idea-dns"], evidenceRequirementIds: ["evidence-dns"],
+      destinationMicrosequenceId: null, reason: "Este trecho ensina a relação central." }] });
+});
+
+test("correção preserva response.open legado e exige prática avaliável com feedback ao substituir", async () => {
+  const adapter = adapterFixture();
+  const legacy = { ...correctedContent("Prática anterior"), role: "practice", response: {
+    id: "legacy-response", package: "aralearn.response.open", version: "1.0.0", data: { prompt: "Explique o DNS." }
+  } };
+  adapter.listCourseStudyUnits = async () => ({ items: [{ ordinal: 1, version: 2,
+    studyUnit: { ...legacy, id: "unit-1", position: 1 }, curriculumPath: { didacticMicrosequence: { id: "micro-a" } }
+  }], hasMore: false });
+  const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" }, course: "Curso de Redes",
+    corrections: [{ unidade: 1, conteudo: { ...legacy, title: "Prática anterior com título corrigido" } }] };
+  await applyHumanCourseCorrections(input);
+  assert.deepEqual(adapter.commits[0].upserts[0].content.response, legacy.response);
+  input.corrections[0].conteudo.response = { ...legacy.response, data: { prompt: "Nova pergunta aberta." } };
+  await assert.rejects(applyHumanCourseCorrections(input), { code: "practice_response_legacy_only" });
+  input.corrections[0].conteudo.response = { id: "response", package: "aralearn.response.choice", version: "1.0.0",
+    data: { question: "Qual elemento é um nome?", selectionMode: "single", selectionCriterion: "correct",
+      options: [{ id: "name", text: "example.org" }, { id: "address", text: "192.0.2.1" }], answerIds: ["name"] } };
+  await assert.rejects(applyHumanCourseCorrections(input), { code: "practice_offline_feedback_required" });
+  input.corrections[0].conteudo.feedback = [{ id: "feedback", package: "aralearn.resource.paragraph", version: "1.0.0",
+    data: { text: "example.org é o nome; 192.0.2.1 é o endereço IP." } }];
+  await applyHumanCourseCorrections(input);
+  assert.equal(adapter.commits.length, 2);
+  assert.equal(adapter.commits[1].upserts[0].content.response.package, "aralearn.response.choice");
 });
 
 test("#272 correção application focal resolve Fonte/Âncora e marca provider_assistance", async () => {
@@ -320,7 +379,8 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
         fonte: "RFC 1035",
         relacao: "supported_by",
         papeis: ["tecnica_conceitual"],
-        ancoras: ["Seção 2"]
+        ancoras: ["Seção 2"],
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Conteúdo corrigido" }]
       }]
     }]
   });
@@ -335,7 +395,9 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
     sourceId: "source-rfc",
     relation: "supported_by",
     roles: ["technical_conceptual"],
-    occurrences: [],
+    occurrences: [{ occurrenceId: link.occurrences[0].occurrenceId, slot: "content",
+      resourceId: correctedContent("Unidade 1 com Fonte revista").content[0].id, path: "text",
+      quote: "Conteúdo corrigido", prefix: null, suffix: null }],
     anchors: [{ anchorId: "anchor-rfc-section-2" }]
   }]);
   assert.equal(receipt.context.sourceMode, "explicit");

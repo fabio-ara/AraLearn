@@ -1909,7 +1909,7 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
           version: 3,
           updatedAt: "2026-08-20T22:45:00.000Z",
           contentReview: { state: "stale", reviewedAt: "2026-08-20T22:40:00.000Z" },
-          authorship: { createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null } },
+          authorship: { createdOrigin: "ai", lastRevisionOrigin: "human", design: { application: null } },
           ordinal: 1,
           curriculumPath: {
             module: { id: "module-a", position: 0, title: "Módulo A" },
@@ -1961,7 +1961,7 @@ test("edição contextual owner preserva proveniência e invalida todas as proje
   assert.equal(result.version, 3);
   assert.equal(result.reconciled, true);
   assert.deepEqual(result.contentReview, { state: "stale", reviewedAt: "2026-08-20T22:40:00.000Z" });
-  assert.deepEqual(result.authorship, { createdOrigin: "gpt", lastRevisionOrigin: "human", design: { application: null } });
+  assert.deepEqual(result.authorship, { createdOrigin: "ai", lastRevisionOrigin: "human", design: { application: null } });
   assert.deepEqual(calls[0], ["sources", COURSE_ID, {
     expectedRevision: 4,
     mode: "target",

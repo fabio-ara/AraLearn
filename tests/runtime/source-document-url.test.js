@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildSourceDocumentUrl } from "../../src/study/sourceDocumentUrl.js";
+import { buildSourceDocumentUrl, buildSourceWebUrl } from "../../src/study/sourceDocumentUrl.js";
 
 const attachment = { contentHash: "a".repeat(64) };
 const signedUrl = "https://source.example/book.pdf?token=authorized&download=#page=1";
@@ -28,5 +28,29 @@ test("page anchors locate pages and unrelated or outdated anchors cannot highlig
   }
   for (const value of ["javascript:alert(1)", "https://user:password@example.org/book.pdf", "http://example.org/book.pdf"]) {
     assert.throws(() => buildSourceDocumentUrl(value, options), /inválido/u);
+  }
+});
+
+test("web locations preserve the original query and section while encoding the exact text and context", () => {
+  const original = "https://source.example/article?download=original&lang=pt#section";
+  const anchor = { contentHash: null, selector: { kind: "text_quote", exact: "host-guest & RAM",
+    prefix: "Antes, ", suffix: " depois-fim" } };
+  assert.equal(buildSourceWebUrl(original, anchor),
+    "https://source.example/article?download=original&lang=pt#section:~:text=Antes%2C%20-,host%2Dguest%20%26%20RAM,-%20depois%2Dfim");
+  assert.equal(buildSourceWebUrl(`${original}:~:text=old`, anchor), buildSourceWebUrl(original, anchor));
+  assert.equal(buildSourceWebUrl(original, { selector: { kind: "uri_fragment", fragment: "definition" } }),
+    "https://source.example/article?download=original&lang=pt#definition");
+});
+
+test("web locations fall back to the exact original URL for unsupported, PDF or outdated anchors", () => {
+  const original = "https://source.example/article?download=original#section";
+  const anchor = { contentHash: null, selector: { kind: "text_quote", exact: "quoted text" } };
+  for (const value of [null, { ...anchor, contentHash: attachment.contentHash },
+    { ...anchor, needsReverification: true }, { ...anchor, status: "retired" },
+    { selector: { kind: "time_range", startMilliseconds: 0, endMilliseconds: 1000 } }]) {
+    assert.equal(buildSourceWebUrl(original, value), original);
+  }
+  for (const value of ["javascript:alert(1)", "https://user:password@example.org/article", "http://example.org/article"]) {
+    assert.throws(() => buildSourceWebUrl(value, anchor), /inválido/u);
   }
 });

@@ -103,10 +103,14 @@ test("Graphviz calcula caixas e trajetórias com a mesma tipografia que permanec
 
 test("inventário tipográfico cobre exatamente o catálogo instalado, sem diretórios auxiliares", () => {
   const documentation = fs.readFileSync(new URL("../../docs/componentes-didaticos.md", import.meta.url), "utf8");
-  const documented = [...documentation.matchAll(/^\| `(aralearn\.(?:resource|response)\.[a-z_]+)` \|/gmu)].map((match) => match[1]);
+  const rows = [...documentation.matchAll(/^\| `(aralearn\.(?:resource|response)\.[a-z_]+)`( \(legado\))? \|/gmu)];
+  const documented = rows.map((match) => match[1]);
   const installed = RESOURCE_PACKAGE_DEFINITIONS.map(({ manifest }) => manifest.id);
   assert.equal(new Set(documented).size, documented.length);
   assert.deepEqual(documented.sort(), installed.sort());
+  assert.deepEqual(rows.filter(match => match[2]).map(match => match[1]).sort(),
+    RESOURCE_PACKAGE_DEFINITIONS.filter(({ manifest }) => manifest.authoringEligibility === "legacy_only")
+      .map(({ manifest }) => manifest.id).sort(), "O inventário identifica todo pacote conservado somente para legado.");
   assert.equal(installed.length, 38);
   assert.equal(RESOURCE_PACKAGE_DEFINITIONS.filter(({ manifest }) => manifest.slots.includes("response")).length, 4);
 });

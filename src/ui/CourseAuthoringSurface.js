@@ -1284,8 +1284,7 @@ export function createCourseAuthoringSurface({
       const firstRender = !contextSheet.querySelector('[data-course-design-context-dialog]');
       const saved = firstRender ? null : captureRenderState(contextSheet);
       const categoryMenu = contextSheet.querySelector('.course-design-category-menu');
-      const categoryMenuOpen = categoryMenu?.open === true;
-      const categorySummaryFocused = categoryMenu?.querySelector('summary') === documentValue.activeElement;
+      const categorySummaryFocused = categoryMenu === documentValue.activeElement;
       const bodyScroll = contextSheet.querySelector('.course-design-context-body')?.scrollTop || 0;
       contextSheet.innerHTML = '<section class="course-design-context-dialog" data-course-design-context-dialog' +
         ' role="dialog" aria-modal="true" aria-labelledby="course-design-context-title" tabindex="-1">' +
@@ -1293,17 +1292,14 @@ export function createCourseAuthoringSurface({
         '<button type="button" data-course-authoring-action="close-context" aria-label="Fechar parâmetros" title="Fechar parâmetros">' +
         renderUiIcon('remove-state', 'course-authoring-button-icon') + '</button></header>' +
         '<div class="course-design-context-body">' + renderCourseDesignPanel(state) + '</div></section>';
-      // Perfis e valores aplicados chegam depois do catálogo. A atualização
-      // não deve recolher o grupo que a pessoa já abriu para escolher um ajuste.
       const restoredCategoryMenu = contextSheet.querySelector('.course-design-category-menu');
-      if (restoredCategoryMenu && categoryMenuOpen) restoredCategoryMenu.open = true;
       restoreDesignFormDrafts({ restoreFocus: !firstRender });
       if (state.designBusy || state.profileBusy || state.pendingProfileMutation || state.pendingDesignCommands.size) {
         contextSheet.querySelectorAll('.course-design form :is(input, select, textarea, button)').forEach(node => { node.disabled = true; });
       }
       if (saved) restoreRenderState(contextSheet, saved);
       else contextSheet.querySelector('[data-course-authoring-action="close-context"]').focus({ preventScroll: true });
-      if (categorySummaryFocused) restoredCategoryMenu?.querySelector('summary').focus({ preventScroll: true });
+      if (categorySummaryFocused) restoredCategoryMenu?.focus({ preventScroll: true });
       const focusTarget = state.pendingDesignCommands.size && !state.designBusy
         ? '[data-course-authoring-action="retry-design-mutation"]' : focus;
       if (focusTarget) contextSheet.querySelector(focusTarget)?.focus({ preventScroll: true });
@@ -1620,8 +1616,8 @@ export function createCourseAuthoringSurface({
             onClose() {
               void closeContextSheet();
             },
-            onTargetSaved() {
-              void closeContextSheet();
+            async onTargetSaved() {
+              await closeContextSheet();
             }
           });
           void targetSourcesPanel.open();
@@ -1647,6 +1643,7 @@ export function createCourseAuthoringSurface({
         controller,
         course: state.course,
         routeTarget: state.routeTarget,
+        intendedRevision: parseCourseAuthoringRoute(state.routeKey)?.revision ?? null,
         initialPosition: state.inspectionReturnPosition?.route === state.routeKey
           ? state.inspectionReturnPosition.position
           : null,
@@ -3516,6 +3513,16 @@ export function createCourseAuthoringSurface({
   }
 
   function preserveDesignFormDraft(event) {
+    if (event.type === "change" && event.target?.matches?.("[data-course-design-category]")) {
+      if (!state.courseDesign || state.designBusy || state.profileBusy) return;
+      state.designCategory = event.target.value;
+      state.designParameterId = null;
+      if (state.designCategory === "instruction" && !state.designInstructionalContext) {
+        void loadDesignInstructionalContext(state.courseDesign, state.courseDesign.scopeContext.current);
+      }
+      render({ focus: "[data-course-design-category]" });
+      return;
+    }
     const createForm = event.target?.closest?.("[data-course-authoring-create]");
     if (createForm) {
       state.createDraft = { title: String(createForm.elements?.title?.value || ""),
@@ -3893,17 +3900,9 @@ export function createCourseAuthoringSurface({
       return;
     }
     if (action === "close-design-direct") { closeDirectDesign(); return; }
-    if (action === "select-design-category" || action === "edit-design-parameter" || action === "design-group-back") {
+    if (action === "edit-design-parameter" || action === "design-group-back") {
       if (!state.courseDesign || state.designBusy || state.profileBusy) return;
-      if (action === "select-design-category") {
-        const categoryMenu = node.closest?.('.course-design-category-menu');
-        if (categoryMenu) categoryMenu.open = false;
-        state.designCategory = node.dataset.designCategory;
-        state.designParameterId = null;
-        if (state.designCategory === "instruction" && !state.designInstructionalContext) {
-          void loadDesignInstructionalContext(state.courseDesign, state.courseDesign.scopeContext.current);
-        }
-      } else if (action === "edit-design-parameter") state.designParameterId = node.dataset.parameterId;
+      if (action === "edit-design-parameter") state.designParameterId = node.dataset.parameterId;
       else state.designParameterId = null;
       render({ focus: action === "edit-design-parameter" ? "[data-course-design-parameter] select" : "[data-course-design-context-dialog], .course-design-direct-dialog" });
       return;

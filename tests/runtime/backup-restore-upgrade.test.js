@@ -4,7 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
-import { pendingUpgradeMigrations, normalizeApplicationSchemaDump, contextualUpgradeStages, assertContextualPreservation } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
+import { pendingUpgradeMigrations, normalizeApplicationSchemaDump, contextualUpgradeStages, assertContextualPreservation,
+  assertCurrentAuthoringRestoration, assertPreservedCourseState,
+  orderCourseBackupRestoreList } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = fs.readFileSync(path.join(
@@ -72,7 +74,9 @@ test("preparação histórica clona somente schema, mas a restauração do backu
   const calls = [];
   const context = vm.createContext({
     resetPostgresDatabase: async (target) => calls.push(["reset", target]),
-    pipeProcesses: async (...args) => calls.push(structuredClone(args))
+    pipeProcesses: async (...args) => calls.push(structuredClone(args)),
+    orderCourseBackupRestoreList,
+    command: (...args) => { calls.push(structuredClone(args)); return { stdout: "; historical archive\n" }; }
   });
   const clone = script.slice(script.indexOf("async function cloneDatabase("),
     script.indexOf("function resetDisposableApplicationState("));
@@ -85,13 +89,35 @@ test("preparação histórica clona somente schema, mas a restauração do backu
   assert.ok(calls[1][3].includes("--exit-on-error"));
   calls.length = 0;
   await context.restoreBackupFile("synthetic-history", "/tmp/proof.dump", "restored-proof");
-  assert.deepEqual(calls[0], ["reset", "restored-proof"]);
-  assert.deepEqual(calls[1], ["docker", ["exec", "synthetic-history", "cat", "/tmp/proof.dump"],
-    "docker", ["exec", "-i", "restored-proof", "pg_restore", "-U", "supabase_admin", "-d", "postgres",
-      "--no-owner", "--exit-on-error"]]);
+  assert.deepEqual(calls[0], ["docker", ["exec", "synthetic-history", "pg_restore", "--list", "/tmp/proof.dump"]]);
+  assert.deepEqual(calls[1], ["reset", "restored-proof"]);
+  assert.deepEqual(calls[2], ["docker", ["exec", "-i", "restored-proof", "sh", "-c", "cat > /tmp/aralearn-restore-order.list"],
+    { input: "; historical archive\n" }]);
+  assert.deepEqual(calls[3], ["docker", ["exec", "synthetic-history", "cat", "/tmp/proof.dump"],
+    "docker", ["exec", "-i", "restored-proof", "sh", "-c", "cat > /tmp/aralearn-restore.dump"]]);
+  assert.deepEqual(calls[4], ["docker", ["exec", "restored-proof", "pg_restore", "-U", "supabase_admin", "-d", "postgres",
+    "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list", "/tmp/aralearn-restore.dump"]]);
   const proof = script.slice(script.indexOf("export async function verifyBackupRestoreUpgrade("));
   assert.match(proof, /"pg_dump"[\s\S]*?"-Fc", "--no-owner", "-f", backupPath/u);
   assert.doesNotMatch(proof, /--schema-only|--exclude-table-data|--disable-triggers/u);
+});
+
+test("restauração carrega catálogo antes dos três CHECKs consumidores sem omitir ou alterar itens do arquivo", () => {
+  const lines = ["; archive header", "1; 2615 1 SCHEMA - private postgres", "2; 1259 2 TABLE private authoring_profiles postgres",
+    "3; 0 3 TABLE DATA private authoring_process_preferences postgres", "4; 0 4 TABLE DATA private authoring_profiles postgres",
+    "5; 0 5 TABLE DATA private course_design_parameter_assignments postgres",
+    "6; 0 6 TABLE DATA private course_design_parameter_definitions postgres",
+    "7; 2606 7 CONSTRAINT private authoring_profiles preferences_check postgres", ""];
+  for (const newline of ["\n", "\r\n"]) {
+    const archive = lines.join(newline);
+    const ordered = orderCourseBackupRestoreList(archive);
+    assert.deepEqual(ordered.split(newline), [...lines.slice(0, 3), lines[6], ...lines.slice(3, 6), ...lines.slice(7)]);
+    assert.deepEqual(ordered.split(newline).sort(), archive.split(newline).sort());
+    assert.equal(orderCourseBackupRestoreList(ordered), ordered);
+    assert.throws(() => orderCourseBackupRestoreList(lines.filter((_, index) => index !== 6).join(newline)), /catálogo/u);
+    assert.throws(() => orderCourseBackupRestoreList([...lines, lines[6]].join(newline)), /catálogo/u);
+  }
+  assert.equal(orderCourseBackupRestoreList("; old archive\n"), "; old archive\n");
 });
 
 test("história pré-corte é registrada pela cadeia reaplicada, incluindo migration 001", () => {
@@ -99,7 +125,7 @@ test("história pré-corte é registrada pela cadeia reaplicada, incluindo migra
   const context = vm.createContext({ path, command: (...args) => calls.push(structuredClone(args)),
     migrationDirectory: "/repo/supabase/migrations" });
   const apply = script.slice(script.indexOf("function applyMigrationFiles("),
-    script.indexOf("async function restoreBackupFile("));
+    script.indexOf("export function orderCourseBackupRestoreList("));
   const record = script.slice(script.indexOf("function migrationRecordSql("),
     script.indexOf("function queryJson("));
   vm.runInContext(`${apply}\n${record}`, context);
@@ -323,17 +349,24 @@ function contextualState() {
     }
   }
   const after = structuredClone(state);
+  after.observations.forEach(observation => { observation.target_set_version = 1; });
   after.reviews[0].value = { legacyMicrosequenceReview: structuredClone(state.reviews[0].value) };
   return { before: state, after };
 }
 
-test("comparação contextual aceita só a transformação explícita da revisão anterior", () => {
+test("comparação contextual aceita só as transformações explícitas da revisão e origem anteriores", () => {
   const { before, after } = contextualState();
+  before.entities[0].created_origin = "gpt";
+  before.entities[0].last_revision_origin = "human";
+  after.entities[0].created_origin = "ai";
+  after.entities[0].last_revision_origin = "human";
   assert.doesNotThrow(() => assertContextualPreservation(before, after));
   assert.ok(before.reviews[0].value.approvedBasisHash, "Comparação não altera o snapshot anterior.");
   for (const mutate of [
     (value) => { value.courses[0].visibility = "public"; },
     (value) => { value.entities[0].content.text = "Reescrito"; },
+    (value) => { value.entities[0].created_origin = "gpt"; },
+    (value) => { value.entities[0].last_revision_origin = "ai"; },
     (value) => { value.observations[0].state = "resolved"; },
     (value) => { value.observations[1].version += 1; },
     (value) => { value.observations[2].target_kind = "microsequence_explanation"; },
@@ -353,4 +386,58 @@ test("comparação contextual aceita só a transformação explícita da revisã
   const empty = structuredClone(before);
   empty.observations = [];
   assert.throws(() => assertContextualPreservation(empty, empty), assert.AssertionError);
+});
+
+test("preservação histórica permite gpt para ai apenas nos dois campos de origem e mantém conteúdo e versões", () => {
+  const before = { entities: [
+    { entity_id: "old-ai", created_origin: "gpt", last_revision_origin: "gpt", version: 4, content: { title: "Texto literal", provider: "gpt" } },
+    { entity_id: "human", created_origin: "human", last_revision_origin: null, version: 2, content: { title: "Decisão humana" } }
+  ], sources: [{ origin: "author_provided", citation_text: "gpt é texto literal nesta referência." }] };
+  const after = structuredClone(before);
+  after.entities[0].created_origin = "ai";
+  after.entities[0].last_revision_origin = "ai";
+  assert.doesNotThrow(() => assertPreservedCourseState(before, after));
+  assert.equal(before.entities[0].created_origin, "gpt", "A comparação não modifica a evidência anterior.");
+  for (const mutate of [
+    state => { state.entities[0].content.title = "Texto reescrito"; },
+    state => { state.entities[0].content.provider = "ai"; },
+    state => { state.entities[0].version++; },
+    state => { state.entities[0].created_origin = "gpt"; },
+    state => { state.entities[0].last_revision_origin = "provider"; },
+    state => { state.entities[1].created_origin = "ai"; },
+    state => { state.entities[1].last_revision_origin = "human"; },
+    state => { state.sources[0].citation_text = "ai é texto literal nesta referência."; }
+  ]) {
+    const changed = structuredClone(after); mutate(changed);
+    assert.throws(() => assertPreservedCourseState(before, changed), assert.AssertionError);
+  }
+});
+
+test("backup atual detecta perda de bases compartilhadas, incidências, inspeção, intervenções e PDF retido", () => {
+  const file = { bucket: "course-source-pdfs", path: "synthetic.pdf", hash: "e".repeat(64) };
+  const before = {
+    entities: [{ entity_id: "unit-context-a", editorial_interventions: { human: 1, ai: 1 },
+      ai_inspection: { report: { outcome: "consistent", summary: "Parecer conservado.", findings: [] } } }],
+    bases: ["study_unit", "microsequence_explanation"].map((kind, index) => ({ target_kind: kind,
+      target_id: `target-${index}`, basis_hash: String(index).repeat(64), snapshot: { content: { title: "Base observada" }, files: [file] } })),
+    targets: [{ target_kind: "study_unit", target_id: "target-0", basis_hash: "0".repeat(64), state: "pending" },
+      { target_kind: "study_unit", target_id: "target-0", basis_hash: null, state: "cancelled", decision: { reason: "Decisão específica" } },
+      ...Array.from({ length: 2 }, () => ({ target_kind: "microsequence_explanation", target_id: "target-1", basis_hash: "1".repeat(64), state: "pending" }))],
+    files: [{ ...file, retained: true, current: false }], attachments: [{ status: "removed", storage_path: file.path }],
+    observations: [{ raw_text: "Texto humano literal" }], receipts: [{ request_id: "current-inspection" }]
+  };
+  assert.doesNotThrow(() => assertCurrentAuthoringRestoration(before, structuredClone(before)));
+  for (const mutate of [
+    state => { state.bases[0].snapshot.content.title = "Base substituída"; },
+    state => { state.targets[1].decision.reason = "Decisão substituída"; },
+    state => { state.entities[0].ai_inspection = null; },
+    state => { state.entities[0].editorial_interventions.human = 0; },
+    state => { state.files[0].retained = false; },
+    state => { state.attachments = []; },
+    state => { state.observations[0].raw_text = null; },
+    state => { state.receipts = []; }
+  ]) {
+    const after = structuredClone(before); mutate(after);
+    assert.throws(() => assertCurrentAuthoringRestoration(before, after), assert.AssertionError);
+  }
 });

@@ -32,6 +32,7 @@ const COURSE_ID = "74000000-0000-4000-8000-000000000002";
 const ACTOR_ID = "74000000-0000-4000-8000-000000000001";
 const CONTEXTUAL_BASE = "20260908105357_copyable_course_source_reader.sql";
 const contextualFixture = path.join(repositoryRoot, "tests/fixtures/restore/contextual-state-before-354.sql");
+const currentAuthoringFixture = path.join(repositoryRoot, "tests/fixtures/restore/current-authoring-retained-bases.sql");
 const CONTEXT_OWNER = "74540000-0000-4000-8000-000000000001";
 const CONTEXT_READER = "74540000-0000-4000-8000-000000000002";
 const CONTEXT_PRIVATE = "74540000-0000-4000-8000-000000000101";
@@ -316,15 +317,37 @@ function applyMigrationFiles(container, migrationNames, containerDirectory) {
   ], { timeout: 15 * 60_000, input });
 }
 
-async function restoreBackupFile(source, backupPath, target) {
+export function orderCourseBackupRestoreList(archiveList) {
+  const lines = archiveList.split("\n");
+  const catalog = /^\d+; \d+ \d+ TABLE DATA private course_design_parameter_definitions /u;
+  const consumer = /^\d+; \d+ \d+ TABLE DATA private (?:authoring_profiles|authoring_process_preferences|course_design_parameter_assignments) /u;
+  const catalogIndexes = lines.flatMap((line, index) => catalog.test(line) ? [index] : []);
+  const firstConsumer = lines.findIndex(line => consumer.test(line));
+  if (firstConsumer < 0) return archiveList;
+  if (catalogIndexes.length !== 1) throw new Error("A restauração exige uma única entrada de dados do catálogo de parâmetros.");
+  if (catalogIndexes[0] < firstConsumer) return archiveList;
+  const [catalogLine] = lines.splice(catalogIndexes[0], 1);
+  lines.splice(firstConsumer, 0, catalogLine);
+  return lines.join("\n");
+}
+
+export async function restoreBackupFile(source, backupPath, target) {
+  // CHECKs in assignments and both preference tables consult catalog rows.
+  // Keep every archive item and constraint, loading that data dependency first.
+  const archiveList = command("docker", ["exec", source, "pg_restore", "--list", backupPath]).stdout;
+  const orderedList = orderCourseBackupRestoreList(archiveList);
   await resetPostgresDatabase(target);
+  command("docker", ["exec", "-i", target, "sh", "-c", "cat > /tmp/aralearn-restore-order.list"], { input: orderedList });
   await pipeProcesses(
     "docker",
     ["exec", source, "cat", backupPath],
     "docker",
-    ["exec", "-i", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
-      "--no-owner", "--exit-on-error"]
+    ["exec", "-i", target, "sh", "-c", "cat > /tmp/aralearn-restore.dump"]
   );
+  // Reordered custom archives require a seekable file; stdin cannot revisit
+  // a data block that appears earlier in the original archive.
+  command("docker", ["exec", target, "pg_restore", "-U", "supabase_admin", "-d", "postgres",
+    "--no-owner", "--exit-on-error", "--use-list=/tmp/aralearn-restore-order.list", "/tmp/aralearn-restore.dump"]);
 }
 
 function copyAndApply(container, localPath, containerPath) {
@@ -825,6 +848,17 @@ const contextualStateSql = `select jsonb_build_object(
   'changeReceipts',(select jsonb_agg(to_jsonb(v) order by request_id) from private.course_change_receipts v where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}'))
 )`;
 
+function migratedEntityOrigins(entities) {
+  return entities.map(entity => ({ ...entity,
+    ...(entity.created_origin === "gpt" ? { created_origin: "ai" } : {}),
+    ...(entity.last_revision_origin === "gpt" ? { last_revision_origin: "ai" } : {}) }));
+}
+
+export function assertPreservedCourseState(before, after) {
+  assert.deepEqual(after, { ...before, entities: migratedEntityOrigins(before.entities) },
+    "O upgrade corrente alterou conteúdo, identidade ou decisão aplicada da fixture.");
+}
+
 export function assertContextualPreservation(before, after) {
   assert.equal(before.courses.length, 2, "A prova contextual exige os cursos privado e explicitamente público.");
   assert.deepEqual(before.courses.map(({ id, visibility }) => ({ id, visibility })), [
@@ -860,8 +894,43 @@ export function assertContextualPreservation(before, after) {
   assert.equal(oldReview.value.approvedBy, CONTEXT_OWNER);
   const migratedReviews = before.reviews.map((review) => ({ ...review,
     value: review.value?.approvedBasisHash ? { legacyMicrosequenceReview: review.value } : review.value }));
-  assert.deepEqual(after, { ...before, reviews: migratedReviews },
+  const migratedEntities = migratedEntityOrigins(before.entities);
+  const migratedObservations = before.observations.map(observation => ({ ...observation, target_set_version: 1 }));
+  assert.deepEqual(after, { ...before, entities: migratedEntities, observations: migratedObservations, reviews: migratedReviews },
     "Upgrade contextual alterou dados úteis ou inventou revisão por objeto.");
+}
+
+const currentAuthoringStateSql = `select jsonb_build_object(
+  'entities',(select jsonb_agg(to_jsonb(e) order by entity_type,entity_id) from private.course_entities e where course_id='${CONTEXT_PRIVATE}'),
+  'observations',(select jsonb_agg(to_jsonb(a) order by id) from private.course_anchored_annotations a where course_id='${CONTEXT_PRIVATE}'),
+  'targets',(select jsonb_agg(to_jsonb(t) order by annotation_id,target_kind,target_id) from private.course_observation_targets t where course_id='${CONTEXT_PRIVATE}'),
+  'bases',(select jsonb_agg(to_jsonb(b) order by target_kind,target_id,basis_hash) from private.course_observation_bases b where course_id='${CONTEXT_PRIVATE}'),
+  'attachments',(select jsonb_agg(to_jsonb(a) order by source_id,content_hash) from private.course_source_attachments a where course_id='${CONTEXT_PRIVATE}'),
+  'receipts',(select jsonb_agg(to_jsonb(r) order by actor_id,request_id) from private.course_change_receipts r where course_id='${CONTEXT_PRIVATE}'),
+  'files',(select jsonb_agg(jsonb_build_object('bucket',f->>'bucket','path',f->>'path',
+    'current',private.course_current_file_is_referenced_v1(f->>'bucket',f->>'path'),
+    'retained',private.course_file_is_referenced_v1(f->>'bucket',f->>'path')) order by f->>'bucket',f->>'path')
+    from (select distinct f from private.course_observation_bases b cross join lateral jsonb_array_elements(b.snapshot->'files') f
+      where b.course_id='${CONTEXT_PRIVATE}') retained)
+)`;
+
+export function assertCurrentAuthoringRestoration(before, after) {
+  assert.equal(before.bases.length, 2, "Dois objetos precisam de bases reais compartilhadas.");
+  assert.equal(before.targets.filter(target => target.basis_hash !== null).length, 3);
+  assert.equal(before.targets.filter(target => target.state === "cancelled").length, 1);
+  for (const basis of before.bases) {
+    assert.equal(before.targets.filter(target => target.basis_hash === basis.basis_hash &&
+      target.target_kind === basis.target_kind && target.target_id === basis.target_id).length,
+    basis.target_kind === "study_unit" ? 1 : 2);
+    assert.ok(basis.snapshot.content);
+    assert.ok(basis.snapshot.files.length > 0);
+  }
+  const revised = before.entities.find(entity => entity.entity_id === "unit-context-a");
+  assert.ok(revised.editorial_interventions.human >= 1 && revised.editorial_interventions.ai >= 1);
+  assert.equal(revised.ai_inspection.report.outcome, "consistent");
+  assert.ok(before.files.length > 0);
+  assert.ok(before.files.every(file => file.retained && !file.current), "O PDF precisa ser retido apenas pelas bases.");
+  assert.deepEqual(after, before, "A restauração alterou bases, decisões, inspeção, proveniência ou referências a arquivos.");
 }
 
 function readContextualEntityPage(container, actor, courseId) {
@@ -948,8 +1017,10 @@ function assertCurrentState(historical, current, expectedRevision) {
     assert.deepEqual(current[key], historical[key], `O upgrade alterou ${key}.`);
   }
   assert.equal(current.studyUnitDesign.snapshotContract, "aralearn.study-unit-design-snapshot.v2");
-  for (const key of ["ceiling", "createdOrigin", "lastRevisionOrigin"]) {
-    assert.deepEqual(current.studyUnitDesign[key], historical.studyUnitDesign[key], key);
+  assert.equal(current.studyUnitDesign.ceiling, historical.studyUnitDesign.ceiling);
+  for (const key of ["createdOrigin", "lastRevisionOrigin"]) {
+    const expectedOrigin = historical.studyUnitDesign[key] === "gpt" ? "ai" : historical.studyUnitDesign[key];
+    assert.equal(current.studyUnitDesign[key], expectedOrigin, `Origem editorial migrada: ${key}.`);
   }
   const links = current.resolvedObservationSourceLinks.map(({ sourceId, relation, anchors }) =>
     ({ sourceId, relation, anchors }));
@@ -1074,8 +1145,7 @@ export async function verifyBackupRestoreUpgrade({
     const contextual = verifyContextualUpgrade(restored, contextualBefore);
     const currentState = queryJson(restored, afterStateSql);
     assertCurrentState(after.state, currentState, expectedManifest.schemaRevision);
-    assert.deepEqual(queryJson(restored, preservedStateSql), preserved,
-      "O upgrade corrente alterou conteúdo, identidade ou decisão aplicada da fixture.");
+    assertPreservedCourseState(preserved, queryJson(restored, preservedStateSql));
     const currentRead = queryJson(restored, `with claims as materialized (
       select set_config('request.jwt.claim.role','service_role',true),
         set_config('request.jwt.claims','{"role":"service_role","sub":"${ACTOR_ID}"}',true)
@@ -1131,6 +1201,19 @@ export async function verifyBackupRestoreUpgrade({
     applyMigrationFiles(clean, orderedMigrations, `/tmp/clean-migrations-${token}`);
     const cleanInstall = verifyApplicationConvergence(clean, restored, expectedManifest);
 
+    copyAndApply(restored, currentAuthoringFixture, `/tmp/current-authoring-fixture-${token}.sql`);
+    const authoringBefore = queryJson(restored, currentAuthoringStateSql);
+    const currentBackupPath = `/tmp/current-authoring-${token}.dump`;
+    command("docker", ["exec", restored, "pg_dump", "-U", "supabase_admin", "-d", "postgres",
+      "-Fc", "--no-owner", "-f", currentBackupPath]);
+    // Reuse the historical disposable source after its assertions are complete.
+    await restoreBackupFile(restored, currentBackupPath, source);
+    assertCurrentAuthoringRestoration(authoringBefore, queryJson(source, currentAuthoringStateSql));
+    const currentAuthoring = { bases: authoringBefore.bases.length, targets: authoringBefore.targets.length,
+      retainedFiles: authoringBefore.files.length, metadataOnly: true,
+      preservedGroups: Object.keys(authoringBefore),
+      preservedSha256: createHash("sha256").update(JSON.stringify(authoringBefore)).digest("hex") };
+
     return Object.freeze({
       contract: "aralearn.backup-restore-upgrade-proof.v3",
       migrations: Object.freeze(migrationNames),
@@ -1148,6 +1231,7 @@ export async function verifyBackupRestoreUpgrade({
         repeatPendingMigrations: repeated.length,
         legacyReview,
         contextual: Object.freeze({ ...contextual, migrations: stages.contextual }),
+        authoring: Object.freeze(currentAuthoring),
         cleanInstall: Object.freeze({ migrations: orderedMigrations.length, ...cleanInstall })
       }),
       storage: Object.freeze({

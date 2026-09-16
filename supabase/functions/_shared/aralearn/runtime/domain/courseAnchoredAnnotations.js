@@ -46,6 +46,8 @@ export const COURSE_ANCHORED_ANNOTATION_COMMAND_TYPES = Object.freeze([
   "respond_to_anchored_annotation",
   "resolve_anchored_annotation",
   "reopen_anchored_annotation",
+  "retarget_anchored_annotation",
+  "decide_anchored_annotation",
   "correct_anchored_annotation_subjects"
 ]);
 
@@ -76,9 +78,9 @@ function object(value) {
   return prototype === Object.prototype || prototype === null;
 }
 
-function exact(value, fields, code, label) {
+function exact(value, fields, code, label, optional = []) {
   if (!object(value)) fail(code, `${label} precisa ser um objeto.`);
-  const allowed = new Set(fields);
+  const allowed = new Set([...fields, ...optional]);
   const unknown = Object.keys(value).find((field) => !allowed.has(field));
   if (unknown) fail(code, `${label} contém o campo desconhecido ${unknown}.`, { field: unknown });
   const missing = fields.find((field) => !Object.hasOwn(value, field));
@@ -200,6 +202,27 @@ function category(value, code) {
   });
 }
 
+export function normalizeCourseObservationTargets(value, { decision = false } = {}) {
+  const code = "invalid_course_anchored_annotation_command";
+  if (!Array.isArray(value) || value.length < 1 || value.length > 64) fail(code, "Selecione entre um e 64 alvos.");
+  const targets = value.map(entry => {
+    exact(entry, decision ? ["kind", "id", "expectedBasisHash"] : ["kind", "id"], code, "O alvo");
+    const normalized = target({ kind: entry.kind, id: entry.id }, code);
+    if (!["study_unit", "microsequence_explanation"].includes(normalized.kind)) fail(code, "Selecione uma unidade ou Explicação.");
+    if (decision) {
+      if (entry.expectedBasisHash !== null && !/^[a-f0-9]{64}$/u.test(entry.expectedBasisHash)) fail(code, "A decisão precisa da base exata apresentada ou da ausência explícita do alvo.");
+      normalized.expectedBasisHash = entry.expectedBasisHash;
+    }
+    return normalized;
+  });
+  if (new Set(targets.map(entry => `${entry.kind}:${entry.id}`)).size !== targets.length) fail(code, "A seleção repete um alvo.");
+  return targets;
+}
+
+export function courseObservationTargets(item) {
+  return item.targets || [{ ...item.target, state: "pending", basis: null, current: null }];
+}
+
 export function normalizeCourseAnchoredAnnotationCommand(value) {
   const command = clone(value);
   if (!object(command) || !COURSE_ANCHORED_ANNOTATION_COMMAND_TYPES.includes(command.type)) {
@@ -210,7 +233,7 @@ export function normalizeCourseAnchoredAnnotationCommand(value) {
   if (command.type === "create_anchored_annotation") {
     exact(command, [
       "type", "annotationId", "target", "rawText", "category", "capturedAt", "briefSummary"
-    ], code, "O comando de criação");
+    ], code, "O comando de criação", ["targets"]);
     normalized = {
       type: command.type,
       annotationId: uuid(command.annotationId, code, "A identidade da observação"),
@@ -225,6 +248,12 @@ export function normalizeCourseAnchoredAnnotationCommand(value) {
         preserveLayout: true
       })
     };
+    if (command.targets !== undefined) {
+      normalized.targets = normalizeCourseObservationTargets(command.targets);
+      if (!normalized.targets.some(entry => entry.kind === normalized.target.kind && entry.id === normalized.target.id)) {
+        fail(code, "O alvo inicial precisa pertencer à seleção.");
+      }
+    }
   } else if (command.type === "revise_anchored_annotation") {
     exact(command, [
       "type", "annotationId", "expectedAnnotationVersion", "rawText", "category", "briefSummary"
@@ -242,6 +271,24 @@ export function normalizeCourseAnchoredAnnotationCommand(value) {
         preserveLayout: true
       })
     };
+  } else if (["retarget_anchored_annotation", "decide_anchored_annotation"].includes(command.type)) {
+    const decision = command.type === "decide_anchored_annotation";
+    exact(command, ["type", "annotationId", "expectedAnnotationVersion", "expectedTargetSetVersion", "targets",
+      ...(decision ? ["decision", "reason"] : [])], code, "A decisão da observação");
+    normalized = {
+      type: command.type,
+      annotationId: uuid(command.annotationId, code, "A identidade da observação"),
+      expectedAnnotationVersion: integer(command.expectedAnnotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão da observação"),
+      expectedTargetSetVersion: integer(command.expectedTargetSetVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão dos alvos"),
+      targets: normalizeCourseObservationTargets(command.targets, { decision })
+    };
+    if (decision) {
+      normalized.decision = enumValue(command.decision, ["approve", "cancel"], code, "A decisão humana");
+      if (normalized.decision === "approve" && normalized.targets.some(entry => entry.expectedBasisHash === null)) {
+        fail(code, "Um alvo removido pode ser cancelado, mas não aprovado.");
+      }
+      normalized.reason = boundedText(command.reason, 120, 480, code, "O motivo", { nullable: !["cancel"].includes(command.decision) });
+    }
   } else if (command.type === "respond_to_anchored_annotation") {
     exact(command, [
       "type", "annotationId", "expectedAnnotationVersion", "ownerResponse",
@@ -420,13 +467,59 @@ function classificationFact(value, code, { effective = false } = {}) {
   return { method: value.method, methodVersion: value.methodVersion, taxonomyRevision: value.taxonomyRevision, subjects };
 }
 
+function comparisonSnapshot(value, code, { deferred = false } = {}) {
+  if (value === null) return null;
+  if (deferred && value?.deferred === true) {
+    exact(value, ["hash", "deferred"], code, "A referência da comparação");
+    if (!/^[a-f0-9]{64}$/u.test(value.hash)) fail(code, "A identidade da comparação é inválida.");
+    return value;
+  }
+  exact(value, ["hash", "content", "sourceLinks", "sources"], code, "A base da comparação", ["files"]);
+  if (!/^[a-f0-9]{64}$/u.test(value.hash) || !object(value.content) || !Array.isArray(value.sourceLinks) ||
+    !Array.isArray(value.sources) || value.files !== undefined && !Array.isArray(value.files)) fail(code, "A base da comparação é inválida.");
+  return value;
+}
+
+// Two snapshots: each content object is <=1 MiB, its links <=128 KiB and
+// its <=32 source records each fit the existing 256 KiB source-read contract.
+// 20 MiB rounds 18.25 MiB up for persisted metadata/envelope overhead. Storage
+// retention references stay in private snapshots, outside this read projection.
+export const COURSE_OBSERVATION_COMPARISON_MAX_BYTES = 20 * 1024 * 1024;
+
+export function normalizeCourseObservationComparison(value) {
+  const result = clone(value); const code = "invalid_course_observation_comparison";
+  exact(result, ["contract", "courseId", "courseRevision", "annotationId", "annotationVersion", "targetSetVersion", "target", "basis", "current"], code, "A comparação");
+  if (result.contract !== "aralearn.course-observation-comparison.v1") fail(code, "Contrato de comparação inválido.");
+  uuid(result.courseId, code, "O Curso"); uuid(result.annotationId, code, "A observação");
+  integer(result.courseRevision, 1, Number.MAX_SAFE_INTEGER, code, "A revisão do Curso");
+  integer(result.annotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão da observação");
+  integer(result.targetSetVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão dos alvos");
+  target(result.target, code); comparisonSnapshot(result.basis, code); comparisonSnapshot(result.current, code);
+  byteBound(result, COURSE_OBSERVATION_COMPARISON_MAX_BYTES, code, "A comparação de um alvo"); return result;
+}
+
 function annotationItem(value) {
   const code = "invalid_course_anchored_annotation_page";
   exact(value, [
     "contract", "annotationId", "annotationVersion", "courseId", "provenance", "contributor", "target",
     "observedRevision", "rawText", "category", "briefSummary", "subjectClassification",
     "state", "ownerResponse", "timestamps", "capabilities", "deepLink"
-  ], code, "Uma observação");
+  ], code, "Uma observação", ["targetSetVersion", "targets"]);
+  if (value.targets !== undefined) {
+    integer(value.targetSetVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão dos alvos");
+    if (!Array.isArray(value.targets) || value.targets.length < 1 || value.targets.length > 64) fail(code, "Os alvos da observação são inválidos.");
+    const ids = new Set();
+    for (const incidence of value.targets) {
+      exact(incidence, ["kind", "id", "state", "path", "basis", "current"], code, "A incidência");
+      target({ kind: incidence.kind, id: incidence.id }, code);
+      enumValue(incidence.state, ["pending", "approved", "cancelled"], code, "A decisão do alvo");
+      path(incidence.path, code, "O caminho do alvo");
+      const key = `${incidence.kind}:${incidence.id}`;
+      if (ids.has(key)) fail(code, "A observação repete um alvo.");
+      ids.add(key);
+      for (const field of ["basis", "current"]) comparisonSnapshot(incidence[field], code, { deferred: true });
+    }
+  }
   if (value.contract !== COURSE_ANCHORED_ANNOTATION_CONTRACT) fail(code, "O contrato da observação é inválido.");
   exact(value.provenance, ["origin", "channel"], code, "A proveniência");
   enumValue(value.provenance.origin, COURSE_ANCHORED_ANNOTATION_ORIGINS, code, "A origem");
@@ -490,7 +583,7 @@ function annotationItem(value) {
   if (value.rawText !== null) boundedText(value.rawText, 2000, 16384, code, "O texto bruto", { preserveLayout: true });
   if (value.state === "withdrawn" && (value.rawText !== null || value.briefSummary !== null ||
         value.ownerResponse !== null) ||
-      value.state !== "withdrawn" && value.rawText === null) fail(code, "A redação da observação é incoerente.");
+      !["withdrawn", "resolved"].includes(value.state) && value.rawText === null) fail(code, "A redação da observação é incoerente.");
   category(value.category, code);
   boundedText(value.briefSummary, 500, 4096, code, "A síntese breve", { nullable: true, preserveLayout: true });
   exact(value.subjectClassification, ["status", "automatic", "effective", "correctedAt"], code, "A classificação");
@@ -601,8 +694,9 @@ export function normalizeCourseObservationCorrectionReferences(value) {
     integer(entry.annotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão da observação");
     enumValue(entry.targetKind, ["microsequence_explanation", "study_unit"], code, "O alvo da correção");
     opaqueId(entry.targetId, code, "A identidade do alvo");
-    if (seen.has(entry.annotationId)) fail(code, "A correção não pode repetir uma observação.");
-    seen.add(entry.annotationId);
+    const incidence = `${entry.annotationId}:${entry.targetKind}:${entry.targetId}`;
+    if (seen.has(incidence)) fail(code, "A correção não pode repetir uma incidência.");
+    seen.add(incidence);
     return { ...entry };
   });
   byteBound(references, 32768, code, "As versões das observações");
@@ -614,13 +708,18 @@ export function normalizeCourseObservationCorrectionConfirmations(value) {
   if (!Array.isArray(value) || value.length > 64) fail(code, "Informe até 64 confirmações da correção.");
   const seen = new Set();
   return value.map((entry) => {
-    exact(entry, ["annotationId", "annotationVersion", "effectHash"], code, "A confirmação da correção");
+    exact(entry, ["annotationId", "annotationVersion", "effectHash"], code, "A confirmação da correção", ["targetKind", "targetId"]);
     uuid(entry.annotationId, code, "A identidade da observação");
     integer(entry.annotationVersion, 1, Number.MAX_SAFE_INTEGER, code, "A versão da observação");
-    if (typeof entry.effectHash !== "string" || !/^[a-f0-9]{64}$/u.test(entry.effectHash) || seen.has(entry.annotationId)) {
+    if (Object.hasOwn(entry, "targetKind") || Object.hasOwn(entry, "targetId")) {
+      enumValue(entry.targetKind, ["study_unit", "microsequence_explanation"], code, "O alvo");
+      opaqueId(entry.targetId, code, "A identidade do alvo");
+    }
+    const incidence = `${entry.annotationId}:${entry.targetKind || ""}:${entry.targetId || ""}`;
+    if (typeof entry.effectHash !== "string" || !/^[a-f0-9]{64}$/u.test(entry.effectHash) || seen.has(incidence)) {
       fail(code, "A confirmação precisa identificar uma única versão e seu efeito persistido.");
     }
-    seen.add(entry.annotationId);
+    seen.add(incidence);
     return { ...entry };
   });
 }

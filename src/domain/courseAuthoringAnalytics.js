@@ -1,4 +1,5 @@
 import { COURSE_SOURCE_ROLES } from "./courseSources.js";
+import { normalizeEditorialInterventions } from "./courseEditorialProvenance.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS, normalizeCourseDesignParameterValue } from "./courseDesignParameters.js";
 import { observeCoursePracticeDistribution } from "./coursePracticeDistribution.js";
 import { normalizeCourseAuthoringBasis, observeCourseAuthoringDimensions, canonicalAuthoringValue } from "./courseAuthoringBasis.js";
@@ -538,7 +539,7 @@ function normalizeDesign(value) {
 function normalizeAuthorship(value) {
   const source = exact(value, [
     "observations", "explicitParameterOverrideCount", "manuallyRevisedStudyUnitCount",
-    "studyUnitsByOrigin"
+    "studyUnitsByOrigin", ...(Object.hasOwn(value || {}, "interventions") ? ["interventions"] : [])
   ], "Os dados quantitativos de autoria");
   const observations = exact(source.observations, [
     "createdCount", "openCount", "resolvedCount"
@@ -554,6 +555,7 @@ function normalizeAuthorship(value) {
   }
   return {
     observations: normalizedObservations,
+    ...(source.interventions ? { interventions: normalizeEditorialInterventions(source.interventions) } : {}),
     explicitParameterOverrideCount: nonnegativeInteger(
       source.explicitParameterOverrideCount,
       "As definições explícitas de parâmetros"
@@ -574,7 +576,7 @@ function normalizeAuthorship(value) {
           "Uma origem de mudança"
         );
         return {
-          origin: identifier(row.origin, "A origem da mudança"),
+          origin: identifier(row.origin === "gpt" ? "ai" : row.origin, "A origem da mudança"),
           createdCount: nonnegativeInteger(
             row.createdCount,
             "As unidades de estudo criadas pela origem"

@@ -108,6 +108,12 @@ async function selectAccessCandidate(root, handle = "estudante") {
 }
 
 function designAction(root, action, data = {}) {
+  if (action === "select-design-category") {
+    root.listeners.get("change")({ type: "change", target: {
+      value: data.designCategory, matches: selector => selector === "[data-course-design-category]"
+    } });
+    return;
+  }
   root.listeners.get("click")({ preventDefault() {}, target: {
     closest: () => ({ dataset: { courseAuthoringAction: action, ...data } })
   } });

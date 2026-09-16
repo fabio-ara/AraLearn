@@ -5,6 +5,7 @@ import { normalizeCurricularMapRead, normalizeCurricularMapSlice, normalizeCurri
 import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewChange,
   normalizeCourseContentReviewPolicyChange } from "../domain/courseContentReview.js";
+import { normalizeCourseContentInspection } from "../domain/courseContentInspection.js";
 import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
 import { courseMediaReadRequest, courseMediaDownloadRequest, courseMediaWriteRequest,
   boundCourseMediaRead, boundCourseMediaDownload, boundCourseMediaChange } from "./courseMediaRequests.js";
@@ -18,7 +19,8 @@ import {
   normalizeCourseAnchoredAnnotationCommand,
   normalizeCourseAnchoredAnnotationPage,
   normalizeCourseAnchoredAnnotationQuery,
-  normalizeCourseAnchoredAnnotationReadOptions
+  normalizeCourseAnchoredAnnotationReadOptions,
+  normalizeCourseObservationComparison
 } from "../domain/courseAnchoredAnnotations.js";
 import {
   normalizeCourseAuthoringAnalyticsPage,
@@ -2005,6 +2007,19 @@ export class CourseController {
     return normalizeCourseContentReview(result, { courseId, targetKind, targetId });
   }
 
+  async getContentInspection(courseId, targetKind, targetId) {
+    if (!this.ownerOnly || typeof this.api.getContentInspection !== "function") {
+      throw new TypeError("Somente a Autoria permite consultar a inspeção por IA.");
+    }
+    try {
+      return normalizeCourseContentInspection(await this.api.getContentInspection(courseId, targetKind, targetId),
+        { courseId, targetKind, targetId });
+    } catch (error) {
+      if (accessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, { clearLists: true });
+      throw error;
+    }
+  }
+
   async setContentReview(value = {}) {
     if (!this.ownerOnly || typeof this.api.setContentReview !== "function") {
       throw new TypeError("Somente a Autoria permite declarar a revisão do conteúdo inspecionado.");
@@ -2190,6 +2205,19 @@ export class CourseController {
       if (annotationAccessWasRevoked(error)) {
         await this.#purgeCoursePrivacyCache(normalizedCourseId, { clearLists: true });
       }
+      throw error;
+    }
+  }
+
+  async getCourseObservationComparison(courseId, value) {
+    if (!this.ownerOnly || typeof this.api.getCourseObservationComparison !== "function") throw new TypeError("A API de Autoria não oferece comparação de observações.");
+    try {
+      const result = normalizeCourseObservationComparison(await this.api.getCourseObservationComparison(courseId, value));
+      if (result.courseId !== courseId || result.annotationId !== value.annotationId || result.target.kind !== value.targetKind || result.target.id !== value.targetId ||
+        result.annotationVersion !== value.expectedAnnotationVersion || result.targetSetVersion !== value.expectedTargetSetVersion) throw new TypeError("Comparação de outro objeto ou versão.");
+      return result;
+    } catch (error) {
+      if (annotationAccessWasRevoked(error)) await this.#purgeCoursePrivacyCache(courseId, {clearLists: true});
       throw error;
     }
   }
@@ -2923,6 +2951,7 @@ export class CourseController {
     const command = normalizeCourseAnchoredAnnotationCommand(value.command);
     const requiresCourseRevision = new Set([
       "create_anchored_annotation",
+      "retarget_anchored_annotation",
       "correct_anchored_annotation_subjects"
     ]).has(command.type);
     const expectedCourseRevision = value.expectedCourseRevision ?? null;

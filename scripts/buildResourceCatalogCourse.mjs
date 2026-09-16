@@ -534,7 +534,8 @@ function catalogEntries() {
   const manifests = [
     ...RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }),
     ...RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" })
-  ].sort((left, right) => compareText(left.id, right.id) || compareText(left.version, right.version));
+  ].filter(manifest => manifest.authoringEligibility !== "legacy_only")
+    .sort((left, right) => compareText(left.id, right.id) || compareText(left.version, right.version));
   const packageKeys = new Set();
   const entries = manifests.map((manifest) => {
     const packageKey = `${manifest.id}@${manifest.version}`;

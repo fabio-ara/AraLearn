@@ -114,10 +114,8 @@ test("chamadas de unidade e trecho abrem folha acessível e restauram leitura em
     await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
     await expect(page.getByRole("dialog", { name: "Explicação", exact: true }).locator('[data-citation-reference-id="context"]')).toBeFocused();
     await expect(page.getByText("Seção 2 · p. 6", { exact: true })).toBeVisible();
-    const useInfo = page.getByLabel("Informações sobre o uso da referência 2", { exact: true });
-    await useInfo.focus(); await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog").getByText("Sustentação conceitual", { exact: true })).toBeVisible();
-    await useInfo.click();
+    await expect(page.getByLabel("Informações sobre o uso da referência 2", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("dialog").getByText("Sustentação conceitual", { exact: true })).toHaveCount(0);
     expect(await page.locator(".app-shell > .screen").evaluate(node => node.inert)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     const last = page.getByRole("dialog").locator("a,button,summary").last();
@@ -131,8 +129,10 @@ test("chamadas de unidade e trecho abrem folha acessível e restauram leitura em
   await expect(page.getByRole("button", { name: "Referência 3, trecho a revisar" })).toHaveCount(0);
   await page.getByRole("button", { name: "Explicação", exact: true }).click();
   await expect(page.getByText("O trecho citado não foi localizado nesta cópia. A referência foi conservada.", { exact: true })).toBeVisible();
-  await page.locator('[data-citation-reference-id="ambiguous"] summary').click();
-  await expect(page.locator('[data-citation-reference-id="ambiguous"]').getByText("Leitura complementar", { exact: true })).toBeVisible();
+  const unresolvedReference = page.locator('[data-citation-reference-id="ambiguous"]');
+  await expect(unresolvedReference).toContainText("Referência manual íntegra <sem dados inventados>.");
+  await expect(unresolvedReference).toContainText("Trecho anteriormente presente.");
+  await expect(unresolvedReference.getByText("Leitura complementar", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("dialog")).not.toContainText("missing");
   await page.getByRole("button", { name: "Fechar explicação" }).click();
 });

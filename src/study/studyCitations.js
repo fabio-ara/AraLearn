@@ -3,13 +3,10 @@ import { renderPackageInline } from "../resources/sdk/html.js";
 import { renderBibliographicReference } from "../ui/renderBibliographicReference.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
 import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
+import { buildSourceWebUrl } from "./sourceDocumentUrl.js";
 
 const escape = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-const ROLE_LABELS = {
-  curricular_scope: "Escopo do conteúdo", assessment_evidence: "Avaliação",
-  technical_conceptual: "Sustentação conceitual", recommended_reading: "Leitura complementar"
-};
 const OCCURRENCE_FIELDS = ["occurrenceId", "slot", "resourceId", "path", "quote", "prefix", "suffix"];
 
 export function studyCitationMarkers(studyUnit, citations, sourceOptions = {}) {
@@ -155,8 +152,12 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
       const locator = selectorLabel(anchor.selector);
       const label = anchor.humanLocator && anchor.humanLocator !== locator ? `${anchor.humanLocator} · ${locator}` : locator;
       const attachmentIndex = references.findIndex(attachment => attachment.contentHash === anchor.contentHash);
+      const webUrl = !anchor.contentHash && citation.url ? buildSourceWebUrl(citation.url, anchor) : null;
       return "<li>" + (anchor.contentHash && attachmentIndex >= 0 && anchorIndex !== primaryAnchorIndex
         ? pdfReferenceAction(citation, citationIndex, attachmentIndex, downloadPending, escape(label), anchorIndex)
+        : webUrl && webUrl !== citation.url
+          ? `<a class="study-citation-link" href="${escape(webUrl)}" target="_blank" rel="noopener noreferrer"` +
+            ` title="Abrir localização na fonte">${escape(label)}</a>`
         : `<span>${escape(label)}</span>` + (anchor.contentHash && attachmentIndex < 0
           ? '<span class="study-citations-status">Documento indisponível para abrir.</span>' : "")) + "</li>";
     }).join("");
@@ -166,18 +167,16 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
         ` data-citation-occurrence-id="${escape(item.occurrenceId)}"` +
         ` aria-label="Voltar ao trecho ${index + 1} da referência ${citationIndex + 1}${contextId === "unit" ? " na unidade" : " na explicação"}"` +
         ` title="Voltar ao trecho ${index + 1}">${renderUiIcon("arrow-left", "home-tab-icon")}</button>`).join("");
-    const useDetails = (citation.roles || []).length || !citation.occurrences?.length
-      ? '<details class="study-citation-info">' +
-        `<summary aria-label="Informações sobre o uso da referência ${citationIndex + 1}" title="Uso da referência">${renderUiIcon("more", "study-citation-format-icon")}</summary>` +
-        ((citation.roles || []).length ? `<p>${citation.roles.map(role => escape(ROLE_LABELS[role] || role)).join(" · ")}</p>` : "") +
-        (!citation.occurrences?.length ? '<p>Referência do conteúdo; sem trecho específico vinculado.</p>' : "") + "</details>" : "";
     return `<li value="${citationIndex + 1}" data-citation-reference-id="${escape(citation.linkId)}" tabindex="-1"><article>` +
       (occurrence ? `<blockquote class="study-citation-quote">${quoteTarget?.preserveMarkup ? renderPackageInline(occurrence.quote) : escape(occurrence.quote)}</blockquote>` +
         (occurrence.status === "needs_review" ? `<p class="study-citations-status">${quoteTarget ? "O trecho mudou e precisa de revisão." : "O trecho citado não foi localizado nesta cópia."} A referência foi conservada.</p>` : "") : "") +
       `<p class="study-citation-reference">${linkedReference}</p>` +
+      (!citation.occurrences?.length ? '<p class="study-citations-status">Referência do conteúdo; sem trecho específico vinculado.</p>' : "") +
       (citation.relation === "needs_verification" ? '<p class="study-citations-status">O uso desta fonte ainda precisa ser verificado.</p>' : "") +
       (anchors ? `<ul class="study-citation-locations">${anchors}</ul>` : "") +
-      '<div class="study-citation-actions">' + useDetails +
+      (citation.url && (citation.anchors || []).some(anchor => !anchor.contentHash)
+        ? '<p class="study-citations-status">Se o trecho não abrir automaticamente, use a localização indicada na página original.</p>' : "") +
+      '<div class="study-citation-actions">' +
       (citation.url && primaryAttachmentIndex >= 0 ? `<a class="study-citation-web-link" href="${escape(citation.url)}" target="_blank" rel="noopener noreferrer"` +
         ` aria-label="Endereço de ${escape(citation.title || "referência")}" title="Endereço da fonte">${renderUiIcon("cloud", "study-citation-format-icon")}</a>` : "") +
       references.map((attachment, attachmentIndex) => attachmentIndex === primaryAttachmentIndex || anchoredHashes.has(attachment.contentHash) ? "" :

@@ -19,7 +19,7 @@ O arquivo importável está em
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **54 tarefas semânticas** de Actions. O OpenAPI as oferece por
+definem as **56 tarefas semânticas** de Actions. O OpenAPI as oferece por
 **30 operações HTTP**: 24 diretas e seis grupos contextuais. Uma operação HTTP
 é o pedido enviado a um endereço do serviço; um grupo permite escolher entre
 várias tarefas por esse mesmo endereço. Argumentos, validação e efeitos derivam
@@ -32,7 +32,7 @@ do catálogo comum ao MCP.
 | `desenho_instrucional` | `consultar_repertorio_instrucional`, `manter_unidade_analise`, `manter_requisito_evidencia`, `vincular_repertorio_instrucional`, `registrar_aplicacoes_instrucionais`, `aplicar_configuracao_instrucional`, `ajustar_orientacao`, `ajustar_componentes` |
 | `preferencias_de_autoria` | `consultar_preferencias_autoria`, `salvar_preferencias_autoria` |
 | `perfis_de_autoria` | `consultar_perfis`, `salvar_perfil`, `excluir_perfil`, `prever_aplicacao_perfil`, `aplicar_perfil` |
-| `observacoes_autorais` | `consultar_observacoes`, `registrar_observacao`, `editar_observacao` |
+| `observacoes_autorais` | `consultar_observacoes`, `registrar_observacao`, `editar_observacao`, `registrar_inspecao`, `decidir_observacao` |
 
 Cada grupo recebe `tarefa` e `argumentos`. O schema, que define os dados
 aceitos, usa `oneOf` para permitir uma das alternativas e vincular cada nome
@@ -92,8 +92,7 @@ só altera o conteúdo mediante uma operação autorizada.
 
 ## Materialização e parâmetros
 
-A preparação recupera o repertório — conhecimentos cadastrados, planejados e
-já desenvolvidos no percurso — e as escolhas aplicáveis ao lote. Uma escolha
+`preparar_materializacao` recebe o plano compacto e verifica de uma vez a base reconciliada, repertório, vínculos, requisitos, formas, componentes, fontes, prática e cobertura. Só `ready` permite escrever com a mesma referência; a materialização não é um ciclo de descoberta. `unidade` identifica uma unidade existente a substituir, `posicao` é final e omitidas permanecem; `concluir: false` conserva produção parcial. Práticas novas exigem resposta avaliável e feedback offline, com resposta aberta preservada somente no legado. Uma escolha
 automática exige um valor contextual e sua justificativa antes da produção.
 Valores fixados e condições de pesquisa prevalecem. A configuração aplicada
 registra as escolhas daquela produção e permanece distinta da intenção para
@@ -111,12 +110,12 @@ pessoal e acordo de um trabalho em andamento.
 
 ## Observações, revisão e acesso
 
-Observações são entradas ligadas ao conteúdo, com versões próprias. Uma
-correção trata somente as versões integralmente atendidas e confirmadas por
-releitura. A declaração humana de revisão registra uma decisão expressa sobre
+Uma observação única pode ter vários alvos, com bases e estados próprios. Correção salva altera o vigente, mas confirmação de persistência não aprova nem elimina a observação. `registrar_inspecao` registra o parecer sobre a base lida e `decidir_observacao` executa aprovação ou encerramento explícitos nos alvos apresentados. Decisão parcial mantém os demais; cancelar não exige uma alteração artificial. A declaração humana de revisão registra uma decisão expressa sobre
 a explicação ou unidade salva. O [fluxo de revisão](fluxos-prompts-e-contratos.md#observações-revisão-e-privacidade)
 e as [regras de acesso](aralearn-contract.md#revisão-do-conteúdo) distinguem
 essas operações de tornar um curso acessível e disponibilizar seus arquivos.
+
+A fila fornece `referenciasComparacao` por alvo. Envie a referência inteira em `preparar_revisao.comparacao` e recupere suas continuações antes de examinar o conteúdo e as fontes anteriores e vigentes. A lista compacta conserva hashes e versões; a comparação recupera o conteúdo literal sem reduzi-lo.
 
 Para um pedido explícito de curso público, execute `definir_visibilidade` no grupo
 `acesso_do_curso` e confirme o estado persistido com `consultar_acesso` antes de
@@ -131,6 +130,8 @@ As operações devolvem `result`, com o resultado, e podem incluir `deepLink`,
 para inspeção no aplicativo, e `nextDecision`, quando uma escolha ainda falta.
 A resposta estruturada conserva os dados necessários ao cliente; a conversa
 pode permanecer breve sem reduzir o conteúdo solicitado.
+
+Cada entrada de `links` contém `relation`, `target`, `label`, `url` e, quando disponível, `revision`; o primeiro endereço corresponde a `deepLink`. A relação distingue conteúdo, observações, fontes, planejamento e parâmetros. Use o endereço e a identidade recebidos para a intenção apresentada.
 
 Uma continuação indica que há mais dados do mesmo recorte. O cliente recupera
 as partes necessárias antes de considerar a leitura completa. O
@@ -207,7 +208,7 @@ OpenAPI. Por isso, a importação do artefato corrente constitui a verificação
 desse limite na prática.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
-que conservam as 54 tarefas do catálogo 4.0.0. Essa organização permite
+que conservam as 56 tarefas do catálogo 5.0.0. Essa organização permite
 selecionar cada tarefa com seus próprios argumentos sem ampliar o número de
 operações apresentado ao editor. A aceitação do arquivo pelo editor, a
 publicação do assistente e a execução contra o serviço são verificações
@@ -262,7 +263,7 @@ npm run test:authoring:actions
 
 O gerador projeta o catálogo compartilhado com o
 [mapeamento de transporte de Actions](../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js).
-A validação confere se as 54 tarefas continuam representadas pelos seis grupos e
+A validação confere se as 56 tarefas continuam representadas pelos seis grupos e
 pelas 24 operações diretas. Também percorre os vínculos entre tarefas e
 argumentos, seus limites e as regras transversais de autorização, confirmação e
 resposta, inclusive nas formas direta, indireta e negativa de expressar uma
@@ -274,7 +275,7 @@ Referências de arquivos permanecem nas duas operações diretas de ingestão.
 1. Gere e confira o arquivo.
 2. Abra a configuração de Actions do GPT.
 3. Substitua integralmente o OpenAPI anterior pelo arquivo corrente.
-4. Confira as 30 operações, incluindo os seis grupos que preservam as 54 tarefas, e salve a Action.
+4. Confira as 30 operações, incluindo os seis grupos que preservam as 56 tarefas, e salve a Action.
 5. Crie uma conversa nova e conclua ou renove o OAuth quando necessário.
 6. Comece retomando ou criando o curso.
 7. Execute uma jornada completa antes de considerar o contrato publicado.

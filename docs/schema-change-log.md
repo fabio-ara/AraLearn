@@ -17,6 +17,38 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260916031133 — produção incremental com conclusão acumulada
+
+A materialização recebe as unidades novas ou explicitamente substituídas e a ordem final completa da parte. Unidades omitidas conservam conteúdo, fontes, identidade e configuração aplicada; a alteração de posição avança somente a posição e sua versão. O repertório e seus vínculos precisam existir antes da produção. A conclusão confere a cobertura, as formas explicativas e a prática no conjunto acumulado, respeitando as configurações aplicadas às unidades preservadas.
+
+A coluna opcional `materialization_complete` distingue fragmentos novos da conclusão. Seu valor nulo conserva a interpretação dos dados anteriores. Os escritores mantêm autorização, comparação de versões, recibos e efeitos na mesma transação; uma falha não deixa uma parte intermediária gravada. A leitura de inspeção expõe as aplicações e configurações persistidas necessárias ao preparo seguinte.
+
+## 20260916030333 — intervenções editoriais e arquivos das bases pendentes
+
+As origens genéricas `gpt` passam a `ai`. Intervenções consecutivas da mesma origem formam uma sequência; uma gravação sem mudança material não acrescenta intervenção. Dados anteriores conservam as origens conhecidas e declaram o histórico incompleto, sem reconstruir uma sequência que não foi registrada.
+
+As bases de observações pendentes participam da contagem de referências dos arquivos. A coleta só libera bytes sem uso pelo conteúdo vigente ou por outra base necessária. Cópias e restaurações conservam as distinções entre conteúdo, origem, inspeção e revisão.
+
+## 20260916030020 — reconciliação da explicação com o percurso
+
+A explicação pode declarar seus trechos por recurso e localizador, ligando-os ao repertório, aos requisitos e ao papel que exercem: introdução, retomada, prévia, exemplo ou apoio. A reconciliação identifica a base examinada e torna lacunas ou localizadores desatualizados explícitos. Explicações antigas permanecem legíveis; a nova materialização exige a reconciliação pertinente antes de concluir o percurso.
+
+## 20260916025635 — prática avaliável na nova autoria
+
+Os escritores de autoria rejeitam a criação de novas respostas `aralearn.response.open` e exigem avaliação e feedback local nas práticas. O pacote permanece no runtime para leitura, restauração e preservação do legado. Editar outro campo de uma unidade legada não exige substituir sua resposta como efeito colateral.
+
+## 20260916025342 — inspeção semântica por IA vinculada à base
+
+O parecer é persistido separadamente do conteúdo e da revisão humana, com a identidade da base examinada. Mudanças materiais no objeto ou em suas fontes tornam o parecer insuficiente para a versão nova. O registro usa autorização, comparação da base e recibo idempotente; registrar o parecer não atribui à IA uma edição que ela não fez. Dados anteriores não recebem inspeção fictícia.
+
+## 20260916025032 — observação autoral com múltiplos alvos e decisão explícita
+
+Uma observação conserva identidade única e incidências independentes em explicações e unidades. Bases anteriores privadas permanecem disponíveis enquanto necessárias à comparação. A leitura da fila devolve referências para recuperar o conteúdo literal de cada alvo; não duplica todas as bases em cada página da fila.
+
+A decisão confere a versão da observação, do conjunto de alvos e das bases apresentadas. Aprovar alguns alvos conserva as pendências restantes; confirmar tecnicamente uma correção não as aprova. O encerramento terminal remove o texto operacional dispensável e conserva somente metadados limitados por 14 dias para reconciliação e idempotência. A migração preserva observações antigas de alvo único sem agrupar textos semelhantes nem inventar conteúdo anterior.
+
+Conflitos de comparação, versão, estado, incidência e base usam `PT409`, como os demais conflitos de negócio. A captura de serialização nativa e os envelopes existentes permanecem preservados; o cliente recebe HTTP 409 e precisa reler o estado antes de uma nova decisão.
+
 ## 20260911232152 — alcance da revisão da explicação durante a produção
 
 O hash da explicação passa a excluir vínculos de análise instrucional

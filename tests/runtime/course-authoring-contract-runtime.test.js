@@ -157,9 +157,9 @@ for (const channel of ["MCP", "Actions"]) {
       async confirmCourseObservationCorrection(request) {
         events.push("confirm"); confirmations.push(structuredClone(request));
         assert.deepEqual(request.confirmations, [{ annotationId: reference.annotationId,
-          annotationVersion: reference.annotationVersion, effectHash: "a".repeat(64) }]);
+          annotationVersion: reference.annotationVersion, targetKind: reference.targetKind,
+          targetId: reference.targetId, effectHash: "a".repeat(64) }]);
         receipt.observations[0].confirmed = true;
-        queue = queue.filter(entry => entry.annotationId !== reference.annotationId);
         return structuredClone(receipt);
       },
       async commitCourseComposition() { assert.fail("A correção da fila não usa a gravação genérica."); }
@@ -184,12 +184,13 @@ for (const channel of ["MCP", "Actions"]) {
     const resumed = await client("retomar_correcao", { recuperacao: recovery });
     assert.equal(resumed.response.status, 200);
     assert.equal(resumed.result.context.confirmedObservationCount, 1);
+    assert.equal(resumed.result.context.pendingObservationCount, 2);
     assert.deepEqual(events.slice(boundary), ["receipt", "content", "sources", "queue", "receipt", "confirm"]);
     assert.equal(confirmations[0].requestId, recovery.requestId);
     assert.equal(receipts.every(value => value === recovery.requestId), true);
     assert.equal(commits.length, 1);
-    assert.equal(queue.length, 1);
-    assert.equal(queue[0].annotationId, other.annotationId);
+    assert.equal(queue.length, 2, "Confirmar persistência não substitui aprovação humana.");
+    assert.equal(queue[1].annotationId, other.annotationId);
     assert.equal(saved.content[0].data.text, "Relação causal esclarecida.");
     await client("retomar_correcao", { recuperacao: recovery });
     assert.equal(commits.length, 1);

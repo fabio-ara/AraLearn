@@ -37,6 +37,18 @@ $f$;
 select is(pg_temp.write_302(jsonb_build_object('type','set_target_sources','targetKind','study_unit','targetId','u','expectedTargetVersion',1,'sourceLinks',pg_temp.links_302()),'source-302-bind-01')->>'changed','true','mesma fonte admite dois usos, papéis múltiplos e obra inteira sem âncora');
 select is(pg_temp.read_links_302(),pg_temp.links_302(),'vínculos mantêm identidade e ocorrência literal');
 
+-- O mesmo trecho pode ser citado por mais de um vínculo independente.
+create function pg_temp.links_reused_anchor_302() returns jsonb language sql as $f$
+ select jsonb_set(pg_temp.links_302(),'{0,anchors}',pg_temp.links_302()->1->'anchors')
+$f$;
+savepoint anchor_reuse_302;
+select is(pg_temp.write_302(jsonb_build_object('type','set_target_sources','targetKind','study_unit','targetId','u','expectedTargetVersion',1,'sourceLinks',pg_temp.links_reused_anchor_302()),'source-302-reuse-anchor')->>'changed','true','o mesmo trecho pode sustentar dois vínculos independentes');
+select is((select count(*) from private.course_source_attribution_anchors anchor_link
+  join private.course_source_attributions attribution on attribution.id=anchor_link.attribution_id
+  where anchor_link.course_id='99000000-0000-4000-8000-000000000101' and attribution.target_kind='study_unit'
+    and attribution.target_id='u' and anchor_link.anchor_id='anchor-302'),2::bigint,'âncora repetida permanece separada por vínculo');
+rollback to savepoint anchor_reuse_302;
+
 create temporary table citation_302 as select private.course_study_citations_payload_v1('99000000-0000-4000-8000-000000000101','u',4) value;
 select is((select value->>'contract' from citation_302),'aralearn.course-study-citations.v2','projeção de estudo anuncia contrato v2');
 select is((select value->>'bibliographyStyle' from citation_302),'abnt-2025','estilo inicial pertence ao curso');

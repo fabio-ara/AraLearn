@@ -7,9 +7,15 @@ import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import { observeCoursePracticeDistribution } from
   "../aralearn/runtime/domain/coursePracticeDistribution.js";
-import { normalizeCourseSourceLinks } from "../aralearn/runtime/domain/courseSources.js";
+import { normalizeCourseSourceLinks, requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
 import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
+import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
+import { inspectExplanationReconciliation } from "../aralearn/runtime/domain/courseExplanationReconciliation.js";
+import { sha256Hex } from "./security.js";
+import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
+import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 import {
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   COURSE_DESIGN_PARAMETER_CATALOG_VERSION,
@@ -156,7 +162,7 @@ async function listExistingPartStudyUnits({ adapter, principal, context, deadlin
         fail("course_service_unavailable", "A parte possui posições de unidade de estudo duplicadas.", 503);
       }
       seenIds.add(slot.studyUnitId);
-      bySlot.set(slot.key, { studyUnitId: slot.studyUnitId });
+      bySlot.set(slot.key, { studyUnitId: slot.studyUnitId, item });
     }
     if (page.hasMore !== true) return bySlot;
     const next = page.nextCursor?.studyUnitId;
@@ -204,101 +210,6 @@ function analysisDefinition(value) {
   };
 }
 
-async function preparePlanInventory({ context, units, newId }) {
-  const analysisUnits = planItems(context.plan, "instructionalAnalysisUnits")
-    .map((item) => ({ ...item }));
-  const evidenceRequirements = planItems(context.plan, "evidenceRequirements")
-    .map((item) => ({ ...item }));
-  const upserts = [];
-
-  const uniqueMatch = (items, statement, label) => {
-    const matches = items.filter((item) =>
-      normalizedText(item?.statement) === normalizedText(statement));
-    if (matches.length > 1) {
-      fail("ambiguous_semantic_inventory_item", `${label} aparece mais de uma vez no repertório.`, 409);
-    }
-    return matches[0] ?? null;
-  };
-
-  for (const unit of units) {
-    for (const requested of unit.aplicacaoPedagogica.ideiasIntroduzidas) {
-      const definition = analysisDefinition(requested);
-      if (!definition) continue;
-      let item = uniqueMatch(analysisUnits, definition.statement, "A ideia");
-      if (item) {
-        const currentDescription = String(item.description || "").trim();
-        if (currentDescription &&
-            normalizedText(currentDescription) !== normalizedText(definition.description)) {
-          fail(
-            "analysis_unit_description_mismatch",
-            `A ideia “${definition.statement}” já existe com outra descrição.`,
-            409
-          );
-        }
-        if (!currentDescription) {
-          item.description = definition.description;
-          upserts.push({
-            id: item.id,
-            kind: "instructional_analysis_unit",
-            position: Number(item.position),
-            statement: item.statement,
-            description: item.description
-          });
-        }
-      } else {
-        item = {
-          id: await newId(`analysis-unit:${normalizedText(definition.statement)}`),
-          position: analysisUnits.reduce((maximum, entry) => {
-            const position = Number(entry?.position);
-            return Math.max(maximum, Number.isSafeInteger(position) ? position : -1);
-          }, -1) + 1,
-          statement: definition.statement,
-          description: definition.description,
-          introducedAt: null,
-          usedBy: [],
-          revisitedBy: []
-        };
-        analysisUnits.push(item);
-        upserts.push({
-          id: item.id,
-          kind: "instructional_analysis_unit",
-          position: item.position,
-          statement: item.statement,
-          description: item.description
-        });
-      }
-    }
-  }
-
-  for (const unit of units) {
-    for (const practice of unit.aplicacaoPedagogica.praticas) {
-      if (typeof practice?.requisito !== "string") continue;
-      const statement = boundedText(practice.requisito, "O critério da prática", 2_000);
-      if (uniqueMatch(evidenceRequirements, statement, "O critério da prática")) continue;
-      const item = {
-        id: await newId(`evidence-requirement:${normalizedText(statement)}`),
-        position: evidenceRequirements.reduce((maximum, entry) => {
-          const position = Number(entry?.position);
-          return Math.max(maximum, Number.isSafeInteger(position) ? position : -1);
-        }, -1) + 1,
-        statement
-      };
-      evidenceRequirements.push(item);
-      upserts.push({
-        id: item.id,
-        kind: "evidence_requirement",
-        position: item.position,
-        statement: item.statement,
-        description: ""
-      });
-    }
-  }
-
-  context.plan.plan.instructionalAnalysisUnits = analysisUnits;
-  context.plan.plan.evidenceRequirements = evidenceRequirements;
-  return { analysisUnits, evidenceRequirements, upserts };
-}
-
 function resolveAnchor(anchors, value) {
   return resolveReference(anchors, value, {
     position: () => Number.NaN,
@@ -319,6 +230,7 @@ export async function resolveHumanSourceLinks({
   sourceCache = new Map(),
   newId,
   content,
+  allowMissingOccurrences = false,
   identityPrefix = "source-link"
 }) {
   if (!Array.isArray(requested) || requested.length > 32) {
@@ -362,9 +274,9 @@ export async function resolveHumanSourceLinks({
         fail("human_reference_not_found", "A fonte corrente não foi localizada.", 404);
       }
       source = {
+        ...current,
         sourceId: current.sourceId,
-        anchors: (Array.isArray(current.anchors) ? current.anchors : [])
-          .filter((anchor) => anchor.status == null || anchor.status === "active")
+        anchors: Array.isArray(current.anchors) ? current.anchors : []
       };
       sourceCache.set(cacheKey, source);
     }
@@ -376,7 +288,7 @@ export async function resolveHumanSourceLinks({
     if (entry.relacao === "quoted_from" && !selectedAnchors.length) {
       fail("invalid_human_source_anchor", "Uma citação direta exige a localização informada na fonte.");
     }
-    links.push({
+    const link = {
       linkId: await newId(`${identityPrefix}:${index}`),
       sourceId: source.sourceId,
       relation: entry.relacao,
@@ -386,7 +298,9 @@ export async function resolveHumanSourceLinks({
       anchors: selectedAnchors.map((anchor) => ({
         anchorId: anchor.anchorId
       }))
-    });
+    };
+    requireCourseSourceEvidence(link, source, { allowMissingOccurrences });
+    links.push(link);
   }
   return normalizeCourseSourceLinks(links);
 }
@@ -402,6 +316,330 @@ function componentRefs(content) {
     const version = String(instance?.version || "");
     return packageId && version ? `${packageId}@${version}` : "";
   }).filter(Boolean))].sort((left, right) => left.localeCompare(right, "en"));
+}
+
+// Position is a destination, never the identity of an object to replace.
+// Untouched objects fill the remaining slots in their current relative order.
+function arrangeMaterializationUnits(existingBySlot, requested, micros, add = null) {
+  const report = (code, message, details = {}) => {
+    if (add) add(code, message, details); else fail(code, message);
+  };
+  const planned = new Map();
+  const retained = [];
+  const consumed = new Set();
+  for (const [index, unit] of requested.entries()) {
+    try {
+      const micro = resolveReference(micros, unit.microssequencia, { position: value => value.productionPosition ?? value.position,
+        texts: value => [value.title], label: "A microssequência" });
+      const candidates = [...existingBySlot.values()].filter(value =>
+        value.item.curriculumPath.didacticMicrosequence.id === micro.id);
+      const existing = unit.unidade === undefined ? null : resolveReference(candidates, unit.unidade, {
+        position: value => value.item.studyUnit.position - 1,
+        texts: value => [value.studyUnitId, value.item.studyUnit.title], label: "A unidade a substituir" });
+      if (existing && consumed.has(existing.studyUnitId)) {
+        report("duplicate_human_reference", "O lote repete a mesma unidade existente.", { unit: index + 1 }); continue;
+      }
+      if (existing) consumed.add(existing.studyUnitId);
+      planned.set(index, { index, existing, microsequenceId: micro.id, position: unit.posicao });
+    } catch (error) { report(error.code, error.message, { unit: index + 1 }); }
+  }
+  for (const micro of micros) {
+    const current = [...existingBySlot.values()].filter(value => value.item.curriculumPath.didacticMicrosequence.id === micro.id);
+    const supplied = [...planned.values()].filter(value => value.microsequenceId === micro.id);
+    const untouched = current.filter(value => !consumed.has(value.studyUnitId))
+      .sort((left, right) => left.item.studyUnit.position - right.item.studyUnit.position);
+    const count = untouched.length + supplied.length;
+    const reserved = new Set();
+    for (const value of supplied) {
+      if (!Number.isSafeInteger(value.position) || value.position < 1 || value.position > count || reserved.has(value.position)) {
+        report("human_materialization_invalid_order", "A ordem final precisa ter posições distintas e consecutivas.", { unit: value.index + 1 });
+      }
+      reserved.add(value.position);
+    }
+    for (let position = 1; position <= count; position += 1) if (!reserved.has(position)) {
+      const existing = untouched.shift();
+      if (existing) retained.push({ existing, microsequenceId: micro.id, position });
+    }
+  }
+  return { planned, retained };
+}
+
+function persistedPedagogicalUnit(item, microsequence, position, design) {
+  const application = item.designApplication;
+  return { source: { posicao: position, conteudo: item.studyUnit,
+      aplicacaoPedagogica: { explicacoes: application.explanationApplications ?? [] } },
+    inputIndex: `saved:${item.studyUnit.id}`, microsequence, content: item.studyUnit, design,
+    noveltyIds: application.introducedInstructionalAnalysisUnitIds ?? [],
+    usedIds: application.usedInstructionalAnalysisUnitIds ?? [],
+    explanations: (application.explanationApplications ?? []).map(value => ({ ...value, notApplicable: value.notApplicable ?? [] })),
+    practices: application.practiceApplications ?? [], curriculumScopeItemIds: application.curriculumScopeItemIds ?? [],
+    componentRefs: componentRefs(item.studyUnit) };
+}
+
+export function humanMaterializationUnitPlan(unit) {
+  return {
+    microssequencia: unit.microssequencia,
+    posicao: unit.posicao,
+    ...(unit.unidade === undefined ? {} : { unidade: unit.unidade }),
+    papel: unit.conteudo?.role,
+    componentes: componentRefs(unit.conteudo),
+    resposta: unit.conteudo?.response
+      ? `${unit.conteudo.response.package}@${unit.conteudo.response.version}` : null,
+    feedbackLocal: Array.isArray(unit.conteudo?.feedback) && unit.conteudo.feedback.some(instance => {
+      try { return Boolean(RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "feedback").trim()); }
+      catch { return false; }
+    }),
+    ...(unit.configuracao === undefined ? {} : { configuracao: unit.configuracao }),
+    aplicacaoPedagogica: structuredClone(unit.aplicacaoPedagogica),
+    fontes: (unit.fontes ?? []).map(({ fonte, relacao, papeis, ancoras }) =>
+      ({ fonte, relacao, papeis, ancoras: ancoras ?? [] }))
+  };
+}
+
+export async function explanationContentBasis(explanation) {
+  return await sha256Hex(JSON.stringify({ title: explanation?.title, content: explanation?.content }));
+}
+
+export async function reconcileHumanExplanation(content, entries, context) {
+  const explanation = normalizeMicrosequenceExplanation(content);
+  if (entries === undefined) return explanation;
+  if (!Array.isArray(entries) || !entries.length || entries.length > 512) {
+    fail("invalid_explanation_reconciliation", "Informe as passagens classificadas da base.");
+  }
+  const micros = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
+    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+  explanation.reconciliation = {
+    contract: "aralearn.explanation-reconciliation.v1", contentBasis: await explanationContentBasis(explanation),
+    entries: entries.map(entry => ({ resourceId: explanation.content[entry.recurso - 1]?.id,
+      path: entry.folha, quote: entry.trecho, prefix: entry.prefixo ?? null, suffix: entry.sufixo ?? null,
+      role: entry.papel, reason: entry.motivo,
+      analysisUnitIds: (entry.ideias ?? []).map(value => resolvePlanItem(context.plan, "instructionalAnalysisUnits", value, "A ideia").id),
+      evidenceRequirementIds: (entry.requisitos ?? []).map(value => resolvePlanItem(context.plan, "evidenceRequirements", value, "O requisito").id),
+      destinationMicrosequenceId: entry.destino == null ? null : resolveReference(micros, entry.destino, {
+        position: () => Number.NaN, texts: item => [item.title], label: "O destino da retomada" }).id
+    }))
+  };
+  // Saving an incomplete declaration is allowed; it remains visibly pending in
+  // preparation. Invalid structure is rejected, never silently fabricated.
+  return normalizeMicrosequenceExplanation(explanation);
+}
+
+// Same structural declarations are consumed by preparation and writing. The
+// compact plan excludes final prose, but never excludes repertoire, forms,
+// response eligibility, feedback intent, configuration or source references.
+export async function preflightHumanCourseMaterialization({ adapter, principal, context,
+  planUnits = [], explanations = [], complete = true, deadlineAt = null }) {
+  const blockers = [];
+  const add = (code, message, details = {}) => blockers.push({ code, message, ...details });
+  const capture = (callback, details = {}) => {
+    try { return callback(); }
+    catch (error) { add(error.code ?? "invalid_human_materialization", error.message, details); return null; }
+  };
+  const micros = partMicrosequences(context.part);
+  const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
+  const designs = new Map(await Promise.all(micros.map(async micro => [micro.id, await adapter.getCourseDesign({
+    principal, courseId: context.course.id, scopeKind: "didactic_microsequence", scopeRef: micro.id,
+    childLimit: 1, childCursor: null, deadlineAt
+  })])));
+  const groups = new Map();
+  const registry = new Map(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(manifest =>
+    [`${manifest.id}@${manifest.version}`, manifest]));
+  const sourceCache = new Map();
+  const scopedDesigns = new Map();
+  const arrangement = arrangeMaterializationUnits(existingBySlot, planUnits, micros, add);
+  if (!planUnits.length) add("human_materialization_plan_required",
+    "Informe o plano compacto das unidades para conferir referências, formas, componentes e cobertura antes de escrever.");
+  for (const [index, planned] of planUnits.entries()) {
+    const details = { unit: index + 1 };
+    const micro = capture(() => resolveReference(micros, planned.microssequencia, {
+      position: item => item.productionPosition ?? item.position, texts: item => [item.title], label: "A microssequência"
+    }), details);
+    // Continue inspecting independent prerequisites even if another reference is missing.
+    const application = planned.aplicacaoPedagogica ?? {};
+    const resolve = (collection, value, label) => capture(() => resolvePlanItem(context.plan, collection,
+      analysisDefinition(value)?.statement ?? value, label), details)?.id ?? null;
+    const noveltyIds = (application.ideiasIntroduzidas ?? []).map(value =>
+      resolve("instructionalAnalysisUnits", value, "A ideia do repertório")).filter(Boolean);
+    const usedIds = (application.ideiasUtilizadas ?? []).map(value =>
+      resolve("instructionalAnalysisUnits", value, "A ideia do repertório")).filter(Boolean);
+    const parsedExplanations = (application.explicacoes ?? []).map(entry => ({
+      instructionalAnalysisUnitId: resolve("instructionalAnalysisUnits", entry.ideia, "A ideia do repertório"),
+      developedForms: entry.formas ?? [],
+      notApplicable: (entry.formasNaoAplicaveis ?? []).map(value => ({ form: value.forma, reason: value.motivo }))
+    })).filter(entry => entry.instructionalAnalysisUnitId);
+    const practices = (application.praticas ?? []).map(entry => {
+      const id = resolve("evidenceRequirements", entry.requisito, "O requisito de evidência");
+      return { evidenceRequirementId: id, opportunityId: entry.oportunidade,
+        invariantTaskOperation: planItems(context.plan, "evidenceRequirements").find(item => item.id === id)?.statement,
+        variedDimensions: entry.dimensoesVariadas ?? [] };
+    }).filter(entry => entry.evidenceRequirementId);
+    const curriculumScopeItemIds = (application.cobertura ?? []).map(value =>
+      resolve("curriculumScopeItems", value, "O item de cobertura curricular")).filter(Boolean);
+    const existing = arrangement.planned.get(index)?.existing?.item ?? null;
+    for (const ref of new Set([...(planned.componentes ?? []), ...(planned.resposta ? [planned.resposta] : [])])) {
+      const manifest = registry.get(ref);
+      if (!manifest) add("human_materialization_component_unknown", "Consulte o contrato exato do componente instalado.", { ...details, component: ref });
+      else if (manifest.authoringEligibility === "legacy_only") add("practice_response_legacy_only",
+        "Resposta aberta não é elegível para nova autoria; escolha uma prática avaliável offline.", details);
+    }
+    if (planned.papel === "practice" && (!planned.resposta || !planned.feedbackLocal ||
+        !registry.get(planned.resposta)?.slots.includes("response"))) {
+      add("practice_offline_feedback_required", "Declare resposta avaliável e feedback explicativo local para a prática.", details);
+    }
+    if (planned.resposta && !planned.feedbackLocal) add("practice_offline_feedback_required",
+      "Declare feedback explicativo local para a resposta.", details);
+    for (const entry of application.explicacoes ?? []) {
+      const forms = entry.formas ?? [];
+      const notApplicable = entry.formasNaoAplicaveis ?? [];
+      if (!forms.length && !notApplicable.length || new Set(forms).size !== forms.length ||
+          forms.some(form => !EXPLANATION_FORMS.includes(form)) ||
+          new Set(notApplicable.map(value => value.forma)).size !== notApplicable.length ||
+          notApplicable.some(value => !EXPLANATION_FORMS.includes(value.forma) || forms.includes(value.forma) ||
+            typeof value.motivo !== "string" || !value.motivo.trim() || [...value.motivo.trim()].length > 240)) {
+        add("invalid_human_materialization", "As formas aplicadas e não aplicáveis são incoerentes.", details);
+      }
+    }
+    for (const entry of application.praticas ?? []) {
+      if (typeof entry.oportunidade !== "string" || !entry.oportunidade.trim() || [...entry.oportunidade.trim()].length > 240 ||
+          !Array.isArray(entry.dimensoesVariadas) || new Set(entry.dimensoesVariadas).size !== entry.dimensoesVariadas.length ||
+          entry.dimensoesVariadas.some(value => !PRACTICE_VARIATION_DIMENSIONS.includes(value))) {
+        add("invalid_human_materialization", "Uma aplicação de prática é inválida.", details);
+      }
+    }
+    if (new Set(curriculumScopeItemIds).size !== curriculumScopeItemIds.length) add("duplicate_human_reference",
+      "A unidade de estudo repete o mesmo item de cobertura.", details);
+    for (const [sourceIndex, link] of (planned.fontes ?? []).entries()) {
+      try {
+        await resolveHumanSourceLinks({ adapter, principal, courseContext: context,
+          requested: [link], content: {}, allowMissingOccurrences: true,
+          newId: key => `preflight-${index}-${sourceIndex}-${key}`, sourceCache, deadlineAt });
+      } catch (error) { add(error.code ?? "invalid_human_source", error.message, details); }
+    }
+    if (!micro) continue;
+    const scopedDesign = existing ? await adapter.getCourseDesign({ principal, courseId: context.course.id,
+      scopeKind: "study_unit", scopeRef: existing.studyUnit.id, childLimit: 1, childCursor: null, deadlineAt }) : designs.get(micro.id);
+    scopedDesigns.set(existing?.studyUnit.id ?? `new:${index}`, scopedDesign);
+    capture(() => validateUnitConfiguration(planned.configuracao), details);
+    const design = capture(() => applyUnitContextualCalibration(scopedDesign, planned.configuracao,
+      { existing: Boolean(existing) }), details);
+    if (!design) continue;
+    capture(() => designSnapshot(design, micro.id), details);
+    for (const id of curriculumScopeItemIds) {
+      if (!plannedCurriculumScopeIds(context.plan, micro.id).includes(id)) add("human_materialization_scope_outside_map",
+        "Um item de cobertura não pertence à microssequência desta unidade de estudo.", details);
+    }
+    const targets = design.targetPlanItems;
+    if (!targets) { add("course_service_unavailable", "O repertório vinculado não pôde ser lido.", details); continue; }
+    for (const id of new Set([...noveltyIds, ...usedIds, ...parsedExplanations.map(entry => entry.instructionalAnalysisUnitId)])) {
+      if (!targets.instructionalAnalysisUnitIds.includes(id)) add("human_materialization_analysis_not_linked",
+        "Vincule a ideia à microssequência antes da materialização.", details);
+    }
+    for (const practice of practices) {
+      if (!targets.evidenceRequirementIds.includes(practice.evidenceRequirementId)) add("human_materialization_requirement_not_linked",
+        "Vincule o requisito à microssequência antes da materialização.", details);
+    }
+    const unit = { source: { ...planned, conteudo: { role: planned.papel } }, inputIndex: index,
+      microsequence: micro, noveltyIds, usedIds, explanations: parsedExplanations, practices,
+      curriculumScopeItemIds, componentRefs: planned.componentes ?? [], content: {}, design };
+    if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
+    groups.get(micro.id).units.push(unit);
+  }
+  for (const retained of arrangement.retained) {
+    const { item } = retained.existing;
+    const application = item.designApplication, snapshot = item.designSnapshot;
+    if (!application || !snapshot) {
+      if (complete) add("human_materialization_existing_application_missing",
+        "Registre as aplicações e a configuração aplicada da unidade existente antes de concluir o percurso.", { studyUnit: item.studyUnit.title });
+      continue;
+    }
+    const micro = micros.find(value => value.id === retained.microsequenceId);
+    // An omitted object keeps the configuration actually used to produce it.
+    // Current intentions govern incoming units and the current repertoire only.
+    const design = { ...designs.get(micro.id), parameters: (snapshot.parameters ?? []).map(parameter => ({
+      parameterId: parameter.parameterId, effectiveAssignment: {
+        mode: parameter.origin === "automatic" ? "automatic" : "fixed", value: parameter.value,
+        origin: parameter.origin, reason: parameter.reason,
+        sourceScope: parameter.sourceScopeKind ? { kind: parameter.sourceScopeKind } : null
+      }
+    })), componentPolicy: { effectiveAssignment: snapshot.componentPolicy } };
+    scopedDesigns.set(item.studyUnit.id, design);
+    const unit = persistedPedagogicalUnit(item, micro, retained.position, design);
+    if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
+    groups.get(micro.id).units.push(unit);
+  }
+  const allMicros = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
+    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+  const reconciliations = [];
+  const savedSourceBases = [];
+  const suppliedByMicro = new Map();
+  for (const [index, entry] of (explanations ?? []).entries()) {
+    try {
+      const prepared = await prepareExplanations({ explanations: [entry], adapter, principal, context,
+        deadlineAt, newId: async key => `preflight-explanation-${index}-${key}`, includeSaved: false });
+      const value = prepared[0];
+      if (suppliedByMicro.has(value.microsequenceId)) fail("invalid_human_explanation", "A parte repete a explicação de uma microssequência.");
+      suppliedByMicro.set(value.microsequenceId, value);
+    } catch (error) { add(error.code ?? "invalid_human_explanation", error.message, { explanation: index + 1 }); }
+  }
+  for (const micro of micros) {
+    const supplied = suppliedByMicro.get(micro.id);
+    const explanation = supplied ? supplied.content
+      : allMicros.find(item => item.id === micro.id)?.explanation ?? micro.explanation;
+    if (!explanation) { add("human_materialization_missing_explanation", "Salve e reconcilie a Explicação antes de produzir as unidades.", { microsequence: micro.title }); continue; }
+    if (!supplied) {
+      const sources = await adapter.getCourseSources({ principal, courseId: context.course.id,
+        expectedRevision: context.course.revision, mode: "target", sourceId: null,
+        targetKind: "microsequence_explanation", targetId: micro.id, cursor: null, limit: 1, deadlineAt });
+      if (!Array.isArray(sources?.items) || sources.items.length !== 1) {
+        add("course_service_unavailable", "As fontes da base salva não puderam ser relidas.", { microsequence: micro.title });
+      } else {
+        savedSourceBases.push([micro.id, sources.items[0]]);
+        for (const link of sources.items[0].sourceLinks ?? []) {
+          try {
+            const detail = await adapter.getCourseSources({ principal, courseId: context.course.id,
+              expectedRevision: context.course.revision, mode: "source", sourceId: link.sourceId,
+              targetKind: null, targetId: null, cursor: null, limit: 1, deadlineAt });
+            const source = detail?.items?.[0];
+            if (!source || source.sourceId !== link.sourceId) fail("human_reference_not_found", "A fonte corrente não foi localizada.");
+            sourceCache.set(`saved:${link.sourceId}`, source);
+            requireCourseSourceEvidence(link, source);
+          } catch (error) { add(error.code ?? "invalid_human_source", error.message, { microsequence: micro.title }); }
+        }
+      }
+    }
+    const reconciliation = inspectExplanationReconciliation(explanation, {
+      contentBasis: await explanationContentBasis(explanation),
+      analysisUnitIds: planItems(context.plan, "instructionalAnalysisUnits").map(item => item.id),
+      evidenceRequirementIds: planItems(context.plan, "evidenceRequirements").map(item => item.id),
+      microsequenceIds: allMicros.map(item => item.id)
+    });
+    reconciliations.push({ microssequencia: micro.title, ...reconciliation });
+    reconciliation.blockers.forEach(blocker => blockers.push({ ...blocker, microsequence: micro.title }));
+    const group = groups.get(micro.id);
+    if (complete && group) {
+      const introduced = new Set(group.units.flatMap(unit => unit.noveltyIds));
+      const practiced = new Set(group.units.flatMap(unit => unit.practices.map(practice => practice.evidenceRequirementId)));
+      for (const id of reconciliation.introduced) if (!introduced.has(id)) add("human_materialization_incomplete_analysis_inventory",
+        "O percurso ainda não cobre um ensinamento introduzido na base.", { microsequence: micro.title,
+          idea: planItems(context.plan, "instructionalAnalysisUnits").find(item => item.id === id)?.statement });
+      for (const id of reconciliation.requirements) if (!practiced.has(id)) add("human_materialization_insufficient_practice",
+        "Um requisito da base ainda não tem prática no percurso.", { microsequence: micro.title,
+          requirement: planItems(context.plan, "evidenceRequirements").find(item => item.id === id)?.statement });
+    } else if (complete && !group) add("human_materialization_incomplete_part",
+      "O plano ainda não cobre esta microssequência.", { microsequence: micro.title });
+  }
+  for (const group of groups.values()) group.units.sort((left, right) => left.source.posicao - right.source.posicao);
+  capture(() => validatePedagogicalPart([...groups.values()], context.plan,
+    new Set([...existingBySlot.values()].map(entry => entry.studyUnitId)), blockers, { complete }));
+  const normalizedPlan = planUnits.map(planned => ({ ...planned,
+    componentes: [...(planned.componentes ?? [])].sort(), fontes: (planned.fontes ?? []).map(link => ({ ...link, ancoras: link.ancoras ?? [] })) }));
+  const identity = await sha256Hex(canonicalAuthoringValue({ courseId: context.course.id, courseRevision: context.course.revision,
+    part: context.part, plan: context.plan, designs: [...designs], scopedDesigns: [...scopedDesigns],
+    existing: [...existingBySlot], sourceBases: [...sourceCache], savedSourceBases,
+    explanations: [...suppliedByMicro], planUnits: normalizedPlan, complete }));
+  const unique = [...new Map(blockers.map(blocker => [JSON.stringify(blocker), blocker])).values()];
+  return { state: unique.length ? "blocked" : "ready", referencia: unique.length ? null : `materialization-v1:${identity}`,
+    blockers: unique, reconciliations, completion: complete ? "complete" : "partial" };
 }
 
 function validateUnitConfiguration(configuration) {
@@ -455,7 +693,7 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
   if (!microsequences.length) {
     fail("human_part_has_no_microsequences", "A parte ainda não possui microssequências para materializar.");
   }
-  const inventory = await preparePlanInventory({ context, units, newId });
+  const inventory = { upserts: [] };
   const groups = new Map();
   const sourceCache = new Map();
   for (const [unitIndex, unit] of units.entries()) {
@@ -576,6 +814,8 @@ async function prepareUnits({ adapter, principal, context, units, deadlineAt, ne
       );
     }
     const content = structuredClone(validation.normalized);
+    try { requireCoursePracticeAuthoring(content); }
+    catch (error) { fail(error.code, error.message); }
     delete content.id;
     delete content.position;
     const prepared = {
@@ -902,49 +1142,21 @@ function orderedPlanItemIds(items, requestedIds) {
   return ordered;
 }
 
-function applyGroupTargetPlans(groups, plan) {
-  const analysisItems = planItems(plan, "instructionalAnalysisUnits");
-  const evidenceItems = planItems(plan, "evidenceRequirements");
-  return groups.map((group) => {
-    const analysisIds = new Set();
-    const evidenceIds = new Set();
-    for (const unit of group.units) {
-      const current = unit.design?.targetPlanItems;
-      for (const id of current?.instructionalAnalysisUnitIds || []) analysisIds.add(id);
-      for (const id of current?.evidenceRequirementIds || []) evidenceIds.add(id);
-      for (const id of unit.noveltyIds) analysisIds.add(id);
-      for (const id of unit.usedIds) analysisIds.add(id);
-      for (const explanation of unit.explanations) {
-        analysisIds.add(explanation.instructionalAnalysisUnitId);
-      }
-      for (const practice of unit.practices) {
-        evidenceIds.add(practice.evidenceRequirementId);
-      }
-    }
-    const targetPlanItems = {
-      instructionalAnalysisUnitIds: orderedPlanItemIds(analysisItems, analysisIds),
-      evidenceRequirementIds: orderedPlanItemIds(evidenceItems, evidenceIds)
-    };
-    for (const unit of group.units) {
-      unit.design = { ...unit.design, targetPlanItems };
-    }
-    return {
-      didacticMicrosequenceId: group.microsequenceId,
-      ...targetPlanItems
-    };
-  });
-}
-
 function validatePedagogicalGroup(
   group,
   establishedAnalysis,
   introducedAnywhere,
-  analysisLabels
+  analysisLabels, diagnostics = null, { complete = true } = {}
 ) {
+  const report = (code, message, status) => {
+    if (!diagnostics) fail(code, message, status);
+    diagnostics.push({ code, message });
+  };
   const firstDesign = group.units[0]?.design;
   const targets = firstDesign?.targetPlanItems;
   if (!plainObject(targets)) {
-    fail("course_service_unavailable", "O recorte pedagógico corrente está incompleto.", 503);
+    report("course_service_unavailable", "O recorte pedagógico corrente está incompleto.", 503);
+    return;
   }
   const targetAnalysis = new Set(targets.instructionalAnalysisUnitIds || []);
   const targetEvidence = new Set(targets.evidenceRequirementIds || []);
@@ -966,10 +1178,12 @@ function validatePedagogicalGroup(
     const design = unit.design;
     const policy = design?.componentPolicy?.effectiveAssignment?.policy;
     const unitTargets = design?.targetPlanItems;
-    const ceiling = effectiveParameter(design, PARAMETER_IDS.ceiling);
-    const requiredForms = effectiveParameter(design, PARAMETER_IDS.explanationForms);
-    const practiceMinimum = effectiveParameter(design, PARAMETER_IDS.practiceMinimum);
-    const requiredDimensions = effectiveParameter(design, PARAMETER_IDS.variationDimensions);
+    const parameter = id => { try { return effectiveParameter(design, id); }
+      catch (error) { report(error.code, error.message, error.status); return undefined; } };
+    const ceiling = parameter(PARAMETER_IDS.ceiling);
+    const requiredForms = parameter(PARAMETER_IDS.explanationForms);
+    const practiceMinimum = parameter(PARAMETER_IDS.practiceMinimum);
+    const requiredDimensions = parameter(PARAMETER_IDS.variationDimensions);
     if (!plainObject(policy) || !plainObject(unitTargets) ||
         JSON.stringify(unitTargets.instructionalAnalysisUnitIds || []) !==
           JSON.stringify([...targetAnalysis]) ||
@@ -978,7 +1192,8 @@ function validatePedagogicalGroup(
         !Number.isSafeInteger(ceiling) || ceiling < 1 ||
         !Array.isArray(requiredForms) || !Number.isSafeInteger(practiceMinimum) ||
         practiceMinimum < 1 || !Array.isArray(requiredDimensions)) {
-      fail("course_service_unavailable", "Os parâmetros efetivos essenciais são inválidos.", 503);
+      report("course_service_unavailable", "Os parâmetros efetivos essenciais são inválidos.", 503);
+      continue;
     }
     const mode = pedagogicalMode(unit.source);
     const noveltySet = new Set(unit.noveltyIds);
@@ -989,10 +1204,10 @@ function validatePedagogicalGroup(
     if (new Set(unit.noveltyIds).size !== unit.noveltyIds.length ||
         usedSet.size !== unit.usedIds.length ||
         explanationSet.size !== unit.explanations.length) {
-      fail("invalid_human_materialization", "Uma unidade repete ideia introduzida, usada ou explicada.");
+      report("invalid_human_materialization", "Uma unidade repete ideia introduzida, usada ou explicada.");
     }
     if ([...usedSet].some((id) => noveltySet.has(id) || explanationSet.has(id))) {
-      fail(
+      report(
         "invalid_human_materialization",
         "Uma ideia usada sem reexplicação não pode ser também introduzida ou retomada na mesma unidade."
       );
@@ -1003,13 +1218,13 @@ function validatePedagogicalGroup(
           !targetAnalysis.has(instructionalAnalysisUnitId)) ||
         unit.practices.some(({ evidenceRequirementId }) =>
           !targetEvidence.has(evidenceRequirementId))) {
-      fail(
+      report(
         "human_materialization_outside_plan",
         "A aplicação pedagógica referencia uma ideia fora do repertório da microssequência."
       );
     }
     if (["expository", "mixed"].includes(mode) && unit.noveltyIds.length > ceiling) {
-      fail(
+      report(
         "human_materialization_analysis_unit_ceiling_exceeded",
         `A unidade de estudo ${unit.source.posicao} excede o teto de novidades.`
       );
@@ -1017,7 +1232,7 @@ function validatePedagogicalGroup(
     if (mode === "practice" && (unit.noveltyIds.length || unit.explanations.length) ||
         mode === "expository" && unit.practices.length > 0 ||
         mode === "mixed" && (unit.explanations.length === 0 || unit.practices.length === 0)) {
-      fail(
+      report(
         "human_materialization_mode_mismatch",
         "A função didática da unidade não corresponde ao conteúdo e às aplicações informadas."
       );
@@ -1026,7 +1241,7 @@ function validatePedagogicalGroup(
     const knownBeforeUnit = new Set(establishedAnalysis);
     for (const id of unit.usedIds) {
       if (!knownBeforeUnit.has(id)) {
-        fail(
+        report(
           "human_materialization_use_before_introduction",
           "Uma unidade usa uma ideia antes que ela tenha sido estabelecida no percurso."
         );
@@ -1034,10 +1249,10 @@ function validatePedagogicalGroup(
     }
     for (const id of unit.noveltyIds) {
       if (introducedAnywhere.has(id)) {
-        fail("human_materialization_duplicate_introduction", "Uma ideia foi introduzida mais de uma vez.");
+        report("human_materialization_duplicate_introduction", "Uma ideia foi introduzida mais de uma vez.");
       }
       if (!explanationSet.has(id)) {
-        fail(
+        report(
           "human_materialization_incomplete_analysis_inventory",
           "Toda ideia nova precisa ser explicada na unidade em que é introduzida."
         );
@@ -1048,22 +1263,22 @@ function validatePedagogicalGroup(
     for (const explanation of unit.explanations) {
       const id = explanation.instructionalAnalysisUnitId;
       if (!noveltySet.has(id) && !knownBeforeUnit.has(id)) {
-        fail(
+        report(
           "human_materialization_explanation_before_introduction",
           "Uma explicação retoma uma ideia antes que ela tenha sido estabelecida no percurso."
         );
       }
-      const developed = developedByAnalysis.get(id);
-      const notApplicable = notApplicableByAnalysis.get(id);
+      const developed = developedByAnalysis.get(id) ?? new Set();
+      const notApplicable = notApplicableByAnalysis.get(id) ?? new Set();
       for (const form of explanation.developedForms) {
         if (notApplicable.has(form)) {
-          fail("human_materialization_explanation_form_conflict", "Uma forma foi aplicada e marcada como não aplicável.");
+          report("human_materialization_explanation_form_conflict", "Uma forma foi aplicada e marcada como não aplicável.");
         }
         developed.add(form);
       }
       for (const { form } of explanation.notApplicable) {
         if (developed.has(form)) {
-          fail("human_materialization_explanation_form_conflict", "Uma forma foi aplicada e marcada como não aplicável.");
+          report("human_materialization_explanation_form_conflict", "Uma forma foi aplicada e marcada como não aplicável.");
         }
         notApplicable.add(form);
       }
@@ -1077,31 +1292,34 @@ function validatePedagogicalGroup(
     explanationIds.forEach((id) => representedAnalysis.add(id));
     for (const practice of unit.practices) {
       const state = practiceByEvidence.get(practice.evidenceRequirementId);
+      if (!state) continue;
       state.minimum = Math.max(state.minimum, practiceMinimum);
       requiredDimensions.forEach((dimension) => state.requiredDimensions.add(dimension));
       if (state.opportunities.has(practice.opportunityId)) {
-        fail("human_materialization_duplicate_practice", "Uma oportunidade de prática foi repetida.");
+        report("human_materialization_duplicate_practice", "Uma oportunidade de prática foi repetida.");
       }
       state.opportunities.add(practice.opportunityId);
       if (state.operation !== null && state.operation !== practice.invariantTaskOperation) {
-        fail("human_materialization_practice_operation_changed", "A operação-alvo mudou entre práticas do mesmo requisito.");
+        report("human_materialization_practice_operation_changed", "A operação-alvo mudou entre práticas do mesmo requisito.");
       }
       state.operation = practice.invariantTaskOperation;
       practice.variedDimensions.forEach((dimension) => state.dimensions.add(dimension));
     }
-    validateComponentPolicy(componentRefs(unit.content), policy);
+    try { validateComponentPolicy(unit.componentRefs ?? componentRefs(unit.content), policy); }
+    catch (error) { report(error.code, error.message, error.status); }
   }
 
+  if (!complete) return;
   if ([...targetAnalysis].some((id) => !representedAnalysis.has(id))) {
-    fail(
+    report(
       "human_materialization_incomplete_analysis_inventory",
       "Toda ideia focal da microssequência precisa aparecer como introdução, uso ou retomada."
     );
   }
   for (const id of introducedInGroup) {
     const covered = new Set([
-      ...developedByAnalysis.get(id),
-      ...notApplicableByAnalysis.get(id)
+      ...(developedByAnalysis.get(id) ?? []),
+      ...(notApplicableByAnalysis.get(id) ?? [])
     ]);
     const missing = [...(requiredFormsByAnalysis.get(id) || [])]
       .filter((form) => !covered.has(form));
@@ -1109,7 +1327,7 @@ function validatePedagogicalGroup(
       const idea = analysisLabels.get(id) || "ideia nova";
       const forms = missing.map((form) => EXPLANATION_FORM_LABELS[form] || form)
         .join(", ");
-      fail(
+      report(
         "human_materialization_missing_explanation_form",
         `A ideia “${idea}” ainda precisa destas formas: ${forms}. Desenvolva-as ou justifique as que não se aplicam.`
       );
@@ -1118,7 +1336,7 @@ function validatePedagogicalGroup(
   for (const state of practiceByEvidence.values()) {
     if (state.opportunities.size < state.minimum ||
         [...state.requiredDimensions].some((dimension) => !state.dimensions.has(dimension))) {
-      fail(
+      report(
         "human_materialization_insufficient_practice",
         "A prática não cumpre o mínimo ou as dimensões de variação efetivas."
       );
@@ -1126,7 +1344,7 @@ function validatePedagogicalGroup(
   }
 }
 
-function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
+function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics = null, options = {}) {
   const curriculumOrder = curriculumMicrosequenceOrder(plan);
   const orderedGroups = [...groups].map((group) => {
     const order = curriculumOrder.get(group.microsequenceId);
@@ -1150,21 +1368,20 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds) {
       group,
       establishedAnalysis,
       introducedAnywhere,
-      analysisLabels
+      analysisLabels, diagnostics, options
     );
     const coveredScopeIds = new Set(group.units.flatMap((unit) =>
       unit.curriculumScopeItemIds));
-    if (plannedCurriculumScopeIds(plan, group.microsequenceId)
+    if (options.complete !== false && plannedCurriculumScopeIds(plan, group.microsequenceId)
       .some((id) => !coveredScopeIds.has(id))) {
-      fail(
-        "human_materialization_incomplete_scope_coverage",
-        "A microssequência precisa desenvolver os itens de escopo que o mapa curricular atribuiu a ela."
-      );
+      const message = "A microssequência precisa desenvolver os itens de escopo que o mapa curricular atribuiu a ela.";
+      if (!diagnostics) fail("human_materialization_incomplete_scope_coverage", message);
+      diagnostics.push({ code: "human_materialization_incomplete_scope_coverage", message });
     }
   }
 }
 
-async function prepareExplanations({ explanations, adapter, principal, context, deadlineAt, newId }) {
+async function prepareExplanations({ explanations, adapter, principal, context, deadlineAt, newId, includeSaved = true }) {
   const microsequences = partMicrosequences(context.part);
   explanations ??= [];
   if (!Array.isArray(explanations) || explanations.length > microsequences.length) {
@@ -1174,7 +1391,7 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
   const prepared = [];
   for (const [index, entry] of explanations.entries()) {
     if (!plainObject(entry) || !Array.isArray(entry.fontes) || Object.keys(entry).some((key) =>
-      !["microssequencia", "conteudo", "fontes"].includes(key))) {
+      !["microssequencia", "conteudo", "fontes", "reconciliacao"].includes(key))) {
       fail("invalid_human_explanation", "A explicação precisa indicar microssequência, conteúdo e fontes utilizadas.");
     }
     const microsequence = resolveReference(microsequences, entry.microssequencia, {
@@ -1184,7 +1401,7 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
     if (seen.has(microsequence.id)) fail("invalid_human_explanation", "A parte repete a explicação de uma microssequência.");
     seen.add(microsequence.id);
     let content;
-    try { content = normalizeMicrosequenceExplanation(entry.conteudo); }
+    try { content = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context); }
     catch (error) { fail("invalid_human_explanation", error.message); }
     if (entry.fontes.some((link) => !plainObject(link) ||
       link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
@@ -1197,6 +1414,7 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
   }
   const saved = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
     (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+  if (!includeSaved) return prepared;
   for (const microsequence of microsequences.filter(item => !seen.has(item.id))) {
     const persisted = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id) ?? microsequence;
     if (!persisted.explanation) {
@@ -1222,6 +1440,8 @@ export async function materializeHumanCoursePart({
   part,
   units,
   explanations,
+  preparationReference = null,
+  complete = true,
   deadlineAt = null
 }) {
   validateUnits(units);
@@ -1238,6 +1458,16 @@ export async function materializeHumanCoursePart({
     }),
     async build(context, { newId }) {
       producedPartPosition = Number(context.part.position) + 1;
+      const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context,
+        planUnits: units.map(humanMaterializationUnitPlan), explanations, complete, deadlineAt });
+      if (preparationReference && preflight.referencia !== preparationReference) {
+        throw new AuthoringApiError(409, "human_materialization_preflight_stale",
+          "A base ou as intenções mudaram depois do preparo; releia o preflight antes de escrever.", { preflight });
+      }
+      if (preflight.state !== "ready") {
+        throw new AuthoringApiError(422, "human_materialization_preflight_blocked",
+          "Resolva os bloqueios agregados de preparar_materializacao antes de materializar.", { preflight });
+      }
       const prepared = await prepareUnits({
         adapter,
         principal,
@@ -1247,67 +1477,22 @@ export async function materializeHumanCoursePart({
         newId
       });
       const groups = prepared.groups;
-      const plannedMicrosequenceIds = new Set(
-        partMicrosequences(context.part).map(({ id }) => id)
-      );
-      const suppliedMicrosequenceIds = new Set(groups.map(({ microsequenceId }) =>
-        microsequenceId));
-      if (suppliedMicrosequenceIds.size !== plannedMicrosequenceIds.size ||
-          [...plannedMicrosequenceIds].some((id) => !suppliedMicrosequenceIds.has(id))) {
-        fail(
-          "human_materialization_incomplete_part",
-          "A materialização precisa incluir ao menos uma unidade de estudo de cada microssequência da parte."
-        );
+      const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
+      const arrangement = arrangeMaterializationUnits(existingBySlot, units, partMicrosequences(context.part));
+      const targetDesigns = new Map(await Promise.all(partMicrosequences(context.part).map(async micro => [micro.id,
+        await adapter.getCourseDesign({ principal, courseId: context.course.id, scopeKind: "didactic_microsequence",
+          scopeRef: micro.id, childLimit: 1, childCursor: null, deadlineAt })])));
+      for (const group of groups) for (const unit of group.units) {
+        const existing = arrangement.planned.get(unit.inputIndex).existing;
+        const design = existing ? await adapter.getCourseDesign({ principal, courseId: context.course.id,
+          scopeKind: "study_unit", scopeRef: existing.studyUnitId, childLimit: 1, childCursor: null, deadlineAt })
+          : targetDesigns.get(group.microsequenceId);
+        unit.design = applyUnitContextualCalibration(design, unit.source.configuracao, { existing: Boolean(existing) });
       }
-      const existingBySlot = await listExistingPartStudyUnits({
-        adapter,
-        principal,
-        context,
-        deadlineAt
-      });
-      const suppliedSlots = new Set(groups.flatMap(({ microsequenceId, units: groupUnits }) =>
-        groupUnits.map((unit) => `${microsequenceId}\0${unit.source.posicao}`)));
-      if ([...existingBySlot.keys()].some((slot) => !suppliedSlots.has(slot))) {
-        fail(
-          "human_materialization_existing_unit_omitted",
-          "A revisão da parte precisa representar todas as unidades de estudo já existentes; nenhuma é removida implicitamente."
-        );
-      }
-      const scopeBySlot = new Map();
-      for (const group of groups) {
-        for (const unit of group.units) {
-          const slot = `${group.microsequenceId}\0${unit.source.posicao}`;
-          const existing = existingBySlot.get(slot) ?? null;
-          scopeBySlot.set(slot, existing
-            ? { kind: "study_unit", ref: existing.studyUnitId }
-            : { kind: "didactic_microsequence", ref: group.microsequenceId });
-        }
-      }
-      const designByScope = new Map(await Promise.all(
-        [...new Map([...scopeBySlot.values()].map((scope) => [
-          `${scope.kind}\0${scope.ref}`, scope
-        ])).entries()].map(async ([key, scope]) => [key, await adapter.getCourseDesign({
-          principal,
-          courseId: context.course.id,
-          scopeKind: scope.kind,
-          scopeRef: scope.ref,
-          childLimit: 1,
-          childCursor: null,
-          deadlineAt
-        })])
-      ));
-      for (const group of groups) {
-        for (const unit of group.units) {
-          const slot = `${group.microsequenceId}\0${unit.source.posicao}`;
-          const scope = scopeBySlot.get(slot);
-          unit.design = applyUnitContextualCalibration(
-            designByScope.get(`${scope.kind}\0${scope.ref}`),
-            unit.source.configuracao,
-            { existing: scope.kind === "study_unit" }
-          );
-        }
-      }
-      const targetPlanItems = applyGroupTargetPlans(groups, context.plan);
+      // Repertoire and memberships are prerequisites, never invented by a write.
+      const targetPlanItems = [...targetDesigns].map(([didacticMicrosequenceId, design]) => ({ didacticMicrosequenceId,
+        instructionalAnalysisUnitIds: orderedPlanItemIds(planItems(context.plan, "instructionalAnalysisUnits"), design.targetPlanItems.instructionalAnalysisUnitIds),
+        evidenceRequirementIds: orderedPlanItemIds(planItems(context.plan, "evidenceRequirements"), design.targetPlanItems.evidenceRequirementIds) }));
       practiceObservations = groups.map((group, index) => ({
         microssequencia: index + 1,
         observacao: observeCoursePracticeDistribution(group.units.map((unit) => ({
@@ -1315,18 +1500,12 @@ export async function materializeHumanCoursePart({
           mode: pedagogicalMode(unit.source)
         })))
       }));
-      validatePedagogicalPart(
-        groups,
-        context.plan,
-        new Set([...existingBySlot.values()].map(({ studyUnitId }) => studyUnitId))
-      );
       const preparedExplanations = await prepareExplanations({ explanations, adapter, principal,
-        context, deadlineAt, newId });
+        context, deadlineAt, newId, includeSaved: false });
       const preparedUnits = [];
       for (const group of groups) {
         for (const unit of group.units) {
-          const slot = `${group.microsequenceId}\0${unit.source.posicao}`;
-          const existing = existingBySlot.get(slot) ?? null;
+          const existing = arrangement.planned.get(unit.inputIndex).existing;
           preparedUnits.push({
             inputIndex: unit.inputIndex,
             studyUnitId: existing?.studyUnitId ??
@@ -1342,6 +1521,8 @@ export async function materializeHumanCoursePart({
       }
       preparedUnits.sort((left, right) => left.inputIndex - right.inputIndex);
       producedContentTarget = { courseId: context.course.id, partId: context.part.id };
+      const placements = [...arrangement.retained.map(value => ({ studyUnitId: value.existing.studyUnitId, didacticMicrosequenceId: value.microsequenceId, position: value.position })),
+        ...preparedUnits.map(({ studyUnitId, didacticMicrosequenceId, position }) => ({ studyUnitId, didacticMicrosequenceId, position }))];
       return {
         principal,
         courseId: context.course.id,
@@ -1349,6 +1530,7 @@ export async function materializeHumanCoursePart({
         expectedCourseRevision: context.course.revision,
         expectedAuthoringPartVersion: context.part.version,
         planItemUpserts: prepared.inventory.upserts,
+        placements, complete,
         targetPlanItems,
         explanations: preparedExplanations,
         units: preparedUnits.map((entry) => {
@@ -1362,15 +1544,13 @@ export async function materializeHumanCoursePart({
     commit: (request) => adapter.materializeCourseAuthoringPart(request)
   });
   return {
-    result: producedPartPosition === 1
-      ? "Primeira parte produzida."
-      : `Parte ${producedPartPosition} produzida.`,
-    deepLink: producedContentTarget
-      ? `${adapter.publicAppUrl ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}/` : ""}` +
-        `#/authoring/courses/${encodeURIComponent(producedContentTarget.courseId)}?section=content` +
-        `&authoringPartId=${encodeURIComponent(producedContentTarget.partId)}`
-      : receipt.deepLink ?? null,
-    nextDecision: "Inspecione as unidades produzidas pelo link retornado, conforme o processo combinado. A revisão de uma explicação só precisa ser retomada se seu conteúdo pertinente mudou.",
-    context: { distribuicaoDaPratica: practiceObservations }
+    result: complete ? (producedPartPosition === 1 ? "Primeira parte produzida." : `Parte ${producedPartPosition} produzida.`)
+      : "Fragmento salvo; a parte permanece em produção.",
+    ...buildHumanNavigationEnvelope(producedContentTarget ? createHumanNavigation(adapter, {
+      courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
+    }) : null, [], { nextDecision: complete ? "Inspecione o percurso salvo e registre as decisões de revisão humana."
+      : "Continue o lote autorizado; a conclusão conferirá a cobertura acumulada da parte." }),
+    context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
+      cursoRevision: receipt.courseRevision }
   };
 }

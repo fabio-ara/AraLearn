@@ -3,6 +3,7 @@ import { executeTrustedCourseWrite, resolveHumanCourseContext } from "./courseHu
 import { mutateCourseStructure, normalizeCourseStructureCommand, reorderCourseStudyUnits } from "./courseStructureMutation.js";
 import { normalizeCurricularMapSlice } from "../aralearn/runtime/domain/courseCurricularMapSlices.js";
 import { sha256Hex } from "./security.js";
+import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 
 const fail = message => { throw new AuthoringApiError(422, "invalid_human_structure_operation", message); };
 const ref = { type: ["integer", "string"], minimum: 1, maximum: 1000000, minLength: 1, maxLength: 300 };
@@ -134,7 +135,6 @@ async function open(value, name, principal, args) {
     return item.request;
   } catch { fail("A retomada não corresponde à conta e à intenção. Reutilize a referência original sem editá-la."); }
 }
-function link(adapter, courseId) { return adapter.publicAppUrl ? `${String(adapter.publicAppUrl).replace(/\/+$/u, "")}/#/authoring/courses/${encodeURIComponent(courseId)}?section=planning` : null; }
 async function loadMap(adapter, principal, args, deadlineAt) {
   const target = args.alvo ?? args.destino ?? {};
   const resolved = await resolveHumanCourseContext({ adapter, principal, course: args.curso,
@@ -260,7 +260,9 @@ async function perform(name, { adapter, principal, args, deadlineAt }) {
     : name === "salvar_ramo_curricular" ? "Salvei o recorte curricular. A aprovação do mapa depende da inspeção da versão salva."
       : name === "remover_ramo_curricular" ? "Removi o ramo indicado e seus descendentes." : name === "duplicar_ramo_curricular" ? "Dupliquei o ramo completo."
         : name === "reordenar_unidades" ? "Salvei a ordem das unidades, preservando o conteúdo e os registros aplicados." : "Atualizei a posição do ramo completo.",
-    deepLink: result.deepLink ?? link(adapter, prepared.courseId), nextDecision: null,
+    ...buildHumanNavigationEnvelope(createHumanNavigation(adapter, { courseId: prepared.courseId,
+      relation: name === "reordenar_unidades" ? "content" : "planning",
+      target: name === "reordenar_unidades" ? { kind: "didactic_microsequence", id: prepared.microsequenceId } : null })),
     context: { retomada: continuationToken,
       ...(result.affectedEntityCount === undefined ? {} : { objetosAfetados: result.affectedEntityCount }) } };
 }
@@ -273,7 +275,8 @@ async function deleteCourse({ adapter, principal, args, deadlineAt }) {
   if (!token) {
     const resolved = await resolveHumanCourseContext({ adapter, principal, course: args.curso, deadlineAt });
     const request = { courseId: resolved.course.id, operation: "delete_owned_course", confirmed: true, requestId: crypto.randomUUID() };
-    return { result: "Identifiquei o curso próprio para exclusão e limpeza dos arquivos que deixarem de ser usados.", deepLink: resolved.course.deepLink,
+    return { result: "Identifiquei o curso próprio para exclusão e limpeza dos arquivos que deixarem de ser usados.",
+      ...buildHumanNavigationEnvelope(createHumanNavigation(adapter, { courseId: resolved.course.id, relation: "planning" })),
       nextDecision: "Após a decisão de excluir este curso, repita com a confirmação original. Ela conserva o alvo mesmo se um título for reutilizado.",
       context: { curso: resolved.course.title, confirmacao: await reference(name, principal, args, request) } };
   }

@@ -8,6 +8,8 @@ import { executeHumanCourseTask } from
   "../functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { resolveHumanCourseContext } from
   "../functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
+import { humanMaterializationUnitPlan } from
+  "../functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import {
   readPackageStudyUnitText,
   renderPackageStudyUnitArticle
@@ -211,13 +213,21 @@ function approvedPart(course) {
 }
 
 function sharedExplanations() {
-  return [{ microssequencia: "O que é um socket", conteudo: {
+  const explanations = [{ microssequencia: "O que é um socket", conteudo: {
     title: "Processo, socket e transporte", content: [paragraph("socket-support",
       "Um processo é um programa em execução. Para enviar dados, ele usa uma interface local chamada socket. A interface permite entregar dados ao transporte e receber os dados destinados ao processo. Uma conexão relaciona as pontas da comunicação; um socket identifica uma dessas interfaces locais. Um processo pode usar mais de um socket.")]
   }, fontes: [] }, { microssequencia: "Prática de identificação", conteudo: {
     title: "Distinguir os participantes da comunicação", content: [paragraph("practice-support",
       "Separe três perguntas: qual programa está executando, qual interface local ele usa e quais pontas estão relacionadas pela comunicação. Processo responde à primeira, socket à segunda e conexão à terceira. Por exemplo, duas aplicações podem executar no mesmo computador e usar sockets diferentes. Essa distinção permite explicar o caso sem tratar todo o computador como uma única aplicação.")]
   }, fontes: [] }];
+  return explanations.map((entry, index) => ({ ...entry, reconciliacao: [{
+    recurso: 1, folha: "text", trecho: entry.conteudo.content[0].data.text,
+    papel: index === 0 ? "introduced" : "established",
+    motivo: index === 0 ? "Definição da interface, com processo e transporte já declarados como pré-requisitos."
+      : "Retomada da distinção estabelecida para a aplicação.",
+    ideias: ["Socket como interface entre processo e transporte"],
+    requisitos: index === 0 ? [] : ["Distinguir processo, socket e conexão."]
+  }] }));
 }
 
 async function completePreparation(input) {
@@ -304,12 +314,26 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: approvedPart(title)
     });
 
+    const idea = explanationUnit().aplicacaoPedagogica.ideiasIntroduzidas[0];
+    await executeHumanCourseTask({ adapter, principal, name: "manter_unidade_analise",
+      rawArguments: { curso: title, operacao: "criar", enunciado: idea.nome, descricao: idea.descricao } });
+    await executeHumanCourseTask({ adapter, principal, name: "manter_requisito_evidencia",
+      rawArguments: { curso: title, operacao: "criar", enunciado: "Distinguir processo, socket e conexão." } });
+    for (const [index, microsequence] of approvedPart(title).microssequencias.entries()) {
+      await executeHumanCourseTask({ adapter, principal, name: "vincular_repertorio_instrucional",
+        rawArguments: { curso: title, microssequencia: microsequence, analise: [idea.nome],
+          evidencias: index === 0 ? [] : ["Distinguir processo, socket e conexão."] } });
+    }
+    const proposedUnits = [explanationUnit(), practiceUnit()];
+
     const prepared = await completePreparation({
       adapter,
       principal,
       name: "preparar_materializacao",
-      rawArguments: { curso: title, parte: 1 }
+      rawArguments: { curso: title, parte: 1, plano: proposedUnits.map(humanMaterializationUnitPlan),
+        explicacoes: sharedExplanations() }
     });
+    assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
     assert.equal(prepared.context.parte.microssequencias.length, 2);
     assert.deepEqual(
       prepared.context.parte.microssequencias.map(({ coberturaObrigatoria }) =>
@@ -323,7 +347,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: {
         curso: title,
         parte: 1,
-        unidades: [explanationUnit(), practiceUnit()],
+        referenciaPreparo: prepared.context.preflight.referencia,
+        unidades: proposedUnits,
         explicacoes: sharedExplanations()
       }
     });
@@ -340,6 +365,13 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         parametros: { maximo_ideias_novas_por_unidade: 1 }
       }
     });
+    const replacements = () => [explanationUnit(), practiceUnit()].map(unit => ({ ...unit,
+      unidade: unit.conteudo.title }));
+    const replacementPreparation = await completePreparation({ adapter, principal,
+      name: "preparar_materializacao", rawArguments: { curso: title, parte: 1,
+        plano: replacements().map(humanMaterializationUnitPlan), explicacoes: sharedExplanations() } });
+    assert.equal(replacementPreparation.context.preflight.state, "ready",
+      JSON.stringify(replacementPreparation.context.preflight.blockers));
     await executeHumanCourseTask({
       adapter,
       principal,
@@ -347,10 +379,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: {
         curso: title,
         parte: 1,
-        unidades: [
-          explanationUnit(),
-          practiceUnit()
-        ],
+        referenciaPreparo: replacementPreparation.context.preflight.referencia,
+        unidades: replacements(),
         explicacoes: sharedExplanations()
       }
     });
@@ -361,6 +391,10 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       course: title
     });
     const materializedRevision = materializedContext.course.revision;
+    const repeatedPreparation = await completePreparation({ adapter, principal,
+      name: "preparar_materializacao", rawArguments: { curso: title, parte: 1,
+        plano: replacements().map(humanMaterializationUnitPlan), explicacoes: sharedExplanations() } });
+    assert.equal(repeatedPreparation.context.preflight.state, "ready", JSON.stringify(repeatedPreparation.context.preflight.blockers));
     await executeHumanCourseTask({
       adapter,
       principal,
@@ -368,10 +402,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: {
         curso: title,
         parte: 1,
-        unidades: [
-          explanationUnit(),
-          practiceUnit()
-        ],
+        referenciaPreparo: repeatedPreparation.context.preflight.referencia,
+        unidades: replacements(),
         explicacoes: sharedExplanations()
       }
     });
@@ -391,7 +423,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     });
     assert.equal(units.items.length, 2);
     assert.deepEqual(units.items.map(({ authorship }) => authorship.createdOrigin), [
-      "gpt", "gpt"
+      "ai", "ai"
     ]);
     const sequentialText = units.items.map(({ studyUnit }) =>
       readPackageStudyUnitText(studyUnit));
@@ -449,13 +481,17 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
         categoria: "suggestion"
       }
     });
-    assert.equal(observations.context.observationCount, 2);
-    assert.equal((await adapter.getCourseAnchoredAnnotations({
+    assert.equal(observations.context.observationCount, 1);
+    assert.equal(observations.context.targetCount, 2);
+    const savedObservations = await adapter.getCourseAnchoredAnnotations({
       principal,
       courseId,
       expectedCourseRevision: context.course.revision,
       query: observationQuery
-    })).items.length, 2);
+    });
+    assert.equal(savedObservations.items.length, 1);
+    assert.deepEqual(savedObservations.items[0].targets.map(target => target.id).sort(),
+      units.items.map(({ studyUnit }) => studyUnit.id).sort());
 
     const analytics = await adapter.getCourseAuthoringAnalytics({
       principal,
@@ -478,7 +514,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     );
     assert.equal(analytics.authorship.explicitParameterOverrideCount, 1);
     assert.equal(analytics.authorship.studyUnitsByOrigin.find(
-      ({ origin }) => origin === "gpt"
+      ({ origin }) => origin === "ai"
     )?.createdCount, 2);
 
     await executeHumanCourseTask({
@@ -503,12 +539,16 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
           unidade: units.items[0].studyUnit.title,
           relacao: "supported_by",
           papeis: ["tecnica_conceitual"],
-          ancoras: [1]
+          ancoras: [1],
+          ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text",
+            trecho: units.items[0].studyUnit.content[0].data.text }]
         }, {
           explicacao: "O que é um socket",
           relacao: "supported_by",
           papeis: ["tecnica_conceitual"],
-          ancoras: [1]
+          ancoras: [1],
+          ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text",
+            trecho: sharedExplanations()[0].conteudo.content[0].data.text }]
         }]
       }
     });
@@ -589,7 +629,9 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     await executeHumanCourseTask({ adapter, principal, name: "aplicar_correcoes",
       rawArguments: { curso: title, explicacoes: [{ ...sharedExplanations()[0], fontes: [{
         fonte: "Referência sobre sockets", relacao: "supported_by",
-        papeis: ["tecnica_conceitual"], ancoras: [1]
+        papeis: ["tecnica_conceitual"], ancoras: [1],
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text",
+          trecho: sharedExplanations()[0].conteudo.content[0].data.text }]
       }] }] } });
     assert.equal((await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision,
       edited.revision, "Repetir fonte/âncora e conteúdo não duplica atribuição nem avança revisão.");
@@ -611,8 +653,15 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       expectedRevision: edited.revision, scope: { kind: "course", ref: null } });
     const exportedMicrosequences = exported.artifact.document.courses[0].modules.flatMap(module =>
       module.lessons.flatMap(lesson => lesson.microsequences));
-    assert.deepEqual(exportedMicrosequences.map(microsequence => microsequence.explanation),
+    assert.deepEqual(exportedMicrosequences.map(({ explanation: { title, content } }) => ({ title, content })),
       sharedExplanations().map(support => support.conteudo));
+    for (const [index, microsequence] of exportedMicrosequences.entries()) {
+      const reconciliation = microsequence.explanation.reconciliation;
+      assert.equal(reconciliation.contract, "aralearn.explanation-reconciliation.v1");
+      assert.equal(reconciliation.entries.length, 1);
+      assert.equal(reconciliation.entries[0].role, index === 0 ? "introduced" : "established");
+      assert.equal(reconciliation.entries[0].quote, sharedExplanations()[index].reconciliacao[0].trecho);
+    }
     assert.equal(exportedMicrosequences.flatMap(microsequence => microsequence.studyUnits)
       .some(unit => Object.hasOwn(unit, "explanation")), false);
     assert.equal(exported.artifact.explanationSources.length, 2);
@@ -646,6 +695,9 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     const retainedUnit = structuredClone(units.items[1].studyUnit);
     delete retainedUnit.id;
     delete retainedUnit.position;
+    // A transferência conserva literalmente a passagem sustentada, além da
+    // prática e de seu feedback; trocar a ocorrência descartaria a evidência.
+    retainedUnit.content.push(structuredClone(editedContent.content[0]));
     const preservedReference = await adapter.commitCourseComposition({ principal, courseId,
       requestId: randomUUID(), expectedRevision: edited.revision,
       upserts: [{ entityType: "study_unit", entityId: units.items[1].studyUnit.id,
@@ -693,6 +745,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
 
     const correctedSupport = sharedExplanations()[1];
     correctedSupport.conteudo.content[0].data.text += " A interface local pode continuar existindo sem uma conexão estabelecida.";
+    correctedSupport.reconciliacao[0].trecho = correctedSupport.conteudo.content[0].data.text;
     await executeHumanCourseTask({ adapter, principal, name: "aplicar_correcoes",
       rawArguments: { curso: title, explicacoes: [correctedSupport] } });
     const correctedContext = await resolveHumanCourseContext({ adapter, principal, course: title });
@@ -700,8 +753,12 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       expectedRevision: correctedContext.course.revision, scope: { kind: "course", ref: null } });
     const correctedMicrosequences = correctedExport.artifact.document.courses[0].modules.flatMap(module =>
       module.lessons.flatMap(lesson => lesson.microsequences));
-    assert.deepEqual(correctedMicrosequences[1].explanation, correctedSupport.conteudo);
-    assert.deepEqual(correctedMicrosequences[0].explanation, sharedExplanations()[0].conteudo);
+    const correctedExplanation = correctedMicrosequences[1].explanation;
+    assert.deepEqual({ title: correctedExplanation.title, content: correctedExplanation.content }, correctedSupport.conteudo);
+    assert.notEqual(correctedExplanation.reconciliation.contentBasis,
+      exportedMicrosequences[1].explanation.reconciliation.contentBasis);
+    assert.equal(correctedExplanation.reconciliation.entries[0].quote, correctedSupport.reconciliacao[0].trecho);
+    assert.deepEqual(correctedMicrosequences[0].explanation, exportedMicrosequences[0].explanation);
 
     return Object.freeze({
       contract: "aralearn.course-authoring-current-proof.v1",
@@ -710,7 +767,8 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       studyUnitCount: 2,
       analysisIntroductionCount: 1,
       practiceOpportunityCount: 1,
-      observationCount: 2,
+      observationCount: 1,
+      observationTargetCount: 2,
       explanationCount: exportedMicrosequences.length,
       explanationSourceReadCount: exported.artifact.explanationSources.length,
       explanationCorrectionVerified: true,

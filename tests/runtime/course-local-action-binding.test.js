@@ -2,17 +2,94 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { chatGptAction, courseAction, CHATGPT_ACTION_ORIGIN,
   LOCAL_APPLICATION_ORIGIN } from "../support/localSupabaseE2e.js";
-import { wireClient } from "../../supabase/tests/course-authoring-channels-local-smoke.mjs";
+import { wireClient, channelFixtures, materializeChannelPart } from "../../supabase/tests/course-authoring-channels-local-smoke.mjs";
 import { COURSE_HUMAN_TASKS } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { humanMaterializationUnitPlan, reconcileHumanExplanation, explanationContentBasis } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
+import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
+import { resolveCourseSourceOccurrence } from "../../src/domain/courseSourceOccurrences.js";
 
 const CONFIG = Object.freeze({ projectUrl: "http://127.0.0.1:54321",
   publishableKey: "synthetic-public-key", adminKey: "synthetic-admin-key" });
 const TOKEN = "synthetic-channel-token";
-const CONTRACT = "4.0.0:synthetic-transport";
+const CONTRACT = "5.0.0:synthetic-transport";
 const measurementSize = text => ({ utf8Bytes: Buffer.byteLength(text, "utf8"),
   utf16CodeUnits: text.length, unicodeCodePoints: [...text].length });
 const response = value => new Response(JSON.stringify(value), { status: 200,
   headers: { "Content-Type": "application/json", "x-aralearn-authoring-contract": CONTRACT } });
+
+test("fixture dos canais vincula seis requisitos, fontes literais e reconciliação ao repertório explícito", async () => {
+  const fixture = channelFixtures("Curso sintético dos canais");
+  const analysis = fixture.repertoire.filter(entry => entry.task === "manter_unidade_analise");
+  const evidence = fixture.repertoire.filter(entry => entry.task === "manter_requisito_evidencia");
+  const bindings = fixture.repertoire.filter(entry => entry.task === "vincular_repertorio_instrucional");
+  assert.equal(analysis.length, 1);
+  assert.equal(evidence.length, 6);
+  assert.equal(new Set(evidence.map(entry => entry.args.enunciado)).size, 6);
+  assert.equal(bindings.length, 6);
+  const context = { plan: { plan: {
+    instructionalAnalysisUnits: analysis.map((entry, index) => ({ id: `idea-${index}`, statement: entry.args.enunciado })),
+    evidenceRequirements: evidence.map((entry, index) => ({ id: `requirement-${index}`, statement: entry.args.enunciado }))
+  } } };
+  let introduced = 0;
+  for (const [index, explanation] of fixture.lots.flatMap(lot => lot.materialization.explicacoes).entries()) {
+    const binding = bindings.find(entry => entry.args.microssequencia === explanation.microssequencia).args;
+    assert.deepEqual(binding.analise, [analysis[0].args.enunciado]);
+    assert.deepEqual(binding.evidencias, [evidence[index].args.enunciado]);
+    const normalized = await reconcileHumanExplanation(explanation.conteudo, explanation.reconciliacao, context);
+    const checked = inspectExplanationReconciliation(normalized, { contentBasis: await explanationContentBasis(normalized),
+      analysisUnitIds: ["idea-0"], evidenceRequirementIds: [`requirement-${index}`] });
+    assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+    introduced += checked.introduced.length;
+    assert.deepEqual(checked.requirements, [`requirement-${index}`]);
+  }
+  assert.equal(introduced, 1, "a ideia é introduzida no primeiro caso e retomada nos demais");
+  for (const lot of fixture.lots) {
+    for (const entry of [...lot.materialization.unidades, ...lot.materialization.explicacoes]) {
+      if (entry.aplicacaoPedagogica) {
+        const application = entry.aplicacaoPedagogica;
+        assert.equal(application.ideiasUtilizadas.some(idea => application.explicacoes.some(value => value.ideia === idea)), false,
+          "reexplicar uma ideia é retomada, não uso sem reexplicação");
+      }
+      for (const link of entry.fontes) {
+        assert.equal(link.relacao, "supported_by");
+        assert.deepEqual(link.ancoras, [1]);
+        const occurrence = link.ocorrencias[0];
+        const resolved = resolveCourseSourceOccurrence(entry.conteudo, { occurrenceId: "synthetic-occurrence",
+          slot: "content", resourceId: entry.conteudo.content[occurrence.recurso - 1].id,
+          path: occurrence.folha, quote: occurrence.trecho, prefix: null, suffix: null },
+        { targetKind: entry.conteudo.role ? "study_unit" : "microsequence_explanation" });
+        assert.equal(resolved.status, "resolved");
+      }
+    }
+    for (const unit of lot.materialization.unidades.filter(entry => entry.conteudo.role === "practice")) {
+      assert.equal(unit.conteudo.response.package, "aralearn.response.choice");
+      assert.equal(humanMaterializationUnitPlan(unit).feedbackLocal, true);
+    }
+  }
+});
+
+test("smoke dos canais prepara propostas antes da escrita e conserva a mesma referência pronta", async () => {
+  const lot = channelFixtures("Curso sintético").lots[0];
+  const calls = [];
+  const client = { call: async (task, args) => {
+    calls.push({ task, args });
+    return { context: { parte: { microssequencias: lot.part.microssequencias },
+      preflight: { state: "ready", referencia: "prepared-same-basis", blockers: [] } } };
+  } };
+  await materializeChannelPart(client, lot);
+  assert.deepEqual(calls.map(call => call.task), ["preparar_materializacao", "materializar_parte"]);
+  assert.deepEqual(calls[0].args.plano, lot.materialization.unidades.map(humanMaterializationUnitPlan));
+  assert.deepEqual(calls[0].args.explicacoes, lot.materialization.explicacoes);
+  assert.deepEqual(calls[1].args, { ...lot.materialization, referenciaPreparo: "prepared-same-basis" });
+  const blockedCalls = [];
+  await assert.rejects(() => materializeChannelPart({ call: async task => {
+    blockedCalls.push(task);
+    return { context: { preflight: { state: "blocked", referencia: null,
+      blockers: [{ code: "human_reference_not_found" }] } } };
+  } }, lot), /human_reference_not_found/u);
+  assert.deepEqual(blockedCalls, ["preparar_materializacao"], "a escrita não é usada para descobrir lacunas");
+});
 
 test("helper Actions envia tarefa agrupada, conserva a direta e não modifica a rota do app", async t => {
   const calls = [];
@@ -48,7 +125,7 @@ test("helper Actions envia tarefa agrupada, conserva a direta e não modifica a 
   assert.equal(calls.length, 4, "tarefa desconhecida não é enviada");
 });
 
-test("smoke Actions mede o envelope real e conserva 54 tarefas em 30 operações", async t => {
+test("smoke Actions mede o envelope real e conserva 56 tarefas em 30 operações", async t => {
   const calls = [], measurements = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
     calls.push({ url, ...options, payload: JSON.parse(options.body) });
@@ -62,10 +139,10 @@ test("smoke Actions mede o envelope real e conserva 54 tarefas em 30 operações
   for (const task of COURSE_HUMAN_TASKS) {
     assert.deepEqual(await client.call(task.name, args), { result: "resposta sintética" });
   }
-  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  assert.equal(COURSE_HUMAN_TASKS.length, 56);
   assert.deepEqual(measurements.map(item => item.task), COURSE_HUMAN_TASKS.map(task => task.name));
   assert.equal(new Set(measurements.map(item => item.operationName)).size, 30);
-  assert.equal(measurements.filter(item => item.operationName !== item.task).length, 30);
+  assert.equal(measurements.filter(item => item.operationName !== item.task).length, 32);
   for (const [index, item] of measurements.entries()) {
     const call = calls[index];
     assert.equal(call.url, `${CONFIG.projectUrl}/functions/v1/aralearn-authoring-action/${item.operationName}`);

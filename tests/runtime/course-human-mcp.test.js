@@ -73,6 +73,8 @@ const EXPECTED_NAMES = Object.freeze([
   "materializar_parte",
   "ajustar_configuracao",
   "registrar_observacao",
+  "registrar_inspecao",
+  "decidir_observacao",
   "editar_observacao",
   "salvar_explicacoes",
   "aplicar_correcoes",
@@ -400,14 +402,14 @@ function internalMapEntities(planRead) {
 
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 54);
+  assert.equal(new Set(EXPECTED_NAMES).size, 56);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "4.0.0");
-  // Orçamento local das 54 tarefas contextuais; payload de chamada mantém seu gate próprio.
-  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 110_000);
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "5.0.0");
+  // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
+  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -1281,7 +1283,13 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
   assert.equal(output.deepLink, null);
   assert.equal(output.nextDecision, null);
-  assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  assert.doesNotMatch(JSON.stringify(output.context.parte), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  assert.equal(output.context.preflight.state, "blocked", "consultar inventário sem plano não declara prontidão");
+  assert.equal(output.context.preflight.referencia, null);
+  assert.deepEqual(output.context.preflight.blockers.map(({ code }) => code), [
+    "human_materialization_plan_required", "human_materialization_existing_application_missing",
+    "human_materialization_missing_explanation", "human_materialization_missing_explanation"
+  ]);
   const available = output.context.parte.repertorioDisponivelDoCurso;
   assert.equal(available?.ideias.length, 6);
   assert.deepEqual(available.ideias.at(-1), {
@@ -1412,6 +1420,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
         if (localComponentIdentity) continue;
         if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
             ["courseId", "requestId"].includes(name)) continue;
+        if (task.name === "decidir_observacao" && name === "id" &&
+            path === "$.properties.referencia.properties.targets.items") continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
     });
@@ -1599,10 +1609,8 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
       lugar: "resposta"
     }
   });
-  assert.equal(
-    open.context.components.candidates[0].referencia,
-    "aralearn.response.open@1.0.0"
-  );
+  assert.equal(open.context.components.candidates.some(item => item.referencia === "aralearn.response.open@1.0.0"), false,
+    "a busca de nova autoria exclui resposta aberta legada");
   const inspectedOpen = await executeHumanCourseTask({
     adapter: adapter(),
     principal: PRINCIPAL,
@@ -2061,7 +2069,8 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
         items: [{
           ordinal: 1,
           version: 4,
-          studyUnit: { id: "unit-one", title: "Unidade um", version: 4 }
+          studyUnit: { id: "unit-one", title: "Unidade um", version: 4,
+            content: [{ id: "source-p", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Trecho A" } }] }
         }],
         hasMore: false,
         nextCursor: null
@@ -2121,6 +2130,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
   assert.equal(sourceCommands[0].type, "save_source");
   assert.notEqual(sourceCommands[0].sourceId, "source-existing-a");
   assert.equal(sourceCommands[0].source.verificationStatus, "unverified");
+  assert.equal(sourceCommands[0].source.origin, "external");
 
   await executeHumanCourseTask({
     adapter: sourceAdapter,
@@ -2133,7 +2143,8 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
         unidade: "Unidade um",
         relacao: "informed_by",
         papeis: ["tecnica_conceitual"],
-        ancoras: ["Seção 4.2"]
+        ancoras: ["Seção 4.2"],
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Trecho A" }]
       }]
     }
   });
@@ -2578,6 +2589,7 @@ test("MCP recebe o descritor oficial e mantém o download_url fora do envelope",
   assert.doesNotMatch(JSON.stringify(output), /token=temporary/u);
   assert.equal(ingestions.length, 1);
   assert.equal(ingestions[0].fileIdentity.fileId, "file-123");
+  assert.equal(ingestions[0].sourceIntent.source.origin, "author_provided");
 });
 
 test("PDF em nova Fonte homônima relê a escrita pela identidade interna", async () => {
@@ -3040,14 +3052,16 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
     }
   });
   assert.equal(observationBatches.length, 1);
-  assert.deepEqual(observationBatches[0].commands.map(({ target }) => target.id), [
+  assert.equal(observationBatches[0].commands.length, 1);
+  assert.deepEqual(observationBatches[0].commands[0].targets.map(({ id }) => id), [
     "unit-one", "unit-two"
   ]);
   assert.equal(new Set(observationBatches[0].commands.map(({ annotationId }) =>
-    annotationId)).size, 2);
+    annotationId)).size, 1);
   assert.equal(new Set(observationBatches[0].commands.map(({ capturedAt }) =>
     capturedAt)).size, 1);
-  assert.match(observed.result, /separadamente em 2 unidades/u);
+  assert.match(observed.result, /uma observação com todos os alvos/u);
+  assert.deepEqual(observed.context, { observationCount: 1, targetCount: 2 });
 });
 
 
@@ -3101,6 +3115,42 @@ function contextualSourceAdapter() {
 const sourceTask = (sourceAdapter, args) => executeHumanCourseTask({adapter:sourceAdapter,principal:PRINCIPAL,name:'manter_fonte',
   rawArguments:{curso:'Redes para iniciantes',...args}});
 
+test("Actions e MCP recusam sustentação vazia e expõem âncoras reutilizáveis com o mesmo diagnóstico", async () => {
+  for (const channel of ["mcp", "actions"]) {
+    const value = contextualSourceAdapter();
+    value.resolveActionPrincipal = async () => PRINCIPAL;
+    const handler = channel === "mcp" ? createAuthoringMcpHandler({ adapter: value,
+      allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1" }) : createAuthoringActionHandler({ adapter: value,
+      allowedOrigins: new Set([ORIGIN]), actionBaseUrl: "https://edge.example/functions/v1/aralearn-authoring-action",
+      publicAppUrl: value.publicAppUrl });
+    const call = async (name, args) => {
+      const binding = encodeCourseActionTaskRequest(name, args);
+      const response = await handler(channel === "mcp" ? request("tools/call", { name, arguments: args })
+        : new Request(`https://edge.example/functions/v1/aralearn-authoring-action/${binding.operationName}`, {
+          method: "POST", headers: { Origin: ORIGIN, Authorization: "Bearer synthetic-token", "Content-Type": "application/json" },
+          body: JSON.stringify(binding.arguments) }));
+      const body = await response.json();
+      return channel === "mcp" ? body.result.structuredContent : body;
+    };
+    const args = { curso: "Redes para iniciantes", fonte: 1 };
+    const source = await call("consultar_fontes", args);
+    assert.equal(source.context.sources.items[0].anchors[0].posicao, 1);
+    const target = await call("consultar_fontes", { curso: args.curso, unidade: 1 });
+    assert.equal(target.context.sources.items[0].sourceLinks[1].evidencia.located, false);
+    assert.deepEqual(target.context.sources.items[0].sourceLinks[1].evidencia.issues, ["missing_occurrence", "missing_anchor"]);
+    const invalid = await call("manter_fonte", { ...args, vinculos: [{ unidade: 1,
+      relacao: "supported_by", papeis: ["tecnica_conceitual"] }] });
+    assert.equal(invalid.error.code, "incomplete_course_source_evidence", channel);
+    assert.match(invalid.error.message, /ocorrência.*âncora/u);
+    assert.equal(value.commands.length, 0);
+    await call("manter_fonte", { ...args, vinculos: [{ unidade: 1, relacao: "supported_by",
+      papeis: ["tecnica_conceitual"], ancoras: [source.context.sources.items[0].anchors[0].posicao],
+      ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "literal" }] }] });
+    assert.deepEqual(value.commands[0].command.sourceLinks.at(-1).anchors, [{ anchorId: "anchor-context" }]);
+  }
+});
+
 test('#302 fonte permite metadados estruturados e estilo sem reinterpretar referência manual', async () => {
   const value=contextualSourceAdapter();
   await sourceTask(value,{fonte:1,metadados:{titulo:null,modoCitacao:'gerada',papeisSugeridos:['leitura_complementar'],
@@ -3131,7 +3181,7 @@ test('#302 fonte permite metadados estruturados e estilo sem reinterpretar refer
 test('#302 fonte conserva vínculos distintos e ocorrências; novo vínculo recebe papéis explícitos', async () => {
   const value=contextualSourceAdapter();
   const original=structuredClone(value.links);
-  await sourceTask(value,{fonte:1,vinculos:[{unidade:1,vinculo:1,relacao:'supported_by',papeis:['leitura_complementar']}]});
+  await sourceTask(value,{fonte:1,vinculos:[{unidade:1,vinculo:1,relacao:'supported_by',papeis:['leitura_complementar'],ancoras:[1]}]});
   const edited=value.commands.at(-1).command.sourceLinks;
   assert.equal(edited.length,2);
   assert.deepEqual(edited[1],original[1]);
@@ -3169,6 +3219,7 @@ test('#302 fonte retenta escrita incerta com mesmas identidades de vínculo e oc
     return {changed:true,idempotent:true};
   };
   await sourceTask(value,{fonte:1,vinculos:[{unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual'],
+    ancoras:[1],
     ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'literal'}]}]});
   assert.equal(attempts.length,2);
   assert.deepEqual(attempts[1],attempts[0]);

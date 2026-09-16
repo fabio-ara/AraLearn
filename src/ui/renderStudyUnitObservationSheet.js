@@ -1,6 +1,8 @@
-import { COURSE_ANCHORED_ANNOTATION_CATEGORIES } from
+import { COURSE_ANCHORED_ANNOTATION_CATEGORIES, courseObservationTargets } from
   "../domain/courseAnchoredAnnotations.js";
 import { renderUiIcon } from "./renderUiIcons.js";
+import { filterAuthoringObservations } from "./courseAuthoringObservationQueue.js";
+import { renderPackageStudyUnitBlocks } from "../render/renderPackageStudyUnit.js";
 
 export const STUDY_UNIT_OBSERVATION_MAX_SCALARS = 2_000;
 export const STUDY_UNIT_OBSERVATION_MAX_BYTES = 16 * 1_024;
@@ -130,11 +132,9 @@ export function renderStudyUnitObservationComposer({
     escapeHtml(formatObservationTextBudget(draft.rawText)) + "</span></label>" +
     (error ? '<p class="field-error" id="study-observation-error" role="alert">' + escapeHtml(error) + "</p>" : "") +
     '<div class="study-observation-composer-actions">' +
-    '<details class="study-observation-category-disclosure"><summary title="Categoria da observação (opcional)"' +
-    ' aria-label="Categoria da observação (opcional)">' + renderUiIcon("tags", "home-tab-icon") + '</summary>' +
-    '<div class="study-observation-category-panel"><label class="field"><span>Categoria (opcional)</span>' +
+    '<label class="study-observation-category-direct"><span class="visually-hidden">Categoria (opcional)</span>' +
     '<select data-field="study-unit-observation-category" aria-label="Categoria da observação (opcional)"' +
-    (saving ? " disabled" : "") + ">" + categories + "</select></label></div></details>" +
+    (saving ? " disabled" : "") + ">" + categories + "</select></label>" +
     renderObservationReviewAction({ actionHref, actionLabel, actionControlKey }) +
     '<span class="study-observation-action-spacer" aria-hidden="true"></span>' +
     (editingId
@@ -149,7 +149,66 @@ export function renderStudyUnitObservationComposer({
     "</button></div></form>";
 }
 
-function renderItem(item, { saving, editingId, showContributor, authoringQueue }) {
+function comparisonSnapshot(snapshot) {
+  if (!snapshot) return '<p>Conteúdo anterior indisponível neste registro legado.</p>';
+  const content = snapshot.content;
+  let rendered;
+  if (Array.isArray(content.content)) {
+    const unit = { id: content.id || 'comparison', position: content.position || 1, title: content.title || 'Conteúdo',
+      role: content.role || 'theory', content: content.content, response: content.response || null, feedback: content.feedback || [], topics: content.topics || [] };
+    try { rendered = renderPackageStudyUnitBlocks(unit, { revealPracticeAnswers: true, blockKeyPrefix: `comparison:${snapshot.hash}` }); }
+    catch { rendered = '<p>Este conteúdo usa um formato anterior. Os textos preservados aparecem abaixo.</p>' +
+      [...unit.content, ...(unit.response ? [unit.response] : []), ...unit.feedback].map(instance => '<p>' +
+        escapeHtml([instance.data?.text, instance.data?.question, instance.data?.answer, ...(instance.data?.options || []).map(option => option.text)].filter(Boolean).join('\n')) + '</p>').join(''); }
+  } else rendered = '<p>' + escapeHtml(content.text || '') + '</p>';
+  return '<div class="study-observation-comparison-content">' + (content.title ? `<h5>${escapeHtml(content.title)}</h5>` : '') + rendered + '</div>' +
+    (snapshot.sourceLinks.length ? '<details><summary>Fontes e citações</summary>' + snapshot.sourceLinks.map(link => {
+      const source = snapshot.sources.find(value => (value.source_id || value.sourceId) === link.sourceId) || {};
+      const anchors = (link.anchors || []).map(selected => source.anchors?.find(value => (value.anchor_id || value.anchorId) === selected.anchorId)).filter(Boolean);
+      const relation = ({quoted_from: 'Citação direta', adapted_from: 'Adaptado da fonte', based_on: 'Baseado na fonte', needs_verification: 'Relação a verificar'})[link.relation] || 'Referência vinculada';
+      const people = source.authors?.map(author => author.literal || [author.given, author.family].filter(Boolean).join(' ')).join('; ');
+      return '<article><strong>' + escapeHtml(source.title || source.metadata?.title || 'Fonte preservada') + '</strong>' +
+        '<p>' + escapeHtml([source.citation_text || source.formattedReference, people || source.authorship, source.publication_date, source.edition_or_version, source.identifier, source.url].filter(Boolean).join(' · ')) + '</p><p>' + escapeHtml(relation) + '</p>' +
+        anchors.map(anchor => '<blockquote>' + escapeHtml(anchor.verification_excerpt || anchor.excerpt || '') + '</blockquote><p>' +
+          escapeHtml(anchor.selector?.kind === 'page_range' ? `Páginas ${anchor.selector.startPage}–${anchor.selector.endPage}` :
+            anchor.selector?.heading || anchor.selector?.quote || anchor.selector?.label || '') + '</p>').join('') +
+        (link.occurrences || []).map(occurrence => '<p>' + escapeHtml(typeof occurrence.quote === 'string' ? occurrence.quote : occurrence.quote?.exact || '') + '</p>').join('') + '</article>';
+    }).join('') + '</details>' : '');
+}
+export function renderObservationComparison(target) {
+  return '<div class="study-observation-comparison"><section><h4>Antes</h4>' + comparisonSnapshot(target.basis) +
+    '</section><section><h4>Vigente</h4>' + comparisonSnapshot(target.current) + '</section></div>';
+}
+export function renderObservationIncidences(item, { saving = false, availableTargets = [], selectedTargetKeysByAnnotation = {} } = {}) {
+  if (!item.targetSetVersion) return '<p>Registro legado: ' + escapeHtml((item.target.currentPath || item.target.observedPath || []).map(entry => entry.label).filter(Boolean).join(' › ')) +
+    '. A decisão deste registro continua disponível na área Observações.</p>' + (item.deepLink ? `<a href="${escapeHtml(item.deepLink)}" data-inspection-route>Revisar registro legado</a>` : '');
+  const targets = courseObservationTargets(item);
+  const disabled = saving ? ' disabled' : '';
+  const pending = targets.filter(t => t.state === 'pending');
+  const paths = target => (target.path || target.currentPath || target.observedPath || [])
+    .map(entry => entry.label).filter(Boolean).join(' › ') || target.id;
+  return '<fieldset class="study-observation-targets"><legend>Alvos desta observação</legend>' +
+    targets.map(target => '<div class="study-observation-target">' +
+      '<label><input type="checkbox" data-observation-target-select data-observation-id="' + escapeHtml(item.annotationId) +
+      '" data-observation-target-key="' + escapeHtml(`${target.kind}:${target.id}`) + '"' +
+      (target.state === 'pending' ? (selectedTargetKeysByAnnotation[item.annotationId]?.includes(`${target.kind}:${target.id}`) ?? true ? ' checked' : '') + disabled : ' disabled') + '><span>' + escapeHtml(paths(target)) +
+      (target.kind === 'microsequence_explanation' ? ' · Explicação' : '') + '</span></label>' +
+      (target.state !== 'pending' ? '<small>' + (target.state === 'approved' ? 'Aprovado' : 'Encerrado sem alteração') + '</small>' :
+        '<details><summary>Comparar antes e vigente</summary><div data-observation-comparison>' +
+        (target.basis?.deferred || target.current?.deferred ? `<button type="button" data-observation-action="compare" data-observation-id="${escapeHtml(item.annotationId)}" data-observation-target-key="${escapeHtml(`${target.kind}:${target.id}`)}">Carregar comparação deste alvo</button>` : renderObservationComparison(target)) + '</div></details>') + '</div>').join('') +
+    '</fieldset>' + (pending.length && item.targetSetVersion ? '<div class="study-observation-decisions">' +
+      `<button type="button" data-observation-action="approve" data-observation-id="${escapeHtml(item.annotationId)}"${disabled}>Aprovar alvos selecionados</button>` +
+      `<button type="button" data-observation-action="cancel" data-observation-id="${escapeHtml(item.annotationId)}"${disabled}>Encerrar sem alteração</button>` +
+      '</div><small>Encerrar mantém o conteúdo vigente e retira somente a pendência selecionada.</small>' : '') +
+    (availableTargets.length && item.targetSetVersion ? '<details class="study-observation-target-editor"><summary>Alterar alvos</summary>' +
+      '<select multiple data-observation-retarget="' + escapeHtml(item.annotationId) + '" aria-label="Alvos da observação"' + disabled + '>' +
+      availableTargets.map(target => `<option value="${escapeHtml(`${target.kind}:${target.id}`)}"` +
+        (pending.some(t => t.kind === target.kind && t.id === target.id) ? ' selected' : '') + '>' + escapeHtml(target.label || target.id) + '</option>').join('') + '</select>' +
+      `<button type="button" data-observation-action="retarget" data-observation-id="${escapeHtml(item.annotationId)}"${disabled}>Salvar alvos</button>` +
+      '<small>Retirar um alvo não restaura seu conteúdo. Para retirar todos, encerre a observação.</small></details>' : '');
+}
+
+function renderItem(item, { saving, editingId, showContributor, authoringQueue, availableTargets, selectedObservationIds, selectedTargetKeysByAnnotation }) {
   const withdrawn = item.state === "withdrawn";
   const canRevise = !withdrawn && item.capabilities?.canRevise === true;
   const canWithdraw = !authoringQueue && !withdrawn && item.capabilities?.canWithdraw === true;
@@ -163,7 +222,7 @@ function renderItem(item, { saving, editingId, showContributor, authoringQueue }
     escapeHtml(STATE_LABELS[item.state] || item.state) + "</span>" +
     '<span data-sync="' + escapeHtml(syncStatus) + '">' +
     escapeHtml(SYNC_LABELS[syncStatus] || syncStatus) + "</span></div>" +
-    (authoringQueue ? `<small>Versão ${item.annotationVersion}</small>` : '') +
+    (authoringQueue && item.targetSetVersion ? `<label><input type="checkbox" data-observation-select data-observation-id="${escapeHtml(item.annotationId)}" aria-label="Selecionar observação"${selectedObservationIds.includes(item.annotationId) ? ' checked' : ''}${saving ? ' disabled' : ''}>Selecionar</label>` : '') +
     (showContributor
       ? '<p class="study-observation-contributor"><strong>' +
         escapeHtml(item.contributor?.label || "Contribuição protegida") + "</strong><span>" +
@@ -199,7 +258,7 @@ function renderItem(item, { saving, editingId, showContributor, authoringQueue }
       : "") +
     (item.syncError
       ? '<p class="field-error" role="alert">' + escapeHtml(item.syncError) + "</p>"
-      : "") + "</article>";
+      : "") + (authoringQueue ? renderObservationIncidences(item, { saving, availableTargets, selectedTargetKeysByAnnotation }) : '') + "</article>";
 }
 
 export function renderStudyUnitObservationSheet({
@@ -223,9 +282,17 @@ export function renderStudyUnitObservationSheet({
   actionHref = "",
   actionLabel = "",
   actionControlKey = "",
-  authoringQueue = false
+  authoringQueue = false,
+  pending = false,
+  recoveryExpired = false,
+  availableTargets = [],
+  selectedTargets = [],
+  filters = {},
+  selectedObservationIds = [],
+  selectedTargetKeysByAnnotation = {},
+  cancelReason = "withdrawal"
 } = {}) {
-  const visibleItems = items.filter((item) => item && typeof item === "object");
+  const visibleItems = filterAuthoringObservations(items.filter((item) => item && typeof item === "object"), filters);
   const matchingTotal = Number.isSafeInteger(collectionSummary?.matchingTotal)
     ? collectionSummary.matchingTotal
     : visibleItems.length;
@@ -254,6 +321,20 @@ export function renderStudyUnitObservationSheet({
     (contextMessage
       ? `<p class="study-observation-stale" role="status">${escapeHtml(contextMessage)}</p>`
       : "") +
+    (authoringQueue ? '<div class="study-observation-central-controls"><button type="button" data-observation-action="refresh" aria-label="Atualizar central"' + (saving ? ' disabled' : '') + '>Atualizar</button>' +
+      (pending ? '<button type="button" data-observation-action="retry">Retomar envio pendente</button>' : '') +
+      (recoveryExpired ? '<button type="button" data-observation-action="abandon-expired">Encerrar tentativa antiga e conservar rascunho</button>' : '') +
+      '<label>Filtrar por alvo<select data-observation-filter="target"><option value="">Todos os alvos</option>' +
+      availableTargets.map(target => `<option value="${escapeHtml(`${target.kind}:${target.id}`)}"${filters.target === `${target.kind}:${target.id}` ? ' selected' : ''}>${escapeHtml(target.label || target.id)}</option>`).join('') + '</select></label>' +
+      '<label>Filtrar por categoria<select data-observation-filter="category"><option value="">Todas as categorias</option>' +
+      ["none", ...COURSE_ANCHORED_ANNOTATION_CATEGORIES].map(value => `<option value="${value}"${filters.category === value ? ' selected' : ''}>${escapeHtml(categoryLabel(value))}</option>`).join('') + '</select></label>' +
+      `<p data-observation-filter-count>${visibleItems.length} apresentadas · ${matchingTotal} pendentes no curso</p>` +
+      (visibleItems.some(item => !item.targetSetVersion) ? '<p>O lote abaixo abrange somente os alvos com decisão nesta central. Registros legados estruturais têm acesso próprio na lista.</p>' : '') +
+      '<label>Encerramento por <select data-observation-cancel-reason>' +
+      Object.entries({withdrawal: 'Retirada', test: 'Teste', mistake: 'Engano', superseded: 'Duplicidade ou superação', answered: 'Dúvida respondida', keep_current: 'Manter conteúdo'})
+        .map(([value, label]) => `<option value="${value}"${cancelReason === value ? ' selected' : ''}>${label}</option>`).join('') + '</select></label>' +
+      '<div>' + Object.entries({'approve-selected': 'Aprovar selecionadas', 'cancel-selected': 'Encerrar selecionadas', 'approve-all': 'Aprovar todas apresentadas', 'cancel-all': 'Encerrar todas apresentadas'})
+        .map(([action, label]) => `<button type="button" data-observation-action="${action}"${saving ? ' disabled' : ''}>${label}</button>`).join('') + '</div></div>' : '') +
     (!showComposer && actionHref && actionLabel
       ? renderObservationReviewAction({ actionHref, actionLabel, actionControlKey })
       : "") +
@@ -271,10 +352,13 @@ export function renderStudyUnitObservationSheet({
       ? '<div class="study-observation-list" aria-label="' + escapeHtml(listLabel) + '">' +
         (visibleItems.length
           ? visibleItems.map((item) => renderItem(item, {
-              saving, editingId, showContributor, authoringQueue
+              saving, editingId, showContributor, authoringQueue, availableTargets, selectedObservationIds, selectedTargetKeysByAnnotation
             })).join("")
           : '<p class="study-observation-empty">' + escapeHtml(emptyLabel) + "</p>") + "</div>"
       : "") +
+    (showComposer && authoringQueue && !editingId && availableTargets.length ? '<label class="study-observation-new-targets">Alvos da nova observação' +
+      '<select multiple data-observation-new-targets aria-label="Alvos da nova observação">' + availableTargets.map(target =>
+        `<option value="${escapeHtml(`${target.kind}:${target.id}`)}"${selectedTargets.some(t => t.kind === target.kind && t.id === target.id) ? ' selected' : ''}>${escapeHtml(target.label || target.id)}</option>`).join('') + '</select></label>' : '') +
     (showComposer ? renderStudyUnitObservationComposer({
       draft, editingId, error, saving, studyUnitId: composerStudyUnitId,
       actionHref, actionLabel, actionControlKey

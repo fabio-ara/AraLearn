@@ -297,7 +297,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260912160000" ||
+  if (manifest.schemaRevision !== "20260916031133" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -362,6 +362,12 @@ async function validateManifest() {
     if (!globalCurriculum.includes(token)) {
       fail(`O fluxo curricular global não demonstra ${token}.`);
     }
+  }
+  const incremental = await read("supabase/migrations/20260916031133_incremental_materialization.sql");
+  for (const token of ["p_complete boolean, p_placements jsonb", "prepare_incremental_course_part_v1",
+    "materialization_complete", "assert_course_application_pedagogy_v1(p_course_id,all_units,p_complete)",
+    "private.save_course_part_explanations_v1(uuid,uuid,jsonb)", "'designApplication', inspected.design_application"]) {
+    if (!incremental.includes(token)) fail(`A materialização incremental não demonstra ${token}.`);
   }
   const openResponseCatalog = await read(
     "supabase/migrations/20260903193000_add_open_response_component.sql"
@@ -531,6 +537,7 @@ async function validateRuntimeFiles() {
     "get_owned_course_instructional_plan_for_actor_v4",
     "save_course_curricular_map_for_actor_v1",
     "materialize_course_authoring_part_for_actor_v2",
+    "p_complete: complete", "p_placements: normalizedPlacements",
     "get_course_content_review_for_actor_v1",
     "commit_course_observation_corrections_for_actor_v1",
     "get_authoring_process_preferences_for_actor_v1",
@@ -580,11 +587,11 @@ async function validateEdgeAndMcp() {
     "consultar_configuracao", "consultar_observacoes", "preparar_revisao",
     "consultar_fontes", "consultar_componentes", "criar_curso", "aprovar_mapa_curricular", "salvar_mapa_curricular",
     "salvar_parte",
-    "materializar_parte", "ajustar_configuracao", "registrar_observacao", "editar_observacao", "salvar_explicacoes",
+    "materializar_parte", "ajustar_configuracao", "registrar_observacao", "registrar_inspecao", "decidir_observacao", "editar_observacao", "salvar_explicacoes",
     "aplicar_correcoes", "retomar_correcao", "declarar_revisao", "manter_fonte", "incorporar_pdf_como_fonte", "guardar_audio", "consultar_audios"
   ];
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
-    fail("O catálogo MCP não corresponde às 54 tarefas humanas contextuais esperadas.");
+    fail("O catálogo MCP não corresponde às 56 tarefas humanas contextuais esperadas.");
   }
   if (names.some((name) => /(?:Workspace|Trilha|Colecao|Coleção|Publicacao|Publicação)/u.test(name))) {
     fail("O MCP ainda expõe uma ferramenta do modelo substituído.");

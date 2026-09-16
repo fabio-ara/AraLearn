@@ -74,6 +74,7 @@ function responseUnit(manifest, index) {
       }))
     };
   } else if (manifest.id === "aralearn.response.open") {
+    // Corpus histórico: esta prova só renderiza o editor, sem criar ou alterar respostas abertas.
     data = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
       manifest.id,
       manifest.version
@@ -455,8 +456,8 @@ async function openInspectionUnit(page, ownership, { longTitles = false, variant
     let studyUnitVersion = 1;
     let contentReview = { state: "current", reviewedAt: "2026-08-20T12:00:00.000Z" };
     let authorship = {
-      createdOrigin: "gpt",
-      lastRevisionOrigin: "gpt",
+      createdOrigin: "ai",
+      lastRevisionOrigin: "ai",
       design: { application: null }
     };
     // O Controller é um stub; a sequência e o renderer são os reais.
@@ -1180,7 +1181,7 @@ test("snapshot canônico externo rebasa CAS local sem perder posição nem progr
   expect(evidence.progress).toBe(evidence.progressBefore);
 });
 
-test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como rascunho", async ({ page }) => {
+test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como rascunho", async ({ page }, info) => {
   await page.setViewportSize({ width: 430, height: 860 });
   await openInspectionUnit(page, "owned");
   await expect(page.getByRole("button", { name: "Editar", exact: true })).toBeVisible();
@@ -1190,7 +1191,7 @@ test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como r
   const lastIntervention = instructionalDetails.getByText("Última intervenção", { exact: true })
     .locator("..").locator("dd");
   await expect(reviewState.getByRole("img", { name: "Revisão autoral declarada", exact: true })).toBeVisible();
-  await expect(lastIntervention).toHaveText("GPT");
+  await expect(lastIntervention).toHaveText("IA");
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.locator('[data-resource-target-id="content:inspection-paragraph-1"]').click();
   const field = page.locator('[data-manual-edit-path="text"]');
@@ -1203,7 +1204,11 @@ test("Inspeção usa o mesmo editor, dispensa IA na barra e desfaz apenas como r
   await expect(lastIntervention).toBeVisible();
   await expect(lastIntervention).toHaveText("Autoria humana");
   await expect(instructionalDetails.getByText("Origem", { exact: true })
-    .locator("..").locator("dd")).toHaveText("GPT");
+    .locator("..").locator("dd")).toHaveText("IA");
+  await lastIntervention.scrollIntoViewIfNeeded();
+  await expect(lastIntervention).toBeInViewport();
+  await expect(instructionalDetails.getByText("Origem", { exact: true })).toBeInViewport();
+  await page.screenshot({ path: info.outputPath("manual-authorship-intervention-430.png") });
   await page.locator(".course-inspection-item-details > summary").click();
   expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toMatchObject([{
     courseId: "10000000-0000-4000-8000-000000000001",

@@ -6,7 +6,7 @@ inspecionar o material junto de suas fontes, orientar alterações e declarar a
 revisão do que examinou. Depois do primeiro carregamento, o estudo pode
 continuar sem conexão.
 
-Referência atualizada em **2026-09-11**. A seção de
+Referência atualizada em **2026-09-16**. A seção de
 [verificação técnica](#verificação-técnica) indica onde consultar as condições
 em que o funcionamento foi examinado.
 
@@ -187,7 +187,7 @@ aos ambientes e às operações efetivamente exercitados.
 O [procedimento de verificação dos canais de autoria](prova-local-canais-autoria.md)
 permite reproduzir chamadas de MCP e OpenAPI e conferir seus efeitos no banco.
 O [catálogo conversacional 4.0.0](autoria-mcp.md#tarefas-disponíveis) reúne
-54 tarefas. Os testes locais do protocolo verificam a comunicação com o
+56 tarefas. Os testes locais do protocolo verificam a comunicação com o
 AraLearn; o funcionamento numa aplicação externa depende também da conexão,
 da autorização e das capacidades dessa aplicação. As verificações dos serviços
 de IA possuem igualmente o alcance registrado na

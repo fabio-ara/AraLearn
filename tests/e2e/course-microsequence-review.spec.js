@@ -111,7 +111,7 @@ async function expectObservationIcon(button, peer) {
   expect(Math.abs(icon.y + icon.height / 2 - other.y - other.height / 2)).toBeLessThanOrEqual(1);
 }
 
-for (const width of [360, 1280]) test(`contexto autoral e ações ficam separados da base longa em ${width}px`, async ({ page }) => {
+for (const width of [360, 1280]) test(`contexto autoral e ações ficam separados da base longa em ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 850 });
   const errors = await mount(page);
   await page.getByRole("button", { name: "Fechar inspeção da explicação", exact: true }).click();
@@ -125,11 +125,13 @@ for (const width of [360, 1280]) test(`contexto autoral e ações ficam separado
   const content = base.locator("[data-review-explanation-content]");
   await expect(context).toContainText("Interfaces");
   await expect(context).not.toContainText("Versão do curso");
-  await expect(context).toContainText("Revisão autoral");
+  await expect(context).not.toContainText("Revisão autoral");
+  await expect(dialog(page).locator('[data-review-context="review"]')).toHaveAccessibleName("Revisão autoral do conteúdo");
+  await expect(dialog(page).locator('[data-review-context="review"]')).toHaveAttribute("title", "Revisão autoral pendente");
   await expect(context.locator("[contenteditable], [data-review-edit-target]")).toHaveCount(0);
   await expect(tools.getByRole("button", { name: "Fontes da explicação", exact: true })).toBeVisible();
   await expect(tools.getByRole("button", { name: "Editar explicação", exact: true })).toBeVisible();
-  await expect(tools.getByRole("button", { name: /^Observações autorais de explicação/u })).toBeVisible();
+  await expect(tools.getByRole("button", { name: /^Observações autorais do curso/u })).toBeVisible();
   await expect(dialog(page).locator(":scope > .editor-head button")).toHaveCount(1);
   await expect(dialog(page).getByText("Debater com GPT", { exact: true })).toHaveCount(0);
   await expect(dialog(page).locator("[data-review-context=units], [data-review-unit-context]")).toHaveCount(0);
@@ -156,6 +158,7 @@ for (const width of [360, 1280]) test(`contexto autoral e ações ficam separado
     expect(box.width).toBeGreaterThanOrEqual(44); expect(box.height).toBeGreaterThanOrEqual(44);
   }
   await expect(base.getByRole("heading", { name: "Referências da explicação", exact: true })).toBeAttached();
+  await page.screenshot({ path: info.outputPath(`explanation-authoring-context-${width}.png`), fullPage: true });
   await tools.getByRole("button", { name: "Editar explicação", exact: true }).click();
   await expect(tools.getByRole("button", { name: "Salvar explicação", exact: true })).toBeVisible();
   await expect(tools.getByRole("button", { name: "Cancelar edição", exact: true })).toBeVisible();
@@ -346,33 +349,34 @@ test("fontes da explicação abrem o alvo salvo e conservam retorno contextual e
 
 test("fila da Explicação acumula, reabre, edita versão e reflete consumo sem declarar revisão", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 850 }); const errors = await mount(page);
-  const trigger = page.getByRole("button", { name: /^Observações autorais de explicação/u });
-  await expect(trigger).toHaveAccessibleName("Observações autorais de explicação · Interfaces, 0 pendentes");
+  const trigger = page.getByRole("button", { name: /^Observações autorais do curso/u });
+  await expect(trigger).toHaveAccessibleName("Observações autorais do curso, 0 pendentes");
   await expect(trigger.locator(".course-authoring-observation-count")).toHaveCount(0);
   await expectObservationIcon(trigger, page.getByRole("button", { name: "Editar explicação", exact: true }));
   await trigger.click();
-  const textbox = page.locator("[data-author-queue-text]");
-  const add = page.getByRole("button", { name: "Adicionar observação", exact: true });
+  const textbox = page.locator("[data-field='study-unit-observation']");
+  const add = page.getByRole("button", { name: "Enviar observação", exact: true });
   await textbox.fill("Explicitar o pressuposto do exemplo."); await add.click();
-  await expect(page.locator(".course-authoring-observation-entries li")).toHaveCount(1);
+  await expect(page.locator(".study-observation-item")).toHaveCount(1);
   await textbox.fill("Relacionar o argumento à fonte."); await add.click();
-  await expect(page.locator(".course-authoring-observation-entries li")).toHaveCount(2);
-  await expect(trigger).toHaveAccessibleName("Observações autorais de explicação · Interfaces, 2 pendentes");
+  await expect(page.locator(".study-observation-item")).toHaveCount(2);
+  await expect(trigger).toHaveAccessibleName("Observações autorais do curso, 2 pendentes");
   await expect(trigger.locator(".course-authoring-observation-count")).toHaveText("2");
   await expectObservationIcon(trigger, page.getByRole("button", { name: "Editar explicação", exact: true }));
-  await page.getByRole("button", { name: /Editar observação 1, versão 1/u }).click();
+  await page.getByRole("button", { name: "Editar observação", exact: true }).first().click();
   await textbox.fill("Explicitar o pressuposto e seu limite.");
-  await page.getByRole("button", { name: "Salvar edição da observação", exact: true }).click();
-  await expect(page.locator('[data-author-queue-version="2"]')).toHaveCount(1);
+  await page.getByRole("button", { name: "Salvar edição", exact: true }).click();
+  await expect(page.locator('[data-observation-version="2"]')).toHaveCount(1);
   await page.screenshot({ path: info.outputPath("explanation-observation-queue-390.png"), fullPage: true });
+  await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(1);
   await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
   await page.getByRole("button", { name: "Inspecionar Explicação", exact: true }).click(); await trigger.click();
-  await expect(page.locator(".course-authoring-observation-entries li")).toHaveCount(2);
+  await expect(page.locator(".study-observation-item")).toHaveCount(2);
   await expect(page.getByText("Explicitar o pressuposto e seu limite.", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
   await page.evaluate(() => { globalThis.__reviewFixture.probe.observations[0].state = "resolved"; });
-  await page.getByRole("button", { name: "Atualizar fila", exact: true }).click();
-  await expect(page.locator(".course-authoring-observation-entries li")).toHaveCount(1);
+  await page.getByRole("button", { name: "Atualizar central", exact: true }).click();
+  await expect(page.locator(".study-observation-item")).toHaveCount(1);
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.observationWrites.map(value => value.command.type)))
     .toEqual(["create_anchored_annotation", "create_anchored_annotation", "revise_anchored_annotation"]);
   expect(errors).toEqual([]);
@@ -395,7 +399,7 @@ test("badge da unidade preserva ícone centralizado com zero e com observações
         curriculumPath: { module: { id: module.id, position: 0, title: module.title },
           lesson: { id: lesson.id, position: 0, title: lesson.title },
           didacticMicrosequence: { id: micro.id, position: 0, title: micro.title } },
-        authoringPart: null, authorship: { createdOrigin: "gpt", lastRevisionOrigin: "gpt", design: { application: null } },
+        authoringPart: null, authorship: { createdOrigin: "ai", lastRevisionOrigin: "ai", design: { application: null } },
         pendingAuthoringObservationCount: state.count,
         deepLink: `#/authoring/courses/${course.id}?section=content&studyUnitId=${micro.studyUnits[0].id}` }],
       hasPrevious: false, hasMore: false, previousCursor: null, nextCursor: null, pageBytes: 2048,
@@ -412,13 +416,13 @@ test("badge da unidade preserva ícone centralizado com zero e com observações
   });
   const trigger = page.locator("[data-inspection-observations]");
   const peer = page.locator("[data-inspection-open-parameters]").first();
-  await expect(trigger).toHaveAccessibleName("Observações de Interface local, 0 pendentes");
+  await expect(trigger).toHaveAccessibleName("Observações autorais do curso, 0 pendentes");
   await expect(trigger.locator(".course-inspection-observation-count")).toHaveCount(0);
   await expectObservationIcon(trigger, peer);
   await page.evaluate(async () => {
     const fixture = globalThis.__unitBadgeFixture; fixture.state.count = 2; await fixture.sequence.refresh(fixture.revision);
   });
-  await expect(trigger).toHaveAccessibleName("Observações de Interface local, 2 pendentes");
+  await expect(trigger).toHaveAccessibleName("Observações autorais do curso, 2 pendentes");
   await expect(trigger.locator(".course-inspection-observation-count")).toHaveText("2");
   await expectObservationIcon(trigger, peer);
   await trigger.focus(); await expect(trigger).toBeFocused();
@@ -428,25 +432,58 @@ test("badge da unidade preserva ícone centralizado com zero e com observações
 
 test("fila preserva rascunho em resposta tardia e reconcilia envio perdido sem repetir", async ({ page }) => {
   const errors = await mount(page);
-  const trigger = page.getByRole("button", { name: /^Observações autorais de explicação/u });
+  const trigger = page.getByRole("button", { name: /^Observações autorais do curso/u });
   await trigger.click();
-  const textbox = page.locator("[data-author-queue-text]");
+  const textbox = page.locator("[data-field='study-unit-observation']");
   await page.evaluate(() => { globalThis.__reviewFixture.probe.delayObservationRead = true; });
-  await page.getByRole("button", { name: "Atualizar fila", exact: true }).click();
+  await page.getByRole("button", { name: "Atualizar central", exact: true }).click();
   await textbox.fill("Rascunho durante atualização.");
   await page.evaluate(() => {
     const probe = globalThis.__reviewFixture.probe; probe.delayObservationRead = false; probe.finishObservationRead();
   });
   await expect(textbox).toHaveValue("Rascunho durante atualização."); await expect(textbox).toBeFocused();
   await page.evaluate(() => { globalThis.__reviewFixture.probe.observationLostResponse = true; });
-  await page.getByRole("button", { name: "Adicionar observação", exact: true }).click();
+  await page.getByRole("button", { name: "Enviar observação", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("Não foi possível confirmar o envio");
   await expect(textbox).toHaveValue("Rascunho durante atualização.");
-  await page.getByRole("button", { name: "Confirmar envio pendente", exact: true }).click();
-  await expect(page.locator(".course-authoring-observation-entries li")).toHaveCount(1);
+  await page.getByRole("button", { name: "Retomar envio pendente", exact: true }).click();
+  await expect(page.locator(".study-observation-item")).toHaveCount(1);
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.observationWrites.length)).toBe(1);
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test("central mantém identidade multialvo, seleção na atualização e decisão parcial explícita", async ({ page }, info) => {
+  await page.setViewportSize({width: 390, height: 850}); const errors = await mount(page);
+  await page.getByRole('button', {name: /^Observações autorais do curso/u}).click();
+  const central = page.getByRole('dialog', {name: 'Observações do curso', exact: true});
+  await central.getByLabel('Alvos da nova observação', {exact: true}).selectOption(['microsequence_explanation:micro-review', 'study_unit:unit-theory']);
+  await central.getByRole('textbox', {name: 'Observação', exact: true}).fill('Aproximar a explicação do exemplo.');
+  await central.getByRole('button', {name: 'Enviar observação', exact: true}).click();
+  const item = central.locator('.study-observation-item'); await expect(item).toHaveCount(1);
+  await expect(item.locator('[data-observation-target-select]')).toHaveCount(2);
+  await item.getByRole('checkbox', {name: 'Selecionar observação', exact: true}).check();
+  await item.locator('input[data-observation-target-key="study_unit:unit-theory"]').uncheck();
+  await central.getByRole('button', {name: 'Atualizar central', exact: true}).click();
+  await expect(item.locator('input[data-observation-target-key="study_unit:unit-theory"]')).not.toBeChecked();
+  await expect(item.getByRole('checkbox', {name: 'Selecionar observação', exact: true})).toBeChecked();
+  await item.getByText('Comparar antes e vigente', {exact: true}).first().click();
+  await item.getByRole('button', {name: 'Carregar comparação deste alvo', exact: true}).first().click();
+  await expect(item.getByRole('heading', {name: 'Antes', exact: true}).first()).toBeVisible();
+  await page.screenshot({path: info.outputPath('observation-before-current-390.png')});
+  await central.getByRole('button', {name: 'Aprovar selecionadas', exact: true}).click();
+  await expect(item).toContainText('Aprovado');
+  await expect(item.locator('[data-observation-target-select]:not([disabled])')).toHaveCount(1);
+  await expect(central.locator('[data-observation-filter-count]')).toHaveText('1 apresentadas · 1 pendentes no curso');
+  await item.locator('input[data-observation-target-key="study_unit:unit-theory"]').check();
+  await central.locator('[data-observation-cancel-reason]').selectOption('keep_current');
+  await item.getByRole('button', {name: 'Encerrar sem alteração', exact: true}).click();
+  await expect(item).toHaveCount(0);
+  const result = await page.evaluate(() => ({entries: globalThis.__reviewFixture.probe.observations, writes: globalThis.__reviewFixture.probe.observationWrites, contentWrites: globalThis.__reviewFixture.probe.calls}));
+  expect(result.entries).toHaveLength(1); expect(result.entries[0].state).toBe('resolved');
+  expect(result.entries[0].targets.map(target => target.state)).toEqual(['approved', 'cancelled']);
+  expect(result.writes.map(write => write.command.type)).toEqual(['create_anchored_annotation', 'decide_anchored_annotation', 'decide_anchored_annotation']);
+  expect(result.contentWrites).toEqual([]); expect(errors).toEqual([]);
 });
 
 test("Conteúdo abre Explicação salva sem unidades e retorna ao objeto vazio", async ({ page }, info) => {
@@ -455,7 +492,10 @@ test("Conteúdo abre Explicação salva sem unidades e retorna ao objeto vazio",
   await page.getByRole("button", { name: "Conteúdo sem unidades", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Nenhuma unidade de estudo materializada" })).toBeVisible();
   const trigger = page.getByRole("button", { name: "Explicação de Interfaces", exact: true });
-  await expect(trigger).toBeVisible(); await trigger.click();
+  // A rota da microssequência vazia abre sua explicação salva diretamente.
+  await expect(dialog(page)).toBeVisible();
+  await expect(dialog(page)).toHaveCount(1);
+  await expect(trigger).toBeAttached();
   await expect(dialog(page)).toContainText("Um socket é a interface local");
   await expect(dialog(page).locator("[data-review-context=units], [data-review-unit-context]")).toHaveCount(0);
   await expect(dialog(page).getByRole("button", { name: "Editar explicação", exact: true })).toBeVisible();
@@ -463,6 +503,9 @@ test("Conteúdo abre Explicação salva sem unidades e retorna ao objeto vazio",
   await expect(page.locator("[data-review-status]")).toContainText("Revisão declarada para este objeto");
   await page.screenshot({ path: info.outputPath("explanation-before-units.png"), fullPage: true });
   await page.keyboard.press("Escape"); await expect(dialog(page)).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await trigger.click(); await expect(dialog(page)).toBeVisible();
+  await page.getByRole("button", { name: "Fechar inspeção da explicação", exact: true }).click();
   await expect(trigger).toBeFocused();
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls.map(value => [value.kind, value.request.targetKind])))
     .toEqual([["review", "microsequence_explanation"]]);

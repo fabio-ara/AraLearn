@@ -33,7 +33,7 @@ export function createUxUi328Fixture() {
           lesson: { id: path.lesson.id, position: path.lesson.position, title: path.lesson.title },
           didacticMicrosequence: { id: path.micro.id, position: path.micro.position, title: path.micro.title } },
         authoringPart: { id: parts[batchIndex].id, position: batchIndex, title: parts[batchIndex].title, state: "materialized" },
-        authorship: { createdOrigin: "gpt", lastRevisionOrigin: "gpt", design: { application: null } },
+        authorship: { createdOrigin: "ai", lastRevisionOrigin: "ai", design: { application: null } },
         deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=ux328-unit-${String(ordinal).padStart(2, "0")}` });
     }
     parts[batchIndex].progress = { state: "materialized", microsequenceCount: 4, studyUnitCount: 18 };
@@ -130,6 +130,12 @@ export function createUxUi328Fixture() {
     async mutateCourseAnchoredAnnotations(input) {
       requests.push({ kind: "annotation-mutation", input: structuredClone(input) });
       const item = annotation(input.command.rawText, input.command.target.id); item.annotationId = input.command.annotationId; annotations.push(item);
+      item.targetSetVersion = 1;
+      item.targets = (input.command.targets || [input.command.target]).map(target => {
+        const unit = units.find(row => row.studyUnit.id === target.id);
+        const snapshot = { hash: 'a'.repeat(64), content: structuredClone(unit.studyUnit), sourceLinks: [], sources: [] };
+        return { ...target, path: [{ kind: 'study_unit', id: target.id, label: unit.studyUnit.title, version: unit.version }], state: 'pending', basis: snapshot, current: structuredClone(snapshot) };
+      });
       return { contract: "aralearn.course-anchored-annotation-change.v1", courseId, courseRevision: course.revision, annotationSetVersion: annotations.length, requestId: input.requestId, idempotent: false, changed: true, annotation: structuredClone(item) };
     },
     createCourse: rejectMutation, mutateCourseDesign: rejectMutation, commitCourseComposition: rejectMutation

@@ -56,6 +56,7 @@ function request(path, {
       Origin: ORIGIN,
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "X-AraLearn-App-Contract": "authoring-v3",
       ...headers
     },
     ...(!new Set(["GET", "HEAD", "OPTIONS"]).has(method) ? { body: JSON.stringify(body) } : {})

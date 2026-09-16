@@ -6740,79 +6740,72 @@
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe o caminho HTTPS da estação da VLAN de usuários até a aplicação na DMZ e identifique onde ocorre a filtragem.",
+                            "prompt": "Nesta rede Ethernet sintética, diferencie a repetição de sinais no hub e no repetidor da comutação de quadros no switch. As linhas mostram conexões, não uma simulação de tráfego.",
                             "segments": [
                               {
-                                "id": "users",
-                                "label": "VLAN 10 · usuários · 10.10.10.0/24"
-                              },
-                              {
-                                "id": "dmz",
-                                "label": "DMZ · 10.10.30.0/24"
+                                "id": "shared",
+                                "label": "Trechos Ethernet ligados por repetição"
                               }
                             ],
                             "devices": [
                               {
-                                "id": "client",
-                                "label": "Estação de trabalho",
+                                "id": "station-a",
+                                "label": "Estação A",
                                 "kind": "host",
-                                "segmentId": "users",
-                                "address": "10.10.10.42"
+                                "segmentId": "shared"
                               },
                               {
-                                "id": "access",
-                                "label": "Switch de acesso",
+                                "id": "station-b",
+                                "label": "Estação B",
+                                "kind": "host",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "hub",
+                                "label": "Conexão das estações",
+                                "kind": "hub",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "repeater",
+                                "label": "Regeneração entre trechos",
+                                "kind": "repeater",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "switch",
+                                "label": "Acesso à rede comutada",
                                 "kind": "switch",
-                                "segmentId": "users"
-                              },
-                              {
-                                "id": "firewall",
-                                "label": "Firewall de borda",
-                                "kind": "firewall",
-                                "segmentId": null
-                              },
-                              {
-                                "id": "app",
-                                "label": "Servidor de aplicação",
-                                "kind": "server",
-                                "segmentId": "dmz",
-                                "address": "10.10.30.20:443"
-                              },
-                              {
-                                "id": "internet",
-                                "label": "Internet",
-                                "kind": "cloud",
                                 "segmentId": null
                               }
                             ],
                             "links": [
                               {
-                                "id": "l1",
-                                "from": "client",
-                                "to": "access",
+                                "id": "a-hub",
+                                "from": "station-a",
+                                "to": "hub",
                                 "medium": "Ethernet",
                                 "directed": false
                               },
                               {
-                                "id": "l2",
-                                "from": "access",
-                                "to": "firewall",
-                                "medium": "trunk 802.1Q",
+                                "id": "b-hub",
+                                "from": "station-b",
+                                "to": "hub",
+                                "medium": "Ethernet",
                                 "directed": false
                               },
                               {
-                                "id": "l3",
-                                "from": "firewall",
-                                "to": "app",
+                                "id": "hub-repeater",
+                                "from": "hub",
+                                "to": "repeater",
                                 "medium": "Ethernet",
-                                "protocol": "HTTPS",
-                                "directed": true
+                                "directed": false
                               },
                               {
-                                "id": "l4",
-                                "from": "firewall",
-                                "to": "internet",
-                                "medium": "WAN",
+                                "id": "repeater-switch",
+                                "from": "repeater",
+                                "to": "switch",
+                                "medium": "Ethernet",
                                 "directed": false
                               }
                             ]
@@ -6834,79 +6827,72 @@
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe o caminho HTTPS da estação da VLAN de usuários até a aplicação na DMZ e identifique onde ocorre a filtragem.",
+                            "prompt": "Nesta rede Ethernet sintética, diferencie a repetição de sinais no hub e no repetidor da comutação de quadros no switch. As linhas mostram conexões, não uma simulação de tráfego.",
                             "segments": [
                               {
-                                "id": "users",
-                                "label": "VLAN 10 · usuários · 10.10.10.0/24"
-                              },
-                              {
-                                "id": "dmz",
-                                "label": "DMZ · 10.10.30.0/24"
+                                "id": "shared",
+                                "label": "Trechos Ethernet ligados por repetição"
                               }
                             ],
                             "devices": [
                               {
-                                "id": "client",
-                                "label": "Estação de trabalho",
+                                "id": "station-a",
+                                "label": "Estação A",
                                 "kind": "host",
-                                "segmentId": "users",
-                                "address": "10.10.10.42"
+                                "segmentId": "shared"
                               },
                               {
-                                "id": "access",
-                                "label": "Switch de acesso",
+                                "id": "station-b",
+                                "label": "Estação B",
+                                "kind": "host",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "hub",
+                                "label": "Conexão das estações",
+                                "kind": "hub",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "repeater",
+                                "label": "Regeneração entre trechos",
+                                "kind": "repeater",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "switch",
+                                "label": "Acesso à rede comutada",
                                 "kind": "switch",
-                                "segmentId": "users"
-                              },
-                              {
-                                "id": "firewall",
-                                "label": "Firewall de borda",
-                                "kind": "firewall",
-                                "segmentId": null
-                              },
-                              {
-                                "id": "app",
-                                "label": "Servidor de aplicação",
-                                "kind": "server",
-                                "segmentId": "dmz",
-                                "address": "10.10.30.20:443"
-                              },
-                              {
-                                "id": "internet",
-                                "label": "Internet",
-                                "kind": "cloud",
                                 "segmentId": null
                               }
                             ],
                             "links": [
                               {
-                                "id": "l1",
-                                "from": "client",
-                                "to": "access",
+                                "id": "a-hub",
+                                "from": "station-a",
+                                "to": "hub",
                                 "medium": "Ethernet",
                                 "directed": false
                               },
                               {
-                                "id": "l2",
-                                "from": "access",
-                                "to": "firewall",
-                                "medium": "trunk 802.1Q",
+                                "id": "b-hub",
+                                "from": "station-b",
+                                "to": "hub",
+                                "medium": "Ethernet",
                                 "directed": false
                               },
                               {
-                                "id": "l3",
-                                "from": "firewall",
-                                "to": "app",
+                                "id": "hub-repeater",
+                                "from": "hub",
+                                "to": "repeater",
                                 "medium": "Ethernet",
-                                "protocol": "HTTPS",
-                                "directed": true
+                                "directed": false
                               },
                               {
-                                "id": "l4",
-                                "from": "firewall",
-                                "to": "internet",
-                                "medium": "WAN",
+                                "id": "repeater-switch",
+                                "from": "repeater",
+                                "to": "switch",
+                                "medium": "Ethernet",
                                 "directed": false
                               }
                             ]
@@ -6925,10 +6911,10 @@
                               "targetPath": "devices[0].label",
                               "label": "Lacuna no equipamento 1",
                               "responseMode": "choice",
-                              "answer": "trabalho",
+                              "answer": "Estação",
                               "distractors": [
-                                "não trabalho",
-                                "outro trabalho"
+                                "não Estação",
+                                "outro Estação"
                               ]
                             }
                           ]
@@ -6948,79 +6934,72 @@
                           "package": "aralearn.resource.network_topology",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Acompanhe o caminho HTTPS da estação da VLAN de usuários até a aplicação na DMZ e identifique onde ocorre a filtragem.",
+                            "prompt": "Nesta rede Ethernet sintética, diferencie a repetição de sinais no hub e no repetidor da comutação de quadros no switch. As linhas mostram conexões, não uma simulação de tráfego.",
                             "segments": [
                               {
-                                "id": "users",
-                                "label": "VLAN 10 · usuários · 10.10.10.0/24"
-                              },
-                              {
-                                "id": "dmz",
-                                "label": "DMZ · 10.10.30.0/24"
+                                "id": "shared",
+                                "label": "Trechos Ethernet ligados por repetição"
                               }
                             ],
                             "devices": [
                               {
-                                "id": "client",
-                                "label": "Estação de trabalho",
+                                "id": "station-a",
+                                "label": "Estação A",
                                 "kind": "host",
-                                "segmentId": "users",
-                                "address": "10.10.10.42"
+                                "segmentId": "shared"
                               },
                               {
-                                "id": "access",
-                                "label": "Switch de acesso",
+                                "id": "station-b",
+                                "label": "Estação B",
+                                "kind": "host",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "hub",
+                                "label": "Conexão das estações",
+                                "kind": "hub",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "repeater",
+                                "label": "Regeneração entre trechos",
+                                "kind": "repeater",
+                                "segmentId": "shared"
+                              },
+                              {
+                                "id": "switch",
+                                "label": "Acesso à rede comutada",
                                 "kind": "switch",
-                                "segmentId": "users"
-                              },
-                              {
-                                "id": "firewall",
-                                "label": "Firewall de borda",
-                                "kind": "firewall",
-                                "segmentId": null
-                              },
-                              {
-                                "id": "app",
-                                "label": "Servidor de aplicação",
-                                "kind": "server",
-                                "segmentId": "dmz",
-                                "address": "10.10.30.20:443"
-                              },
-                              {
-                                "id": "internet",
-                                "label": "Internet",
-                                "kind": "cloud",
                                 "segmentId": null
                               }
                             ],
                             "links": [
                               {
-                                "id": "l1",
-                                "from": "client",
-                                "to": "access",
+                                "id": "a-hub",
+                                "from": "station-a",
+                                "to": "hub",
                                 "medium": "Ethernet",
                                 "directed": false
                               },
                               {
-                                "id": "l2",
-                                "from": "access",
-                                "to": "firewall",
-                                "medium": "trunk 802.1Q",
+                                "id": "b-hub",
+                                "from": "station-b",
+                                "to": "hub",
+                                "medium": "Ethernet",
                                 "directed": false
                               },
                               {
-                                "id": "l3",
-                                "from": "firewall",
-                                "to": "app",
+                                "id": "hub-repeater",
+                                "from": "hub",
+                                "to": "repeater",
                                 "medium": "Ethernet",
-                                "protocol": "HTTPS",
-                                "directed": true
+                                "directed": false
                               },
                               {
-                                "id": "l4",
-                                "from": "firewall",
-                                "to": "internet",
-                                "medium": "WAN",
+                                "id": "repeater-switch",
+                                "from": "repeater",
+                                "to": "switch",
+                                "medium": "Ethernet",
                                 "directed": false
                               }
                             ]
@@ -7039,7 +7018,7 @@
                               "targetPath": "devices[0].label",
                               "label": "Lacuna no equipamento 1",
                               "responseMode": "text",
-                              "answer": "trabalho"
+                              "answer": "Estação"
                             }
                           ]
                         }
@@ -10604,9 +10583,9 @@
         },
         {
           "id": "response-open-test-module",
-          "title": "Resposta aberta",
+          "title": "Resposta aberta · legado",
           "guide": {
-            "goal": "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.",
+            "goal": "Verificar a leitura de prática legada sem criar nova autoria com este componente.",
             "include": [
               "representação canônica e interação declarada"
             ],
@@ -10623,9 +10602,9 @@
           "lessons": [
             {
               "id": "response-open-test-lesson",
-              "title": "Resposta aberta",
+              "title": "Resposta aberta · legado",
               "guide": {
-                "goal": "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.",
+                "goal": "Verificar a leitura de prática legada sem criar nova autoria com este componente.",
                 "include": [
                   "exposição e práticas semanticamente suportadas"
                 ],
@@ -10643,8 +10622,8 @@
               "microsequences": [
                 {
                   "id": "response-open-test-microsequence",
-                  "title": "Resposta aberta",
-                  "goal": "Explicar uma decisão de encaminhamento com palavras próprias, sem oferecer resposta-modelo.",
+                  "title": "Resposta aberta · legado",
+                  "goal": "Verificar a leitura de prática legada sem criar nova autoria com este componente.",
                   "role": "practice",
                   "dependsOn": [],
                   "covers": [],

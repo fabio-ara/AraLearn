@@ -62,10 +62,12 @@ async function request(path, {
   method = "GET",
   token = PUBLISHABLE_KEY,
   body,
-  origin = null
+  origin = null,
+  appContract = false
 } = {}) {
   const requestHeaders = headers(token, { json: body !== undefined });
   if (origin) requestHeaders.Origin = origin;
+  if (appContract) requestHeaders["X-AraLearn-App-Contract"] = "authoring-v3";
   const response = await fetch(`${PROJECT_URL}${path}`, {
     method,
     headers: requestHeaders,
@@ -101,7 +103,8 @@ async function signIn(email) {
 async function courseApi(path, { method = "GET", body = undefined } = {}, token) {
   const execute = async () => {
     const result = await request(`/functions/v1/aralearn-course-api${path}`, {
-      method, token, ...(body === undefined ? {} : { body }), origin: APPLICATION_ORIGIN
+      method, token, ...(body === undefined ? {} : { body }), origin: APPLICATION_ORIGIN,
+      appContract: true
     });
     expect(result.response.status, failure(`Course API${path}`, result)).toBe(200);
     return result.payload;
@@ -705,6 +708,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true }).click();
       await page.getByRole("button", { name: "Editar referências de Primeira Unidade compartilhada", exact: true }).click();
       const dialog = page.locator("[data-source-target-dialog]");
+      await dialog.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
       await dialog.getByRole("button", { name: `Vincular fonte: ${title}`, exact: true }).click();
       let links = dialog.locator(".course-source-target-link");
       const citedText = "Conteúdo privado liberado somente para a pessoa escolhida.";
@@ -717,6 +721,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       const relation = links.first().getByRole("combobox", { name: "Como esta fonte é usada", exact: true });
       await relation.focus(); await relation.selectOption("adapted_from");
       await expect(relation).toBeFocused();
+      await links.first().getByLabel(/Página usada no ensaio local/u).check();
       expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
         .toBe(citedText);
       await links.first().getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
@@ -937,8 +942,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
       await page.goto(`/#/authoring/courses/${designCourseId}?section=parameters`);
       expect((await readDesign()).parameters).toHaveLength(12);
-      await page.locator('.course-design-category-menu > summary').click();
-      await page.getByRole("button", { name: "Perfis", exact: true }).click();
+      await page.getByLabel("Escolher grupo de ajustes").selectOption({ label: "Perfis" });
       await expect(page.locator(".course-authoring-profiles")).toHaveAttribute("open", "");
       await page.getByRole("button", { name: "Criar perfil", exact: true }).click();
       const editor = page.locator("[data-course-profile-editor]");
@@ -1344,7 +1348,6 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await learnerPage.getByRole("button", { name: "Observações" }).click();
       await observationsLoaded;
       await expect(learnerPage.locator(".study-observation-loading")).toHaveCount(0);
-      await learnerPage.locator(".study-observation-category-disclosure > summary").click();
       await learnerPage.getByRole("combobox", { name: "Categoria da observação (opcional)" })
         .selectOption("question");
       await expect(learnerPage.getByRole("combobox", { name: "Categoria da observação (opcional)" })).toHaveValue("question");
@@ -1495,10 +1498,18 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 5, sourceCommand: {
       type: "set_target_sources", targetKind: "study_unit", targetId: "study-unit-access-local-1",
       expectedTargetVersion: 1, sourceLinks: [{ linkId: "vinculo-pdf-publico-local", sourceId,
-        relation: "informed_by", roles: ["technical_conceptual"], occurrences: [], anchors: [{ anchorId: "pagina-local" }] }]
+        relation: "informed_by", roles: ["technical_conceptual"], occurrences: [{
+          occurrenceId: "ocorrencia-pdf-publico-local", slot: "content",
+          resourceId: "content-study-unit-access-local-1", path: "text",
+          quote: "Conteúdo privado liberado somente para a pessoa escolhida.", prefix: null, suffix: null
+        }], anchors: [{ anchorId: "pagina-local" }] }]
     } });
     await ownerClient.setCourseVisibility({ courseId: publicCourseId, expectedRevision: 6,
       visibility: "public", publicFileAccess: "restricted", confirmed: true });
+    // A leitura pública respeita a projeção de revisão da microssequência.
+    // Aprovar a base sintética antes de abrir o percurso torna explícita a
+    // decisão necessária para que o conteúdo completo fique disponível.
+    const approvedRevision = await approveSyntheticContent(publicCourseId);
     const publicDescriptor = await guestClient.getCourse(publicCourseId);
     expect(publicDescriptor.ownership).toBe("public");
     expect(publicDescriptor.canEdit).toBe(false);
@@ -1507,10 +1518,9 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     expect(publicDescriptor).not.toHaveProperty("isPersonalCopy");
     const publicList = await guestClient.listCourses({ query: "Curso público local" });
     expect(publicList.items.some((course) => course.courseId === publicCourseId)).toBe(true);
-    const savedCitations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: 7 });
+    const savedCitations = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: approvedRevision });
     expect(savedCitations.citations[0].attachments).toEqual([]);
     expect((await ownerClient.getContentReview(publicCourseId, "study_unit", "study-unit-access-local-1")).contentReview.state).toBe("draft");
-    const approvedRevision = await approveSyntheticContent(publicCourseId);
     const restricted = await guestClient.getStudyUnitCitations(publicCourseId, "study-unit-access-local-1", { expectedRevision: approvedRevision });
     expect(restricted.citations[0].attachments).toEqual([]);
     await expect(guestClient.getCourseSourceAttachmentDownload({ courseId: publicCourseId,
@@ -1545,7 +1555,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await configureBrowser(page);
       const path = `#/estudo/${publicCourseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`;
       await page.goto(`/${path}`);
-      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      // A citação autorizada acrescenta um marcador ao mesmo campo de texto.
+      // A asserção verifica o conteúdo authored sem depender desse marcador.
+      const publicStudyText = /Conteúdo privado liberado somente para a pessoa escolhida\./u;
+      await expect(page.getByText(publicStudyText)).toBeVisible();
       await expect(page.locator(".study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Entre para enviar observações" })).toBeVisible();
       await page.getByRole("button", { name: "Marcar para rever", exact: true }).click();
@@ -1583,7 +1596,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Identificador", { exact: true }).fill(`outsider-${outsider.id.slice(0, 8)}`);
       await page.getByRole("button", { name: "Salvar identificador" }).click();
       await expect(page).toHaveURL(new RegExp(`#\\/estudo\\/${publicCourseId}\\/module-access-local\\/lesson-access-local\\/microsequence-access-local\\/study-unit-access-local-1$`, "u"));
-      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await expect(page.getByText(publicStudyText)).toBeVisible();
       await expect(page.getByRole("button", { name: "Observações", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "false");
     } finally { await context.close(); }

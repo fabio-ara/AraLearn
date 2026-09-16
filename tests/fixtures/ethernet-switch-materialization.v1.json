@@ -179,7 +179,7 @@
             "answerIds": ["remember-source-port"]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"empty-state-prediction-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Lembrar o endereço de origem e a porta de entrada permite aprender onde cada dispositivo está. Guardar o conteúdo do quadro ou renomear portas não cria essa associação."}}],
         "topics": ["switch Ethernet"]
       },
       "aplicacaoPedagogica": {
@@ -548,7 +548,7 @@
             "answerIds": ["step-2"]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"changing-table-choice-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"BB:BB é aprendido no passo 2, quando aparece como origem de um quadro recebido pela porta 2. No passo 1 ele era apenas o destino, o que não ensina sua localização."}}],
         "topics": ["mudança de estado"]
       },
       "aplicacaoPedagogica": {
@@ -586,7 +586,7 @@
             "blanks": [{"id": "second-output", "targetInstanceId": "faded-support-table", "targetPath": "rows[1][3]", "responseMode": "text", "answer": "porta 1"}]
           }
         },
-        "feedback": [],
+        "feedback": [{"id":"faded-support-gap-explanation","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"A saída é a porta 1 porque o destino AA:AA já está associado a ela. A entrada pela porta 3 serve para aprender a origem CC:CC, não para escolher a saída do destino."}}],
         "topics": ["apoio reduzido"]
       },
       "aplicacaoPedagogica": {

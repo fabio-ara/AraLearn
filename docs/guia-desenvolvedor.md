@@ -151,7 +151,7 @@ outra tabela ou serviço depende do que precisa ser guardado ou executado.
 ## MCP e Actions
 
 Os dois canais precisam oferecer as mesmas tarefas sem manter duas implementações.
-`COURSE_HUMAN_TASKS` é a lista canônica das 54 tarefas humanas. O MCP publica cada
+`COURSE_HUMAN_TASKS` é a lista canônica das 56 tarefas humanas. O MCP publica cada
 tarefa com metadados próprios. Actions usa o mapeamento de tarefas para operações, chamado binding, em
 `courseActionBindings.js` para oferecê-las em 30 operações HTTP: seis grupos recebem
 `tarefa` e `argumentos`, e 24 operações diretas recebem os argumentos na raiz. O

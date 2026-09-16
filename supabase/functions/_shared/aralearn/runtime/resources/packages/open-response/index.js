@@ -26,6 +26,7 @@ export const openResponsePackage = Object.freeze({
     id: "aralearn.response.open",
     version: "1.0.0",
     label: "Resposta aberta",
+    authoringEligibility: "legacy_only",
     purpose: "Pedir que o estudante explique, justifique ou preveja com palavras próprias, sem oferecer alternativas.",
     slots: Object.freeze(["response"]),
     taskOperations: Object.freeze(["explain", "justify", "predict", "interpret"]),
@@ -56,7 +57,7 @@ export const openResponsePackage = Object.freeze({
     accessibility: "A proposta rotula um campo multilinha nativo e o retorno de preenchimento é anunciado."
   }),
   authoringContract: Object.freeze({
-    intent: "Declare uma proposta focal que peça produção própria; não forneça resposta esperada nem alternativas.",
+    intent: "Componente legado, inelegível para nova autoria. Preserve instâncias existentes em edições que não alteram a resposta; use choice, gap ou ordering ao criar ou substituir uma prática.",
     required: Object.freeze(["prompt"]),
     optional: Object.freeze(["placeholder"]),
     rules: Object.freeze([

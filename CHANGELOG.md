@@ -9,6 +9,18 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.75] - 2026-09-16
+
+### Melhorado
+
+- citações conservam o trecho e a passagem que sustentam o conteúdo; a mesma fonte e o mesmo PDF podem ser usados em vários pontos sem duplicação do arquivo;
+- uma observação pode abranger explicações e unidades, com comparação entre a base anterior e o conteúdo vigente, aprovação parcial e encerramento explícito sem alteração;
+- a inspeção por IA fica vinculada ao conteúdo e às fontes examinados, separada da revisão humana e das intervenções editoriais;
+- a produção verifica conjuntamente repertório, vínculos, formas explicativas, componentes e cobertura, e permite continuar a mesma parte sem substituir as unidades omitidas;
+- novas práticas usam respostas avaliáveis e feedback disponível sem conexão; respostas abertas de cursos anteriores continuam legíveis;
+- a versão 0.0.74 recebe um aviso para atualizar antes de continuar a autoria, preservando a sessão, os rascunhos e o estudo já salvo sem conexão;
+- links de conteúdo, observações, fontes e configurações abrem o objeto correspondente, com recuperação explícita quando ele não está disponível.
+
 ## [0.0.74] - 2026-09-14
 
 ### Corrigido

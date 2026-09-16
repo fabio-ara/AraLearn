@@ -428,6 +428,10 @@ test("fontes da Explicação conservam trecho literal, versão da MS e retorno a
     ? { selectionStart: 0, selectionEnd: 25 } : query(selector);
   click(root, "save-occurrence", { linkId });
   assert.match(root.innerHTML, /Trecho localizado/u);
+  click(root, "save-target"); await settle();
+  assert.equal(writes.length, 0, "a ocorrência não substitui a passagem da fonte");
+  assert.match(root.innerHTML, /Indique a passagem vigente da fonte/u);
+  change(root, "[data-source-target-anchor]", { dataset: { linkId, anchorId: "anchor-a" }, checked: true });
   click(root, "open-source", { sourceId: "source-01" });
   await settle();
   assert.equal(navigations.length, 0);
@@ -452,6 +456,54 @@ test("fontes da Explicação conservam trecho literal, versão da MS e retorno a
 });
 
 for (const targetKind of ["study_unit", "microsequence_explanation"]) {
+  test(`citações de ${targetKind} movem a seleção e retiram só o uso final, preservando prosa e acervo`, async () => {
+    const text = "Primeira afirmação. Segunda afirmação.";
+    const content = { title: "Texto alvo", content: [{ id: "p", package: "aralearn.resource.paragraph",
+      version: "1.0.0", data: { text } }], response: null, feedback: [] };
+    const occurrence = (occurrenceId, quote) => ({ occurrenceId, slot: "content", resourceId: "p", path: "text",
+      quote, prefix: null, suffix: null });
+    const original = { linkId: "linked", sourceId: "source-01", relation: "supported_by", roles: ["technical_conceptual"],
+      anchors: [{ anchorId: "anchor-a" }], occurrences: [occurrence("first", "Primeira afirmação."), occurrence("second", "Segunda afirmação.")] };
+    const writes = [];
+    const root = new FakeRoot();
+    const links = [structuredClone(original)];
+    const controller = controllerFixture({ links, onMutate: value => {
+      writes.push(value);
+      links.splice(0, links.length, ...structuredClone(value.command.sourceLinks));
+    } });
+    const load = controller.loadCourseSources;
+    controller.loadCourseSources = async (courseId, options) => {
+      const result = await load(courseId, options);
+      if (options.mode === "target") {
+        Object.assign(result.query, { targetKind, targetId: "target-a" });
+        for (const item of result.items) Object.assign(item, { targetKind, targetId: "target-a" });
+      }
+      return result;
+    };
+    const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID, courseRevision: 5,
+      mode: "target", targetKind, targetId: "target-a", targetVersion: 3, targetExplanation: content, targetStudyUnit: content });
+    await panel.open(); await settle();
+    assert.doesNotMatch(root.innerHTML, /class="course-source-catalog"/u, "acervo só aparece por Adicionar fonte");
+    click(root, "edit-occurrence", { linkId: "linked", occurrenceId: "first" });
+    const query = root.querySelector.bind(root);
+    root.querySelector = selector => selector === "[data-source-occurrence-selection]"
+      ? { selectionStart: text.indexOf("Segunda"), selectionEnd: text.length } : query(selector);
+    click(root, "save-occurrence", { linkId: "linked" });
+    click(root, "save-target"); await settle();
+    assert.equal(writes[0].command.sourceLinks[0].occurrences[0].occurrenceId, "first");
+    assert.equal(writes[0].command.sourceLinks[0].occurrences[0].quote, "Segunda afirmação.");
+    assert.deepEqual(writes[0].command.sourceLinks[0].anchors, original.anchors);
+    click(root, "remove-occurrence", { linkId: "linked", occurrenceId: "first" });
+    click(root, "save-target"); await settle();
+    assert.deepEqual(writes[1].command.sourceLinks[0].occurrences.map(item => item.occurrenceId), ["second"]);
+    click(root, "remove-occurrence", { linkId: "linked", occurrenceId: "second" });
+    click(root, "save-target"); await settle();
+    assert.deepEqual(writes[2].command.sourceLinks, []);
+    assert.equal(content.content[0].data.text, text);
+    assert.ok(writes.every(value => value.command.type === "set_target_sources"), "remoção contextual não retira fonte compartilhada");
+    panel.destroy();
+  });
+
   test(`fonte geral já salva permanece íntegra ao exigir trecho para um novo vínculo em ${targetKind}`, async () => {
     const original = { linkId: "existing-general", sourceId: "source-01", relation: "supported_by", roles: [], anchors: [], occurrences: [] };
     const writes = [];
@@ -472,7 +524,7 @@ for (const targetKind of ["study_unit", "microsequence_explanation"]) {
       mode: "target", targetKind, targetId: "target-a", targetVersion: 3,
       targetExplanation: content, targetStudyUnit: content });
     await panel.open(); await settle();
-    assert.match(root.innerHTML, /Referência do texto completo/u);
+    assert.match(root.innerHTML, /Referência legada sem trecho específico/u);
     click(root, "add-target-source", { sourceId: "source-01" }); await settle();
     click(root, "save-target"); await settle();
     assert.equal(writes.length, 0);
@@ -864,6 +916,7 @@ test("adicionar vínculo aguarda a atribuição inicial e a recuperação de fal
     try {
       await settle();
       function assertUnavailable() {
+        click(root, "show-source-catalog");
         assert.match(root.innerHTML, /data-source-action="add-target-source"[^>]* disabled/u);
         click(root, "add-target-source", { sourceId: "source-01" });
         assert.equal(panel.hasPendingDraft(), false);
@@ -925,6 +978,7 @@ test("releitura do alvo conserva edições e remoções feitas enquanto a respos
     click(root, "retry-target");
     await settle();
     assert.equal(targetReads, 3);
+    click(root, "show-source-catalog");
     assert.match(root.innerHTML, /class="course-source-target-link"/u);
     assert.match(root.innerHTML, /data-source-action="add-target-source"[^>]* disabled/u);
     assert.match(root.innerHTML, /data-source-action="save-target"[^>]* disabled/u);
@@ -1000,6 +1054,34 @@ test("confirmação dos vínculos não declara salvo um rascunho alterado durant
   } finally {
     committed.resolve();
     await settle();
+    panel.destroy();
+  }
+});
+
+test("confirmação dos vínculos fecha o alvo quando a releitura secundária falha", async () => {
+  const root = new FakeRoot();
+  const writes = [];
+  let targetReads = 0;
+  let saved = 0;
+  const controller = controllerFixture({ onMutate: request => writes.push(request) });
+  const load = controller.loadCourseSources;
+  controller.loadCourseSources = async (...args) => {
+    if (args[1].mode === "target" && ++targetReads === 2) throw new TypeError("Failed to fetch");
+    return load(...args);
+  };
+  const panel = createCourseSourcesPanel({ root, controller, courseId: COURSE_ID,
+    courseRevision: 5, mode: "target", targetKind: "plan_item", targetId: PLAN_ITEM_ID, targetVersion: 3,
+    onTargetSaved: () => { saved++; panel.destroy(); } });
+  try {
+    await panel.open();
+    click(root, "add-target-source", { sourceId: "source-01" });
+    await settle();
+    click(root, "save-target");
+    await settle();
+    assert.equal(writes.length, 1);
+    assert.equal(saved, 1);
+    assert.equal(root.innerHTML, "");
+  } finally {
     panel.destroy();
   }
 });

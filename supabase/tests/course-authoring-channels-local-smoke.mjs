@@ -4,6 +4,8 @@ import { pathToFileURL } from "node:url";
 import { CourseSupabaseAdapter } from "../functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { encodeCourseActionTaskRequest } from "../functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { resolveHumanCourseContext } from "../functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
+import { humanMaterializationUnitPlan } from "../functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
+import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
 import { curricularMap, explanationUnit, practiceUnit, paragraph } from "./course-authoring-current-local-smoke.mjs";
 import { localSupabaseConfiguration, createConfirmedLocalUser, signInLocalUser, removeLocalUser,
   createLocalFixtureClient, trackLocalFixtureCreation,
@@ -18,8 +20,9 @@ const size = text => ({ utf8Bytes: Buffer.byteLength(text, "utf8"), utf16CodeUni
 const microsequences = exported => exported.artifact.document.courses[0].modules.flatMap(module =>
   module.lessons.flatMap(lesson => lesson.microsequences));
 
-function fixtures(course) {
-  const map = curricularMap(course, false);
+export function channelFixtures(course) {
+  const map = curricularMap(course);
+  const idea = explanationUnit().aplicacaoPedagogica.ideiasIntroduzidas[0];
   const names = CASES.map(label => `Socket no ${label}`);
   const coverage = CASES.map(label => `Identificar a interface local no ${label}.`);
   const detail = (index, field) => `${field} no ${CASES[index]}. ` +
@@ -37,13 +40,14 @@ function fixtures(course) {
     for (const text of [microsequence.objetivo, microsequence.explicacao.proposito,
       ...microsequence.explicacao.pressupostos, ...microsequence.explicacao.relacoes]) assert.ok(text.length <= 2000);
   }
-  const links = () => [{ fonte: SOURCE, relacao: "supported_by", papeis: ["tecnica_conceitual"], ancoras: [1] }];
+  const links = content => [{ fonte: SOURCE, relacao: "supported_by", papeis: ["tecnica_conceitual"], ancoras: [1],
+    ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: content.content[0].data.text }] }];
   const lots = [0, 1].map(lot => {
     const indexes = [lot * 3, lot * 3 + 1, lot * 3 + 2];
     const units = indexes.flatMap(index => {
       const theory = explanationUnit(); const practice = practiceUnit();
       for (const unit of [theory, practice]) {
-        unit.microssequencia = names[index]; unit.fontes = links();
+        unit.microssequencia = names[index];
         unit.configuracao.parametros.alvo_microssequencias_por_parte = 3;
         unit.aplicacaoPedagogica.cobertura = [coverage[index]];
         unit.conteudo.title += ` — ${CASES[index]}`;
@@ -56,17 +60,31 @@ function fixtures(course) {
       practice.conteudo.content[0].data.text = `Um ${CASES[index]} precisa entregar dados ao transporte. Identifique a interface local usada pelo processo; diferencie-a da relação entre as pontas da comunicação.`;
       practice.aplicacaoPedagogica.praticas[0].requisito = coverage[index];
       practice.aplicacaoPedagogica.praticas[0].oportunidade = `identificar-interface-caso-${index + 1}`;
+      for (const unit of [theory, practice]) unit.fontes = links(unit.conteudo);
       return [theory, practice];
     });
-    const explanations = indexes.map(index => ({ microssequencia: names[index], fontes: links(), conteudo: {
+    const explanations = indexes.map(index => ({ microssequencia: names[index], conteudo: {
       title: `Processo e interface no ${CASES[index]}`,
       content: [paragraph(`support-${index + 1}`, `Um processo é um programa em execução. Para enviar dados, ele usa uma interface local chamada socket. Essa interface permite entregar dados ao transporte e receber os dados destinados ao processo. Uma conexão relaciona as pontas da comunicação; um socket representa a interface local de uma dessas pontas. No ${CASES[index]}, separe o programa em execução, a interface que ele usa e a relação entre os participantes. Um processo pode usar vários sockets. O socket pode existir antes de uma conexão. Esses papéis distintos explicam por que trocar o programa não equivale simplesmente a trocar a conexão.`)] } }));
+    for (const [position, explanation] of explanations.entries()) {
+      const index = indexes[position];
+      explanation.fontes = links(explanation.conteudo);
+      explanation.reconciliacao = [{ recurso: 1, folha: "text", trecho: explanation.conteudo.content[0].data.text,
+        papel: index === 0 ? "introduced" : "revisited", ideias: [idea.nome], requisitos: [coverage[index]],
+        motivo: index === 0 ? "Introduz a interface local a partir dos pré-requisitos de processo e transporte."
+          : "Retoma a interface local estabelecida no primeiro caso para uma aplicação distinta." }];
+    }
     return { part: { curso: course, titulo: `Casos de comunicação ${lot + 1}`,
       intencao: "Distinguir processo, interface e relação entre participantes em três casos concretos.",
       microssequencias: indexes.map(index => names[index]), progressao: indexes.map(index => coverage[index]) },
     materialization: { curso: course, parte: lot + 1, unidades: units, explicacoes: explanations } };
   });
-  return { map, lots };
+  const repertoire = [{ task: "manter_unidade_analise", args: {
+    curso: course, operacao: "criar", enunciado: idea.nome, descricao: idea.descricao } },
+  ...coverage.map(enunciado => ({ task: "manter_requisito_evidencia", args: { curso: course, operacao: "criar", enunciado } })),
+  ...names.map((microssequencia, index) => ({ task: "vincular_repertorio_instrucional", args: {
+    curso: course, microssequencia, analise: [idea.nome], evidencias: [coverage[index]] } }))];
+  return { map, lots, repertoire };
 }
 
 export function wireClient(config, channel, accessToken, measurements) {
@@ -122,6 +140,17 @@ async function completeRead(client, task, args) {
   return { context: literal ? JSON.parse(literal) : result.context, pages };
 }
 
+export async function materializeChannelPart(client, lot) {
+  const { curso, parte, unidades, explicacoes } = lot.materialization;
+  const prepared = await completeRead(client, "preparar_materializacao", {
+    curso, parte, plano: unidades.map(humanMaterializationUnitPlan), explicacoes });
+  assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
+  assert.equal(prepared.context.parte.microssequencias.length, lot.part.microssequencias.length);
+  await client.call("materializar_parte", { ...lot.materialization,
+    referenciaPreparo: prepared.context.preflight.referencia });
+  return prepared;
+}
+
 export async function runLocalAuthoringChannels(environment = process.env) {
   const config = localSupabaseConfiguration(environment);
   const marker = randomUUID(); const password = `Channels-${marker}-Aa1!`;
@@ -149,7 +178,7 @@ export async function runLocalAuthoringChannels(environment = process.env) {
       const client = wireClient(config, channel, lifecycle.accessToken, measurements);
       await client.initialize();
       const title = `Fixture canais ${channel} ${marker.slice(0, 8)}`;
-      const fixture = fixtures(title);
+      const fixture = channelFixtures(title);
       await trackLocalFixtureCreation(config, { ownerId: userId,
         courseIdFromResult: result => { const id = result.deepLink?.match(/\/courses\/([0-9a-f-]{36})/u)?.[1]; if (id) courses.push(id); return id; },
         create: () => client.call("criar_curso", { titulo: title, objetivo: "Distinguir processo, socket e conexão em seis casos sintéticos." }) });
@@ -193,15 +222,14 @@ export async function runLocalAuthoringChannels(environment = process.env) {
         }
       }
       await client.call("aprovar_mapa_curricular", { referencia: savedMap.context.referenciaParaAprovar });
+      for (const entry of fixture.repertoire) await client.call(entry.task, entry.args);
       let firstLot; let firstSourceLinks; const lots = [];
       for (const [index, lot] of fixture.lots.entries()) {
         await client.call("salvar_parte", lot.part);
-        const prepared = await completeRead(client, "preparar_materializacao", { curso: title, parte: index + 1 });
-        assert.equal(prepared.context.parte.microssequencias.length, 3);
-        await client.call("materializar_parte", lot.materialization);
+        const prepared = await materializeChannelPart(client, lot);
         const read = await completeRead(client, "exportar_autoria", { recorte: { curso: title } });
         const exported = read.context.authoringExport;
-        const context = await resolveHumanCourseContext({ adapter, principal, course: title });
+        const context = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
         const independentlyRead = await adapter.getCourseAuthoringExport({ principal, courseId,
           expectedRevision: context.course.revision, scope: { kind: "course", ref: null } });
         assert.deepEqual(exported, independentlyRead, "O canal deve devolver o mesmo export integral da revisão corrente.");
@@ -210,7 +238,22 @@ export async function runLocalAuthoringChannels(environment = process.env) {
         assert.equal(materialized.reduce((total, ms) => total + ms.studyUnits.length, 0), (index + 1) * 6);
         assert.equal(exported.artifact.explanationSources.length, (index + 1) * 3);
         for (const expected of lot.materialization.explicacoes) {
-          assert.deepEqual(all.find(ms => ms.title === expected.microssequencia).explanation, expected.conteudo);
+          const actual = all.find(ms => ms.title === expected.microssequencia).explanation;
+          assert.deepEqual({ title: actual.title, content: actual.content }, expected.conteudo);
+          const reconciliation = actual.reconciliation;
+          const checked = inspectExplanationReconciliation(actual, {
+            contentBasis: digest(expected.conteudo),
+            analysisUnitIds: context.plan.plan.instructionalAnalysisUnits.map(item => item.id),
+            evidenceRequirementIds: context.plan.plan.evidenceRequirements.map(item => item.id),
+            microsequenceIds: all.map(item => item.id) });
+          assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+          assert.equal(reconciliation.entries.length, 1);
+          assert.equal(reconciliation.entries[0].quote, expected.reconciliacao[0].trecho);
+          assert.equal(reconciliation.entries[0].role, expected.reconciliacao[0].papel);
+          assert.deepEqual(reconciliation.entries[0].analysisUnitIds, expected.reconciliacao[0].ideias.map(statement =>
+            context.plan.plan.instructionalAnalysisUnits.find(item => item.statement === statement).id));
+          assert.deepEqual(reconciliation.entries[0].evidenceRequirementIds, expected.reconciliacao[0].requisitos.map(statement =>
+            context.plan.plan.evidenceRequirements.find(item => item.statement === statement).id));
         }
         const stableSourceLinks = all.slice(0, 3).map(ms => {
           const read = exported.artifact.explanationSources.find(item => item.query.targetId === ms.id);

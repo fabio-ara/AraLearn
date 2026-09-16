@@ -142,7 +142,7 @@ test("curso deriva as famílias correntes sem fixar o crescimento do catálogo",
   assert.ok(families.length > 0);
   assert.equal(course.modules.length, families.length);
 
-  const manifests = allManifests();
+  const manifests = allManifests().filter(manifest => manifest.authoringEligibility !== "legacy_only");
   const manifestById = new Map(manifests.map((manifest) => [manifest.id, manifest]));
   const coveredPackageIds = [];
   const studyUnitIds = new Set();
@@ -256,12 +256,12 @@ test("dez Cursos correntes distinguem uso observado da cobertura do Curso de cat
       moduleValue.lessons[0].microsequences.flatMap(({ covers }) => covers)
     ))
   );
-  assert.equal(catalogPackages.size, 38);
+  assert.equal(catalogPackages.size, 37);
   assert.deepEqual(
     catalogPackages,
-    new Set(allManifests().map(({ id }) => id))
+    new Set(allManifests().filter(manifest => manifest.authoringEligibility !== "legacy_only").map(({ id }) => id))
   );
-  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 27);
+  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 26);
 });
 
 test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => {
@@ -319,17 +319,18 @@ test("catálogo MCP e recursos Edge respeitam orçamentos locais de regressão",
     javascriptRuntimeMetrics("src/resources"),
     javascriptRuntimeMetrics("supabase/functions/_shared/aralearn/runtime/resources")
   ]);
-  assert.equal(COURSE_HUMAN_TASKS.length, 54);
-  // Catálogo contextual 4.0.0: 100.059 bytes de tarefas e 107.919 de descoberta.
-  // Preferências, estrutura, revisão e fila mantêm schemas completos; limites locais.
+  assert.equal(COURSE_HUMAN_TASKS.length, 56);
+  // Catálogo 5.0.0 acrescenta preflight agregado, inspeção, decisão multialvo e links tipados.
+  // Baseline medida: 134.856 bytes registry / 143.000 tools/list. São budgets locais;
+  // o limite externo de 100k por chamada Actions permanece no guard próprio.
   const registryBytes = byteLength(COURSE_HUMAN_TASKS);
-  assert.ok(registryBytes <= 105_000, `Registry: ${registryBytes} bytes UTF-8.`);
+  assert.ok(registryBytes <= 145_000, `Registry: ${registryBytes} bytes UTF-8.`);
   const tools = courseHumanTasksForPrincipal({ actorId: "synthetic-catalog-reader",
     scopes: ["authoring:read", "authoring:write"] });
   assert.deepEqual(tools.map(({ name }) => name), COURSE_HUMAN_TASKS.map(({ name }) => name));
   const discoveryBytes = byteLength({ jsonrpc: "2.0", id: 1,
     result: { tools, _meta: { humanTaskCatalog: COURSE_HUMAN_TASK_CATALOG_METADATA } } });
-  assert.ok(discoveryBytes <= 112_000, `tools/list: ${discoveryBytes} bytes UTF-8.`);
+  assert.ok(discoveryBytes <= 155_000, `tools/list: ${discoveryBytes} bytes UTF-8.`);
   assert.ok(discoveryBytes > registryBytes, "Descoberta inclui OAuth e metadata, não só o registry.");
   // O validador do documento é local; nenhuma função Edge o consome.
   const localValidator = path.join("kernel", "courseContract.js");

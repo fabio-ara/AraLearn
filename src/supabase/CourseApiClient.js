@@ -3,6 +3,7 @@ import { createUuid, UUID_PATTERN } from "../domain/identifiers.js";
 import { normalizeCourseCopyRequest, normalizeCourseCopyResult } from "../domain/courseCopy.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewChange,
   normalizeCourseContentReviewPolicyChange } from "../domain/courseContentReview.js";
+import { normalizeCourseContentInspection } from "../domain/courseContentInspection.js";
 import { normalizeCourseAuthoringSelection, normalizeCourseAuthoringComparisonRequest,
   normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import {
@@ -10,7 +11,8 @@ import {
   normalizeCourseAnchoredAnnotationCommand,
   normalizeCourseAnchoredAnnotationPage,
   normalizeCourseAnchoredAnnotationQuery,
-  normalizeCourseAnchoredAnnotationReadOptions
+  normalizeCourseAnchoredAnnotationReadOptions,
+  normalizeCourseObservationComparison
 } from "../domain/courseAnchoredAnnotations.js";
 import {
   normalizeCourseAuthoringAnalyticsPage,
@@ -580,6 +582,7 @@ function anchoredAnnotationMutation(value = {}) {
   const command = normalizeCourseAnchoredAnnotationCommand(source.command);
   const requiresCourseRevision = new Set([
     "create_anchored_annotation",
+    "retarget_anchored_annotation",
     "correct_anchored_annotation_subjects"
   ]).has(command.type);
   const expectedCourseRevision = source.expectedCourseRevision ?? null;
@@ -874,6 +877,13 @@ export class CourseApiClient {
     }), target);
   }
 
+  async getContentInspection(courseId, targetKind, targetId) {
+    const target = contentReviewTarget(courseId, targetKind, targetId);
+    return normalizeCourseContentInspection(await this.rpc("get_course_ai_inspection_v1", {
+      p_course_id: target.courseId, p_target_kind: target.targetKind, p_target_id: target.targetId
+    }), target);
+  }
+
   async setContentReview(value = {}) {
     const source = exactObject(value, new Set([
       "courseId", "targetKind", "targetId", "expectedBasisHash", "reviewed", "requestId"
@@ -1020,7 +1030,7 @@ export class CourseApiClient {
     if (normalizedMethod === "GET" && normalizedBody !== null) {
       throw new TypeError("Leitura de Curso não aceita corpo.");
     }
-    const requestHeaders = { ...headers };
+    const requestHeaders = { ...headers, "X-AraLearn-App-Contract": "authoring-v3" };
     if (typeof normalizedBody?.requestId === "string") {
       requestHeaders["Idempotency-Key"] = requestIdentity(normalizedBody.requestId);
     }
@@ -1038,7 +1048,8 @@ export class CourseApiClient {
         error.status = 401;
         throw error;
       }
-      const execute = () => this.http.request(
+      const execute = () => {
+        return this.http.request(
         courseApiPath(pathname, query),
         {
           method: normalizedMethod,
@@ -1048,7 +1059,8 @@ export class CourseApiClient {
           timeoutMs,
           signal
         }
-      );
+        );
+      };
       let response;
       try {
         response = await (normalizedMethod === "GET" ? this.#recoverRead(execute, { signal }) : execute());
@@ -1383,6 +1395,18 @@ export class CourseApiClient {
       courseId: normalizedCourseId,
       options
     });
+  }
+
+  async getCourseObservationComparison(courseId, value) {
+    const id = uuid(courseId, "Curso"); const annotationId = uuid(value.annotationId, "Observação");
+    const result = normalizeCourseObservationComparison(await this.requestCourseApi(
+      `${courseResourcePath(id)}/anchored-annotations/${annotationId}/comparison`, { query: {
+        targetKind: value.targetKind, targetId: value.targetId, expectedAnnotationVersion: value.expectedAnnotationVersion,
+        expectedTargetSetVersion: value.expectedTargetSetVersion
+      } }));
+    if (result.courseId !== id || result.annotationId !== annotationId || result.target.kind !== value.targetKind || result.target.id !== value.targetId ||
+      result.annotationVersion !== value.expectedAnnotationVersion || result.targetSetVersion !== value.expectedTargetSetVersion) throw new TypeError("Comparação de outro objeto ou versão.");
+    return result;
   }
 
   async loadCourseAuthoringAnalytics(courseId, value = {}) {

@@ -5,12 +5,14 @@ import { COURSE_MEDIA_BUCKET, COURSE_MEDIA_MAX_BYTES, CourseMediaError, inspectC
   normalizeCourseAudioFileName, normalizeCourseAudioStoragePath, normalizeCourseMediaReference, normalizeCourseMediaRead,
   normalizeCourseMediaChange, normalizeCourseMediaCommand, normalizeCourseMediaDownload
 } from "../aralearn/runtime/domain/courseMedia.js";
+import { normalizeEditorialOrigin, normalizeEditorialInterventions } from "../aralearn/runtime/domain/courseEditorialProvenance.js";
 import {
   AuthoringProfilesError, normalizeAuthoringProfileList, normalizeAuthoringProfileSave, normalizeAuthoringProfileDelete,
   normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
   normalizeCourseAuthoringProfileChange
 } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AuthoringApiError } from "./errors.js";
+import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
   from "../aralearn/runtime/domain/courseContentReview.js";
 import { createMapApprovalReference, openMapApprovalReference } from "./courseMapApproval.js";
@@ -54,7 +56,9 @@ import {
   normalizeCourseAnchoredAnnotationReadOptions,
   normalizeCourseObservationCorrectionReferences,
   normalizeCourseObservationCorrectionConfirmations,
-  normalizeCourseObservationCorrection
+  normalizeCourseObservationCorrection,
+  normalizeCourseObservationComparison,
+  COURSE_OBSERVATION_COMPARISON_MAX_BYTES
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import {
   CourseAuthoringAnalyticsError,
@@ -392,7 +396,7 @@ function normalizeInspectionPage(
   }
   const items = value.items.map((item) => {
     const itemFields = new Set(INSPECTION_ITEM_FIELDS);
-    for (const field of ["contentReview", "pendingAuthoringObservationCount"]) {
+    for (const field of ["contentReview", "pendingAuthoringObservationCount", "designApplication", "designSnapshot"]) {
       if (item && Object.hasOwn(item, field)) itemFields.add(field);
     }
     if (!exactRecord(item, itemFields) || !jsonRecord(item.studyUnit) ||
@@ -411,9 +415,9 @@ function normalizeInspectionPage(
     };
     const authorship = item.authorship;
     if (!exactRecord(authorship, new Set([
-      "createdOrigin", "lastRevisionOrigin", "design"
-    ])) || ![null, "human", "gpt"].includes(authorship.createdOrigin) ||
-        ![null, "human", "gpt"].includes(authorship.lastRevisionOrigin) ||
+      "createdOrigin", "lastRevisionOrigin", "design", ...(Object.hasOwn(authorship || {}, "interventions") ? ["interventions"] : [])
+    ])) || ![null, "human", "ai", "gpt"].includes(authorship.createdOrigin) ||
+        ![null, "human", "ai", "gpt"].includes(authorship.lastRevisionOrigin) ||
         !validInspectionDesignState(authorship.design)) {
       invalidInspectionRead();
     }
@@ -425,6 +429,11 @@ function normalizeInspectionPage(
     const studyUnitValidation = validateCourseEntityContent("study_unit", item.studyUnit);
     if (!studyUnitValidation.valid) invalidInspectionRead();
     const reviewMetadata = {};
+    for (const field of ["designApplication", "designSnapshot"]) if (Object.hasOwn(item, field)) {
+      if (item[field] !== null && (!jsonRecord(item[field]) ||
+          new TextEncoder().encode(JSON.stringify(item[field])).byteLength > 65_536)) invalidInspectionRead();
+      reviewMetadata[field] = structuredClone(item[field]);
+    }
     if (Object.hasOwn(item, "contentReview")) {
       try {
         reviewMetadata.contentReview = normalizeCourseContentReviewState(item.contentReview);
@@ -444,7 +453,9 @@ function normalizeInspectionPage(
       ordinal: Number(item.ordinal),
       curriculumPath,
       authoringPart: normalizeInspectionPart(item.authoringPart),
-      authorship: structuredClone(authorship)
+      authorship: { ...structuredClone(authorship), createdOrigin: normalizeEditorialOrigin(authorship.createdOrigin),
+        lastRevisionOrigin: normalizeEditorialOrigin(authorship.lastRevisionOrigin),
+        ...(authorship.interventions ? { interventions: normalizeEditorialInterventions(authorship.interventions) } : {}) }
     };
   });
   if (new Set(items.map(({ studyUnit }) => studyUnit.id)).size !== items.length) {
@@ -1061,9 +1072,9 @@ function validateComponentCatalogProjection(value, { RESOURCE_CATALOG, RESOURCE_
   const validOptions = options.length === componentCatalogOptions.length &&
     options.every((option, index) => {
       const expected = componentCatalogOptions[index];
-      if (!exactRecord(option, new Set(["ref", "label", "purpose"])) ||
+      if (!exactRecord(option, new Set(["ref", "label", "purpose", "authoringEligibility"])) ||
           option.ref !== expected.ref || option.label !== expected.label ||
-          option.purpose !== expected.purpose) return false;
+          option.purpose !== expected.purpose || option.authoringEligibility !== expected.authoringEligibility) return false;
       return true;
     });
   if (!jsonRecord(value) || !exactRecord(catalog, new Set(["version", "schemaFingerprint", "options"])) ||
@@ -2658,6 +2669,32 @@ export class CourseSupabaseAdapter {
     return normalized;
   }
 
+  async getCourseObservationComparison({ principal, courseId, annotationId, targetKind, targetId,
+    expectedAnnotationVersion, expectedTargetSetVersion, deadlineAt = null }) {
+    normalizeCourseAnchoredAnnotationsInputValue(() => normalizeCourseObservationCorrectionReferences([{
+      annotationId, annotationVersion: expectedAnnotationVersion, targetKind, targetId
+    }]));
+    if (!Number.isSafeInteger(expectedTargetSetVersion) || expectedTargetSetVersion < 1) {
+      throw new AuthoringApiError(422, "invalid_course_observation_comparison", "A versão do conjunto de alvos é inválida.");
+    }
+    let raw;
+    try {
+      raw = first(await this.rpc("get_course_observation_comparison_for_actor_v1", {
+        p_actor_id: principal.actorId, p_course_id: courseId, p_annotation_id: annotationId,
+        p_target_kind: targetKind, p_target_id: targetId,
+        p_expected_annotation_version: expectedAnnotationVersion, p_expected_target_set_version: expectedTargetSetVersion
+      }, { deadlineAt, responseLimitBytes: COURSE_OBSERVATION_COMPARISON_MAX_BYTES }));
+    } catch (error) { throw courseAnchoredAnnotationsResponseFailure(error); }
+    const normalized = normalizeCourseAnchoredAnnotationsDatabaseValue(() =>
+      normalizeCourseObservationComparison(raw));
+    if (normalized.courseId !== courseId || normalized.annotationId !== annotationId ||
+        normalized.annotationVersion !== expectedAnnotationVersion || normalized.targetSetVersion !== expectedTargetSetVersion ||
+        normalized.target.kind !== targetKind || normalized.target.id !== targetId) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A comparação não corresponde à observação e ao alvo solicitados.");
+    }
+    return normalized;
+  }
+
   async getCourseAnchoredAnnotations({
     principal,
     courseId,
@@ -3080,6 +3117,24 @@ export class CourseSupabaseAdapter {
     catch { throw new AuthoringApiError(503, "course_service_unavailable", "A leitura de revisão não corresponde ao objeto."); }
   }
 
+  async getCourseContentInspection({ principal, courseId, targetKind, targetId, deadlineAt = null }) {
+    const value = first(await this.rpc("get_course_ai_inspection_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_target_kind: targetKind, p_target_id: targetId
+    }, { deadlineAt }));
+    try { return normalizeCourseContentInspection(value, { courseId, targetKind, targetId }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "O parecer de inspeção não corresponde ao objeto."); }
+  }
+
+  async recordCourseContentInspection({ principal, courseId, targetKind, targetId, expectedBasisHash, report, requestId, deadlineAt = null }) {
+    const normalized = normalizeCourseContentInspectionReport(report);
+    const value = first(await this.rpc("record_course_ai_inspection_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_target_kind: targetKind, p_target_id: targetId,
+      p_expected_basis_hash: expectedBasisHash, p_report: normalized, p_request_id: requestId
+    }, { deadlineAt, retry: false }));
+    try { return normalizeCourseContentInspection(value, { courseId, targetKind, targetId, expectedBasisHash }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "O parecer salvo precisa ser relido pela mesma referência."); }
+  }
+
   async setCourseContentReview({ principal, courseId, targetKind, targetId, expectedBasisHash, reviewed, requestId, deadlineAt = null }) {
     const value = first(await this.rpc("set_course_content_review_for_actor_v1", {
       p_actor_id: principal.actorId, p_course_id: courseId, p_target_kind: targetKind, p_target_id: targetId,
@@ -3141,7 +3196,8 @@ export class CourseSupabaseAdapter {
     const receipt = this.#observationCorrectionResult(result, { courseId, requestId });
     if (receipt.status === "persisted" && normalized.some(confirmation => !receipt.observations.some(reference =>
       reference.annotationId === confirmation.annotationId && reference.annotationVersion === confirmation.annotationVersion &&
-      reference.effectHash === confirmation.effectHash))) {
+      reference.effectHash === confirmation.effectHash && (confirmation.targetKind === undefined ||
+        reference.targetKind === confirmation.targetKind && reference.targetId === confirmation.targetId)))) {
       throw new AuthoringApiError(503, "course_service_unavailable", "A confirmação não corresponde às versões e aos efeitos enviados. Preserve a tentativa.");
     }
     return receipt;
@@ -3462,6 +3518,7 @@ export class CourseSupabaseAdapter {
     );
     const requiresCourseRevision = new Set([
       "create_anchored_annotation",
+      "retarget_anchored_annotation",
       "correct_anchored_annotation_subjects"
     ]).has(normalizedCommand.type);
     if (requiresCourseRevision !== (expectedCourseRevision !== null)) {
@@ -3610,13 +3667,16 @@ export class CourseSupabaseAdapter {
     targetPlanItems = [],
     units,
     explanations,
+    placements,
+    complete = true,
     deadlineAt = null
   }) {
     if (!Array.isArray(planItemUpserts) || planItemUpserts.length > 256 ||
         !Array.isArray(targetPlanItems) || targetPlanItems.length < 1 ||
         targetPlanItems.length > 64 ||
         !Array.isArray(units) || units.length < 1 || units.length > 64 ||
-        !Array.isArray(explanations) || explanations.length < 1 || explanations.length > 64) {
+        !Array.isArray(explanations) || explanations.length > 64 || !Array.isArray(placements) ||
+        placements.length < units.length || typeof complete !== "boolean") {
       throw new AuthoringApiError(
         422,
         "invalid_course_part_materialization",
@@ -3627,11 +3687,12 @@ export class CourseSupabaseAdapter {
     const normalizedTargetPlanItems = structuredClone(targetPlanItems);
     const normalizedUnits = structuredClone(units);
     const normalizedExplanations = structuredClone(explanations);
+    const normalizedPlacements = structuredClone(placements);
     if (new TextEncoder().encode(JSON.stringify({
       planItemUpserts: normalizedPlanItemUpserts,
       targetPlanItems: normalizedTargetPlanItems,
       units: normalizedUnits,
-      explanations: normalizedExplanations
+      explanations: normalizedExplanations, placements: normalizedPlacements, complete
     })).byteLength > 1_500_000) {
       throw new AuthoringApiError(
         413,
@@ -3647,7 +3708,7 @@ export class CourseSupabaseAdapter {
       planItemUpserts: normalizedPlanItemUpserts,
       targetPlanItems: normalizedTargetPlanItems,
       units: normalizedUnits,
-      explanations: normalizedExplanations
+      explanations: normalizedExplanations, placements: normalizedPlacements, complete
     })));
     const result = first(await this.rpc(
       "materialize_course_authoring_part_for_actor_v2",
@@ -3661,6 +3722,8 @@ export class CourseSupabaseAdapter {
         p_target_plan_items: normalizedTargetPlanItems,
         p_units: normalizedUnits,
         p_explanations: normalizedExplanations,
+        p_placements: normalizedPlacements,
+        p_complete: complete,
         p_request_id: requestId,
         p_request_hash: requestHash
       },
