@@ -448,6 +448,11 @@ export async function runLocalIntegration({
       }
       Object.assign(row, receipt, { result: result.status === 0 && receipt.ok ? "passed" : "failed" });
       delete row.ok;
+      if (row.result === "failed") {
+        const diagnostics = `${result.stdout || ""}\n${result.stderr || ""}`
+          .split(/\r?\n/u).filter(line => /ARALEARN_(?:TARGET|CONTEXT)_DEBUG/u.test(line));
+        if (diagnostics.length) console.error(diagnostics.join("\n"));
+      }
       report.cleanup.fixtures = report.stages.filter(stage => stage.result !== "not_run")
         .every(stage => stage.cleanup === "completed") ? "completed" : "unverified";
       if (row.result === "failed") {
