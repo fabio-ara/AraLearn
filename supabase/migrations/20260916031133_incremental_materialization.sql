@@ -339,6 +339,9 @@ end $part_consumers$;
 do $drop_legacy_anchor_identity$
 declare constraint_name text;
 begin
+  if to_regclass('private.course_source_attribution_anchors') is null then
+    return;
+  end if;
   select pg_constraint.conname into constraint_name
   from pg_constraint
   where pg_constraint.conrelid='private.course_source_attribution_anchors'::regclass
