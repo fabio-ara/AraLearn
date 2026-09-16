@@ -2155,6 +2155,13 @@ export function createCourseSourcesPanel({
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
       !state.targetDraftChangedDuringWrite;
+    if (state.mode === "target" && pending.command.type === "set_target_sources" &&
+        !targetSaveHasNoConcurrentDraft) {
+      console.warn("AraLearn: vínculo confirmado com rascunho concorrente", {
+        targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
+        occurrenceEditor: Boolean(state.occurrenceEditor)
+      });
+    }
     let targetSavedNotified = false;
     if (targetSaveHasNoConcurrentDraft) {
       // Propague a nova revisão antes de fechar: o fluxo pai usa a diferença
