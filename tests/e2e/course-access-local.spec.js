@@ -772,6 +772,8 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     } catch (error) {
       console.log("ARALEARN_SAVE_TARGET_CLICK", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_SAVE_TARGET_CLICK || null)).catch(() => null));
       console.log("ARALEARN_SAVE_TARGET_RESULT", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_SAVE_TARGET_RESULT || null)).catch(() => null));
+      console.log("ARALEARN_TARGET_AFTER_MUTATION", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_AFTER_MUTATION || null)).catch(() => null));
+      console.log("ARALEARN_TARGET_CALLBACK", await page.evaluate(() => JSON.stringify(globalThis.__ARALEARN_TARGET_CALLBACK || null)).catch(() => null));
       await testInfo.attach("fontes-failure-state", { body: (await page.locator("main").allInnerTexts()).join("\n\n"), contentType: "text/plain" }).catch(() => {});
       await attachScreenshot(page, testInfo, "source-failure.png").catch(() => {});
       throw error;

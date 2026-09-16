@@ -2168,6 +2168,15 @@ export function createCourseSourcesPanel({
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
       targetSaveDraftStillMatches;
+    if (state.mode === "target" && pending.command.type === "set_target_sources") {
+      globalThis.__ARALEARN_TARGET_AFTER_MUTATION = {
+        opened: state.opened,
+        sourceLinksEqual: targetSaveDraftStillMatches,
+        occurrenceEditor: Boolean(state.occurrenceEditor),
+        targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
+        willNotify: targetSaveHasNoConcurrentDraft
+      };
+    }
     let targetSavedNotified = false;
     if (targetSaveHasNoConcurrentDraft) {
       // Propague a nova revisão antes de fechar: o fluxo pai usa a diferença
@@ -2178,6 +2187,7 @@ export function createCourseSourcesPanel({
       // atualização do contexto com a nova revisão.
       await onTargetSaved(result);
       targetSavedNotified = true;
+      globalThis.__ARALEARN_TARGET_CALLBACK = { called: true, openedAfter: state.opened };
     }
     if (!state.opened) return true;
     const refreshed = await refreshAfterChange(result).catch(() => false);
