@@ -35,6 +35,8 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     position: role === "practice" ? 2 : 1, role, content, feedback: [], topics: [], response: null });
   const theory = baseUnit("explanation-theory", "theory", [paragraph("theory", "O socket é a interface local usada pelo processo para entregar dados ao transporte. Uma conexão relaciona pontas de comunicação. A interface pode existir antes da conexão. ".repeat(8)), ...structuredClone(tools)]);
   const practice = baseUnit("explanation-practice", "practice", [paragraph("practice", "Um programa inicia uma comunicação. Explique por que a interface local usada por ele não equivale à relação inteira entre os participantes."), ...structuredClone(tools)]);
+  // Prática legada: os ensaios verificam que abrir a base não apaga texto já
+  // preenchido offline. Nova autoria usa componentes avaliáveis localmente.
   practice.response = { id: "pending-response", package: "aralearn.response.open", version: "1.0.0",
     data: { prompt: "Explique a diferença com suas palavras." } };
   ms.studyUnits = [theory, practice]; ms.explanation = support;

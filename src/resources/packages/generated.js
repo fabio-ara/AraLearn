@@ -38,7 +38,7 @@ import { readingPackage } from "./reading/index.js";
 import { terminalSessionPackage } from "./terminal-session/index.js";
 import { openResponsePackage } from "./open-response/index.js";
 
-export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "sha256:eba99ff8f9b3c0c0749e032f2e1bcc3a54cce1c52edd93b545e3ef4323a0514d";
+export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "sha256:f631f39927b3f7cd68c35093a427f93c11d84f498504930cb996f7464d49b0ea";
 
 export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   paragraphPackage,

@@ -24,7 +24,10 @@ import {
 import {
   COURSE_ANCHORED_ANNOTATION_CATEGORIES,
   normalizeCourseAnchoredAnnotationCommand,
-  normalizeCourseObservationCorrectionReferences
+  normalizeCourseObservationTargets,
+  courseObservationTargets,
+  normalizeCourseObservationCorrectionReferences,
+  normalizeCourseObservationComparison
 } from "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY } from
   "../aralearn/runtime/resources/catalog/resourceCatalog.js";
@@ -37,7 +40,7 @@ import { resolveOpenAiTemporaryAudio } from "./openAiTemporaryAudio.js";
 import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeCourseMediaRead } from
   "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
-  resolveHumanSourceOccurrences } from "./courseHumanMaterialization.js";
+  resolveHumanSourceOccurrences, preflightHumanCourseMaterialization } from "./courseHumanMaterialization.js";
 import { applyHumanCourseCorrections, resumeHumanCourseObservationCorrection } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
@@ -51,10 +54,12 @@ import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthor
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { createContentReviewReference, openContentReviewReference } from "./courseContentReviewReference.js";
 import { normalizeCourseContentReview } from "../aralearn/runtime/domain/courseContentReview.js";
+import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
 import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS } from "./courseHumanDesignTasks.js";
 import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS } from "./courseHumanStructureTasks.js";
 import { AUTHORING_PROCESS_REFERENCE_SCHEMA, createAuthoringProcessReference, openAuthoringProcessReference } from "./courseAuthoringProcessReference.js";
+import { createHumanNavigation, buildHumanNavigationEnvelope, normalizeHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 
 const encoder = new TextEncoder();
 const READ_SCOPE = "authoring:read";
@@ -95,7 +100,20 @@ const OBSERVATION_REFERENCE_SCHEMA = Object.freeze({ type: "object", additionalP
   }, description: "Referência exata devolvida pela fila inspecionada; conserve identidade, alvo e versão." });
 const TREATED_OBSERVATIONS_SCHEMA = Object.freeze({ type: "array", maxItems: 64,
   items: OBSERVATION_REFERENCE_SCHEMA,
-  description: "Somente as versões integralmente atendidas pela correção. Ambiguidades e aplicação parcial ficam pendentes." });
+  description: "Versões cujo conteúdo foi corrigido. Confirmação técnica não aprova nem remove observações; decisão humana permanece separada." });
+const OBSERVATION_COMPARISON_SCHEMA = Object.freeze({ ...OBSERVATION_REFERENCE_SCHEMA,
+  required: [...OBSERVATION_REFERENCE_SCHEMA.required, "targetSetVersion"],
+  properties: { ...OBSERVATION_REFERENCE_SCHEMA.properties, targetSetVersion: { type: "integer", minimum: 1 } },
+  description: "Referência de comparação devolvida pela fila; lê as bases anterior e vigente deste alvo." });
+
+const OBSERVATION_DECISION_SCHEMA = Object.freeze({ type: "object", additionalProperties: false,
+  required: ["annotationId", "annotationVersion", "targetSetVersion", "targets"], properties: {
+    annotationId: OBSERVATION_REFERENCE_SCHEMA.properties.annotationId,
+    annotationVersion: { type: "integer", minimum: 1 }, targetSetVersion: { type: "integer", minimum: 1 },
+    targets: { type: "array", minItems: 1, maxItems: 64, items: { type: "object", additionalProperties: false,
+      required: ["kind", "id", "expectedBasisHash"], properties: {
+        kind: { type: "string", enum: ["study_unit", "microsequence_explanation"] }, id: { type: "string", maxLength: 240 },
+        expectedBasisHash: { type: ["string", "null"], pattern: "^[a-f0-9]{64}$" } } } } } });
 
 function parameterValueSchema(definition, { nullable = false } = {}) {
   const value = definition.valueSchema;
@@ -337,6 +355,18 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
   description: "Conteúdo sem controles internos."
 });
 
+const EXPLANATION_RECONCILIATION_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 512,
+  description: "Classifique todo o conteúdo da base por passagens reais; persistir/vincular repertório precede o preparo. Prévia não conta como ensino concluído.",
+  items: { type: "object", additionalProperties: false,
+    required: ["recurso", "folha", "trecho", "papel", "motivo", "ideias", "requisitos"],
+    properties: { recurso: { type: "integer", minimum: 1, maximum: 64 },
+      folha: { type: "string", minLength: 1, maxLength: 240 }, trecho: { type: "string", minLength: 1, maxLength: 4000 },
+      prefixo: { type: "string", maxLength: 500 }, sufixo: { type: "string", maxLength: 500 },
+      papel: { type: "string", enum: ["introduced", "established", "revisited", "preview", "example", "support", "deferred"] },
+      motivo: { type: "string", minLength: 1, maxLength: 4000 },
+      ideias: { type: "array", maxItems: 64, items: HUMAN_REFERENCE_SCHEMA },
+      requisitos: { type: "array", maxItems: 64, items: HUMAN_REFERENCE_SCHEMA }, destino: HUMAN_REFERENCE_SCHEMA } } });
+
 const EXPLANATIONS_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
   description: "Uma explicação previamente autorada por microssequência, compartilhada pelas unidades. Produzir não aprova conteúdo.",
   items: { type: "object", additionalProperties: false, required: ["microssequencia", "conteudo", "fontes"],
@@ -344,7 +374,7 @@ const EXPLANATIONS_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems
       conteudo: { type: "object", additionalProperties: false, required: ["title", "content"],
         properties: { title: { type: "string", minLength: 1, maxLength: 300 },
           content: { type: "array", minItems: 1, maxItems: 64, items: COMPONENT_INSTANCE_SCHEMA } } },
-      fontes: SOURCE_LINKS_SCHEMA } } });
+      fontes: SOURCE_LINKS_SCHEMA, reconciliacao: EXPLANATION_RECONCILIATION_SCHEMA } } });
 
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
@@ -354,6 +384,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   ]),
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
+    unidade: { ...HUMAN_REFERENCE_SCHEMA, description: "Referência atual da unidade a substituir ou mover. Omita para criar; posição final não identifica uma unidade existente." },
     posicao: Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 }),
     conteudo: STUDY_UNIT_CONTENT_SCHEMA,
     configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
@@ -458,12 +489,30 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   })
 });
 
+const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
+  description: "Intenções compactas das unidades, sem prosa final. Reutilize as mesmas aplicações, componentes e configuração na escrita.",
+  items: { type: "object", additionalProperties: false,
+    required: ["microssequencia", "posicao", "papel", "componentes", "resposta", "feedbackLocal", "aplicacaoPedagogica"],
+    properties: { microssequencia: HUMAN_REFERENCE_SCHEMA, unidade: MATERIALIZATION_UNIT_SCHEMA.properties.unidade,
+      posicao: MATERIALIZATION_UNIT_SCHEMA.properties.posicao,
+      papel: { type: "string", enum: ["theory", "practice"] },
+      componentes: { type: "array", minItems: 1, maxItems: 128, uniqueItems: true, items: { type: "string", maxLength: 240 } },
+      resposta: { type: ["string", "null"], maxLength: 240 }, feedbackLocal: { type: "boolean" },
+      configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
+      aplicacaoPedagogica: MATERIALIZATION_UNIT_SCHEMA.properties.aplicacaoPedagogica,
+      fontes: { type: "array", maxItems: 32, items: { type: "object", additionalProperties: false,
+        required: ["fonte", "relacao", "papeis"], properties: { fonte: HUMAN_REFERENCE_SCHEMA,
+          relacao: SOURCE_LINK_PROPERTIES.relacao, papeis: SOURCE_LINK_PROPERTIES.papeis, ancoras: SOURCE_LINK_PROPERTIES.ancoras } } } } } });
+
 const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
   type: "object",
   required: Object.freeze(["result", "deepLink", "nextDecision"]),
   properties: Object.freeze({
     result: Object.freeze({ type: "string" }),
     deepLink: Object.freeze({ type: ["string", "null"] }),
+    links: { type: "array", items: { type: "object", required: ["relation", "target", "label", "url"],
+      properties: { relation: { type: "string", enum: ["content", "observations", "sources", "planning", "parameters"] },
+        target: { type: ["object", "null"] }, label: { type: "string" }, url: { type: "string" }, revision: { type: "integer" } } } },
     nextDecision: Object.freeze({ type: ["string", "null"] })
   })
 });
@@ -618,8 +667,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Lê o lote antes da produção.",
+    "Confere conjuntamente a base reconciliada, repertório e vínculos persistidos, requisitos, formas, componentes, fontes e cobertura. Informe plano compacto; só ready autoriza compor a escrita com os mesmos inputs. Não use materializar_parte para descobrir pré-requisitos.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+      plano: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: true }, explicacoes: EXPLANATIONS_SCHEMA,
       continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
@@ -655,6 +705,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "Lê conteúdo literal e contexto da revisão.",
     inputSchema({
       curso: COURSE_SCHEMA,
+      comparacao: OBSERVATION_COMPARISON_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
@@ -779,6 +830,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       explicacoes: EXPLANATIONS_SCHEMA,
+      referenciaPreparo: { type: "string", pattern: "^materialization-v1:[a-f0-9]{64}$" },
+      concluir: { type: "boolean", default: true },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
@@ -830,9 +883,22 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           null
         ])
       })
-    }, ["curso", "texto"]), oneOf: [{ required: ["unidades"] }, { required: ["microssequencia"] }] },
+    }, ["curso", "texto"]), anyOf: [{ required: ["unidades"] }, { required: ["microssequencia"] }] },
     { readOnly: false }
   ),
+  task("registrar_inspecao", "Registrar inspeção da base lida",
+    "Registra o parecer da IA sobre conteúdo, fontes e coerência didática desta base. Não edita o conteúdo, não conta intervenção autoral nem declara revisão humana. Leia preparar_revisao antes.",
+    inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 }, parecer: { type: "object", additionalProperties: false,
+      required: ["summary", "outcome", "findings"], properties: { summary: { type: "string", minLength: 1, maxLength: 2000 },
+        outcome: { type: "string", enum: ["consistent", "needs_attention", "human_preference_retained"] },
+        findings: { type: "array", maxItems: 20, items: { type: "string", minLength: 1, maxLength: 1000 } } } }
+    }, ["referencia", "parecer"]), { readOnly: false }),
+  task("decidir_observacao", "Decidir uma observação e seus alvos",
+    "Aplica a decisão humana expressa de aceitar o conteúdo vigente ou encerrar a observação sem editar. Use a referência completa da fila inspecionada; seleção parcial preserva os demais alvos. Nunca aprove por confirmação técnica de escrita.",
+    inputSchema({ curso: COURSE_SCHEMA, referencia: OBSERVATION_DECISION_SCHEMA,
+      decisao: { type: "string", enum: ["aceitar_vigente", "encerrar_sem_alteracao"] },
+      motivo: { type: ["string", "null"], minLength: 1, maxLength: 120 }, confirmado: { type: "boolean", enum: [true] }
+    }, ["curso", "referencia", "decisao", "confirmado"]), { readOnly: false }),
   task("editar_observacao", "Editar uma observação pendente",
     "Altera somente a versão inspecionada da entrada; conserva a pendência e não modifica o conteúdo do curso.",
     inputSchema({ curso: COURSE_SCHEMA, observacao: OBSERVATION_REFERENCE_SCHEMA,
@@ -1021,9 +1087,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "4.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "5.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:68233e76c6acb6f11428388ef4830ef30c6e54efd031ee287a32fc638f867078";
+  "sha256:3e55e15216aae5f19e34ac6f0feb2a33e77a39f179639d4bc1cc3154aa5426ae";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1142,6 +1208,16 @@ function assertTaskArguments(name, rawArguments) {
   return safeClone(raw, "arguments", 512 * 1024);
 }
 
+function normalizeObservationComparisonReference(value) {
+  exactFields(value, new Set(["annotationId", "annotationVersion", "targetKind", "targetId", "targetSetVersion"]));
+  const { targetSetVersion, ...reference } = value;
+  const normalized = normalizeCourseObservationCorrectionReferences([reference])[0];
+  if (!Number.isSafeInteger(targetSetVersion) || targetSetVersion < 1) {
+    fail("invalid_course_observation_comparison", "A versão do conjunto de alvos é inválida.");
+  }
+  return { ...normalized, targetSetVersion };
+}
+
 function withoutTechnicalState(value) {
   if (Array.isArray(value)) return value.map(withoutTechnicalState);
   if (!value || typeof value !== "object") return value;
@@ -1154,6 +1230,24 @@ function withoutTechnicalState(value) {
     }
     if (normalizedKey === "referencia_observacao") {
       projected[key] = normalizeCourseObservationCorrectionReferences([entry])[0];
+      continue;
+    }
+    if (normalizedKey === "referencias_comparacao") {
+      projected[key] = entry.map(normalizeObservationComparisonReference);
+      continue;
+    }
+    if (normalizedKey === "comparacao_de_observacao") {
+      projected[key] = normalizeCourseObservationComparison(entry);
+      continue;
+    }
+    if (normalizedKey === "referencia_decisao") {
+      exactFields(entry, new Set(["annotationId", "annotationVersion", "targetSetVersion", "targets"]));
+      const targets = normalizeCourseObservationTargets(entry.targets, { decision: true });
+      const reference = normalizeCourseAnchoredAnnotationCommand({ type: "retarget_anchored_annotation", annotationId: entry.annotationId,
+        expectedAnnotationVersion: entry.annotationVersion, expectedTargetSetVersion: entry.targetSetVersion,
+        targets: targets.map(({ kind, id }) => ({ kind, id })) });
+      projected[key] = { annotationId: reference.annotationId, annotationVersion: reference.expectedAnnotationVersion,
+        targetSetVersion: reference.expectedTargetSetVersion, targets };
       continue;
     }
     if (normalizedKey === "correction_request_id") {
@@ -1218,13 +1312,22 @@ function withoutTechnicalState(value) {
 
 function result(message, {
   deepLink = null,
+  links = [],
   nextDecision = null,
   context = undefined
 } = {}) {
+  const navigation = typeof deepLink === "object" && deepLink !== null
+    ? buildHumanNavigationEnvelope(deepLink, links, { nextDecision }) : null;
+  let destinations;
+  try { destinations = normalizeHumanNavigationEnvelope({
+    deepLink: navigation?.deepLink ?? deepLink, links: navigation?.links ?? links
+  }); } catch {
+    throw new AuthoringApiError(502, "invalid_human_task_result", "A tarefa devolveu destinos incompatíveis com o conteúdo indicado.");
+  }
   const projected = {
     result: text(message, "result", 4000),
-    deepLink: deepLink == null ? null : text(deepLink, "deepLink", 4096),
-    nextDecision: nextDecision == null ? null : text(nextDecision, "nextDecision", 1000),
+    ...destinations,
+    nextDecision: navigation?.nextDecision ?? (nextDecision == null ? null : text(nextDecision, "nextDecision", 1000)),
     ...(context === undefined ? {} : { context: withoutTechnicalState(context) })
   };
   if (encoder.encode(JSON.stringify(projected)).byteLength > MAX_RESULT_BYTES) {
@@ -1279,6 +1382,7 @@ export async function executeHumanCourseTask({
     }
     return result(output.result, {
       deepLink: output.deepLink,
+      links: output.links ?? [],
       nextDecision: output.nextDecision,
       ...(output.context === undefined ? {} : { context: output.context })
     });
@@ -1493,10 +1597,13 @@ function optionalReference(value, field) {
 }
 
 function courseDeepLink(adapter, course, section, entries = []) {
-  const base = String(adapter?.publicAppUrl || "").replace(/\/+$/u, "");
-  if (!base || !course?.id) return course?.deepLink ?? null;
-  const query = new URLSearchParams([["section", section], ...entries.filter(([, value]) => value)]);
-  return `${base}/#/authoring/courses/${encodeURIComponent(course.id)}?${query}`;
+  if (!course?.id) return null;
+  const kinds = { studyUnitId: "study_unit", explanationId: "microsequence_explanation",
+    didacticMicrosequenceId: "didactic_microsequence", authoringPartId: "authoring_part", moduleId: "module",
+    lessonId: "lesson", topicId: "topic", sourceId: "course_source", annotationId: "anchored_annotation" };
+  const selected = entries.find(([key, value]) => kinds[key] && value);
+  return createHumanNavigation(adapter, { courseId: course.id, relation: section === "review" ? "observations" : section,
+    target: selected ? { kind: kinds[selected[0]], id: selected[1] } : null });
 }
 
 async function loadPlan(adapter, principal, course, deadlineAt) {
@@ -2276,6 +2383,14 @@ function focalMicrosequences(resolved, units = resolved.studyUnits ?? []) {
 
 function projectObservations(items) {
   return { items: items.map(item => ({ ...item,
+    ...(item.provenance?.origin === "author" && ["open", "considered"].includes(item.state) && item.targets?.length
+      ? { referenciasComparacao: item.targets.filter(target => target.state === "pending").map(target =>
+        normalizeObservationComparisonReference({ annotationId: item.annotationId, annotationVersion: item.annotationVersion,
+          targetSetVersion: item.targetSetVersion, targetKind: target.kind, targetId: target.id })) } : {}),
+    ...(item.provenance?.origin === "author" && ["open", "considered"].includes(item.state) && item.targets?.some(target => target.state === "pending")
+      ? { referenciaDecisao: { annotationId: item.annotationId, annotationVersion: item.annotationVersion,
+        targetSetVersion: item.targetSetVersion, targets: item.targets.filter(target => target.state === "pending")
+          .map(target => ({ kind: target.kind, id: target.id, expectedBasisHash: target.current?.hash ?? null })) } } : {}),
     ...(item.provenance?.origin === "author" && ["open", "considered"].includes(item.state) &&
         ["study_unit", "microsequence_explanation"].includes(item.target?.kind)
       ? { referenciaObservacao: normalizeCourseObservationCorrectionReferences([{
@@ -2331,6 +2446,8 @@ async function readObservations({ adapter, principal, resolved, args, deadlineAt
     item.annotationId ?? item.id ?? `${index}:${JSON.stringify(item)}`, item
   ])).values()];
   const focal = partUnitIds === null ? uniqueItems : uniqueItems.filter(item => {
+    if (courseObservationTargets(item).some(target => target.kind === "study_unit" && partUnitIds.has(target.id) ||
+      target.kind === "microsequence_explanation" && microIds.has(target.id))) return true;
     if (item.target?.kind === "study_unit" && partUnitIds.has(item.target.id)) return true;
     if (["didactic_microsequence", "microsequence_explanation"].includes(item.target?.kind) && microIds.has(item.target.id)) return true;
     return [item.target?.currentPath, item.target?.observedPath].some(path => Array.isArray(path) && path.some(entry =>
@@ -2755,9 +2872,15 @@ async function readReviewContext({ adapter, principal, resolved, targetKind, tar
   const read = normalizeCourseContentReview(await adapter.getCourseContentReview({ principal,
     courseId: resolved.course.id, targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId });
   if (read.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O objeto mudou; releia o recorte antes da revisão.", null, 409);
+  const inspection = typeof adapter.getCourseContentInspection === "function"
+    ? normalizeCourseContentInspection(await adapter.getCourseContentInspection({ principal, courseId: resolved.course.id,
+      targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId }) : null;
+  if (inspection && inspection.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "A base mudou durante a inspeção; releia o recorte.", null, 409);
   return { revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
     stale: "Revisão precisa ser atualizada" }[read.contentReview.state],
-    referenciaRevisao: await createContentReviewReference({ principal, read }) };
+    referenciaRevisao: await createContentReviewReference({ principal, read }),
+    inspecaoIA: inspection ? inspection.inspection : { state: "unavailable" },
+    ...(inspection ? { referenciaInspecao: await createContentReviewReference({ principal, read: inspection }) } : {}) };
 }
 
 HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
@@ -2779,14 +2902,6 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     }))),
     listUnitsForContext({ adapter, principal, resolved, deadlineAt })
   ]);
-  if (existingPage.items.length > 64) {
-    fail(
-      "human_materialization_part_too_large",
-      "A parte excede 64 unidades e não cabe numa materialização atômica.",
-      null,
-      413
-    );
-  }
   const unitDesign = await Promise.all(existingPage.items.map(async (unit) => ({
     unit,
     microsequenceId: unit?.curriculumPath?.didacticMicrosequence?.id,
@@ -2812,11 +2927,17 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     readObservations({ adapter, principal, resolved, args: { ...args, somenteAbertas: true }, deadlineAt,
       scopeUnits: existingPage.items, scopeMicrosequences: microsequences })
   ]);
+  const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context: resolved,
+    planUnits: args.plano ?? [], explanations: args.explicacoes ?? [], complete: args.concluir !== false, deadlineAt });
+  if (process.exigeConciliacao) {
+    preflight.state = "blocked"; preflight.referencia = null;
+    preflight.blockers.push({ code: "authoring_process_conflict", message: "Resolva as condições conflitantes do processo antes de produzir." });
+  }
   return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
     deepLink: null,
     nextDecision: null,
     context: await paginateHumanReadContext(withoutTechnicalState({
-      parte: projectedPart,
+      parte: projectedPart, preflight,
       explicacoes: explanations, observations, ...process
     }), { state: continuation })
   });
@@ -2877,11 +2998,32 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
 }) => {
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
+  if (args.comparacao !== undefined) {
+    const reference = normalizeObservationComparisonReference(args.comparacao);
+    const comparison = normalizeCourseObservationComparison(await adapter.getCourseObservationComparison({ principal,
+      courseId: resolved.course.id, annotationId: reference.annotationId, targetKind: reference.targetKind,
+      targetId: reference.targetId, expectedAnnotationVersion: reference.annotationVersion,
+      expectedTargetSetVersion: reference.targetSetVersion, deadlineAt }));
+    if (comparison.courseId !== resolved.course.id || comparison.annotationId !== reference.annotationId ||
+        comparison.annotationVersion !== reference.annotationVersion || comparison.targetSetVersion !== reference.targetSetVersion ||
+        comparison.target.kind !== reference.targetKind || comparison.target.id !== reference.targetId) {
+      fail("course_service_unavailable", "A comparação retornou outra observação ou outro alvo.", null, 503);
+    }
+    if (comparison.courseRevision !== resolved.course.revision) {
+      fail("course_revision_conflict", "O curso mudou; releia a comparação.", null, 409);
+    }
+    return result("Comparei a base anterior com o conteúdo vigente deste alvo.", {
+      deepLink: courseDeepLink(adapter, resolved.course, "content", [[
+        reference.targetKind === "study_unit" ? "studyUnitId" : "explanationId", reference.targetId]]),
+      links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
+      context: await paginateHumanReadContext({ comparacaoDeObservacao: comparison }, { state: continuation })
+    });
+  }
   if (!resolved.plan) {
     resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
     if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
   }
-  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   const unitPage = units.length
     ? { items: resolved.studyUnits, hasMore: false, nextCursor: null }
     : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
@@ -2915,7 +3057,10 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
   }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
   return result("Preparei este recorte da revisão sem aplicar mudanças.", {
-    deepLink: courseDeepLink(adapter, resolved.course, "review"),
+    deepLink: courseDeepLink(adapter, resolved.course, "content", unitPage.items.length
+      ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length
+        ? [["explanationId", reviewMicrosequences[0].id]] : []),
+    links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
     nextDecision: null,
     context
   });
@@ -3027,8 +3172,9 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   }), { state: continuation, nextPage: sources?.nextCursor ?? null });
   return result(args.busca !== undefined && context.items?.length === 0
     ? 'Nenhuma fonte corresponde à busca neste trecho.' : "Li as fontes e âncoras deste trecho.", {
-    deepLink: courseDeepLink(adapter, resolved.course, "content",
-      target ? [[target.kind === "study_unit" ? "studyUnitId" : "didacticMicrosequenceId", target.id]] : []),
+    deepLink: target ? courseDeepLink(adapter, resolved.course, "content",
+      [[target.kind === "study_unit" ? "studyUnitId" : "explanationId", target.id]])
+      : courseDeepLink(adapter, resolved.course, "sources", resolved.source ? [["sourceId", resolved.source.sourceId]] : []),
     nextDecision: null,
     context: readContext
   });
@@ -3187,7 +3333,7 @@ HUMAN_TASK_HANDLERS.criar_curso = async ({ adapter, principal, args, deadlineAt 
 HUMAN_TASK_HANDLERS.aprovar_mapa_curricular = async ({ adapter, principal, args, deadlineAt }) => {
   const receipt = await adapter.approveCourseCurricularMap({ principal, reference: args.referencia, deadlineAt });
   return result(receipt.idempotent ? "Recuperei a aprovação da mesma base inspecionada." : "Aprovei o mapa inspecionado.", {
-    deepLink: receipt.deepLink, nextDecision: "Continue no foco e na cadência acordados.",
+    deepLink: courseDeepLink(adapter, { id: receipt.courseId }, "planning"), nextDecision: "Continue no foco e na cadência acordados.",
     context: { revisaoDoCurso: receipt.courseRevision, mapa: "aprovado", referencia: args.referencia }
   });
 };
@@ -3327,6 +3473,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
+    preparationReference: args.referenciaPreparo ?? null, complete: args.concluir !== false,
     units: safeClone(args.unidades, "unidades", 480 * 1024),
     explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
@@ -3393,8 +3540,60 @@ HUMAN_TASK_HANDLERS.declarar_revisao = async ({ adapter, principal, args, deadli
   }
   return result(reviewed ? "Registrei a declaração expressa de revisão desta base salva." : "Retirei a declaração de revisão deste objeto.", {
     deepLink: courseDeepLink(adapter, { id: courseId }, "content", targetKind === "study_unit"
-      ? [["studyUnitId", targetId]] : [["didacticMicrosequenceId", targetId]]),
+      ? [["studyUnitId", targetId]] : [["explanationId", targetId]]),
     context: { revisao: saved.contentReview.state, referencia: args.referencia }
+  });
+};
+
+HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, deadlineAt }) => {
+  const { courseId, targetKind, targetId, basisHash, requestId } = openContentReviewReference(args.referencia, principal);
+  const report = normalizeCourseContentInspectionReport(args.parecer);
+  const read = async () => normalizeCourseContentInspection(await adapter.getCourseContentInspection({
+    principal, courseId, targetKind, targetId, deadlineAt }), { courseId, targetKind, targetId });
+  const before = await read();
+  if (before.basisHash !== basisHash) fail("course_ai_inspection_conflict",
+    "O conteúdo mudou; leia e inspecione a base atual antes de registrar o parecer.", null, 409);
+  let saved;
+  try {
+    saved = await adapter.recordCourseContentInspection({ principal, courseId, targetKind, targetId,
+      expectedBasisHash: basisHash, report, requestId, deadlineAt });
+  } catch (error) {
+    if (Number(error?.status) >= 400 && Number(error.status) < 500 && ![408, 425, 429].includes(Number(error.status))) throw error;
+    const current = await read().catch(() => null);
+    if (!current || current.basisHash !== basisHash || current.inspection.state !== "current" ||
+        canonicalAuthoringValue(current.inspection.report) !== canonicalAuthoringValue(report)) {
+      throw new AuthoringApiError(409, "course_write_uncertain", "Releia a inspeção e reconcilie a mesma referência antes de repetir.",
+        { requestId, targetCourseId: courseId, operation: "course_ai_inspection" });
+    }
+    saved = current;
+  }
+  return result("Registrei o parecer de IA sobre a base lida.", {
+    deepLink: createHumanNavigation(adapter, { courseId, relation: "content", target: { kind: targetKind, id: targetId } }),
+    context: { inspecaoIA: saved.inspection, referenciaInspecao: args.referencia }
+  });
+};
+
+HUMAN_TASK_HANDLERS.decidir_observacao = async ({ adapter, principal, args, deadlineAt }) => {
+  if (args.confirmado !== true || !["aceitar_vigente", "encerrar_sem_alteracao"].includes(args.decisao)) {
+    fail("human_observation_decision_required", "Registre somente a decisão expressa da pessoa autora sobre os alvos inspecionados.");
+  }
+  const reference = plainObject(args.referencia, "referencia");
+  exactFields(reference, new Set(["annotationId", "annotationVersion", "targetSetVersion", "targets"]));
+  const command = normalizeCourseAnchoredAnnotationCommand({ type: "decide_anchored_annotation",
+    annotationId: reference.annotationId, expectedAnnotationVersion: reference.annotationVersion,
+    expectedTargetSetVersion: reference.targetSetVersion, targets: reference.targets,
+    decision: args.decisao === "aceitar_vigente" ? "approve" : "cancel", reason: args.motivo ?? null });
+  const resolved = await resolveHumanCourseContext({ adapter, principal, course: humanCourseTitle(args), deadlineAt });
+  await executeTrustedCourseWrite({ maxCasRetries: 0,
+    load: async () => resolved,
+    build: () => ({ courseId: resolved.course.id, expectedCourseRevision: null, command }),
+    commit: request => adapter.executeCourseAnchoredAnnotationCommand({ principal, ...request, deadlineAt })
+  });
+  return result(args.decisao === "aceitar_vigente" ? "Registrei a aceitação dos alvos inspecionados." :
+    "Encerrei os alvos selecionados com o motivo informado.", {
+    deepLink: createHumanNavigation(adapter, { courseId: resolved.course.id, relation: "observations",
+      target: { kind: "anchored_annotation", id: reference.annotationId } }),
+    context: { decisao: args.decisao, alvosDecididos: reference.targets.length }
   });
 };
 
@@ -3635,7 +3834,7 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
 }) => {
   const course = humanCourseTitle(args);
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
-  if (Boolean(units.length) === (args.microssequencia !== undefined)) fail("invalid_human_task_argument", "Escolha uma explicação ou as unidades para acrescentar a observação.");
+  if (!units.length && args.microssequencia === undefined) fail("invalid_human_task_argument", "Escolha a explicação e/ou as unidades da observação.");
   const rawText = text(args.texto, "texto", 2000);
   const capturedAt = new Date().toISOString();
   const category = args.categoria === undefined || args.categoria === null
@@ -3650,28 +3849,33 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
   await executeTrustedCourseWrite({
     load: async () => {
       const resolved = await resolveHumanCourseContext({
-        adapter, principal, course, studyUnits: units,
+        adapter, principal, course, studyUnits: args.microssequencia === undefined ? units : [],
         microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null, deadlineAt
       });
+      if (args.microssequencia !== undefined && units.length) {
+        const selected = await resolveHumanCourseContext({ adapter, principal, course, studyUnits: units, deadlineAt });
+        if (selected.course.revision !== resolved.course.revision) fail("course_revision_conflict",
+          "O curso mudou durante a seleção dos alvos; releia o recorte.", null, 409);
+        resolved.studyUnits = selected.studyUnits;
+      }
       savedCourse = resolved.course;
       return resolved;
     },
     build: async (resolved, { newId }) => ({
       courseId: resolved.course.id,
       expectedCourseRevision: resolved.course.revision,
-      commands: await Promise.all((resolved.microsequence
-        ? [{ kind: "microsequence_explanation", id: resolved.microsequence.id }]
-        : resolved.studyUnits.map(unit => ({ kind: "study_unit", id: unit.studyUnit.id }))).map(async (target, index) =>
-        normalizeCourseAnchoredAnnotationCommand({
+      commands: [normalizeCourseAnchoredAnnotationCommand({
           type: "create_anchored_annotation",
-          annotationId: await newId(`observation:${index}`),
-          target,
+          annotationId: await newId("observation:0"),
+          target: resolved.microsequence ? { kind: "microsequence_explanation", id: resolved.microsequence.id }
+            : { kind: "study_unit", id: resolved.studyUnits[0].studyUnit.id },
+          targets: [...(resolved.microsequence ? [{ kind: "microsequence_explanation", id: resolved.microsequence.id }] : []),
+            ...resolved.studyUnits.map(unit => ({ kind: "study_unit", id: unit.studyUnit.id }))],
           rawText,
           category,
           capturedAt,
           briefSummary: null
-        })
-      ))
+        })]
     }),
     commit: async ({ requestId, courseId, ...value }) =>
       await adapter.createCourseAnchoredAnnotations({
@@ -3679,13 +3883,11 @@ HUMAN_TASK_HANDLERS.registrar_observacao = async ({
       })
   });
   return result(
-    args.microssequencia !== undefined ? "Acrescentei a observação à fila da explicação." : units.length === 1
-      ? "Registrei a observação na unidade selecionada."
-      : `Registrei a observação separadamente em ${units.length} unidades.`,
+    "Registrei uma observação com todos os alvos selecionados.",
     {
       deepLink: courseDeepLink(adapter, savedCourse, "review"),
       nextDecision: "Quer registrar outra observação ou preparar a revisão das abertas?",
-      context: { observationCount: args.microssequencia !== undefined ? 1 : units.length }
+      context: { observationCount: 1, targetCount: units.length + (args.microssequencia !== undefined ? 1 : 0) }
     }
   );
 };
@@ -3706,7 +3908,8 @@ HUMAN_TASK_HANDLERS.editar_observacao = async ({ adapter, principal, args, deadl
     const item = page?.items?.[0];
     if (!Array.isArray(page?.items) || page.items.length !== 1 || item.annotationId !== reference.annotationId ||
         item.provenance?.origin !== "author" || !["open", "considered"].includes(item.state) ||
-        item.target?.kind !== reference.targetKind || item.target.id !== reference.targetId) {
+        !courseObservationTargets(item).some(target => target.state === "pending" &&
+          target.kind === reference.targetKind && target.id === reference.targetId)) {
       fail("course_observation_version_conflict", "A observação não está mais pendente neste objeto; releia a fila.", null, 409);
     }
     return item;
@@ -3728,7 +3931,9 @@ HUMAN_TASK_HANDLERS.editar_observacao = async ({ adapter, principal, args, deadl
     }
   });
   const current = await read();
-  return result("Atualizei a entrada e confirmei que ela continua pendente.", { context: {
+  return result("Atualizei a entrada e confirmei que ela continua pendente.", {
+    deepLink: createHumanNavigation(adapter, { courseId: resolved.course.id, relation: "observations",
+      target: { kind: "anchored_annotation", id: reference.annotationId } }), context: {
     observations: projectObservations([current])
   } });
 };

@@ -10,8 +10,11 @@ export function microsequenceReviewExport({ revision = 7, explanationText = "Um 
   const units = (withUnits ? [{ id: "unit-theory", title: "Interface local", role: "theory" },
     { id: "unit-practice", title: "Distinguir interface e relação", role: "practice" }] : []).map((value, index) => ({
     ...value, position: index + 1, content: [paragraph(`unit-text-${index}`, "O processo usa uma interface; a conexão relaciona participantes.")],
-    response: value.role === "practice" ? { id: "practice-response", package: "aralearn.response.open", version: "1.0.0",
-      data: { prompt: "Explique a diferença com suas palavras." } } : null, feedback: [], topics: [] }));
+    response: value.role === "practice" ? { id: "practice-response", package: "aralearn.response.choice", version: "1.0.0",
+      data: { question: "Qual relação distingue os elementos?", selectionMode: "single", selectionCriterion: "correct", answerIds: ["interface"], options: [
+        { id: "interface", text: "O socket é local ao processo; a conexão relaciona participantes." },
+        { id: "conexao", text: "O socket é toda a conexão entre os participantes." }
+      ] } } : null, feedback: [], topics: [] }));
   const analytics = courseAuthoringAnalyticsFixture({ revision, title: "Curso sintético", studyUnits: units.map(unit => ({ studyUnitRef: unit.id, title: unit.title })) });
   analytics.basis.sources = [{ sourceRef: "source-review", revision: 1, document: {
     kind: "book", defaultRoles: ["technical_conceptual"], title: "Obra sintética sobre interfaces", authors: [{ literal: "Autoria sintética" }],

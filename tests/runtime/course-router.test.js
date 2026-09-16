@@ -21,6 +21,26 @@ function request(path, { method = "GET", body = null, requestId = null } = {}) {
   });
 }
 
+test("comparação de observação exige autenticação e versões exatas na rota de leitura", async () => {
+  const path = `/v1/courses/${COURSE_ID}/anchored-annotations/${PART_ID}/comparison`;
+  const route = routeCourseRequest("GET", path);
+  assert.deepEqual(route, { name: "getCourseObservationComparison", courseId: COURSE_ID, annotationId: PART_ID });
+  const query = "targetKind=study_unit&targetId=unit-a&expectedAnnotationVersion=3&expectedTargetSetVersion=2";
+  const calls = []; const adapter = { getCourseObservationComparison: async value => { calls.push(value); return { read: true }; } };
+  const result = await executeCourseRoute({ request: request(`${path}?${query}`), route, adapter, principal: PRINCIPAL });
+  assert.deepEqual(result.data, { read: true });
+  assert.equal(calls[0].expectedAnnotationVersion, 3);
+  assert.equal(calls[0].expectedTargetSetVersion, 2);
+  assert.equal(calls[0].principal, PRINCIPAL);
+  await assert.rejects(executeCourseRoute({ request: request(`${path}?${query}`), route, adapter, principal: null }));
+  for (const suffix of ["&actorId=other", "&targetId=unit-b", "&extra=1"]) {
+    await assert.rejects(executeCourseRoute({ request: request(`${path}?${query}${suffix}`), route, adapter, principal: PRINCIPAL }),
+      error => error.code === "invalid_course_observation_comparison");
+  }
+  await assert.rejects(executeCourseRoute({ request: request(`${path}?targetKind=study_unit&targetId=unit-a`), route, adapter, principal: PRINCIPAL }));
+  assert.equal(calls.length, 1);
+});
+
 
 test("observações chegam ao Adapter com query canônica e sem autoridade do cliente", async () => {
   const calls = [];

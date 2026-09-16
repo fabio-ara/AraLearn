@@ -19,8 +19,8 @@ registros não substitui essa leitura.
 
 Em **Fontes**, o nome da explicação ou unidade aparece abaixo do cabeçalho para
 identificar o texto em edição. **Referências deste texto** reúne seus vínculos;
-**Fontes do curso** apresenta o acervo em linhas bibliográficas, no estilo ABNT
-ou APA escolhido para o curso. Abrir uma referência leva à ficha da obra. O
+**Adicionar fonte** abre **Fontes do curso**, com o acervo em linhas bibliográficas,
+no estilo ABNT ou APA escolhido para o curso. Abrir uma referência leva à ficha da obra. O
 ícone de endereço abre sua página ou PDF remoto; o sinal de adição inicia uma
 citação no texto em edição.
 
@@ -92,13 +92,14 @@ número é gerado conforme a posição da referência e aparece junto ao trecho 
 leitura; não é necessário digitar o marcador no conteúdo.
 
 Novos vínculos de uma unidade ou explicação precisam de um trecho localizado no
-texto salvo. A seleção conserva contexto suficiente para distinguir passagens
+texto salvo e de uma passagem vigente na obra, ligada ao PDF correspondente ou
+com localização humana precisa. A seleção conserva contexto suficiente para distinguir passagens
 repetidas. Vínculos gerais já salvos continuam disponíveis, mesmo sem ocorrência;
 podem receber uma seleção quando a passagem for conferida. Fontes previstas em
 itens do planejamento podem continuar relacionadas ao item inteiro.
 
-Em **Uso e trecho da fonte**, indique como a obra foi utilizada e, quando
-conhecido, onde conferir a passagem no material original. Uma adaptação reconhece
+Em **Trecho na fonte**, escolha onde conferir a passagem no material original.
+Em **Opções da referência**, indique como a obra foi utilizada. Uma adaptação reconhece
 o material que serviu de base a uma formulação; um contraste coloca a afirmação
 em relação com outra posição; uma citação direta identifica a origem das palavras
 reproduzidas e exige localização na fonte. O papel e a relação precisam
@@ -115,6 +116,30 @@ Use **Adicionar outro vínculo** quando a mesma obra sustentar outro trecho ou c
 Uma fonte selecionada para um vínculo ainda em rascunho pode ser aberta para inspeção. Fechar sua ficha conserva a seleção e o texto em edição. Durante a gravação e a atualização do resultado, aguarde a conclusão ou a mensagem de falha antes de mudar de contexto. Uma resposta incerta exige conferir a mesma tentativa antes de criar outra alteração, como explica [Solução de problemas](solucao-de-problemas.md#não-consigo-salvar-uma-atribuição-de-fontes).
 
 Se uma edição impedir localizar o trecho citado com precisão, o vínculo é conservado para conferência. Acrescentar dados bibliográficos ou corrigir uma localização deve preservar a identidade da fonte. Aposentar uma fonte impede novos vínculos, mas conserva referências existentes; retirar acesso a um arquivo é uma ação diferente.
+
+**Mover citação para outro trecho** abre uma nova seleção de texto e conserva a
+passagem da obra. **Remover esta citação** retira apenas aquela ocorrência; ao
+retirar a última, o vínculo sai do texto. **Remover deste texto** retira todas
+as ocorrências daquele vínculo. Essas ações conservam a prosa, a fonte no
+acervo e seus outros usos; os números se ajustam à lista restante.
+
+## Inspeção por IA
+
+A edição humana salva continua vigente. Alterar conteúdo, citações, metadados
+utilizados ou o estilo de suas referências deixa uma única inspeção pendente
+por objeto afetado. A ficha de fontes e a revisão do conteúdo mostram essa
+pendência; nenhuma chamada paga é disparada ao editar.
+
+Na conversa conectada, peça à IA que leia o conteúdo e suas fontes atuais e
+registre o parecer. O registro conserva a versão inspecionada, o resumo e os
+pontos a conferir. A IA pode registrar a decisão de preservar uma preferência
+editorial humana; o mesmo parecer continua disponível enquanto essa base não
+mudar. Uma nova alteração material exige reinspeção. Conteúdo antigo sem
+parecer permanece identificado como não inspecionado, sem validação inventada.
+
+O parecer é julgamento do produtor e não certificação automática de verdade.
+Uma lacuna deve aparecer como ponto a conferir. A aprovação humana é outra
+decisão e pode ocorrer na mesma conversa quando explicitamente solicitada.
 
 ## Anexar e consultar PDFs
 

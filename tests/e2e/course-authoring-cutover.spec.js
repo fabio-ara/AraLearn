@@ -1479,7 +1479,7 @@ async function mountCourseAuthoring(page, {
           explicitParameterOverrideCount: 1,
           manuallyRevisedStudyUnitCount: 2,
           studyUnitsByOrigin: [{
-            origin: "gpt",
+            origin: "ai",
             createdCount: studyUnitCount,
             lastRevisedCount: 1
           }, {
@@ -1768,8 +1768,8 @@ async function mountCourseAuthoring(page, {
             state: "materialized"
           },
           authorship: {
-            createdOrigin: "gpt",
-            lastRevisionOrigin: "gpt",
+            createdOrigin: "ai",
+            lastRevisionOrigin: "ai",
             design: { application: null }
           },
           deepLink: `#/authoring/courses/${courseId}?section=content&studyUnitId=${studyUnit.id}`
@@ -2372,8 +2372,7 @@ async function mountCourseAuthoring(page, {
 async function selectDesignGroup(page, name) {
   const back = page.getByRole("button", { name: "Voltar aos ajustes", exact: true });
   if (await back.isVisible()) await back.click();
-  await page.getByLabel("Escolher grupo de ajustes").click();
-  await page.getByRole("button", { name, exact: true }).click();
+  await page.getByLabel("Escolher grupo de ajustes").selectOption({ label: name });
 }
 
 test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito combinações", async ({ page }, info) => {
@@ -2391,7 +2390,8 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
       const current = await dialog.boundingBox();
       expect(current.x).toBe(initial.x);
       expect(current.width).toBe(initial.width);
-      expect(current.y + current.height).toBe(initial.y + initial.height);
+      expect(current.y).toBe(initial.y);
+      expect(current.height).toBe(initial.height);
       expect(current.y).toBeGreaterThanOrEqual(0);
       expect(current.y + current.height).toBeLessThanOrEqual(844);
       const button = await close.boundingBox();
@@ -2406,12 +2406,11 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
     };
     const visited = new Set();
     for (const group of ["Explicações", "Prática", "Leitura e estilo", "Produção", "Conversa", "Recursos", "Perfis"]) {
-      await dialog.locator(".course-design-category-menu > summary").click();
-      await dialog.getByRole("button", { name: group, exact: true }).click();
+      await dialog.getByLabel("Escolher grupo de ajustes").selectOption({ label: group });
       await expectDialogGeometry();
       for (const id of await dialog.locator(".course-design-parameter").evaluateAll(nodes => nodes.map(node => node.dataset.parameterId))) visited.add(id);
       const geometry = await dialog.evaluate(node => {
-        const group = node.querySelector(".course-design-category-menu > summary").getBoundingClientRect();
+        const group = node.querySelector(".course-design-category-menu").getBoundingClientRect();
         const scope = node.querySelector(".course-design-scope").getBoundingClientRect();
         const scopeSummary = node.querySelector(".course-design-scope > summary").getBoundingClientRect();
         const navigation = node.querySelector(".course-design-settings-nav").getBoundingClientRect();
@@ -2431,8 +2430,7 @@ test("Parâmetros separa grupos, conserva rascunhos e mantém a folha nas oito c
       await page.screenshot({ path: info.outputPath(`parameters-${group}-${width}-${theme}.png`) });
     }
     expect(visited.size).toBe(12);
-    await dialog.locator(".course-design-category-menu > summary").click();
-    await dialog.getByRole("button", { name: "Explicações", exact: true }).click();
+    await dialog.getByLabel("Escolher grupo de ajustes").selectOption({ label: "Explicações" });
     await dialog.getByRole("button", { name: "Ajustar Novas unidades de análise", exact: true }).click();
     const form = dialog.locator("[data-course-design-parameter]");
     await page.screenshot({ path: info.outputPath(`parameter-editor-${width}-${theme}.png`) });
@@ -3495,11 +3493,11 @@ test("Inspeção substitui o conjunto completo da versão exata da Unidade", asy
 
   await sourcesAction.click();
   await expectModalDialogOwnsTopLayer(targetDialog);
+  await targetDialog.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
   await page.getByRole("button", {
     name: "Vincular fonte: Fonte verificável 1",
     exact: true
   }).click();
-  await targetDialog.getByText("Uso e trecho da fonte", { exact: true }).click();
   await page.getByRole("checkbox", {
     name: "Capítulo 2, seção 3 · Páginas 10–12"
   }).check();
@@ -5392,8 +5390,7 @@ test("#345 Perfil mostra prévia e cancelamento preserva curso, exceções e per
     };
   });
   const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
-  await dialog.locator(".course-design-category-menu > summary").click();
-  await dialog.getByRole("button", { name: "Perfis", exact: true }).click();
+  await dialog.getByLabel("Escolher grupo de ajustes").selectOption({ label: "Perfis" });
   await dialog.getByRole("button", { name: "Recarregar perfis", exact: true }).click();
   const open = dialog.getByRole("button", { name: "Aplicar perfil Leitura focal", exact: true });
   await open.click();
@@ -5436,7 +5433,7 @@ test("ocorrências iguais em blocos distintos mantêm escolha e caminho inequív
   await review.getByRole('button', { name: 'Fontes da explicação', exact: true }).click();
   const sources = page.getByRole('dialog', { name: 'Fontes', exact: true });
   await expect(sources.locator('.course-source-target-context')).toContainText('Comparação orientada');
-  await sources.getByRole('button', { name: 'Localizar trecho', exact: true }).click();
+  await sources.getByRole('button', { name: 'Mover citação para outro trecho', exact: true }).click();
   const select = sources.getByRole('combobox', { name: 'Parte do texto', exact: true });
   const labels = await select.locator('option').allTextContents();
   expect(labels).toHaveLength(2);
@@ -5521,7 +5518,7 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await expect(sources).toBeVisible();
   await expect(sources.locator('.course-source-target-context')).toContainText('Comparação orientada');
   await expect(sources).toContainText('Um critério comum');
-  await sources.getByRole('button', { name: 'Localizar trecho', exact: true }).click();
+  await sources.getByRole('button', { name: 'Mover citação para outro trecho', exact: true }).click();
   await expect(sources.getByRole('textbox', { name: 'Selecione o trecho', exact: true })).toHaveValue(
     'Um critério comum permite comparar relações sem confundir associação e causa.');
   await sources.getByRole('button', { name: 'Cancelar seleção', exact: true }).click();

@@ -58,7 +58,7 @@ select is((select state from private.course_anchored_annotations where id=pg_tem
 select is((select content_review->>'reviewedAt' from private.course_entities where course_id=pg_temp.qcourse() and entity_id='u1'),null::text,'Correção não declara revisão humana');
 select is((select content#>>'{content,0,data,text}' from private.course_entities where course_id=pg_temp.qcourse() and entity_id='u1'),'A ligação permite interação; mudar a cor conserva a conexão, enquanto retirar a ligação interrompe a interação.','Releitura confirma texto persistido');
 select pg_temp.qconfirm(name,jsonb_build_array(result#>'{observations,0}')) from queue_requests where name='queue-unit-correction';
-select is((select state from private.course_anchored_annotations where id=pg_temp.qid(301)),'resolved','Confirmação consome a primeira versão exata');
+select is((select state from private.course_anchored_annotations where id=pg_temp.qid(301)),'open','Confirmação técnica mantém a primeira observação pendente de decisão humana');
 select is((select state from private.course_anchored_annotations where id=pg_temp.qid(302)),'open','Aplicação parcial conserva a outra observação');
 select public.execute_course_anchored_annotation_command_for_actor_v1(pg_temp.qowner(),pg_temp.qcourse(),null,
  jsonb_build_object('type','revise_anchored_annotation','annotationId',pg_temp.qid(302),'expectedAnnotationVersion',1,
@@ -79,7 +79,7 @@ update queue_requests set result=public.commit_course_observation_corrections_fo
 select is((select state from private.course_anchored_annotations where id=pg_temp.qid(303)),'open','Base corrigida permanece pendente antes da releitura');
 select is((select content#>>'{explanation,content,0,data,text}' from private.course_entities where course_id=pg_temp.qcourse() and entity_id='a'),'A conexão sustenta a interação entre elementos. Retirar a conexão impede essa interação; uma mudança de cor conserva a relação.','Releitura da mesma Explicação salva confirma efeito');
 select pg_temp.qconfirm(name,result->'observations') from queue_requests where name='queue-base-correction';
-select is((select state from private.course_anchored_annotations where id=pg_temp.qid(303)),'resolved','Confirmação exata consome observação da base');
+select is((select state from private.course_anchored_annotations where id=pg_temp.qid(303)),'open','Confirmação técnica mantém a observação da base pendente de decisão humana');
 select is((select state from private.course_anchored_annotations where id=pg_temp.qid(302)),'open','Observação independente permanece pendente');
 select is((select count(*) from private.course_entities where course_id=pg_temp.qcourse() and content_review ? 'reviewedAt'),0::bigint,'Consumo não produz declaração humana de revisão');
 select is(public.get_course_observation_correction_for_actor_v1(pg_temp.qowner(),pg_temp.qcourse(),'queue-absent-attempt')->>'status','absent','Ausência de recibo é observada sem novo writer');

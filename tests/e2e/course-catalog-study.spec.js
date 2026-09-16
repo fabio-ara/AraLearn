@@ -211,15 +211,6 @@ async function solveOrderingWithKeyboard(page, response) {
     .toHaveAttribute("data-ordering-item-id", firstId);
 }
 
-async function solveOpenResponseWithKeyboard(page) {
-  const input = page.locator('[data-action="open-response-input"]');
-  await input.focus();
-  await page.keyboard.insertText(
-    "Minha explicação relaciona a situação apresentada ao mecanismo estudado."
-  );
-  await expect(input).toHaveValue(/Minha explicação relaciona/iu);
-}
-
 async function auditVisibleStudyUnit(page) {
   return page.evaluate(() => {
     const rect = (selector) => {
@@ -266,7 +257,8 @@ test("Curso de catálogo exercita todos os pacotes no Estudo e permanece dispon�
   page
 }) => {
   test.setTimeout(120_000);
-  expect(packageIds).toHaveLength(38);
+  expect(packageIds).toHaveLength(37);
+  expect(packageIds).not.toContain("aralearn.response.open");
   expect(packageIds).toEqual(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id).sort());
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -288,8 +280,6 @@ test("Curso de catálogo exercita todos os pacotes no Estudo e permanece dispon�
       await solveChoiceWithKeyboard(page, unit.response);
     } else if (unit.response.package === "aralearn.response.ordering") {
       await solveOrderingWithKeyboard(page, unit.response);
-    } else if (unit.response.package === "aralearn.response.open") {
-      await solveOpenResponseWithKeyboard(page);
     } else {
       throw new Error(`Resposta sem exercício funcional: ${unit.response.package}`);
     }
@@ -298,10 +288,6 @@ test("Curso de catálogo exercita todos os pacotes no Estudo e permanece dispon�
     const continueButton = page.locator('[data-action="next-study-unit"]');
     await continueButton.focus();
     await continueButton.press("Enter");
-    if (unit.response.package === "aralearn.response.open") {
-      await expect(page.getByRole("status")).toContainText("Resposta preenchida.");
-      await expect(page.locator(".inline-feedback.ok, .inline-feedback.err")).toHaveCount(0);
-    }
     const continueFeedback = page.locator('[data-action="continue-feedback"]');
     if (await continueFeedback.isVisible()) {
       await continueFeedback.focus();

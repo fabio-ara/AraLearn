@@ -4250,7 +4250,7 @@ dialog.course-microsequence-review {
 
 .course-microsequence-review > .editor-head {
   padding: 12px;
-  grid-template-columns: var(--tap) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) var(--tap);
 }
 
 .course-microsequence-review > .editor-head > button {
@@ -4277,6 +4277,14 @@ dialog.course-microsequence-review {
 .course-microsequence-review :is(section, article) > ul {
   padding-inline-start: 20px;
 }
+
+.course-microsequence-review .course-review-authoring-context ul {
+  padding-inline-start: 24px;
+  margin-inline: 0;
+  overflow-wrap: anywhere;
+}
+
+dialog.course-microsequence-review::backdrop { background: rgb(0 0 0 / 55%); }
 
 .course-microsequence-review :is(input:not([type="checkbox"]), textarea, select) {
   box-sizing: border-box;
@@ -5285,7 +5293,7 @@ dialog.course-microsequence-review {
 .course-design-context-body .course-authoring-section { margin: 0; }
 
 [data-course-design-context-dialog], .course-design-direct-dialog {
-  width: min(430px, calc(100vw - 16px)); height: auto;
+  width: min(430px, calc(100vw - 16px)); height: min(760px, calc(100dvh - max(16px, var(--safe-top)) - var(--safe-bottom)));
   max-height: min(760px, calc(100dvh - 16px)); padding: 0; display: grid;
   grid-template-rows: auto minmax(0, 1fr); border-radius: var(--radius);
 }
@@ -5305,7 +5313,12 @@ dialog.course-microsequence-review {
 .course-design-settings-nav { position: relative; min-width: 0; display: grid; gap: 12px; }
 .course-design-group-heading { min-width: 0; display: flex; align-items: center; gap: 8px; }
 .course-design-group-heading > span { min-width: 0; font-size: var(--type-sm); font-weight: var(--weight-title); }
-.course-design .course-design-category-menu { min-width: 0; border: 0; margin: 0; padding: 0; }
+.course-design select.course-design-category-menu {
+  width: 100%; min-width: 0; min-height: var(--tap); margin: 0; padding: 8px 10px;
+  border: 1px solid var(--input-border); border-radius: var(--radius-control);
+  color: var(--text-primary); background: var(--input-surface);
+  font: var(--weight-title) var(--type-md)/var(--leading-normal) var(--font-ui);
+}
 .course-design .course-authoring-icon-action {
   width: var(--tap); height: var(--tap); min-width: var(--tap); min-height: var(--tap);
   display: inline-flex; align-items: center; justify-content: center; padding: 8px;
@@ -5314,20 +5327,6 @@ dialog.course-microsequence-review {
 }
 .course-design .course-authoring-icon-action:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 2px; }
 .course-design .course-authoring-icon-action:hover { background: var(--action-secondary-hover); color: var(--text-primary); }
-.course-design .course-design-category-menu > summary { border: 0; padding: 0 10px; font-size: var(--type-md); font-weight: var(--weight-title); }
-.course-design-category-menu > summary { min-height: var(--tap); display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--type-sm); }
-.course-design-category-menu > summary::marker { content: ""; }
-.course-design-category-menu > nav {
-  position: absolute; z-index: 5; left: 0; width: min(260px, 100%);
-  max-height: 352px; overflow: auto; display: grid; padding: 6px; border-radius: var(--radius);
-  border: 1px solid var(--border-default); background: var(--surface-raised); box-shadow: var(--shadow-card);
-}
-[data-course-design-context-dialog] .course-design-category-menu > nav { position: static; }
-.course-design-category-menu button {
-  min-height: var(--tap); text-align: left; border: 0; background: transparent;
-  color: var(--text-primary); border-radius: var(--radius-control); padding: 8px 12px; font: 400 var(--type-sm)/var(--leading-normal) var(--font-ui);
-}
-.course-design-category-menu button[aria-current='page'] { background: var(--surface-sunken); }
 .course-design-settings-nav .course-design-scope { min-width: 0; margin: 0; padding: 0 10px; box-shadow: none; }
 .course-design-settings-nav .course-design-scope > summary { min-height: var(--tap); display: flex; align-items: center; gap: 8px; padding-block: 8px; font-size: var(--type-sm); cursor: pointer; }
 .course-design-scope > summary > svg { flex: 0 0 auto; }
@@ -5908,3 +5907,14 @@ dialog.course-microsequence-review {
   display: inline-grid;
   place-items: center;
 }
+
+.study-observation-category-direct select { max-width: 14rem; }
+.study-observation-central-controls { display: grid; gap: .5rem; }
+.study-observation-central-controls > div, .study-observation-decisions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.study-observation-targets { min-width: 0; border: 1px solid var(--line, #d6dbe1); border-radius: .5rem; padding: .5rem; }
+.study-observation-target { padding: .35rem 0; }
+.study-observation-target > label { display: flex; align-items: baseline; gap: .4rem; }
+.study-observation-comparison { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .75rem; }
+.study-observation-comparison pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .85rem; }
+.study-observation-target-editor select, .study-observation-new-targets select { display: block; width: 100%; min-height: 5rem; }
+@media (max-width: 600px) { .study-observation-comparison { grid-template-columns: 1fr; } }

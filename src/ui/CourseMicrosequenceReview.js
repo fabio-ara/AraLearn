@@ -2,6 +2,7 @@ import { createUuid } from "../domain/identifiers.js";
 import { normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewChange } from "../domain/courseContentReview.js";
+import { renderCourseContentInspection } from "./renderCourseContentInspection.js";
 import { explanationRenderingUnit } from "../study/studyExplanation.js";
 import { placeStudyCitationMarkers, renderStudyCitations, renderStudySourceMarkers, studyCitationMarkers } from "../study/studyCitations.js";
 import { openStudyResourceUrl } from "../study/studyTools.js";
@@ -45,6 +46,12 @@ export async function loadMicrosequenceReviewSnapshot(controller, { courseId, mi
     (await controller.getMicrosequenceForExplanation?.(courseId, microsequenceId, { expectedRevision }))?.version ?? null;
   const after = await readReview(controller, target);
   if (before.basisHash !== after.basisHash || after.courseRevision !== expectedRevision) throw changed();
+  let inspection = null; let inspectionFailure = "";
+  if (controller.getContentInspection) {
+    try { inspection = await controller.getContentInspection(courseId, targetKind, targetId); }
+    catch (error) { inspectionFailure = error.message; }
+  }
+  if (inspection && inspection.courseRevision !== expectedRevision) throw changed();
   const candidates = exported.artifact.document.courses[0].modules.flatMap(module => module.lessons.flatMap(lesson =>
     lesson.microsequences.filter(ms => ms.id === microsequenceId).map(microsequence => ({ module, lesson, microsequence }))));
   if (candidates.length !== 1) throw new TypeError("O recorte não contém a microssequência solicitada.");
@@ -58,7 +65,7 @@ export async function loadMicrosequenceReviewSnapshot(controller, { courseId, mi
     }) })));
   return { courseId, courseRevision: expectedRevision, microsequenceId, targetKind, targetId, targetUnit: clone(targetUnit), courseTitle: exported.course.title,
     moduleTitle: module.title, lessonTitle: lesson.title, microsequence: clone(microsequence),
-    basisHash: after.basisHash, contentReview: after.contentReview,
+    basisHash: after.basisHash, contentReview: after.contentReview, aiInspection: inspection?.inspection ?? null, inspectionFailure,
     entityVersion: after.entityVersion, microsequenceVersion, reviewPolicy: after.reviewPolicy, references, analytics: clone(exported.analytics),
     sources: clone(exported.analytics.basis.sources), explanationSources: clone(sources?.items[0]?.sourceLinks || []),
     unitSources: clone(exported.analytics.basis.studyUnits.map(unit => ({ studyUnitId: unit.studyUnitRef, sourceLinks: unit.sourceLinks }))) };
@@ -171,7 +178,7 @@ export function applyExplanationTextFields(explanation, fields) {
     unit = applyManualStudyUnitEdit(unit, targetId, { pathValues: Object.fromEntries(fields
       .filter(field => field.targetId === targetId).map(field => [field.path, field.value])) });
   }
-  return normalizeMicrosequenceExplanation({ title: unit.title, content: unit.content });
+  return normalizeMicrosequenceExplanation({ ...explanation, title: unit.title, content: unit.content });
 }
 
 export function createCourseMicrosequenceReview({ root, controller, onEditSources, onChanged = () => {},
@@ -262,6 +269,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         pending: "Resultado da revisão ainda não confirmado" }[reviewState] || "Revisão autoral pendente";
       const reviewStateIcon = { current: "ready-state", stale: "rotate", pending: "cloud-alert" }[reviewState] || "draft-state";
       const reviewDeclaration = '<section class="course-review-context-body" aria-label="Revisão humana do conteúdo">' +
+        renderCourseContentInspection(snapshot.aiInspection, snapshot.inspectionFailure) +
         `<div class="course-review-target-heading"><h3>${escape(reviewLabel)}</h3>` +
         `<span class="course-review-state" data-content-review-state="${escape(reviewState)}" role="img" aria-label="${reviewStateLabel}" title="${reviewStateLabel}">${renderUiIcon(reviewStateIcon, "course-authoring-button-icon")}</span></div>` +
         (hasSavedContent ? `<label title="A marca registra sua declaração de revisão do conteúdo salvo e de suas fontes."><input type="checkbox" data-review-confirm${confirmed ? " checked" : ""} disabled> Revisei esta versão e suas fontes.</label>` : '<p>Salve a base explicativa antes de declarar sua revisão.</p>') +
@@ -276,7 +284,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         '<dl class="course-review-authoring-state">' +
         `<div><dt>Módulo</dt><dd>${escape(snapshot.moduleTitle)}</dd></div>` +
         `<div><dt>Lição</dt><dd>${escape(snapshot.lessonTitle)}</dd></div>` +
-        `<div><dt>Revisão autoral</dt><dd>${escape({ current: "Em dia", stale: "Desatualizada", pending: "Aguardando confirmação" }[reviewState] || "Pendente")}</dd></div></dl>` +
+        '</dl><h3>Planejamento da explicação</h3>' +
         (ms.goal ? `<h4>Objetivo</h4><p>${escape(ms.goal)}</p>` : "") +
         (ms.explanationPlan ? `<h4>Explicação prevista</h4><p>${escape(ms.explanationPlan.purpose)}</p>` +
           [["Pressupostos", ms.explanationPlan.prerequisites], ["Relações", ms.explanationPlan.relations],
@@ -475,16 +483,20 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     }
   }
   return { hasPendingDraft: dirty, close,
-    async open({ courseId, microsequenceId, targetKind = "microsequence_explanation", targetId = microsequenceId, expectedRevision, button = null }) {
+    async open({ courseId, microsequenceId, targetKind = "microsequence_explanation", targetId = microsequenceId, expectedRevision, intendedRevision = null, button = null }) {
       if (dialog && !close()) return false;
       session = new CourseMicrosequenceReviewSession({ controller, courseId, microsequenceId, targetKind, targetId, expectedRevision });
-      editing = false; fields = []; confirmed = false; message = ""; failure = false; changedRevision = null;
+      editing = false; fields = []; confirmed = false;
+      message = intendedRevision != null && intendedRevision !== expectedRevision
+        ? "O conteúdo mudou desde este link. Você está lendo a versão atual; confira-a antes de aprovar."
+        : "";
+      failure = false; changedRevision = null;
       focusEditing = false; focusEditAction = false;
       returnButton = button;
       dialog = root.ownerDocument.createElement("dialog");
       dialog.className = "editor-sheet course-microsequence-review" + (targetKind === "study_unit" ? " is-unit-review" : "");
       dialog.setAttribute("aria-label", targetKind === "study_unit" ? "Revisão da unidade de estudo" : "Explicação e revisão do conteúdo"); root.ownerDocument.body.append(dialog);
-      dialog.addEventListener("cancel", event => { event.preventDefault(); close(); });
+      dialog.addEventListener("cancel", event => { event.preventDefault(); if (!observationQueue?.closePanel()) close(); });
       dialog.addEventListener("click", event => void click(event));
       dialog.addEventListener("change", event => { if (event.target.matches("[data-review-confirm]")) { confirmed = event.target.checked; render(); } });
       dialog.addEventListener("input", event => { if (event.target.closest("[data-review-explanation-content]")) captureFields(); });

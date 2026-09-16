@@ -81,8 +81,8 @@ function inspectionItem(ordinal, revision = fixture.course.revision) {
       state: "materialized"
     },
     authorship: {
-      createdOrigin: "gpt",
-      lastRevisionOrigin: "gpt",
+      createdOrigin: "ai",
+      lastRevisionOrigin: "ai",
       design: {
         application: null
       }

@@ -9,6 +9,28 @@ const SAFE_NUMERIC_DETAIL_KEYS = new Set([
   "expectedRevision", "actualRevision", "currentRevision"
 ]);
 
+export function projectHumanMaterializationPreflight(error) {
+  if (!["human_materialization_preflight_blocked", "human_materialization_preflight_stale"].includes(error?.code)) return undefined;
+  const source = error.details?.preflight;
+  if (!source || !["ready", "blocked"].includes(source.state) || !Array.isArray(source.blockers) ||
+      !["complete", "partial"].includes(source.completion) ||
+      !(source.referencia === null || /^materialization-v1:[a-f0-9]{64}$/u.test(source.referencia))) return undefined;
+  const blockers = source.blockers.map(item => {
+    if (!item || typeof item.code !== "string" || !/^[a-z][a-z0-9_]{0,119}$/u.test(item.code) ||
+        typeof item.message !== "string" || !item.message.trim()) return null;
+    const blocker = { code: item.code, message: item.message.slice(0, 1000) };
+    for (const key of ["unit", "explanation", "entry"]) if (Number.isSafeInteger(item[key]) && item[key] > 0) blocker[key] = item[key];
+    for (const key of ["microsequence", "idea", "requirement", "studyUnit", "component", "resourceId", "path"]) {
+      if (typeof item[key] === "string" && item[key].length <= 4000) blocker[key] = item[key];
+    }
+    return blocker;
+  });
+  if (blockers.some(item => item === null)) return undefined;
+  // Preserve every actionable blocker, but never forward arbitrary adapter
+  // details, snapshots, source credentials or raw payloads in an error.
+  return { state: source.state, referencia: source.referencia, completion: source.completion, blockers };
+}
+
 export function projectHumanWriteRecovery(error) {
   if (!["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error?.code)) {
     return undefined;

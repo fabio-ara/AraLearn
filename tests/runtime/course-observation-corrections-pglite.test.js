@@ -5,6 +5,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { normalizeCourseAnchoredAnnotationChange, normalizeCourseAnchoredAnnotationPage,
   normalizeCourseObservationCorrection } from "../../src/domain/courseAnchoredAnnotations.js";
 import { normalizeCourseContentReviewState } from "../../src/domain/courseContentReview.js";
+import { largeObservationContent } from "../helpers/largeObservationComparisonFixture.js";
+import { validateCourseEntityContent } from "../../src/domain/aralearnProject.js";
 
 const OWNER = "10000000-0000-4000-8000-000000000001";
 const OTHER = "10000000-0000-4000-8000-000000000002";
@@ -22,7 +24,7 @@ const code = expected => error => error.code === expected;
 // Executes the entire migration and the real current annotation read/write
 // functions. Platform claims/hash and the existing composition writer are
 // bounded fixtures. This proves queue transactions, not PostgREST or hosted IO.
-async function fixture() {
+async function fixture({ legacyUnitObservation = false } = {}) {
   const db = new PGlite();
   const previous = await load("20260817200000_course_anchored_annotations.sql");
   const cutover = await load("20260902044404_cut_legacy_authoring_runtime.sql");
@@ -54,7 +56,11 @@ async function fixture() {
     create function private.course_source_json_hash_v1(jsonb) returns text language sql immutable as $$select repeat(md5($1::text),2)$$;
     create function private.course_annotation_hash_v1(jsonb) returns text language sql immutable as $$select repeat(md5($1::text),2)$$;
     create function private.course_content_basis_hash_v1(uuid,text,text) returns text language sql stable as $$
-      select repeat(md5(content::text),2) from private.course_entities where course_id=$1 and entity_id=$3$$;
+      select repeat(md5(jsonb_build_object('content',content,'links',(select jsonb_agg(to_jsonb(a)) from private.course_source_attributions a
+        where a.course_id=$1 and a.target_kind=$2 and a.target_id=$3),'sources',(select jsonb_agg(to_jsonb(s)) from private.course_sources s where s.course_id=$1))::text),2)
+      from private.course_entities where course_id=$1 and entity_id=$3$$;
+    create function private.course_ai_inspection_pending_v1(uuid,text,text) returns boolean language sql stable as $$
+      select coalesce(current_setting('fixture.inspection_pending',true),'false')='true'$$;
     create function private.valid_course_source_links_shape_v1(jsonb,boolean) returns boolean language sql immutable as $$select jsonb_typeof($1)='array'$$;
     create function private.valid_course_source_links_shape_v2(jsonb) returns boolean language sql immutable as $$select jsonb_typeof($1)='array'$$;
     create function private.course_annotation_source_links_resolved_v1(uuid,jsonb) returns boolean language sql stable as $$select true$$;
@@ -130,8 +136,10 @@ async function fixture() {
   `);
   // Existing pending author note is created before migration; its identity,
   // text, version and legacy target remain intact after the new target exists.
-  await create(db, ids[2], "didactic_microsequence", "micro", "Preservar nota anterior", "before-migration-001");
+  await create(db, ids[2], legacyUnitObservation ? "study_unit" : "didactic_microsequence",
+    legacyUnitObservation ? "u1" : "micro", "Preservar nota anterior", "before-migration-001");
   await db.exec(await load("20260909032748_contextual_observation_correction_queue.sql"));
+  await db.exec(await load("20260916025032_author_observation_decisions.sql"));
   return db;
 }
 
@@ -157,6 +165,101 @@ const confirm = (db, receipt, selected = receipt.observations) => value(db,
     selected.map(({ annotationId, annotationVersion, effectHash }) => ({ annotationId, annotationVersion, effectHash }))]).then(normalizeCourseObservationCorrection);
 const state = (db, id = ids[0]) => value(db, "select jsonb_build_object('state',state,'version',version,'rawText',raw_text) value from private.course_anchored_annotations where id=$1", [id]);
 const ownerPage = db => value(db, "select private.list_course_study_units_for_actor_v1($1,$2,(select revision from public.courses where id=$2)) value", [OWNER, COURSE]);
+const detail = (db, id = ids[0]) => value(db, "select private.course_anchored_annotation_item_v1(a,$1,true) value from private.course_anchored_annotations a where id=$2", [OWNER, id]);
+const decision = (item, selected = item.targets.filter(t => t.state === "pending"), kind = "approve") => ({
+  type: "decide_anchored_annotation", annotationId: item.annotationId, expectedAnnotationVersion: item.annotationVersion,
+  expectedTargetSetVersion: item.targetSetVersion, decision: kind, reason: kind === "cancel" ? "teste" : null,
+  targets: selected.map(t => ({ kind: t.kind, id: t.id, expectedBasisHash: t.current?.hash ?? null }))
+});
+
+test("alvo removido admite apenas cancelamento explícito com versões e ausência vigentes, inclusive legado sem base", async () => {
+  const db = await fixture({ legacyUnitObservation: true });
+  try {
+    await create(db, ids[0]);
+    const before = await detail(db);
+    const originalContent = await value(db, "select content value from private.course_entities where entity_id='u1'");
+    await db.exec("delete from private.course_entities where entity_id='u1'");
+    const removed = await detail(db);
+    assert.equal(removed.targets[0].current, null);
+    assert.notEqual(removed.targets[0].basis, null);
+    await assert.rejects(command(db, decision(removed), 'removed-cannot-approve'), code('40001'));
+    await assert.rejects(command(db, decision(before, undefined, 'cancel'), 'old-hash-cannot-cancel'), code('40001'));
+    const cancel = decision(removed, undefined, 'cancel');
+    for (const delta of [{ expectedAnnotationVersion: 2 }, { expectedTargetSetVersion: 2 }]) {
+      await assert.rejects(command(db, { ...cancel, ...delta }, `removed-stale-${Object.keys(delta)[0]}`), code('40001'));
+    }
+    await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_id,parent_type,content) values($1,'study_unit','u1','micro','microsequence',$2)", [COURSE, originalContent]);
+    await assert.rejects(command(db, cancel, 'restored-target-cannot-cancel-null'), code('40001'));
+    await db.exec("delete from private.course_entities where entity_id='u1'");
+    const result = await command(db, cancel, 'removed-target-cancelled');
+    assert.equal(result.annotation.state, 'resolved');
+    assert.equal(result.annotation.targets[0].state, 'cancelled');
+    assert.equal((await command(db, cancel, 'removed-target-cancelled')).idempotent, true);
+    const legacy = await detail(db, ids[2]);
+    assert.equal(legacy.targets[0].basis, null); assert.equal(legacy.targets[0].current, null);
+    await command(db, decision(legacy, undefined, 'cancel'), 'removed-legacy-cancelled');
+    assert.equal((await state(db, ids[2])).state, 'resolved');
+    assert.equal(await value(db, 'select count(*)::integer value from private.course_observation_bases'), 0);
+    assert.equal(await value(db, 'select count(*)::integer value from private.fixture_composition_calls'), 0);
+  } finally { await db.close(); }
+});
+
+test("uma intenção multialvo conserva antes, decide parcialmente e libera somente bases sem referência", async () => {
+  const db = await fixture();
+  try {
+    const targets = [{ kind: "study_unit", id: "u1" }, { kind: "microsequence_explanation", id: "micro" }];
+    const request = { type: "create_anchored_annotation", annotationId: ids[0], target: targets[0], targets,
+      rawText: "Esclarecer o conceito nos dois textos", category: null, capturedAt: null, briefSummary: null };
+    const initial = await command(db, request, "create-multiple-001", 1);
+    assert.equal(initial.annotation.targets.length, 2);
+    await create(db, ids[1]);
+    assert.equal(await value(db, "select count(*)::integer value from private.course_observation_bases"), 2);
+    await commit(db, [reference(0)], [entity()]);
+    let item = await detail(db);
+    const unit = item.targets.find(t => t.kind === "study_unit");
+    assert.equal(unit.basis.deferred, true); assert.equal(unit.current.deferred, true);
+    const comparison = await value(db, 'select public.get_course_observation_comparison_for_actor_v1($1,$2,$3,$4,$5,$6,$7) value',
+      [OWNER,COURSE,item.annotationId,unit.kind,unit.id,item.annotationVersion,item.targetSetVersion]);
+    assert.equal(comparison.basis.content.content[0].text, "original");
+    assert.equal(comparison.current.content.content[0].text, "corrigido");
+    await assert.rejects(value(db, 'select public.get_course_observation_comparison_for_actor_v1($1,$2,$3,$4,$5,$6,$7) value',
+      [OWNER,COURSE,item.annotationId,unit.kind,unit.id,item.annotationVersion+1,item.targetSetVersion]), code('40001'));
+    const partialCommand = decision(item, [unit]);
+    const partial = await command(db, partialCommand, "approve-partial-001");
+    assert.equal(partial.annotation.state, "open");
+    assert.deepEqual(partial.annotation.targets.map(t => t.state), ["pending", "approved"]);
+    assert.equal(await value(db, "select count(*)::integer value from private.course_observation_bases"), 2);
+    assert.equal((await command(db, partialCommand, "approve-partial-001")).idempotent, true);
+    item = await detail(db);
+    await command(db, decision(item), "approve-last-001");
+    assert.deepEqual(await state(db), { state: "resolved", version: 3, rawText: null });
+    assert.equal(await value(db, "select count(*)::integer value from private.course_observation_bases"), 1);
+    await command(db, decision(await detail(db, ids[1]), undefined, "cancel"), "cancel-second-001");
+    assert.equal(await value(db, "select count(*)::integer value from private.course_observation_bases"), 0);
+    assert.equal(await value(db, "select count(*)::integer value from private.fixture_composition_calls"), 1);
+  } finally { await db.close(); }
+});
+
+test("decisão confere base/intenção, cancelamento sem alteração não contorna inspeção nem altera conteúdo", async () => {
+  const db = await fixture();
+  try {
+    await create(db, ids[0]);
+    const shown = await detail(db); const approve = decision(shown);
+    await db.exec("select set_config('fixture.inspection_pending','true',false)");
+    await assert.rejects(command(db, approve, "approval-blocked-001"), code("PT409"));
+    const result = await command(db, decision(shown, undefined, "cancel"), "cancel-test-note-001");
+    assert.equal(result.annotation.rawText, null);
+    assert.equal(result.annotation.targets[0].state, "cancelled");
+    assert.equal(await value(db, "select private.course_ai_inspection_pending_v1($1,'study_unit','u1') value", [COURSE]), true);
+    assert.equal(await value(db, "select count(*)::integer value from private.fixture_composition_calls"), 0);
+    assert.equal(await value(db, "select content#>>'{content,0,text}' value from private.course_entities where entity_id='u1'"), "original");
+    await create(db, ids[1]);
+    const stale = decision(await detail(db, ids[1]));
+    await db.exec("update private.course_entities set content=content||'{\"title\":\"Nova versão\"}' where entity_id='u1'");
+    await assert.rejects(command(db, stale, "stale-decision-001"), code("40001"));
+    assert.equal((await state(db, ids[1])).state, "open");
+  } finally { await db.close(); }
+});
 
 test("fila migra pendências, aceita base independente e bloqueia retirada/resolução manual", async () => {
   const db = await fixture();
@@ -167,21 +270,23 @@ test("fila migra pendências, aceita base independente e bloqueia retirada/resol
     assert.equal(base.annotation.target.currentPath.at(-1).kind, "microsequence_explanation");
     assert.equal(base.annotation.capabilities.canWithdraw, false);
     assert.equal(base.annotation.capabilities.canResolve, false);
-    assert.equal((await ownerPage(db)).items[0].pendingAuthoringObservationCount, 1);
+    assert.equal((await ownerPage(db)).items[0].pendingAuthoringObservationCount, 3);
     const page = normalizeCourseAnchoredAnnotationPage(await value(db,
       "select private.get_course_anchored_annotations_core_v1($1,$2,1,null,'target',array['author'],'{}',array['open','considered'],'{}',true,'{}','microsequence_explanation','micro',false,null,null,24,true) value", [OWNER, COURSE]));
     assert.equal(page.items.length, 1);
-    for (const type of ["withdraw_anchored_annotation", "resolve_anchored_annotation"]) {
+    for (const type of ["withdraw_anchored_annotation", "resolve_anchored_annotation", "reopen_anchored_annotation"]) {
       await assert.rejects(command(db, { type, annotationId: ids[0], expectedAnnotationVersion: 1 }, `forbidden-${type}`), code("42501"));
     }
     await command(db, { type: "respond_to_anchored_annotation", annotationId: ids[0], expectedAnnotationVersion: 1,
       ownerResponse: "Uma resposta não salva a correção.", responseKind: "answer", consideredSourceLinks: [] }, "answer-keeps-pending-001");
     assert.equal((await state(db)).state, "considered");
     assert.equal((await state(db)).version, 2);
+    assert.equal((await detail(db)).targets[0].state, 'pending');
+    assert.equal((await detail(db)).capabilities.canReopen, false);
   } finally { await db.close(); }
 });
 
-test("associa antes de corrigir, confirma subconjunto e recupera resposta perdida sem reaplicar", async () => {
+test("confirmação técnica e releitura preservam pendências e recuperam resposta perdida sem reaplicar", async () => {
   const db = await fixture();
   try {
     await create(db, ids[0]); await create(db, ids[1]);
@@ -191,17 +296,17 @@ test("associa antes de corrigir, confirma subconjunto e recupera resposta perdid
     assert.equal(receipt.observations[0].confirmed, false);
     assert.deepEqual(await read(db), { ...receipt, idempotent: true });
     const subset = await confirm(db, receipt, [receipt.observations[0]]);
-    assert.deepEqual(subset.observations.map(o => o.confirmed), [true, false]);
-    assert.equal((await state(db)).version, 2);
+    assert.deepEqual(subset.observations.map(o => o.confirmed), [false, false]);
+    assert.equal((await state(db)).version, 1);
     assert.equal((await state(db, ids[1])).state, "open");
-    assert.equal((await ownerPage(db)).items[0].pendingAuthoringObservationCount, 1);
+    assert.equal((await ownerPage(db)).items[0].pendingAuthoringObservationCount, 3);
     const recovered = await confirm(db, await read(db));
-    assert.deepEqual(recovered.observations.map(o => o.confirmed), [true, true]);
+    assert.deepEqual(recovered.observations.map(o => o.confirmed), [false, false]);
     const again = await commit(db, [reference(0), reference(1)], [entity()]);
     assert.equal(again.idempotent, true);
     assert.equal(await value(db, "select count(*)::integer value from private.fixture_composition_calls"), 1);
     assert.equal((await confirm(db, recovered)).idempotent, true);
-    assert.equal((await state(db)).version, 2);
+    assert.equal((await state(db)).version, 1);
     await assert.rejects(commit(db, [reference(0)], [entity()]), code("23514"));
   } finally { await db.close(); }
 });
@@ -220,7 +325,7 @@ test("no-op, versão posterior, conteúdo posterior, pedido parcial e recibo aus
     const pending = await confirm(db, changed);
     assert.deepEqual(pending.observations.map(o => o.confirmed), [false, false]);
     assert.equal((await state(db)).rawText, "Nova edição pendente");
-    await assert.rejects(confirm(db, changed, [{ ...changed.observations[0], effectHash: "0".repeat(64) }]), code("23514"));
+    assert.equal((await confirm(db, changed, [{ ...changed.observations[0], effectHash: "0".repeat(64) }])).observations[0].confirmed, false);
     await assert.rejects(commit(db, [reference(0)], [entity()], "stale-observation-001", 2), code("40001"));
     await assert.rejects(commit(db, [reference(1)], [entity("microsequence_explanation", "micro")], "wrong-target-001", 2), code("22023"));
     assert.equal((await read(db, "missing-request-001")).status, "absent");
@@ -240,12 +345,12 @@ test("base e fontes têm efeitos próprios; rollback e direitos conservam conte�
     await assert.rejects(commit(db, [reference(0, "microsequence_explanation", "micro")], [entity("microsequence_explanation", "micro")], "stale-content-001", 8), code("40001"));
     assert.equal(await value(db, "select count(*)::integer value from private.fixture_composition_calls"), 0);
     const base = await commit(db, [reference(0, "microsequence_explanation", "micro")], [entity("microsequence_explanation", "micro")]);
-    assert.equal((await confirm(db, base)).observations[0].confirmed, true);
+    assert.equal((await confirm(db, base)).observations[0].confirmed, false);
     assert.equal((await state(db, ids[1])).state, "open");
     const source = await commit(db, [reference(1)], [entity("study_unit", "u1", "original")], "source-correction-001", 2, OWNER,
       [{ studyUnitId: "u1", sourceLinks: [{ sourceId: "source", relation: "supported_by" }] }]);
     assert.equal(source.observations[0].changed, true);
-    assert.equal((await confirm(db, source)).observations[0].confirmed, true);
+    assert.equal((await confirm(db, source)).observations[0].confirmed, false);
     assert.equal(await value(db, "select has_function_privilege('authenticated','public.confirm_course_observation_correction_for_actor_v1(uuid,uuid,text,jsonb)','execute') value"), false);
     assert.equal(await value(db, "select has_function_privilege('anon','public.get_course_observation_correction_for_actor_v1(uuid,uuid,text)','execute') value"), false);
     await db.exec("select set_config('fixture.role','authenticated',false)");
@@ -259,7 +364,7 @@ test("owner recebe contagem, revisão por objeto e evidência praticada na pági
     const page = async () => value(db, "select private.decorate_course_inspection_page_v2($1,1,$2) value", [COURSE, await ownerPage(db)]);
     await create(db, ids[0]); await create(db, ids[1]);
     let item = (await page()).items[0];
-    assert.equal(item.pendingAuthoringObservationCount, 2);
+    assert.equal(item.pendingAuthoringObservationCount, 3);
     assert.deepEqual(normalizeCourseContentReviewState(item.contentReview), { state: "unregistered" });
     assert.equal(item.authorship.design.application, null);
     await db.query("update private.course_entities set content_review='{}' where entity_id='u1'");
@@ -277,5 +382,107 @@ test("owner recebe contagem, revisão por objeto e evidência praticada na pági
     assert.equal(Object.hasOwn(item.studyUnit, "practiceEvidence"), false);
     await db.query("update private.course_entities set design_application='{\"mode\":\"expository\",\"componentRefs\":[]}' where entity_id='u1'");
     assert.deepEqual((await page()).items[0].authorship.design.application.practiceEvidence, []);
+  } finally { await db.close(); }
+});
+
+test("lista e recibo não duplicam conteúdo extenso; comparação por alvo preserva bytes e exige proprietário", async () => {
+  const db = await fixture();
+  try {
+    const original = largeObservationContent();
+    assert.equal(validateCourseEntityContent('study_unit', { id: 'u1', position: 1, ...original }).valid, true);
+    await db.query("update private.course_entities set content=$1 where entity_id='u1'", [original]);
+    await db.query("insert into private.course_sources values($1,'source','Fonte preservada',1)", [COURSE]);
+    await db.query("insert into private.course_source_anchors values($1,'selected','source',1,1),($1,'unrelated','source',1,1)", [COURSE]);
+    await db.query("insert into private.course_source_attributions(course_id,target_kind,target_id,links) values($1,'study_unit','u1',$2)",
+      [COURSE, [{ linkId: 'link', sourceId: 'source', relation: 'supported_by', roles: ['technical_conceptual'],
+        anchors: [{ anchorId: 'selected' }], occurrences: [] }]]);
+    const created = await create(db, ids[0]);
+    assert.ok(JSON.stringify(created).length < 10000);
+    const item = await detail(db); assert.ok(JSON.stringify(item).length < 10000);
+    await db.query("update private.course_observation_bases set snapshot=snapshot||$1::jsonb",
+      [{ files: [{ bucket: 'course-media', path: 'private-retention-reference', hash: 'a'.repeat(64), media_type: 'audio/wav' }] }]);
+    const args = [OWNER, COURSE, ids[0], 'study_unit', 'u1', 1, 1];
+    const sql = 'select public.get_course_observation_comparison_for_actor_v1($1,$2,$3,$4,$5,$6,$7) value';
+    const comparison = await value(db, sql, args);
+    assert.ok(Buffer.byteLength(JSON.stringify(comparison)) > 1048576);
+    assert.deepEqual(comparison.basis.content, original);
+    assert.deepEqual(comparison.current.content, original);
+    assert.deepEqual(comparison.basis.sources[0].anchors.map(anchor => anchor.anchor_id), ['selected']);
+    assert.equal(Object.hasOwn(comparison.basis, 'files'), false);
+    assert.equal(await value(db, "select bool_and(snapshot ? 'files') value from private.course_observation_bases"), true,
+      'a projeção de comparação não apaga referências privadas de retenção');
+    await assert.rejects(value(db, sql, [OTHER, ...args.slice(1)]), code('42501'));
+    assert.equal(await value(db, "select has_function_privilege('authenticated','public.get_course_observation_comparison_for_actor_v1(uuid,uuid,uuid,text,text,bigint,bigint)','execute') value"), false);
+  } finally { await db.close(); }
+});
+
+test("replay de criação autoral antiga não ressuscita identidade depois da retenção", async () => {
+  const db = await fixture();
+  try {
+    const stale = {type: 'create_anchored_annotation', annotationId: ids[0], target: {kind: 'study_unit', id: 'u1'},
+      rawText: 'Texto cujo envio expirou', category: null, briefSummary: null, capturedAt: '2020-01-01T00:00:00.000Z'};
+    await assert.rejects(command(db, stale, 'expired-old-request-1', 1), code('PT409'));
+    assert.equal(await value(db, 'select count(*)::integer value from private.course_anchored_annotations where id=$1', [ids[0]]), 0);
+  } finally { await db.close(); }
+});
+
+test("comandos legados não finalizam nem reabrem incidências; aprovação explícita libera e legado estrutural continua próprio", async () => {
+  const db = await fixture();
+  try {
+    await create(db, ids[0]);
+    const approved = await command(db, decision(await detail(db)), 'explicit-terminal-1');
+    assert.equal(approved.annotation.state, 'resolved'); assert.equal(approved.annotation.rawText, null);
+    for (const type of ['resolve_anchored_annotation', 'withdraw_anchored_annotation', 'reopen_anchored_annotation']) {
+      await assert.rejects(command(db, {type, annotationId: ids[0], expectedAnnotationVersion: 2}, `legacy-${type}`), code('42501'));
+    }
+    assert.equal((await detail(db)).targets[0].state, 'approved');
+    assert.equal(await value(db, 'select count(*)::integer value from private.course_observation_bases'), 0);
+    const structural = await command(db, {type: 'resolve_anchored_annotation', annotationId: ids[2], expectedAnnotationVersion: 1}, 'legacy-structural-only');
+    assert.equal(structural.annotation.state, 'resolved');
+  } finally { await db.close(); }
+});
+
+test("anexo muda a base da observação e aprovação usa o parecer IA em sua própria base", async () => {
+  const db = await fixture();
+  try {
+    await db.exec(`alter table public.courses add column bibliography_style text default 'abnt-2025',add column updated_at timestamptz;
+      alter table private.course_entities add column ai_inspection jsonb;
+      create table private.course_source_attribution_sources(course_id uuid,attribution_id uuid,source_id text);
+      create table private.course_source_attachments(course_id uuid,source_id text,storage_path text,content_hash text,media_type text,status text);
+      create table private.course_media(course_id uuid,content_hash text,storage_path text,media_type text,status text);
+      create function private.course_content_media_hashes_v1(jsonb) returns setof text language sql as $$select $1->>'contentHash' where $1 ? 'contentHash'$$;`);
+    const inspection = await load("20260916025342_contextual_ai_inspection.sql");
+    for (const name of ["private.course_ai_inspection_basis_hash_v1", "private.course_ai_inspection_state_v1",
+      "private.course_ai_inspection_pending_v1", "private.course_ai_inspection_payload_v1", "private.valid_course_ai_inspection_report_v1",
+      "private.record_course_ai_inspection_v1"]) await db.exec(functionSql(inspection, name).replace("create function", "create or replace function"));
+    const retention = await load("20260916030333_editorial_interventions_and_observation_files.sql");
+    await db.exec(functionSql(retention, "private.course_observation_files_v1"));
+    await db.exec("alter function private.course_observation_basis_hash_v1(uuid,text,text) rename to course_observation_text_basis_hash_v1");
+    await db.exec(functionSql(retention, "private.course_observation_basis_hash_v1"));
+    await db.exec("alter function private.course_observation_snapshot_v1(uuid,text,text) rename to course_observation_text_snapshot_v1");
+    await db.exec(functionSql(retention, "private.course_observation_snapshot_v1"));
+    const attribution = "40000000-0000-4000-8000-000000000001";
+    await db.query("insert into private.course_sources values($1,'source1','Fonte',1)", [COURSE]);
+    await db.query("insert into private.course_source_attributions(course_id,id,target_kind,target_id,links) values($1,$2,'study_unit','u1',$3)",
+      [COURSE, attribution, [{ sourceId: "source1", anchors: [] }]]);
+    await db.query("insert into private.course_source_attribution_sources values($1,$2,'source1')", [COURSE, attribution]);
+    await create(db, ids[0]);
+    const before = await detail(db);
+    const beforeSnapshot = await value(db, "select snapshot value from private.course_observation_bases where basis_hash=$1", [before.targets[0].basis.hash]);
+    await db.query("insert into private.course_source_attachments values($1,'source1',$2,$3,'application/pdf','active')", [COURSE, `${COURSE}/later.pdf`, "d".repeat(64)]);
+    await create(db, ids[1]);
+    const after = await detail(db, ids[1]);
+    assert.notEqual(after.targets[0].basis.hash, before.targets[0].basis.hash);
+    assert.deepEqual(await value(db, "select snapshot value from private.course_observation_bases where basis_hash=$1", [before.targets[0].basis.hash]), beforeSnapshot);
+    await assert.rejects(command(db, decision(before), "approval-stale-files"), code("40001"));
+    await assert.rejects(command(db, decision(after), "approval-without-inspection"), code("PT409"));
+    const inspectionHash = await value(db, "select private.course_ai_inspection_basis_hash_v1($1,'study_unit','u1') value", [COURSE]);
+    assert.notEqual(inspectionHash, after.targets[0].current.hash);
+    await value(db, "select private.record_course_ai_inspection_v1($1,$2,'study_unit','u1',$3,$4,'inspect-current-files') value",
+      [OWNER, COURSE, inspectionHash, { summary: "Conferido", outcome: "consistent", findings: [] }]);
+    assert.equal(await value(db, "select private.course_ai_inspection_pending_v1($1,'study_unit','u1') value", [COURSE]), false);
+    const approved = await command(db, decision(after), "approval-inspected-files");
+    assert.equal(approved.annotation.state, "resolved");
+    assert.equal(approved.annotation.targets[0].state, "approved");
   } finally { await db.close(); }
 });

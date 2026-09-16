@@ -40,7 +40,7 @@ const expectedActionGroups = {
   preferencias_de_autoria: ["consultar_preferencias_autoria", "salvar_preferencias_autoria"],
   perfis_de_autoria: ["consultar_perfis", "salvar_perfil", "excluir_perfil",
     "prever_aplicacao_perfil", "aplicar_perfil"],
-  observacoes_autorais: ["consultar_observacoes", "registrar_observacao", "editar_observacao"]
+  observacoes_autorais: ["consultar_observacoes", "registrar_observacao", "editar_observacao", "registrar_inspecao", "decidir_observacao"]
 };
 const planningGuidance = COURSE_AUTHORING_GUIDES.planning_design.instructions.join("\n");
 const materializationGuidance = COURSE_AUTHORING_GUIDES.materialization.instructions.join("\n");
@@ -65,6 +65,12 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 });
 
 const samples = {
+  registrar_inspecao: { referencia: "referencia-opaca-da-base-inspecionada",
+    parecer: { summary: "Conteúdo e citações conferidos.", outcome: "consistent", findings: [] } },
+  decidir_observacao: { curso: "Redes para iniciantes", referencia: {
+    annotationId: "30000000-0000-4000-8000-000000000001", annotationVersion: 2, targetSetVersion: 1,
+    targets: [{ kind: "study_unit", id: "socket-unit", expectedBasisHash: "a".repeat(64) }]
+  }, decisao: "aceitar_vigente", confirmado: true },
   consultar_preferencias_autoria: {},
   salvar_preferencias_autoria: { foco: "content", cadencia: "microsequence", pontosDeRevisao: ["explanation"] },
   consultar_acesso: { curso: "Redes para iniciantes" },
@@ -127,7 +133,9 @@ const samples = {
   },
   preparar_revisao: {
     curso: "Redes para iniciantes",
-    microssequencia: "Roteamento"
+    microssequencia: "Roteamento",
+    comparacao: { annotationId: "30000000-0000-4000-8000-000000000001", annotationVersion: 2,
+      targetSetVersion: 1, targetKind: "study_unit", targetId: "socket-unit" }
   },
   consultar_fontes: { curso: "Redes para iniciantes", fonte: "Manual do proxy" },
   consultar_componentes: {
@@ -287,15 +295,15 @@ function visit(value, callback, path = "$") {
   else Object.entries(value).forEach(([key, entry]) => visit(entry, callback, `${path}.${key}`));
 }
 
-test("#357 OpenAPI preserva 54 tarefas em seis grupos e 24 operações diretas", () => {
+test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas", () => {
   assert.deepEqual(COURSE_ACTION_TASK_GROUPS, expectedActionGroups);
   const groupedNames = Object.values(expectedActionGroups).flat();
   const directNames = COURSE_HUMAN_TASKS.map(({ name }) => name)
     .filter(name => !groupedNames.includes(name));
-  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  assert.equal(COURSE_HUMAN_TASKS.length, 56);
   assert.equal(Object.keys(expectedActionGroups).length, 6);
-  assert.equal(groupedNames.length, 30);
-  assert.equal(new Set(groupedNames).size, 30);
+  assert.equal(groupedNames.length, 32);
+  assert.equal(new Set(groupedNames).size, 32);
   assert.equal(directNames.length, 24);
   assert.equal(Object.keys(openApi.paths).length, 30);
   assert.deepEqual(Object.keys(openApi.paths).sort(),
@@ -326,7 +334,7 @@ test("#357 OpenAPI preserva 54 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "4.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "5.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -372,6 +380,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
           /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
             .test(path);
         if (localComponentIdentity) continue;
+        if (task.name === "decidir_observacao" && name === "id" &&
+            path === "$.properties.referencia.properties.targets.items") continue;
         if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
             ["courseId", "requestId"].includes(name)) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
@@ -473,6 +483,11 @@ test("todos os inputs importáveis aceitam exemplos humanos e recusam mecânica"
   const adjust = validatorFor("ajustar_configuracao");
   const source = validatorFor("manter_fonte");
   const materialization = validatorFor("materializar_parte");
+  const decide = validatorFor("decidir_observacao");
+  assert.equal(decide({ ...samples.decidir_observacao, decisao: "encerrar_sem_alteracao", motivo: "Alvo removido.",
+    referencia: { ...samples.decidir_observacao.referencia,
+      targets: [{ kind: "study_unit", id: "removed", expectedBasisHash: null }] } }), true,
+  "a referência da ausência é explícita; o domínio permite apenas cancelar este alvo");
   assert.equal(adjust({ curso: "Redes para iniciantes" }), false);
   assert.equal(adjust({
     ...samples.ajustar_configuracao,
@@ -830,7 +845,13 @@ test("#272 resultado comum é curto e não usa envelope de compatibilidade", () 
   assert.equal(openApi.components.schemas.HumanTaskResult.additionalProperties, undefined);
   assert.equal(Object.hasOwn(openApi.components.schemas, "ConversationProjection"), false);
   assert.equal(Object.hasOwn(openApi.components.schemas, "SuccessResponse"), false);
-  const serialized = JSON.stringify(openApi.components.schemas.HumanTaskResult);
+  const schema = structuredClone(openApi.components.schemas.HumanTaskResult);
+  const navigation = schema.properties.links.items;
+  assert.deepEqual(navigation.required, ["relation", "target", "label", "url"]);
+  assert.deepEqual(navigation.properties.relation.enum, ["content", "observations", "sources", "planning", "parameters"]);
+  assert.equal(navigation.properties.revision.type, "integer");
+  delete schema.properties.links;
+  const serialized = JSON.stringify(schema);
   assert.doesNotMatch(serialized, /requestId|courseId|revision|hash|path|resultFacts/iu);
 });
 
@@ -845,11 +866,11 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
       default: { $ref: "#/components/responses/Error" }
     });
   }
-  // Orçamentos locais conciliados às 54 tarefas em 30 operações, preservando schemas integrais
+  // Orçamentos locais conciliados às 56 tarefas em 30 operações, preservando schemas integrais
   // por referências compartilhadas. Não são limites oficiais do importador;
   // o limite de 100.000 por chamada continua validado no runner de payload.
-  assert.ok(openApiText.length < 90_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 180_000);
+  assert.ok(openApiText.length < 100_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 210_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 

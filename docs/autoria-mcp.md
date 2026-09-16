@@ -18,7 +18,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` 4.0.0, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` 5.0.0, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 16 leituras e 38 escritas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -71,7 +71,9 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `vincular_repertorio_instrucional` | salvar a seleção explícita de análise e evidência de uma microssequência |
 | `registrar_aplicacoes_instrucionais` | registrar introduções, usos, formas e oportunidades nas unidades inspecionadas |
 | `aplicar_configuracao_instrucional` | aplicar a intenção corrente às unidades existentes, com calibração explícita dos automáticos e preservação de fixações e condições de pesquisa |
-| `registrar_observacao` | acrescentar uma entrada à fila de uma explicação ou de unidades selecionadas |
+| `registrar_observacao` | acrescentar uma observação única com incidências nas unidades e Explicações selecionadas |
+| `registrar_inspecao` | registrar parecer da IA vinculado à base efetivamente lida, sem editar nem aprovar |
+| `decidir_observacao` | executar aprovação ou encerramento humanos expressos nos alvos e versões apresentados |
 | `editar_observacao` | alterar a versão inspecionada de uma entrada, conservando sua pendência |
 | `aplicar_correcoes` | aplicar o conjunto coerente de correções já revisado |
 | `retomar_correcao` | reconciliar conteúdo, fila e tentativa original sem reescrever a correção |
@@ -144,11 +146,10 @@ inspeção. **Reorganizar lotes** apresenta essa prévia no aplicativo.
 
 ## Repertório e materialização
 
-Antes de produzir unidades, `preparar_materializacao` reúne a explicação, as
-fontes, a configuração e o repertório do percurso. O repertório identifica o
+Antes de produzir unidades, `preparar_materializacao` recebe o `plano` compacto e confronta a Explicação reconciliada com repertório, vínculos, requisitos, formas, componentes, fontes, prática e cobertura. `blocked` agrega causas previsíveis; resolva-as antes da escrita. `ready` fornece a referência usada em `referenciaPreparo`. Mudança da base exige novo preparo. O repertório identifica o
 conhecimento a introduzir, usar ou retomar, conforme o
 [fluxo de produção](fluxos-prompts-e-contratos.md#repertório-acumulado).
-`materializar_parte` recebe as unidades completas e as escolhas aplicadas a elas.
+`materializar_parte` recebe as unidades novas ou explicitamente alteradas e suas escolhas. `unidade` identifica a existente a substituir; sem ela, cria uma nova. `posicao` é final, omitidas permanecem. `concluir: false` mantém produção parcial; a conclusão verifica o acumulado. Práticas novas exigem resposta avaliável e feedback offline; resposta aberta permanece apenas como legado.
 O contrato de [desenho](aralearn-contract.md#desenho) descreve seus campos.
 
 As explicações existentes são reutilizadas. O campo `explicacoes` recebe
@@ -178,7 +179,7 @@ Uma fonte pode delimitar o escopo, oferecer uma tarefa de avaliação ou sustent
 uma explicação. Seus vínculos registram o uso feito no curso. Uma observação,
 por sua vez, registra algo que a pessoa quer examinar ou corrigir. A
 [revisão do conteúdo](fluxos-prompts-e-contratos.md#observações-revisão-e-privacidade)
-reúne essas entradas e confirma somente as versões integralmente atendidas.
+reúne conteúdo e comparações antes/depois. A fila fornece `referenciasComparacao` por alvo; `preparar_revisao.comparacao` recebe essa referência inteira e entrega o conteúdo literal por continuação. Correção salva e confirmação de persistência não aprovam observações. `decidir_observacao` aplica a decisão humana expressa aos alvos e bases apresentados; `registrar_inspecao` registra uma leitura semântica efetiva pela IA. Aprovação parcial mantém as demais incidências.
 
 `retomar_correcao` recupera uma tentativa com resposta perdida, conferindo
 conteúdo e fila sem reaplicar a correção. A
@@ -196,6 +197,8 @@ Uma tarefa bem-sucedida devolve `result`, com o que ocorreu, e pode incluir
 ainda necessária. O MCP entrega também dados estruturados que o cliente pode
 usar nas próximas chamadas, sem precisar mostrá-los como controles técnicos à
 pessoa autora.
+
+`links` identifica cada destino por `relation`, `target`, `label`, `url` e, quando disponível, `revision`. O primeiro destino corresponde a `deepLink`. A relação distingue conteúdo, observações, fontes, planejamento e parâmetros; conserve o endereço e a identidade retornados ao oferecer a próxima etapa.
 
 `salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa.
 

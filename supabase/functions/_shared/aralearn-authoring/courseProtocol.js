@@ -126,6 +126,11 @@ export function routeCourseRequest(method, pathname) {
       courseId: courseUuid(anchoredAnnotationChange[1])
     };
   }
+  const observationComparison = path.match(/^\/v1\/courses\/([^/]+)\/anchored-annotations\/([^/]+)\/comparison$/u);
+  if (observationComparison && verb === "GET") {
+    return { name: "getCourseObservationComparison", courseId: courseUuid(observationComparison[1]),
+      annotationId: courseUuid(observationComparison[2], "annotationId") };
+  }
   const anchoredAnnotations = path.match(
     /^\/v1\/courses\/([^/]+)\/anchored-annotations$/u
   );

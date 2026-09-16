@@ -74,6 +74,7 @@ function responseUnit(manifest, index) {
       }))
     };
   } else if (manifest.id === "aralearn.response.open") {
+    // Corpus histórico: esta prova só renderiza o editor, sem criar ou alterar respostas abertas.
     data = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
       manifest.id,
       manifest.version
@@ -455,8 +456,8 @@ async function openInspectionUnit(page, ownership, { longTitles = false, variant
     let studyUnitVersion = 1;
     let contentReview = { state: "current", reviewedAt: "2026-08-20T12:00:00.000Z" };
     let authorship = {
-      createdOrigin: "gpt",
-      lastRevisionOrigin: "gpt",
+      createdOrigin: "ai",
+      lastRevisionOrigin: "ai",
       design: { application: null }
     };
     // O Controller é um stub; a sequência e o renderer são os reais.

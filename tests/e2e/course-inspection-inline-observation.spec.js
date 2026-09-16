@@ -55,16 +55,16 @@ for (const width of [360, 1280]) test(`observação inline em uma ou duas unidad
   expect(Math.abs(scrolled.y - bounds.y)).toBeLessThanOrEqual(1);
   await page.screenshot({ path: info.outputPath(`inline-observation-${width}.png`) });
   await dock.getByRole("button", { name: "Enviar observação", exact: true }).click();
-  await expect.poll(() => page.evaluate(value => globalThis.uxUi328.annotations.filter(item => item.rawText === value).length, text)).toBe(2);
+  await expect.poll(() => page.evaluate(value => globalThis.uxUi328.annotations.filter(item => item.rawText === value).length, text)).toBe(1);
   const result = await page.evaluate(value => ({
-    entries: globalThis.uxUi328.annotations.filter(item => item.rawText === value).map(item => ({ id: item.annotationId, target: item.target.id })),
+    entries: globalThis.uxUi328.annotations.filter(item => item.rawText === value).map(item => ({ id: item.annotationId, targets: item.targets.map(target => target.id) })),
     writes: globalThis.uxUi328.requests.filter(item => item.kind === "annotation-mutation").map(item => item.input),
     units: globalThis.uxUi328.units.map(item => item.studyUnit)
   }), text);
-  expect(result.entries.map(item => item.target)).toEqual(["ux328-unit-01", "ux328-unit-02"]);
-  expect(new Set(result.entries.map(item => item.id)).size).toBe(2);
-  expect(result.writes).toHaveLength(2);
-  expect(new Set(result.writes.map(item => item.requestId)).size).toBe(2);
+  expect(result.entries[0].targets).toEqual(["ux328-unit-01", "ux328-unit-02"]);
+  expect(new Set(result.entries.map(item => item.id)).size).toBe(1);
+  expect(result.writes).toHaveLength(1);
+  expect(new Set(result.writes.map(item => item.requestId)).size).toBe(1);
   expect(result.writes.every(item => item.command.type === "create_anchored_annotation")).toBe(true);
   expect(result.units).toEqual(before);
   await expect(field).toHaveValue("");

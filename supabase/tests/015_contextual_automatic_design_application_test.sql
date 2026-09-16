@@ -100,11 +100,18 @@ select jsonb_build_array(jsonb_build_object(
   'designApplication',jsonb_build_object('mode','expository','introducedInstructionalAnalysisUnitIds','[]'::jsonb,'usedInstructionalAnalysisUnitIds','[]'::jsonb,
     'curriculumScopeItemIds',jsonb_build_array('95000000-0000-4000-8000-000000000321'),'explanationApplications','[]'::jsonb,'practiceApplications','[]'::jsonb,'componentRefs','[]'::jsonb),
   'sourceLinks','[]'::jsonb)) as units from parameters,policy;
+create function pg_temp.materialization_placements(p_units jsonb) returns jsonb language sql as $placements$
+  select jsonb_agg(jsonb_build_object('studyUnitId',u->>'studyUnitId','didacticMicrosequenceId',u->>'didacticMicrosequenceId','position',u->'position'))
+  from jsonb_array_elements(p_units) u
+$placements$;
 create function pg_temp.materialize_contextual(request_id text,p_units jsonb,p_explanations jsonb default null) returns jsonb language sql as $f$
   select public.materialize_course_authoring_part_for_actor_v2(
     '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',1,1,'[]'::jsonb,
     '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
-    p_units,request_id,encode(extensions.digest(p_units::text,'sha256'),'hex'), coalesce(p_explanations,pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb)))
+    p_units,request_id,encode(extensions.digest(jsonb_build_object('units',p_units,'complete',true,
+      'placements',pg_temp.materialization_placements(p_units),'explanations',p_explanations)::text,'sha256'),'hex'),
+    coalesce(p_explanations,pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb)),
+    true,pg_temp.materialization_placements(p_units))
 $f$;
 select ok(private.valid_applied_course_design_parameters_v1(payload.units#>'{0,designSnapshot,parameters}',resolved.parameters),'calibração tipada completa aceita cadência automática ainda sem valor corrente') from payload,resolved;
 select ok(not private.valid_applied_course_design_parameters_v1(jsonb_set(payload.units#>'{0,designSnapshot,parameters}','{5,value}','241'),resolved.parameters),'fixação humana não pode ser substituída pela escolha automática') from payload,resolved;
@@ -117,7 +124,7 @@ select throws_ok($$select pg_temp.materialize_contextual('context-old-policy',js
  'materialização nova exige política corrente mesmo quando as referências continuam iguais');
 select ok(not exists(select 1 from private.course_change_receipts where actor_id='95000000-0000-4000-8000-000000000001' and request_id='context-old-policy'),
  'política antiga não deixa recibo de materialização');
-select throws_ok($$select pg_temp.materialize_contextual('context-missing-explanation',units,'[]') from payload$$,'22023',null,'Apoio faltante desfaz as unidades do mesmo commit');
+select throws_ok($$select pg_temp.materialize_contextual('context-missing-explanation',units,'[]') from payload$$,'23514',null,'Ausência de apoio salvo ou enviado desfaz as unidades do mesmo commit');
 select is((select count(*) from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_type='study_unit'),0::bigint,'Falha do apoio não deixa unidades parciais');
 select ok(not exists(select 1 from private.course_change_receipts where actor_id='95000000-0000-4000-8000-000000000001' and request_id='context-missing-explanation'),'Falha do apoio não deixa recibo de sucesso');
 select lives_ok($$select pg_temp.materialize_contextual('context-automatic-01',units) from payload$$,'writer materializa escolha automática contextual sem mutação prévia das preferências');
@@ -138,7 +145,8 @@ select lives_ok($$select public.materialize_course_authoring_part_for_actor_v2(
   '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',2,1,'[]'::jsonb,
   '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
   jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"'),'context-catalog-121',
-  encode(extensions.digest(jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"')::text,'sha256'),'hex'), pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb)) from payload$$,
+  encode(extensions.digest(jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"')::text,'sha256'),'hex'), pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb),
+  true,pg_temp.materialization_placements(units)) from payload$$,
   'o mesmo writer aceita aplicação de catálogo1.2.1 com valores e controles preservados');
 select is((select design_snapshot->>'parameterCatalogVersion' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
   '1.2.1','nova decisão registra a versão efetivamente aplicada');

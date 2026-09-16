@@ -705,6 +705,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Voltar ao Conteúdo", exact: true }).click();
       await page.getByRole("button", { name: "Editar referências de Primeira Unidade compartilhada", exact: true }).click();
       const dialog = page.locator("[data-source-target-dialog]");
+      await dialog.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
       await dialog.getByRole("button", { name: `Vincular fonte: ${title}`, exact: true }).click();
       let links = dialog.locator(".course-source-target-link");
       const citedText = "Conteúdo privado liberado somente para a pessoa escolhida.";
@@ -717,6 +718,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       const relation = links.first().getByRole("combobox", { name: "Como esta fonte é usada", exact: true });
       await relation.focus(); await relation.selectOption("adapted_from");
       await expect(relation).toBeFocused();
+      await links.first().getByLabel(/Página usada no ensaio local/u).check();
       expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
         .toBe(citedText);
       await links.first().getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
@@ -937,8 +939,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
       await page.goto(`/#/authoring/courses/${designCourseId}?section=parameters`);
       expect((await readDesign()).parameters).toHaveLength(12);
-      await page.locator('.course-design-category-menu > summary').click();
-      await page.getByRole("button", { name: "Perfis", exact: true }).click();
+      await page.getByLabel("Escolher grupo de ajustes").selectOption({ label: "Perfis" });
       await expect(page.locator(".course-authoring-profiles")).toHaveAttribute("open", "");
       await page.getByRole("button", { name: "Criar perfil", exact: true }).click();
       const editor = page.locator("[data-course-profile-editor]");

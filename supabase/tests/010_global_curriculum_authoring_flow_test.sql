@@ -488,7 +488,8 @@ select throws_ok($test$
       "sourceLinks":[]
     }]'::jsonb,
     'test-dependency-order','4444444444444444444444444444444444444444444444444444444444444444'
-  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-forward","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb))
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-forward","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb),false,
+    '[{"studyUnitId":"unit-forward","didacticMicrosequenceId":"micro-forward","position":1}]'::jsonb)
 $test$,'23514',
   'Uma dependencia curricular precisa estar produzida ou integrar o mesmo lote.',
   'dependencia curricular precisa estar materializada antes do dependente');
@@ -502,19 +503,19 @@ insert into private.course_entities(
     '{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
       ||jsonb_build_object('appliedAt',(clock_timestamp()+interval '1 second')::text),
     '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"usedInstructionalAnalysisUnitIds":[],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000221"],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]}'::jsonb,
-    'gpt','gpt'),
+    'ai','ai'),
   ('91000000-0000-4000-8000-000000000201','study_unit','unit-forward',
     'microsequence','micro-forward',1,'{"title":"Consulta ao destino"}'::jsonb,
     '{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
       ||jsonb_build_object('appliedAt',(clock_timestamp()+interval '1 second')::text),
     '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":[],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000222"],"explanationApplications":[{"instructionalAnalysisUnitId":"91000000-0000-4000-8000-000000000231","developedForms":["mechanism"],"notApplicable":[]}],"practiceApplications":[],"componentRefs":[]}'::jsonb,
-    'gpt','gpt'),
+    'ai','ai'),
   ('91000000-0000-4000-8000-000000000201','study_unit','unit-use',
     'microsequence','micro-forward',2,'{"title":"Uso da associacao"}'::jsonb,
     '{"contract":"aralearn.study-unit-design-snapshot.v2","parameterCatalogVersion":"1.2.0","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"]}'::jsonb
       ||jsonb_build_object('appliedAt',(clock_timestamp()+interval '1 second')::text),
-    '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"curriculumScopeItemIds":["91000000-0000-4000-8000-000000000222"],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]}'::jsonb,
-    'gpt','gpt');
+    '{"contract":"aralearn.study-unit-design-application.v1","mode":"expository","introducedInstructionalAnalysisUnitIds":[],"usedInstructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"curriculumScopeItemIds":[],"explanationApplications":[],"practiceApplications":[],"componentRefs":[]}'::jsonb,
+    'ai','ai');
 
 select throws_ok($test$
   select public.materialize_course_authoring_part_for_actor_v2(
@@ -531,9 +532,10 @@ select throws_ok($test$
       "sourceLinks":[]
     }]'::jsonb,
     'test-complete-coverage','5555555555555555555555555555555555555555555555555555555555555555'
-  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-forward","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb))
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-forward","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb),true,
+    '[{"studyUnitId":"unit-forward","didacticMicrosequenceId":"micro-forward","position":1},{"studyUnitId":"unit-use","didacticMicrosequenceId":"micro-forward","position":2}]'::jsonb)
 $test$,'23514',
-  'Todo item de escopo atribuido precisa ser desenvolvido na Microssequencia.',
+  'A conclusão exige aplicações e cobertura do conjunto acumulado.',
   'cada item atribuido precisa ter cobertura efetiva no conteudo do recorte');
 
 select throws_ok($test$
@@ -551,7 +553,8 @@ select throws_ok($test$
       "sourceLinks":[]
     }]'::jsonb,
     'test-final-repertoire','6666666666666666666666666666666666666666666666666666666666666666'
-  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-learn","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb))
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-learn","instructionalAnalysisUnitIds":["91000000-0000-4000-8000-000000000231"],"evidenceRequirementIds":[]}]'::jsonb),false,
+    '[{"studyUnitId":"unit-learn","didacticMicrosequenceId":"micro-learn","position":1}]'::jsonb)
 $test$,'23514',
   'Uma ideia foi usada antes de ser ensinada ou introduzida novamente.',
   'estado final combinado preserva a introducao exigida por unidades posteriores');
@@ -764,7 +767,8 @@ select throws_ok($test$
       'unit-calibrated','91000000-0000-4000-8000-000000000321','automatic'
     ),
     'test-fixed-unit-calibration','7777777777777777777777777777777777777777777777777777777777777777'
-  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb))
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb),true,
+    '[{"studyUnitId":"unit-calibrated","didacticMicrosequenceId":"micro-calibration","position":1}]'::jsonb)
 $test$,'23514',
   'Calibracao automatica da unidade conflita com decisao fixada.',
   'calibracao da unidade nao sobrepoe uma decisao explicita preexistente');
@@ -795,7 +799,8 @@ select lives_ok($test$
       'unit-calibrated','91000000-0000-4000-8000-000000000321','automatic'
     ),
     'test-seal-unit-calibration','8888888888888888888888888888888888888888888888888888888888888888'
-  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb))
+  , pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb),true,
+    '[{"studyUnitId":"unit-calibrated","didacticMicrosequenceId":"micro-calibration","position":1}]'::jsonb)
 $test$,'materializacao sela calibracoes automaticas proprias da unidade nova');
 
 select is(

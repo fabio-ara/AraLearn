@@ -9,7 +9,7 @@ export const COURSE_ACTION_TASK_GROUPS = Object.freeze({
   desenho_instrucional: Object.freeze(["consultar_repertorio_instrucional", "manter_unidade_analise", "manter_requisito_evidencia", "vincular_repertorio_instrucional", "registrar_aplicacoes_instrucionais", "aplicar_configuracao_instrucional", "ajustar_orientacao", "ajustar_componentes"]),
   preferencias_de_autoria: Object.freeze(["consultar_preferencias_autoria", "salvar_preferencias_autoria"]),
   perfis_de_autoria: Object.freeze(["consultar_perfis", "salvar_perfil", "excluir_perfil", "prever_aplicacao_perfil", "aplicar_perfil"]),
-  observacoes_autorais: Object.freeze(["consultar_observacoes", "registrar_observacao", "editar_observacao"])
+  observacoes_autorais: Object.freeze(["consultar_observacoes", "registrar_observacao", "editar_observacao", "registrar_inspecao", "decidir_observacao"])
 });
 const GROUP_DETAILS = Object.freeze({
   acesso_do_curso: ["Acesso do curso", "Consulte ou altere visibilidade, pessoas, arquivos e política de revisão do curso. Escolha a tarefa e envie seus argumentos correspondentes."],
@@ -17,7 +17,7 @@ const GROUP_DETAILS = Object.freeze({
   desenho_instrucional: ["Desenho instrucional", "Consulte e mantenha repertório, vínculos, aplicações, configuração, orientação e componentes no recorte escolhido. Envie os argumentos da tarefa indicada."],
   preferencias_de_autoria: ["Preferências de autoria", "Consulte ou salve as preferências pessoais de processo. Elas não alteram automaticamente o conteúdo ou as decisões de um curso."],
   perfis_de_autoria: ["Perfis de autoria", "Consulte, salve ou exclua perfis e prepare ou aplique um perfil ao curso. Escolha a tarefa e seus argumentos específicos."],
-  observacoes_autorais: ["Observações autorais", "Consulte, acrescente ou edite observações identificadas e versionadas. Leitura e edição não consomem a fila nem declaram revisão humana."]
+  observacoes_autorais: ["Observações autorais", "Consulte observações, administre alvos, registre inspeção da base lida e execute aprovação ou cancelamento expressos. Correção salva e confirmação de persistência não aprovam observações."]
 });
 const GROUP_BY_TASK = new Map(Object.entries(COURSE_ACTION_TASK_GROUPS).flatMap(([group, names]) => names.map(name => [name, group])));
 if (GROUP_BY_TASK.size !== Object.values(COURSE_ACTION_TASK_GROUPS).flat().length) throw new TypeError("Uma tarefa foi repetida nos grupos de Actions.");

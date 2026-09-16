@@ -35,6 +35,7 @@ test("referência acadêmica abre PDF sob demanda e vínculo geral não inventa 
   assert.match(html, /Editora sintética/u);
   assert.match(html, /role="img" aria-label="Documento PDF"/u);
   assert.match(html, /Referência do conteúdo; sem trecho específico vinculado/u);
+  assert.doesNotMatch(html, /study-citation-info|Sustentação conceitual|Escopo do conteúdo/u);
   assert.doesNotMatch(html, /data-action="return-citation"|<h3>Relações|Abrir PDF 1|>Trecho 1</u);
   assert.deepEqual(studyCitationMarkers(content, { citations: [source] }), []);
   assert.match(html, /href="https:\/\/example.test\/fonte"[^>]*aria-label="Endereço de Relações entre interfaces"/u);

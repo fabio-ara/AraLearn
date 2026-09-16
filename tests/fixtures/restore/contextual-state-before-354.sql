@@ -142,6 +142,11 @@ end $current_probe$;
 select jsonb_build_object('contract','aralearn.contextual-restore-fixture-probe.v1',
   'schemaRevision',public.get_aralearn_runtime_manifest()->>'schemaRevision','completeObjects',6,'sources',2,'sourceAttributions',4,
   'pendingObservations',3,'annotationSetVersion',11,'observationReceipts',11,'historicalReviewExercised',false,'disposition','rollback');
+\if :{?current_authoring_probe}
+\if :current_authoring_probe
+\ir current-authoring-retained-bases.sql
+\endif
+\endif
 rollback;
 \else
 -- Declaração exclusivamente sintética pelo RPC protegido anterior, depois

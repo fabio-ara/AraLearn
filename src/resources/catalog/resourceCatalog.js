@@ -132,6 +132,7 @@ function publicProfile(manifest) {
     version: manifest.version,
     label: manifest.label,
     purpose: manifest.purpose,
+    authoringEligibility: manifest.authoringEligibility ?? "current",
     slots: Object.freeze([...manifest.slots]),
     ...(manifest.tool ? { tool: Object.freeze({ ...manifest.tool }) } : {}),
     primaryFamilyId: taxonomy.primaryFamilyId,
@@ -302,6 +303,7 @@ function rankedCandidates(profiles, rawIntent, maximumLimit = 32) {
   validateLimit(intent.limit, SEARCH_LIMIT, maximumLimit);
   const slot = effectiveSlot(intent);
   const candidates = profiles
+    .filter((profile) => profile.authoringEligibility !== "legacy_only")
     .filter((profile) => !slot || profile.slots.includes(slot))
     .map((profile) => searchCandidate(profile, intent))
     .sort((left, right) => (

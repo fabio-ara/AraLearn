@@ -14,11 +14,22 @@ export function mountMicrosequenceReviewFixture(root) {
     store: { async getCache(key) { return structuredClone(cache.get(key) || null); }, async putCache(key, value) {
       if (value === null) cache.delete(key); else cache.set(key, structuredClone(value));
     } },
+    async getCourseObservationComparison(_courseId, request) {
+      const item = probe.observations.find(value => value.annotationId === request.annotationId);
+      if (item.annotationVersion !== request.expectedAnnotationVersion || item.targetSetVersion !== request.expectedTargetSetVersion) throw Object.assign(new Error('A observação mudou.'), {status: 409});
+      const target = item.targets.find(value => value.kind === request.targetKind && value.id === request.targetId);
+      return {contract: 'aralearn.course-observation-comparison.v1', courseId, courseRevision: probe.revision, annotationId: item.annotationId,
+        annotationVersion: item.annotationVersion, targetSetVersion: item.targetSetVersion, target: {kind: target.kind, id: target.id}, basis: structuredClone(target.basis), current: structuredClone(target.current)};
+    },
     async loadCourseAnchoredAnnotations(_courseId, options) {
       const items = structuredClone(probe.observations.filter(item => options.query.mode === "detail"
         ? item.annotationId === options.query.annotationId
-        : item.target.kind === options.query.hierarchy.target.kind && item.target.id === options.query.hierarchy.target.id && ["open", "considered"].includes(item.state)));
+        : (!options.query.hierarchy || item.target.kind === options.query.hierarchy.target.kind && item.target.id === options.query.hierarchy.target.id) && ["open", "considered"].includes(item.state)));
       if (probe.delayObservationRead) await new Promise(resolve => { probe.finishObservationRead = resolve; });
+      for (const item of items) for (const target of item.targets || []) {
+        if (target.basis) target.basis = {hash: target.basis.hash, deferred: true};
+        if (target.current) target.current = {hash: target.current.hash, deferred: true};
+      }
       return { contract: "aralearn.course-anchored-annotation-page.v1", courseId, courseRevision: probe.revision,
         annotationSetVersion: probe.observations.length, query: options.query,
         summary: { matchingTotal: items.length, byOrigin: { author: items.length }, byChannel: { authoring_interface: items.length },
@@ -39,14 +50,31 @@ export function mountMicrosequenceReviewFixture(root) {
         provenance: { origin: "author", channel: "authoring_interface" }, contributor: { kind: "self", role: "author", ref: "self", label: "Você" },
         target: { kind: target.kind, id: target.id, observedPath: path, currentAvailable: true, currentPath: path,
           deepLink: `#/authoring/courses/${courseId}?section=content` },
-        observedRevision: { certainty: "known", courseRevision: probe.revision, targetVersion: 2 }, rawText: command.rawText,
-        category: command.category, briefSummary: command.briefSummary, state: "open", ownerResponse: null,
+        observedRevision: { certainty: "known", courseRevision: probe.revision, targetVersion: 2 }, rawText: command.rawText ?? previous?.rawText,
+        category: command.category ?? previous?.category ?? null, briefSummary: command.briefSummary ?? previous?.briefSummary ?? null, state: "open", ownerResponse: null,
         subjectClassification: { status: "unclassified", automatic: classification, effective: classification, correctedAt: null },
         timestamps: { capturedAt: timestamp, createdAt: timestamp, updatedAt: timestamp, firstConsideredAt: null,
           respondedAt: null, resolvedAt: null, withdrawnAt: null },
         capabilities: { canRevise: true, canWithdraw: false, canConsider: true, canRespond: true,
           canResolve: false, canReopen: false, canCorrectSubjects: true },
         deepLink: `#/authoring/courses/${courseId}?section=review&annotationId=${command.annotationId}` };
+      item.targetSetVersion = previous?.targetSetVersion || 1;
+      item.targets = structuredClone(previous?.targets || (command.targets || [target]).map(value => {
+        const content = value.kind === 'microsequence_explanation' ? { text: probe.explanationText } : { title: 'Interface local' };
+        const snapshot = { hash: probe.basis, content, sourceLinks: [], sources: [] };
+        return { ...value, state: 'pending', path: [{ kind: value.kind, id: value.id, label: value.kind === 'microsequence_explanation' ? 'Interfaces' : 'Interface local', version: 2 }], basis: snapshot, current: structuredClone(snapshot) };
+      }));
+      if (command.type === 'decide_anchored_annotation') {
+        for (const selected of command.targets) {
+          const incidence = item.targets.find(value => value.kind === selected.kind && value.id === selected.id);
+          if (selected.expectedBasisHash !== incidence.current.hash) throw Object.assign(new Error('A base mudou.'), { status: 409 });
+          incidence.state = command.decision === 'approve' ? 'approved' : 'cancelled'; incidence.basis = null; incidence.current = null;
+        }
+        if (item.targets.every(value => value.state !== 'pending')) {
+          item.state = 'resolved'; item.rawText = null; item.timestamps.resolvedAt = timestamp;
+          for (const key of Object.keys(item.capabilities)) item.capabilities[key] = false;
+        }
+      }
       if (previous) probe.observations.splice(probe.observations.indexOf(previous), 1, item); else probe.observations.push(item);
       const receipt = { contract: "aralearn.course-anchored-annotation-change.v1", courseId, courseRevision: probe.revision,
         annotationSetVersion: probe.observations.length, requestId: request.requestId, changed: true, idempotent: false, annotation: item };

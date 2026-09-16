@@ -45,16 +45,17 @@ async function verifySheetGeometry(page, dialog, name, info, { groups = false } 
     await page.screenshot({ path: info.outputPath(`${name}-${width}-${mode}.png`), fullPage: true });
     if (groups) {
       const chooser = dialog.getByLabel("Escolher grupo de ajustes");
-      await chooser.press("Enter");
-      const lastGroup = dialog.getByRole("button", { name: "Perfis", exact: true });
-      await lastGroup.scrollIntoViewIfNeeded();
-      expect(await lastGroup.evaluate(node => {
+      const before = await dialog.boundingBox();
+      const selected = await chooser.inputValue();
+      await chooser.selectOption({ label: "Perfis" });
+      expect(await dialog.boundingBox()).toEqual(before);
+      expect(await chooser.evaluate(node => {
         const box = node.getBoundingClientRect();
         return node.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
       })).toBe(true);
       await page.screenshot({ path: info.outputPath(`${name}-groups-${width}-${mode}.png`), fullPage: true });
-      await chooser.press("Enter");
-      await expect(lastGroup).toBeHidden();
+      await chooser.selectOption(selected);
+      expect(await dialog.boundingBox()).toEqual(before);
     }
   }
   expect(colors[0]).not.toBe(colors[1]);
@@ -99,6 +100,11 @@ test.describe("folhas contextuais com curso local real", () => {
           bibliographic: createEmptyCourseSourceBibliographicMetadata(), url: null, editionOrVersion: null,
           origin: "author_provided", availability: "unknown", verificationStatus: "unverified", studyVisibility: "hidden"
         } } });
+      await client.mutateCourseSources({ courseId, expectedRevision: await revision(), requestId: crypto.randomUUID(), sourceCommand: {
+        type: "save_anchor", anchorId: "passagem-contextual-sintetica", sourceId: "fonte-contextual-sintetica",
+        sourceRevision: 1, expectedAnchorRevision: 0, selector: { kind: "page_range", startPage: 1, endPage: 1 },
+        contentHash: null, humanLocator: "Seção sintética de consulta", verificationExcerpt: null
+      } });
       context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: "block", permissions: ["local-network-access"] });
       const page = await context.newPage(); page.setDefaultTimeout(15000);
       const errors = []; page.on("pageerror", error => errors.push(error.message));
@@ -130,6 +136,7 @@ test.describe("folhas contextuais com curso local real", () => {
       const sourceDialog = page.getByRole("dialog");
       await expect(sourceDialog).toBeVisible();
       await expect(page.locator(".course-authoring-layout")).toHaveAttribute("inert", "");
+      await sourceDialog.getByRole("button", { name: "Adicionar fonte", exact: true }).click();
       await sourceDialog.getByRole("button", { name: "Vincular fonte: Documento de consulta sintético", exact: true }).click();
       const citedText = units[0].content[0].data.text;
       const selection = sourceDialog.getByRole("textbox", { name: "Selecione o trecho", exact: true });
@@ -141,6 +148,7 @@ test.describe("folhas contextuais com curso local real", () => {
       expect(await selection.evaluate(node => node.value.slice(node.selectionStart, node.selectionEnd)))
         .toBe(citedText);
       await sourceDialog.getByRole("button", { name: "Vincular trecho selecionado", exact: true }).click();
+      await sourceDialog.getByLabel(/Seção sintética de consulta/u).check();
       await expect(sourceDialog.getByText("Trecho localizado", { exact: true })).toBeVisible();
       await expect(sourceDialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeEnabled();
       await verifySheetGeometry(page, sourceDialog, "sources-context", info);
@@ -183,26 +191,25 @@ test.describe("folhas contextuais com curso local real", () => {
       await expect(dialog).toBeVisible();
       const chooser = dialog.getByLabel("Escolher grupo de ajustes");
       const categoryMenu = dialog.locator('.course-design-category-menu');
-      const editorialGroup = dialog.getByRole("button", { name: "Leitura e estilo", exact: true });
-      await chooser.click();
+      await chooser.selectOption({ label: "Leitura e estilo" });
+      await chooser.focus();
+      const sheetBeforeResponses = await dialog.boundingBox();
       expect(await profilesResponse.ready).toBe(200);
       expect(await appliedResponse.ready).toBe(200);
       // As respostas são locais reais; somente a entrega ao navegador é
-      // controlada para exercitar a atualização com o grupo já aberto.
+      // controlada para exercitar a atualização com o grupo já selecionado.
       const menuBeforeProfiles = await categoryMenu.elementHandle();
       profilesResponse.release();
       await expect.poll(() => menuBeforeProfiles.evaluate(node => node.isConnected)).toBe(false);
-      await expect(categoryMenu).toHaveJSProperty('open', true);
+      await expect(chooser).toHaveValue('editorial');
       await expect(chooser).toBeFocused();
-      await editorialGroup.focus();
       const menuBeforeApplied = await categoryMenu.elementHandle();
       appliedResponse.release();
       await expect.poll(() => menuBeforeApplied.evaluate(node => node.isConnected)).toBe(false);
-      await expect(categoryMenu).toHaveJSProperty('open', true);
-      await expect(editorialGroup).toBeFocused();
+      await expect(chooser).toHaveValue('editorial');
+      await expect(chooser).toBeFocused();
+      expect(await dialog.boundingBox()).toEqual(sheetBeforeResponses);
       await page.screenshot({ path: info.outputPath('parameters-late-responses-menu-open.png'), fullPage: true });
-      await editorialGroup.click();
-      await expect(categoryMenu).toHaveJSProperty('open', false);
       await expect(dialog.getByRole("button", { name: "Ajustar Extensão das unidades", exact: true })).toBeVisible();
       await verifySheetGeometry(page, dialog, "parameters-context", info, { groups: true });
       await dialog.getByRole("button", { name: "Ajustar Extensão das unidades", exact: true }).click();

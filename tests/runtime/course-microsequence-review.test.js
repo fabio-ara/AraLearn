@@ -43,6 +43,21 @@ test("snapshot cerca o recorte completo remoto com a mesma base e recusa mistura
   await assert.rejects(fixture.session().load(), /edição|revisão/u);
 });
 
+test("inspeção por IA acompanha a revisão sem impedir edição humana pendente", async () => {
+  const fixture = setup();
+  fixture.controller.getContentInspection = async () => ({ courseRevision: 7, inspection: { state: "pending", basisHash: BASIS } });
+  const session = fixture.session();
+  const snapshot = await session.load();
+  assert.equal(snapshot.aiInspection.state, "pending");
+  await session.saveExplanation({ ...snapshot.microsequence.explanation, title: "Edição humana vigente" });
+  assert.equal(fixture.calls.filter(call => call[0] === "save").length, 1);
+  fixture.setRevision(7);
+  fixture.controller.getContentInspection = async () => { throw new Error("Failed to fetch"); };
+  const unavailable = await fixture.session().load();
+  assert.equal(unavailable.aiInspection, null);
+  assert.equal(unavailable.inspectionFailure, "Failed to fetch");
+});
+
 test("revisão exige decisão explícita e base do objeto visto, sem escrever após concorrência", async () => {
   const fixture = setup(); const session = fixture.session(); await session.load();
   await assert.rejects(session.setReviewed(), /explicitamente/u);

@@ -118,9 +118,9 @@ function objectKeys(value) {
   return Object.entries(value).flatMap(([key, entry]) => [key, ...objectKeys(entry)]);
 }
 
-test("Actions conserva 54 tarefas em 30 operações e retira as rotas diretas substituídas", async () => {
+test("Actions conserva 56 tarefas em 30 operações e retira as rotas diretas substituídas", async () => {
   const operations = new Set(COURSE_HUMAN_TASKS.map(task => encodeCourseActionTaskRequest(task.name, {}).operationName));
-  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  assert.equal(COURSE_HUMAN_TASKS.length, 56);
   assert.equal(operations.size, 30);
   let authenticated = 0;
   const handler = createHandler({ async resolveActionPrincipal() { authenticated += 1; throw new Error("Não deve autenticar rota inexistente"); } });
@@ -273,12 +273,14 @@ test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técni
   const payload = await response.json();
   assert.match(payload.result, /Retomei o curso “Redes para iniciantes”/u);
   assert.match(payload.deepLink, /section=planning/u);
-  assert.equal(payload.nextDecision, null);
+  assert.equal(payload.nextDecision, "Confira o planejamento antes de continuar.");
   assert.equal(payload.context.preferenciasPessoais.foco, "full_cycle");
   assert.equal(payload.context.processoCorrente.cadencia, "part");
   assert.equal(typeof payload.context.referenciaProcesso, "string");
   assert.deepEqual(payload.context.observations.items, []);
-  assert.deepEqual(Object.keys(payload).sort(), ["context", "deepLink", "nextDecision", "result"]);
+  assert.deepEqual(Object.keys(payload).sort(), ["context", "deepLink", "links", "nextDecision", "result"]);
+  assert.equal(payload.links[0].url, payload.deepLink);
+  assert.equal(payload.links[0].relation, "planning");
   assert.doesNotMatch(JSON.stringify({
     result: payload.result,
     context: payload.context
@@ -653,6 +655,24 @@ test("Actions mantém recusa operacional da cópia em 403 sem pedir nova autenti
     assert.equal(response.headers.get("WWW-Authenticate"), status === 401 ? "Bearer" : null);
     assert.equal((await response.json()).error.code, code);
   }
+});
+
+test("Actions devolve todos os bloqueios previsíveis sem transportar conteúdo privado do erro", async () => {
+  const blockers = Array.from({ length: 24 }, (_, index) => ({ code: "human_reference_not_found",
+    message: `Vínculo persistido ausente ${index + 1}.`, unit: index + 1, microsequence: "DNS", rawSnapshot: "PRIVATE_SENTINEL" }));
+  const handler = createHandler({ async listCourses() {
+    throw new AuthoringApiError(422, "human_materialization_preflight_blocked", "Resolva os bloqueios antes de produzir.",
+      { preflight: { state: "blocked", referencia: null, completion: "complete", blockers,
+        reconciliations: [{ content: "PRIVATE_SENTINEL" }] } });
+  } });
+  const response = await handler(request("retomar_curso", { titulo: "Redes para iniciantes" }));
+  assert.equal(response.status, 422);
+  const payload = await response.json();
+  assert.equal(payload.error.details.preflight.blockers.length, 24);
+  assert.deepEqual(payload.error.details.preflight.blockers.at(-1), {
+    code: "human_reference_not_found", message: "Vínculo persistido ausente 24.", unit: 24, microsequence: "DNS" });
+  assert.match(payload.nextDecision, /preparar_materializacao/u);
+  assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL|rawSnapshot|reconciliations/u);
 });
 
 test("#305 Actions recusa 100.000 caracteres antes da autenticação remota e de qualquer escrita", async () => {

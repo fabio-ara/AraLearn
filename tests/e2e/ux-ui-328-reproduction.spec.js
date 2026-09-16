@@ -492,7 +492,7 @@ test("#331 detalhes e Parâmetros mantêm reflow e hierarquia com ampliação", 
   await card(page).locator("[data-inspection-open-parameters]").click();
   const geometry = await page.locator(".course-design-context-body").evaluate(node => ({
     overflow: node.scrollWidth - node.clientWidth,
-    groupWeight: getComputedStyle(node.querySelector(".course-design-category-menu > summary")).fontWeight,
+    groupWeight: getComputedStyle(node.querySelector(".course-design-category-menu")).fontWeight,
     itemWeight: getComputedStyle(node.querySelector(".course-design-parameter h3")).fontWeight,
     valueWeight: getComputedStyle(node.querySelector(".course-design-parameter > header > strong")).fontWeight,
     emptyFeedback: node.querySelector(".course-design-feedback").getBoundingClientRect().height

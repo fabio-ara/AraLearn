@@ -375,8 +375,8 @@ test("minipainel mostra função, evidência aplicada, origem, revisão e contag
   assert.match(root.innerHTML, /Texto explicado/u);
   assert.match(root.innerHTML, /Identificar a porta de saída/u);
   assert.match(root.innerHTML, /Revisão autoral desatualizada/u);
-  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>GPT<\/dd>/u);
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 3 pendentes"/u);
+  assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>IA<\/dd>/u);
+  assert.match(root.innerHTML, /aria-label="Observações autorais do curso, 3 pendentes"/u);
   assert.equal(annotationReads, 0); sequence.destroy();
 });
 
@@ -542,7 +542,7 @@ test("Unidade oferece parâmetros, fontes e observações imediatas e revisão n
     root.innerHTML,
     /<button type="button" data-inspection-open-parameters data-study-unit-id="unit-01" data-inspection-control-key="design:unit-01" aria-label="Parâmetros aplicáveis a Unidade 1" title="Parâmetros da unidade de estudo"><svg[\s\S]*?<\/svg><\/button>/u
   );
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, contagem ainda não disponível" title="Observações autorais pendentes"><svg/u);
+  assert.match(root.innerHTML, /aria-label="Observações autorais do curso, contagem ainda não disponível" title="Observações autorais pendentes"><svg/u);
   assert.match(root.innerHTML, /aria-label="Editar referências de Unidade 1" title="Editar referências"><svg/u);
   assert.match(root.innerHTML, /data-inspection-control-key="review:unit-01" aria-label="Revisar unidade" title="Revisar unidade"><svg/u);
   assert.doesNotMatch(root.innerHTML, /data-inspection-provider-assistance/u);
@@ -1142,6 +1142,43 @@ test("posição local removida rebasa no Curso; alvo explícito removido permane
   explicitSequence.destroy();
 });
 
+test("deep link de unidade movida ignora o escopo antigo persistido", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({
+    async loadAuthoringInspectionPosition() {
+      return { scope: { kind: "authoring_part", id: PART_ID }, studyUnitId: "unit-20",
+        offsetFromStickyTop: 18, courseRevision: REVISION - 1 };
+    }
+  });
+  const sequence = createCourseInspectionSequence({ root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION },
+    routeTarget: { kind: "study_unit", id: "unit-20" }, intendedRevision: REVISION - 1,
+    windowValue: new FakeWindow(), documentValue: { activeElement: null } });
+  assert.equal(await sequence.open(), true);
+  assert.equal(controller.calls[0].options.scope.kind, "course");
+  assert.equal(controller.calls[0].options.anchorStudyUnitId, "unit-20");
+  assert.match(root.innerHTML, /O conteúdo mudou desde este link/u);
+  assert.match(root.innerHTML, /data-inspection-study-unit="unit-20"/u);
+  sequence.destroy();
+});
+
+test("link explícito não substitui unidade ausente pelo primeiro cartão devolvido", async () => {
+  const root = new FakeRoot();
+  const controller = controllerFixture({ async loadAuthoringStudyUnits(courseId, options) {
+    return pageFor({ ...options, anchorStudyUnitId: null });
+  } });
+  const sequence = createCourseInspectionSequence({ root, controller,
+    course: { courseId: COURSE_ID, revision: REVISION }, routeTarget: { kind: "study_unit", id: "unit-99" },
+    windowValue: new FakeWindow(), documentValue: { activeElement: null } });
+  assert.equal(await sequence.open(), false);
+  assert.match(root.innerHTML, /Ponto não encontrado/u);
+  assert.doesNotMatch(root.innerHTML, /data-inspection-study-unit="unit-01"/u);
+  assert.deepEqual(inspectionRequestFromTarget({ kind: "microsequence_explanation", id: "micro-a" }), {
+    scope: { kind: "didactic_microsequence", id: "micro-a" }, anchorStudyUnitId: null
+  });
+  sequence.destroy();
+});
+
 test("revisão nova mantém deep link removido como Ponto não encontrado", async () => {
   const root = new FakeRoot();
   const controller = controllerFixture({
@@ -1556,7 +1593,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(root.innerHTML, /<\/header><div class="course-inspection-item-actions"/u);
   assert.match(root.innerHTML, /class="course-inspection-item-menu"/u);
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, contagem ainda não disponível"/u);
+  assert.match(root.innerHTML, /aria-label="Observações autorais do curso, contagem ainda não disponível"/u);
   assert.match(root.innerHTML, /aria-label="Visualizar"/u);
   assert.doesNotMatch(root.innerHTML.match(/<nav class="course-inspection-mode-actions"[\s\S]*?<\/nav>/u)?.[0], /<span>Visualizar<\/span>/u);
   assert.match(root.innerHTML, /data-inspection-view-action="toggle-multiple"[^>]*aria-pressed="false"/u);
@@ -1572,13 +1609,13 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
       }
     }
   });
-  assert.match(root.innerHTML, /Observações da unidade/u);
+  assert.match(root.innerHTML, /Central de observações autorais/u);
   assert.match(root.innerHTML, /data-observation-composer/u);
   assert.doesNotMatch(root.innerHTML, /Nova observação/u);
   assert.doesNotMatch(root.innerHTML, /Observações · 0/u);
   assert.equal(annotationCalls.length, 1);
   assert.equal(annotationCalls[0].options.limit, 24);
-  assert.equal(annotationCalls[0].options.query.mode, "target");
+  assert.equal(annotationCalls[0].options.query.mode, "inbox");
   assert.deepEqual(annotationCalls[0].options.query.states, ["open", "considered"]);
   assert.deepEqual(annotationCalls[0].options.query.origins, ["author"]);
 
@@ -1594,7 +1631,7 @@ test("Inspeção compõe no alvo sem N+1 e carrega a lista somente quando solici
   sequence.destroy();
 });
 
-test("seleção temporária registra Observação em lote por chamadas individuais e permite repetir", async () => {
+test("seleção registra uma observação multialvo e retoma a mesma tentativa sem duplicar", async () => {
   const root = new FakeRoot();
   const requests = [];
   let failedSecondTarget = false;
@@ -1607,7 +1644,7 @@ test("seleção temporária registra Observação em lote por chamadas individua
       },
       async mutateCourseAnchoredAnnotations(input) {
         requests.push(structuredClone(input));
-        if (input.command.target.id === "unit-02" && !failedSecondTarget) {
+        if (!failedSecondTarget) {
           failedSecondTarget = true;
           const error = new Error("A conexão caiu depois do envio.");
           error.code = "network_error";
@@ -1670,13 +1707,14 @@ test("seleção temporária registra Observação em lote por chamadas individua
     preventDefault() {},
     target: { matches(selector) { return selector === "[data-observation-composer]"; } }
   });
-  for (let attempt = 0; attempt < 8 && requests.length < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 8 && requests.length < 1; attempt += 1) {
     await new Promise((resolve) => setImmediate(resolve));
   }
   await new Promise((resolve) => setImmediate(resolve));
-  assert.deepEqual(requests.map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
-  assert.match(root.innerHTML, /1 de 2 Observações foram registradas/iu);
-  const failedRequestId = requests[1].requestId;
+  assert.equal(requests.length, 1);
+  assert.deepEqual(requests[0].command.targets, [{ kind: "study_unit", id: "unit-01" }, { kind: "study_unit", id: "unit-02" }]);
+  assert.match(root.innerHTML, /conexão caiu|concluir|enviado/iu);
+  const failedRequestId = requests[0].requestId;
   assert.equal(await clickSelection("clear"), false, "limpar não descarta um envio parcial");
   assert.equal(await clickSelection("toggle-unit", "unit-02"), false);
   assert.match(root.innerHTML, /2 unidades selecionadas/u);
@@ -1685,12 +1723,12 @@ test("seleção temporária registra Observação em lote por chamadas individua
     preventDefault() {},
     target: { matches(selector) { return selector === "[data-observation-composer]"; } }
   });
-  for (let attempt = 0; attempt < 8 && requests.length < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 8 && requests.length < 2; attempt += 1) {
     await new Promise((resolve) => setImmediate(resolve));
   }
   await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(requests[2].command.target.id, "unit-02");
-  assert.equal(requests[2].requestId, failedRequestId, "retry precisa reutilizar a chamada individual incerta");
+  assert.equal(requests[1].command.target.id, "unit-01");
+  assert.equal(requests[1].requestId, failedRequestId, "retry precisa reutilizar a observação multialvo incerta");
   assert.match(root.innerHTML, /Observação registrada nas 2 unidades selecionadas/iu);
   assert.equal(requests.some((request) => Object.hasOwn(request, "batchId")), false);
 
@@ -1705,11 +1743,12 @@ test("seleção temporária registra Observação em lote por chamadas individua
     preventDefault() {},
     target: { matches(selector) { return selector === "[data-observation-composer]"; } }
   });
-  for (let attempt = 0; attempt < 8 && requests.length < 5; attempt += 1) {
+  for (let attempt = 0; attempt < 8 && requests.length < 3; attempt += 1) {
     await new Promise((resolve) => setImmediate(resolve));
   }
-  assert.deepEqual(requests.slice(3).map(({ command }) => command.target.id), ["unit-01", "unit-02"]);
-  assert.notEqual(requests[3].command.annotationId, requests[0].command.annotationId);
+  assert.equal(requests.length, 3);
+  assert.deepEqual(requests[2].command.targets, requests[0].command.targets);
+  assert.notEqual(requests[2].command.annotationId, requests[0].command.annotationId);
   sequence.destroy();
 });
 
@@ -1903,7 +1942,7 @@ test("edição manual atualiza revisão e autoria relidas sem recarregar e não 
     });
     await sequence.open();
     assert.match(root.innerHTML, /Revisão autoral declarada/u);
-    assert.match(root.innerHTML, /<dt>Última intervenção<\/dt><dd>GPT<\/dd>/u);
+    assert.match(root.innerHTML, /<dt>Última intervenção<\/dt><dd>IA<\/dd>/u);
     await editInspectionTitle(root, "unit-01", "Título revisado manualmente");
     assert.equal(await clickInspection(root, "[data-inspection-manual-action]", { inspectionManualAction: "save" }), true);
     assert.match(root.innerHTML, /Título revisado manualmente/u);
@@ -1912,7 +1951,7 @@ test("edição manual atualiza revisão e autoria relidas sem recarregar e não 
     assert.match(root.innerHTML, reconciled
       ? /<dt>Última intervenção<\/dt><dd>Autoria humana<\/dd>/u
       : /<dt>Última intervenção<\/dt><dd>Origem não informada<\/dd>/u);
-    assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>GPT<\/dd>/u);
+    assert.match(root.innerHTML, /<dt>Origem<\/dt><dd>IA<\/dd>/u);
     assert.match(root.innerHTML, /Configuração ainda não consultada/u);
     assert.doesNotMatch(root.innerHTML, /Ideias introduzidas aqui/u);
     assert.equal(reads, 1);
@@ -2176,12 +2215,12 @@ test("Inspeção agrega sete páginas byte-limited antes de renderizar o context
   });
 
   assert.deepEqual(cursors, [null, "cursor1", "cursor2", "cursor3", "cursor4", "cursor5", "cursor6"]);
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 7 pendentes"/u);
+  assert.match(root.innerHTML, /aria-label="Observações autorais do curso, 7 pendentes"/u);
   assert.match(root.innerHTML, /Observação da página 7\./u);
   sequence.destroy();
 });
 
-test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", async () => {
+test("Inspeção lê todas as páginas da central antes de permitir decisão em lote", async () => {
   const root = new FakeRoot();
   const cursors = [];
   const controller = controllerFixture({
@@ -2234,13 +2273,13 @@ test("Inspeção limita a amostra owner em 128 sem confundir quota por ator", as
     }
   });
 
-  assert.equal(cursors.length, 128);
-  assert.equal(cursors.at(-1), "cursor127");
-  assert.match(root.innerHTML, /aria-label="Observações de Unidade 1, 129 pendentes"/u);
-  assert.match(root.innerHTML, /Exibindo 128 de 129 observações correspondentes; 129 ativas/u);
-  assert.match(root.innerHTML, /Abrir todas na área Observações/u);
+  assert.equal(cursors.length, 129);
+  assert.equal(cursors.at(-1), "cursor128");
+  assert.match(root.innerHTML, /aria-label="Observações autorais do curso, 129 pendentes"/u);
+  assert.doesNotMatch(root.innerHTML, /Exibindo 128 de 129/u);
+  assert.doesNotMatch(root.innerHTML, /Abrir todas na área Observações/u);
   assert.match(root.innerHTML, /section=review/u);
-  assert.match(root.innerHTML, /Observação da página 128\./u);
+  assert.match(root.innerHTML, /Observação da página 129\./u);
   assert.doesNotMatch(root.innerHTML, /Estudante B/u);
   sequence.destroy();
 });

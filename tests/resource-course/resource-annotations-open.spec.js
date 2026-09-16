@@ -50,7 +50,7 @@ for (const theme of ["light", "dark"]) {
     expect(errors).toEqual([]);
   });
 
-  test(`resposta aberta real aceita produção própria na matriz em ${theme}`, async ({ page }, testInfo) => {
+  test(`resposta aberta legada aceita produção própria na matriz em ${theme}`, async ({ page }, testInfo) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await openMatrix(page, theme);

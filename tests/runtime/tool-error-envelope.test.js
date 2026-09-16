@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
-import { toolErrorData } from
+import { toolErrorData, projectHumanMaterializationPreflight } from
   "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 
 const TARGET_COURSE_ID = "10000000-0000-4000-8000-000000000001";
@@ -13,6 +13,23 @@ const SENTINELS = Object.freeze([
   "Authorization: Bearer token-that-must-not-leak",
   "raw personal payload from an observation"
 ]);
+
+test("preflight público preserva todas as causas e exclui bastidor arbitrário", () => {
+  const blockers = Array.from({ length: 24 }, (_, index) => ({ code: "human_reference_not_found",
+    message: "A ideia do repertório não foi localizada.", unit: index + 1, rawPayload: SENTINELS[3] }));
+  const projected = projectHumanMaterializationPreflight(new AuthoringApiError(422,
+    "human_materialization_preflight_blocked", "Resolva os bloqueios.", { secret: SENTINELS[1], preflight: {
+      state: "blocked", referencia: null, completion: "complete", blockers,
+      snapshot: SENTINELS[0], reconciliations: [{ private: SENTINELS[2] }]
+    } }));
+  assert.equal(projected.blockers.length, 24, "o cliente recebe o conjunto agregado, sem truncar em vinte causas");
+  assert.equal(projected.blockers[23].unit, 24);
+  assert.deepEqual(Object.keys(projected).sort(), ["blockers", "completion", "referencia", "state"]);
+  for (const sentinel of SENTINELS) assert.equal(JSON.stringify(projected).includes(sentinel), false);
+  assert.equal(projectHumanMaterializationPreflight(new AuthoringApiError(500, "internal_error", "Falha", {
+    preflight: projected
+  })), undefined);
+});
 
 test("envelope de erro expõe somente diagnóstico estrutural permitido", () => {
   const error = new AuthoringApiError(

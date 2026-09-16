@@ -4,7 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import vm from "node:vm";
-import { pendingUpgradeMigrations, normalizeApplicationSchemaDump, contextualUpgradeStages, assertContextualPreservation } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
+import { pendingUpgradeMigrations, normalizeApplicationSchemaDump, contextualUpgradeStages, assertContextualPreservation,
+  assertCurrentAuthoringRestoration } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const script = fs.readFileSync(path.join(
@@ -323,6 +324,7 @@ function contextualState() {
     }
   }
   const after = structuredClone(state);
+  after.observations.forEach(observation => { observation.target_set_version = 1; });
   after.reviews[0].value = { legacyMicrosequenceReview: structuredClone(state.reviews[0].value) };
   return { before: state, after };
 }
@@ -353,4 +355,33 @@ test("comparação contextual aceita só a transformação explícita da revisã
   const empty = structuredClone(before);
   empty.observations = [];
   assert.throws(() => assertContextualPreservation(empty, empty), assert.AssertionError);
+});
+
+test("backup atual detecta perda de bases compartilhadas, incidências, inspeção, intervenções e PDF retido", () => {
+  const file = { bucket: "course-source-pdfs", path: "synthetic.pdf", hash: "e".repeat(64) };
+  const before = {
+    entities: [{ entity_id: "unit-context-a", editorial_interventions: { human: 1, ai: 1 },
+      ai_inspection: { report: { outcome: "consistent", summary: "Parecer conservado.", findings: [] } } }],
+    bases: ["study_unit", "microsequence_explanation"].map((kind, index) => ({ target_kind: kind,
+      target_id: `target-${index}`, basis_hash: String(index).repeat(64), snapshot: { content: { title: "Base observada" }, files: [file] } })),
+    targets: [{ target_kind: "study_unit", target_id: "target-0", basis_hash: "0".repeat(64), state: "pending" },
+      { target_kind: "study_unit", target_id: "target-0", basis_hash: null, state: "cancelled", decision: { reason: "Decisão específica" } },
+      ...Array.from({ length: 2 }, () => ({ target_kind: "microsequence_explanation", target_id: "target-1", basis_hash: "1".repeat(64), state: "pending" }))],
+    files: [{ ...file, retained: true, current: false }], attachments: [{ status: "removed", storage_path: file.path }],
+    observations: [{ raw_text: "Texto humano literal" }], receipts: [{ request_id: "current-inspection" }]
+  };
+  assert.doesNotThrow(() => assertCurrentAuthoringRestoration(before, structuredClone(before)));
+  for (const mutate of [
+    state => { state.bases[0].snapshot.content.title = "Base substituída"; },
+    state => { state.targets[1].decision.reason = "Decisão substituída"; },
+    state => { state.entities[0].ai_inspection = null; },
+    state => { state.entities[0].editorial_interventions.human = 0; },
+    state => { state.files[0].retained = false; },
+    state => { state.attachments = []; },
+    state => { state.observations[0].raw_text = null; },
+    state => { state.receipts = []; }
+  ]) {
+    const after = structuredClone(before); mutate(after);
+    assert.throws(() => assertCurrentAuthoringRestoration(before, after), assert.AssertionError);
+  }
 });

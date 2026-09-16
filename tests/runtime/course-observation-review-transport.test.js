@@ -23,7 +23,7 @@ const json = (value, status = 200) => new Response(JSON.stringify(value), {
 });
 const rejected = error => error.status === 503 && error.code === "course_service_unavailable";
 const reference = { annotationId, annotationVersion: 4, targetKind, targetId };
-const confirmation = { annotationId, annotationVersion: 4, effectHash };
+const confirmation = { annotationId, annotationVersion: 4, targetKind, targetId, effectHash };
 const reviewCommand = { courseId, targetKind, targetId, expectedBasisHash: basisHash, reviewed: true, requestId };
 function review(overrides = {}) {
   return { contract: "aralearn.course-content-review.v1", courseId, courseRevision: 7,
@@ -154,14 +154,13 @@ test("adapter transmite revisão ao ator resolvido e rejeita metadado privado ou
   assert.equal(lost.calls.length, 1);
 });
 
-test("correção mantém versões exatas, canal, hash e request entre commit, releitura e confirmação", async () => {
+test("correção mantém versões exatas, incidência, canal, hash e request entre commit, releitura e confirmação", async () => {
   let saved = absent();
   const { adapter, calls } = adapterHarness(call => {
     assert.equal(call.input.p_actor_id, actorId);
     assert.equal(call.input.p_course_id, courseId);
     assert.equal(call.input.p_request_id, requestId);
     if (call.rpc.startsWith("commit_")) saved = receipt();
-    if (call.rpc.startsWith("confirm_")) saved.observations[0].confirmed = true;
     return json(saved);
   });
   assert.equal((await adapter.getCourseObservationCorrection({ principal, courseId, requestId })).status, "absent");
@@ -175,7 +174,7 @@ test("correção mantém versões exatas, canal, hash e request entre commit, re
   assert.equal(persisted.observations[0].currentEffectHash, effectHash);
   assert.equal(persisted.observations[0].confirmed, false);
   const confirmed = await adapter.confirmCourseObservationCorrection({ principal, courseId, requestId, confirmations: [confirmation] });
-  assert.equal(confirmed.observations[0].confirmed, true);
+  assert.equal(confirmed.observations[0].confirmed, false, "A confirmação atual relê o recibo sem decidir pelo autor.");
   assert.deepEqual(calls[3].input.p_confirmations, [confirmation]);
   const oauth = adapterHarness(() => json(receipt()));
   await commit(oauth.adapter, { principal: { ...principal, authenticationKind: "oauth" } });
@@ -186,13 +185,13 @@ test("commit e confirmação perdidos só são reconciliados por leitura, com tr
   let saved = absent();
   const { adapter, calls } = adapterHarness(call => {
     if (call.rpc.startsWith("commit_")) { saved = receipt(); throw new TypeError("Commit persistido, resposta perdida"); }
-    if (call.rpc.startsWith("confirm_")) { saved.observations[0].confirmed = true; throw new TypeError("Consumo persistido, resposta perdida"); }
+    if (call.rpc.startsWith("confirm_")) throw new TypeError("Resposta da releitura perdida");
     return json(saved);
   });
   await assert.rejects(commit(adapter), rejected);
   assert.equal((await adapter.getCourseObservationCorrection({ principal, courseId, requestId })).status, "persisted");
   await assert.rejects(adapter.confirmCourseObservationCorrection({ principal, courseId, requestId, confirmations: [confirmation] }), rejected);
-  assert.equal((await adapter.getCourseObservationCorrection({ principal, courseId, requestId })).observations[0].confirmed, true);
+  assert.equal((await adapter.getCourseObservationCorrection({ principal, courseId, requestId })).observations[0].confirmed, false);
   assert.deepEqual(calls.map(call => call.rpc), ["commit_course_observation_corrections_for_actor_v1",
     "get_course_observation_correction_for_actor_v1", "confirm_course_observation_correction_for_actor_v1",
     "get_course_observation_correction_for_actor_v1"]);
@@ -205,7 +204,7 @@ test("transporte recusa recibo estranho e versão/hash divergentes sem converter
   }
   const reordered = adapterHarness(() => json(receipt({ observations: [{ ...receipt().observations[0], annotationVersion: 5 }] })));
   await assert.rejects(commit(reordered.adapter), rejected);
-  for (const delta of [{ annotationVersion: 5 }, { effectHash: basisHash }]) {
+  for (const delta of [{ annotationVersion: 5 }, { effectHash: basisHash }, { targetId: "another-target" }, { targetKind: "study_unit" }]) {
     const { adapter } = adapterHarness(() => json(receipt({ observations: [{ ...receipt().observations[0], ...delta }] })));
     await assert.rejects(adapter.confirmCourseObservationCorrection({ principal, courseId, requestId, confirmations: [confirmation] }), rejected);
   }
@@ -220,6 +219,21 @@ test("transporte recusa recibo estranho e versão/hash divergentes sem converter
   await assert.rejects(untouched.adapter.confirmCourseObservationCorrection({ principal, courseId, requestId,
     confirmations: [{ ...confirmation, effectHash: "invalid" }] }), error => error.status === 422);
   assert.equal(untouched.calls.length, 0);
+});
+
+test("transporte preserva correção multialvo e compara a confirmação com a incidência correspondente", async () => {
+  const references = [reference, { ...reference, targetId: "base-b" }];
+  const observations = references.map((entry, index) => ({ ...entry, effectHash: index ? basisHash : effectHash,
+    currentEffectHash: index ? basisHash : effectHash, changed: true, confirmed: false }));
+  const { adapter, calls } = adapterHarness(() => json(receipt({ observations })));
+  await commit(adapter, { observations: references });
+  const confirmations = observations.map(({ annotationId, annotationVersion, targetKind, targetId, effectHash }) =>
+    ({ annotationId, annotationVersion, targetKind, targetId, effectHash }));
+  const persisted = await adapter.confirmCourseObservationCorrection({ principal, courseId, requestId, confirmations });
+  assert.deepEqual(persisted.observations, observations);
+  assert.deepEqual(calls[1].input.p_confirmations, confirmations);
+  await assert.rejects(adapter.confirmCourseObservationCorrection({ principal, courseId, requestId,
+    confirmations: [{ ...confirmation, targetId: "base-b" }] }), rejected);
 });
 
 test("erros de dono, revisão e versão vindos do banco não vazam detalhe privado nem iniciam nova escrita", async () => {

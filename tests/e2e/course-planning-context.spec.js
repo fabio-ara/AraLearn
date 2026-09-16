@@ -166,7 +166,7 @@ for (const width of [390, 430, 1280]) test(`overlays com hierarquia e alinhament
   await expect(panel.getByText('Relação causal', { exact: true })).toBeVisible();
   await expect(panel.getByText('A configuração corrente orienta próximas produções.', { exact: false })).toHaveCount(0);
   const hierarchy = await panel.evaluate(node => {
-    const group = node.querySelector('.course-design-category-menu > summary');
+    const group = node.querySelector('.course-design-category-menu');
     const heading = node.querySelector('.course-design-instructional-context h3');
     const body = node.querySelector('.course-design-instructional-context p');
     const scope = node.querySelector('.course-design-scope > summary strong');
@@ -190,8 +190,7 @@ for (const width of [390, 430, 1280]) test(`overlays com hierarquia e alinhament
   await expect(panel.getByText('Disponível para leitura', { exact: true })).toBeHidden();
   await page.screenshot({ path: info.outputPath(`parameters-${width}.png`) });
   await panel.getByText('O que a explicação deve abordar', { exact: true }).click();
-  await panel.getByText('Explicação e aprendizagem', { exact: true }).first().click();
-  await panel.locator('[data-design-category="editorial"]').click();
+  await panel.getByLabel('Escolher grupo de ajustes').selectOption('editorial');
   await expect(panel.locator('.course-design-instructional-context')).toHaveCount(0);
   await expect(panel.locator('[data-course-authoring-action="edit-design-parameter"]').first()).toBeVisible();
   const parameter = panel.locator('.course-design-parameter').first();

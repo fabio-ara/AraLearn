@@ -36,6 +36,7 @@ test("rota canônica abre tarefa, objeto e detalhe humano", () => {
       kind: "didactic_microsequence", id: "micro 1"
     }],
     [{ section: "content", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
+    [{ section: "content", explanationId: "explicação-1" }, { kind: "microsequence_explanation", id: "explicação-1" }],
     [{ section: "parameters", studyUnitId: "unidade-1" }, { kind: "study_unit", id: "unidade-1" }],
     [{ section: "content", unassigned: true }, { kind: "unassigned", id: null }],
     [{ section: "review", annotationId: UUID }, { kind: "anchored_annotation", id: UUID }],
@@ -53,6 +54,15 @@ test("rota canônica abre tarefa, objeto e detalhe humano", () => {
     section: "sources",
     target: { kind: "course_source", id: "  fonte/literal-á  ", anchorId: "ancora:1" }
   });
+});
+
+test("destino de leitura registra revisão sem substituir a identidade persistente", () => {
+  const hash = buildCourseAuthoringRoute(COURSE_ID, { explanationId: "micro-a", revision: 7 });
+  assert.deepEqual(parseCourseAuthoringRoute(hash), { courseId: COURSE_ID, section: "content",
+    target: { kind: "microsequence_explanation", id: "micro-a" }, revision: 7 });
+  assert.equal(parseCourseAuthoringRoute(hash.replace("revision=7", "revision=0")), null);
+  assert.equal(parseCourseAuthoringRoute(hash.replace("section=content", "section=review")), null);
+  assert.throws(() => buildCourseAuthoringRoute(COURSE_ID, { section: "review", revision: 7 }), /revisão/u);
 });
 
 test("deep link de dados de autoria preserva recorte e revisão sem virar alvo curricular", () => {

@@ -21,7 +21,7 @@ const openButton = page => page.getByRole("button", { name: "Explicação", exac
 const overlay = page => page.getByRole("dialog", { name: "Explicação", exact: true });
 
 for (const width of [360, 390, 430, 1280]) {
-  test(`apoio em ${width}px conserva prática, foco, rolagem e progresso`, async ({ page }, testInfo) => {
+  test(`apoio em ${width}px conserva prática legada, foco, rolagem e progresso`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 850 });
     const errors = await mount(page, `?unit=practice&theme=${width === 390 ? "dark" : "light"}`);
     const answer = page.getByRole("textbox", { name: "Explique a diferença com suas palavras." });

@@ -271,7 +271,11 @@ function renderComponentPolicy(design, busy) {
   const allowed = new Set(draft.allowedRefs);
   const excluded = new Set(draft.excludedRefs);
   const preferred = new Set(draft.preferredRefs);
-  const components = catalog.options.map((option) =>
+  const components = catalog.options.map((option) => option.authoringEligibility === "legacy_only"
+    ? '<article class="course-design-component-option"><div><strong>' +
+      `${escapeHtml(option.label)}</strong><span>Disponível somente em conteúdo legado.</span></div>` +
+      `<p>${allowed.has(option.ref) || preferred.has(option.ref) ? "A política histórica inclui este componente; novas produções usam práticas avaliáveis." : "Não disponível para nova autoria."}</p></article>`
+    :
     '<article class="course-design-component-option"><div><strong>' +
     `${escapeHtml(option.label)}</strong><span>${escapeHtml(option.purpose)}</span></div>` +
     '<div class="course-design-component-choices">' +
@@ -397,11 +401,9 @@ export function renderCourseDesignPanel(state) {
   groups.push({ id: "resources", label: "Recursos" }, { id: "profiles", label: "Perfis" });
   const selected = groups.find(group => group.id === state.designCategory) || groups[0];
   const edited = design.definitions.find(definition => definition.id === state.designParameterId);
-  const categoryMenu = '<details class="course-design-category-menu"><summary aria-label="Escolher grupo de ajustes" title="Grupos de ajustes">' +
-    renderUiIcon("module", "course-authoring-button-icon") + `<span>${escapeHtml(selected.label)}</span>` + renderUiIcon("arrow-down", "course-authoring-button-icon") + '</summary>' +
-    '<nav aria-label="Grupos de ajustes">' + groups.map(group =>
-      `<button type="button" data-course-authoring-action="select-design-category" data-design-category="${escapeHtml(group.id)}"` +
-      `${group.id === selected.id ? ' aria-current="page"' : ""}>${escapeHtml(group.label)}</button>`).join("") + '</nav></details>';
+  const categoryMenu = '<select class="course-design-category-menu" data-course-design-category aria-label="Escolher grupo de ajustes"' +
+    `${state.designBusy || state.profileBusy ? " disabled" : ""}>` + groups.map(group =>
+      `<option value="${escapeHtml(group.id)}"${group.id === selected.id ? " selected" : ""}>${escapeHtml(group.label)}</option>`).join("") + '</select>';
   const content = edited ? renderParameterCard(design, edited,
     design.parameters.find(parameter => parameter.parameterId === edited.id), state.designBusy, { editing: true, appliedParameters: state.designAppliedParameters, appliedFailure: state.designAppliedFailure }) :
     selected.id === "instruction" ? renderInstructionalContext(state) :

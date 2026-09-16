@@ -16,7 +16,8 @@ const ORIGIN_LABELS = Object.freeze({
   research_condition: "Condição de pesquisa",
   migration: "Estado importado",
   provider_assistance: "Assistência por IA",
-  gpt: "GPT",
+  gpt: "IA",
+  ai: "IA",
   authoring_interface: "Edição na Autoria",
   authoring_chat: "Conversa de Autoria",
   unknown: "Origem não informada",
@@ -346,6 +347,8 @@ function practiceDistributionRows(design) {
 
 function authorshipRows(authorship) {
   return [
+    ...(authorship.interventions ? [{ label: "Intervenções observadas",
+      value: `${authorship.interventions.human} humanas · ${authorship.interventions.ai} de IA${authorship.interventions.historyComplete ? '' : ' · histórico anterior desconhecido'}` }] : []),
     {
       label: "Observações criadas",
       value: plural(authorship.observations.createdCount, "observação", "observações")

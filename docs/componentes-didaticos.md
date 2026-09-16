@@ -614,7 +614,16 @@ do próprio pacote, enquanto acerto, erro e ausência de resposta são estados.
 | `aralearn.resource.grammar` | Construções, idioma e orientação de consulta; HTML | Exemplos em outro idioma e descrições longas |
 | `aralearn.resource.reading` | Título, orientação e destino; HTML | Referência extensa, PDF autorizado e retorno ao estudo |
 | `aralearn.resource.terminal_session` | Prompt, comando, streams e código de saída; `pre/code/samp` | Espaços, stdout/stderr, linhas longas e saída vazia |
-| `aralearn.response.open` | Enunciado, resposta e estado; textarea associado ao prompt | Texto ampliado, resposta longa e pista de escrita |
+| `aralearn.response.open` (legado) | Enunciado, resposta e estado; textarea associado ao prompt | Leitura e manutenção de respostas existentes; inelegível para nova autoria |
+
+A autoria nova usa respostas avaliáveis localmente (`gap`, `choice` ou `ordering`)
+e feedback explicativo salvo no curso. `gap` por digitação representa termo,
+número ou comando canônico, com equivalentes explícitos quando necessários;
+justificativas extensas exigem decisões observáveis adequadas à tarefa.
+O package `open` permanece no runtime para leitura, backup e restauração de
+legado, mas não aparece na busca para nova autoria. Uma edição alheia à resposta
+conserva a instância existente; criar ou substituir a resposta exige prática
+avaliável offline.
 
 As medidas em `rem` acompanham o tamanho de fonte de referência da página;
 as decisões tipográficas completas estão no [sistema visual](sistema-visual.md).

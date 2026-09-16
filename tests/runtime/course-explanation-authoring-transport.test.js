@@ -35,7 +35,7 @@ function fixture() {
     return { courseId, revision: 8, operation: "commit_course_composition", createdCount: 0,
       updatedCount: state.unchangedEntity ? 0 : 1, upsertedCount: state.unchangedEntity ? 0 : 1, deletedCount: 0,
       updatedAt: "2026-09-07T12:00:00Z", expectedStudyUnitVersion: null, idempotent: rpcCalls.length > 1,
-      channel: "application", applicationOrigin: "manual", changeOrigin: state.wrongOrigin ? "gpt" : "human",
+      channel: "application", applicationOrigin: "manual", changeOrigin: state.wrongOrigin ? "ai" : "human",
       expectedMicrosequenceVersion: 3, microsequenceId: "ms-a", microsequenceVersion: state.unchangedEntity ? 3 : 4 };
   };
   const api = new CourseApiClient({ projectUrl: "https://project.invalid", publishableKey: "fixture-public",

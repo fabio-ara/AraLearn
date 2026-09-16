@@ -8,6 +8,7 @@ import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralear
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { largeObservationComparison } from "../helpers/largeObservationComparisonFixture.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
@@ -153,6 +154,30 @@ function materializationPreparationFixture(blocks = 32) {
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
   return { adapter, support, plan };
 }
+
+test("comparação maior que 1 MiB atravessa MCP e Actions por fragmentos literais pequenos", async () => {
+  const annotationId = '30000000-0000-4000-8000-000000000001';
+  const comparison = largeObservationComparison({ courseId: COURSE.id, courseRevision: COURSE.revision, annotationId });
+  const reference = { annotationId, annotationVersion: 2, targetSetVersion: 1, targetKind: 'study_unit', targetId: 'unit-a' };
+  for (const channel of ['actions', 'mcp']) {
+    const adapter = fixture();
+    adapter.getCourseObservationComparison = async () => comparison;
+    let continuation; let literal = ''; let pages = 0;
+    do {
+      const response = await channelCall(channel, adapter, 'preparar_revisao', { curso: TITLE, comparacao: reference,
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(response.status, 200);
+      assert.ok(response.envelope.length < 100000);
+      assert.equal(response.value.context.fragmento.formato, 'application/json');
+      literal += response.value.context.fragmento.texto;
+      continuation = response.value.context.continuacao;
+      pages++;
+      assert.ok(pages < 200);
+    } while (continuation);
+    assert.ok(pages > 30);
+    assert.deepEqual(JSON.parse(literal).comparacaoDeObservacao, comparison);
+  }
+});
 
 test("planejamento grande tem resumo recuperável, foco local e leitura integral limitada nos dois canais", async () => {
   for (const channel of ["actions", "mcp"]) {

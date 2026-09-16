@@ -37,9 +37,9 @@ export function renderSourceOccurrenceForm(state, link) {
     (link.occurrences.length ? '<ul>' + link.occurrences.map(occurrence => {
       const resolved = content && resolveCourseSourceOccurrence(content, occurrence, options).status === "resolved";
       return `<li><blockquote>${escape(occurrence.quote)}</blockquote><span>${resolved ? "Trecho localizado" : "Trecho a conferir"}</span>` +
-        `<button type="button" data-source-action="edit-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Localizar trecho">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
-        `<button type="button" data-source-action="remove-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Remover trecho">${renderUiIcon("trash", "course-authoring-button-icon")}</button></li>`;
-    }).join("") + '</ul>' : `<p>${previouslyGeneral ? "Referência do texto completo." : "Selecione o trecho que esta fonte sustenta."}</p>`) +
+        `<button type="button" data-source-action="edit-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Mover citação para outro trecho">${renderUiIcon("edit", "course-authoring-button-icon")}</button>` +
+        `<button type="button" data-source-action="remove-occurrence" data-link-id="${escape(link.linkId)}" data-occurrence-id="${escape(occurrence.occurrenceId)}" aria-label="Remover esta citação">${renderUiIcon("trash", "course-authoring-button-icon")}</button></li>`;
+    }).join("") + '</ul>' : `<p>${previouslyGeneral ? "Referência legada sem trecho específico. Selecione a passagem que ela sustenta para completar a citação." : "Selecione o trecho que esta fonte sustenta."}</p>`) +
     (editor ? '<div class="source-occurrence-editor">' +
       (targets.length > 1 ? `<label>Parte do texto<select data-source-occurrence-target data-link-id="${escape(link.linkId)}">` + targets.map((item, index) =>
         `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(location(item))} · ${escape(item.text.slice(0, 70))}</option>`).join("") + '</select></label>' : '') +

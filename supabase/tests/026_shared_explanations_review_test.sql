@@ -103,7 +103,14 @@ select throws_ok($$select pg_temp.review_set('microsequence_explanation','a',tru
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(public.set_course_content_review_for_actor_v1('99260000-0000-4000-8000-000000000001',pg_temp.review_course(),'microsequence_explanation','a',
  private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','a'),true,'review-channel-explicit')#>>'{contentReview,state}','current','Canal autenticado declara revisão expressa pelo proprietário resolvido');
-select throws_ok($$select private.save_course_part_explanations_v1(pg_temp.review_course(),'[{"didacticMicrosequenceId":"a"},{"didacticMicrosequenceId":"b"}]','[{"microsequenceId":"a","content":{"title":"Incompleto","content":[]}}]')$$,'23514',null,'Lote com apoio faltante é recusado atomicamente');
+insert into private.course_authoring_parts(id,course_id,instructional_plan_id,position,title,intent,progression)
+ select '99260000-0000-4000-8000-000000000301',course_id,id,0,'Parte sintética','Revisar as bases.','["Inspecionar as relações."]'::jsonb
+ from private.course_instructional_plans where course_id=pg_temp.review_course();
+insert into private.course_authoring_part_didactic_microsequences(course_id,authoring_part_id,didactic_microsequence_id,production_position)
+ values(pg_temp.review_course(),'99260000-0000-4000-8000-000000000301','a',0),(pg_temp.review_course(),'99260000-0000-4000-8000-000000000301','b',1);
+select is(private.save_course_part_explanations_v1(pg_temp.review_course(),'99260000-0000-4000-8000-000000000301','[]'),false,'Explicações omitidas permanecem salvas sem nova autoria');
+select throws_ok($$select private.save_course_part_explanations_v1(pg_temp.review_course(),'99260000-0000-4000-8000-000000000301','[{"microsequenceId":"a","content":{"title":"Incompleto","content":[]}}]')$$,'22023',null,'Explicação enviada incompleta é recusada atomicamente');
+select throws_ok($$select private.save_course_part_explanations_v1(pg_temp.review_course(),'99260000-0000-4000-8000-000000000301','[{"microsequenceId":"c","content":{"title":"Outro recorte","content":[]}}]')$$,'23514',null,'Explicação de outra parte não entra pela escrita incremental');
 select set_config('aralearn.content_review_write','object-review-command',true);
 update private.course_entities set content_review=null where course_id=pg_temp.review_course() and entity_id='b';
 select set_config('aralearn.content_review_write','',true);

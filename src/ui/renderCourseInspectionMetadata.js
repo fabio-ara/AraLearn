@@ -60,7 +60,7 @@ export function renderCourseInspectionMetadata(item, state, observationCount) {
     const [id, version] = ref.split("@");
     return RESOURCE_PACKAGE_REGISTRY.get(id, version)?.manifest.label || "Componente fora do catálogo atual";
   }) || [];
-  const origin = value => ({ human: "Autoria humana", gpt: "GPT" })[value] || "Origem não informada";
+  const origin = value => ({ human: "Autoria humana", ai: "IA", gpt: "IA" })[value] || "Origem não informada";
   const analysis = application?.analysisIdeas;
   const analysisContent = analysis ? ideas("Introduzidas aqui", analysis.introduced) +
     ideas("Já estabelecidas", analysis.used) + ideas("Retomadas", analysis.revisited) : "";
@@ -74,6 +74,7 @@ export function renderCourseInspectionMetadata(item, state, observationCount) {
     ])) +
     group("Autoria", rows([
       ["Origem", origin(item.authorship.createdOrigin)], ["Última intervenção", origin(item.authorship.lastRevisionOrigin)],
+      ...(item.authorship.interventions ? [["Intervenções observadas", `${item.authorship.interventions.human} humanas · ${item.authorship.interventions.ai} de IA${item.authorship.interventions.historyComplete ? '' : ' · histórico anterior desconhecido'}`]] : []),
       ["Revisão autoral", contentReviewLabel(item)],
       ["Observações autorais", observationCount === null ? "Contagem ainda não consultada" : `${observationCount} pendentes`]
     ]) + `<p class="course-inspection-metadata-updated">Atualizado em <time datetime="${escape(item.updatedAt)}">${escape(new Date(item.updatedAt).toLocaleString("pt-BR"))}</time></p>`) +

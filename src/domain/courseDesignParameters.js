@@ -14,8 +14,8 @@ export const COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT = RESOURCE_PACKAGE_CONT
 export const COURSE_COMPONENT_CATALOG = Object.freeze({
   version: COURSE_COMPONENT_CATALOG_VERSION,
   schemaFingerprint: COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT,
-  options: Object.freeze(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id, version, label, purpose }) =>
-    Object.freeze({ ref: `${id}@${version}`, label, purpose })))
+  options: Object.freeze(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id, version, label, purpose, authoringEligibility }) =>
+    Object.freeze({ ref: `${id}@${version}`, label, purpose, authoringEligibility })))
 });
 
 export const EXPLANATION_FORMS = Object.freeze([
@@ -805,10 +805,11 @@ function validateComponentCatalog(value) {
   const refs = new Set();
   for (const [index, option] of value.options.entries()) {
     const expected = COURSE_COMPONENT_CATALOG.options[index];
-    if (option?.ref !== expected.ref || option?.label !== expected.label || option?.purpose !== expected.purpose) {
+    if (option?.ref !== expected.ref || option?.label !== expected.label || option?.purpose !== expected.purpose ||
+        option?.authoringEligibility !== expected.authoringEligibility) {
       fail("course_component_catalog_drift", "A opção de componente diverge do catálogo instalado.");
     }
-    exact(option, ["ref", "label", "purpose"], "invalid_course_design_read", "Uma opção de componente");
+    exact(option, ["ref", "label", "purpose", "authoringEligibility"], "invalid_course_design_read", "Uma opção de componente");
     const ref = identity(option.ref, 200, "invalid_course_design_read", "A referência do componente");
     if (!COMPONENT_REF_PATTERN.test(ref) || refs.has(ref)) {
       fail("course_component_catalog_drift", "O catálogo contém referência inválida ou repetida.");

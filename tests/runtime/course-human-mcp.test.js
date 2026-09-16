@@ -73,6 +73,8 @@ const EXPECTED_NAMES = Object.freeze([
   "materializar_parte",
   "ajustar_configuracao",
   "registrar_observacao",
+  "registrar_inspecao",
+  "decidir_observacao",
   "editar_observacao",
   "salvar_explicacoes",
   "aplicar_correcoes",
@@ -400,14 +402,14 @@ function internalMapEntities(planRead) {
 
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
-  assert.equal(new Set(EXPECTED_NAMES).size, 54);
+  assert.equal(new Set(EXPECTED_NAMES).size, 56);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "4.0.0");
-  // Orçamento local das 54 tarefas contextuais; payload de chamada mantém seu gate próprio.
-  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 110_000);
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "5.0.0");
+  // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
+  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -1281,7 +1283,13 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
   assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
   assert.equal(output.deepLink, null);
   assert.equal(output.nextDecision, null);
-  assert.doesNotMatch(JSON.stringify(output.context), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  assert.doesNotMatch(JSON.stringify(output.context.parte), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
+  assert.equal(output.context.preflight.state, "blocked", "consultar inventário sem plano não declara prontidão");
+  assert.equal(output.context.preflight.referencia, null);
+  assert.deepEqual(output.context.preflight.blockers.map(({ code }) => code), [
+    "human_materialization_plan_required", "human_materialization_existing_application_missing",
+    "human_materialization_missing_explanation", "human_materialization_missing_explanation"
+  ]);
   const available = output.context.parte.repertorioDisponivelDoCurso;
   assert.equal(available?.ideias.length, 6);
   assert.deepEqual(available.ideias.at(-1), {
@@ -1412,6 +1420,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
         if (localComponentIdentity) continue;
         if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
             ["courseId", "requestId"].includes(name)) continue;
+        if (task.name === "decidir_observacao" && name === "id" &&
+            path === "$.properties.referencia.properties.targets.items") continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
     });
@@ -1599,10 +1609,8 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
       lugar: "resposta"
     }
   });
-  assert.equal(
-    open.context.components.candidates[0].referencia,
-    "aralearn.response.open@1.0.0"
-  );
+  assert.equal(open.context.components.candidates.some(item => item.referencia === "aralearn.response.open@1.0.0"), false,
+    "a busca de nova autoria exclui resposta aberta legada");
   const inspectedOpen = await executeHumanCourseTask({
     adapter: adapter(),
     principal: PRINCIPAL,
@@ -3044,14 +3052,16 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
     }
   });
   assert.equal(observationBatches.length, 1);
-  assert.deepEqual(observationBatches[0].commands.map(({ target }) => target.id), [
+  assert.equal(observationBatches[0].commands.length, 1);
+  assert.deepEqual(observationBatches[0].commands[0].targets.map(({ id }) => id), [
     "unit-one", "unit-two"
   ]);
   assert.equal(new Set(observationBatches[0].commands.map(({ annotationId }) =>
-    annotationId)).size, 2);
+    annotationId)).size, 1);
   assert.equal(new Set(observationBatches[0].commands.map(({ capturedAt }) =>
     capturedAt)).size, 1);
-  assert.match(observed.result, /separadamente em 2 unidades/u);
+  assert.match(observed.result, /uma observação com todos os alvos/u);
+  assert.deepEqual(observed.context, { observationCount: 1, targetCount: 2 });
 });
 
 

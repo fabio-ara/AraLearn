@@ -410,7 +410,8 @@ test("completude usa catálogo vigente e envelope salvo sem dependência dos val
     assert.equal(await complete(), true);
     await save({ ...unit("Conteúdo com retorno"), feedback: [{ ...block("Retorno da prática."), id: "feedback" }] });
     assert.equal(await complete(), true, "Parágrafo no slot feedback é recurso vigente");
-    const practice = { ...unit("Prática"), role: "practice", content: [], response: {
+    // Conteúdo legado já persistido: leitura/revisão não é criação autoral.
+    const practice = { ...unit("Prática legada"), role: "practice", content: [], response: {
       id: "response", package: "aralearn.response.open", version: "1.0.0", data: { prompt: "Explique a relação." }
     } };
     await save(practice);

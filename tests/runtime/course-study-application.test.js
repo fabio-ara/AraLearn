@@ -695,7 +695,7 @@ test("falha do flush em background mantém a sincronização pendente", async ()
   app.destroy();
 });
 
-test("resposta aberta exige texto, preserva produção livre e não simula correção", async () => {
+test("resposta aberta legada exige texto, preserva produção livre e não simula correção", async () => {
   const document = project();
   const units = document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits;
   units[0] = {

@@ -8,7 +8,7 @@ import { COURSE_HUMAN_TASKS } from "../../supabase/functions/_shared/aralearn-au
 const CONFIG = Object.freeze({ projectUrl: "http://127.0.0.1:54321",
   publishableKey: "synthetic-public-key", adminKey: "synthetic-admin-key" });
 const TOKEN = "synthetic-channel-token";
-const CONTRACT = "4.0.0:synthetic-transport";
+const CONTRACT = "5.0.0:synthetic-transport";
 const measurementSize = text => ({ utf8Bytes: Buffer.byteLength(text, "utf8"),
   utf16CodeUnits: text.length, unicodeCodePoints: [...text].length });
 const response = value => new Response(JSON.stringify(value), { status: 200,
@@ -48,7 +48,7 @@ test("helper Actions envia tarefa agrupada, conserva a direta e não modifica a 
   assert.equal(calls.length, 4, "tarefa desconhecida não é enviada");
 });
 
-test("smoke Actions mede o envelope real e conserva 54 tarefas em 30 operações", async t => {
+test("smoke Actions mede o envelope real e conserva 56 tarefas em 30 operações", async t => {
   const calls = [], measurements = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
     calls.push({ url, ...options, payload: JSON.parse(options.body) });
@@ -62,10 +62,10 @@ test("smoke Actions mede o envelope real e conserva 54 tarefas em 30 operações
   for (const task of COURSE_HUMAN_TASKS) {
     assert.deepEqual(await client.call(task.name, args), { result: "resposta sintética" });
   }
-  assert.equal(COURSE_HUMAN_TASKS.length, 54);
+  assert.equal(COURSE_HUMAN_TASKS.length, 56);
   assert.deepEqual(measurements.map(item => item.task), COURSE_HUMAN_TASKS.map(task => task.name));
   assert.equal(new Set(measurements.map(item => item.operationName)).size, 30);
-  assert.equal(measurements.filter(item => item.operationName !== item.task).length, 30);
+  assert.equal(measurements.filter(item => item.operationName !== item.task).length, 32);
   for (const [index, item] of measurements.entries()) {
     const call = calls[index];
     assert.equal(call.url, `${CONFIG.projectUrl}/functions/v1/aralearn-authoring-action/${item.operationName}`);
