@@ -1555,6 +1555,12 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await configureBrowser(page);
       const path = `#/estudo/${publicCourseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`;
       await page.goto(`/${path}`);
+      console.log("PUBLIC_STUDY_DIAGNOSTIC", JSON.stringify({
+        url: page.url(),
+        body: (await page.locator("body").innerText()).slice(0, 4000),
+        cards: await page.locator("[data-study-level]").count(),
+        packageInstances: await page.locator(".package-instance").count()
+      }));
       await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
       await expect(page.locator(".study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Entre para enviar observações" })).toBeVisible();
