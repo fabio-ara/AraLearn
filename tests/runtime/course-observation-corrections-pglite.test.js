@@ -172,6 +172,43 @@ const decision = (item, selected = item.targets.filter(t => t.state === "pending
   targets: selected.map(t => ({ kind: t.kind, id: t.id, expectedBasisHash: t.current?.hash ?? null }))
 });
 
+test("seis conflitos da comparação e decisão são PT409 sem escrita, recibo ou perda de base", async () => {
+  const db = await fixture();
+  try {
+    await create(db, ids[0]);
+    const item = await detail(db);
+    const counts = () => value(db, `select jsonb_build_object(
+      'receipts',(select count(*) from private.course_change_receipts),
+      'bases',(select count(*) from private.course_observation_bases),
+      'revision',(select revision from public.courses where id='${COURSE}')) value`);
+    const before = await counts();
+    const conflict = message => error => error.code === "PT409" && error.message === message;
+    await assert.rejects(value(db, 'select public.get_course_observation_comparison_for_actor_v1($1,$2,$3,$4,$5,$6,$7) value',
+      [OWNER, COURSE, item.annotationId, 'study_unit', 'u1', 2, 1]),
+    conflict("A observação ou seus alvos mudaram; atualize a central."));
+    await assert.rejects(command(db, { ...decision(item), expectedAnnotationVersion: 2 }, "business-stale-intent"),
+      conflict("A observação ou seus alvos mudaram; releia antes de decidir."));
+    await assert.rejects(command(db, { type: "retarget_anchored_annotation", annotationId: item.annotationId,
+      expectedAnnotationVersion: 1, expectedTargetSetVersion: 1, targets: [{ kind: "study_unit", id: "u1" }] },
+    "business-stale-course", 2), conflict("O curso mudou."));
+    await assert.rejects(command(db, { ...decision(item), targets: [{ kind: "study_unit", id: "unselected",
+      expectedBasisHash: item.targets[0].current.hash }] }, "business-stale-incidence"),
+    conflict("A incidência mudou ou não pertence à seleção."));
+    await assert.rejects(command(db, { ...decision(item), targets: [{ kind: "study_unit", id: "u1",
+      expectedBasisHash: "b".repeat(64) }] }, "business-stale-basis"),
+    conflict("O conteúdo ou suas fontes mudaram depois da apresentação."));
+    assert.deepEqual(await counts(), before);
+    assert.deepEqual(await detail(db), item);
+    await command(db, decision(item, undefined, "cancel"), "business-close-current");
+    const closed = await detail(db), afterClose = await counts();
+    await assert.rejects(command(db, { type: "revise_anchored_annotation", annotationId: item.annotationId,
+      expectedAnnotationVersion: closed.annotationVersion, rawText: "Texto novo", category: null, briefSummary: null },
+    "business-revise-closed"), conflict("Esta observação foi encerrada; crie uma nova intenção."));
+    assert.deepEqual(await detail(db), closed);
+    assert.deepEqual(await counts(), afterClose);
+  } finally { await db.close(); }
+});
+
 test("alvo removido admite apenas cancelamento explícito com versões e ausência vigentes, inclusive legado sem base", async () => {
   const db = await fixture({ legacyUnitObservation: true });
   try {
@@ -182,14 +219,14 @@ test("alvo removido admite apenas cancelamento explícito com versões e ausênc
     const removed = await detail(db);
     assert.equal(removed.targets[0].current, null);
     assert.notEqual(removed.targets[0].basis, null);
-    await assert.rejects(command(db, decision(removed), 'removed-cannot-approve'), code('40001'));
-    await assert.rejects(command(db, decision(before, undefined, 'cancel'), 'old-hash-cannot-cancel'), code('40001'));
+    await assert.rejects(command(db, decision(removed), 'removed-cannot-approve'), code("PT409"));
+    await assert.rejects(command(db, decision(before, undefined, 'cancel'), 'old-hash-cannot-cancel'), code("PT409"));
     const cancel = decision(removed, undefined, 'cancel');
     for (const delta of [{ expectedAnnotationVersion: 2 }, { expectedTargetSetVersion: 2 }]) {
-      await assert.rejects(command(db, { ...cancel, ...delta }, `removed-stale-${Object.keys(delta)[0]}`), code('40001'));
+      await assert.rejects(command(db, { ...cancel, ...delta }, `removed-stale-${Object.keys(delta)[0]}`), code("PT409"));
     }
     await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_id,parent_type,content) values($1,'study_unit','u1','micro','microsequence',$2)", [COURSE, originalContent]);
-    await assert.rejects(command(db, cancel, 'restored-target-cannot-cancel-null'), code('40001'));
+    await assert.rejects(command(db, cancel, 'restored-target-cannot-cancel-null'), code("PT409"));
     await db.exec("delete from private.course_entities where entity_id='u1'");
     const result = await command(db, cancel, 'removed-target-cancelled');
     assert.equal(result.annotation.state, 'resolved');
@@ -223,7 +260,7 @@ test("uma intenção multialvo conserva antes, decide parcialmente e libera some
     assert.equal(comparison.basis.content.content[0].text, "original");
     assert.equal(comparison.current.content.content[0].text, "corrigido");
     await assert.rejects(value(db, 'select public.get_course_observation_comparison_for_actor_v1($1,$2,$3,$4,$5,$6,$7) value',
-      [OWNER,COURSE,item.annotationId,unit.kind,unit.id,item.annotationVersion+1,item.targetSetVersion]), code('40001'));
+      [OWNER,COURSE,item.annotationId,unit.kind,unit.id,item.annotationVersion+1,item.targetSetVersion]), code("PT409"));
     const partialCommand = decision(item, [unit]);
     const partial = await command(db, partialCommand, "approve-partial-001");
     assert.equal(partial.annotation.state, "open");
@@ -256,7 +293,7 @@ test("decisão confere base/intenção, cancelamento sem alteração não contor
     await create(db, ids[1]);
     const stale = decision(await detail(db, ids[1]));
     await db.exec("update private.course_entities set content=content||'{\"title\":\"Nova versão\"}' where entity_id='u1'");
-    await assert.rejects(command(db, stale, "stale-decision-001"), code("40001"));
+    await assert.rejects(command(db, stale, "stale-decision-001"), code("PT409"));
     assert.equal((await state(db, ids[1])).state, "open");
   } finally { await db.close(); }
 });
@@ -474,7 +511,7 @@ test("anexo muda a base da observação e aprovação usa o parecer IA em sua pr
     const after = await detail(db, ids[1]);
     assert.notEqual(after.targets[0].basis.hash, before.targets[0].basis.hash);
     assert.deepEqual(await value(db, "select snapshot value from private.course_observation_bases where basis_hash=$1", [before.targets[0].basis.hash]), beforeSnapshot);
-    await assert.rejects(command(db, decision(before), "approval-stale-files"), code("40001"));
+    await assert.rejects(command(db, decision(before), "approval-stale-files"), code("PT409"));
     await assert.rejects(command(db, decision(after), "approval-without-inspection"), code("PT409"));
     const inspectionHash = await value(db, "select private.course_ai_inspection_basis_hash_v1($1,'study_unit','u1') value", [COURSE]);
     assert.notEqual(inspectionHash, after.targets[0].current.hash);

@@ -138,7 +138,7 @@ begin
     and actor_id=p_actor_id and origin='author';
   if not found then raise exception 'Observação não encontrada.' using errcode='PT404'; end if;
   if annotation.version is distinct from p_expected_annotation_version or annotation.target_set_version is distinct from p_expected_target_set_version then
-    raise exception 'A observação ou seus alvos mudaram; atualize a central.' using errcode='40001'; end if;
+    raise exception 'A observação ou seus alvos mudaram; atualize a central.' using errcode='PT409'; end if;
   select * into incidence from private.course_observation_targets where annotation_id=p_annotation_id and course_id=p_course_id
     and target_kind=p_target_kind and target_id=p_target_id and state='pending';
   if not found then raise exception 'Incidência pendente não encontrada.' using errcode='PT404'; end if;
@@ -200,7 +200,7 @@ begin
     and p_command#>>'{target,kind}' in ('study_unit','microsequence_explanation')) then
     if exists(select 1 from private.course_anchored_annotations where id=(p_command->>'annotationId')::uuid
       and course_id=p_course_id and state='resolved' and raw_text is null) then
-      raise exception 'Esta observação foi encerrada; crie uma nova intenção.' using errcode='40001'; end if;
+      raise exception 'Esta observação foi encerrada; crie uma nova intenção.' using errcode='PT409'; end if;
     result:=private.execute_course_single_annotation_command_v1(p_actor_id,p_course_id,p_expected_course_revision,p_command,p_origin,p_channel,p_request_id,p_actor_is_owner);
     return result;
   end if;
@@ -265,9 +265,9 @@ begin
   if annotation.version is distinct from (p_command->>'expectedAnnotationVersion')::bigint
     or annotation.target_set_version is distinct from (p_command->>'expectedTargetSetVersion')::bigint
     or annotation.state not in ('open','considered') then
-    raise exception 'A observação ou seus alvos mudaram; releia antes de decidir.' using errcode='40001'; end if;
+    raise exception 'A observação ou seus alvos mudaram; releia antes de decidir.' using errcode='PT409'; end if;
   if kind='retarget_anchored_annotation' then
-    if p_expected_course_revision is distinct from current_revision then raise exception 'O curso mudou.' using errcode='40001'; end if;
+    if p_expected_course_revision is distinct from current_revision then raise exception 'O curso mudou.' using errcode='PT409'; end if;
     if exists(select 1 from jsonb_array_elements(selected) x join private.course_observation_targets t
       on t.annotation_id=annotation.id and t.target_kind=x->>'kind' and t.target_id=x->>'id' where t.state<>'pending') then
       raise exception 'Uma nova intenção para alvo já decidido precisa de nova observação.' using errcode='PT409'; end if;
@@ -291,10 +291,10 @@ begin
     for entry in select value from jsonb_array_elements(selected) loop
       if not exists(select 1 from private.course_observation_targets t where t.annotation_id=annotation.id
         and t.target_kind=entry->>'kind' and t.target_id=entry->>'id' and t.state='pending') then
-        raise exception 'A incidência mudou ou não pertence à seleção.' using errcode='40001'; end if;
+        raise exception 'A incidência mudou ou não pertence à seleção.' using errcode='PT409'; end if;
       basis:=private.course_observation_basis_hash_v1(p_course_id,entry->>'kind',entry->>'id');
       if p_command->>'decision'='approve' and basis is null or entry->>'expectedBasisHash' is distinct from basis then
-        raise exception 'O conteúdo ou suas fontes mudaram depois da apresentação.' using errcode='40001'; end if;
+        raise exception 'O conteúdo ou suas fontes mudaram depois da apresentação.' using errcode='PT409'; end if;
       if p_command->>'decision'='approve' and private.course_ai_inspection_pending_v1(p_course_id,entry->>'kind',entry->>'id') then
         raise exception 'Inspeção por IA pendente. Salve e inspecione esta versão antes de aprovar.' using errcode='PT409'; end if;
     end loop;

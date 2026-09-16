@@ -21,7 +21,8 @@ function harness(respond = () => response()) {
   const adapter = new CourseSupabaseAdapter({supabaseUrl: 'https://database.example', publicAppUrl: origin,
     serverApiKey: 'synthetic-service', publishableKey: 'synthetic-public', fetchImpl: async (url, init) => {
       calls.push({rpc: new URL(url).pathname.split('/').at(-1), input: JSON.parse(init.body)});
-      return new Response(JSON.stringify(respond()), {status: 200, headers: {'Content-Type': 'application/json'}});
+      const reply = respond();
+      return reply instanceof Response ? reply : new Response(JSON.stringify(reply), {status: 200, headers: {'Content-Type': 'application/json'}});
     }});
   adapter.resolveApplicationPrincipal = async () => ({actorId, authenticationKind: 'application', scopes: ['authoring:read', 'authoring:write']});
   const handler = createCourseApiHandler({adapter, allowedOrigins: new Set([origin])});
@@ -45,6 +46,14 @@ test('comparação rejeita resposta de outra incidência ou versão em vez de ap
     const {client} = harness(() => ({...response(), ...delta}));
     await assert.rejects(client.getCourseObservationComparison(courseId, request), error => error.status === 503);
   }
+});
+
+test('comparação PT409 preserva HTTP409 e exige releitura sem retry nem detalhe privado', async () => {
+  const { client, calls } = harness(() => new Response(JSON.stringify({ code: 'PT409',
+    message: 'Detalhe privado da versão observada.' }), { status: 409, headers: { 'Content-Type': 'application/json' } }));
+  await assert.rejects(client.getCourseObservationComparison(courseId, request), error =>
+    error.status === 409 && error.code === 'stale_course_state' && !error.message.includes('privado'));
+  assert.equal(calls.length, 1);
 });
 
 test('cliente do app e adapter transportam duas bases válidas próximas do limite individual sem truncar', async () => {

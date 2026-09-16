@@ -47,6 +47,8 @@ Uma observação conserva identidade única e incidências independentes em expl
 
 A decisão confere a versão da observação, do conjunto de alvos e das bases apresentadas. Aprovar alguns alvos conserva as pendências restantes; confirmar tecnicamente uma correção não as aprova. O encerramento terminal remove o texto operacional dispensável e conserva somente metadados limitados por 14 dias para reconciliação e idempotência. A migração preserva observações antigas de alvo único sem agrupar textos semelhantes nem inventar conteúdo anterior.
 
+Conflitos de comparação, versão, estado, incidência e base usam `PT409`, como os demais conflitos de negócio. A captura de serialização nativa e os envelopes existentes permanecem preservados; o cliente recebe HTTP 409 e precisa reler o estado antes de uma nova decisão.
+
 ## 20260911232152 — alcance da revisão da explicação durante a produção
 
 O hash da explicação passa a excluir vínculos de análise instrucional

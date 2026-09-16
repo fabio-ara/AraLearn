@@ -170,7 +170,9 @@ test.describe("folhas contextuais com curso local real", () => {
       expect(attribution.items[0].sourceLinks[0].occurrences[0]).toMatchObject({
         slot: "content", resourceId: units[0].content[0].id, path: "text", quote: citedText, prefix: null, suffix: null
       });
-      expect(attribution.items[0].sourceLinks[0].anchors).toEqual([]);
+      expect(attribution.items[0].sourceLinks[0].anchors).toEqual([
+        { anchorId: "passagem-contextual-sintetica" }
+      ]);
       await sources.click();
       await sourceDialog.locator('.course-source-target-link [data-source-action="open-source"]').click();
       await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");

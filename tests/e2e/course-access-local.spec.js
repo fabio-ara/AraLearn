@@ -1498,7 +1498,11 @@ test.describe("acesso direto de Curso no Supabase local", () => {
     await ownerClient.mutateCourseSources({ courseId: publicCourseId, expectedRevision: 5, sourceCommand: {
       type: "set_target_sources", targetKind: "study_unit", targetId: "study-unit-access-local-1",
       expectedTargetVersion: 1, sourceLinks: [{ linkId: "vinculo-pdf-publico-local", sourceId,
-        relation: "informed_by", roles: ["technical_conceptual"], occurrences: [], anchors: [{ anchorId: "pagina-local" }] }]
+        relation: "informed_by", roles: ["technical_conceptual"], occurrences: [{
+          occurrenceId: "ocorrencia-pdf-publico-local", slot: "content",
+          resourceId: "content-study-unit-access-local-1", path: "text",
+          quote: "Conteúdo privado liberado somente para a pessoa escolhida.", prefix: null, suffix: null
+        }], anchors: [{ anchorId: "pagina-local" }] }]
     } });
     await ownerClient.setCourseVisibility({ courseId: publicCourseId, expectedRevision: 6,
       visibility: "public", publicFileAccess: "restricted", confirmed: true });
