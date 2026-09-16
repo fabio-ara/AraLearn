@@ -5,7 +5,7 @@ import {
   normalizeCourseAnchoredAnnotationPage,
   normalizeCourseAnchoredAnnotationReadOptions
 } from "../domain/courseAnchoredAnnotations.js";
-import { normalizeCourseSourceCommand, normalizeCourseSourceDocument } from "../domain/courseSources.js";
+import { normalizeCourseSourceCommand, normalizeCourseSourceDocument, normalizeCourseSourceLinks } from "../domain/courseSources.js";
 import { formatCourseSourceReference } from "../domain/courseSourceReference.js";
 import { renderBibliographicReference } from "./renderBibliographicReference.js";
 import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrence } from "../domain/courseSourceOccurrences.js";
@@ -950,6 +950,15 @@ function renderTargetLink(state, link, index) {
 
 function targetAttributionReady(state) {
   return !state.targetLoading && !state.targetFailure && state.targetAttribution !== undefined;
+}
+
+function sameTargetSourceLinks(left, right, targetKind) {
+  try {
+    return JSON.stringify(normalizeCourseSourceLinks(left, { targetKind })) ===
+      JSON.stringify(normalizeCourseSourceLinks(right, { targetKind }));
+  } catch {
+    return false;
+  }
 }
 
 function targetOccurrenceIssue(state) {
@@ -2154,7 +2163,7 @@ export function createCourseSourcesPanel({
     // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
     const targetSaveDraftStillMatches = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
-      JSON.stringify(state.sourceLinks) === JSON.stringify(pending.command.sourceLinks) &&
+      sameTargetSourceLinks(state.sourceLinks, pending.command.sourceLinks, state.targetKind) &&
       !state.occurrenceEditor;
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
@@ -2163,7 +2172,8 @@ export function createCourseSourcesPanel({
         !targetSaveHasNoConcurrentDraft) {
       console.error("AraLearn: vínculo confirmado com rascunho concorrente", {
         targetDraftChangedDuringWrite: state.targetDraftChangedDuringWrite,
-        occurrenceEditor: Boolean(state.occurrenceEditor)
+        occurrenceEditor: Boolean(state.occurrenceEditor),
+        sourceLinksEqual: sameTargetSourceLinks(state.sourceLinks, pending.command.sourceLinks, state.targetKind)
       });
     }
     let targetSavedNotified = false;
