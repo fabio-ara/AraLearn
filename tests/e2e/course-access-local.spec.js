@@ -1555,17 +1555,10 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await configureBrowser(page);
       const path = `#/estudo/${publicCourseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`;
       await page.goto(`/${path}`);
-      try {
-        await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
-      } catch (error) {
-        const diagnostic = await page.evaluate(() => ({
-          url: location.href,
-          body: document.body.innerText.slice(0, 4000),
-          html: document.body.innerHTML.slice(0, 12000),
-          resources: performance.getEntriesByType("resource").map(({ name }) => name).filter((name) => name.includes("supabase") || name.includes("rest/v1")).slice(-40)
-        })).catch(() => null);
-        throw new Error(`PUBLIC_STUDY_FAILURE ${JSON.stringify({ diagnostic, failures: failures.failures })}`, { cause: error });
-      }
+      // A citação autorizada acrescenta um marcador ao mesmo campo de texto.
+      // A asserção verifica o conteúdo authored sem depender desse marcador.
+      const publicStudyText = /Conteúdo privado liberado somente para a pessoa escolhida\./u;
+      await expect(page.getByText(publicStudyText)).toBeVisible();
       await expect(page.locator(".study-mode-actions").getByRole("button", { name: "Editar", exact: true })).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Entre para enviar observações" })).toBeVisible();
       await page.getByRole("button", { name: "Marcar para rever", exact: true }).click();
@@ -1603,7 +1596,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByLabel("Identificador", { exact: true }).fill(`outsider-${outsider.id.slice(0, 8)}`);
       await page.getByRole("button", { name: "Salvar identificador" }).click();
       await expect(page).toHaveURL(new RegExp(`#\\/estudo\\/${publicCourseId}\\/module-access-local\\/lesson-access-local\\/microsequence-access-local\\/study-unit-access-local-1$`, "u"));
-      await expect(page.getByText("Conteúdo privado liberado somente para a pessoa escolhida.", { exact: true })).toBeVisible();
+      await expect(page.getByText(publicStudyText)).toBeVisible();
       await expect(page.getByRole("button", { name: "Observações", exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "false");
     } finally { await context.close(); }
