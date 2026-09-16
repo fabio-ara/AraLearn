@@ -2154,8 +2154,7 @@ export function createCourseSourcesPanel({
     // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
-      !state.targetDraftChangedDuringWrite &&
-      !state.occurrenceEditor;
+      !state.targetDraftChangedDuringWrite;
     let targetSavedNotified = false;
     if (targetSaveHasNoConcurrentDraft) {
       // O recibo da mutação já é a confirmação do vínculo. Feche a folha antes
@@ -2905,6 +2904,7 @@ export function createCourseSourcesPanel({
         state.occurrenceEditor = { linkId: link.linkId, occurrenceId: occurrence?.occurrenceId,
           targetIndex: Math.max(0, targets.findIndex(target => target.slot === occurrence?.slot &&
             target.resourceId === occurrence?.resourceId && target.path === occurrence?.path)) };
+        markTargetDraftChanged();
       } else {
         try {
           const editor = state.occurrenceEditor;
