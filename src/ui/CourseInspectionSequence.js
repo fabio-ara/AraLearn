@@ -275,12 +275,17 @@ function normalizeAuthorship(value) {
 }
 
 function normalizeInspectionItem(value, totalCount) {
+  const optionalFields = [
+    ...(Object.hasOwn(value, "pendingAuthoringObservationCount") ? ["pendingAuthoringObservationCount"] : []),
+    ...(Object.hasOwn(value, "contentReview") ? ["contentReview"] : []),
+    ...(Object.hasOwn(value, "designApplication") ? ["designApplication"] : []),
+    ...(Object.hasOwn(value, "designSnapshot") ? ["designSnapshot"] : [])
+  ];
   exactRecord(
     value,
     [
       "studyUnit", "version", "updatedAt", "ordinal", "curriculumPath",
-      "authoringPart", "authorship", "deepLink", ...(Object.hasOwn(value, "pendingAuthoringObservationCount") ? ["pendingAuthoringObservationCount"] : []),
-      ...(Object.hasOwn(value, "contentReview") ? ["contentReview"] : [])
+      "authoringPart", "authorship", "deepLink", ...optionalFields
     ],
     "Um item de conteúdo é inválido."
   );
@@ -321,6 +326,8 @@ function normalizeInspectionItem(value, totalCount) {
     contentReview: value.contentReview == null ? null : normalizeCourseContentReviewState(value.contentReview),
     pendingAuthoringObservationCount: value.pendingAuthoringObservationCount == null ? null :
       natural(value.pendingAuthoringObservationCount, "A quantidade de observações autorais pendentes"),
+    ...(Object.hasOwn(value, "designApplication") ? { designApplication: value.designApplication == null ? null : structuredClone(value.designApplication) } : {}),
+    ...(Object.hasOwn(value, "designSnapshot") ? { designSnapshot: value.designSnapshot == null ? null : structuredClone(value.designSnapshot) } : {}),
     deepLink
   });
 }

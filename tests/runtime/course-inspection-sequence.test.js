@@ -464,6 +464,17 @@ test("normaliza o DTO paginado exato e recusa revisão, ordem ou campos extras",
     expectedScope: options.scope
   }).items.length, 12);
 
+  const withAppliedDesign = structuredClone(value);
+  withAppliedDesign.items[0].designApplication = { mode: "expository", componentRefs: [] };
+  withAppliedDesign.items[0].designSnapshot = { contract: "aralearn.study-unit-design-snapshot.v2" };
+  const appliedDesignPage = normalizeCourseInspectionPage(withAppliedDesign, {
+    expectedCourseId: COURSE_ID,
+    expectedRevision: REVISION,
+    expectedScope: options.scope
+  });
+  assert.deepEqual(appliedDesignPage.items[0].designApplication, withAppliedDesign.items[0].designApplication);
+  assert.deepEqual(appliedDesignPage.items[0].designSnapshot, withAppliedDesign.items[0].designSnapshot);
+
   assert.throws(() => normalizeCourseInspectionPage({ ...value, extra: true }), /página/u);
   assert.throws(() => normalizeCourseInspectionPage({ ...value, courseRevision: 8 }, {
     expectedRevision: REVISION
