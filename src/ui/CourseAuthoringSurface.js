@@ -1616,8 +1616,8 @@ export function createCourseAuthoringSurface({
             onClose() {
               void closeContextSheet();
             },
-            onTargetSaved() {
-              void closeContextSheet();
+            async onTargetSaved() {
+              await closeContextSheet();
             }
           });
           void targetSourcesPanel.open();

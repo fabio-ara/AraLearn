@@ -2157,10 +2157,13 @@ export function createCourseSourcesPanel({
       !state.targetDraftChangedDuringWrite;
     let targetSavedNotified = false;
     if (targetSaveHasNoConcurrentDraft) {
+      // Propague a nova revisão antes de fechar: o fluxo pai usa a diferença
+      // de revisão para reler a inspeção que receberá os vínculos confirmados.
+      applyCourseRevision(result.courseRevision);
       // O recibo da mutação já é a confirmação do vínculo. Feche a folha antes
       // da releitura de inspeção, que pode ser lenta; o fluxo pai fará a
       // atualização do contexto com a nova revisão.
-      onTargetSaved(result);
+      await onTargetSaved(result);
       targetSavedNotified = true;
     }
     if (!state.opened) return true;
