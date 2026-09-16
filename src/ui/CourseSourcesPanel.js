@@ -1212,6 +1212,7 @@ export function createCourseSourcesPanel({
     sourceLinks: [],
     initialSourceLinks: [],
     targetDraftRevision: 0,
+    targetDraftChangedDuringWrite: false,
     targetDetails: new Map(),
     targetDetailsLoading: new Set(),
     busy: false,
@@ -1929,7 +1930,10 @@ export function createCourseSourcesPanel({
   }
 
   function markTargetDraftChanged() {
-    if (state.mode === "target") state.targetDraftRevision++;
+    if (state.mode === "target") {
+      state.targetDraftRevision++;
+      if (state.busy) state.targetDraftChangedDuringWrite = true;
+    }
   }
 
   function sourceChangeMessage(change) {
@@ -2092,6 +2096,9 @@ export function createCourseSourcesPanel({
     }
     state.pendingCommand = pending;
     state.busy = true;
+    if (state.mode === "target" && pending.command.type === "set_target_sources") {
+      state.targetDraftChangedDuringWrite = false;
+    }
     state.failure = "";
     state.message = "Salvando…";
     render();
@@ -2152,6 +2159,7 @@ export function createCourseSourcesPanel({
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
       pending.targetDraftRevision === state.targetDraftRevision &&
+      !state.targetDraftChangedDuringWrite &&
       !state.occurrenceEditor;
     const refreshed = await refreshAfterChange(result).catch(() => false);
     if (!state.opened) return true;
