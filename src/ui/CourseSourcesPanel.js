@@ -2152,9 +2152,13 @@ export function createCourseSourcesPanel({
     // A mutação já foi confirmada pelo backend. Uma releitura secundária pode
     // falhar sem invalidar essa confirmação; nesse caso, feche a folha somente
     // se o usuário não tiver alterado o mesmo rascunho durante a escrita.
+    const targetSaveDraftStillMatches = state.mode === "target" &&
+      pending.command.type === "set_target_sources" &&
+      JSON.stringify(state.sourceLinks) === JSON.stringify(pending.command.sourceLinks) &&
+      !state.occurrenceEditor;
     const targetSaveHasNoConcurrentDraft = state.mode === "target" &&
       pending.command.type === "set_target_sources" &&
-      !state.targetDraftChangedDuringWrite;
+      targetSaveDraftStillMatches;
     if (state.mode === "target" && pending.command.type === "set_target_sources" &&
         !targetSaveHasNoConcurrentDraft) {
       console.error("AraLearn: vínculo confirmado com rascunho concorrente", {
