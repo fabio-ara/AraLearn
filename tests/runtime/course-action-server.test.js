@@ -596,12 +596,16 @@ test("Actions apresenta falha de calibração sem narrar a maquinaria", async ()
   assert.equal(response.status, 409);
   const payload = await response.json();
   assert.equal(
+    payload.error.message,
+    "Ainda há uma dependência a resolver antes desta produção."
+  );
+  assert.match(
     payload.nextDecision,
-    "Inclua a calibração contextual nas unidades e refaça a produção da parte."
+    /Resolva autonomamente.*percurso de aprendizagem/iu
   );
   assert.doesNotMatch(
     `${payload.error.message} ${payload.nextDecision}`,
-    /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+    /human_materialization|calibra[cç][aã]o|ferramenta|campo|schema|contrato|servidor|aprovad/iu
   );
 });
 
