@@ -1,5 +1,7 @@
 # Autoria pelo MCP
 
+Para configurar a conexão sem entrar nos detalhes do protocolo, siga [Conectar seu assistente](conectar-assistente.md) ou abra **Configurações → Conectar assistente** no AraLearn.
+
 Um assistente externo precisa descobrir quais operações o AraLearn oferece
 antes de consultar ou alterar um curso. O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/latest)
 padroniza essa comunicação: o serviço apresenta ferramentas, seus argumentos e

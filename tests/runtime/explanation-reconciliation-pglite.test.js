@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fs from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { explanationContentBasis, reconcileHumanExplanation } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
+import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
 
 const load = name => fs.readFile(new URL(`../../supabase/migrations/${name}`, import.meta.url), "utf8");
 function extract(source, name, delimiter = "$function$") {
@@ -13,6 +16,32 @@ const explanation = { title: "Base preservada", content: [{ id: "a", package: "a
 const reconciliation = { contract: "aralearn.explanation-reconciliation.v1", contentBasis: "a".repeat(64), entries: [{
   resourceId: "a", path: "text", quote: "Uma ideia.", prefix: null, suffix: null, role: "introduced",
   analysisUnitIds: ["idea-a"], evidenceRequirementIds: [], destinationMicrosequenceId: null, reason: "Ideia introduzida aqui." }] };
+
+test("reconciliação permanece vigente após JSONB e detecta alteração real da base", async () => {
+  const db = new PGlite();
+  try {
+    const authored = await reconcileHumanExplanation({ ...explanation, content: [
+      ...explanation.content,
+      { id: "b", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Outra ideia." } }
+    ] }, ["Uma ideia.", "Outra ideia."].map((trecho, index) => ({ recurso: index + 1,
+      folha: "text", trecho, papel: "support", motivo: "Contexto de apoio explícito." })), {});
+    const persisted = (await db.query("select $1::jsonb as explanation", [authored])).rows[0].explanation;
+    const basis = await explanationContentBasis(persisted);
+    assert.equal(basis, authored.reconciliation.contentBasis);
+    assert.equal(inspectExplanationReconciliation(persisted, { contentBasis: basis }).ready, true);
+    for (const change of [
+      { ...persisted, title: "Título alterado" },
+      { ...persisted, content: persisted.content.toReversed() },
+      { ...persisted, content: persisted.content.map((item, index) => index ? item :
+        { ...item, data: { text: "Uma ideia alterada." } }) }
+    ]) {
+      const changedBasis = await explanationContentBasis(change);
+      assert.notEqual(changedBasis, basis);
+      assert.ok(inspectExplanationReconciliation(change, { contentBasis: changedBasis }).blockers
+        .some(blocker => blocker.code === "explanation_reconciliation_stale"));
+    }
+  } finally { await db.close(); }
+});
 
 test("upgrade aceita declaração estrutural e conserva legado/base antiga sem validar prontidão por SQL", async () => {
   const db = new PGlite();

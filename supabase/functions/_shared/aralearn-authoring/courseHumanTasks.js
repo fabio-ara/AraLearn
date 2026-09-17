@@ -226,7 +226,7 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
 const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
-  description: 'Continuação opaca da leitura.' });
+  description: 'Repita a tarefa com os mesmos argumentos iniciais, inclusive plano/explicacoes, acrescentando esta continuação opaca.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -1089,7 +1089,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "5.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:ce57a0b80a95733b363121f28b22c2bfa247cb49e442bf494013f053e7eeb54d";
+  "sha256:796947be9bcc5f0e7ec1664677d9a388e26688d6ad370a3134546649792f5943";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

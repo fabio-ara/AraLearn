@@ -14,6 +14,7 @@ import { renderPersonHandleOnboarding } from "../src/ui/PersonHandleOnboarding.j
 import { renderVisitorSettings } from "../src/ui/VisitorSettings.js";
 import { mountStudyDeviceSettings } from "../src/ui/StudyDeviceSettings.js";
 import { mountAuthoringProcessPreferencesSettings } from "../src/ui/AuthoringProcessPreferencesSettings.js";
+import { mountAssistantConnectionSettings } from "../src/ui/AssistantConnectionSettings.js";
 import { createStudySynchronizationPreference } from "../src/ui/studySynchronizationPreference.js";
 import { buildCourseStudyRoute, parseCourseStudyRoute } from "../src/ui/courseStudyRoute.js";
 import { createCourseAuthoringSurface } from "../src/ui/CourseAuthoringSurface.js";
@@ -343,7 +344,7 @@ function renderSettings(root, authClient, controller, {
           <nav class="account-settings-view account-settings-groups" data-settings-view="main" aria-label="Grupos de Configurações">
             ${[["account", "account", "Conta"], ["appearance", "theme-system", "Aparência"],
               ["device", "cloud", "Sincronização e dados deste dispositivo"], ["authoring", "intent", "Preferências de autoria"],
-              ["maintenance", "rotate", "Manutenção"]].map(([view, icon, label]) => `<button class="account-settings-subview-entry" type="button" data-settings-open-view="${view}"${view === "maintenance" ? " data-settings-maintenance hidden" : ""}>
+              ["assistant", "intent", "Conectar assistente"], ["maintenance", "rotate", "Manutenção"]].map(([view, icon, label]) => `<button class="account-settings-subview-entry" type="button" data-settings-open-view="${view}"${view === "maintenance" ? " data-settings-maintenance hidden" : ""}>
                 <span>${renderUiIcon(icon, "account-settings-action-icon")}<strong>${label}</strong></span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>`).join("")}
           </nav>
           <section class="account-settings-view account-device-data" data-settings-view="account" hidden aria-label="Conta">
@@ -381,6 +382,7 @@ function renderSettings(root, authClient, controller, {
             <div class="account-device-data-actions"><button type="button" data-settings-clear-device>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados deste dispositivo</span></button></div>
           </section>
           <section class="account-settings-view" data-settings-view="authoring" hidden aria-label="Preferências de autoria"><div data-authoring-process-settings></div></section>
+          <section class="account-settings-view" data-settings-view="assistant" hidden aria-label="Conectar assistente"><div data-assistant-connection></div></section>
           <section class="account-settings-view account-maintenance account-settings-disclosure" data-settings-view="maintenance" hidden aria-labelledby="account-maintenance-title">
             <div class="account-maintenance-heading">
               <div><h2 id="account-maintenance-title">Manutenção</h2></div>
@@ -625,7 +627,7 @@ function renderSettings(root, authClient, controller, {
   };
   const showSettingsView = (view, { restoreFocus = false } = {}) => {
     const labels = { main: "Configurações", account: "Conta", appearance: "Aparência", device: "Sincronização e dados deste dispositivo",
-      authoring: "Preferências de autoria", photo: "Foto do perfil", maintenance: "Manutenção" };
+      authoring: "Preferências de autoria", assistant: "Conectar assistente", photo: "Foto do perfil", maintenance: "Manutenção" };
     const nextView = Object.hasOwn(labels, view) && (view !== "maintenance" || !maintenance.hidden) ? view : "main";
     const previousView = activeSettingsView;
     const content = root.querySelector(".account-settings-content");
@@ -1040,6 +1042,7 @@ function renderSettings(root, authClient, controller, {
     }
   ) : null;
   const processPreferences = mountAuthoringProcessPreferencesSettings(root.querySelector("[data-authoring-process-settings]"), { client: preferencesClient });
+  mountAssistantConnectionSettings(root.querySelector("[data-assistant-connection]"));
   syncTheme();
   return Object.freeze({
     loadProfile,

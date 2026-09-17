@@ -397,7 +397,9 @@ export function humanMaterializationUnitPlan(unit) {
 }
 
 export async function explanationContentBasis(explanation) {
-  return await sha256Hex(JSON.stringify({ title: explanation?.title, content: explanation?.content }));
+  // JSONB preserves content, not object-key insertion order. The basis must
+  // survive persistence while retaining the meaningful order of resources.
+  return await sha256Hex(canonicalAuthoringValue({ title: explanation?.title, content: explanation?.content }));
 }
 
 export async function reconcileHumanExplanation(content, entries, context) {

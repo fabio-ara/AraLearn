@@ -400,6 +400,24 @@ test("continuação liga tarefa, consulta, curso e revisão; argumentos reordena
   }
 });
 
+test("continuação conserva consulta com objetos aninhados reordenados, mas rejeita listas ou valores alterados", async () => {
+  const args = { curso: TITLE, parte: 1, plano: [{ titulo: "Prática", resposta: { tipo: "escolha", opcoes: ["A", "B"] } }] };
+  const state = await openHumanReadContinuation({ args, course: COURSE, task: "preparar_materializacao" });
+  const first = await paginateHumanReadContext({ text: "x".repeat(20_000) }, { state });
+  const reordered = { curso: TITLE, parte: 1, plano: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Prática" }] };
+  const resumed = await openHumanReadContinuation({ args: { ...reordered, continuacao: first.continuacao },
+    course: COURSE, task: "preparar_materializacao" });
+  assert.equal(resumed.o, first.fragmento.fim);
+  for (const changed of [
+    { ...reordered, plano: [{ resposta: { opcoes: ["B", "A"], tipo: "escolha" }, titulo: "Prática" }] },
+    { ...reordered, plano: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Outra prática" }] },
+    { curso: TITLE, parte: 1 }
+  ]) {
+    await assert.rejects(() => openHumanReadContinuation({ args: { ...changed, continuacao: first.continuacao },
+      course: COURSE, task: "preparar_materializacao" }), { code: "human_read_context_changed" });
+  }
+});
+
 test("continuações malformadas falham com 422 e mensagem sem conteúdo do cursor", async () => {
   const args = { curso: TITLE };
   const state = await openHumanReadContinuation({ args, course: COURSE, task: "preparar_revisao" });

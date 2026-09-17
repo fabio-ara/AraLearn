@@ -6,6 +6,8 @@ O conteúdo é desenvolvido em etapas relacionadas, com explicações, fontes e 
 
 [Abrir o AraLearn](https://fabio-ara.github.io/AraLearn/) · [Conhecer a origem do projeto](docs/origens-do-aralearn.md)
 
+Para começar a criar por conversa, veja [como conectar seu assistente](docs/conectar-assistente.md). No aplicativo, abra **Configurações → Conectar assistente**.
+
 ## Como o conteúdo é organizado
 
 O conteúdo é dividido em vários níveis, do curso completo às unidades de estudo que aparecem na tela. Entre esses extremos, cada **microssequência didática** organiza um avanço conceitual delimitado. Suas unidades desenvolvem esse avanço por meio de explicações, exemplos e práticas com retorno.
