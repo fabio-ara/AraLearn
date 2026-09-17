@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: validacao-${{ github.event_name }}-${{ github.ref }}
@@ -76,6 +76,19 @@ jobs:
           path: docs/downloads/aralearn-chatgpt-action-openapi.yaml
           if-no-files-found: error
           retention-days: 1
+
+      - name: Persistir OpenAPI gerado na branch do PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git switch -C "$HEAD_REF" "origin/$HEAD_REF"
+          node ./scripts/buildChatGptActionOpenApi.mjs
+          git add docs/downloads/aralearn-chatgpt-action-openapi.yaml
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'chore(actions): atualizar OpenAPI gerado'
+            git push origin "HEAD:$HEAD_REF"
+          fi
 
       - name: Conferir artefatos gerados e arquitetura
         if: steps.paths.outputs.docs_only != 'true'
