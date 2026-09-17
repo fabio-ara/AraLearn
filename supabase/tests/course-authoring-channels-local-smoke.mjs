@@ -144,7 +144,7 @@ async function completeRead(client, task, args) {
 export async function materializeChannelPart(client, lot) {
   const { curso, parte, unidades, explicacoes } = lot.materialization;
   const prepared = await completeRead(client, "preparar_materializacao", {
-    curso, parte, plano: unidades.map(humanMaterializationUnitPlan), explicacoes });
+    curso, parte, unidades: unidades.map(humanMaterializationUnitPlan), explicacoes });
   assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
   assert.equal(prepared.context.parte.microssequencias.length, lot.part.microssequencias.length);
   await client.call("materializar_parte", { ...lot.materialization,
