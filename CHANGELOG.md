@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.80] - 2026-09-17
+
+### Corrigido
+
+- a substituição de unidades existentes reutiliza a calibração já aplicada, evitando que parâmetros automáticos preenchidos bloqueiem a preparação e a materialização.
+
 ## [0.0.79] - 2026-09-17
 
 ### Corrigido

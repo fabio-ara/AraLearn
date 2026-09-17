@@ -531,7 +531,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     scopedDesigns.set(existing?.studyUnit.id ?? `new:${index}`, scopedDesign);
     capture(() => validateUnitConfiguration(planned.configuracao), details);
     const design = capture(() => applyUnitContextualCalibration(scopedDesign, planned.configuracao,
-      { existing: Boolean(existing) }), details);
+      { existing }), details);
     if (!design) continue;
     capture(() => designSnapshot(design, micro.id), details);
     for (const id of curriculumScopeItemIds) {
@@ -888,12 +888,39 @@ function existingConfigurationConflict() {
   );
 }
 
-function applyUnitContextualCalibration(design, configuration, { existing = false } = {}) {
+function applyUnitContextualCalibration(design, configuration, { existing = null } = {}) {
   if (design?.parameters?.some((parameter) => parameter.conflicts?.length)) {
     fail("human_materialization_configuration_conflict", "Resolva a condição fixa e sua exceção antes de produzir.", 409);
   }
-  if (configuration === undefined) return design;
   const calibrated = structuredClone(design);
+  const snapshot = existing?.designSnapshot;
+  // Applying a contextual choice persists the snapshot, not an intention. Reuse
+  // only that unit's valid automatic choices while its intention is still unset.
+  // Both reads are revision-bound and the preflight identity includes the snapshot.
+  if (snapshot?.contract === "aralearn.study-unit-design-snapshot.v2" &&
+      snapshot.parameterCatalogVersion === COURSE_DESIGN_PARAMETER_CATALOG_VERSION &&
+      snapshot.didacticMicrosequenceId === existing.curriculumPath?.didacticMicrosequence?.id &&
+      Array.isArray(snapshot.parameters) && snapshot.parameters.length === COURSE_DESIGN_PARAMETER_DEFINITIONS.length &&
+      new Set(snapshot.parameters.map(parameter => parameter?.parameterId)).size === snapshot.parameters.length) {
+    for (const parameter of calibrated.parameters ?? []) {
+      const effective = parameter.effectiveAssignment;
+      if (effective?.mode !== "automatic" || effective.value !== null || effective.origin !== "system_default" ||
+          effective.sourceScope != null || parameter.localAssignment != null) continue;
+      const applied = snapshot.parameters.find(entry => entry?.parameterId === parameter.parameterId);
+      const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId);
+      if (applied?.origin !== "automatic" || !["study_unit", "course"].includes(applied.sourceScopeKind) ||
+          !definition?.supportedScopes.includes(applied.sourceScopeKind)) continue;
+      try {
+        parameter.effectiveAssignment = { mode: "automatic",
+          value: normalizeCourseDesignParameterValue(parameter.parameterId, applied.value),
+          origin: "automatic", reason: boundedText(applied.reason, "A justificativa da calibração aplicada", 1_000),
+          sourceScope: { kind: applied.sourceScopeKind }, inherited: applied.sourceScopeKind !== "study_unit" };
+      } catch {
+        // An invalid or obsolete applied value cannot fill a current calibration gap.
+      }
+    }
+  }
+  if (configuration === undefined) return calibrated;
   const requestedParameters = Object.entries(configuration.parametros);
   const fixedOrigins = new Set(["author", "research_condition"]);
   for (const [field, requestedValue] of requestedParameters) {
@@ -914,7 +941,9 @@ function applyUnitContextualCalibration(design, configuration, { existing = fals
       );
     }
     if (existing) {
-      if (!sameJson(parameter.effectiveAssignment.value, value)) {
+      const current = parameter.effectiveAssignment.value;
+      if (current === null || current === undefined ||
+          !sameJson(normalizeCourseDesignParameterValue(parameterId, current), value)) {
         existingConfigurationConflict();
       }
       continue;
@@ -1532,7 +1561,7 @@ export async function materializeHumanCoursePart({
         const design = existing ? await adapter.getCourseDesign({ principal, courseId: context.course.id,
           scopeKind: "study_unit", scopeRef: existing.studyUnitId, childLimit: 1, childCursor: null, deadlineAt })
           : targetDesigns.get(group.microsequenceId);
-        unit.design = applyUnitContextualCalibration(design, unit.source.configuracao, { existing: Boolean(existing) });
+        unit.design = applyUnitContextualCalibration(design, unit.source.configuracao, { existing: existing?.item });
       }
       // Repertoire and memberships are prerequisites, never invented by a write.
       const targetPlanItems = [...targetDesigns].map(([didacticMicrosequenceId, design]) => ({ didacticMicrosequenceId,
