@@ -101,12 +101,13 @@ test("conteúdo alterado conserva mapa antigo para reparo e localizador ambíguo
   assert.ok(inspect(repeated).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"));
 });
 
-test("edição manual preserva a declaração antiga como base reparável sem recertificá-la", () => {
+test("edição manual da base não transporta uma declaração pertencente ao texto anterior", () => {
   const before = reconcile({ title: "Identidades", content: [paragraph("a", "Uma ideia antiga.")] });
   const changed = applyExplanationTextFields(before, [{ targetId: "content:a", path: "text", value: "Uma ideia nova." }]);
-  assert.deepEqual(changed.reconciliation, before.reconciliation);
-  assert.ok(inspect(changed).blockers.some(item => item.code === "explanation_reconciliation_stale"));
+  assert.equal(Object.hasOwn(changed, "reconciliation"), false);
+  assert.equal(changed.content[0].data.text, "Uma ideia nova.");
   assert.equal(before.content[0].data.text, "Uma ideia antiga.");
+  assert.ok(before.reconciliation, "a leitura histórica permanece intacta no objeto anterior");
 });
 
 test("índices de seleção UTF-16 não omitem texto depois de caracteres suplementares", () => {
