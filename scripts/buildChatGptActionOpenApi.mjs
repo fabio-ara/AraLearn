@@ -395,10 +395,6 @@ if (output.length >= CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET) {
 if (process.argv.includes("--check")) {
   const current = await fs.readFile(target, "utf8").catch(() => "");
   if (current.replaceAll("\r\n", "\n") !== output) {
-    const encoded = Buffer.from(output, "utf8").toString("base64");
-    for (let offset = 0, index = 0; offset < encoded.length; offset += 12000, index += 1) {
-      console.log(`ARALearn_OPENAPI_EXPECTED_${String(index).padStart(3, "0")}:${encoded.slice(offset, offset + 12000)}`);
-    }
     throw new Error("O OpenAPI de Actions precisa ser regenerado.");
   }
 } else {
