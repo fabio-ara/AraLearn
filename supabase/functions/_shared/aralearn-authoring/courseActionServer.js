@@ -17,10 +17,6 @@ import { isTrustedOpenAiFileHost } from "./openAiTemporaryFile.js";
 import { readActionPayload, serializeActionPayload } from "./courseActionPayload.js";
 import { projectHumanWriteRecovery, projectHumanMaterializationPreflight } from "./toolErrorEnvelope.js";
 import { decodeCourseActionTaskRequest, isCourseActionOperation } from "./courseActionBindings.js";
-import {
-  materializationConversationProjection,
-  normalizeNaturalAuthoringArguments
-} from "./authoringConversationPolicy.js";
 
 const JSON_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
@@ -92,7 +88,7 @@ function actionFileReference(value, fieldSchema) {
 function normalizeActionArguments(taskName, rawArguments) {
   const definition = courseHumanTaskDefinition(taskName);
   const fields = definition?._meta?.["openai/fileParams"];
-  if (!fields) return normalizeNaturalAuthoringArguments(taskName, rawArguments);
+  if (!fields) return rawArguments;
   if (fields.length !== 1) throw new TypeError("Transporte de arquivo inválido.");
   const [field] = fields;
   if (Object.hasOwn(rawArguments, field)) {
@@ -111,7 +107,7 @@ function normalizeActionArguments(taskName, rawArguments) {
     [field]: actionFileReference(references[0], definition.inputSchema.properties[field])
   };
   delete normalized.openaiFileIdRefs;
-  return normalizeNaturalAuthoringArguments(taskName, normalized);
+  return normalized;
 }
 
 function normalizedResult(value) {
@@ -136,9 +132,8 @@ function retryableError(error) {
   ]).has(error.code);
 }
 
-function nextDecisionForError(error, retryable, preflight = null) {
-  const materialization = materializationConversationProjection(error, preflight);
-  if (materialization) return materialization.nextDecision;
+function nextDecisionForError(error, retryable) {
+  if (projectHumanMaterializationPreflight(error)) return "Resolva os bloqueios e releia preparar_materializacao antes de produzir na mesma base.";
   if (error.code === "ambiguous_human_reference") {
     return "Informe um título mais específico ou a posição humana do objeto.";
   }
@@ -159,6 +154,9 @@ function nextDecisionForError(error, retryable, preflight = null) {
   }
   if (error.code === "course_media_write_uncertain") {
     return "Consulte os áudios do curso antes de decidir se ainda precisa guardar o arquivo.";
+  }
+  if (error.code === "human_materialization_contextual_calibration_required") {
+    return "Inclua a calibração contextual nas unidades e refaça a produção da parte.";
   }
   if (retryable) return "Refaça a mesma etapa em silêncio, sem mudar a intenção.";
   return null;
@@ -189,19 +187,18 @@ function publicError(error, { writeTaskStarted = false } = {}) {
   }
   const retryable = retryableError(error);
   const preflight = projectHumanMaterializationPreflight(error);
-  const materialization = materializationConversationProjection(error, preflight);
   return {
     error: {
       code: retryable
         ? "temporarily_unavailable"
         : String(error.code || "human_task_failed"),
-      message: materialization?.message ?? (retryable
+      message: retryable
         ? "Não consegui concluir esta etapa."
-        : String(error.message || "A tarefa não pôde ser concluída.").slice(0, 1000)),
+        : String(error.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
       retryable,
       ...(preflight ? { details: { preflight } } : {})
     },
-    nextDecision: nextDecisionForError(error, retryable, preflight)
+    nextDecision: nextDecisionForError(error, retryable)
   };
 }
 

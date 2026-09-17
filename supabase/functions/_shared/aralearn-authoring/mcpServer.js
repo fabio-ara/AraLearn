@@ -15,10 +15,6 @@ import {
   courseHumanTasksForPrincipal,
   executeHumanCourseTask
 } from "./courseHumanTasks.js";
-import {
-  materializationConversationProjection,
-  normalizeNaturalAuthoringArguments
-} from "./authoringConversationPolicy.js";
 
 export const ARALEARN_MCP_PROTOCOL_VERSION = "2025-11-25";
 export const ARALEARN_AUTHORING_CONTRACT_HEADER = COURSE_HUMAN_TASK_CATALOG_HEADER;
@@ -280,7 +276,6 @@ function toolFailure(
   const retryable = retryableError(normalized);
   const recovery = projectHumanWriteRecovery(normalized);
   const preflight = projectHumanMaterializationPreflight(normalized);
-  const materialization = materializationConversationProjection(normalized, preflight);
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
   const publicError = {
     code: retryable
@@ -288,14 +283,14 @@ function toolFailure(
       : String(normalized.code || "human_task_failed"),
     message: uncertain
       ? "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo."
-      : materialization?.message ?? (retryable
-        ? "Não consegui concluir esta etapa."
-        : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000)),
+      : retryable
+      ? "Não consegui concluir esta etapa."
+      : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable,
     ...(recovery ? { recovery } : {}),
     ...(preflight ? { details: { preflight } } : {})
   };
-  let nextDecision = materialization?.nextDecision ?? (normalized.code === "ambiguous_human_reference"
+  let nextDecision = normalized.code === "ambiguous_human_reference"
     ? "Informe um título mais específico ou a posição humana do objeto."
     : normalized.code === "human_reference_not_found"
       ? "Confira o título ou a posição e tente novamente."
@@ -305,9 +300,14 @@ function toolFailure(
           ? "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
           : normalized.code === "course_media_write_uncertain"
             ? "Consulte os áudios do curso antes de decidir se ainda precisa guardar o arquivo."
+          : normalized.code === "human_materialization_contextual_calibration_required"
+            ? "Inclua a calibração contextual nas unidades e refaça a produção da parte."
             : retryable
               ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
-              : null);
+              : null;
+  if (preflight) {
+    nextDecision = "Resolva os bloqueios e releia preparar_materializacao antes de produzir na mesma base.";
+  }
   if (normalized.code === "course_write_uncertain") {
     nextDecision = "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração.";
   } else if (recovery) {
@@ -340,7 +340,7 @@ async function executeTool({
     adapter,
     principal,
     name,
-    rawArguments: normalizeNaturalAuthoringArguments(name, rawArguments),
+    rawArguments,
     deadlineAt
   });
   return toolSuccess(value);
@@ -568,6 +568,9 @@ export function createAuthoringMcpHandler({
       canonicalResource ||= `${url.origin}${url.pathname
         .replace(/\/\.well-known\/oauth-protected-resource\/?$/u, "")
         .replace(/\/+$/u, "")}`;
+      // A borda pode remover o prefixo /functions/v1/<slug> antes de entregar
+      // a requisição. A identificação pelo sufixo mantém a rota de descoberta
+      // OAuth estável sem alterar o resource canônico anunciado ao cliente.
       if (url.pathname.replace(/\/+$/u, "").endsWith("/.well-known/oauth-protected-resource")) {
         if (request.method !== "GET") {
           return jsonRpcResponse(
