@@ -79,7 +79,7 @@ test("smoke dos canais prepara propostas antes da escrita e conserva a mesma ref
   } };
   await materializeChannelPart(client, lot);
   assert.deepEqual(calls.map(call => call.task), ["preparar_materializacao", "materializar_parte"]);
-  assert.deepEqual(calls[0].args.plano, lot.materialization.unidades.map(humanMaterializationUnitPlan));
+  assert.deepEqual(calls[0].args.unidades, lot.materialization.unidades.map(humanMaterializationUnitPlan));
   assert.deepEqual(calls[0].args.explicacoes, lot.materialization.explicacoes);
   assert.deepEqual(calls[1].args, { ...lot.materialization, referenciaPreparo: "prepared-same-basis" });
   const blockedCalls = [];
