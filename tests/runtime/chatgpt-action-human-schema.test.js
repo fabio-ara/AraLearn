@@ -121,7 +121,19 @@ const samples = {
   aplicar_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática", previa: "a".repeat(64) },
   retomar_curso: { titulo: "Redes para iniciantes" },
   consultar_planejamento: { curso: "Redes para iniciantes", parte: 2 },
-  preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets" },
+  preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets", unidades: [{
+    microssequencia: "Sockets",
+    posicao: 1,
+    conteudo: SAMPLE_THEORY_CONTENT,
+    aplicacaoPedagogica: {
+      ideiasIntroduzidas: ["Socket como interface"],
+      ideiasUtilizadas: [],
+      explicacoes: [{ ideia: "Socket como interface", formas: ["plain_definition"] }],
+      praticas: [],
+      cobertura: ["comunicação entre processos"]
+    },
+    fontes: []
+  }] },
   consultar_configuracao: {
     curso: "Redes para iniciantes",
     microssequencia: "Sockets"
