@@ -1792,11 +1792,9 @@ test("revisar conteúdo inicial não mobiliza ideia ensinada apenas depois no cu
   assert.deepEqual(adapter.calls, []);
 });
 
-test("preflight bloqueia usos e retomadas preservados cuja introdução foi invalidada em outra Parte", async () => {
-  for (const [field, code] of [["usedBy", "human_materialization_use_before_introduction"],
-    ["revisitedBy", "human_materialization_explanation_before_introduction"]]) {
+test("pendência pedagógica independente em outra microssequência não bloqueia produção focal", async () => {
+  for (const field of ["usedBy", "revisitedBy"]) {
     const adapter = adapterFixture();
-    let restored = false;
     const readPlan = adapter.getCourseInstructionalPlan;
     adapter.getCourseInstructionalPlan = async () => {
       const read = await readPlan();
@@ -1805,29 +1803,15 @@ test("preflight bloqueia usos e retomadas preservados cuja introdução foi inva
         id: "micro-earlier", position: 0, title: "Fundamentos anteriores"
       });
       read.plan.instructionalAnalysisUnits.push({ id: SECOND_ANALYSIS_ID, position: 9,
-        statement: "Ideia anterior corrigida.", description: "Introdução invalidada pela edição da prosa.",
-        introducedAt: restored ? { studyUnitId: "restored-theory", didacticMicrosequenceId: "micro-earlier",
-          title: "Introdução conferida novamente" } : null, usedBy: [], revisitedBy: [], version: 1,
+        statement: "Ideia independente incompleta.", description: "Pendência fora do alvo corrente.",
+        introducedAt: null, usedBy: [], revisitedBy: [], version: 1,
         [field]: [{ studyUnitId: "preserved-practice", didacticMicrosequenceId: "micro-earlier",
-          title: "Prática que depende da introdução" }] });
+          title: "Prática fora do alvo" }] });
       return read;
     };
     const result = await prepareMaterialization(adapter, [unit()], { complete: false });
-    assert.equal(result.state, "blocked");
-    assert.equal(result.referencia, null);
-    const blocker = result.blockers.find(item => item.code === code);
-    assert.ok(blocker);
-    assert.equal(blocker.idea, "Ideia anterior corrigida.");
-    assert.equal(blocker.studyUnit, "Prática que depende da introdução");
-    assert.equal(blocker.microsequence, "Fundamentos anteriores");
-    await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
-      course: "Curso de Redes", part: 1, units: [unit()], complete: false }),
-    error => Boolean(preflightBlocker(error, code)));
-    assert.deepEqual(adapter.calls, []);
-    restored = true;
-    const repaired = await prepareMaterialization(adapter, [unit()], { complete: false });
-    assert.equal(repaired.state, "ready");
-    assert.deepEqual(repaired.blockers, []);
+    assert.equal(result.state, "ready", JSON.stringify(result.blockers));
+    assert.deepEqual(result.blockers, []);
   }
 });
 
