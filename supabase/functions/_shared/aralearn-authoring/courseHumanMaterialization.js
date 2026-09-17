@@ -424,7 +424,7 @@ export async function reconcileHumanExplanation(content, entries, context) {
 // Preparation and writing consume the same candidate units. The preflight
 // derives structural facts from content instead of maintaining a parallel plan.
 export async function preflightHumanCourseMaterialization({ adapter, principal, context,
-  planUnits = [], explanations = [], complete = true, deadlineAt = null }) {
+  planUnits = [], explanations = [], complete = false, deadlineAt = null }) {
   const blockers = [];
   const add = (code, message, details = {}) => blockers.push({ code, message, ...details });
   const capture = (callback, details = {}) => {
@@ -1538,7 +1538,7 @@ export async function materializeHumanCoursePart({
   units,
   explanations,
   preparationReference = null,
-  complete = true,
+  complete = false,
   deadlineAt = null
 }) {
   validateUnits(units);
