@@ -76,6 +76,21 @@ jobs:
         if: steps.paths.outputs.docs_only != 'true'
         run: node ./scripts/validateCourseRuntime.mjs
 
+      - name: Executar testes focais da autoria
+        if: steps.paths.outputs.docs_only != 'true'
+        run: >-
+          npm run test:focal --
+          tests/runtime/course-explanation-reconciliation.test.js
+          tests/runtime/course-human-corrections.test.js
+          tests/runtime/course-human-materialization.test.js
+          tests/runtime/incremental-materialization-pglite.test.js
+          tests/runtime/course-human-mcp.test.js
+          tests/runtime/course-action-server.test.js
+          tests/runtime/chatgpt-action-human-schema.test.js
+          tests/runtime/course-human-read-context.test.js
+          tests/runtime/course-local-action-binding.test.js
+          tests/runtime/course-microsequence-review.test.js
+
   web:
     name: Testar web
     needs: preparar
