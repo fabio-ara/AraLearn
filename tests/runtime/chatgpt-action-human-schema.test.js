@@ -418,7 +418,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   assert.match(openApi.info.description, /respeite confirmações do cliente/iu);
   assert.match(
     knowledgeGuidance,
-    /falhas mecânicas recuperáveis silenciosamente.*bloqueio persistente exige informar seu impacto.*condição de retomada.*próximo passo executável.*não o apresente como sucesso/iu
+    /falhas mecânicas recuperáveis silenciosamente.*códigos.*nomes de ferramentas.*estados de execução.*linguagem interna.*decisão pedagógica.*aprendizagem.*continue automaticamente/iu
   );
   assert.match(knowledgeGuidance, /pessoa autora.*público/iu);
   assert.match(knowledgeGuidance, /curso, parte, explicação, fonte e unidade em minúsculas/iu);
@@ -453,7 +453,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /em automático, escolha valor e motivo/iu
+    /resolva autonomamente condições deriváveis e escolhas delegadas/iu
   );
   assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
@@ -466,7 +466,7 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   );
   assert.match(
     materializationGuidance,
-    /configuracao de cada unidade do plano enviado a preparar_materializacao.*reutilize essa calibração na materialização.*sem etapa persistente separada nem narração no chat/iu
+    /escolhas delegadas ainda sem valor são resolvidas no próprio fluxo.*valores determinísticos do produto.*não peça ao autor.*calibração técnica.*sem.*escrita intermediária/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
@@ -650,7 +650,7 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
   }
 });
 
-test("MCP e Actions exigem em uma chamada a configuração efetiva completa da unidade", () => {
+test("MCP e Actions aceitam configuração contextual explícita sem torná-la obrigatória", () => {
   const schemas = [
     COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
     actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
@@ -663,7 +663,8 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
     const configuration = unit.properties.configuracao;
     const parameters = configuration.properties.parametros;
 
-    assert.ok(unit.required.includes("configuracao"));
+    assert.equal(unit.required.includes("configuracao"), false,
+      "A configuração derivável não é uma pré-condição humana obrigatória.");
     assert.deepEqual(
       [...(configuration.required ?? [])].sort(),
       ["motivo", "parametros"]
