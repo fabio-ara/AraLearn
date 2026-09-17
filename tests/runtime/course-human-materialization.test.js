@@ -670,14 +670,14 @@ test("erro de elemento repetido orienta a retomada sem expor sua identificação
   });
 });
 
-test("materialização exige uma decisão contextual para cada parâmetro delegado ainda sem valor", async (t) => {
-  for (const { id } of COURSE_DESIGN_PARAMETER_DEFINITIONS) await t.test(id, async () => {
+test("materialização resolve delegação automática pelos padrões do produto sem interromper", async (t) => {
+  for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) await t.test(definition.id, async () => {
     const value = adapterFixture();
     const inheritedDesign = value.getCourseDesign;
     value.getCourseDesign = async (...args) => {
       const design = await inheritedDesign(...args);
       const target = design.parameters.find(({ parameterId }) =>
-        parameterId === id);
+        parameterId === definition.id);
       target.effectiveAssignment = {
         mode: "automatic", value: null,
         origin: "system_default",
@@ -685,30 +685,26 @@ test("materialização exige uma decisão contextual para cada parâmetro delega
       };
       return design;
     };
+    const candidate = unit();
+    delete candidate.configuracao;
 
-    await assert.rejects(() => materializeHumanCoursePart({
+    await materializeHumanCoursePart({
       adapter: value,
       principal: PRINCIPAL,
       course: "Curso de Redes",
       part: 1,
-      units: [unit()]
-    }), (error) => {
-      const blocker = preflightBlocker(error, "human_materialization_contextual_calibration_required");
-      assert.equal(
-        blocker.message,
-        "Uma unidade nova ainda está sem calibração contextual."
-      );
-      assert.doesNotMatch(
-        blocker.message,
-        /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
-      );
-      return true;
+      units: [candidate]
     });
-    assert.deepEqual(value.calls, []);
+
+    const applied = value.calls[0].units[0].designSnapshot.parameters
+      .find(({ parameterId }) => parameterId === definition.id);
+    assert.deepEqual(applied.value, definition.defaultValue);
+    assert.equal(applied.origin, "automatic");
+    assert.match(applied.reason, /Padrão do produto aplicado/iu);
   });
 });
 
-test("MCP pede calibração pendente sem repetir escrita e conserva a classificação de falha do serviço", async () => {
+test("MCP resolve calibração derivável e só falha quando a leitura necessária está indisponível", async () => {
   for (const unavailable of [false, true]) {
     const adapter = adapterFixture();
     adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
@@ -740,15 +736,15 @@ test("MCP pede calibração pendente sem repetir escrita e conserva a classifica
     } }) }));
     const payload = await response.json();
     assert.equal(response.status, 200);
-    assert.equal(payload.result.isError, true);
-    const failure = payload.result.structuredContent;
-    assert.equal(failure.error.code, unavailable ? "temporarily_unavailable" : "human_materialization_preflight_blocked");
-    assert.equal(failure.error.retryable, unavailable);
-    if (!unavailable) {
-      assert.ok(failure.error.details.preflight.blockers.some(item => item.code === "human_materialization_contextual_calibration_required"));
-      assert.match(failure.nextDecision, /prepar|bloque/iu);
+    assert.equal(payload.result.isError, unavailable);
+    if (unavailable) {
+      assert.equal(payload.result.structuredContent.error.code, "temporarily_unavailable");
+      assert.equal(payload.result.structuredContent.error.retryable, true);
+      assert.deepEqual(adapter.calls, []);
+    } else {
+      assert.equal(adapter.calls.length, 1);
+      assert.equal(payload.result.structuredContent.context.completion, "partial");
     }
-    assert.deepEqual(adapter.calls, []);
   }
 });
 
