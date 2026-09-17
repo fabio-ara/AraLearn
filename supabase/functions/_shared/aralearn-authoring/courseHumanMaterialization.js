@@ -968,7 +968,7 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
         : { kind: "course", ref: design.courseId }
     };
   }
-  if (configuration.direcaoEditorial !== undefined) {
+  if (configuration?.direcaoEditorial !== undefined) {
     const guidance = boundedText(
       configuration.direcaoEditorial,
       "A direção editorial da unidade",
