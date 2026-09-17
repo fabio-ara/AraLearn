@@ -1486,6 +1486,8 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
   }
   const seen = new Set();
   const prepared = [];
+  const saved = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
+    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
   for (const [index, entry] of explanations.entries()) {
     if (!plainObject(entry) || !Array.isArray(entry.fontes) || Object.keys(entry).some((key) =>
       !["microssequencia", "conteudo", "fontes", "reconciliacao"].includes(key))) {
@@ -1500,6 +1502,12 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
     let content;
     try { content = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context); }
     catch (error) { fail("invalid_human_explanation", error.message); }
+    const persistedSupport = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id)?.explanation ?? null;
+    if (entry.reconciliacao === undefined && persistedSupport?.reconciliation &&
+        canonicalAuthoringValue({ title: content.title, content: content.content }) ===
+        canonicalAuthoringValue({ title: persistedSupport.title, content: persistedSupport.content })) {
+      content.reconciliation = structuredClone(persistedSupport.reconciliation);
+    }
     if (entry.fontes.some((link) => !plainObject(link) ||
       link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
         link.ocorrencias.some((occurrence) => !plainObject(occurrence) || occurrence.lugar !== "conteudo")))) {
@@ -1509,8 +1517,6 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
       requested: entry.fontes ?? [], deadlineAt, newId, content, identityPrefix: `explanation:${index}` });
     prepared.push({ microsequenceId: microsequence.id, content, sourceLinks });
   }
-  const saved = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
-    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
   if (!includeSaved) return prepared;
   for (const microsequence of microsequences.filter(item => !seen.has(item.id))) {
     const persisted = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id) ?? microsequence;
