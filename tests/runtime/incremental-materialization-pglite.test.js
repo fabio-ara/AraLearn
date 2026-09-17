@@ -179,8 +179,18 @@ test("fragmento ignora inconsistência independente e conclusão volta a validar
       values($1,'microsequence','micro-legacy','lesson','lesson',1,'{"title":"Legado independente","dependsOn":[]}'::jsonb)`, [COURSE]);
     await db.query("insert into private.course_authoring_part_didactic_microsequences values($1,$2,'micro-legacy')", [COURSE, PART]);
     const legacy = unit("legacy-u", 1, { introduced: true, developedForms: ["plain_definition"] });
+    const legacyIdea = "30000000-0000-4000-8000-000000000002";
     legacy.didacticMicrosequenceId = "micro-legacy";
     legacy.designSnapshot.didacticMicrosequenceId = "micro-legacy";
+    legacy.designSnapshot.instructionalAnalysisUnitIds = [legacyIdea];
+    legacy.designSnapshot.evidenceRequirementIds = [];
+    legacy.designApplication.introducedInstructionalAnalysisUnitIds = [legacyIdea];
+    legacy.designApplication.explanationApplications = [{
+      instructionalAnalysisUnitId: legacyIdea,
+      developedForms: ["plain_definition"],
+      notApplicable: []
+    }];
+    legacy.designApplication.practiceApplications = [];
     legacy.designApplication.mode = "practice";
     await db.query(`insert into private.course_entities(
       course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application
@@ -199,7 +209,12 @@ test("fragmento ignora inconsistência independente e conclusão volta a validar
     await assert.rejects(write(db, [focal], placements, {
       complete: true,
       revision: partial.courseRevision,
-      request: "complete-with-legacy-001"
+      request: "complete-with-legacy-001",
+      targetPlanItems: [...targets, {
+        didacticMicrosequenceId: "micro-legacy",
+        instructionalAnalysisUnitIds: [],
+        evidenceRequirementIds: []
+      }]
     }), /Modo ou teto de novidade foi violado/u);
   } finally { await db.close(); }
 });
