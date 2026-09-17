@@ -823,7 +823,6 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       explicacoes: EXPLANATIONS_SCHEMA,
-      referenciaPreparo: { type: "string", pattern: "^materialization-v1:[a-f0-9]{64}$" },
       concluir: { type: "boolean", default: false },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: Object.freeze({
@@ -3452,7 +3451,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
-    preparationReference: args.referenciaPreparo ?? null, complete: args.concluir === true,
+    complete: args.concluir === true,
     units: safeClone(args.unidades, "unidades", 480 * 1024),
     explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
