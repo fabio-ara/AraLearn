@@ -74,6 +74,16 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
     if (seen.has(entity.entityId)) fail("invalid_human_explanation", "Uma correção não pode repetir a mesma explicação.");
     seen.add(entity.entityId);
     const support = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context);
+    const currentSupport = entity.content?.explanation
+      ? normalizeMicrosequenceExplanation(entity.content.explanation)
+      : null;
+    if (entry.reconciliacao === undefined && currentSupport?.reconciliation &&
+        canonicalAuthoringValue({ title: support.title, content: support.content }) ===
+        canonicalAuthoringValue({ title: currentSupport.title, content: currentSupport.content })) {
+      // A source-only write preserves the existing declaration literally; an
+      // edited document never inherits a declaration for another text.
+      support.reconciliation = structuredClone(currentSupport.reconciliation);
+    }
     const content = { ...structuredClone(entity.content), explanation: support };
     const page = await adapter.getCourseSources({ principal, courseId: course.id, expectedRevision: course.revision,
       mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: entity.entityId,
