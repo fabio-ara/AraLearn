@@ -421,9 +421,8 @@ export async function reconcileHumanExplanation(content, entries, context) {
   return normalized;
 }
 
-// Same structural declarations are consumed by preparation and writing. The
-// compact plan excludes final prose, but never excludes repertoire, forms,
-// response eligibility, feedback intent, configuration or source references.
+// Preparation and writing consume the same candidate units. The preflight
+// derives structural facts from content instead of maintaining a parallel plan.
 export async function preflightHumanCourseMaterialization({ adapter, principal, context,
   planUnits = [], explanations = [], complete = true, deadlineAt = null }) {
   const blockers = [];
@@ -447,13 +446,13 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     childLimit: 1, childCursor: null, deadlineAt
   })])));
   const groups = new Map();
-  const registry = new Map(RESOURCE_PACKAGE_REGISTRY.listCatalog().map(manifest =>
-    [`${manifest.id}@${manifest.version}`, manifest]));
   const sourceCache = new Map();
   const scopedDesigns = new Map();
   const arrangement = arrangeMaterializationUnits(existingBySlot, planUnits, micros, add);
+  const targetMicrosequenceIds = new Set([...arrangement.planned.values()]
+    .map(value => value.microsequenceId).filter(Boolean));
   if (!planUnits.length) add("human_materialization_plan_required",
-    "Informe o plano compacto das unidades para conferir referências, formas, componentes e cobertura antes de escrever.");
+    "Informe as unidades candidatas para conferir sua coerência antes de escrever.");
   for (const [index, planned] of planUnits.entries()) {
     const details = { unit: index + 1 };
     const micro = capture(() => resolveReference(micros, planned.microssequencia, {
@@ -481,18 +480,20 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     const curriculumScopeItemIds = (application.cobertura ?? []).map(value =>
       resolve("curriculumScopeItems", value, "O item de cobertura curricular")).filter(Boolean);
     const existing = arrangement.planned.get(index)?.existing?.item ?? null;
-    for (const ref of new Set([...(planned.componentes ?? []), ...(planned.resposta ? [planned.resposta] : [])])) {
-      const manifest = registry.get(ref);
-      if (!manifest) add("human_materialization_component_unknown", "Consulte o contrato exato do componente instalado.", { ...details, component: ref });
-      else if (manifest.authoringEligibility === "legacy_only") add("practice_response_legacy_only",
-        "Resposta aberta não é elegível para nova autoria; escolha uma prática avaliável offline.", details);
+    let normalizedContent = null;
+    const contentValidation = validateCourseEntityContent("study_unit", {
+      ...(planned.conteudo ?? {}), id: `preflight-${index + 1}`, position: planned.posicao
+    });
+    if (!contentValidation.valid) {
+      add("invalid_human_study_unit",
+        `A unidade de estudo ${index + 1} é inválida: ${contentValidation.errors.join(" ")}`, details);
+    } else {
+      normalizedContent = structuredClone(contentValidation.normalized);
+      try { requireCoursePracticeAuthoring(normalizedContent, existing?.studyUnit ?? null); }
+      catch (error) { add(error.code ?? "invalid_human_study_unit", error.message, details); }
+      delete normalizedContent.id;
+      delete normalizedContent.position;
     }
-    if (planned.papel === "practice" && (!planned.resposta || !planned.feedbackLocal ||
-        !registry.get(planned.resposta)?.slots.includes("response"))) {
-      add("practice_offline_feedback_required", "Declare resposta avaliável e feedback explicativo local para a prática.", details);
-    }
-    if (planned.resposta && !planned.feedbackLocal) add("practice_offline_feedback_required",
-      "Declare feedback explicativo local para a resposta.", details);
     for (const entry of application.explicacoes ?? []) {
       const forms = entry.formas ?? [];
       const notApplicable = entry.formasNaoAplicaveis ?? [];
@@ -516,7 +517,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     for (const [sourceIndex, link] of (planned.fontes ?? []).entries()) {
       try {
         await resolveHumanSourceLinks({ adapter, principal, courseContext: context,
-          requested: [link], content: {}, allowMissingOccurrences: true,
+          requested: [link], content: normalizedContent ?? planned.conteudo ?? {},
           newId: key => `preflight-${index}-${sourceIndex}-${key}`, sourceCache, deadlineAt });
       } catch (error) { add(error.code ?? "invalid_human_source", error.message, details); }
     }
@@ -543,13 +544,15 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       if (!targets.evidenceRequirementIds.includes(practice.evidenceRequirementId)) add("human_materialization_requirement_not_linked",
         "Vincule o requisito à microssequência antes da materialização.", details);
     }
-    const unit = { source: { ...planned, conteudo: { role: planned.papel } }, inputIndex: index,
+    const unit = { source: planned, inputIndex: index,
       microsequence: micro, noveltyIds, usedIds, explanations: parsedExplanations, practices,
-      curriculumScopeItemIds, componentRefs: planned.componentes ?? [], content: {}, design };
+      curriculumScopeItemIds, componentRefs: componentRefs(normalizedContent ?? planned.conteudo),
+      content: normalizedContent ?? planned.conteudo ?? {}, design };
     if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
     groups.get(micro.id).units.push(unit);
   }
   for (const retained of arrangement.retained) {
+    if (!complete && !targetMicrosequenceIds.has(retained.microsequenceId)) continue;
     const { item } = retained.existing;
     const application = item.designApplication, snapshot = item.designSnapshot;
     if (!application || !snapshot) {
@@ -586,7 +589,10 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       suppliedByMicro.set(value.microsequenceId, value);
     } catch (error) { add(error.code ?? "invalid_human_explanation", error.message, { explanation: index + 1 }); }
   }
-  for (const micro of micros) {
+  const relevantMicrosequenceIds = complete
+    ? new Set(micros.map(item => item.id))
+    : new Set([...targetMicrosequenceIds, ...suppliedByMicro.keys()]);
+  for (const micro of micros.filter(item => relevantMicrosequenceIds.has(item.id))) {
     const supplied = suppliedByMicro.get(micro.id);
     const explanation = supplied ? supplied.content
       : allMicros.find(item => item.id === micro.id)?.explanation ?? micro.explanation;
@@ -636,8 +642,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   for (const group of groups.values()) group.units.sort((left, right) => left.source.posicao - right.source.posicao);
   capture(() => validatePedagogicalPart([...groups.values()], context.plan,
     new Set([...existingBySlot.values()].map(entry => entry.studyUnitId)), blockers, { complete }));
-  const normalizedPlan = planUnits.map(planned => ({ ...planned,
-    componentes: [...(planned.componentes ?? [])].sort(), fontes: (planned.fontes ?? []).map(link => ({ ...link, ancoras: link.ancoras ?? [] })) }));
+  const normalizedPlan = structuredClone(planUnits);
   const identity = await sha256Hex(canonicalAuthoringValue({ courseId: context.course.id, courseRevision: context.course.revision,
     part: context.part, plan: context.plan, designs: [...designs], scopedDesigns: [...scopedDesigns],
     existing: [...existingBySlot], sourceBases: [...sourceCache], savedSourceBases,
@@ -660,7 +665,7 @@ function validateUnitConfiguration(configuration) {
     try { normalizeCourseDesignParameterValue(UNIT_PARAMETER_FIELD_TO_ID[field], value); }
     catch { fail("invalid_human_materialization", "A escolha contextual diverge do catálogo."); }
   }
-  if (configuration.direcaoEditorial !== undefined) {
+  if (configuration?.direcaoEditorial !== undefined) {
     boundedText(configuration.direcaoEditorial, "A direção editorial", 4000);
   }
 }
@@ -915,8 +920,7 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
       }
     }
   }
-  if (configuration === undefined) return calibrated;
-  const requestedParameters = Object.entries(configuration.parametros);
+  const requestedParameters = configuration === undefined ? [] : Object.entries(configuration.parametros);
   const fixedOrigins = new Set(["author", "research_condition"]);
   for (const [field, requestedValue] of requestedParameters) {
     if (requestedValue === null) continue;
@@ -999,6 +1003,24 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
     calibrated.guidance = {
       ...(calibrated.guidance ?? {}),
       effectiveAssignments: effective
+    };
+  }
+  for (const parameter of calibrated.parameters ?? []) {
+    const effective = parameter?.effectiveAssignment;
+    if (effective?.mode !== "automatic" || effective.value !== null && effective.value !== undefined) continue;
+    const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId);
+    if (!definition || definition.defaultValue === undefined) {
+      fail("course_service_unavailable", "A configuração automática não possui valor derivável.", 503);
+    }
+    parameter.effectiveAssignment = {
+      ...effective,
+      value: normalizeCourseDesignParameterValue(parameter.parameterId, structuredClone(definition.defaultValue)),
+      origin: "automatic",
+      inherited: false,
+      reason: "Padrão do produto aplicado à escolha delegada para esta unidade.",
+      sourceScope: definition.supportedScopes.includes("study_unit")
+        ? { kind: "study_unit", ref: "pending-study-unit" }
+        : { kind: "course", ref: design.courseId }
     };
   }
   return calibrated;
@@ -1164,8 +1186,12 @@ function introducedAnalysisUnitIds(plan, replacedStudyUnitIds) {
     .map(({ id }) => id));
 }
 
-function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics) {
+function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics, { complete = true } = {}) {
   const introductions = new Map();
+  const activeAnalysisIds = new Set(groups.flatMap(group => group.units.flatMap(unit => [
+    ...unit.noveltyIds, ...unit.usedIds,
+    ...unit.explanations.map(entry => entry.instructionalAnalysisUnitId)
+  ])));
   for (const item of planItems(plan, "instructionalAnalysisUnits")) {
     if (item.introducedAt && !replacedStudyUnitIds.has(item.introducedAt.studyUnitId)) {
       introductions.set(item.id, curriculumOrder.get(item.introducedAt.didacticMicrosequenceId));
@@ -1179,6 +1205,8 @@ function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds,
   const microsequenceTitles = new Map((plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
     (module.lessons ?? []).flatMap(lesson => (lesson.microsequences ?? []).map(micro => [micro.id, micro.title]))));
   for (const item of planItems(plan, "instructionalAnalysisUnits")) {
+    if (!complete && !activeAnalysisIds.has(item.id) &&
+        !replacedStudyUnitIds.has(item.introducedAt?.studyUnitId)) continue;
     for (const [field, code] of [["usedBy", "human_materialization_use_before_introduction"],
       ["revisitedBy", "human_materialization_explanation_before_introduction"]]) {
       for (const reference of item[field] ?? []) {
@@ -1414,7 +1442,7 @@ function validatePedagogicalGroup(
 
 function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics = null, options = {}) {
   const curriculumOrder = curriculumMicrosequenceOrder(plan);
-  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics);
+  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics, options);
   const orderedGroups = [...groups].map((group) => {
     const order = curriculumOrder.get(group.microsequenceId);
     if (!Number.isSafeInteger(order)) {
