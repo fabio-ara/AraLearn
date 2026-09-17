@@ -1140,6 +1140,40 @@ function introducedAnalysisUnitIds(plan, replacedStudyUnitIds) {
     .map(({ id }) => id));
 }
 
+function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics) {
+  const introductions = new Map();
+  for (const item of planItems(plan, "instructionalAnalysisUnits")) {
+    if (item.introducedAt && !replacedStudyUnitIds.has(item.introducedAt.studyUnitId)) {
+      introductions.set(item.id, curriculumOrder.get(item.introducedAt.didacticMicrosequenceId));
+    }
+  }
+  for (const group of groups) {
+    for (const unit of group.units) {
+      for (const id of unit.noveltyIds) introductions.set(id, curriculumOrder.get(group.microsequenceId));
+    }
+  }
+  const microsequenceTitles = new Map((plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
+    (module.lessons ?? []).flatMap(lesson => (lesson.microsequences ?? []).map(micro => [micro.id, micro.title]))));
+  for (const item of planItems(plan, "instructionalAnalysisUnits")) {
+    for (const [field, code] of [["usedBy", "human_materialization_use_before_introduction"],
+      ["revisitedBy", "human_materialization_explanation_before_introduction"]]) {
+      for (const reference of item[field] ?? []) {
+        // Units in this Part are already checked in their final accumulated order.
+        if (replacedStudyUnitIds.has(reference.studyUnitId)) continue;
+        const introductionOrder = introductions.get(item.id);
+        const referenceOrder = curriculumOrder.get(reference.didacticMicrosequenceId);
+        if (Number.isSafeInteger(introductionOrder) && Number.isSafeInteger(referenceOrder) &&
+            introductionOrder <= referenceOrder) continue;
+        const message = `A unidade preservada “${reference.title}” depende da ideia “${item.statement}”, ` +
+          "mas sua introdução anterior não está registrada. Releia o conteúdo e registre a aplicação pedagógica antes de continuar.";
+        if (!diagnostics) fail(code, message);
+        diagnostics.push({ code, message, idea: item.statement, studyUnit: reference.title,
+          microsequence: microsequenceTitles.get(reference.didacticMicrosequenceId) });
+      }
+    }
+  }
+}
+
 function orderedPlanItemIds(items, requestedIds) {
   const requested = new Set(requestedIds);
   const ordered = items
@@ -1356,6 +1390,7 @@ function validatePedagogicalGroup(
 
 function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics = null, options = {}) {
   const curriculumOrder = curriculumMicrosequenceOrder(plan);
+  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics);
   const orderedGroups = [...groups].map((group) => {
     const order = curriculumOrder.get(group.microsequenceId);
     if (!Number.isSafeInteger(order)) {

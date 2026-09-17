@@ -4318,7 +4318,7 @@ dialog.course-microsequence-review::backdrop { background: rgb(0 0 0 / 55%); }
   cursor: default;
 }
 
-.course-microsequence-review label:has(input[type="checkbox"]) {
+.course-microsequence-review label:not([hidden]):has(input[type="checkbox"]) {
   display: flex;
   align-items: center;
   gap: 10px;

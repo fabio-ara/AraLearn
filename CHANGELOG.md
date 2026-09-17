@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.79] - 2026-09-17
+
+### Corrigido
+
+- a inspeção da explicação permite abrir áudio e demais ferramentas, respeita a configuração da versão consultada e encerra a reprodução ao fechar;
+- a preparação de conteúdo identifica usos e retomadas preservados fora da Parte cuja introdução foi invalidada, indicando a ideia e a unidade que precisam ser reconciliadas antes de continuar.
+
 ## [0.0.78] - 2026-09-17
 
 ### Corrigido

@@ -7,7 +7,7 @@ export function mountMicrosequenceReviewFixture(root) {
   const probe = { calls: [], revision: 7, basis: "a".repeat(64), reviews: {}, uncertain: false,
     explanationText: "Um socket é a interface local usada pelo processo.", sources: null, changes: [],
     observations: [], observationWrites: [], observationLostResponse: false, delayObservationRead: false, finishObservationRead: null, withUnits: true,
-    withPdf: false, pdfReads: [], openedSources: [] };
+    withPdf: false, pdfReads: [], openedSources: [], explanationTools: [] };
   const observationReceipts = new Map();
   let pendingEdit = null;
   const controller = {
@@ -85,7 +85,11 @@ export function mountMicrosequenceReviewFixture(root) {
     async getContentReview(_courseId, targetKind, targetId) { return { contract: "aralearn.course-content-review.v1", courseId,
       targetKind, targetId, courseRevision: probe.revision, entityVersion: 2, reviewPolicy: "saved", basisHash: probe.basis,
       contentReview: probe.reviews[`${targetKind}:${targetId}`] || { state: "draft" } }; },
-    async exportCourseAuthoring() { return microsequenceReviewExport({ revision: probe.revision, explanationText: probe.explanationText, withUnits: probe.withUnits, withPdf: probe.withPdf }); },
+    async exportCourseAuthoring() {
+      const exported = microsequenceReviewExport({ revision: probe.revision, explanationText: probe.explanationText, withUnits: probe.withUnits, withPdf: probe.withPdf });
+      exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].explanation.content.push(...structuredClone(probe.explanationTools));
+      return exported;
+    },
     async getCourseSourceAttachmentDownload(request) {
       probe.pdfReads.push(structuredClone(request));
       return { signedUrl: `https://example.test/author-source.pdf?token=synthetic-${probe.pdfReads.length}` };
@@ -120,6 +124,7 @@ export function mountMicrosequenceReviewFixture(root) {
       pendingEdit = structuredClone(request); probe.calls.push({ kind: "save", request: structuredClone(request) });
       if (probe.uncertain) throw Object.assign(new Error("Sem resposta do serviço"), { status: 504 });
       pendingEdit = null; probe.explanationText = request.explanation.content[0].data.text;
+      probe.explanationTools = structuredClone(request.explanation.content.slice(1));
       probe.revision++; probe.basis = "b".repeat(64);
       for (const [key, review] of Object.entries(probe.reviews)) if (review.state === "current") probe.reviews[key] = { ...review, state: "stale" };
       return { courseId, revision: probe.revision, microsequenceVersion: 3, changed: true, idempotent: false };

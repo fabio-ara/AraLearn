@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
-async function mount(page) {
+async function mount(page, prepare = null) {
   const errors = []; page.on("pageerror", error => errors.push(error.message));
   for (const [url, path, contentType] of [
     ["**/tests/gallery/course-microsequence-review.html", "../gallery/course-microsequence-review.html", "text/html"],
@@ -10,11 +10,233 @@ async function mount(page) {
   ]) await page.route(url, route => route.fulfill({ status: 200, contentType, body: readFileSync(new URL(path, import.meta.url), "utf8") }));
   await page.goto("/tests/gallery/course-microsequence-review.html");
   await expect.poll(() => page.evaluate(() => globalThis.__REVIEW_FIXTURE_READY__)).toBe(true);
+  if (prepare) await prepare(page);
   await page.getByRole("button", { name: "Inspecionar Explicação", exact: true }).click();
   await expect(page.locator("[data-review-explanation-content]")).toBeVisible();
   return errors;
 }
 const dialog = page => page.getByRole("dialog", { name: "Explicação e revisão do conteúdo" });
+
+async function mountTools(page, options = {}) {
+  return mount(page, () => page.evaluate(async options => {
+    const { probe, controller } = globalThis.__reviewFixture;
+    const { REVIEW_COURSE_ID: courseId, REVIEW_MS_ID: microsequenceId } = await import("/tests/helpers/courseMicrosequenceReviewFixture.js");
+    const { createDefaultCourseAudioConfig } = await import("/src/domain/courseMedia.js");
+    const audio = probe.audio = { courseId, microsequenceId, spoke: [], cancellations: 0, voiceReads: 0,
+      configurationReads: [], downloads: [], configFailures: options.configFailures || 0,
+      deferConfiguration: Boolean(options.deferConfiguration), finishConfiguration: null, configurationRevision: null };
+    const voices = ["pt-BR", "ja-JP", "zh-TW"].map(lang => ({ voiceURI: `synthetic-${lang}`, name: `Voz sintética ${lang}`, lang, localService: true }));
+    const synthesis = new EventTarget();
+    synthesis.voices = options.lateVoices ? [] : voices;
+    synthesis.getVoices = () => { audio.voiceReads++; return synthesis.voices; };
+    synthesis.speak = utterance => audio.spoke.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate, voice: utterance.voice.voiceURI });
+    synthesis.cancel = () => { audio.cancellations++; };
+    Object.defineProperty(window, "speechSynthesis", { configurable: true, value: synthesis });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: class { constructor(text) { this.text = text; } } });
+    audio.publishVoices = () => { synthesis.voices = voices; synthesis.dispatchEvent(new Event("voiceschanged")); };
+    const tracks = [
+      { id: "pt", label: "Saudação em português", locale: "pt-BR", text: "Bom dia." },
+      { id: "ja", label: "Saudação em japonês", locale: "ja-JP", text: "おはようございます。" },
+      { id: "zh", label: "Saudação em chinês", locale: "zh-TW", text: "早安。" }
+    ].map(track => ({ ...track, kind: "native", alternative: { text: track.text, visibility: "on_request" } }));
+    if (options.file) {
+      const { wrapGeminiPcmAsWav } = await import("/src/generation/providers/geminiSpeechProvider.js");
+      const pcm = new Uint8Array(24000);
+      const view = new DataView(pcm.buffer);
+      for (let index = 0; index < 12000; index++) view.setInt16(index * 2, Math.round(Math.sin(index * Math.PI * 2 * 440 / 24000) * 1200), true);
+      const wav = wrapGeminiPcmAsWav(pcm);
+      const contentHash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", wav))].map(value => value.toString(16).padStart(2, "0")).join("");
+      audio.fileBytes = [...wav];
+      audio.fileMedia = { contentHash, byteSize: wav.length, mediaType: "audio/wav" };
+      tracks.push({ id: "file", label: "Tom gravado", locale: "pt-BR", kind: "file", media: audio.fileMedia,
+        alternative: { text: "Tom sintético de 440 Hz.", visibility: "always" } });
+    }
+    probe.explanationTools = [
+      { id: "support-audio", package: "aralearn.resource.audio", version: "1.0.0", data: { tracks } },
+      { id: "support-calculator", package: "aralearn.resource.calculator", version: "1.0.0", data: {
+        title: "Calcular uma comparação", prompt: "Confira o resultado.", initialExpression: "2 + 3", angleUnit: "radians" } }
+    ];
+    if (options.calculator === false) probe.explanationTools.pop();
+    controller.loadCourseMedia = async (requestedCourseId, request) => {
+      audio.configurationReads.push({ courseId: requestedCourseId, ...structuredClone(request) });
+      if (audio.deferConfiguration) await new Promise(resolve => { audio.finishConfiguration = resolve; });
+      if (audio.configFailures > 0) { audio.configFailures--; throw new Error("Configuração sintética indisponível."); }
+      return { contract: "aralearn.course-media.v1", courseId, courseRevision: audio.configurationRevision ?? request.expectedRevision,
+        mode: "configuration", audioConfig: { ...createDefaultCourseAudioConfig(), rate: 1.25 }, storage: null, items: [], nextCursor: null };
+    };
+    controller.getCourseMediaDownload = async request => {
+      audio.downloads.push(structuredClone(request));
+      return { contract: "aralearn.course-media-download.v1", courseId, courseRevision: request.expectedRevision,
+        targetKind: "microsequence_explanation", targetId: microsequenceId, media: audio.fileMedia,
+        signedUrl: `${location.origin}/storage/v1/object/sign/course-media/${courseId}/${audio.fileMedia.contentHash}.wav?token=synthetic`,
+        expiresAt: "2030-01-01T00:00:00Z" };
+    };
+  }, options));
+}
+const audioDialog = page => page.getByRole("dialog", { name: "Áudio", exact: true });
+const toolsLauncher = page => dialog(page).locator("[data-study-tool-id]");
+async function openTool(page, id = "support-audio") {
+  await toolsLauncher(page).click();
+  if (await toolsLauncher(page).getAttribute("data-study-tool-id") === "") {
+    await page.getByRole("dialog", { name: "Ferramentas", exact: true }).locator(`[data-open-study-tool="${id}"]`).click();
+  }
+}
+
+test("ferramentas da explicação abrem áudio nos três idiomas, cancelam e devolvem o foco", async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mountTools(page);
+  const content = dialog(page).locator("[data-review-explanation-content]");
+  await expect(content).not.toContainText("Preparando áudio");
+  await expect(content.locator(".package-audio-tool, .package-calculator")).toHaveCount(0);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads)).toEqual([]);
+  await openTool(page);
+  const audio = audioDialog(page);
+  await expect(audio.locator("[data-audio-configuration-status]")).toContainText("Velocidade 1.25×");
+  await expect(audio.locator('[data-audio-action="play"]')).toHaveCount(3);
+  for (const play of await audio.locator('[data-audio-action="play"]').all()) await expect(play).toBeEnabled();
+  for (const consent of await audio.locator(".package-audio-remote-consent").all()) await expect(consent).toBeHidden();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.voiceReads)).toBe(0);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 850 });
+    const box = await audio.boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width + 1);
+    await page.screenshot({ path: info.outputPath(`explanation-audio-tools-${width}.png`), fullPage: true });
+  }
+  for (const id of ["pt", "ja", "zh"]) {
+    const row = audio.locator(`[data-audio-track="${id}"]`);
+    await row.locator('[data-audio-action="play"]').click();
+    await expect(row.locator("[data-audio-track-status]")).toHaveText("Reproduzindo com voz local.");
+  }
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke)).toEqual([
+    { text: "Bom dia.", lang: "pt-BR", rate: 1.25, voice: "synthetic-pt-BR" },
+    { text: "おはようございます。", lang: "ja-JP", rate: 1.25, voice: "synthetic-ja-JP" },
+    { text: "早安。", lang: "zh-TW", rate: 1.25, voice: "synthetic-zh-TW" }
+  ]);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads)).toEqual([
+    { courseId: await page.evaluate(() => globalThis.__reviewFixture.probe.audio.courseId), expectedRevision: 7, mode: "configuration" }
+  ]);
+  await page.keyboard.press("Escape");
+  await expect(audio).toHaveCount(0); await expect(dialog(page)).toBeVisible(); await expect(toolsLauncher(page)).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.cancellations)).toBe(3);
+  await openTool(page, "support-calculator");
+  const calculator = page.getByRole("dialog", { name: "Calculadora", exact: true });
+  await calculator.getByRole("textbox", { name: "Expressão", exact: true }).fill("sqrt(9) + 2");
+  await calculator.getByRole("button", { name: "Calcular", exact: true }).click();
+  await expect(calculator.getByRole("status")).toHaveText("Resultado aproximado: 5");
+  await calculator.getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
+  await expect(toolsLauncher(page)).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("áudio da explicação recupera configuração indisponível e rejeita revisão divergente", async ({ page }) => {
+  const errors = await mountTools(page, { configFailures: 1, calculator: false });
+  await expect(toolsLauncher(page)).toHaveAccessibleName("Áudio");
+  await openTool(page);
+  const audio = audioDialog(page);
+  const play = audio.locator('[data-audio-track="pt"] [data-audio-action="play"]');
+  await expect(audio.locator("[data-audio-configuration-status]")).toContainText("Não foi possível consultar");
+  await expect(play).toBeDisabled();
+  await audio.getByRole("button", { name: "Consultar configuração novamente", exact: true }).click();
+  await expect(play).toBeEnabled(); await play.click();
+  await expect.poll(() => page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke.length)).toBe(1);
+  await audio.getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
+  await page.evaluate(() => { globalThis.__reviewFixture.probe.audio.configurationRevision = 8; });
+  await openTool(page);
+  await expect(audio.locator("[data-audio-configuration-status]")).toContainText("Não foi possível consultar");
+  await expect(play).toBeDisabled();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads.map(read => read.expectedRevision))).toEqual([7, 7, 7]);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke.length)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test("áudio da explicação descarta catálogo tardio e fecha reprodução com a inspeção", async ({ page }) => {
+  const errors = await mountTools(page, { lateVoices: true });
+  await openTool(page);
+  const audio = audioDialog(page);
+  await audio.locator('[data-audio-track="pt"] [data-audio-action="play"]').click();
+  await expect(audio.locator('[data-audio-track="pt"] [data-audio-track-status]')).toHaveText("Preparando a voz…");
+  await page.keyboard.press("Escape"); await expect(toolsLauncher(page)).toBeFocused();
+  await page.evaluate(() => globalThis.__reviewFixture.probe.audio.publishVoices());
+  await openTool(page);
+  await audio.locator('[data-audio-track="ja"] [data-audio-action="play"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke.map(value => value.lang))).toEqual(["ja-JP"]);
+  await page.evaluate(() => globalThis.__reviewFixture.ui.close());
+  await expect(audio).toHaveCount(0); await expect(dialog(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Inspecionar Explicação", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.cancellations)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test("áudio da explicação ignora configuração encerrada e usa o novo snapshot ao reabrir", async ({ page }) => {
+  const errors = await mountTools(page, { deferConfiguration: true });
+  await openTool(page);
+  await expect(audioDialog(page).locator("[data-audio-configuration-status]")).toHaveText("Consultando configuração de áudio…");
+  await expect.poll(() => page.evaluate(() => typeof globalThis.__reviewFixture.probe.audio.finishConfiguration)).toBe("function");
+  await page.evaluate(() => {
+    const { probe, ui } = globalThis.__reviewFixture;
+    ui.close(); probe.revision = 8; probe.audio.deferConfiguration = false; probe.audio.finishConfiguration();
+  });
+  await page.getByRole("button", { name: "Inspecionar Explicação", exact: true }).click();
+  await expect(dialog(page).locator("[data-review-explanation-content]")).toBeVisible();
+  await openTool(page);
+  await audioDialog(page).locator('[data-audio-track="zh"] [data-audio-action="play"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke.map(value => value.lang))).toEqual(["zh-TW"]);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads.map(read => read.expectedRevision))).toEqual([7, 8]);
+  expect(errors).toEqual([]);
+});
+
+test("edição da explicação preserva os campos de áudio e desativa o launcher até salvar", async ({ page }) => {
+  const errors = await mountTools(page);
+  await dialog(page).getByRole("button", { name: "Editar explicação", exact: true }).click();
+  await expect(toolsLauncher(page)).toBeDisabled();
+  const content = dialog(page).locator("[data-review-explanation-content]");
+  const text = content.locator('[data-review-edit-target="content:support-audio"] [data-manual-edit-path="tracks[0].text"]');
+  await expect(text).toBeEditable(); await text.fill("Boa tarde.");
+  await expect(content.locator('[data-review-edit-target="content:support-calculator"] [data-manual-edit-path="title"]')).toBeEditable();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads)).toEqual([]);
+  await dialog(page).getByRole("button", { name: "Salvar explicação", exact: true }).click();
+  await expect(dialog(page).locator("[data-review-status]")).toContainText("Explicação salva");
+  await expect(toolsLauncher(page)).toBeEnabled();
+  await expect(content.locator(".package-audio-tool, .package-calculator")).toHaveCount(0);
+  await openTool(page);
+  await audioDialog(page).locator('[data-audio-track="pt"] [data-audio-action="play"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke.map(value => value.text))).toEqual(["Boa tarde."]);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads.map(read => read.expectedRevision))).toEqual([8]);
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls.map(call => call.kind))).toEqual(["save"]);
+  expect(errors).toEqual([]);
+});
+
+test("arquivo de áudio da explicação usa alvo e revisão inspecionados e libera o player ao fechar", async ({ page }) => {
+  const errors = await mountTools(page, { file: true });
+  const fetched = [];
+  await page.route("**/storage/v1/object/sign/course-media/**", async route => {
+    fetched.push(route.request().url());
+    const bytes = await page.evaluate(() => globalThis.__reviewFixture.probe.audio.fileBytes);
+    await route.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from(bytes) });
+  });
+  await page.evaluate(() => { globalThis.__reviewFixture.probe.revision = 8; });
+  await openTool(page);
+  const row = audioDialog(page).locator('[data-audio-track="file"]');
+  await row.locator('[data-audio-action="play"]').click();
+  await expect(row.locator("audio")).toBeVisible();
+  await expect.poll(() => row.locator("audio").evaluate(node => node.readyState)).toBeGreaterThanOrEqual(2);
+  expect(await row.locator("audio").evaluate(node => ({ duration: node.duration, playbackRate: node.playbackRate, error: node.error })))
+    .toEqual({ duration: 0.5, playbackRate: 1.25, error: null });
+  const audio = await page.evaluate(() => {
+    const { audio } = globalThis.__reviewFixture.probe;
+    return { courseId: audio.courseId, microsequenceId: audio.microsequenceId, media: audio.fileMedia, downloads: audio.downloads };
+  });
+  expect(audio.downloads).toEqual([{ courseId: audio.courseId, expectedRevision: 7,
+    targetKind: "microsequence_explanation", targetId: audio.microsequenceId, contentHash: audio.media.contentHash }]);
+  expect(fetched).toHaveLength(1);
+  const player = await row.locator("audio").elementHandle();
+  await audioDialog(page).getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
+  expect(await player.evaluate(node => ({ paused: node.paused, src: node.getAttribute("src"), hidden: node.hidden })))
+    .toEqual({ paused: true, src: null, hidden: true });
+  await expect(toolsLauncher(page)).toBeFocused();
+  expect(errors).toEqual([]);
+});
 
 test("citação acompanha a última palavra na quebra de linha e não altera o texto editável", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 850 });

@@ -1,12 +1,15 @@
 import { createUuid } from "../domain/identifiers.js";
 import { normalizeCourseAuthoringExport } from "../domain/courseAuthoringComparison.js";
 import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
+import { normalizeCourseMediaRead } from "../domain/courseMedia.js";
+import { normalizeCourseSourcePdfDownload } from "../domain/courseSources.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewChange } from "../domain/courseContentReview.js";
 import { renderCourseContentInspection } from "./renderCourseContentInspection.js";
 import { explanationRenderingUnit } from "../study/studyExplanation.js";
 import { placeStudyCitationMarkers, renderStudyCitations, renderStudySourceMarkers, studyCitationMarkers } from "../study/studyCitations.js";
-import { openStudyResourceUrl } from "../study/studyTools.js";
+import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "../study/studyTools.js";
 import { buildSourceDocumentUrl } from "../study/sourceDocumentUrl.js";
+import { readCourseMediaBlob } from "../supabase/readCourseMediaBlob.js";
 import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrences } from "../domain/courseSourceOccurrences.js";
 import { renderPackageStudyUnitBlocks } from "../render/renderPackageStudyUnit.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
@@ -187,6 +190,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
   let fields = []; let confirmed = false; let message = ""; let failure = false;
   let epoch = 0; let changedRevision = null;
   let componentsReady = false; let observationQueue = null;
+  let studyTools = null;
   let inlineEditors = [];
   let focusEditing = false; let focusEditAction = false;
   function stopInlineEditors() { inlineEditors.forEach(editor => editor?.destroy()); inlineEditors = []; }
@@ -195,7 +199,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
   function close({ force = false } = {}) {
     if (!dialog) return true;
     if (!force && dirty()) { if (editing) captureFields(); status("Conclua ou cancele a edição; confirme o resultado de qualquer pedido pendente antes de sair.", true); render(); return false; }
-    ++epoch; observationQueue?.destroy(); observationQueue = null; stopInlineEditors();
+    ++epoch; studyTools?.destroy(); studyTools = null;
+    observationQueue?.destroy(); observationQueue = null; stopInlineEditors();
     dialog.close(); dialog.remove(); dialog = null;
     returnButton?.isConnected && returnButton.focus({ preventScroll: true });
     if (changedRevision) onChanged(changedRevision);
@@ -225,6 +230,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
   function render() {
     if (!dialog) return;
     if (editing) captureFields();
+    studyTools?.destroy(); studyTools = null;
     const active = dialog.contains(dialog.ownerDocument.activeElement) ? dialog.ownerDocument.activeElement : null;
     const manualPath = active?.dataset.manualEditPath;
     const manualTarget = active?.closest?.("[data-review-edit-target]")?.dataset.reviewEditTarget;
@@ -293,6 +299,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
           : "") + '</details></section>' +
         '<section aria-label="Base explicativa" class="course-explanation-context">' +
         '<div class="course-explanation-tools"><nav class="course-explanation-actions" aria-label="Ações da explicação">' +
+        (explanation ? renderStudyToolActions(explanationRenderingUnit(explanation), RESOURCE_PACKAGE_REGISTRY,
+          { compact: true, disabled: true }) : "") +
         (explanation ? `<button type="button" data-inspection-edit-explanation-sources data-microsequence-id="${escape(snapshot.microsequenceId)}" aria-label="Fontes da explicação" title="Fontes da explicação"${busy || editing || session.pending || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("study", "course-authoring-button-icon")}</button>` : "") +
         (explanation && typeof controller.saveMicrosequenceExplanation === "function" && !editing
           ? `<button type="button" data-review-edit aria-label="Editar explicação" title="Editar explicação"${busy || session.pending ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` : "") +
@@ -334,9 +342,66 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       });
     });
     const current = ++epoch;
+    if (snapshot?.targetKind === "microsequence_explanation" && snapshot.microsequence.explanation) {
+      const unit = explanationRenderingUnit(snapshot.microsequence.explanation, snapshot.microsequenceId);
+      const currentDialog = dialog;
+      studyTools = createStudyTools({
+        root: currentDialog, getStudyUnit: () => unit,
+        getContextKey: () => `${snapshot.courseId}:${snapshot.courseRevision}:${snapshot.microsequenceId}`,
+        getOverlayHost: () => currentDialog,
+        getBackground: () => currentDialog.querySelector(":scope > .editor-body"),
+        canOpen: () => componentsReady && !editing && !session.busy && !session.pending && !session.pendingEdit,
+        getHost(_instance, { signal }) {
+          const { courseId, courseRevision, microsequenceId } = snapshot;
+          const assertContext = () => {
+            if (signal.aborted || dialog !== currentDialog || epoch !== current || session.snapshot !== snapshot || editing) throw changed();
+          };
+          return {
+            canRevealAnswers: true,
+            async loadAudioConfiguration() {
+              assertContext();
+              const result = normalizeCourseMediaRead(await controller.loadCourseMedia(courseId, {
+                expectedRevision: courseRevision, mode: "configuration"
+              }));
+              assertContext();
+              if (result.courseId !== courseId || result.courseRevision !== courseRevision || result.mode !== "configuration") throw changed();
+              return result.audioConfig;
+            },
+            async downloadMedia(media, options) {
+              assertContext();
+              const result = await controller.getCourseMediaDownload({ courseId, expectedRevision: courseRevision,
+                targetKind: "microsequence_explanation", targetId: microsequenceId, contentHash: media.contentHash });
+              assertContext();
+              if (result.courseId !== courseId || result.courseRevision !== courseRevision ||
+                  result.targetKind !== "microsequence_explanation" || result.targetId !== microsequenceId) throw changed();
+              const file = await readCourseMediaBlob(result, media, options);
+              assertContext();
+              return file;
+            },
+            openExternalUrl(url) { assertContext(); openSourceUrl(url); },
+            async openSourceAttachment(target) {
+              assertContext();
+              const result = normalizeCourseSourcePdfDownload(await controller.getCourseSourceAttachmentDownload({
+                courseId, expectedCourseRevision: courseRevision, ...target
+              }));
+              assertContext();
+              if (result.courseId !== courseId || result.courseRevision !== courseRevision ||
+                  result.sourceId !== target.sourceId || result.sourceRevision !== target.sourceRevision ||
+                  result.attachment.contentHash !== target.contentHash) throw changed();
+              openSourceUrl(result.signedUrl, result.attachment);
+            }
+          };
+        }
+      });
+      studyTools.afterRender();
+    }
     void RESOURCE_PACKAGE_REGISTRY.hydrate(dialog).then(() => {
       if (!dialog || current !== epoch) return;
       componentsReady = true;
+      dialog.querySelectorAll("[data-study-tool-id]").forEach(button => {
+        button.disabled = Boolean(busy || editing || session.pending || session.pendingEdit);
+        if (!button.disabled) button.removeAttribute("aria-disabled");
+      });
       const explanation = snapshot?.microsequence.explanation;
       const explanationHost = dialog.querySelector(".course-explanation-context");
       if (explanation && explanationHost) placeStudyCitationMarkers(explanationHost, explanation,
@@ -385,7 +450,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     const title = editable ? fields.find(field => field.targetId === "study_unit" && field.path === "title")?.value ?? explanation.title : explanation.title;
     return '<div class="course-explanation-inline" data-review-explanation-content>' +
       `<h3 data-review-title${editable ? ` contenteditable="${busy || session.pendingEdit ? "false" : "plaintext-only"}" role="textbox" aria-label="Título da explicação"` : ''}>${escape(title)}</h3>` +
-      unit.content.map(instance => {
+      unit.content.filter(instance => editable ||
+        !RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool).map(instance => {
         const targetId = `content:${instance.id}`;
         return `<div class="course-explanation-component${editable ? ' is-editing' : ''}" data-review-edit-target="${escape(targetId)}">` +
           renderPackageStudyUnitBlocks({ ...unit, content: [instance] }, { revealPracticeAnswers: true,
@@ -496,7 +562,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
       dialog = root.ownerDocument.createElement("dialog");
       dialog.className = "editor-sheet course-microsequence-review" + (targetKind === "study_unit" ? " is-unit-review" : "");
       dialog.setAttribute("aria-label", targetKind === "study_unit" ? "Revisão da unidade de estudo" : "Explicação e revisão do conteúdo"); root.ownerDocument.body.append(dialog);
-      dialog.addEventListener("cancel", event => { event.preventDefault(); if (!observationQueue?.closePanel()) close(); });
+      dialog.addEventListener("cancel", event => { event.preventDefault(); if (!studyTools?.close() && !observationQueue?.closePanel()) close(); });
       dialog.addEventListener("click", event => void click(event));
       dialog.addEventListener("change", event => { if (event.target.matches("[data-review-confirm]")) { confirmed = event.target.checked; render(); } });
       dialog.addEventListener("input", event => { if (event.target.closest("[data-review-explanation-content]")) captureFields(); });
