@@ -377,23 +377,9 @@ function persistedPedagogicalUnit(item, microsequence, position, design) {
 }
 
 export function humanMaterializationUnitPlan(unit) {
-  return {
-    microssequencia: unit.microssequencia,
-    posicao: unit.posicao,
-    ...(unit.unidade === undefined ? {} : { unidade: unit.unidade }),
-    papel: unit.conteudo?.role,
-    componentes: componentRefs(unit.conteudo),
-    resposta: unit.conteudo?.response
-      ? `${unit.conteudo.response.package}@${unit.conteudo.response.version}` : null,
-    feedbackLocal: Array.isArray(unit.conteudo?.feedback) && unit.conteudo.feedback.some(instance => {
-      try { return Boolean(RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "feedback").trim()); }
-      catch { return false; }
-    }),
-    ...(unit.configuracao === undefined ? {} : { configuracao: unit.configuracao }),
-    aplicacaoPedagogica: structuredClone(unit.aplicacaoPedagogica),
-    fontes: (unit.fontes ?? []).map(({ fonte, relacao, papeis, ancoras }) =>
-      ({ fonte, relacao, papeis, ancoras: ancoras ?? [] }))
-  };
+  // Preparation and writing consume the same authored candidate. Derived
+  // component/response/feedback summaries are never a second source of truth.
+  return structuredClone(unit);
 }
 
 export async function explanationContentBasis(explanation) {
@@ -421,9 +407,18 @@ export async function reconcileHumanExplanation(content, entries, context) {
         position: () => Number.NaN, texts: item => [item.title], label: "O destino da retomada" }).id
     }))
   };
-  // Saving an incomplete declaration is allowed; it remains visibly pending in
-  // preparation. Invalid structure is rejected, never silently fabricated.
-  return normalizeMicrosequenceExplanation(explanation);
+  const normalized = normalizeMicrosequenceExplanation(explanation);
+  const inspection = inspectExplanationReconciliation(normalized, {
+    contentBasis: await explanationContentBasis(normalized),
+    analysisUnitIds: planItems(context.plan, "instructionalAnalysisUnits").map(item => item.id),
+    evidenceRequirementIds: planItems(context.plan, "evidenceRequirements").map(item => item.id),
+    microsequenceIds: micros.map(item => item.id)
+  });
+  if (!inspection.ready) {
+    fail("invalid_explanation_reconciliation",
+      "A descrição pedagógica precisa corresponder integralmente à base que será salva.");
+  }
+  return normalized;
 }
 
 // Same structural declarations are consumed by preparation and writing. The
