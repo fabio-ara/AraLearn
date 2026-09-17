@@ -8,7 +8,7 @@ import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralear
 import { openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
-import { courseDesignFixture, fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
+import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { largeObservationComparison } from "../helpers/largeObservationComparisonFixture.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
