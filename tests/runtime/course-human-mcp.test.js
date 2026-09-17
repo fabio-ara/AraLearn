@@ -1006,74 +1006,23 @@ test("salvar_parte pode redefinir lotes sem alterar a arquitetura curricular", a
   assert.deepEqual(current.plan.curriculum, mapBefore);
 });
 
-test("preparar_materializacao separa o inventário focal de duas Microssequências", async () => {
-  const analysisEstablished = "50000000-0000-4000-8000-000000000004";
-  const analysisA = "50000000-0000-4000-8000-000000000005";
-  const analysisB = "50000000-0000-4000-8000-000000000006";
-  const analysisOutsidePart = "50000000-0000-4000-8000-000000000007";
-  const analysisBetween = "50000000-0000-4000-8000-000000000008";
-  const analysisAvailable = "50000000-0000-4000-8000-000000000009";
-  const prerequisiteUnit = "70000000-0000-4000-8000-000000000099";
-  const futureUnit = "70000000-0000-4000-8000-000000000098";
-  const prerequisiteMicro = "micro-prerequisito";
-  const futureMicro = "micro-futuro";
-  const betweenMicro = "micro-intermediario";
-  const evidenceA = "60000000-0000-4000-8000-000000000001";
-  const evidenceB = "60000000-0000-4000-8000-000000000002";
-  const evidenceAvailable = "60000000-0000-4000-8000-000000000003";
+test("preparo focal não transforma a parte operacional em dependência pedagógica", async () => {
   const microA = "micro-definicao";
   const microB = "micro-mecanismo";
+  const analysisA = "50000000-0000-4000-8000-000000000005";
+  const analysisB = "50000000-0000-4000-8000-000000000006";
+  const evidenceA = "60000000-0000-4000-8000-000000000001";
+  const evidenceB = "60000000-0000-4000-8000-000000000002";
   const existingStudyUnitId = "70000000-0000-4000-8000-000000000001";
-  const parameterDefinitions = [
-    ["new_analysis_unit_ceiling_per_expository_study_unit", "Novas unidades de análise"],
-    ["required_explanation_forms", "Formas de explicação"],
-    ["minimum_distinct_practice_opportunities_per_evidence_requirement", "Práticas"],
-    ["required_practice_variation_dimensions", "Variação da prática"],
-    ["authoring_chat_response_word_target", "Alvo de palavras por resposta de autoria"],
-    ["study_unit_content_word_target", "Alvo de palavras por unidade de estudo"]
-  ];
-  const parameterValues = new Map([
-    ["required_explanation_forms", ["plain_definition"]],
-    ["minimum_distinct_practice_opportunities_per_evidence_requirement", 2],
-    ["required_practice_variation_dimensions", ["case_or_data"]],
-    ["authoring_chat_response_word_target", 90],
-    ["study_unit_content_word_target", 180]
-  ]);
-  const design = (scopeRef, targetAnalysis, targetEvidence, ceiling) => ({
-    scopeContext: { current: { label: scopeRef === microA ? "Definição" : "Mecanismo" } },
-    definitions: parameterDefinitions.map(([id, label]) => ({ id, label })),
-    parameters: parameterDefinitions.map(([parameterId], index) => ({
-      parameterId,
-      localAssignment: null,
-      effectiveAssignment: {
-        value: index === 0 ? ceiling : parameterValues.get(parameterId),
-        inherited: true,
-        origin: "automatic",
-        reason: "Calibração focal.",
-        sourceScope: { kind: "course" }
-      }
-    })),
-    guidance: { localAssignment: null, effectiveAssignments: [] },
-    targetPlanItems: {
+  const reads = [];
+  const design = (scopeRef, targetAnalysis, targetEvidence) => {
+    const current = courseDesignFixture({ courseId: COURSE_ID, microsequenceId: scopeRef }, { revision: 7 });
+    current.targetPlanItems = {
       instructionalAnalysisUnitIds: targetAnalysis,
       evidenceRequirementIds: targetEvidence
-    },
-    componentPolicy: {
-      effectiveAssignment: {
-        policy: {
-          catalogVersion: "fixture",
-          availability: "all",
-          allowedRefs: [],
-          excludedRefs: [],
-          preferredRefs: []
-        },
-        inherited: false,
-        origin: "system_default",
-        reason: "Política padrão.",
-        sourceScope: null
-      }
-    }
-  });
+    };
+    return current;
+  };
   const value = {
     ...adapter(),
     async getCourseInstructionalPlan() {
@@ -1081,159 +1030,34 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
         courseId: COURSE_ID,
         courseRevision: 7,
         plan: {
-          id: "40000000-0000-4000-8000-000000000004",
           version: 3,
           title: "Redes para iniciantes",
-          objective: "Explicar serviços em rede.",
           curriculumMapStatus: "approved",
-          curriculum: {
-            modules: [{
-              id: "module-network",
-              position: 0,
-              title: "Comunicação",
-              lessons: [{
-                id: "lesson-sockets",
-                position: 0,
-                title: "Sockets",
-                microsequences: [{
-                  id: prerequisiteMicro,
-                  position: 0,
-                  title: "Processos"
-                }, {
-                  id: microA,
-                  position: 1,
-                  title: "Definição"
-                }, {
-                  id: betweenMicro,
-                  position: 2,
-                  title: "Conhecimento intermediário"
-                }, {
-                  id: microB,
-                  position: 3,
-                  title: "Mecanismo"
-                }, {
-                  id: futureMicro,
-                  position: 4,
-                  title: "Aplicação futura"
-                }]
-              }]
-            }]
-          },
-          curriculumScopeItems: [{
-            id: "51000000-0000-4000-8000-000000000001",
-            position: 0,
-            statement: "Distinguir processo e socket.",
-            state: "planned",
-            curriculumTargets: [{
-              moduleId: "module-network",
-              lessonId: "lesson-sockets",
-              didacticMicrosequenceIds: [microA]
-            }],
-            developedIn: []
-          }, {
-            id: "51000000-0000-4000-8000-000000000002",
-            position: 1,
-            statement: "Relacionar endereço e ponta da comunicação.",
-            state: "planned",
-            curriculumTargets: [{
-              moduleId: "module-network",
-              lessonId: "lesson-sockets",
-              didacticMicrosequenceIds: [microB]
-            }],
-            developedIn: []
-          }],
-          instructionalAnalysisUnits: [{
-            id: analysisEstablished,
-            position: 0,
-            statement: "Processos trocam dados por serviços de transporte.",
-            introducedAt: {
-              studyUnitId: prerequisiteUnit,
-              didacticMicrosequenceId: prerequisiteMicro,
-              title: "Processos"
-            },
-            usedBy: [],
-            revisitedBy: []
-          }, {
-            id: analysisA,
-            position: 1,
-            statement: "Socket liga processo e transporte.",
-            introducedAt: null,
-            usedBy: [],
-            revisitedBy: []
-          }, {
-            id: analysisB,
-            position: 2,
-            statement: "Endereço localiza uma ponta da comunicação.",
-            introducedAt: null,
-            usedBy: [],
-            revisitedBy: []
-          }, {
-            id: analysisOutsidePart,
-            position: 3,
-            statement: "Novidade de outra Parte.",
-            introducedAt: {
-              studyUnitId: futureUnit,
-              didacticMicrosequenceId: futureMicro,
-              title: "Aplicação futura"
-            },
-            usedBy: [],
-            revisitedBy: []
-          }, {
-            id: analysisBetween,
-            position: 4,
-            statement: "Uma ideia foi estabelecida entre as duas etapas do lote.",
-            introducedAt: {
-              studyUnitId: "70000000-0000-4000-8000-000000000097",
-              didacticMicrosequenceId: betweenMicro,
-              title: "Conhecimento intermediário"
-            },
-            usedBy: [],
-            revisitedBy: []
-          }, {
-            id: analysisAvailable,
-            position: 5,
-            statement: "Origem",
-            description: "Papel do dispositivo que envia a mensagem considerada.",
-            introducedAt: null,
-            usedBy: [],
-            revisitedBy: []
-          }],
-          evidenceRequirements: [{
-            id: evidenceA, position: 0, statement: "Distinguir processo e socket."
-          }, {
-            id: evidenceB, position: 1, statement: "Relacionar endereço e comunicação."
-          }, {
-            id: evidenceAvailable, position: 2, statement: "Identificar quem envia a mensagem.",
-            description: "Distinguir origem e destino na mensagem considerada, sem pressupor papéis permanentes."
-          }],
+          curriculum: { modules: [{ lessons: [{ microsequences: [
+            { id: microA, position: 0, title: "Definição" },
+            { id: microB, position: 1, title: "Mecanismo" }
+          ] }] }] },
+          curriculumScopeItems: [],
+          instructionalAnalysisUnits: [
+            { id: analysisA, position: 0, statement: "Socket liga processo e transporte.",
+              introducedAt: null, usedBy: [], revisitedBy: [] },
+            { id: analysisB, position: 1, statement: "Endereço localiza uma ponta da comunicação.",
+              introducedAt: null, usedBy: [], revisitedBy: [] }
+          ],
+          evidenceRequirements: [
+            { id: evidenceA, position: 0, statement: "Distinguir processo e socket." },
+            { id: evidenceB, position: 1, statement: "Relacionar endereço e comunicação." }
+          ],
           parts: [{
-            id: "20000000-0000-4000-8000-000000000001",
-            version: 1,
-            position: 0,
-            title: "Processos",
-            intent: "Estabelecer o conhecimento anterior.",
-            microsequences: []
-          }, {
             id: PART_ID,
             version: 2,
             position: 1,
             title: "Sockets",
             intent: "Construir o modelo em duas etapas.",
-            microsequences: [{
-              id: microA,
-              productionPosition: 0,
-              title: "Definição",
-              goal: "Definir socket e sua relação com o processo.",
-              role: "explain",
-              curriculumPath: { moduleTitle: "Comunicação", lessonTitle: "Sockets" }
-            }, {
-              id: microB,
-              productionPosition: 1,
-              title: "Mecanismo",
-              goal: "Explicar como o endereço participa da comunicação.",
-              role: "explain",
-              curriculumPath: { moduleTitle: "Comunicação", lessonTitle: "Sockets" }
-            }]
+            microsequences: [
+              { id: microA, productionPosition: 0, title: "Definição", goal: "Definir socket." },
+              { id: microB, productionPosition: 1, title: "Mecanismo", goal: "Explicar o endereço." }
+            ]
           }]
         }
       };
@@ -1241,143 +1065,62 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
     async listCourseStudyUnits() {
       return {
         items: [{
-          studyUnit: {
-            id: existingStudyUnitId,
-            position: 1,
-            title: "Definição já produzida"
-          },
-          curriculumPath: {
-            didacticMicrosequence: { id: microA, title: "Definição", position: 0 }
-          }
+          studyUnit: { id: existingStudyUnitId, position: 1, title: "Definição legada" },
+          curriculumPath: { didacticMicrosequence: { id: microA, title: "Definição" } }
         }],
         hasMore: false,
         nextCursor: null
       };
     },
     async getCourseDesign({ scopeKind, scopeRef }) {
+      reads.push({ scopeKind, scopeRef });
       if (scopeKind === "course") return adapter().getCourseDesign({ courseId: COURSE_ID, scopeKind });
-      if (scopeKind === "study_unit") {
-        assert.equal(scopeRef, existingStudyUnitId);
-        const current = design(microA, [analysisA], [evidenceA], 2);
-        current.parameters[0].effectiveAssignment = {
-          value: 2,
-          inherited: false,
-          origin: "research_condition",
-          reason: "Comparação deliberada.",
-          sourceScope: { kind: "study_unit", ref: existingStudyUnitId }
-        };
-        return current;
-      }
-      return scopeRef === microA
-        ? design(scopeRef, [analysisA], [evidenceA], 1)
-        : design(scopeRef, [analysisB], [evidenceB], 2);
+      if (scopeRef === microB) assert.fail("o desenho da microssequência fora do alvo não deve ser lido");
+      return design(microA, [analysisA], [evidenceA]);
     }
   };
-
-  const output = await completeTaskRead({
+  const candidate = {
+    microssequencia: "Definição",
+    posicao: 2,
+    conteudo: {
+      title: "Definição focal",
+      role: "theory",
+      content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0",
+        data: { text: "Um socket liga o processo ao serviço de transporte." } }],
+      response: null,
+      feedback: [],
+      topics: ["socket"]
+    },
+    aplicacaoPedagogica: {
+      ideiasIntroduzidas: [],
+      ideiasUtilizadas: [],
+      explicacoes: [],
+      praticas: [],
+      cobertura: []
+    },
+    fontes: []
+  };
+  const output = await executeHumanCourseTask({
     adapter: value,
     principal: PRINCIPAL,
     name: "preparar_materializacao",
-    rawArguments: { curso: "Redes para iniciantes", parte: 2 }
+    rawArguments: { curso: "Redes para iniciantes", parte: 2, unidades: [candidate] }
   });
 
-  assert.equal(output.result, "Preparei o recorte focal da parte 2: Sockets.");
-  assert.equal(output.deepLink, null);
-  assert.equal(output.nextDecision, null);
-  assert.doesNotMatch(JSON.stringify(output.context.parte), /StudyUnit|AnalysisUnit|evidenceRequirements/iu);
-  assert.equal(output.context.preflight.state, "blocked", "consultar inventário sem plano não declara prontidão");
-  assert.equal(output.context.preflight.referencia, null);
-  assert.deepEqual(output.context.preflight.blockers.map(({ code }) => code), [
-    "human_materialization_plan_required", "human_materialization_existing_application_missing",
-    "human_materialization_missing_explanation", "human_materialization_missing_explanation"
-  ]);
-  const available = output.context.parte.repertorioDisponivelDoCurso;
-  assert.equal(available?.ideias.length, 6);
-  assert.deepEqual(available.ideias.at(-1), {
-    posicao: 6, ideia: "Origem",
-    descricao: "Papel do dispositivo que envia a mensagem considerada."
-  });
-  assert.equal(available.requisitosDeEvidencia.length, 3);
-  assert.deepEqual(available.requisitosDeEvidencia.at(-1), {
-    posicao: 3, ideia: "Identificar quem envia a mensagem.",
-    descricao: "Distinguir origem e destino na mensagem considerada, sem pressupor papéis permanentes."
-  });
-  assert.deepEqual(output.context.parte.ideiasEstabelecidas, [{
-    posicao: 1,
-    ideia: "Processos trocam dados por serviços de transporte."
+  assert.equal(output.result, "Ainda há uma dependência a resolver antes desta produção.");
+  assert.equal(output.context.preflight.state, "blocked");
+  assert.deepEqual(output.context.preflight.blockers.map(({ code, microsequence }) => ({ code, microsequence })), [{
+    code: "explanation_reconciliation_required",
+    microsequence: "Definição"
   }]);
-  assert.equal(output.context.parte.microssequencias.length, 2);
-  assert.equal(output.context.parte.microssequencias.every((microsequence) =>
-    !Object.hasOwn(microsequence, "funcao")), true);
-  assert.deepEqual(
-    output.context.parte.microssequencias.map(({ coberturaObrigatoria }) =>
-      coberturaObrigatoria),
-    [[{
-      posicao: 1,
-      item: "Distinguir processo e socket."
-    }], [{
-      posicao: 2,
-      item: "Relacionar endereço e ponta da comunicação."
-    }]]
-  );
-  assert.deepEqual(output.context.parte.microssequencias.map((microsequence) => ({
-    title: microsequence.titulo,
-    analysis: microsequence.ideiasPlanejadas,
-    evidence: microsequence.requisitosDeEvidencia,
-    objective: microsequence.objetivo,
-    ceiling: microsequence.configuracao.parametros[0].valorEfetivo
-  })), [{
-    title: "Definição",
-    analysis: [{ posicao: 2, ideia: "Socket liga processo e transporte." }],
-    evidence: [{ posicao: 1, ideia: "Distinguir processo e socket." }],
-    objective: "Definir socket e sua relação com o processo.",
-    ceiling: 1
-  }, {
-    title: "Mecanismo",
-    analysis: [{ posicao: 3, ideia: "Endereço localiza uma ponta da comunicação." }],
-    evidence: [{ posicao: 2, ideia: "Relacionar endereço e comunicação." }],
-    objective: "Explicar como o endereço participa da comunicação.",
-    ceiling: 2
-  }]);
-  assert.equal(output.context.parte.microssequencias.every((microsequence) =>
-    !Object.hasOwn(microsequence.configuracao, "alvos")), true);
-  assert.deepEqual(
-    output.context.parte.microssequencias[0].ajustesExistentesDasUnidades.map((unit) => ({
-      position: unit.posicao,
-      title: unit.titulo,
-      ceiling: unit.configuracao.parametros[0].valorEfetivo,
-      sourceScope: unit.configuracao.parametros[0].escopoDeOrigem
-    })),
-    [{
-      position: 1,
-      title: "Definição já produzida",
-      ceiling: 2,
-      sourceScope: "unidade de estudo"
-    }]
-  );
-  assert.deepEqual(
-    output.context.parte.microssequencias[1].ajustesExistentesDasUnidades,
-    []
-  );
-  assert.deepEqual(
-    output.context.parte.microssequencias[0].ideiasEstabelecidasDesdeOInicioDaParte,
-    []
-  );
-  assert.deepEqual(
-    output.context.parte.microssequencias[1].ideiasEstabelecidasDesdeOInicioDaParte,
-    [{
-      posicao: 5,
-      ideia: "Uma ideia foi estabelecida entre as duas etapas do lote."
-    }]
-  );
-  assert.equal(available.ideias[3].ideia, "Novidade de outra Parte.");
-  assert.doesNotMatch(JSON.stringify({
-    estabelecidas: output.context.parte.ideiasEstabelecidas,
-    microssequencias: output.context.parte.microssequencias
-  }), /Novidade de outra Parte/u);
-  assert.doesNotMatch(JSON.stringify(output.context.parte), /[0-9a-f]{8}-[0-9a-f-]{27,}/iu);
+  assert.deepEqual(output.context.parte, {
+    posicao: 2,
+    titulo: "Sockets",
+    intencao: "Construir o modelo em duas etapas."
+  });
+  assert.ok(reads.some(read => read.scopeKind === "didactic_microsequence" && read.scopeRef === microA));
+  assert.equal(reads.some(read => read.scopeRef === microB), false);
 });
-
 test("#272 schemas, descrições e annotations distinguem leitura de escrita", () => {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
   const forbidden = /^(?:id|ids|courseId|revision|version|hash|path|requestId|expectedRevision|expectedPlanVersion|cursor)$/iu;
