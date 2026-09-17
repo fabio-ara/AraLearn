@@ -20,10 +20,10 @@ const reconciliation = { contract: "aralearn.explanation-reconciliation.v1", con
 test("reconciliação permanece vigente após JSONB e detecta alteração real da base", async () => {
   const db = new PGlite();
   try {
-    const authored = await reconcileHumanExplanation({ ...explanation, content: [
-      ...explanation.content,
-      { id: "b", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Outra ideia." } }
-    ] }, ["Uma ideia.", "Outra ideia."].map((trecho, index) => ({ recurso: index + 1,
+    const passages = ["Uma `ideia`.\n\nUma relação preservada.", "Outra ideia."];
+    const authored = await reconcileHumanExplanation({ ...explanation, content: passages.map((text, index) => ({
+      id: index ? "b" : "a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text }
+    })) }, passages.map((trecho, index) => ({ recurso: index + 1,
       folha: "text", trecho, papel: "support", motivo: "Contexto de apoio explícito." })), {});
     const persisted = (await db.query("select $1::jsonb as explanation", [authored])).rows[0].explanation;
     const basis = await explanationContentBasis(persisted);

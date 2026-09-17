@@ -15,6 +15,7 @@ const nonempty = (value, maximum = 4000) => typeof value === "string" && value.t
     return point < 32 && ![9, 10, 13].includes(point) || point >= 127 && point <= 159;
   });
 const identifier = value => nonempty(value, 300) && value === value.trim() && !/[\t\r\n]/u.test(value);
+const normalizedWhitespace = value => value.replace(/\s+/gu, " ").trim();
 
 export function normalizeExplanationReconciliation(value) {
   if (!plain(value) || value.contract !== EXPLANATION_RECONCILIATION_CONTRACT ||
@@ -46,7 +47,14 @@ export function explanationReconciliationTargets(explanation) {
   for (const instance of explanation?.content ?? []) {
     if (!RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, "content").valid) continue;
     const text = RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content");
-    if (text.trim() && !targets.some(target => target.resourceId === instance.id && target.text === text)) {
+    // Compare presentation only; all passage locators and coverage retain the
+    // original literal leaf, including whitespace and inline-code delimiters.
+    const equivalentLeaf = targets.some(target => target.resourceId === instance.id &&
+      normalizedWhitespace(target.preserveMarkup ? target.text.replace(/`/gu, "") : target.text) === normalizedWhitespace(text));
+    // Previously saved declarations may also classify the accessible rendering.
+    const declaredAccessible = Array.isArray(explanation.reconciliation?.entries) && explanation.reconciliation.entries.some(entry =>
+      entry.resourceId === instance.id && entry.path === "$");
+    if (text.trim() && (!equivalentLeaf || declaredAccessible)) {
       targets.push({ slot: "content", resourceId: instance.id, path: "$", text });
     }
   }

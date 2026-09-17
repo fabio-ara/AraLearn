@@ -454,7 +454,7 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   );
   assert.match(
     materializationGuidance,
-    /calibre cada unidade nova no próprio pedido de materialização.*sem etapa persistente separada nem narração no chat/iu
+    /configuracao de cada unidade do plano enviado a preparar_materializacao.*reutilize essa calibração na materialização.*sem etapa persistente separada nem narração no chat/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
