@@ -16,6 +16,7 @@ explica os termos usados na implementação atual.
 - cursos antigos permitem editar e reorganizar o mapa curricular enquanto o planejamento das explicações é completado; novos conteúdos e a aprovação do mapa continuam exigindo esse planejamento.
 - a preparação de conteúdo identifica a aprovação pendente do mapa antes de produzir unidades e apresenta seu diagnóstico antes do contexto extenso;
 - os contratos de componentes esclarecem as combinações permitidas e o feedback necessário nas práticas.
+- abrir uma unidade ao sair da autoria aguarda a atualização dos cursos, evitando que ela devolva a tela inicial durante o estudo.
 
 ## [0.0.77] - 2026-09-17
 

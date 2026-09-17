@@ -1341,7 +1341,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
       current?.focus?.({ preventScroll: true });
     };
     globalThis.queueMicrotask?.(restoreOriginFocus);
-    void refreshStudy().catch((error) => {
+    return refreshStudy().catch((error) => {
       console.warn("A lista de cursos será atualizada na próxima conexão.", error);
     }).finally(() => globalThis.queueMicrotask?.(restoreOriginFocus));
   };
@@ -1539,7 +1539,7 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     editorApp?.setOfflineStatus?.(true);
     authoringSurface?.setOfflineStatus?.(true);
   }, { signal: lifecycleAbortController.signal });
-  globalThis.addEventListener("hashchange", (event) => {
+  globalThis.addEventListener("hashchange", async (event) => {
     if (studyAuthoringReturn) {
       event.stopImmediatePropagation();
       if (globalThis.location.hash !== studyAuthoringReturn.route) {
@@ -1550,8 +1550,18 @@ async function renderApplication(root, config, authClient, { visitor = false } =
     }
     const studyPath = parseCourseStudyRoute(globalThis.location.hash);
     if (studyPath) {
-      if (authoringSurface?.opened) { authoringSurface.destroy(); restoreStudyAfterAuthoring(); }
-      void editorApp.openEntityPath(studyPath);
+      const requestedRoute = globalThis.location.hash;
+      if (authoringSurface?.opened) {
+        authoringSurface.destroy();
+        await restoreStudyAfterAuthoring();
+      } else if (studyRefresh) {
+        // A atualização já conserva o erro na sincronização. A rota explícita
+        // ainda pode ser aberta depois que aquela tentativa terminar.
+        await studyRefresh.catch(() => undefined);
+      }
+      if (globalThis.location.hash === requestedRoute && !authoringSurface?.opened) {
+        await editorApp?.openEntityPath(studyPath);
+      }
       return;
     }
     if (isCourseAuthoringRouteCandidate(globalThis.location.hash)) {
