@@ -640,8 +640,12 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       "O plano ainda não cobre esta microssequência.", { microsequence: micro.title });
   }
   for (const group of groups.values()) group.units.sort((left, right) => left.source.posicao - right.source.posicao);
+  const affectedExistingStudyUnitIds = new Set([...existingBySlot.values()]
+    .filter(entry => complete || targetMicrosequenceIds.has(
+      entry.item.curriculumPath.didacticMicrosequence.id))
+    .map(entry => entry.studyUnitId));
   capture(() => validatePedagogicalPart([...groups.values()], context.plan,
-    new Set([...existingBySlot.values()].map(entry => entry.studyUnitId)), blockers, { complete }));
+    affectedExistingStudyUnitIds, blockers, { complete }));
   const normalizedPlan = structuredClone(planUnits);
   const identity = await sha256Hex(canonicalAuthoringValue({ courseId: context.course.id, courseRevision: context.course.revision,
     part: context.part, plan: context.plan, designs: [...designs], scopedDesigns: [...scopedDesigns],
@@ -1205,8 +1209,10 @@ function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds,
   const microsequenceTitles = new Map((plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
     (module.lessons ?? []).flatMap(lesson => (lesson.microsequences ?? []).map(micro => [micro.id, micro.title]))));
   for (const item of planItems(plan, "instructionalAnalysisUnits")) {
-    if (!complete && !activeAnalysisIds.has(item.id) &&
-        !replacedStudyUnitIds.has(item.introducedAt?.studyUnitId)) continue;
+    const introducedInTarget = replacedStudyUnitIds.has(item.introducedAt?.studyUnitId);
+    const referencedByTarget = [...(item.usedBy ?? []), ...(item.revisitedBy ?? [])]
+      .some(reference => replacedStudyUnitIds.has(reference.studyUnitId));
+    if (!activeAnalysisIds.has(item.id) && !introducedInTarget && !referencedByTarget) continue;
     for (const [field, code] of [["usedBy", "human_materialization_use_before_introduction"],
       ["revisitedBy", "human_materialization_explanation_before_introduction"]]) {
       for (const reference of item[field] ?? []) {
