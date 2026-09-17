@@ -490,7 +490,10 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
 });
 
 const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({
-  ...MATERIALIZATION_UNIT_SCHEMA,
+  type: "array",
+  minItems: 1,
+  maxItems: 64,
+  items: MATERIALIZATION_UNIT_SCHEMA,
   description: "As mesmas unidades candidatas usadas na escrita; o preparo deriva componentes, resposta, feedback, fontes e configuração aplicada do próprio candidato."
 });
 
@@ -659,8 +662,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "Preparar a materialização",
     "Confere as mesmas unidades candidatas que serão escritas, suas bases e dependências pedagógicas. O preparo não mantém um segundo resumo estrutural das unidades.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
-      plano: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA,
-      continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
+      unidades: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
+    }, ["curso", "parte", "unidades"]),
     { readOnly: true }
   ),
   task(
@@ -2877,60 +2880,46 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
-  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_materializacao' });
   const part = resolved.part;
-  const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
-  const [design, existingPage] = await Promise.all([
-    Promise.all(microsequences.map((microsequence) => adapter.getCourseDesign({
-      principal,
-      courseId: resolved.course.id,
-      scopeKind: "didactic_microsequence",
-      scopeRef: microsequence.id,
-      childLimit: 32,
-      childCursor: null,
-      deadlineAt
-    }))),
-    listUnitsForContext({ adapter, principal, resolved, deadlineAt })
-  ]);
-  const unitDesign = await Promise.all(existingPage.items.map(async (unit) => ({
-    unit,
-    microsequenceId: unit?.curriculumPath?.didacticMicrosequence?.id,
-    design: await adapter.getCourseDesign({
-      principal,
-      courseId: resolved.course.id,
-      scopeKind: "study_unit",
-      scopeRef: unit.studyUnit.id,
-      childLimit: 1,
-      childCursor: null,
-      deadlineAt
-    })
-  })));
-  const projectedPart = projectMaterializationPart(
-    resolved.plan,
-    part,
-    design,
-    unitDesign
-  );
-  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt });
-  const [process, observations] = await Promise.all([
-    currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null }),
-    readObservations({ adapter, principal, resolved, args: { ...args, somenteAbertas: true }, deadlineAt,
-      scopeUnits: existingPage.items, scopeMicrosequences: microsequences })
-  ]);
-  const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context: resolved,
-    planUnits: args.plano ?? [], explanations: args.explicacoes ?? [], complete: args.concluir === true, deadlineAt });
-  if (process.exigeConciliacao) {
-    preflight.state = "blocked"; preflight.referencia = null;
-    preflight.blockers.push({ code: "authoring_process_conflict", message: "Resolva as condições conflitantes do processo antes de produzir." });
-  }
-  return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
-    deepLink: null,
-    nextDecision: null,
-    context: await paginateHumanReadContext(withoutTechnicalState({
-      preflight, parte: projectedPart,
-      explicacoes: explanations, observations, ...process
-    }), { state: continuation })
+  const process = await currentAuthoringProcessContext({
+    adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null
   });
+  const preflight = await preflightHumanCourseMaterialization({
+    adapter,
+    principal,
+    context: resolved,
+    planUnits: safeClone(args.unidades, "unidades", 480 * 1024),
+    explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024),
+    complete: args.concluir === true,
+    deadlineAt
+  });
+  if (process.exigeConciliacao) {
+    preflight.state = "blocked";
+    preflight.referencia = null;
+    preflight.blockers.push({
+      code: "authoring_process_conflict",
+      message: "Há condições autorais incompatíveis no recorte que precisam de uma decisão antes de produzir."
+    });
+  }
+  const ready = preflight.state === "ready";
+  return result(
+    ready
+      ? "A produção solicitada está coerente com o percurso e pode ser salva."
+      : "Ainda há uma dependência a resolver antes desta produção.",
+    {
+      deepLink: null,
+      nextDecision: null,
+      context: withoutTechnicalState({
+        preflight,
+        parte: {
+          posicao: Number(part.position) + 1,
+          titulo: part.title,
+          intencao: part.intent
+        },
+        ...process
+      })
+    }
+  );
 };
 
 HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
