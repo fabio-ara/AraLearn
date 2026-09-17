@@ -68,6 +68,81 @@ function session(overrides = {}) {
   };
 }
 
+const actionSetupClientId = "10000000-0000-4000-8000-000000000099";
+const actionSetupBase = "https://projeto.supabase.co/functions/v1/aralearn-authoring-action";
+function actionSetupResponse(overrides = {}) {
+  return { client_id: actionSetupClientId, client_secret: `ars_${"s".repeat(43)}`,
+    authorization_url: `${actionSetupBase}/oauth/authorize`, token_url: `${actionSetupBase}/oauth/token`,
+    scope: "openid email", token_endpoint_auth_method: "client_secret_post", ...overrides };
+}
+
+test("configuração OpenAPI usa sessão própria sem persistir segredo e retoma vínculo pelo cliente existente", async () => {
+  const store = createSessionStore();
+  const requests = [];
+  const auth = new SupabaseAuthClient({ projectUrl: "https://projeto.supabase.co", publishableKey: "public-key",
+    sessionStore: store, fetchImpl: async (url, options) => {
+      requests.push({ url, options });
+      if (url.endsWith("/register")) return response(201, actionSetupResponse());
+      return response(200, { client_id: actionSetupClientId, gpt_id: JSON.parse(options.body).gptId, linked: true });
+    } });
+  await auth.persistSession(session());
+  const before = structuredClone([...store.state]);
+  const credentials = await auth.registerActionOAuthClient();
+  assert.equal(credentials.client_secret, actionSetupResponse().client_secret);
+  for (const input of ["g-example-assistant", "https://chatgpt.com/aip/g-example-assistant/oauth/callback",
+    "https://chat.openai.com/aip/g-example-assistant/oauth/callback"]) {
+    assert.equal((await auth.linkActionOAuthClient(actionSetupClientId, input)).linked, true);
+  }
+  assert.equal(requests.length, 4);
+  assert.equal(requests[0].url, `${actionSetupBase}/oauth/clients/register`);
+  assert.deepEqual(JSON.parse(requests[0].options.body), {});
+  for (const { url, options } of requests) {
+    assert.equal(new URL(url).origin, "https://projeto.supabase.co");
+    assert.equal(options.method, "POST");
+    assert.equal(options.headers.get("Authorization"), "Bearer access-token");
+    assert.equal(options.cache, "no-store");
+    assert.doesNotMatch(url + options.body, /ars_/u);
+  }
+  assert.deepEqual(JSON.parse(requests[1].options.body), { gptId: "g-example-assistant" });
+  assert.deepEqual([...store.state], before);
+});
+
+test("configuração OpenAPI recusa visitante e callbacks externos sem enviar credencial", async () => {
+  let calls = 0;
+  const auth = new SupabaseAuthClient({ projectUrl: "https://projeto.supabase.co", publishableKey: "public-key",
+    sessionStore: createSessionStore(), fetchImpl: async () => { calls += 1; return response(200, {}); } });
+  await assert.rejects(() => auth.registerActionOAuthClient(), /Entre na sua conta/u);
+  await assert.rejects(() => auth.linkActionOAuthClient(actionSetupClientId, "g-example-assistant"), /Entre na sua conta/u);
+  await auth.persistSession(session());
+  for (const invalid of ["https://evil.example/aip/g-example-assistant/oauth/callback",
+    "https://chatgpt.com.evil.example/aip/g-example-assistant/oauth/callback",
+    "https://user@chatgpt.com/aip/g-example-assistant/oauth/callback",
+    "https://chatgpt.com:8443/aip/g-example-assistant/oauth/callback",
+    "https://chatgpt.com/aip/g-example-assistant/oauth/callback?token=bad",
+    "https://chatgpt.com/gpts/editor/g-example-assistant", "../example-assistant"]) {
+    await assert.rejects(() => auth.linkActionOAuthClient(actionSetupClientId, invalid), /assistente/u);
+  }
+  await assert.rejects(() => auth.linkActionOAuthClient("../other-client", "g-example-assistant"), /identificador/u);
+  assert.equal(calls, 0);
+});
+
+test("configuração OpenAPI recusa endpoints divergentes e não repete falha de autorização ou resposta perdida", async () => {
+  let calls = 0;
+  let result = response(201, actionSetupResponse({ token_url: "https://evil.example/token" }));
+  const auth = new SupabaseAuthClient({ projectUrl: "https://projeto.supabase.co", publishableKey: "public-key",
+    sessionStore: createSessionStore(), fetchImpl: async () => { calls += 1; return result; } });
+  await auth.persistSession(session());
+  await assert.rejects(() => auth.registerActionOAuthClient(), /confirmar as credenciais/u);
+  assert.equal(calls, 1);
+  result = response(403, { error: "forbidden", error_description: "O cliente pertence a outra conta." });
+  await assert.rejects(() => auth.linkActionOAuthClient(actionSetupClientId, "g-example-assistant"), error => error.status === 403);
+  assert.equal(calls, 2);
+  auth.http.fetchImpl = async () => { calls += 1; throw new TypeError("Failed to fetch"); };
+  await assert.rejects(() => auth.registerActionOAuthClient(), /Failed to fetch/u);
+  assert.equal(calls, 3);
+  assert.equal(auth.getSession().access_token, "access-token");
+});
+
 test("configuração pública aceita publishable key e rejeita service role", () => {
   const config = readSupabaseRuntimeConfig({
     supabaseUrl: "https://projeto.supabase.co/",

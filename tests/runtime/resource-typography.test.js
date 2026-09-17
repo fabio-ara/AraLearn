@@ -63,6 +63,8 @@ test("prosa e estruturas densas usam degraus próprios e opções preservam leit
   assert.match(styles, /\.token-option\s*\{[^}]*font-weight:\s*400/u);
   assert.match(styles, /\.token-option\s*\{[^}]*line-height:\s*var\(--leading-normal\)/u);
   assert.match(styles, /\.token-option\s*\{[^}]*overflow-wrap:\s*anywhere/u);
+  assert.match(styles, /\.token-option\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;/u);
+  assert.doesNotMatch(styles, /\.token-option(?::active)?\s*\{[^}]*transform\s*:/u);
 
   for (const selector of [
     ".runtime-code-block pre",

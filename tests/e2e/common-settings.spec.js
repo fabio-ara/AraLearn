@@ -23,7 +23,8 @@ async function mount(page, { visitor = false, administrator = false } = {}) {
       read: { contract: domain.AUTHORING_PROCESS_PREFERENCES_CONTRACT, revision: 0, preferences: domain.defaultAuthoringProcessPreferences(), updatedAt: null },
       profileReads: [], profileWrites: [], preferenceWrites: [], maintenanceReads: 0,
       deferredProfileReads: false, deferredProfileWrites: false, deferredPreferenceWrites: false,
-      losePreferenceResponse: false, clearCalls: 0, signInCalls: 0, confirmed: true
+      losePreferenceResponse: false, clearCalls: 0, signInCalls: 0, confirmed: true,
+      connectionRequests: [], deferConnection: false, connectionError: null
     };
     let synchronization = "automatic";
     const controller = {
@@ -58,10 +59,24 @@ async function mount(page, { visitor = false, administrator = false } = {}) {
       }
     };
     const root = document.querySelector("#settings-root");
+    const authClient = {
+      getSession: () => ({ user: { id: h.profile.userId, app_metadata: { aralearn_role: administrator ? "administrator" : "author" } } }),
+      async registerActionOAuthClient() {
+        h.connectionRequests.push({ operation: "register" });
+        if (h.deferConnection) return new Promise(resolve => { h.finishConnection = resolve; });
+        if (h.connectionError) throw Object.assign(new Error(h.connectionError.message), h.connectionError);
+        return { client_id: "10000000-0000-4000-8000-000000000099", client_secret: "ars_synthetic_secret_only_for_this_browser_fixture" };
+      },
+      async linkActionOAuthClient(clientId, assistantId) {
+        h.connectionRequests.push({ operation: "link", clientId, assistantId });
+        if (h.connectionError) throw Object.assign(new Error(h.connectionError.message), h.connectionError);
+        return { linked: true };
+      }
+    };
     h.settings = visitor ? renderVisitorSettings(root, {
       onSignIn: () => { h.signInCalls += 1; }, onClearDeviceData: async () => { h.clearCalls += 1; },
       confirmValue: () => h.confirmed
-    }) : renderSettings(root, { getSession: () => ({ user: { app_metadata: { aralearn_role: administrator ? "administrator" : "author" } } }) }, controller, {
+    }) : renderSettings(root, authClient, controller, {
       preferencesClient: client,
       synchronizationPreference: { get: () => synchronization, set: value => { synchronization = value; }, subscribe: () => () => {} },
       previewVisitorState: async () => ({ courses: [] }), adoptVisitorState: async () => {}
@@ -81,19 +96,97 @@ for (const visitor of [false, true]) {
       writeText: async value => { window.copiedAssistantAddress = value; }
     } }));
     await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
-    await expect(page.getByLabel("Endereço da conexão MCP")).toHaveValue("https://project.supabase.test/functions/v1/aralearn-authoring-mcp");
+    await expect(page.getByLabel("Endereço MCP", { exact: true })).toHaveValue("https://project.supabase.test/functions/v1/aralearn-authoring-mcp");
     await page.getByRole("button", { name: "Copiar endereço", exact: true }).click();
     expect(await page.evaluate(() => window.copiedAssistantAddress)).toBe("https://project.supabase.test/functions/v1/aralearn-authoring-mcp");
     await expect(page.locator("[data-assistant-status]")).toContainText("Endereço copiado");
-    await expect(page.getByRole("link", { name: "Abrir ChatGPT (nova aba)", exact: true })).toHaveAttribute("href", "https://chatgpt.com/");
-    await page.getByText("Não encontrei a opção de conectar", { exact: true }).click();
-    await expect(page.getByText(/Abrir o link não instala/)).toBeVisible();
+    const connection = page.locator("[data-assistant-mcp]");
+    await expect(connection).toContainText("Adicione este endereço nas conexões do seu assistente");
+    await expect(connection).not.toContainText(/GPT|ChatGPT|OAuth|OpenAPI|DCR|OIDC|offline_access|Developer Mode/iu);
+    await expect(connection.getByRole("link")).toHaveCount(1);
+    await expect(connection.getByRole("link", { name: "Como conectar (nova aba)", exact: true }))
+      .toHaveAttribute("href", "https://github.com/fabio-ara/AraLearn/blob/main/docs/conectar-assistente.md");
     await page.screenshot({ path: testInfo.outputPath("conectar-assistente.png"), fullPage: true });
     expect(await page.evaluate(() => window.settingsHarness.preferenceWrites.length)).toBe(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: "Conectar assistente", exact: true })).toBeFocused();
   });
 }
+
+test("OpenAPI gera credenciais temporárias, vincula e retoma sem gerar outro par", async ({ page }, testInfo) => {
+  await mount(page);
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true,
+    value: { writeText: async value => { window.copiedConnectionValue = value; } } }));
+  await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+  await page.getByText("Conexão por OpenAPI", { exact: true }).click();
+  await page.getByRole("button", { name: "Gerar credenciais", exact: true }).click();
+  const clientId = "10000000-0000-4000-8000-000000000099";
+  await expect(page.getByLabel("Identificador do cliente", { exact: true })).toHaveValue(clientId);
+  await expect(page.getByLabel("Identificador do cliente", { exact: true })).not.toBeEditable();
+  await expect(page.getByLabel("Segredo do cliente", { exact: true })).toHaveAttribute("type", "password");
+  await expect(page.getByRole("button", { name: "Gerar credenciais", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Copiar segredo do cliente", exact: true }).click();
+  expect(await page.evaluate(() => window.copiedConnectionValue)).toBe("ars_synthetic_secret_only_for_this_browser_fixture");
+  await page.getByRole("button", { name: "Mostrar segredo", exact: true }).click();
+  await expect(page.getByLabel("Segredo do cliente", { exact: true })).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Ocultar segredo", exact: true }).click();
+  await expect(page.getByLabel("URL de autorização", { exact: true })).toHaveValue("https://project.supabase.test/functions/v1/aralearn-authoring-action/oauth/authorize");
+  await expect(page.getByLabel("URL de token", { exact: true })).toHaveValue("https://project.supabase.test/functions/v1/aralearn-authoring-action/oauth/token");
+  await expect(page.getByLabel("Endereço OpenAPI", { exact: true })).toHaveValue("https://fabio-ara.github.io/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml");
+  await page.getByLabel("Identificador ou URL de retorno do assistente", { exact: true }).fill("https://chatgpt.com/aip/g-synthetic-assistant/oauth/callback");
+  await page.getByRole("button", { name: "Vincular assistente", exact: true }).click();
+  await expect(page.locator("[data-openapi-status]")).toContainText("Assistente vinculado");
+  await page.screenshot({ path: testInfo.outputPath("openapi-conexao-sintetica.png"), fullPage: true });
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  await expect(page.locator("[data-openapi-field='client-secret']")).toHaveValue("");
+  await expect(page.locator("#settings-opener")).toBeFocused();
+  await page.locator("#settings-opener").click();
+  await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+  await page.getByText("Conexão por OpenAPI", { exact: true }).click();
+  await expect(page.locator("[data-openapi-secret]")).toBeHidden();
+  await expect(page.getByLabel("Identificador do cliente", { exact: true })).toBeEditable();
+  await page.getByLabel("Identificador do cliente", { exact: true }).fill(clientId);
+  await page.getByLabel("Identificador ou URL de retorno do assistente", { exact: true }).fill("g-synthetic-assistant");
+  await page.getByRole("button", { name: "Vincular assistente", exact: true }).click();
+  await expect(page.locator("[data-openapi-status]")).toContainText("Assistente vinculado");
+  await expect(page.getByRole("button", { name: "Vincular assistente", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => window.settingsHarness.connectionRequests.map(item => item.operation))).toEqual(["register", "link", "link"]);
+  expect(await page.evaluate(() => window.settingsHarness.preferenceWrites.length)).toBe(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-openapi-field='client-id']")).toHaveValue("");
+  await expect(page.getByRole("button", { name: "Conectar assistente", exact: true })).toBeFocused();
+});
+
+test("OpenAPI protege visitante, erros de acesso e resposta tardia após fechar", async ({ page }) => {
+  await mount(page, { visitor: true });
+  await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+  await page.getByText("Conexão por OpenAPI", { exact: true }).click();
+  await expect(page.getByRole("button", { name: "Gerar credenciais", exact: true })).toBeHidden();
+  await page.getByRole("button", { name: "Entrar ou criar conta", exact: true }).click();
+  expect(await page.evaluate(() => window.settingsHarness.signInCalls)).toBe(1);
+  expect(await page.evaluate(() => window.settingsHarness.connectionRequests)).toEqual([]);
+  await mount(page);
+  await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+  await page.getByText("Conexão por OpenAPI", { exact: true }).click();
+  await page.evaluate(() => { window.settingsHarness.connectionError = { status: 403, message: "forbidden" }; });
+  await page.getByLabel("Identificador do cliente", { exact: true }).fill("10000000-0000-4000-8000-000000000099");
+  await page.getByLabel("Identificador ou URL de retorno do assistente", { exact: true }).fill("g-synthetic-assistant");
+  await page.getByRole("button", { name: "Vincular assistente", exact: true }).click();
+  await expect(page.locator("[data-openapi-status]")).toContainText("não tem permissão");
+  expect(await page.evaluate(() => window.settingsHarness.connectionRequests.length)).toBe(1);
+  await page.getByLabel("Identificador do cliente", { exact: true }).fill("");
+  await page.evaluate(() => { window.settingsHarness.connectionError = null; window.settingsHarness.deferConnection = true; });
+  await page.getByRole("button", { name: "Gerar credenciais", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar", exact: true }).click();
+  await page.evaluate(() => window.settingsHarness.finishConnection({
+    client_id: "10000000-0000-4000-8000-000000000099", client_secret: "ars_synthetic_late_secret" }));
+  await expect(page.locator("[data-openapi-field='client-secret']")).toHaveValue("");
+  await page.locator("#settings-opener").click();
+  await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+  await page.getByText("Conexão por OpenAPI", { exact: true }).click();
+  await expect(page.locator("[data-openapi-secret]")).toBeHidden();
+  expect(await page.evaluate(() => window.settingsHarness.connectionRequests.length)).toBe(2);
+});
 
 test("conexão permite copiar manualmente quando clipboard é recusado e não inventa servidor sem configuração", async ({ page }) => {
   await mount(page);
@@ -102,7 +195,7 @@ test("conexão permite copiar manualmente quando clipboard é recusado e não in
   } }));
   await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
   await page.getByRole("button", { name: "Copiar endereço", exact: true }).click();
-  await expect(page.getByLabel("Endereço da conexão MCP")).toBeFocused();
+  await expect(page.getByLabel("Endereço MCP", { exact: true })).toBeFocused();
   await expect(page.locator("[data-assistant-status]")).toContainText("cópia automática");
   await page.evaluate(async () => {
     globalThis.__ARALEARN_ENV__ = {};
@@ -110,7 +203,7 @@ test("conexão permite copiar manualmente quando clipboard é recusado e não in
     mountAssistantConnectionSettings(document.querySelector("[data-assistant-connection]"));
   });
   await expect(page.getByRole("button", { name: "Copiar endereço", exact: true })).toBeDisabled();
-  await expect(page.getByLabel("Endereço da conexão MCP")).toHaveValue("");
+  await expect(page.getByLabel("Endereço MCP", { exact: true })).toHaveValue("");
 });
 
 test("Configurações mantém os grupos, papel, retorno e rascunho de perfil entre reaberturas", async ({ page }, testInfo) => {

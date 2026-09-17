@@ -16,6 +16,8 @@ humana permanece expressa e vinculada ao conteúdo inspecionado. O
 O arquivo importável está em
 [`downloads/aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml).
 
+Para configurar a conexão pela interface, siga o [manual ilustrado do ChatGPT](chatgpt.md#actions-em-um-gpt-personalizado), que reúne a importação do arquivo, a configuração OAuth e o teste de leitura. Este capítulo detalha o contrato das operações.
+
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)

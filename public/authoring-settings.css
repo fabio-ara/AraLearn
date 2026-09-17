@@ -1,5 +1,5 @@
 .contextual-settings [hidden] { display: none !important; }
-.assistant-connection { display: grid; gap: var(--space-section); min-width: 0; }
+.assistant-connection, .assistant-mcp { display: grid; gap: var(--space-section); min-width: 0; }
 .assistant-connection p { margin: 0; }
 .assistant-connection ol { display: grid; gap: var(--space-section); margin: 0; padding-inline-start: 24px; }
 .assistant-connection li > :is(p, label, input, button, a) { display: block; margin-top: 8px; }
@@ -12,6 +12,12 @@
 .assistant-connection details > :is(p, a) { display: block; margin-top: 8px; }
 .assistant-connection summary { min-height: 44px; cursor: pointer; }
 .assistant-connection [role=status]:empty { display: none; }
+.assistant-openapi, .assistant-openapi [data-openapi-account], .assistant-openapi form,
+.assistant-connection-field { display: grid; gap: 10px; min-width: 0; }
+.assistant-openapi { padding-block: 8px; }
+.assistant-openapi h2 { font-size: var(--type-md); margin: 14px 0 0; }
+.assistant-openapi button { min-height: 44px; }
+.assistant-openapi input:disabled, .assistant-openapi button:disabled { opacity: .6; }
 .contextual-settings .account-settings-sheet {
   height: min(640px, calc(100dvh - max(var(--safe-top), 8px)));
   grid-template-rows: auto minmax(0, 1fr) auto;

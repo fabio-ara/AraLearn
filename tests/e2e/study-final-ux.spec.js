@@ -721,3 +721,99 @@ for (const width of [390, 430]) test(`modos de estudo centralizados com assistê
   expect(assist).not.toBe(observations);
   await page.screenshot({ path: info.outputPath(`study-modes-${width}.png`) });
 });
+
+test.describe("opções compactas da lacuna", () => {
+  test.use({ isMobile: false, hasTouch: true, viewport: { width: 430, height: 900 } });
+
+  test("clique mantido preserva a geometria e preenche a lacuna com opções quase ocupando a linha", async ({ page }, info) => {
+    const projectValue = structuredClone(fixture);
+    const unit = projectValue.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0];
+    unit.title = "Prática: programa, interface e kernel";
+    unit.role = "practice";
+    unit.content = [{ id: "gap-body", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
+      text: "O editor executa no espaço de usuário; uma interface leva a solicitação; o kernel coordena o armazenamento."
+    } }];
+    unit.response = { id: "gap-response", package: "aralearn.response.gap", version: "1.0.0", data: {
+      blanks: [
+        { id: "space", answer: "espaço de usuário", distractors: ["bootloader", "firmware"] },
+        { id: "interface", answer: "interface", distractors: ["acesso irrestrito"] },
+        { id: "kernel", answer: "kernel", distractors: ["editor"] }
+      ].map(blank => ({ ...blank, targetInstanceId: "gap-body", targetPath: "text", responseMode: "choice" }))
+    } };
+    unit.feedback = [];
+    await mountStudy(page, { savedView: "microsequence", projectValue });
+    for (const action of ["open-course", "open-module", "open-lesson", "open-microsequence", "open-study-unit"]) {
+      await page.locator(`[data-action='${action}']`).first().click();
+    }
+    await page.evaluate(() => { document.documentElement.dataset.colorMode = "dark"; });
+    const gaps = page.locator("[data-action='text-gap-open-choice']");
+    for (const [index, value] of [[1, "acesso irrestrito"], [2, "kernel"]]) {
+      await gaps.nth(index).click();
+      await page.locator(`[data-text-gap-value='${value}']`).click();
+    }
+    await gaps.first().click();
+    const row = page.locator(".token-options");
+    const rowWidths = await row.evaluate(node => ({
+      available: node.clientWidth,
+      occupied: [...node.children].reduce((sum, option) => sum + option.getBoundingClientRect().width, 0) +
+        (node.children.length - 1) * parseFloat(getComputedStyle(node).columnGap)
+    }));
+    // Exercise a real narrow viewport: no fixture override repairs the product's layout.
+    await page.setViewportSize({ width: Math.round(430 - rowWidths.available + rowWidths.occupied + 8), height: 900 });
+    const geometry = () => row.evaluate(node => {
+      const bounds = node.getBoundingClientRect();
+      return {
+        x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+        clientWidth: node.clientWidth, clientHeight: node.clientHeight,
+        scrollWidth: node.scrollWidth, scrollHeight: node.scrollHeight,
+        options: [...node.children].map(option => {
+          const rect = option.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        })
+      };
+    });
+    const before = await geometry();
+    expect(new Set(before.options.map(({ y }) => y)).size).toBe(1);
+    for (const option of before.options) {
+      expect(option.width).toBeGreaterThanOrEqual(44);
+      expect(option.height).toBeGreaterThanOrEqual(44);
+    }
+    const appearance = await page.evaluate(() => {
+      const label = document.querySelector(".token-option-label");
+      const filled = document.querySelector("[data-action='text-gap-open-choice'][data-complete-blank-index='2']");
+      const properties = ["fontFamily", "fontSize", "fontWeight", "lineHeight", "borderWidth", "borderStyle", "borderRadius", "backgroundColor", "padding"];
+      const styles = node => Object.fromEntries(properties.map(property => [property, getComputedStyle(node)[property]]));
+      return { label: styles(label), filled: styles(filled), labelHeight: label.getBoundingClientRect().height, filledHeight: filled.getBoundingClientRect().height };
+    });
+    expect(appearance.label).toEqual(appearance.filled);
+    expect(appearance.labelHeight).toBe(appearance.filledHeight);
+    expect(appearance.labelHeight).toBeLessThan(44);
+    const occupied = before.options.reduce((sum, option) => sum + option.width, 0) + 8;
+    expect(before.clientWidth - occupied).toBeGreaterThanOrEqual(0);
+    expect(before.clientWidth - occupied).toBeLessThanOrEqual(12);
+    const choice = page.locator("[data-text-gap-value='espaço de usuário']");
+    const box = await choice.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    let pressed;
+    try {
+      // A human press lasts beyond the old 50ms transform transition.
+      await page.waitForTimeout(150);
+      pressed = await geometry();
+      await page.screenshot({ path: info.outputPath("gap-option-pressed.png") });
+    } finally {
+      await page.mouse.up();
+    }
+    expect(pressed).toEqual(before);
+    await expect(gaps.first()).toHaveText("espaço de usuário");
+    await expect(gaps.nth(1)).toHaveText("acesso irrestrito");
+    await expect(gaps.nth(2)).toHaveText("kernel");
+    await expect(row).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath("gap-option-filled.png") });
+    await gaps.nth(1).click();
+    await gaps.nth(1).click();
+    await page.locator("[data-text-gap-value='interface']").click();
+    await page.locator("[data-action='next-study-unit']").click();
+    await expect(page.locator(".runtime-card-title")).toHaveText("Complete");
+  });
+});

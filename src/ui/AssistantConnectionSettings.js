@@ -1,38 +1,109 @@
 import { readSupabaseRuntimeConfig } from "../supabase/runtimeConfig.js";
+import { publicErrorMessage } from "./publicErrorMessage.js";
 
-export function mountAssistantConnectionSettings(root) {
+export function mountAssistantConnectionSettings(root, { authClient = null, onSignIn = null } = {}) {
   const config = readSupabaseRuntimeConfig();
+  const field = (name, label, { readonly = true, type = "text" } = {}) => `<div class="assistant-connection-field">
+    <label for="assistant-${name}">${label}</label>
+    <input id="assistant-${name}" data-openapi-field="${name}" type="${type}" ${readonly ? "readonly" : ""} autocomplete="off" spellcheck="false" autocapitalize="off">
+    <button type="button" data-openapi-copy="${name}">Copiar ${label.toLowerCase()}</button>
+  </div>`;
   root.innerHTML = `<div class="assistant-connection">
-    <p>Crie e revise cursos conversando com um assistente. Conecte uma vez e use sua conta AraLearn nas próximas conversas.</p>
-    <ol>
-      <li><strong>Copie o endereço do AraLearn.</strong>
-        <label for="assistant-server-address">Endereço da conexão MCP</label>
-        <input id="assistant-server-address" data-assistant-address type="url" readonly spellcheck="false">
-        <button type="button" data-assistant-copy>Copiar endereço</button>
-      </li>
-      <li><strong>Adicione a conexão no seu assistente.</strong>
-        <p>No ChatGPT, abra as configurações de apps ou plugins e procure a opção de adicionar uma conexão MCP. Cole o endereço e escolha OAuth, se solicitado.</p>
-        <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Abrir ChatGPT (nova aba)</a>
-      </li>
-      <li><strong>Autorize sua conta AraLearn.</strong>
-        <p>Entre ou crie sua conta na tela de autorização e confira o acesso solicitado. Depois, selecione AraLearn na conversa.</p>
-      </li>
-    </ol>
+    <div class="assistant-mcp" data-assistant-mcp>
+    <p>Adicione este endereço nas conexões do seu assistente e autorize sua conta AraLearn.</p>
+    <label for="assistant-server-address">Endereço MCP</label>
+    <input id="assistant-server-address" data-assistant-address type="url" readonly spellcheck="false">
+    <button type="button" data-assistant-copy>Copiar endereço</button>
     <p data-assistant-status role="status" aria-live="polite"></p>
-    <details><summary>Não encontrei a opção de conectar</summary>
-      <p>A disponibilidade depende do plano, do aplicativo e das permissões do seu workspace. No ChatGPT, procure Developer Mode em Configurações → Segurança e login; depois, crie a conexão em Plugins. Abrir o link não instala nem autoriza a conexão automaticamente.</p>
-      <a href="https://developers.openai.com/api/docs/guides/developer-mode" target="_blank" rel="noopener noreferrer">Consultar instruções oficiais do ChatGPT (nova aba)</a>
-      <p>Se aparecerem configurações avançadas de OAuth, use a descoberta automática (DCR), mantenha offline_access, deixe os escopos básicos vazios e desmarque OIDC habilitado. Não preencha ID ou segredo de cliente.</p>
-      <p>Em outro aplicativo compatível com MCP remoto e OAuth, use o mesmo endereço. Não é necessário fornecer senha ou chave do banco ao assistente.</p>
-    </details>
-    <details><summary>Como conferir a conexão?</summary>
-      <p>Na conversa com AraLearn selecionado, peça: “Consulte os componentes didáticos disponíveis no AraLearn, sem criar ou alterar cursos.” Uma resposta com dados do serviço confirma essa consulta; nenhuma criação é necessária para testar a conexão.</p>
-      <p>Após atualizações das ferramentas, atualize a conexão no aplicativo e abra uma conversa nova. Reconecte a conta somente se a autorização expirou, foi revogada ou pertence a outra conta.</p>
+    <a href="https://github.com/fabio-ara/AraLearn/blob/main/docs/conectar-assistente.md" target="_blank" rel="noopener noreferrer">Como conectar (nova aba)</a>
+    </div>
+    <details data-openapi-details>
+      <summary>Conexão por OpenAPI</summary>
+      <div class="assistant-openapi">
+        <p>Use esta opção se o seu assistente pedir uma especificação OpenAPI e credenciais OAuth.</p>
+        <div data-openapi-signin>
+          <p>Entre na sua conta AraLearn para configurar esta conexão.</p>
+          <button type="button" data-openapi-login>Entrar ou criar conta</button>
+        </div>
+        <div data-openapi-account hidden>
+          <h2>Credenciais da conexão</h2>
+          <p>Gere credenciais para uma nova conexão ou informe o identificador do cliente que você já configurou. O segredo aparece somente nesta sessão: copie-o para a configuração do seu assistente antes de fechar esta tela.</p>
+          <button type="button" data-openapi-register>Gerar credenciais</button>
+          ${field("client-id", "Identificador do cliente", { readonly: false })}
+          <div data-openapi-secret hidden>
+            ${field("client-secret", "Segredo do cliente", { type: "password" })}
+            <button type="button" data-openapi-reveal aria-pressed="false">Mostrar segredo</button>
+          </div>
+          <p>Se você já copiou o segredo para o assistente, retome apenas com o identificador do cliente. Se perdeu o segredo antes de configurá-lo, gere novas credenciais e substitua o par no assistente.</p>
+          <h2>Configuração do assistente</h2>
+          ${field("schema", "Endereço OpenAPI", { type: "url" })}
+          ${field("authorization", "URL de autorização", { type: "url" })}
+          ${field("token", "URL de token", { type: "url" })}
+          ${field("scope", "Escopo")}
+          <p>Escolha autenticação OAuth e envio das credenciais no corpo da requisição (POST).</p>
+          <h2>Vincular o assistente</h2>
+          <p>Depois de salvar a configuração no assistente, copie a URL de retorno exibida na autenticação. Use essa URL, não o endereço público da conversa. Também é possível informar diretamente o identificador que começa por g-.</p>
+          <form data-openapi-link-form autocomplete="off">
+            <label for="assistant-callback">Identificador ou URL de retorno do assistente</label>
+            <input id="assistant-callback" data-openapi-callback type="text" required autocomplete="off" spellcheck="false" autocapitalize="off">
+            <button type="submit" data-openapi-link>Vincular assistente</button>
+          </form>
+        </div>
+        <p data-openapi-status role="status" aria-live="polite"></p>
+      </div>
     </details>
   </div>`;
   const address = root.querySelector("[data-assistant-address]");
   const button = root.querySelector("[data-assistant-copy]");
   const status = root.querySelector("[data-assistant-status]");
+  const details = root.querySelector("[data-openapi-details]");
+  const fields = Object.fromEntries([...root.querySelectorAll("[data-openapi-field]")]
+    .map(input => [input.dataset.openapiField, input]));
+  const callback = root.querySelector("[data-openapi-callback]");
+  const secret = root.querySelector("[data-openapi-secret]");
+  const reveal = root.querySelector("[data-openapi-reveal]");
+  const register = root.querySelector("[data-openapi-register]");
+  const link = root.querySelector("[data-openapi-link]");
+  const connectionStatus = root.querySelector("[data-openapi-status]");
+  const actionBase = config.configured ? `${config.projectUrl}/functions/v1/aralearn-authoring-action` : "";
+  fields.schema.value = config.configured ? "https://fabio-ara.github.io/AraLearn/docs/downloads/aralearn-chatgpt-action-openapi.yaml" : "";
+  fields.authorization.value = actionBase ? `${actionBase}/oauth/authorize` : "";
+  fields.token.value = actionBase ? `${actionBase}/oauth/token` : "";
+  fields.scope.value = "openid email";
+  let destroyed = false;
+  let generation = 0;
+  let busy = false;
+  const authenticated = () => Boolean(authClient?.getSession?.()?.user);
+  const updateControls = () => {
+    const connected = authenticated();
+    root.querySelector("[data-openapi-account]").hidden = !connected;
+    root.querySelector("[data-openapi-signin]").hidden = connected;
+    register.disabled = busy || !config.configured || !connected || Boolean(fields["client-id"].value.trim());
+    link.disabled = busy || !config.configured || !connected;
+    fields["client-id"].disabled = busy;
+    fields["client-id"].readOnly = Boolean(fields["client-secret"].value);
+    callback.disabled = busy;
+    root.querySelectorAll("[data-openapi-copy]").forEach(control => {
+      control.disabled = !fields[control.dataset.openapiCopy].value;
+    });
+  };
+  const clear = () => {
+    generation += 1;
+    fields["client-id"].value = "";
+    fields["client-secret"].value = "";
+    fields["client-secret"].type = "password";
+    secret.hidden = true;
+    callback.value = "";
+    connectionStatus.textContent = "";
+    reveal.textContent = "Mostrar segredo";
+    reveal.setAttribute("aria-pressed", "false");
+    details.open = false;
+    updateControls();
+  };
+  const restoreRequestFocus = (control, current) => {
+    if (!destroyed && current === generation && details.open &&
+        root.ownerDocument.activeElement === root.ownerDocument.body) control.focus({ preventScroll: true });
+  };
   address.value = config.configured ? `${config.projectUrl}/functions/v1/aralearn-authoring-mcp` : "";
   button.disabled = !address.value;
   if (!address.value) status.textContent = "A conexão não está disponível nesta instalação. Consulte a pessoa responsável pelo AraLearn.";
@@ -46,4 +117,77 @@ export function mountAssistantConnectionSettings(root) {
       status.textContent = "Selecione e copie o endereço acima. O navegador não permitiu a cópia automática.";
     }
   });
+  details.addEventListener("toggle", () => { if (!details.open) clear(); });
+  fields["client-id"].addEventListener("input", updateControls);
+  root.querySelector("[data-openapi-login]").disabled = typeof onSignIn !== "function";
+  root.querySelector("[data-openapi-login]").addEventListener("click", () => onSignIn?.());
+  root.querySelectorAll("[data-openapi-copy]").forEach(control => control.addEventListener("click", async () => {
+    const input = fields[control.dataset.openapiCopy];
+    const current = generation;
+    try {
+      await globalThis.navigator.clipboard.writeText(input.value);
+      if (!destroyed && current === generation) connectionStatus.textContent = "Valor copiado. Cole na configuração do seu assistente.";
+    } catch {
+      if (destroyed || current !== generation) return;
+      input.focus();
+      input.select();
+      connectionStatus.textContent = "Selecione e copie o valor. O navegador não permitiu a cópia automática.";
+    }
+  }));
+  reveal.addEventListener("click", () => {
+    const visible = fields["client-secret"].type === "password";
+    fields["client-secret"].type = visible ? "text" : "password";
+    reveal.textContent = visible ? "Ocultar segredo" : "Mostrar segredo";
+    reveal.setAttribute("aria-pressed", String(visible));
+  });
+  register.addEventListener("click", async () => {
+    if (busy || destroyed || !authenticated() || fields["client-id"].value.trim()) return;
+    busy = true;
+    const current = generation;
+    updateControls();
+    connectionStatus.textContent = "Gerando credenciais…";
+    try {
+      const result = await authClient.registerActionOAuthClient();
+      if (destroyed || current !== generation) return;
+      fields["client-id"].value = result.client_id;
+      fields["client-secret"].value = result.client_secret;
+      secret.hidden = false;
+      connectionStatus.textContent = "Credenciais geradas. Copie o identificador e o segredo antes de fechar esta tela.";
+    } catch (error) {
+      if (!destroyed && current === generation) connectionStatus.textContent = publicErrorMessage(error,
+        "Não foi possível confirmar a geração. Nenhuma nova tentativa foi feita.");
+    } finally {
+      busy = false;
+      if (!destroyed) {
+        updateControls();
+        restoreRequestFocus(fields["client-id"], current);
+      }
+    }
+  });
+  root.querySelector("[data-openapi-link-form]").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (busy || destroyed || !authenticated()) return;
+    busy = true;
+    const current = generation;
+    updateControls();
+    connectionStatus.textContent = "Vinculando assistente…";
+    try {
+      await authClient.linkActionOAuthClient(fields["client-id"].value, callback.value);
+      if (!destroyed && current === generation) connectionStatus.textContent = "Assistente vinculado. Volte a ele e conecte sua conta AraLearn para autorizar o acesso.";
+    } catch (error) {
+      if (!destroyed && current === generation) connectionStatus.textContent = publicErrorMessage(error,
+        "Não foi possível vincular. Confira o identificador do cliente e a URL de retorno do assistente.");
+    } finally {
+      busy = false;
+      if (!destroyed) {
+        updateControls();
+        restoreRequestFocus(link, current);
+      }
+    }
+  });
+  const unsubscribe = authClient?.onAuthStateChange?.((event) => {
+    if (event !== "TOKEN_REFRESHED" && event !== "TOKEN_REFRESHED_REMOTE") clear();
+  });
+  updateControls();
+  return Object.freeze({ clear, destroy() { destroyed = true; clear(); unsubscribe?.(); } });
 }

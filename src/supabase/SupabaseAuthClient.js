@@ -20,6 +20,31 @@ function authorizationId(value) {
   return result;
 }
 
+function actionClientId(value) {
+  const id = text(value).toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(id)) {
+    throw new Error("Informe o identificador do cliente recebido ao gerar as credenciais.");
+  }
+  return id;
+}
+
+function actionAssistantId(value) {
+  let id = text(value);
+  if (id.startsWith("https://")) {
+    const url = new URL(id);
+    const callback = url.pathname.match(/^\/aip\/(g-[A-Za-z0-9-]{6,150})\/oauth\/callback$/u);
+    if (!new Set(["chatgpt.com", "chat.openai.com"]).has(url.hostname) ||
+        url.port || url.username || url.password || url.search || url.hash || !callback) {
+      throw new Error("Cole a URL de retorno da configuração de autenticação do assistente.");
+    }
+    id = callback[1];
+  }
+  if (!/^g-[A-Za-z0-9-]{6,150}$/u.test(id)) {
+    throw new Error("Informe o identificador começando por g- ou a URL de retorno do assistente.");
+  }
+  return id;
+}
+
 function normalizeEmail(value) {
   return text(value).toLowerCase();
 }
@@ -525,6 +550,40 @@ export class SupabaseAuthClient {
       `/functions/v1/aralearn-authoring-action/oauth/authorizations/${encodeURIComponent(id)}`,
       { method: "GET", accessToken }
     );
+  }
+
+  async registerActionOAuthClient() {
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) throw new Error("Entre na sua conta para configurar esta conexão.");
+    const base = "/functions/v1/aralearn-authoring-action";
+    const result = await this.http.request(`${base}/oauth/clients/register`, {
+      method: "POST", accessToken, body: {}
+    });
+    const expectedBase = `${String(this.http.projectUrl).replace(/\/+$/u, "")}${base}`;
+    if (!result || !/^ars_[A-Za-z0-9_-]{24,512}$/u.test(result.client_secret || "") ||
+        result.authorization_url !== `${expectedBase}/oauth/authorize` ||
+        result.token_url !== `${expectedBase}/oauth/token` || result.scope !== "openid email" ||
+        result.token_endpoint_auth_method !== "client_secret_post") {
+      throw new Error("Não foi possível confirmar as credenciais recebidas. Nenhuma nova tentativa foi feita.");
+    }
+    actionClientId(result.client_id);
+    return result;
+  }
+
+  async linkActionOAuthClient(rawClientId, rawAssistantId) {
+    const clientId = actionClientId(rawClientId);
+    const gptId = actionAssistantId(rawAssistantId);
+    const accessToken = await this.getAccessToken();
+    if (!accessToken) throw new Error("Entre na sua conta para configurar esta conexão.");
+    const result = await this.http.request(
+      `/functions/v1/aralearn-authoring-action/oauth/clients/${encodeURIComponent(clientId)}/link`, {
+        method: "POST", accessToken, body: { gptId }
+      }
+    );
+    if (result?.linked !== true || result.client_id !== clientId || result.gpt_id !== gptId) {
+      throw new Error("Não foi possível confirmar o vínculo. Confira os identificadores antes de tentar novamente.");
+    }
+    return result;
   }
 
   async decideActionOAuthAuthorization(rawAuthorizationId, action) {

@@ -11,8 +11,15 @@ explica os termos usados na implementação atual.
 
 ## [0.0.77] - 2026-09-17
 
+### Melhorado
+
+- as opções de lacunas usam a mesma apresentação compacta da resposta preenchida, preservando uma área confortável de clique;
+- Conectar assistente apresenta o endereço MCP diretamente e permite preparar credenciais e vincular um assistente por OpenAPI na própria conta AraLearn;
+- o manual ilustrado de integração com o ChatGPT cobre MCP e Actions, com acesso pela seção de autoria do README.
+
 ### Corrigido
 
+- pressionar uma opção de lacuna não desloca o painel nem cancela o clique, permitindo preencher a resposta e continuar o estudo;
 - a preparação de conteúdo reconhece parágrafos reconciliados com quebras de linha e formatação de código, sem exigir a classificação duplicada do mesmo texto em sua representação acessível.
 - as orientações dos assistentes esclarecem como calibrar o plano antes de produzir e preservar as citações ao atualizar uma explicação.
 

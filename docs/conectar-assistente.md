@@ -4,23 +4,19 @@ Você conversa no aplicativo de IA que prefere e guarda os cursos no AraLearn. A
 
 ## Começar pelo AraLearn
 
-1. Abra o AraLearn e entre em **Configurações → Conectar assistente**. O guia também está disponível antes do login.
+1. Abra o AraLearn e entre em **Configurações → Conectar assistente**. O endereço também está disponível antes do login.
 2. Escolha **Copiar endereço**. Ele corresponde à instalação do AraLearn que você está usando; não é uma senha. Se o navegador bloquear a cópia, selecione e copie o campo manualmente.
 3. Abra o aplicativo de IA e adicione uma conexão MCP com esse endereço. Se aparecer a escolha de autenticação, selecione **OAuth**.
 4. Na tela do AraLearn, entre ou crie sua conta, confira as permissões e autorize. Você não precisa entregar sua senha ao assistente nem copiar chaves do banco.
 5. Volte à conversa e selecione a conexão AraLearn.
 
-O login no site e a autorização do assistente são etapas distintas. Abrir o ChatGPT pelo botão do AraLearn não instala nem autoriza a conexão. A instalação e o consentimento precisam ser concluídos no aplicativo escolhido.
+O login no site e a autorização do assistente são etapas distintas. Conclua a instalação no aplicativo escolhido e o consentimento na página do AraLearn aberta por ele.
 
 ## No ChatGPT
 
-Abra as configurações de apps ou plugins e procure a opção de adicionar uma conexão MCP. Dependendo da interface e das permissões da conta, pode ser necessário habilitar **Developer Mode** em **Configurações → Segurança e login (Security and login)** e criar a conexão em **Plugins**. Use as [instruções oficiais atuais](https://developers.openai.com/api/docs/guides/developer-mode) para localizar essa opção e conferir disponibilidade no seu plano ou workspace.
+Siga o [manual ilustrado de configuração do ChatGPT](chatgpt.md). Ele mostra o formulário MCP, as opções de autorização, a seleção na conversa e o teste de leitura. Também apresenta o caminho Actions/OpenAPI para quem usa um GPT que pode editar, com suas condições de disponibilidade.
 
-Use o endereço copiado do AraLearn e conclua a autorização. Não preencha credenciais de Actions nesse fluxo MCP. Em uma conversa nova, selecione AraLearn entre os apps ou ferramentas disponíveis.
-
-Se o formulário mostrar **Configurações avançadas de OAuth**, aguarde a descoberta automática com **Registro Dinâmico de Cliente (DCR)**. Mantenha `offline_access` entre os escopos padrão, deixe **Escopos básicos** vazio e desmarque **OIDC habilitado**. Essa é a configuração verificada para o MCP do AraLearn; não é necessário fornecer ID ou segredo de cliente.
-
-Não há neste guia um link público de instalação do AraLearn no catálogo. O botão **Abrir ChatGPT** leva ao aplicativo; não informa que a conexão já foi realizada.
+Para MCP, você copia o endereço e autoriza a conta; não precisa gerar ID ou segredo de cliente. Não há neste guia um link de instalação do AraLearn no catálogo público: a conexão é adicionada pelas configurações do aplicativo escolhido.
 
 ## Conferir sem criar conteúdo
 
@@ -38,4 +34,4 @@ O mesmo endereço pode ser usado por clientes compatíveis com MCP remoto e a au
 
 Após uma atualização das ferramentas, use a atualização da conexão oferecida pelo cliente e abra uma conversa nova. Refazer login só é necessário quando a autorização expira, é revogada ou está associada à conta errada. Se uma leitura informar mudança de contexto, não force uma gravação nem trate reconectar como garantia de correção.
 
-O canal existente de [Actions/OpenAPI](autoria-actions.md) permanece disponível. Seu cadastro OAuth é diferente da descoberta e autorização do MCP. Os detalhes do protocolo estão em [Autoria pelo MCP](autoria-mcp.md).
+O canal de [Actions/OpenAPI](autoria-actions.md) permanece disponível. Seu cadastro OAuth é diferente da descoberta e autorização do MCP; o [manual ilustrado](chatgpt.md#actions-em-um-gpt-personalizado) apresenta a configuração pela interface. Os detalhes do protocolo estão em [Autoria pelo MCP](autoria-mcp.md).

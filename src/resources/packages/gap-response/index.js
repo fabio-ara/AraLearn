@@ -120,7 +120,7 @@ function choicePrompt(data, options) {
     `${options.exerciseShuffleSeed || "runtime"}::${options.responseBlockKey || options.blockKey}` +
       `::gap:${blank.id}:${Number(active.blankIndex)}`
   );
-  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}">${renderPackageInline(practiceValueLabel(blank, value, options))}</button>`).join("")}</div></section>`;
+  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}"><span class="runtime-text-gap-blank token-option-label">${renderPackageInline(practiceValueLabel(blank, value, options))}</span></button>`).join("")}</div></section>`;
 }
 
 function materializesGap(registry, instance, response, index) {
