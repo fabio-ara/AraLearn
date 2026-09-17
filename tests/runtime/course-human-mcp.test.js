@@ -407,7 +407,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "5.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "6.0.0");
   // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
 });
