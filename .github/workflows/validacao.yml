@@ -64,6 +64,19 @@ jobs:
         if: steps.paths.outputs.docs_only != 'true'
         run: npm ci
 
+      - name: Gerar OpenAPI diagnóstico da candidata
+        if: steps.paths.outputs.docs_only != 'true'
+        run: node ./scripts/buildChatGptActionOpenApi.mjs
+
+      - name: Guardar OpenAPI diagnóstico da candidata
+        if: steps.paths.outputs.docs_only != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aralearn-openapi-diagnostic-${{ github.run_attempt }}
+          path: docs/downloads/aralearn-chatgpt-action-openapi.yaml
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Conferir artefatos gerados e arquitetura
         if: steps.paths.outputs.docs_only != 'true'
         run: npm run test:preflight
