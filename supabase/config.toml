@@ -63,7 +63,7 @@ allow_dynamic_registration = true
 
 [edge_runtime]
 enabled = true
-policy = "oneshot"
+policy = "per_worker"
 
 [functions.aralearn-authoring-mcp]
 verify_jwt = false
