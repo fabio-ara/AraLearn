@@ -363,12 +363,14 @@ function arrangeMaterializationUnits(existingBySlot, requested, micros, add = nu
   return { planned, retained };
 }
 
-function persistedPedagogicalUnit(item, microsequence, position, design) {
-  const application = item.designApplication;
+function persistedPedagogicalUnit(item, microsequence, position, design, plan) {
+  const application = item.designApplication ?? {};
+  const recordedIntroductions = planItems(plan, "instructionalAnalysisUnits")
+    .filter(idea => idea.introducedAt?.studyUnitId === item.studyUnit.id).map(idea => idea.id);
   return { source: { posicao: position, conteudo: item.studyUnit,
       aplicacaoPedagogica: { explicacoes: application.explanationApplications ?? [] } },
-    inputIndex: `saved:${item.studyUnit.id}`, microsequence, content: item.studyUnit, design,
-    noveltyIds: application.introducedInstructionalAnalysisUnitIds ?? [],
+    inputIndex: `saved:${item.studyUnit.id}`, preserved: true, microsequence, content: item.studyUnit, design,
+    noveltyIds: application.introducedInstructionalAnalysisUnitIds ?? recordedIntroductions,
     usedIds: application.usedInstructionalAnalysisUnitIds ?? [],
     explanations: (application.explanationApplications ?? []).map(value => ({ ...value, notApplicable: value.notApplicable ?? [] })),
     practices: application.practiceApplications ?? [], curriculumScopeItemIds: application.curriculumScopeItemIds ?? [],
@@ -389,23 +391,27 @@ export async function explanationContentBasis(explanation) {
 
 export async function reconcileHumanExplanation(content, entries, context) {
   const explanation = normalizeMicrosequenceExplanation(content);
-  if (entries === undefined) return explanation;
-  if (!Array.isArray(entries) || !entries.length || entries.length > 512) {
-    fail("invalid_explanation_reconciliation", "Informe as passagens classificadas da base.");
-  }
+  if (entries === undefined && explanation.reconciliation === undefined) return explanation;
   const micros = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
     (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
-  explanation.reconciliation = {
-    contract: "aralearn.explanation-reconciliation.v1", contentBasis: await explanationContentBasis(explanation),
-    entries: entries.map(entry => ({ resourceId: explanation.content[entry.recurso - 1]?.id,
-      path: entry.folha, quote: entry.trecho, prefix: entry.prefixo ?? null, suffix: entry.sufixo ?? null,
-      role: entry.papel, reason: entry.motivo,
-      analysisUnitIds: (entry.ideias ?? []).map(value => resolvePlanItem(context.plan, "instructionalAnalysisUnits", value, "A ideia").id),
-      evidenceRequirementIds: (entry.requisitos ?? []).map(value => resolvePlanItem(context.plan, "evidenceRequirements", value, "O requisito").id),
-      destinationMicrosequenceId: entry.destino == null ? null : resolveReference(micros, entry.destino, {
-        position: () => Number.NaN, texts: item => [item.title], label: "O destino da retomada" }).id
-    }))
-  };
+  if (entries !== undefined) {
+    if (!Array.isArray(entries) || !entries.length || entries.length > 512) {
+      fail("invalid_explanation_reconciliation", "Informe as passagens classificadas da base.");
+    }
+    explanation.reconciliation = {
+      contract: "aralearn.explanation-reconciliation.v1", contentBasis: await explanationContentBasis(explanation),
+      entries: entries.map(entry => ({ resourceId: explanation.content[entry.recurso - 1]?.id,
+        path: entry.folha, quote: entry.trecho, prefix: entry.prefixo ?? null, suffix: entry.sufixo ?? null,
+        role: entry.papel, reason: entry.motivo,
+        analysisUnitIds: (entry.ideias ?? []).map(value => resolvePlanItem(context.plan, "instructionalAnalysisUnits", value, "A ideia").id),
+        evidenceRequirementIds: (entry.requisitos ?? []).map(value => resolvePlanItem(context.plan, "evidenceRequirements", value, "O requisito").id),
+        destinationMicrosequenceId: entry.destino == null ? null : resolveReference(micros, entry.destino, {
+          position: () => Number.NaN, texts: item => [item.title], label: "O destino da retomada" }).id
+      }))
+    };
+  }
+  // Inline declarations are new write input too. Never refresh their hash to
+  // conceal a stale basis; unchanged legacy is restored from storage by callers.
   const normalized = normalizeMicrosequenceExplanation(explanation);
   const inspection = inspectExplanationReconciliation(normalized, {
     contentBasis: await explanationContentBasis(normalized),
@@ -414,8 +420,9 @@ export async function reconcileHumanExplanation(content, entries, context) {
     microsequenceIds: micros.map(item => item.id)
   });
   if (!inspection.ready) {
-    fail("invalid_explanation_reconciliation",
-      "A descrição pedagógica precisa corresponder integralmente à base que será salva.");
+    throw new AuthoringApiError(422, "invalid_explanation_reconciliation",
+      "A descrição pedagógica precisa corresponder integralmente à base que será salva.",
+      { blockers: inspection.blockers });
   }
   return normalized;
 }
@@ -481,18 +488,18 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       resolve("curriculumScopeItems", value, "O item de cobertura curricular")).filter(Boolean);
     const existing = arrangement.planned.get(index)?.existing?.item ?? null;
     let normalizedContent = null;
-    const contentValidation = validateCourseEntityContent("study_unit", {
+    const contentValidation = capture(() => validateCourseEntityContent("study_unit", {
       ...(planned.conteudo ?? {}), id: `preflight-${index + 1}`, position: planned.posicao
-    });
-    if (!contentValidation.valid) {
+    }), details);
+    if (contentValidation && !contentValidation.valid) {
       const reasons = contentValidation.errors
         .map(error => typeof error === "string" ? error : error?.message)
         .filter(message => typeof message === "string" && message.trim());
       add("invalid_human_study_unit",
         `A unidade de estudo ${index + 1} é inválida: ${reasons.join(" ")}`, details);
-    } else {
+    } else if (contentValidation?.valid) {
       normalizedContent = structuredClone(contentValidation.normalized);
-      try { requireCoursePracticeAuthoring(normalizedContent, existing?.studyUnit ?? null); }
+      try { requireCoursePracticeAuthoring(normalizedContent); }
       catch (error) { add(error.code ?? "invalid_human_study_unit", error.message, details); }
       delete normalizedContent.id;
       delete normalizedContent.position;
@@ -554,27 +561,36 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
     groups.get(micro.id).units.push(unit);
   }
+  const changedIntroductionIds = new Set([...groups.values()].flatMap(group => group.units.flatMap(unit => unit.noveltyIds)));
+  const replacedIds = new Set([...arrangement.planned.values()].map(value => value.existing?.studyUnitId).filter(Boolean));
+  const movedIds = new Set(arrangement.retained.filter(value => value.position !== value.existing.item.studyUnit.position)
+    .map(value => value.existing.studyUnitId));
+  for (const idea of planItems(context.plan, "instructionalAnalysisUnits")) {
+    if (replacedIds.has(idea.introducedAt?.studyUnitId) || movedIds.has(idea.introducedAt?.studyUnitId)) {
+      changedIntroductionIds.add(idea.id);
+    }
+  }
   for (const retained of arrangement.retained) {
     if (!complete && !targetMicrosequenceIds.has(retained.microsequenceId)) continue;
     const { item } = retained.existing;
     const application = item.designApplication, snapshot = item.designSnapshot;
-    if (!application || !snapshot) {
-      if (complete) add("human_materialization_existing_application_missing",
+    if (complete && (!application || !snapshot)) {
+      add("human_materialization_existing_application_missing",
         "Registre as aplicações e a configuração aplicada da unidade existente antes de concluir o percurso.", { studyUnit: item.studyUnit.title });
       continue;
     }
     const micro = micros.find(value => value.id === retained.microsequenceId);
-    // An omitted object keeps the configuration actually used to produce it.
-    // Current intentions govern incoming units and the current repertoire only.
-    const design = { ...designs.get(micro.id), parameters: (snapshot.parameters ?? []).map(parameter => ({
+    // Partial production consumes only recorded relationships of omitted units.
+    // Their historical configuration is relevant only to an integral audit.
+    const design = complete ? { ...designs.get(micro.id), parameters: (snapshot.parameters ?? []).map(parameter => ({
       parameterId: parameter.parameterId, effectiveAssignment: {
         mode: parameter.origin === "automatic" ? "automatic" : "fixed", value: parameter.value,
         origin: parameter.origin, reason: parameter.reason,
         sourceScope: parameter.sourceScopeKind ? { kind: parameter.sourceScopeKind } : null
       }
-    })), componentPolicy: { effectiveAssignment: snapshot.componentPolicy } };
-    scopedDesigns.set(item.studyUnit.id, design);
-    const unit = persistedPedagogicalUnit(item, micro, retained.position, design);
+    })), componentPolicy: { effectiveAssignment: snapshot.componentPolicy } } : designs.get(micro.id);
+    if (complete) scopedDesigns.set(item.studyUnit.id, design);
+    const unit = persistedPedagogicalUnit(item, micro, retained.position, design, context.plan);
     if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
     groups.get(micro.id).units.push(unit);
   }
@@ -648,7 +664,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       entry.item.curriculumPath.didacticMicrosequence.id))
     .map(entry => entry.studyUnitId));
   capture(() => validatePedagogicalPart([...groups.values()], context.plan,
-    affectedExistingStudyUnitIds, blockers, { complete }));
+    affectedExistingStudyUnitIds, blockers, { complete, changedIntroductionIds }));
   const normalizedPlan = structuredClone(planUnits);
   const identity = await sha256Hex(canonicalAuthoringValue({ courseId: context.course.id, courseRevision: context.course.revision,
     part: context.part, plan: context.plan, designs: [...designs], scopedDesigns: [...scopedDesigns],
@@ -1012,24 +1028,8 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
       effectiveAssignments: effective
     };
   }
-  for (const parameter of calibrated.parameters ?? []) {
-    const effective = parameter?.effectiveAssignment;
-    if (effective?.mode !== "automatic" || effective.value !== null && effective.value !== undefined) continue;
-    const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId);
-    if (!definition || definition.defaultValue === undefined) {
-      fail("course_service_unavailable", "A configuração automática não possui valor derivável.", 503);
-    }
-    parameter.effectiveAssignment = {
-      ...effective,
-      value: normalizeCourseDesignParameterValue(parameter.parameterId, structuredClone(definition.defaultValue)),
-      origin: "automatic",
-      inherited: false,
-      reason: "Padrão do produto aplicado à escolha delegada para esta unidade.",
-      sourceScope: definition.supportedScopes.includes("study_unit")
-        ? { kind: "study_unit", ref: "pending-study-unit" }
-        : { kind: "course", ref: design.courseId }
-    };
-  }
+  // Unresolved automatic choices belong to the producing agent's contextual
+  // judgement. A product default is not a persisted authorial decision.
   return calibrated;
 }
 
@@ -1193,12 +1193,9 @@ function introducedAnalysisUnitIds(plan, replacedStudyUnitIds) {
     .map(({ id }) => id));
 }
 
-function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics) {
+function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics,
+  { complete = true, changedIntroductionIds = new Set() } = {}) {
   const introductions = new Map();
-  const activeAnalysisIds = new Set(groups.flatMap(group => group.units.flatMap(unit => [
-    ...unit.noveltyIds, ...unit.usedIds,
-    ...unit.explanations.map(entry => entry.instructionalAnalysisUnitId)
-  ])));
   for (const item of planItems(plan, "instructionalAnalysisUnits")) {
     if (item.introducedAt && !replacedStudyUnitIds.has(item.introducedAt.studyUnitId)) {
       introductions.set(item.id, curriculumOrder.get(item.introducedAt.didacticMicrosequenceId));
@@ -1212,21 +1209,18 @@ function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds,
   const microsequenceTitles = new Map((plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
     (module.lessons ?? []).flatMap(lesson => (lesson.microsequences ?? []).map(micro => [micro.id, micro.title]))));
   for (const item of planItems(plan, "instructionalAnalysisUnits")) {
-    const introducedInTarget = replacedStudyUnitIds.has(item.introducedAt?.studyUnitId);
-    const referencedByTarget = [...(item.usedBy ?? []), ...(item.revisitedBy ?? [])]
-      .some(reference => replacedStudyUnitIds.has(reference.studyUnitId));
-    if (!activeAnalysisIds.has(item.id) && !introducedInTarget && !referencedByTarget) continue;
+    if (!complete && !changedIntroductionIds.has(item.id)) continue;
     for (const [field, code] of [["usedBy", "human_materialization_use_before_introduction"],
       ["revisitedBy", "human_materialization_explanation_before_introduction"]]) {
       for (const reference of item[field] ?? []) {
-        // Units in this Part are already checked in their final accumulated order.
+        // Units represented in these groups are checked in their final order.
         if (replacedStudyUnitIds.has(reference.studyUnitId)) continue;
         const introductionOrder = introductions.get(item.id);
         const referenceOrder = curriculumOrder.get(reference.didacticMicrosequenceId);
         if (Number.isSafeInteger(introductionOrder) && Number.isSafeInteger(referenceOrder) &&
             introductionOrder <= referenceOrder) continue;
         const message = `A unidade preservada “${reference.title}” depende da ideia “${item.statement}”, ` +
-          "mas sua introdução anterior não está registrada. Releia o conteúdo e registre a aplicação pedagógica antes de continuar.";
+          "mas a alteração não conserva seu ensino antes desse uso.";
         if (!diagnostics) fail(code, message);
         diagnostics.push({ code, message, idea: item.statement, studyUnit: reference.title,
           microsequence: microsequenceTitles.get(reference.didacticMicrosequenceId) });
@@ -1251,13 +1245,13 @@ function validatePedagogicalGroup(
   group,
   establishedAnalysis,
   introducedAnywhere,
-  analysisLabels, diagnostics = null, { complete = true } = {}
+  analysisLabels, diagnostics = null, { complete = true, changedIntroductionIds = new Set() } = {}
 ) {
   const report = (code, message, status) => {
     if (!diagnostics) fail(code, message, status);
     diagnostics.push({ code, message });
   };
-  const firstDesign = group.units[0]?.design;
+  const firstDesign = group.units.find(unit => !unit.preserved)?.design ?? group.units[0]?.design;
   const targets = firstDesign?.targetPlanItems;
   if (!plainObject(targets)) {
     report("course_service_unavailable", "O recorte pedagógico corrente está incompleto.", 503);
@@ -1265,6 +1259,7 @@ function validatePedagogicalGroup(
   }
   const targetAnalysis = new Set(targets.instructionalAnalysisUnitIds || []);
   const targetEvidence = new Set(targets.evidenceRequirementIds || []);
+  const preserved = group.units.filter(unit => unit.preserved);
 
   const representedAnalysis = new Set();
   const introducedInGroup = new Set();
@@ -1280,6 +1275,25 @@ function validatePedagogicalGroup(
   }]));
 
   for (const unit of group.units) {
+    if (!complete && unit.preserved) {
+      // An omitted unit is evidence about the sequence, not a new candidate.
+      // Only changed introductions can make its prior uses relevant here.
+      for (const id of unit.usedIds) {
+        if (changedIntroductionIds.has(id) && !establishedAnalysis.has(id)) {
+          report("human_materialization_use_before_introduction",
+            `A alteração deixaria “${unit.content.title}” usando “${analysisLabels.get(id) ?? id}” antes de ensiná-la.`);
+        }
+      }
+      for (const explanation of unit.explanations) {
+        const id = explanation.instructionalAnalysisUnitId;
+        if (changedIntroductionIds.has(id) && !unit.noveltyIds.includes(id) && !establishedAnalysis.has(id)) {
+          report("human_materialization_explanation_before_introduction",
+            `A alteração deixaria “${unit.content.title}” retomando “${analysisLabels.get(id) ?? id}” antes de ensiná-la.`);
+        }
+      }
+      unit.noveltyIds.forEach(id => { establishedAnalysis.add(id); introducedAnywhere.add(id); });
+      continue;
+    }
     const design = unit.design;
     const policy = design?.componentPolicy?.effectiveAssignment?.policy;
     const unitTargets = design?.targetPlanItems;
@@ -1353,7 +1367,7 @@ function validatePedagogicalGroup(
       }
     }
     for (const id of unit.noveltyIds) {
-      if (introducedAnywhere.has(id)) {
+      if (introducedAnywhere.has(id) || !complete && preserved.some(saved => saved.noveltyIds.includes(id))) {
         report("human_materialization_duplicate_introduction", "Uma ideia foi introduzida mais de uma vez.");
       }
       if (!explanationSet.has(id)) {
@@ -1410,6 +1424,25 @@ function validatePedagogicalGroup(
       state.operation = practice.invariantTaskOperation;
       practice.variedDimensions.forEach((dimension) => state.dimensions.add(dimension));
     }
+    if (!complete) for (const saved of preserved) {
+      for (const explanation of unit.explanations) {
+        const previous = saved.explanations.find(value => value.instructionalAnalysisUnitId === explanation.instructionalAnalysisUnitId);
+        if (previous && (explanation.developedForms.some(form => previous.notApplicable.some(value => value.form === form)) ||
+            explanation.notApplicable.some(value => (previous.developedForms ?? []).includes(value.form)))) {
+          report("human_materialization_explanation_form_conflict",
+            `A nova explicação contradiz uma forma já desenvolvida em “${saved.content.title}”.`);
+        }
+      }
+      for (const practice of unit.practices) for (const previous of saved.practices) {
+        if (previous.evidenceRequirementId !== practice.evidenceRequirementId) continue;
+        if (previous.opportunityId === practice.opportunityId) report("human_materialization_duplicate_practice",
+          `A nova prática repete a oportunidade já presente em “${saved.content.title}”.`);
+        if (previous.invariantTaskOperation != null && previous.invariantTaskOperation !== practice.invariantTaskOperation) {
+          report("human_materialization_practice_operation_changed",
+            `A nova prática muda a operação de aprendizagem compartilhada com “${saved.content.title}”.`);
+        }
+      }
+    }
     try { validateComponentPolicy(unit.componentRefs ?? componentRefs(unit.content), policy); }
     catch (error) { report(error.code, error.message, error.status); }
   }
@@ -1451,7 +1484,7 @@ function validatePedagogicalGroup(
 
 function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics = null, options = {}) {
   const curriculumOrder = curriculumMicrosequenceOrder(plan);
-  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics);
+  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics, options);
   const orderedGroups = [...groups].map((group) => {
     const order = curriculumOrder.get(group.microsequenceId);
     if (!Number.isSafeInteger(order)) {
@@ -1660,11 +1693,11 @@ export async function materializeHumanCoursePart({
   });
   return {
     result: complete ? (producedPartPosition === 1 ? "Primeira parte produzida." : `Parte ${producedPartPosition} produzida.`)
-      : "Fragmento salvo; a parte permanece em produção.",
+      : "Conteúdo solicitado salvo.",
     ...buildHumanNavigationEnvelope(producedContentTarget ? createHumanNavigation(adapter, {
       courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
-    }) : null, [], { nextDecision: complete ? "Inspecione o percurso salvo e registre as decisões de revisão humana."
-      : "Continue o lote autorizado; a conclusão conferirá a cobertura acumulada da parte." }),
+    }) : null, [], { nextDecision: complete ? "Leia o percurso salvo e registre sua revisão quando terminar."
+      : null }),
     context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
       cursoRevision: receipt.courseRevision }
   };
