@@ -441,16 +441,17 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   }
   const micros = partMicrosequences(context.part);
   const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
-  const designs = new Map(await Promise.all(micros.map(async micro => [micro.id, await adapter.getCourseDesign({
-    principal, courseId: context.course.id, scopeKind: "didactic_microsequence", scopeRef: micro.id,
-    childLimit: 1, childCursor: null, deadlineAt
-  })])));
   const groups = new Map();
   const sourceCache = new Map();
   const scopedDesigns = new Map();
   const arrangement = arrangeMaterializationUnits(existingBySlot, planUnits, micros, add);
   const targetMicrosequenceIds = new Set([...arrangement.planned.values()]
     .map(value => value.microsequenceId).filter(Boolean));
+  const designMicros = complete ? micros : micros.filter(micro => targetMicrosequenceIds.has(micro.id));
+  const designs = new Map(await Promise.all(designMicros.map(async micro => [micro.id, await adapter.getCourseDesign({
+    principal, courseId: context.course.id, scopeKind: "didactic_microsequence", scopeRef: micro.id,
+    childLimit: 1, childCursor: null, deadlineAt
+  })])));
   if (!planUnits.length) add("human_materialization_plan_required",
     "Informe as unidades candidatas para conferir sua coerência antes de escrever.");
   for (const [index, planned] of planUnits.entries()) {
