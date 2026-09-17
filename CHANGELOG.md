@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.77] - 2026-09-17
+
+### Corrigido
+
+- a preparação de conteúdo reconhece parágrafos reconciliados com quebras de linha e formatação de código, sem exigir a classificação duplicada do mesmo texto em sua representação acessível.
+- as orientações dos assistentes esclarecem como calibrar o plano antes de produzir e preservar as citações ao atualizar uma explicação.
+
 ## [0.0.76] - 2026-09-16
 
 ### Melhorado

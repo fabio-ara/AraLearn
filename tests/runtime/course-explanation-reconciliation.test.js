@@ -43,6 +43,42 @@ test("seis ensinamentos da base continuam no inventário quando o pedido só con
   assert.equal(preview.deferred.length, 4);
 });
 
+for (const text of [
+  "Uma ideia.\n\nOutra relação.",
+  "Uma  ideia.\t Outra relação.",
+  "Uma `ideia` e outra relação.",
+  "Uma `ideia`.\n\nOutra  relação."
+]) test(`prosa literal reconciliada não exige sua cópia acessível: ${JSON.stringify(text)}`, () => {
+  const explanation = { title: "Base literal", content: [paragraph("a", text)] };
+  const targets = explanationReconciliationTargets(explanation);
+  assert.deepEqual(targets.map(target => target.path), ["text"]);
+  assert.equal(targets[0].text, text);
+  const value = reconcile(explanation, [entry({ resourceId: "a", path: "text", text })]);
+  assert.equal(inspect(value).ready, true);
+  assert.equal(value.content[0].data.text, text);
+
+  const missing = structuredClone(value);
+  missing.reconciliation.entries[0].quote = "Uma";
+  assert.deepEqual(inspect(missing).blockers.map(({ code, path }) => ({ code, path })), [
+    { code: "explanation_reconciliation_unmapped", path: "text" }
+  ]);
+  const normalizedLocator = structuredClone(value);
+  normalizedLocator.reconciliation.entries[0].quote = text.replace(/`/gu, "").replace(/\s+/gu, " ");
+  assert.ok(inspect(normalizedLocator).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"),
+    "A equivalência de apresentação não transforma o localizador em correspondência aproximada.");
+});
+
+test("reconciliação já salva da representação acessível permanece inspecionável", () => {
+  const text = "Uma `ideia`.\n\nOutra relação.";
+  const value = reconcile({ title: "Base preservada", content: [paragraph("a", text)] }, [
+    entry({ resourceId: "a", path: "text", text }),
+    entry({ resourceId: "a", path: "$", text: "Uma ideia. Outra relação." })
+  ]);
+  assert.equal(inspect(value).ready, true);
+  value.reconciliation.entries[1].quote = "Uma representação que deixou de existir.";
+  assert.ok(inspect(value).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"));
+});
+
 test("prévia sem destino declara pendência; dependência adiada e destino removido impedem prontidão", () => {
   const explanation = reconcile({ title: "Antecipação", content: [paragraph("a", "Uma antecipação que será desenvolvida depois.")] });
   explanation.reconciliation.entries[0].role = "preview";

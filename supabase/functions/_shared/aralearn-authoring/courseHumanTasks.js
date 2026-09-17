@@ -496,8 +496,11 @@ const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({ type: "array", minItems: 1, 
     properties: { microssequencia: HUMAN_REFERENCE_SCHEMA, unidade: MATERIALIZATION_UNIT_SCHEMA.properties.unidade,
       posicao: MATERIALIZATION_UNIT_SCHEMA.properties.posicao,
       papel: { type: "string", enum: ["theory", "practice"] },
-      componentes: { type: "array", minItems: 1, maxItems: 128, uniqueItems: true, items: { type: "string", maxLength: 240 } },
-      resposta: { type: ["string", "null"], maxLength: 240 }, feedbackLocal: { type: "boolean" },
+      componentes: { type: "array", minItems: 1, maxItems: 128, uniqueItems: true, items: { type: "string", maxLength: 240 },
+        description: "Referências exatas pacote@versão de consultar_componentes; não use rótulos nem instâncias." },
+      resposta: { type: ["string", "null"], maxLength: 240,
+        description: "Referência pacote@versão da resposta avaliável instalada; null para teoria." },
+      feedbackLocal: { type: "boolean", description: "A prática produzirá feedback explicativo avaliado no dispositivo, sem rede." },
       configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
       aplicacaoPedagogica: MATERIALIZATION_UNIT_SCHEMA.properties.aplicacaoPedagogica,
       fontes: { type: "array", maxItems: 32, items: { type: "object", additionalProperties: false,
@@ -908,7 +911,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_explicacoes",
     "Salvar explicações",
-    "Produz ou edita bases e fontes antes ou depois das unidades. Preserva unidades existentes; salvar não declara revisão.",
+    "Produz ou edita bases e fontes. fontes substitui a seleção anterior: releia e preserve vínculos, âncoras e ocorrências; [] remove todos. Preserva unidades existentes; salvar não declara revisão.",
     inputSchema({ curso: COURSE_SCHEMA, explicacoes: EXPLANATIONS_SCHEMA,
       observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA }, ["curso", "explicacoes"]),
     { readOnly: false }
@@ -1089,7 +1092,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "5.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:796947be9bcc5f0e7ec1664677d9a388e26688d6ad370a3134546649792f5943";
+  "sha256:19d4c9aa8c97fed174d67887bb008e05b9341535d2ef68331f4e1827c47895f5";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
