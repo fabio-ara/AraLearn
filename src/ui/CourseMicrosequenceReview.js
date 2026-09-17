@@ -181,7 +181,14 @@ export function applyExplanationTextFields(explanation, fields) {
     unit = applyManualStudyUnitEdit(unit, targetId, { pathValues: Object.fromEntries(fields
       .filter(field => field.targetId === targetId).map(field => [field.path, field.value])) });
   }
-  return normalizeMicrosequenceExplanation({ ...explanation, title: unit.title, content: unit.content });
+  const candidate = { ...explanation, title: unit.title, content: unit.content };
+  if (JSON.stringify({ title: candidate.title, content: candidate.content }) !==
+      JSON.stringify({ title: explanation.title, content: explanation.content })) {
+    // A declaration belongs to one exact document. Manual prose editing leaves
+    // a readable draft instead of persisting metadata for the previous text.
+    delete candidate.reconciliation;
+  }
+  return normalizeMicrosequenceExplanation(candidate);
 }
 
 export function createCourseMicrosequenceReview({ root, controller, onEditSources, onChanged = () => {},
