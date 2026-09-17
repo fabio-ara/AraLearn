@@ -1657,6 +1657,66 @@ test("revisar conteúdo inicial não mobiliza ideia ensinada apenas depois no cu
   assert.deepEqual(adapter.calls, []);
 });
 
+test("preflight bloqueia usos e retomadas preservados cuja introdução foi invalidada em outra Parte", async () => {
+  for (const [field, code] of [["usedBy", "human_materialization_use_before_introduction"],
+    ["revisitedBy", "human_materialization_explanation_before_introduction"]]) {
+    const adapter = adapterFixture();
+    let restored = false;
+    const readPlan = adapter.getCourseInstructionalPlan;
+    adapter.getCourseInstructionalPlan = async () => {
+      const read = await readPlan();
+      read.plan.curriculum.modules[0].lessons[0].microsequences[0].position = 1;
+      read.plan.curriculum.modules[0].lessons[0].microsequences.unshift({
+        id: "micro-earlier", position: 0, title: "Fundamentos anteriores"
+      });
+      read.plan.instructionalAnalysisUnits.push({ id: SECOND_ANALYSIS_ID, position: 9,
+        statement: "Ideia anterior corrigida.", description: "Introdução invalidada pela edição da prosa.",
+        introducedAt: restored ? { studyUnitId: "restored-theory", didacticMicrosequenceId: "micro-earlier",
+          title: "Introdução conferida novamente" } : null, usedBy: [], revisitedBy: [], version: 1,
+        [field]: [{ studyUnitId: "preserved-practice", didacticMicrosequenceId: "micro-earlier",
+          title: "Prática que depende da introdução" }] });
+      return read;
+    };
+    const result = await prepareMaterialization(adapter, [unit()], { complete: false });
+    assert.equal(result.state, "blocked");
+    assert.equal(result.referencia, null);
+    const blocker = result.blockers.find(item => item.code === code);
+    assert.ok(blocker);
+    assert.equal(blocker.idea, "Ideia anterior corrigida.");
+    assert.equal(blocker.studyUnit, "Prática que depende da introdução");
+    assert.equal(blocker.microsequence, "Fundamentos anteriores");
+    await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
+      course: "Curso de Redes", part: 1, units: [unit()], complete: false }),
+    error => Boolean(preflightBlocker(error, code)));
+    assert.deepEqual(adapter.calls, []);
+    restored = true;
+    const repaired = await prepareMaterialization(adapter, [unit()], { complete: false });
+    assert.equal(repaired.state, "ready");
+    assert.deepEqual(repaired.blockers, []);
+  }
+});
+
+test("introdução enviada sustenta referências preservadas posteriores, mas não anteriores", async () => {
+  for (const before of [false, true]) {
+    const adapter = adapterFixture();
+    const readPlan = adapter.getCourseInstructionalPlan;
+    adapter.getCourseInstructionalPlan = async () => {
+      const read = await readPlan();
+      read.plan.curriculum.modules[0].lessons[0].microsequences[0].position = 1;
+      const microsequences = read.plan.curriculum.modules[0].lessons[0].microsequences;
+      const preserved = { id: "micro-preserved", position: before ? 0 : 2, title: "Prática preservada" };
+      if (before) microsequences.unshift(preserved);
+      else microsequences.push(preserved);
+      read.plan.instructionalAnalysisUnits[0].usedBy = [{ studyUnitId: "preserved-practice",
+        didacticMicrosequenceId: "micro-preserved", title: "Aplicação preservada" }];
+      return read;
+    };
+    const result = await prepareMaterialization(adapter, [unit()], { complete: false });
+    assert.equal(result.state, before ? "blocked" : "ready");
+    assert.equal(result.blockers.some(item => item.code === "human_materialization_use_before_introduction"), before);
+  }
+});
+
 test("item focal percorre a microssequência e chega às unidades como introdução, uso ou retomada", async () => {
   const adapter = pedagogicalAdapter({ ceiling: 2, analysisCount: 2 });
   const designReads = [];
