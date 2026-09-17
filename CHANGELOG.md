@@ -9,6 +9,8 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.76] - 2026-09-16
+
 ### Melhorado
 
 - Configurações reúne o endereço e as etapas para conectar um assistente por MCP, inclusive antes do login; Actions continua disponível.
