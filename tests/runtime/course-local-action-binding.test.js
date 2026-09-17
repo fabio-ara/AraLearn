@@ -64,7 +64,10 @@ test("fixture dos canais vincula seis requisitos, fontes literais e reconciliaç
     }
     for (const unit of lot.materialization.unidades.filter(entry => entry.conteudo.role === "practice")) {
       assert.equal(unit.conteudo.response.package, "aralearn.response.choice");
-      assert.equal(humanMaterializationUnitPlan(unit).feedbackLocal, true);
+      const planned = humanMaterializationUnitPlan(unit);
+      assert.equal(Object.hasOwn(planned, "feedbackLocal"), false,
+        "o preparo não mantém um segundo resumo derivado de feedback");
+      assert.ok(planned.conteudo.feedback.length > 0);
     }
   }
 });
