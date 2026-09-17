@@ -485,8 +485,11 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       ...(planned.conteudo ?? {}), id: `preflight-${index + 1}`, position: planned.posicao
     });
     if (!contentValidation.valid) {
+      const reasons = contentValidation.errors
+        .map(error => typeof error === "string" ? error : error?.message)
+        .filter(message => typeof message === "string" && message.trim());
       add("invalid_human_study_unit",
-        `A unidade de estudo ${index + 1} é inválida: ${contentValidation.errors.join(" ")}`, details);
+        `A unidade de estudo ${index + 1} é inválida: ${reasons.join(" ")}`, details);
     } else {
       normalizedContent = structuredClone(contentValidation.normalized);
       try { requireCoursePracticeAuthoring(normalizedContent, existing?.studyUnit ?? null); }
