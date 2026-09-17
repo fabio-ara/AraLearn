@@ -1588,8 +1588,11 @@ export async function materializeHumanCoursePart({
       });
       const groups = prepared.groups;
       const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
-      const arrangement = arrangeMaterializationUnits(existingBySlot, units, partMicrosequences(context.part));
-      const targetDesigns = new Map(await Promise.all(partMicrosequences(context.part).map(async micro => [micro.id,
+      const partMicros = partMicrosequences(context.part);
+      const arrangement = arrangeMaterializationUnits(existingBySlot, units, partMicros);
+      const writtenMicrosequenceIds = new Set(groups.map(group => group.microsequenceId));
+      const designMicros = complete ? partMicros : partMicros.filter(micro => writtenMicrosequenceIds.has(micro.id));
+      const targetDesigns = new Map(await Promise.all(designMicros.map(async micro => [micro.id,
         await adapter.getCourseDesign({ principal, courseId: context.course.id, scopeKind: "didactic_microsequence",
           scopeRef: micro.id, childLimit: 1, childCursor: null, deadlineAt })])));
       for (const group of groups) for (const unit of group.units) {
