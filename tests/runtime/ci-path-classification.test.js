@@ -31,7 +31,7 @@ test("matriz de gates representa impactos focais e amplia unknown ou orquestraç
   const scenarios = [
     ["documentação", ["docs/arquitetura.md"], { preparation: true, web: false, android: false, supabase: false }],
     ["metadado de release", ["package.json", "android/app/build.gradle.kts"],
-      { preparation: true, web: false, android: false, supabase: false },
+      { preparation: true, web: false, android: true, supabase: false },
       { readBase: file => file === "package.json" ? packageBefore : androidBefore }],
     ["runner", ["scripts/runTests.mjs"], { preparation: true, web: true, android: true, supabase: true }],
     ["verificador", ["scripts/verifyPublishedSite.mjs"], { preparation: true, web: true, android: false, supabase: false }],
