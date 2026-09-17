@@ -119,7 +119,9 @@ export function classifyValidationImpact(paths, { root = repositoryRoot, readBas
       "android/app/build.gradle.kts"].includes(file)) {
       try {
         if (isReleaseMetadataOnly(file, readBase(file), fs.readFileSync(path.join(root, file), "utf8"))) {
-          add("release"); continue;
+          add("release");
+          if (file === "android/app/build.gradle.kts") add("android");
+          continue;
         }
       } catch { /* Conteúdo ausente mantém a classificação conservadora. */ }
     }

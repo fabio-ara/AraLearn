@@ -183,13 +183,13 @@ test("metadados de versão são semânticos e qualquer outro campo mantém impac
     androidBefore.replace("versionCode = 219", "versionCode = 220\n  versionCode = 221")), false);
 });
 
-test("incremento Android exclusivamente de release não seleciona gate nativo", () => {
+test("incremento Android exclusivamente de release seleciona o gate nativo para gerar o APK", () => {
   const current = fs.readFileSync(path.join(path.resolve(import.meta.dirname, "../.."), "android/app/build.gradle.kts"), "utf8");
   const previous = current.replace(/versionCode = (\d+)/u, (_match, value) => `versionCode = ${Number(value) - 1}`)
     .replace(/versionName = "\d+\.\d+\.\d+"/u, 'versionName = "999.999.999"');
   const result = classifyValidationImpact(["android/app/build.gradle.kts"], { readBase: () => previous });
-  assert.deepEqual(result.categories, ["release"]);
-  assert.deepEqual(result.requires, { web: false, contracts: false, supabase: false, android: false });
+  assert.deepEqual(result.categories, ["release", "android"]);
+  assert.deepEqual(result.requires, { web: false, contracts: false, supabase: false, android: true });
 });
 
 test("registro de paridade seleciona seu consumidor sem impacto sistêmico", () => {
