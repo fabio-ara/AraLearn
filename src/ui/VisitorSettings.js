@@ -45,7 +45,7 @@ export function renderVisitorSettings(root, {
       <p class="account-settings-status" data-visitor-status role="status" aria-live="polite"></p>
     </div></section>`;
   const overlay = root.querySelector("[data-visitor-settings]");
-  mountAssistantConnectionSettings(root.querySelector("[data-assistant-connection]"));
+  const assistantSettings = mountAssistantConnectionSettings(root.querySelector("[data-assistant-connection]"), { onSignIn });
   const dialog = root.querySelector("[role='dialog']");
   const back = root.querySelector("[data-visitor-back]");
   const title = root.querySelector("#visitor-settings-title");
@@ -68,6 +68,7 @@ export function renderVisitorSettings(root, {
   };
   const showView = (view, { restoreFocus = false } = {}) => {
     const previousView = activeView;
+    if (previousView === "assistant" && view !== "assistant") assistantSettings.clear();
     scrollPositions.set(previousView, content.scrollTop);
     activeView = view;
     root.querySelectorAll("[data-visitor-view]").forEach(node => { node.hidden = node.dataset.visitorView !== view; });
@@ -143,6 +144,6 @@ export function renderVisitorSettings(root, {
     },
     close,
     handleBack,
-    destroy() { destroyed = true; }
+    destroy() { destroyed = true; assistantSettings.destroy(); }
   });
 }

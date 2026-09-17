@@ -342,6 +342,62 @@ test("#272 preflight, OAuth e erros preservam o catálogo humano", async () => {
   });
 });
 
+test("cadastro e vínculo OAuth usam somente o titular autenticado e nunca retornam hash ou guardam segredo cru", async () => {
+  const stored = [];
+  const handler = createHandler({
+    async resolveApplicationUser(token) { assert.equal(token, "application-session"); return { id: ACTOR_ID }; },
+    async createActionOAuthClientSetup(command) {
+      stored.push(command);
+      assert.equal(command.creatorUserId, ACTOR_ID);
+      assert.match(command.clientSecretHash, /^[0-9a-f]{64}$/u);
+      assert.equal(Object.hasOwn(command, "clientSecret"), false);
+      return { clientId: ACTOR_ID };
+    },
+    async linkActionOAuthClient(command) {
+      stored.push(command);
+      assert.equal(command.creatorUserId, ACTOR_ID);
+      return { clientId: command.clientId, gptId: command.gptId, linked: true };
+    }
+  });
+  const post = (path, body) => handler(new Request(`${BASE_URL}/oauth/${path}`, {
+    method: "POST", headers: { Origin: ORIGIN, Authorization: "Bearer application-session", "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  }));
+  const registered = await post("clients/register", { creatorUserId: "another-user" });
+  assert.equal(registered.status, 201);
+  assert.equal(registered.headers.get("Cache-Control"), "no-store");
+  const credentials = await registered.json();
+  assert.match(credentials.client_secret, /^ars_[A-Za-z0-9_-]{40,}$/u);
+  assert.equal(credentials.authorization_url, `${BASE_URL}/oauth/authorize`);
+  assert.equal(credentials.token_url, `${BASE_URL}/oauth/token`);
+  assert.equal(JSON.stringify(credentials).includes(stored[0].clientSecretHash), false);
+  assert.equal(JSON.stringify(stored).includes(credentials.client_secret), false);
+  const linked = await post(`clients/${ACTOR_ID}/link`, { gptId: "g-synthetic-assistant", creatorUserId: "another-user" });
+  assert.equal(linked.status, 200);
+  assert.equal((await linked.json()).linked, true);
+  assert.equal(stored.length, 2);
+});
+
+test("cadastro OAuth não aceita visitante e vínculo conserva a recusa de titularidade", async () => {
+  let writes = 0;
+  const handler = createHandler({
+    async resolveApplicationUser() { return { id: ACTOR_ID }; },
+    async createActionOAuthClientSetup() { writes += 1; return { clientId: ACTOR_ID }; },
+    async linkActionOAuthClient() { throw new AuthoringApiError(403, "forbidden", "Cliente de outra conta."); }
+  });
+  const anonymous = await handler(new Request(`${BASE_URL}/oauth/clients/register`, {
+    method: "POST", headers: { Origin: ORIGIN, "Content-Type": "application/json" }, body: "{}"
+  }));
+  assert.equal(anonymous.status, 401);
+  assert.equal(writes, 0);
+  const forbidden = await handler(new Request(`${BASE_URL}/oauth/clients/${ACTOR_ID}/link`, {
+    method: "POST", headers: { Origin: ORIGIN, Authorization: "Bearer session", "Content-Type": "application/json" },
+    body: JSON.stringify({ gptId: "g-synthetic-assistant" })
+  }));
+  assert.equal(forbidden.status, 403);
+  assert.equal((await forbidden.json()).error, "forbidden");
+});
+
 test("OAuth nunca publica invalid_course_command durante autorização ou token", async () => {
   const leakedCourseError = new AuthoringApiError(
     422,

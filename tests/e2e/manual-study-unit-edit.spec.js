@@ -1453,7 +1453,22 @@ test("prévia da lacuna permite tentar respostas e editar alternativas sem grava
   await expect(page.getByText("O hipervisor cria e controla as máquinas virtuais.", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Escolher resposta", exact: true }).click();
   await expect(page.locator(".token-option")).toHaveCount(3);
-  await page.locator('.token-option[data-text-gap-value="distribuição"]').click();
+  const alternative = page.locator('.token-option[data-text-gap-value="distribuição"]');
+  const alternativeBox = await alternative.boundingBox();
+  const optionsBox = await page.locator(".token-options").boundingBox();
+  await page.mouse.move(alternativeBox.x + alternativeBox.width / 2, alternativeBox.y + alternativeBox.height / 2);
+  await page.mouse.down();
+  let pressedAlternative, pressedOptions;
+  try {
+    await page.waitForTimeout(150);
+    pressedAlternative = await alternative.boundingBox();
+    pressedOptions = await page.locator(".token-options").boundingBox();
+  } finally {
+    await page.mouse.up();
+  }
+  expect(pressedAlternative).toEqual(alternativeBox);
+  expect(pressedOptions).toEqual(optionsBox);
+  await expect(page.getByRole("button", { name: "Editar resposta: distribuição", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Conferir resposta", exact: true }).click();
   await expect(page.getByText("Incorreto. Tente novamente.", { exact: true })).toBeVisible();
   await expect(page.getByText("O hipervisor cria e controla as máquinas virtuais.", { exact: true })).toBeVisible();

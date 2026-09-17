@@ -543,7 +543,7 @@ function renderSettings(root, authClient, controller, {
     "summary",
     "a[href]",
     "[tabindex]:not([tabindex='-1'])"
-  ].join(","))].filter((control) => !control.hidden && !control.closest("[hidden]"));
+  ].join(","))].filter((control) => !control.hidden && !control.closest("[hidden]") && control.getClientRects().length);
 
   const restoreSettingsFocus = () => {
     const documentValue = root.ownerDocument || globalThis.document;
@@ -630,6 +630,7 @@ function renderSettings(root, authClient, controller, {
       authoring: "Preferências de autoria", assistant: "Conectar assistente", photo: "Foto do perfil", maintenance: "Manutenção" };
     const nextView = Object.hasOwn(labels, view) && (view !== "maintenance" || !maintenance.hidden) ? view : "main";
     const previousView = activeSettingsView;
+    if (previousView === "assistant" && nextView !== "assistant") assistantSettings.clear();
     const content = root.querySelector(".account-settings-content");
     settingsScrollPositions.set(previousView, content.scrollTop);
     activeSettingsView = nextView;
@@ -1042,7 +1043,7 @@ function renderSettings(root, authClient, controller, {
     }
   ) : null;
   const processPreferences = mountAuthoringProcessPreferencesSettings(root.querySelector("[data-authoring-process-settings]"), { client: preferencesClient });
-  mountAssistantConnectionSettings(root.querySelector("[data-assistant-connection]"));
+  const assistantSettings = mountAssistantConnectionSettings(root.querySelector("[data-assistant-connection]"), { authClient });
   syncTheme();
   return Object.freeze({
     loadProfile,
@@ -1051,6 +1052,7 @@ function renderSettings(root, authClient, controller, {
       profileReadGeneration += 1;
       deviceSettings?.destroy();
       processPreferences.destroy();
+      assistantSettings.destroy();
       if (avatarUrl) globalThis.URL?.revokeObjectURL?.(avatarUrl);
     },
     open() {

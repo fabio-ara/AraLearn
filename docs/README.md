@@ -74,7 +74,7 @@ cada propriedade pode ser verificada.
 | Objetivo | Percurso |
 | --- | --- |
 | Produzir e revisar um curso | Comece pelo [Guia da pessoa autora](guia-professor-autor.md). Para trabalhar com um assistente externo, siga [Criar cursos pelo chat](criar-cursos-pelo-chat.md); para aprofundar o tratamento dos problemas encontrados, consulte [Revisão e correções](auditoria-de-conformidade-instrucional.md). |
-| Conectar um assistente | [Assistência por IA](assistencia-por-ia.md) explica o conteúdo enviado e a conferência das propostas. Os canais têm guias próprios para [MCP](autoria-mcp.md) e [OpenAPI com Actions](autoria-actions.md). |
+| Conectar um assistente | Comece por [Conectar seu assistente](conectar-assistente.md). Para o ChatGPT, siga o [manual ilustrado de MCP e Actions/OpenAPI](chatgpt.md). [Assistência por IA](assistencia-por-ia.md) explica o conteúdo enviado e a conferência das propostas; os canais têm referências próprias para [MCP](autoria-mcp.md) e [OpenAPI com Actions](autoria-actions.md). |
 | Investigar a autoria | [Dados de autoria](analytics-instrucionais.md) apresenta as escolhas registradas na produção. [Experimentos instrucionais](experimentos-instrucionais-parametrizados.md) e o [Guia de investigação](guia-pesquisador.md) orientam comparações. |
 
 O [inventário integral](inventario-documentacao.md#engenharia-e-integrações)

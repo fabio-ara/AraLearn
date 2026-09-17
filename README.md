@@ -32,6 +32,8 @@ O trabalho se desenvolve em um ciclo de proposta, inspeção e correção: a IA 
 
 Uma aplicação de conversa conectada pode consultar o curso e executar as alterações que a pessoa autorizar. Essas tarefas pertencem ao AraLearn e permanecem separadas de um modelo ou fornecedor específico. Por isso, o curso continua no aplicativo e pode ser trabalhado em outra conversa compatível; cada canal e aplicação externa tem sua compatibilidade verificada separadamente. O [guia de autoria pelo chat](docs/criar-cursos-pelo-chat.md) apresenta esse percurso, e a [documentação das integrações](docs/assistencia-por-ia.md) explica os canais e suas condições de uso. Dentro do próprio aplicativo, a pessoa também pode editar o texto ou discutir uma prévia com IA antes de salvá-la.
 
+Para usar o ChatGPT, siga o [manual ilustrado de configuração de MCP e Actions/OpenAPI](docs/chatgpt.md). Ele apresenta duas formas de conectar esse aplicativo ao AraLearn, com telas, autorização da conta e uma consulta de teste. Essa é uma das integrações possíveis; o AraLearn não exige um modelo ou fornecedor específico.
+
 ## Pesquisa em design instrucional
 
 O AraLearn também é um artefato de pesquisa em design instrucional e tecnologia educacional. Nele, é possível investigar como uma decisão de autoria se traduz no material: que explicação oferecer, como representar uma relação e que prática propor. As escolhas aplicadas ficam ligadas ao conteúdo, o que permite inspecionar e comparar os materiais produzidos.

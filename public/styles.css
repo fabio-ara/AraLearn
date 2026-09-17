@@ -4200,14 +4200,12 @@ button.account-settings-back[hidden] {
 .token-option {
   min-height: 44px;
   min-width: 44px;
-  border: 1px solid var(--resource-border);
-  border-radius: 8px;
-  background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   color: var(--text-primary);
-  padding: 8px 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0 2px;
+  display: inline-block;
   font-size: var(--type-base);
   font-weight: 400;
   line-height: var(--leading-normal);
@@ -4215,11 +4213,16 @@ button.account-settings-back[hidden] {
   flex: 0 0 auto;
   max-width: 100%;
   overflow-wrap: anywhere;
-  transition: background 0.2s ease, border-color 0.2s ease, transform 0.05s ease, box-shadow 0.2s ease;
 }
 
-.token-option:hover {
-  background: linear-gradient(180deg, var(--resource-surface-subtle), var(--resource-surface-subtle));
+.token-option-label {
+  cursor: inherit;
+  pointer-events: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.token-option:hover .token-option-label {
+  border-color: var(--resource-accent);
 }
 
 .token-option:focus-visible {
@@ -4227,11 +4230,11 @@ button.account-settings-back[hidden] {
   outline-offset: -3px;
 }
 
-.token-option:active {
-  transform: translateY(1px);
+.token-option:active .token-option-label {
+  background: var(--resource-accent-subtle);
 }
 
-.token-option.active {
+.token-option.active .token-option-label {
   border-color: color-mix(in srgb, var(--resource-accent) 92%, transparent);
   box-shadow: none;
   background: color-mix(in srgb, var(--resource-surface-subtle) 94%, transparent);

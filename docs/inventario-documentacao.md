@@ -63,6 +63,8 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 | [`docs/supabase.md`](supabase.md) | serviços usados para identificar contas, guardar dados e arquivos e controlar o acesso |
 | [`docs/aralearn-contract.md`](aralearn-contract.md) | formatos de conteúdo e dados que o aplicativo aceita e valida |
 | [`docs/assistencia-por-ia.md`](assistencia-por-ia.md) | como a IA recebe contexto, propõe mudanças e se conecta ao AraLearn |
+| [`docs/conectar-assistente.md`](conectar-assistente.md) | como iniciar a conexão de um aplicativo de conversa pelo AraLearn |
+| [`docs/chatgpt.md`](chatgpt.md) | manual ilustrado de configuração do ChatGPT por MCP e Actions/OpenAPI |
 | [`docs/autoria-mcp.md`](autoria-mcp.md) | como conectar uma aplicação de IA às tarefas do AraLearn pelo MCP |
 | [`docs/autoria-actions.md`](autoria-actions.md) | como configurar e usar o canal baseado em OpenAPI e Actions |
 | [`docs/fluxos-prompts-e-contratos.md`](fluxos-prompts-e-contratos.md) | como um pedido em linguagem natural se torna uma alteração estruturada e verificável |

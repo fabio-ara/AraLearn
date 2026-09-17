@@ -204,9 +204,11 @@ npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
-Na validação funcional, o runtime local usa `edge_runtime.policy = "oneshot"`, com um
-worker por requisição. Esse modo evita compartilhar o ciclo de vida do worker entre
-os percursos e é o padrão de desenvolvimento da [Supabase](https://supabase.com/docs/guides/local-development/cli/config#edge_runtime.policy).
+Na validação funcional, o runtime local usa `edge_runtime.policy = "per_worker"`,
+recomendado pela [Supabase para carga](https://supabase.com/docs/guides/local-development/cli/config#edge_runtime.policy).
+Reutilizar o worker evita recriar o runtime em cada chamada dos percursos integrados.
+O gate serve uma cópia isolada e imutável das funções; durante desenvolvimento manual,
+reinicie `functions serve` após alterar o código para conferir os novos bytes.
 As asserções da integração real aguardam até 30 segundos por estado confirmado,
 incluindo gravação e releitura; as condições de aceite permanecem as mesmas.
 
