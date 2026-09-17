@@ -293,157 +293,75 @@ test("vínculos da Explicação conservam referências humanas e paginação nos
   assert.deepEqual(outputs[0], outputs[1]);
 });
 
-test("preparo recupera apoio acima do envelope Actions por continuação literal nos dois handlers", async () => {
+function focalCandidate() {
+  return {
+    microssequencia: "Interfaces",
+    posicao: 1,
+    conteudo: {
+      title: "Introdução focal",
+      role: "theory",
+      content: [{
+        id: "focal-text",
+        package: "aralearn.resource.paragraph",
+        version: "1.0.0",
+        data: { text: "Uma interface é um ponto de conexão de um host." }
+      }],
+      response: null,
+      feedback: [],
+      topics: ["interfaces"]
+    },
+    aplicacaoPedagogica: {
+      ideiasIntroduzidas: [],
+      ideiasUtilizadas: [],
+      explicacoes: [],
+      praticas: [],
+      cobertura: []
+    },
+    fontes: []
+  };
+}
+
+test("preparo focal verifica o candidato sem reexportar apoio ou repertório extenso", async () => {
   for (const channel of ["actions", "mcp"]) {
-    const { adapter, support } = materializationPreparationFixture();
-    assert.ok(JSON.stringify(support).length > 99_999, "a fixture válida atravessa o limite real de transporte");
-    let continuation, expectedStart = 0, literal = "", calls = 0;
-    do {
-      const read = await channelCall(channel, adapter, "preparar_materializacao", { curso: TITLE, parte: 1,
-        ...(continuation ? { continuacao: continuation } : {}) });
-      assert.equal(read.status, 200, read.envelope);
-      assert.ok(read.envelope.length <= 99_999, `${channel}: envelope de ${read.envelope.length} unidades UTF-16`);
-      const context = read.value.context;
-      assert.equal(context.fragmento.inicio, expectedStart);
-      assert.equal(context.fragmento.fim - context.fragmento.inicio, context.fragmento.texto.length);
-      literal += context.fragmento.texto;
-      expectedStart = context.fragmento.fim;
-      continuation = context.continuacao;
-      assert.equal(context.temMais, continuation !== null);
-      assert.ok(++calls <= support.content.length * 2, "continuação precisa terminar sem repetir trecho");
-    } while (continuation);
-    const restored = JSON.parse(literal);
-    assert.ok(calls > 2, "o apoio atravessa vários fragmentos do orçamento focal");
-    assert.equal(restored.explicacoes.length, 1);
-    assert.deepEqual(restored.explicacoes[0].conteudo, support);
-    assert.equal(restored.explicacoes[0].revisao, "Rascunho");
-    assert.equal(restored.parte.microssequencias[0].titulo, "Interfaces");
-  }
-});
-
-test("preparo apresenta diagnóstico e referência antes do repertório extenso em MCP e Actions", async () => {
-  for (const blocked of [false, true]) {
-    const restoredByChannel = [];
-    for (const channel of ["actions", "mcp"]) {
-      const { adapter, plan } = materializationPreparationFixture(1);
-      const support = reconciledExplanationFixture([{ text: "Releia os dados apresentados antes de responder.", role: "support" }]);
-      plan.parts[0].microsequences[0].explanation = support;
-      plan.instructionalAnalysisUnits = [{ id: "available", position: 0, statement: "Ideia disponível",
-        description: "Esta ideia permanece disponível, sem introdução nem vínculo nesta unidade. ".repeat(450),
-        introducedAt: null, usedBy: [], revisitedBy: [] }];
-      const getDesign = adapter.getCourseDesign;
-      adapter.getCourseDesign = async input => {
-        const design = await getDesign(input);
-        const applied = new Map(fixtureAppliedParameters([], { origin: "research_condition", scope: "course" })
-          .map(parameter => [parameter.parameterId, { ...parameter, effectiveAssignment: {
-            ...parameter.effectiveAssignment, inherited: input.scopeKind !== "course"
-          } }]));
-        return { ...design, parameters: design.parameters.map(parameter => ({ ...parameter, ...applied.get(parameter.parameterId) })) };
-      };
-      adapter.getCourseSources = async () => ({ items: [{ sourceLinks: [] }], nextCursor: null });
-      const args = { curso: TITLE, parte: 1, concluir: false, unidades: [{ microssequencia: "Interfaces", posicao: 1,
-        papel: "theory", componentes: [blocked ? "aralearn.resource.missing@1.0.0" : "aralearn.resource.paragraph@1.0.0"],
-        resposta: null, feedbackLocal: false, aplicacaoPedagogica: {} }] };
-      let response = await channelCall(channel, adapter, "preparar_materializacao", args);
-      assert.equal(response.status, 200, response.envelope);
-      const first = response.value.context;
-      assert.ok(first.temMais, "o repertório extenso ainda exige continuação");
-      assert.ok(first.fragmento.texto.startsWith('{"preflight":'), "o diagnóstico antecede o contexto extenso");
-      const partStart = first.fragmento.texto.indexOf(',"parte":');
-      assert.ok(partStart > 0, "o diagnóstico pequeno cabe inteiro na primeira página");
-      const early = JSON.parse(first.fragmento.texto.slice(0, partStart) + "}").preflight;
-      assert.equal(early.state, blocked ? "blocked" : "ready", JSON.stringify(early.blockers));
-      if (blocked) {
-        assert.equal(early.referencia, null);
-        assert.deepEqual(early.blockers.map(({ code }) => code), ["human_materialization_component_unknown"]);
-      } else {
-        assert.match(early.referencia, /^materialization-v1:[a-f0-9]{64}$/u);
-        assert.deepEqual(early.blockers, []);
-      }
-      await assert.rejects(() => execute(adapter, "preparar_materializacao", {
-        parte: 1, continuacao: first.continuacao
-      }), { status: 409, code: "human_read_context_changed" });
-      let literal = "", pages = 0;
-      while (true) {
-        const context = response.value.context;
-        assert.equal(context.fragmento.inicio, literal.length);
-        literal += context.fragmento.texto;
-        assert.equal(context.fragmento.fim, literal.length);
-        assert.ok(response.envelope.length <= 99_999);
-        assert.equal(context.temMais, context.continuacao !== null);
-        assert.ok(++pages < 10);
-        if (!context.continuacao) break;
-        response = await channelCall(channel, adapter, "preparar_materializacao", { ...args, continuacao: context.continuacao });
-        assert.equal(response.status, 200, response.envelope);
-      }
-      const restored = JSON.parse(literal);
-      assert.deepEqual(restored.preflight, early);
-      assert.deepEqual(restored.explicacoes[0].conteudo, support);
-      assert.deepEqual(restored.parte.repertorioDisponivelDoCurso.ideias, [{ posicao: 1,
-        ideia: plan.instructionalAnalysisUnits[0].statement, descricao: plan.instructionalAnalysisUnits[0].description }]);
-      restoredByChannel.push(restored);
-    }
-    assert.deepEqual(restoredByChannel[0], restoredByChannel[1]);
-  }
-});
-
-test("preparo conserva repertório disponível extenso sem introduzir nem vincular ideias nos dois transportes", async () => {
-  for (const channel of ["actions", "mcp"]) {
-    const { adapter, plan } = materializationPreparationFixture(1);
-    plan.instructionalAnalysisUnits = Array.from({ length: 32 }, (_, index) => ({
-      id: `available-${index}`, position: index, statement: `Ideia disponível ${index + 1}`,
-      description: `Definição ${index + 1}: ` + "α → β; condição, relação e contraste preservados. ".repeat(65),
-      introducedAt: null, usedBy: [], revisitedBy: []
-    }));
-    plan.evidenceRequirements = [{ id: "available-evidence", position: 0,
-      statement: "Distinguir os papéis em uma mensagem.", description: "Critério disponível; nenhuma prática declarada." }];
-    const before = structuredClone(plan);
-    let continuation, literal = "", calls = 0;
-    do {
-      const read = await channelCall(channel, adapter, "preparar_materializacao", { curso: TITLE, parte: 1,
-        ...(continuation ? { continuacao: continuation } : {}) });
-      assert.equal(read.status, 200, read.envelope);
-      assert.ok(read.envelope.length <= 99_999);
-      assert.equal(read.value.context.fragmento?.inicio, literal.length);
-      literal += read.value.context.fragmento.texto;
-      continuation = read.value.context.continuacao;
-      assert.equal(read.value.context.temMais, continuation !== null);
-      assert.ok(++calls <= plan.instructionalAnalysisUnits.length * 2);
-    } while (continuation);
-    assert.ok(calls > 1, "o repertório extenso precisa de continuação");
-    const part = JSON.parse(literal).parte;
-    assert.deepEqual(part.repertorioDisponivelDoCurso.ideias, before.instructionalAnalysisUnits.map((item, index) => ({
-      posicao: index + 1, ideia: item.statement, descricao: item.description
-    })));
-    assert.deepEqual(part.repertorioDisponivelDoCurso.requisitosDeEvidencia, [{
-      posicao: 1, ideia: before.evidenceRequirements[0].statement, descricao: before.evidenceRequirements[0].description
-    }]);
-    assert.deepEqual(part.ideiasEstabelecidas, []);
-    assert.deepEqual(part.microssequencias[0].ideiasPlanejadas, []);
-    assert.deepEqual(part.microssequencias[0].ideiasEstabelecidasDesdeOInicioDaParte, []);
-    assert.deepEqual(part.microssequencias[0].requisitosDeEvidencia, []);
-    assert.deepEqual(plan, before);
-  }
-});
-
-test("preparo termina após reconstrução; continuação não mistura revisão, apoio ou repertório alterado", async () => {
-  const small = materializationPreparationFixture(4);
-  const complete = await readLogicalPage(small.adapter, "preparar_materializacao", { parte: 1 });
-  assert.equal(complete.context.temMais, false);
-  assert.equal(complete.context.continuacao, null);
-  assert.deepEqual(complete.context.explicacoes[0].conteudo, small.support);
-  for (const change of ["revision", "content", "repertoire"]) {
     const { adapter, support, plan } = materializationPreparationFixture();
-    const first = await execute(adapter, "preparar_materializacao", { parte: 1 });
-    assert.equal(first.context.temMais, true);
-    if (change === "revision") adapter.revision += 1;
-    else if (change === "content") support.content[0].data.text += " Alteração material posterior.";
-    else plan.instructionalAnalysisUnits.push({ id: "available", position: 0,
-      statement: "Origem", description: "Papel do dispositivo que envia a mensagem.",
-      introducedAt: null, usedBy: [], revisitedBy: [] });
-    await assert.rejects(() => execute(adapter, "preparar_materializacao", {
-      parte: 1, continuacao: first.context.continuacao
-    }), { status: 409, code: "human_read_context_changed" });
+    plan.instructionalAnalysisUnits = Array.from({ length: 32 }, (_, index) => ({
+      id: `available-${index}`,
+      position: index,
+      statement: `Ideia disponível ${index + 1}`,
+      description: "Descrição extensa alheia ao diagnóstico focal. ".repeat(120),
+      introducedAt: null,
+      usedBy: [],
+      revisitedBy: []
+    }));
+    const read = await channelCall(channel, adapter, "preparar_materializacao", {
+      curso: TITLE,
+      parte: 1,
+      unidades: [focalCandidate()]
+    });
+    assert.equal(read.status, 200, read.envelope);
+    assert.ok(read.envelope.length < 20000, `${channel}: o preparo deve permanecer pequeno`);
+    assert.equal(Object.hasOwn(read.value.context, "fragmento"), false);
+    assert.equal(Object.hasOwn(read.value.context, "continuacao"), false);
+    assert.equal(Object.hasOwn(read.value.context, "explicacoes"), false);
+    assert.equal(Object.hasOwn(read.value.context.parte, "repertorioDisponivelDoCurso"), false);
+    assert.doesNotMatch(read.envelope, new RegExp(support.content.at(-1).data.text.slice(0, 80), "u"));
+    assert.doesNotMatch(read.envelope, /Descrição extensa alheia ao diagnóstico focal/u);
+  }
+});
+
+test("preparo recebe exatamente o mesmo candidato usado pela escrita", async () => {
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter } = materializationPreparationFixture(1);
+    const candidate = focalCandidate();
+    const read = await channelCall(channel, adapter, "preparar_materializacao", {
+      curso: TITLE,
+      parte: 1,
+      unidades: [candidate]
+    });
+    assert.equal(read.status, 200, read.envelope);
+    assert.ok(read.value.context.preflight);
+    assert.equal(read.value.context.parte.titulo, "Interfaces");
+    assert.equal(Object.hasOwn(read.value.context, "temMais"), false);
   }
 });
 
@@ -469,11 +387,11 @@ test("continuação liga tarefa, consulta, curso e revisão; argumentos reordena
 
 test("continuação conserva consulta com objetos aninhados reordenados, mas rejeita listas ou valores alterados", async () => {
   const args = { curso: TITLE, parte: 1, unidades: [{ titulo: "Prática", resposta: { tipo: "escolha", opcoes: ["A", "B"] } }] };
-  const state = await openHumanReadContinuation({ args, course: COURSE, task: "preparar_materializacao" });
+  const state = await openHumanReadContinuation({ args, course: COURSE, task: "preparar_revisao" });
   const first = await paginateHumanReadContext({ text: "x".repeat(20_000) }, { state });
   const reordered = { curso: TITLE, parte: 1, unidades: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Prática" }] };
   const resumed = await openHumanReadContinuation({ args: { ...reordered, continuacao: first.continuacao },
-    course: COURSE, task: "preparar_materializacao" });
+    course: COURSE, task: "preparar_revisao" });
   assert.equal(resumed.o, first.fragmento.fim);
   for (const changed of [
     { ...reordered, unidades: [{ resposta: { opcoes: ["B", "A"], tipo: "escolha" }, titulo: "Prática" }] },
@@ -481,7 +399,7 @@ test("continuação conserva consulta com objetos aninhados reordenados, mas rej
     { curso: TITLE, parte: 1 }
   ]) {
     await assert.rejects(() => openHumanReadContinuation({ args: { ...changed, continuacao: first.continuacao },
-      course: COURSE, task: "preparar_materializacao" }), { code: "human_read_context_changed" });
+      course: COURSE, task: "preparar_revisao" }), { code: "human_read_context_changed" });
   }
 });
 
