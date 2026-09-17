@@ -437,6 +437,14 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     try { return callback(); }
     catch (error) { add(error.code ?? "invalid_human_materialization", error.message, details); return null; }
   };
+  const mapStatus = context.plan?.plan?.curriculumMapStatus;
+  if (mapStatus === "draft" || mapStatus === "absent") {
+    add("human_materialization_map_approval_required",
+      "O mapa curricular precisa estar aprovado antes da materialização. Consulte o mapa e obtenha a aprovação da pessoa autora.",
+      { curriculumMapStatus: mapStatus });
+  } else if (mapStatus !== "approved") {
+    add("course_service_unavailable", "O estado de aprovação do mapa curricular não pôde ser confirmado.");
+  }
   const micros = partMicrosequences(context.part);
   const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
   const designs = new Map(await Promise.all(micros.map(async micro => [micro.id, await adapter.getCourseDesign({

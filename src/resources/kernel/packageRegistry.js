@@ -293,7 +293,13 @@ export function createPackageRegistry(packageDefinitions = []) {
         package: definition.manifest.id,
         version: definition.manifest.version,
         manifest: definition.manifest,
-        contract: definition.authoringContract,
+        contract: {
+          ...definition.authoringContract,
+          rules: [
+            "responseCompatibility (compatibilidadeDeResposta) é indicativa, não exclusiva. Valem slots, schema e regras; paragraph aceita choice sem repetir a pergunta.",
+            ...(definition.authoringContract.rules || [])
+          ]
+        },
         schema: definition.schema,
         ...(definition.manifest.slots.includes("content")
           ? { practiceTargets: resolvedPracticeTargets(definition, exampleData) }

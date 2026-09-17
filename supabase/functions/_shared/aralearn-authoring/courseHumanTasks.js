@@ -2940,7 +2940,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     deepLink: null,
     nextDecision: null,
     context: await paginateHumanReadContext(withoutTechnicalState({
-      parte: projectedPart, preflight,
+      preflight, parte: projectedPart,
       explicacoes: explanations, observations, ...process
     }), { state: continuation })
   });
@@ -3276,7 +3276,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
     if (inspected?.status === "ok") {
       const definition = inspected.definition;
       return result("Li os detalhes de uso do componente escolhido.", {
-        nextDecision: "Use estes detalhes ao compor o conteúdo ou consulte outra representação se ela não cumprir a função.",
+        nextDecision: "Este contrato descreve uma instância. Em materializar_parte, conteudo exige title, role, content, response, feedback e topics. Uma prática exige resposta avaliável e recurso explicativo em feedback; o retorno das alternativas não substitui esse recurso.",
         context: {
           componentAuthoringContract: {
             referencia: `${definition.package}@${definition.version}`,
