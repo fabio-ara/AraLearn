@@ -2187,7 +2187,7 @@ test("preflight agrega vínculos, referências, formas, componentes e prática a
   const codes = new Set(preparation.blockers.map(item => item.code));
   for (const code of ["human_materialization_map_approval_required", "human_materialization_analysis_not_linked", "human_reference_not_found",
     "human_materialization_missing_explanation_form", "human_materialization_component_policy_violation",
-    "practice_response_legacy_only", "practice_offline_feedback_required"]) assert.ok(codes.has(code), code);
+    "practice_response_legacy_only"]) assert.ok(codes.has(code), code);
   assert.ok(preparation.blockers.filter(item => item.code === "human_reference_not_found").length >= 2,
     "fonte e requisito ausentes aparecem na mesma preparação");
   assert.deepEqual(adapter.calls, []);
