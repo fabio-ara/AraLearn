@@ -9,6 +9,17 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.76] - 2026-09-16
+
+### Melhorado
+
+- Configurações reúne o endereço e as etapas para conectar um assistente por MCP, inclusive antes do login; Actions continua disponível.
+
+### Corrigido
+
+- a reconciliação de uma explicação permanece válida quando o banco apenas reorganiza os campos do conteúdo salvo; explicações reconciliadas anteriormente devem ter a declaração renovada uma vez;
+- leituras por continuação aceitam objetos com os mesmos dados em outra ordem de campos e distinguem alteração dos argumentos de mudança da revisão do curso.
+
 ## [0.0.75] - 2026-09-16
 
 ### Melhorado

@@ -6,6 +6,7 @@ import { encodeCourseActionTaskRequest } from "../functions/_shared/aralearn-aut
 import { resolveHumanCourseContext } from "../functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 import { humanMaterializationUnitPlan } from "../functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
+import { canonicalAuthoringValue } from "../../src/domain/courseAuthoringBasis.js";
 import { curricularMap, explanationUnit, practiceUnit, paragraph } from "./course-authoring-current-local-smoke.mjs";
 import { localSupabaseConfiguration, createConfirmedLocalUser, signInLocalUser, removeLocalUser,
   createLocalFixtureClient, trackLocalFixtureCreation,
@@ -242,7 +243,7 @@ export async function runLocalAuthoringChannels(environment = process.env) {
           assert.deepEqual({ title: actual.title, content: actual.content }, expected.conteudo);
           const reconciliation = actual.reconciliation;
           const checked = inspectExplanationReconciliation(actual, {
-            contentBasis: digest(expected.conteudo),
+            contentBasis: createHash("sha256").update(canonicalAuthoringValue(expected.conteudo)).digest("hex"),
             analysisUnitIds: context.plan.plan.instructionalAnalysisUnits.map(item => item.id),
             evidenceRequirementIds: context.plan.plan.evidenceRequirements.map(item => item.id),
             microsequenceIds: all.map(item => item.id) });

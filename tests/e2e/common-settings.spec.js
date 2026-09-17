@@ -6,6 +6,10 @@ const settingsModule = mainSource.slice(0, mainSource.indexOf('const root = docu
   "\nexport { renderSettings, clearAraLearnLocalState };";
 
 async function mount(page, { visitor = false, administrator = false } = {}) {
+  await page.route("**/runtime-config.js", route => route.fulfill({
+    contentType: "application/javascript",
+    body: 'globalThis.__ARALEARN_ENV__ = { supabaseUrl: "https://project.supabase.test", supabasePublishableKey: "sb_publishable_test" };'
+  }));
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   await page.route("**/common-settings-harness.js", route => route.fulfill({ contentType: "application/javascript", body: settingsModule }));
   await page.goto("/");
@@ -68,9 +72,48 @@ async function mount(page, { visitor = false, administrator = false } = {}) {
   await page.locator("#settings-opener").click();
 }
 
-const groups = ["Conta", "Aparência", "Sincronização e dados deste dispositivo", "Preferências de autoria"];
+const groups = ["Conta", "Aparência", "Sincronização e dados deste dispositivo", "Preferências de autoria", "Conectar assistente"];
 
-test("Configurações mantém os quatro grupos, papel, retorno e rascunho de perfil entre reaberturas", async ({ page }, testInfo) => {
+for (const visitor of [false, true]) {
+  test(`conectar assistente apresenta endereço e cópia sem gravar cursos (${visitor ? "visitante" : "conta"})`, async ({ page }, testInfo) => {
+    await mount(page, { visitor });
+    await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: async value => { window.copiedAssistantAddress = value; }
+    } }));
+    await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+    await expect(page.getByLabel("Endereço da conexão MCP")).toHaveValue("https://project.supabase.test/functions/v1/aralearn-authoring-mcp");
+    await page.getByRole("button", { name: "Copiar endereço", exact: true }).click();
+    expect(await page.evaluate(() => window.copiedAssistantAddress)).toBe("https://project.supabase.test/functions/v1/aralearn-authoring-mcp");
+    await expect(page.locator("[data-assistant-status]")).toContainText("Endereço copiado");
+    await expect(page.getByRole("link", { name: "Abrir ChatGPT (nova aba)", exact: true })).toHaveAttribute("href", "https://chatgpt.com/");
+    await page.getByText("Não encontrei a opção de conectar", { exact: true }).click();
+    await expect(page.getByText(/Abrir o link não instala/)).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("conectar-assistente.png"), fullPage: true });
+    expect(await page.evaluate(() => window.settingsHarness.preferenceWrites.length)).toBe(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Conectar assistente", exact: true })).toBeFocused();
+  });
+}
+
+test("conexão permite copiar manualmente quando clipboard é recusado e não inventa servidor sem configuração", async ({ page }) => {
+  await mount(page);
+  await page.evaluate(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+    writeText: async () => { throw new Error("Permission denied"); }
+  } }));
+  await page.getByRole("button", { name: "Conectar assistente", exact: true }).click();
+  await page.getByRole("button", { name: "Copiar endereço", exact: true }).click();
+  await expect(page.getByLabel("Endereço da conexão MCP")).toBeFocused();
+  await expect(page.locator("[data-assistant-status]")).toContainText("cópia automática");
+  await page.evaluate(async () => {
+    globalThis.__ARALEARN_ENV__ = {};
+    const { mountAssistantConnectionSettings } = await import("/src/ui/AssistantConnectionSettings.js");
+    mountAssistantConnectionSettings(document.querySelector("[data-assistant-connection]"));
+  });
+  await expect(page.getByRole("button", { name: "Copiar endereço", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Endereço da conexão MCP")).toHaveValue("");
+});
+
+test("Configurações mantém os grupos, papel, retorno e rascunho de perfil entre reaberturas", async ({ page }, testInfo) => {
   await mount(page);
   await expect(page.locator("[data-settings-view='main'] button:not([hidden])")).toHaveText(groups);
   await expect(page.locator("[data-settings-maintenance]")).toBeHidden();
@@ -178,6 +221,8 @@ test("preferências com resposta perdida confirmam por releitura sem repetir a g
 test("visitante acessa os mesmos grupos com teclado, tema, retorno e limpeza expressa", async ({ page }, testInfo) => {
   await mount(page, { visitor: true });
   await expect(page.locator("[data-visitor-view='main'] button")).toHaveText(groups);
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Conectar assistente", exact: true })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(page.getByRole("button", { name: "Preferências de autoria", exact: true })).toBeFocused();
   await page.keyboard.press("Enter");

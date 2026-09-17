@@ -1,4 +1,17 @@
 .contextual-settings [hidden] { display: none !important; }
+.assistant-connection { display: grid; gap: var(--space-section); min-width: 0; }
+.assistant-connection p { margin: 0; }
+.assistant-connection ol { display: grid; gap: var(--space-section); margin: 0; padding-inline-start: 24px; }
+.assistant-connection li > :is(p, label, input, button, a) { display: block; margin-top: 8px; }
+.assistant-connection input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; }
+.assistant-connection :is(input, button) { padding: 9px 10px; border: 1px solid var(--border-default); border-radius: 9px; background: var(--surface-raised); color: var(--text-primary); font: inherit; }
+.assistant-connection button { cursor: pointer; }
+.assistant-connection a { color: var(--action-primary); }
+.assistant-connection :is(input, button, a, summary):focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
+.assistant-connection :is(a, p) { overflow-wrap: anywhere; }
+.assistant-connection details > :is(p, a) { display: block; margin-top: 8px; }
+.assistant-connection summary { min-height: 44px; cursor: pointer; }
+.assistant-connection [role=status]:empty { display: none; }
 .contextual-settings .account-settings-sheet {
   height: min(640px, calc(100dvh - max(var(--safe-top), 8px)));
   grid-template-rows: auto minmax(0, 1fr) auto;

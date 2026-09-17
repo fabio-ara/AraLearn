@@ -1,5 +1,6 @@
 import { AuthoringApiError } from './errors.js';
 import { sha256Hex } from './security.js';
+import { canonicalAuthoringValue } from '../aralearn/runtime/domain/courseAuthoringBasis.js';
 
 // Internal focal budget, below the Actions envelope limit. Larger literal data
 // remains recoverable through contiguous JSON fragments, never through a summary.
@@ -22,7 +23,7 @@ function decode(value) {
 export async function openHumanReadContinuation({ args, course, task }) {
   const query = Object.fromEntries(Object.entries(args).filter(([key]) => key !== 'continuacao')
     .sort(([left], [right]) => left.localeCompare(right)));
-  const queryHash = await sha256Hex(JSON.stringify({ task, query }));
+  const queryHash = await sha256Hex(canonicalAuthoringValue({ task, query }));
   const initial = { c: course.id, r: course.revision, q: queryHash, p: null, o: 0, h: null };
   if (args.continuacao === undefined) return initial;
   const value = decode(args.continuacao);
@@ -34,8 +35,11 @@ export async function openHumanReadContinuation({ args, course, task }) {
       (value.o === 0) !== (value.h === null)) {
     fail('A continuação da consulta é inválida. Repita a consulta inicial.');
   }
-  if (value.c !== initial.c || value.r !== initial.r || value.q !== initial.q) {
-    fail('O curso ou o recorte mudou. Recomece a consulta para ler uma revisão coerente.', 409);
+  if (value.c !== initial.c || value.r !== initial.r) {
+    fail('O curso ou sua revisão mudou. Recomece a consulta para ler uma revisão coerente.', 409);
+  }
+  if (value.q !== initial.q) {
+    fail('Os argumentos da consulta mudaram. Repita os mesmos argumentos da consulta inicial, acrescentando somente a continuação recebida.', 409);
   }
   return value;
 }

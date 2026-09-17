@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
+import { canonicalAuthoringValue } from "../../src/domain/courseAuthoringBasis.js";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
@@ -331,7 +332,7 @@ test("correção da explicação persiste reconciliação humana ligada à base 
         ideias: ["DNS resolve nomes"], requisitos: ["Distinguir nome de endereço"], motivo: "Este trecho ensina a relação central." }] }] });
   const saved = adapter.commits[0].upserts[0].content.explanation;
   assert.deepEqual(saved.reconciliation, { contract: "aralearn.explanation-reconciliation.v1",
-    contentBasis: createHash("sha256").update(JSON.stringify({ title, content })).digest("hex"), entries: [{
+    contentBasis: createHash("sha256").update(canonicalAuthoringValue({ title, content })).digest("hex"), entries: [{
       resourceId: content[0].id, path: "text", quote: content[0].data.text, prefix: null, suffix: null,
       role: "introduced", analysisUnitIds: ["idea-dns"], evidenceRequirementIds: ["evidence-dns"],
       destinationMicrosequenceId: null, reason: "Este trecho ensina a relação central." }] });

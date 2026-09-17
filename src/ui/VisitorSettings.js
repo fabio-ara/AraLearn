@@ -1,5 +1,6 @@
 import { renderUiIcon } from "./renderUiIcons.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
+import { mountAssistantConnectionSettings } from "./AssistantConnectionSettings.js";
 
 export function renderVisitorSettings(root, {
   onSignIn,
@@ -7,7 +8,7 @@ export function renderVisitorSettings(root, {
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false)
 } = {}) {
   const groups = [["account", "account", "Conta"], ["appearance", "theme-system", "Aparência"],
-    ["device", "offline", "Sincronização e dados deste dispositivo"], ["authoring", "intent", "Preferências de autoria"]];
+    ["device", "offline", "Sincronização e dados deste dispositivo"], ["authoring", "intent", "Preferências de autoria"], ["assistant", "intent", "Conectar assistente"]];
   root.innerHTML = `<section class="account-settings-overlay contextual-settings" data-visitor-settings hidden aria-label="Configurações">
     <div class="account-settings-backdrop" data-visitor-close></div>
     <div class="account-settings-sheet courses-home-screen" role="dialog" aria-modal="true" aria-labelledby="visitor-settings-title" tabindex="-1">
@@ -39,10 +40,12 @@ export function renderVisitorSettings(root, {
           <p class="account-settings-group-copy">Foco, cadência, pontos de revisão e diálogo com o assistente são preferências pessoais salvas na conta. As escolhas do curso e as condições de pesquisa permanecem no contexto do curso.</p>
           <button class="account-settings-subview-entry" type="button" data-visitor-signin><span>${renderUiIcon("sign-in", "account-settings-action-icon")}<strong>Entrar para definir preferências</strong></span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>
         </section>
+        <section class="account-settings-view" data-visitor-view="assistant" hidden aria-label="Conectar assistente"><div data-assistant-connection></div></section>
       </div>
       <p class="account-settings-status" data-visitor-status role="status" aria-live="polite"></p>
     </div></section>`;
   const overlay = root.querySelector("[data-visitor-settings]");
+  mountAssistantConnectionSettings(root.querySelector("[data-assistant-connection]"));
   const dialog = root.querySelector("[role='dialog']");
   const back = root.querySelector("[data-visitor-back]");
   const title = root.querySelector("#visitor-settings-title");
@@ -119,7 +122,7 @@ export function renderVisitorSettings(root, {
     if (overlay.hidden) return;
     if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); handleBack(); }
     if (event.key !== "Tab") return;
-    const controls = [...dialog.querySelectorAll("button:not([disabled])")].filter(node => !node.closest("[hidden]"));
+    const controls = [...dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), a[href], summary")].filter(node => !node.closest("[hidden]") && node.getClientRects().length);
     const first = controls[0];
     const last = controls.at(-1);
     const active = root.ownerDocument.activeElement;

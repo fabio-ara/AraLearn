@@ -8,6 +8,7 @@ Abra **Configurações** pelo botão de conta no cabeçalho da tela inicial, em 
 | **Aparência** | Escolher tema do sistema, claro ou escuro | Dispositivo atual |
 | **Sincronização e dados deste dispositivo** | Escolher quando enviar e consultar mudanças, reunir progresso sem conta ou limpar dados locais | Dispositivo atual |
 | **Preferências de autoria** | Guardar como deseja trabalhar com o assistente | Padrão pessoal salvo na conta |
+| **Conectar assistente** | Copiar o endereço e seguir a autorização no aplicativo escolhido | Conexão autorizada com a conta AraLearn |
 
 Sem conta, os mesmos grupos informam o que está disponível. Aparência permite alterar o tema; Sincronização permite cuidar do progresso local, incluindo remover somente os dados de visitante. Essa limpeza conserva os dados das contas existentes. Para editar preferências pessoais de autoria, é necessário entrar. **Manutenção** aparece apenas para quem tem o papel administrativo autorizado.
 

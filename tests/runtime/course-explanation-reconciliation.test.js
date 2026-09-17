@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
+import { canonicalAuthoringValue } from "../../src/domain/courseAuthoringBasis.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { explanationReconciliationTargets, inspectExplanationReconciliation, normalizeExplanationReconciliation,
   EXPLANATION_RECONCILIATION_CONTRACT } from "../../src/domain/courseExplanationReconciliation.js";
@@ -8,7 +9,7 @@ import { chartPackage } from "../../src/resources/packages/chart/index.js";
 import { graphPackage } from "../../src/resources/packages/graph/index.js";
 import { applyExplanationTextFields } from "../../src/ui/CourseMicrosequenceReview.js";
 
-const basis = value => createHash("sha256").update(JSON.stringify({ title: value.title, content: value.content })).digest("hex");
+const basis = value => createHash("sha256").update(canonicalAuthoringValue({ title: value.title, content: value.content })).digest("hex");
 const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
 function entry(target, overrides = {}) {
   return { resourceId: target.resourceId, path: target.path, quote: target.text, prefix: null, suffix: null,

@@ -605,8 +605,13 @@ em mensagens adequadas à tarefa, sem expor credenciais ou caminhos internos.
 Uma leitura pode ser maior que a resposta admitida pelo canal. Nesse caso, o
 serviço devolve uma parte do conteúdo e uma referência para obter a seguinte.
 `temMais: true` e `continuacao` não nula indicam que a leitura está incompleta.
-O cliente reutiliza o valor recebido no mesmo recorte, sem editá-lo. Se a versão
-mudar entre páginas, a leitura reinicia para evitar combinar estados diferentes.
+O cliente repete a mesma tarefa e todos os argumentos da consulta inicial,
+acrescentando somente `continuacao` com o valor recebido, sem editá-lo. Isso inclui
+`plano` e `explicacoes`, quando enviados: o cursor não substitui esses argumentos.
+A ordem das chaves dos objetos é indiferente; a ordem das listas e os valores
+precisam permanecer iguais. Se a revisão do curso mudar entre páginas, a leitura
+reinicia para evitar combinar estados diferentes. A mensagem de erro distingue
+mudança da revisão de mudança dos argumentos.
 
 Consultas extensas, como listas de cursos, fontes ou materiais de revisão, utilizam
 continuação. No preparo de uma parte, as páginas carregam a proposta, a explicação
