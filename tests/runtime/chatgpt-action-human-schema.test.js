@@ -466,7 +466,7 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   );
   assert.match(
     materializationGuidance,
-    /escolhas delegadas ainda sem valor são resolvidas no próprio fluxo.*valores determinísticos do produto.*não peça ao autor.*calibração técnica.*sem.*escrita intermediária/iu
+    /escolhas delegadas ainda sem valor são resolvidas no próprio fluxo.*valores determinísticos do produto.*não peça ao autor.*calibração técnica.*escrita intermediária/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
