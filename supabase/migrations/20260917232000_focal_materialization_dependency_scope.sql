@@ -70,6 +70,64 @@ begin
   execute definition;
 end $focal_repertoire_scope$;
 
+do $focal_target_scope$
+declare
+  definition text;
+  before_fragment text:=$before$  if exists(
+    select 1 from private.course_authoring_part_didactic_microsequences membership
+    where membership.course_id=p_course_id
+      and membership.authoring_part_id=p_authoring_part_id
+      and not exists(
+        select 1 from jsonb_array_elements(p_target_plan_items) target(value)
+        where target.value->>'didacticMicrosequenceId'
+          =membership.didactic_microsequence_id
+      )
+  ) or exists(
+    select 1 from jsonb_array_elements(p_target_plan_items) target(value)
+    where not exists(
+      select 1 from private.course_authoring_part_didactic_microsequences membership
+      where membership.course_id=p_course_id
+        and membership.authoring_part_id=p_authoring_part_id
+        and membership.didactic_microsequence_id
+          =target.value->>'didacticMicrosequenceId'
+    )
+  ) then
+    raise exception 'O recorte pedagogico precisa corresponder exatamente ao lote.'
+      using errcode='23514';
+  end if;$before$;
+  after_fragment text:=$after$  if (p_complete and exists(
+    select 1 from private.course_authoring_part_didactic_microsequences membership
+    where membership.course_id=p_course_id
+      and membership.authoring_part_id=p_authoring_part_id
+      and not exists(
+        select 1 from jsonb_array_elements(p_target_plan_items) target(value)
+        where target.value->>'didacticMicrosequenceId'
+          =membership.didactic_microsequence_id
+      )
+  )) or exists(
+    select 1 from jsonb_array_elements(p_target_plan_items) target(value)
+    where not exists(
+      select 1 from private.course_authoring_part_didactic_microsequences membership
+      where membership.course_id=p_course_id
+        and membership.authoring_part_id=p_authoring_part_id
+        and membership.didactic_microsequence_id
+          =target.value->>'didacticMicrosequenceId'
+    )
+  ) then
+    raise exception 'O recorte pedagogico precisa pertencer ao lote.'
+      using errcode='23514';
+  end if;$after$;
+begin
+  definition:=replace(pg_get_functiondef(
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)'::regprocedure
+  ),E'\r\n',E'\n');
+  if (length(definition)-length(replace(definition,before_fragment,'')))
+      /length(before_fragment)<>1 then
+    raise exception 'Escopo precursor do materializador incremental divergiu.' using errcode='55000';
+  end if;
+  execute replace(definition,before_fragment,after_fragment);
+end $focal_target_scope$;
+
 do $manifest$ declare manifest jsonb; begin
   manifest:=public.get_aralearn_runtime_manifest()||jsonb_build_object('schemaRevision','20260917232000');
   execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
