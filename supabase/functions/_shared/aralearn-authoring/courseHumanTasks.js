@@ -659,7 +659,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "Preparar a materialização",
     "Confere as mesmas unidades candidatas que serão escritas, suas bases e dependências pedagógicas. O preparo não mantém um segundo resumo estrutural das unidades.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
-      plano: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: true }, explicacoes: EXPLANATIONS_SCHEMA,
+      plano: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA,
       continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
     { readOnly: true }
   ),
@@ -821,7 +821,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       parte: HUMAN_REFERENCE_SCHEMA,
       explicacoes: EXPLANATIONS_SCHEMA,
       referenciaPreparo: { type: "string", pattern: "^materialization-v1:[a-f0-9]{64}$" },
-      concluir: { type: "boolean", default: true },
+      concluir: { type: "boolean", default: false },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
@@ -2918,7 +2918,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
       scopeUnits: existingPage.items, scopeMicrosequences: microsequences })
   ]);
   const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context: resolved,
-    planUnits: args.plano ?? [], explanations: args.explicacoes ?? [], complete: args.concluir !== false, deadlineAt });
+    planUnits: args.plano ?? [], explanations: args.explicacoes ?? [], complete: args.concluir === true, deadlineAt });
   if (process.exigeConciliacao) {
     preflight.state = "blocked"; preflight.referencia = null;
     preflight.blockers.push({ code: "authoring_process_conflict", message: "Resolva as condições conflitantes do processo antes de produzir." });
@@ -3463,7 +3463,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
-    preparationReference: args.referenciaPreparo ?? null, complete: args.concluir !== false,
+    preparationReference: args.referenciaPreparo ?? null, complete: args.concluir === true,
     units: safeClone(args.unidades, "unidades", 480 * 1024),
     explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
