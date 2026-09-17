@@ -11,7 +11,6 @@ import { normalizeCourseSourceLinks, requireCourseSourceEvidence } from "../aral
 import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
-import { RESOURCE_PACKAGE_REGISTRY } from "../aralearn/runtime/resources/packages/index.js";
 import { inspectExplanationReconciliation } from "../aralearn/runtime/domain/courseExplanationReconciliation.js";
 import { sha256Hex } from "./security.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
@@ -1191,7 +1190,7 @@ function introducedAnalysisUnitIds(plan, replacedStudyUnitIds) {
     .map(({ id }) => id));
 }
 
-function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics, { complete = true } = {}) {
+function validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics) {
   const introductions = new Map();
   const activeAnalysisIds = new Set(groups.flatMap(group => group.units.flatMap(unit => [
     ...unit.noveltyIds, ...unit.usedIds,
@@ -1449,7 +1448,7 @@ function validatePedagogicalGroup(
 
 function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics = null, options = {}) {
   const curriculumOrder = curriculumMicrosequenceOrder(plan);
-  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics, options);
+  validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics);
   const orderedGroups = [...groups].map((group) => {
     const order = curriculumOrder.get(group.microsequenceId);
     if (!Number.isSafeInteger(order)) {
