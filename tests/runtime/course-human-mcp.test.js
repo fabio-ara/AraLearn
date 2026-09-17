@@ -1110,7 +1110,7 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
   assert.equal(output.result, "Ainda há uma dependência a resolver antes desta produção.");
   assert.equal(output.context.preflight.state, "blocked");
   assert.deepEqual(output.context.preflight.blockers.map(({ code, microsequence }) => ({ code, microsequence })), [{
-    code: "explanation_reconciliation_required",
+    code: "human_materialization_missing_explanation",
     microsequence: "Definição"
   }]);
   assert.deepEqual(output.context.parte, {
@@ -1326,7 +1326,7 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
   assert.equal(contract.schema.properties.groups.items.properties.id.type, "string");
   assert.deepEqual(contract.contrato.required, ["xAxis", "yAxis"]);
   assert.match(contract.contrato.rules.join(" "), /indicativa, não exclusiva/u);
-  assert.match(inspected.nextDecision, /title, role, content, response, feedback e topics/u);
+  assert.match(inspected.nextDecision, /título, função didática, recursos, resposta quando aplicável, feedback e tópicos/u);
   assert.match(inspected.nextDecision, /retorno das alternativas não substitui/u);
 
   const practice = await executeHumanCourseTask({
