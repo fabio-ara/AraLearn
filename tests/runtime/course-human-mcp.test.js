@@ -1593,12 +1593,16 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
 
   assert.equal(payload.result.isError, true);
   assert.equal(
+    payload.result.content[0].text,
+    "Ainda há uma dependência a resolver antes desta produção."
+  );
+  assert.match(
     payload.result.structuredContent.nextDecision,
-    "Inclua a calibração contextual nas unidades e refaça a produção da parte."
+    /Resolva autonomamente.*percurso de aprendizagem/iu
   );
   assert.doesNotMatch(
     publicText,
-    /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+    /human_materialization|calibra[cç][aã]o|ferramenta|campo|schema|contrato|servidor|aprovad/iu
   );
 });
 
