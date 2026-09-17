@@ -5,7 +5,7 @@ import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS as definitions, COURSE_HUMAN_ST
 import { mutateCourseStructure, reorderCourseStudyUnits } from "../../supabase/functions/_shared/aralearn-authoring/courseStructureMutation.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { sha256Hex } from "../../supabase/functions/_shared/aralearn-authoring/security.js";
-import { applyCurricularMapSlice } from "../../src/domain/courseCurricularMapSlices.js";
+import { applyCurricularMapSlice, normalizeCurricularMap } from "../../src/domain/courseCurricularMapSlices.js";
 
 const PRINCIPAL = { actorId: "10000000-0000-4000-8000-000000000001", channel: "mcp" };
 const COURSE = "20000000-0000-4000-8000-000000000001";
@@ -50,7 +50,7 @@ function fixture() {
           lessons: module.lessons.map(lesson => ({ ...copy(lesson), id: lesson.lessonId,
             microsequences: lesson.microsequences.map(micro => ({ ...copy(micro), id: micro.microsequenceId })) })) })) } } };
     },
-    async getCourseCurricularMap(args) { calls.push(["map", copy(args)]); return { courseId: COURSE, courseRevision: state.revision, planVersion: state.version, map: copy(state.map) }; },
+    async getCourseCurricularMap(args) { calls.push(["map", copy(args)]); return { courseId: COURSE, courseRevision: state.revision, planVersion: state.version, map: normalizeCurricularMap(state.map) }; },
     async saveCourseCurricularMapSlice(request) {
       calls.push(["slice", copy(request)]);
       if (!receipts.has(request.requestId)) state.map = applyCurricularMapSlice(state.map, request.command);
@@ -89,6 +89,23 @@ test("catálogo expõe sete operações pequenas, sem patch livre e com destruti
     assert.equal(item.options.readOnly, false);
     assert.equal(item.options.destructive, ["excluir_curso", "remover_ramo_curricular"].includes(item.name));
     assert.equal(JSON.stringify(item.inputSchema).includes("upserts"), false);
+  }
+});
+
+test("tarefas estruturais criam, editam e movem ramos de mapa legado sem fabricar plano nos demais", async () => {
+  for (const [name, args, callKind] of [
+    ["salvar_ramo_curricular", { tipo: "modulo", titulo: "Novo módulo", objetivo: "Ampliar" }, "slice"],
+    ["salvar_ramo_curricular", { tipo: "modulo", alvo: { modulo: "Introdução" }, titulo: "Fundamentos" }, "slice"],
+    ["mover_ramo_curricular", { alvo: { modulo: "Introdução" }, posicao: 2 }, "rpc"]
+  ]) {
+    const adapter = fixture();
+    const micros = adapter.state.map.modules[0].lessons[0].microsequences;
+    micros[0].explanationPlan = null;
+    const before = copy(micros);
+    await run(adapter, name, args);
+    assert.ok(adapter.calls.some(([kind]) => kind === callKind));
+    assert.deepEqual(adapter.state.map.modules[0].lessons[0].microsequences, before);
+    assert.equal(adapter.state.revision, 8);
   }
 });
 

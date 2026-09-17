@@ -7,7 +7,8 @@ const bindings = new WeakMap();
 const PENDING_LABELS = Object.freeze({ audience_missing: "Público ainda não definido", modules_missing: "Módulos ainda não definidos",
   scope_missing: "Escopo ainda não definido", lessons_missing: "Módulo sem lições", microsequences_missing: "Lição sem microssequências",
   scope_uncovered: "Item de escopo sem cobertura", dependency_order: "Pré-requisito fora da ordem do percurso",
-  dependency_missing: "Pré-requisito ainda não localizado", scope_reference_missing: "Referência de escopo ainda não localizada" });
+  dependency_missing: "Pré-requisito ainda não localizado", scope_reference_missing: "Referência de escopo ainda não localizada",
+  explanation_plan_missing: "Explicação ainda não planejada" });
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/gu, (character) => ({

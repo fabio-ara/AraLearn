@@ -17,6 +17,12 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260917105911 — edição curricular com planejamento legado ausente
+
+Microssequências anteriores ao plano de explicação permanecem legíveis, com a ausência indicada como pendência. Alterar outro ramo preserva essa ausência, o conteúdo e suas fontes, sem fabricar propósito ou revisão. A exceção vale apenas para microssequências que já existiam sem esse campo; não permite criar uma microssequência sem plano nem apagar um plano existente.
+
+A aprovação do mapa exige resolver os planos ausentes. O diagnóstico de planejamento exigido é uma pendência de autoria, não uma indisponibilidade temporária. A migração altera as funções de validação e escrita, preservando dados, versões, autorização, comparação de revisões e recibos existentes.
+
 ## 20260916031133 — produção incremental com conclusão acumulada
 
 A materialização recebe as unidades novas ou explicitamente substituídas e a ordem final completa da parte. Unidades omitidas conservam conteúdo, fontes, identidade e configuração aplicada; a alteração de posição avança somente a posição e sua versão. O repertório e seus vínculos precisam existir antes da produção. A conclusão confere a cobertura, as formas explicativas e a prática no conjunto acumulado, respeitando as configurações aplicadas às unidades preservadas.

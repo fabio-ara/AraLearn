@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.78] - 2026-09-17
+
+### Corrigido
+
+- cursos antigos permitem editar e reorganizar o mapa curricular enquanto o planejamento das explicações é completado; novos conteúdos e a aprovação do mapa continuam exigindo esse planejamento.
+
 ## [0.0.77] - 2026-09-17
 
 ### Melhorado
