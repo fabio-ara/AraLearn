@@ -1452,7 +1452,7 @@ test("calibração aplicada não substitui intenção corrente nem permite recal
   assert.deepEqual(adapter.calls, []);
 });
 
-test("somente snapshot automático válido da mesma unidade preenche calibração pendente", async () => {
+test("snapshot inválido não vira obrigação de reparo quando a calibração é derivável", async () => {
   for (const mutate of [
     snapshot => { snapshot.contract = "aralearn.study-unit-design-snapshot.v1"; },
     snapshot => { snapshot.parameterCatalogVersion = "1.0.0"; },
@@ -1468,9 +1468,9 @@ test("somente snapshot automático válido da mesma unidade preenche calibraçã
     const { adapter, saved, replacement } = appliedAutomaticReplacement();
     mutate(saved.designSnapshot);
     delete replacement.configuracao;
-    const blocked = await prepareMaterialization(adapter, [replacement]);
-    assert.equal(blocked.state, "blocked");
-    assert.ok(blocked.blockers.some(({ code }) => code === "human_materialization_contextual_calibration_required"));
+    const ready = await prepareMaterialization(adapter, [replacement]);
+    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+    assert.deepEqual(ready.blockers, []);
     assert.deepEqual(adapter.calls, []);
   }
   const { adapter, current, replacement } = appliedAutomaticReplacement();
