@@ -6,6 +6,10 @@ const settingsModule = mainSource.slice(0, mainSource.indexOf('const root = docu
   "\nexport { renderSettings, clearAraLearnLocalState };";
 
 async function mount(page, { visitor = false, administrator = false } = {}) {
+  await page.route("**/runtime-config.js", route => route.fulfill({
+    contentType: "application/javascript",
+    body: 'globalThis.__ARALEARN_ENV__ = { supabaseUrl: "https://project.supabase.test", supabasePublishableKey: "sb_publishable_test" };'
+  }));
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   await page.route("**/common-settings-harness.js", route => route.fulfill({ contentType: "application/javascript", body: settingsModule }));
   await page.goto("/");
