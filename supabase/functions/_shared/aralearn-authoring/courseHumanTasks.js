@@ -226,7 +226,7 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
 const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
-  description: 'Repita a tarefa com os mesmos argumentos iniciais, inclusive plano/explicacoes, acrescentando esta continuação opaca.' });
+  description: 'Repita a leitura com os mesmos argumentos iniciais e acrescente esta continuação.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -3251,7 +3251,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
     if (inspected?.status === "ok") {
       const definition = inspected.definition;
       return result("Li os detalhes de uso do componente escolhido.", {
-        nextDecision: "Este contrato descreve uma instância. Em materializar_parte, conteudo exige title, role, content, response, feedback e topics. Uma prática exige resposta avaliável e recurso explicativo em feedback; o retorno das alternativas não substitui esse recurso.",
+        nextDecision: "Este contrato descreve uma instância. Ao produzir a unidade, o conteúdo precisa de título, função didática, recursos, resposta quando aplicável, feedback e tópicos. Uma prática exige resposta avaliável e feedback explicativo local; o retorno das alternativas não substitui esse feedback.",
         context: {
           componentAuthoringContract: {
             referencia: `${definition.package}@${definition.version}`,
