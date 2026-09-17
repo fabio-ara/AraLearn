@@ -9,7 +9,6 @@ import { openContentReviewReference } from "../../supabase/functions/_shared/ara
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { courseDesignFixture, fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
-import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
 import { largeObservationComparison } from "../helpers/largeObservationComparisonFixture.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
