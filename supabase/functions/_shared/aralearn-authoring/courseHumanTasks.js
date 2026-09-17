@@ -380,7 +380,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
   required: Object.freeze([
-    "microssequencia", "posicao", "conteudo", "configuracao", "aplicacaoPedagogica"
+    "microssequencia", "posicao", "conteudo", "aplicacaoPedagogica"
   ]),
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -489,23 +489,10 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   })
 });
 
-const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
-  description: "Intenções compactas das unidades, sem prosa final. Reutilize as mesmas aplicações, componentes e configuração na escrita.",
-  items: { type: "object", additionalProperties: false,
-    required: ["microssequencia", "posicao", "papel", "componentes", "resposta", "feedbackLocal", "aplicacaoPedagogica"],
-    properties: { microssequencia: HUMAN_REFERENCE_SCHEMA, unidade: MATERIALIZATION_UNIT_SCHEMA.properties.unidade,
-      posicao: MATERIALIZATION_UNIT_SCHEMA.properties.posicao,
-      papel: { type: "string", enum: ["theory", "practice"] },
-      componentes: { type: "array", minItems: 1, maxItems: 128, uniqueItems: true, items: { type: "string", maxLength: 240 },
-        description: "Referências exatas pacote@versão de consultar_componentes; não use rótulos nem instâncias." },
-      resposta: { type: ["string", "null"], maxLength: 240,
-        description: "Referência pacote@versão da resposta avaliável instalada; null para teoria." },
-      feedbackLocal: { type: "boolean", description: "A prática produzirá feedback explicativo avaliado no dispositivo, sem rede." },
-      configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
-      aplicacaoPedagogica: MATERIALIZATION_UNIT_SCHEMA.properties.aplicacaoPedagogica,
-      fontes: { type: "array", maxItems: 32, items: { type: "object", additionalProperties: false,
-        required: ["fonte", "relacao", "papeis"], properties: { fonte: HUMAN_REFERENCE_SCHEMA,
-          relacao: SOURCE_LINK_PROPERTIES.relacao, papeis: SOURCE_LINK_PROPERTIES.papeis, ancoras: SOURCE_LINK_PROPERTIES.ancoras } } } } } });
+const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({
+  ...MATERIALIZATION_UNIT_SCHEMA,
+  description: "As mesmas unidades candidatas usadas na escrita; o preparo deriva componentes, resposta, feedback, fontes e configuração aplicada do próprio candidato."
+});
 
 const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
   type: "object",
@@ -670,7 +657,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Confere conjuntamente a base reconciliada, repertório e vínculos persistidos, requisitos, formas, componentes, fontes e cobertura. Informe plano compacto; só ready autoriza compor a escrita com os mesmos inputs. Não use materializar_parte para descobrir pré-requisitos.",
+    "Confere as mesmas unidades candidatas que serão escritas, suas bases e dependências pedagógicas. O preparo não mantém um segundo resumo estrutural das unidades.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       plano: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: true }, explicacoes: EXPLANATIONS_SCHEMA,
       continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
