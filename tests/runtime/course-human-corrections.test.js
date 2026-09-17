@@ -365,7 +365,7 @@ test("nova reconciliação incompleta é recusada antes de qualquer escrita", as
         motivo: "Classificação parcial que não cobre a base."
       }]
     }]
-  }), { code: "invalid_human_explanation" });
+  }), { code: "invalid_explanation_reconciliation" });
   assert.deepEqual(adapter.commits, []);
 });
 
