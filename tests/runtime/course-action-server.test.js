@@ -727,7 +727,10 @@ test("Actions devolve todos os bloqueios previsíveis sem transportar conteúdo 
   assert.equal(payload.error.details.preflight.blockers.length, 24);
   assert.deepEqual(payload.error.details.preflight.blockers.at(-1), {
     code: "human_reference_not_found", message: "Vínculo persistido ausente 24.", unit: 24, microsequence: "DNS" });
-  assert.match(payload.nextDecision, /preparar_materializacao/u);
+  assert.equal(payload.error.message, "Ainda há uma dependência a resolver antes desta produção.");
+  assert.match(payload.nextDecision, /Resolva autonomamente.*percurso de aprendizagem/iu);
+  assert.doesNotMatch(payload.nextDecision,
+    /human_materialization|preparar_materializacao|materializar_parte|blocker|preflight|state/iu);
   assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL|rawSnapshot|reconciliations/u);
 });
 
