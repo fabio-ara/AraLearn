@@ -36,6 +36,40 @@ begin
   execute replace(definition,before_fragment,after_fragment);
 end $focal_validation_scope$;
 
+do $focal_repertoire_scope$
+declare
+  definition text;
+  before_one text:=$before$      where assignment.course_id=p_course_id and assignment.plan_item_kind in('instructional_analysis_unit','evidence_requirement')
+    ) select * from supplied except select * from current$before$;
+  after_one text:=$after$      where assignment.course_id=p_course_id
+        and assignment.plan_item_kind in('instructional_analysis_unit','evidence_requirement')
+        and (p_complete or exists(
+          select 1 from jsonb_array_elements(p_targets) focal(value)
+          where focal.value->>'didacticMicrosequenceId'=assignment.didactic_microsequence_id
+        ))
+    ) select * from supplied except select * from current$after$;
+  before_two text:=$before$      where assignment.course_id=p_course_id and assignment.plan_item_kind in('instructional_analysis_unit','evidence_requirement')
+    except select * from supplied$before$;
+  after_two text:=$after$      where assignment.course_id=p_course_id
+        and assignment.plan_item_kind in('instructional_analysis_unit','evidence_requirement')
+        and (p_complete or exists(
+          select 1 from jsonb_array_elements(p_targets) focal(value)
+          where focal.value->>'didacticMicrosequenceId'=assignment.didactic_microsequence_id
+        ))
+    except select * from supplied$after$;
+begin
+  definition:=replace(pg_get_functiondef(
+    'private.prepare_incremental_course_part_v1(uuid,uuid,jsonb,jsonb,boolean,jsonb)'::regprocedure
+  ),E'\r\n',E'\n');
+  if (length(definition)-length(replace(definition,before_one,'')))/length(before_one)<>1
+     or (length(definition)-length(replace(definition,before_two,'')))/length(before_two)<>1 then
+    raise exception 'Escopo precursor do repertório incremental divergiu.' using errcode='55000';
+  end if;
+  definition:=replace(definition,before_one,after_one);
+  definition:=replace(definition,before_two,after_two);
+  execute definition;
+end $focal_repertoire_scope$;
+
 do $manifest$ declare manifest jsonb; begin
   manifest:=public.get_aralearn_runtime_manifest()||jsonb_build_object('schemaRevision','20260917232000');
   execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
