@@ -1379,6 +1379,145 @@ test("revisão de unidade existente reproduz a configuração vigente em vez de 
   assert.deepEqual(adapter.calls, []);
 });
 
+function appliedAutomaticReplacement() {
+  const adapter = adapterFixture();
+  const saved = persistedStudyUnit("70000000-0000-4000-8000-000000000001", 1);
+  saved.designSnapshot.parameters.forEach(parameter => {
+    parameter.origin = "automatic";
+    parameter.sourceScopeKind = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId)
+      .supportedScopes.includes("study_unit") ? "study_unit" : "course";
+    if (Array.isArray(parameter.value)) parameter.value.sort(); // PostgreSQL persists sets in lexical order.
+  });
+  const current = courseDesignFixture({ courseId: COURSE_ID, microsequenceId: "micro-dns",
+    studyUnitId: saved.studyUnit.id }, { revision: 8 });
+  current.targetPlanItems = { instructionalAnalysisUnitIds: [ANALYSIS_ID], evidenceRequirementIds: [] };
+  const readDesign = adapter.getCourseDesign;
+  adapter.getCourseDesign = async request => request.scopeKind === "study_unit"
+    ? structuredClone(current) : readDesign(request);
+  adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(saved)], hasMore: false, nextCursor: null });
+  const replacement = { ...unit(), unidade: saved.studyUnit.id, configuracao: {
+    motivo: "Reutilizar a calibração contextual já aplicada.",
+    parametros: Object.fromEntries(saved.designSnapshot.parameters.map(parameter => [
+      COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId).humanField,
+      structuredClone(parameter.value)
+    ]))
+  } };
+  return { adapter, saved, current, replacement };
+}
+
+test("substituição reutiliza calibração automática aplicada com intenção ainda delegada", async () => {
+  for (const explicitConfiguration of [true, false]) {
+    const { adapter, saved, current, replacement } = appliedAutomaticReplacement();
+    if (!explicitConfiguration) delete replacement.configuracao;
+    const before = structuredClone({ saved, current });
+    const ready = await prepareMaterialization(adapter, [replacement]);
+    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+    assert.equal(adapter.calls.length, 0);
+    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+      units: [replacement], preparationReference: ready.referencia });
+    const applied = adapter.calls[0].units[0];
+    assert.equal(applied.studyUnitId, saved.studyUnit.id);
+    assert.deepEqual(applied.designSnapshot.parameters.map(parameter => ({ ...parameter,
+      value: Array.isArray(parameter.value) ? [...parameter.value].sort() : parameter.value })),
+    saved.designSnapshot.parameters);
+    assert.deepEqual({ saved, current }, before, "a preparação e a escrita não alteram as leituras recebidas");
+  }
+});
+
+test("calibração aplicada não substitui intenção corrente nem permite recalibrar pela materialização", async () => {
+  for (const assignment of [
+    { mode: "automatic", origin: "automatic", value: 100 },
+    { mode: "automatic", origin: "author", value: null },
+    { mode: "fixed", origin: "author", value: 100 },
+    { mode: "fixed", origin: "research_condition", value: 100 }
+  ]) {
+    const { adapter, current, replacement } = appliedAutomaticReplacement();
+    const parameter = current.parameters.find(entry => entry.parameterId === "authoring_chat_response_word_target");
+    parameter.effectiveAssignment = { ...assignment, reason: "Intenção corrente editada.",
+      sourceScope: { kind: "study_unit", ref: replacement.unidade }, inherited: false };
+    const blocked = await prepareMaterialization(adapter, [replacement]);
+    assert.ok(blocked.blockers.some(({ code }) => code === "human_materialization_existing_configuration_conflict"));
+    if (assignment.value !== null) {
+      replacement.configuracao.parametros.alvo_palavras_conversa = assignment.value;
+      const ready = await prepareMaterialization(adapter, [replacement]);
+      assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+      await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+        units: [replacement], preparationReference: ready.referencia });
+      const applied = adapter.calls[0].units[0].designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId);
+      assert.equal(applied.value, assignment.value);
+      assert.equal(applied.origin, assignment.origin);
+      assert.equal(applied.reason, "Intenção corrente editada.");
+    } else assert.deepEqual(adapter.calls, []);
+  }
+  const { adapter, replacement } = appliedAutomaticReplacement();
+  replacement.configuracao.parametros.alvo_palavras_conversa = 100;
+  await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [replacement] }), error => Boolean(preflightBlocker(error, "human_materialization_existing_configuration_conflict")));
+  assert.deepEqual(adapter.calls, []);
+});
+
+test("somente snapshot automático válido da mesma unidade preenche calibração pendente", async () => {
+  for (const mutate of [
+    snapshot => { snapshot.contract = "aralearn.study-unit-design-snapshot.v1"; },
+    snapshot => { snapshot.parameterCatalogVersion = "1.0.0"; },
+    snapshot => { snapshot.didacticMicrosequenceId = "another-microsequence"; },
+    snapshot => { snapshot.parameters.pop(); },
+    snapshot => { snapshot.parameters[0] = structuredClone(snapshot.parameters[1]); },
+    snapshot => { snapshot.parameters[0].origin = "author"; },
+    snapshot => { snapshot.parameters[0].origin = "research_condition"; },
+    snapshot => { snapshot.parameters[0].sourceScopeKind = "didactic_microsequence"; },
+    snapshot => { snapshot.parameters[0].value = -1; },
+    snapshot => { snapshot.parameters[0].reason = ""; }
+  ]) {
+    const { adapter, saved, replacement } = appliedAutomaticReplacement();
+    mutate(saved.designSnapshot);
+    delete replacement.configuracao;
+    const blocked = await prepareMaterialization(adapter, [replacement]);
+    assert.equal(blocked.state, "blocked");
+    assert.ok(blocked.blockers.some(({ code }) => code === "human_materialization_contextual_calibration_required"));
+    assert.deepEqual(adapter.calls, []);
+  }
+  const { adapter, current, replacement } = appliedAutomaticReplacement();
+  current.parameters[0].conflicts = [{ fixedValue: 1, exceptionValue: 2 }];
+  const blocked = await prepareMaterialization(adapter, [replacement]);
+  assert.ok(blocked.blockers.some(({ code }) => code === "human_materialization_configuration_conflict"));
+  assert.deepEqual(adapter.calls, []);
+});
+
+test("conjuntos aplicados e correntes com ordem SQL conservam a mesma configuração", async () => {
+  const { adapter, saved, current, replacement } = appliedAutomaticReplacement();
+  const parameter = current.parameters.find(entry => entry.parameterId === "required_explanation_forms");
+  parameter.effectiveAssignment = { mode: "automatic", origin: "automatic",
+    value: saved.designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId).value,
+    reason: "Conjunto aplicado relido pela configuração corrente.",
+    sourceScope: { kind: "study_unit", ref: saved.studyUnit.id }, inherited: false };
+  replacement.configuracao.parametros.formas_de_explicacao.reverse();
+  const ready = await prepareMaterialization(adapter, [replacement]);
+  assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [replacement], preparationReference: ready.referencia });
+  assert.deepEqual(adapter.calls[0].units[0].designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId).value,
+    parameter.effectiveAssignment.value);
+});
+
+test("referência ready sela calibração aplicada e intenção corrente da unidade substituída", async () => {
+  for (const mutate of [
+    ({ saved }) => { saved.designSnapshot.parameters[0].reason = "A aplicação mudou após o preflight."; },
+    ({ current }) => { current.parameters[0].effectiveAssignment = { mode: "fixed", value: 1, origin: "author",
+      reason: "A intenção mudou após o preflight.", sourceScope: { kind: "course", ref: COURSE_ID }, inherited: true }; }
+  ]) {
+    const fixture = appliedAutomaticReplacement();
+    const { adapter, replacement } = fixture;
+    const ready = await prepareMaterialization(adapter, [replacement]);
+    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+    mutate(fixture);
+    await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+      units: [replacement], preparationReference: ready.referencia }),
+    { status: 409, code: "human_materialization_preflight_stale" });
+    assert.deepEqual(adapter.calls, []);
+  }
+});
+
 test("override da Unit rege teto, formas, prática, variação e componentes na rematerialização", async () => {
   const cases = [{
     mutate(units) {
