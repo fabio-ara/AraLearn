@@ -33,6 +33,19 @@ function auditedPracticeStudyUnit() {
   };
 }
 
+test("compatibilidade indicativa admite paragraph com choice e preserva a regra de pergunta única", () => {
+  const contract = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract("aralearn.resource.paragraph", "1.0.0");
+  assert.equal(contract.manifest.responseCompatibility.includes("aralearn.response.choice"), false);
+  assert.match(contract.contract.rules.join(" "), /indicativa, não exclusiva/u);
+  const unit = auditedPracticeStudyUnit();
+  unit.content = [exampleInstance("aralearn.resource.paragraph", "content", "context-text")];
+  assert.equal(RESOURCE_CATALOG.validateStudyUnit(unit).valid, true);
+  unit.content[0].data.text = unit.response.data.question;
+  const repeated = RESOURCE_CATALOG.validateStudyUnit(unit);
+  assert.equal(repeated.valid, false);
+  assert.match(repeated.errors.join(" "), /content não pode repetir a mesma pergunta/u);
+});
+
 test("catálogo organiza todo package em sete famílias canônicas e facetas controladas", () => {
   const manifests = RESOURCE_PACKAGE_REGISTRY.listCatalog();
   const explored = RESOURCE_CATALOG.explore();

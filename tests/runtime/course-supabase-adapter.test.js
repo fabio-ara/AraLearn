@@ -1225,6 +1225,19 @@ test("exclusão não apaga Storage diante de violação relacional alheia", asyn
   ]);
 });
 
+test("plano explicativo exigido retorna diagnóstico de autoria, sem erro temporário nem nova tentativa", async () => {
+  const calls = [];
+  const value = adapter(async url => {
+    calls.push(url);
+    return json({ code: "23514", message: "curricular_explanation_plan_required: Informe o plano da explicação." }, 400);
+  });
+  await assert.rejects(value.saveCourseCurricularMap({ principal: { actorId: USER_ID }, courseId: COURSE_ID,
+    requestId: "missing-explanation-plan", expectedCourseRevision: 1, expectedPlanVersion: 1,
+    approved: false, curricularMap: { audience: "", prerequisites: [], scopeItems: [], modules: [] } }),
+  error => error.status === 422 && error.code === "curricular_explanation_plan_required" && /propósito/u.test(error.message));
+  assert.equal(calls.length, 1);
+});
+
 test("lista por RPC de Curso e acrescenta deep link fora do banco", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {

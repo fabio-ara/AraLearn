@@ -12,8 +12,8 @@ const baseMap = () => ({ audience: "", prerequisites: [], scopeItems: [], module
   { moduleId: "m1", title: "Primeiro", objective: "Compreender", position: 0, lessons: [] },
   { moduleId: "m2", title: "Segundo", objective: "Aplicar", position: 1, lessons: [] }
 ] });
-function harness({ readonly = false, lostSaveResponse = false, lostApprovalResponse = false, forgedReceipt = false } = {}) {
-  const calls = []; let map = baseMap(), courseRevision = 1, planVersion = 1;
+function harness({ readonly = false, lostSaveResponse = false, lostApprovalResponse = false, forgedReceipt = false, initialMap = baseMap() } = {}) {
+  const calls = []; let map = structuredClone(initialMap), courseRevision = 1, planVersion = 1;
   let receipt = null;
   const adapter = new CourseSupabaseAdapter({ supabaseUrl: "https://database.example", publicAppUrl: origin,
     publishableKey: "synthetic-public", serverApiKey: "synthetic-service", attempts: 1,
@@ -70,6 +70,22 @@ test("cliente, rota e adapter preservam rascunho e irmãos ao enviar delta peque
   assert.deepEqual(requests[1].body.command, change.command);
   assert.equal(Object.hasOwn(requests[1].body, "map"), false);
   assert.equal(calls.filter(call => call.name === "save_course_curricular_map_for_actor_v1").length, 1);
+});
+
+test("leitura e edição HTTP do mapa legado preservam o plano ausente e sua pendência", async () => {
+  const initialMap = baseMap();
+  initialMap.modules[0].lessons.push({ lessonId: "legacy-lesson", title: "Lição existente", objective: "Compreender", position: 0,
+    microsequences: [{ microsequenceId: "legacy-micro", title: "Conteúdo existente", objective: "Aplicar", position: 0,
+      dependencyMicrosequenceIds: [], scopeItemIds: [], explanationPlan: null }] });
+  const { client, calls } = harness({ initialMap });
+  const before = await client.getCurricularMap(courseId);
+  assert.ok(before.completeness.pending.some(item => item.reason === "explanation_plan_missing" && item.targetId === "legacy-micro"));
+  await client.saveCurricularMapSlice(change);
+  const after = await client.getCurricularMap(courseId);
+  assert.deepEqual(after.map.modules[0].lessons, initialMap.modules[0].lessons);
+  assert.equal(after.map.modules[0].title, "Fundamentos");
+  const saved = calls.find(call => call.name === "save_course_curricular_map_for_actor_v1").input.p_curricular_map;
+  assert.equal(saved.modules[0].lessons[0].microsequences[0].explanationPlan, null);
 });
 
 test("aprovação HTTP usa somente referência da leitura persistida e rejeita identidade cruzada", async () => {

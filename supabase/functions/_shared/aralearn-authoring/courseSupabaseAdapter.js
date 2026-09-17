@@ -636,6 +636,10 @@ function databaseError(status, body) {
   if (status === 413 || code === "54000") {
     return new AuthoringApiError(413, "payload_too_large", "A alteração excede o limite aceito.");
   }
+  if (code === "23514" && databaseMessage.startsWith("curricular_explanation_plan_required:")) {
+    return new AuthoringApiError(422, "curricular_explanation_plan_required",
+      "Defina o propósito e o planejamento da explicação antes de criar a microssequência ou aprovar o mapa. Preserve os planos existentes.");
+  }
   if (status === 422 || code === "22023" || code === "23514") {
     return new AuthoringApiError(422, "invalid_course_command", "Os dados do Curso são inválidos.");
   }

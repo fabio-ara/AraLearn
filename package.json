@@ -1,6 +1,6 @@
 {
   "name": "aralearn",
-  "version": "0.0.77",
+  "version": "0.0.78",
   "private": true,
   "description": "Aplicativo de estudo offline em microssequências.",
   "type": "module",

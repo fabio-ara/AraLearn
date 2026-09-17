@@ -108,6 +108,19 @@ pertinentes. O mesmo vocabulário permite acrescentar termos ao catálogo sem
 ampliar um algoritmo central e oferece à curadoria uma base para confrontar a
 justificativa de cada escolha.
 
+A lista `responseCompatibility`, apresentada como `compatibilidadeDeResposta`
+na consulta humana, é indicativa, não exclusiva. A ausência de uma resposta
+nessa lista não proíbe uma combinação. A validação considera os lugares aceitos
+(`slots`), os schemas e as regras de composição dos componentes. Por exemplo,
+Texto explicado (`paragraph`) pode acompanhar Escolha (`choice`) na mesma
+unidade, desde que o texto não repita a pergunta da resposta.
+
+O contrato de um componente descreve uma instância, não a unidade completa.
+Na materialização, `conteudo` exige `title`, `role`, `content`, `response`,
+`feedback` e `topics`. Uma prática contém resposta avaliável e um recurso
+explicativo em `feedback`; comentários nas alternativas de Escolha não
+substituem esse recurso.
+
 O catálogo interno usa o contrato `aralearn.resource-library.v1` e oferece
 consultas progressivas:
 

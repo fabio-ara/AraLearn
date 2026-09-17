@@ -8,7 +8,8 @@ import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralear
 import { openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
-import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { courseDesignFixture, fixtureAppliedParameters } from "../helpers/courseDesignFixture.js";
+import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
 import { largeObservationComparison } from "../helpers/largeObservationComparisonFixture.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
@@ -158,7 +159,7 @@ function materializationPreparationFixture(blocks = 32) {
   })) });
   const microsequence = { id: "ms", title: "Interfaces", goal: "Relacionar host e interface.", productionPosition: 0,
     explanation: support, explanationPlan: { purpose: "Explicitar a relação.", prerequisites: [], relations: [], sourceIds: [] }, contentReview: { state: "draft" } };
-  const plan = { title: TITLE, instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
+  const plan = { title: TITLE, curriculumMapStatus: "approved", instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
     curriculum: { modules: [{ lessons: [{ microsequences: [microsequence] }] }] },
     parts: [{ id: PART, position: 0, title: "Interfaces", intent: "Relacionar conceitos.", microsequences: [microsequence] }] };
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
@@ -317,6 +318,72 @@ test("preparo recupera apoio acima do envelope Actions por continuação literal
     assert.deepEqual(restored.explicacoes[0].conteudo, support);
     assert.equal(restored.explicacoes[0].revisao, "Rascunho");
     assert.equal(restored.parte.microssequencias[0].titulo, "Interfaces");
+  }
+});
+
+test("preparo apresenta diagnóstico e referência antes do repertório extenso em MCP e Actions", async () => {
+  for (const blocked of [false, true]) {
+    const restoredByChannel = [];
+    for (const channel of ["actions", "mcp"]) {
+      const { adapter, plan } = materializationPreparationFixture(1);
+      const support = reconciledExplanationFixture([{ text: "Releia os dados apresentados antes de responder.", role: "support" }]);
+      plan.parts[0].microsequences[0].explanation = support;
+      plan.instructionalAnalysisUnits = [{ id: "available", position: 0, statement: "Ideia disponível",
+        description: "Esta ideia permanece disponível, sem introdução nem vínculo nesta unidade. ".repeat(450),
+        introducedAt: null, usedBy: [], revisitedBy: [] }];
+      const getDesign = adapter.getCourseDesign;
+      adapter.getCourseDesign = async input => {
+        const design = await getDesign(input);
+        const applied = new Map(fixtureAppliedParameters([], { origin: "research_condition", scope: "course" })
+          .map(parameter => [parameter.parameterId, { ...parameter, effectiveAssignment: {
+            ...parameter.effectiveAssignment, inherited: input.scopeKind !== "course"
+          } }]));
+        return { ...design, parameters: design.parameters.map(parameter => ({ ...parameter, ...applied.get(parameter.parameterId) })) };
+      };
+      adapter.getCourseSources = async () => ({ items: [{ sourceLinks: [] }], nextCursor: null });
+      const args = { curso: TITLE, parte: 1, concluir: false, plano: [{ microssequencia: "Interfaces", posicao: 1,
+        papel: "theory", componentes: [blocked ? "aralearn.resource.missing@1.0.0" : "aralearn.resource.paragraph@1.0.0"],
+        resposta: null, feedbackLocal: false, aplicacaoPedagogica: {} }] };
+      let response = await channelCall(channel, adapter, "preparar_materializacao", args);
+      assert.equal(response.status, 200, response.envelope);
+      const first = response.value.context;
+      assert.ok(first.temMais, "o repertório extenso ainda exige continuação");
+      assert.ok(first.fragmento.texto.startsWith('{"preflight":'), "o diagnóstico antecede o contexto extenso");
+      const partStart = first.fragmento.texto.indexOf(',"parte":');
+      assert.ok(partStart > 0, "o diagnóstico pequeno cabe inteiro na primeira página");
+      const early = JSON.parse(first.fragmento.texto.slice(0, partStart) + "}").preflight;
+      assert.equal(early.state, blocked ? "blocked" : "ready", JSON.stringify(early.blockers));
+      if (blocked) {
+        assert.equal(early.referencia, null);
+        assert.deepEqual(early.blockers.map(({ code }) => code), ["human_materialization_component_unknown"]);
+      } else {
+        assert.match(early.referencia, /^materialization-v1:[a-f0-9]{64}$/u);
+        assert.deepEqual(early.blockers, []);
+      }
+      await assert.rejects(() => execute(adapter, "preparar_materializacao", {
+        parte: 1, continuacao: first.continuacao
+      }), { status: 409, code: "human_read_context_changed" });
+      let literal = "", pages = 0;
+      while (true) {
+        const context = response.value.context;
+        assert.equal(context.fragmento.inicio, literal.length);
+        literal += context.fragmento.texto;
+        assert.equal(context.fragmento.fim, literal.length);
+        assert.ok(response.envelope.length <= 99_999);
+        assert.equal(context.temMais, context.continuacao !== null);
+        assert.ok(++pages < 10);
+        if (!context.continuacao) break;
+        response = await channelCall(channel, adapter, "preparar_materializacao", { ...args, continuacao: context.continuacao });
+        assert.equal(response.status, 200, response.envelope);
+      }
+      const restored = JSON.parse(literal);
+      assert.deepEqual(restored.preflight, early);
+      assert.deepEqual(restored.explicacoes[0].conteudo, support);
+      assert.deepEqual(restored.parte.repertorioDisponivelDoCurso.ideias, [{ posicao: 1,
+        ideia: plan.instructionalAnalysisUnits[0].statement, descricao: plan.instructionalAnalysisUnits[0].description }]);
+      restoredByChannel.push(restored);
+    }
+    assert.deepEqual(restoredByChannel[0], restoredByChannel[1]);
   }
 });
 

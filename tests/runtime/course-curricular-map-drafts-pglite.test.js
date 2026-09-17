@@ -8,6 +8,11 @@ const OTHER = "10000000-0000-4000-8000-000000000002";
 const COURSE = "20000000-0000-4000-8000-000000000001";
 const SCOPE = "30000000-0000-4000-8000-000000000001";
 const migrations = new URL("../../supabase/migrations/", import.meta.url);
+const legacyPlanMigration = "20260917105911_legacy_curricular_map_explanation_plan_preservation.sql";
+// Recorte explícito do contrato plano anterior à migração, sem derivar a
+// fixture histórica da revisão corrente do arquivo de implantação.
+const previousRuntimeManifest = { schemaRevision: "20260916031133", contractVersion: 1,
+  features: ["flat-runtime-manifest-v1", "course-curricular-map-v1", "shared-microsequence-explanation-v1", "human-content-review-v1"] };
 const load = async name => (await fs.readFile(new URL(name, migrations), "utf8")).replaceAll("\r\n", "\n");
 function functionSql(source, name) {
   const start = new RegExp(`create(?: or replace)? function ${name.replaceAll(".", "\\.")}\\(`, "u").exec(source)?.index;
@@ -30,7 +35,7 @@ const micros = data => data.modules[0].lessons[0].microsequences;
 // Executa a migration completa e os corpos correntes do writer/shape/grafo/leitor
 // sobre relações locais com FK, ordem diferível e recibo reais. A sessão JWT é
 // simulada; não prova PostgREST, Storage, navegador nem o banco hospedado.
-async function fixture({ approvalReference = false } = {}) {
+async function fixture({ approvalReference = false, legacyPlanPreservation = true } = {}) {
   const db = new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role;
@@ -69,6 +74,8 @@ async function fixture({ approvalReference = false } = {}) {
     create function private.require_service_role() returns void language plpgsql as $$begin
       if auth.jwt()->>'role' is distinct from 'service_role' then raise exception 'service role required' using errcode='42501'; end if; end$$;
     create function private.get_course_instructional_plan_for_actor_v3(uuid,uuid) returns jsonb language sql as $$select '{}'::jsonb$$;
+    create function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog
+      as $$select '${JSON.stringify(previousRuntimeManifest)}'::jsonb$$;
   `);
   for (const [migration, name] of [
     ["20260905062817_public_course_access_and_identity.sql", "private.course_ownership_v1"],
@@ -95,6 +102,7 @@ async function fixture({ approvalReference = false } = {}) {
     select set_config('fixture.jwt','{"role":"service_role"}',false);
   `);
   await db.exec(await load("20260909031450_contextual_curricular_map_drafts.sql"));
+  if (legacyPlanPreservation) await db.exec(await load(legacyPlanMigration));
   if (approvalReference) {
     // O reader v3 publicado é uma fixture estrutural que lê as mesmas versões
     // persistidas. Os novos readers/approve/receipt e o writer/grafo são reais;
@@ -126,6 +134,110 @@ const approveReference = (db, basis, { actor = OWNER, requestId = `map-reference
   [actor, COURSE, basis.courseRevision, basis.planVersion, basis.basisHash, requestId, hash]);
 const readReceipt = (db, requestId, hash = "c".repeat(64), operation = "save_course_curricular_map_v1", actor = OWNER) => value(db,
   "select public.get_course_change_receipt_for_actor_v1($1,$2,$3,$4,$5) value", [actor, COURSE, operation, requestId, hash]);
+
+const planRequired = error => error.code === "23514" && error.message.startsWith("curricular_explanation_plan_required:");
+const entityRows = db => value(db, "select jsonb_agg(to_jsonb(e) order by entity_type,entity_id) value from private.course_entities e");
+
+test("upgrade torna mapa legado editável sem preencher plano nem tocar conteúdo, revisão, versões ou fontes preservadas", async () => {
+  const db = await fixture({ legacyPlanPreservation: false, approvalReference: true });
+  try {
+    const data = map();
+    micros(data).push(micro("modern", 1));
+    await save(db, data);
+    // Estado histórico: campo ausente, conteúdo útil e revisão nunca declarada.
+    await db.exec(`
+      update private.course_entities set content=(content-'explanationPlan')||'{"role":"practice","checks":["Critério legado"]}'::jsonb
+        where entity_id='micro-a';
+      insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application)
+        values('${COURSE}','study_unit','legacy-unit','microsequence','micro-a',0,'{"title":"Conteúdo útil legado"}',
+          '{"applied":"decisão preservada"}','{"scopeItemIds":["${SCOPE}"]}');
+      insert into private.course_source_attributions(course_id,target_kind,target_id)
+        values('${COURSE}','microsequence_explanation','micro-a');
+    `);
+    const legacy = await canonical(db);
+    assert.equal(micros(legacy)[0].explanationPlan, null);
+    const before = await entityRows(db);
+    const sourceBefore = await value(db, "select jsonb_agg(to_jsonb(a) order by id) value from private.course_source_attributions a");
+    const versionsBefore = await revisions(db);
+    const manifestBefore = await value(db, "select public.get_aralearn_runtime_manifest() value");
+    assert.deepEqual(manifestBefore, previousRuntimeManifest);
+    const changed = structuredClone(legacy);
+    changed.modules.push({ moduleId: "new-module", position: 1, title: "Novo módulo", objective: "Nova intenção", lessons: [] });
+    await assert.rejects(save(db, changed), code("22023"));
+    await db.exec(await load(legacyPlanMigration));
+    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), {
+      ...manifestBefore, schemaRevision: "20260917105911"
+    });
+    assert.deepEqual(await entityRows(db), before);
+    assert.deepEqual(await revisions(db), versionsBefore);
+    // Trigger publicado real: inserir null no JSON seria recusado antes mesmo
+    // do ON CONFLICT, e a revisão preservada não pode ser substituída.
+    await db.exec(functionSql(await load("20260907222912_shared_explanations_human_content_review.sql"), "private.valid_course_explanation_v1"));
+    await db.exec(functionSql(await load("20260909025232_contextual_content_review_access.sql"), "private.mark_course_content_review_v1"));
+    await db.exec("create trigger course_content_review_guard before insert or update on private.course_entities for each row execute function private.mark_course_content_review_v1()");
+    const saved = await save(db, changed, { requestId: "legacy-add-module" });
+    assert.equal(saved.changed, true);
+    assert.deepEqual(await canonical(db), changed);
+    assert.deepEqual((await entityRows(db)).filter(row => row.entity_id !== "new-module"), before);
+    assert.deepEqual(await value(db, "select jsonb_agg(to_jsonb(a) order by id) value from private.course_source_attributions a"), sourceBefore);
+    assert.deepEqual(await save(db, changed, { requestId: "legacy-add-module", expected: versionsBefore }), { ...saved, idempotent: true });
+    assert.deepEqual(await revisions(db), [saved.courseRevision, saved.planVersion]);
+    const untouched = await entityRows(db);
+    const renamed = structuredClone(changed);
+    micros(renamed)[0].title = "Intenção legada renomeada";
+    await save(db, renamed);
+    const renamedRows = await entityRows(db);
+    const previous = untouched.find(row => row.entity_id === "micro-a");
+    const next = renamedRows.find(row => row.entity_id === "micro-a");
+    assert.equal(Object.hasOwn(next.content, "explanationPlan"), false);
+    assert.equal(next.content_review, null);
+    assert.deepEqual(next.content, { ...previous.content, title: "Intenção legada renomeada" });
+    assert.equal(next.version, previous.version + 1);
+    assert.deepEqual(renamedRows.filter(row => row.entity_id !== "micro-a"), untouched.filter(row => row.entity_id !== "micro-a"));
+    // Retira apenas o ramo novo ainda vazio para isolar o plano legado como
+    // única pendência de aprovação (módulo vazio também é incompleto).
+    renamed.modules.pop();
+    await save(db, renamed);
+    await assert.rejects(save(db, renamed, { approved: true }), planRequired);
+    await assert.rejects(approveReference(db, (await readApproval(db)).approvalBasis), planRequired);
+    const completed = structuredClone(renamed);
+    micros(completed)[0].explanationPlan = micro().explanationPlan;
+    await save(db, completed);
+    assert.equal((await approveReference(db, (await readApproval(db)).approvalBasis)).approval, "approved");
+    assert.equal((await entityRows(db)).find(row => row.entity_id === "micro-a").content_review, null);
+  } finally { await db.close(); }
+});
+
+test("ausência transitória não cria micro nova, não apaga plano existente e não admite objeto inválido", async () => {
+  const db = await fixture();
+  try {
+    await save(db, map());
+    for (const absent of [null, undefined]) {
+      for (const create of [false, true]) {
+        const data = map();
+        const target = create ? micro("new-micro", 1) : micros(data)[0];
+        if (create) micros(data).push(target);
+        if (absent === undefined) delete target.explanationPlan;
+        else target.explanationPlan = absent;
+        const before = await entityRows(db);
+        const versions = await revisions(db);
+        await assert.rejects(save(db, data), planRequired);
+        assert.deepEqual(await entityRows(db), before);
+        assert.deepEqual(await revisions(db), versions);
+      }
+    }
+    for (const invalid of [{}, { ...micro().explanationPlan, purpose: "" }, "plano", false]) {
+      const data = map(); micros(data)[0].explanationPlan = invalid;
+      await assert.rejects(save(db, data), code("22023"));
+    }
+    const valid = map(); micros(valid).push(micro("new-micro", 1));
+    await save(db, valid);
+    assert.deepEqual(await canonical(db), valid);
+    // NULL explícito persistido não é o legado admitido (campo ausente).
+    await db.exec("update private.course_entities set content=jsonb_set(content,'{explanationPlan}','null'::jsonb) where entity_id='micro-a'");
+    await assert.rejects(save(db, await canonical(db)), planRequired);
+  } finally { await db.close(); }
+});
 
 const scopeIntegrityMigration = "20260910134141_copied_curriculum_scope_integrity.sql";
 const SCOPE_B = "30000000-0000-4000-8000-000000000002";
@@ -174,7 +286,7 @@ async function copyFixture() {
     create table private.course_media_delete_intents(storage_path text);
     create table private.fixture_observations(course_id uuid,id uuid,version bigint,state text,body text);
     create function private.course_source_json_hash_v1(jsonb) returns text language sql immutable as $$select encode(sha256(convert_to($1::text,'UTF8')),'hex')$$;
-    create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$select '{"schemaRevision":"20260910054749"}'::jsonb$$;
+    create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$select '{"schemaRevision":"20260910054749"}'::jsonb$$;
   `);
   const copySql = await load("20260905145236_independent_course_copies.sql");
   for (const name of ["private.can_copy_course_v1", "private.remap_copied_design_v1", "public.copy_course_for_actor_v1"]) {

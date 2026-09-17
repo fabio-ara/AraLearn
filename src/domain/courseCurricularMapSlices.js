@@ -37,9 +37,14 @@ export function normalizeCurricularMap(value) {
       if (item.position !== index || ids.has(`${kind}:${item[identity]}`)) fail("O mapa repete identidades ou posições.");
       ids.add(`${kind}:${item[identity]}`);
       const { [child]: descendants, ...own } = item;
+      // The reader projects an absent legacy plan as null. Preserve that gap;
+      // explicit commands still require a valid plan when they supply one.
+      const missingExplanationPlan = kind === "microsequence" && own.explanationPlan === null;
+      if (missingExplanationPlan) delete own.explanationPlan;
       const normalized = normalizeCurricularMapSlice({ type: `save_${kind}`, ...own });
       delete normalized.type;
-      return { ...normalized, ...(child ? { [child]: list(descendants, kind === "module" ? "lesson" : "microsequence") } : {}) };
+      return { ...normalized, ...(missingExplanationPlan ? { explanationPlan: null } : {}),
+        ...(child ? { [child]: list(descendants, kind === "module" ? "lesson" : "microsequence") } : {}) };
     });
   }
   return { audience: value.audience, prerequisites: [...value.prerequisites], scopeItems: list(value.scopeItems, "scope_item"), modules: list(value.modules, "module") };
@@ -177,6 +182,7 @@ export function inspectCurricularMapCompleteness(map) {
   for (const { item } of collection(map, "lesson")) if (!item.microsequences.length) pending.push({ reason: "microsequences_missing", targetId: item.lessonId });
   for (const item of map.scopeItems) if (!covered.has(item.id)) pending.push({ reason: "scope_uncovered", targetId: item.id });
   for (const item of micros) {
+    if (item.explanationPlan === null) pending.push({ reason: "explanation_plan_missing", targetId: item.microsequenceId });
     for (const reference of item.dependencyMicrosequenceIds) if (!order.has(reference) || order.get(reference) >= order.get(item.microsequenceId)) {
       pending.push({ reason: order.has(reference) ? "dependency_order" : "dependency_missing", targetId: item.microsequenceId, reference });
     }

@@ -210,6 +210,7 @@ function adapterFixture({ savedExplanation = true } = {}) {
         plan: {
           version: 3,
           title: "Curso de Redes",
+          curriculumMapStatus: "approved",
           curriculum: {
             modules: [{
               id: "module-network",
@@ -406,6 +407,7 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
     plan: {
       version: 3,
       title: "Curso de Redes",
+      curriculumMapStatus: "approved",
       curriculum: {
         modules: [{
           id: "module-network",
@@ -935,6 +937,7 @@ test("preflight exige repertório persistido e vinculado sem criação implícit
     plan: {
       version: 3,
       title: "Curso de Redes",
+      curriculumMapStatus: "approved",
       curriculum: {
         modules: [{
           id: "module-network",
@@ -1669,6 +1672,7 @@ test("item focal percorre a microssequência e chega às unidades como introduç
     plan: {
       version: 4,
       title: "Curso de Redes",
+      curriculumMapStatus: "approved",
       curriculum: {
         modules: [{
           id: "module-network",
@@ -1968,6 +1972,12 @@ test("preflight confronta seis ensinamentos da base com o percurso inteiro sob t
 
 test("preflight agrega vínculos, referências, formas, componentes e prática antes da escrita", async () => {
   const adapter = sixTeachingAdapter();
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const read = await readPlan();
+    read.plan.curriculumMapStatus = "draft";
+    return read;
+  };
   const readDesign = adapter.getCourseDesign;
   adapter.getCourseDesign = async request => {
     const design = await readDesign(request);
@@ -1988,7 +1998,7 @@ test("preflight agrega vínculos, referências, formas, componentes e prática a
   assert.equal(preparation.state, "blocked");
   assert.equal(preparation.referencia, null);
   const codes = new Set(preparation.blockers.map(item => item.code));
-  for (const code of ["human_materialization_analysis_not_linked", "human_reference_not_found",
+  for (const code of ["human_materialization_map_approval_required", "human_materialization_analysis_not_linked", "human_reference_not_found",
     "human_materialization_missing_explanation_form", "human_materialization_component_policy_violation",
     "practice_response_legacy_only", "practice_offline_feedback_required"]) assert.ok(codes.has(code), code);
   assert.ok(preparation.blockers.filter(item => item.code === "human_reference_not_found").length >= 2,
@@ -2000,6 +2010,51 @@ test("preflight agrega vínculos, referências, formas, componentes e prática a
     preflightBlocker(error, "human_materialization_missing_explanation_form");
     return true;
   });
+  assert.deepEqual(adapter.calls, []);
+});
+
+test("preflight exige aprovação explícita do mapa para materialização parcial e completa", async () => {
+  for (const complete of [false, true]) for (const status of ["draft", "absent", undefined, "unknown"]) {
+    const adapter = adapterFixture();
+    const readPlan = adapter.getCourseInstructionalPlan;
+    adapter.getCourseInstructionalPlan = async () => {
+      const read = await readPlan();
+      if (status === undefined) delete read.plan.curriculumMapStatus;
+      else read.plan.curriculumMapStatus = status;
+      return read;
+    };
+    const units = [unit()];
+    const blocked = await prepareMaterialization(adapter, units, { complete });
+    const expectedCode = status === "draft" || status === "absent"
+      ? "human_materialization_map_approval_required" : "course_service_unavailable";
+    assert.equal(blocked.state, "blocked");
+    assert.equal(blocked.referencia, null);
+    assert.deepEqual(blocked.blockers.map(({ code }) => code), [expectedCode]);
+    await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
+      course: "Curso de Redes", part: 1, units, complete }), error => Boolean(preflightBlocker(error, expectedCode)));
+    assert.deepEqual(adapter.calls, [], "preparar e materializar não aprovam o mapa nem chegam à escrita");
+    assert.equal((await adapter.getCourseInstructionalPlan()).plan.curriculumMapStatus, status);
+  }
+});
+
+test("referência ready inclui aprovação do mapa e não autoriza a escrita após retorno ao rascunho", async () => {
+  const adapter = adapterFixture();
+  const units = [unit()];
+  const ready = await prepareMaterialization(adapter, units, { complete: false });
+  assert.equal(ready.state, "ready");
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const read = await readPlan();
+    read.plan.curriculumMapStatus = "draft";
+    return read;
+  };
+  const blocked = await prepareMaterialization(adapter, units, { complete: false });
+  assert.equal(blocked.state, "blocked");
+  assert.equal(blocked.referencia, null);
+  assert.equal(blocked.blockers[0].code, "human_materialization_map_approval_required");
+  await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units, complete: false, preparationReference: ready.referencia }),
+  { status: 409, code: "human_materialization_preflight_stale" });
   assert.deepEqual(adapter.calls, []);
 });
 

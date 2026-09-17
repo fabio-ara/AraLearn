@@ -1085,6 +1085,7 @@ test("preparar_materializacao separa o inventário focal de duas Microssequênci
           version: 3,
           title: "Redes para iniciantes",
           objective: "Explicar serviços em rede.",
+          curriculumMapStatus: "approved",
           curriculum: {
             modules: [{
               id: "module-network",
@@ -1581,6 +1582,9 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
   assert.equal(contract.modeloDeInstancia.version, "1.0.0");
   assert.equal(contract.schema.properties.groups.items.properties.id.type, "string");
   assert.deepEqual(contract.contrato.required, ["xAxis", "yAxis"]);
+  assert.match(contract.contrato.rules.join(" "), /indicativa, não exclusiva/u);
+  assert.match(inspected.nextDecision, /title, role, content, response, feedback e topics/u);
+  assert.match(inspected.nextDecision, /retorno das alternativas não substitui/u);
 
   const practice = await executeHumanCourseTask({
     adapter: adapter(),

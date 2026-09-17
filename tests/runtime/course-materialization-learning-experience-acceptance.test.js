@@ -62,6 +62,7 @@ function planForFixture(value) {
     plan: {
       version: 3,
       title: value.course.title,
+      curriculumMapStatus: "approved",
       curriculum: {
         modules: [{
           id: "module-fixture",

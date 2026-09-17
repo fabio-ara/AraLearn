@@ -46,6 +46,26 @@ test("rename focal e reordenação conservam IDs, descendentes e campos não sel
   });
 });
 
+test("mapa legado conserva plano ausente como pendência, sem inventar propósito nem aceitar comando nulo", () => {
+  const legacy = map();
+  legacy.modules[0].lessons[0].microsequences[0].explanationPlan = null;
+  assert.deepEqual(normalizeCurricularMap(legacy), legacy);
+  assert.ok(inspectCurricularMapCompleteness(legacy).pending.some(item =>
+    item.reason === "explanation_plan_missing" && item.targetId === "ms1"));
+  const edited = applyCurricularMapSlice(legacy, { type: "save_module", moduleId: "m1", title: "Título atual" });
+  assert.deepEqual(edited.modules[0].lessons, legacy.modules[0].lessons);
+  const created = applyCurricularMapSlice(edited, { type: "save_lesson", lessonId: "new", moduleId: "m2",
+    title: "Lição nova", objective: "Aplicar" });
+  assert.deepEqual(normalizeCurricularMap(created).modules[0].lessons, legacy.modules[0].lessons);
+  assert.throws(() => normalizeCurricularMapSlice({ type: "save_microsequence", microsequenceId: "ms1", explanationPlan: null }),
+    /propósito explícito/u);
+  for (const invalid of [{}, { purpose: "", prerequisites: [], relations: [], sourceIds: [] }, false]) {
+    const malformed = structuredClone(legacy);
+    malformed.modules[0].lessons[0].microsequences[0].explanationPlan = invalid;
+    assert.throws(() => normalizeCurricularMap(malformed), /propósito explícito/u);
+  }
+});
+
 test("rascunho cresce por ramos e explicita dependência, cobertura e ramo ainda incompletos", () => {
   let value = { audience: "", prerequisites: [], scopeItems: [], modules: [] };
   assert.equal(inspectCurricularMapCompleteness(value).complete, false);
