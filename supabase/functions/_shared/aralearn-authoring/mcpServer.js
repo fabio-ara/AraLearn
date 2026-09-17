@@ -277,6 +277,7 @@ function toolFailure(
   const recovery = projectHumanWriteRecovery(normalized);
   const preflight = projectHumanMaterializationPreflight(normalized);
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
+  const derivableMaterialization = normalized.code === "human_materialization_contextual_calibration_required";
   const publicError = {
     code: retryable
       ? "temporarily_unavailable"
@@ -285,7 +286,7 @@ function toolFailure(
       ? "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo."
       : retryable
       ? "Não consegui concluir esta etapa."
-      : preflight
+      : preflight || derivableMaterialization
         ? "Ainda há uma dependência a resolver antes desta produção."
         : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable,
@@ -305,7 +306,7 @@ function toolFailure(
           : retryable
             ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
             : null;
-  if (preflight) {
+  if (preflight || derivableMaterialization) {
     nextDecision = "Resolva autonomamente tudo que já estiver determinado pelo curso e repita a verificação. Se restar uma escolha que altere o percurso de aprendizagem, consolide as pendências relacionadas, explique ao autor o que precisa ser decidido e por que isso importa, faça uma única pergunta e, após a resposta, retome a produção original.";
   }
   if (normalized.code === "course_write_uncertain") {
