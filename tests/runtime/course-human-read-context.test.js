@@ -341,7 +341,7 @@ test("preparo apresenta diagnóstico e referência antes do repertório extenso 
         return { ...design, parameters: design.parameters.map(parameter => ({ ...parameter, ...applied.get(parameter.parameterId) })) };
       };
       adapter.getCourseSources = async () => ({ items: [{ sourceLinks: [] }], nextCursor: null });
-      const args = { curso: TITLE, parte: 1, concluir: false, plano: [{ microssequencia: "Interfaces", posicao: 1,
+      const args = { curso: TITLE, parte: 1, concluir: false, unidades: [{ microssequencia: "Interfaces", posicao: 1,
         papel: "theory", componentes: [blocked ? "aralearn.resource.missing@1.0.0" : "aralearn.resource.paragraph@1.0.0"],
         resposta: null, feedbackLocal: false, aplicacaoPedagogica: {} }] };
       let response = await channelCall(channel, adapter, "preparar_materializacao", args);
@@ -468,16 +468,16 @@ test("continuação liga tarefa, consulta, curso e revisão; argumentos reordena
 });
 
 test("continuação conserva consulta com objetos aninhados reordenados, mas rejeita listas ou valores alterados", async () => {
-  const args = { curso: TITLE, parte: 1, plano: [{ titulo: "Prática", resposta: { tipo: "escolha", opcoes: ["A", "B"] } }] };
+  const args = { curso: TITLE, parte: 1, unidades: [{ titulo: "Prática", resposta: { tipo: "escolha", opcoes: ["A", "B"] } }] };
   const state = await openHumanReadContinuation({ args, course: COURSE, task: "preparar_materializacao" });
   const first = await paginateHumanReadContext({ text: "x".repeat(20_000) }, { state });
-  const reordered = { curso: TITLE, parte: 1, plano: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Prática" }] };
+  const reordered = { curso: TITLE, parte: 1, unidades: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Prática" }] };
   const resumed = await openHumanReadContinuation({ args: { ...reordered, continuacao: first.continuacao },
     course: COURSE, task: "preparar_materializacao" });
   assert.equal(resumed.o, first.fragmento.fim);
   for (const changed of [
-    { ...reordered, plano: [{ resposta: { opcoes: ["B", "A"], tipo: "escolha" }, titulo: "Prática" }] },
-    { ...reordered, plano: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Outra prática" }] },
+    { ...reordered, unidades: [{ resposta: { opcoes: ["B", "A"], tipo: "escolha" }, titulo: "Prática" }] },
+    { ...reordered, unidades: [{ resposta: { opcoes: ["A", "B"], tipo: "escolha" }, titulo: "Outra prática" }] },
     { curso: TITLE, parte: 1 }
   ]) {
     await assert.rejects(() => openHumanReadContinuation({ args: { ...changed, continuacao: first.continuacao },
