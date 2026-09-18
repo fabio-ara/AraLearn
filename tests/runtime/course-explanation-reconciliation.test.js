@@ -168,3 +168,39 @@ test("escrita de declaração nova recusa localização inexata e cobertura inco
   assert.deepEqual(await reconcileHumanExplanation(value, undefined, context), value,
     "Texto em desenvolvimento pode ser salvo sem inventar uma declaração de cobertura.");
 });
+
+test("ambiguidade devolve candidatos distinguíveis e utilizáveis como seletor", () => {
+  const text = "Verificar o cache evita consultas repetidas.  Verificar o cache custa memória.";
+  const value = reconcile({ title: "Repetição contextual", content: [paragraph("a", text)] });
+  value.reconciliation.entries[0].quote = "Verificar o cache";
+  const inspection = inspect(value);
+  const candidates = inspection.blockers.find(item => item.code === "explanation_reconciliation_locator_stale").candidates;
+  assert.equal(candidates.length, 2);
+  assert.notEqual(candidates[0], candidates[1], "os candidatos precisam ser distinguíveis pelo cliente");
+  for (const candidate of candidates) {
+    const chosen = structuredClone(value);
+    chosen.reconciliation.entries[0].quote = candidate;
+    assert.ok(!inspect(chosen).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"),
+      "o candidato escolhido localiza a passagem exatamente, sem contagem manual");
+  }
+  assert.ok(candidates[0].includes("evita consultas repetidas") && candidates[1].includes("custa memória"),
+    "o contexto devolvido permite escolher semanticamente entre as ocorrências");
+});
+
+test("passagem pendente longa volta fatiada em seletores utilizáveis, sem truncamento cego", () => {
+  const sentence = index => `A relação ${index} entre nome e endereço exige uma consulta verificável. `;
+  const long = Array.from({ length: 80 }, (_, index) => sentence(index + 1)).join("");
+  assert.ok(long.length > 4000, "o caso cobre uma passagem maior que o limite do trecho declarado");
+  const first = long.slice(0, sentence(1).length).trim();
+  const value = reconcile({ title: "Base longa", content: [paragraph("a", long)] },
+    [entry({ resourceId: "a", path: "text", text: first })]);
+  const unmapped = inspect(value).blockers.find(item => item.code === "explanation_reconciliation_unmapped");
+  assert.ok(unmapped, "o restante da folha permanece pendente");
+  assert.ok(unmapped.passages.length >= 2, "a passagem longa é fatiada em vez de cortada em silêncio");
+  for (const passage of unmapped.passages) {
+    const chosen = structuredClone(value);
+    chosen.reconciliation.entries.push({ ...chosen.reconciliation.entries[0], quote: passage, prefix: null, suffix: null });
+    assert.ok(!inspect(chosen).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"),
+      "cada passagem pendente é um seletor literal único");
+  }
+});

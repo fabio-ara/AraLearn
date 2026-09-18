@@ -20,7 +20,9 @@ const normalizedWhitespace = value => value.replace(/\s+/gu, " ").trim();
 // selector with the current base and derives the literal range. Offsets,
 // context strings and exact copies are never the author's obligation, and a
 // real ambiguity returns explicit candidates in the same response.
-export const RECONCILIATION_PASSAGE_TEXT_LIMIT = 1000;
+// Alinhado ao limite do trecho declarado: a resposta devolve seletores
+// diretamente utilizáveis, sem truncamento cego de passagens pendentes.
+export const RECONCILIATION_PASSAGE_TEXT_LIMIT = 4000;
 export const RECONCILIATION_PASSAGE_LIMIT = 12;
 export const RECONCILIATION_CANDIDATE_LIMIT = 8;
 
@@ -62,10 +64,49 @@ function literalSpan(index, [start, end]) {
   return [index.map[start], index.ends[end - 1]];
 }
 
+function occurrenceCount(text, value) {
+  let found = 0;
+  for (let cursor = text.indexOf(value); cursor >= 0; cursor = text.indexOf(value, cursor + 1)) {
+    if (++found > 1) return found;
+  }
+  return found;
+}
+
+// Cresce a janela até o trecho ser único na base corrente. O resultado é um
+// seletor literal que o próprio cliente pode reenviar: escolher entre
+// ocorrências deixa de exigir contagem manual ou contexto fabricado.
+function uniqueExcerpt(text, [start, end]) {
+  let from = start, to = end;
+  let value = text.slice(from, to);
+  if (value && occurrenceCount(text, value) === 1) return value;
+  let step = 32;
+  while (to - from < RECONCILIATION_PASSAGE_TEXT_LIMIT && (to < text.length || from > 0)) {
+    const room = RECONCILIATION_PASSAGE_TEXT_LIMIT - (to - from);
+    const grow = Math.max(1, Math.min(step, room));
+    if (to < text.length) to = Math.min(text.length, to + grow);
+    else from = Math.max(0, from - grow);
+    value = text.slice(from, to);
+    if (value && occurrenceCount(text, value) === 1) return value;
+    step *= 2;
+  }
+  return value;
+}
+
 function passageCandidates(text, spans) {
-  // A posição na lista é a ocorrência a informar; o texto é o trecho literal.
-  return spans.slice(0, RECONCILIATION_CANDIDATE_LIMIT)
-    .map(([start, end]) => text.slice(start, end).slice(0, RECONCILIATION_PASSAGE_TEXT_LIMIT));
+  return spans.slice(0, RECONCILIATION_CANDIDATE_LIMIT).map(span => uniqueExcerpt(text, span));
+}
+
+function pendingPassages(text, segments) {
+  const values = [];
+  for (const [start, end] of segments) {
+    let from = start;
+    while (from < end) {
+      const to = Math.min(end, from + RECONCILIATION_PASSAGE_TEXT_LIMIT);
+      values.push(uniqueExcerpt(text, [from, to]));
+      from = to;
+    }
+  }
+  return values;
 }
 
 export function locateExplanationPassage(text, selector = {}, { preserveMarkup = false } = {}) {
@@ -208,17 +249,19 @@ export function inspectExplanationReconciliation(explanation, { contentBasis, an
     const covered = [...rangesByTarget.get(`${target.resourceId}\0${target.path}`)]
       .sort((left, right) => left[0] - right[0]);
     const passages = [];
-    const pending = text => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      passages.push(trimmed.slice(0, RECONCILIATION_PASSAGE_TEXT_LIMIT));
-    };
+    const segments = [];
     let offset = 0;
     for (const [from, end] of covered) {
-      if (from > offset) pending(target.text.slice(offset, from));
+      if (from > offset) segments.push([offset, from]);
       offset = Math.max(offset, end);
     }
-    if (offset < target.text.length) pending(target.text.slice(offset));
+    if (offset < target.text.length) segments.push([offset, target.text.length]);
+    for (const [from, end] of segments) {
+      const raw = target.text.slice(from, end);
+      const leading = raw.length - raw.trimStart().length;
+      const trailing = raw.length - raw.trimEnd().length;
+      if (raw.trim()) passages.push(...pendingPassages(target.text, [[from + leading, end - trailing]]));
+    }
     if (passages.length) add("explanation_reconciliation_unmapped", "Há conteúdo da base sem classificação inspecionável.",
       { resourceId: target.resourceId, path: target.path, passages: passages.slice(0, RECONCILIATION_PASSAGE_LIMIT),
         ...(passages.length > RECONCILIATION_PASSAGE_LIMIT ? { pending: passages.length } : {}) });

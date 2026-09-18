@@ -365,7 +365,8 @@ const EXPLANATION_RECONCILIATION_SCHEMA = Object.freeze({ type: "array", minItem
         description: "Trecho curto e distintivo da passagem. Omita para classificar a folha inteira." },
       ocorrencia: { type: "integer", minimum: 1, maximum: 512,
         description: "Escolha explícita quando a resposta devolver candidatos." },
-      prefixo: { type: "string", maxLength: 500 }, sufixo: { type: "string", maxLength: 500 },
+      prefixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
+      sufixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
       papel: { type: "string", enum: ["introduced", "established", "revisited", "preview", "example", "support", "deferred"] },
       motivo: { type: "string", minLength: 1, maxLength: 4000 },
       ideias: { type: "array", maxItems: 64, items: HUMAN_REFERENCE_SCHEMA },
@@ -1085,7 +1086,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "7.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:6960c801ea09ff6698bb2a0abee07bb06dac8f7105e6daa6762f24b83491e2cb";
+  "sha256:385b4ff74e1c99b8c3ab1a725eecd54f4de8f02e7b46f59bff7feced70de1782";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
