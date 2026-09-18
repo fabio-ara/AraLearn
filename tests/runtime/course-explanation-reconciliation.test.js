@@ -8,6 +8,7 @@ import { explanationReconciliationTargets, inspectExplanationReconciliation, nor
 import { chartPackage } from "../../src/resources/packages/chart/index.js";
 import { graphPackage } from "../../src/resources/packages/graph/index.js";
 import { applyExplanationTextFields } from "../../src/ui/CourseMicrosequenceReview.js";
+import { reconcileHumanExplanation } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 
 const basis = value => createHash("sha256").update(canonicalAuthoringValue({ title: value.title, content: value.content })).digest("hex");
 const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
@@ -101,12 +102,15 @@ test("conteúdo alterado conserva mapa antigo para reparo e localizador ambíguo
   assert.ok(inspect(repeated).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"));
 });
 
-test("edição manual preserva a declaração antiga como base reparável sem recertificá-la", () => {
+test("edição manual deixa rascunho legível sem anexar declaração de outro texto", () => {
   const before = reconcile({ title: "Identidades", content: [paragraph("a", "Uma ideia antiga.")] });
   const changed = applyExplanationTextFields(before, [{ targetId: "content:a", path: "text", value: "Uma ideia nova." }]);
-  assert.deepEqual(changed.reconciliation, before.reconciliation);
-  assert.ok(inspect(changed).blockers.some(item => item.code === "explanation_reconciliation_stale"));
+  assert.equal(Object.hasOwn(changed, "reconciliation"), false);
+  assert.equal(changed.content[0].data.text, "Uma ideia nova.");
+  assert.ok(inspect(changed).blockers.some(item => item.code === "explanation_reconciliation_required"));
   assert.equal(before.content[0].data.text, "Uma ideia antiga.");
+  assert.deepEqual(applyExplanationTextFields(before, []).reconciliation, before.reconciliation,
+    "Não editar o texto tampouco apaga ou recertifica a declaração antiga.");
 });
 
 test("índices de seleção UTF-16 não omitem texto depois de caracteres suplementares", () => {
@@ -139,4 +143,22 @@ test("limites e localizadores da reconciliação usam o contrato seguro de ocorr
     { ...value, entries: [{ ...value.entries[0], analysisUnitIds: [] }] },
     { ...value, entries: [{ ...value.entries[0], reason: " " }] }]) assert.throws(() => normalizeExplanationReconciliation(invalid));
   assert.deepEqual(normalizeExplanationReconciliation(value), value);
+});
+
+test("escrita de declaração nova recusa localização inexata e cobertura incompleta antes de persistir", async () => {
+  const value = { title: "Base corrente", content: [paragraph("a", "Uma ideia. Outra relação.")] };
+  const declaration = { recurso: 1, folha: "text", trecho: value.content[0].data.text, papel: "introduced",
+    ideias: ["Ideia A"], requisitos: [], motivo: "Este trecho ensina a ideia central." };
+  const context = { plan: { plan: { instructionalAnalysisUnits: [{ id: "idea-a", statement: "Ideia A" }] } } };
+  const valid = await reconcileHumanExplanation(value, [declaration], context);
+  assert.deepEqual({ title: valid.title, content: valid.content }, value);
+  assert.equal(inspect(valid).ready, true);
+  for (const trecho of ["Trecho que não existe.", "Uma ideia."]) {
+    await assert.rejects(() => reconcileHumanExplanation(value, [{ ...declaration, trecho }], context),
+      { code: "invalid_explanation_reconciliation" });
+  }
+  await assert.rejects(() => reconcileHumanExplanation(value, [{ ...declaration, ideias: ["Ideia ausente"] }], context),
+    { code: "human_reference_not_found" });
+  assert.deepEqual(await reconcileHumanExplanation(value, undefined, context), value,
+    "Texto em desenvolvimento pode ser salvo sem inventar uma declaração de cobertura.");
 });

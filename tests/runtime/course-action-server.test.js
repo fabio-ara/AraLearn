@@ -596,12 +596,16 @@ test("Actions apresenta falha de calibração sem narrar a maquinaria", async ()
   assert.equal(response.status, 409);
   const payload = await response.json();
   assert.equal(
+    payload.error.message,
+    "Ainda há uma dependência a resolver antes desta produção."
+  );
+  assert.match(
     payload.nextDecision,
-    "Inclua a calibração contextual nas unidades e refaça a produção da parte."
+    /Resolva autonomamente.*percurso de aprendizagem/iu
   );
   assert.doesNotMatch(
     `${payload.error.message} ${payload.nextDecision}`,
-    /ferramenta|campo|schema|contrato|servidor|silenciosamente|aprovad/iu
+    /human_materialization|calibra[cç][aã]o|ferramenta|campo|schema|contrato|servidor|aprovad/iu
   );
 });
 
@@ -727,7 +731,10 @@ test("Actions devolve todos os bloqueios previsíveis sem transportar conteúdo 
   assert.equal(payload.error.details.preflight.blockers.length, 24);
   assert.deepEqual(payload.error.details.preflight.blockers.at(-1), {
     code: "human_reference_not_found", message: "Vínculo persistido ausente 24.", unit: 24, microsequence: "DNS" });
-  assert.match(payload.nextDecision, /preparar_materializacao/u);
+  assert.equal(payload.error.message, "Ainda há uma dependência a resolver antes desta produção.");
+  assert.match(payload.nextDecision, /Resolva autonomamente.*percurso de aprendizagem/iu);
+  assert.doesNotMatch(payload.nextDecision,
+    /human_materialization|preparar_materializacao|materializar_parte|blocker|preflight|state/iu);
   assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL|rawSnapshot|reconciliations/u);
 });
 

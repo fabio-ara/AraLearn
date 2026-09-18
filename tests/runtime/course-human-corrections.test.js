@@ -338,6 +338,71 @@ test("correção da explicação persiste reconciliação humana ligada à base 
       destinationMicrosequenceId: null, reason: "Este trecho ensina a relação central." }] });
 });
 
+test("nova reconciliação incompleta é recusada antes de qualquer escrita", async () => {
+  const adapter = adapterFixture();
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const result = await readPlan();
+    result.plan.instructionalAnalysisUnits = [{ id: "idea-dns", statement: "DNS resolve nomes" }];
+    result.plan.evidenceRequirements = [];
+    return result;
+  };
+  const { title, content } = correctedContent("Explicação incompleta");
+  await assert.rejects(() => applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    explanations: [{
+      microssequencia: "Microssequência A",
+      conteudo: { title, content },
+      reconciliacao: [{
+        recurso: 1,
+        folha: "text",
+        trecho: "Conteúdo corrigido",
+        papel: "introduced",
+        ideias: ["DNS resolve nomes"],
+        requisitos: [],
+        motivo: "Classificação parcial que não cobre a base."
+      }]
+    }]
+  }), { code: "invalid_explanation_reconciliation" });
+  assert.deepEqual(adapter.commits, []);
+});
+
+test("alteração apenas de fontes preserva literalmente a reconciliação da mesma base", async () => {
+  const adapter = adapterFixture();
+  const { title, content } = correctedContent("Base já reconciliada");
+  const reconciliation = {
+    contract: "aralearn.explanation-reconciliation.v1",
+    contentBasis: createHash("sha256").update(canonicalAuthoringValue({ title, content })).digest("hex"),
+    entries: [{
+      resourceId: content[0].id,
+      path: "text",
+      quote: content[0].data.text,
+      prefix: null,
+      suffix: null,
+      role: "support",
+      analysisUnitIds: [],
+      evidenceRequirementIds: [],
+      destinationMicrosequenceId: null,
+      reason: "Contexto já classificado."
+    }]
+  };
+  const original = adapter.listCourseEntities;
+  adapter.listCourseEntities = async () => {
+    const page = await original();
+    page.items[0].content.explanation = { title, content, reconciliation };
+    return page;
+  };
+  await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content }, fontes: [] }]
+  });
+  assert.deepEqual(adapter.commits[0].upserts[0].content.explanation.reconciliation, reconciliation);
+});
+
 test("correção preserva response.open legado e exige prática avaliável com feedback ao substituir", async () => {
   const adapter = adapterFixture();
   const legacy = { ...correctedContent("Prática anterior"), role: "practice", response: {

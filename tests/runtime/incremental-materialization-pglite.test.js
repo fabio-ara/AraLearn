@@ -11,6 +11,7 @@ const [materializer, globalPlan, cutover, explanations, appliedBasis, forms, pra
   "20260910054749_contextual_recorded_practice_integrity.sql", "20260905125617_reorganize_authoring_parts.sql",
   "20260916031133_incremental_materialization.sql"
 ].map(read));
+const focalScopeMigration = await read("20260917232000_focal_materialization_dependency_scope.sql");
 const discriminatorCorrection = await read("20260905095110_correct_applied_design_discriminator.sql");
 const originMigration = await read("20260916030333_editorial_interventions_and_observation_files.sql");
 const copyMigration = await read("20260905145236_independent_course_copies.sql");
@@ -141,6 +142,7 @@ async function fixture() {
   await db.exec(discriminatorCorrection);
   await db.exec(block(originMigration, "origin"));
   await db.exec(migration);
+  await db.exec(focalScopeMigration);
   return db;
 }
 async function write(db, units, placements, { complete = false, revision = 1, request = "fragment-0001", explanations = [], hash = "a".repeat(64), targetPlanItems = targets } = {}) {
@@ -170,6 +172,60 @@ test("o acumulado pode ultrapassar 64 unidades e mantém exigências da base apl
   } finally { await db.close(); }
 });
 
+test("fragmento ignora metadados incompletos de unidade preservada independente", async () => {
+  const db = await fixture();
+  try {
+    await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content)
+      values($1,'microsequence','micro-legacy','lesson','lesson',1,'{"title":"Legado independente","dependsOn":[]}'::jsonb)`, [COURSE]);
+    await db.query("insert into private.course_authoring_part_didactic_microsequences values($1,$2,'micro-legacy')", [COURSE, PART]);
+    await db.query(`insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values($1,'study_unit','legacy-u','microsequence','micro-legacy',1,
+      '{"title":"Unidade antiga sem metadados de desenho","role":"theory","content":[]}'::jsonb)`, [COURSE]);
+
+    const focal = unit("unit-a", 1, { introduced: true, developedForms: ["plain_definition"] });
+    const placements = [placement(focal), {
+      studyUnitId: "legacy-u",
+      didacticMicrosequenceId: "micro-legacy",
+      position: 1
+    }];
+    const partial = await write(db, [focal], placements, { request: "focal-independent-001" });
+    assert.equal(partial.changed, true);
+
+    await assert.rejects(write(db, [focal], placements, {
+      complete: true,
+      revision: partial.courseRevision,
+      request: "complete-with-incomplete-legacy-001",
+      targetPlanItems: [...targets, {
+        didacticMicrosequenceId: "micro-legacy",
+        instructionalAnalysisUnitIds: [],
+        evidenceRequirementIds: []
+      }]
+    }));
+  } finally { await db.close(); }
+});
+
+test("fragmento bloqueia dependência pedagógica preservada realmente afetada", async () => {
+  const db = await fixture();
+  try {
+    const preserved = unit("legacy-dependent", 1, {
+      introduced: true,
+      developedForms: ["plain_definition"]
+    });
+    await db.query(`insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application
+    ) values($1,'study_unit',$2,'microsequence','micro',1,$3,$4,$5)`,
+    [COURSE, preserved.studyUnitId, preserved.content, preserved.designSnapshot, preserved.designApplication]);
+
+    const focal = unit("unit-new", 2, {
+      introduced: true,
+      developedForms: ["plain_definition"]
+    });
+    await assert.rejects(write(db, [focal], [placement(preserved), placement(focal)], {
+      request: "focal-affected-001"
+    }), /repete uma ideia já introduzida/u);
+  } finally { await db.close(); }
+});
 test("a parte aceita os mesmos 64 alvos e explicações do contrato de autoria", async () => {
   const db = await fixture();
   try {

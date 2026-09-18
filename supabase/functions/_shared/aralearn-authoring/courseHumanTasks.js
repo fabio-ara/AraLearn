@@ -226,7 +226,7 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
 const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
-  description: 'Repita a tarefa com os mesmos argumentos iniciais, inclusive plano/explicacoes, acrescentando esta continuação opaca.' });
+  description: 'Repita a leitura com os mesmos argumentos iniciais e acrescente esta continuação.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -380,7 +380,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
   required: Object.freeze([
-    "microssequencia", "posicao", "conteudo", "configuracao", "aplicacaoPedagogica"
+    "microssequencia", "posicao", "conteudo", "aplicacaoPedagogica"
   ]),
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -489,23 +489,13 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   })
 });
 
-const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
-  description: "Intenções compactas das unidades, sem prosa final. Reutilize as mesmas aplicações, componentes e configuração na escrita.",
-  items: { type: "object", additionalProperties: false,
-    required: ["microssequencia", "posicao", "papel", "componentes", "resposta", "feedbackLocal", "aplicacaoPedagogica"],
-    properties: { microssequencia: HUMAN_REFERENCE_SCHEMA, unidade: MATERIALIZATION_UNIT_SCHEMA.properties.unidade,
-      posicao: MATERIALIZATION_UNIT_SCHEMA.properties.posicao,
-      papel: { type: "string", enum: ["theory", "practice"] },
-      componentes: { type: "array", minItems: 1, maxItems: 128, uniqueItems: true, items: { type: "string", maxLength: 240 },
-        description: "Referências exatas pacote@versão de consultar_componentes; não use rótulos nem instâncias." },
-      resposta: { type: ["string", "null"], maxLength: 240,
-        description: "Referência pacote@versão da resposta avaliável instalada; null para teoria." },
-      feedbackLocal: { type: "boolean", description: "A prática produzirá feedback explicativo avaliado no dispositivo, sem rede." },
-      configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
-      aplicacaoPedagogica: MATERIALIZATION_UNIT_SCHEMA.properties.aplicacaoPedagogica,
-      fontes: { type: "array", maxItems: 32, items: { type: "object", additionalProperties: false,
-        required: ["fonte", "relacao", "papeis"], properties: { fonte: HUMAN_REFERENCE_SCHEMA,
-          relacao: SOURCE_LINK_PROPERTIES.relacao, papeis: SOURCE_LINK_PROPERTIES.papeis, ancoras: SOURCE_LINK_PROPERTIES.ancoras } } } } } });
+const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({
+  type: "array",
+  minItems: 1,
+  maxItems: 64,
+  items: MATERIALIZATION_UNIT_SCHEMA,
+  description: "As mesmas unidades candidatas usadas na escrita; o preparo deriva componentes, resposta, feedback, fontes e configuração aplicada do próprio candidato."
+});
 
 const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
   type: "object",
@@ -670,10 +660,10 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Confere conjuntamente a base reconciliada, repertório e vínculos persistidos, requisitos, formas, componentes, fontes e cobertura. Informe plano compacto; só ready autoriza compor a escrita com os mesmos inputs. Não use materializar_parte para descobrir pré-requisitos.",
+    "Confere as mesmas unidades candidatas que serão escritas, suas bases e dependências pedagógicas. O preparo não mantém um segundo resumo estrutural das unidades.",
     inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
-      plano: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: true }, explicacoes: EXPLANATIONS_SCHEMA,
-      continuacao: READ_CONTINUATION_SCHEMA }, ["curso", "parte"]),
+      unidades: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
+    }, ["curso", "parte", "unidades"]),
     { readOnly: true }
   ),
   task(
@@ -833,8 +823,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
       explicacoes: EXPLANATIONS_SCHEMA,
-      referenciaPreparo: { type: "string", pattern: "^materialization-v1:[a-f0-9]{64}$" },
-      concluir: { type: "boolean", default: true },
+      concluir: { type: "boolean", default: false },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
@@ -1090,9 +1079,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "5.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "6.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:19d4c9aa8c97fed174d67887bb008e05b9341535d2ef68331f4e1827c47895f5";
+  "sha256:5f0cf3e847c63276db41af4d3cb45e1fcb1ec0e49d3574a0227412e3d33ed004";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2536,226 +2525,6 @@ function projectConfiguration(read) {
   };
 }
 
-function projectFocalPlanItems(items, targetIds, label) {
-  if (!Array.isArray(items) || !Array.isArray(targetIds)) {
-    fail("course_service_unavailable", `O inventário focal de ${label} está incompleto.`, null, 503);
-  }
-  const itemById = new Map(items.map((item, index) => [item?.id, {
-    item,
-    position: index + 1
-  }]));
-  return targetIds.map((targetId) => {
-    const indexed = itemById.get(targetId);
-    const item = indexed?.item;
-    if (!item ||
-        typeof item.statement !== "string" || !item.statement.trim()) {
-      fail("course_service_unavailable", `O inventário focal de ${label} divergiu do plano.`, null, 503);
-    }
-    return {
-      posicao: indexed.position,
-      ideia: item.statement,
-      ...(typeof item.description === "string" && item.description.trim()
-        ? { descricao: item.description }
-        : {})
-    };
-  });
-}
-
-function projectRequiredCurriculumCoverage(plan, microsequenceId) {
-  const items = Array.isArray(plan?.curriculumScopeItems)
-    ? plan.curriculumScopeItems
-    : [];
-  return items.flatMap((item, index) => {
-    const belongsToMicrosequence = Array.isArray(item?.curriculumTargets) &&
-      item.curriculumTargets.some((target) =>
-        Array.isArray(target?.didacticMicrosequenceIds) &&
-        target.didacticMicrosequenceIds.includes(microsequenceId));
-    if (!belongsToMicrosequence) return [];
-    if (typeof item.statement !== "string" || !item.statement.trim()) {
-      fail(
-        "course_service_unavailable",
-        "A cobertura curricular focal está incompleta.",
-        null,
-        503
-      );
-    }
-    return [{ posicao: index + 1, item: item.statement }];
-  });
-}
-
-function hasEffectiveStudyUnitOverride(read) {
-  return (Array.isArray(read?.parameters) && read.parameters.some((parameter) =>
-    parameter?.effectiveAssignment?.sourceScope?.kind === "study_unit")) ||
-    (Array.isArray(read?.guidance?.effectiveAssignments) &&
-      read.guidance.effectiveAssignments.some((assignment) =>
-        assignment?.sourceScope?.kind === "study_unit")) ||
-    read?.componentPolicy?.effectiveAssignment?.sourceScope?.kind === "study_unit";
-}
-
-function curriculumMicrosequenceOrder(plan) {
-  const order = new Map();
-  for (const moduleValue of plan?.curriculum?.modules ?? []) {
-    for (const lesson of moduleValue?.lessons ?? []) {
-      for (const microsequence of lesson?.microsequences ?? []) {
-        if (typeof microsequence?.id !== "string" || !microsequence.id ||
-            order.has(microsequence.id)) {
-          fail(
-            "course_service_unavailable",
-            "A ordem das microssequências no mapa curricular é inválida.",
-            null,
-            503
-          );
-        }
-        order.set(microsequence.id, order.size);
-      }
-    }
-  }
-  return order;
-}
-
-function establishedAnalysisUnitsInRange(plan, order, afterOrAt, before) {
-  return (Array.isArray(plan?.instructionalAnalysisUnits)
-    ? plan.instructionalAnalysisUnits
-    : []).map((item, index) => ({ ...item, currentPosition: index + 1 }))
-    .filter((item) => {
-      if (!item?.introducedAt ||
-          typeof item.introducedAt !== "object" ||
-          Array.isArray(item.introducedAt)) return false;
-      const introducedOrder = order.get(item.introducedAt.didacticMicrosequenceId);
-      if (!Number.isSafeInteger(introducedOrder)) {
-        fail(
-          "course_service_unavailable",
-          "A introdução de uma ideia não pertence ao mapa curricular.",
-          null,
-          503
-        );
-      }
-      return introducedOrder >= afterOrAt && introducedOrder < before;
-    });
-}
-
-function humanAnalysisUnits(items) {
-  return items.map((item) => ({
-    posicao: item.currentPosition,
-    ideia: item.statement,
-    ...(typeof item.description === "string" && item.description.trim()
-      ? { descricao: item.description }
-      : {})
-  }));
-}
-
-function materializationRepertoire(plan, part) {
-  const order = curriculumMicrosequenceOrder(plan);
-  const currentOrders = (part?.microsequences ?? []).map(({ id }) => order.get(id));
-  if (!currentOrders.length || currentOrders.some((value) => !Number.isSafeInteger(value))) {
-    fail(
-      "course_service_unavailable",
-      "A parte não corresponde ao mapa curricular corrente.",
-      null,
-      503
-    );
-  }
-  const firstOrder = Math.min(...currentOrders);
-  return {
-    order,
-    firstOrder,
-    establishedBeforePart: establishedAnalysisUnitsInRange(
-      plan,
-      order,
-      Number.NEGATIVE_INFINITY,
-      firstOrder
-    )
-  };
-}
-
-function projectMaterializationPart(planRead, part, designReads, unitDesignReads = []) {
-  const plan = planRead?.plan ?? {};
-  const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
-  const partPosition = Number(part?.position);
-  if (!microsequences.length || !Array.isArray(designReads) ||
-      designReads.length !== microsequences.length ||
-      !Number.isSafeInteger(partPosition) || partPosition < 0) {
-    fail("course_service_unavailable", "O recorte focal da parte está incompleto.", null, 503);
-  }
-  const repertoire = materializationRepertoire(plan, part);
-  return {
-    posicao: partPosition + 1,
-    titulo: part.title,
-    intencao: part.intent,
-    repertorioDisponivelDoCurso: {
-      ideias: projectFocalPlanItems(
-        plan.instructionalAnalysisUnits,
-        (plan.instructionalAnalysisUnits ?? []).map(({ id }) => id),
-        "unidades de análise"
-      ),
-      requisitosDeEvidencia: projectFocalPlanItems(
-        plan.evidenceRequirements,
-        (plan.evidenceRequirements ?? []).map(({ id }) => id),
-        "requisitos de evidência"
-      )
-    },
-    ideiasEstabelecidas: humanAnalysisUnits(repertoire.establishedBeforePart),
-    microssequencias: microsequences.map((microsequence, index) => {
-      const design = designReads[index];
-      const targets = design?.targetPlanItems;
-      const configuration = projectConfiguration(design);
-      if (typeof microsequence.goal !== "string" || !microsequence.goal.trim()) {
-        fail(
-          "course_service_unavailable",
-          "A finalidade de uma microssequência divergiu do planejamento.",
-          null,
-          503
-        );
-      }
-      const existingUnitOverrides = unitDesignReads
-        .filter((entry) => entry.microsequenceId === microsequence.id &&
-          hasEffectiveStudyUnitOverride(entry.design))
-        .map((entry) => {
-          const unitConfiguration = projectConfiguration(entry.design);
-          return {
-            posicao: Number(entry.unit.studyUnit.position),
-            titulo: entry.unit.studyUnit.title,
-            configuracao: unitConfiguration
-          };
-        })
-        .sort((left, right) => left.position - right.position);
-      return {
-        posicao: Number(microsequence.productionPosition ?? microsequence.position ?? index) + 1,
-        titulo: microsequence.title,
-        objetivo: microsequence.goal,
-        curriculo: {
-          modulo: microsequence.curriculumPath?.moduleTitle ?? null,
-          licao: microsequence.curriculumPath?.lessonTitle ?? null
-        },
-        coberturaObrigatoria: projectRequiredCurriculumCoverage(
-          plan,
-          microsequence.id
-        ),
-        ideiasPlanejadas: projectFocalPlanItems(
-          plan.instructionalAnalysisUnits,
-          targets?.instructionalAnalysisUnitIds,
-          "unidades de análise"
-        ),
-        ideiasEstabelecidasDesdeOInicioDaParte: humanAnalysisUnits(
-          establishedAnalysisUnitsInRange(
-            plan,
-            repertoire.order,
-            repertoire.firstOrder,
-            repertoire.order.get(microsequence.id)
-          )
-        ),
-        requisitosDeEvidencia: projectFocalPlanItems(
-          plan.evidenceRequirements,
-          targets?.evidenceRequirementIds,
-          "requisitos de evidência"
-        ),
-        configuracao: configuration,
-        ajustesExistentesDasUnidades: existingUnitOverrides
-      };
-    })
-  };
-}
-
 HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineAt }) => {
   if (args.titulo === undefined) {
     exactFields(args, new Set(["titulo", "continuacao"]));
@@ -2890,60 +2659,46 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
-  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_materializacao' });
   const part = resolved.part;
-  const microsequences = Array.isArray(part?.microsequences) ? part.microsequences : [];
-  const [design, existingPage] = await Promise.all([
-    Promise.all(microsequences.map((microsequence) => adapter.getCourseDesign({
-      principal,
-      courseId: resolved.course.id,
-      scopeKind: "didactic_microsequence",
-      scopeRef: microsequence.id,
-      childLimit: 32,
-      childCursor: null,
-      deadlineAt
-    }))),
-    listUnitsForContext({ adapter, principal, resolved, deadlineAt })
-  ]);
-  const unitDesign = await Promise.all(existingPage.items.map(async (unit) => ({
-    unit,
-    microsequenceId: unit?.curriculumPath?.didacticMicrosequence?.id,
-    design: await adapter.getCourseDesign({
-      principal,
-      courseId: resolved.course.id,
-      scopeKind: "study_unit",
-      scopeRef: unit.studyUnit.id,
-      childLimit: 1,
-      childCursor: null,
-      deadlineAt
-    })
-  })));
-  const projectedPart = projectMaterializationPart(
-    resolved.plan,
-    part,
-    design,
-    unitDesign
-  );
-  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt });
-  const [process, observations] = await Promise.all([
-    currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null }),
-    readObservations({ adapter, principal, resolved, args: { ...args, somenteAbertas: true }, deadlineAt,
-      scopeUnits: existingPage.items, scopeMicrosequences: microsequences })
-  ]);
-  const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context: resolved,
-    planUnits: args.plano ?? [], explanations: args.explicacoes ?? [], complete: args.concluir !== false, deadlineAt });
-  if (process.exigeConciliacao) {
-    preflight.state = "blocked"; preflight.referencia = null;
-    preflight.blockers.push({ code: "authoring_process_conflict", message: "Resolva as condições conflitantes do processo antes de produzir." });
-  }
-  return result(`Preparei o recorte focal da parte ${Number(part.position) + 1}: ${part.title}.`, {
-    deepLink: null,
-    nextDecision: null,
-    context: await paginateHumanReadContext(withoutTechnicalState({
-      preflight, parte: projectedPart,
-      explicacoes: explanations, observations, ...process
-    }), { state: continuation })
+  const process = await currentAuthoringProcessContext({
+    adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null
   });
+  const preflight = await preflightHumanCourseMaterialization({
+    adapter,
+    principal,
+    context: resolved,
+    planUnits: safeClone(args.unidades, "unidades", 480 * 1024),
+    explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024),
+    complete: args.concluir === true,
+    deadlineAt
+  });
+  if (process.exigeConciliacao) {
+    preflight.state = "blocked";
+    preflight.referencia = null;
+    preflight.blockers.push({
+      code: "authoring_process_conflict",
+      message: "Há condições autorais incompatíveis no recorte que precisam de uma decisão antes de produzir."
+    });
+  }
+  const ready = preflight.state === "ready";
+  return result(
+    ready
+      ? "A produção solicitada está coerente com o percurso e pode ser salva."
+      : "Ainda há uma dependência a resolver antes desta produção.",
+    {
+      deepLink: null,
+      nextDecision: null,
+      context: withoutTechnicalState({
+        preflight,
+        parte: {
+          posicao: Number(part.position) + 1,
+          titulo: part.title,
+          intencao: part.intent
+        },
+        ...process
+      })
+    }
+  );
 };
 
 HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
@@ -3276,7 +3031,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
     if (inspected?.status === "ok") {
       const definition = inspected.definition;
       return result("Li os detalhes de uso do componente escolhido.", {
-        nextDecision: "Este contrato descreve uma instância. Em materializar_parte, conteudo exige title, role, content, response, feedback e topics. Uma prática exige resposta avaliável e recurso explicativo em feedback; o retorno das alternativas não substitui esse recurso.",
+        nextDecision: "Este contrato descreve uma instância. Ao produzir a unidade, o conteúdo precisa de título, função didática, recursos, resposta quando aplicável, feedback e tópicos. Uma prática exige resposta avaliável e feedback explicativo local; o retorno das alternativas não substitui esse feedback.",
         context: {
           componentAuthoringContract: {
             referencia: `${definition.package}@${definition.version}`,
@@ -3476,7 +3231,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
-    preparationReference: args.referenciaPreparo ?? null, complete: args.concluir !== false,
+    complete: args.concluir === true,
     units: safeClone(args.unidades, "unidades", 480 * 1024),
     explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },

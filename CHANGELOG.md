@@ -9,6 +9,20 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.81] - 2026-09-17
+
+### Melhorado
+
+- a produção focal de conteúdo valida e grava apenas o alvo e as dependências pedagógicas reais; unidades preservadas de microssequências independentes da mesma parte deixam de exigir manutenção ou nova revisão;
+- escolhas já determinadas pelo curso, inclusive a calibração contextual derivável, são resolvidas durante a preparação e a gravação, sem etapa persistente nem instrução manual;
+- as orientações da autoria em MCP e Actions descrevem a decisão pedagógica em linguagem natural, sem expor operações, códigos, estados internos ou referências opacas, e consolidam os impedimentos relacionados em uma única pergunta com retomada automática.
+
+### Corrigido
+
+- a declaração de reconciliação de uma explicação deixa de acompanhar o texto quando ele muda: a edição remove a declaração anterior e a nova escrita é validada contra o conteúdo salvo antes de persistir;
+- a produção parcial aceita um recorte do lote da parte, e pendências de unidades independentes não bloqueiam a conclusão do alvo, preservando conteúdo, fontes e metadados das unidades omitidas;
+- a verificação da nova produção confere as relações reais do alvo: repetir uma ideia já introduzida no percurso, contradizer uma forma já desenvolvida para a mesma ideia ou repetir uma oportunidade de prática continuam bloqueados.
+
 ## [0.0.80] - 2026-09-17
 
 ### Corrigido
