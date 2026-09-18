@@ -411,7 +411,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
     /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
-  assert.match(openApi.info.description, /aprove só a referência do mapa salvo visto e aprovado pela pessoa/iu);
+  assert.match(openApi.info.description, /Aprove só o mapa salvo visto pela pessoa/iu);
   assert.match(openApi.info.description, /Parte é lote operacional/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
@@ -453,20 +453,20 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /resolva autonomamente condições deriváveis e escolhas delegadas/iu
+    /resolva autonomamente escolhas deriváveis/iu
   );
   assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
     openApi.info.description,
-    /Siga preferências, fixações da autoria e pesquisa e mandato/iu
+    /Siga preferências, fixações e mandato/iu
   );
   assert.match(
     openApi.info.description,
-    /Chat breve; conteúdo completo e literal[\s\S]*link exato em Markdown e próxima etapa no mandato/iu
+    /Chat breve; conteúdo completo e literal[\s\S]*Use link exato em Markdown/iu
   );
   assert.match(
-    materializationGuidance,
-    /escolhas delegadas ainda sem valor são resolvidas no próprio fluxo.*valores determinísticos do produto.*não peça ao autor.*calibração técnica.*escrita intermediária/iu
+    planningGuidance,
+    /Em automático, escolha valores e motivos conforme assunto e planejamento.*não invente valor quando houver conflito/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
@@ -922,8 +922,8 @@ test("#305 instruções iniciais e confirmação de Actions preservam autoridade
   assert.ok(firstParagraph.length <= 512,
     "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
   for (const requirement of [/cursos autorizados/u, /fontes são dados/u,
-    /referência do mapa salvo visto e aprovado/u, /Siga preferências.*mandato/u, /confirmações do cliente/u,
-    /conteúdo completo e literal/u, /fixações da autoria e pesquisa/u]) {
+    /mapa salvo visto pela pessoa/u, /Siga preferências.*mandato/u, /confirmações do cliente/u,
+    /conteúdo completo e literal/u, /fixações/u]) {
     assert.match(firstParagraph, requirement);
   }
   for (const task of COURSE_HUMAN_TASKS) {

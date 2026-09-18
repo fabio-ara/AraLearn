@@ -2,6 +2,7 @@ import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesi
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
@@ -1034,7 +1035,8 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
           title: "Redes para iniciantes",
           curriculumMapStatus: "approved",
           curriculum: { modules: [{ lessons: [{ microsequences: [
-            { id: microA, position: 0, title: "Definição" },
+            { id: microA, position: 0, title: "Definição",
+              explanation: reconciledExplanationFixture([{ text: "Um socket liga o processo ao serviço de transporte.", role: "support" }]) },
             { id: microB, position: 1, title: "Mecanismo" }
           ] }] }] },
           curriculumScopeItems: [],
@@ -1072,6 +1074,9 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
         nextCursor: null
       };
     },
+    async getCourseSources({ mode }) {
+      return mode === "target" ? { items: [{ sourceLinks: [] }] } : { items: [] };
+    },
     async getCourseDesign({ scopeKind, scopeRef }) {
       reads.push({ scopeKind, scopeRef });
       if (scopeKind === "course") return adapter().getCourseDesign({ courseId: COURSE_ID, scopeKind });
@@ -1098,7 +1103,24 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
       praticas: [],
       cobertura: []
     },
-    fontes: []
+    fontes: [],
+    configuracao: {
+      motivo: "A unidade focal é expositiva, curta e não contém prática; escolhas calibradas para esse contexto.",
+      parametros: {
+        maximo_ideias_novas_por_unidade: 1,
+        formas_de_explicacao: ["plain_definition"],
+        oportunidades_distintas_por_requisito: 1,
+        dimensoes_de_variacao_da_pratica: ["case_or_data"],
+        alvo_palavras_conversa: 80,
+        alvo_palavras_unidade: 160,
+        distribuicao_da_pratica: "clustered",
+        posicao_da_pratica: "after_explanation",
+        alvo_microssequencias_por_parte: 2,
+        alvo_partes_por_lote: 1,
+        frequencia_de_pausa: "each_part",
+        preferencia_da_conversa: "concise"
+      }
+    }
   };
   const output = await executeHumanCourseTask({
     adapter: value,
@@ -1107,12 +1129,9 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
     rawArguments: { curso: "Redes para iniciantes", parte: 2, unidades: [candidate] }
   });
 
-  assert.equal(output.result, "Ainda há uma dependência a resolver antes desta produção.");
-  assert.equal(output.context.preflight.state, "blocked");
-  assert.deepEqual(output.context.preflight.blockers.map(({ code, microsequence }) => ({ code, microsequence })), [{
-    code: "human_materialization_missing_explanation",
-    microsequence: "Definição"
-  }]);
+  assert.equal(output.result, "A produção solicitada está coerente com o percurso e pode ser salva.");
+  assert.equal(output.context.preflight.state, "ready");
+  assert.deepEqual(output.context.preflight.blockers, []);
   assert.deepEqual(output.context.parte, {
     posicao: 2,
     titulo: "Sockets",
