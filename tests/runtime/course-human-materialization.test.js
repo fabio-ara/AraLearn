@@ -571,7 +571,7 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   }]);
   assert.equal(receipt.result, "Primeira parte produzida.");
   assert.equal(receipt.deepLink, `https://aralearn.example/app/#/authoring/courses/${COURSE_ID}?section=content&authoringPartId=${PART_ID}`);
-  assert.match(receipt.nextDecision, /Inspecione o percurso salvo/u);
+  assert.match(receipt.nextDecision, /Leia o percurso salvo/u);
   assert.deepEqual(write.explanations, [], "a Explicação persistida não é reenviada na escrita de unidades");
   assert.equal(receipt.context.distribuicaoDaPratica[0].observacao.studyUnitCount, 1);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null, links: [] }).includes(COURSE_ID), false);
@@ -671,41 +671,53 @@ test("erro de elemento repetido orienta a retomada sem expor sua identificação
   });
 });
 
-test("materialização resolve delegação automática pelos padrões do produto sem interromper", async (t) => {
+test("parâmetro automático pendente exige escolha contextual justificada do agente", async (t) => {
   for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) await t.test(definition.id, async () => {
     const value = adapterFixture();
     const inheritedDesign = value.getCourseDesign;
+    let contextualValue;
     value.getCourseDesign = async (...args) => {
       const design = await inheritedDesign(...args);
-      const target = design.parameters.find(({ parameterId }) =>
-        parameterId === definition.id);
+      const target = design.parameters.find(({ parameterId }) => parameterId === definition.id);
+      contextualValue = structuredClone(target.effectiveAssignment.value);
       target.effectiveAssignment = {
-        mode: "automatic", value: null,
-        origin: "system_default",
-        sourceScope: null
+        mode: "automatic", value: null, origin: "system_default",
+        reason: "Escolha contextual ainda não realizada.", sourceScope: null
       };
       return design;
     };
     const candidate = unit();
     delete candidate.configuracao;
 
+    const blocked = await prepareMaterialization(value, [candidate]);
+    assert.equal(blocked.state, "blocked");
+    assert.ok(blocked.blockers.some(({ code }) =>
+      code === "human_materialization_contextual_calibration_required"));
+    assert.deepEqual(value.calls, []);
+
+    candidate.configuracao = {
+      motivo: `Escolha contextual do agente para ${definition.label} nesta unidade.`,
+      parametros: { [definition.humanField]: contextualValue }
+    };
+    const ready = await prepareMaterialization(value, [candidate]);
+    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
     await materializeHumanCoursePart({
       adapter: value,
       principal: PRINCIPAL,
       course: "Curso de Redes",
       part: 1,
-      units: [candidate]
+      units: [candidate],
+      preparationReference: ready.referencia
     });
 
     const applied = value.calls[0].units[0].designSnapshot.parameters
       .find(({ parameterId }) => parameterId === definition.id);
-    assert.deepEqual(applied.value, definition.defaultValue);
+    assert.deepEqual(applied.value, contextualValue);
     assert.equal(applied.origin, "automatic");
-    assert.match(applied.reason, /Padrão do produto aplicado/iu);
+    assert.equal(applied.reason, candidate.configuracao.motivo);
   });
 });
-
-test("MCP resolve calibração derivável e só falha quando a leitura necessária está indisponível", async () => {
+test("MCP aceita escolha contextual explícita e distingue indisponibilidade de leitura", async () => {
   for (const unavailable of [false, true]) {
     const adapter = adapterFixture();
     adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
@@ -720,9 +732,15 @@ test("MCP resolve calibração derivável e só falha quando a leitura necessár
       const design = await readDesign(request);
       design.parameters.find(({ parameterId }) => parameterId ===
         "minimum_distinct_practice_opportunities_per_evidence_requirement").effectiveAssignment = {
-        mode: "automatic", value: null, origin: "system_default", sourceScope: null
+        mode: "automatic", value: null, origin: "system_default",
+        reason: "Escolha contextual ainda não realizada.", sourceScope: null
       };
       return design;
+    };
+    const candidate = unit();
+    candidate.configuracao = {
+      motivo: "Uma oportunidade basta nesta unidade expositiva, que não contém prática avaliativa.",
+      parametros: { oportunidades_distintas_por_requisito: 1 }
     };
     const resourceUrl = "https://edge.example/functions/v1/aralearn-authoring-mcp";
     const handler = createAuthoringMcpHandler({ adapter, resourceUrl,
@@ -733,7 +751,7 @@ test("MCP resolve calibração derivável e só falha quando a leitura necessár
       "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
     }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
       name: "materializar_parte", arguments: { curso: "Curso de Redes", parte: 1,
-        unidades: [unit()], explicacoes: explanationFixtures() }
+        unidades: [candidate], explicacoes: explanationFixtures() }
     } }) }));
     const payload = await response.json();
     assert.equal(response.status, 200);
@@ -744,11 +762,14 @@ test("MCP resolve calibração derivável e só falha quando a leitura necessár
       assert.deepEqual(adapter.calls, []);
     } else {
       assert.equal(adapter.calls.length, 1);
+      const applied = adapter.calls[0].units[0].designSnapshot.parameters.find(({ parameterId }) =>
+        parameterId === "minimum_distinct_practice_opportunities_per_evidence_requirement");
+      assert.equal(applied.value, 1);
+      assert.equal(applied.reason, candidate.configuracao.motivo);
       assert.equal(payload.result.structuredContent.context.completion, "partial");
     }
   }
 });
-
 test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisão duplicada", async () => {
   const expositoryAdapter = adapterFixture();
   const expository = unit();
@@ -1454,7 +1475,7 @@ test("calibração aplicada não substitui intenção corrente nem permite recal
   assert.deepEqual(adapter.calls, []);
 });
 
-test("snapshot inválido não vira obrigação de reparo quando a calibração é derivável", async () => {
+test("snapshot inválido da unidade alvo não recebe preenchimento genérico", async () => {
   for (const mutate of [
     snapshot => { snapshot.contract = "aralearn.study-unit-design-snapshot.v1"; },
     snapshot => { snapshot.parameterCatalogVersion = "1.0.0"; },
@@ -1470,9 +1491,10 @@ test("snapshot inválido não vira obrigação de reparo quando a calibração �
     const { adapter, saved, replacement } = appliedAutomaticReplacement();
     mutate(saved.designSnapshot);
     delete replacement.configuracao;
-    const ready = await prepareMaterialization(adapter, [replacement]);
-    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-    assert.deepEqual(ready.blockers, []);
+    const blocked = await prepareMaterialization(adapter, [replacement]);
+    assert.equal(blocked.state, "blocked");
+    assert.ok(blocked.blockers.some(({ code }) =>
+      code === "human_materialization_contextual_calibration_required"));
     assert.deepEqual(adapter.calls, []);
   }
   const { adapter, current, replacement } = appliedAutomaticReplacement();
@@ -1481,7 +1503,6 @@ test("snapshot inválido não vira obrigação de reparo quando a calibração �
   assert.ok(blocked.blockers.some(({ code }) => code === "human_materialization_configuration_conflict"));
   assert.deepEqual(adapter.calls, []);
 });
-
 test("conjuntos aplicados e correntes com ordem SQL conservam a mesma configuração", async () => {
   const { adapter, saved, current, replacement } = appliedAutomaticReplacement();
   const parameter = current.parameters.find(entry => entry.parameterId === "required_explanation_forms");
@@ -1821,6 +1842,21 @@ test("pendência pedagógica independente em outra microssequência não bloquei
     assert.equal(result.state, "ready", JSON.stringify(result.blockers));
     assert.deepEqual(result.blockers, []);
   }
+});
+
+test("unidade preservada com introdução realmente afetada bloqueia a produção focal", async () => {
+  const adapter = adapterFixture();
+  const preserved = persistedStudyUnit("70000000-0000-4000-8000-000000000010", 1, {
+    introduced: [ANALYSIS_ID], forms: ["plain_definition"]
+  });
+  adapter.listCourseStudyUnits = async () => ({
+    items: [structuredClone(preserved)], hasMore: false, nextCursor: null
+  });
+  const candidate = { ...unit(), posicao: 2 };
+  const blocked = await prepareMaterialization(adapter, [candidate], { complete: false });
+  assert.equal(blocked.state, "blocked");
+  assert.ok(blocked.blockers.some(({ code }) => code === "human_materialization_duplicate_introduction"));
+  assert.deepEqual(adapter.calls, []);
 });
 
 test("introdução enviada sustenta referências preservadas posteriores, mas não anteriores", async () => {

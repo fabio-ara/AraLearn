@@ -172,34 +172,20 @@ test("o acumulado pode ultrapassar 64 unidades e mantém exigências da base apl
   } finally { await db.close(); }
 });
 
-test("fragmento ignora inconsistência independente e conclusão volta a validar a parte inteira", async () => {
+test("fragmento ignora metadados incompletos de unidade preservada independente", async () => {
   const db = await fixture();
   try {
     await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content)
       values($1,'microsequence','micro-legacy','lesson','lesson',1,'{"title":"Legado independente","dependsOn":[]}'::jsonb)`, [COURSE]);
     await db.query("insert into private.course_authoring_part_didactic_microsequences values($1,$2,'micro-legacy')", [COURSE, PART]);
-    const legacy = unit("legacy-u", 1, { introduced: true, developedForms: ["plain_definition"] });
-    const legacyIdea = "30000000-0000-4000-8000-000000000002";
-    legacy.didacticMicrosequenceId = "micro-legacy";
-    legacy.designSnapshot.didacticMicrosequenceId = "micro-legacy";
-    legacy.designSnapshot.instructionalAnalysisUnitIds = [legacyIdea];
-    legacy.designSnapshot.evidenceRequirementIds = [];
-    legacy.designApplication.introducedInstructionalAnalysisUnitIds = [legacyIdea];
-    legacy.designApplication.explanationApplications = [{
-      instructionalAnalysisUnitId: legacyIdea,
-      developedForms: ["plain_definition"],
-      notApplicable: []
-    }];
-    legacy.designApplication.practiceApplications = [];
-    legacy.designApplication.mode = "practice";
     await db.query(`insert into private.course_entities(
-      course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application
-    ) values($1,'study_unit',$2,'microsequence','micro-legacy',1,$3,$4,$5)`,
-    [COURSE, legacy.studyUnitId, legacy.content, legacy.designSnapshot, legacy.designApplication]);
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content
+    ) values($1,'study_unit','legacy-u','microsequence','micro-legacy',1,
+      '{"title":"Unidade antiga sem metadados de desenho","role":"theory","content":[]}'::jsonb)`, [COURSE]);
 
     const focal = unit("unit-a", 1, { introduced: true, developedForms: ["plain_definition"] });
     const placements = [placement(focal), {
-      studyUnitId: legacy.studyUnitId,
+      studyUnitId: "legacy-u",
       didacticMicrosequenceId: "micro-legacy",
       position: 1
     }];
@@ -209,16 +195,37 @@ test("fragmento ignora inconsistência independente e conclusão volta a validar
     await assert.rejects(write(db, [focal], placements, {
       complete: true,
       revision: partial.courseRevision,
-      request: "complete-with-legacy-001",
+      request: "complete-with-incomplete-legacy-001",
       targetPlanItems: [...targets, {
         didacticMicrosequenceId: "micro-legacy",
         instructionalAnalysisUnitIds: [],
         evidenceRequirementIds: []
       }]
-    }), /Modo ou teto de novidade foi violado/u);
+    }));
   } finally { await db.close(); }
 });
 
+test("fragmento bloqueia dependência pedagógica preservada realmente afetada", async () => {
+  const db = await fixture();
+  try {
+    const preserved = unit("legacy-dependent", 1, {
+      introduced: true,
+      developedForms: ["plain_definition"]
+    });
+    await db.query(`insert into private.course_entities(
+      course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application
+    ) values($1,'study_unit',$2,'microsequence','micro',1,$3,$4,$5)`,
+    [COURSE, preserved.studyUnitId, preserved.content, preserved.designSnapshot, preserved.designApplication]);
+
+    const focal = unit("unit-new", 2, {
+      introduced: true,
+      developedForms: ["plain_definition"]
+    });
+    await assert.rejects(write(db, [focal], [placement(preserved), placement(focal)], {
+      request: "focal-affected-001"
+    }), /repete uma ideia já introduzida/u);
+  } finally { await db.close(); }
+});
 test("a parte aceita os mesmos 64 alvos e explicações do contrato de autoria", async () => {
   const db = await fixture();
   try {
