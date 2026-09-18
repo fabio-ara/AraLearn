@@ -16,6 +16,141 @@ const nonempty = (value, maximum = 4000) => typeof value === "string" && value.t
   });
 const identifier = value => nonempty(value, 300) && value === value.trim() && !/[\t\r\n]/u.test(value);
 const normalizedWhitespace = value => value.replace(/\s+/gu, " ").trim();
+// The passage locator is derived state: the server confronts the declared
+// selector with the current base and derives the literal range. Offsets,
+// context strings and exact copies are never the author's obligation, and a
+// real ambiguity returns explicit candidates in the same response.
+// Alinhado ao limite do trecho declarado: a resposta devolve seletores
+// diretamente utilizáveis, sem truncamento cego de passagens pendentes.
+export const RECONCILIATION_PASSAGE_TEXT_LIMIT = 4000;
+export const RECONCILIATION_PASSAGE_LIMIT = 12;
+export const RECONCILIATION_CANDIDATE_LIMIT = 8;
+
+function presentationIndex(text, { stripMarkup = false } = {}) {
+  const map = [], ends = [];
+  let normalized = "", index = 0;
+  while (index < text.length) {
+    const character = text[index];
+    if (stripMarkup && character === "`") { index += 1; continue; }
+    if (/\s/u.test(character)) {
+      let end = index;
+      while (end < text.length && /\s/u.test(text[end])) end += 1;
+      normalized += " ";
+      map.push(index); ends.push(end);
+      index = end;
+      continue;
+    }
+    normalized += character;
+    map.push(index); ends.push(index + character.length);
+    index += character.length;
+  }
+  return { normalized, map, ends };
+}
+
+function selectorText(value, stripMarkup) {
+  if (typeof value !== "string" || !value.length) return null;
+  return presentationIndex(value, { stripMarkup }).normalized;
+}
+
+function indexedRanges(index, needle) {
+  const ranges = [];
+  for (let start = index.normalized.indexOf(needle); start >= 0; start = index.normalized.indexOf(needle, start + 1)) {
+    ranges.push([start, start + needle.length]);
+  }
+  return ranges;
+}
+
+function literalSpan(index, [start, end]) {
+  return [index.map[start], index.ends[end - 1]];
+}
+
+function occurrenceCount(text, value) {
+  let found = 0;
+  for (let cursor = text.indexOf(value); cursor >= 0; cursor = text.indexOf(value, cursor + 1)) {
+    if (++found > 1) return found;
+  }
+  return found;
+}
+
+// Cresce a janela até o trecho ser único na base corrente. O resultado é um
+// seletor literal que o próprio cliente pode reenviar: escolher entre
+// ocorrências deixa de exigir contagem manual ou contexto fabricado.
+function uniqueExcerpt(text, [start, end]) {
+  let from = start, to = end;
+  let value = text.slice(from, to);
+  if (value && occurrenceCount(text, value) === 1) return value;
+  let step = 32;
+  while (to - from < RECONCILIATION_PASSAGE_TEXT_LIMIT && (to < text.length || from > 0)) {
+    const room = RECONCILIATION_PASSAGE_TEXT_LIMIT - (to - from);
+    const grow = Math.max(1, Math.min(step, room));
+    if (to < text.length) to = Math.min(text.length, to + grow);
+    else from = Math.max(0, from - grow);
+    value = text.slice(from, to);
+    if (value && occurrenceCount(text, value) === 1) return value;
+    step *= 2;
+  }
+  return value;
+}
+
+function passageCandidates(text, spans) {
+  return spans.slice(0, RECONCILIATION_CANDIDATE_LIMIT).map(span => uniqueExcerpt(text, span));
+}
+
+function pendingPassages(text, segments) {
+  const values = [];
+  for (const [start, end] of segments) {
+    let from = start;
+    while (from < end) {
+      const to = Math.min(end, from + RECONCILIATION_PASSAGE_TEXT_LIMIT);
+      values.push(uniqueExcerpt(text, [from, to]));
+      from = to;
+    }
+  }
+  return values;
+}
+
+export function locateExplanationPassage(text, selector = {}, { preserveMarkup = false } = {}) {
+  const occurrence = Number.isSafeInteger(selector.occurrence) && selector.occurrence >= 1 ? selector.occurrence : null;
+  let ambiguous = null;
+  for (const stripMarkup of preserveMarkup ? [false, true] : [false]) {
+    const index = presentationIndex(text, { stripMarkup });
+    const needle = selectorText(selector.quote, stripMarkup);
+    if (!needle) continue;
+    const prefix = selectorText(selector.prefix, stripMarkup);
+    const suffix = selectorText(selector.suffix, stripMarkup);
+    const matches = indexedRanges(index, needle).filter(([start, end]) =>
+      (prefix === null || index.normalized.slice(0, start).endsWith(prefix)) &&
+      (suffix === null || index.normalized.slice(end).startsWith(suffix)));
+    if (!matches.length) continue;
+    if (occurrence !== null && occurrence <= matches.length) {
+      return { status: "located", range: literalSpan(index, matches[occurrence - 1]) };
+    }
+    if (occurrence === null && matches.length === 1) return { status: "located", range: literalSpan(index, matches[0]) };
+    ambiguous ||= { status: "ambiguous", candidates: passageCandidates(text, matches.map(match => literalSpan(index, match))) };
+  }
+  return ambiguous || { status: "missing" };
+}
+
+export function canonicalReconciliationLocator(text, [start, end]) {
+  const quote = text.slice(start, end);
+  const count = ({ prefix, suffix }) => {
+    let found = 0;
+    for (let cursor = text.indexOf(quote); cursor >= 0; cursor = text.indexOf(quote, cursor + 1)) {
+      if (prefix !== null && !text.slice(0, cursor).endsWith(prefix)) continue;
+      if (suffix !== null && !text.slice(cursor + quote.length).startsWith(suffix)) continue;
+      found += 1;
+    }
+    return found;
+  };
+  if (count({ prefix: null, suffix: null }) === 1) return { quote, prefix: null, suffix: null };
+  const suffix = text.slice(end, end + 500);
+  if (suffix && count({ prefix: null, suffix }) === 1) return { quote, prefix: null, suffix };
+  const prefix = text.slice(Math.max(0, start - 500), start);
+  if (prefix && count({ prefix, suffix: null }) === 1) return { quote, prefix, suffix: null };
+  if (prefix && suffix && count({ prefix, suffix }) === 1) return { quote, prefix, suffix };
+  return { quote, prefix: null, suffix: null };
+}
+
 
 export function normalizeExplanationReconciliation(value) {
   if (!plain(value) || value.contract !== EXPLANATION_RECONCILIATION_CONTRACT ||
@@ -61,16 +196,6 @@ export function explanationReconciliationTargets(explanation) {
   return targets;
 }
 
-function locatedRange(text, entry) {
-  const ranges = [];
-  for (let start = text.indexOf(entry.quote); start >= 0; start = text.indexOf(entry.quote, start + 1)) {
-    if (entry.prefix !== null && !text.slice(0, start).endsWith(entry.prefix)) continue;
-    if (entry.suffix !== null && !text.slice(start + entry.quote.length).startsWith(entry.suffix)) continue;
-    ranges.push([start, start + entry.quote.length]);
-  }
-  return ranges.length === 1 ? ranges[0] : null;
-}
-
 export function inspectExplanationReconciliation(explanation, { contentBasis, analysisUnitIds = [],
   evidenceRequirementIds = [], microsequenceIds = [] } = {}) {
   const blockers = [];
@@ -94,9 +219,13 @@ export function inspectExplanationReconciliation(explanation, { contentBasis, an
   for (const [index, entry] of reconciliation.entries.entries()) {
     const key = `${entry.resourceId}\0${entry.path}`;
     const target = targets.find(item => item.resourceId === entry.resourceId && item.path === entry.path);
-    const range = target ? locatedRange(target.text, entry) : null;
-    if (!range) add("explanation_reconciliation_locator_stale", "Uma passagem não corresponde univocamente à base corrente.", { entry: index + 1 });
-    else rangesByTarget.get(key).push(range);
+    const located = target
+      ? locateExplanationPassage(target.text, entry, { preserveMarkup: target.preserveMarkup === true })
+      : { status: "missing" };
+    if (located.status !== "located") {
+      add("explanation_reconciliation_locator_stale", "Uma passagem não corresponde univocamente à base corrente.",
+        { entry: index + 1, ...(located.status === "ambiguous" ? { candidates: located.candidates } : {}) });
+    } else rangesByTarget.get(key).push(located.range);
     for (const id of entry.analysisUnitIds) {
       if (!analysisUnitIds.includes(id)) add("human_reference_not_found", "Uma ideia da Explicação ainda não pertence ao repertório persistido.", { entry: index + 1 });
       if (entry.role === "introduced") introduced.add(id);
@@ -117,16 +246,25 @@ export function inspectExplanationReconciliation(explanation, { contentBasis, an
     }
   }
   for (const target of targets) {
-    const covered = rangesByTarget.get(`${target.resourceId}\0${target.path}`);
-    // indexOf/slice ranges use UTF-16 offsets; iterate codepoints while retaining
-    // those offsets so a supplementary character cannot hide the final passage.
+    const covered = [...rangesByTarget.get(`${target.resourceId}\0${target.path}`)]
+      .sort((left, right) => left[0] - right[0]);
+    const passages = [];
+    const segments = [];
     let offset = 0;
-    const missing = [...target.text].some(character => {
-      const start = offset; offset += character.length;
-      return !/\s/u.test(character) && !covered.some(([from, end]) => start >= from && offset <= end);
-    });
-    if (missing) add("explanation_reconciliation_unmapped", "Há conteúdo da base sem classificação inspecionável.",
-      { resourceId: target.resourceId, path: target.path });
+    for (const [from, end] of covered) {
+      if (from > offset) segments.push([offset, from]);
+      offset = Math.max(offset, end);
+    }
+    if (offset < target.text.length) segments.push([offset, target.text.length]);
+    for (const [from, end] of segments) {
+      const raw = target.text.slice(from, end);
+      const leading = raw.length - raw.trimStart().length;
+      const trailing = raw.length - raw.trimEnd().length;
+      if (raw.trim()) passages.push(...pendingPassages(target.text, [[from + leading, end - trailing]]));
+    }
+    if (passages.length) add("explanation_reconciliation_unmapped", "Há conteúdo da base sem classificação inspecionável.",
+      { resourceId: target.resourceId, path: target.path, passages: passages.slice(0, RECONCILIATION_PASSAGE_LIMIT),
+        ...(passages.length > RECONCILIATION_PASSAGE_LIMIT ? { pending: passages.length } : {}) });
   }
   return { ready: blockers.length === 0, blockers, introduced: [...introduced], requirements: [...requirements], deferred };
 }

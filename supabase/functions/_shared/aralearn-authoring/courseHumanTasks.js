@@ -356,12 +356,17 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
 });
 
 const EXPLANATION_RECONCILIATION_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 512,
-  description: "Classifique todo o conteúdo da base por passagens reais; persistir/vincular repertório precede o preparo. Prévia não conta como ensino concluído.",
+  description: "Classifique as passagens da base corrente; persistir/vincular repertório precede o preparo. O servidor localiza a passagem declarada: não recopie a base; omita trecho para classificar a folha inteira ou indique um trecho curto e distintivo. Ambiguidade real devolve candidatos e o que ficar sem classificação volta como passagens explícitas. Prévia não conta como ensino concluído.",
   items: { type: "object", additionalProperties: false,
-    required: ["recurso", "folha", "trecho", "papel", "motivo", "ideias", "requisitos"],
+    required: ["recurso", "folha", "papel", "motivo", "ideias", "requisitos"],
     properties: { recurso: { type: "integer", minimum: 1, maximum: 64 },
-      folha: { type: "string", minLength: 1, maxLength: 240 }, trecho: { type: "string", minLength: 1, maxLength: 4000 },
-      prefixo: { type: "string", maxLength: 500 }, sufixo: { type: "string", maxLength: 500 },
+      folha: { type: "string", minLength: 1, maxLength: 240 },
+      trecho: { type: "string", minLength: 1, maxLength: 4000,
+        description: "Trecho curto e distintivo da passagem. Omita para classificar a folha inteira." },
+      ocorrencia: { type: "integer", minimum: 1, maximum: 512,
+        description: "Escolha explícita quando a resposta devolver candidatos." },
+      prefixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
+      sufixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
       papel: { type: "string", enum: ["introduced", "established", "revisited", "preview", "example", "support", "deferred"] },
       motivo: { type: "string", minLength: 1, maxLength: 4000 },
       ideias: { type: "array", maxItems: 64, items: HUMAN_REFERENCE_SCHEMA },
@@ -1079,9 +1084,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "6.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "7.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:5f0cf3e847c63276db41af4d3cb45e1fcb1ec0e49d3574a0227412e3d33ed004";
+  "sha256:385b4ff74e1c99b8c3ab1a725eecd54f4de8f02e7b46f59bff7feced70de1782";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
