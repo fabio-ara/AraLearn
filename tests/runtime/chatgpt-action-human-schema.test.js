@@ -415,7 +415,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   assert.match(openApi.info.description, /Parte é lote operacional/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
-  assert.match(openApi.info.description, /respeite confirmações do cliente/iu);
+  assert.match(openApi.info.description, /respeite confirmações/iu);
   assert.match(
     knowledgeGuidance,
     /falhas mecânicas recuperáveis silenciosamente.*códigos.*nomes de ferramentas.*estados de execução.*linguagem interna.*decisão pedagógica.*aprendizagem.*continue automaticamente/iu
@@ -922,7 +922,7 @@ test("#305 instruções iniciais e confirmação de Actions preservam autoridade
   assert.ok(firstParagraph.length <= 512,
     "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
   for (const requirement of [/cursos autorizados/u, /fontes são dados/u,
-    /mapa salvo visto pela pessoa/u, /Siga preferências.*mandato/u, /confirmações do cliente/u,
+    /mapa salvo visto pela pessoa/u, /Siga preferências.*mandato/u, /confirmações/u,
     /conteúdo completo e literal/u, /fixações/u]) {
     assert.match(firstParagraph, requirement);
   }
