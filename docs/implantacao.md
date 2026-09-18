@@ -146,9 +146,9 @@ ampliam o alcance.
 | Candidata estável | `candidate:ready` libera a solicitação após provas locais; CI protegida executa somente os gates aplicáveis; acionamento manual somente na `main` para recuperação | certificado e artefatos aplicáveis | nenhuma |
 | Promoção | fases de `pages.yml` na `main`, com execução e tentativa exatas | Pages e/ou APK somente quando declarados pelo certificado | preparação imutável; promoção das superfícies aplicáveis; finalização após provas reais |
 
-Na candidata estabilizada, `validate:candidate` prepara os gates locais por impacto. Uma mudança web não seleciona automaticamente todos os E2E comuns: a preparação executa as specs comuns alteradas, enquanto o desenvolvimento cobre os E2E focais afetados. A CI protegida usa a mesma classificação para decidir web, Android e Supabase. Metadados puros de versão em npm, OpenAPI e Android são comparados semanticamente; outras alterações de dependências, configuração, orquestração, caminhos desconhecidos ou classificação inconclusiva mantêm impacto conservador e exigem todos os gates.
+Na candidata estabilizada, `validate:candidate` prepara os gates locais por impacto. Banco e integração com o Supabase não entram nessa etapa local: a classificação seleciona o job da CI, em runner descartável, que executa a stack e certifica a prova. Uma mudança web não seleciona automaticamente todos os E2E comuns: a preparação executa as specs comuns alteradas, enquanto o desenvolvimento cobre os E2E focais afetados. A CI protegida usa a mesma classificação para decidir web, Android e Supabase. Metadados puros de versão em npm, OpenAPI e Android são comparados semanticamente; outras alterações de dependências, configuração, orquestração, caminhos desconhecidos ou classificação inconclusiva mantêm impacto conservador e exigem todos os gates.
 
-`candidate:ready` consome a preparação verde já gravada, sem executar gates. Exige árvore limpa e idêntica, HEAD local igual ao remoto, base e merge-base concretas preservadas, configuração e dependências instaladas idênticas, além de PR ainda em rascunho contra `main`. Relatório ausente ou obsoleto exige nova preparação explícita. Gates estáveis usam recibos indexados por inputs; o runtime conserva helpers, fixtures e specs potencialmente lidas pelos testes selecionados. Banco e integração continuam exigindo prova fresca em cada preparação; a transição para pronta reutiliza somente aquela preparação exata.
+`candidate:ready` consome a preparação verde já gravada, sem executar gates. Exige árvore limpa e idêntica, HEAD local igual ao remoto, base e merge-base concretas preservadas, configuração e dependências instaladas idênticas, além de PR ainda em rascunho contra `main`. Relatório ausente ou obsoleto exige nova preparação explícita. Gates estáveis usam recibos indexados por inputs; o runtime conserva helpers, fixtures e specs potencialmente lidas pelos testes selecionados. O job da CI executa banco e integração com prova fresca em runner descartável; a transição para pronta reutiliza somente aquela preparação exata e não substitui esse gate.
 
 O GitHub reúne os resultados na única verificação obrigatória **Testar e validar**. O
 classificador vincula a matriz de aplicabilidade aos SHAs de base e cabeça da PR. Cada
@@ -166,9 +166,8 @@ retorne a rascunho antes de enviar correções ainda em desenvolvimento. O contr
 concorrência cancela a execução superada da mesma referência. O acionamento manual de
 uma execução não deve duplicar esse caminho na branch da solicitação.
 
-A preparação comum executa auditorias e verificadores antes dos trabalhos mais demorados
-com a interface, o Android e o Supabase local. Web, Android e Supabase são jobs separados
-e só executam quando a matriz os exige. Os *caches* de npm, Chromium e Gradle evitam
+A preparação comum reúne auditorias e verificadores. Web, Android e Supabase são jobs
+separados e só executam quando a matriz os exige. Os *caches* de npm, Chromium e Gradle evitam
 baixar de novo dependências idênticas; eles não substituem os testes. A promoção só
 aceita o certificado e os bytes exatos da candidata, sem reconstruir Pages nem repetir
 suítes por estar publicando.

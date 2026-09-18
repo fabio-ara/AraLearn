@@ -655,11 +655,22 @@ distintas.
 ## Verificação
 
 ```powershell
-npm run test:authoring:contract
-npm run test:authoring:mcp
-npm run test:authoring:actions
+npm run actions:openapi:check
+npm run test:focal -- `
+  tests/runtime/chatgpt-action-human-schema.test.js `
+  tests/runtime/course-authoring-contract-runtime.test.js `
+  tests/runtime/course-human-task-executor.test.js `
+  tests/runtime/course-human-materialization.test.js `
+  tests/runtime/course-human-mcp.test.js `
+  tests/runtime/course-human-corrections.test.js `
+  tests/runtime/course-action-server.test.js
 npm run validate:course-runtime
 ```
+
+O verificador de gerados confere o OpenAPI, e a união focal executa uma vez o contrato
+compartilhado, o MCP e o Actions. Os scripts `test:authoring:contract`,
+`test:authoring:mcp` e `test:authoring:actions` permanecem disponíveis para o recorte
+de um canal.
 
 Os testes conferem catálogo, schemas, autorização, erros retomáveis, paridade de
 transportes e integração com os casos de uso. O cliente real é validado em uma
