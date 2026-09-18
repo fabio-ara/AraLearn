@@ -17,6 +17,12 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260917232000 — validação focal por dependência pedagógica
+
+A produção parcial valida as unidades novas ou substituídas juntamente com as unidades preservadas das mesmas microssequências. Unidades de outras microssequências da parte deixam de participar da validação apenas por compartilharem o mesmo lote operacional. A conclusão explícita continua validando o acumulado completo da parte.
+
+A alteração não migra conteúdo nem preenche metadados antigos. Unidades legadas permanecem legíveis e preservadas; seus metadados só entram numa operação focal quando o alvo realmente pertence à mesma microssequência ou quando outra relação pedagógica persistida exige essa dependência.
+
 ## 20260917105911 — edição curricular com planejamento legado ausente
 
 Microssequências anteriores ao plano de explicação permanecem legíveis, com a ausência indicada como pendência. Alterar outro ramo preserva essa ausência, o conteúdo e suas fontes, sem fabricar propósito ou revisão. A exceção vale apenas para microssequências que já existiam sem esse campo; não permite criar uma microssequência sem plano nem apagar um plano existente.

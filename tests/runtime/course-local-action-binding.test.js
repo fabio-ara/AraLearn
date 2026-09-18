@@ -64,24 +64,28 @@ test("fixture dos canais vincula seis requisitos, fontes literais e reconciliaç
     }
     for (const unit of lot.materialization.unidades.filter(entry => entry.conteudo.role === "practice")) {
       assert.equal(unit.conteudo.response.package, "aralearn.response.choice");
-      assert.equal(humanMaterializationUnitPlan(unit).feedbackLocal, true);
+      const planned = humanMaterializationUnitPlan(unit);
+      assert.equal(Object.hasOwn(planned, "feedbackLocal"), false,
+        "o preparo não mantém um segundo resumo derivado de feedback");
+      assert.ok(planned.conteudo.feedback.length > 0);
     }
   }
 });
 
-test("smoke dos canais prepara propostas antes da escrita e conserva a mesma referência pronta", async () => {
+test("smoke dos canais prepara e grava o mesmo candidato sem referência pública intermediária", async () => {
   const lot = channelFixtures("Curso sintético").lots[0];
   const calls = [];
   const client = { call: async (task, args) => {
     calls.push({ task, args });
-    return { context: { parte: { microssequencias: lot.part.microssequencias },
-      preflight: { state: "ready", referencia: "prepared-same-basis", blockers: [] } } };
+    return { context: { preflight: { state: "ready", referencia: "internal-only", blockers: [] } } };
   } };
   await materializeChannelPart(client, lot);
   assert.deepEqual(calls.map(call => call.task), ["preparar_materializacao", "materializar_parte"]);
-  assert.deepEqual(calls[0].args.plano, lot.materialization.unidades.map(humanMaterializationUnitPlan));
+  assert.equal(calls[0].args.concluir, true);
+  assert.deepEqual(calls[0].args.unidades, lot.materialization.unidades.map(humanMaterializationUnitPlan));
   assert.deepEqual(calls[0].args.explicacoes, lot.materialization.explicacoes);
-  assert.deepEqual(calls[1].args, { ...lot.materialization, referenciaPreparo: "prepared-same-basis" });
+  assert.deepEqual(calls[1].args, { ...lot.materialization, concluir: true });
+  assert.equal(Object.hasOwn(calls[1].args, "referenciaPreparo"), false);
   const blockedCalls = [];
   await assert.rejects(() => materializeChannelPart({ call: async task => {
     blockedCalls.push(task);

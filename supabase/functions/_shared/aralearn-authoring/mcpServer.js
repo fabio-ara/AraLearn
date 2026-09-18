@@ -277,6 +277,7 @@ function toolFailure(
   const recovery = projectHumanWriteRecovery(normalized);
   const preflight = projectHumanMaterializationPreflight(normalized);
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
+  const derivableMaterialization = normalized.code === "human_materialization_contextual_calibration_required";
   const publicError = {
     code: retryable
       ? "temporarily_unavailable"
@@ -285,7 +286,9 @@ function toolFailure(
       ? "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo."
       : retryable
       ? "Não consegui concluir esta etapa."
-      : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
+      : preflight || derivableMaterialization
+        ? "Ainda há uma dependência a resolver antes desta produção."
+        : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable,
     ...(recovery ? { recovery } : {}),
     ...(preflight ? { details: { preflight } } : {})
@@ -300,13 +303,11 @@ function toolFailure(
           ? "Releia as fontes antes de decidir se ainda precisa incorporar o PDF."
           : normalized.code === "course_media_write_uncertain"
             ? "Consulte os áudios do curso antes de decidir se ainda precisa guardar o arquivo."
-          : normalized.code === "human_materialization_contextual_calibration_required"
-            ? "Inclua a calibração contextual nas unidades e refaça a produção da parte."
-            : retryable
-              ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
-              : null;
-  if (preflight) {
-    nextDecision = "Resolva os bloqueios e releia preparar_materializacao antes de produzir na mesma base.";
+          : retryable
+            ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
+            : null;
+  if (preflight || derivableMaterialization) {
+    nextDecision = "Resolva autonomamente tudo que já estiver determinado pelo curso e repita a verificação. Se restar uma escolha que altere o percurso de aprendizagem, consolide as pendências relacionadas, explique ao autor o que precisa ser decidido e por que isso importa, faça uma única pergunta e, após a resposta, retome a produção original.";
   }
   if (normalized.code === "course_write_uncertain") {
     nextDecision = "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração.";

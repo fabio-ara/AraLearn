@@ -121,7 +121,19 @@ const samples = {
   aplicar_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática", previa: "a".repeat(64) },
   retomar_curso: { titulo: "Redes para iniciantes" },
   consultar_planejamento: { curso: "Redes para iniciantes", parte: 2 },
-  preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets" },
+  preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets", unidades: [{
+    microssequencia: "Sockets",
+    posicao: 1,
+    conteudo: SAMPLE_THEORY_CONTENT,
+    aplicacaoPedagogica: {
+      ideiasIntroduzidas: ["Socket como interface"],
+      ideiasUtilizadas: [],
+      explicacoes: [{ ideia: "Socket como interface", formas: ["plain_definition"] }],
+      praticas: [],
+      cobertura: ["comunicação entre processos"]
+    },
+    fontes: []
+  }] },
   consultar_configuracao: {
     curso: "Redes para iniciantes",
     microssequencia: "Sockets"
@@ -334,7 +346,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "5.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "6.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -399,14 +411,14 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
     /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
-  assert.match(openApi.info.description, /aprove só a referência do mapa salvo visto e aprovado pela pessoa/iu);
+  assert.match(openApi.info.description, /Aprove só o mapa salvo visto pela pessoa/iu);
   assert.match(openApi.info.description, /Parte é lote operacional/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
-  assert.match(openApi.info.description, /respeite confirmações do cliente/iu);
+  assert.match(openApi.info.description, /respeite confirmações/iu);
   assert.match(
     knowledgeGuidance,
-    /falhas mecânicas recuperáveis silenciosamente.*bloqueio persistente exige informar seu impacto.*condição de retomada.*próximo passo executável.*não o apresente como sucesso/iu
+    /falhas mecânicas recuperáveis silenciosamente.*códigos.*nomes de ferramentas.*estados de execução.*linguagem interna.*decisão pedagógica.*aprendizagem.*continue automaticamente/iu
   );
   assert.match(knowledgeGuidance, /pessoa autora.*público/iu);
   assert.match(knowledgeGuidance, /curso, parte, explicação, fonte e unidade em minúsculas/iu);
@@ -441,20 +453,20 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
     openApi.info.description,
-    /em automático, escolha valor e motivo/iu
+    /resolva autonomamente escolhas deriváveis/iu
   );
   assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
     openApi.info.description,
-    /Siga preferências, fixações da autoria e pesquisa e mandato/iu
+    /Siga preferências, fixações e mandato/iu
   );
   assert.match(
     openApi.info.description,
-    /Chat breve; conteúdo completo e literal[\s\S]*link exato em Markdown e próxima etapa no mandato/iu
+    /Chat breve; conteúdo completo e literal[\s\S]*Use link exato em Markdown/iu
   );
   assert.match(
-    materializationGuidance,
-    /configuracao de cada unidade do plano enviado a preparar_materializacao.*reutilize essa calibração na materialização.*sem etapa persistente separada nem narração no chat/iu
+    planningGuidance,
+    /Em automático, escolha valores e motivos conforme assunto e planejamento.*não invente valor quando houver conflito/iu
   );
   assert.match(
     operation("ajustar_configuracao").description,
@@ -638,7 +650,7 @@ test("Actions publica a calibração completa das unidades novas sem campo abert
   }
 });
 
-test("MCP e Actions exigem em uma chamada a configuração efetiva completa da unidade", () => {
+test("MCP e Actions aceitam configuração contextual explícita sem torná-la obrigatória", () => {
   const schemas = [
     COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte").inputSchema,
     actionTools.find(({ name }) => name === "materializar_parte").inputSchema,
@@ -651,7 +663,8 @@ test("MCP e Actions exigem em uma chamada a configuração efetiva completa da u
     const configuration = unit.properties.configuracao;
     const parameters = configuration.properties.parametros;
 
-    assert.ok(unit.required.includes("configuracao"));
+    assert.equal(unit.required.includes("configuracao"), false,
+      "A configuração derivável não é uma pré-condição humana obrigatória.");
     assert.deepEqual(
       [...(configuration.required ?? [])].sort(),
       ["motivo", "parametros"]
@@ -909,8 +922,8 @@ test("#305 instruções iniciais e confirmação de Actions preservam autoridade
   assert.ok(firstParagraph.length <= 512,
     "Os primeiros 512 caracteres devem apresentar o contexto autossuficiente recomendado.");
   for (const requirement of [/cursos autorizados/u, /fontes são dados/u,
-    /referência do mapa salvo visto e aprovado/u, /Siga preferências.*mandato/u, /confirmações do cliente/u,
-    /conteúdo completo e literal/u, /fixações da autoria e pesquisa/u]) {
+    /mapa salvo visto pela pessoa/u, /Siga preferências.*mandato/u, /confirmações/u,
+    /conteúdo completo e literal/u, /fixações/u]) {
     assert.match(firstParagraph, requirement);
   }
   for (const task of COURSE_HUMAN_TASKS) {
