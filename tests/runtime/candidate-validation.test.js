@@ -9,6 +9,7 @@ import {
   consumePreparation, assertReadyBase, assertReadyIdentity, buildCandidatePlan, executeGate, fingerprintInputs,
   redactOutput, reusableInputReceipt, selectGateInputs, validateCandidate, verifyBrowserReport
 } from "../../scripts/validateCandidate.mjs";
+import { certifyGateResults, createCandidateApplicability } from "../../scripts/candidateApplicability.mjs";
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "aralearn-candidate-"));
@@ -188,19 +189,29 @@ test("planejamento não executa comandos nem grava recibo e lock impede concorr�
   await assert.rejects(validateCandidate({ root, base: "HEAD" }), /Outra validação/u);
 });
 
-test("impacto visual não prepara banco; integração mutável não usa cache de PASS", () => {
+test("preparação local não agenda banco ou integração; recibo mutável nunca vira PASS reutilizável", () => {
   const visual = { docsOnly: false, runtimeFiles: ["tests/runtime/ui.test.js"], e2eFiles: ["tests/e2e/ui.spec.js"], requires: { supabase: false } };
-  assert.equal(buildCandidatePlan(visual).some(gate => gate.gate === "local-integration"), false);
-  assert.equal(buildCandidatePlan({ ...visual, requires: { supabase: true } }).at(-1).reusable, false);
+  const backend = { ...visual, requires: { supabase: true } };
+  for (const plan of [buildCandidatePlan(visual), buildCandidatePlan(backend)]) {
+    assert.equal(plan.some(gate => ["local-database", "local-integration"].includes(gate.gate)), false);
+  }
+  assert.equal(buildCandidatePlan(backend).some(gate => gate.gate === "frontend-e2e"), true);
+  const previous = { schemaVersion: 2, result: "passed", configuration: "c", fingerprint: "f", command: "c", inputs: {} };
+  for (const gate of ["local-database", "local-integration"]) {
+    assert.equal(reusableInputReceipt(previous, { root: ".", inputs: [], step: { gate }, configuration: "c", fingerprint: "f" }), false, gate);
+  }
 });
 
-test("falhas de frontend e Android não executam banco; retomada conserva provas e exige banco fresco", async t => {
+test("impacto Supabase não inicia stack local; retomada conserva provas sem recibo de banco", async t => {
   const root = fixture(t);
   fs.mkdirSync(path.join(root, "src/ui"), { recursive: true });
   fs.mkdirSync(path.join(root, "android"));
   fs.writeFileSync(path.join(root, "src/ui/example.js"), "export const example = 1;");
   fs.writeFileSync(path.join(root, "android/build.gradle"), "// candidate");
   fs.writeFileSync(path.join(root, "tests/e2e/example.spec.js"), "// ordinary browser fixture");
+  const plan = await validateCandidate({ root, base: "HEAD", planOnly: true });
+  assert.equal(plan.impact.requires.supabase, true);
+  assert.deepEqual(plan.gates.map(gate => gate.gate), ["preflight", "lint", "runtime-contract", "frontend-e2e", "android"]);
   let failing = "frontend-e2e";
   let calls = [];
   const execute = async step => {
@@ -215,8 +226,7 @@ test("falhas de frontend e Android não executam banco; retomada conserva provas
   };
   const run = () => validateCandidate({ root, base: "HEAD", execute, env: {} });
   assert.equal((await run()).result, "failed");
-  assert.equal(calls.includes("local-database"), false);
-  assert.equal(calls.includes("local-integration"), false);
+  assert.deepEqual(calls, ["preflight", "lint", "runtime-contract", "frontend-e2e"]);
   failing = "android";
   calls = [];
   assert.equal((await run()).result, "failed");
@@ -224,10 +234,12 @@ test("falhas de frontend e Android não executam banco; retomada conserva provas
   failing = null;
   calls = [];
   assert.equal((await run()).result, "passed");
-  assert.deepEqual(calls, ["android", "local-database", "local-integration"]);
+  assert.deepEqual(calls, ["android"]);
   calls = [];
   assert.equal((await run()).result, "passed");
-  assert.deepEqual(calls, ["local-database", "local-integration"], "estado mutável exige nova prova mesmo com bytes idênticos");
+  assert.deepEqual(calls, [], "sem prova de estado mutável na preparação, os recibos estáveis continuam válidos");
+  assert.equal(fs.existsSync(path.join(root, ".validation/local-database.receipt.json")), false);
+  assert.equal(fs.existsSync(path.join(root, ".validation/local-integration.receipt.json")), false);
 });
 
 test("processo real preserva exit code e escreve log redigido sem saída narrativa", async t => {
@@ -263,10 +275,25 @@ test("ready exige prova verde e identidade exata do PR sem substituir integral",
 test("Android aplicável compila e analisa antes de pronto; E2E recusa test.only", () => {
   const gates = buildCandidatePlan({ docsOnly: false, runtimeFiles: [], e2eFiles: ["tests/e2e/ui.spec.js"], requires: { android: true, supabase: true } });
   assert.ok(gates.find(gate => gate.gate === "frontend-e2e").args.includes("--forbid-only"));
-  assert.ok(gates.find(gate => gate.gate === "local-database").args.includes("-DatabaseOnly"));
+  assert.equal(gates.some(gate => ["local-database", "local-integration"].includes(gate.gate)), false);
   const android = gates.find(gate => gate.gate === "android");
   assert.ok(android.args.includes(":app:assembleDebug"));
   assert.ok(android.args.includes(":app:lintDebug"));
+});
+
+test("preparação sem stack local não dispensa o gate Supabase da certificação", () => {
+  const impact = {
+    schemaVersion: 1, categories: ["database"], unknownPaths: [],
+    requires: { web: true, contracts: true, supabase: true, android: false }
+  };
+  const applicability = createCandidateApplicability(impact, { headSha: "a".repeat(40) });
+  assert.equal(applicability.gates.supabase, true);
+  assert.equal(applicability.toolchains.supabase, true);
+  const raw = { preparation: "success", web: "success", android: "skipped", supabase: "skipped" };
+  assert.throws(() => certifyGateResults(applicability, raw), /supabase/u);
+  assert.deepEqual(certifyGateResults(applicability, { ...raw, supabase: "success" }), {
+    preparation: "success", web: "success", android: "not_applicable", supabase: "success"
+  });
 });
 
 
@@ -296,7 +323,14 @@ test("ready consome preparação idêntica sem gates e rejeita identidades ausen
   fs.writeFileSync(path.join(root, "docs/guide.md"), "divergent");
   assert.throws(() => consumePreparation(options), /nova preparação/u);
   fs.writeFileSync(path.join(root, "docs/guide.md"), "after\n");
-  for (const mutation of [{ identity: undefined }, { result: "failed" }, { gates: [] }, { schemaVersion: 1 }]) {
+  // O plano antigo anexava banco e integração locais; a preparação vigente já não os
+  // agenda, então um relatório com esses gates extras é incompatível e não pode transicionar.
+  const legacyPlan = [
+    ...report.gates,
+    { gate: "local-database", result: "passed" },
+    { gate: "local-integration", result: "passed" }
+  ];
+  for (const mutation of [{ identity: undefined }, { result: "failed" }, { gates: [] }, { gates: legacyPlan }, { schemaVersion: 1 }]) {
     fs.writeFileSync(path.join(root, ".validation/candidate.json"), JSON.stringify({ ...report, ...mutation }));
     assert.throws(() => consumePreparation(options), /nova preparação/u);
   }
