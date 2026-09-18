@@ -2,7 +2,9 @@ import { asAuthoringApiError } from "./errors.js";
 
 const ERROR_ISSUE_LIMIT = 20;
 const BLOCKER_PASSAGE_LIMIT = 12;
-const BLOCKER_PASSAGE_TEXT_LIMIT = 1000;
+// Alinhado ao limite do trecho declarado: a resposta devolve seletores
+// diretamente utilizáveis, sem truncamento silencioso de passagens pendentes.
+const BLOCKER_PASSAGE_TEXT_LIMIT = 4000;
 const BLOCKER_CANDIDATE_LIMIT = 8;
 const UNKNOWN_FIELD_MESSAGE = /campo desconhecido|não pertence (?:ao comando|à ferramenta)/iu;
 const DIAGNOSTIC_PATH = /^[A-Za-z][A-Za-z0-9_.[\]/*-]{0,159}$/u;

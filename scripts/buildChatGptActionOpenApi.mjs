@@ -42,8 +42,8 @@ const blockerSchema = {
       component: { type: "string" },
       resourceId: { type: "string" },
       path: { type: "string" },
-      passages: { type: "array", maxItems: 12, items: { type: "string", maxLength: 1000 } },
-      candidates: { type: "array", maxItems: 8, items: { type: "string", maxLength: 1000 } }
+      passages: { type: "array", maxItems: 12, items: { type: "string", maxLength: 4000 } },
+      candidates: { type: "array", maxItems: 8, items: { type: "string", maxLength: 4000 } }
     }
   }
 };

@@ -2358,16 +2358,22 @@ test("caso real: completar lacunas classifica sem recopiar a base e sem manter a
   assert.equal(second.ok, false);
   assert.deepEqual(second.blockers.map(({ code }) => code),
     ["explanation_reconciliation_locator_stale", "explanation_reconciliation_unmapped"]);
-  assert.deepEqual(second.blockers[0].candidates, ["Verificar o cache", "Verificar o cache"],
-    "a ambiguidade real devolve os candidatos explícitos na mesma resposta");
+  const candidates = second.blockers[0].candidates;
+  assert.equal(candidates.length, 2);
+  assert.notEqual(candidates[0], candidates[1], "os candidatos precisam ser distinguíveis pelo cliente");
+  for (const candidate of candidates) {
+    assert.equal(leaves[1].split(candidate).length - 1, 1, "cada candidato é um seletor literal e único");
+  }
+  assert.ok(candidates[0].includes("evita consultas repetidas") && candidates[1].includes("custa memória"),
+    "o contexto devolvido permite escolher semanticamente, sem contar ocorrências");
 
-  const third = await declare([wholeLeaf, { ...ambiguous, ocorrencia: 1 }]);
+  const third = await declare([wholeLeaf, { ...ambiguous, trecho: candidates[1] }]);
   assert.equal(third.ok, false);
   assert.deepEqual(third.blockers.map(({ code }) => code), ["explanation_reconciliation_unmapped"]);
   const remaining = third.blockers[0].passages[0];
   assert.equal(typeof remaining, "string");
 
-  const fourth = await declare([wholeLeaf, { ...ambiguous, ocorrencia: 1 },
+  const fourth = await declare([wholeLeaf, { ...ambiguous, trecho: candidates[1] },
     { recurso: 2, folha: "text", trecho: remaining, papel: "support", motivo: reason, ideias: [idea], requisitos: [] }]);
   assert.equal(fourth.ok, true);
   assert.equal(operations.length, 4, "quatro operações, cada uma resolvendo uma decisão real");
