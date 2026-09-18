@@ -65,8 +65,14 @@ for (const text of [
   ]);
   const normalizedLocator = structuredClone(value);
   normalizedLocator.reconciliation.entries[0].quote = text.replace(/`/gu, "").replace(/\s+/gu, " ");
-  assert.ok(inspect(normalizedLocator).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"),
-    "A equivalência de apresentação não transforma o localizador em correspondência aproximada.");
+  // O servidor localiza deterministicamente a passagem declarada: a cópia com
+  // apresentação normalizada (espaços e delimitadores de código) é
+  // canonicalizada, sem virar trabalho manual do autor.
+  assert.equal(inspect(normalizedLocator).ready, true);
+  const unrelated = structuredClone(value);
+  unrelated.reconciliation.entries[0].quote = "Uma passagem que não existe na base corrente.";
+  assert.ok(inspect(unrelated).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"),
+    "Uma passagem realmente ausente da base continua recusada.");
 });
 
 test("reconciliação já salva da representação acessível permanece inspecionável", () => {

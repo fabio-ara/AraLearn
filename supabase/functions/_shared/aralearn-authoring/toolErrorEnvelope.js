@@ -1,6 +1,9 @@
 import { asAuthoringApiError } from "./errors.js";
 
 const ERROR_ISSUE_LIMIT = 20;
+const BLOCKER_PASSAGE_LIMIT = 12;
+const BLOCKER_PASSAGE_TEXT_LIMIT = 1000;
+const BLOCKER_CANDIDATE_LIMIT = 8;
 const UNKNOWN_FIELD_MESSAGE = /campo desconhecido|não pertence (?:ao comando|à ferramenta)/iu;
 const DIAGNOSTIC_PATH = /^[A-Za-z][A-Za-z0-9_.[\]/*-]{0,159}$/u;
 const DIAGNOSTIC_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,239}$/u;
@@ -9,12 +12,25 @@ const SAFE_NUMERIC_DETAIL_KEYS = new Set([
   "expectedRevision", "actualRevision", "currentRevision"
 ]);
 
-export function projectHumanMaterializationPreflight(error) {
-  if (!["human_materialization_preflight_blocked", "human_materialization_preflight_stale"].includes(error?.code)) return undefined;
-  const source = error.details?.preflight;
-  if (!source || !["ready", "blocked"].includes(source.state) || !Array.isArray(source.blockers) ||
-      !["complete", "partial"].includes(source.completion) ||
-      !(source.referencia === null || /^materialization-v1:[a-f0-9]{64}$/u.test(source.referencia))) return undefined;
+function projectedPassages(value) {
+  if (!Array.isArray(value) || !value.length || value.length > BLOCKER_PASSAGE_LIMIT) return undefined;
+  const passages = value.map(item => typeof item === "string" && item.length > 0 &&
+    item.length <= BLOCKER_PASSAGE_TEXT_LIMIT ? item : null);
+  return passages.some(item => item === null) ? undefined : passages;
+}
+
+function projectedCandidates(value) {
+  if (!Array.isArray(value) || !value.length || value.length > BLOCKER_CANDIDATE_LIMIT) return undefined;
+  const candidates = value.map(item => typeof item === "string" && item.length > 0 &&
+    item.length <= BLOCKER_PASSAGE_TEXT_LIMIT ? item : null);
+  return candidates.some(item => item === null) ? undefined : candidates;
+}
+
+// The pending passages and the ambiguity candidates are the actionable part of
+// a declaration failure: forwarding them removes the manual reconstruction of
+// locators and the character-by-character probing from the client.
+function projectedBlockers(source) {
+  if (!Array.isArray(source?.blockers)) return undefined;
   const blockers = source.blockers.map(item => {
     if (!item || typeof item.code !== "string" || !/^[a-z][a-z0-9_]{0,119}$/u.test(item.code) ||
         typeof item.message !== "string" || !item.message.trim()) return null;
@@ -23,12 +39,32 @@ export function projectHumanMaterializationPreflight(error) {
     for (const key of ["microsequence", "idea", "requirement", "studyUnit", "component", "resourceId", "path"]) {
       if (typeof item[key] === "string" && item[key].length <= 4000) blocker[key] = item[key];
     }
+    const passages = projectedPassages(item.passages);
+    if (passages) blocker.passages = passages;
+    const candidates = projectedCandidates(item.candidates);
+    if (candidates) blocker.candidates = candidates;
     return blocker;
   });
   if (blockers.some(item => item === null)) return undefined;
+  return blockers;
+}
+
+export function projectHumanMaterializationPreflight(error) {
+  if (!["human_materialization_preflight_blocked", "human_materialization_preflight_stale"].includes(error?.code)) return undefined;
+  const source = error.details?.preflight;
+  if (!source || !["ready", "blocked"].includes(source.state) ||
+      !["complete", "partial"].includes(source.completion) ||
+      !(source.referencia === null || /^materialization-v1:[a-f0-9]{64}$/u.test(source.referencia))) return undefined;
+  const blockers = projectedBlockers(source);
+  if (!blockers) return undefined;
   // Preserve every actionable blocker, but never forward arbitrary adapter
   // details, snapshots, source credentials or raw payloads in an error.
   return { state: source.state, referencia: source.referencia, completion: source.completion, blockers };
+}
+
+export function projectExplanationReconciliationBlockers(error) {
+  if (error?.code !== "invalid_explanation_reconciliation") return undefined;
+  return projectedBlockers(error.details);
 }
 
 export function projectHumanWriteRecovery(error) {
@@ -337,12 +373,14 @@ export function toolErrorData(
 ) {
   const normalized = asAuthoringApiError(error);
   const message = publicErrorMessage(normalized);
-  const details = compactErrorDetails(normalized.details, normalized.message);
+  const reconciliationBlockers = projectExplanationReconciliationBlockers(normalized);
+  const details = { ...(compactErrorDetails(normalized.details, normalized.message) ?? {}),
+    ...(reconciliationBlockers ? { blockers: reconciliationBlockers } : {}) };
   const issues = errorIssues(normalized, details, message);
   return {
     code: normalized.code,
     message,
-    ...(details === undefined ? {} : { details }),
+    ...(Object.keys(details).length ? { details } : {}),
     issues,
     recovery: errorRecovery(normalized, issues, requestId)
   };

@@ -9,13 +9,14 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
-## [0.0.81] - 2026-09-17
+## [0.0.81] - 2026-09-18
 
 ### Melhorado
 
 - a produção focal de conteúdo valida e grava apenas o alvo e as dependências pedagógicas reais; unidades preservadas de microssequências independentes da mesma parte deixam de exigir manutenção ou nova revisão;
 - escolhas já determinadas pelo curso, inclusive a calibração contextual derivável, são resolvidas durante a preparação e a gravação, sem etapa persistente nem instrução manual;
-- as orientações da autoria em MCP e Actions descrevem a decisão pedagógica em linguagem natural, sem expor operações, códigos, estados internos ou referências opacas, e consolidam os impedimentos relacionados em uma única pergunta com retomada automática.
+- as orientações da autoria em MCP e Actions descrevem a decisão pedagógica em linguagem natural, sem expor operações, códigos, estados internos ou referências opacas, e consolidam os impedimentos relacionados em uma única pergunta com retomada automática;
+- classificar as passagens de uma Explicação deixa de exigir a cópia exata da base: a passagem pode ser indicada por um trecho curto e distintivo ou pela folha inteira, e o servidor localiza e guarda o trecho literal; o que ainda falta classificar volta com o texto exato e uma ambiguidade real devolve candidatos explícitos na mesma resposta.
 
 ### Corrigido
 

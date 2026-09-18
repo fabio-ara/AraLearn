@@ -11,7 +11,9 @@ import { normalizeCourseSourceLinks, requireCourseSourceEvidence } from "../aral
 import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
-import { inspectExplanationReconciliation } from "../aralearn/runtime/domain/courseExplanationReconciliation.js";
+import { canonicalReconciliationLocator, explanationReconciliationTargets, inspectExplanationReconciliation,
+  locateExplanationPassage, RECONCILIATION_PASSAGE_LIMIT, RECONCILIATION_PASSAGE_TEXT_LIMIT }
+  from "../aralearn/runtime/domain/courseExplanationReconciliation.js";
 import { sha256Hex } from "./security.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
@@ -75,8 +77,8 @@ function normalizedText(value) {
     .replace(/\s+/gu, " ");
 }
 
-function fail(code, message, status = 422) {
-  throw new AuthoringApiError(status, code, message);
+function fail(code, message, status = 422, details = undefined) {
+  throw new AuthoringApiError(status, code, message, details);
 }
 
 function reference(value, label) {
@@ -389,6 +391,35 @@ export async function explanationContentBasis(explanation) {
   return await sha256Hex(canonicalAuthoringValue({ title: explanation?.title, content: explanation?.content }));
 }
 
+// The declaration names the passage; the server derives the literal locator.
+// A whole-leaf classification needs no artificial decomposition, and long
+// leaves are sliced by the server, never by the author.
+function declaredReconciliationLocator(target, entry) {
+  const located = locateExplanationPassage(target.text, { quote: entry.trecho, prefix: entry.prefixo ?? null,
+    suffix: entry.sufixo ?? null, occurrence: entry.ocorrencia ?? null },
+  { preserveMarkup: target.preserveMarkup === true });
+  if (located.status !== "located") {
+    return { quote: entry.trecho, prefix: entry.prefixo ?? null, suffix: entry.sufixo ?? null };
+  }
+  return canonicalReconciliationLocator(target.text, located.range);
+}
+
+function wholeLeafReconciliationLocators(target) {
+  const text = target.text;
+  if (text.length <= 4000) return [{ quote: text, prefix: null, suffix: null }];
+  const locators = [];
+  for (let start = 0; start < text.length;) {
+    let end = Math.min(start + 4000, text.length);
+    if (end < text.length) {
+      const boundary = text.lastIndexOf("\n", end);
+      if (boundary > start + 1000) end = boundary + 1;
+    }
+    locators.push(canonicalReconciliationLocator(text, [start, end]));
+    start = end;
+  }
+  return locators;
+}
+
 export async function reconcileHumanExplanation(content, entries, context) {
   const explanation = normalizeMicrosequenceExplanation(content);
   if (entries === undefined && explanation.reconciliation === undefined) return explanation;
@@ -398,11 +429,28 @@ export async function reconcileHumanExplanation(content, entries, context) {
     if (!Array.isArray(entries) || !entries.length || entries.length > 512) {
       fail("invalid_explanation_reconciliation", "Informe as passagens classificadas da base.");
     }
+    const targets = explanationReconciliationTargets(explanation);
+    const declared = [];
+    for (const [index, entry] of entries.entries()) {
+      const instance = explanation.content[(Number.isSafeInteger(entry?.recurso) ? entry.recurso : 0) - 1];
+      const target = targets.find(item => item.resourceId === instance?.id && item.path === entry?.folha);
+      if (!target || !target.text.trim()) {
+        fail("invalid_explanation_reconciliation",
+          "Uma passagem declarada não corresponde a uma folha com texto da base salva.", undefined,
+          { blockers: [{ code: "explanation_reconciliation_locator_stale",
+            message: "Uma passagem não corresponde univocamente à base corrente.", entry: index + 1,
+            ...(typeof entry?.folha === "string" && entry.folha.length <= 240 ? { path: entry.folha } : {}),
+            passages: targets.filter(item => item.text.trim()).slice(0, RECONCILIATION_PASSAGE_LIMIT)
+              .map(item => item.text.slice(0, RECONCILIATION_PASSAGE_TEXT_LIMIT)) }] });
+      }
+      const locators = entry.trecho === undefined || entry.trecho === null
+        ? wholeLeafReconciliationLocators(target)
+        : [declaredReconciliationLocator(target, entry)];
+      for (const locator of locators) declared.push({ ...locator, resourceId: target.resourceId, path: target.path, entry });
+    }
     explanation.reconciliation = {
       contract: "aralearn.explanation-reconciliation.v1", contentBasis: await explanationContentBasis(explanation),
-      entries: entries.map(entry => ({ resourceId: explanation.content[entry.recurso - 1]?.id,
-        path: entry.folha, quote: entry.trecho, prefix: entry.prefixo ?? null, suffix: entry.sufixo ?? null,
-        role: entry.papel, reason: entry.motivo,
+      entries: declared.map(({ entry, ...locator }) => ({ ...locator, role: entry.papel, reason: entry.motivo,
         analysisUnitIds: (entry.ideias ?? []).map(value => resolvePlanItem(context.plan, "instructionalAnalysisUnits", value, "A ideia").id),
         evidenceRequirementIds: (entry.requisitos ?? []).map(value => resolvePlanItem(context.plan, "evidenceRequirements", value, "O requisito").id),
         destinationMicrosequenceId: entry.destino == null ? null : resolveReference(micros, entry.destino, {
@@ -606,7 +654,11 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       const value = prepared[0];
       if (suppliedByMicro.has(value.microsequenceId)) fail("invalid_human_explanation", "A parte repete a explicação de uma microssequência.");
       suppliedByMicro.set(value.microsequenceId, value);
-    } catch (error) { add(error.code ?? "invalid_human_explanation", error.message, { explanation: index + 1 }); }
+    } catch (error) {
+      const declared = Array.isArray(error?.details?.blockers) ? error.details.blockers : [];
+      if (declared.length) declared.forEach(blocker => blockers.push({ ...blocker, explanation: index + 1 }));
+      else add(error.code ?? "invalid_human_explanation", error.message, { explanation: index + 1 });
+    }
   }
   const relevantMicrosequenceIds = complete
     ? new Set(micros.map(item => item.id))
@@ -1543,7 +1595,12 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
     seen.add(microsequence.id);
     let content;
     try { content = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context); }
-    catch (error) { fail("invalid_human_explanation", error.message); }
+    catch (error) {
+      // Actionable diagnostics (pending passages, candidates) travel with the
+      // failure instead of being replaced by a generic message.
+      if (Array.isArray(error?.details?.blockers) && error.details.blockers.length) throw error;
+      fail("invalid_human_explanation", error.message);
+    }
     const persistedSupport = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id)?.explanation ?? null;
     if (entry.reconciliacao === undefined && persistedSupport?.reconciliation &&
         canonicalAuthoringValue({ title: content.title, content: content.content }) ===
