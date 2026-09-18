@@ -205,13 +205,10 @@ export function buildCandidatePlan(impact) {
     gate: "android", command: process.platform === "win32" ? "cmd.exe" : "bash",
     args: [...(process.platform === "win32" ? ["/d", "/c", "android\\gradlew.bat"] : ["android/gradlew"]), "-p", "android", ":app:assembleDebug", ":app:lintDebug", "--no-daemon"]
   });
-  // Primeiro estabilizar as provas reutilizáveis. Banco e integração dependem de
-  // estado mutável: mantê-los juntos ao fim evita repeti-los após falha de UI
-  // ou Android, sem transformar um recibo antigo em prova de frescor.
-  if (impact.requires.supabase) gates.push(
-    { gate: "local-database", command: "pwsh", args: ["-NoProfile", "-File", "scripts/validateLocalSupabase.ps1", "-DatabaseOnly"], reusable: false },
-    { gate: "local-integration", args: ["scripts/runLocalIntegration.mjs"], reusable: false }
-  );
+  // A preparação local não inicia Docker, CLI do Supabase, PostgreSQL nem Edge
+  // Functions. requires.supabase continua selecionando o job de banco da CI, que
+  // executa a stack descartável e é o único caminho de certificação dessa prova.
+  // Usar a stack local fora daqui é escolha explícita dos comandos especializados.
   return gates;
 }
 
@@ -304,10 +301,8 @@ export async function validateCandidate({ root = repositoryRoot, base = "origin/
       if (step.env?.PLAYWRIGHT_JSON_OUTPUT_NAME) fs.rmSync(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME), { force: true });
       const logRef = `.validation/${step.gate}.log`;
       const started = Date.now();
-      const effectiveStep = step.gate === "local-integration" && env.ARALEARN_LOCAL_FUNCTIONS_EXISTING === "1"
-        ? { ...step, args: [...step.args, "--functions-existing", "--base", base] } : step;
       let result;
-      try { result = await execute(effectiveStep, { root, logPath: path.join(root, logRef), env }); }
+      try { result = await execute(step, { root, logPath: path.join(root, logRef), env }); }
       catch (error) { result = { result: "failed", exitCode: 1, failed_tests: [redactOutput(error.message, env)] }; }
       if (result.result === "passed" && step.gate === "frontend-e2e") {
         try { result.tests = verifyBrowserReport(readJson(path.join(root, step.env.PLAYWRIGHT_JSON_OUTPUT_NAME))); }

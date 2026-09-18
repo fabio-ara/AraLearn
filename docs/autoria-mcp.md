@@ -304,11 +304,13 @@ comparação dos contratos identifica a configuração divergente.
 ## Verificação local
 
 ```powershell
-npm run test:authoring:contract
 npm run test:authoring:mcp
 deno test --config supabase/functions/deno.json `
   supabase/functions/tests/aralearn-authoring-mcp.test.ts
 ```
+
+O comando de MCP já executa o contrato compartilhado, então não repita
+`test:authoring:contract` no mesmo ciclo.
 
 Essas verificações percorrem o catálogo desde a seleção da tarefa e a resolução
 do alvo até a autorização, além de conferir a paridade com Actions. A jornada em

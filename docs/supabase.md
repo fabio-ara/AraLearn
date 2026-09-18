@@ -315,6 +315,10 @@ npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
+Esses comandos são uma escolha explícita para investigar banco, autenticação e
+arquivos. A preparação da candidata não inicia a stack local; a certificação dessa
+prova acontece no job da CI, que reproduz o conjunto em runner descartável.
+
 O reset recria o banco local e aplica as migrações e os dados iniciais (*seed*) nesse
 ambiente descartável. A validação percorre banco e autorização — PostgreSQL, RLS,
 PostgREST e revisão do esquema —, a conta por Auth e e-mail, os arquivos no Storage e

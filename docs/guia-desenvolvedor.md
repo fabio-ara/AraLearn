@@ -48,6 +48,10 @@ npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
+A preparação da candidata não inicia esse conjunto. Escolha a stack local quando a
+propriedade depender de banco, autenticação ou arquivos, e reserve a certificação
+correspondente ao job da CI.
+
 ## Percurso de dados
 
 O navegador guarda uma cópia do curso para leitura e retomada; o servidor conserva o
@@ -162,11 +166,22 @@ de ingestão, conforme o [contrato de Actions](autoria-actions.md#operações).
 Ao alterar o catálogo:
 
 ```powershell
-npm.cmd run test:authoring:contract
-npm.cmd run test:authoring:mcp
 npm.cmd run actions:openapi:check
-npm.cmd run test:authoring:actions
+npm.cmd run test:focal -- `
+  tests/runtime/chatgpt-action-human-schema.test.js `
+  tests/runtime/course-authoring-contract-runtime.test.js `
+  tests/runtime/course-human-task-executor.test.js `
+  tests/runtime/course-human-materialization.test.js `
+  tests/runtime/course-human-mcp.test.js `
+  tests/runtime/course-human-corrections.test.js `
+  tests/runtime/course-action-server.test.js
 ```
+
+O verificador de gerados confere o OpenAPI, e a união focal executa uma vez o contrato
+compartilhado, o MCP e o Actions. Os scripts `test:authoring:contract`,
+`test:authoring:mcp` e `test:authoring:actions` continuam disponíveis para o recorte
+de um canal; as duas últimas chamadas já incluem o contrato, então não as preceda com
+`test:authoring:contract` no mesmo ciclo.
 
 As respostas públicas apresentam resultado e link direto ao objeto, com uma próxima
 decisão quando necessária. Contexto estruturado pode acompanhar a leitura sem virar
@@ -317,7 +332,7 @@ obrigatória é chamada de *gate*. O classificador examina os caminhos alterados
 escolhe as provas da área correspondente. Ele distingue documentação e web; contratos,
 serviços remotos e banco; Android e orquestração. Uma mudança apenas nas folhas de
 estilo (CSS), por exemplo, seleciona provas de interface; contratos e banco exigem
-integração local; caminhos desconhecidos ampliam a verificação. Como essa classificação
+a integração da CI; caminhos desconhecidos ampliam a verificação. Como essa classificação
 não reconstrói todas as dependências do código, acrescente o teste focal do comportamento
 alterado quando ele ainda não estiver representado. Mudanças Android recebem suas provas
 locais e o gate Android obrigatório na validação protegida final.
@@ -331,10 +346,10 @@ deltas mistos com impacto transversal continuam amplos.
 
 A preparação começa por verificações rápidas de arquivos e análise estática do código
 (*lint*) e avança para testes de execução, jornadas de ponta a ponta no navegador
-(E2E) e Android, conforme o impacto. Banco e integração com os serviços vêm juntos
-ao fim, nessa ordem. Assim, uma falha anterior no navegador ou Android é corrigida
-antes de consumir as provas que dependem de estado mutável. A primeira falha
-interrompe o percurso. O resumo em
+(E2E) e Android, conforme o impacto. Ela não inicia contêineres, CLI do Supabase,
+PostgreSQL nem Edge Functions locais: a prova de banco e de integração pertence ao job
+próprio da CI, em runner descartável, e a preparação aprovada não afirma que esse gate
+passou. A primeira falha interrompe o percurso. O resumo em
 `.validation/candidate.json` identifica a árvore e a configuração da candidata, os
 gates selecionados, o resultado e as falhas, com referências aos logs. Como o diretório
 é ignorado pelo Git, leia esse resumo local antes de abrir o log necessário ao
@@ -342,8 +357,9 @@ diagnóstico.
 
 Resultados locais podem ser reutilizados quando arquivos, dependências e
 configuração relevantes permanecem iguais. `--force` repete as verificações.
-A integração com banco é executada novamente quando necessária, pois a igualdade
-do código não comprova o estado dos dados. Nos recibos de runtime focal e E2E,
+Quando a stack local for escolhida de forma explícita, a integração com banco é
+executada de novo, pois a igualdade do código não comprova o estado dos dados.
+Nos recibos de runtime focal e E2E,
 documentos e testes não selecionados podem ser excluídos quando não são alcançados
 pela prova. Imports, leituras literais e registros de evidência consumidos conservam
 as referências pertinentes; um comentário com `e2e` não é leitura. Carregamento
@@ -411,11 +427,12 @@ não aprova a preparação;
 adaptadores sintéticos continuam separados das jornadas com Auth, HTTP, PostgreSQL e
 Storage reais locais.
 
-O gate de banco executa Deno, o ambiente das funções remotas; pgTAP, a suíte de
+O job de banco da CI executa Deno, o ambiente das funções remotas; pgTAP, a suíte de
 testes SQL; inventário de paridade; lint; e concorrência antes
-das jornadas. Local e CI registram avisos do lint e bloqueiam erros explicitamente.
-Uma migração candidata precisa estar aplicada no conjunto local de serviços; alterar
-silenciosamente uma migração já aplicada é recusado. Instalação nova, atualização e restauração continuam obrigatórios
+das jornadas, sempre no conjunto descartável do runner. A execução registra avisos do
+lint e bloqueia erros explicitamente. Uma migração candidata precisa estar aplicada
+nesse conjunto; alterar silenciosamente uma migração já aplicada é recusado.
+Instalação nova, atualização e restauração continuam obrigatórios
 conforme o impacto da mudança e o corte.
 
 `npm run test:integration:local` reaproveita uma stack local já preparada e executa
@@ -431,8 +448,7 @@ processo já supervisionado. Um runtime persistente local pode ser usado com
 `--functions-existing` apenas após conferir que os arquivos estão montados somente para leitura, a origem, a
 prontidão dos serviços e
 ausência de alteração de funções/configuração/migrations contra a base. Isso conserva
-o processo existente quando seu código não foi alterado. Para o orquestrador, a opção
-correspondente é `ARALEARN_LOCAL_FUNCTIONS_EXISTING=1`. Falha de limpeza bloqueia a
+o processo existente quando seu código não foi alterado. Falha de limpeza bloqueia a
 prova. Contas e arquivos são sintéticos; esses testes não aprovam cursos reais nem
 substituem ChatGPT, MCP ou Actions hospedados.
 
