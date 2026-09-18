@@ -686,7 +686,7 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260917105911_legacy_curricular_map_explanation_plan_preservation.sql",
+    fileName: "20260917232000_focal_materialization_dependency_scope.sql",
     revision: "20260917232000"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
