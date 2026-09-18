@@ -12,8 +12,10 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 import { resolveHumanCourseContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 
 import { materializeHumanCoursePart as materializeCompletePart, humanMaterializationUnitPlan,
-  preflightHumanCourseMaterialization } from
+  preflightHumanCourseMaterialization, reconcileHumanExplanation } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
+import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
+import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 function explanationFixtures() {
@@ -2310,4 +2312,98 @@ test("referência ready protege configuração efetiva do slot existente", async
     course: "Curso de Redes", part: 1, units, preparationReference: ready.referencia }),
   { status: 409, code: "human_materialization_preflight_stale" });
   assert.deepEqual(adapter.calls, []);
+});
+
+// Essência do caso real: a base e o repertório já existiam, faltavam unidades
+// em microssequências com explicação salva. O cliente precisa concluir
+// ler -> classificar -> preparar -> materializar -> reler sem recopiar a base,
+// sem sondar localizadores e sem manter unidades independentes preservadas.
+test("caso real: completar lacunas classifica sem recopiar a base e sem manter a unidade independente", async () => {
+  const preservedId = "70000000-0000-4000-8000-000000000001";
+  const adapter = adapterFixture();
+  const leaves = ["O DNS associa nomes a endereços usados por aplicações comuns.",
+    "Verificar o cache evita consultas repetidas.  Verificar o cache custa memória."];
+  const plan = await adapter.getCourseInstructionalPlan();
+  const microsequence = plan.plan.curriculum.modules[0].lessons[0].microsequences[0];
+  microsequence.explanation = { title: "Explicação de DNS", content: leaves.map((text, index) => ({
+    id: `support-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } })) };
+  adapter.getCourseInstructionalPlan = async () => structuredClone(plan);
+  const preserved = persistedStudyUnit(preservedId, 1);
+  const preservedBefore = structuredClone(preserved);
+  adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(preserved)], hasMore: false, nextCursor: null });
+
+  const idea = "DNS associa nomes a endereços.";
+  const reason = "A passagem sustenta a relação central que o percurso desenvolve.";
+  const operations = [];
+  const declare = async declarations => {
+    operations.push(JSON.stringify(declarations));
+    try {
+      microsequence.explanation = await reconcileHumanExplanation(microsequence.explanation, declarations, { plan });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, blockers: toolErrorData(error).details?.blockers ?? [] };
+    }
+  };
+  const wholeLeaf = { recurso: 1, folha: "text", papel: "introduced", motivo: reason, ideias: [idea], requisitos: [] };
+  const first = await declare([wholeLeaf]);
+  assert.equal(first.ok, false);
+  assert.deepEqual(first.blockers.map(({ code }) => code), ["explanation_reconciliation_unmapped"]);
+  assert.equal(first.blockers[0].path, "text");
+  assert.deepEqual(first.blockers[0].passages, [leaves[1]],
+    "o que falta classificar volta com o texto literal, sem exigir sondagem do cliente");
+
+  const ambiguous = { recurso: 2, folha: "text", trecho: "Verificar o cache", papel: "example", motivo: reason,
+    ideias: [idea], requisitos: [] };
+  const second = await declare([wholeLeaf, ambiguous]);
+  assert.equal(second.ok, false);
+  assert.deepEqual(second.blockers.map(({ code }) => code),
+    ["explanation_reconciliation_locator_stale", "explanation_reconciliation_unmapped"]);
+  const candidates = second.blockers[0].candidates;
+  assert.equal(candidates.length, 2);
+  assert.notEqual(candidates[0], candidates[1], "os candidatos precisam ser distinguíveis pelo cliente");
+  for (const candidate of candidates) {
+    assert.equal(leaves[1].split(candidate).length - 1, 1, "cada candidato é um seletor literal e único");
+  }
+  assert.ok(candidates[0].includes("evita consultas repetidas") && candidates[1].includes("custa memória"),
+    "o contexto devolvido permite escolher semanticamente, sem contar ocorrências");
+
+  const third = await declare([wholeLeaf, { ...ambiguous, trecho: candidates[1] }]);
+  assert.equal(third.ok, false);
+  assert.deepEqual(third.blockers.map(({ code }) => code), ["explanation_reconciliation_unmapped"]);
+  const remaining = third.blockers[0].passages[0];
+  assert.equal(typeof remaining, "string");
+
+  const fourth = await declare([wholeLeaf, { ...ambiguous, trecho: candidates[1] },
+    { recurso: 2, folha: "text", trecho: remaining, papel: "support", motivo: reason, ideias: [idea], requisitos: [] }]);
+  assert.equal(fourth.ok, true);
+  assert.equal(operations.length, 4, "quatro operações, cada uma resolvendo uma decisão real");
+  assert.equal(new Set(operations).size, operations.length, "nenhuma tentativa idêntica foi repetida");
+  const savedReconciliation = microsequence.explanation.reconciliation;
+  assert.equal(savedReconciliation.entries.length, 3);
+  for (const entry of savedReconciliation.entries) {
+    assert.ok(leaves.some(text => text.includes(entry.quote)),
+      "o localizador persistido é literal, derivado pelo servidor, sem cópia de serialização do cliente");
+  }
+  assert.equal(inspectExplanationReconciliation(microsequence.explanation, {
+    contentBasis: savedReconciliation.contentBasis, analysisUnitIds: [ANALYSIS_ID],
+    evidenceRequirementIds: [], microsequenceIds: ["micro-dns"] }).ready, true);
+
+  const firstUnit = unit();
+  firstUnit.posicao = 2;
+  firstUnit.aplicacaoPedagogica.ideiasIntroduzidas = [];
+  firstUnit.aplicacaoPedagogica.ideiasUtilizadas = [1];
+  firstUnit.aplicacaoPedagogica.explicacoes = [];
+  const secondUnit = pedagogicalUnit(3, { used: [1] });
+  const ready = await prepareMaterialization(adapter, [firstUnit, secondUnit]);
+  assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [firstUnit, secondUnit], preparationReference: ready.referencia });
+  const write = adapter.calls[0];
+  assert.equal(write.units.length, 2);
+  assert.ok(write.units.every(unitWrite => unitWrite.didacticMicrosequenceId === "micro-dns"));
+  assert.ok(write.placements.some(({ studyUnitId }) => studyUnitId === preservedId),
+    "a unidade independente permanece no percurso");
+  assert.deepEqual(preserved, preservedBefore, "a unidade independente não é mantida nem reescrita");
+  const reread = await prepareMaterialization(adapter, [firstUnit, secondUnit]);
+  assert.equal(reread.state, "ready", JSON.stringify(reread.blockers));
 });

@@ -22,6 +22,31 @@ const baseUrl =
   "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action";
 const actionTools = projectHumanAuthoringTasksForActions(COURSE_HUMAN_TASKS);
 const resultSchema = structuredClone(actionTools[0]?.outputSchema);
+const blockerSchema = {
+  type: "array",
+  maxItems: 256,
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["code", "message"],
+    properties: {
+      code: { type: "string" },
+      message: { type: "string" },
+      unit: { type: "integer" },
+      explanation: { type: "integer" },
+      entry: { type: "integer" },
+      microsequence: { type: "string" },
+      idea: { type: "string" },
+      requirement: { type: "string" },
+      studyUnit: { type: "string" },
+      component: { type: "string" },
+      resourceId: { type: "string" },
+      path: { type: "string" },
+      passages: { type: "array", maxItems: 12, items: { type: "string", maxLength: 4000 } },
+      candidates: { type: "array", maxItems: 8, items: { type: "string", maxLength: 4000 } }
+    }
+  }
+};
 const errorSchema = {
   type: "object",
   additionalProperties: false,
@@ -35,16 +60,13 @@ const errorSchema = {
         code: { type: "string", minLength: 1, maxLength: 120 },
         message: { type: "string", minLength: 1, maxLength: 1000 },
         retryable: { type: "boolean" },
-        details: { type: "object", additionalProperties: false, required: ["preflight"], properties: {
+        details: { type: "object", additionalProperties: false, properties: {
           preflight: { type: "object", additionalProperties: false, required: ["state", "referencia", "completion", "blockers"], properties: {
             state: { type: "string", enum: ["ready", "blocked"] },
             referencia: { type: ["string", "null"] }, completion: { type: "string", enum: ["complete", "partial"] },
-            blockers: { type: "array", items: { type: "object", additionalProperties: false, required: ["code", "message"], properties: {
-              code: { type: "string" }, message: { type: "string" }, unit: { type: "integer" }, explanation: { type: "integer" },
-              entry: { type: "integer" }, microsequence: { type: "string" }, idea: { type: "string" }, requirement: { type: "string" },
-              studyUnit: { type: "string" }, component: { type: "string" }, resourceId: { type: "string" }, path: { type: "string" }
-            } } }
-          } }
+            blockers: blockerSchema
+          } },
+          blockers: blockerSchema
         } },
         recovery: {
           type: "object", additionalProperties: false, required: ["requestId", "operation"],
