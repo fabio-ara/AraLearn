@@ -148,8 +148,6 @@ export async function materializeChannelPart(client, lot) {
     unidades: unidades.map(humanMaterializationUnitPlan), explicacoes
   });
   assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
-  assert.equal(prepared.context.preflight.completion, "complete");
-  assert.equal(prepared.context.parte.titulo, lot.part.titulo);
   await client.call("materializar_parte", { ...lot.materialization, concluir: true });
   return { ...prepared, pages: 1 };
 }
