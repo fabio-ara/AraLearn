@@ -1,0 +1,1187 @@
+[
+  {
+    "name": "assisted-v2-A-1",
+    "stage": "first",
+    "bytes": 20664,
+    "errors": [
+      {
+        "kind": "parse",
+        "error": "Expected ',' or '}' after property value in JSON at position 18845 (line 376 column 11)"
+      }
+    ],
+    "units": 0,
+    "components": [],
+    "practices": []
+  },
+  {
+    "name": "assisted-v2-A-1",
+    "stage": "final",
+    "bytes": 20666,
+    "errors": [],
+    "units": 5,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "assisted-v2-A-2",
+    "stage": "first",
+    "bytes": 17515,
+    "errors": [],
+    "units": 4,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "assisted-v2-A-2",
+    "stage": "final",
+    "bytes": 17515,
+    "errors": [],
+    "units": 4,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "corrected-B",
+    "stage": "first",
+    "bytes": 13824,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "tool_schema",
+        "error": "$.data.explicacoes[0].fontes é obrigatório."
+      }
+    ],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 6,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 6
+      }
+    ]
+  },
+  {
+    "name": "corrected-B",
+    "stage": "final",
+    "bytes": 13824,
+    "errors": [],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 6,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 6
+      }
+    ]
+  },
+  {
+    "name": "corrected-B-2",
+    "stage": "first",
+    "bytes": 14648,
+    "errors": [],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 6,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 6
+      }
+    ]
+  },
+  {
+    "name": "corrected-B-2",
+    "stage": "final",
+    "bytes": 14648,
+    "errors": [],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 6,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 6
+      }
+    ]
+  },
+  {
+    "name": "group-ABC-1",
+    "stage": "first",
+    "bytes": 31745,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      },
+      {
+        "call": 1,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      },
+      {
+        "call": 2,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 12,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "state_transition_table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "group-ABC-1",
+    "stage": "final",
+    "bytes": 31745,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      },
+      {
+        "call": 1,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      },
+      {
+        "call": 2,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 12,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "state_transition_table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "group-ABC-2",
+    "stage": "first",
+    "bytes": 29726,
+    "errors": [],
+    "units": 9,
+    "components": [
+      "paragraph",
+      "table",
+      "state_machine"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "group-ABC-2",
+    "stage": "final",
+    "bytes": 29721,
+    "errors": [],
+    "units": 9,
+    "components": [
+      "paragraph",
+      "table",
+      "state_machine"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "single-A-1",
+    "stage": "first",
+    "bytes": 20050,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "focus",
+        "error": "human_materialization_focus_required",
+        "message": "Indique a microssequência pelo título inequívoco ou pela posição no recorte."
+      },
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 4,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "choice",
+        "mode": "multiple",
+        "alternatives": 5,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 5
+      },
+      {
+        "component": "gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 3,
+        "specificFeedback": null
+      }
+    ]
+  },
+  {
+    "name": "single-A-1",
+    "stage": "final",
+    "bytes": 20050,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "focus",
+        "error": "human_materialization_focus_required",
+        "message": "Indique a microssequência pelo título inequívoco ou pela posição no recorte."
+      },
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 4,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "choice",
+        "mode": "multiple",
+        "alternatives": 5,
+        "correct": 3,
+        "gaps": null,
+        "specificFeedback": 5
+      },
+      {
+        "component": "gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 3,
+        "specificFeedback": null
+      }
+    ]
+  },
+  {
+    "name": "single-A-2",
+    "stage": "first",
+    "bytes": 21988,
+    "errors": [
+      {
+        "kind": "parse",
+        "error": "Expected ',' or '}' after property value in JSON at position 12227 (line 260 column 11)"
+      }
+    ],
+    "units": 0,
+    "components": [],
+    "practices": []
+  },
+  {
+    "name": "single-A-2",
+    "stage": "final",
+    "bytes": 21988,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 5,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 1,
+        "specificFeedback": null
+      }
+    ]
+  },
+  {
+    "name": "single-B-1",
+    "stage": "first",
+    "bytes": 12339,
+    "errors": [
+      {
+        "kind": "parse",
+        "error": "Expected ',' or '}' after property value in JSON at position 9948 (line 271 column 11)"
+      }
+    ],
+    "units": 0,
+    "components": [],
+    "practices": []
+  },
+  {
+    "name": "single-B-1",
+    "stage": "final",
+    "bytes": 12339,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 3,
+        "specificFeedback": null
+      }
+    ]
+  },
+  {
+    "name": "single-B-2",
+    "stage": "first",
+    "bytes": 10620,
+    "experimentFormat": "Objeto único; o ensaio pedia lista. O argumento da ferramenta é validado normalmente.",
+    "errors": [
+      {
+        "call": 0,
+        "kind": "focus",
+        "error": "human_component_not_found",
+        "message": "Escolha um componente do catálogo disponível para este lugar."
+      },
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      },
+      {
+        "call": 0,
+        "kind": "explanation",
+        "explanation": 0,
+        "error": "Escolha um componente do catálogo disponível para este lugar."
+      }
+    ],
+    "units": 2,
+    "components": [
+      "paragraph",
+      "memory-layout",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "single-B-2",
+    "stage": "final",
+    "bytes": 10620,
+    "experimentFormat": "Objeto único; o ensaio pedia lista. O argumento da ferramenta é validado normalmente.",
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 2,
+    "components": [
+      "paragraph",
+      "memory_layout",
+      "table"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "single-C-1",
+    "stage": "first",
+    "bytes": 20686,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "state_machine"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      }
+    ]
+  },
+  {
+    "name": "single-C-1",
+    "stage": "final",
+    "bytes": 20686,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "state_machine"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.gap",
+        "mode": null,
+        "alternatives": null,
+        "correct": null,
+        "gaps": 2,
+        "specificFeedback": null
+      }
+    ]
+  },
+  {
+    "name": "single-C-2",
+    "stage": "first",
+    "bytes": 14542,
+    "errors": [
+      {
+        "kind": "parse",
+        "error": "Expected ',' or '}' after property value in JSON at position 10100 (line 162 column 11)"
+      }
+    ],
+    "units": 0,
+    "components": [],
+    "practices": []
+  },
+  {
+    "name": "single-C-2",
+    "stage": "final",
+    "bytes": 14543,
+    "errors": [
+      {
+        "call": 0,
+        "kind": "part",
+        "error": "Referência de parte não fornecida pelo planejamento."
+      }
+    ],
+    "units": 3,
+    "components": [
+      "paragraph",
+      "state_machine"
+    ],
+    "practices": [
+      {
+        "component": "aralearn.response.choice",
+        "mode": "single",
+        "alternatives": 4,
+        "correct": 1,
+        "gaps": null,
+        "specificFeedback": 4
+      },
+      {
+        "component": "aralearn.response.choice",
+        "mode": "multiple",
+        "alternatives": 4,
+        "correct": 2,
+        "gaps": null,
+        "specificFeedback": 4
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020/gap-q020-a-2-final",
+    "stage": "final",
+    "bytes": 1725,
+    "checks": {
+      "distractorProbes": 0
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 2
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020/gap-q020-b-2-final",
+    "stage": "final",
+    "bytes": 1748,
+    "checks": {
+      "distractorProbes": 0
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 2
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020/gap-q020-a-4-final",
+    "stage": "final",
+    "bytes": 2120,
+    "checks": {
+      "distractorProbes": 4
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 4
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020/gap-q020-b-4-final",
+    "stage": "final",
+    "bytes": 2150,
+    "checks": {
+      "distractorProbes": 4
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 4
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020/gap-q020-a-6-final",
+    "stage": "final",
+    "bytes": 2533,
+    "checks": {
+      "distractorProbes": 6
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 6
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020/gap-q020-b-6-final",
+    "stage": "final",
+    "bytes": 2563,
+    "checks": {
+      "distractorProbes": 6
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 6
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-a-2-final",
+    "stage": "final",
+    "bytes": 2764,
+    "checks": {
+      "distractorProbes": 2
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 2
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-b-2-final",
+    "stage": "final",
+    "bytes": 2764,
+    "checks": {
+      "distractorProbes": 2
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 2
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-a-4-final",
+    "stage": "final",
+    "bytes": 3152,
+    "checks": {
+      "distractorProbes": 4
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 4
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-b-4-final",
+    "stage": "final",
+    "bytes": 3152,
+    "checks": {
+      "distractorProbes": 4
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 4
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-a-6-final",
+    "stage": "final",
+    "bytes": 3585,
+    "checks": {
+      "distractorProbes": 6
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 6
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-b-6-final",
+    "stage": "final",
+    "bytes": 3585,
+    "checks": {
+      "distractorProbes": 6
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 6
+      }
+    ]
+  },
+  {
+    "name": "gap-Q020-replica/gap-q020-replica-boundary-12-final",
+    "stage": "final",
+    "bytes": 5166,
+    "checks": {
+      "distractorProbes": 12
+    },
+    "errors": [],
+    "units": 1,
+    "components": [],
+    "practices": [
+      {
+        "component": "aralearn.response.gap",
+        "gaps": 12
+      }
+    ]
+  }
+]

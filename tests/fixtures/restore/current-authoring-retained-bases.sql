@@ -35,7 +35,13 @@ begin
     version=version+1 where course_id=course and source_id='source-context';
   perform public.record_course_ai_inspection_for_actor_v1(actor,course,'study_unit','unit-context-a',
     private.course_ai_inspection_basis_hash_v1(course,'study_unit','unit-context-a'),
-    '{"summary":"Conteúdo sintético inspecionado na base corrente.","outcome":"consistent","findings":[]}',
+    '{"summary":"Conteúdo sintético inspecionado na base corrente.","outcome":"consistent","findings":[],"checks":[
+      {"dimension":"alignment","result":"sufficient","reason":"A intenção preservada continua ligada ao alvo corrente.","evidence":["Compare dois elementos ligados e dois elementos sem ligação. Identifique a relação que permite a interação."]},
+      {"dimension":"evidence","result":"sufficient","reason":"A base compartilhada e a fonte corrente permanecem identificáveis.","evidence":["A base salva explicita os pressupostos e sustenta a comparação dos casos."]},
+      {"dimension":"representation","result":"sufficient","reason":"O conteúdo do alvo permanece legível na representação autorada.","evidence":["Revisão por IA preservada"]},
+      {"dimension":"feedback","result":"not_applicable","reason":"A unidade é teórica e não declara resposta ou prática nesta fixture.","evidence":["Compare dois elementos ligados e dois elementos sem ligação. Identifique a relação que permite a interação."]},
+      {"dimension":"sufficiency","result":"sufficient","reason":"A versão atual oferece base suficiente para a decisão autoral.","evidence":["Compare dois elementos ligados e dois elementos sem ligação. Identifique a relação que permite a interação."]}
+    ]}',
     'restore-current-inspection');
   perform private.execute_course_anchored_annotation_command_core_v1(actor,course,null,
     jsonb_build_object('type','decide_anchored_annotation','annotationId','74540000-0000-4000-8000-000000000301',

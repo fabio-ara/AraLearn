@@ -24,7 +24,7 @@ export const COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS = [
   definition("excluir_curso", "Excluir curso próprio", "Prepara uma referência inequívoca. Após a decisão de excluir, use a confirmação original; a limpeza de arquivos segue o ciclo de vida existente.", ["curso"], {
     confirmacao: continuation
   }, true),
-  definition("salvar_ramo_curricular", "Incluir ou editar ramo curricular", "Constrói mapas extensos por recortes: módulo, lição e microssequência, após salvar contexto e escopo. Alvo ausente inclui; destino identifica o pai. Dependências, cobertura e fontes usam referências humanas. Campos omitidos e descendentes são preservados.", ["curso", "tipo"], {
+  definition("salvar_ramo_curricular", "Incluir ou editar ramo curricular", "Após contexto e escopo, constrói o mapa por módulo, lição ou microssequência. Sem alvo, inclui; destino indica o pai. Usa referências humanas. Preserva campos omitidos e descendentes.", ["curso", "tipo"], {
     tipo: { type: "string", enum: Object.keys(kindByHuman) }, alvo: path, destino: path,
     titulo: { type: "string", minLength: 1, maxLength: 300 }, objetivo: { type: "string", minLength: 1, maxLength: 2000 },
     posicao: { type: "integer", minimum: 1, maximum: 64 }, dependencias: refs, cobertura: refs,

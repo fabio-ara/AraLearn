@@ -44,7 +44,11 @@ test("API local: cópia conserva PDF e WAV após exclusão da origem e remove a 
     SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
   } : JSON.parse(execFileSync(statusCommand, statusArguments,
     { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
-  assert.ok(["http://127.0.0.1:54321", "http://localhost:54321"].includes(status.API_URL));
+  const expectedPort = String(process.env.ARALEARN_TEST_REAL_LOCAL_COPY_FILES_PORT || "54321");
+  assert.match(expectedPort, /^[1-9]\d{0,4}$/u);
+  assert.ok(Number(expectedPort) <= 65535);
+  assert.ok([`http://127.0.0.1:${expectedPort}`, `http://localhost:${expectedPort}`].includes(status.API_URL),
+    "A API deve corresponder à porta local explicitamente escolhida para a fixture.");
   assert.ok(status.ANON_KEY && status.SERVICE_ROLE_KEY, "Credenciais efêmeras locais completas são obrigatórias.");
   const origin = "http://127.0.0.1:4182";
   const marker = randomUUID();

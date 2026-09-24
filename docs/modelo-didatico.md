@@ -277,8 +277,9 @@ pelo qual uma resposta pode ser registrada.
 
 A escolha do formato segue essa demanda. Alternativas permitem discriminar
 opções; uma lacuna pede completar algo no próprio texto, tabela, fórmula ou
-diagrama. Digitação pode solicitar uma resposta localizada; resposta aberta
-pode pedir justificativa ou previsão. Ordenação é pertinente quando reconstruir
+diagrama. Digitação pode solicitar uma resposta localizada. Uma previsão ou a
+comparação entre justificativas pode ser recolhida por alternativas; isso não
+equivale à elaboração espontânea de uma justificativa. Ordenação é pertinente quando reconstruir
 a sequência faz parte do conhecimento. Correspondências simples usam lacunas
 independentes nos campos em que cada relação já é lida, sem outra modalidade
 autônoma de associação. Os

@@ -1,3 +1,5 @@
+import { normalizePedagogicalAudit } from "./coursePedagogicalAudit.js";
+
 const HASH = /^[a-f0-9]{64}$/u;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u;
 const TARGETS = new Set(["study_unit", "microsequence_explanation"]);
@@ -17,13 +19,21 @@ const boundedText = (value, limit) => typeof value === "string" && Boolean(value
 
 // The report is the producer's semantic judgment, never a server certification.
 export function normalizeCourseContentInspectionReport(value) {
-  exact(value, ["summary", "outcome", "findings"]);
+  exact(value, ["summary", "outcome", "findings"], ["checks"]);
   if (!boundedText(value.summary, 2000) || !OUTCOMES.has(value.outcome) ||
       !Array.isArray(value.findings) || value.findings.length > 20 ||
       value.findings.some(item => !boundedText(item, 1000)) ||
       value.outcome === "needs_attention" && !value.findings.length ||
       value.outcome === "consistent" && value.findings.length) fail();
-  return { summary: value.summary, outcome: value.outcome, findings: [...value.findings] };
+  const checks = value.checks === undefined ? null : normalizePedagogicalAudit(value.checks);
+  if (checks?.some(check => check.result === "insufficient") && value.outcome !== "needs_attention") fail();
+  return { summary: value.summary, outcome: value.outcome, findings: [...value.findings], ...(checks ? { checks } : {}) };
+}
+
+export function isCourseContentInspectionSatisfied(inspection) {
+  return inspection?.state === "current" && inspection.report?.outcome === "consistent" &&
+    Array.isArray(inspection.report.checks) && inspection.report.checks.length === 5 &&
+    inspection.report.checks.every(check => check.result !== "insufficient");
 }
 
 export function normalizeCourseContentInspectionState(value) {
@@ -40,12 +50,16 @@ export function normalizeCourseContentInspectionState(value) {
 export function normalizeCourseContentInspection(value, request = {}) {
   const change = value?.contract === "aralearn.course-ai-inspection-change.v1";
   exact(value, ["contract", "courseId", "courseRevision", "targetKind", "targetId", "basisHash", "inspection",
-    ...(change ? ["changed", "idempotent"] : [])]);
+    ...(change ? ["changed", "idempotent"] : [])], ["pedagogicalBasis"]);
   if (!change && value.contract !== "aralearn.course-ai-inspection.v1" || !UUID.test(value.courseId) ||
       !Number.isSafeInteger(value.courseRevision) || value.courseRevision < 1 || !TARGETS.has(value.targetKind) ||
       !boundedText(value.targetId, 300) || !HASH.test(value.basisHash) ||
       ["courseId", "targetKind", "targetId"].some(key => request[key] !== undefined && request[key] !== value[key])) fail();
   const inspection = normalizeCourseContentInspectionState(value.inspection);
+  if (value.pedagogicalBasis !== undefined && (!plain(value.pedagogicalBasis) ||
+      value.pedagogicalBasis.targetKind !== value.targetKind || value.pedagogicalBasis.targetId !== value.targetId ||
+      !plain(value.pedagogicalBasis.microsequence) || !Array.isArray(value.pedagogicalBasis.studyUnits) ||
+      !Array.isArray(value.pedagogicalBasis.planItems) || !Array.isArray(value.pedagogicalBasis.dependencies))) fail();
   if (inspection.basisHash !== value.basisHash || change && (typeof value.changed !== "boolean" ||
       typeof value.idempotent !== "boolean" || inspection.state !== "current" ||
       request.expectedBasisHash !== undefined && value.basisHash !== request.expectedBasisHash)) fail();

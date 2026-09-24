@@ -1,0 +1,24 @@
+{
+  "contract": "aralearn.gap-q020-replica.v1",
+  "language": "pt-BR",
+  "theme": "intervalos de memória inclusivos em endereços de 64 bits",
+  "scope": "Microssequências sintéticas locais; sem banco, rede ou chamada remota.",
+  "workerLimitation": "As materializações A/B de cada quantidade e o controle de 12 foram executados no mesmo worker e na mesma sessão; não há comparação entre workers ou sessões.",
+  "rules": [
+    "Os dois extremos de cada intervalo pertencem à faixa.",
+    "Faixas contíguas não compartilham byte: o próximo início é o fim anterior mais um.",
+    "Cada faixa deste exercício tem 0x100 bytes; o fim é início + 0xFF.",
+    "Endereços de 64 bits são valores inteiros exatos e devem conservar a grafia hexadecimal declarada.",
+    "Um intervalo sobreposto é inválido para o mapa de memória e não pode ser tratado como uma faixa contígua."
+  ],
+  "sufficiency": {
+    "dataNeeded": [
+      "âncora visível",
+      "tamanho 0x100 bytes",
+      "regra de inclusão dos extremos",
+      "regra de contiguidade",
+      "rótulos e descrições das faixas"
+    ],
+    "design": "Cada alvo pode ser derivado da âncora e dos segmentos anteriores; a resposta não depende de nome vazio nem de informação externa."
+  }
+}

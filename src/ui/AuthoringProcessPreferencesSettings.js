@@ -74,9 +74,9 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
       <button class="icon-ghost" type="button" data-process-keep-draft aria-label="Continuar com meu rascunho" title="Continuar com meu rascunho">${renderUiIcon("edit", "account-settings-action-icon")}</button>
       <button class="icon-ghost" type="button" data-process-use-saved aria-label="Usar preferências salvas" title="Usar preferências salvas">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
     </section>
-    <div class="authoring-process-actions">
-      <button class="icon-ghost is-primary" type="submit" data-process-save disabled title="Salvar preferências" aria-label="Salvar preferências">${renderUiIcon("save", "account-settings-action-icon")}</button>
-      <button class="icon-ghost" type="button" data-process-reload title="Atualizar preferências salvas" aria-label="Atualizar preferências salvas">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
+    <div class="authoring-process-actions" role="group" aria-label="Ações das preferências de autoria">
+      <button class="icon-ghost is-primary" type="submit" data-process-save disabled title="Salvar preferências de autoria" aria-label="Salvar preferências de autoria">${renderUiIcon("save", "account-settings-action-icon")}</button>
+      <button class="icon-ghost" type="button" data-process-reload title="Recarregar preferências salvas, mantendo alterações não salvas" aria-label="Recarregar preferências salvas, mantendo alterações não salvas">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
       <p data-process-status role="status" aria-live="polite"></p>
     </div>
 
@@ -124,7 +124,7 @@ export function mountAuthoringProcessPreferencesSettings(root, { client, createR
     try { readDraft(); } catch { valid = false; }
     saveButton.disabled = saving || loading || Boolean(incoming) || !read || (!pending && (!valid || !dirty()));
     reloadButton.disabled = saving || loading || Boolean(pending);
-    saveButton.title = saveButton.ariaLabel = pending ? "Confirmar gravação pendente" : "Salvar preferências";
+    saveButton.title = saveButton.ariaLabel = pending ? "Confirmar gravação pendente" : "Salvar preferências de autoria";
     form.setAttribute("aria-busy", String(saving || loading));
     origin.textContent = read ? read.revision === 0 ? "Origem: padrão inicial do aplicativo · alcance pessoal" : "Origem: preferências salvas na sua conta" : "Preferências da sua conta";
     conflict.hidden = !incoming;

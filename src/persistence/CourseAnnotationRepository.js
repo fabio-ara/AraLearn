@@ -402,13 +402,9 @@ function applyOptimisticCommand(items, entry) {
       rawText: command.rawText,
       category: command.category,
       briefSummary: command.briefSummary,
-      state: "open",
-      ownerResponse: null,
       timestamps: {
         ...item.timestamps,
-        updatedAt: entry.createdAt,
-        respondedAt: null,
-        resolvedAt: null
+        updatedAt: entry.createdAt
       }
     };
   } else if (command.type === "withdraw_anchored_annotation") {

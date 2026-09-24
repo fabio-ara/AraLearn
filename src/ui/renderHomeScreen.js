@@ -137,6 +137,7 @@ function renderCoursePreview({
   const unavailableOffline = offline && !availableOffline;
   const buttonCopy = loading ? "Abrindo…" : error ? "Tentar novamente" : action;
   const accessibleAction = `${buttonCopy} ${title}`;
+  const destructiveHintId = `home-course-destructive-${entityId(course)}`;
   const lifecycleAction = owned
     ? {
         action: "delete-owned-course",
@@ -177,20 +178,25 @@ function renderCoursePreview({
     ' aria-label="Ações deste curso">' +
     (canCopy && !offline
       ? '<button type="button" role="menuitem" data-action="copy-course" data-course-id="' +
-        escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu" popovertargetaction="hide">' +
-        renderUiIcon("copy", "home-tab-icon") + '<span>Copiar curso</span></button>' : "") +
+        escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu" popovertargetaction="hide"' +
+        ' aria-label="Copiar curso" title="Copiar curso">' +
+        renderUiIcon("copy", "home-tab-icon") + '</button>' : "") +
     (completed > 0
-      ? '<button type="button" role="menuitem" data-action="reset-course-progress" data-course-id="' +
+      ? '<button class="is-danger" type="button" role="menuitem" data-action="reset-course-progress"' +
+        ' data-action-group="destructive" data-course-id="' +
         escapeHtml(entityId(course)) + '" popovertarget="home-course-actions-menu"' +
-        ' popovertargetaction="hide" autofocus>' + renderUiIcon("rotate", "home-tab-icon") +
-        '<span>Zerar progresso</span></button>'
+        ' popovertargetaction="hide" autofocus aria-label="Zerar progresso" title="Zerar progresso"' +
+        ' aria-describedby="' + escapeHtml(destructiveHintId) + '">' + renderUiIcon("reset", "home-tab-icon") + '</button>'
       : "") +
-    '<button class="is-danger" type="button" role="menuitem" data-action="' +
+    '<button class="is-danger" type="button" role="menuitem" data-action-group="destructive" data-action="' +
     lifecycleAction.action + '" data-course-id="' + escapeHtml(entityId(course)) + '"' +
     ' popovertarget="home-course-actions-menu" popovertargetaction="hide"' +
-    (completed > 0 ? "" : " autofocus") + (loading ? ' disabled aria-disabled="true"' : '') + '>' +
-    renderUiIcon(owned ? "trash" : "sign-out", "home-tab-icon") + '<span>' +
-    escapeHtml(lifecycleAction.label) + '</span></button></div>' +
+    (completed > 0 ? "" : " autofocus") + (loading ? ' disabled aria-disabled="true"' : '') +
+    ' aria-label="' + escapeHtml(lifecycleAction.label) + '" title="' + escapeHtml(lifecycleAction.label) + '"' +
+    (completed > 0 ? ' aria-describedby="' + escapeHtml(destructiveHintId) + '"' : '') + '>' +
+    renderUiIcon(owned ? "trash" : "sign-out", "home-tab-icon") + '</button></div>' +
+    '<span class="visually-hidden" id="' + escapeHtml(destructiveHintId) + '"><span>' +
+      'Ações destrutivas deste curso.</span></span>' +
     '<button class="home-course-entry" type="button" data-action="open-course" data-course-id="' +
     escapeHtml(entityId(course)) + '" title="' + escapeHtml(accessibleAction) +
     '" aria-label="' + escapeHtml(accessibleAction) + '"' +
@@ -245,8 +251,9 @@ function renderReviewQueue(
     }).join("")
       : '<p class="muted tiny study-review-empty">Nenhuma unidade de estudo marcada neste curso.</p>') +
     (hasMore
-      ? '<button class="open-mini study-review-more" type="button" data-action="load-more-review-items">' +
-        renderUiIcon("add", "home-tab-icon") + "<span>Mostrar mais</span></button>"
+      ? '<button class="open-mini study-review-more" type="button" data-action="load-more-review-items"' +
+        ' aria-label="Mostrar mais" title="Mostrar mais">' +
+        renderUiIcon("add", "home-tab-icon") + '</button>'
       : "") + "</div></details>"
   );
 }
@@ -263,6 +270,7 @@ export function renderRuntimeStatusControl(status = {}, {
   const conflict = Boolean(status.conflict);
   const failed = Boolean(status.syncError);
   const deferred = status.deferred === true;
+  const canTriggerSync = !localOnly && !offline && !failed && !conflict && !synchronizing;
   const state = localOnly ? "local" : offline ? "offline" : conflict ? "conflict" :
     failed ? "failed" : synchronizing ? "syncing" : pending || deferred ? "pending" :
       manual ? "manual" : stale ? "stale" : "synced";
@@ -293,6 +301,13 @@ export function renderRuntimeStatusControl(status = {}, {
                   : stale
                     ? "Há uma atualização do curso pendente. Use a nuvem para atualizar."
                     : "Sincronizado com a nuvem.";
+  const syncConsequenceId = popoverId + "-consequence";
+  const syncConsequence = synchronizing
+    ? "Enviando alterações pendentes e consultando atualizações."
+    : canTriggerSync
+      ? "Clicar neste estado envia alterações pendentes e consulta atualizações."
+      : "Este controle abre os detalhes do estado; não inicia envio neste momento.";
+  const controlTitle = canTriggerSync ? label + ". " + syncConsequence : label;
   const conflictValue = status.conflict;
   const conflictControls = conflictValue?.id && conflictValue?.courseId
     ? '<p>O mesmo estado foi alterado de formas diferentes. Escolha qual alteração manter; as marcas independentes serão preservadas.</p>' +
@@ -303,12 +318,15 @@ export function renderRuntimeStatusControl(status = {}, {
       [["local", "Manter minhas alterações"], ["remote", "Usar as alterações da nuvem"]].map(([resolution, text]) =>
         '<button class="account-settings-subview-entry" type="button" data-action="resolve-study-sync-conflict" data-resolution="' + resolution +
         '" data-course-id="' + escapeHtml(conflictValue.courseId) + '" data-conflict-id="' +
-        escapeHtml(conflictValue.id) + '">' + text + '</button>').join("")
+        escapeHtml(conflictValue.id) + '" aria-label="' + escapeHtml(text) + '" title="' + escapeHtml(text) + '">' +
+        renderUiIcon(resolution === "local" ? "ready-state" : "cloud", "home-tab-icon") + '</button>').join("")
     : "";
   return '<button class="icon-ghost study-runtime-status-control" type="button"' +
     (localOnly || offline || failed || conflict ? "" : ' data-action="synchronize-study"') +
     ' data-runtime-state="' + state + '" popovertarget="' + escapeHtml(popoverId) + '"' +
-    ' popovertargetaction="toggle" title="' + label + '" aria-label="' + label + '"' +
+    ' popovertargetaction="toggle" title="' + escapeHtml(controlTitle) + '" aria-label="' + escapeHtml(label) + '"' +
+    ((canTriggerSync || synchronizing) ? ' aria-describedby="' + escapeHtml(syncConsequenceId) + '"' : '') +
+    ((canTriggerSync || synchronizing) ? ' data-sync-effect="flush-and-refresh"' : '') +
     (synchronizing ? ' aria-busy="true"' : "") + '>' +
     renderUiIcon(localOnly || offline ? "offline" : failed || conflict ? "cloud-alert" : "cloud", "home-tab-icon") + '</button>' +
     '<div class="study-runtime-status-popover" id="' + escapeHtml(popoverId) + '" popover="auto"' +
@@ -317,10 +335,13 @@ export function renderRuntimeStatusControl(status = {}, {
     '<button class="icon-ghost" type="button" popovertarget="' + escapeHtml(popoverId) + '"' +
     ' popovertargetaction="hide" aria-label="Fechar estado da sincronização" title="Fechar">' +
     renderUiIcon("remove-state", "home-tab-icon") + '</button></div>' +
+    '<p id="' + escapeHtml(syncConsequenceId) + '" class="visually-hidden"><span>' + escapeHtml(syncConsequence) + '</span></p>' +
     '<p role="status">' + escapeHtml(message) + '</p>' + conflictControls +
     (failed && !localOnly && !conflict
       ? '<button class="study-runtime-status-retry" type="button" data-action="synchronize-study"' +
-        ' popovertarget="' + escapeHtml(popoverId) + '" popovertargetaction="hide">Tentar novamente</button>'
+        ' popovertarget="' + escapeHtml(popoverId) + '" popovertargetaction="hide"' +
+        ' aria-label="Tentar novamente" title="Tentar novamente" data-sync-effect="flush-and-refresh">' +
+        renderUiIcon("rotate", "home-tab-icon") + '</button>'
       : "") + '</div>';
 }
 
@@ -392,14 +413,15 @@ export function renderHomeScreen({
     '<section class="screen">' + renderTopbar(topbarRuntimeStatus) +
     '<main class="screen-content courses-home-screen navigation-screen">' +
     '<nav class="home-product-switch" aria-label="Área principal">' +
-    '<button class="is-active" type="button" aria-current="page" title="Estudo">' +
-    renderUiIcon("study", "home-tab-icon") + '<span>Estudo</span></button>' +
-    '<button type="button" data-action="' + (visitor ? "request-auth" : "open-authoring") + '" title="' + (visitor ? "Entrar para autoria" : "Abrir Autoria") + '">' +
-    renderUiIcon("edit", "home-tab-icon") + '<span>Autoria</span></button></nav>' +
+    '<button class="is-active" type="button" aria-current="page" title="Estudo" aria-label="Estudo">' +
+    renderUiIcon("study", "home-tab-icon") + '</button>' +
+    '<button type="button" data-action="' + (visitor ? "request-auth" : "open-authoring") + '" title="' + (visitor ? "Entrar para autoria" : "Abrir Autoria") + '" aria-label="Autoria">' +
+    renderUiIcon("edit", "home-tab-icon") + '</button></nav>' +
     '<div class="study-home-feedback-layer">' +
     (homeNotice ? '<div class="study-home-feedback is-notice" role="status"><span>' +
       escapeHtml(homeNotice) + "</span>" + (reviewUndo
-        ? '<button class="open-mini" type="button" data-action="undo-review-removal">Desfazer</button>'
+        ? '<button class="open-mini" type="button" data-action="undo-review-removal" aria-label="Desfazer" title="Desfazer">' +
+          renderUiIcon("rotate", "home-tab-icon") + '</button>'
         : "") + "</div>" : "") +
     (homeError ? '<p class="study-home-feedback is-error" role="alert">' +
       escapeHtml(homeError) + "</p>" : "") +

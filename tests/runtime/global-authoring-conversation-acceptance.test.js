@@ -40,8 +40,10 @@ function validate(tools, name, value) {
 
 function currentTraceArguments(trace) {
   if (trace.task !== "preparar_materializacao") return trace.arguments;
+  const { parte, ...currentArguments } = trace.arguments;
   return {
-    ...trace.arguments,
+    ...currentArguments,
+    microssequencia: parte,
     unidades: [{
       microssequencia: 1,
       posicao: 1,

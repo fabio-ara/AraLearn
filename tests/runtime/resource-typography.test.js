@@ -34,8 +34,6 @@ test("conteúdo primário dos resources compartilha a escala tipográfica do tex
     ".package-set-name",
     ".runtime-matrix-item",
     ".package-math-graph-label-content",
-    ".package-chart-legend",
-    ".package-plane-legend",
     ".package-formula math",
     ".package-reaction-equation",
     ".package-flow-node"
@@ -85,6 +83,8 @@ test("metadados acadêmicos compactos usam apenas os degraus tipográficos secun
   for (const selector of [
     ".package-reaction-state",
     ".package-flow-edge-label",
+    ".package-chart-legend",
+    ".package-plane-legend",
     ".runtime-interlinear-abbreviations"
   ]) assertUsesType(selector, "sm");
 
@@ -110,11 +110,9 @@ test("inventário tipográfico cobre exatamente o catálogo instalado, sem diret
   const installed = RESOURCE_PACKAGE_DEFINITIONS.map(({ manifest }) => manifest.id);
   assert.equal(new Set(documented).size, documented.length);
   assert.deepEqual(documented.sort(), installed.sort());
-  assert.deepEqual(rows.filter(match => match[2]).map(match => match[1]).sort(),
-    RESOURCE_PACKAGE_DEFINITIONS.filter(({ manifest }) => manifest.authoringEligibility === "legacy_only")
-      .map(({ manifest }) => manifest.id).sort(), "O inventário identifica todo pacote conservado somente para legado.");
-  assert.equal(installed.length, 38);
-  assert.equal(RESOURCE_PACKAGE_DEFINITIONS.filter(({ manifest }) => manifest.slots.includes("response")).length, 4);
+  assert.equal(rows.some(match => match[2]), false, "O inventário não conserva componentes removidos.");
+  assert.equal(installed.length, 34);
+  assert.equal(RESOURCE_PACKAGE_DEFINITIONS.filter(({ manifest }) => manifest.slots.includes("response")).length, 3);
 });
 
 function themeTokens(dark) {

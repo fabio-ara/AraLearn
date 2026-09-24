@@ -21,11 +21,11 @@ const openButton = page => page.getByRole("button", { name: "Explicação", exac
 const overlay = page => page.getByRole("dialog", { name: "Explicação", exact: true });
 
 for (const width of [360, 390, 430, 1280]) {
-  test(`apoio em ${width}px conserva prática legada, foco, rolagem e progresso`, async ({ page }, testInfo) => {
+  test(`apoio em ${width}px conserva seleção múltipla pendente, foco, rolagem e progresso`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 850 });
     const errors = await mount(page, `?unit=practice&theme=${width === 390 ? "dark" : "light"}`);
-    const answer = page.getByRole("textbox", { name: "Explique a diferença com suas palavras." });
-    await answer.fill("Resposta ainda não enviada: a interface local tem um papel específico.");
+    const answer = page.locator('[data-action="choice-toggle"][data-choice-option-id="local"]');
+    await answer.click();
     const before = await page.locator(".card-sheet-content").evaluate(node => node.scrollTop);
     await openButton(page).focus(); await page.keyboard.press("Enter");
     await expect(overlay(page)).toBeVisible();
@@ -42,7 +42,7 @@ for (const width of [360, 390, 430, 1280]) {
     await page.screenshot({ path: testInfo.outputPath(`explanation-${width}.png`), fullPage: true });
     await page.keyboard.press("Escape");
     await expect(overlay(page)).toHaveCount(0); await expect(openButton(page)).toBeFocused();
-    await expect(answer).toHaveValue("Resposta ainda não enviada: a interface local tem um papel específico.");
+    await expect(answer).toHaveAttribute("aria-checked", "true");
     expect(Math.abs(await page.locator(".card-sheet-content").evaluate(node => node.scrollTop) - before)).toBeLessThanOrEqual(1);
     expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
     await openButton(page).click();
@@ -139,8 +139,8 @@ test("apoio ausente, rascunho, offline e erro têm estados explícitos", async (
 
 test("mudança de conexão conserva overlay, foco e resposta pendente", async ({ page }) => {
   await mount(page, "?unit=practice");
-  const answer = page.getByRole("textbox", { name: "Explique a diferença com suas palavras." });
-  await answer.fill("Minha resposta pendente permanece aqui.");
+  const answer = page.locator('[data-action="choice-toggle"][data-choice-option-id="local"]');
+  await answer.click();
   await openButton(page).click();
   await page.locator(".study-explanation-body").evaluate(node => { node.scrollTop = 180; });
   await page.getByRole("button", { name: "Fechar explicação", exact: true }).focus();
@@ -152,7 +152,7 @@ test("mudança de conexão conserva overlay, foco e resposta pendente", async ({
   await expect(overlay(page)).toBeVisible();
   await expect(page.getByRole("button", { name: "Fechar explicação", exact: true })).toBeFocused();
   expect(await page.locator(".study-explanation-body").evaluate(node => node.scrollTop)).toBe(180);
-  await page.keyboard.press("Escape"); await expect(answer).toHaveValue("Minha resposta pendente permanece aqui.");
+  await page.keyboard.press("Escape"); await expect(answer).toHaveAttribute("aria-checked", "true");
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
 });
 
@@ -207,6 +207,8 @@ test("apoio offline em 360x500 e texto150 alcança fim, tabela e fontes por toqu
   await page.screenshot({ path: info.outputPath('support-last-line-360-short-text150.png') });
   const lastCell = body.locator('table tbody tr').last().locator('td').last();
   await lastCell.scrollIntoViewIfNeeded();
+  // Uma tabela larga mantém sua geometria; alcance a extremidade pelo scroll do próprio componente.
+  await lastCell.evaluate(node => { const frame = node.closest('.runtime-table-wrap'); frame.scrollLeft = frame.scrollWidth; });
   const cell = await lastCell.boundingBox();
   expect(cell.y).toBeGreaterThanOrEqual(frame.y - 1);
   expect(cell.y + cell.height).toBeLessThanOrEqual(tools.y + 1);
@@ -230,7 +232,7 @@ test("apoio offline em 360x500 e texto150 alcança fim, tabela e fontes por toqu
 async function expandedDiagram(page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await mount(page, "?unit=practice");
-  await page.getByRole("textbox", { name: "Explique a diferença com suas palavras." }).fill("Minha resposta antes do diagrama.");
+  await page.locator('[data-action="choice-toggle"][data-choice-option-id="local"]').click();
   await openButton(page).click();
   const expand = page.getByRole("button", { name: "Explorar diagrama em tela inteira", exact: true });
   await expect(expand).toBeEnabled(); await expand.click();
@@ -250,7 +252,7 @@ test("diagrama expandido retorna ao apoio por Escape e preserva a prática", asy
   await expect(overlay(page)).toBeVisible();
   await page.keyboard.press("Escape"); await expect(overlay(page)).toHaveCount(0);
   await expect(openButton(page)).toBeFocused();
-  await expect(page.getByRole("textbox", { name: "Explique a diferença com suas palavras." })).toHaveValue("Minha resposta antes do diagrama.");
+  await expect(page.locator('[data-action="choice-toggle"][data-choice-option-id="local"]')).toHaveAttribute("aria-checked", "true");
 });
 
 test("interrupção com diagrama expandido conserva modalidade e retorno em duas etapas", async ({ page }) => {
@@ -277,5 +279,5 @@ test("interrupção com diagrama expandido conserva modalidade e retorno em duas
   await page.keyboard.press("Escape"); await expect(diagram).not.toBeVisible();
   await expect(overlay(page)).toBeVisible();
   await page.keyboard.press("Escape"); await expect(overlay(page)).toHaveCount(0);
-  await expect(page.getByRole("textbox", { name: "Explique a diferença com suas palavras." })).toHaveValue("Minha resposta antes do diagrama.");
+  await expect(page.locator('[data-action="choice-toggle"][data-choice-option-id="local"]')).toHaveAttribute("aria-checked", "true");
 });

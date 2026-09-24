@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-async function mount(page, { remote = false, late = false, configFailure = false, reveal = false, corrupt = false } = {}) {
+async function mount(page, { remote = false, late = false, configFailure = false, reveal = false, corrupt = false, duration = 0.5 } = {}) {
   await page.route("**/main.js", route => route.fulfill({ status: 200, contentType: "text/javascript", body: "" }));
   await page.goto("/");
   await page.evaluate(async options => {
@@ -15,13 +15,14 @@ async function mount(page, { remote = false, late = false, configFailure = false
     const synthesis = new EventTarget();
     synthesis.voices = options.late ? [] : [options.remote ? remote : local];
     synthesis.getVoices = () => synthesis.voices;
-    synthesis.speak = utterance => { probe.spoke.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate, voice: utterance.voice.voiceURI }); probe.currentUtterance = utterance; };
+    synthesis.speak = utterance => { probe.spoke.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate, voice: utterance.voice.voiceURI }); probe.currentUtterance = utterance; utterance.onstart?.(); };
+    synthesis.pause = () => { probe.paused = true; }; synthesis.resume = () => { probe.paused = false; };
     synthesis.cancel = () => { probe.cancellations++; };
     Object.defineProperty(window, "speechSynthesis", { configurable: true, value: synthesis });
     Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: class { constructor(text) { this.text = text; } } });
-    const pcm = new Uint8Array(24000);
+    const pcm = new Uint8Array(48000 * options.duration);
     const view = new DataView(pcm.buffer);
-    for (let index = 0; index < 12000; index++) view.setInt16(index * 2, Math.round(Math.sin(index * Math.PI * 2 * 440 / 24000) * 1200), true);
+    for (let index = 0; index < pcm.length / 2; index++) view.setInt16(index * 2, Math.round(Math.sin(index * Math.PI * 2 * 440 / 24000) * 1200), true);
     const wav = wrapGeminiPcmAsWav(pcm);
     const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", wav))].map(value => value.toString(16).padStart(2, "0")).join("");
     const data = { tracks: [
@@ -49,16 +50,18 @@ async function mount(page, { remote = false, late = false, configFailure = false
     probe.publishVoices = () => { synthesis.voices = [local]; synthesis.dispatchEvent(new Event("voiceschanged")); };
     window.__audioProbe = probe;
     await document.fonts.ready;
-  }, { remote, late, configFailure, reveal, corrupt });
+  }, { remote, late, configFailure, reveal, corrupt, duration });
 }
 
 test("voz nativa recebe idioma/ritmo, alternativa explícita não executa markup e fechar cancela", async ({ page }, info) => {
   await mount(page);
   const first = page.locator('[data-audio-track="first"]');
   await expect(first.locator('[data-audio-action="play"]')).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Consultar configuração novamente", includeHidden: true })).toBeHidden();
   expect(await page.locator("main").textContent()).not.toMatch(/Som reservado|Outra resposta|Alternativa somente após/);
   await first.locator('[data-audio-action="play"]').focus(); await page.keyboard.press("Enter");
-  await expect(first.getByRole("status")).toHaveText("Reproduzindo com voz local.");
+  await expect(first.getByRole("button", { name: /^Pausar/u })).toBeVisible();
+  await expect(first.locator('[data-audio-track-status]')).toBeEmpty();
   expect(await page.evaluate(() => window.__audioProbe.spoke)).toEqual([{ text: "Som reservado nativo.", lang: "pt-BR", rate: 1.25, voice: "synthetic-local" }]);
   await first.getByRole("button", { name: "Mostrar alternativa textual" }).tap();
   await expect(first.locator("[data-audio-alternative]")).toHaveText("Alternativa solicitada <script>hostil</script>.");
@@ -84,7 +87,7 @@ test("voz remota exige consentimento de quem escuta, mesmo autorizada no curso",
   await row.locator("[data-audio-remote-consent]").check();
   expect(await page.evaluate(() => window.__audioProbe.spoke.length)).toBe(0);
   await row.locator('[data-audio-action="play"]').tap();
-  await expect(row.getByRole("status")).toHaveText("Reproduzindo com voz remota autorizada.");
+  await expect(row.getByRole("button", { name: /^Pausar/u })).toBeVisible();
   expect(await page.evaluate(() => window.__audioProbe.spoke.length)).toBe(1);
   await page.evaluate(() => window.__audioProbe.cleanup());
 });
@@ -100,18 +103,45 @@ test("configuração pode falhar e tentar novamente; catálogo tardio não fala 
   expect(await page.evaluate(() => window.__audioProbe.configReads)).toBe(2);
 });
 
-test("arquivo WAV é conferido, decodificado pelo navegador e liberado ao parar", async ({ page }) => {
+test("arquivo WAV é conferido, decodificado, volta ao início ao parar e é liberado ao fechar", async ({ page }) => {
   await mount(page, { reveal: true });
   const row = page.locator('[data-audio-track="file"]');
   await expect(page.locator('[data-audio-track="second"] [data-audio-alternative]')).toHaveText("Alternativa somente após responder.");
   await row.locator('[data-audio-action="play"]').tap();
-  await expect(row.locator("audio")).toBeVisible();
+  await expect(row.locator("audio")).toBeHidden();
   await expect.poll(() => row.locator("audio").evaluate(node => node.readyState)).toBeGreaterThanOrEqual(2);
   expect(await row.locator("audio").evaluate(node => ({ duration: node.duration, playbackRate: node.playbackRate, error: node.error }))).toEqual({ duration: 0.5, playbackRate: 1.25, error: null });
   await row.locator('[data-audio-action="stop"]').tap();
   await expect(row.locator("audio")).toBeHidden();
+  expect(await row.locator("audio").evaluate(node => node.currentTime)).toBe(0);
+  await expect(row.locator('[data-audio-action="stop"]')).toBeDisabled();
+  await page.evaluate(() => window.__audioProbe.cleanup());
   expect(await page.evaluate(() => window.__audioProbe.revoked)).toEqual(await page.evaluate(() => window.__audioProbe.urls));
   expect(await page.evaluate(() => window.__audioProbe.downloads[0])).toMatchObject({ byteSize: 24044, mediaType: "audio/wav" });
+});
+
+test("player único pausa, busca pelo teclado e reinicia uma faixa longa sem baixar novamente", async ({ page }, info) => {
+  await mount(page, { duration: 4 });
+  const row = page.locator('[data-audio-track="file"]');
+  const slider = row.getByRole("slider");
+  const stop = row.locator('[data-audio-action="stop"]');
+  await expect(stop).toBeDisabled();
+  await row.getByRole("button", { name: /^Reproduzir/u }).tap();
+  await expect(slider).toBeEnabled();
+  await expect(stop).toBeEnabled();
+  await row.getByRole("button", { name: /^Pausar/u }).tap();
+  expect(await row.locator('audio').evaluate(node => node.paused)).toBe(true);
+  await slider.focus(); await slider.press('End');
+  await expect(row.locator('[data-audio-duration]')).toHaveText('0:04');
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText('0:04');
+  await stop.tap();
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText('0:00');
+  await expect(stop).toBeDisabled();
+  await row.getByRole("button", { name: /^Reproduzir/u }).tap();
+  expect(await page.evaluate(() => window.__audioProbe.downloads.length)).toBe(1);
+  await row.getByRole("button", { name: /^Pausar/u }).tap();
+  await page.screenshot({ path: info.outputPath('audio-player.png'), fullPage: true });
+  await page.evaluate(() => window.__audioProbe.cleanup());
 });
 
 test("hash divergente e download concluído após fechar nunca chegam ao player", async ({ page }) => {

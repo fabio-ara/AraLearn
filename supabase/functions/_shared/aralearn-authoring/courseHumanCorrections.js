@@ -1,4 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
+import { completeHumanContent } from "./courseFocalMaterialization.js";
 import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
@@ -354,6 +355,8 @@ export async function applyHumanCourseCorrections({
   observations = [],
   deadlineAt = null
 }) {
+  corrections = corrections.map(entry => ({ ...entry, conteudo: completeHumanContent(entry.conteudo) }));
+  explanations = explanations.map(entry => ({ ...entry, conteudo: completeHumanContent(entry.conteudo, { explanation: true }) }));
   validateCorrections(corrections, explanations);
   try { observations = normalizeCourseObservationCorrectionReferences(observations); }
   catch (error) { fail(error.code ?? "invalid_course_observation_correction", error.message); }

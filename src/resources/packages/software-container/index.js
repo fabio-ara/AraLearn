@@ -190,7 +190,7 @@ export const softwareContainerPackage = Object.freeze({
   },
   render(data) {
     const diagramLabels = labels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: containerAccessibleText(data), caption: "Diagrama de contêineres · C4", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.containers[0]?.id || ""}` });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: containerAccessibleText(data), caption: "Dentro do contorno ficam aplicações e armazenamentos do sistema. As setas mostram suas comunicações.", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.containers[0]?.id || ""}` });
     return `<div class="runtime-block runtime-software-container-block">${renderPackageProse(data.prompt)}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

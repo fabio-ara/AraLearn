@@ -605,7 +605,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260917232000");
+  assert.equal(manifest.schemaRevision, "20260924185630");
   assert.equal(manifest.requiredFeatures.includes("object-content-review-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("independent-review-access-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-business-conflicts-http-409-v1"), true);
@@ -686,8 +686,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260917232000_focal_materialization_dependency_scope.sql",
-    revision: "20260917232000"
+    fileName: "20260924185630_revisao_v7_runtime_contract.sql",
+    revision: "20260924185630"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 

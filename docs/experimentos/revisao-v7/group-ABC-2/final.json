@@ -1,0 +1,372 @@
+[
+  {
+    "curso": "Modelos computacionais em ação",
+    "microssequencia": "Garantias e limites de protocolos",
+    "concluir": false,
+    "explicacoes": [
+      {
+        "microssequencia": "Garantias e limites de protocolos",
+        "conteudo": {
+          "title": "Garantias e limites de protocolos",
+          "content": [
+            {"package": "paragraph", "data": {"text": "Escolher um transporte começa pelo requisito que precisa ser preservado. TCP oferece um fluxo de bytes ordenado e confiável: números de sequência ajudam a remontar a ordem, confirmações indicam o que chegou e retransmissões recuperam perdas enquanto a conexão continua funcionando. Essas garantias não prometem um prazo máximo; uma confirmação pode demorar e uma conexão pode falhar. UDP preserva cada datagrama como unidade, mas não garante entrega, ordem nem recuperação. A aplicação pode acrescentar numeração, repetição seletiva ou descarte de dados atrasados. Confidencialidade é outro requisito: TLS pode proteger o conteúdo quando empregado adequadamente, mas não transforma TCP em transporte com prazo garantido."}},
+            {"package": "table", "data": {"title": "Requisito, mecanismo e limite", "columns": ["Situação", "Escolha possível", "O que o transporte oferece", "O que continua sendo responsabilidade da aplicação"], "rows": [
+              ["Arquivo que precisa chegar íntegro", "TCP", "Bytes em ordem e recuperação de perdas por confirmações e retransmissões", "Lidar com falha da conexão e com o tempo total da transferência"],
+              ["Controle com prazo curto, em que dado velho perde valor", "UDP", "Datagramas sem recuperação automática que possa aumentar o atraso", "Decidir como numerar, descartar ou repetir mensagens e como detectar perda"],
+              ["Áudio interativo que precisa de confidencialidade", "UDP com proteção adequada", "UDP não garante ordem ou entrega; TLS pode fornecer confidencialidade quando aplicável", "Tolerar perdas e atrasos e verificar se a proteção escolhida atende ao fluxo"],
+              ["Qualquer transporte", "TCP ou UDP conforme o caso", "O transporte atende somente às propriedades que seu contrato declara", "Não concluir que confiabilidade implica prazo ou que transporte implica cifra"]
+            ], "note": "A escolha depende da condição concreta; nenhum dos dois protocolos é a resposta universal."}}
+          ]
+        },
+        "fontes": []
+      }
+    ],
+    "unidades": [
+      {
+        "posicao": 1,
+        "conteudo": {
+          "title": "O que cada transporte garante",
+          "role": "theory",
+          "content": [
+            {"id": "a-theory-body", "package": "paragraph", "data": {"text": "Uma garantia de transporte é uma propriedade observável que a aplicação pode usar no raciocínio. Em TCP, a entrega ordenada significa que o fluxo de bytes é remontado na sequência correta; confirmações e retransmissões permitem recuperar uma perda detectada. Isso não fixa um prazo máximo e não cifra automaticamente os dados. Em UDP, cada datagrama pode chegar, chegar fora de ordem ou não chegar, sem recuperação fornecida pelo transporte. TLS trata confidencialidade como uma camada distinta. Portanto, descreva primeiro a condição do caso e depois relacione cada requisito ao mecanismo que realmente o atende."}},
+            {"id": "a-guarantees-table", "package": "table", "data": {"title": "Leitura rápida das propriedades", "columns": ["Propriedade", "TCP", "UDP", "Observação"], "rows": [
+              ["Entrega em ordem", "Sim, no fluxo", "Não garantida", "A aplicação pode observar a ordem dos bytes ou datagramas"],
+              ["Recuperação de perda", "Confirmações e retransmissões", "Não fornecida pelo transporte", "A aplicação pode implementar outra política"],
+              ["Prazo máximo", "Não garantido", "Não garantido", "Confiabilidade e prazo são requisitos distintos"],
+              ["Confidencialidade", "Não automática", "Não automática", "TLS pode acrescentá-la quando empregado adequadamente"]
+            ], "legend": "Sim indica uma propriedade oferecida pelo contrato descrito neste estudo; não garantida não significa que o evento nunca ocorra."}}
+          ],
+          "response": null,
+          "feedback": [],
+          "topics": ["protocolos", "transporte", "confiabilidade", "confidencialidade"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            {"nome": "Entrega ordenada e recuperação de perdas", "descricao": "TCP usa ordenação, confirmações e retransmissões para reconstruir o fluxo e recuperar perdas detectadas."},
+            {"nome": "Prazo e confidencialidade são requisitos distintos", "descricao": "Nem confiabilidade nem o transporte por si só garantem prazo máximo ou cifra; esses requisitos precisam ser analisados separadamente."}
+          ],
+          "ideiasUtilizadas": [],
+          "explicacoes": [
+            {"ideia": "Entrega ordenada e recuperação de perdas", "formas": ["plain_definition", "mechanism", "concrete_example", "contrast"]},
+            {"ideia": "Prazo e confidencialidade são requisitos distintos", "formas": ["plain_definition", "application_condition", "limit_or_exception", "representation_link"]}
+          ],
+          "cobertura": ["Propriedades e limites de transporte"]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 2,
+        "conteudo": {
+          "title": "Relacionar confirmação e retransmissão à recuperação",
+          "role": "practice",
+          "content": [
+            {"id": "a-loss-recovery-prompt", "package": "paragraph", "data": {"text": "Em uma conexão TCP, o receptor confirma o que recebeu e a ausência de uma confirmação permite suspeitar de perda. O emissor pode então retransmitir o segmento, mantendo a recuperação dentro do mecanismo do transporte. Complete a relação: confirmação sinaliza a recepção observada; retransmitir recupera a unidade perdida."}}
+          ],
+          "response": {"package": "gap", "data": {"prompt": "Complete os dois mecanismos ligados à recuperação de uma perda.", "blanks": [
+            {"id": "a-ack", "targetInstanceId": "a-loss-recovery-prompt", "targetPath": "text", "responseMode": "text", "answer": "confirmação", "label": "sinal do receptor"},
+            {"id": "a-retransmit", "targetInstanceId": "a-loss-recovery-prompt", "targetPath": "text", "responseMode": "text", "answer": "retransmitir", "label": "ação do emissor"}
+          ]}},
+          "feedback": [
+            {"package": "paragraph", "data": {"text": "A confirmação informa o que foi recebido; a retransmissão envia novamente o segmento que precisa ser recuperado. Esse encadeamento explica a recuperação de perdas, mas não cria um prazo máximo de entrega."}}
+          ],
+          "topics": ["confirmações", "retransmissões", "perdas"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Entrega ordenada e recuperação de perdas"],
+          "explicacoes": [{"ideia": "Entrega ordenada e recuperação de perdas", "formas": ["mechanism", "worked_example"]}],
+          "praticas": [{"requisito": "Relacionar confirmação e retransmissão à recuperação de uma perda", "oportunidade": "Completar os papéis de confirmação e retransmissão em uma situação de perda", "dimensoesVariadas": ["case_or_data", "task_feature", "support_level"]}],
+          "cobertura": ["Propriedades e limites de transporte"]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 3,
+        "conteudo": {
+          "title": "Escolher transporte sob condições diferentes",
+          "role": "practice",
+          "content": [
+            {"id": "a-scenario", "package": "paragraph", "data": {"text": "Uma aplicação envia áudio interativo: uma amostra que chega tarde pode valer menos do que a próxima amostra, e o conteúdo precisa de confidencialidade. Analise a condição do caso antes de escolher o transporte e a camada de proteção."}}
+          ],
+          "response": {"package": "choice", "data": {
+            "question": "Qual justificativa atende simultaneamente ao prazo do áudio e à confidencialidade, sem atribuir garantias que não foram declaradas?",
+            "selectionMode": "single",
+            "selectionCriterion": "best",
+            "options": [
+              {"id": "a-best", "kind": "text", "text": "UDP pode ser adequado quando evitar a espera por recuperação de uma amostra velha é importante; TLS pode fornecer confidencialidade quando empregado adequadamente, e a aplicação trata perdas e atrasos.", "feedback": "Correta: prazo, perda e confidencialidade são analisados separadamente."},
+              {"id": "a-tcp-deadline", "kind": "text", "text": "TCP é obrigatório porque sua confiabilidade garante que cada amostra chegue dentro do prazo máximo.", "feedback": "Confiabilidade e prazo máximo são propriedades diferentes; TCP não garante um prazo."},
+              {"id": "a-udp-secret", "kind": "text", "text": "UDP já cifra os datagramas, então nenhuma camada adicional é necessária para confidencialidade.", "feedback": "UDP não cifra automaticamente o conteúdo; a confidencialidade precisa de uma proteção adequada."},
+              {"id": "a-tls-deadline", "kind": "text", "text": "TLS transforma qualquer transporte em um transporte com prazo máximo garantido.", "feedback": "TLS trata confidencialidade; não cria uma garantia de prazo máximo."}
+            ],
+            "answerIds": ["a-best"]
+          }},
+          "feedback": [
+            {"package": "paragraph", "data": {"text": "A alternativa adequada explicita a condição: em áudio interativo, esperar recuperação pode aumentar o atraso; UDP não oferece ordem ou recuperação por si só, e a aplicação precisa tratar essas perdas. A confidencialidade vem de uma camada apropriada, não do transporte automaticamente."}}
+          ],
+          "topics": ["prazo", "áudio interativo", "TLS", "escolha condicional"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Entrega ordenada e recuperação de perdas", "Prazo e confidencialidade são requisitos distintos"],
+          "explicacoes": [{"ideia": "Prazo e confidencialidade são requisitos distintos", "formas": ["application_condition", "limit_or_exception", "concrete_example"]}],
+          "praticas": [{"requisito": "Discriminar simultaneamente as garantias presentes e ausentes num cenário de transporte", "oportunidade": "Escolher a justificativa para áudio interativo com confidencialidade", "dimensoesVariadas": ["context", "case_or_data", "external_representation"]}],
+          "cobertura": ["Propriedades e limites de transporte"]
+        },
+        "fontes": []
+      }
+    ]
+  },
+  {
+    "curso": "Modelos computacionais em ação",
+    "microssequencia": "Intervalos e limites de memória",
+    "concluir": false,
+    "explicacoes": [
+      {
+        "microssequencia": "Intervalos e limites de memória",
+        "conteudo": {
+          "title": "Intervalos e limites de memória",
+          "content": [
+            {"package": "paragraph", "data": {"text": "Considere memória endereçada a bytes: cada endereço identifica um byte e um intervalo escrito como [início, fim] inclui os dois extremos. Por isso, o tamanho é fim − início + 1. Para decidir contiguidade, compare os extremos: o segundo intervalo começa exatamente em fim do primeiro + 1. Se começa antes ou no fim do primeiro, há sobreposição; se começa depois de fim + 1, existe uma lacuna. Faça a aritmética na base indicada e trate endereços de 64 bits como valores exatos, sem convertê-los para ponto flutuante."}},
+            {"package": "table", "data": {"title": "Classificação de intervalos inclusivos", "columns": ["Primeiro intervalo", "Segundo intervalo", "Relação", "Justificativa"], "rows": [
+              ["[0x1000, 0x100F]", "[0x1010, 0x1017]", "Contíguos", "0x100F + 1 = 0x1010; nenhum byte é compartilhado"],
+              ["[0x2000, 0x2010]", "[0x2010, 0x2018]", "Sobrepostos", "0x2010 pertence aos dois intervalos"],
+              ["[0x3000, 0x300F]", "[0x3011, 0x3018]", "Separados", "0x3010 fica como lacuna entre os extremos"],
+              ["[0x4000, 0x400F]", "[0x4000, 0x400F]", "Sobrepostos", "Os intervalos compartilham todos os bytes"]
+            ], "note": "Os colchetes indicam inclusão; não substitua o modelo de bytes por uma sequência de chamadas."}}
+          ]
+        },
+        "fontes": []
+      }
+    ],
+    "unidades": [
+      {
+        "posicao": 1,
+        "conteudo": {
+          "title": "Calcular extremos em intervalos inclusivos",
+          "role": "theory",
+          "content": [
+            {"id": "b-theory-body", "package": "paragraph", "data": {"text": "Em um intervalo inclusivo de bytes, o primeiro e o último endereço contam. Se o início é 0x1000 e o tamanho é 16 bytes, o último endereço é 0x1000 + 16 − 1 = 0x100F. O endereço seguinte é 0x1010. Para conferir um tamanho a partir dos extremos, use fim − início + 1; a parcela +1 existe porque os dois extremos também são bytes do intervalo."}},
+            {"id": "b-extremes-table", "package": "table", "data": {"title": "Aritmética do exemplo", "columns": ["Dado", "Cálculo", "Resultado"], "rows": [
+              ["Início", "fornecido", "0x1000"],
+              ["Tamanho", "fornecido", "16 bytes"],
+              ["Fim inclusivo", "0x1000 + 16 − 1", "0x100F"],
+              ["Próximo byte", "0x100F + 1", "0x1010"]
+            ]}}
+          ],
+          "response": null,
+          "feedback": [],
+          "topics": ["memória", "endereços", "intervalos inclusivos"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            {"nome": "Intervalo inclusivo de bytes", "descricao": "O intervalo [início, fim] inclui os dois endereços e seu tamanho é fim − início + 1."},
+            {"nome": "Contiguidade e sobreposição", "descricao": "Contiguidade ocorre quando o próximo início é fim + 1; sobreposição ocorre quando algum byte pertence aos dois intervalos."}
+          ],
+          "ideiasUtilizadas": [],
+          "explicacoes": [
+            {"ideia": "Intervalo inclusivo de bytes", "formas": ["plain_definition", "worked_example", "mechanism", "representation_link"]},
+            {"ideia": "Contiguidade e sobreposição", "formas": ["plain_definition", "concrete_example", "contrast"]}
+          ],
+          "cobertura": ["Aritmética de endereços e intervalos"]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 2,
+        "conteudo": {
+          "title": "Encontrar tamanho e próximo endereço",
+          "role": "practice",
+          "content": [
+            {"id": "b-calc-prompt", "package": "paragraph", "data": {"text": "Considere o intervalo inclusivo [0x1800, 0x180F]. O tamanho é fim − início + 1, portanto é 16 bytes; como o intervalo termina em 0x180F, o próximo endereço é 0x1810. Complete os dois valores pedidos."}}
+          ],
+          "response": {"package": "gap", "data": {"prompt": "Informe o tamanho em bytes e o próximo endereço após o intervalo.", "blanks": [
+            {"id": "b-size", "targetInstanceId": "b-calc-prompt", "targetPath": "text", "responseMode": "text", "answer": "16", "acceptedAnswers": ["0x10"], "label": "tamanho"},
+            {"id": "b-next", "targetInstanceId": "b-calc-prompt", "targetPath": "text", "responseMode": "text", "answer": "0x1810", "label": "próximo endereço"}
+          ]}},
+          "feedback": [
+            {"package": "paragraph", "data": {"text": "Há 16 bytes porque 0x180F − 0x1800 + 1 = 16. O byte seguinte é 0x1810, obtido ao somar 1 ao extremo final."}}
+          ],
+          "topics": ["tamanho", "extremo final", "base hexadecimal"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Intervalo inclusivo de bytes"],
+          "explicacoes": [{"ideia": "Intervalo inclusivo de bytes", "formas": ["worked_example", "mechanism"]}],
+          "praticas": [{"requisito": "Calcular um extremo e o tamanho de um intervalo inclusivo", "oportunidade": "Calcular tamanho e próximo endereço em hexadecimal", "dimensoesVariadas": ["case_or_data", "task_feature", "support_level"]}],
+          "cobertura": ["Aritmética de endereços e intervalos"]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 3,
+        "conteudo": {
+          "title": "Distinguir contiguidade de sobreposição",
+          "role": "practice",
+          "content": [
+            {"id": "b-relation-prompt", "package": "paragraph", "data": {"text": "Compare cada par como intervalos inclusivos. Observe se o segundo início é exatamente o primeiro fim mais 1, se cai dentro do primeiro intervalo ou se deixa uma lacuna."}}
+          ],
+          "response": {"package": "choice", "data": {
+            "question": "Selecione todas as classificações corretas para os pares de intervalos abaixo.",
+            "selectionMode": "multiple",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "b-contiguous", "kind": "text", "text": "[0x2000, 0x200F] e [0x2010, 0x2017] são contíguos, pois 0x2010 = 0x200F + 1.", "feedback": "Correta: o segundo intervalo começa no byte imediatamente posterior, sem compartilhar byte."},
+              {"id": "b-overlap", "kind": "text", "text": "[0x3000, 0x3010] e [0x3010, 0x3018] são sobrepostos, pois 0x3010 pertence aos dois.", "feedback": "Correta: igualdade entre o primeiro fim e o segundo início indica um byte compartilhado."},
+              {"id": "b-gap", "kind": "text", "text": "[0x4000, 0x400F] e [0x4011, 0x4018] são separados, pois 0x4010 fica entre eles.", "feedback": "Correta: o segundo início é maior que o primeiro fim + 1 e existe uma lacuna."},
+              {"id": "b-wrong", "kind": "text", "text": "[0x5000, 0x500F] e [0x5010, 0x5017] são sobrepostos porque seus valores hexadecimais são próximos.", "feedback": "Incorreta: proximidade não é sobreposição; 0x5010 = 0x500F + 1 caracteriza contiguidade."}
+            ],
+            "answerIds": ["b-contiguous", "b-overlap", "b-gap"]
+          }},
+          "feedback": [
+            {"package": "paragraph", "data": {"text": "A classificação depende da comparação dos extremos, não apenas da proximidade visual. Fim + 1 igual ao próximo início dá contiguidade; um início menor ou igual ao fim anterior dá sobreposição; um início maior que fim + 1 deixa lacuna."}}
+          ],
+          "topics": ["contiguidade", "sobreposição", "lacuna"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Intervalo inclusivo de bytes", "Contiguidade e sobreposição"],
+          "explicacoes": [{"ideia": "Contiguidade e sobreposição", "formas": ["contrast", "worked_example", "application_condition"]}],
+          "praticas": [{"requisito": "Distinguir contiguidade de sobreposição comparando extremos", "oportunidade": "Classificar pares hexadecimais contíguos, sobrepostos ou separados", "dimensoesVariadas": ["case_or_data", "external_representation", "support_level"]}],
+          "cobertura": ["Aritmética de endereços e intervalos"]
+        },
+        "fontes": []
+      }
+    ]
+  },
+  {
+    "curso": "Modelos computacionais em ação",
+    "microssequencia": "Transições de um controle de acesso",
+    "concluir": false,
+    "explicacoes": [
+      {
+        "microssequencia": "Transições de um controle de acesso",
+        "conteudo": {
+          "title": "Transições de um controle de acesso",
+          "content": [
+            {"package": "paragraph", "data": {"text": "Uma máquina de estados guarda no estado atual a informação necessária para interpretar o próximo evento. No controle de acesso, a mesma entrada pode ter efeitos distintos: passagem em Bloqueado permanece Bloqueado, enquanto passagem em Liberado leva a Bloqueado. Credencial válida libera a passagem quando o sistema está Bloqueado; passagem forçada leva a Alarme. Em Alarme, somente rearme volta a Bloqueado; qualquer outro evento mantém Alarme. O estado final depende, portanto, do estado inicial e da sequência completa de eventos."}},
+            {"package": "state_machine", "data": {
+              "prompt": "Siga o estado corrente antes de aplicar cada evento.",
+              "machineKind": "deterministic",
+              "states": [
+                {"id": "blocked", "label": "Bloqueado", "initial": true, "accepting": false},
+                {"id": "released", "label": "Liberado", "initial": false, "accepting": false},
+                {"id": "alarm", "label": "Alarme", "initial": false, "accepting": false}
+              ],
+              "events": [
+                {"id": "valid_credential", "label": "credencial válida"},
+                {"id": "passage", "label": "passagem"},
+                {"id": "forced_passage", "label": "passagem forçada"},
+                {"id": "timeout", "label": "tempo esgotado"},
+                {"id": "rearm", "label": "rearme"},
+                {"id": "other", "label": "qualquer outro evento"}
+              ],
+              "transitions": [
+                {"id": "t-block-valid", "from": "blocked", "event": "valid_credential", "to": "released"},
+                {"id": "t-block-forced", "from": "blocked", "event": "forced_passage", "to": "alarm"},
+                {"id": "t-block-timeout", "from": "blocked", "event": "timeout", "to": "blocked"},
+                {"id": "t-block-rearm", "from": "blocked", "event": "rearm", "to": "blocked"},
+                {"id": "t-block-passage", "from": "blocked", "event": "passage", "to": "blocked"},
+                {"id": "t-release-valid", "from": "released", "event": "valid_credential", "to": "released"},
+                {"id": "t-release-passage", "from": "released", "event": "passage", "to": "blocked"},
+                {"id": "t-release-forced", "from": "released", "event": "forced_passage", "to": "alarm"},
+                {"id": "t-release-timeout", "from": "released", "event": "timeout", "to": "blocked"},
+                {"id": "t-release-rearm", "from": "released", "event": "rearm", "to": "blocked"},
+                {"id": "t-alarm-rearm", "from": "alarm", "event": "rearm", "to": "blocked"},
+                {"id": "t-alarm-other", "from": "alarm", "event": "other", "to": "alarm"}
+              ]
+            }}
+          ]
+        },
+        "fontes": []
+      }
+    ],
+    "unidades": [
+      {
+        "posicao": 1,
+        "conteudo": {
+          "title": "Ler estado e evento antes de transicionar",
+          "role": "theory",
+          "content": [
+            {"id": "c-theory-body", "package": "paragraph", "data": {"text": "A regra de transição é consultada pelo par (estado atual, evento). Começando em Bloqueado, uma credencial válida leva a Liberado; uma passagem forçada leva a Alarme; passagem, tempo esgotado e rearme mantêm Bloqueado. Em Liberado, passagem volta a Bloqueado, mas credencial válida mantém Liberado e passagem forçada leva a Alarme. Em Alarme, rearme leva a Bloqueado e o evento representado como qualquer outro evento mantém Alarme. Não há uma transição implícita fora das regras declaradas."}},
+            {"id": "c-transition-table", "package": "table", "data": {"title": "Trechos decisivos da função de transição", "columns": ["Estado atual", "Evento", "Próximo estado", "Por que importa"], "rows": [
+              ["Bloqueado", "passagem", "Bloqueado", "A mesma passagem não libera o sistema neste estado"],
+              ["Liberado", "passagem", "Bloqueado", "O evento agora encerra a liberação"],
+              ["Bloqueado", "passagem forçada", "Alarme", "O contexto é uma violação enquanto está bloqueado"],
+              ["Liberado", "passagem forçada", "Alarme", "A violação também dispara alarme após liberação"],
+              ["Alarme", "rearme", "Bloqueado", "O rearme é a recuperação explícita"]
+            ]}}
+          ],
+          "response": null,
+          "feedback": [],
+          "topics": ["estado", "evento", "transição", "controle de acesso"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            {"nome": "Estado como memória do sistema", "descricao": "O estado corrente registra contexto suficiente para que o mesmo evento possa produzir efeitos diferentes."},
+            {"nome": "Transição condicionada ao estado e evento", "descricao": "O próximo estado é obtido consultando a regra correspondente ao par estado atual e evento."}
+          ],
+          "ideiasUtilizadas": [],
+          "explicacoes": [
+            {"ideia": "Estado como memória do sistema", "formas": ["plain_definition", "concrete_example", "contrast", "representation_link"]},
+            {"ideia": "Transição condicionada ao estado e evento", "formas": ["plain_definition", "mechanism", "worked_example", "limit_or_exception"]}
+          ],
+          "cobertura": ["Rastreamento de máquinas de estados"]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 2,
+        "conteudo": {
+          "title": "Compor uma sequência de transições",
+          "role": "practice",
+          "content": [
+            {"id": "c-trace-prompt", "package": "paragraph", "data": {"text": "Acompanhe um único evento por vez, sempre atualizando o estado antes de ler o evento seguinte. A sequência começa em Bloqueado e aplica credencial válida, passagem e passagem forçada. O estado final é Alarme."}}
+          ],
+          "response": {"package": "gap", "data": {"prompt": "Informe o estado final da sequência.", "blanks": [
+            {"id": "c-final", "targetInstanceId": "c-trace-prompt", "targetPath": "text", "responseMode": "text", "answer": "Alarme", "acceptedAnswers": ["alarme"], "label": "estado final"}
+          ]}},
+          "feedback": [
+            {"package": "paragraph", "data": {"text": "A credencial válida leva Bloqueado a Liberado. De Liberado, passagem leva a Bloqueado. De Bloqueado, passagem forçada leva a Alarme. O estado final é Alarme porque cada evento foi aplicado ao estado produzido pelo evento anterior."}}
+          ],
+          "topics": ["rastreamento", "sequência de eventos", "estado final"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Estado como memória do sistema", "Transição condicionada ao estado e evento"],
+          "explicacoes": [{"ideia": "Transição condicionada ao estado e evento", "formas": ["worked_example", "mechanism"]}],
+          "praticas": [{"requisito": "Compor uma sequência de transições para prever o estado final", "oportunidade": "Atualizar o estado após três eventos encadeados", "dimensoesVariadas": ["case_or_data", "task_feature", "support_level"]}],
+          "cobertura": ["Rastreamento de máquinas de estados"]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 3,
+        "conteudo": {
+          "title": "Comparar o mesmo evento em estados distintos",
+          "role": "practice",
+          "content": [
+            {"id": "c-compare-prompt", "package": "paragraph", "data": {"text": "O evento passagem aparece em duas situações do controle. Compare o estado de origem antes de decidir o destino: uma situação começa bloqueada e a outra começa liberada."}}
+          ],
+          "response": {"package": "choice", "data": {
+            "question": "Selecione todas as afirmações corretas sobre o evento passagem.",
+            "selectionMode": "multiple",
+            "selectionCriterion": "correct",
+            "options": [
+              {"id": "c-blocked", "kind": "text", "text": "Em Bloqueado, passagem mantém o estado em Bloqueado.", "feedback": "Correta: essa é a transição t-block-passage."},
+              {"id": "c-released", "kind": "text", "text": "Em Liberado, passagem leva o sistema a Bloqueado.", "feedback": "Correta: o mesmo evento encontra outra regra quando o estado atual é Liberado."},
+              {"id": "c-alarm", "kind": "text", "text": "Em qualquer estado, passagem sempre leva a Alarme.", "feedback": "Incorreta: o destino depende do estado atual e o modelo não declara essa regra universal."},
+              {"id": "c-same", "kind": "text", "text": "Como o evento é o mesmo, o destino precisa ser o mesmo nos dois estados.", "feedback": "Incorreta: a máquina consulta o par estado-evento; o estado é parte da entrada da função de transição."}
+            ],
+            "answerIds": ["c-blocked", "c-released"]
+          }},
+          "feedback": [
+            {"package": "paragraph", "data": {"text": "As duas afirmações corretas mostram por que o estado funciona como memória: passagem é um evento igual, mas Bloqueado e Liberado consultam transições diferentes. Não se pode escolher o destino olhando somente para o nome do evento."}}
+          ],
+          "topics": ["estado atual", "evento compartilhado", "comparação"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Estado como memória do sistema", "Transição condicionada ao estado e evento"],
+          "explicacoes": [{"ideia": "Estado como memória do sistema", "formas": ["contrast", "concrete_example", "application_condition"]}],
+          "praticas": [{"requisito": "Comparar o efeito do mesmo evento em estados distintos", "oportunidade": "Comparar passagem em Bloqueado e em Liberado", "dimensoesVariadas": ["context", "task_feature", "external_representation"]}],
+          "cobertura": ["Rastreamento de máquinas de estados"]
+        },
+        "fontes": []
+      }
+    ]
+  }
+]

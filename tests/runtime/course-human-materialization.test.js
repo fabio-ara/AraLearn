@@ -16,6 +16,7 @@ import { materializeHumanCoursePart as materializeCompletePart, humanMaterializa
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
+import { createDefaultCourseAudioConfig, COURSE_MEDIA_COURSE_MAX_BYTES } from "../../src/domain/courseMedia.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 function explanationFixtures() {
@@ -64,7 +65,7 @@ test("materialização pelo catálogo relê processo pessoal e mantém cadência
     adapter.getCourseDesign = async request => request.scopeKind === "course"
       ? courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 }) : get(request);
     const output = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, name: "materializar_parte",
-      rawArguments: { curso: "Curso de Redes", parte: 1, unidades: [unit()], explicacoes: explanationFixtures() } });
+      rawArguments: { curso: "Curso de Redes", unidades: [unit()], explicacoes: explanationFixtures() } });
     assert.deepEqual(reads, ["preferences"]);
     assert.equal(output.context.processoCorrente.foco, focus);
     assert.equal(output.context.processoCorrente.cadencia, "batch");
@@ -573,7 +574,7 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
   }]);
   assert.equal(receipt.result, "Primeira parte produzida.");
   assert.equal(receipt.deepLink, `https://aralearn.example/app/#/authoring/courses/${COURSE_ID}?section=content&authoringPartId=${PART_ID}`);
-  assert.match(receipt.nextDecision, /Leia o percurso salvo/u);
+  assert.match(receipt.nextDecision, /segunda leitura pedagógica/u);
   assert.deepEqual(write.explanations, [], "a Explicação persistida não é reenviada na escrita de unidades");
   assert.equal(receipt.context.distribuicaoDaPratica[0].observacao.studyUnitCount, 1);
   assert.equal(JSON.stringify({ ...receipt, deepLink: null, links: [] }).includes(COURSE_ID), false);
@@ -634,18 +635,24 @@ test("nova materialização rejeita resposta aberta no preflight sem gravação"
     part: 1,
     units: [unit(), practice],
     explanations: explanationFixtures()
-  }), error => Boolean(preflightBlocker(error, "practice_response_legacy_only")));
+  }), error => Boolean(preflightBlocker(error, "invalid_human_study_unit")));
   assert.deepEqual(adapter.calls, []);
 });
 
-test("#303 materialização aceita os5 pacotes ferramenta pelo contrato comum sem writer por tipo", async () => {
+test("#303 materialização aceita os pacotes ferramenta atuais pelo contrato comum sem writer por tipo", async () => {
   const adapter = adapterFixture();
   const value = unit();
-  const additions = ["calculator", "grammar", "dictionary", "reading", "audio"].map(id => {
+  const additions = ["calculator", "audio"].map(id => {
     const definition = RESOURCE_PACKAGE_REGISTRY.get(`aralearn.resource.${id}`, "1.0.0");
     return { id: `tool-${id}`, package: definition.manifest.id, version: definition.manifest.version,
       data: structuredClone(definition.authoringContract.example) };
   });
+  const media = { contentHash: "a".repeat(64), byteSize: 24044, mediaType: "audio/wav" };
+  additions[1].data.tracks[0] = { ...additions[1].data.tracks[0], kind: "file", media };
+  delete additions[1].data.tracks[0].text;
+  adapter.getCourseMedia = async () => ({ contract: "aralearn.course-media.v1", courseId: COURSE_ID, courseRevision: 8,
+    mode: "catalog", audioConfig: createDefaultCourseAudioConfig(), storage: { uniqueBytes: media.byteSize, maxUniqueBytes: COURSE_MEDIA_COURSE_MAX_BYTES },
+    items: [{ ...media, fileName: "saudacao.wav" }], nextCursor: null });
   value.conteudo.content.push(...additions);
   await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [value] });
   assert.equal(adapter.calls.length, 1);
@@ -752,7 +759,7 @@ test("MCP aceita escolha contextual explícita e distingue indisponibilidade de 
       Accept: "application/json, text/event-stream", "Content-Type": "application/json",
       "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
     }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
-      name: "materializar_parte", arguments: { curso: "Curso de Redes", parte: 1,
+      name: "materializar_parte", arguments: { curso: "Curso de Redes",
         unidades: [candidate], explicacoes: explanationFixtures() }
     } }) }));
     const payload = await response.json();
@@ -2225,7 +2232,7 @@ test("preflight agrega vínculos, referências, formas, componentes e prática a
   const codes = new Set(preparation.blockers.map(item => item.code));
   for (const code of ["human_materialization_map_approval_required", "human_materialization_analysis_not_linked", "human_reference_not_found",
     "human_materialization_missing_explanation_form", "human_materialization_component_policy_violation",
-    "practice_response_legacy_only"]) assert.ok(codes.has(code), code);
+    "invalid_human_study_unit"]) assert.ok(codes.has(code), code);
   assert.ok(preparation.blockers.filter(item => item.code === "human_reference_not_found").length >= 2,
     "fonte e requisito ausentes aparecem na mesma preparação");
   assert.deepEqual(adapter.calls, []);

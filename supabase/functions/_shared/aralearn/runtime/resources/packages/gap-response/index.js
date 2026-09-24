@@ -120,7 +120,7 @@ function choicePrompt(data, options) {
     `${options.exerciseShuffleSeed || "runtime"}::${options.responseBlockKey || options.blockKey}` +
       `::gap:${blank.id}:${Number(active.blankIndex)}`
   );
-  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="runtime-flow-prompt-head"><span class="runtime-flow-prompt-badge">Opções</span></div><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}"><span class="runtime-text-gap-blank token-option-label">${renderPackageInline(practiceValueLabel(blank, value, options))}</span></button>`).join("")}</div></section>`;
+  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}"><span class="runtime-text-gap-blank token-option-label">${renderPackageInline(practiceValueLabel(blank, value, options))}</span></button>`).join("")}</div></section>`;
 }
 
 function materializesGap(registry, instance, response, index) {
@@ -187,7 +187,9 @@ export const gapResponsePackage = Object.freeze({
         return;
       }
       if (declaredTarget.preserveReference === true &&
-          (blank.acceptedAnswers || []).some((candidate) => candidate !== source)) {
+          (blank.acceptedAnswers || []).some((candidate) =>
+            (registry.normalizePracticeValue?.(instance, path, candidate) ?? candidate) !==
+            (registry.normalizePracticeValue?.(instance, path, source) ?? source))) {
         errors.push(`Lacuna ${blank.id} em referência estrutural não admite resposta equivalente que altere a referência.`);
         return;
       }
@@ -276,5 +278,14 @@ export const gapResponsePackage = Object.freeze({
   },
   accessibleText(data) { return `${data.prompt || "Complete as lacunas."} ${data.blanks.map((blank) => blank.label || blank.id).join("; ")}`; },
   editableTargets(data) { return gapAuthoringEditableTargets(data); },
-  evaluate(data, answer) { const values = answer?.values && typeof answer.values === "object" ? answer.values : {}; const results = data.blanks.map((blank) => { const received = normalizeAnswer(values[blank.id]); const accepted = [blank.answer, ...(blank.acceptedAnswers || [])].map(normalizeAnswer); return { id: blank.id, correct: accepted.includes(received), received, expected: blank.answer }; }); return { correct: results.every(({ correct }) => correct), results }; }
+  evaluate(data, answer, options = {}) {
+    const values = answer?.values && typeof answer.values === "object" ? answer.values : {};
+    const results = data.blanks.map(blank => {
+      const normalized = value => options.normalizePracticeValue?.(blank, value) ?? normalizeAnswer(value);
+      const received = normalizeAnswer(values[blank.id]);
+      const accepted = [blank.answer, ...(blank.acceptedAnswers || [])].map(normalized);
+      return { id: blank.id, correct: accepted.includes(normalized(received)), received, expected: blank.answer };
+    });
+    return { correct: results.every(({ correct }) => correct), results };
+  }
 });

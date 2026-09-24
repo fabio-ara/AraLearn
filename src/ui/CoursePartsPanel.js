@@ -55,29 +55,29 @@ export function createCoursePartsPanel({ root, controller, courseId, onChanged =
       `<label>Título<input name="title" value="${escape(draft.title)}" maxlength="300" required></label>` +
       `<label>Intenção<textarea name="intent" maxlength="4000" required>${escape(draft.intent)}</textarea></label>` +
       '<div class="course-parts-progression"><p>Progressão local</p>' + draft.progression.map((item, index) =>
-        `<div><label>Passo ${index + 1}<textarea name="progression-${index}" maxlength="1000" required>${escape(item)}</textarea></label><button type="button" data-parts-action="remove-step" data-step="${index}"${draft.progression.length === 1 ? " disabled" : ""}>Retirar passo ${index + 1}</button></div>`).join("") + '</div></fieldset>' +
+        `<div><label>Passo ${index + 1}<textarea name="progression-${index}" maxlength="1000" required>${escape(item)}</textarea></label><button class="course-authoring-icon-action is-danger" type="button" data-parts-action="remove-step" data-step="${index}" aria-label="Retirar passo ${index + 1}" title="Retirar passo ${index + 1}"${draft.progression.length === 1 ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button></div>`).join("") + '</div></fieldset>' +
       '<section aria-label="Prévia da reorganização"><h3>Microssequências no lote</h3><ol>' + draft.microsequences.map(item => `<li>${escape(label(item.microsequenceId))}</li>`).join("") + '</ol>' +
       '<p>O mapa curricular, as unidades, suas fontes e as configurações aplicadas permanecem nas mesmas identidades.</p>' +
       (state.mode === "merge" ? '<p>Os lotes reunidos deixam de existir como grupos separados. Seus títulos, intenções e passos foram reunidos acima; revise o texto antes de salvar.</p>' : "") + '</section>' +
-      '<div class="course-parts-actions"><button type="submit" aria-label="Salvar reorganização" title="Salvar reorganização"' + (state.busy ? ' disabled' : '') + '>' + renderUiIcon("save", "course-authoring-button-icon") + '</button>' +
-      '<button type="button" data-parts-action="discard" aria-label="Descartar reorganização" title="Descartar reorganização"' + (state.busy ? ' disabled' : '') + '>' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></div></form>';
+      '<div class="course-parts-actions"><button class="course-authoring-icon-action" type="submit" aria-label="Salvar reorganização" title="Salvar reorganização"' + (state.busy ? ' disabled' : '') + '>' + renderUiIcon("save", "course-authoring-button-icon") + '</button>' +
+      '<button class="course-authoring-icon-action is-danger" type="button" data-parts-action="discard" aria-label="Descartar reorganização" title="Descartar reorganização"' + (state.busy ? ' disabled' : '') + '>' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button></div></form>';
   }
   function render() {
     if (state.destroyed) return;
     const part = selected();
     root.classList.add("course-parts-editor");
-    root.innerHTML = '<div class="course-parts-heading"><h2>Reorganizar lotes</h2><button type="button" data-parts-action="close" aria-label="Fechar reorganização" title="Fechar reorganização">' +
+    root.innerHTML = '<div class="course-parts-heading"><h2>Reorganizar lotes</h2><button class="course-authoring-icon-action" type="button" data-parts-action="close" aria-label="Fechar reorganização" title="Fechar reorganização">' +
       renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button></div>' +
       '<p>Divida, reúna ou reposicione grupos de microssequências existentes. A ordem curricular não muda.</p>' +
       (parts().length ? `<label>Lote<select aria-label="Lote" data-parts-selection${pending() ? " disabled" : ""}>` + parts().map(item => `<option value="${item.id}"${part?.id === item.id ? " selected" : ""}>${item.position + 1}. ${escape(item.title)}</option>`).join("") + '</select></label>' +
-        '<div class="course-parts-actions"><button type="button" data-parts-action="split"' + (pending() || part.microsequences.length < 2 || parts().length >= 64 ? ' disabled' : '') + '>Dividir</button>' +
-        '<button type="button" data-parts-action="merge"' + (pending() || parts().length < 2 ? ' disabled' : '') + '>Reunir</button>' +
-        '<button type="button" data-parts-action="reorder"' + (pending() || parts().length < 2 ? ' disabled' : '') + '>Reordenar</button>' +
-        '<button type="button" data-parts-action="inspect"' + (pending() ? ' disabled' : '') + '>Inspecionar lote</button></div>'
+        '<div class="course-parts-actions"><button class="course-authoring-icon-action" type="button" data-parts-action="split" aria-label="Dividir" title="Dividir"' + (pending() || part.microsequences.length < 2 || parts().length >= 64 ? ' disabled' : '') + '>' + renderUiIcon("add", "course-authoring-button-icon") + '</button>' +
+        '<button class="course-authoring-icon-action" type="button" data-parts-action="merge" aria-label="Reunir" title="Reunir"' + (pending() || parts().length < 2 ? ' disabled' : '') + '>' + renderUiIcon("module", "course-authoring-button-icon") + '</button>' +
+        '<button class="course-authoring-icon-action" type="button" data-parts-action="reorder" aria-label="Reordenar" title="Reordenar"' + (pending() || parts().length < 2 ? ' disabled' : '') + '>' + renderUiIcon("reposition", "course-authoring-button-icon") + '</button>' +
+        '<button class="course-authoring-icon-action" type="button" data-parts-action="inspect" aria-label="Inspecionar lote" title="Inspecionar lote"' + (pending() ? ' disabled' : '') + '>' + renderUiIcon("preview", "course-authoring-button-icon") + '</button></div>'
         : '<p>O planejamento ainda não tem lotes. Organize o mapa e forme o primeiro lote pela conversa de planejamento.</p>') +
       draftHtml() + (state.error ? `<p role="alert">${escape(state.error)}</p>` : '') +
       `<p role="status">${escape(state.busy ? "Salvando reorganização…" : state.message)}</p>` +
-      (state.closing ? '<section role="alertdialog" aria-label="Rascunho da reorganização"><p>Há uma reorganização não salva. Descartá-la para fechar?</p><button type="button" data-parts-action="discard-close">Descartar e fechar</button><button type="button" data-parts-action="keep">Continuar editando</button></section>' : '');
+      (state.closing ? '<section role="alertdialog" aria-label="Rascunho da reorganização"><p>Há uma reorganização não salva. Descartá-la para fechar?</p><button class="course-authoring-icon-action is-danger" type="button" data-parts-action="discard-close" aria-label="Descartar e fechar" title="Descartar e fechar">' + renderUiIcon("remove-state", "course-authoring-button-icon") + '</button><button class="course-authoring-icon-action" type="button" data-parts-action="keep" aria-label="Continuar editando" title="Continuar editando">' + renderUiIcon("edit", "course-authoring-button-icon") + '</button></section>' : '');
   }
   async function save(event) {
     if (!event.target.matches("[data-parts-form]")) return;

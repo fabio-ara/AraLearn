@@ -121,6 +121,9 @@ export function plainGraphvizLabel(value) {
 }
 
 export function wrapGraphvizLabel(value, lineLength = 32) {
+  // Uma lacuna é um controle indivisível. A caixa deve reservar a linha que o
+  // controle realmente ocupa, inclusive quando seu valor ainda está oculto.
+  if (hasGraphvizGap(value)) return plainGraphvizLabel(value);
   const markers = listPackageManualTextPaths(value)
     .map((path) => createPackageManualTextMarker(path, ""))
     .join("");

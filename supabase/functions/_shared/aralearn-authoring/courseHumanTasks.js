@@ -15,7 +15,6 @@ import {
   COURSE_SOURCE_ROLES,
   COURSE_BIBLIOGRAPHY_STYLES,
   createEmptyCourseSourceBibliographicMetadata,
-  normalizeCourseSourceAttachment,
   normalizeCourseSourceCommand,
   inspectCourseSourceEvidence,
   requireCourseSourceEvidence,
@@ -40,7 +39,8 @@ import { resolveOpenAiTemporaryAudio } from "./openAiTemporaryAudio.js";
 import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeCourseMediaRead } from
   "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
-  resolveHumanSourceOccurrences, preflightHumanCourseMaterialization } from "./courseHumanMaterialization.js";
+  resolveHumanSourceOccurrences, preflightHumanCourseMaterialization, listExistingPartStudyUnits } from "./courseHumanMaterialization.js";
+import { completeFocalMaterialization } from "./courseFocalMaterialization.js";
 import { applyHumanCourseCorrections, resumeHumanCourseObservationCorrection } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
@@ -55,6 +55,8 @@ import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/co
 import { createContentReviewReference, openContentReviewReference } from "./courseContentReviewReference.js";
 import { normalizeCourseContentReview } from "../aralearn/runtime/domain/courseContentReview.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
+import { normalizePedagogicalAudit, projectPedagogicalAudit, requirePedagogicalAuditConsistency,
+  PEDAGOGICAL_AUDIT_DIMENSIONS } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
 import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS } from "./courseHumanDesignTasks.js";
 import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS } from "./courseHumanStructureTasks.js";
@@ -226,7 +228,7 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
 const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
-  description: 'Repita a leitura com os mesmos argumentos iniciais e acrescente esta continuação.' });
+  description: 'Repita os argumentos iniciais com esta continuação.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -267,9 +269,9 @@ const SOURCE_LINK_PROPERTIES = Object.freeze({
   relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
   papeis: Object.freeze({ ...SOURCE_ROLES_SCHEMA, minItems: 1 }),
   ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA,
-    description: "Posição na ficha consultada, localizador humano ou trecho de verificação da âncora existente. Evidência exige âncora vigente; não basta cadastrar a fonte." }),
+    description: "Âncora vigente por posição, localizador ou trecho. Cadastro da fonte não comprova evidência." }),
   ocorrencias: Object.freeze({ ...SOURCE_OCCURRENCES_SCHEMA,
-    description: "Afirmações sustentadas no conteúdo. Evidência exige ocorrência e âncora; afirmações contíguas da mesma passagem podem compartilhar uma ocorrência." })
+    description: "Afirmações sustentadas: vincule ocorrência e âncora. Afirmações contíguas podem compartilhar ocorrência." })
 });
 const SOURCE_LINKS_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
@@ -312,11 +314,11 @@ const SOURCE_METADATA_SCHEMA = Object.freeze({
 const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze(["id", "package", "version", "data"]),
+  required: Object.freeze(["package", "data"]),
   properties: Object.freeze({
-    id: Object.freeze({ type: "string", minLength: 1 }),
-    package: Object.freeze({ type: "string", minLength: 1 }),
-    version: Object.freeze({ type: "string", minLength: 1 }),
+    id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe para referências entre componentes." }),
+    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto, como choice, ou completo do catálogo." }),
+    version: Object.freeze({ type: "string", minLength: 1, description: "Versão corrente se omitida." }),
     data: Object.freeze({ type: "object" })
   })
 });
@@ -324,7 +326,7 @@ const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
 const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
-  required: Object.freeze(["title", "role", "content", "response", "feedback", "topics"]),
+  required: Object.freeze(["title", "content"]),
   properties: Object.freeze({
     title: Object.freeze({ type: "string", minLength: 1, maxLength: 300 }),
     role: Object.freeze({ type: "string", enum: Object.freeze(["theory", "practice"]) }),
@@ -340,6 +342,7 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
   }),
   allOf: Object.freeze([Object.freeze({
     if: Object.freeze({
+      required: Object.freeze(["role"]),
       properties: Object.freeze({ role: Object.freeze({ const: "theory" }) })
     }),
     then: Object.freeze({
@@ -347,22 +350,22 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
         content: Object.freeze({ minItems: 1 }),
         response: Object.freeze({ type: "null" })
       })
-    }),
-    else: Object.freeze({
-      properties: Object.freeze({ response: Object.freeze({ not: Object.freeze({ type: "null" }) }) })
     })
+  }), Object.freeze({
+    if: { required: ["role"], properties: { role: { const: "practice" } } },
+    then: { required: ["response"], properties: { response: { type: "object" } } }
   })]),
   description: "Conteúdo sem controles internos."
 });
 
 const EXPLANATION_RECONCILIATION_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 512,
-  description: "Classifique as passagens da base corrente; persistir/vincular repertório precede o preparo. O servidor localiza a passagem declarada: não recopie a base; omita trecho para classificar a folha inteira ou indique um trecho curto e distintivo. Ambiguidade real devolve candidatos e o que ficar sem classificação volta como passagens explícitas. Prévia não conta como ensino concluído.",
+  description: "Vincule repertório às passagens. Omita trecho para a folha inteira. O servidor aponta ambiguidades e passagens restantes. Prévia não conclui ensino.",
   items: { type: "object", additionalProperties: false,
     required: ["recurso", "folha", "papel", "motivo", "ideias", "requisitos"],
     properties: { recurso: { type: "integer", minimum: 1, maximum: 64 },
       folha: { type: "string", minLength: 1, maxLength: 240 },
       trecho: { type: "string", minLength: 1, maxLength: 4000,
-        description: "Trecho curto e distintivo da passagem. Omita para classificar a folha inteira." },
+        description: "Fragmento distintivo; omita para a folha inteira." },
       ocorrencia: { type: "integer", minimum: 1, maximum: 512,
         description: "Escolha explícita quando a resposta devolver candidatos." },
       prefixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
@@ -373,7 +376,7 @@ const EXPLANATION_RECONCILIATION_SCHEMA = Object.freeze({ type: "array", minItem
       requisitos: { type: "array", maxItems: 64, items: HUMAN_REFERENCE_SCHEMA }, destino: HUMAN_REFERENCE_SCHEMA } } });
 
 const EXPLANATIONS_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 64,
-  description: "Uma explicação previamente autorada por microssequência, compartilhada pelas unidades. Produzir não aprova conteúdo.",
+  description: "Explicação compartilhada pelas unidades da microssequência. Produzir não aprova.",
   items: { type: "object", additionalProperties: false, required: ["microssequencia", "conteudo", "fontes"],
     properties: { microssequencia: HUMAN_REFERENCE_SCHEMA,
       conteudo: { type: "object", additionalProperties: false, required: ["title", "content"],
@@ -385,7 +388,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
   required: Object.freeze([
-    "microssequencia", "posicao", "conteudo", "aplicacaoPedagogica"
+    "conteudo", "aplicacaoPedagogica"
   ]),
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
@@ -396,10 +399,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
     aplicacaoPedagogica: Object.freeze({
       type: "object",
       additionalProperties: false,
-      required: Object.freeze([
-        "ideiasIntroduzidas", "ideiasUtilizadas", "explicacoes", "praticas",
-        "cobertura"
-      ]),
+      required: Object.freeze([]),
       properties: Object.freeze({
         ideiasIntroduzidas: Object.freeze({
           type: "array", maxItems: 64,
@@ -468,7 +468,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
           type: "array", maxItems: 256,
           items: Object.freeze({
             type: "object", additionalProperties: false,
-            required: Object.freeze(["requisito", "oportunidade", "dimensoesVariadas"]),
+            required: Object.freeze(["requisito"]),
             properties: Object.freeze({
               requisito: Object.freeze({
                 ...HUMAN_REFERENCE_SCHEMA,
@@ -665,10 +665,10 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Confere as mesmas unidades candidatas que serão escritas, suas bases e dependências pedagógicas. O preparo não mantém um segundo resumo estrutural das unidades.",
-    inputSchema({ curso: COURSE_SCHEMA, parte: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+    "Confere uma microssequência e suas bases/dependências. Opcional: a escrita já faz esta verificação.",
+    inputSchema({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
-    }, ["curso", "parte", "unidades"]),
+    }, ["curso", "unidades"]),
     { readOnly: true }
   ),
   task(
@@ -778,7 +778,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_mapa_curricular",
     "Salvar o mapa curricular",
-    "Salva um rascunho. Para mapa extenso ainda sem módulos, envie contexto e escopo com modulos: []; continue em salvar_ramo_curricular sem reduzir conteúdo. Uma árvore preenchida substitui o mapa completo. A aprovação usa a referência persistida.",
+    "Salva rascunho. Sem módulos, envie contexto, escopo e modulos: []; continue em salvar_ramo_curricular. Árvore preenchida substitui todo o mapa. Aprovação usa referência persistida.",
     inputSchema({
       curso: COURSE_SCHEMA,
       publico: Object.freeze({ type: "string", minLength: 1, maxLength: 2000 }),
@@ -822,19 +822,19 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "materializar_parte",
-    "Materializar uma parte",
-    "Produz unidades do recorte preparado. Reutiliza as explicações salvas; inclua somente bases que deseja alterar. Registra o desenho aplicado e mantém revisão independente.",
+    "Produzir uma microssequência",
+    "Produz uma microssequência com verificação automática. Deriva parte, IDs, versões e posições. Inclua explicações somente para alterar a base salva. Depois, inspecione a qualidade pedagógica e corrija insuficiências.",
     inputSchema({
       curso: COURSE_SCHEMA,
-      parte: HUMAN_REFERENCE_SCHEMA,
+      microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
       explicacoes: EXPLANATIONS_SCHEMA,
       concluir: { type: "boolean", default: false },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
-        description: "Unidades completas do lote."
+        description: "Unidades da mesma microssequência, em ordem pedagógica. Preserve a cobertura necessária."
       })
-    }, ["curso", "parte", "unidades"]),
+    }, ["curso", "unidades"]),
     { readOnly: false }
   ),
   task(
@@ -884,11 +884,18 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     { readOnly: false }
   ),
   task("registrar_inspecao", "Registrar inspeção da base lida",
-    "Registra o parecer da IA sobre conteúdo, fontes e coerência didática desta base. Não edita o conteúdo, não conta intervenção autoral nem declara revisão humana. Leia preparar_revisao antes.",
+    "Registra a inspeção pedagógica da base lida em preparar_revisao. Não edita nem declara revisão humana.",
     inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 }, parecer: { type: "object", additionalProperties: false,
-      required: ["summary", "outcome", "findings"], properties: { summary: { type: "string", minLength: 1, maxLength: 2000 },
+      required: ["summary", "outcome", "findings", "checks"], properties: { summary: { type: "string", minLength: 1, maxLength: 2000 },
         outcome: { type: "string", enum: ["consistent", "needs_attention", "human_preference_retained"] },
-        findings: { type: "array", maxItems: 20, items: { type: "string", minLength: 1, maxLength: 1000 } } } }
+        findings: { type: "array", maxItems: 20, items: { type: "string", minLength: 1, maxLength: 1000 } },
+        checks: { type: "array", minItems: 5, maxItems: 5,
+          description: "Julgue cada dimensão com trechos da base salva: a resposta demonstra a evidência pedida? Contagens e validade estrutural não comprovam qualidade.",
+          items: { type: "object", additionalProperties: false, required: ["dimension", "result", "reason", "evidence"],
+            properties: { dimension: { type: "string", enum: PEDAGOGICAL_AUDIT_DIMENSIONS },
+              result: { type: "string", enum: ["sufficient", "insufficient", "not_applicable"] },
+              reason: { type: "string", minLength: 1, maxLength: 1000 },
+              evidence: { type: "array", minItems: 1, maxItems: 6, items: { type: "string", minLength: 1, maxLength: 500 } } } } } } }
     }, ["referencia", "parecer"]), { readOnly: false }),
   task("decidir_observacao", "Decidir uma observação e seus alvos",
     "Aplica a decisão humana expressa de aceitar o conteúdo vigente ou encerrar a observação sem editar. Use a referência completa da fila inspecionada; seleção parcial preserva os demais alvos. Nunca aprove por confirmação técnica de escrita.",
@@ -1084,9 +1091,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "7.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "8.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:385b4ff74e1c99b8c3ab1a725eecd54f4de8f02e7b46f59bff7feced70de1782";
+  "sha256:54e3da363940c6025dc58ce377f2ea52757055f2dd10dca6782606dcde6f9b34";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2640,7 +2647,9 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
         relacoes: proposal.relations, fontesPrevistas: plannedSources } : null,
       conteudo: microsequence.explanation ?? null,
       ...review,
-      fontes: citations ? withoutTechnicalState(citations) : null
+      fontes: citations ? withoutTechnicalState(await humanTargetSourceReferences({
+        adapter, principal, course: resolved.course, sources: citations, deadlineAt
+      })) : null
     };
   }));
 }
@@ -2653,18 +2662,37 @@ async function readReviewContext({ adapter, principal, resolved, targetKind, tar
     ? normalizeCourseContentInspection(await adapter.getCourseContentInspection({ principal, courseId: resolved.course.id,
       targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId }) : null;
   if (inspection && inspection.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "A base mudou durante a inspeção; releia o recorte.", null, 409);
+  const audit = inspection?.pedagogicalBasis ? projectPedagogicalAudit(inspection.pedagogicalBasis) : null;
   return { revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
     stale: "Revisão precisa ser atualizada" }[read.contentReview.state],
     referenciaRevisao: await createContentReviewReference({ principal, read }),
     inspecaoIA: inspection ? inspection.inspection : { state: "unavailable" },
+    ...(audit ? { auditoriaPedagogica: { ...audit, units: targetKind === "study_unit"
+      ? audit.units.filter(unit => unit.unitId === targetId) : audit.units } } : {}),
     ...(inspection ? { referenciaInspecao: await createContentReviewReference({ principal, read: inspection }) } : {}) };
+}
+
+async function prepareFocalTask({ adapter, principal, args, resolved, deadlineAt }) {
+  if (!resolved.plan) {
+    resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
+    if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O planejamento mudou; releia o foco de produção.", null, 409);
+  }
+  let focal = completeFocalMaterialization(args, resolved);
+  resolved.part = focal.part;
+  if ((args.unidades ?? []).some(unit => unit.posicao === undefined)) {
+    const existing = await listExistingPartStudyUnits({ adapter, principal, context: resolved, deadlineAt });
+    focal = completeFocalMaterialization(args, resolved, [...existing.values()].map(value => value.item));
+  }
+  return focal;
 }
 
 HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
-  const part = resolved.part;
+  const focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
+  const part = focal.part;
+  resolved.part = part;
   const process = await currentAuthoringProcessContext({
     adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null
   });
@@ -2672,8 +2700,8 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     adapter,
     principal,
     context: resolved,
-    planUnits: safeClone(args.unidades, "unidades", 480 * 1024),
-    explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024),
+    planUnits: safeClone(focal.units, "unidades", 480 * 1024),
+    explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024),
     complete: args.concluir === true,
     deadlineAt
   });
@@ -2869,7 +2897,7 @@ async function humanTargetSourceReferences({ adapter, principal, course, sources
       const source = await readSource(link.sourceId);
       return { ...link, posicao: index + 1, evidencia: inspectCourseSourceEvidence(link, source),
         fonte: source ? { localizada: true, titulo: source.title, citacao: source.citationText,
-          status: source.status } : { localizada: false },
+          status: source.status, ...(source.url ? { url: source.url } : {}) } : { localizada: false },
         anchors: link.anchors.map((reference) => {
           const position = source?.anchors?.findIndex(anchor => anchor.anchorId === reference.anchorId) ?? -1;
           if (position < 0) return { localizada: false };
@@ -2925,14 +2953,8 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
       !sources.nextCursor || sources.nextCursor === continuation.p)) {
     fail('course_service_unavailable', 'A página de fontes perdeu o ponto de continuação.', null, 503);
   }
-  const readContext = await paginateHumanReadContext(withoutTechnicalState({ sources: context,
-    ...(mode === 'source' ? { arquivosParaConteudo: (context.items ?? []).flatMap(source =>
-      (source.attachments ?? []).map((value, index) => {
-        const attachment = normalizeCourseSourceAttachment(value, { persisted: true });
-        return { rotulo: `PDF ${index + 1}`, sourceAttachmentTarget: { kind: 'source_attachment',
-          sourceId: source.sourceId, sourceRevision: source.revision, contentHash: attachment.contentHash } };
-      })) } : {})
-  }), { state: continuation, nextPage: sources?.nextCursor ?? null });
+  const readContext = await paginateHumanReadContext(withoutTechnicalState({ sources: context }),
+    { state: continuation, nextPage: sources?.nextCursor ?? null });
   return result(args.busca !== undefined && context.items?.length === 0
     ? 'Nenhuma fonte corresponde à busca neste trecho.' : "Li as fontes e âncoras deste trecho.", {
     deepLink: target ? courseDeepLink(adapter, resolved.course, "content",
@@ -3052,9 +3074,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
               ? { practiceTargets: definition.practiceTargets }
               : {}),
             modeloDeInstancia: {
-              id: "identificador-local-unico",
-              package: definition.package,
-              version: definition.version,
+              package: definition.package.replace(/^aralearn\.(resource|response)\./u, ""),
               data: definition.contract.example
             }
           }
@@ -3231,20 +3251,22 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const course = humanCourseTitle(args);
-  const part = humanReference(args.parte, "parte");
-  const resolved = await resolveHumanCourseContext({ adapter, principal, course, part, deadlineAt });
+  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+  const focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
+  const part = Number(focal.part.position) + 1;
+  resolved.part = focal.part;
   const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
     complete: args.concluir === true,
-    units: safeClone(args.unidades, "unidades", 480 * 1024),
-    explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024), deadlineAt });
+    units: safeClone(focal.units, "unidades", 480 * 1024),
+    explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
-    nextDecision: process.processoCorrente.pontosDeRevisao.includes("study_unit")
+    nextDecision: output.nextDecision + " " + (process.processoCorrente.pontosDeRevisao.includes("study_unit")
       ? "Convide a ler e marcar a revisão das unidades. Consulte as marcas já feitas no app; um pedido para avançar autoriza o próximo passo do mandato, deixando o conteúdo anterior sem marca pendente de revisão."
       : process.processoCorrente.foco === "content"
       ? "Continue as explicações e fontes no recorte autorizado, seguindo a cadência vigente."
-      : "Continue o ciclo autorizado na cadência vigente, respeitando os pontos de revisão e as condições do recorte." };
+      : "Continue o ciclo autorizado na cadência vigente, respeitando os pontos de revisão e as condições do recorte.") };
 };
 
 HUMAN_TASK_HANDLERS.aplicar_correcoes = async ({
@@ -3316,6 +3338,10 @@ HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, dead
   const before = await read();
   if (before.basisHash !== basisHash) fail("course_ai_inspection_conflict",
     "O conteúdo mudou; leia e inspecione a base atual antes de registrar o parecer.", null, 409);
+  if (!before.pedagogicalBasis) fail("course_ai_inspection_unavailable",
+    "A base pedagógica da inspeção não está disponível. Atualize o serviço antes de registrar o parecer.", null, 503);
+  report.checks = normalizePedagogicalAudit(report.checks, before.pedagogicalBasis);
+  requirePedagogicalAuditConsistency(report, before.pedagogicalBasis);
   let saved;
   try {
     saved = await adapter.recordCourseContentInspection({ principal, courseId, targetKind, targetId,
@@ -3330,7 +3356,9 @@ HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, dead
     }
     saved = current;
   }
-  return result("Registrei o parecer de IA sobre a base lida.", {
+  return result(report.outcome === "needs_attention"
+    ? "Registrei as insuficiências. Corrija o conteúdo e inspecione a nova base antes de considerá-lo satisfatório."
+    : "Registrei o parecer de IA sobre a base lida.", {
     deepLink: createHumanNavigation(adapter, { courseId, relation: "content", target: { kind: targetKind, id: targetId } }),
     context: { inspecaoIA: saved.inspection, referenciaInspecao: args.referencia }
   });

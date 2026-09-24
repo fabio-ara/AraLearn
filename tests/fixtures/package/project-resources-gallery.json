@@ -119,9 +119,9 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
-                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
-                            "layout": "wide",
+                            "title": "Respostas ao congestionamento",
+                            "legend": "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.",
+                            "note": "Detalhes dependem do algoritmo e da implementação.",
                             "columns": [
                               "Mecanismo",
                               "Sinal observado",
@@ -520,23 +520,38 @@
                         "package": "aralearn.response.choice",
                         "version": "1.0.0",
                         "data": {
-                          "question": "Qual protocolo fornece entrega confiável?",
-                          "selectionMode": "single",
+                          "question": "Uma aplicação usa TCP para transferir um arquivo. Quais propriedades o transporte fornece?",
+                          "selectionMode": "multiple",
                           "selectionCriterion": "correct",
                           "options": [
                             {
-                              "id": "tcp",
+                              "id": "order",
                               "kind": "text",
-                              "text": "TCP"
+                              "text": "Entrega dos bytes em ordem.",
+                              "feedback": "Os números de sequência permitem remontar o fluxo na ordem."
                             },
                             {
-                              "id": "udp",
+                              "id": "recovery",
                               "kind": "text",
-                              "text": "UDP"
+                              "text": "Recuperação de segmentos perdidos.",
+                              "feedback": "Confirmações e retransmissões permitem recuperar perdas enquanto a conexão funciona."
+                            },
+                            {
+                              "id": "deadline",
+                              "kind": "text",
+                              "text": "Entrega dentro de um prazo máximo garantido.",
+                              "feedback": "Confiabilidade não significa prazo: atrasos e retransmissões podem variar."
+                            },
+                            {
+                              "id": "encryption",
+                              "kind": "text",
+                              "text": "Criptografia automática do conteúdo.",
+                              "feedback": "TCP não cifra os dados; essa proteção exige um protocolo como TLS."
                             }
                           ],
                           "answerIds": [
-                            "tcp"
+                            "order",
+                            "recovery"
                           ]
                         }
                       },
@@ -906,122 +921,7 @@
                             "prompt": "Em teoria de campos, uma ação pode ser definida por uma integral sobre uma região. Leia a expressão e identifique a integral, a derivada parcial, a contração entre índices tensoriais e a função aplicada.",
                             "notation": "mathematics",
                             "accessibleText": "A ação S de u é a integral sobre ômega de um meio vezes a derivada parcial da componente u índice i em relação à coordenada x índice j, contraída com o tensor T índices superiores i e j, mais f de u, em relação ao volume V.",
-                            "expression": {
-                              "type": "row",
-                              "children": [
-                                {
-                                  "type": "function",
-                                  "name": "S",
-                                  "arguments": [
-                                    {
-                                      "type": "identifier",
-                                      "value": "u"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "operator",
-                                  "value": "="
-                                },
-                                {
-                                  "type": "integral",
-                                  "kind": "single",
-                                  "lower": {
-                                    "type": "identifier",
-                                    "value": "Ω"
-                                  },
-                                  "variable": {
-                                    "type": "identifier",
-                                    "value": "V"
-                                  },
-                                  "integrand": {
-                                    "type": "fenced",
-                                    "open": "[",
-                                    "close": "]",
-                                    "content": {
-                                      "type": "row",
-                                      "children": [
-                                        {
-                                          "type": "fraction",
-                                          "numerator": {
-                                            "type": "number",
-                                            "value": "1"
-                                          },
-                                          "denominator": {
-                                            "type": "number",
-                                            "value": "2"
-                                          }
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "derivative",
-                                          "kind": "partial",
-                                          "expression": {
-                                            "type": "tensor",
-                                            "symbol": "u",
-                                            "lowerIndices": [
-                                              {
-                                                "type": "identifier",
-                                                "value": "i"
-                                              }
-                                            ]
-                                          },
-                                          "variables": [
-                                            {
-                                              "symbol": {
-                                                "type": "tensor",
-                                                "symbol": "x",
-                                                "lowerIndices": [
-                                                  {
-                                                    "type": "identifier",
-                                                    "value": "j"
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "tensor",
-                                          "symbol": "T",
-                                          "upperIndices": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "i"
-                                            },
-                                            {
-                                              "type": "identifier",
-                                              "value": "j"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "+"
-                                        },
-                                        {
-                                          "type": "function",
-                                          "name": "f",
-                                          "arguments": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "u"
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  }
-                                }
-                              ]
-                            }
+                            "tex": "S(u)=\\int_{\\Omega} \\left[\\frac{1}{2}\\cdot\\frac{\\partial u_i}{\\partial x_j}\\cdot T^{ij}+f(u)\\right]\\,dV"
                           }
                         }
                       ],
@@ -1225,7 +1125,7 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+                            "prompt": "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
                             "chartType": "line",
                             "xAxis": {
                               "label": "Concorrência",
@@ -1343,7 +1243,7 @@
                                 "value": 300
                               }
                             ],
-                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+                            "caption": "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
                           }
                         }
                       ],
@@ -2937,8 +2837,12 @@
                                 "id": "greeting",
                                 "label": "Saudação em inglês",
                                 "locale": "en-US",
-                                "kind": "native",
-                                "text": "Good morning. How are you?",
+                                "kind": "file",
+                                "media": {
+                                  "contentHash": "2884adedf324fda1a7a2ad4cdf4d34df27e998d3a89d7cbf7f7001ca9b5aa0d6",
+                                  "byteSize": 133416,
+                                  "mediaType": "audio/wav"
+                                },
                                 "alternative": {
                                   "text": "Good morning. How are you?",
                                   "visibility": "on_request"
@@ -2995,132 +2899,11 @@
                     {
                       "id": "gallery-34",
                       "position": 34,
-                      "title": "Dicionário",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-34",
-                          "package": "aralearn.resource.dictionary",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Compare os usos da palavra",
-                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
-                            "items": [
-                              {
-                                "id": "lexicon",
-                                "label": "Dicionário escolhido para a unidade",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/dicionario"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-34",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Dicionários têm rótulos distintos e orientação textual; falhas de abertura são anunciadas."
-                          }
-                        }
-                      ],
-                      "topics": []
-                    },
-                    {
-                      "id": "gallery-35",
-                      "position": 35,
-                      "title": "Gramática",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-35",
-                          "package": "aralearn.resource.grammar",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Consulte a construção antes de responder",
-                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
-                            "items": [
-                              {
-                                "id": "construction",
-                                "label": "Explicação da construção",
-                                "description": "Leia a seção indicada e volte para justificar sua análise.",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/gramatica/construcao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-35",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Cada recurso tem botão com rótulo próprio, idioma quando informado e aviso de abertura ou falha."
-                          }
-                        }
-                      ],
-                      "topics": []
-                    },
-                    {
-                      "id": "gallery-36",
-                      "position": 36,
-                      "title": "Leitura complementar",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "instance-36",
-                          "package": "aralearn.resource.reading",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Amplie a comparação",
-                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
-                            "items": [
-                              {
-                                "id": "reading",
-                                "label": "Perspectiva complementar",
-                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/leitura/comparacao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [
-                        {
-                          "id": "feedback-36",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Leituras têm identificação e orientação próprias; cada botão anuncia o recurso e o resultado da abertura."
-                          }
-                        }
-                      ],
-                      "topics": []
-                    },
-                    {
-                      "id": "gallery-37",
-                      "position": 37,
                       "title": "Sessão de terminal",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "instance-37",
+                          "id": "instance-34",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -3164,47 +2947,11 @@
                       "response": null,
                       "feedback": [
                         {
-                          "id": "feedback-37",
+                          "id": "feedback-34",
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
                             "text": "A sessão é uma lista cronológica; entrada, stdout, stderr, código de saída e efeito têm rótulos textuais, e todo conteúdo monoespaçado permanece selecionável."
-                          }
-                        }
-                      ],
-                      "topics": []
-                    },
-                    {
-                      "id": "gallery-38",
-                      "position": 38,
-                      "title": "Resposta aberta",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "context-aralearn.response.open",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Pedir que o estudante explique, justifique ou preveja com palavras próprias, sem oferecer alternativas."
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "instance-38",
-                        "package": "aralearn.response.open",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Explique com suas palavras por que o switch aprende pela origem e consulta o destino.",
-                          "placeholder": "Relacione origem, tabela MAC e decisão de saída."
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "feedback-38",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A proposta rotula um campo multilinha nativo e o retorno de preenchimento é anunciado."
                           }
                         }
                       ],

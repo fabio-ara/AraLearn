@@ -33,6 +33,11 @@ class FakeDocument {
   removeEventListener(type) { this.listeners.delete(type); }
 }
 
+function observationActionMarkup(html, action) {
+  const escapedAction = action.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return html.match(new RegExp(`<button\\b[^>]*data-observations-action="${escapedAction}"[^>]*>[\\s\\S]*?<\\/button>`, "u"))?.[0] ?? null;
+}
+
 function outline(revision = 7) {
   return {
     contract: "aralearn.course.v1",
@@ -734,7 +739,12 @@ test("Registrar persiste observações em Curso, Módulo, Lição e Microssequê
         }
       });
       await panel.open();
-      assert.match(root.innerHTML, /class="course-authoring-primary">Registrar<\/button>/u);
+      const registerAction = observationActionMarkup(root.innerHTML, "register-observation");
+      assert.ok(registerAction);
+      assert.match(registerAction, /class="course-authoring-icon-action course-authoring-primary"/u);
+      assert.match(registerAction, /aria-label="Registrar observação" title="Registrar observação"/u);
+      assert.match(registerAction, /<svg\b/u);
+      assert.doesNotMatch(registerAction, />Registrar<\/button>/u);
       assert.doesNotMatch(root.innerHTML, /ChatGPT|copiar|request-chat/iu);
 
       root.listeners.get("submit")({

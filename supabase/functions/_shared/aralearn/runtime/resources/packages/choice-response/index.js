@@ -49,7 +49,12 @@ export const choiceResponsePackage = Object.freeze({
     intent: "Declare a pergunta, o modo de seleção, alternativas semanticamente distintas e o conjunto correto.",
     required: Object.freeze(["question", "selectionMode", "selectionCriterion", "options", "answerIds"]), optional: Object.freeze([]),
     rules: Object.freeze(["A pergunta aparece somente aqui; não a repita em um paragraph de content.", "Distratores representam erros plausíveis.", "Multiple avalia o conjunto exato.", "Best só usa seleção single."]),
-    example: Object.freeze({ question: "Qual protocolo fornece entrega confiável?", selectionMode: "single", selectionCriterion: "correct", options: [{ id: "tcp", text: "TCP" }, { id: "udp", text: "UDP" }], answerIds: ["tcp"] })
+    example: Object.freeze({ question: "Uma aplicação usa TCP para transferir um arquivo. Quais propriedades o transporte fornece?", selectionMode: "multiple", selectionCriterion: "correct", options: [
+      { id: "order", text: "Entrega dos bytes em ordem.", feedback: "Os números de sequência permitem remontar o fluxo na ordem." },
+      { id: "recovery", text: "Recuperação de segmentos perdidos.", feedback: "Confirmações e retransmissões permitem recuperar perdas enquanto a conexão funciona." },
+      { id: "deadline", text: "Entrega dentro de um prazo máximo garantido.", feedback: "Confiabilidade não significa prazo: atrasos e retransmissões podem variar." },
+      { id: "encryption", text: "Criptografia automática do conteúdo.", feedback: "TCP não cifra os dados; essa proteção exige um protocolo como TLS." }
+    ], answerIds: ["order", "recovery"] })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["question", "selectionMode", "selectionCriterion", "options", "answerIds"], properties: {
@@ -85,7 +90,7 @@ export const choiceResponsePackage = Object.freeze({
         ? `<pre class="multiple-choice-code"><code data-language="${escapePackageAttribute(option.language)}">${renderPackageCode(option.code)}</code></pre>`
         : renderPackageInline(option.text);
       const optionFeedback = option.feedback && (
-        revealAnswers || checked && (evaluatedCorrect || evaluatedWrong)
+        manualEditing || revealAnswers || checked && (evaluatedCorrect || evaluatedWrong)
       )
         ? `<div class="multiple-choice-option-feedback">${renderPackageProse(option.feedback)}</div>`
         : "";

@@ -153,7 +153,7 @@
             "package": "aralearn.resource.table",
             "version": "1.0.0",
             "data": {
-              "prompt": "Compare os dois transportes.",
+              "title": "Compare os dois transportes.",
               "columns": ["Protocolo", "Entrega"],
               "rows": [["TCP", "Confiável"], ["UDP", "Melhor esforço"]]
             }
@@ -180,9 +180,8 @@
             "package": "aralearn.resource.table",
             "version": "1.0.0",
             "data": {
-              "prompt": "Relacione cada sinal à resposta e ao efeito esperado.",
-              "caption": "Resumo operacional; parâmetros exatos dependem da implementação.",
-              "layout": "wide",
+              "title": "Relacione cada sinal à resposta e ao efeito esperado.",
+              "note": "Resumo operacional; parâmetros exatos dependem da implementação.",
               "columns": ["Mecanismo", "Sinal", "Resposta", "Efeito"],
               "rows": [
                 ["Slow start", "Início ou timeout", "Crescimento exponencial", "Descobrir capacidade"],

@@ -303,7 +303,6 @@ function rankedCandidates(profiles, rawIntent, maximumLimit = 32) {
   validateLimit(intent.limit, SEARCH_LIMIT, maximumLimit);
   const slot = effectiveSlot(intent);
   const candidates = profiles
-    .filter((profile) => profile.authoringEligibility !== "legacy_only")
     .filter((profile) => !slot || profile.slots.includes(slot))
     .map((profile) => searchCandidate(profile, intent))
     .sort((left, right) => (

@@ -582,3 +582,58 @@ A migration `20260905071622_separate_public_file_policy_from_citation_display.sq
 O teste focal `supabase/tests/013_atomic_course_metadata_test.sql` passou 28 verificações locais sobre as duas últimas correções: gravação somente de metadados, combinação com entidades e atribuições, idempotência, conflito de revisão, propriedade, rollback integral, chamadas sem o novo argumento, projeção anônima sem trecho privado e PDF autorizado por exceção do arquivo. Todos os dados sintéticos são revertidos pela transação de teste.
 
 Estas correções são incrementais. Antes de aplicá-las, mantenha o backup e o ensaio de restauração exigidos acima, confira a lista exata de migrations pendentes e valide o manifesto final `20260905071622`. Não execute reset nem seed de upgrade sobre um ambiente que já recebeu estas migrations. As provas SQL locais e as jornadas com clientes reais complementam-se; nenhuma delas declara a implantação hospedada concluída.
+
+## Estado final explícito da revisão v7 — 2026-09-24
+
+Esta seção é o estado corrente para leitura da documentação. As entradas acima
+permanecem históricas: descrevem contratos e contagens válidos na época de cada
+mudança e não substituem os arquivos de código atuais.
+
+### Catálogo e migrações de conteúdo
+
+O registro corrente contém 34 packages: 31 de conteúdo e três de resposta
+(`choice`, `gap` e `ordering`). As entradas de resposta aberta e os packages
+separados de consulta não fazem parte do catálogo corrente nem possuem caminho
+de execução autoral.
+
+O upgrade temporário de conteúdo preserva conteúdo, fontes, ocorrências e
+campos não envolvidos na conversão. Ele conserva snapshots originais no
+mecanismo de recuperação e aborta a transação em falha. A migração de tabela
+retira dados de apresentação e conserva sua semântica; a forma corrente usa
+`title`, `legend` e `note`, sem `layout`, `prompt` ou `caption` no contrato da
+tabela.
+
+TeX é uma entrada autoral delimitada: o subconjunto seguro é convertido para a
+AST interna. Uma AST válida já persistida pode ser conservada; renderização e
+acessibilidade usam a AST, não TeX livre.
+
+### Autoria e materialização
+
+O catálogo humano compartilhado de MCP e Actions é `8.0.0`, com 56 tarefas.
+`salvar_parte` continua organizando microssequências em agrupamentos
+operacionais. `materializar_parte` trabalha com foco de uma microssequência por
+chamada; o servidor deriva a parte, IDs de instâncias, versões correntes e
+posições finais quando omitidos. Unidades omitidas permanecem e uma referência
+de unidade identifica a substituição.
+
+### Auditoria
+
+`registrar_inspecao` exige as cinco dimensões `alignment`, `evidence`,
+`representation`, `feedback` e `sufficiency`, com justificativa e *quotes* que
+existam na base focal. O parecer é vinculado a versão e `basisHash`; mudança da
+base exige atualização. O relatório é semântico e não é garantia de qualidade
+pedagógica ou aprendizagem. Os experimentos com prompts, contratos e novas
+materializações continuam em revisão, sem conclusão geral.
+
+### Áudio e calculadora
+
+Áudio em publicação, compartilhamento e materialização nova precisa ser arquivo
+ativo com tipo, tamanho e hash verificados e política de acesso compatível. Voz
+nativa continua ensaio de reprodução local/remoto, sem seek ou duração
+confiáveis; não substitui arquivo guardado. A reprodução de arquivo usa mídia
+HTML quando os metadados permitem posição e duração. A calculadora mantém
+teclado acessível, Enter para calcular, Limpar e foco no campo.
+
+As provas locais e a migration `20260924182348_revisao_v7_audio_readiness.sql`
+verificam as guardas de áudio e os metadados. Elas não certificam implantação
+hospedada, pronúncia, qualidade pedagógica ou aprendizagem.

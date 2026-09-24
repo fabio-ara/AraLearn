@@ -22,10 +22,12 @@ function contextualActions(kind, id, label, enabled) {
   if (!enabled) return "";
   const actions = [["parameters", "tags", "Parâmetros"], ["guidance", "edit", "Orientações"]];
   if (kind === "didactic_microsequence") actions.unshift(["explanation", "book-open", "Explicação"], ["sources", "study", "Fontes e ocorrências"], ["instruction", "graph", "Análise e evidência"]);
-  return `<nav class="course-curriculum-context-actions" aria-label="Decisões de ${escapeHtml(label)}">${actions.map(([action, icon, name]) =>
-    `<button class="course-authoring-icon-action" type="button" data-curriculum-context="${action}" data-target-kind="${kind}" data-target-id="${escapeHtml(id)}"` +
-    ` data-target-label="${escapeHtml(label)}" data-curriculum-key="${escapeHtml(key("context", kind, id, action))}"` +
-    ` title="${name}" aria-label="${name} de ${escapeHtml(label)}">${renderUiIcon(icon, "course-authoring-button-icon")}</button>`).join("")}</nav>`;
+  return `<nav class="course-curriculum-context-actions" aria-label="Decisões de ${escapeHtml(label)}">${actions.map(([action, icon, name]) => {
+    const actionLabel = `${name} de ${label}`;
+    return `<button class="course-authoring-icon-action" type="button" data-curriculum-context="${action}" data-target-kind="${kind}" data-target-id="${escapeHtml(id)}"` +
+      ` data-target-label="${escapeHtml(label)}" data-curriculum-key="${escapeHtml(key("context", kind, id, action))}"` +
+      ` title="${escapeHtml(actionLabel)}" aria-label="${escapeHtml(actionLabel)}">${renderUiIcon(icon, "course-authoring-button-icon")}</button>`;
+  }).join("")}</nav>`;
 }
 
 function pendingDescription(item, nodes) {
@@ -187,6 +189,7 @@ export function renderCourseCurriculumMap({
   const approvalLabel = approval?.pending
     ? approval.pending.operation === "slice" ? "Retomar alteração curricular pendente" : "Confirmar aprovação pendente"
     : "Aprovar mapa inspecionado";
+  const pendingFilterLabel = `Mostrar somente pendências do mapa, ${nodes.pending.length}`;
   const returnTo = buildCourseAuthoringRoute(courseId, { section: "planning" });
   const content = curriculum.modules.length
     ? '<ol class="course-curriculum-map-modules">' + curriculum.modules.map((module, index) =>
@@ -205,7 +208,7 @@ export function renderCourseCurriculumMap({
     '<div class="course-curriculum-search"><label for="curriculum-map-query">Buscar no mapa</label>' +
     `<input id="curriculum-map-query" type="search" data-curriculum-query data-curriculum-key="search" value="${escapeHtml(query)}" placeholder="Título, objetivo ou ideia" autocomplete="off">` +
     (completeness ? `<button class="course-authoring-icon-action" type="button" data-curriculum-pending-only data-curriculum-key="pending-filter" aria-pressed="${pendingOnly}"` +
-      ` aria-label="Mostrar somente pendências do mapa, ${nodes.pending.length}" title="Pendências do mapa">${renderUiIcon("draft-state", "course-authoring-button-icon")}</button>` : "") + '</div>' +
+      ` aria-label="${escapeHtml(pendingFilterLabel)}" title="${escapeHtml(pendingFilterLabel)}">${renderUiIcon("draft-state", "course-authoring-button-icon")}</button>` : "") + '</div>' +
     (completeness ? `<details class="course-curriculum-pending-list"${nodes.pending.length ? " open" : ""}><summary>Pendências do mapa · ${nodes.pending.length}</summary>` +
       (nodes.pending.length ? `<ul>${nodes.pending.map(item => `<li>${escapeHtml(pendingDescription(item, nodes))}</li>`).join("")}</ul>` : '<p>Nenhuma pendência encontrada.</p>') + '</details>' : "") +
     '<p data-curriculum-search-status role="status" hidden></p>' + content + coverage +

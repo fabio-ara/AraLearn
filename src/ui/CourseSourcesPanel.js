@@ -302,10 +302,10 @@ function renderSourceConfirmation(state) {
     `<h2 id="course-source-confirmation-title">${escapeHtml(confirmation.title)}</h2>` +
     `<p id="course-source-confirmation-message">${escapeHtml(confirmation.message)}</p>` +
     '<div class="course-authoring-confirm-actions">' +
-    '<button type="button" class="course-authoring-secondary" data-source-action="cancel-confirmation">' +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
-    `<button type="button" class="${confirmation.action === "confirm-file-access" ? "course-authoring-secondary" : "is-danger"}" data-source-action="${escapeHtml(confirmAction)}"${state.busy ? " disabled" : ""}>` +
-    `${renderUiIcon(confirmation.action === "confirm-file-access" ? "ready-state" : "trash", "course-authoring-button-icon")}<span>${escapeHtml(confirmation.confirmLabel)}</span>` +
+    '<button type="button" class="course-authoring-secondary" data-source-action="cancel-confirmation" aria-label="Cancelar" title="Cancelar">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
+    `<button type="button" class="${confirmation.action === "confirm-file-access" ? "course-authoring-secondary" : "is-danger"}" data-source-action="${escapeHtml(confirmAction)}" aria-label="${escapeHtml(confirmation.confirmLabel)}" title="${escapeHtml(confirmation.confirmLabel)}"${state.busy ? " disabled" : ""}>` +
+    `${renderUiIcon(confirmation.action === "confirm-file-access" ? "ready-state" : "trash", "course-authoring-button-icon")}` +
     "</button></div></section></div>";
 }
 
@@ -704,7 +704,7 @@ function renderFileAccessForm(source, attachment, state, label) {
     Object.entries(PUBLIC_FILE_ACCESS).map(([value, title]) =>
       `<option value="${value}"${value === selected ? " selected" : ""}>${escapeHtml(value === "inherit" ? `${title} ${contentHash === null ? "do curso" : "da fonte"}` : title)}</option>`
     ).join("") + "</select></label>" +
-    `<button type="submit"${disabled ? " disabled" : ""}>Aplicar</button>` +
+    `<button type="submit" aria-label="Aplicar acesso ao arquivo" title="Aplicar acesso ao arquivo"${disabled ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
     `<small>${escapeHtml(fileAccessDescription(policy, inherited, contentHash === null ? "do curso" : "da fonte"))}</small></form>`;
 }
 
@@ -772,7 +772,7 @@ function renderSource(source, state) {
       (source.status === "active"
         ? `<button type="button" data-source-action="retire-source" aria-label="Aposentar fonte" title="Aposentar fonte"${state.busy ? " disabled" : ""}>${renderUiIcon("trash", "course-authoring-button-icon")}</button>`
         : "") + "</div>" : "") + "</header>" +
-    `<p class="course-source-display-title" tabindex="0">${escapeHtml(sourceTitle(source))}</p>` +
+    `<p class="course-source-display-title" tabindex="0"><span class="course-source-entity-label">Obra · </span>${escapeHtml(sourceTitle(source))}</p>` +
     `<p class="course-source-display-reference">${referenceMarkup(source, state)}</p>` +
     `<p class="course-source-availability-note">${escapeHtml(sourceAvailabilityNote(source))}</p>` +
     (state.mode === "target" && source.status === "active"
@@ -797,8 +797,8 @@ function renderSource(source, state) {
         '</details>' +
     `<details class="course-source-detail-section"${sourceDisclosure(state, "files")}><summary>Arquivos</summary>` +
     renderSourceAttachments(source, 0, state) + '</details>' +
-    `<details class="course-source-detail-section"${sourceDisclosure(state, "anchors")}><summary>Trechos na fonte</summary>` +
-    `<section class="course-source-anchors"><header><div><h4 class="visually-hidden">Âncoras</h4><p>${source.anchors.length}</p></div>` +
+    `<details class="course-source-detail-section"${sourceDisclosure(state, "anchors")}><summary>Âncoras na fonte</summary>` +
+    `<section class="course-source-anchors"><header><div><h4 class="visually-hidden">Âncoras da obra</h4><p>${source.anchors.length} ${source.anchors.length === 1 ? "âncora" : "âncoras"}</p></div>` +
     (source.status === "active"
       ? `<button type="button" data-source-action="add-anchor" aria-label="Adicionar âncora" title="Adicionar âncora"${state.busy ? " disabled" : ""}>` +
         `${renderUiIcon("add", "course-authoring-button-icon")}</button>`
@@ -835,7 +835,9 @@ function renderCatalogCard(source, state, { selectable = false, selected = false
     '<div class="course-source-card-copy">' +
     `<a href="#source-detail" data-source-action="open-source" data-source-id="${escapeHtml(source.sourceId)}" title="Abrir ficha da fonte"${state.busy ? ' aria-disabled="true" tabindex="-1"' : ""}>${referenceMarkup(source, state)}</a>` +
     (source.status !== "active" ? sourceStatusMarkup(source) : "") +
-    (selectable && selected ? '<small>Já citada neste texto</small>' : '') + '</div><div class="course-source-compact-actions">' +
+    (selectable && selected ? '<small>Já citada neste texto</small>' : '') +
+    `<small class="course-source-card-kind">Obra · ${source.anchorCount} ${source.anchorCount === 1 ? "âncora" : "âncoras"} cadastrada${source.anchorCount === 1 ? "" : "s"}</small>` +
+    '</div><div class="course-source-compact-actions">' +
     (url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir endereço: ${escapeHtml(sourceTitle(source))}" title="Abrir endereço da fonte">${renderUiIcon("cloud", "course-authoring-button-icon")}</a>` : "") +
     (selectable ? `<button type="button" data-source-action="add-target-source" data-source-id="${escapeHtml(source.sourceId)}"` +
       ` aria-label="${selected ? "Adicionar outro vínculo" : "Vincular fonte"}: ${escapeHtml(sourceTitle(source))}" title="Citar no texto"${disabled || source.status !== "active" ? " disabled" : ""}>` +
@@ -875,7 +877,7 @@ function renderCatalogPanel(state) {
   return `<section class="course-authoring-section course-sources-panel" aria-labelledby="course-authoring-section-title"${overlay ? ' inert aria-hidden="true"' : ''}>` +
     '<h2 class="course-authoring-visually-hidden" id="course-authoring-section-title">Fontes</h2>' +
     '<header class="course-authoring-section-toolbar" aria-label="Ações de fontes">' +
-    `<span class="course-source-catalog-summary">${state.catalog?.items.length || 0}${state.catalog?.nextCursor ? "+" : ""} ${state.catalog?.items.length === 1 && !state.catalog?.nextCursor ? "fonte" : "fontes"}</span>` +
+    `<span class="course-source-catalog-summary">${state.catalog?.nextCursor ? `<span>${state.catalog?.items.length || 0}+ fontes</span> · ${state.catalog?.items.length || 0} ${(state.catalog?.items.length || 0) === 1 ? "carregada" : "carregadas"}; há mais fontes` : `${state.catalog?.items.length || 0} ${state.catalog?.items.length === 1 ? "fonte" : "fontes"}`}</span>` +
     `<button type="button" class="course-source-primary-action" data-source-action="add-source" aria-label="Nova fonte" title="Nova fonte"${state.busy ? " disabled" : ""}>` +
     `${renderUiIcon("add", "course-authoring-button-icon")}</button></header>` +
     renderNotice(state) +
@@ -904,6 +906,8 @@ function anchorsForLink(state, link) {
 function renderTargetLink(state, link, index) {
   const source = sourceForLink(state, link);
   const anchors = anchorsForLink(state, link);
+  const detailPage = state.targetDetails.get(link.sourceId) || null;
+  const detailedSource = detailPage?.items?.[0] || null;
   const selectedAnchors = new Set(link.anchors.map(({ anchorId }) => anchorId));
   const currentAnchors = new Map(anchors
     .map((anchor) => [anchor.anchorId, anchor]));
@@ -916,12 +920,16 @@ function renderTargetLink(state, link, index) {
       return currentAnchor?.status !== "active";
     })
   );
+  const anchorsNotDemonstrated = !loading && source && !detailedSource;
+  const noAnchorsRegistered = !loading && detailedSource && !detailedSource.anchors.length &&
+    Number(detailedSource.anchorCount) === 0;
   const relationOptions = Object.entries(SOURCE_RELATIONS).map(([value, label]) =>
     `<option value="${value}"${link.relation === value ? " selected" : ""}>${escapeHtml(label)}</option>`
   ).join("");
   return '<article class="course-source-target-link">' +
     '<header><div>' +
     `<span class="course-source-reference-number">${index + 1}.</span>` +
+    `<span class="course-source-link-kind">Fonte · obra</span>` +
     `<a href="#source-detail" data-source-action="open-source" data-source-id="${escapeHtml(link.sourceId)}" data-link-id="${escapeHtml(link.linkId)}" title="Abrir ficha da fonte">${source ? referenceMarkup(source, state) : "Fonte vinculada"}</a>` +
     `${unavailableReference || unavailable ? '<span>Atualização necessária</span>' : ""}</div>` +
     '<div class="course-source-compact-actions">' +
@@ -934,13 +942,18 @@ function renderTargetLink(state, link, index) {
     (unavailable
       ? '<p class="course-authoring-notice is-error">A fonte corrente não está disponível. Remova este vínculo e escolha outra fonte.</p>'
       : loading
-        ? '<p class="course-authoring-loading">Carregando âncoras…</p>'
+        ? '<p class="course-authoring-loading">Carregando âncoras da fonte…</p>'
+        : anchorsNotDemonstrated
+          ? `<p class="course-source-empty">Fonte existente; as âncoras ainda não foram demonstradas nesta leitura. Abra a ficha da fonte para conferir a localização antes de salvar.</p>`
+          : noAnchorsRegistered
+            ? `<p class="course-source-empty">Fonte existente, sem âncora cadastrada. Abra a ficha da fonte para adicionar uma localização antes de salvar.</p>`
         : anchors.filter(({ status }) => status === "active").length
-          ? '<fieldset class="course-source-anchor-choices"><legend>Trecho na fonte (documento ou página)</legend>' +
+          ? '<fieldset class="course-source-anchor-choices"><legend>Âncoras na fonte (localização da obra)</legend>' +
             anchors.filter(({ status }) => status === "active").map((anchor) =>
               `<label><input type="checkbox" data-source-target-anchor data-link-id="${escapeHtml(link.linkId)}" data-anchor-id="${escapeHtml(anchor.anchorId)}"${selectedAnchors.has(anchor.anchorId) ? " checked" : ""}>` +
-              `<span>${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
-          : '<p class="course-source-empty">Indique a passagem na ficha da fonte antes de salvar a referência neste texto.</p>') +
+              `<span>Âncora · ${escapeHtml(anchorLabel(anchor))}</span></label>`).join("") + "</fieldset>"
+          : '<p class="course-source-empty">A fonte existe, mas não há âncora ativa demonstrada. Abra a ficha da fonte para adicionar ou conferir uma localização.</p>') +
+    `<div class="course-source-occurrence-summary"><strong>Ocorrências no texto</strong><span> · ${link.occurrences.length} ${link.occurrences.length === 1 ? "ocorrência" : "ocorrências"}</span></div>` +
     renderSourceOccurrenceForm(state, link) +
     `<details class="course-source-use-details" data-source-use-link="${escapeHtml(link.linkId)}"${state.openSourceUses?.includes(link.linkId) ? " open" : ""}><summary>Opções da referência</summary>` +
     `<label class="course-source-relation"><span>Como esta fonte é usada</span><select data-source-target-relation data-link-id="${escapeHtml(link.linkId)}">${relationOptions}</select></label>` +

@@ -153,8 +153,8 @@ function markerForSlot(data, slotIndex, order, options) {
     totalSlots: data.targets.length,
     value: practiceValueLabel(item, item.answer, options),
     layoutText,
-    canMoveLeft: slotIndex > 0,
-    canMoveRight: slotIndex < data.targets.length - 1
+    canMoveUp: slotIndex > 0,
+    canMoveDown: slotIndex < data.targets.length - 1
   });
 }
 

@@ -5,6 +5,8 @@ export const AUDIO_COURSE_TITLE = "Escuta e cálculo — ensaio sintético";
 export const AUDIO_UNIT_ID = "audio-synthetic-unit";
 export const CALCULATOR_UNIT_ID = "calculator-synthetic-unit";
 export const AUDIO_ALTERNATIVE = "Alternativa após responder: tom periódico constante de 440 Hz.";
+// A escrita chinesa permanece no texto: as faixas gravadas são sinais de calibração, não fala.
+export const AUDIO_WRITING_NOTE = "A escrita chinesa aparece nesta página com a leitura em pinyin junto de cada caractere. Os arquivos guardados na ferramenta Áudio são um WAV e um MP3 sintéticos de calibração: eles verificam a reprodução de arquivos e não representam a fala chinesa. Abra a ferramenta para escolher o som que deseja escutar.";
 export const audioStudyPath = (courseId, unitId = AUDIO_UNIT_ID) =>
   `/#/estudo/${courseId}/audio-synthetic-module/audio-synthetic-lesson/audio-synthetic-micro/${unitId}`;
 
@@ -25,19 +27,15 @@ export function createSyntheticMp3() {
 }
 export function createAudioCourseRows(courseId, waveMedia, mp3Media) {
   const resource = (id, name, data) => ({ id, package: `aralearn.resource.${name}`, version: "1.0.0", data });
-  const guide = { goal: "Conferir escuta, consulta e cálculo em uma sequência sintética.", include: [], exclude: [], notation: [], avoid: [] };
+  const guide = { goal: "Conferir escuta, escrita e cálculo em uma sequência sintética.", include: [], exclude: [], notation: [], avoid: [] };
   const units = [{ id: AUDIO_UNIT_ID, position: 1, title: "Escuta, escrita chinesa e pinyin", role: "practice", topics: [],
     content: [resource("audio-prose", "paragraph", { format: "rich", languageTag: "pt-BR", textDirection: "ltr", blocks: [
-      { kind: "paragraph", inlines: [{ kind: "text", text: "As faixas separam a fala em chinês dos sinais sintéticos de calibração. Abra a ferramenta para escolher o som que deseja escutar." }] },
+      { kind: "paragraph", inlines: [{ kind: "text", text: AUDIO_WRITING_NOTE }] },
       { kind: "paragraph", languageTag: "zh-Hans", inlines: [{ kind: "ruby", base: "木", reading: "mù" }, { kind: "text", text: "表示树。两个木组成" }, { kind: "ruby", base: "林", reading: "lín" }, { kind: "text", text: "。" }] }
     ] }), resource("audio-tracks", "audio", { tracks: [
-      { id: "native-chinese", label: "Fala em chinês", locale: "zh-CN", kind: "native", text: "木表示树。两个木组成林。", alternative: { text: "木 representa árvore; dois 木 formam 林.", visibility: "on_request" } },
       { id: "tone-wave", label: "Sinal de calibração WAV", locale: "pt-BR", kind: "file", media: waveMedia, alternative: { text: AUDIO_ALTERNATIVE, visibility: "after_response" } },
       { id: "silence-mp3", label: "Silêncio de calibração MP3", locale: "pt-BR", kind: "file", media: mp3Media, alternative: { text: "Trecho sintético sem som, usado para verificar a leitura do formato MP3.", visibility: "always" } }
-    ] }), resource("grammar-consultation", "grammar", { title: "Duas consultas sobre a frase", items: [
-      { id: "grammar-composition", label: "Composição da frase", languageTag: "zh-Hans", description: "Recurso sintético de apoio à análise da ordem.", target: { kind: "url", url: "https://example.test/grammar/order" } },
-      { id: "grammar-classifier", label: "Numeral e classificador", languageTag: "zh-Hans", description: "Recurso sintético de apoio à leitura de 两个.", target: { kind: "url", url: "https://example.test/grammar/classifier" } }
-    ] })], response: { id: "audio-response", package: "aralearn.response.choice", version: "1.0.0", data: {
+    ] }), resource("chinese-writing-note", "paragraph", { text: "Na frase desta página, 木 (mù) representa árvore e dois 木 formam 林 (lín), o bosque. O pinyin acompanha cada caractere, e a representação escrita da língua permanece no texto da unidade; nenhuma faixa desta unidade guarda gravação de fala chinesa." })], response: { id: "audio-response", package: "aralearn.response.choice", version: "1.0.0", data: {
       question: "Como varia a altura do sinal de calibração WAV?", selectionMode: "single", selectionCriterion: "correct",
       options: [{ id: "constant", text: "A altura permanece constante." }, { id: "changing", text: "A altura sobe continuamente." }], answerIds: ["constant"]
     } }, feedback: [resource("tone-explanation", "paragraph", { text: "O sinal sintético mantém a frequência de 440 Hz. A altura constante contrasta com um sinal cuja frequência varia continuamente. A alternativa textual da faixa pode agora ser consultada." })] },

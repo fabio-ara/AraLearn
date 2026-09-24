@@ -1,20 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { calculatorPackage } from "../../src/resources/packages/calculator/index.js";
-import { grammarPackage } from "../../src/resources/packages/grammar/index.js";
-import { dictionaryPackage } from "../../src/resources/packages/dictionary/index.js";
-import { readingPackage } from "../../src/resources/packages/reading/index.js";
 import { CalculatorError, evaluateCalculatorExpression } from "../../src/resources/packages/calculator/expression.js";
 import { createPackageRegistry } from "../../src/resources/kernel/packageRegistry.js";
 
-const definitions = [calculatorPackage, grammarPackage, dictionaryPackage, readingPackage];
+const definitions = [calculatorPackage];
 const registry = createPackageRegistry(definitions);
 const instance = (definition, data = definition.authoringContract.example) => ({
   id: `${definition.manifest.id}-instance`, package: definition.manifest.id, version: definition.manifest.version, data: structuredClone(data)
 });
 const failure = (code) => (error) => error instanceof CalculatorError && error.code === code;
 
-test("quatro ferramentas usam o registro comum e exemplos válidos no conteúdo, sem outro slot", () => {
+test("calculadora usa o registro comum e exemplos válidos no conteúdo, sem outro slot", () => {
   for (const definition of definitions) {
     const value = instance(definition);
     assert.deepEqual(registry.validateInstance(value, "content"), { valid: true, errors: [] });
@@ -70,43 +67,6 @@ test("calculadora recusa divisão por zero, domínio não real, estouro e perda 
   }
 });
 
-test("auxiliares preservam itens plurais, idioma e referência lógica de PDF sem URL temporária", () => {
-  for (const definition of definitions.slice(1)) {
-    const data = { title: "Recursos", items: [
-      { id: "url", label: "語法 /ɐ/ العربية", languageTag: "zh-Hant", target: { kind: "url", url: "https://example.org/consulta?q=%E8%AA%9E" } },
-      { id: "pdf", label: "Leitura em PDF", target: { kind: "source_attachment", sourceId: "source-one", sourceRevision: 2, contentHash: "a".repeat(64) } }
-    ] };
-    const value = instance(definition, data);
-    assert.equal(registry.validateInstance(value, "content").valid, true);
-    assert.deepEqual(registry.normalizeInstance(value, "content").data, data);
-    const html = definition.render(data);
-    assert.match(html, /lang="zh-Hant"/u);
-    assert.match(html, /dir="auto"/u);
-    assert.equal((html.match(/data-tool-link-index=/gu) || []).length, 2);
-    assert(!html.includes("source-one"));
-    assert(!html.includes("https://example.org"));
-  }
-});
-
-test("auxiliares rejeitam destinos executáveis, campos extras, revisão falsa e URL de Storage", () => {
-  const invalidTargets = [
-    { kind: "url", url: "javascript:alert(1)" }, { kind: "url", url: "data:text/html,test" },
-    { kind: "url", url: "https://user:password@example.org/" }, { kind: "url", url: "/relativo" },
-    { kind: "url", url: "https://example.org/\nresource" },
-    { kind: "url", url: "https://example.org/storage/v1/object/sign/pdf/file?token=secret" },
-    { kind: "source_attachment", sourceId: "source", sourceRevision: 0, contentHash: "a".repeat(64) },
-    { kind: "source_attachment", sourceId: "source", sourceRevision: 1, contentHash: "invalid" },
-    { kind: "source_attachment", sourceId: "source", sourceRevision: 1, contentHash: "a".repeat(64), url: "https://example.org/" }
-  ];
-  for (const target of invalidTargets) {
-    const value = instance(readingPackage, { title: "Leitura", items: [{ id: "one", label: "Item", target }] });
-    assert.equal(registry.validateInstance(value, "content").valid, false, JSON.stringify(target));
-  }
-  const duplicate = instance(readingPackage);
-  duplicate.data.items.push(structuredClone(duplicate.data.items[0]));
-  assert.equal(registry.validateInstance(duplicate, "content").valid, false);
-});
-
 test("render de títulos e rótulos hostis não cria elementos ou atributos executáveis", () => {
   const hostile = '<img src=x onerror="alert(1)">';
   for (const definition of definitions) {
@@ -125,14 +85,9 @@ test("controles das ferramentas têm nomes acessíveis sem confundir ações com
   const calculator = calculatorPackage.render(calculatorPackage.authoringContract.example);
   assert.match(calculator, /aria-label="Calcular" title="Calcular"><svg/u);
   assert.match(calculator, /data-calculator-clear aria-label="Limpar"/u);
-  assert.match(calculator, /<label for="[^"]+">Expressão<input/u);
-  assert.match(calculator, /<dt>Precisão<\/dt><dd>Até 12/u);
-  const data = structuredClone(grammarPackage.authoringContract.example);
-  const grammar = grammarPackage.render(data);
-  assert(grammar.includes(data.title));
-  assert(grammar.includes(data.prompt));
-  assert(grammar.includes(data.items[0].description));
-  assert.match(grammar, /class="package-tool-resource"/u);
-  assert(grammar.includes(`aria-label="${data.items[0].label}"`));
-  assert(grammarPackage.editableTargets(data).some(({ path }) => path === "prompt"));
+  assert.match(calculator, /<label class="visually-hidden" for="[^"]+">Expressão<\/label>/u);
+  assert.match(calculator, /<p>Até 12/u);
+  assert.equal((calculator.match(/data-calculator-key="[0-9]"/gu) ?? []).length, 10);
+  assert.match(calculator, /data-calculator-backspace/u);
+
 });

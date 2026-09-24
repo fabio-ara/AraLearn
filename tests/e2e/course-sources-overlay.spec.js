@@ -256,7 +256,7 @@ for (const width of [390, 430, 1280]) for (const [theme, targetKind, bibliograph
     await expect(document).toBeVisible();
     await document.click();
     await expect.poll(() => page.evaluate(() => window.sourceEditorProof.documents.length)).toBe(1);
-    await page.getByText('Trechos na fonte', {exact: true}).click();
+    await page.getByText('Âncoras na fonte', {exact: true}).click();
     await page.getByRole('button', {name: 'Adicionar âncora', exact: true}).click();
     const anchorForm = page.locator('[data-source-form="anchor"]');
     await anchorForm.locator('[name="startPage"]').fill('1');
@@ -388,7 +388,7 @@ for (const width of [390, 430, 1280]) for (const theme of ["light", "dark"]) {
     const back = await dialog.getByRole("button", { name: "Voltar ao catálogo", exact: true }).boundingBox();
     expect(back.width).toBeGreaterThanOrEqual(44);
     expect(back.height).toBeGreaterThanOrEqual(44);
-    for (const control of [access.locator("select"), access.getByRole("button", { name: "Aplicar", exact: true })]) {
+    for (const control of [access.locator("select"), access.getByRole("button", { name: "Aplicar acesso ao arquivo", exact: true })]) {
       await page.keyboard.press("Tab");
       await expect(control).toBeFocused();
       expect(await control.evaluate(node => getComputedStyle(node).outlineColor)).toBe(colors.expectedFocus);
@@ -404,7 +404,7 @@ for (const width of [390, 430, 1280]) for (const theme of ["light", "dark"]) {
     await page.locator('[data-source-action="open-source"]').click();
     await dialog.locator('[data-source-disclosure="files"] > summary').click();
     await access.locator("summary").click();
-    for (const control of [access.locator("select"), access.getByRole("button", { name: "Aplicar", exact: true })]) {
+    for (const control of [access.locator("select"), access.getByRole("button", { name: "Aplicar acesso ao arquivo", exact: true })]) {
       await expect(control).toBeDisabled();
       const box = await control.boundingBox();
       expect(box.width).toBeGreaterThanOrEqual(44);
@@ -436,7 +436,7 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     await page.keyboard.press("End");
     await dialog.getByText("Referência e dados", { exact: true }).click();
     await expect(dialog.getByText("FIM DA REFERÊNCIA", { exact: false })).toBeVisible();
-    await dialog.getByText("Trechos na fonte", { exact: true }).first().click();
+    await dialog.getByText("Âncoras na fonte", { exact: true }).first().click();
     await dialog.getByText("Observações", { exact: true }).first().click();
     const after = await dialog.boundingBox();
     for (const key of ["x", "y", "width", "height"]) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);

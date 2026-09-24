@@ -254,7 +254,7 @@ export const chartPackage = Object.freeze({
     optional: Object.freeze(["prompt", "uncertainty", "referenceLines", "caption"]),
     rules: Object.freeze(["Unidades, tipos de eixo e escalas não ficam implícitos.", "lower e upper delimitam uma incerteza já calculada e exigem uncertainty.label.", "Não envie Vega, SVG, pixels, cores ou posições.", "Não apresente dados sintéticos como observação empírica."]),
     example: Object.freeze({
-      prompt: "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+      prompt: "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
       chartType: "line",
       xAxis: { label: "Concorrência", unit: "requisições simultâneas", type: "quantitative", scale: "log", domain: [8, 256] },
       yAxis: { label: "Latência no percentil 95", unit: "ms", type: "quantitative", domain: [80, 540] },
@@ -264,7 +264,7 @@ export const chartPackage = Object.freeze({
         { id: "adaptive", name: "Particionamento adaptativo", values: [{ x: 8, y: 101, lower: 94, upper: 109 }, { x: 16, y: 116, lower: 107, upper: 126 }, { x: 32, y: 142, lower: 131, upper: 154 }, { x: 64, y: 181, lower: 167, upper: 197 }, { x: 128, y: 244, lower: 225, upper: 265 }, { x: 256, y: 329, lower: 301, upper: 360 }] }
       ],
       referenceLines: [{ id: "sla", label: "Limite operacional", axis: "y", value: 300 }],
-      caption: "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+      caption: "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
     })
   }),
   schema: Object.freeze({

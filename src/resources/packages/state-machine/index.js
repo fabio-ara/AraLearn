@@ -126,7 +126,7 @@ export const stateMachinePackage = Object.freeze({
   },
   render(data) {
     const diagramLabels = labels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: machineAccessibleText(data), caption: "Diagrama de estados · evento [guarda] / ação", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.states.find(({ initial }) => initial)?.id || ""}`, errorMessage: "Não foi possível diagramar a máquina de estados." });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: machineAccessibleText(data), caption: "A seta entra no próximo estado quando ocorre o evento. Entre colchetes está a condição; depois de /, a ação. Círculo duplo marca aceitação.", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.states.find(({ initial }) => initial)?.id || ""}`, errorMessage: "Não foi possível diagramar a máquina de estados." });
     return `<div class="runtime-block package-state-machine">${data.prompt ? renderPackageProse(data.prompt) : ""}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

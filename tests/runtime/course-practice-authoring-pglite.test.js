@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
-import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 
 const migration = await fs.readFile(new URL("../../supabase/migrations/20260916025635_evaluable_offline_authoring_practice.sql", import.meta.url), "utf8");
+const current = await fs.readFile(new URL("../../supabase/migrations/20260924172159_revisao_v7_component_removal.sql", import.meta.url), "utf8");
+const guardStart = current.indexOf("create or replace function private.assert_course_practice_authoring_v1(");
+const guardEnd = current.indexOf("revoke all on function", guardStart);
+const guard = current.slice(guardStart, current.indexOf(";", guardEnd) + 1);
 const precursor = await fs.readFile(new URL("../../supabase/migrations/20260902044404_cut_legacy_authoring_runtime.sql", import.meta.url), "utf8");
 const start = precursor.indexOf("CREATE OR REPLACE FUNCTION private.commit_course_composition_core_v1(");
 const end = precursor.indexOf("$function$;", precursor.indexOf("$function$", start) + 10);
@@ -15,7 +18,7 @@ const feedback = [{ id: "feedback", package: "aralearn.resource.paragraph", vers
 const choice = { id: "answer", package: "aralearn.response.choice", version: "1.0.0", data: { question: "Qual é o caso?",
   selectionMode: "single", selectionCriterion: "correct", answerIds: ["a"], options: [{ id: "a", text: "Local" }, { id: "b", text: "Remoto" }] } };
 
-test("migração instala guard no core real e conserva respostas/snapshots/políticas históricas", async () => {
+test("guard vigente mantém validação no core real, sem exceção para resposta removida", async () => {
   const db = new PGlite();
   try {
     // O core é definição real com dependências não executadas; este teste exerce
@@ -38,21 +41,17 @@ test("migração instala guard no core real e conserva respostas/snapshots/polí
     const before = (await db.query("select * from private.course_entities")).rows;
     await db.exec(migration);
     assert.deepEqual((await db.query("select * from private.course_entities")).rows, before);
-    assert.deepEqual((await db.query("select private.course_component_catalog_v1() value")).rows[0].value, COURSE_COMPONENT_CATALOG);
-    const assignment = (await db.query("select * from private.course_component_policy_assignments")).rows[0];
-    assert.equal(assignment.origin, "author"); assert.equal(assignment.reason, "Condição histórica");
-    assert.deepEqual(assignment.policy.allowedRefs, ["aralearn.response.open@1.0.0"]);
-    assert.equal(assignment.policy.catalogVersion, COURSE_COMPONENT_CATALOG.version);
     const installed = (await db.query("select pg_get_functiondef('private.commit_course_composition_core_v1(uuid,uuid,bigint,jsonb,jsonb,text,jsonb)'::regprocedure) value")).rows[0].value;
     assert.ok(installed.indexOf("perform private.assert_course_practice_authoring_v1") > installed.indexOf("if v_course.revision <> p_expected_revision"));
     assert.ok(installed.indexOf("perform private.assert_course_practice_authoring_v1") < installed.indexOf("insert into private.course_entities"));
 
+    await db.exec(guard);
     const check = (id, content) => db.query("select private.assert_course_practice_authoring_v1($1,$2)",
       [COURSE, [{ entityType: "study_unit", entityId: id, content }]]);
-    await assert.rejects(check("new", legacy), /practice_response_legacy_only/u);
-    await check("legacy", { ...legacy, title: "Título alterado" });
-    await assert.rejects(check("legacy", { ...legacy, response: { ...legacyResponse, data: { prompt: "Outro pedido." } } }),
-      /practice_response_legacy_only/u);
+    // Current catalog contains no deleted response; the guard must reject even an unchanged value.
+    await db.exec(`create or replace function private.course_component_catalog_v1() returns jsonb language sql immutable security definer set search_path=pg_catalog as $$select '{"options":[{"ref":"aralearn.response.choice@1.0.0"}]}'::jsonb$$;`);
+    await assert.rejects(check("new", legacy), /unknown_response_component/u);
+    await assert.rejects(check("legacy", { ...legacy, title: "Título alterado" }), /unknown_response_component/u);
     await assert.rejects(check("new", { response: choice, feedback: [] }), /practice_offline_feedback_required/u);
     await assert.rejects(check("new", { response: choice, feedback: [{ ...feedback[0], data: { text: " " } }] }), /practice_offline_feedback_required/u);
     await check("new", { response: choice, feedback });

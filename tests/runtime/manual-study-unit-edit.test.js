@@ -50,8 +50,49 @@ test("seleção para edição é neutra e preserva parágrafo e ferramenta váli
   assert.match(inline, /aralearn.resource.paragraph/u);
 });
 
+test("edição de choice expõe feedback de todas as alternativas sem antecipá-lo no estudo", () => {
+  const definition = RESOURCE_PACKAGE_REGISTRY.get("aralearn.response.choice", "1.0.0");
+  const unit = { ...structuredClone(sourceStudyUnit), role: "practice", response: {
+    id: "choice", package: definition.manifest.id, version: "1.0.0",
+    data: structuredClone(definition.authoringContract.example)
+  } };
+  const selection = { resourceSelectionEnabled: true, resourceSelectionTargetIds: ["response:choice"],
+    selectedResourceTargetIds: ["response:choice"] };
+  assert.doesNotMatch(renderPackageStudyUnitBlocks(unit), /multiple-choice-option-feedback/u);
+  assert.doesNotMatch(renderPackageStudyUnitBlocks(unit, selection), /multiple-choice-option-feedback/u);
+  const editing = renderPackageStudyUnitBlocks(unit, { ...selection, manualEditingTargetId: "response:choice" });
+  unit.response.data.options.forEach((_option, index) => {
+    assert.ok(editing.includes(`data-package-manual-field-path="${encodeURIComponent(`options[${index}].feedback`)}"`));
+  });
+  const corrected = applyManualStudyUnitEdit(unit, "response:choice", {
+    pathValues: { "options[0].feedback": "A sequência dos bytes permite remontar o fluxo recebido fora de ordem." }
+  });
+  assert.equal(corrected.response.data.options[0].feedback,
+    "A sequência dos bytes permite remontar o fluxo recebido fora de ordem.");
+  assert.deepEqual(corrected.response.data.answerIds, unit.response.data.answerIds);
+});
+
+test("leitura verbal da fórmula aparece para edição e permanece acessível sem texto duplicado no estudo", () => {
+  const definition = RESOURCE_PACKAGE_REGISTRY.get("aralearn.resource.formula", "1.0.0");
+  const instance = { id: "formula", package: definition.manifest.id, version: "1.0.0",
+    data: structuredClone(definition.authoringContract.example) };
+  const unit = { id: "formula-reading", position: 1, title: "Leitura da fórmula", role: "theory",
+    content: [instance], response: null, feedback: [], topics: [] };
+  const student = renderPackageStudyUnitBlocks(unit);
+  assert.match(student, /<figcaption class="visually-hidden">/u);
+  assert.ok(student.includes(instance.data.accessibleText));
+  const targetId = "content:formula";
+  const editing = renderPackageStudyUnitBlocks(unit, { resourceSelectionEnabled: true,
+    resourceSelectionTargetIds: [targetId], selectedResourceTargetIds: [targetId], manualEditingTargetId: targetId });
+  assert.doesNotMatch(editing, /<figcaption class="visually-hidden">/u);
+  assert.match(editing, /data-package-manual-field-path="accessibleText"/u);
+  const changed = applyManualStudyUnitEdit(unit, targetId, { pathValues: { accessibleText: "Leitura revisada da expressão." } });
+  assert.equal(changed.content[0].data.accessibleText, "Leitura revisada da expressão.");
+  assert.equal(changed.content[0].data.tex, instance.data.tex);
+});
+
 test("ferramentas renderizam cada folha declarada para edição sem interpretar texto literal", () => {
-  for (const packageName of ["calculator", "grammar", "dictionary", "reading", "audio"]) {
+  for (const packageName of ["calculator", "audio"]) {
     const definition = RESOURCE_PACKAGE_REGISTRY.get(`aralearn.resource.${packageName}`, "1.0.0");
     const instance = { id: "tool", package: definition.manifest.id, version: "1.0.0",
       data: structuredClone(definition.authoringContract.example) };

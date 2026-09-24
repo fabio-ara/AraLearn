@@ -1,0 +1,1142 @@
+{
+  "contract": "aralearn.gap-q020-replica-final.v1",
+  "theme": "intervalos de memória inclusivos em endereços de 64 bits",
+  "units": [
+    {
+      "id": "gap-q020-replica-a-2-final",
+      "position": 2,
+      "title": "Q020 réplica final — 2 lacunas — materialização A",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "a-segment-0",
+                "start": "0x0000000100000000",
+                "end": "0x00000001000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "a-segment-1",
+                "start": "0x0000000100000100",
+                "end": "0x00000001000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "a-segment-2",
+                "start": "0x0000000100000200",
+                "end": "0x00000001000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "a-segment-3",
+                "start": "0x0000000100000300",
+                "end": "0x00000001000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "a-segment-4",
+                "start": "0x0000000100000400",
+                "end": "0x00000001000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "a-segment-5",
+                "start": "0x0000000100000500",
+                "end": "0x00000001000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "a-segment-6",
+                "start": "0x0000000100000600",
+                "end": "0x00000001000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-a-2",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-a-2-1",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: âncora → fim da primeira faixa alvo",
+              "responseMode": "text",
+              "answer": "0x00000001000001ff"
+            },
+            {
+              "id": "gap-a-2-2",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: fim anterior + 1 → início da faixa seguinte",
+              "responseMode": "choice",
+              "answer": "0x0000000100000200",
+              "distractors": [
+                "0x00000001000002ff",
+                "0x0000000100000300"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-a-2",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "2 lacunas"
+      ]
+    },
+    {
+      "id": "gap-q020-replica-b-2-final",
+      "position": 2,
+      "title": "Q020 réplica final — 2 lacunas — materialização B",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-b",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "b-segment-0",
+                "start": "0x0000000200000000",
+                "end": "0x00000002000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "b-segment-1",
+                "start": "0x0000000200000100",
+                "end": "0x00000002000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "b-segment-2",
+                "start": "0x0000000200000200",
+                "end": "0x00000002000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "b-segment-3",
+                "start": "0x0000000200000300",
+                "end": "0x00000002000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "b-segment-4",
+                "start": "0x0000000200000400",
+                "end": "0x00000002000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "b-segment-5",
+                "start": "0x0000000200000500",
+                "end": "0x00000002000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "b-segment-6",
+                "start": "0x0000000200000600",
+                "end": "0x00000002000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-b-2",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-b-2-1",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: âncora → fim da primeira faixa alvo",
+              "responseMode": "text",
+              "answer": "0x00000002000001ff"
+            },
+            {
+              "id": "gap-b-2-2",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: fim anterior + 1 → início da faixa seguinte",
+              "responseMode": "choice",
+              "answer": "0x0000000200000200",
+              "distractors": [
+                "0x00000002000002ff",
+                "0x0000000200000300"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-b-2",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "2 lacunas"
+      ]
+    },
+    {
+      "id": "gap-q020-replica-a-4-final",
+      "position": 4,
+      "title": "Q020 réplica final — 4 lacunas — materialização A",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "a-segment-0",
+                "start": "0x0000000100000000",
+                "end": "0x00000001000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "a-segment-1",
+                "start": "0x0000000100000100",
+                "end": "0x00000001000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "a-segment-2",
+                "start": "0x0000000100000200",
+                "end": "0x00000001000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "a-segment-3",
+                "start": "0x0000000100000300",
+                "end": "0x00000001000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "a-segment-4",
+                "start": "0x0000000100000400",
+                "end": "0x00000001000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "a-segment-5",
+                "start": "0x0000000100000500",
+                "end": "0x00000001000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "a-segment-6",
+                "start": "0x0000000100000600",
+                "end": "0x00000001000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-a-4",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-a-4-1",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000001000001ff"
+            },
+            {
+              "id": "gap-a-4-2",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000100000200",
+              "distractors": [
+                "0x00000001000002ff",
+                "0x0000000100000300"
+              ]
+            },
+            {
+              "id": "gap-a-4-3",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].end",
+              "label": "fim da faixa 2: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000001000002ff"
+            },
+            {
+              "id": "gap-a-4-4",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[3].start",
+              "label": "Início da faixa 3: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000100000300",
+              "distractors": [
+                "0x00000001000003ff",
+                "0x0000000100000400"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-a-4",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "4 lacunas"
+      ]
+    },
+    {
+      "id": "gap-q020-replica-b-4-final",
+      "position": 4,
+      "title": "Q020 réplica final — 4 lacunas — materialização B",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-b",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "b-segment-0",
+                "start": "0x0000000200000000",
+                "end": "0x00000002000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "b-segment-1",
+                "start": "0x0000000200000100",
+                "end": "0x00000002000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "b-segment-2",
+                "start": "0x0000000200000200",
+                "end": "0x00000002000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "b-segment-3",
+                "start": "0x0000000200000300",
+                "end": "0x00000002000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "b-segment-4",
+                "start": "0x0000000200000400",
+                "end": "0x00000002000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "b-segment-5",
+                "start": "0x0000000200000500",
+                "end": "0x00000002000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "b-segment-6",
+                "start": "0x0000000200000600",
+                "end": "0x00000002000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-b-4",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-b-4-1",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000002000001ff"
+            },
+            {
+              "id": "gap-b-4-2",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000200000200",
+              "distractors": [
+                "0x00000002000002ff",
+                "0x0000000200000300"
+              ]
+            },
+            {
+              "id": "gap-b-4-3",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[2].end",
+              "label": "fim da faixa 2: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000002000002ff"
+            },
+            {
+              "id": "gap-b-4-4",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[3].start",
+              "label": "Início da faixa 3: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000200000300",
+              "distractors": [
+                "0x00000002000003ff",
+                "0x0000000200000400"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-b-4",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "4 lacunas"
+      ]
+    },
+    {
+      "id": "gap-q020-replica-a-6-final",
+      "position": 6,
+      "title": "Q020 réplica final — 6 lacunas — materialização A",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "a-segment-0",
+                "start": "0x0000000100000000",
+                "end": "0x00000001000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "a-segment-1",
+                "start": "0x0000000100000100",
+                "end": "0x00000001000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "a-segment-2",
+                "start": "0x0000000100000200",
+                "end": "0x00000001000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "a-segment-3",
+                "start": "0x0000000100000300",
+                "end": "0x00000001000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "a-segment-4",
+                "start": "0x0000000100000400",
+                "end": "0x00000001000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "a-segment-5",
+                "start": "0x0000000100000500",
+                "end": "0x00000001000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "a-segment-6",
+                "start": "0x0000000100000600",
+                "end": "0x00000001000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-a-6",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-a-6-1",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000001000001ff"
+            },
+            {
+              "id": "gap-a-6-2",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000100000200",
+              "distractors": [
+                "0x00000001000002ff",
+                "0x0000000100000300"
+              ]
+            },
+            {
+              "id": "gap-a-6-3",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].end",
+              "label": "fim da faixa 2: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000001000002ff"
+            },
+            {
+              "id": "gap-a-6-4",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[3].start",
+              "label": "Início da faixa 3: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000100000300",
+              "distractors": [
+                "0x00000001000003ff",
+                "0x0000000100000400"
+              ]
+            },
+            {
+              "id": "gap-a-6-5",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[3].end",
+              "label": "fim da faixa 3: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000001000003ff"
+            },
+            {
+              "id": "gap-a-6-6",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[4].start",
+              "label": "Início da faixa 4: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000100000400",
+              "distractors": [
+                "0x00000001000004ff",
+                "0x0000000100000500"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-a-6",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "6 lacunas"
+      ]
+    },
+    {
+      "id": "gap-q020-replica-b-6-final",
+      "position": 6,
+      "title": "Q020 réplica final — 6 lacunas — materialização B",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-b",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "b-segment-0",
+                "start": "0x0000000200000000",
+                "end": "0x00000002000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "b-segment-1",
+                "start": "0x0000000200000100",
+                "end": "0x00000002000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "b-segment-2",
+                "start": "0x0000000200000200",
+                "end": "0x00000002000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "b-segment-3",
+                "start": "0x0000000200000300",
+                "end": "0x00000002000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "b-segment-4",
+                "start": "0x0000000200000400",
+                "end": "0x00000002000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "b-segment-5",
+                "start": "0x0000000200000500",
+                "end": "0x00000002000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "b-segment-6",
+                "start": "0x0000000200000600",
+                "end": "0x00000002000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-b-6",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-b-6-1",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000002000001ff"
+            },
+            {
+              "id": "gap-b-6-2",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000200000200",
+              "distractors": [
+                "0x00000002000002ff",
+                "0x0000000200000100"
+              ]
+            },
+            {
+              "id": "gap-b-6-3",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[2].end",
+              "label": "fim da faixa 2: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000002000002ff"
+            },
+            {
+              "id": "gap-b-6-4",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[3].start",
+              "label": "Início da faixa 3: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000200000300",
+              "distractors": [
+                "0x00000002000003ff",
+                "0x0000000200000400"
+              ]
+            },
+            {
+              "id": "gap-b-6-5",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[3].end",
+              "label": "fim da faixa 3: início da faixa + 0xFF",
+              "responseMode": "text",
+              "answer": "0x00000002000003ff"
+            },
+            {
+              "id": "gap-b-6-6",
+              "targetInstanceId": "memory-q020-b",
+              "targetPath": "segments[4].start",
+              "label": "Início da faixa 4: fim anterior + 1",
+              "responseMode": "choice",
+              "answer": "0x0000000200000400",
+              "distractors": [
+                "0x00000002000004ff",
+                "0x0000000200000500"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-b-6",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "6 lacunas"
+      ]
+    },
+    {
+      "id": "gap-q020-replica-boundary-12-final",
+      "position": 12,
+      "title": "Q020 réplica final — controle de fronteira — 12 lacunas",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-q020-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Mapa de memória de 64 bits: cada faixa mede 0x100 bytes; os intervalos são inclusivos e as faixas listadas são contíguas, sem sobreposição.",
+            "addressBase": "hexadecimal",
+            "addressOrder": "ascending",
+            "segments": [
+              {
+                "id": "a-segment-0",
+                "start": "0x0000000100000000",
+                "end": "0x00000001000000ff",
+                "label": "Âncora inferior",
+                "kind": "reserved",
+                "description": "referência visível para a sequência de endereços"
+              },
+              {
+                "id": "a-segment-1",
+                "start": "0x0000000100000100",
+                "end": "0x00000001000001ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "instruções executáveis somente leitura"
+              },
+              {
+                "id": "a-segment-2",
+                "start": "0x0000000100000200",
+                "end": "0x00000001000002ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "valores inicializados do processo"
+              },
+              {
+                "id": "a-segment-3",
+                "start": "0x0000000100000300",
+                "end": "0x00000001000003ff",
+                "label": "Heap",
+                "kind": "heap",
+                "description": "alocações dinâmicas contíguas"
+              },
+              {
+                "id": "a-segment-4",
+                "start": "0x0000000100000400",
+                "end": "0x00000001000004ff",
+                "label": "Biblioteca",
+                "kind": "mapped",
+                "description": "bibliotecas compartilhadas mapeadas"
+              },
+              {
+                "id": "a-segment-5",
+                "start": "0x0000000100000500",
+                "end": "0x00000001000005ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "dados automáticos de chamadas"
+              },
+              {
+                "id": "a-segment-6",
+                "start": "0x0000000100000600",
+                "end": "0x00000001000006ff",
+                "label": "Mapeamento",
+                "kind": "mapped",
+                "description": "região de arquivo mapeado"
+              }
+            ]
+          }
+        }
+      ],
+      "response": {
+        "id": "response-q020-replica-boundary-12",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete as lacunas combinando inclusão, contiguidade e o tamanho 0x100 de cada faixa. Não substitua um endereço por outro segmento.",
+          "blanks": [
+            {
+              "id": "gap-boundary-12-1",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[1].start",
+              "label": "Início da faixa 1: derivação pela cadeia contígua",
+              "responseMode": "text",
+              "answer": "0x0000000100000100"
+            },
+            {
+              "id": "gap-boundary-12-2",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[1].end",
+              "label": "fim da faixa 1: derivação pela cadeia contígua",
+              "responseMode": "choice",
+              "answer": "0x00000001000001ff",
+              "distractors": [
+                "0x00000001000002ff",
+                "0x0000000100000300"
+              ]
+            },
+            {
+              "id": "gap-boundary-12-3",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].start",
+              "label": "Início da faixa 2: derivação pela cadeia contígua",
+              "responseMode": "text",
+              "answer": "0x0000000100000200"
+            },
+            {
+              "id": "gap-boundary-12-4",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[2].end",
+              "label": "fim da faixa 2: derivação pela cadeia contígua",
+              "responseMode": "choice",
+              "answer": "0x00000001000002ff",
+              "distractors": [
+                "0x00000001000003ff",
+                "0x0000000100000400"
+              ]
+            },
+            {
+              "id": "gap-boundary-12-5",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[3].start",
+              "label": "Início da faixa 3: derivação pela cadeia contígua",
+              "responseMode": "text",
+              "answer": "0x0000000100000300"
+            },
+            {
+              "id": "gap-boundary-12-6",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[3].end",
+              "label": "fim da faixa 3: derivação pela cadeia contígua",
+              "responseMode": "choice",
+              "answer": "0x00000001000003ff",
+              "distractors": [
+                "0x00000001000004ff",
+                "0x0000000100000500"
+              ]
+            },
+            {
+              "id": "gap-boundary-12-7",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[4].start",
+              "label": "Início da faixa 4: derivação pela cadeia contígua",
+              "responseMode": "text",
+              "answer": "0x0000000100000400"
+            },
+            {
+              "id": "gap-boundary-12-8",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[4].end",
+              "label": "fim da faixa 4: derivação pela cadeia contígua",
+              "responseMode": "choice",
+              "answer": "0x00000001000004ff",
+              "distractors": [
+                "0x00000001000005ff",
+                "0x0000000100000600"
+              ]
+            },
+            {
+              "id": "gap-boundary-12-9",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[5].start",
+              "label": "Início da faixa 5: derivação pela cadeia contígua",
+              "responseMode": "text",
+              "answer": "0x0000000100000500"
+            },
+            {
+              "id": "gap-boundary-12-10",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[5].end",
+              "label": "fim da faixa 5: derivação pela cadeia contígua",
+              "responseMode": "choice",
+              "answer": "0x00000001000005ff",
+              "distractors": [
+                "0x00000001000006ff",
+                "0x0000000100000100"
+              ]
+            },
+            {
+              "id": "gap-boundary-12-11",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[6].start",
+              "label": "Início da faixa 6: derivação pela cadeia contígua",
+              "responseMode": "text",
+              "answer": "0x0000000100000600"
+            },
+            {
+              "id": "gap-boundary-12-12",
+              "targetInstanceId": "memory-q020-a",
+              "targetPath": "segments[6].end",
+              "label": "fim da faixa 6: derivação pela cadeia contígua",
+              "responseMode": "choice",
+              "answer": "0x00000001000006ff",
+              "distractors": [
+                "0x00000001000001ff",
+                "0x0000000100000200"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-q020-a-6",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta deve conservar o endereço hexadecimal exato da extremidade pedida. Para decidir entre faixas adjacentes, use inclusão: fim = início + 0xFF e próximo início = fim anterior + 1. Sobreposição não é contiguidade."
+          }
+        }
+      ],
+      "topics": [
+        "Q020 réplica",
+        "intervalos inclusivos",
+        "6 lacunas"
+      ]
+    }
+  ],
+  "negativeControls": {
+    "overlap": {
+      "validation": {
+        "valid": false,
+        "errors": [
+          "$.studyUnit.content[0]: Intervalos de memória não podem se sobrepor."
+        ]
+      },
+      "expectedRejection": true
+    },
+    "duplicateOccurrence": {
+      "validation": {
+        "valid": false,
+        "errors": [
+          "$.studyUnit: Lacuna duplicate-a não materializa um controle visível no renderer do package.",
+          "$.studyUnit: Lacuna duplicate-b não encontra sua resposta no campo de conteúdo indicado."
+        ]
+      },
+      "expectedRejection": true
+    },
+    "hexEquivalence": {
+      "validation": {
+        "valid": true,
+        "errors": []
+      },
+      "checks": {
+        "validation": {
+          "valid": true,
+          "errors": []
+        },
+        "preparation": {
+          "answersNotExposed": true,
+          "answerLeaks": [],
+          "checks": [
+            {
+              "id": "hex-equivalent",
+              "answer": "0x0000000100000100",
+              "targetMarked": true,
+              "accessibleTextContainsAnswer": false
+            }
+          ]
+        },
+        "render": {
+          "envelopeContentHtmlLength": 369,
+          "studySurfaceHtmlLength": 1269,
+          "controlCount": 1,
+          "expectedControlCount": 1,
+          "allControlsMaterialized": true
+        },
+        "evaluation": {
+          "allCorrect": true,
+          "results": [
+            {
+              "id": "hex-equivalent",
+              "correct": true,
+              "received": "0x0000000100000100",
+              "expected": "0x0000000100000100"
+            }
+          ],
+          "incorrectlyAcceptedProbes": [],
+          "hexCaseAccepted": [
+            "hex-equivalent"
+          ],
+          "hexCaseRejectedByStructuralContract": []
+        }
+      },
+      "formallyAdequate": true
+    }
+  }
+}

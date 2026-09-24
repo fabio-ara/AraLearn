@@ -19,9 +19,17 @@ const fixture = fs.readFileSync(path.join(
   "restore",
   "course-source-current-state-before-cut.sql"
 ), "utf8");
+const currentAuthoringFixture = fs.readFileSync(path.join(
+  repositoryRoot,
+  "tests",
+  "fixtures",
+  "restore",
+  "current-authoring-retained-bases.sql"
+), "utf8");
 
 test("#274 restauração usa apenas contêineres e bancos descartáveis", () => {
-  assert.match(script, /docker[\s\S]+commit[\s\S]+--pause=false/u);
+  assert.match(script, /docker[\s\S]+commit[\s\S]+--no-pause/u);
+  assert.match(script, /timeout: 5 \* 60_000/u);
   assert.match(script, /aralearn_restore_source_/u);
   assert.match(script, /aralearn_restore_target_/u);
   assert.match(script, /resetPostgresDatabase\(target\)/u);
@@ -30,6 +38,16 @@ test("#274 restauração usa apenas contêineres e bancos descartáveis", () => 
   assert.match(script, /finally\s*\{[\s\S]+"rm", "-f", "-v"/u);
   assert.match(script, /"image", "rm", "-f"/u);
   assert.doesNotMatch(script, /--linked|db reset|supabase stop/u);
+});
+
+test("sondagem do Postgres não depende de docker inspect e classifica timeout do daemon", () => {
+  const command = script.slice(script.indexOf("function command("), script.indexOf("function insideRepository("));
+  const wait = script.slice(script.indexOf("async function waitForPostgres("), script.indexOf("async function startDisposableContainer("));
+  assert.match(command, /allowFailure[\s\S]+timedOut: result\.error\.code === "ETIMEDOUT"/u);
+  assert.match(wait, /"exec", container, "psql"/u);
+  assert.doesNotMatch(wait, /"inspect"/u);
+  assert.match(wait, /maxConsecutiveTimeouts = 8/u);
+  assert.match(script, /Docker Desktop expirou ao verificar o contêiner Supabase de origem/u);
 });
 
 test("#307 restauração preserva o checkpoint histórico e continua até o manifesto corrente", () => {
@@ -202,6 +220,13 @@ test("#274 fixture cobre estado útil e resíduos encerrados para o corte", () =
   assert.match(script, /needs_verification/u);
   assert.match(script, /legacySourceEnums/u);
   assert.doesNotMatch(fixture, /(?:insert\s+into|update|delete\s+from) storage\./iu);
+});
+
+test("fixture corrente registra parecer completo nas cinco dimensões da auditoria", () => {
+  assert.match(currentAuthoringFixture, /"outcome":"consistent","findings":\[\],"checks":\[/u);
+  for (const dimension of ["alignment", "evidence", "representation", "feedback", "sufficiency"]) {
+    assert.match(currentAuthoringFixture, new RegExp(`"dimension":"${dimension}"`, "u"));
+  }
 });
 
 test("#274 mede redução técnica e registra a fronteira do backup de Storage", () => {

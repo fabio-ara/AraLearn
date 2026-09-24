@@ -66,7 +66,10 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 
 const samples = {
   registrar_inspecao: { referencia: "referencia-opaca-da-base-inspecionada",
-    parecer: { summary: "Conteúdo e citações conferidos.", outcome: "consistent", findings: [] } },
+    parecer: { summary: "Conteúdo e citações conferidos.", outcome: "consistent", findings: [],
+      checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+        dimension, result: "sufficient", reason: "A relação do socket com o processo é demonstrada.", evidence: ["socket"]
+      })) } },
   decidir_observacao: { curso: "Redes para iniciantes", referencia: {
     annotationId: "30000000-0000-4000-8000-000000000001", annotationVersion: 2, targetSetVersion: 1,
     targets: [{ kind: "study_unit", id: "socket-unit", expectedBasisHash: "a".repeat(64) }]
@@ -121,7 +124,7 @@ const samples = {
   aplicar_perfil: { curso: "Redes para iniciantes", perfil: "Exposição e prática", previa: "a".repeat(64) },
   retomar_curso: { titulo: "Redes para iniciantes" },
   consultar_planejamento: { curso: "Redes para iniciantes", parte: 2 },
-  preparar_materializacao: { curso: "Redes para iniciantes", parte: "Sockets", unidades: [{
+  preparar_materializacao: { curso: "Redes para iniciantes", microssequencia: "Sockets", unidades: [{
     microssequencia: "Sockets",
     posicao: 1,
     conteudo: SAMPLE_THEORY_CONTENT,
@@ -195,7 +198,7 @@ const samples = {
   },
   materializar_parte: {
     curso: "Redes para iniciantes",
-    parte: "Sockets",
+    microssequencia: "Sockets",
     explicacoes: [{ microssequencia: "Sockets", conteudo: {
       title: "Processo, socket e transporte", content: SAMPLE_THEORY_CONTENT.content
     }, fontes: [] }],
@@ -346,7 +349,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "7.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -433,7 +436,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(
     operation("salvar_mapa_curricular").description,
-    /rascunho.*modulos: \[\].*salvar_ramo_curricular.*aprovação usa a referência persistida/iu
+    /rascunho.*modulos: \[\].*salvar_ramo_curricular.*aprovação usa referência persistida/iu
   );
   assert.doesNotMatch(operation("salvar_parte").description, /(?:parte|lote) aprovad/iu);
   assert.doesNotMatch(operation("materializar_parte").description, /aprovad/iu);
@@ -811,9 +814,9 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
     name === "materializar_parte").inputSchema;
   const unit = materialization.properties.unidades.items;
   const instance = unit.properties.conteudo.properties.content.items;
-  assert.deepEqual(instance.required, ["id", "package", "version", "data"]);
+  assert.deepEqual(instance.required, ["package", "data"]);
   const materializationTask = actionTools.find(({ name }) => name === "materializar_parte");
-  assert.match(materializationTask.description, /recorte preparado/iu);
+  assert.match(materializationTask.description, /microssequência com verificação automática/iu);
   assert.match(materializationGuidance, /declare na aplicação da unidade as formas explicativas efetivamente realizadas/iu);
   assert.match(materializationGuidance, /justifique as não aplicáveis/iu);
   assert.match(

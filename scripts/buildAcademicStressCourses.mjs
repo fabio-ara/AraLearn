@@ -99,9 +99,8 @@ function algorithmTrace(id) {
     id,
     packageId: "aralearn.resource.table",
     data: {
-      prompt: "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42]. A tabela registra o estado depois de cada ação.",
-      caption: "Estado da busca binária por passo",
-      layout: "wide",
+      note: "Acompanhe a busca binária por 23 no vetor [4, 8, 15, 16, 23, 42]. A tabela registra o estado depois de cada ação.",
+      title: "Estado da busca binária por passo",
       columns: ["Ação executada", "início", "fim", "meio", "valor[meio]", "Condição", "Saída"],
       rows: [
         ["Inicializar o intervalo", "0", "5", "2", "15", "15 < 23", "Descartar posições 0 a 2"],

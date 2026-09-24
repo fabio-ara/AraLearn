@@ -1,6 +1,7 @@
 import { CourseAuthoringObservationQueue, observationTargetCatalog, observationDecisionSelection, filterAuthoringObservations, loadObservationComparison } from "./courseAuthoringObservationQueue.js";
 import { renderUiIcon } from "./renderUiIcons.js";
-import { validateStudyUnitObservationText, renderStudyUnitObservationSheet, renderObservationComparison } from "./renderStudyUnitObservationSheet.js";
+import { validateStudyUnitObservationText, renderStudyUnitObservationSheet, renderObservationComparison,
+  syncStudyUnitObservationComposer, syncAuthoringObservationDecisions } from "./renderStudyUnitObservationSheet.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
 
 const targetFromKey = key => { const split = key.indexOf(":"); return { kind: key.slice(0, split), id: key.slice(split + 1) }; };
@@ -57,11 +58,21 @@ export function createAuthoringObservationQueue({ document, controller, courseId
     finally { if (!destroyed && current === readEpoch) { loading = false; render(); } }
   }
   element.addEventListener("input", event => {
-    if (event.target.matches("[data-field='study-unit-observation']")) draft = event.target.value;
+    if (event.target.matches("[data-field='study-unit-observation']")) {
+      draft = event.target.value;
+      syncStudyUnitObservationComposer(element, {
+        draft: { rawText: draft }, editingId: editing?.annotationId, saving: queue.busy || Boolean(queue.pending)
+      });
+    }
   });
   element.addEventListener("change", event => {
     if (event.target.matches('[data-observation-filter]')) { filters[event.target.dataset.observationFilter] = event.target.value; render(); }
-    if (event.target.matches('[data-observation-select]')) selectedObservationIds = [...element.querySelectorAll('[data-observation-select]:checked')].map(node => node.dataset.observationId);
+    if (event.target.matches('[data-observation-select]')) {
+      selectedObservationIds = [...element.querySelectorAll('[data-observation-select]:checked')].map(node => node.dataset.observationId);
+      syncAuthoringObservationDecisions(element, {
+        items: queue.items, filters, selectedObservationIds, saving: queue.busy || Boolean(queue.pending)
+      });
+    }
     if (event.target.matches('[data-observation-target-select]')) selectedTargetKeysByAnnotation = { ...selectedTargetKeysByAnnotation, ...observationDecisionSelection(element) };
     if (event.target.matches('[data-observation-cancel-reason]')) cancelReason = event.target.value;
     if (event.target.matches("[data-field='study-unit-observation-category']")) category = event.target.value || null;

@@ -1,0 +1,357 @@
+[
+  {
+    "curso": "Modelos computacionais em ação",
+    "microssequencia": "Intervalos e limites de memória",
+    "concluir": false,
+    "explicacoes": [
+      {
+        "microssequencia": "Intervalos e limites de memória",
+        "conteudo": {
+          "title": "Intervalos e limites de memória",
+          "content": [
+            {
+              "id": "memoria-byte",
+              "package": "paragraph",
+              "data": {
+                "text": "Considere uma memória endereçada a bytes: cada endereço identifica exatamente um byte. Um intervalo inclusivo [início, fim] contém o byte do início e também o byte do fim. Por isso, seu tamanho é fim − início + 1, e, quando o início e o tamanho são conhecidos, o extremo final é início + tamanho − 1. Para encontrar o endereço seguinte, some 1 ao fim. Em hexadecimal, essas são contas inteiras; em endereços de 64 bits, os valores continuam exatos e não são aproximações de ponto flutuante. Um intervalo de endereços descreve posições de bytes, não uma sequência de chamadas de função."
+              }
+            },
+            {
+              "id": "mapa-exemplo",
+              "package": "memory_layout",
+              "data": {
+                "prompt": "Visão recortada de intervalos de bytes em ordem crescente. Os três blocos são exemplos independentes.",
+                "addressBase": "hexadecimal",
+                "addressOrder": "ascending",
+                "segments": [
+                  {
+                    "id": "bloco-a",
+                    "start": "0x1000",
+                    "end": "0x100F",
+                    "label": "Bloco A",
+                    "kind": "custom",
+                    "description": "16 bytes; 0x100F − 0x1000 + 1 = 16"
+                  },
+                  {
+                    "id": "bloco-b",
+                    "start": "0x1010",
+                    "end": "0x1017",
+                    "label": "Bloco B",
+                    "kind": "custom",
+                    "description": "8 bytes; começa no endereço seguinte ao Bloco A"
+                  },
+                  {
+                    "id": "bloco-c",
+                    "start": "0x1020",
+                    "end": "0x1023",
+                    "label": "Bloco C",
+                    "kind": "custom",
+                    "description": "4 bytes; há uma lacuna de 0x1018 a 0x101F depois do Bloco B"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "calculo-extremo",
+              "package": "paragraph",
+              "data": {
+                "text": "Se o início é 0x1000 e o tamanho é 16 bytes, o fim é início + tamanho − 1: 0x1000 + 16 − 1 = 0x100F. O próximo byte, 0x1010, não pertence ao primeiro intervalo. Para conferir o tamanho a partir das extremidades, faça 0x100F − 0x1000 + 1 = 16."
+              }
+            },
+            {
+              "id": "comparacao-intervalos",
+              "package": "table",
+              "data": {
+                "title": "Como comparar dois intervalos inclusivos",
+                "legend": "Considere A antes de B na ordem dos endereços.",
+                "note": "Os colchetes incluem os dois extremos. Primeiro compare os extremos; proximidade visual não é um teste.",
+                "columns": [
+                  "Relação",
+                  "Teste nos extremos",
+                  "O que acontece"
+                ],
+                "rows": [
+                  [
+                    "Contíguos",
+                    "início de B = fim de A + 1",
+                    "Não compartilham byte e não há lacuna."
+                  ],
+                  [
+                    "Sobrepostos",
+                    "início de B ≤ fim de A",
+                    "Há pelo menos um endereço pertencente aos dois intervalos."
+                  ],
+                  [
+                    "Separados com lacuna",
+                    "início de B > fim de A + 1",
+                    "Os endereços entre fim de A + 1 e início de B − 1 não pertencem a nenhum dos dois."
+                  ]
+                ]
+              }
+            }
+          ],
+          "fontes": []
+        }
+      }
+    ],
+    "unidades": [
+      {
+        "posicao": 1,
+        "conteudo": {
+          "title": "Calcule o extremo final",
+          "role": "practice",
+          "content": [
+            {
+              "id": "calculo-extremo-pratica",
+              "package": "paragraph",
+              "data": {
+                "text": "Um bloco inclusivo começa em 0x2000 e ocupa 0x20 bytes. Como o primeiro byte já está incluído, use fim = início + tamanho − 1. O extremo final é 0x201F."
+              }
+            }
+          ],
+          "response": {
+            "package": "gap",
+            "data": {
+              "prompt": "Calcule o extremo final usando o início e o tamanho visíveis.",
+              "blanks": [
+                {
+                  "id": "fim",
+                  "targetInstanceId": "calculo-extremo-pratica",
+                  "targetPath": "text",
+                  "label": "extremo final",
+                  "responseMode": "text",
+                  "answer": "0x201F",
+                  "acceptedAnswers": [
+                    "0X201F"
+                  ]
+                }
+              ]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "O cálculo é 0x2000 + 0x20 − 1 = 0x201F. O −1 aparece porque 0x2000 já conta como o primeiro dos 0x20 bytes. Se você somar o tamanho sem subtrair 1, obterá 0x2020, que é o endereço seguinte ao intervalo, não o extremo final."
+              }
+            }
+          ],
+          "topics": [
+            "intervalo inclusivo",
+            "extremo final"
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": [
+            "Intervalo inclusivo de bytes"
+          ],
+          "explicacoes": [
+            {
+              "ideia": "Intervalo inclusivo de bytes",
+              "formas": [
+                "worked_example",
+                "mechanism",
+                "limit_or_exception"
+              ]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Calcular um extremo e o tamanho de um intervalo inclusivo",
+              "oportunidade": "Calcule o extremo final a partir de início e tamanho visíveis, sem receber o extremo.",
+              "dimensoesVariadas": [
+                "case_or_data",
+                "support_level"
+              ]
+            }
+          ],
+          "cobertura": [
+            "Aritmética de endereços e intervalos"
+          ]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 2,
+        "conteudo": {
+          "title": "Calcule o tamanho",
+          "role": "practice",
+          "content": [
+            {
+              "id": "calculo-tamanho-pratica",
+              "package": "paragraph",
+              "data": {
+                "text": "Outro intervalo inclusivo ocupa [0x2400, 0x241F]. Para contar os bytes, use tamanho = fim − início + 1. Portanto, esse intervalo contém 32 bytes."
+              }
+            }
+          ],
+          "response": {
+            "package": "gap",
+            "data": {
+              "prompt": "Calcule quantos bytes pertencem ao intervalo, incluindo os dois extremos.",
+              "blanks": [
+                {
+                  "id": "tamanho",
+                  "targetInstanceId": "calculo-tamanho-pratica",
+                  "targetPath": "text",
+                  "label": "tamanho em bytes",
+                  "responseMode": "text",
+                  "answer": "32",
+                  "acceptedAnswers": [
+                    "0x20"
+                  ]
+                }
+              ]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "Os dados visíveis dão 0x241F − 0x2400 + 1 = 0x20 bytes, isto é, 32 bytes. O +1 conta o byte inicial e o final; sem ele, a subtração mede apenas a distância entre os endereços."
+              }
+            }
+          ],
+          "topics": [
+            "intervalo inclusivo",
+            "tamanho de intervalo"
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": [
+            "Intervalo inclusivo de bytes"
+          ],
+          "explicacoes": [
+            {
+              "ideia": "Intervalo inclusivo de bytes",
+              "formas": [
+                "worked_example",
+                "mechanism",
+                "representation_link"
+              ]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Calcular um extremo e o tamanho de um intervalo inclusivo",
+              "oportunidade": "Calcule o tamanho a partir de dois extremos hexadecimais visíveis e inclusivos.",
+              "dimensoesVariadas": [
+                "case_or_data",
+                "external_representation"
+              ]
+            }
+          ],
+          "cobertura": [
+            "Aritmética de endereços e intervalos"
+          ]
+        },
+        "fontes": []
+      },
+      {
+        "posicao": 3,
+        "conteudo": {
+          "title": "Diferencie contiguidade, sobreposição e lacuna",
+          "role": "practice",
+          "content": [
+            {
+              "id": "relacao-pratica",
+              "package": "paragraph",
+              "data": {
+                "text": "Compare estes pares de intervalos inclusivos: A = [0x3000, 0x300F] e B = [0x3010, 0x3017]; C = [0x3200, 0x320F] e D = [0x3212, 0x3217]; E = [0x3400, 0x340F] e F = [0x340F, 0x3417]. Decida a relação de cada par comparando os extremos."
+              }
+            }
+          ],
+          "response": {
+            "package": "choice",
+            "data": {
+              "question": "Quais classificações são verdadeiras? Selecione todas as alternativas corretas.",
+              "selectionMode": "multiple",
+              "selectionCriterion": "correct",
+              "options": [
+                {
+                  "id": "ab-contiguos",
+                  "text": "A e B são contíguos.",
+                  "feedback": "Correto. A termina em 0x300F e B começa em 0x3010; como 0x3010 = 0x300F + 1, eles não compartilham byte e não deixam lacuna."
+                },
+                {
+                  "id": "ab-sobrepostos",
+                  "text": "A e B se sobrepõem.",
+                  "feedback": "Incorreto. B começa no byte imediatamente seguinte ao fim de A, portanto nenhum endereço pertence aos dois intervalos."
+                },
+                {
+                  "id": "cd-lacuna",
+                  "text": "C e D são separados por uma lacuna.",
+                  "feedback": "Correto. C termina em 0x320F e D começa em 0x3212; os bytes 0x3210 e 0x3211 ficam entre eles e não pertencem a nenhum dos dois."
+                },
+                {
+                  "id": "cd-contiguos",
+                  "text": "C e D são contíguos.",
+                  "feedback": "Incorreto. O endereço seguinte a 0x320F é 0x3210, mas D só começa em 0x3212; há dois bytes de lacuna."
+                },
+                {
+                  "id": "ef-sobrepostos",
+                  "text": "E e F se sobrepõem.",
+                  "feedback": "Correto. O byte 0x340F é o fim de E e também o início de F, então ele pertence aos dois intervalos inclusivos."
+                },
+                {
+                  "id": "ef-contiguos",
+                  "text": "E e F são contíguos.",
+                  "feedback": "Incorreto. Contiguidade exigiria que F começasse em 0x3410; como F começa em 0x340F, há compartilhamento desse byte e, portanto, sobreposição."
+                }
+              ],
+              "answerIds": [
+                "ab-contiguos",
+                "cd-lacuna",
+                "ef-sobrepostos"
+              ]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "A regra é comparar os extremos, não apenas notar que os valores são próximos. Se o segundo início é exatamente o primeiro fim + 1, há contiguidade; se é menor ou igual ao primeiro fim, há sobreposição; se é maior que o primeiro fim + 1, existe lacuna. O par E–F mostra que compartilhar apenas o byte do limite já basta para caracterizar sobreposição."
+              }
+            }
+          ],
+          "topics": [
+            "contiguidade",
+            "sobreposição",
+            "lacuna"
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": [
+            "Intervalo inclusivo de bytes",
+            "Contiguidade e sobreposição"
+          ],
+          "explicacoes": [
+            {
+              "ideia": "Contiguidade e sobreposição",
+              "formas": [
+                "contrast",
+                "application_condition",
+                "concrete_example"
+              ]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Distinguir contiguidade de sobreposição comparando extremos",
+              "oportunidade": "Classifique pares com próximo endereço, lacuna e compartilhamento de um extremo, sem o teste escrito nas alternativas.",
+              "dimensoesVariadas": [
+                "case_or_data",
+                "context",
+                "external_representation"
+              ]
+            }
+          ],
+          "cobertura": [
+            "Aritmética de endereços e intervalos"
+          ]
+        },
+        "fontes": []
+      }
+    ]
+  }
+]

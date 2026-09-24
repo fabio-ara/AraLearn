@@ -114,6 +114,20 @@ function options(values, group, selected = "") {
     `${escapeHtml(label(group, value))}</option>`).join("");
 }
 
+function iconAction(action, title, icon, {
+  type = "button", className = "", disabled = false
+} = {}) {
+  return `<button type="${type}" class="course-authoring-icon-action${className ? ` ${className}` : ""}"` +
+    ` data-observations-action="${action}" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"` +
+    `${disabled ? " disabled" : ""}>${renderUiIcon(icon, "course-authoring-button-icon")}</button>`;
+}
+
+function filtersApplied(query) {
+  return Boolean(query.origins.length || query.channels.length || query.states.length ||
+    query.categories.length || query.subjectIds.length || query.hierarchy ||
+    query.includeUncategorized === false);
+}
+
 function pathLabel(item) {
   const path = item.target.currentPath || item.target.observedPath;
   return path.map(({ label: value }) => value).filter(Boolean).join(" › ") || "Contexto indisponível";
@@ -289,8 +303,10 @@ function renderFilters(state) {
     '<label class="course-observations-filter-check"><input type="checkbox" name="descendants"' +
     (state.query.hierarchy?.includeDescendants ? " checked" : "") +
     (selectedHierarchy < 0 ? " disabled" : "") + '><span>Incluir descendentes</span></label>' +
-    '<div class="course-observations-filter-actions"><button type="reset" data-observations-action="clear-filters">Limpar</button>' +
-    '<button type="submit" class="course-authoring-primary">Aplicar filtros</button></div></form></details>';
+    '<div class="course-observations-filter-actions">' +
+    iconAction("clear-filters", "Limpar filtros", "remove-state", { type: "reset" }) +
+    iconAction("apply-filters", "Aplicar filtros", "ready-state", { type: "submit" }) +
+    '</div></form></details>';
 }
 
 function renderAuthorComposer(state) {
@@ -323,7 +339,9 @@ function renderAuthorComposer(state) {
     '<span id="course-author-observation-count" class="course-observation-character-count">' +
     escapeHtml(formatObservationTextBudget(draft?.rawText || "")) + "</span>" +
     '<div class="course-observation-create-actions">' +
-    `<button type="submit" class="course-authoring-primary"${disabled}>Registrar</button></div>` +
+    iconAction("register-observation", "Registrar observação", "save", {
+      type: "submit", className: "course-authoring-primary", disabled: Boolean(disabled)
+    }) + '</div>' +
     '</form></details>';
 }
 
@@ -359,8 +377,9 @@ function renderClassification(item, catalog) {
         catalog.map(({ id, label: value }) =>
           `<label><input type="checkbox" name="subject" value="${escapeHtml(id)}"` +
           `${effective.has(id) ? " checked" : ""}><span>${escapeHtml(value)}</span></label>`).join("") +
-        '</fieldset><button type="submit"' +
-        `${item.capabilities.canCorrectSubjects ? "" : " disabled"}>Salvar assuntos</button></form>`
+        '</fieldset>' + iconAction("save-subjects", "Salvar assuntos", "save", {
+          type: "submit", disabled: !item.capabilities.canCorrectSubjects
+        }) + '</form>'
       : '<p>Nenhum assunto candidato neste contexto.</p>') + "</section>";
 }
 
@@ -390,12 +409,14 @@ function renderDetail(state, item) {
     : null;
   const disabled = state.loading ? " disabled" : "";
   const actionButtons = [
-    ["consider", "Considerar", item.capabilities.canConsider],
-    ["resolve", "Resolver", item.capabilities.canResolve && !isPendingAuthoringObservation(item)],
-    ["reopen", "Reabrir", item.capabilities.canReopen],
-    ["withdraw", "Retirar", item.capabilities.canWithdraw && !isPendingAuthoringObservation(item)]
-  ].filter(([, , allowed]) => allowed).map(([action, title]) =>
-    `<button type="button" data-observations-action="${action}">${escapeHtml(title)}</button>`
+    ["consider", "Considerar", "ready-state", item.capabilities.canConsider],
+    ["resolve", "Resolver", "ready-state", item.capabilities.canResolve && !isPendingAuthoringObservation(item)],
+    ["reopen", "Reabrir", "rotate", item.capabilities.canReopen],
+    ["withdraw", "Retirar", "trash", item.capabilities.canWithdraw && !isPendingAuthoringObservation(item)]
+  ].filter(([, , , allowed]) => allowed).map(([action, title, icon]) =>
+    iconAction(action, title, icon, {
+      disabled: Boolean(disabled), className: action === "withdraw" ? "is-danger" : ""
+    })
   ).join("");
   return '<div class="course-observation-detail">' +
     renderItem(item, true) +
@@ -413,7 +434,9 @@ function renderDetail(state, item) {
         `<label><span>Texto</span><textarea name="rawText"${disabled}>${escapeHtml(
           editDraft?.rawText ?? item.rawText ?? ""
         )}</textarea></label>` +
-        `<button type="submit"${disabled}>Salvar edição</button></form>`
+        iconAction("save-edit", "Salvar edição", "save", {
+          type: "submit", disabled: Boolean(disabled)
+        }) + '</form>'
       : "") +
     (item.capabilities.canRespond
       ? '<form class="course-observation-response-form" data-observation-response-form>' +
@@ -423,7 +446,9 @@ function renderDetail(state, item) {
           responseDraft?.ownerResponse ?? item.ownerResponse?.text ?? ""
         )}</textarea>` + renderOwnerResponseSources(
           item.ownerResponse?.consideredSourceLinks
-        ) + `<button type="submit"${disabled}>Salvar retorno</button></form>`
+        ) + iconAction("save-response", "Salvar retorno", "save", {
+          type: "submit", disabled: Boolean(disabled)
+        }) + '</form>'
       : item.ownerResponse
         ? '<section class="course-observation-owner-response">' +
           `<h3>${item.ownerResponse.kind === "reformulation" ? "Reformulação" : "Retorno da autoria"}</h3>` +
@@ -442,10 +467,8 @@ function renderObservationConfirmation(state) {
     '<h2 id="course-observation-confirmation-title">Retirar observação?</h2>' +
     '<p id="course-observation-confirmation-message">Ela permanecerá no histórico como retirada.</p>' +
     '<div class="course-authoring-confirm-actions">' +
-    '<button type="button" class="course-authoring-secondary" data-observations-action="cancel-confirmation">' +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
-    '<button type="button" class="is-danger" data-observations-action="confirm-withdraw">' +
-    `${renderUiIcon("trash", "course-authoring-button-icon")}<span>Retirar</span></button>` +
+    iconAction("cancel-confirmation", "Cancelar retirada", "remove-state", { className: "course-authoring-secondary" }) +
+    iconAction("confirm-withdraw", "Retirar observação", "trash", { className: "is-danger" }) +
     "</div></section></div>";
 }
 
@@ -477,17 +500,22 @@ function renderPanel(state) {
         ? renderDetail(state, item)
         : '<div class="course-observations-tools">' + renderAuthorComposer(state) +
           renderFilters(state) + "</div>" +
-          (state.summary?.matchingTotal > 0
+          (state.summary && (state.summary.matchingTotal > 0 || filtersApplied(state.query))
             ? '<dl class="course-observations-summary"><div><dt>Correspondentes</dt>' +
               `<dd>${state.summary.matchingTotal}</dd></div><div><dt>Sem assunto</dt>` +
               `<dd>${state.summary.unclassifiedTotal}</dd></div>${summaryRows(state.summary)}</dl>`
             : "") +
           `<div class="course-observations-list">${state.items.map((value) =>
             renderItem(value)).join("") ||
-            '<p class="course-authoring-empty-copy">Nenhuma observação.</p>'}</div>` +
+            (filtersApplied(state.query)
+              ? '<div class="course-observations-empty">' +
+                '<p class="course-authoring-empty-copy">Nenhuma observação corresponde aos filtros aplicados; a coleção continua disponível.</p>' +
+                iconAction("clear-filters", "Limpar filtros", "remove-state") + '</div>'
+              : '<p class="course-authoring-empty-copy">Nenhuma observação.</p>')}</div>` +
           (state.hasMore
-            ? '<button type="button" class="course-observations-load-more" data-observations-action="load-more"' +
-              `${state.loading ? " disabled" : ""}>Carregar mais</button>`
+            ? iconAction("load-more", "Carregar mais observações", "arrow-down", {
+              className: "course-observations-load-more", disabled: state.loading
+            })
             : "")) + renderObservationConfirmation(state) + `</${element}>`;
 }
 

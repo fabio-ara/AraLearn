@@ -139,7 +139,7 @@ export const databaseSchemaPackage = Object.freeze({
   },
   render(data) {
     const labels = diagramLabels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: accessibleText(data), caption: "Modelo lógico relacional · dependências de chave estrangeira", labels, model: { labels: systemDiagramModelLabels(labels) }, focusId: `system-node-${data.relations[0]?.id || ""}`, errorMessage: "Não foi possível diagramar o esquema relacional." });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: accessibleText(data), caption: "PK identifica cada registro; FK referencia a chave de outra tabela. Siga a seta da referência ao destino.", labels, model: { labels: systemDiagramModelLabels(labels) }, focusId: `system-node-${data.relations[0]?.id || ""}`, errorMessage: "Não foi possível diagramar o esquema relacional." });
     return `<div class="runtime-block package-database-schema">${data.prompt ? renderPackageProse(data.prompt) : ""}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

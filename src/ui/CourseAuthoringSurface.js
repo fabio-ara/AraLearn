@@ -149,8 +149,10 @@ function statusPanel({ kind = "status", title, message, action = "", actionLabel
     `<h2>${escapeHtml(title)}</h2>` +
     `<p>${escapeHtml(message)}</p>` +
     (action && actionLabel
-      ? `<button type="button" data-course-authoring-action="${escapeHtml(action)}">` +
-        `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>${escapeHtml(actionLabel)}</span></button>`
+      ? `<button class="course-authoring-icon-action" type="button"` +
+        ` data-course-authoring-action="${escapeHtml(action)}"` +
+        ` aria-label="${escapeHtml(actionLabel)}" title="${escapeHtml(actionLabel)}">` +
+        `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
       : "") +
     "</section>";
 }
@@ -201,9 +203,9 @@ function renderCourseList(state) {
       "</div>" +
       (page.hasMore
         ? '<button type="button" class="course-authoring-more" data-course-authoring-action="load-more-courses"' +
-          (state.loading ? " disabled" : "") + ">" +
-          renderUiIcon("arrow-down", "course-authoring-button-icon") +
-          `<span>${state.loading ? "Carregando…" : "Carregar mais"}</span></button>`
+          (state.loading ? " disabled" : "") +
+          ' aria-label="Carregar mais cursos" title="Carregar mais cursos">' +
+          renderUiIcon("arrow-down", "course-authoring-button-icon") + "</button>"
         : "");
   }
   const createForm = state.createOpen
@@ -237,10 +239,13 @@ function renderCourseList(state) {
     renderUiIcon("more", "course-authoring-button-icon") +
     `<span class="course-authoring-feedback-indicator" data-list-feedback-indicator aria-hidden="true"${notice ? '' : ' hidden'}>!</span></summary>` +
     '<nav aria-label="Tarefas dos cursos">' +
-    '<button type="button" data-course-authoring-action="open-create">' +
-    renderUiIcon("add", "course-authoring-button-icon") + `<span>${state.createOpen ? 'Continuar criação' : 'Criar curso'}</span></button>` +
-    '<button type="button" data-course-authoring-action="refresh-course">' +
-    renderUiIcon("rotate", "course-authoring-button-icon") + '<span>Atualizar cursos</span></button>' +
+    '<button type="button" data-course-authoring-action="open-create"' +
+    ` aria-label="${state.createOpen ? 'Continuar criação' : 'Criar curso'}"` +
+    ` title="${state.createOpen ? 'Continuar criação' : 'Criar curso'}">` +
+    renderUiIcon("add", "course-authoring-button-icon") + "</button>" +
+    '<button type="button" data-course-authoring-action="refresh-course"' +
+    ' aria-label="Atualizar cursos" title="Atualizar cursos">' +
+    renderUiIcon("rotate", "course-authoring-button-icon") + "</button>" +
     `<section class="course-authoring-feedback-explanation" data-list-feedback-explanation aria-label="Aviso"${notice ? '' : ' hidden'}>` +
     `<p role="alert" data-list-feedback-message>${escapeHtml(notice)}</p>` +
     '</section></nav></details>' + renderSettingsEntry(state) + '</div></header>' +
@@ -338,16 +343,18 @@ function renderCourseHeader(course, state) {
     '</summary><nav aria-label="Tarefas do curso">' +
     `<div class="course-authoring-course-identity" tabindex="0"><span>Curso</span><p id="course-current-identity">${escapeHtml(course.title)}</p></div>` +
     '<div data-course-feedback-explanation>' + renderCourseFeedbackExplanation(state) + '</div>' +
-    '<button type="button" data-course-authoring-action="refresh-course">' +
-    `${renderUiIcon("rotate", "course-authoring-button-icon")}<span>Atualizar curso</span></button>` +
+    '<button type="button" data-course-authoring-action="refresh-course"' +
+    ' aria-label="Atualizar curso" title="Atualizar curso">' +
+    `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>` +
     (course.canCopy === true && state.canCopyCourse
-      ? '<button type="button" data-course-authoring-action="copy-course">' +
-        `${renderUiIcon("copy", "course-authoring-button-icon")}<span>Copiar curso</span></button>`
+      ? '<button type="button" data-course-authoring-action="copy-course"' +
+        ' aria-label="Copiar curso" title="Copiar curso">' +
+        `${renderUiIcon("copy", "course-authoring-button-icon")}</button>`
       : "") +
     (state.section === "content" && canAccessPlanning(course) && state.canOpenStudyContent
       ? '<button type="button" data-course-authoring-action="edit-content-entity"' +
-        ' data-target-kind="course">' +
-        `${renderUiIcon("edit", "course-authoring-button-icon")}<span>Editar curso</span></button>`
+        ' data-target-kind="course" aria-label="Editar curso" title="Editar curso">' +
+        `${renderUiIcon("edit", "course-authoring-button-icon")}</button>`
       : "") +
     renderTaskLinks(course, state.section, { primary: null }) +
     "</nav></details>" + renderSettingsEntry(state) + "</div></header>";
@@ -369,12 +376,14 @@ function renderActionConfirmation(confirmation) {
     '<h2 id="course-authoring-confirm-title">Confirmar ação</h2>' +
     `<p id="course-authoring-confirm-message">${escapeHtml(confirmation.message)}</p>` +
     '<div class="course-authoring-confirm-actions">' +
-    '<button type="button" data-course-authoring-action="cancel-action-confirmation">' +
-    `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Cancelar</span></button>` +
+    '<button type="button" data-course-authoring-action="cancel-action-confirmation"' +
+    ' aria-label="Cancelar" title="Cancelar">' +
+    `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
     `<button type="button" class="${confirmClass}"` +
-    ' data-course-authoring-action="confirm-action-confirmation">' +
-    `${renderUiIcon(icon, "course-authoring-button-icon")}<span>` +
-    `${escapeHtml(confirmation.confirmLabel || "Confirmar")}</span></button></div></section></div>`;
+    ' data-course-authoring-action="confirm-action-confirmation"' +
+    ` aria-label="${escapeHtml(confirmation.confirmLabel || "Confirmar")}"` +
+    ` title="${escapeHtml(confirmation.confirmLabel || "Confirmar")}">` +
+    `${renderUiIcon(icon, "course-authoring-button-icon")}</button></div></section></div>`;
 }
 
 function renderPersonAvatar(person, avatarUrls) {
@@ -787,10 +796,12 @@ function renderCourseFeedbackExplanation(state) {
   return '<section class="course-authoring-feedback-explanation" aria-label="Aviso">' +
     `<p role="alert">${escapeHtml(failure)}</p>` +
     (pendingCopy ? '<p>Use o botão de cópia da pessoa para confirmar o mesmo pedido.</p>' +
-      '<button type="button" data-course-authoring-action="cancel-copy-permission" aria-label="Encerrar recuperação da permissão de cópia">' +
-      renderUiIcon("remove-state", "course-authoring-button-icon") + '<span>Encerrar recuperação e reler</span></button>' :
-      state.section === "people" ? '<button type="button" data-course-authoring-action="retry-people">' +
-      renderUiIcon("rotate", "course-authoring-button-icon") + '<span>Atualizar acessos</span></button>' : '') + '</section>';
+      '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="cancel-copy-permission"' +
+      ' aria-label="Encerrar recuperação da permissão de cópia" title="Encerrar recuperação da permissão de cópia">' +
+      renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>' :
+      state.section === "people" ? '<button class="course-authoring-icon-action" type="button" data-course-authoring-action="retry-people"' +
+      ' aria-label="Atualizar acessos" title="Atualizar acessos">' +
+      renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : '') + '</section>';
 }
 
 function renderTransientCourseFeedback(state) {
@@ -822,8 +833,9 @@ function renderInvalidRoute() {
       title: "Endereço inválido",
       message: "Abra um curso pela lista para continuar."
     }) +
-    '<button type="button" class="course-authoring-primary" data-course-authoring-action="show-list">' +
-    renderUiIcon("arrow-left", "course-authoring-button-icon") + "<span>Ver cursos</span></button></main></div>";
+    '<button type="button" class="course-authoring-primary" data-course-authoring-action="show-list"' +
+    ' aria-label="Ver cursos" title="Ver cursos">' +
+    renderUiIcon("arrow-left", "course-authoring-button-icon") + "</button></main></div>";
 }
 
 export function renderCourseAuthoringSurface(state = {}) {

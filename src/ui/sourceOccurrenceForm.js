@@ -42,7 +42,7 @@ export function renderSourceOccurrenceForm(state, link) {
     }).join("") + '</ul>' : `<p>${previouslyGeneral ? "Referência legada sem trecho específico. Selecione a passagem que ela sustenta para completar a citação." : "Selecione o trecho que esta fonte sustenta."}</p>`) +
     (editor ? '<div class="source-occurrence-editor">' +
       (targets.length > 1 ? `<label>Parte do texto<select data-source-occurrence-target data-link-id="${escape(link.linkId)}">` + targets.map((item, index) =>
-        `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(location(item))} · ${escape(item.text.slice(0, 70))}</option>`).join("") + '</select></label>' : '') +
+        `<option value="${index}"${index === (editor.targetIndex ?? 0) ? " selected" : ""}>${escape(location(item))}</option>`).join("") + '</select></label>' : '') +
       (target ? `<dl class="source-occurrence-location" data-source-occurrence-location><div><dt>Parte</dt><dd>${escape(location(target))}</dd></div></dl>` : '') +
       `<label>Selecione o trecho<textarea data-source-occurrence-selection data-link-id="${escape(link.linkId)}" data-source-occurrence-index="${editor.targetIndex ?? 0}" rows="6" readonly>${escape(target?.text || "")}</textarea></label>` +
       '<div class="course-source-compact-actions">' +

@@ -110,7 +110,7 @@ class FakeStudyRoot {
   }
 
   querySelectorAll(selector) {
-    if (["[data-action='open-response-input']", "[data-action='toggle-citations']", "[data-action='download-citation-attachment']"].includes(selector)) {
+    if (["[data-action='toggle-citations']", "[data-action='download-citation-attachment']"].includes(selector)) {
       const node = this.querySelector(selector);
       if (node && selector === "[data-action='download-citation-attachment']") {
         node.dataset = { citationIndex: "0", attachmentIndex: "0" };
@@ -692,57 +692,5 @@ test("falha do flush em background mantém a sincronização pendente", async ()
 
   assert.match(root.innerHTML, /aria-label="Sincronização pendente"/u);
   assert.doesNotMatch(root.innerHTML, /aria-label="Sincronizado"/u);
-  app.destroy();
-});
-
-test("resposta aberta legada exige texto, preserva produção livre e não simula correção", async () => {
-  const document = project();
-  const units = document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits;
-  units[0] = {
-    id: "unit-a",
-    position: 1,
-    title: "Explique a decisão do switch",
-    role: "practice",
-    content: [{
-      id: "contexto",
-      package: "aralearn.resource.paragraph",
-      version: "1.0.0",
-      data: { text: "A tabela MAC está vazia quando um quadro chega à porta 1." }
-    }],
-    response: {
-      id: "resposta",
-      package: "aralearn.response.open",
-      version: "1.0.0",
-      data: { prompt: "Explique o que o switch aprende e como decide o encaminhamento." }
-    },
-    feedback: [{
-      id: "retorno",
-      package: "aralearn.resource.paragraph",
-      version: "1.0.0",
-      data: { text: "A origem serve à aprendizagem; o destino serve à decisão de saída." }
-    }],
-    topics: ["switch"]
-  };
-  const repository = applicationRepository(document, async (markSynced) => markSynced());
-  const root = new FakeStudyRoot();
-  const app = createCourseStudyApplication({ root, repository, initialProject: document });
-
-  await openFirstStudyUnit(app);
-  root.click("next-study-unit");
-  assert.match(root.innerHTML, /Escreva uma resposta antes de continuar\./u);
-  assert.match(root.innerHTML, /Explique a decisão do switch/u);
-
-  const input = root.querySelector("[data-action='open-response-input']");
-  input.value = "O switch aprende o MAC de origem na porta 1.\nDepois procura o destino.";
-  input.dispatch("input");
-  root.click("next-study-unit");
-  await nextTurn();
-
-  assert.match(root.innerHTML, /Resposta preenchida\./u);
-  assert.match(root.innerHTML, /A origem serve à aprendizagem/u);
-  assert.doesNotMatch(root.innerHTML, /Correto|Incorreto/iu);
-  root.click("continue-feedback");
-  await nextTurn();
-  assert.match(root.innerHTML, /Unidade 2/u);
   app.destroy();
 });

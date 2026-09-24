@@ -1,8 +1,9 @@
 import { UUID_PATTERN } from "../domain/identifiers.js";
 import { upgradeStudyDraftRecoveries } from "./studyDraftRecovery.js";
+import { upgradeCachedCourseContentV7 } from "./courseContentUpgradeV7.js";
 
 const DATABASE_PREFIX = "aralearn-course-v1";
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 const CACHE_STORE = "course_cache";
 
 function requestPromise(request) {
@@ -60,7 +61,10 @@ export class CourseLocalStore {
           database.createObjectStore(CACHE_STORE, { keyPath: "key" });
         }
         if (event.oldVersion === 1) {
-          upgradeStudyDraftRecoveries(request.transaction.objectStore(CACHE_STORE));
+          const store = request.transaction.objectStore(CACHE_STORE);
+          upgradeStudyDraftRecoveries(store, () => upgradeCachedCourseContentV7(store));
+        } else if (event.oldVersion === 2) {
+          upgradeCachedCourseContentV7(request.transaction.objectStore(CACHE_STORE));
         }
       };
       request.onerror = () => reject(new Error(

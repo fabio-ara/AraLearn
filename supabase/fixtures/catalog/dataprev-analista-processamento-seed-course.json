@@ -56613,12 +56613,18 @@
                       "role": "theory",
                       "content": [
                         {
+                          "id": "converted-v7-1",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Compare os octetos de 192.0.2.10/24 e 192.0.2.200/24."
+                          }
+                        },
+                        {
                           "id": "dataprev-redes-l04-ms03-c02-content",
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare os octetos de 192.0.2.10/24 e 192.0.2.200/24.",
-                            "caption": "Comparação dos octetos dos endereços",
                             "columns": [
                               "Primeiro octeto",
                               "Segundo octeto",
@@ -56638,7 +56644,8 @@
                                 "2",
                                 "200"
                               ]
-                            ]
+                            ],
+                            "note": "Comparação dos octetos dos endereços"
                           }
                         }
                       ],
@@ -59004,12 +59011,18 @@
                       "role": "theory",
                       "content": [
                         {
+                          "id": "converted-v7-2",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Compare os campos que individualizam cada comunicação."
+                          }
+                        },
+                        {
                           "id": "dataprev-redes-l05-ms02-portas-c05-content",
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare os campos que individualizam cada comunicação.",
-                            "caption": "Campos que distinguem os fluxos",
                             "columns": [
                               "Fluxo",
                               "Origem",
@@ -59032,7 +59045,8 @@
                                 "51001",
                                 "443"
                               ]
-                            ]
+                            ],
+                            "note": "Campos que distinguem os fluxos"
                           }
                         }
                       ],
@@ -62917,12 +62931,18 @@
                       "role": "practice",
                       "content": [
                         {
+                          "id": "converted-v7-3",
+                          "package": "aralearn.resource.paragraph",
+                          "version": "1.0.0",
+                          "data": {
+                            "text": "Cada linha registra um horário e duas contagens do segmento."
+                          }
+                        },
+                        {
                           "id": "dataprev-redes-l06-ms03-rmon-c08-content",
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Cada linha registra um horário e duas contagens do segmento.",
-                            "caption": "Amostras do segmento por horário",
                             "columns": [
                               "Horário",
                               "Octetos observados",
@@ -62949,7 +62969,8 @@
                                 "1490",
                                 "4"
                               ]
-                            ]
+                            ],
+                            "note": "Amostras do segmento por horário"
                           }
                         }
                       ],

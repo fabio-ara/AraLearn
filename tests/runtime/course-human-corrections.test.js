@@ -403,7 +403,7 @@ test("alteração apenas de fontes preserva literalmente a reconciliação da me
   assert.deepEqual(adapter.commits[0].upserts[0].content.explanation.reconciliation, reconciliation);
 });
 
-test("correção preserva response.open legado e exige prática avaliável com feedback ao substituir", async () => {
+test("correção rejeita componente removido e exige feedback ao substituir a prática", async () => {
   const adapter = adapterFixture();
   const legacy = { ...correctedContent("Prática anterior"), role: "practice", response: {
     id: "legacy-response", package: "aralearn.response.open", version: "1.0.0", data: { prompt: "Explique o DNS." }
@@ -413,10 +413,8 @@ test("correção preserva response.open legado e exige prática avaliável com f
   }], hasMore: false });
   const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" }, course: "Curso de Redes",
     corrections: [{ unidade: 1, conteudo: { ...legacy, title: "Prática anterior com título corrigido" } }] };
-  await applyHumanCourseCorrections(input);
-  assert.deepEqual(adapter.commits[0].upserts[0].content.response, legacy.response);
-  input.corrections[0].conteudo.response = { ...legacy.response, data: { prompt: "Nova pergunta aberta." } };
-  await assert.rejects(applyHumanCourseCorrections(input), { code: "practice_response_legacy_only" });
+  await assert.rejects(applyHumanCourseCorrections(input), { code: "human_component_not_found" });
+  assert.equal(adapter.commits.length, 0);
   input.corrections[0].conteudo.response = { id: "response", package: "aralearn.response.choice", version: "1.0.0",
     data: { question: "Qual elemento é um nome?", selectionMode: "single", selectionCriterion: "correct",
       options: [{ id: "name", text: "example.org" }, { id: "address", text: "192.0.2.1" }], answerIds: ["name"] } };
@@ -424,8 +422,8 @@ test("correção preserva response.open legado e exige prática avaliável com f
   input.corrections[0].conteudo.feedback = [{ id: "feedback", package: "aralearn.resource.paragraph", version: "1.0.0",
     data: { text: "example.org é o nome; 192.0.2.1 é o endereço IP." } }];
   await applyHumanCourseCorrections(input);
-  assert.equal(adapter.commits.length, 2);
-  assert.equal(adapter.commits[1].upserts[0].content.response.package, "aralearn.response.choice");
+  assert.equal(adapter.commits.length, 1);
+  assert.equal(adapter.commits[0].upserts[0].content.response.package, "aralearn.response.choice");
 });
 
 test("#272 correção application focal resolve Fonte/Âncora e marca provider_assistance", async () => {

@@ -64,8 +64,14 @@ values('99270000-0000-4000-8000-000000000101','source',1,repeat('a',64),64,'appl
 update public.courses set public_file_access='available' where id='99270000-0000-4000-8000-000000000101';
 select ok(not private.can_read_course_file_v1('99270000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'Política pública não revela PDF vinculado somente a rascunho');
 select ok(private.can_read_course_file_v1('99270000-0000-4000-8000-000000000101','99270000-0000-4000-8000-000000000001','source',repeat('a',64)),'Proprietário inspeciona PDF do rascunho');
-insert into private.course_media(course_id,content_hash,byte_size,media_type,file_name,storage_path)
-values('99270000-0000-4000-8000-000000000101',repeat('b',64),524,'audio/wav','audio-sintetico.wav','99270000-0000-4000-8000-000000000101/'||repeat('b',64)||'.wav');
+-- Áudio do apoio usa o ciclo real: preparação vigente, objeto no Storage e ingestão.
+select public.prepare_course_audio_for_actor_v1('99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),repeat('b',64),524,'audio/wav','audio-sintetico.wav','source-342-audio-01');
+insert into storage.objects(bucket_id,name,metadata)
+values('course-media','99270000-0000-4000-8000-000000000101/'||repeat('b',64)||'.wav','{"size":524,"mimetype":"audio/wav"}');
+select public.execute_course_media_for_actor_v1('99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),jsonb_build_object('type','ingest_audio',
+ 'media',jsonb_build_object('contentHash',repeat('b',64),'byteSize',524,'mediaType','audio/wav'),'fileName','audio-sintetico.wav'),'source-342-audio-01');
 update private.course_entities set content=jsonb_set(content,'{explanation,content}',(content#>'{explanation,content}')||jsonb_build_array(
  jsonb_build_object('id','audio','package','aralearn.resource.audio','version','1.0.0','data',jsonb_build_object('tracks',jsonb_build_array(
  jsonb_build_object('id','track','label','Sinal sintético','locale','pt-BR','kind','file','media',jsonb_build_object('contentHash',repeat('b',64),'byteSize',524,'mediaType','audio/wav'),
@@ -83,8 +89,15 @@ select throws_ok($q$select public.get_course_explanation_media_download_for_acto
  (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),'other',repeat('b',64))$q$,'42501','O áudio não está disponível neste conteúdo.','Outra microssequência não herda o áudio');
 update private.course_source_attachments set public_file_access='restricted',version=version+1,updated_at=clock_timestamp() where course_id='99270000-0000-4000-8000-000000000101' and content_hash=repeat('a',64);
 select ok(not private.can_read_course_file_v1('99270000-0000-4000-8000-000000000101',null,'source',repeat('a',64)),'Restrição de arquivo prevalece mesmo para recorte elegível');
+-- A faixa em uso pela Explicação precisa sair antes de a gravação ser retirada.
+select throws_ok($$select public.execute_course_media_for_actor_v1('99270000-0000-4000-8000-000000000001','99270000-0000-4000-8000-000000000101',
+ (select revision from public.courses where id='99270000-0000-4000-8000-000000000101'),
+ jsonb_build_object('type','remove_media','contentHash',repeat('b',64)),'source-342-remove-in-use')$$,
+ 'PT409','Esta gravação ainda compõe o estudo. Substitua ou retire suas faixas antes de remover o arquivo.','gravação usada pela Explicação não é retirada');
+update private.course_entities set content=jsonb_set(content,'{explanation,content}',(content#>'{explanation,content}')-1)
+ where course_id='99270000-0000-4000-8000-000000000101' and entity_type='microsequence' and entity_id='s';
 update private.course_media set status='removed' where course_id='99270000-0000-4000-8000-000000000101' and content_hash=repeat('b',64);
-select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s')->>'state','stale','Retirar áudio usado desatualiza a base que o utiliza');
+select is(private.course_content_review_v1('99270000-0000-4000-8000-000000000101','microsequence_explanation','s')->>'state','stale','Alterar o conteúdo da Explicação desatualiza a base que o utiliza');
 -- Correções fornecem a lista completa; a composição comum ainda preserva
 -- vínculos omitidos. Todos os passos passam pela composição transacional.
 create function pg_temp.replace_375(links jsonb, replacement boolean, request text) returns jsonb language sql as $$

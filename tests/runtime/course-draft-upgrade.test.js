@@ -46,7 +46,7 @@ test("instalação nova não lê chaves anteriores e upgrade vazio converge à m
   const fresh = await CourseLocalStore.open(new IDBFactory(), { userId: USER });
   t.after(() => fresh.close());
   const { store } = await upgraded(t, []);
-  assert.equal(fresh.database.version, 2);
+  assert.equal(fresh.database.version, 3);
   assert.equal(store.database.version, fresh.database.version);
   assert.equal(await fresh.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY), null);
   assert.equal(await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY), null);
@@ -137,7 +137,7 @@ test("falha após gravação do destino reverte exclusões, conteúdo e versão;
   original.close();
   const store = await CourseLocalStore.open(indexedDb, { userId: USER });
   t.after(() => store.close());
-  assert.equal(store.database.version, 2);
+  assert.equal(store.database.version, 3);
   assert.equal((await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY)).entries.length, 2);
 });
 

@@ -1,4 +1,5 @@
 import { publicErrorMessage } from "./publicErrorMessage.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
@@ -34,7 +35,7 @@ export function mountStudyDeviceSettings(root, {
     <p data-study-sync-message role="status"></p>
     <details class="study-state-adoption"><summary>Progresso sem conta</summary>
       <p>Traga seu progresso e suas marcas Rever para a conta. A cópia neste dispositivo será mantida.</p>
-      <button class="account-settings-subview-entry" type="button" data-study-adoption-preview>Examinar progresso sem conta</button>
+      <div class="account-device-data-actions"><button class="icon-ghost" type="button" data-study-adoption-preview title="Examinar progresso sem conta" aria-label="Examinar progresso sem conta">${renderUiIcon("preview", "account-settings-action-icon")}</button></div>
       <div data-study-adoption-content></div>
       <p data-study-adoption-message role="status"></p>
     </details>
@@ -80,7 +81,7 @@ export function mountStudyDeviceSettings(root, {
         <p>Acrescentar à conta <strong>@${escapeHtml(identity.handle)}</strong>:</p>
         ${result.courses.map((course) => `<label><input type="checkbox" name="visitorCourse" value="${escapeHtml(course.courseId)}"> <span>${escapeHtml(course.title)}<small>${quantity(course.completedCount, "unidade concluída", "unidades concluídas")} · ${quantity(course.reviewCount, "marca Rever", "marcas Rever")}</small></span></label>`).join("")}
         <p>O progresso já existente na conta será mantido. Sua posição de leitura não será substituída.</p>
-        <button class="account-settings-subview-entry" type="submit">Acrescentar os cursos selecionados à minha conta</button>
+        <div class="account-device-data-actions"><button class="icon-ghost" type="submit" title="Acrescentar os cursos selecionados à minha conta" aria-label="Acrescentar os cursos selecionados à minha conta">${renderUiIcon("account-add", "account-settings-action-icon")}</button></div>
       </form>`;
     } catch (error) {
       if (!destroyed) message.textContent = publicErrorMessage(error, "Não foi possível examinar o progresso sem conta.");

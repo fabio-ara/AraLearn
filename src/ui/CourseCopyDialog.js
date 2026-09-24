@@ -20,6 +20,7 @@ export function createCourseCopyDialog({ root, controller, onCopied }) {
   let state = {};
   const render = () => {
     const ready = state.source || state.pending;
+    const copyActionLabel = state.busy ? "Confirmando…" : state.pending ? "Repetir pedido" : "Criar cópia";
     dialog.innerHTML = '<h2 id="course-copy-title">Copiar curso</h2>' +
       '<form data-course-copy-form><div class="course-copy-body">' +
       '<p id="course-copy-description">Uma cópia privada do curso, sem progresso ou observações.</p>' +
@@ -33,7 +34,7 @@ export function createCourseCopyDialog({ root, controller, onCopied }) {
         '</div></div>' +
         '<div class="course-authoring-confirm-actions">' +
         `<button type="button" data-copy-close aria-label="Cancelar" title="Cancelar"${state.busy ? " disabled" : ""}>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
-        (ready ? `<button type="submit" class="is-primary" aria-label="${state.busy ? "Confirmando…" : state.pending ? "Repetir pedido" : "Criar cópia"}" title="${state.pending ? "Repetir pedido" : "Criar cópia"}"${state.busy ? " disabled" : ""}>` +
+        (ready ? `<button type="submit" class="is-primary" aria-label="${copyActionLabel}" title="${copyActionLabel}"${state.busy ? " disabled" : ""}>` +
         `${renderUiIcon(state.pending ? "rotate" : "copy", "course-authoring-button-icon")}</button></div></form>` :
         `<button type="button" data-copy-reload aria-label="Conferir novamente" title="Conferir novamente"${state.loading ? " disabled" : ""}>${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div></form>`);
   };

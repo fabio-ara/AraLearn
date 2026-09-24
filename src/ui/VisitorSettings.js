@@ -8,7 +8,7 @@ export function renderVisitorSettings(root, {
   confirmValue = globalThis.confirm?.bind(globalThis) || (() => false)
 } = {}) {
   const groups = [["account", "account", "Conta"], ["appearance", "theme-system", "Aparência"],
-    ["device", "offline", "Sincronização e dados deste dispositivo"], ["authoring", "intent", "Preferências de autoria"], ["assistant", "intent", "Conectar assistente"]];
+    ["device", "offline", "Sincronização e dados deste dispositivo"], ["authoring", "edit", "Preferências de autoria"], ["assistant", "sparkles", "Conectar assistente"]];
   root.innerHTML = `<section class="account-settings-overlay contextual-settings" data-visitor-settings hidden aria-label="Configurações">
     <div class="account-settings-backdrop" data-visitor-close></div>
     <div class="account-settings-sheet courses-home-screen" role="dialog" aria-modal="true" aria-labelledby="visitor-settings-title" tabindex="-1">
@@ -23,7 +23,7 @@ export function renderVisitorSettings(root, {
         </nav>
         <section class="account-settings-view" data-visitor-view="account" hidden aria-label="Conta">
           <p class="account-settings-group-copy">Você está estudando sem conta. Seu progresso e as marcas Rever ficam neste dispositivo.</p>
-          <button class="account-settings-subview-entry" type="button" data-visitor-signin><span>${renderUiIcon("sign-in", "account-settings-action-icon")}<strong>Entrar ou criar conta</strong></span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>
+          <button class="account-settings-subview-entry" type="button" data-visitor-signin title="Entrar ou criar conta" aria-label="Entrar ou criar conta"><span>${renderUiIcon("sign-in", "account-settings-action-icon")}</span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>
         </section>
         <section class="account-settings-view" data-visitor-view="appearance" hidden aria-label="Aparência">
 
@@ -34,11 +34,11 @@ export function renderVisitorSettings(root, {
         </section>
         <section class="account-settings-view account-device-data" data-visitor-view="device" hidden aria-label="Sincronização e dados deste dispositivo">
           <p class="account-settings-group-copy">O estudo sem conta fica neste dispositivo. Para sincronizar o progresso entre dispositivos, entre em uma conta e acrescente o progresso sem conta em Configurações.</p>
-          <div class="account-device-data-actions"><button type="button" data-visitor-clear-device${typeof onClearDeviceData === "function" ? "" : " disabled"}>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados sem conta deste dispositivo</span></button></div>
+          <div class="account-device-data-actions"><button class="is-danger" type="button" data-visitor-clear-device title="Remover dados sem conta deste dispositivo" aria-label="Remover dados sem conta deste dispositivo"${typeof onClearDeviceData === "function" ? "" : " disabled"}>${renderUiIcon("trash", "account-settings-action-icon")}</button></div>
         </section>
         <section class="account-settings-view" data-visitor-view="authoring" hidden aria-label="Preferências de autoria">
           <p class="account-settings-group-copy">Foco, cadência, pontos de revisão e diálogo com o assistente são preferências pessoais salvas na conta. As escolhas do curso e as condições de pesquisa permanecem no contexto do curso.</p>
-          <button class="account-settings-subview-entry" type="button" data-visitor-signin><span>${renderUiIcon("sign-in", "account-settings-action-icon")}<strong>Entrar para definir preferências</strong></span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>
+          <button class="account-settings-subview-entry" type="button" data-visitor-signin title="Entrar para definir preferências de autoria" aria-label="Entrar para definir preferências de autoria"><span>${renderUiIcon("sign-in", "account-settings-action-icon")}</span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>
         </section>
         <section class="account-settings-view" data-visitor-view="assistant" hidden aria-label="Conectar assistente"><div data-assistant-connection></div></section>
       </div>

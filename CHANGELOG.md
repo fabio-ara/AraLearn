@@ -9,6 +9,25 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.82] - 2026-09-24
+
+### Melhorado
+
+- a autoria por assistentes concentra cada produção em uma microssequência, resolve referências operacionais deriváveis e reúne objetivo, explicação, prática, evidência e feedback para uma inspeção independente;
+- Unidade e Explicação compartilham enquadramento de estudo, com rolagem, ampliação e tela inteira para tabelas e diagramas; rótulos, seleção e foco permanecem representáveis;
+- máquinas de estados, pilhas de chamadas, sessões de terminal, memória e diagramas de sistemas apresentam hierarquia e legendas mais claras; código mostra a linguagem declarada e ordenação usa lista vertical;
+- fontes e ocorrências conservam seus escopos e permitem voltar ao trecho; ações, configurações, observações, áudio e estados vazios recebem controles e retornos consistentes.
+
+### Corrigido
+
+- a inspeção pedagógica recusa inconsistências verificáveis e exige fundamentação no conteúdo corrente; práticas de múltipla escolha e múltiplas lacunas preservam suas capacidades e feedback específico;
+- a gravação e o compartilhamento verificam disponibilidade do áudio, e a remoção de uma faixa em uso informa o impedimento sem bloquear a exclusão completa do curso;
+- respostas a observações preservam o histórico e não alteram implicitamente o estado de revisão; a edição manual conserva os campos de todos os componentes vigentes.
+
+### Removido
+
+- resposta aberta, dicionário, gramática e leitura complementar deixam de integrar o repertório; migrações do banco e do cache local preservam conteúdo útil sem manter renderizadores legados.
+
 ## [0.0.81] - 2026-09-18
 
 ### Melhorado

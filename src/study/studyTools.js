@@ -141,7 +141,8 @@ export function createStudyTools({ root, getStudyUnit, getContextKey, getHost,
     } catch (error) {
       if (epoch !== ownEpoch || !overlay) return;
       body.innerHTML = '<p class="study-tool-error" data-study-tool-error role="alert"></p>' +
-        '<button type="button" data-retry-study-tool>Tentar novamente</button>';
+        '<button class="course-authoring-icon-action" type="button" data-retry-study-tool aria-label="Tentar novamente" title="Tentar novamente">' +
+        renderUiIcon("rotate", "course-authoring-button-icon") + '</button>';
       showError(error?.message || "Não foi possível abrir esta ferramenta.");
       body.querySelector("[data-retry-study-tool]").addEventListener("click", () => void showTool(toolId));
     }

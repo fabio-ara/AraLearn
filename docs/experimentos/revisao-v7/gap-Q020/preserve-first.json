@@ -1,0 +1,873 @@
+{
+  "contract": "aralearn.gap-q020-preserve-first.v1",
+  "limitation": "Duas materializações por quantidade, no mesmo worker e na mesma sessão; sem replicação inter-worker.",
+  "positives": [
+    {
+      "id": "gap-q020-a-2-raw",
+      "position": 2,
+      "title": "Q020 2 lacunas — materialização A",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Leia intervalos inclusivos: início e fim pertencem ao segmento.",
+            "segments": [
+              {
+                "id": "a-code",
+                "start": "0x1000",
+                "end": "0x10ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "Instruções somente leitura"
+              },
+              {
+                "id": "a-data",
+                "start": "0x1100",
+                "end": "0x11ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "Valores inicializados"
+              },
+              {
+                "id": "a-stack",
+                "start": "0x1200",
+                "end": "0x12ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "Chamadas automáticas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-a",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, mapear vira mapeando no gerúndio; o plural de bloco é blocos; em reler, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "response-a-2",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete cada lacuna conforme a regra e o intervalo observados.",
+          "blanks": [
+            {
+              "id": "memory-boundary",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[0].end",
+              "responseMode": "text",
+              "answer": "0x10ff",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-gerund",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "text",
+              "answer": "mapeando",
+              "label": "Regra gerund"
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-a-2",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "gap",
+        "evidência equivalente"
+      ]
+    },
+    {
+      "id": "gap-q020-b-2-raw",
+      "position": 2,
+      "title": "Q020 2 lacunas — materialização B",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-b",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Considere que cada faixa inclui seus dois limites e leia os segmentos em ordem crescente.",
+            "segments": [
+              {
+                "id": "b-code",
+                "start": "0x2000",
+                "end": "0x20ff",
+                "label": "Instruções",
+                "kind": "code",
+                "description": "Rotinas executáveis"
+              },
+              {
+                "id": "b-data",
+                "start": "0x2100",
+                "end": "0x21ff",
+                "label": "Entradas",
+                "kind": "data",
+                "description": "Valores recebidos"
+              },
+              {
+                "id": "b-stack",
+                "start": "0x2200",
+                "end": "0x22ff",
+                "label": "Quadro",
+                "kind": "stack",
+                "description": "Estado de chamadas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-b",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, testar vira testando no gerúndio; o plural de pacote é pacotes; em reabrir, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "response-b-2",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete cada lacuna conforme a regra e o intervalo observados.",
+          "blanks": [
+            {
+              "id": "memory-boundary",
+              "targetInstanceId": "memory-b",
+              "targetPath": "segments[0].end",
+              "responseMode": "text",
+              "answer": "0x20ff",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-gerund",
+              "targetInstanceId": "language-b",
+              "targetPath": "text",
+              "responseMode": "text",
+              "answer": "testando",
+              "label": "Regra gerund"
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-b-2",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "gap",
+        "evidência equivalente"
+      ]
+    },
+    {
+      "id": "gap-q020-a-4-raw",
+      "position": 4,
+      "title": "Q020 4 lacunas — materialização A",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Leia intervalos inclusivos: início e fim pertencem ao segmento.",
+            "segments": [
+              {
+                "id": "a-code",
+                "start": "0x1000",
+                "end": "0x10ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "Instruções somente leitura"
+              },
+              {
+                "id": "a-data",
+                "start": "0x1100",
+                "end": "0x11ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "Valores inicializados"
+              },
+              {
+                "id": "a-stack",
+                "start": "0x1200",
+                "end": "0x12ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "Chamadas automáticas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-a",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, mapear vira mapeando no gerúndio; o plural de bloco é blocos; em reler, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "response-a-4",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete cada lacuna conforme a regra e o intervalo observados.",
+          "blanks": [
+            {
+              "id": "memory-boundary",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[0].end",
+              "responseMode": "text",
+              "answer": "0x10ff",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-gerund",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "text",
+              "answer": "mapeando",
+              "label": "Regra gerund"
+            },
+            {
+              "id": "memory-label",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[1].label",
+              "responseMode": "choice",
+              "answer": "Dados",
+              "distractors": [
+                "blocos",
+                "Pilha"
+              ],
+              "label": "Regra memory-order"
+            },
+            {
+              "id": "language-plural",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "blocos",
+              "distractors": [
+                "mapear",
+                "reler"
+              ],
+              "label": "Regra regular-plural"
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-a-4",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "gap",
+        "evidência equivalente"
+      ]
+    },
+    {
+      "id": "gap-q020-b-4-raw",
+      "position": 4,
+      "title": "Q020 4 lacunas — materialização B",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-b",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Considere que cada faixa inclui seus dois limites e leia os segmentos em ordem crescente.",
+            "segments": [
+              {
+                "id": "b-code",
+                "start": "0x2000",
+                "end": "0x20ff",
+                "label": "Instruções",
+                "kind": "code",
+                "description": "Rotinas executáveis"
+              },
+              {
+                "id": "b-data",
+                "start": "0x2100",
+                "end": "0x21ff",
+                "label": "Entradas",
+                "kind": "data",
+                "description": "Valores recebidos"
+              },
+              {
+                "id": "b-stack",
+                "start": "0x2200",
+                "end": "0x22ff",
+                "label": "Quadro",
+                "kind": "stack",
+                "description": "Estado de chamadas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-b",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, testar vira testando no gerúndio; o plural de pacote é pacotes; em reabrir, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "response-b-4",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete cada lacuna conforme a regra e o intervalo observados.",
+          "blanks": [
+            {
+              "id": "memory-boundary",
+              "targetInstanceId": "memory-b",
+              "targetPath": "segments[0].end",
+              "responseMode": "text",
+              "answer": "0x20ff",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-gerund",
+              "targetInstanceId": "language-b",
+              "targetPath": "text",
+              "responseMode": "text",
+              "answer": "testando",
+              "label": "Regra gerund"
+            },
+            {
+              "id": "memory-label",
+              "targetInstanceId": "memory-b",
+              "targetPath": "segments[1].label",
+              "responseMode": "choice",
+              "answer": "Entradas",
+              "distractors": [
+                "pacotes",
+                "Quadro"
+              ],
+              "label": "Regra memory-order"
+            },
+            {
+              "id": "language-plural",
+              "targetInstanceId": "language-b",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "pacotes",
+              "distractors": [
+                "testar",
+                "reabrir"
+              ],
+              "label": "Regra regular-plural"
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-b-4",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "gap",
+        "evidência equivalente"
+      ]
+    },
+    {
+      "id": "gap-q020-a-6-raw",
+      "position": 6,
+      "title": "Q020 6 lacunas — materialização A",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Leia intervalos inclusivos: início e fim pertencem ao segmento.",
+            "segments": [
+              {
+                "id": "a-code",
+                "start": "0x1000",
+                "end": "0x10ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "Instruções somente leitura"
+              },
+              {
+                "id": "a-data",
+                "start": "0x1100",
+                "end": "0x11ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "Valores inicializados"
+              },
+              {
+                "id": "a-stack",
+                "start": "0x1200",
+                "end": "0x12ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "Chamadas automáticas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-a",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, mapear vira mapeando no gerúndio; o plural de bloco é blocos; em reler, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "response-a-6",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete cada lacuna conforme a regra e o intervalo observados.",
+          "blanks": [
+            {
+              "id": "memory-boundary",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[0].end",
+              "responseMode": "text",
+              "answer": "0x10ff",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-gerund",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "text",
+              "answer": "mapeando",
+              "label": "Regra gerund"
+            },
+            {
+              "id": "memory-label",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[1].label",
+              "responseMode": "choice",
+              "answer": "Dados",
+              "distractors": [
+                "blocos",
+                "Pilha"
+              ],
+              "label": "Regra memory-order"
+            },
+            {
+              "id": "language-plural",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "blocos",
+              "distractors": [
+                "mapear",
+                "reler"
+              ],
+              "label": "Regra regular-plural"
+            },
+            {
+              "id": "memory-next-boundary",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[2].start",
+              "responseMode": "text",
+              "answer": "0x1200",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-prefix",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "repetição",
+              "distractors": [
+                "Dados",
+                "blocos"
+              ],
+              "label": "Regra re-prefix"
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-a-6",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "gap",
+        "evidência equivalente"
+      ]
+    },
+    {
+      "id": "gap-q020-b-6-raw",
+      "position": 6,
+      "title": "Q020 6 lacunas — materialização B",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-b",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Considere que cada faixa inclui seus dois limites e leia os segmentos em ordem crescente.",
+            "segments": [
+              {
+                "id": "b-code",
+                "start": "0x2000",
+                "end": "0x20ff",
+                "label": "Instruções",
+                "kind": "code",
+                "description": "Rotinas executáveis"
+              },
+              {
+                "id": "b-data",
+                "start": "0x2100",
+                "end": "0x21ff",
+                "label": "Entradas",
+                "kind": "data",
+                "description": "Valores recebidos"
+              },
+              {
+                "id": "b-stack",
+                "start": "0x2200",
+                "end": "0x22ff",
+                "label": "Quadro",
+                "kind": "stack",
+                "description": "Estado de chamadas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-b",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, testar vira testando no gerúndio; o plural de pacote é pacotes; em reabrir, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "response-b-6",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Complete cada lacuna conforme a regra e o intervalo observados.",
+          "blanks": [
+            {
+              "id": "memory-boundary",
+              "targetInstanceId": "memory-b",
+              "targetPath": "segments[0].end",
+              "responseMode": "text",
+              "answer": "0x20ff",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-gerund",
+              "targetInstanceId": "language-b",
+              "targetPath": "text",
+              "responseMode": "text",
+              "answer": "testando",
+              "label": "Regra gerund"
+            },
+            {
+              "id": "memory-label",
+              "targetInstanceId": "memory-b",
+              "targetPath": "segments[1].label",
+              "responseMode": "choice",
+              "answer": "Entradas",
+              "distractors": [
+                "pacotes",
+                "Quadro"
+              ],
+              "label": "Regra memory-order"
+            },
+            {
+              "id": "language-plural",
+              "targetInstanceId": "language-b",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "pacotes",
+              "distractors": [
+                "testar",
+                "reabrir"
+              ],
+              "label": "Regra regular-plural"
+            },
+            {
+              "id": "memory-next-boundary",
+              "targetInstanceId": "memory-b",
+              "targetPath": "segments[2].start",
+              "responseMode": "text",
+              "answer": "0x2200",
+              "label": "Regra memory-inclusive-interval"
+            },
+            {
+              "id": "language-prefix",
+              "targetInstanceId": "language-b",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "repetição",
+              "distractors": [
+                "Entradas",
+                "pacotes"
+              ],
+              "label": "Regra re-prefix"
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-b-6",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "gap",
+        "evidência equivalente"
+      ]
+    }
+  ],
+  "negativeControls": [
+    {
+      "id": "gap-q020-negative-cross-a",
+      "position": 99,
+      "title": "Q020 controle negativo — distratores cruzados",
+      "role": "practice",
+      "content": [
+        {
+          "id": "memory-a",
+          "package": "aralearn.resource.memory_layout",
+          "version": "1.0.0",
+          "data": {
+            "prompt": "Leia intervalos inclusivos: início e fim pertencem ao segmento.",
+            "segments": [
+              {
+                "id": "a-code",
+                "start": "0x1000",
+                "end": "0x10ff",
+                "label": "Código",
+                "kind": "code",
+                "description": "Instruções somente leitura"
+              },
+              {
+                "id": "a-data",
+                "start": "0x1100",
+                "end": "0x11ff",
+                "label": "Dados",
+                "kind": "data",
+                "description": "Valores inicializados"
+              },
+              {
+                "id": "a-stack",
+                "start": "0x1200",
+                "end": "0x12ff",
+                "label": "Pilha",
+                "kind": "stack",
+                "description": "Chamadas automáticas"
+              }
+            ]
+          }
+        },
+        {
+          "id": "language-a",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, mapear vira mapeando no gerúndio; o plural de bloco é blocos; em reler, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "negative-cross-response-a",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Controle negativo separado.",
+          "blanks": [
+            {
+              "id": "cross-memory-data",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[1].label",
+              "responseMode": "choice",
+              "answer": "Dados",
+              "distractors": [
+                "0x1200"
+              ]
+            },
+            {
+              "id": "cross-memory-stack",
+              "targetInstanceId": "memory-a",
+              "targetPath": "segments[2].label",
+              "responseMode": "choice",
+              "answer": "Pilha",
+              "distractors": [
+                "Dados"
+              ]
+            },
+            {
+              "id": "cross-language-gerund",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "mapeando",
+              "distractors": [
+                "blocos"
+              ]
+            },
+            {
+              "id": "cross-language-plural",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "blocos",
+              "distractors": [
+                "mapeando"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-a-99",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "controle-negativo"
+      ]
+    },
+    {
+      "id": "gap-q020-negative-ambiguous-a",
+      "position": 100,
+      "title": "Q020 controle negativo — equivalência ambígua",
+      "role": "practice",
+      "content": [
+        {
+          "id": "language-a",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "Pela regra do corpus, mapear vira mapeando no gerúndio; o plural de bloco é blocos; em reler, o prefixo re- indica repetição.",
+            "languageTag": "pt-BR",
+            "textDirection": "auto"
+          }
+        }
+      ],
+      "response": {
+        "id": "negative-ambiguous-response-a",
+        "package": "aralearn.response.gap",
+        "version": "1.0.0",
+        "data": {
+          "prompt": "Controle negativo separado.",
+          "blanks": [
+            {
+              "id": "ambiguous-prefix",
+              "targetInstanceId": "language-a",
+              "targetPath": "text",
+              "responseMode": "choice",
+              "answer": "repetição",
+              "acceptedAnswers": [
+                "repeticao"
+              ],
+              "distractors": [
+                "REPETIÇÃO"
+              ]
+            }
+          ]
+        }
+      },
+      "feedback": [
+        {
+          "id": "feedback-a-100",
+          "package": "aralearn.resource.paragraph",
+          "version": "1.0.0",
+          "data": {
+            "text": "A resposta correta aplica a regra observada ao elemento indicado; um termo de outra lacuna não substitui essa relação."
+          }
+        }
+      ],
+      "topics": [
+        "Q020",
+        "controle-negativo"
+      ]
+    }
+  ]
+}

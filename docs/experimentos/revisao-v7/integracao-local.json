@@ -1,0 +1,47 @@
+{
+  "contract": "aralearn.revisao-v7.focal-client-proof.v3",
+  "finishedAtUtc": "2026-09-24T22:57:04.7811913Z",
+  "exitCode": 0,
+  "environment": "Supabase local descartável com OAuth, Edge Functions, PostgreSQL e Storage",
+  "generator": "B-2 real de corrected-B-2/final.json; controle negativo sintético separado",
+  "anonymousAction": "rejected",
+  "mcpOAuth": true,
+  "actionsOAuth": true,
+  "practiceCount": 3,
+  "inspectionState": "current",
+  "control": {
+    "type": "synthetic_negative_control",
+    "target": "third study unit",
+    "pristineBasisHash": "95afa818e679467f4e2acd0ba4252b124d2f1ca21ccb5f5bdaa7d4669d75d510",
+    "degradedBasisHash": "db12720bcf74a8b8e5238655d1d11b532d63365dbd9882c9386d7c531f940956",
+    "restoredBasisHash": "99416224e8c722fef8180d2113cd6b30748bb9561c96e6562a2b95f07e1864c7",
+    "degradedOutcome": "needs_attention",
+    "restoredOutcome": "consistent"
+  },
+  "checks": [
+    {
+      "dimension": "alignment",
+      "result": "sufficient"
+    },
+    {
+      "dimension": "evidence",
+      "result": "sufficient"
+    },
+    {
+      "dimension": "representation",
+      "result": "sufficient"
+    },
+    {
+      "dimension": "feedback",
+      "result": "sufficient"
+    },
+    {
+      "dimension": "sufficiency",
+      "result": "sufficient"
+    }
+  ],
+  "literalRestorationVerified": true,
+  "totalClientCalls": 72,
+  "crossChannel": "MCP create/materialize/read + Actions inspect/repair/inspect",
+  "judgments": "Pareceres fixos fundamentados no conteúdo; não são nova avaliação autônoma por GPT."
+}

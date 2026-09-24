@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { inspectCoursePracticeAuthoring, requireCoursePracticeAuthoring } from "../../src/domain/coursePracticeAuthoring.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
-import { applyManualStudyUnitEdit } from "../../src/ui/manualStudyUnitEdit.js";
 
 const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
 const legacy = { id: "legacy", title: "Resposta anterior", role: "practice", position: 1, topics: [],
@@ -13,18 +12,11 @@ const practice = { ...legacy, response: { id: "response", package: "aralearn.res
     { id: "socket", text: "Socket" }, { id: "conexao", text: "Conexão" }
   ] } }, feedback: [paragraph("feedback", "Socket é a interface local; a conexão relaciona as pontas.")] };
 
-test("nova resposta aberta é recusada, mas manutenção alheia preserva legado", () => {
-  assert.equal(inspectCoursePracticeAuthoring(legacy)[0].code, "practice_response_legacy_only");
-  assert.deepEqual(inspectCoursePracticeAuthoring({ ...legacy, title: "Título revisto" }, legacy), []);
-  const reordered = { ...legacy, response: { data: legacy.response.data, version: "1.0.0",
-    package: "aralearn.response.open", id: "response" } };
-  assert.deepEqual(inspectCoursePracticeAuthoring(reordered, legacy), []);
-  assert.throws(() => requireCoursePracticeAuthoring({ ...legacy, response: { ...legacy.response,
-    data: { prompt: "Outro pedido." } } }, legacy), { code: "practice_response_legacy_only" });
-  assert.equal(applyManualStudyUnitEdit(legacy, "content:body", { pathValues: { text: "Observe os dois participantes." } }).response.package,
-    "aralearn.response.open");
-  assert.throws(() => applyManualStudyUnitEdit(legacy, "response:response", { pathValues: { prompt: "Novo pedido." } }),
-    { code: "practice_response_legacy_only" });
+test("componente removido é recusado inclusive se a resposta não mudou", () => {
+  for (const previous of [null, legacy]) {
+    assert.equal(inspectCoursePracticeAuthoring(legacy, previous)[0].code, "unknown_response_component");
+    assert.throws(() => requireCoursePracticeAuthoring(legacy, previous), { code: "unknown_response_component" });
+  }
 });
 
 test("prática nova ou substituída exige feedback local e avalia sem rede", () => {

@@ -5,7 +5,7 @@
     {
       "id": "aralearn-catalogo-recursos",
       "title": "AraLearn: Catálogo de recursos",
-      "goal": "Conhecer, comparar e testar todos os packages de representação e resposta disponíveis no AraLearn.",
+      "goal": "Conhecer, comparar e interpretar as representações e formas de resposta disponíveis no AraLearn.",
       "modules": [
         {
           "id": "catalog-family-family-text-language",
@@ -13,13 +13,13 @@
           "guide": {
             "goal": "Representações lineares, anotadas, linguísticas e de código.",
             "include": [
-              "packages cuja família primária é Texto, código e linguagem"
+              "representações da família Texto, código e linguagem"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -30,12 +30,12 @@
               "id": "catalog-family-family-text-language-lesson",
               "title": "Recursos de Texto, código e linguagem",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Texto, código e linguagem.",
+                "goal": "Reconhecer e interpretar as representações de Texto, código e linguagem.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -57,7 +57,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -72,7 +72,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Texto anotado: Relacionar trechos precisos de um texto a observações, funções ou explicações. É apropriado quando a tarefa exige leitura minuciosa ou associação entre evidência e explicação. Na leitura, observe esta convenção: alvo e comentário identificados. Limite importante: Não use para comentários sem alvo textual preciso.",
+                            "text": "Texto anotado: Relacionar trechos precisos de um texto a observações, funções ou explicações. É apropriado quando a tarefa exige leitura minuciosa ou associação entre evidência e explicação. Na leitura, observe esta convenção: alvo e comentário identificados. Cada observação precisa de um trecho preciso do texto como alvo.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -218,7 +218,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Texto anotado: a representação deve realizar a finalidade declarada — Relacionar trechos precisos de um texto a observações, funções ou explicações. A operação-alvo da tarefa é anotar e rotular. Evite este recurso quando a observação não possui alvo textual preciso.",
+                            "text": "A anotação \"Iniciador\" marca o trecho que nomeia quem inicia a comunicação, e no texto exibido esse trecho é \"cliente\" — não a requisição anotada como \"Pedido\".",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -239,7 +239,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -254,7 +254,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Áudio: Escutar e comparar falas ou gravações quando o som participa da aprendizagem. É apropriado quando o som fornece informação necessária à tarefa. Na leitura, observe esta convenção: faixas identificadas. Limite importante: Voz nativa depende do dispositivo e não gera arquivo exportável.",
+                            "text": "Áudio: Escutar e comparar falas ou gravações quando o som participa da aprendizagem. É apropriado quando o som fornece informação necessária à tarefa. Na leitura, observe esta convenção: faixas identificadas. A escuta depende do som estar disponível, e a alternativa textual acompanha cada faixa.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -269,8 +269,12 @@
                                 "id": "greeting",
                                 "label": "Saudação em inglês",
                                 "locale": "en-US",
-                                "kind": "native",
-                                "text": "Good morning. How are you?",
+                                "kind": "file",
+                                "media": {
+                                  "contentHash": "2884adedf324fda1a7a2ad4cdf4d34df27e998d3a89d7cbf7f7001ca9b5aa0d6",
+                                  "byteSize": 133416,
+                                  "mediaType": "audio/wav"
+                                },
                                 "alternative": {
                                   "text": "Good morning. How are you?",
                                   "visibility": "on_request"
@@ -300,8 +304,12 @@
                                 "id": "greeting",
                                 "label": "Saudação em inglês",
                                 "locale": "en-US",
-                                "kind": "native",
-                                "text": "Good morning. How are you?",
+                                "kind": "file",
+                                "media": {
+                                  "contentHash": "2884adedf324fda1a7a2ad4cdf4d34df27e998d3a89d7cbf7f7001ca9b5aa0d6",
+                                  "byteSize": 133416,
+                                  "mediaType": "audio/wav"
+                                },
                                 "alternative": {
                                   "text": "Good morning. How are you?",
                                   "visibility": "on_request"
@@ -352,7 +360,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Good morning é uma saudação da manhã; How are you? pergunta como a outra pessoa está. A alternativa escrita permite analisar a mesma fala quando a voz do dispositivo não está disponível. Critério de revisão para Áudio: a representação deve realizar a finalidade declarada — Escutar e comparar falas ou gravações quando o som participa da aprendizagem. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando ler a prosa oferece toda a informação necessária.",
+                            "text": "A faixa \"Saudação em inglês\" traz \"Good morning. How are you?\"; a alternativa que corresponde a essa saudação é \"Bom dia. Como você está?\", e as demais descrevem outros atos de fala que não aparecem na gravação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -373,7 +381,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -388,7 +396,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Código: Apresentar código cuja sintaxe, indentação e execução mental são relevantes. É apropriado quando a sintaxe e a execução mental fazem parte da aprendizagem. Na leitura, observe esta convenção: fonte monoespaçada. Limite importante: Não executa o programa.",
+                            "text": "Código: Apresentar código cuja sintaxe, indentação e execução mental são relevantes. É apropriado quando a sintaxe e a execução mental fazem parte da aprendizagem. Na leitura, observe esta convenção: fonte monoespaçada. O trecho é lido e executado mentalmente, e o efeito das linhas depende da explicação que o acompanha.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -449,277 +457,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Código: a representação deve realizar a finalidade declarada — Apresentar código cuja sintaxe, indentação e execução mental são relevantes. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando pseudocódigo ou prosa expressam melhor a ideia.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        }
-                      ],
-                      "topics": []
-                    }
-                  ]
-                },
-                {
-                  "id": "catalog-aralearn-resource-dictionary-microsequence",
-                  "title": "Dicionário",
-                  "goal": "Compreender quando usar Dicionário e experimentar sua interação canônica.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [
-                    "aralearn.resource.dictionary"
-                  ],
-                  "checks": [
-                    "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "catalog-aralearn-resource-dictionary-theory-card",
-                      "position": 1,
-                      "title": "Como ler: Dicionário",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-resource-dictionary-theory-introduction",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Dicionário: Abrir um ou mais dicionários configurados pela autoria para consultar sentidos, pronúncia e exemplos adequados ao contexto. É apropriado quando a consulta lexical ajuda a compreender uma passagem ou escolher um uso. Na leitura, observe esta convenção: idioma identificado. Limite importante: Abre a consulta configurada; não escolhe um sentido nem transmite automaticamente o texto da unidade.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        },
-                        {
-                          "id": "catalog-aralearn-resource-dictionary-theory-example",
-                          "package": "aralearn.resource.dictionary",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Compare os usos da palavra",
-                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
-                            "items": [
-                              {
-                                "id": "lexicon",
-                                "label": "Dicionário escolhido para a unidade",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/dicionario"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": []
-                    },
-                    {
-                      "id": "catalog-aralearn-resource-dictionary-practice-card",
-                      "position": 2,
-                      "title": "Pratique: Dicionário",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-resource-dictionary-practice-example",
-                          "package": "aralearn.resource.dictionary",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Compare os usos da palavra",
-                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
-                            "items": [
-                              {
-                                "id": "lexicon",
-                                "label": "Dicionário escolhido para a unidade",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/dicionario"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "catalog-aralearn-resource-dictionary-practice-response",
-                        "package": "aralearn.response.choice",
-                        "version": "1.0.0",
-                        "data": {
-                          "question": "Considere: ‘O relatório sustenta a hipótese, mas novos testes ainda são necessários’. Ao consultar os usos de ‘sustentar’, qual paráfrase preserva o sentido da passagem inteira?",
-                          "selectionMode": "single",
-                          "selectionCriterion": "correct",
-                          "options": [
-                            {
-                              "id": "support",
-                              "kind": "text",
-                              "text": "O relatório oferece apoio à hipótese sem encerrar sua verificação."
-                            },
-                            {
-                              "id": "proof",
-                              "kind": "text",
-                              "text": "O relatório comprova definitivamente a hipótese, independentemente de novos testes."
-                            },
-                            {
-                              "id": "suspend",
-                              "kind": "text",
-                              "text": "O relatório deixa a hipótese sem avaliação por não apresentar argumentos sobre ela."
-                            },
-                            {
-                              "id": "mention",
-                              "kind": "text",
-                              "text": "O relatório apenas enuncia a hipótese, sem tomar posição a seu respeito."
-                            }
-                          ],
-                          "answerIds": [
-                            "support"
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "catalog-aralearn-resource-dictionary-practice-feedback",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Na passagem, ‘sustenta’ significa oferecer apoio à hipótese. A continuação sobre novos testes impede confundir esse apoio com comprovação definitiva; o verbo também não se reduz a enunciar a hipótese ou deixar de avaliá-la. A ferramenta abre a consulta, mas escolher o sentido exige considerar a frase inteira. Critério de revisão para Dicionário: a representação deve realizar a finalidade declarada — Abrir um ou mais dicionários configurados pela autoria para consultar sentidos, pronúncia e exemplos adequados ao contexto. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando o exercício exige recuperar o sentido sem consulta.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        }
-                      ],
-                      "topics": []
-                    }
-                  ]
-                },
-                {
-                  "id": "catalog-aralearn-resource-grammar-microsequence",
-                  "title": "Gramática",
-                  "goal": "Compreender quando usar Gramática e experimentar sua interação canônica.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [
-                    "aralearn.resource.grammar"
-                  ],
-                  "checks": [
-                    "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "catalog-aralearn-resource-grammar-theory-card",
-                      "position": 1,
-                      "title": "Como ler: Gramática",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-resource-grammar-theory-introduction",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Gramática: Abrir explicações gramaticais escolhidas para apoiar a análise de formas, construções e usos no contexto da tarefa. É apropriado quando o estudante precisa consultar uma regra, construção ou contraste enquanto estuda. Na leitura, observe esta convenção: idioma identificado. Limite importante: Não analisa a frase nem corrige a produção automaticamente.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        },
-                        {
-                          "id": "catalog-aralearn-resource-grammar-theory-example",
-                          "package": "aralearn.resource.grammar",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Consulte a construção antes de responder",
-                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
-                            "items": [
-                              {
-                                "id": "construction",
-                                "label": "Explicação da construção",
-                                "description": "Leia a seção indicada e volte para justificar sua análise.",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/gramatica/construcao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": []
-                    },
-                    {
-                      "id": "catalog-aralearn-resource-grammar-practice-card",
-                      "position": 2,
-                      "title": "Pratique: Gramática",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-resource-grammar-practice-example",
-                          "package": "aralearn.resource.grammar",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Consulte a construção antes de responder",
-                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
-                            "items": [
-                              {
-                                "id": "construction",
-                                "label": "Explicação da construção",
-                                "description": "Leia a seção indicada e volte para justificar sua análise.",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/gramatica/construcao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "catalog-aralearn-resource-grammar-practice-response",
-                        "package": "aralearn.response.choice",
-                        "version": "1.0.0",
-                        "data": {
-                          "question": "Compare ‘A pesquisadora revisou o texto’ e ‘O texto foi revisado pela pesquisadora’. Qual consulta gramatical ajuda a explicar a mudança de posição dos constituintes sem trocar quem realizou a ação?",
-                          "selectionMode": "single",
-                          "selectionCriterion": "correct",
-                          "options": [
-                            {
-                              "id": "voice",
-                              "kind": "text",
-                              "text": "Voz ativa e passiva: a relação entre sujeito e agente da ação."
-                            },
-                            {
-                              "id": "tense",
-                              "kind": "text",
-                              "text": "Tempo verbal: a passagem do passado para o presente."
-                            },
-                            {
-                              "id": "agreement",
-                              "kind": "text",
-                              "text": "Concordância: a correção de um verbo flexionado incorretamente."
-                            },
-                            {
-                              "id": "lexicon",
-                              "kind": "text",
-                              "text": "Sentido lexical: uma mudança no significado de revisar."
-                            }
-                          ],
-                          "answerIds": [
-                            "voice"
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "catalog-aralearn-resource-grammar-practice-feedback",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "A consulta pertinente é sobre voz ativa e passiva. Em ‘A pesquisadora revisou o texto’, a pesquisadora é sujeito e agente; em ‘O texto foi revisado pela pesquisadora’, o texto é sujeito, mas a pesquisadora continua sendo o agente. A mudança de construção não troca quem realizou a revisão. Critério de revisão para Gramática: a representação deve realizar a finalidade declarada — Abrir explicações gramaticais escolhidas para apoiar a análise de formas, construções e usos no contexto da tarefa. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando o texto da unidade já oferece toda a orientação necessária.",
+                            "text": "A lacuna fica no identificador da função, logo depois de \"def\": o trecho exibido está em Python e declara busca_binaria para comparar o valor do meio com o alvo e reduzir o intervalo pela metade a cada iteração.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -740,7 +478,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -755,7 +493,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Glosa interlinear: Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações. É apropriado quando a análise depende da correspondência entre formas e propriedades gramaticais. Na leitura, observe esta convenção: alinhamento interlinear por unidade. Limite importante: Não substitui uma análise morfológica explicada.",
+                            "text": "Glosa interlinear: Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações. É apropriado quando a análise depende da correspondência entre formas e propriedades gramaticais. Na leitura, observe esta convenção: alinhamento interlinear por unidade. Cada abreviação precisa ser apresentada antes ou junto do primeiro uso, e a glosa acompanha a análise em vez de substituí-la.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -918,7 +656,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Glosa interlinear: a representação deve realizar a finalidade declarada — Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando uma citação ou tradução simples é suficiente.",
+                            "text": "A forma destacada é \"Gila\", alinhada à glosa \"now\" na primeira unidade. A tradução livre do trecho é \"Agora, a fazenda deles não ficará para trás para sempre.\", e as abreviações OBL, GEN, FUT, NEG ficam legendadas.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -939,7 +677,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -954,7 +692,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Texto explicado: Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada. É apropriado quando a relação espacial não acrescenta significado. Na leitura, observe esta convenção: prosa acadêmica contínua. Limite importante: Não representa relações espaciais ou tabulares.",
+                            "text": "Texto explicado: Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada. É apropriado quando a relação espacial não acrescenta significado. Na leitura, observe esta convenção: prosa acadêmica contínua. Relações espaciais e comparações em colunas pedem outra representação; aqui, cada ideia independente ganha seu próprio trecho.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1015,141 +753,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Texto explicado: a representação deve realizar a finalidade declarada — Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada. A operação-alvo da tarefa é explicar e situar. Evite este recurso quando a estrutura do objeto exige notação própria.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        }
-                      ],
-                      "topics": []
-                    }
-                  ]
-                },
-                {
-                  "id": "catalog-aralearn-resource-reading-microsequence",
-                  "title": "Leitura complementar",
-                  "goal": "Compreender quando usar Leitura complementar e experimentar sua interação canônica.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [
-                    "aralearn.resource.reading"
-                  ],
-                  "checks": [
-                    "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "catalog-aralearn-resource-reading-theory-card",
-                      "position": 1,
-                      "title": "Como ler: Leitura complementar",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-resource-reading-theory-introduction",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Leitura complementar: Oferecer leituras selecionadas com orientação para ampliar, contrastar ou aplicar o conteúdo da tarefa e depois retomar o estudo. É apropriado quando outra leitura acrescenta uma perspectiva ou explicação necessária ao percurso. Na leitura, observe esta convenção: finalidade da leitura explícita. Limite importante: Não resume nem verifica automaticamente o material indicado.",
-                            "languageTag": "pt-BR",
-                            "textDirection": "auto"
-                          }
-                        },
-                        {
-                          "id": "catalog-aralearn-resource-reading-theory-example",
-                          "package": "aralearn.resource.reading",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Amplie a comparação",
-                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
-                            "items": [
-                              {
-                                "id": "reading",
-                                "label": "Perspectiva complementar",
-                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/leitura/comparacao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": []
-                    },
-                    {
-                      "id": "catalog-aralearn-resource-reading-practice-card",
-                      "position": 2,
-                      "title": "Pratique: Leitura complementar",
-                      "role": "practice",
-                      "content": [
-                        {
-                          "id": "catalog-aralearn-resource-reading-practice-example",
-                          "package": "aralearn.resource.reading",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Amplie a comparação",
-                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
-                            "items": [
-                              {
-                                "id": "reading",
-                                "label": "Perspectiva complementar",
-                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/leitura/comparacao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": {
-                        "id": "catalog-aralearn-resource-reading-practice-response",
-                        "package": "aralearn.response.choice",
-                        "version": "1.0.0",
-                        "data": {
-                          "question": "A ‘Perspectiva complementar’ apresenta outro mecanismo para o mesmo fenômeno. Ao voltar à unidade, qual resultado atende à orientação de comparar as explicações?",
-                          "selectionMode": "single",
-                          "selectionCriterion": "correct",
-                          "options": [
-                            {
-                              "id": "mechanisms",
-                              "kind": "text",
-                              "text": "Mostrar como cada mecanismo liga causas ao efeito e em que condições as explicações divergem."
-                            },
-                            {
-                              "id": "count",
-                              "kind": "text",
-                              "text": "Contar os argumentos e tomar a explicação com mais itens como a mais forte."
-                            },
-                            {
-                              "id": "merge",
-                              "kind": "text",
-                              "text": "Fundir os dois mecanismos em uma explicação antes de examinar suas diferenças."
-                            },
-                            {
-                              "id": "replace",
-                              "kind": "text",
-                              "text": "Substituir a explicação da unidade pela adicional porque ela foi recomendada."
-                            }
-                          ],
-                          "answerIds": [
-                            "mechanisms"
-                          ]
-                        }
-                      },
-                      "feedback": [
-                        {
-                          "id": "catalog-aralearn-resource-reading-practice-feedback",
-                          "package": "aralearn.resource.paragraph",
-                          "version": "1.0.0",
-                          "data": {
-                            "text": "Comparar explicações exige reconstruir como cada mecanismo liga causas e efeito e localizar as condições em que suas previsões ou razões divergem. Contar argumentos, fundir mecanismos antes de examiná-los ou preferir automaticamente o texto adicional não realiza esse contraste. A leitura complementar também não confirma uma fonte por ter sido indicada. Critério de revisão para Leitura complementar: a representação deve realizar a finalidade declarada — Oferecer leituras selecionadas com orientação para ampliar, contrastar ou aplicar o conteúdo da tarefa e depois retomar o estudo. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando o conteúdo necessário só foi deslocado para fora da unidade sem orientação.",
+                            "text": "A lacuna recorta um termo da própria explicação: o trecho completo é \"O protocolo define regras para que duas partes troquem mensagens de forma previsível.\", e \"previsível\" é a palavra retirada que qualifica como as duas partes trocam mensagens.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1169,13 +773,13 @@
           "guide": {
             "goal": "Tabelas, expressões, grandezas, coordenadas e séries quantitativas.",
             "include": [
-              "packages cuja família primária é Dados, grandezas e notação"
+              "representações da família Dados, grandezas e notação"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -1186,12 +790,12 @@
               "id": "catalog-family-family-quantitative-symbolic-lesson",
               "title": "Recursos de Dados, grandezas e notação",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Dados, grandezas e notação.",
+                "goal": "Reconhecer e interpretar as representações de Dados, grandezas e notação.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -1213,7 +817,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -1228,7 +832,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Calculadora: Disponibilizar cálculo numérico real para verificar resultados, explorar valores e comparar uma previsão com um cálculo explícito. É apropriado quando o cálculo apoia o raciocínio da tarefa, sem substituir a justificativa. Na leitura, observe esta convenção: precedência explícita. Limite importante: Cálculo real aproximado, com até 12 algarismos significativos na exibição. Não resolve equações nem calcula com unidades ou números complexos.",
+                            "text": "Calculadora: Disponibilizar cálculo numérico real para verificar resultados, explorar valores e comparar uma previsão com um cálculo explícito. É apropriado quando o cálculo apoia o raciocínio da tarefa, sem substituir a justificativa. Na leitura, observe esta convenção: precedência explícita. O cálculo real é aproximado e apoia a verificação: ele não substitui a justificativa nem resolve equações simbólicas.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1308,7 +912,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "A expressão calcula √(3² + 4²) = √25 = 5. Os catetos não se somam diretamente: a diagonal é a hipotenusa do triângulo retângulo. O cálculo confere a estimativa, mas a relação geométrica justifica a expressão. Critério de revisão para Calculadora: a representação deve realizar a finalidade declarada — Disponibilizar cálculo numérico real para verificar resultados, explorar valores e comparar uma previsão com um cálculo explícito. A operação-alvo da tarefa é calcular e avaliar. Evite este recurso quando a tarefa avalia cálculo mental sem apoio.",
+                            "text": "A alternativa correta é \"5 unidades de comprimento.\": a expressão calcula √(3² + 4²) = √25 = 5, porque a diagonal é a hipotenusa do triângulo retângulo. Os catetos não se somam diretamente, e as demais alternativas descrevem um cateto, a soma dos catetos ou a soma dos quadrados.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1329,7 +933,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -1344,7 +948,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Gráfico estatístico: Tornar tendência, comparação quantitativa, escala e incerteza visualmente observáveis. É apropriado quando a forma quantitativa, a escala ou a incerteza são parte da evidência. Na leitura, observe esta convenção: eixos, unidades e domínios nomeados. Limite importante: Representa linhas, dispersão e barras; distribuições exigem package específico.",
+                            "text": "Gráfico estatístico: Tornar tendência, comparação quantitativa, escala e incerteza visualmente observáveis. É apropriado quando a forma quantitativa, a escala ou a incerteza são parte da evidência. Na leitura, observe esta convenção: eixos, unidades e domínios nomeados. Poucos valores ficam mais claros em texto ou tabela, e distribuições pedem uma representação própria.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1354,7 +958,7 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+                            "prompt": "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
                             "chartType": "line",
                             "xAxis": {
                               "label": "Concorrência",
@@ -1472,7 +1076,7 @@
                                 "value": 300
                               }
                             ],
-                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+                            "caption": "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
                           }
                         }
                       ],
@@ -1491,7 +1095,7 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+                            "prompt": "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
                             "chartType": "line",
                             "xAxis": {
                               "label": "Concorrência",
@@ -1609,7 +1213,7 @@
                                 "value": 300
                               }
                             ],
-                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+                            "caption": "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
                           }
                         }
                       ],
@@ -1637,7 +1241,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Gráfico estatístico: a representação deve realizar a finalidade declarada — Tornar tendência, comparação quantitativa, escala e incerteza visualmente observáveis. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando poucos valores são mais claros em texto ou tabela.",
+                            "text": "As duas séries do gráfico são \"Controle centralizado\" e \"Particionamento adaptativo\": o nome identifica qual arquitetura cada linha representa, por isso a primeira série fica com \"Controle centralizado\". O eixo vertical mede latência no percentil 95 em ms, e as barras mostram intervalo de confiança de 95%.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1658,7 +1262,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -1673,7 +1277,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Fórmula: Representar expressão matemática ou química estruturada com leitura acessível explícita. É apropriado quando a forma simbólica participa do raciocínio. Na leitura, observe esta convenção: estrutura bidimensional preservada. Limite importante: accessibleText não pode apenas repetir símbolos incompreensíveis.",
+                            "text": "Fórmula: Representar expressão matemática ou química estruturada com leitura acessível explícita. É apropriado quando a forma simbólica participa do raciocínio. Na leitura, observe esta convenção: estrutura bidimensional preservada. A leitura em palavras acompanha a expressão: símbolos sem leitura equivalente não comunicam a estrutura.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -1686,122 +1290,7 @@
                             "prompt": "Em teoria de campos, uma ação pode ser definida por uma integral sobre uma região. Leia a expressão e identifique a integral, a derivada parcial, a contração entre índices tensoriais e a função aplicada.",
                             "notation": "mathematics",
                             "accessibleText": "A ação S de u é a integral sobre ômega de um meio vezes a derivada parcial da componente u índice i em relação à coordenada x índice j, contraída com o tensor T índices superiores i e j, mais f de u, em relação ao volume V.",
-                            "expression": {
-                              "type": "row",
-                              "children": [
-                                {
-                                  "type": "function",
-                                  "name": "S",
-                                  "arguments": [
-                                    {
-                                      "type": "identifier",
-                                      "value": "u"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "operator",
-                                  "value": "="
-                                },
-                                {
-                                  "type": "integral",
-                                  "kind": "single",
-                                  "lower": {
-                                    "type": "identifier",
-                                    "value": "Ω"
-                                  },
-                                  "variable": {
-                                    "type": "identifier",
-                                    "value": "V"
-                                  },
-                                  "integrand": {
-                                    "type": "fenced",
-                                    "open": "[",
-                                    "close": "]",
-                                    "content": {
-                                      "type": "row",
-                                      "children": [
-                                        {
-                                          "type": "fraction",
-                                          "numerator": {
-                                            "type": "number",
-                                            "value": "1"
-                                          },
-                                          "denominator": {
-                                            "type": "number",
-                                            "value": "2"
-                                          }
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "derivative",
-                                          "kind": "partial",
-                                          "expression": {
-                                            "type": "tensor",
-                                            "symbol": "u",
-                                            "lowerIndices": [
-                                              {
-                                                "type": "identifier",
-                                                "value": "i"
-                                              }
-                                            ]
-                                          },
-                                          "variables": [
-                                            {
-                                              "symbol": {
-                                                "type": "tensor",
-                                                "symbol": "x",
-                                                "lowerIndices": [
-                                                  {
-                                                    "type": "identifier",
-                                                    "value": "j"
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "tensor",
-                                          "symbol": "T",
-                                          "upperIndices": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "i"
-                                            },
-                                            {
-                                              "type": "identifier",
-                                              "value": "j"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "+"
-                                        },
-                                        {
-                                          "type": "function",
-                                          "name": "f",
-                                          "arguments": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "u"
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  }
-                                }
-                              ]
-                            }
+                            "tex": "S(u)=\\int_{\\Omega} \\left[\\frac{1}{2}\\cdot\\frac{\\partial u_i}{\\partial x_j}\\cdot T^{ij}+f(u)\\right]\\,dV"
                           }
                         }
                       ],
@@ -1823,122 +1312,7 @@
                             "prompt": "Em teoria de campos, uma ação pode ser definida por uma integral sobre uma região. Leia a expressão e identifique a integral, a derivada parcial, a contração entre índices tensoriais e a função aplicada.",
                             "notation": "mathematics",
                             "accessibleText": "A ação S de u é a integral sobre ômega de um meio vezes a derivada parcial da componente u índice i em relação à coordenada x índice j, contraída com o tensor T índices superiores i e j, mais f de u, em relação ao volume V.",
-                            "expression": {
-                              "type": "row",
-                              "children": [
-                                {
-                                  "type": "function",
-                                  "name": "S",
-                                  "arguments": [
-                                    {
-                                      "type": "identifier",
-                                      "value": "u"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "operator",
-                                  "value": "="
-                                },
-                                {
-                                  "type": "integral",
-                                  "kind": "single",
-                                  "lower": {
-                                    "type": "identifier",
-                                    "value": "Ω"
-                                  },
-                                  "variable": {
-                                    "type": "identifier",
-                                    "value": "V"
-                                  },
-                                  "integrand": {
-                                    "type": "fenced",
-                                    "open": "[",
-                                    "close": "]",
-                                    "content": {
-                                      "type": "row",
-                                      "children": [
-                                        {
-                                          "type": "fraction",
-                                          "numerator": {
-                                            "type": "number",
-                                            "value": "1"
-                                          },
-                                          "denominator": {
-                                            "type": "number",
-                                            "value": "2"
-                                          }
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "derivative",
-                                          "kind": "partial",
-                                          "expression": {
-                                            "type": "tensor",
-                                            "symbol": "u",
-                                            "lowerIndices": [
-                                              {
-                                                "type": "identifier",
-                                                "value": "i"
-                                              }
-                                            ]
-                                          },
-                                          "variables": [
-                                            {
-                                              "symbol": {
-                                                "type": "tensor",
-                                                "symbol": "x",
-                                                "lowerIndices": [
-                                                  {
-                                                    "type": "identifier",
-                                                    "value": "j"
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "tensor",
-                                          "symbol": "T",
-                                          "upperIndices": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "i"
-                                            },
-                                            {
-                                              "type": "identifier",
-                                              "value": "j"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "+"
-                                        },
-                                        {
-                                          "type": "function",
-                                          "name": "f",
-                                          "arguments": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "u"
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  }
-                                }
-                              ]
-                            }
+                            "tex": "S(u)=\\int_{\\Omega} \\left[\\frac{1}{2}\\cdot\\frac{\\partial u_i}{\\partial x_j}\\cdot T^{ij}+f(u)\\right]\\,dV"
                           }
                         }
                       ],
@@ -1983,7 +1357,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Fórmula: a representação deve realizar a finalidade declarada — Representar expressão matemática ou química estruturada com leitura acessível explícita. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando uma frase é mais clara que a notação.",
+                            "text": "A expressão contrai a derivada parcial de u índice i em relação a x índice j com o tensor T de índices i e j; por isso o termo correto é \"O tensor Tⁱʲ\". A região Ω delimita a integral, f(u) é a função somada dentro dela e dV é o elemento de volume.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2004,7 +1378,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -2019,7 +1393,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Matriz: Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear. É apropriado quando as posições das entradas participam de uma operação algébrica. Na leitura, observe esta convenção: entradas sem grade de tabela. Limite importante: Não use como tabela de atributos.",
+                            "text": "Matriz: Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear. É apropriado quando as posições das entradas participam de uma operação algébrica. Na leitura, observe esta convenção: entradas sem grade de tabela. Registros com colunas de atributos pedem uma tabela: aqui as posições das entradas participam da operação algébrica.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2114,7 +1488,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Matriz: a representação deve realizar a finalidade declarada — Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando linhas são registros e colunas são atributos.",
+                            "text": "Na matriz R(θ), a primeira linha reúne cos θ e a entrada que muda o sinal da componente horizontal, que é \"−sin θ\". A segunda linha traz sin θ e cos θ, e a última coluna preserva o eixo perpendicular à rotação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2135,7 +1509,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -2150,7 +1524,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Plano cartesiano: Situar pontos, vetores, trajetórias e regiões em duas dimensões com escala acadêmica explícita. É apropriado quando posição, direção, deslocamento, trajetória ou transformação bidimensional são parte da tarefa. Na leitura, observe esta convenção: eixos e unidades nomeados. Limite importante: Somente duas dimensões.",
+                            "text": "Plano cartesiano: Situar pontos, vetores, trajetórias e regiões em duas dimensões com escala acadêmica explícita. É apropriado quando posição, direção, deslocamento, trajetória ou transformação bidimensional são parte da tarefa. Na leitura, observe esta convenção: eixos e unidades nomeados. O plano cobre duas dimensões; campos vetoriais, contornos e superfícies pedem outras representações.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2520,7 +1894,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Plano cartesiano: a representação deve realizar a finalidade declarada — Situar pontos, vetores, trajetórias e regiões em duas dimensões com escala acadêmica explícita. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a operação é somente algébrica.",
+                            "text": "O vetor e₁ sai da origem e termina em (1, 0); sua imagem pela transformação A é \"Ae₁\", que termina em (2, 1). As demais alternativas designam o outro vetor da base, um ponto do objeto original ou a região transformada A(Q).",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2541,7 +1915,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -2556,7 +1930,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Reação: Representar reagentes, produtos, proporções, estados e condições de uma reação. É apropriado quando a transformação química simbólica é parte da tarefa. Na leitura, observe esta convenção: reagentes à esquerda. Limite importante: Não substitui a explicação microscópica ou energética da reação.",
+                            "text": "Reação: Representar reagentes, produtos, proporções, estados e condições de uma reação. É apropriado quando a transformação química simbólica é parte da tarefa. Na leitura, observe esta convenção: reagentes à esquerda. A equação mostra a transformação simbólica; a explicação microscópica ou energética fica em outra forma de descrição.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2665,7 +2039,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Reação: a representação deve realizar a finalidade declarada — Representar reagentes, produtos, proporções, estados e condições de uma reação. A operação-alvo da tarefa é calcular e avaliar. Evite este recurso quando a tarefa exige somente descrição macroscópica.",
+                            "text": "A reação forma água a partir de hidrogênio e oxigênio: a fórmula do primeiro reagente é \"H₂\", com coeficiente 2 e estado gasoso, e o produto H₂O aparece com coeficiente 2 no estado líquido.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2686,7 +2060,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -2701,7 +2075,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Tabela: Comparar atributos repetidos ou consultar valores organizados por linhas e colunas. É apropriado quando os mesmos atributos são comparados entre casos. Na leitura, observe esta convenção: cabeçalhos explícitos. Limite importante: Não introduz sozinha siglas, números ou categorias ainda não explicados.",
+                            "text": "Tabela: Comparar atributos repetidos ou consultar valores organizados por linhas e colunas. É apropriado quando os mesmos atributos são comparados entre casos. Na leitura, observe esta convenção: cabeçalhos explícitos. Siglas, unidades e categorias precisam estar explicadas antes, e tabelas muito densas pedem recorte.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2711,9 +2085,9 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
-                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
-                            "layout": "wide",
+                            "title": "Respostas ao congestionamento",
+                            "legend": "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.",
+                            "note": "Detalhes dependem do algoritmo e da implementação.",
                             "columns": [
                               "Mecanismo",
                               "Sinal observado",
@@ -2764,9 +2138,9 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
-                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
-                            "layout": "wide",
+                            "title": "Respostas ao congestionamento",
+                            "legend": "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.",
+                            "note": "Detalhes dependem do algoritmo e da implementação.",
                             "columns": [
                               "Mecanismo",
                               "Sinal observado",
@@ -2831,7 +2205,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Tabela: a representação deve realizar a finalidade declarada — Comparar atributos repetidos ou consultar valores organizados por linhas e colunas. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando os valores formam uma matriz algébrica.",
+                            "text": "A primeira linha cruza o mecanismo \"Slow start\" com o sinal observado \"Início da conexão ou reinício após timeout\", a resposta principal \"Crescimento exponencial de cwnd por RTT\" e o efeito esperado \"Descobrir rapidamente a capacidade disponível\": a lacuna recorta a coluna que nomeia o mecanismo.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -2852,7 +2226,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -2867,7 +2241,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Tabela-verdade: Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. É apropriado quando é preciso observar o valor de uma fórmula em diferentes valorações. Na leitura, observe esta convenção: V e F por valoração. Limite importante: Use no máximo cinco variáveis por Unidade de estudo móvel.",
+                            "text": "Tabela-verdade: Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. É apropriado quando é preciso observar o valor de uma fórmula em diferentes valorações. Na leitura, observe esta convenção: V e F por valoração. A tabela cresce com o número de variáveis; com muitas delas, a leitura pede recorte.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3044,7 +2418,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Tabela-verdade: a representação deve realizar a finalidade declarada — Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica. A operação-alvo da tarefa é calcular e avaliar. Evite este recurso quando a tarefa é apenas definir um conectivo em prosa.",
+                            "text": "Na primeira linha da tabela-verdade, P e Q são ambos verdadeiros: a primeira valoração é \"true\". Nessa linha, P → Q e ¬P ∨ Q recebem o mesmo resultado, como nas demais valorações.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3064,13 +2438,13 @@
           "guide": {
             "goal": "Estruturas cujo sentido depende de vínculos, pertencimento ou descendência.",
             "include": [
-              "packages cuja família primária é Relações, conjuntos e hierarquias"
+              "representações da família Relações, conjuntos e hierarquias"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -3081,12 +2455,12 @@
               "id": "catalog-family-family-relational-lesson",
               "title": "Recursos de Relações, conjuntos e hierarquias",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Relações, conjuntos e hierarquias.",
+                "goal": "Reconhecer e interpretar as representações de Relações, conjuntos e hierarquias.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -3108,7 +2482,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -3123,7 +2497,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Grafo matemático: Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos. É apropriado quando a topologia abstrata é o próprio objeto de estudo. Na leitura, observe esta convenção: vértices como círculos discretos. Limite importante: Diagramas nó-aresta densos devem ser divididos ou substituídos por representação matricial apropriada.",
+                            "text": "Grafo matemático: Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos. É apropriado quando a topologia abstrata é o próprio objeto de estudo. Na leitura, observe esta convenção: vértices como círculos discretos. Quando o desenho fica denso, o recorte ou a matriz de incidência comunicam melhor do que o nó-aresta completo.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3373,7 +2747,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Grafo matemático: a representação deve realizar a finalidade declarada — Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando os nós são componentes de software, equipamentos de rede, estados ou conceitos.",
+                            "text": "O primeiro vértice do grafo é \"v1\": os vértices aparecem rotulados de v1 a v8, e as arestas do primeiro ciclo passam por ele. A ponte liga v3 a v4 e separa os dois ciclos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3394,7 +2768,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -3409,7 +2783,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Diagrama de relação: Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária. É apropriado quando as incidências entre elementos dos dois conjuntos precisam ser percebidas simultaneamente. Na leitura, observe esta convenção: dois conjuntos delimitados. Limite importante: Não representa interseção de conjuntos; para isso use diagrama de conjuntos.",
+                            "text": "Diagrama de relação: Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária. É apropriado quando as incidências entre elementos dos dois conjuntos precisam ser percebidas simultaneamente. Na leitura, observe esta convenção: dois conjuntos delimitados. Interseção de conjuntos pede outro diagrama: aqui o foco são as incidências entre domínio e contradomínio.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3610,7 +2984,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama de relação: a representação deve realizar a finalidade declarada — Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária. A operação-alvo da tarefa é classificar e associar. Evite este recurso quando pares independentes cabem em tabela.",
+                            "text": "Na relação \"está matriculado em\", Ana se relaciona com \"Álgebra linear\" e \"Redes de computadores\"; o primeiro elemento do contradomínio é \"Álgebra linear\". A imagem de Ana reúne os elementos alcançados pelas setas que partem dela.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3631,7 +3005,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -3646,7 +3020,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Diagrama de conjuntos: Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. É apropriado quando pertencimento simultâneo, ausência de interseção ou operações entre conjuntos são parte da inferência. Na leitura, observe esta convenção: contorno por conjunto. Limite importante: No máximo três conjuntos por Unidade de estudo.",
+                            "text": "Diagrama de conjuntos: Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. É apropriado quando pertencimento simultâneo, ausência de interseção ou operações entre conjuntos são parte da inferência. Na leitura, observe esta convenção: contorno por conjunto. O diagrama cobre até três conjuntos; mais do que isso pede uma representação própria de interseções.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3834,7 +3208,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama de conjuntos: a representação deve realizar a finalidade declarada — Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a relação é entre elementos de domínio e contradomínio.",
+                            "text": "O elemento destacado pertence à região \"Multiparadigma nos três grupos\", que reúne as linguagens presentes nos três conjuntos ao mesmo tempo: a primeira delas é \"Python\", e Scala também está nessa região. As demais regiões separam o que pertence a um ou dois conjuntos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -3855,7 +3229,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -3870,7 +3244,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Árvore enraizada: Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó. É apropriado quando a relação pai-filho e o caminho até a raiz são o objeto do raciocínio. Na leitura, observe esta convenção: raiz no topo. Limite importante: Relações muitos-para-muitos exigem outro package.",
+                            "text": "Árvore enraizada: Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó. É apropriado quando a relação pai-filho e o caminho até a raiz são o objeto do raciocínio. Na leitura, observe esta convenção: raiz no topo. Relações muitos-para-muitos ou com mais de um pai pedem outra representação: a árvore exige um caminho único até a raiz.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4013,7 +3387,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Árvore enraizada: a representação deve realizar a finalidade declarada — Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando há múltiplos pais ou relações cruzadas.",
+                            "text": "O nó destacado é a raiz da árvore binária de busca e recebe o rótulo \"40\": dele partem os caminhos até 20 e 65 comparados na atividade. À esquerda ficam 20 com os filhos 10 e 30; à direita, 60 com 50 e 70, e 65 abaixo de 70.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4033,13 +3407,13 @@
           "guide": {
             "goal": "Sequências, decisões, transições e mudanças observáveis durante a execução.",
             "include": [
-              "packages cuja família primária é Processos, execução e estados"
+              "representações da família Processos, execução e estados"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -4050,12 +3424,12 @@
               "id": "catalog-family-family-process-state-lesson",
               "title": "Recursos de Processos, execução e estados",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Processos, execução e estados.",
+                "goal": "Reconhecer e interpretar as representações de Processos, execução e estados.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -4077,7 +3451,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -4092,7 +3466,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Processo BPMN: Representar participantes, raias, eventos, atividades, gateways e fluxos segundo o subconjunto didático de BPMN 2.0. É apropriado quando o processo de negócio e a responsabilidade entre participantes são parte da tarefa. Na leitura, observe esta convenção: eventos circulares. Limite importante: Cobre eventos, tarefas, gateways, raias e fluxos; coreografia e conversação exigem packages próprios.",
+                            "text": "Processo BPMN: Representar participantes, raias, eventos, atividades, gateways e fluxos segundo o subconjunto didático de BPMN 2.0. É apropriado quando o processo de negócio e a responsabilidade entre participantes são parte da tarefa. Na leitura, observe esta convenção: eventos circulares. Coreografia e conversação entre participantes pedem outra representação, e processos muito extensos ficam mais legíveis decompostos em subprocessos.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4456,7 +3830,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Processo BPMN: a representação deve realizar a finalidade declarada — Representar participantes, raias, eventos, atividades, gateways e fluxos segundo o subconjunto didático de BPMN 2.0. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando o objeto é um algoritmo de programação.",
+                            "text": "O elemento destacado é \"Enviar solicitação\", a tarefa que o Cliente executa logo depois do evento inicial; dela parte o fluxo de mensagem rotulado \"solicitação\" até a Organização.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4477,7 +3851,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -4492,7 +3866,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Pilha de chamadas: Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função. É apropriado quando o encadeamento de chamadas e o conteúdo de cada quadro participam do raciocínio. Na leitura, observe esta convenção: quadro ativo no topo. Limite importante: Recursões profundas devem ser recortadas aos quadros relevantes.",
+                            "text": "Pilha de chamadas: Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função. É apropriado quando o encadeamento de chamadas e o conteúdo de cada quadro participam do raciocínio. Na leitura, observe esta convenção: quadro ativo no topo. Recursões profundas pedem recorte aos quadros que participam do raciocínio.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4643,7 +4017,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Pilha de chamadas: a representação deve realizar a finalidade declarada — Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando endereços e segmentos do espaço de memória são o objeto.",
+                            "text": "O primeiro quadro da pilha é \"main\", a chamada inicial na base, com a variável local n igual a 4 e a continuação \"encerrar o programa\". Acima dele ficam fatorial(4), que aguarda fatorial(3), e fatorial(3).",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4664,7 +4038,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -4679,7 +4053,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Fluxograma: Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. É apropriado quando o caminho depende de decisão ou repetição. Na leitura, observe esta convenção: terminais arredondados. Limite importante: Sem decisão ou repetição, prefira prosa enumerada ou uma prática de ordenação textual.",
+                            "text": "Fluxograma: Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. É apropriado quando o caminho depende de decisão ou repetição. Na leitura, observe esta convenção: terminais arredondados. Quando a sequência é apenas linear, prosa enumerada comunica melhor do que ramos e decisões.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4821,7 +4195,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Fluxograma: a representação deve realizar a finalidade declarada — Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando há apenas ordem linear ou estados persistentes.",
+                            "text": "O fluxograma começa no terminal \"Início\" e segue para \"Ler credenciais\"; depois da leitura, a decisão \"Credenciais válidas?\" separa \"Abrir sessão\" de \"Exibir erro\", e os dois ramos convergem no terminal \"Fim\".",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -4842,7 +4216,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -4857,7 +4231,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Diagrama de estados: Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados. É apropriado quando o comportamento depende do estado corrente e de um evento ou símbolo. Na leitura, observe esta convenção: estado como nó. Limite importante: Autômatos densos devem ser recortados por submáquina ou objetivo.",
+                            "text": "Diagrama de estados: Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados. É apropriado quando o comportamento depende do estado corrente e de um evento ou símbolo. Na leitura, observe esta convenção: estado como nó. O foco é o percurso entre estados; comparar a função de transição inteira fica melhor na tabela de transição.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5076,7 +4450,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama de estados: a representação deve realizar a finalidade declarada — Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando a tarefa exige comparar exaustivamente a função de transição em forma tabular.",
+                            "text": "O estado inicial do autômato é \"CLOSED\": a abertura passiva leva de CLOSED para LISTEN, e o evento \"receber SYN\" leva de LISTEN para SYN-RECEIVED. CLOSE-WAIT é o único estado de aceitação neste recorte.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5097,7 +4471,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -5112,7 +4486,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Tabela de transição: Comparar de forma exaustiva a função de transição por estado e evento ou símbolo. É apropriado quando é preciso comparar a cobertura ou a completude da função de transição. Na leitura, observe esta convenção: estado por linha. Limite importante: Alfabetos ou conjuntos de estados extensos devem ser recortados.",
+                            "text": "Tabela de transição: Comparar de forma exaustiva a função de transição por estado e evento ou símbolo. É apropriado quando é preciso comparar a cobertura ou a completude da função de transição. Na leitura, observe esta convenção: estado por linha. Conjuntos extensos de estados ou símbolos pedem recorte, e o percurso visual fica no diagrama de estados.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5325,7 +4699,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Tabela de transição: a representação deve realizar a finalidade declarada — Comparar de forma exaustiva a função de transição por estado e evento ou símbolo. A operação-alvo da tarefa é comparar e contrastar. Evite este recurso quando o percurso e a estrutura visual dos estados são o objeto.",
+                            "text": "Os dois destinos destacados são \"q0\": em q₀, o símbolo 1 mantém o autômato em q₀, e de q₂ o símbolo 1 também retorna ao estado q₀. O único estado de aceitação é q₂.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5346,7 +4720,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -5361,7 +4735,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Sessão de terminal: Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. É apropriado quando a aprendizagem depende de acompanhar ação textual, resposta do sistema e evolução observável da sessão. Na leitura, observe esta convenção: interações em ordem temporal. Limite importante: Não executa nem interpreta comandos e não consulta shell, banco de dados, rede ou ambiente externo.",
+                            "text": "Sessão de terminal: Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. É apropriado quando a aprendizagem depende de acompanhar ação textual, resposta do sistema e evolução observável da sessão. Na leitura, observe esta convenção: interações em ordem temporal. O registro mostra a sessão observada; operar o sistema continua sendo prática no ambiente real, e o resultado pode variar em outra versão ou configuração.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5488,7 +4862,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Sessão de terminal: a representação deve realizar a finalidade declarada — Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando apenas a sintaxe de um trecho de código ou configuração importa.",
+                            "text": "A primeira entrada da sessão é \"ls -l script.sh\": ela lista o arquivo e mostra que script.sh pertence ao usuário e ainda não tem permissão de execução. A tentativa seguinte é recusada com \"Permission denied\", e a permissão só é concedida por \"chmod u+x script.sh\".",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5508,13 +4882,13 @@
           "guide": {
             "goal": "Modelos de dados, componentes, contêineres e contextos de software.",
             "include": [
-              "packages cuja família primária é Dados e sistemas de software"
+              "representações da família Dados e sistemas de software"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -5525,12 +4899,12 @@
               "id": "catalog-family-family-software-data-lesson",
               "title": "Recursos de Dados e sistemas de software",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Dados e sistemas de software.",
+                "goal": "Reconhecer e interpretar as representações de Dados e sistemas de software.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -5552,7 +4926,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -5567,7 +4941,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Esquema relacional: Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional. É apropriado quando estrutura lógica relacional, normalização ou integridade referencial são parte da tarefa. Na leitura, observe esta convenção: relações como esquemas nomeados. Limite importante: Não confunde esquema com linhas de dados.",
+                            "text": "Esquema relacional: Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional. É apropriado quando estrutura lógica relacional, normalização ou integridade referencial são parte da tarefa. Na leitura, observe esta convenção: relações como esquemas nomeados. O esquema mostra a estrutura lógica; linhas de dados e o modelo conceitual têm representações próprias.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5901,7 +5275,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Esquema relacional: a representação deve realizar a finalidade declarada — Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando é necessário representar instâncias de dados.",
+                            "text": "A primeira relação do esquema é \"CLIENTE\", com a chave primária id_cliente e o atributo nome. As demais relações trazem as chaves estrangeiras para cliente, pedido e produto, e o item do pedido preserva a chave composta.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -5922,7 +5296,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -5937,7 +5311,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Modelo entidade-relacionamento: Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados. É apropriado quando o modelo conceitual e as regras de cardinalidade são o objeto. Na leitura, observe esta convenção: entidades como caixas nomeadas. Limite importante: Relacionamentos ternários complexos devem ser reificados ou receber package próprio.",
+                            "text": "Modelo entidade-relacionamento: Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados. É apropriado quando o modelo conceitual e as regras de cardinalidade são o objeto. Na leitura, observe esta convenção: entidades como caixas nomeadas. O modelo fica no nível conceitual: o esquema relacional com chaves já transformadas é outra representação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6172,7 +5546,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Modelo entidade-relacionamento: a representação deve realizar a finalidade declarada — Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando o objeto é o esquema relacional com PK e FK já transformadas.",
+                            "text": "A primeira entidade do modelo é \"Estudante\", identificada por id_estudante e ligada a Matrícula pela relação \"realiza\". Matrícula também recebe \"recebe\" de Turma e guarda nota_final, resolvendo o muitos-para-muitos com um atributo próprio.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6193,7 +5567,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -6208,7 +5582,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Contêineres de software: Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4. É apropriado quando a tarefa exige compreender unidades executáveis ou armazenamentos e suas dependências. Na leitura, observe esta convenção: fronteira única de sistema. Limite importante: Não representa classes, módulos internos, processos temporais ou nós físicos de implantação.",
+                            "text": "Contêineres de software: Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4. É apropriado quando a tarefa exige compreender unidades executáveis ou armazenamentos e suas dependências. Na leitura, observe esta convenção: fronteira única de sistema. Aqui aparecem unidades executáveis e armazenamentos; classes, módulos internos e nós físicos ficam em outro nível de representação.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6458,7 +5832,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Contêineres de software: a representação deve realizar a finalidade declarada — Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando o contexto externo basta.",
+                            "text": "O primeiro contêiner do sistema AraLearn é \"Aplicação Web\", responsável por renderizar autoria, estudo e recursos interativos. Depois dele vêm Service Worker, Base local, API de sincronização, Armazenamento de objetos, ligados entre si e ao serviço de identidade.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6479,7 +5853,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -6494,7 +5868,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Contexto de sistema de software: Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4. É apropriado quando a tarefa é explicar o contexto e a fronteira externa de um sistema de software. Na leitura, observe esta convenção: um único sistema em foco. Limite importante: Não representa contêineres, componentes, classes, infraestrutura ou sequência temporal.",
+                            "text": "Contexto de sistema de software: Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4. É apropriado quando a tarefa é explicar o contexto e a fronteira externa de um sistema de software. Na leitura, observe esta convenção: um único sistema em foco. O contexto fica na fronteira externa: contêineres, componentes, classes e sequências temporais pedem outros níveis.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6661,7 +6035,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Contexto de sistema de software: a representação deve realizar a finalidade declarada — Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a tarefa exige contêineres internos.",
+                            "text": "O sistema em foco no diagrama é \"AraLearn\", que organiza autoria e estudo de cursos em microssequências. Estudante e Autor-pesquisador interagem com ele, enquanto o serviço de identidade e o serviço de modelo permanecem fora da fronteira.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6682,7 +6056,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -6697,7 +6071,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Diagrama interno de bloco: Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML. É apropriado quando a tarefa exige compreender a composição interna e as interfaces de um bloco. Na leitura, observe esta convenção: quadro ibd nomeado. Limite importante: Não substitui diagramas paramétricos, de requisitos, de sequência ou de estados.",
+                            "text": "Diagrama interno de bloco: Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML. É apropriado quando a tarefa exige compreender a composição interna e as interfaces de um bloco. Na leitura, observe esta convenção: quadro ibd nomeado. Esta leitura cobre partes, portas e conectores internos; requisitos, sequência e estados pedem outras representações.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6934,7 +6308,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Diagrama interno de bloco: a representação deve realizar a finalidade declarada — Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a tarefa é o contexto externo de software.",
+                            "text": "O primeiro conector é \"transporta amostras calibradas\": ele liga a porta de saída \"amostras\" do Concentrador à porta de entrada \"telemetria\" da Lógica de controle. Os outros conectores levam o comando de atuação e retornam o estado observado.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -6954,13 +6328,13 @@
           "guide": {
             "goal": "Topologias, memória, pacotes e organização física ou binária.",
             "include": [
-              "packages cuja família primária é Infraestrutura, redes e layouts"
+              "representações da família Infraestrutura, redes e layouts"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -6971,12 +6345,12 @@
               "id": "catalog-family-family-infrastructure-lesson",
               "title": "Recursos de Infraestrutura, redes e layouts",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Infraestrutura, redes e layouts.",
+                "goal": "Reconhecer e interpretar as representações de Infraestrutura, redes e layouts.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -6998,7 +6372,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -7013,7 +6387,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Mapa de memória: Representar intervalos de endereços, segmentos e ocupação de memória na ordem convencional. É apropriado quando posição e intervalo de memória participam do raciocínio. Na leitura, observe esta convenção: endereços nas extremidades. Limite importante: Endereços precisam usar a mesma base.",
+                            "text": "Mapa de memória: Representar intervalos de endereços, segmentos e ocupação de memória na ordem convencional. É apropriado quando posição e intervalo de memória participam do raciocínio. Na leitura, observe esta convenção: endereços nas extremidades. Os endereços do mapa usam a mesma base, e leituras longas se concentram nos intervalos que importam.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7176,14 +6550,14 @@
                             {
                               "id": "target",
                               "targetInstanceId": "catalog-aralearn-resource-memory-layout-practice-example",
-                              "targetPath": "segments[0].label",
-                              "label": "Lacuna no segmento 1",
+                              "targetPath": "segments[0].start",
+                              "label": "Endereço inicial 1",
                               "responseMode": "choice",
-                              "answer": "Código",
+                              "answer": "0x00400000",
                               "distractors": [
-                                "Pilha",
-                                "Heap",
-                                "BSS"
+                                "0x00480000",
+                                "0x00600000",
+                                "0x00610000"
                               ]
                             }
                           ]
@@ -7195,7 +6569,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Mapa de memória: a representação deve realizar a finalidade declarada — Representar intervalos de endereços, segmentos e ocupação de memória na ordem convencional. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando a tarefa exige somente listar variáveis.",
+                            "text": "O primeiro segmento do mapa começa em \"0x00400000\" e termina em 0x0047FFFF: é o segmento de código, com instruções executáveis e somente leitura. Os endereços seguem em ordem crescente, na mesma base hexadecimal.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7216,7 +6590,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -7231,7 +6605,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Topologia de rede: Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos. É apropriado quando a organização física ou lógica da rede e o caminho entre equipamentos participam do raciocínio. Na leitura, observe esta convenção: equipamentos tipados e nomeados. Limite importante: Topologias muito densas devem ser recortadas por domínio de broadcast, caminho ou camada.",
+                            "text": "Topologia de rede: Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos. É apropriado quando a organização física ou lógica da rede e o caminho entre equipamentos participam do raciocínio. Na leitura, observe esta convenção: equipamentos tipados e nomeados. As linhas mostram conexões, e não a simulação de sinais, colisões ou encaminhamento.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7424,7 +6798,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Topologia de rede: a representação deve realizar a finalidade declarada — Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos. A operação-alvo da tarefa é acompanhar e percorrer. Evite este recurso quando a tarefa é teoria abstrata de grafos.",
+                            "text": "O primeiro equipamento é \"Estação A\", ligado ao hub por um enlace Ethernet; o hub e o repetidor apenas repetem sinais, e o switch comuta quadros. As linhas mostram conexões, não tráfego simulado.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7445,7 +6819,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -7460,7 +6834,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Layout de pacote: Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo. É apropriado quando posição, largura e fronteira dos campos alteram a interpretação. Na leitura, observe esta convenção: régua de bits. Limite importante: Cabeçalhos extensos mantêm tamanho natural e rolagem horizontal.",
+                            "text": "Layout de pacote: Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo. É apropriado quando posição, largura e fronteira dos campos alteram a interpretação. Na leitura, observe esta convenção: régua de bits. Campos extensos mantêm a largura natural e rolam na horizontal, com a explicação de cada campo na legenda.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7650,7 +7024,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Layout de pacote: a representação deve realizar a finalidade declarada — Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo. A operação-alvo da tarefa é identificar e localizar. Evite este recurso quando é preciso comparar registros heterogêneos.",
+                            "text": "O primeiro campo do cabeçalho TCP é \"Porta de origem\", com 16 bits, e identifica o processo emissor; ao lado dele fica \"Porta de destino\", com a mesma largura. A leitura percorre as palavras de 32 bits na ordem de transmissão.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7670,13 +7044,13 @@
           "guide": {
             "goal": "Interações avaliáveis coordenadas com as representações de conteúdo.",
             "include": [
-              "packages cuja família primária é Respostas e operações de prática"
+              "representações da família Respostas e operações de prática"
             ],
             "exclude": [
-              "packages classificados primariamente em outra família"
+              "representações de outras famílias"
             ],
             "notation": [
-              "contratos semânticos antes da renderização"
+              "significado dos símbolos e relações representadas"
             ],
             "avoid": [
               "escolher um recurso apenas pela aparência"
@@ -7687,12 +7061,12 @@
               "id": "catalog-family-family-response-lesson",
               "title": "Recursos de Respostas e operações de prática",
               "guide": {
-                "goal": "Reconhecer e testar os packages reunidos em Respostas e operações de prática.",
+                "goal": "Reconhecer e interpretar as representações de Respostas e operações de prática.",
                 "include": [
-                  "uma leitura guiada e uma prática por package"
+                  "leitura guiada e aplicação de cada representação"
                 ],
                 "exclude": [
-                  "variações redundantes do mesmo contrato"
+                  "repetições que não acrescentam uma nova relação"
                 ],
                 "notation": [
                   "finalidade, convenção, limite e interação"
@@ -7714,7 +7088,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -7729,7 +7103,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Escolha: Pedir que o estudante discrimine uma ou mais alternativas plausíveis. É apropriado quando discriminar opções é a operação desejada. Na leitura, observe esta convenção: enunciado único. Limite importante: Não use quando recordar ou produzir a resposta for a operação desejada.",
+                            "text": "Escolha: Pedir que o estudante discrimine uma ou mais alternativas plausíveis. É apropriado quando discriminar opções é a operação desejada. Na leitura, observe esta convenção: enunciado único. A tarefa é reconhecer uma ou mais alternativas corretas entre opções plausíveis; produzir a resposta sem pistas é outra forma de responder.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7786,7 +7160,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Escolha: a representação deve realizar a finalidade declarada — Pedir que o estudante discrimine uma ou mais alternativas plausíveis. A operação-alvo da tarefa é decidir e discriminar. Evite este recurso quando o estudante deve produzir a resposta sem pistas.",
+                            "text": "A alternativa correta é \"TCP\": o TCP entrega um fluxo de bytes confiável e ordenado e ajusta a taxa por controle de congestionamento. UDP não mantém conexão nem ordem, IP endereça e roteia datagramas, e DNS resolve nomes.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7807,7 +7181,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -7822,7 +7196,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Lacuna: Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo. É apropriado quando recordar ou completar um elemento localizado é a operação desejada. Na leitura, observe esta convenção: lacuna no lugar exato do conceito. Limite importante: O package de conteúdo precisa declarar o targetPath como editável por resposta.",
+                            "text": "Lacuna: Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo. É apropriado quando recordar ou completar um elemento localizado é a operação desejada. Na leitura, observe esta convenção: lacuna no lugar exato do conceito. A lacuna fica no lugar exato do conceito e aceita equivalentes declarados; respostas que exigem argumentação extensa pedem outra forma de responder.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7873,7 +7247,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Lacuna: a representação deve realizar a finalidade declarada — Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo. A operação-alvo da tarefa é recordar e completar. Evite este recurso quando a resposta exige argumentação extensa.",
+                            "text": "O termo esperado é \"protocolo\": ele designa o conjunto de regras que permite a duas partes trocar mensagens de forma previsível, e a lacuna recorta o lugar em que esse conceito participa do trecho exibido.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -7894,7 +7268,7 @@
                   ],
                   "checks": [
                     "a representação comunica a estrutura pretendida",
-                    "a prática usa uma modalidade declarada pelo package"
+                    "a resposta interpreta os elementos apresentados na representação"
                   ],
                   "errors": [],
                   "studyUnits": [
@@ -7909,7 +7283,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Ordenação: Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. É apropriado quando reconstruir a ordem entre ao menos duas expressões textuais é a evidência de aprendizagem. Na leitura, observe esta convenção: expressões nos campos de origem. Limite importante: Cada alvo precisa pertencer a um campo textual que declare a modalidade ordering.",
+                            "text": "Ordenação: Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. É apropriado quando reconstruir a ordem entre ao menos duas expressões textuais é a evidência de aprendizagem. Na leitura, observe esta convenção: expressões nos campos de origem. A ordem é reconstruída nas próprias expressões de leitura; diagramas e sequências arbitrárias não entram nesta forma de responder.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }
@@ -8005,7 +7379,7 @@
                           "package": "aralearn.resource.paragraph",
                           "version": "1.0.0",
                           "data": {
-                            "text": "Critério de revisão para Ordenação: a representação deve realizar a finalidade declarada — Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas. A operação-alvo da tarefa é ordenar e sequenciar. Evite este recurso quando a ordem é arbitrária.",
+                            "text": "A ordem esperada é: 1) \"O cliente envia a consulta ao resolvedor recursivo\"; 2) \"O resolvedor consulta um servidor raiz\"; 3) \"O resolvedor alcança o servidor autoritativo\"; 4) \"O resolvedor devolve a resposta ao cliente\". Cada frase encadeia a anterior: o cliente consulta o resolvedor recursivo, que pergunta ao servidor raiz, alcança o autoritativo e devolve a resposta.",
                             "languageTag": "pt-BR",
                             "textDirection": "auto"
                           }

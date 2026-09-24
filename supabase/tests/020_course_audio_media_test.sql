@@ -85,32 +85,29 @@ select is(pg_temp.audio_download('30300000-0000-4000-8000-000000000002','u','a')
 select throws_ok($$select pg_temp.audio_download('30300000-0000-4000-8000-000000000002',null,'a')$$,'42501',null,'compartilhado não utiliza audition genérica de owner');
 select throws_ok($$select public.get_course_media_for_actor_v1('30300000-0000-4000-8000-000000000002',pg_temp.audio_course(),pg_temp.audio_revision(),'catalog')$$,'42501',null,'compartilhado não enumera biblioteca');
 select is(public.get_course_media_for_actor_v1('30300000-0000-4000-8000-000000000002',pg_temp.audio_course(),pg_temp.audio_revision(),'configuration')->'audioConfig',pg_temp.audio_config(),'configuração necessária à reprodução é projetada ao compartilhado');
-update public.courses set visibility='public',public_file_access='restricted' where id=pg_temp.audio_course();
-select throws_ok($$select pg_temp.audio_download(null,'u','a')$$,'42501',null,'curso público restrito não libera bytes por vínculo sozinho');
-update public.courses set public_file_access='available' where id=pg_temp.audio_course();
+-- Publicar áudio exige arquivo registrado, disponibilidade confirmada e política pública de arquivos.
+select throws_ok($$update public.courses set visibility='public',public_file_access='restricted' where id=pg_temp.audio_course()$$,'PT422','O áudio necessário ao estudo não está liberado para o público. Defina a política de acesso aos arquivos antes de publicar.','áudio registrado não é publicado com a política pública de arquivos restrita');
+select throws_ok($$update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,contentHash}',to_jsonb(repeat('c',64))) where course_id=pg_temp.audio_course() and entity_id='u'$$,'PT422','O arquivo da faixa 1 não está disponível neste curso. Guarde a gravação antes de publicar ou compartilhar.','faixa com hash válido não cadastrado não entra em curso compartilhado');
+select lives_ok($$update public.courses set visibility='public',public_file_access='available' where id=pg_temp.audio_course()$$,'curso com arquivo registrado e política pública disponível é publicado');
+select throws_ok($$update public.courses set public_file_access='restricted' where id=pg_temp.audio_course()$$,'PT422','O áudio necessário ao estudo não está liberado para o público. Defina a política de acesso aos arquivos antes de publicar.','curso público com áudio não volta a restringir a política de arquivos');
 select is(pg_temp.audio_download(null,'u','a')#>>'{media,contentHash}',repeat('a',64),'público explicitamente disponível recebe somente trio vinculado');
 select throws_ok($$select pg_temp.audio_download(null,'missing','a')$$,'42501',null,'público não troca a identidade da unidade');
 select is(public.get_course_media_for_actor_v1(null,pg_temp.audio_course(),pg_temp.audio_revision(),'configuration')->'items','[]'::jsonb,'configuração pública não revela biblioteca');
 select is(public.get_course_media_for_actor_v1(null,pg_temp.audio_course(),pg_temp.audio_revision(),'configuration')->'storage','null'::jsonb,'configuração pública não revela cota');
-update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,byteSize}','523') where course_id=pg_temp.audio_course() and entity_id='u';
--- Reaprova a fixture alterada para que a negativa seguinte isole a divergência
--- dos bytes declarados, sem ser satisfeita apenas pela revisão desatualizada.
-select set_config('request.jwt.claim.sub','30300000-0000-4000-8000-000000000001',true);
-select set_config('request.jwt.claim.role','authenticated',true);
-select set_config('request.jwt.claims','{"sub":"30300000-0000-4000-8000-000000000001","role":"authenticated","session_id":"30300000-0000-4000-8000-000000000901"}',true);
-set local role authenticated;
-select is(public.set_course_content_review_v1('30300000-0000-4000-8000-000000000101','study_unit','u',
- public.get_course_content_review_v1('30300000-0000-4000-8000-000000000101','study_unit','u')->>'basisHash',true,'audio-review-size-02')#>>'{contentReview,state}',
- 'current','sessão sintética declara a revisão da unidade inspecionada');
-reset role;
-select set_config('request.jwt.claim.sub','',true);
-select set_config('request.jwt.claim.role','service_role',true);
-select set_config('request.jwt.claims','{"role":"service_role"}',true);
-select throws_ok($$select pg_temp.audio_download(null,'u','a')$$,'42501',null,'hash igual com tamanho divergente não autoriza arquivo');
-update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,byteSize}','524') where course_id=pg_temp.audio_course() and entity_id='u';
 update public.courses set visibility='private',public_file_access='restricted' where id=pg_temp.audio_course();
 delete from public.course_access where course_id=pg_temp.audio_course();
 select throws_ok($$select pg_temp.audio_download('30300000-0000-4000-8000-000000000002','u','a')$$,'PT404',null,'revogação nega novas leituras mesmo com hash e unidade conhecidos');
+-- Sem compartilhamento vigente a divergência é gravável, mas não publicável nem compartilhável.
+update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,byteSize}','523') where course_id=pg_temp.audio_course() and entity_id='u';
+select throws_ok($$update public.courses set visibility='public',public_file_access='available' where id=pg_temp.audio_course()$$,'PT422','O arquivo da faixa 1 não está disponível neste curso. Guarde a gravação antes de publicar ou compartilhar.','bytes declarados divergentes impedem publicar o Curso');
+select throws_ok($$insert into public.course_access(course_id,user_id,granted_by) values(pg_temp.audio_course(),'30300000-0000-4000-8000-000000000002','30300000-0000-4000-8000-000000000001')$$,'PT422','O arquivo da faixa 1 não está disponível neste curso. Guarde a gravação antes de publicar ou compartilhar.','bytes declarados divergentes impedem compartilhar o Curso');
+update private.course_entities set content=jsonb_set(content,'{content,0,data,tracks,0,media,byteSize}','524') where course_id=pg_temp.audio_course() and entity_id='u';
+-- A gravação ainda usada pelo estudo sai da faixa antes de ser retirada.
+select throws_ok($$select pg_temp.audio_write(jsonb_build_object('type','remove_media','contentHash',repeat('a',64)),'audio303-remove00')$$,'PT409','Esta gravação ainda compõe o estudo. Substitua ou retire suas faixas antes de remover o arquivo.','gravação ainda usada pelo estudo não é retirada');
+update private.course_entities set content=jsonb_set(content,'{content}',jsonb_build_array(
+ jsonb_build_object('id','audio-note','package','aralearn.resource.paragraph','version','1.0.0',
+ 'data',jsonb_build_object('text','A gravação foi retirada desta unidade sintética.'))))
+ where course_id=pg_temp.audio_course() and entity_id='u';
 
 select is(pg_temp.audio_write(jsonb_build_object('type','remove_media','contentHash',repeat('a',64)),'audio303-remove01')->>'changed','true','remoção retira mídia ativa e cria limpeza pendente');
 select throws_ok($$select pg_temp.audio_download(pg_temp.audio_owner(),'u','a')$$,'PT404',null,'vínculo antigo preservado não torna arquivo removido legível');

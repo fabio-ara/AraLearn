@@ -116,7 +116,7 @@ export const entityRelationshipPackage = Object.freeze({
   },
   render(data) {
     const diagramLabels = labels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: erAccessibleText(data), caption: "Modelo conceitual · notação pé-de-galinha", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.entities[0]?.id || ""}`, errorMessage: "Não foi possível diagramar o modelo entidade-relacionamento." });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: erAccessibleText(data), caption: "Cada caixa representa uma entidade. Nas extremidades: círculo = opcional; barra = um; três traços = muitos.", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.entities[0]?.id || ""}`, errorMessage: "Não foi possível diagramar o modelo entidade-relacionamento." });
     return `<div class="runtime-block package-entity-relationship">${data.prompt ? renderPackageProse(data.prompt) : ""}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

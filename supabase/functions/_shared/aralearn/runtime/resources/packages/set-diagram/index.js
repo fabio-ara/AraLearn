@@ -51,7 +51,7 @@ function topologyAreas(data) {
     }
     const inclusiveSize = data.regions
       .filter((region) => setIds.every((id) => region.setIds.includes(id)))
-      .reduce((sum, region) => sum + region.items.length, 0);
+      .reduce((sum, region) => sum + (region.items.length ? 1 : 0), 0);
     const declaredEmptyRegion = regionByKey.has(membershipKey(setIds)) && inclusiveSize === 0;
     return { sets: setIds, size: declaredEmptyRegion ? 0 : inclusiveSize };
   });
@@ -106,15 +106,15 @@ function labelClearance(point, circles) {
   )));
 }
 
-export function findExactRegionMarker(setIds, layout) {
+export function findExactRegionMarker(setIds, layout, { avoidLabels = true } = {}) {
   const circles = circleBySetId(layout);
   let best = null;
   for (let y = VIEWBOX.padding; y <= VIEWBOX.height - VIEWBOX.padding; y += 2) {
     for (let x = VIEWBOX.padding; x <= VIEWBOX.width - VIEWBOX.padding; x += 2) {
       const point = { x, y };
       const regionClearance = exactRegionClearance(point, setIds, circles);
-      const clearance = Math.min(regionClearance, labelClearance(point, circles));
-      if (!best || clearance > best.clearance) best = { ...point, clearance };
+      const clearance = avoidLabels ? Math.min(regionClearance, labelClearance(point, circles)) : regionClearance;
+      if (!best || clearance > best.clearance) best = { ...point, clearance, regionClearance };
     }
   }
   return best;
@@ -122,6 +122,7 @@ export function findExactRegionMarker(setIds, layout) {
 
 function appendRegionMarkers(svg, data, layout) {
   const circles = circleBySetId(layout);
+  let externalCount = 0;
   data.regions.forEach((region, index) => {
     const marker = svgElement("g", {
       class: "package-set-region-marker",
@@ -132,9 +133,34 @@ function appendRegionMarkers(svg, data, layout) {
     let x = VIEWBOX.padding;
     let y = VIEWBOX.padding;
     if (region.setIds.length) {
-      const point = findExactRegionMarker(region.setIds, layout);
-      if (!point || point.clearance < MARKER_RADIUS + MARKER_CLEARANCE) return;
-      ({ x, y } = point);
+      let point = findExactRegionMarker(region.setIds, layout);
+      if (!point || point.regionClearance <= 0) point = findExactRegionMarker(region.setIds, layout, { avoidLabels: false });
+      if ((!point || point.regionClearance <= 0) && region.items.length) {
+        throw new Error("O desenho não representa uma região não vazia; consulte a descrição completa.");
+      }
+      if (point && point.clearance >= MARKER_RADIUS + MARKER_CLEARANCE) {
+        ({ x, y } = point);
+      } else {
+        // A região estreita mantém sua identidade por chamada externa, sem
+        // apagar seu número nem colocá-lo sobre um conjunto vizinho.
+        x = VIEWBOX.width + MARKER_RADIUS + 6;
+        y = VIEWBOX.padding + externalCount++ * (2 * MARKER_RADIUS + 8);
+        marker.dataset.regionPlacement = "external";
+        if (point && point.regionClearance > 0) {
+          marker.dataset.regionAnchorX = String(point.x);
+          marker.dataset.regionAnchorY = String(point.y);
+          marker.append(svgElement("path", { d: `M${x - MARKER_RADIUS},${y} L${point.x},${point.y}`,
+            class: "package-set-marker-leader" }));
+          marker.append(svgElement("circle", { cx: point.x, cy: point.y, r: Math.min(2, point.regionClearance),
+            class: "package-set-marker-anchor" }));
+        } else {
+          // Euler omite regiões vazias; sua descrição continua na legenda.
+          marker.dataset.regionPlacement = "empty";
+          const empty = svgElement("text", { x: x + 16, y, dy: "0.35em" });
+          empty.textContent = "∅";
+          marker.append(empty);
+        }
+      }
     }
     marker.setAttribute("data-region-clearance", String(exactRegionClearance({ x, y }, region.setIds, circles)));
     marker.append(svgElement("circle", { cx: x, cy: y, r: MARKER_RADIUS }));
@@ -143,6 +169,7 @@ function appendRegionMarkers(svg, data, layout) {
     marker.append(number);
     svg.append(marker);
   });
+  if (externalCount) svg.setAttribute("viewBox", `0 0 ${VIEWBOX.width + 55} ${VIEWBOX.height}`);
 }
 
 export async function hydrateSetDiagrams(root = document) {

@@ -12,6 +12,8 @@ import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "
 import { buildSourceDocumentUrl } from "./sourceDocumentUrl.js";
 
 const SOURCE_OPTIONS = Object.freeze({ targetKind: "microsequence_explanation" });
+const SOURCE_SCOPE_EXPLANATION = "explanation";
+const SOURCE_SCOPE_UNIT = "unit";
 const citationStatusNotice = status => status?.serviceUnavailable ? "Serviço indisponível. Exibindo as fontes salvas desta revisão." :
   status?.offline ? "Sem conexão. Exibindo as fontes salvas nesta cópia; arquivos externos podem estar indisponíveis." :
   status?.source === "cache" ? "Fontes da revisão salva nesta cópia." : "";
@@ -19,6 +21,19 @@ const contentSignature = value => JSON.stringify(value && {
   courseId: value.courseId, courseRevision: value.courseRevision, microsequenceId: value.microsequenceId,
   explanation: value.explanation, contentReview: value.contentReview
 });
+
+/** Escopo único apresentado pela folha; a Explicação nunca recebe as fontes da unidade (O008/P015). */
+export function explanationSourceScope(requestedCitation) {
+  return requestedCitation?.source === SOURCE_SCOPE_UNIT ? SOURCE_SCOPE_UNIT : SOURCE_SCOPE_EXPLANATION;
+}
+
+/** Afirmações citadas cujo trecho não pôde ser localizado nesta cópia (O031/O058). */
+export function unlocatedSourceMarkers(studyUnit, citations, sourceOptions = SOURCE_OPTIONS) {
+  const placed = new Set(studyCitationMarkers(studyUnit, citations, sourceOptions).map(marker => marker.linkId));
+  return (citations?.citations || []).flatMap((citation, index) =>
+    citation.occurrences?.length && !placed.has(citation.linkId)
+      ? [{ linkId: citation.linkId, number: index + 1, needsReview: true }] : []);
+}
 
 /** Apenas entrada de apresentação para o renderer comum; nunca é persistida como unidade. */
 export function explanationRenderingUnit(explanation, id = "explanation") {
@@ -53,6 +68,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   let sourceNotice = "";
   let sourceOpen = false;
   let sourceReturn = null;
+  let sourceScope = SOURCE_SCOPE_EXPLANATION;
   let selectedOccurrenceId = "";
   let downloadPending = false;
   let downloadError = "";
@@ -66,6 +82,8 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
 
   const panel = () => overlay?.querySelector(".study-explanation-panel");
   const body = () => overlay?.querySelector(".study-explanation-body");
+  const scrollKey = () => `${contextKey}::${sourceScope}`;
+  const entryAction = () => requestedCitation?.source === SOURCE_SCOPE_UNIT ? "open-unit-sources" : "open-explanation";
   const reference = () => ({ ...getReference(), targetKind: "microsequence_explanation",
     courseRevision: contextValue?.courseRevision,
     targetId: contextValue?.microsequenceId || getReference().microsequenceId });
@@ -76,13 +94,15 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     screen.inert = inert;
     if (inert) screen.setAttribute("aria-hidden", "true");
     else screen.removeAttribute("aria-hidden");
-    root.querySelector("[data-action='open-explanation']")?.setAttribute("aria-expanded", String(inert));
+    for (const action of ["open-explanation", "open-unit-sources"]) {
+      root.querySelector(`[data-action='${action}']`)?.setAttribute("aria-expanded", String(inert && action === entryAction()));
+    }
   }
 
   function close({ restore = true } = {}) {
     if (!overlay) return false;
     ++epoch;
-    scrollByContext.set(contextKey, body()?.scrollTop || 0);
+    scrollByContext.set(scrollKey(), body()?.scrollTop || 0);
     if (scrollByContext.size > 32) scrollByContext.delete(scrollByContext.keys().next().value);
     tools?.destroy(); tools = null;
     overlay.remove(); overlay = null;
@@ -91,7 +111,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     if (restore) {
       restoreRenderState(root, captured, { restoreFocus: false, restorePageScroll: true });
       const returnNode = requestedCitation?.trigger?.isConnected ? requestedCitation.trigger :
-        root.querySelector("[data-action='open-explanation']");
+        root.querySelector(`[data-action='${entryAction()}']`);
       returnNode?.focus({ preventScroll: true });
     }
     return true;
@@ -135,19 +155,25 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     const host = overlay.querySelector("[data-explanation-references]");
     const scrollTop = body().scrollTop;
     const previous = captureRenderState(host);
-    host.innerHTML = renderStudyCitations({ open: true, heading: "Referências da explicação",
-      loading, value: citations, error: sourceError, courseId: contextValue.courseId,
-      canAuthorSources: canAuthorSources(), downloadPending, downloadError,
-      selectedOccurrenceId, formattedReferences: references, studyUnit: contextValue.explanation,
-      sourceOptions: SOURCE_OPTIONS }) + renderStudyCitations({ open: true, contextId: "unit",
+    // A folha apresenta um escopo por vez: referências da Explicação sob “Referências”
+    // (sem estado vazio verboso) ou as fontes da unidade quando a leitura veio delas.
+    const unit = sourceScope === SOURCE_SCOPE_UNIT;
+    const explanationEmpty = !loading && !sourceError && !citations?.citations?.length;
+    host.innerHTML = unit ? renderStudyCitations({ open: true, contextId: "unit",
       heading: "Referências desta unidade", loading: !unitSources, value: unitSources?.citations,
       error: unitSources?.error, formattedReferences: unitSources?.references, studyUnit: unitValue,
-      courseId: contextValue.courseId, canAuthorSources: canAuthorSources(),
-      downloadPending: unitSources?.downloadPending, downloadError: unitSources?.downloadError });
-    for (const [context, notice] of [["explanation", sourceNotice], ["unit", citationStatusNotice(unitSources?.status)]]) {
-      if (notice) host.querySelector(`[data-citation-context='${context}']`).insertAdjacentHTML("afterbegin",
-        `<p class="study-citations-status" role="status">${escape(notice)}</p>`);
-    }
+      courseId: contextValue.courseId, canAuthorSources: canAuthorSources(), selectedOccurrenceId,
+      sourceOptions: {},
+      downloadPending: unitSources?.downloadPending, downloadError: unitSources?.downloadError })
+      : explanationEmpty ? "" : renderStudyCitations({ open: true, heading: "Referências",
+        loading, value: citations, error: sourceError, courseId: contextValue.courseId,
+        canAuthorSources: canAuthorSources(), downloadPending, downloadError,
+        selectedOccurrenceId, formattedReferences: references, studyUnit: contextValue.explanation,
+        sourceOptions: SOURCE_OPTIONS });
+    const notice = unit ? citationStatusNotice(unitSources?.status) : sourceNotice;
+    if (notice) host.querySelector(`[data-citation-context='${unit ? "unit" : "explanation"}']`)
+      ?.insertAdjacentHTML("afterbegin", `<p class="study-citations-status" role="status">${escape(notice)}</p>`);
+    host.querySelector(".study-bibliography")?.setAttribute("tabindex", "-1");
     body().scrollTop = scrollTop;
     restoreRenderState(host, previous, { restorePageScroll: false });
     host.querySelectorAll("[data-action='retry-citations']").forEach(node => node.addEventListener("click", () => void loadSources({ retry: true })));
@@ -157,16 +183,23 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
         if (node.getAttribute("aria-disabled") !== "true") void downloadAttachment(node);
       }));
     host.querySelectorAll("[data-action='return-citation']").forEach(node => node.addEventListener("click", () => returnToOccurrence(node)));
-    if (requestedCitation && !requestedCitation.focused && !loading && unitSources) {
+    if (requestedCitation && !requestedCitation.focused && (unit ? Boolean(unitSources) : !loading)) {
       requestedCitation.focused = true;
-      openSources(requestedCitation.trigger, requestedCitation.source, requestedCitation.linkId);
+      openSources(requestedCitation.trigger, requestedCitation.source, requestedCitation.linkId,
+        requestedCitation.occurrenceId);
     }
   }
 
-  function openSources(node, source = "explanation", linkId = node?.dataset.citationLinkId || "") {
+  function openSources(node, source = SOURCE_SCOPE_EXPLANATION, linkId = node?.dataset.citationLinkId || "",
+    occurrenceId = node?.dataset.citationOccurrenceId || "") {
     sourceReturn = node || root.ownerDocument.activeElement;
     sourceScroll = body().scrollTop;
-    selectedOccurrenceId = node?.dataset.citationOccurrenceId || "";
+    const nextScope = source === SOURCE_SCOPE_UNIT ? SOURCE_SCOPE_UNIT : SOURCE_SCOPE_EXPLANATION;
+    if (nextScope !== sourceScope || occurrenceId !== selectedOccurrenceId) {
+      sourceScope = nextScope;
+      selectedOccurrenceId = occurrenceId;
+      updateSources();
+    }
     sourceOpen = true;
     const section = [...overlay.querySelectorAll(".study-bibliography")].find(item => item.dataset.citationContext === source);
     const target = [...section?.querySelectorAll("[data-citation-reference-id]") || []]
@@ -190,10 +223,17 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   function placeSources() {
     if (!overlay || !contextValue?.explanation) return;
     const reading = body();
+    const markers = studyCitationMarkers(contextValue.explanation, citations, SOURCE_OPTIONS);
     placeStudyCitationMarkers(reading, contextValue.explanation, citations, SOURCE_OPTIONS);
+    // Fonte registrada com trecho não localizável permanece declarada na leitura,
+    // distinta da ausência de fonte (O031/O058).
+    const unplaced = [...markers.filter(marker => !marker.target),
+      ...unlocatedSourceMarkers(contextValue.explanation, citations, SOURCE_OPTIONS)];
     const general = overlay.querySelector("[data-explanation-source-markers]");
-    general.innerHTML = renderStudySourceMarkers(studyCitationMarkers(contextValue.explanation, citations, SOURCE_OPTIONS)
-      .filter(marker => !marker.target));
+    general.innerHTML = unplaced.length
+      ? '<p class="study-citation-unplaced">Fontes registradas sem trecho localizado nesta cópia: ' +
+        renderStudySourceMarkers(unplaced) + "</p>"
+      : "";
     reading.querySelectorAll("[data-action='open-citation']").forEach(node =>
       node.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); openSources(node); }));
   }
@@ -202,17 +242,14 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     const ownEpoch = ++epoch;
     loading = true; sourceError = ""; sourceNotice = ""; updateSources();
     try {
-      const [baseResult, unitResult] = await Promise.allSettled([
-        typeof repository.loadExplanationCitations === "function" ? repository.loadExplanationCitations(reference()) :
-          Promise.resolve({ citations: [], courseRevision: contextValue.courseRevision }),
-        typeof loadUnitCitations === "function" ? loadUnitCitations({ retry }) : Promise.resolve({ citations: null, references: {} })
-      ]);
+      if (sourceScope === SOURCE_SCOPE_UNIT) {
+        const result = typeof loadUnitCitations === "function" ? await loadUnitCitations({ retry }) : { citations: null, references: {} };
+        if (overlay && ownEpoch === epoch) unitSources = result;
+        return;
+      }
+      const result = typeof repository.loadExplanationCitations === "function" ? await repository.loadExplanationCitations(reference()) :
+        { citations: [], courseRevision: contextValue.courseRevision };
       if (!overlay || ownEpoch !== epoch) return;
-      unitSources = unitResult.status === "fulfilled" ? unitResult.value : {
-        citations: null, references: {}, error: publicErrorMessage(unitResult.reason, "Não foi possível consultar as fontes desta unidade.")
-      };
-      if (baseResult.status === "rejected") throw baseResult.reason;
-      const result = baseResult.value;
       citations = { ...result, citations: result.citations.map(citation => ({ ...citation,
         occurrences: resolveCourseSourceOccurrences(contextValue.explanation,
           (citation.occurrences || []).map(occurrence => Object.fromEntries(
@@ -228,6 +265,11 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       placeSources();
     } catch (error) {
       if (!overlay || ownEpoch !== epoch) return;
+      if (sourceScope === SOURCE_SCOPE_UNIT) {
+        unitSources = { citations: null, references: {},
+          error: publicErrorMessage(error, "Não foi possível consultar as fontes desta unidade.") };
+        return;
+      }
       sourceError = publicErrorMessage(error, "Não foi possível consultar as fontes da explicação.", {
         conflict: "O curso mudou. Reabra a explicação para consultar as fontes atuais.",
         network: "As fontes não estão salvas nesta cópia e não foi possível consultá-las."
@@ -278,12 +320,15 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     unitValue = getStudyUnit(); unitSources = null;
     contextKey = getContextKey();
     citations = null; references = {}; loading = false; sourceError = ""; sourceNotice = "";
-    sourceOpen = false; selectedOccurrenceId = "";
+    sourceOpen = false; sourceReturn = null;
+    sourceScope = explanationSourceScope(request);
+    selectedOccurrenceId = request?.occurrenceId || "";
     downloadPending = false; downloadError = "";
     contextValue = null; signature = "";
+    const unitSourcesOnly = sourceScope === SOURCE_SCOPE_UNIT;
     let content;
     try {
-      contextValue = getContext();
+      contextValue = unitSourcesOnly ? { courseId: getReference().courseId } : getContext();
       signature = contentSignature(contextValue);
       renderingUnit = contextValue.explanation ? explanationRenderingUnit(contextValue.explanation, contextValue.microsequenceId) : null;
       content = renderingUnit ? `<h3>${escape(renderingUnit.title)}</h3>` +
@@ -291,16 +336,18 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
         renderPackageStudyUnitBlocks(renderingUnit, { toolsInActionBar: true,
           sourceTextTargets: listCourseSourceOccurrenceTargets(contextValue.explanation, SOURCE_OPTIONS),
           blockKeyPrefix: `explanation:${contextKey}` }) :
-        '<p role="status">Esta microssequência ainda não tem explicação. Você pode continuar o estudo.</p>';
+        unitSourcesOnly ? "" : '<p role="status">Esta microssequência ainda não tem explicação. Você pode continuar o estudo.</p>';
     } catch (error) {
       renderingUnit = null;
       content = `<p role="alert">${escape(publicErrorMessage(error, "Não foi possível abrir a explicação desta cópia."))}</p>`;
     }
     overlay = root.ownerDocument.createElement("section");
     overlay.className = "editor-overlay study-explanation-overlay";
+    const title = unitSourcesOnly ? "Fontes da unidade" : "Explicação";
+    const closeLabel = unitSourcesOnly ? "Fechar fontes" : "Fechar explicação";
     overlay.innerHTML = '<article class="editor-sheet study-explanation-panel" role="dialog" aria-modal="true" aria-labelledby="study-explanation-title">' +
       '<div class="study-explanation-reading"><header class="editor-head">' +
-      '<h2 id="study-explanation-title">Explicação</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="Fechar explicação" title="Fechar explicação">' +
+      `<h2 id="study-explanation-title">${title}</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="${closeLabel}" title="${closeLabel}">` +
       renderUiIcon("remove-state", "home-tab-icon") + '</button></header>' +
       `<div class="editor-body study-explanation-body" tabindex="0">${content}<div data-explanation-source-markers></div><div data-explanation-references></div></div>` +
       (renderingUnit ? `<footer class="study-explanation-tools">${renderStudyToolActions(renderingUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true })}</footer>` : "") +
@@ -308,7 +355,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     overlay.classList.toggle("is-without-base", !renderingUnit);
     root.querySelector(".app-shell").append(overlay);
     setBackground(true);
-    body().scrollTop = scrollByContext.get(contextKey) || 0;
+    body().scrollTop = scrollByContext.get(scrollKey()) || 0;
     overlay.querySelector("[data-close-explanation]").addEventListener("click", () => close());
     overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
     root.ownerDocument.addEventListener("keydown", handleKeyDown);
@@ -352,8 +399,8 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       if (!overlay) return;
       if (!canOpen() || contextKey !== getContextKey()) { close({ restore: false }); return; }
       let nextSignature;
-      try { nextSignature = contentSignature(getContext()); } catch { nextSignature = "unavailable"; }
-      if (signature !== nextSignature) { open(); return; }
+      try { nextSignature = sourceScope === SOURCE_SCOPE_UNIT ? signature : contentSignature(getContext()); } catch { nextSignature = "unavailable"; }
+      if (signature !== nextSignature) { open(requestedCitation); return; }
       root.querySelector(".app-shell")?.append(overlay);
       setBackground(true);
       // Desanexar a folha tira diálogos nativos do top layer, embora conserve open.

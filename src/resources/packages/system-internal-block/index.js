@@ -22,12 +22,8 @@ function htmlLines(value, lineLength = 22) {
   return wrapGraphvizLabel(value, lineLength).split("\n").map(html).join("<BR/>");
 }
 
-function partPlainLabel(part, ports) {
-  return [`Parte · ${part.type}`, part.label, ...ports.map((port) => `${port.label}: ${port.itemType} (${port.direction})`)].join("\n");
-}
-
-function partTemplate(part, ports) {
-  return `<span class="package-system-diagram-node-content"><small>Parte · ${renderPackageInline(part.type)}</small><strong>${renderPackageInline(part.label)}</strong>${ports.map((port) => `<span>${renderPackageInline(port.label)}: ${renderPackageInline(port.itemType)} (${renderPackageInline(port.direction)})</span>`).join("")}</span>`;
+function cellAttributes(id) {
+  return `ID="system-cell-${html(id)}" HREF="#aralearn-label-${html(id)}"`;
 }
 
 function directionArrow(direction) {
@@ -35,13 +31,13 @@ function directionArrow(direction) {
 }
 
 function portRow(port, portName) {
-  const label = `<FONT POINT-SIZE="12">${htmlLines(`${port.label}: ${port.itemType}`, 24)}</FONT>`;
-  const portCell = (name) => `<TD PORT="${name}" BORDER="1" WIDTH="11" HEIGHT="11" FIXEDSIZE="TRUE"></TD>`;
+  const label = `<FONT POINT-SIZE="14">${htmlLines(`${port.label}: ${port.itemType}`, 24)}</FONT>`;
+  const portCell = (name) => `<TD PORT="${name}" BORDER="0" WIDTH="11" CELLPADDING="0"><TABLE BORDER="1" WIDTH="11" HEIGHT="11" FIXEDSIZE="TRUE" CELLSPACING="0" CELLPADDING="0"><TR><TD></TD></TR></TABLE></TD>`;
   const spacer = "<TD BORDER=\"0\" WIDTH=\"11\"></TD>";
-  if (port.direction === "inout") return `<TR>${portCell(`${portName}w`)}<TD ALIGN="CENTER">${label}</TD>${portCell(`${portName}e`)}</TR>`;
+  if (port.direction === "inout") return `<TR>${portCell(`${portName}w`)}<TD ${cellAttributes(`port-${port.id}`)} ALIGN="CENTER">${label}</TD>${portCell(`${portName}e`)}</TR>`;
   return port.direction === "out"
-    ? `<TR>${spacer}<TD ALIGN="RIGHT">${label}</TD>${portCell(portName)}</TR>`
-    : `<TR>${portCell(portName)}<TD ALIGN="LEFT">${label}</TD>${spacer}</TR>`;
+    ? `<TR>${spacer}<TD ${cellAttributes(`port-${port.id}`)} ALIGN="RIGHT">${label}</TD>${portCell(portName)}</TR>`
+    : `<TR>${portCell(portName)}<TD ${cellAttributes(`port-${port.id}`)} ALIGN="LEFT">${label}</TD>${spacer}</TR>`;
 }
 
 function portEndpoint(port, endpoint) {
@@ -77,7 +73,7 @@ function graphvizSource(data) {
       portName.set(port.id, { node: part.id, port: name, direction: port.direction });
       return portRow(port, name);
     }).join("");
-    const label = `<TABLE BORDER="1" COLOR="#64748b" CELLBORDER="0" CELLSPACING="0" CELLPADDING="6"><TR><TD><FONT POINT-SIZE="11">Parte · ${htmlLines(part.type, 24)}</FONT></TD></TR><TR><TD><B>${htmlLines(part.label, 24)}</B></TD></TR>${rows}</TABLE>`;
+    const label = `<TABLE BORDER="1" COLOR="#64748b" CELLBORDER="0" CELLSPACING="0" CELLPADDING="6"><TR><TD COLSPAN="3" ${cellAttributes(`type-${part.id}`)}><FONT POINT-SIZE="14">Parte · ${htmlLines(part.type, 24)}</FONT></TD></TR><TR><TD COLSPAN="3" ${cellAttributes(`part-${part.id}`)}><B>${htmlLines(part.label, 24)}</B></TD></TR>${rows}</TABLE>`;
     return `    ${dotQuote(part.id)} ${dotAttributesWithHtmlLabel({
       id: `system-node-${part.id}`,
       class: "package-system-internal-part",
@@ -95,7 +91,7 @@ function graphvizSource(data) {
     `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "spline", outputorder: "edgesfirst", nodesep: "0.5", ranksep: "0.82" }))};`,
     "  node [fontname=\"Arial\", fontsize=\"15\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
     "  edge [fontname=\"Arial\", fontsize=\"13\", penwidth=\"1.15\", color=\"#64748b\", fontcolor=\"#111827\"];",
-    `  subgraph cluster_block { graph ${dotAttributes({ id: "system-internal-block-boundary", class: "package-system-internal-boundary", label: `ibd · ${plainGraphvizLabel(data.block.label)}`, labelloc: "t", labeljust: "l", margin: "22", style: "solid" })};`,
+    `  subgraph cluster_block { graph ${dotAttributes({ id: "system-internal-block-boundary", class: "package-system-internal-boundary", label: plainGraphvizLabel(data.block.label), labelloc: "t", labeljust: "l", margin: "22", style: "solid" })};`,
     ...partLines,
     "  }",
     ...connectorLines,
@@ -104,17 +100,20 @@ function graphvizSource(data) {
 }
 
 function labels(data) {
-  const portsByPart = new Map(data.parts.map(({ id }) => [id, []]));
-  data.ports.forEach((port) => portsByPart.get(port.partId)?.push(port));
   return [
     {
       kind: "boundary",
       id: "block",
       graphvizId: "system-internal-block-boundary",
-      plain: `ibd · ${data.block.label}`,
-      html: `<span>ibd · ${renderPackageInline(data.block.label)}</span>`
+      plain: data.block.label,
+      html: `<span>${renderPackageInline(data.block.label)}</span>`
     },
-    ...data.parts.map((part) => ({ kind: "node", id: part.id, plain: partPlainLabel(part, portsByPart.get(part.id)), html: partTemplate(part, portsByPart.get(part.id)) })),
+    ...data.parts.flatMap(part => [
+      { kind: "cell", id: `type-${part.id}`, graphvizId: `a_system-cell-type-${part.id}`, plain: `Parte · ${part.type}`, html: `<span>Parte · ${renderPackageInline(part.type)}</span>` },
+      { kind: "cell", id: `part-${part.id}`, graphvizId: `a_system-cell-part-${part.id}`, plain: part.label, html: `<strong>${renderPackageInline(part.label)}</strong>` }
+    ]),
+    ...data.ports.map(port => ({ kind: "cell", id: `port-${port.id}`, graphvizId: `a_system-cell-port-${port.id}`,
+      plain: `${port.label}: ${port.itemType}`, html: `<span>${renderPackageInline(port.label)}: ${renderPackageInline(port.itemType)}</span>` })),
     ...data.connectors.map((item) => ({ kind: "edge", id: item.id, plain: item.label, html: `<span>${renderPackageInline(item.label)}</span>` }))
   ];
 }
@@ -200,7 +199,7 @@ export const systemInternalBlockPackage = Object.freeze({
   },
   render(data) {
     const diagramLabels = labels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: internalAccessibleText(data), caption: "Diagrama interno de bloco · SysML", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.parts[0]?.id || ""}` });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: internalAccessibleText(data), caption: "O quadro delimita o sistema; cada caixa é uma parte. Quadrados são portas: a seta indica o sentido do item entre elas.", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.parts[0]?.id || ""}` });
     return `<div class="runtime-block runtime-system-internal-block">${renderPackageProse(data.prompt)}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

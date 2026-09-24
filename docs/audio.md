@@ -6,7 +6,9 @@ da tarefa: ouvir um exemplo, reconhecer um som ou acompanhar uma explicação.
 Abra o ícone da ferramenta para escolher uma faixa, controlar sua reprodução e
 consultar a alternativa textual disponível.
 
-Há duas formas de escutar: pedir ao dispositivo que leia um texto ou reproduzir um arquivo já guardado no curso. O autor também pode gerar uma gravação por um serviço externo e, depois de ouvi-la, guardá-la como arquivo.
+Há duas formas de escutar: pedir ao dispositivo que leia um texto ou reproduzir
+um arquivo já guardado no curso. Uma gravação produzida externamente só entra
+no curso depois de ser ouvida, conferida e guardada como arquivo.
 
 | Escolha | Quando é útil | O que considerar |
 | --- | --- | --- |
@@ -22,9 +24,19 @@ Uma voz local realiza a síntese no dispositivo. Uma voz remota envia o texto a 
 
 A velocidade aceita de 0,25 a 2 vezes o ritmo normal. O mecanismo de voz pode impor seus próprios limites. Fechar a ferramenta ou iniciar outra faixa encerra a reprodução anterior. A fala local pode funcionar sem rede quando a voz e a configuração necessárias já estão disponíveis.
 
+A voz nativa continua um ensaio de reprodução. O navegador pode anunciar
+eventos de início, pausa e fim, mas não oferece ao AraLearn uma duração de
+arquivo ou seek confiáveis para essa fala; a linha de progresso não é habilitada
+com duração determinável. Voz nativa não satisfaz a exigência de arquivo para
+materialização, compartilhamento ou publicação.
+
 ## Arquivos e alternativas
 
 Em **Áudio → Arquivos**, escolha o arquivo, confira a prévia e use **Guardar áudio**. Guardar não o inclui automaticamente no conteúdo: escolha a faixa ao compor a unidade ou a explicação. Uma ferramenta pode reunir várias faixas com nomes e idiomas diferentes.
+
+O exemplo técnico do catálogo corresponde a uma [gravação incluída nos testes](../tests/fixtures/audio/README.md).
+Para experimentá-lo em um curso, guarde esse arquivo primeiro e use a referência
+devolvida pelo sistema. Copiar o JSON não coloca a gravação na biblioteca.
 
 Os formatos aceitos são WAV com PCM inteiro, que guarda amostras de som sem compressão, e MP3, que usa compressão. O limite é de 20 MiB por arquivo e 64 MiB no conjunto de PDFs e áudios do curso. Um MiB equivale a 1.048.576 bytes, unidade usada nesses limites.
 
@@ -38,7 +50,13 @@ O autor prepara a alternativa textual de cada faixa conforme a tarefa:
 
 Em uma tarefa de escuta, o nome da faixa não deve antecipar a resposta. A alternativa textual precisa permitir compreender ou realizar uma tarefa equivalente; sua adequação depende do conteúdo preparado pela autoria. Na edição, o proprietário pode consultar e corrigir esses textos.
 
-A reprodução de arquivos usa os controles do navegador para pausar, percorrer a faixa e ajustar a velocidade. Se um arquivo não puder ser reproduzido, a ferramenta informa a falha. Remover um áudio da biblioteca conserva as faixas que o utilizavam, mas elas passam a indicar indisponibilidade. O autor pode reenviar o mesmo arquivo ou selecionar outro.
+A reprodução de arquivos usa o elemento HTML `<audio>` e seus metadados para
+pausar, percorrer a faixa, mostrar duração e ajustar a velocidade. Seek só é
+habilitado quando a duração está disponível. Se um arquivo não puder ser
+reproduzido, a ferramenta informa a falha. O download confere tipo, tamanho e
+SHA-256 antes de entregar os bytes ao navegador. Remover um áudio ainda usado
+é recusado; substitua ou retire o vínculo antes. Consulte o [HTML Standard,
+mídia](https://html.spec.whatwg.org/multipage/media.html).
 
 ## Acesso e uso sem conexão
 
@@ -80,13 +98,27 @@ Nos serviços gratuitos, os termos do Google admitem uso do conteúdo para melho
 
 O modelo implementado é uma versão de prévia e sua oferta pode mudar. O AraLearn não troca automaticamente de modelo ou fornecedor quando ela fica indisponível. Consulte a [política de descontinuação](https://ai.google.dev/gemini-api/docs/deprecations).
 
+## Arquivo exigido para entrega
+
+As guardas de domínio verificam as faixas quando um curso é publicado, quando
+o conteúdo é entregue a uma pessoa compartilhada e quando uma unidade nova ou
+alterada é materializada. Nesses três casos, cada faixa de áudio precisa ser
+`kind: "file"`, apontar para mídia ativa do mesmo curso e coincidir em tipo,
+tamanho e hash. Curso público também precisa permitir a entrega pública dos
+arquivos. Uma síntese nativa ou arquivo ausente bloqueia a operação.
+
+A biblioteca continua privada e separada do conteúdo até uma faixa referenciá-la.
+Uma falha de reprodução não aciona outra voz automaticamente; a alternativa
+textual permanece o caminho acessível.
+
 ## Referência de implementação
 
-Os mecanismos abaixo permitem distinguir uma escolha de reprodução, uma transferência de arquivo e uma nova geração. Essa diferença é importante para preservar acesso, integridade e controle de consumo.
+Os mecanismos abaixo distinguem uma escolha de reprodução e uma transferência
+de arquivo. Essa diferença preserva acesso e integridade.
 
 ### Síntese pelo navegador
 
-A Web Speech API é o recurso pelo qual o navegador oferece síntese de voz. Ela reproduz a fala, mas não oferece uma operação para exportar as amostras como arquivo. A indicação de voz local vem do campo `localService` informado pelo navegador; não certifica pronúncia ou disponibilidade em outro aparelho. [Especificação Web Speech API](https://webaudio.github.io/web-speech-api/).
+A Web Speech API é o recurso pelo qual o navegador oferece síntese de voz. Ela reproduz a fala, mas não oferece uma operação para exportar as amostras como arquivo. A indicação de voz local vem do campo `localService` informado pelo navegador; não certifica pronúncia ou disponibilidade em outro aparelho. [Especificação Web Speech API, seção de síntese](https://webaudio.github.io/web-speech-api/#tts-section).
 
 ### Integridade e transferência dos arquivos
 

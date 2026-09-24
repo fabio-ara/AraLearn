@@ -8,9 +8,6 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../src/resources/packages/index.js";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const scriptDirectory = path.dirname(scriptPath);
-const TASK_OPERATION_LABELS = new Map(
-  RESOURCE_CATALOG.explore().facets.taskOperations.map(({ id, label }) => [id, label])
-);
 
 export const RESOURCE_CATALOG_COURSE_FILE_NAME = "aralearn-catalogo-recursos-course.json";
 export const RESOURCE_CATALOG_COURSE_PATH = path.resolve(
@@ -62,21 +59,6 @@ function targetLabelSignature(value) {
 }
 
 const PRACTICE_BLUEPRINTS = Object.freeze({
-  "aralearn.resource.calculator": Object.freeze({
-    feedbackText: "A expressão calcula √(3² + 4²) = √25 = 5. Os catetos não se somam diretamente: a diagonal é a hipotenusa do triângulo retângulo. O cálculo confere a estimativa, mas a relação geométrica justifica a expressão."
-  }),
-  "aralearn.resource.grammar": Object.freeze({
-    feedbackText: "A consulta pertinente é sobre voz ativa e passiva. Em ‘A pesquisadora revisou o texto’, a pesquisadora é sujeito e agente; em ‘O texto foi revisado pela pesquisadora’, o texto é sujeito, mas a pesquisadora continua sendo o agente. A mudança de construção não troca quem realizou a revisão."
-  }),
-  "aralearn.resource.dictionary": Object.freeze({
-    feedbackText: "Na passagem, ‘sustenta’ significa oferecer apoio à hipótese. A continuação sobre novos testes impede confundir esse apoio com comprovação definitiva; o verbo também não se reduz a enunciar a hipótese ou deixar de avaliá-la. A ferramenta abre a consulta, mas escolher o sentido exige considerar a frase inteira."
-  }),
-  "aralearn.resource.reading": Object.freeze({
-    feedbackText: "Comparar explicações exige reconstruir como cada mecanismo liga causas e efeito e localizar as condições em que suas previsões ou razões divergem. Contar argumentos, fundir mecanismos antes de examiná-los ou preferir automaticamente o texto adicional não realiza esse contraste. A leitura complementar também não confirma uma fonte por ter sido indicada."
-  }),
-  "aralearn.resource.audio": Object.freeze({
-    feedbackText: "Good morning é uma saudação da manhã; How are you? pergunta como a outra pessoa está. A alternativa escrita permite analisar a mesma fala quando a voz do dispositivo não está disponível."
-  }),
   "aralearn.resource.matrix": Object.freeze({
     targetPath: "values[0][1]",
     data: Object.freeze({
@@ -171,30 +153,216 @@ function exampleContentInstance(manifest, id, data = null) {
   });
 }
 
+/**
+ * Limite de alcance da representação, escrito para quem estuda ler o exemplo. Cada frase ensina a
+ * fronteira em linguagem de estudante — o que a representação comunica e qual outra leitura cabe
+ * quando o objeto muda — sem colar `limitations` do manifesto nem expor package, renderer, contrato
+ * ou processo de autoria. Package sem frase declarada interrompe a geração.
+ */
+const THEORY_SCOPE = Object.freeze({
+  "aralearn.resource.paragraph": "Relações espaciais e comparações em colunas pedem outra representação; aqui, cada ideia independente ganha seu próprio trecho.",
+  "aralearn.resource.code": "O trecho é lido e executado mentalmente, e o efeito das linhas depende da explicação que o acompanha.",
+  "aralearn.resource.table": "Siglas, unidades e categorias precisam estar explicadas antes, e tabelas muito densas pedem recorte.",
+  "aralearn.resource.annotated_text": "Cada observação precisa de um trecho preciso do texto como alvo.",
+  "aralearn.resource.bpmn_process": "Coreografia e conversação entre participantes pedem outra representação, e processos muito extensos ficam mais legíveis decompostos em subprocessos.",
+  "aralearn.resource.interlinear_gloss": "Cada abreviação precisa ser apresentada antes ou junto do primeiro uso, e a glosa acompanha a análise em vez de substituí-la.",
+  "aralearn.resource.tree": "Relações muitos-para-muitos ou com mais de um pai pedem outra representação: a árvore exige um caminho único até a raiz.",
+  "aralearn.resource.matrix": "Registros com colunas de atributos pedem uma tabela: aqui as posições das entradas participam da operação algébrica.",
+  "aralearn.resource.reaction": "A equação mostra a transformação simbólica; a explicação microscópica ou energética fica em outra forma de descrição.",
+  "aralearn.resource.flow": "Quando a sequência é apenas linear, prosa enumerada comunica melhor do que ramos e decisões.",
+  "aralearn.resource.formula": "A leitura em palavras acompanha a expressão: símbolos sem leitura equivalente não comunicam a estrutura.",
+  "aralearn.resource.plane": "O plano cobre duas dimensões; campos vetoriais, contornos e superfícies pedem outras representações.",
+  "aralearn.resource.chart": "Poucos valores ficam mais claros em texto ou tabela, e distribuições pedem uma representação própria.",
+  "aralearn.resource.software_system_context": "O contexto fica na fronteira externa: contêineres, componentes, classes e sequências temporais pedem outros níveis.",
+  "aralearn.resource.software_container": "Aqui aparecem unidades executáveis e armazenamentos; classes, módulos internos e nós físicos ficam em outro nível de representação.",
+  "aralearn.resource.system_internal_block": "Esta leitura cobre partes, portas e conectores internos; requisitos, sequência e estados pedem outras representações.",
+  "aralearn.resource.graph": "Quando o desenho fica denso, o recorte ou a matriz de incidência comunicam melhor do que o nó-aresta completo.",
+  "aralearn.resource.relation_map": "Interseção de conjuntos pede outro diagrama: aqui o foco são as incidências entre domínio e contradomínio.",
+  "aralearn.resource.database_schema": "O esquema mostra a estrutura lógica; linhas de dados e o modelo conceitual têm representações próprias.",
+  "aralearn.resource.memory_layout": "Os endereços do mapa usam a mesma base, e leituras longas se concentram nos intervalos que importam.",
+  "aralearn.resource.network_topology": "As linhas mostram conexões, e não a simulação de sinais, colisões ou encaminhamento.",
+  "aralearn.resource.packet_layout": "Campos extensos mantêm a largura natural e rolam na horizontal, com a explicação de cada campo na legenda.",
+  "aralearn.resource.set_diagram": "O diagrama cobre até três conjuntos; mais do que isso pede uma representação própria de interseções.",
+  "aralearn.resource.state_machine": "O foco é o percurso entre estados; comparar a função de transição inteira fica melhor na tabela de transição.",
+  "aralearn.resource.truth_table": "A tabela cresce com o número de variáveis; com muitas delas, a leitura pede recorte.",
+  "aralearn.resource.entity_relationship": "O modelo fica no nível conceitual: o esquema relacional com chaves já transformadas é outra representação.",
+  "aralearn.resource.state_transition_table": "Conjuntos extensos de estados ou símbolos pedem recorte, e o percurso visual fica no diagrama de estados.",
+  "aralearn.resource.call_stack": "Recursões profundas pedem recorte aos quadros que participam do raciocínio.",
+  "aralearn.resource.audio": "A escuta depende do som estar disponível, e a alternativa textual acompanha cada faixa.",
+  "aralearn.resource.calculator": "O cálculo real é aproximado e apoia a verificação: ele não substitui a justificativa nem resolve equações simbólicas.",
+  "aralearn.resource.terminal_session": "O registro mostra a sessão observada; operar o sistema continua sendo prática no ambiente real, e o resultado pode variar em outra versão ou configuração.",
+  "aralearn.response.choice": "A tarefa é reconhecer uma ou mais alternativas corretas entre opções plausíveis; produzir a resposta sem pistas é outra forma de responder.",
+  "aralearn.response.gap": "A lacuna fica no lugar exato do conceito e aceita equivalentes declarados; respostas que exigem argumentação extensa pedem outra forma de responder.",
+  "aralearn.response.ordering": "A ordem é reconstruída nas próprias expressões de leitura; diagramas e sequências arbitrárias não entram nesta forma de responder."
+});
+
 function theoryIntroduction(manifest) {
   const convention = manifest.academic?.conventions?.[0];
   const appropriateWhen = manifest.academic?.appropriateWhen?.[0];
-  const limitation = manifest.limitations?.[0];
+  const scope = THEORY_SCOPE[manifest.id];
+  if (!scope) throw new Error(`${manifest.id} não declara limite de leitura para a teoria.`);
   return [
     `${manifest.label}: ${manifest.purpose}`,
     appropriateWhen ? `É apropriado quando ${appropriateWhen}.` : "",
     convention ? `Na leitura, observe esta convenção: ${convention}.` : "",
-    limitation ? `Limite importante: ${limitation}` : ""
+    scope
   ].filter(Boolean).join(" ");
 }
 
-function feedbackText(manifest) {
-  const profile = RESOURCE_CATALOG.getProfile(manifest.id, manifest.version);
-  const taskOperation = TASK_OPERATION_LABELS.get(profile?.taskOperationIds?.[0]);
-  const avoidWhen = manifest.academic?.avoidWhen?.[0];
-  return [
-    PRACTICE_BLUEPRINTS[manifest.id]?.feedbackText || "",
-    `Critério de revisão para ${manifest.label}: a representação deve realizar a finalidade declarada — ${manifest.purpose}`,
-    taskOperation
-      ? `A operação-alvo da tarefa é ${taskOperation.toLocaleLowerCase("pt-BR")}.`
-      : "",
-    avoidWhen ? `Evite este recurso quando ${avoidWhen}.` : ""
-  ].filter(Boolean).join(" ");
+/**
+ * Feedback da prática: cada package declara como explicar o resultado esperado usando os dados e a
+ * resposta realmente materializados no exemplo. A explicação descreve o conteúdo ensinado
+ * (semântica e notação do próprio exemplo) e nunca metadados editoriais do catálogo — finalidade,
+ * adequação, limites de package, renderer ou contrato. Package sem explicação declarada interrompe
+ * a geração, para que a fixture não volte a receber texto de bastidor por omissão.
+ */
+const PRACTICE_FEEDBACK = Object.freeze({
+  "aralearn.resource.paragraph": ({ data, blanks }) =>
+    `A lacuna recorta um termo da própria explicação: o trecho completo é "${data.text}", e "${blanks[0].answer}" é a palavra retirada que qualifica como as duas partes trocam mensagens.`,
+  "aralearn.resource.code": ({ data, blanks }) =>
+    `A lacuna fica no identificador da função, logo depois de "def": o trecho exibido está em ${data.language.toLocaleUpperCase("pt-BR") === "PYTHON" ? "Python" : data.language} e declara ${blanks[0].answer} para comparar o valor do meio com o alvo e reduzir o intervalo pela metade a cada iteração.`,
+  "aralearn.resource.table": ({ data }) => {
+    const [mechanism, signal, response, effect] = data.rows[0];
+    return `A primeira linha cruza o mecanismo "${mechanism}" com o sinal observado "${signal}", a resposta principal "${response}" e o efeito esperado "${effect}": a lacuna recorta a coluna que nomeia o mecanismo.`;
+  },
+  "aralearn.resource.annotated_text": ({ data, blanks }) =>
+    `A anotação "${data.annotations[0].label}" marca o trecho que nomeia quem inicia a comunicação, e no texto exibido esse trecho é "${blanks[0].answer}" — não a requisição anotada como "${data.annotations[1].label}".`,
+  "aralearn.resource.bpmn_process": ({ data }) => {
+    const task = data.nodes[1];
+    const message = data.flows.find((flow) => flow.kind === "message");
+    return `O elemento destacado é "${task.label}", a tarefa que o Cliente executa logo depois do evento inicial; dela parte o fluxo de mensagem rotulado "${message.label}" até a Organização.`;
+  },
+  "aralearn.resource.interlinear_gloss": ({ data, blanks }) =>
+    `A forma destacada é "${blanks[0].answer}", alinhada à glosa "${data.units[0].gloss}" na primeira unidade. A tradução livre do trecho é "${data.translation}", e as abreviações ${data.abbreviations.map(({ code }) => code).join(", ")} ficam legendadas.`,
+  "aralearn.resource.tree": ({ blanks }) =>
+    `O nó destacado é a raiz da árvore binária de busca e recebe o rótulo "${blanks[0].answer}": dele partem os caminhos até 20 e 65 comparados na atividade. À esquerda ficam 20 com os filhos 10 e 30; à direita, 60 com 50 e 70, e 65 abaixo de 70.`,
+  "aralearn.resource.matrix": ({ data, blanks }) => {
+    const [first, second] = data.values.map((row) => row.map((entry) => entry));
+    return `Na matriz ${data.name}, a primeira linha reúne ${first[0]} e a entrada que muda o sinal da componente horizontal, que é "${blanks[0].answer}". A segunda linha traz ${second[0]} e ${second[1]}, e a última coluna preserva o eixo perpendicular à rotação.`;
+  },
+  "aralearn.resource.reaction": ({ data, blanks }) => {
+    const reactant = data.reactants[0];
+    const product = data.products[0];
+    return `A reação forma ${product.name} a partir de ${data.reactants.map(({ name }) => name).join(" e ")}: a fórmula do primeiro reagente é "${blanks[0].answer}", com coeficiente ${reactant.coefficient} e estado gasoso, e o produto ${product.formula} aparece com coeficiente ${product.coefficient} no estado líquido.`;
+  },
+  "aralearn.resource.flow": ({ data }) => {
+    const items = data.structure.items;
+    const decision = items.find((item) => item.kind === "if_then_else");
+    return `O fluxograma começa no terminal "${items[0].text}" e segue para "${items[1].text}"; depois da leitura, a decisão "${decision.condition}" separa "${decision.thenBranch[0].text}" de "${decision.elseBranch[0].text}", e os dois ramos convergem no terminal "${items.at(-1).text}".`;
+  },
+  "aralearn.resource.formula": ({ correctOptions }) =>
+    `A expressão contrai a derivada parcial de u índice i em relação a x índice j com o tensor T de índices i e j; por isso o termo correto é "${correctOptions[0].text}". A região Ω delimita a integral, f(u) é a função somada dentro dela e dV é o elemento de volume.`,
+  "aralearn.resource.plane": ({ data, correctOptions }) => {
+    const image = data.vectors.find(({ id }) => id === "ae1");
+    return `O vetor e₁ sai da origem e termina em (1, 0); sua imagem pela transformação A é "${correctOptions[0].text}", que termina em (${image.to.join(", ")}). As demais alternativas designam o outro vetor da base, um ponto do objeto original ou a região transformada A(Q).`;
+  },
+  "aralearn.resource.chart": ({ data }) => {
+    const [firstSeries, secondSeries] = data.series;
+    return `As duas séries do gráfico são "${firstSeries.name}" e "${secondSeries.name}": o nome identifica qual arquitetura cada linha representa, por isso a primeira série fica com "${firstSeries.name}". O eixo vertical mede ${data.yAxis.label.toLocaleLowerCase("pt-BR")} em ${data.yAxis.unit}, e as barras mostram ${data.uncertainty.label.toLocaleLowerCase("pt-BR")}.`;
+  },
+  "aralearn.resource.software_system_context": ({ data }) =>
+    `O sistema em foco no diagrama é "${data.system.label}", que ${data.system.description.replace(/\.$/u, "").toLocaleLowerCase("pt-BR")}. Estudante e Autor-pesquisador interagem com ele, enquanto o serviço de identidade e o serviço de modelo permanecem fora da fronteira.`,
+  "aralearn.resource.software_container": ({ data }) => {
+    const containers = data.containers.map(({ label }) => label);
+    return `O primeiro contêiner do sistema ${data.system.label} é "${containers[0]}", responsável por renderizar autoria, estudo e recursos interativos. Depois dele vêm ${containers.slice(1).join(", ")}, ligados entre si e ao serviço de identidade.`;
+  },
+  "aralearn.resource.system_internal_block": ({ data }) => {
+    const connector = data.connectors[0];
+    const portLabel = (id) => data.ports.find((port) => port.id === id).label;
+    const partLabel = (id) => data.parts.find((part) => part.id === id).label;
+    return `O primeiro conector é "${connector.label}": ele liga a porta de saída "${portLabel(connector.fromPort)}" do ${partLabel(data.ports.find((port) => port.id === connector.fromPort).partId)} à porta de entrada "${portLabel(connector.toPort)}" da ${partLabel(data.ports.find((port) => port.id === connector.toPort).partId)}. Os outros conectores levam o comando de atuação e retornam o estado observado.`;
+  },
+  "aralearn.resource.graph": ({ data }) => {
+    const bridge = data.edges.find(({ label }) => label === "ponte");
+    return `O primeiro vértice do grafo é "${data.vertices[0].label}": os vértices aparecem rotulados de v1 a v8, e as arestas do primeiro ciclo passam por ele. A ponte liga ${bridge.from} a ${bridge.to} e separa os dois ciclos.`;
+  },
+  "aralearn.resource.relation_map": ({ data, blanks }) => {
+    const imageLabels = data.highlight.relations.map((id) => {
+      const relation = data.relations.find((candidate) => candidate.id === id);
+      return data.rightSet.items.find(({ id: itemId }) => itemId === relation.to).label;
+    });
+    return `Na relação "${data.relationMeaning}", Ana se relaciona com ${imageLabels.map((label) => `"${label}"`).join(" e ")}; o primeiro elemento do contradomínio é "${blanks[0].answer}". A imagem de Ana reúne os elementos alcançados pelas setas que partem dela.`;
+  },
+  "aralearn.resource.database_schema": ({ data, blanks }) => {
+    const relation = data.relations[0];
+    return `A primeira relação do esquema é "${blanks[0].answer}", com a chave primária ${relation.attributes[0].name} e o atributo ${relation.attributes[1].name}. As demais relações trazem as chaves estrangeiras para cliente, pedido e produto, e o item do pedido preserva a chave composta.`;
+  },
+  "aralearn.resource.memory_layout": ({ data, blanks }) => {
+    const segment = data.segments[0];
+    return `O primeiro segmento do mapa começa em "${blanks[0].answer}" e termina em ${segment.end}: é o segmento de código, com instruções executáveis e somente leitura. Os endereços seguem em ordem crescente, na mesma base hexadecimal.`;
+  },
+  "aralearn.resource.network_topology": ({ data, blanks }) => {
+    const [hub, repeater, switching] = data.devices.slice(2);
+    const kindName = { hub: "hub", repeater: "repetidor", switch: "switch" };
+    return `O primeiro equipamento é "${blanks[0].answer}", ligado ao ${kindName[hub.kind]} por um enlace Ethernet; o ${kindName[hub.kind]} e o ${kindName[repeater.kind]} apenas repetem sinais, e o ${kindName[switching.kind]} comuta quadros. As linhas mostram conexões, não tráfego simulado.`;
+  },
+  "aralearn.resource.packet_layout": ({ data, blanks }) => {
+    const [first, second] = data.fields;
+    return `O primeiro campo do cabeçalho TCP é "${blanks[0].answer}", com ${first.widthBits} bits, e identifica o processo emissor; ao lado dele fica "${second.label}", com a mesma largura. A leitura percorre as palavras de ${data.unitBits} bits na ordem de transmissão.`;
+  },
+  "aralearn.resource.set_diagram": ({ data, blanks }) => {
+    const region = data.regions[0];
+    return `O elemento destacado pertence à região "${region.label}", que reúne as linguagens presentes nos três conjuntos ao mesmo tempo: a primeira delas é "${blanks[0].answer}", e ${region.items[1]} também está nessa região. As demais regiões separam o que pertence a um ou dois conjuntos.`;
+  },
+  "aralearn.resource.state_machine": ({ data, blanks }) => {
+    const [initial, second] = data.states;
+    const acceptance = data.states.find(({ accepting }) => accepting);
+    return `O estado inicial do autômato é "${blanks[0].answer}": a abertura passiva leva de ${initial.label} para ${second.label}, e o evento "${data.events[1].label}" leva de ${second.label} para ${data.states[2].label}. ${acceptance.label} é o único estado de aceitação neste recorte.`;
+  },
+  "aralearn.resource.truth_table": ({ data, blanks }) => {
+    return `Na primeira linha da tabela-verdade, ${data.variables.join(" e ")} são ambos verdadeiros: a primeira valoração é "${blanks[0].answer}". Nessa linha, ${data.derivedColumns[0]} e ${data.derivedColumns[2]} recebem o mesmo resultado, como nas demais valorações.`;
+  },
+  "aralearn.resource.entity_relationship": ({ data, blanks }) => {
+    const entity = data.entities[0];
+    const enrollment = data.entities.at(-1);
+    return `A primeira entidade do modelo é "${blanks[0].answer}", identificada por ${entity.attributes[0].name} e ligada a ${enrollment.name} pela relação "${data.relationships[0].label}". ${enrollment.name} também recebe "${data.relationships[1].label}" de ${data.entities[1].name} e guarda ${enrollment.attributes.at(-1).name}, resolvendo o muitos-para-muitos com um atributo próprio.`;
+  },
+  "aralearn.resource.state_transition_table": ({ data, blanks }) => {
+    const blankRows = blanks.map(({ targetPath }) => {
+      const index = Number(pathSegments(targetPath)[1]);
+      return data.transitions[index];
+    });
+    const [firstBlank, secondBlank] = blankRows;
+    const label = (id) => data.states.find((state) => state.id === id).label;
+    const symbol = (id) => data.events.find((event) => event.id === id).label;
+    const acceptance = data.states.find(({ accepting }) => accepting);
+    return `Os dois destinos destacados são "${blanks[0].answer}": em ${label(firstBlank.from)}, o símbolo ${symbol(firstBlank.event)} mantém o autômato em ${label(firstBlank.to)}, e de ${label(secondBlank.from)} o símbolo ${symbol(secondBlank.event)} também retorna ao estado ${label(secondBlank.to)}. O único estado de aceitação é ${acceptance.label}.`;
+  },
+  "aralearn.resource.call_stack": ({ data, blanks }) => {
+    const [base, caller, callee] = data.frames;
+    return `O primeiro quadro da pilha é "${blanks[0].answer}", a chamada inicial na base, com a variável local ${base.fields[0].name} igual a ${base.fields[0].value} e a continuação "${base.continuation}". Acima dele ficam ${caller.functionName}, que aguarda ${callee.functionName}, e ${callee.functionName}.`;
+  },
+  "aralearn.resource.audio": ({ data, correctOptions }) =>
+    `A faixa "${data.tracks[0].label}" traz "${data.tracks[0].alternative.text}"; a alternativa que corresponde a essa saudação é "${correctOptions[0].text}", e as demais descrevem outros atos de fala que não aparecem na gravação.`,
+  "aralearn.resource.calculator": ({ correctOptions }) =>
+    `A alternativa correta é "${correctOptions[0].text}": a expressão calcula √(3² + 4²) = √25 = 5, porque a diagonal é a hipotenusa do triângulo retângulo. Os catetos não se somam diretamente, e as demais alternativas descrevem um cateto, a soma dos catetos ou a soma dos quadrados.`,
+  "aralearn.resource.terminal_session": ({ blanks }) =>
+    `A primeira entrada da sessão é "${blanks[0].answer}": ela lista o arquivo e mostra que script.sh pertence ao usuário e ainda não tem permissão de execução. A tentativa seguinte é recusada com "Permission denied", e a permissão só é concedida por "chmod u+x script.sh".`,
+  "aralearn.response.choice": ({ correctOptions }) =>
+    `A alternativa correta é "${correctOptions[0].text}": o TCP entrega um fluxo de bytes confiável e ordenado e ajusta a taxa por controle de congestionamento. UDP não mantém conexão nem ordem, IP endereça e roteia datagramas, e DNS resolve nomes.`,
+  "aralearn.response.gap": ({ blanks }) =>
+    `O termo esperado é "${blanks[0].answer}": ele designa o conjunto de regras que permite a duas partes trocar mensagens de forma previsível, e a lacuna recorta o lugar em que esse conceito participa do trecho exibido.`,
+  "aralearn.response.ordering": ({ targets }) =>
+    `A ordem esperada é: ${targets.map(({ answer }, index) => `${index + 1}) "${answer}"`).join("; ")}. Cada frase encadeia a anterior: o cliente consulta o resolvedor recursivo, que pergunta ao servidor raiz, alcança o autoritativo e devolve a resposta.`
+});
+
+function practiceFeedback(manifest, { content = [], response }) {
+  const explain = PRACTICE_FEEDBACK[manifest.id];
+  if (typeof explain !== "function") {
+    throw new Error(
+      `${manifest.id} não declara explicação de feedback para a prática do catálogo.`
+    );
+  }
+  return explain({
+    manifest,
+    data: content[0]?.data ?? null,
+    content,
+    response,
+    blanks: response.blanks || [],
+    targets: response.targets || [],
+    correctOptions: (response.options || [])
+      .filter(({ id }) => (response.answerIds || []).includes(id))
+  });
 }
 
 function semanticChoiceResponse(id, manifest) {
@@ -208,36 +376,6 @@ function semanticChoiceResponse(id, manifest) {
         { id: "squares", text: "25 unidades de comprimento." }
       ],
       answerIds: ["diagonal"]
-    },
-    "aralearn.resource.grammar": {
-      question: "Compare ‘A pesquisadora revisou o texto’ e ‘O texto foi revisado pela pesquisadora’. Qual consulta gramatical ajuda a explicar a mudança de posição dos constituintes sem trocar quem realizou a ação?",
-      options: [
-        { id: "voice", text: "Voz ativa e passiva: a relação entre sujeito e agente da ação." },
-        { id: "tense", text: "Tempo verbal: a passagem do passado para o presente." },
-        { id: "agreement", text: "Concordância: a correção de um verbo flexionado incorretamente." },
-        { id: "lexicon", text: "Sentido lexical: uma mudança no significado de revisar." }
-      ],
-      answerIds: ["voice"]
-    },
-    "aralearn.resource.dictionary": {
-      question: "Considere: ‘O relatório sustenta a hipótese, mas novos testes ainda são necessários’. Ao consultar os usos de ‘sustentar’, qual paráfrase preserva o sentido da passagem inteira?",
-      options: [
-        { id: "support", text: "O relatório oferece apoio à hipótese sem encerrar sua verificação." },
-        { id: "proof", text: "O relatório comprova definitivamente a hipótese, independentemente de novos testes." },
-        { id: "suspend", text: "O relatório deixa a hipótese sem avaliação por não apresentar argumentos sobre ela." },
-        { id: "mention", text: "O relatório apenas enuncia a hipótese, sem tomar posição a seu respeito." }
-      ],
-      answerIds: ["support"]
-    },
-    "aralearn.resource.reading": {
-      question: "A ‘Perspectiva complementar’ apresenta outro mecanismo para o mesmo fenômeno. Ao voltar à unidade, qual resultado atende à orientação de comparar as explicações?",
-      options: [
-        { id: "mechanisms", text: "Mostrar como cada mecanismo liga causas ao efeito e em que condições as explicações divergem." },
-        { id: "count", text: "Contar os argumentos e tomar a explicação com mais itens como a mais forte." },
-        { id: "merge", text: "Fundir os dois mecanismos em uma explicação antes de examinar suas diferenças." },
-        { id: "replace", text: "Substituir a explicação da unidade pela adicional porque ela foi recomendada." }
-      ],
-      answerIds: ["mechanisms"]
     },
     "aralearn.resource.audio": {
       question: "Ouça a faixa ou abra a alternativa textual. Qual é o sentido da saudação em inglês?",
@@ -398,7 +536,11 @@ function contentPackageStudyUnits(manifest, prefix, packageIndex) {
       role: "practice",
       content: [practiceExample],
       response,
-      feedback: [paragraphInstance(`${prefix}-practice-feedback`, feedbackText(manifest), "feedback")],
+      feedback: [paragraphInstance(
+        `${prefix}-practice-feedback`,
+        practiceFeedback(manifest, { content: [practiceExample], response: response.data }),
+        "feedback"
+      )],
       topics: [],
     }
   ];
@@ -516,7 +658,14 @@ function responsePackageStudyUnits(manifest, prefix) {
       role: "practice",
       content: practice.content,
       response: practice.response,
-      feedback: [paragraphInstance(`${prefix}-practice-feedback`, feedbackText(manifest), "feedback")],
+      feedback: [paragraphInstance(
+        `${prefix}-practice-feedback`,
+        practiceFeedback(manifest, {
+          content: practice.content,
+          response: practice.response.data
+        }),
+        "feedback"
+      )],
       topics: [],
     }
   ];
@@ -534,7 +683,7 @@ function catalogEntries() {
   const manifests = [
     ...RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }),
     ...RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" })
-  ].filter(manifest => manifest.authoringEligibility !== "legacy_only")
+  ]
     .sort((left, right) => compareText(left.id, right.id) || compareText(left.version, right.version));
   const packageKeys = new Set();
   const entries = manifests.map((manifest) => {
@@ -583,7 +732,7 @@ function moduleForFamily(family, entries, moduleIndex) {
       covers: [manifest.id],
       checks: [
         "a representação comunica a estrutura pretendida",
-        "a prática usa uma modalidade declarada pelo package"
+        "a resposta interpreta os elementos apresentados na representação"
       ],
       errors: [],
       studyUnits
@@ -595,18 +744,18 @@ function moduleForFamily(family, entries, moduleIndex) {
     title: `${moduleIndex + 1}. ${family.label}`,
     guide: guide({
       goal: family.description,
-      include: [`packages cuja família primária é ${family.label}`],
-      exclude: ["packages classificados primariamente em outra família"],
-      notation: ["contratos semânticos antes da renderização"],
+      include: [`representações da família ${family.label}`],
+      exclude: ["representações de outras famílias"],
+      notation: ["significado dos símbolos e relações representadas"],
       avoid: ["escolher um recurso apenas pela aparência"]
     }),
     lessons: [{
       id: lessonId,
       title: `Recursos de ${family.label}`,
       guide: guide({
-        goal: `Reconhecer e testar os packages reunidos em ${family.label}.`,
-        include: ["uma leitura guiada e uma prática por package"],
-        exclude: ["variações redundantes do mesmo contrato"],
+        goal: `Reconhecer e interpretar as representações de ${family.label}.`,
+        include: ["leitura guiada e aplicação de cada representação"],
+        exclude: ["repetições que não acrescentam uma nova relação"],
         notation: ["finalidade, convenção, limite e interação"],
         avoid: ["tratar a taxonomia como disciplina escolar rígida"]
       }),
@@ -629,7 +778,7 @@ export function buildResourceCatalogCourse() {
     courses: [{
       id: "aralearn-catalogo-recursos",
       title: "AraLearn: Catálogo de recursos",
-      goal: "Conhecer, comparar e testar todos os packages de representação e resposta disponíveis no AraLearn.",
+      goal: "Conhecer, comparar e interpretar as representações e formas de resposta disponíveis no AraLearn.",
       modules
     }]
   };

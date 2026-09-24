@@ -168,28 +168,28 @@ test("erro de MIME do download chega aos canais sem URL, parâmetro ou gravaçã
   }
 });
 
-test("descoberta dos5 pacotes ferramenta traz um contrato focal por chamada, sem enum por canal", async () => {
+test("descoberta dos pacotes atuais ferramenta traz um contrato focal por chamada, sem enum por canal", async () => {
   const adapter = fixture();
-  for (const id of ["calculator", "grammar", "dictionary", "reading", "audio"]) {
+  for (const id of ["calculator", "audio"]) {
     const result = await call(adapter, "consultar_componentes", { componente: `aralearn.resource.${id}@1.0.0` });
     const contract = result.context.componentAuthoringContract;
     assert.equal(contract.referencia, `aralearn.resource.${id}@1.0.0`);
     assert.equal(typeof contract.ferramenta.label, "string");
-    assert.equal(contract.modeloDeInstancia.package, `aralearn.resource.${id}`);
+    assert.equal(contract.modeloDeInstancia.package, id);
     assert.deepEqual(contract.slots, ["content"]);
     assert.equal(Object.hasOwn(result.context, "components"), false);
     assert.ok(JSON.stringify(result).length < 16000);
   }
 });
 
-test("fonte focal fornece alvos PDF lógicos para conteúdo sem expor caminho Storage", async () => {
+test("fonte focal conserva PDFs nas Fontes sem alvo de componente removido ou caminho Storage", async () => {
   const source = { sourceId: "source-pronunciation", revision: 3, title: "Guia de pronúncia",
     attachments: [{ contentHash: MEDIA.contentHash, byteSize: 123, mediaType: "application/pdf",
       storagePath: `${COURSE_ID}/${MEDIA.contentHash}.pdf`, createdAt: "2026-09-05T12:00:00Z", publicFileAccess: "inherit" }] };
   const adapter = fixture({ async getCourseSources() { return { items: [source], nextCursor: null }; } });
   const result = await call(adapter, "consultar_fontes", { curso: "Fonética", fonte: "Guia de pronúncia" });
-  assert.deepEqual(result.context.arquivosParaConteudo, [{ rotulo: "PDF 1", sourceAttachmentTarget: {
-    kind: "source_attachment", sourceId: source.sourceId, sourceRevision: 3, contentHash: MEDIA.contentHash } }]);
+  assert.equal(result.context.arquivosParaConteudo, undefined);
+  assert.ok(result.context.sources.items[0].attachments.length);
   assert.doesNotMatch(JSON.stringify(result), /storagePath|storage_path|\.pdf|\/object\/|signedUrl/u);
   assert.equal(adapter.downloads, 0);
 });

@@ -71,7 +71,7 @@ export function readStudyDraftRecoveries(value) {
 }
 
 // Called only by the IndexedDB versionchange transaction, never by a draft read.
-export function upgradeStudyDraftRecoveries(store) {
+export function upgradeStudyDraftRecoveries(store, afterUpgrade = () => {}) {
   const previousKeys = ["course.v1.study-draft-recovery", "aralearn.personal-course-copy-edit-pending.v1"];
   const keys = [STUDY_DRAFT_RECOVERY_CACHE_KEY, ...previousKeys];
   const rows = new Map();
@@ -111,6 +111,7 @@ export function upgradeStudyDraftRecoveries(store) {
       if (entries.length) store.put({ key: STUDY_DRAFT_RECOVERY_CACHE_KEY,
         value: { contract: STUDY_DRAFT_RECOVERY_CONTRACT, entries } });
       for (const key of previousKeys) store.delete(key);
+      afterUpgrade();
     };
   }
 }

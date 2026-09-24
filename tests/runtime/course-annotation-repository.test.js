@@ -438,7 +438,7 @@ test("refresh aceita a ordem de chaves devolvida pelo backend hospedado", async 
   cache.close();
 });
 
-test("revisão offline reabre e remove resposta e resolução antigas da projeção", async () => {
+test("revisão offline conserva resposta e decisão anteriores na projeção", async () => {
   const api = fakeApi();
   const { value, cache } = await repository(api);
   const created = await value.createForTarget({ studyUnitId: UNIT_ID }, {
@@ -463,10 +463,10 @@ test("revisão offline reabre e remove resposta e resolução antigas da projeç
     rawText: "Texto revisto após a resposta.",
     category: "suggestion"
   });
-  assert.equal(revised.state, "open");
-  assert.equal(revised.ownerResponse, null);
-  assert.equal(revised.timestamps.respondedAt, null);
-  assert.equal(revised.timestamps.resolvedAt, null);
+  assert.equal(revised.state, "resolved");
+  assert.deepEqual(revised.ownerResponse, authoritative.ownerResponse);
+  assert.equal(revised.timestamps.respondedAt, authoritative.timestamps.respondedAt);
+  assert.equal(revised.timestamps.resolvedAt, authoritative.timestamps.resolvedAt);
   assert.equal(revised.rawText, "Texto revisto após a resposta.");
   value.close();
   cache.close();
@@ -1261,7 +1261,8 @@ test("alvo online maior que 2 MiB retorna completo sem persistir falso vazio", a
     category: "suggestion"
   });
   assert.equal(revised.rawText, "Revisão local sobre o snapshot efêmero.");
-  assert.equal(revised.ownerResponse, null);
+  assert.deepEqual(revised.ownerResponse, denseItems[0].ownerResponse);
+  assert.equal(revised.state, denseItems[0].state);
   const withdrawn = await value.withdraw(denseItems[0].annotationId);
   assert.equal(withdrawn.state, "withdrawn");
   assert.equal(withdrawn.rawText, null);

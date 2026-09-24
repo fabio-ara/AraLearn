@@ -4,6 +4,7 @@ import {
   validateAcademicTaxonomy
 } from "../catalog/vocabularies.js";
 import { instrumentPackageManualTextTargets } from "./manualTextMarkers.js";
+import { accessibleDelimitedTexText, hydrateMathExpression, validateTexDelimitedText } from "../sdk/mathExpression.js";
 
 const PACKAGE_ID_PATTERN = /^aralearn\.(?:resource|response)\.[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
 const PACKAGE_VERSION_PATTERN = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u;
@@ -16,6 +17,10 @@ const PRACTICE_MODES = Object.freeze([
   "ordering",
   "classification"
 ]);
+
+// Notação literal: código e terminal conservam os bytes autorais, sem interpretar TeX
+// nem na validação nem na projeção textual.
+const LITERAL_NOTATION_PACKAGES = Object.freeze(["aralearn.resource.code", "aralearn.resource.terminal_session"]);
 function clone(value) {
   return structuredClone(value);
 }
@@ -125,7 +130,7 @@ export function assertPackageDefinition(definition) {
     throw new TypeError(`Versão inválida em ${manifest.id}.`);
   }
   if (manifest.authoringEligibility !== undefined &&
-      !["current", "legacy_only"].includes(manifest.authoringEligibility)) {
+      manifest.authoringEligibility !== "current") {
     throw new TypeError(`${manifest.id} declara elegibilidade de autoria inválida.`);
   }
   if (!text(manifest.label) || !text(manifest.purpose)) {
@@ -243,6 +248,24 @@ export function createPackageRegistry(packageDefinitions = []) {
     return typeof label === "string" && label ? label : original;
   }
 
+  function normalizePracticeValue(instance, targetPath, value) {
+    const original = String(value ?? "").normalize("NFC").trim();
+    const definition = get(instance?.package, instance?.version);
+    if (typeof definition?.normalizePracticeValue !== "function") return original;
+    return definition.normalizePracticeValue(clone(instance.data), text(targetPath), original);
+  }
+
+  function evaluateResponse(instance, answer, studyUnit = null) {
+    const validation = validateInstance(instance, "response");
+    if (!validation.valid) throw new TypeError(validation.errors.join(" "));
+    return clone(requirePackage(instance.package, instance.version).evaluate(clone(instance.data), clone(answer), {
+      normalizePracticeValue(blank, value) {
+        const target = studyUnit?.content?.find(item => item.id === blank.targetInstanceId);
+        return normalizePracticeValue(target, blank.targetPath.split(":", 1)[0], value);
+      }
+    }));
+  }
+
   function labelStudyUnitPracticeValue(studyUnit, targetInstanceId, targetPath, value) {
     const target = Array.isArray(studyUnit?.content)
       ? studyUnit.content.find((instance) => instance?.id === targetInstanceId)
@@ -273,6 +296,12 @@ export function createPackageRegistry(packageDefinitions = []) {
     if (schemaValidation.valid) {
       const semanticErrors = definition.validate(instance.data);
       if (Array.isArray(semanticErrors)) errors.push(...semanticErrors.filter(Boolean).map(String));
+      if (!LITERAL_NOTATION_PACKAGES.includes(instance.package)) {
+        for (const target of definition.editableTargets?.(instance.data) || []) {
+          const value = (target.path.match(/[^.[\]]+/gu) || []).reduce((node, key) => node?.[key], instance.data);
+          if (typeof value === "string") errors.push(...validateTexDelimitedText(value, target.path));
+        }
+      }
       if (slot === "content" && definition.manifest.slots.includes("content")) {
         errors.push(...validatePracticeTargets(definition, instance.data));
       }
@@ -297,10 +326,11 @@ export function createPackageRegistry(packageDefinitions = []) {
           ...definition.authoringContract,
           rules: [
             "responseCompatibility (compatibilidadeDeResposta) é indicativa, não exclusiva. Valem slots, schema e regras; paragraph aceita choice sem repetir a pergunta.",
+            "Campos de texto aceitam TeX com \\(…\\) inline e \\[…\\] em bloco; comandos não suportados produzem erro localizado. Código literal não interpreta notação.",
             ...(definition.authoringContract.rules || [])
           ]
         },
-        schema: definition.schema,
+        schema: definition.authoringSchema || definition.schema,
         ...(definition.manifest.slots.includes("content")
           ? { practiceTargets: resolvedPracticeTargets(definition, exampleData) }
           : {})
@@ -346,6 +376,7 @@ export function createPackageRegistry(packageDefinitions = []) {
         practiceValueLabel(instance, targetPath, value) {
           return labelPracticeValue(instance, targetPath, value);
         },
+        normalizePracticeValue,
         renderPreparedContent(instance, response, options) {
           const contentDefinition = requirePackage(instance.package, instance.version);
           if (typeof definition.prepareContentInstance !== "function") return "";
@@ -417,12 +448,14 @@ export function createPackageRegistry(packageDefinitions = []) {
         if (typeof definition?.hydrate === "function") {
           await definition.hydrate(instanceRoot);
         }
+        instanceRoot.querySelectorAll(".package-rich-tex").forEach(hydrateMathExpression);
       }));
     },
     accessibleText(instance, slot) {
       const validation = validateInstance(instance, slot);
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
-      return text(requirePackage(instance.package, instance.version).accessibleText(instance.data));
+      const value = text(requirePackage(instance.package, instance.version).accessibleText(instance.data));
+      return LITERAL_NOTATION_PACKAGES.includes(instance.package) ? value : accessibleDelimitedTexText(value);
     },
     editableTargets(instance, slot) {
       const validation = validateInstance(instance, slot);
@@ -440,6 +473,7 @@ export function createPackageRegistry(packageDefinitions = []) {
       if (!validation.valid) throw new TypeError(validation.errors.join(" "));
       return labelPracticeValue(instance, targetPath, value);
     },
+    normalizePracticeValue,
     reconcileResponseTextEdit(studyUnit, change) {
       if (!studyUnit?.response) return;
       const definition = requirePackage(studyUnit.response.package, studyUnit.response.version);
@@ -454,18 +488,14 @@ export function createPackageRegistry(packageDefinitions = []) {
     submitResponseState(instance, state, host) {
       const definition = requirePackage(instance.package, instance.version);
       return definition.responseInteraction.submit(clone(instance.data), state, {
-        ...host, evaluate: (answer) => clone(definition.evaluate(clone(instance.data), clone(answer)))
+        ...host, evaluate: (answer) => evaluateResponse(instance, answer, host.studyUnit)
       }) === true;
     },
     bindResponseInteraction(instance, root, host) {
       const definition = requirePackage(instance.package, instance.version);
       definition.responseInteraction.bind(root, clone(instance.data), host);
     },
-    evaluateResponse(instance, answer) {
-      const validation = validateInstance(instance, "response");
-      if (!validation.valid) throw new TypeError(validation.errors.join(" "));
-      return clone(requirePackage(instance.package, instance.version).evaluate(instance.data, clone(answer)));
-    }
+    evaluateResponse
   });
 }
 

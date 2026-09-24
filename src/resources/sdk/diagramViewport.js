@@ -98,7 +98,7 @@ function isDiagramControl(target) {
   ));
 }
 
-export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, initialScale = null }) {
+export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, initialScale = 1 }) {
   const home = figure.querySelector("[data-diagram-viewport-home]");
   const viewport = figure.querySelector("[data-diagram-viewport]");
   const dialog = figure.querySelector("[data-diagram-modal]");

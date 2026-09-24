@@ -1,20 +1,15 @@
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { canonicalAuthoringValue } from "./courseAuthoringBasis.js";
 
-// Import/render/restore use the runtime contract. This check belongs to authorship:
-// a legacy response can survive an unrelated edit, never a new response.
+// These checks apply to authorship; package existence belongs to the registry.
 export function inspectCoursePracticeAuthoring(content, previous = null) {
   const response = content?.response;
   if (!response) return [];
+  const definition = RESOURCE_PACKAGE_REGISTRY.get(response.package, response.version);
+  if (!definition?.manifest.slots.includes("response")) return [{ code: "unknown_response_component",
+    message: "O componente de resposta não está disponível. Escolha uma prática avaliável do catálogo corrente." }];
   const unchanged = previous?.response &&
     canonicalAuthoringValue(previous.response) === canonicalAuthoringValue(response);
-  const manifest = RESOURCE_PACKAGE_REGISTRY.listCatalog().find(item =>
-    item.id === response.package && item.version === response.version);
-  if (manifest?.authoringEligibility === "legacy_only") {
-    if (unchanged) return [];
-    return [{ code: "practice_response_legacy_only",
-      message: "Resposta aberta é preservada apenas no legado. Para criar ou substituir a resposta, escolha uma prática com avaliação e feedback locais." }];
-  }
   if (unchanged && canonicalAuthoringValue(previous.feedback) === canonicalAuthoringValue(content.feedback)) return [];
   const issues = [];
   if (!Array.isArray(content.feedback) || !content.feedback.length ||

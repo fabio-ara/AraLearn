@@ -248,20 +248,10 @@ const orderingResponse = normalizeInstance({
   }
 });
 
-// Fixture explícita de compatibilidade: o package permanece estudável no legado.
-const openResponse = normalizeInstance({
-  id: "response-open",
-  packageId: "aralearn.response.open",
-  version: "1.0.0",
-  slot: "response",
-  data: RESOURCE_PACKAGE_REGISTRY.getAuthoringContract("aralearn.response.open", "1.0.0").contract.example
-});
-
 const responseModules = [
   moduleForStudyUnits({ id: "response-choice-test", title: "Escolha", goal: "Avaliar seleção e retorno após a confirmação.", studyUnits: [studyUnit({ id: "choice-card", position: 1, title: "Escolha", response: choiceResponse })] }),
   moduleForStudyUnits({ id: "response-gap-test", title: "Lacuna", goal: "Avaliar lacunas independentes por alternativas e digitação.", studyUnits: [studyUnit({ id: "gap-choice-card", position: 1, title: "Alternativas por lacuna", content: [gapChoiceContent], response: gapChoiceResponse }), studyUnit({ id: "gap-typing-card", position: 2, title: "Digitação na lacuna", content: [gapTypingContent], response: gapTypingResponse })] }),
   moduleForStudyUnits({ id: "response-ordering-test", title: "Ordenação", goal: "Avaliar reconstrução de ordem nas expressões do resource textual.", studyUnits: [studyUnit({ id: "ordering-card", position: 1, title: "Ordene as etapas da resolução", content: [orderingContent], response: orderingResponse })] }),
-  moduleForStudyUnits({ id: "response-open-test", title: "Resposta aberta · legado", goal: "Verificar a leitura de prática legada sem criar nova autoria com este componente.", studyUnits: [studyUnit({ id: "open-card", position: 1, title: "Explique a decisão do switch", response: openResponse })] })
 ];
 
 const modules = [...contentModules, ...responseModules];

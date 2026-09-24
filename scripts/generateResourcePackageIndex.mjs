@@ -90,7 +90,8 @@ function generatedSource(modules) {
   ));
   const names = modules.map(({ exportName }) => `  ${exportName}`);
   const contracts = modules.map(({ definition }) => ({
-    manifest: definition.manifest, schema: definition.schema, authoringContract: definition.authoringContract
+    manifest: definition.manifest, schema: definition.schema, authoringContract: definition.authoringContract,
+    authoringSchema: definition.authoringSchema || definition.schema
   })).sort((left, right) => `${left.manifest.id}@${left.manifest.version}`.localeCompare(
     `${right.manifest.id}@${right.manifest.version}`, "en"));
   const fingerprint = `sha256:${createHash("sha256").update(JSON.stringify(contracts)).digest("hex")}`;

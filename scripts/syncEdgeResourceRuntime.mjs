@@ -28,6 +28,7 @@ const fixedFiles = [
     ["src/domain/courseContentReview.js", "domain/courseContentReview.js"],
     ["src/domain/courseEditorialProvenance.js", "domain/courseEditorialProvenance.js"],
   ["src/domain/courseContentInspection.js", "domain/courseContentInspection.js"],
+  ["src/domain/coursePedagogicalAudit.js", "domain/coursePedagogicalAudit.js"],
   ["src/domain/courseCurricularMapSlices.js", "domain/courseCurricularMapSlices.js"],
   ["src/domain/appliedExplanationBasis.js", "domain/appliedExplanationBasis.js"],
   ["src/domain/coursePracticeDistribution.js", "domain/coursePracticeDistribution.js"],
