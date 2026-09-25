@@ -19,7 +19,7 @@ const citationStatusNotice = status => status?.serviceUnavailable ? "Serviço in
   status?.source === "cache" ? "Fontes da revisão salva nesta cópia." : "";
 const contentSignature = value => JSON.stringify(value && {
   courseId: value.courseId, courseRevision: value.courseRevision, microsequenceId: value.microsequenceId,
-  explanation: value.explanation, contentReview: value.contentReview
+  explanation: value.explanation
 });
 
 /** Escopo único apresentado pela folha; a Explicação nunca recebe as fontes da unidade (O008/P015). */
@@ -39,15 +39,6 @@ export function unlocatedSourceMarkers(studyUnit, citations, sourceOptions = SOU
 export function explanationRenderingUnit(explanation, id = "explanation") {
   const content = normalizeMicrosequenceExplanation(explanation);
   return { id, position: 1, title: content.title, content: content.content, role: "theory", response: null, feedback: [], topics: [] };
-}
-
-export function explanationReviewMessage(review) {
-  return {
-    draft: "Conteúdo salvo sem revisão autoral declarada.",
-    stale: "O conteúdo mudou depois da revisão. A autoria precisa revisá-lo novamente.",
-    unregistered: "A revisão deste conteúdo não está registrada.",
-    current: "Revisado pela autoria nesta versão."
-  }[review?.state] || "A revisão deste conteúdo não está registrada.";
 }
 
 /** Folha de leitura: mantém o card montado e usa os mesmos componentes, fontes e ferramentas. */
@@ -333,7 +324,6 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       signature = contentSignature(contextValue);
       renderingUnit = contextValue.explanation ? explanationRenderingUnit(contextValue.explanation, contextValue.microsequenceId) : null;
       content = renderingUnit ? `<h3>${escape(renderingUnit.title)}</h3>` +
-        `<p class="study-explanation-review" role="status">${escape(explanationReviewMessage(contextValue.contentReview))}</p>` +
         renderPackageStudyUnitBlocks(renderingUnit, { toolsInActionBar: true,
           sourceTextTargets: listCourseSourceOccurrenceTargets(contextValue.explanation, SOURCE_OPTIONS),
           blockKeyPrefix: `explanation:${contextKey}` }) :
