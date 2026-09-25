@@ -230,8 +230,21 @@ function sharedExplanations() {
   }] }));
 }
 
-async function prepareMaterialization(input) {
-  return await executeHumanCourseTask(input);
+async function materializeFocusedUnits({ adapter, principal, course, units, initial = false }) {
+  let materialized;
+  for (const [index, unit] of units.entries()) {
+    const complete = !initial || index === units.length - 1;
+    const args = { curso: course, microssequencia: unit.microssequencia, concluir: complete,
+      unidades: [unit], explicacoes: sharedExplanations().filter(entry => entry.microssequencia === unit.microssequencia) };
+    const prepared = await executeHumanCourseTask({ adapter, principal, name: "preparar_materializacao",
+      rawArguments: { ...args, unidades: args.unidades.map(humanMaterializationUnitPlan) } });
+    assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
+    assert.equal(prepared.context.parte.titulo, "Sockets");
+    assert.equal(prepared.context.preflight.completion, complete ? "complete" : "partial");
+    materialized = await executeHumanCourseTask({ adapter, principal, name: "materializar_parte", rawArguments: args });
+    assert.equal(materialized.context.completion, complete ? "complete" : "partial");
+  }
+  return materialized;
 }
 
 export async function runLocalCourseAuthoringCurrent(environment = process.env) {
@@ -310,29 +323,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     }
     const proposedUnits = [explanationUnit(), practiceUnit()];
 
-    const prepared = await prepareMaterialization({
-      adapter,
-      principal,
-      name: "preparar_materializacao",
-      rawArguments: { curso: title, parte: 1, concluir: true,
-        unidades: proposedUnits.map(humanMaterializationUnitPlan),
-        explicacoes: sharedExplanations() }
-    });
-    assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
-    assert.equal(prepared.context.parte.titulo, "Sockets");
-    assert.equal(prepared.context.preflight.completion, "complete");
-    const materialized = await executeHumanCourseTask({
-      adapter,
-      principal,
-      name: "materializar_parte",
-      rawArguments: {
-        curso: title,
-        parte: 1,
-        concluir: true,
-        unidades: proposedUnits,
-        explicacoes: sharedExplanations()
-      }
-    });
+    const materialized = await materializeFocusedUnits({ adapter, principal, course: title, units: proposedUnits, initial: true });
     assert.equal(materialized.result, "Primeira parte produzida.");
 
     await executeHumanCourseTask({
@@ -348,23 +339,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     });
     const replacements = () => [explanationUnit(), practiceUnit()].map(unit => ({ ...unit,
       unidade: unit.conteudo.title }));
-    const replacementPreparation = await prepareMaterialization({ adapter, principal,
-      name: "preparar_materializacao", rawArguments: { curso: title, parte: 1, concluir: true,
-        unidades: replacements().map(humanMaterializationUnitPlan), explicacoes: sharedExplanations() } });
-    assert.equal(replacementPreparation.context.preflight.state, "ready",
-      JSON.stringify(replacementPreparation.context.preflight.blockers));
-    await executeHumanCourseTask({
-      adapter,
-      principal,
-      name: "materializar_parte",
-      rawArguments: {
-        curso: title,
-        parte: 1,
-        concluir: true,
-        unidades: replacements(),
-        explicacoes: sharedExplanations()
-      }
-    });
+    await materializeFocusedUnits({ adapter, principal, course: title, units: replacements() });
 
     const materializedContext = await resolveHumanCourseContext({
       adapter,
@@ -372,22 +347,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       course: title
     });
     const materializedRevision = materializedContext.course.revision;
-    const repeatedPreparation = await prepareMaterialization({ adapter, principal,
-      name: "preparar_materializacao", rawArguments: { curso: title, parte: 1, concluir: true,
-        unidades: replacements().map(humanMaterializationUnitPlan), explicacoes: sharedExplanations() } });
-    assert.equal(repeatedPreparation.context.preflight.state, "ready", JSON.stringify(repeatedPreparation.context.preflight.blockers));
-    await executeHumanCourseTask({
-      adapter,
-      principal,
-      name: "materializar_parte",
-      rawArguments: {
-        curso: title,
-        parte: 1,
-        concluir: true,
-        unidades: replacements(),
-        explicacoes: sharedExplanations()
-      }
-    });
+    await materializeFocusedUnits({ adapter, principal, course: title, units: replacements() });
     const context = await resolveHumanCourseContext({
       adapter,
       principal,

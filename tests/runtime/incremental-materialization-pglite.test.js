@@ -12,6 +12,7 @@ const [materializer, globalPlan, cutover, explanations, appliedBasis, forms, pra
   "20260916031133_incremental_materialization.sql"
 ].map(read));
 const focalScopeMigration = await read("20260917232000_focal_materialization_dependency_scope.sql");
+const focalAuditBasis = await read("20260924175938_revisao_v7_focal_audit_basis.sql");
 const discriminatorCorrection = await read("20260905095110_correct_applied_design_discriminator.sql");
 const originMigration = await read("20260916030333_editorial_interventions_and_observation_files.sql");
 const copyMigration = await read("20260905145236_independent_course_copies.sql");
@@ -39,9 +40,9 @@ const EVIDENCE = "40000000-0000-4000-8000-000000000001";
 const parameters = [{ parameterId: "required_explanation_forms", value: ["plain_definition", "concrete_example"] },
   { parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement", value: 1 }];
 const policy = { policy: {}, origin: "automatic", sourceScopeKind: "course" };
-const unit = (id, position, { introduced = false, developedForms = [], practices = [], text = id } = {}) => ({
-  studyUnitId: id, didacticMicrosequenceId: "micro", position, content: { title: id, role: "theory", content: [{ text }] },
-  designSnapshot: { contract: "aralearn.study-unit-design-snapshot.v2", parameterCatalogVersion: "1.2.0", didacticMicrosequenceId: "micro",
+const unit = (id, position, { micro = "micro", introduced = false, developedForms = [], practices = [], text = id } = {}) => ({
+  studyUnitId: id, didacticMicrosequenceId: micro, position, content: { title: id, role: "theory", content: [{ text }] },
+  designSnapshot: { contract: "aralearn.study-unit-design-snapshot.v2", parameterCatalogVersion: "1.2.0", didacticMicrosequenceId: micro,
     instructionalAnalysisUnitIds: [IDEA], evidenceRequirementIds: [EVIDENCE], parameters, editorialDirections: [], componentPolicy: policy },
   designApplication: { mode: practices.length ? "mixed" : "expository", introducedInstructionalAnalysisUnitIds: introduced ? [IDEA] : [],
     usedInstructionalAnalysisUnitIds: [], curriculumScopeItemIds: [], explanationApplications: [{ instructionalAnalysisUnitId: IDEA,
@@ -120,7 +121,7 @@ async function fixtureSchema() {
       declare all_units jsonb; begin perform private.assert_course_materialization_pedagogy_v1(p_course_id,all_units); end$$;`;
 }
 
-async function fixture() {
+async function fixture({ focalCurricularDependencies = true } = {}) {
   const db = new PGlite();
   // Actual materialization/core/pedagogy/reader definitions and migration run on
   // a minimal relational fixture. Auth, configuration, source storage and the
@@ -143,12 +144,43 @@ async function fixture() {
   await db.exec(block(originMigration, "origin"));
   await db.exec(migration);
   await db.exec(focalScopeMigration);
+  // O bloco corretivo da v7 é aplicado isolado: o resto da migração depende de
+  // fontes, inspeção e auth que este fixture mínimo substitui por stubs.
+  if (focalCurricularDependencies) await db.exec(block(focalAuditBasis, "focal_curricular_dependencies"));
   return db;
 }
 async function write(db, units, placements, { complete = false, revision = 1, request = "fragment-0001", explanations = [], hash = "a".repeat(64), targetPlanItems = targets } = {}) {
   return (await db.query("select public.materialize_course_authoring_part_for_actor_v2($1,$1,$2,$3,1,'[]',$4,$5,$6,$7,$8,$9,$10) value",
     [COURSE, PART, revision, targetPlanItems, units, request, hash, explanations, complete, placements])).rows[0].value;
 }
+// A cadeia A→B→C ocupa a mesma parte: o foco original do fixture vira A e B/C
+// entram como membros anexados, com os vínculos que o repertório exige.
+async function arrangeChain(db) {
+  await db.query(`update private.course_authoring_part_didactic_microsequences set didactic_microsequence_id='micro-a'
+    where course_id=$1 and authoring_part_id=$2 and didactic_microsequence_id='micro'`, [COURSE, PART]);
+  await db.query(`update private.course_design_target_plan_items set didactic_microsequence_id='micro-a'
+    where course_id=$1 and didactic_microsequence_id='micro'`, [COURSE]);
+  await db.query("insert into private.course_authoring_part_didactic_microsequences values($1,$2,'micro-b'),($1,$2,'micro-c')", [COURSE, PART]);
+  await db.query(`insert into private.course_design_target_plan_items values
+    ($1,'micro-b',$2,'instructional_analysis_unit'),($1,'micro-b',$3,'evidence_requirement'),
+    ($1,'micro-c',$2,'instructional_analysis_unit'),($1,'micro-c',$3,'evidence_requirement')`, [COURSE, IDEA, EVIDENCE]);
+  await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content) values
+    ($1,'microsequence','micro-a','lesson','lesson',1,'{"title":"A","dependsOn":[]}'::jsonb),
+    ($1,'microsequence','micro-b','lesson','lesson',2,'{"title":"B","dependsOn":["micro-a"]}'::jsonb),
+    ($1,'microsequence','micro-c','lesson','lesson',3,'{"title":"C","dependsOn":["micro-b"]}'::jsonb)`, [COURSE]);
+  const practice = micro => [{ evidenceRequirementId: EVIDENCE, opportunityId: `case-${micro}`,
+    invariantTaskOperation: "Distinguir os casos", variedDimensions: [] }];
+  return { batchTarget: micro => ({ didacticMicrosequenceId: micro,
+      instructionalAnalysisUnitIds: [IDEA], evidenceRequirementIds: [EVIDENCE] }),
+    a: unit("unit-a", 1, { micro: "micro-a", introduced: true, developedForms: ["plain_definition", "concrete_example"], practices: practice("micro-a") }),
+    b: unit("unit-b", 1, { micro: "micro-b", developedForms: ["plain_definition"], practices: practice("micro-b") }),
+    c: unit("unit-c", 1, { micro: "micro-c", developedForms: ["plain_definition"], practices: practice("micro-c") }) };
+}
+const materializationSnapshot = async db => ({
+  entities: (await db.query("select * from private.course_entities order by entity_type,entity_id")).rows,
+  receipts: (await db.query("select * from private.course_change_receipts order by request_id")).rows,
+  parts: (await db.query("select * from private.course_authoring_parts")).rows,
+  courses: (await db.query("select * from public.courses")).rows });
 
 test("o acumulado pode ultrapassar 64 unidades e mantém exigências da base aplicada omitida", async () => {
   const db = await fixture();
@@ -354,5 +386,53 @@ test("explicações explícitas aceitam reconciliação, respeitam a parte e pro
     const copied = (await db.query("select pg_get_functiondef('public.copy_course_for_actor_v1(uuid,uuid,bigint,text,boolean,text,timestamptz)'::regprocedure) value")).rows[0].value;
     assert.match(copied, /progression,materialization_complete\)\s+select[^;]+progression,materialization_complete/u);
     assert.equal((await db.query("select has_function_privilege('authenticated','public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)','execute') allowed")).rows[0].allowed, false);
+  } finally { await db.close(); }
+});
+
+test("cadeia A→B→C da mesma parte exige o pré-requisito produzido antes do foco seguinte", async () => {
+  const db = await fixture();
+  try {
+    const { batchTarget, a, b, c } = await arrangeChain(db);
+    const allTargets = ["micro-a", "micro-b", "micro-c"].map(batchTarget);
+    // O foco A não pode ser refém da dependência futura de C.
+    const first = await write(db, [a], [placement(a)], { request: "chain-a-001", targetPlanItems: [batchTarget("micro-a")] });
+    assert.equal(first.changed, true);
+    assert.equal((await db.query("select private.course_authoring_part_progress_v1($1,$2)->>'state' state", [COURSE, PART])).rows[0].state, "partially_materialized");
+
+    // O lote de C não inclui B: o pré-requisito precisa existir materializado.
+    const beforeSkip = await materializationSnapshot(db);
+    await assert.rejects(write(db, [c], [placement(a), placement(c)],
+      { revision: first.courseRevision, request: "chain-skip-b-001", targetPlanItems: [batchTarget("micro-c")] }), /dependencia curricular precisa estar produzida/u);
+    assert.deepEqual(await materializationSnapshot(db), beforeSkip);
+
+    const second = await write(db, [b], [placement(a), placement(b)],
+      { revision: first.courseRevision, request: "chain-b-001", targetPlanItems: [batchTarget("micro-b")] });
+    assert.equal(second.changed, true);
+    const kept = async () => (await db.query("select * from private.course_entities where entity_id=any($1) order by entity_id", [["unit-a", "unit-b"]])).rows;
+    const preserved = await kept();
+    // A conclusão do acumulado ainda não existe: C segue não produzida.
+    await assert.rejects(write(db, [b], [placement(a), placement(b)],
+      { complete: true, revision: second.courseRevision, request: "chain-premature-001", targetPlanItems: allTargets }),
+      /conclusão exige aplicações e cobertura/u);
+    assert.deepEqual(await kept(), preserved);
+
+    const done = await write(db, [c], [placement(a), placement(b), placement(c)],
+      { complete: true, revision: second.courseRevision, request: "chain-complete-001", targetPlanItems: allTargets });
+    assert.equal(done.changed, true);
+    assert.deepEqual(await kept(), preserved);
+    assert.equal((await db.query("select count(*)::int total from private.course_entities where entity_id='unit-c' and parent_id='micro-c'")).rows[0].total, 1);
+    assert.equal((await db.query("select private.course_authoring_part_progress_v1($1,$2)->>'state' state", [COURSE, PART])).rows[0].state, "materialized");
+  } finally { await db.close(); }
+});
+
+test("controle negativo: sem o bloco corretivo o foco isolado da parte falha pela dependência futura", async () => {
+  const db = await fixture({ focalCurricularDependencies: false });
+  try {
+    const { batchTarget, a } = await arrangeChain(db);
+    const before = await materializationSnapshot(db);
+    // Sem o escopo focal, a escrita de A valida a dependência futura de C.
+    await assert.rejects(write(db, [a], [placement(a)], { request: "control-a-001", targetPlanItems: [batchTarget("micro-a")] }),
+      /dependencia curricular precisa estar produzida/u);
+    assert.deepEqual(await materializationSnapshot(db), before);
   } finally { await db.close(); }
 });

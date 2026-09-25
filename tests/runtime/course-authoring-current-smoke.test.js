@@ -49,7 +49,8 @@ test("#274 prova substituição idempotente e Observações multi-alvo atômicas
   assert.match(source, /observationCount: 1/u);
   assert.match(source, /observationTargetCount: 2/u);
   assert.match(source, /preflight\.state, "ready"/u);
-  assert.match(source, /concluir: true/u);
+  assert.match(source, /concluir: complete/u);
+  assert.match(source, /const complete = !initial \|\| index === units\.length - 1/u);
   assert.doesNotMatch(source, /referenciaPreparo/u);
   assert.match(source, /explicitParameterOverrideCount, 0/u);
   assert.match(source, /afterEditAttribution/u);

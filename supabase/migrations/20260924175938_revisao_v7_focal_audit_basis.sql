@@ -132,4 +132,30 @@ $function$;
 revoke all on function private.course_pedagogical_basis_v1(uuid,text,text),
   private.course_pedagogical_report_grounded_v1(jsonb,jsonb) from public,anon,authenticated,service_role;
 
+-- Uma parte pode conter focos que ainda serão produzidos. A escrita parcial
+-- exige os pré-requisitos dos alvos atuais; a conclusão confere toda a parte.
+-- A→B→C deve permitir gravar A antes de B, sem permitir gravar C antes de B.
+do $focal_curricular_dependencies$
+declare
+  definition text;
+  before_fragment text := $before$      and membership.authoring_part_id=p_authoring_part_id
+      and not exists(
+        select 1 from private.course_entities prerequisite_unit$before$;
+  after_fragment text := $after$      and membership.authoring_part_id=p_authoring_part_id
+      and (p_complete or exists(
+        select 1 from jsonb_array_elements(p_target_plan_items) target(value)
+        where target.value->>'didacticMicrosequenceId'=membership.didactic_microsequence_id
+      ))
+      and not exists(
+        select 1 from private.course_entities prerequisite_unit$after$;
+begin
+  definition := replace(pg_get_functiondef(
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)'::regprocedure
+  ), E'\r\n', E'\n');
+  if (length(definition)-length(replace(definition,before_fragment,'')))/length(before_fragment)<>1 then
+    raise exception 'Validação precursora das dependências curriculares divergiu.' using errcode='55000';
+  end if;
+  execute replace(definition,before_fragment,after_fragment);
+end $focal_curricular_dependencies$;
+
 commit;

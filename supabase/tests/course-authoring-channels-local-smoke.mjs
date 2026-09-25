@@ -43,7 +43,7 @@ export function channelFixtures(course) {
   }
   const links = content => [{ fonte: SOURCE, relacao: "supported_by", papeis: ["tecnica_conceitual"], ancoras: [1],
     ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: content.content[0].data.text }] }];
-  const lots = [0, 1].map(lot => {
+  const parts = [0, 1].map(lot => {
     const indexes = [lot * 3, lot * 3 + 1, lot * 3 + 2];
     const units = indexes.flatMap(index => {
       const theory = explanationUnit(); const practice = practiceUnit();
@@ -75,17 +75,23 @@ export function channelFixtures(course) {
         motivo: index === 0 ? "Introduz a interface local a partir dos pré-requisitos de processo e transporte."
           : "Retoma a interface local estabelecida no primeiro caso para uma aplicação distinta." }];
     }
-    return { part: { curso: course, titulo: `Casos de comunicação ${lot + 1}`,
-      intencao: "Distinguir processo, interface e relação entre participantes em três casos concretos.",
-      microssequencias: indexes.map(index => names[index]), progressao: indexes.map(index => coverage[index]) },
-    materialization: { curso: course, parte: lot + 1, unidades: units, explicacoes: explanations } };
+    return {
+      part: { curso: course, titulo: `Casos de comunicação ${lot + 1}`,
+        intencao: "Distinguir processo, interface e relação entre participantes em três casos concretos.",
+        microssequencias: indexes.map(index => names[index]), progressao: indexes.map(index => coverage[index]) },
+      // A parte agrupa três casos; cada lote focal produz uma microssequência e
+      // omite a referência à parte, derivada pelo contrato corrente.
+      lots: indexes.map((index, position) => ({ materialization: { curso: course,
+        microssequencia: names[index], unidades: units.slice(position * 2, position * 2 + 2),
+        explicacoes: explanations.slice(position, position + 1) } }))
+    };
   });
   const repertoire = [{ task: "manter_unidade_analise", args: {
     curso: course, operacao: "criar", enunciado: idea.nome, descricao: idea.descricao } },
   ...coverage.map(enunciado => ({ task: "manter_requisito_evidencia", args: { curso: course, operacao: "criar", enunciado } })),
   ...names.map((microssequencia, index) => ({ task: "vincular_repertorio_instrucional", args: {
     curso: course, microssequencia, analise: [idea.nome], evidencias: [coverage[index]] } }))];
-  return { map, lots, repertoire };
+  return { map, parts, lots: parts.flatMap(({ lots }) => lots), repertoire };
 }
 
 export function wireClient(config, channel, accessToken, measurements) {
@@ -141,14 +147,16 @@ async function completeRead(client, task, args) {
   return { context: literal ? JSON.parse(literal) : result.context, pages };
 }
 
-export async function materializeChannelPart(client, lot) {
-  const { curso, parte, unidades, explicacoes } = lot.materialization;
+// Um lote focal materializa uma microssequência; a parte é derivada no servidor.
+// `concluir` falso conserva a produção parcial de uma parte com vários focos.
+export async function materializeChannelPart(client, lot, { concluir = true } = {}) {
+  const { curso, microssequencia, unidades, explicacoes } = lot.materialization;
   const prepared = await client.call("preparar_materializacao", {
-    curso, parte, concluir: true,
+    curso, microssequencia, concluir,
     unidades: unidades.map(humanMaterializationUnitPlan), explicacoes
   });
   assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
-  await client.call("materializar_parte", { ...lot.materialization, concluir: true });
+  await client.call("materializar_parte", { ...lot.materialization, concluir });
   return { ...prepared, pages: 1 };
 }
 
@@ -225,9 +233,17 @@ export async function runLocalAuthoringChannels(environment = process.env) {
       await client.call("aprovar_mapa_curricular", { referencia: savedMap.context.referenciaParaAprovar });
       for (const entry of fixture.repertoire) await client.call(entry.task, entry.args);
       let firstLot; let firstSourceLinks; const lots = [];
-      for (const [index, lot] of fixture.lots.entries()) {
-        await client.call("salvar_parte", lot.part);
-        const prepared = await materializeChannelPart(client, lot);
+      for (const [index, group] of fixture.parts.entries()) {
+        await client.call("salvar_parte", group.part);
+        let prepared;
+        for (const [position, lot] of group.lots.entries()) {
+          const closing = position === group.lots.length - 1;
+          prepared = await materializeChannelPart(client, lot, { concluir: closing });
+          assert.equal(prepared.context.preflight.completion, closing ? "complete" : "partial",
+            "O preparo focal precisa acompanhar a conclusão da parte.");
+          assert.equal(prepared.context.parte.titulo, group.part.titulo,
+            "A parte derivada pelo servidor precisa ser a parte declarada do foco.");
+        }
         const read = await completeRead(client, "exportar_autoria", { recorte: { curso: title } });
         const exported = read.context.authoringExport;
         const context = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
@@ -238,7 +254,7 @@ export async function runLocalAuthoringChannels(environment = process.env) {
         assert.equal(materialized.length, (index + 1) * 3);
         assert.equal(materialized.reduce((total, ms) => total + ms.studyUnits.length, 0), (index + 1) * 6);
         assert.equal(exported.artifact.explanationSources.length, (index + 1) * 3);
-        for (const expected of lot.materialization.explicacoes) {
+        for (const expected of group.lots.flatMap(entry => entry.materialization.explicacoes)) {
           const actual = all.find(ms => ms.title === expected.microssequencia).explanation;
           assert.deepEqual({ title: actual.title, content: actual.content }, expected.conteudo);
           const reconciliation = actual.reconciliation;

@@ -72,8 +72,13 @@ test("fixture dos canais vincula seis requisitos, fontes literais e reconciliaç
   }
 });
 
-test("smoke dos canais prepara e grava o mesmo candidato sem referência pública intermediária", async () => {
-  const lot = channelFixtures("Curso sintético").lots[0];
+test("smoke dos canais prepara e grava o mesmo candidato focal sem referência pública intermediária", async () => {
+  const fixture = channelFixtures("Curso sintético");
+  const lot = fixture.lots[0];
+  assert.deepEqual(fixture.parts.map(group => group.lots.length), [3, 3], "a parte agrupa três focos");
+  assert.equal(Object.hasOwn(lot.materialization, "parte"), false, "a parte é derivada pelo servidor");
+  assert.deepEqual(lot.materialization.unidades.map(unit => unit.microssequencia),
+    [lot.materialization.microssequencia, lot.materialization.microssequencia]);
   const calls = [];
   const client = { call: async (task, args) => {
     calls.push({ task, args });
@@ -82,10 +87,19 @@ test("smoke dos canais prepara e grava o mesmo candidato sem referência públic
   await materializeChannelPart(client, lot);
   assert.deepEqual(calls.map(call => call.task), ["preparar_materializacao", "materializar_parte"]);
   assert.equal(calls[0].args.concluir, true);
+  assert.equal(calls[0].args.microssequencia, lot.materialization.microssequencia);
+  assert.equal(Object.hasOwn(calls[0].args, "parte"), false);
   assert.deepEqual(calls[0].args.unidades, lot.materialization.unidades.map(humanMaterializationUnitPlan));
   assert.deepEqual(calls[0].args.explicacoes, lot.materialization.explicacoes);
   assert.deepEqual(calls[1].args, { ...lot.materialization, concluir: true });
+  assert.equal(Object.hasOwn(calls[1].args, "parte"), false);
   assert.equal(Object.hasOwn(calls[1].args, "referenciaPreparo"), false);
+  const partialCalls = [];
+  await materializeChannelPart({ call: async (task, args) => { partialCalls.push({ task, args });
+    return { context: { preflight: { state: "ready", referencia: "internal-only", blockers: [] } } }; } },
+  lot, { concluir: false });
+  assert.deepEqual(partialCalls.map(call => call.args.concluir), [false, false],
+    "a produção parcial conserva a parte até seu último foco");
   const blockedCalls = [];
   await assert.rejects(() => materializeChannelPart({ call: async task => {
     blockedCalls.push(task);
