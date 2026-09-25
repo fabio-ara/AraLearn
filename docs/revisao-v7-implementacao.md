@@ -3,9 +3,9 @@
 Baseline: `3b863399fedc74d86c8b04e13bc9aa28a8f1704a`, versão `0.0.81`.
 Especificação: `REGISTRO-DA-REVISAO-v7.md`, revisão humana de 24/09/2026.
 
-**Estado: implementação v7 integrada e backend implantado; correção final D014/O007 validada localmente na candidata 0.0.83, ainda em preparação para publicação.**
-Os resultados abaixo distinguem implementação, prova local e julgamento humano.
-As provas distinguem desenvolvimento, implantação e release pública; não certificam aprendizagem. O corte do backend e a publicação intermediária do site 0.0.82 passaram pelos gates, mas sua release permaneceu em rascunho após a inspeção visual encontrar a pendência D014/O007 descrita abaixo. A entrega final exige nova candidata, site e APK compatíveis pelo fluxo protegido do projeto.
+**Estado: implementação integrada e publicada no site e na release 0.0.83, com backend implantado, APK assinado e provas hospedadas concluídas.**
+Os resultados abaixo distinguem implementação, validação técnica, publicação e julgamento humano; não certificam aprendizagem nem substituem decisões humanas abertas.
+O corte do backend e a publicação intermediária do site 0.0.82 passaram pelos gates, mas sua release permaneceu em rascunho após a inspeção visual encontrar a pendência D014/O007. A correção final passou por nova preparação, CI integral, prova nativa e jornada hospedada antes da [release pública 0.0.83](https://github.com/fabio-ara/AraLearn/releases/tag/v0.0.83).
 
 ## Arquitetura e decisões
 
@@ -137,7 +137,7 @@ e interseção na [posição 92, página impressa 83](https://ocw.mit.edu/course
 Em O058, a definição de transição foi encontrada na [posição 8 da aula de autômatos](https://ocw.mit.edu/courses/6-045j-automata-computability-and-complexity-spring-2011/a8b9bb8d5d9c1f7a6b4a85056b8dcbde_MIT6_045JS11_lec03.pdf#page=8).
 A obra existe; o vínculo salvo aponta à página geral do curso, que não demonstra
 a localização dessa passagem. A leitura do banco foi somente leitura: os dados
-desses cursos hospedados não foram reancorados por esta implementação local.
+desses cursos hospedados não foram reancorados nesta intervenção.
 
 O player de áudio oferece controles separados, progresso e duração real para
 arquivos, com transcrição, leitura e tradução submetidas à condição de revelação.
@@ -257,7 +257,29 @@ Duas execuções hospedadas posteriores completaram, cada uma, 70 chamadas MCP e
 
 A inspeção dos pixels da Explicação encontrou a frase “Conteúdo salvo sem revisão autoral declarada”, ocorrência explicitamente registrada em O007 e proibida por D014. O renderer ainda a emitia, e um teste antigo preservava esse comportamento incorreto. A correção remove o bloco, a função de mensagens editoriais e seu CSS; também evita reconstruir a folha por mudança apenas no estado de revisão. A revisão continua disponível na Autoria. Avisos sobre ausência de explicação, erro de leitura e indisponibilidade de fontes continuam permitidos por sua função para o estudante.
 
-Os oito novos cenários de navegador passaram nos estados `draft`, `current`, `stale` e `unregistered`, em 390 e 1280 px, preservando o conteúdo e impedindo qualquer uma das mensagens editoriais. Os treze cenários anteriores da folha também passaram, incluindo fontes, foco, resposta pendente e estados de disponibilidade. As duas novas capturas de rascunho foram inspecionadas e mostram título e conteúdo sem o aviso. A candidata 0.0.83 ainda exige os gates completos e a repetição da prova hospedada antes da release pública; o rascunho 0.0.82 foi preservado.
+Os oito novos cenários de navegador passaram nos estados `draft`, `current`, `stale` e `unregistered`, em 390 e 1280 px, preservando o conteúdo e impedindo qualquer uma das mensagens editoriais. Os treze cenários anteriores da folha também passaram, incluindo fontes, foco, resposta pendente e estados de disponibilidade. As duas novas capturas de rascunho foram inspecionadas e mostram título e conteúdo sem o aviso. A versão 0.0.83 concluiu depois os gates integrais e a prova hospedada abaixo; o rascunho 0.0.82 foi preservado.
+
+### Publicação final 0.0.83
+
+A candidata `5934f67c114f08407e095aa4829b38a89f58fbec`, árvore `f5d7ab8932185c187f5fefe31c965ef3992f9fe6`, passou pelos seis gates de preparação local em 10min11s: preflight, lint, contratos, runtime, navegador e Android. Foram 2.468 testes de runtime aprovados, sem falhas, e 21 cenários da Explicação aprovados. Os 15 testes condicionados à integração real ficaram fora dessa execução de runtime; suas provas explícitas estão descritas em “Provas de desenvolvimento”.
+
+A [CI integral 36103200410, tentativa 1](https://github.com/fabio-ara/AraLearn/actions/runs/36103200410) aprovou os cinco jobs, incluindo web, Supabase e Android. A web aprovou 488 cenários, sem falhas; dez jornadas dependentes de Supabase real são omitidas por configuração nessa suíte e foram executadas separadamente, como registrado em “Provas de desenvolvimento”. O runtime repetiu os 2.468 sucessos. O [PR #406](https://github.com/fabio-ara/AraLearn/pull/406) foi integrado em `4351bc81d7cd4cae36f729f3aadb4f32617cf38b`, conservando exatamente a árvore da candidata.
+
+A [preparação da release 36105172693, tentativa 1](https://github.com/fabio-ara/AraLearn/actions/runs/36105172693) aprovou a identidade da candidata, o APK assinado e a instalação/atualização nativa. A [publicação do site 36106311782, tentativa 1](https://github.com/fabio-ara/AraLearn/actions/runs/36106311782) reconferiu backend, artefatos e arquivos servidos, e passou. Depois da prova hospedada descrita abaixo, a [finalização 36107926749, tentativa 1](https://github.com/fabio-ara/AraLearn/actions/runs/36107926749) passou e tornou a release pública em 25/09/2026, às 07:31:07 UTC.
+
+O OpenAPI gerado acompanha a versão 0.0.83; a comparação estrutural confirmou que apenas `info.version` mudou em relação à 0.0.82. Esta correção final não acrescentou migration nem mudou o comportamento das Functions já implantadas.
+
+O APK 0.0.83, código 229, tem SHA-256 `b4ad20ad7bfbf5f4c4e7774abfcf1a45a5a610fda67217b7aa96cbdad5d6867f` e conserva o certificado `c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296`. A prova Android 36/KVM cobriu instalação limpa, atualização de 0.0.67/código 213 e reinstalação, conservando o UID e o tema escolhido pela interface da versão-base; a candidata não escreveu novamente essa preferência. Os 16 arquivos de evidência tiveram seus hashes conferidos. Quatro capturas foram inspecionadas: abertura da base e da candidata ainda no carregamento, Aparência depois da reabertura limpa e Aparência após reinstalação. A prova não representa atualização partindo de 0.0.80 nem cobertura de todos os estados nativos.
+
+A prova hospedada final passou em seus nove cenários, sem falhas ou pendências, e completou 70 chamadas MCP e quatro Actions sem falhas. Percorreu Home, curso, módulo, lição, microssequência e unidade; respondeu duas lacunas de endereço/tamanho e uma escolha com três corretas entre seis alternativas; verificou feedback específico, Explicação sem mensagens editoriais, leitura do conteúdo carregado na Autoria e retorno ao estudo. A recarga sem rede ocorreu sob controle do service worker e reabriu o curso persistido a partir da Home. A conta e o curso sintéticos foram removidos, e ambos os canais recusaram os tokens revogados com HTTP 401.
+
+Foram inspecionadas cinco capturas da execução final: Autoria carregada, curso após recarga offline, Explicação em 390/1280 px e comentário da escolha múltipla. As passagens incompletas foram conservadas; elas expuseram erros do roteiro na hierarquia, no elemento que recebe `aria-current` e na espera entre o carregamento da tela e o das unidades, além de uma leitura não atômica do contador ao terminar a última prática. A instrumentação foi corrigida sem relaxar a exigência de conteúdo visível nem modificar novamente o produto. O parecer independente verificou esses caminhos antes do fechamento. Somente a execução final com nove sucessos autoriza o fechamento da prova de UI.
+
+O conteúdo materializado é a fixture literal B-2 dos experimentos anteriores. O controle de perda/restauração do feedback confirmou os estados `needs_attention` e `consistent`, com cinco dimensões fundamentadas. Esses pareceres fixos verificam transporte e persistência; não são novas gerações ou avaliações independentes do GPT.
+
+A inspeção nativa identificou baixo contraste dos ícones da barra de status do Android no tema claro, também presente na versão-base 0.0.67. Esse estado preexistente, fora dos estados explicitamente tratados na v7, permanece na captura inicial da versão final; não foi corrigido nem considerado resolvido.
+
+A [release pública 0.0.83](https://github.com/fabio-ara/AraLearn/releases/tag/v0.0.83), o [site](https://fabio-ara.github.io/AraLearn/) e o [APK assinado](https://github.com/fabio-ara/AraLearn/releases/download/v0.0.83/AraLearn-0.0.83.apk) foram conferidos. A releitura confirmou a versão como a mais recente, a identidade dos três assets e suas somas, o texto integral das notas e o endereço efetivo do APK; a página pública das notas foi inspecionada no navegador. O rascunho intermediário 0.0.82 foi preservado e não é uma release pública concluída.
 
 ### Provas de desenvolvimento
 
@@ -373,9 +395,9 @@ Não se generalizou a mudança aos demais diagramas sem defeito demonstrado.
 
 ## Validação humana posterior e limites
 
-As migrations, Functions e runtime web/Android integram a candidata de publicação
-como um conjunto compatível. A preparação e os gates de promoção precisam conservar
-a identidade dos bytes aprovados. Os cursos hospedados consultados não
+As migrations, Functions e runtime web/Android foram publicados como um conjunto
+compatível. A preparação e os gates de promoção conferiram a identidade dos bytes
+aprovados. Os cursos hospedados consultados não
 foram editados: as reancoragens descritas em O028/O058 permanecem uma aplicação
 de dados separada, com os destinos verificados neste relatório.
 
@@ -417,7 +439,7 @@ A matriz mantém todos os 167 IDs, incluindo erratas e fatos já aceitos.
 | D011 | Matriz permanece própria quando há interação interna. | Resolvido | src/resources/packages/matrix/index.js; catálogo de resources |
 | D012 | Visualização é principal e legenda é secundária. | Resolvido | src/resources/packages/plane/index.js; src/resources/packages/chart/index.js; public/styles.css |
 | D013 | Citações devem ficar separadas da prosa explicativa. | Resolvido por mudança transversal | src/study/studyCitations.js; src/ui/CourseSourcesPanel.js; src/resources/packages/paragraph/richText.js |
-| D014 | Conteúdo pedagógico não deve expor mensagens operacionais. | Resolvido por mudança transversal; correção final validada localmente | packageRegistry.js; renderState.js; áudio/parágrafo; studyExplanation.js e oito cenários de study-explanation.spec.js, após detectar o aviso restante na hospedagem |
+| D014 | Conteúdo pedagógico não deve expor mensagens operacionais. | Resolvido por mudança transversal | packageRegistry.js; renderState.js; áudio/parágrafo; studyExplanation.js, oito cenários de study-explanation.spec.js e prova visual hospedada 0.0.83 |
 | D015 | Calculadora deve ter experiência convencional real. | Resolvido | src/resources/packages/calculator/index.js; src/resources/packages/calculator/interaction.js |
 | D016 | Estruturas complexas devem oferecer zoom/ampliação. | Resolvido por mudança transversal | src/resources/sdk/diagramViewport.js; packages de diagrama |
 | D017 | Toda correção relevante exige validação humana focal posterior. | Investigado e mantido aberto por decisão humana | Roteiro público na seção “Validação humana posterior e limites” deste relatório |
@@ -487,8 +509,8 @@ A matriz mantém todos os 167 IDs, incluindo erratas e fatos já aceitos.
 | O003 | Contorno de foco/seleção aparece cortado em superfícies antigas. | Resolvido por mudança transversal | public/styles.css; public/authoring-settings.css; focus-visible |
 | O004 | Controles administrativos do Editar não eram compreensíveis. | Investigado e mantido aberto por decisão humana | CourseAuthoringSurface.js; manualStudyUnitEdit.js |
 | O005 | Conta e Aparência ainda não foram julgadas diretamente. | Investigado e mantido aberto por decisão humana | VisitorSettings.js; StudyDeviceSettings.js; public/main.js |
-| O006 | M01 tem desalinhamento pedagógico. | Mecanismo transversal validado; conteúdo hospedado pendente | Barreira upstream em coursePedagogicalAudit.js e courseHumanMaterialization.js; a reautoria do conteúdo hospedado não foi aplicada nesta entrega local |
-| O007 | Mensagens de bastidor aparecem no conteúdo. | Resolvido por mudança transversal; correção final validada localmente | packageRegistry.js accessibleText; renderState.js; audio/index.js; remoção efetiva das mensagens de revisão em studyExplanation.js, validada nos quatro estados em telefone e computador |
+| O006 | M01 tem desalinhamento pedagógico. | Mecanismo transversal validado; conteúdo hospedado pendente | Barreira upstream em coursePedagogicalAudit.js e courseHumanMaterialization.js; a reautoria do conteúdo hospedado não foi aplicada nesta intervenção |
+| O007 | Mensagens de bastidor aparecem no conteúdo. | Resolvido por mudança transversal | packageRegistry.js accessibleText; renderState.js; audio/index.js; remoção das mensagens em studyExplanation.js, quatro estados em telefone/computador e inspeção dos pixels publicados em 0.0.83 |
 | O008 | Explicação mistura fontes próprias e fontes de unidade. | Resolvido por mudança transversal | src/study/studyExplanation.js; studyCitations.js |
 | O009 | Dicionário/Gramática sobrepõem Explicação. | Resolvido por mudança transversal | resourceCatalog.js; docs; migrations históricas; remoção de packages |
 | O010 | Leitura complementar duplica encaminhamento externo. | Resolvido por mudança transversal | resourceCatalog.js; docs; migration component removal |
@@ -505,7 +527,7 @@ A matriz mantém todos os 167 IDs, incluindo erratas e fatos já aceitos.
 | O021 | Comentário aberto pode cobrir barra inferior/Explicação. | Resolvido por mudança transversal | public/styles.css .study-continue-popup-shell; tests/e2e/revisao-v7-study-surface.spec.js em 320/390/1280 px |
 | O022 | Feedback genérico substitui comentário sobre a resposta. | Resolvido por mudança transversal | coursePedagogicalAudit.js; buildResourceCatalogCourse.mjs; materializadores |
 | O023 | Objetivo/comando e evidência prática estão desalinhados. | Resolvido por mudança transversal | coursePedagogicalAudit.js associa objetivo/requisito/operação/resposta; courseHumanMaterialization.js; gerações e correção B-2 |
-| O024 | M09/M10 exigem pressupostos não desenvolvidos. | Mecanismo transversal validado; conteúdo hospedado pendente | Base focal da auditoria inclui Explicação, requisitos e prática; docs/modelo-didatico.md. A reautoria desses conteúdos hospedados não foi aplicada nesta entrega local |
+| O024 | M09/M10 exigem pressupostos não desenvolvidos. | Mecanismo transversal validado; conteúdo hospedado pendente | Base focal da auditoria inclui Explicação, requisitos e prática; docs/modelo-didatico.md. A reautoria desses conteúdos hospedados não foi aplicada nesta intervenção |
 | O025 | M13 reconhece princípio em vez de estimar→calcular→verificar. | Resolvido | calculator package; coursePedagogicalAudit.js; materialization |
 | O026 | Calculadora anterior não era convencional. | Resolvido | calculator/index.js; calculator/interaction.js |
 | O027 | M14 bloqueava antes do overview por mascaramento incompatível. | Resolvido | gap-response.js; truth-table/index.js; CourseStudyScreen.js; packageRegistry.js |
