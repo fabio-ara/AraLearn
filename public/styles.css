@@ -5079,7 +5079,6 @@ button.account-settings-back[hidden] {
   line-height: 1.4;
   overflow-wrap: break-word;
 }
-.study-explanation-review { color: var(--text-secondary); margin: 0 0 16px; }
 .study-explanation-body .package-instance { min-width: 0; margin-block: 12px; }
 .study-explanation-tools { padding: 0 12px 8px; }
 .study-explanation-tools:empty { display: none; }

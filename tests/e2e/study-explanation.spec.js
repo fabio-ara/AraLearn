@@ -118,9 +118,9 @@ test("acervo sem base mantém fontes existentes na folha proporcional ao conteú
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
 });
 
-test("apoio ausente, rascunho, offline e erro têm estados explícitos", async ({ page }) => {
+test("apoio ausente, offline e erro têm estados explícitos", async ({ page }) => {
   for (const [state, message] of [["missing", "Esta microssequência ainda não tem explicação"],
-    ["draft", "Conteúdo salvo sem revisão autoral declarada"], ["error", "A explicação desta cópia está indisponível"]]) {
+    ["error", "A explicação desta cópia está indisponível"]]) {
     await mount(page, `?state=${state}`); await openButton(page).click();
     await expect(overlay(page)).toContainText(message);
     if (state === "error") await expect(overlay(page).getByRole("alert")).toHaveCount(1);
@@ -136,6 +136,22 @@ test("apoio ausente, rascunho, offline e erro têm estados explícitos", async (
   await expect(overlay(page)).toContainText("este PDF externo precisa de conexão");
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.opened)).toEqual([]);
 });
+
+for (const width of [390, 1280]) for (const state of ["draft", "current", "stale", "unregistered"]) {
+  test(`D014/O007: Explicação não expõe workflow autoral ${state} em ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 844 });
+    await mount(page, `?state=${state}`);
+    await openButton(page).click();
+    await expect(page.locator(".study-explanation-body > h3"))
+      .toContainText("Processos, interfaces e transporte");
+    await expect(overlay(page)).toContainText("é um programa em execução");
+    await expect(overlay(page)).not.toContainText(/revisão autoral|A autoria precisa revisá-lo|Revisado pela autoria|A revisão deste conteúdo/iu);
+    await expect(overlay(page).locator(".study-explanation-review")).toHaveCount(0);
+    if (state === "draft") await page.screenshot({ path: info.outputPath(`explicacao-sem-workflow-${width}.png`), fullPage: true });
+    await page.keyboard.press("Escape");
+    await expect(openButton(page)).toBeFocused();
+  });
+}
 
 test("mudança de conexão conserva overlay, foco e resposta pendente", async ({ page }) => {
   await mount(page, "?unit=practice");

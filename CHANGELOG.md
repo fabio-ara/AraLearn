@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.83] - 2026-09-25
+
+### Corrigido
+
+- a Explicação no estudo apresenta o conteúdo e seus estados de disponibilidade sem avisos sobre o workflow de revisão autoral; os controles dessa revisão permanecem na Autoria.
+
 ## [0.0.82] - 2026-09-24
 
 ### Melhorado

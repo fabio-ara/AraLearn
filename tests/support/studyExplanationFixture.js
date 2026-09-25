@@ -79,7 +79,8 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       return { courseId: course.id, courseRevision: 1, microsequenceId: ms.id, entityPath: [...path, reference.studyUnitId],
         targetKind: "microsequence_explanation", targetId: ms.id,
         explanation: probe.state === "missing" ? null : structuredClone(support),
-        contentReview: probe.state === "draft" ? { state: "draft" } : { state: "current", approvedAt: "2026-09-07T00:00:00Z" },
+        contentReview: ["draft", "stale", "unregistered"].includes(probe.state)
+          ? { state: probe.state } : { state: "current", approvedAt: "2026-09-07T00:00:00Z" },
         state: probe.state, retainedForReview: false, availableRevision: 1, offline: probe.offline };
     },
     loadExplanationCitations: async reference => {

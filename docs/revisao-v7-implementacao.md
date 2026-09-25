@@ -3,9 +3,9 @@
 Baseline: `3b863399fedc74d86c8b04e13bc9aa28a8f1704a`, versão `0.0.81`.
 Especificação: `REGISTRO-DA-REVISAO-v7.md`, revisão humana de 24/09/2026.
 
-**Estado: implementação integrada e validada localmente em 24/09/2026; candidata 0.0.82 em preparação para publicação.**
+**Estado: implementação v7 integrada e backend implantado; correção final D014/O007 validada localmente na candidata 0.0.83, ainda em preparação para publicação.**
 Os resultados abaixo distinguem implementação, prova local e julgamento humano.
-As provas desta seção antecedem a promoção e não certificam aprendizagem. A entrega inclui a publicação conjunta das migrations, Functions, site e APK pelo fluxo protegido do projeto.
+As provas distinguem desenvolvimento, implantação e release pública; não certificam aprendizagem. O corte do backend e a publicação intermediária do site 0.0.82 passaram pelos gates, mas sua release permaneceu em rascunho após a inspeção visual encontrar a pendência D014/O007 descrita abaixo. A entrega final exige nova candidata, site e APK compatíveis pelo fluxo protegido do projeto.
 
 ## Arquitetura e decisões
 
@@ -249,6 +249,16 @@ A prova seguinte, com partes de três microssequências encadeadas, revelou uma 
 
 Com essa correção, os clientes locais reais de Actions e MCP completaram respectivamente 87 e 89 chamadas. Cada canal materializou seis microssequências em duas partes, com seis Explicações e doze unidades, e confirmou a igualdade da exportação pela leitura independente. Os hashes do conteúdo e das fontes da primeira parte permaneceram iguais depois da segunda. Os dois cursos, a conta sintética e o cliente OAuth foram removidos; a conferência final encontrou zero cursos, usuários e arquivos na stack descartável. Trata-se de uma fixture fixa de integração, não de novas gerações ou avaliações pedagógicas do GPT.
 
+### Correção encontrada na prova hospedada
+
+A candidata integrada em `a1e4b3c38ec1e7b12836dbc6e08fd9a8a2e2689e` aprovou a [CI completa](https://github.com/fabio-ara/AraLearn/actions/runs/36096648349), a [preparação dos artefatos e prova nativa](https://github.com/fabio-ara/AraLearn/actions/runs/36098415997) e a [publicação do site](https://github.com/fabio-ara/AraLearn/actions/runs/36099571519). Antes do corte, um novo backup foi restaurado e atualizado em cópia isolada: as seis migrations passaram por 22 verificações de preservação, incluindo proveniência editorial. A revalidação remota de 25/09, às 05:35 UTC, confirmou sua atualidade. As migrations e três Functions foram então implantadas; CORS, OAuth inicial e renovado, fronteiras de acesso, autoria e limpeza passaram. O lint do banco terminou com código zero e avisos de casts e volatilidade, sem erros; não se declara ausência de avisos.
+
+Duas execuções hospedadas posteriores completaram, cada uma, 70 chamadas MCP e quatro Actions sem falhas. Materializaram o caso B-2 com três práticas, sem IDs ou posições nos inputs, e verificaram perda controlada de feedback, parecer `needs_attention`, restauração literal e novo parecer `consistent`. Os pareceres são fixtures declaradas, não novas avaliações do GPT. Os cursos e contas sintéticos foram removidos e ambos os canais recusaram os tokens revogados. Essas provas de backend não aprovam automaticamente a interface: o primeiro roteiro confundia abertura do curso com abertura direta da unidade; o segundo ainda precisava esperar a leitura do curso na Autoria antes de testar seu retorno. Os resultados incompletos foram preservados.
+
+A inspeção dos pixels da Explicação encontrou a frase “Conteúdo salvo sem revisão autoral declarada”, ocorrência explicitamente registrada em O007 e proibida por D014. O renderer ainda a emitia, e um teste antigo preservava esse comportamento incorreto. A correção remove o bloco, a função de mensagens editoriais e seu CSS; também evita reconstruir a folha por mudança apenas no estado de revisão. A revisão continua disponível na Autoria. Avisos sobre ausência de explicação, erro de leitura e indisponibilidade de fontes continuam permitidos por sua função para o estudante.
+
+Os oito novos cenários de navegador passaram nos estados `draft`, `current`, `stale` e `unregistered`, em 390 e 1280 px, preservando o conteúdo e impedindo qualquer uma das mensagens editoriais. Os treze cenários anteriores da folha também passaram, incluindo fontes, foco, resposta pendente e estados de disponibilidade. As duas novas capturas de rascunho foram inspecionadas e mostram título e conteúdo sem o aviso. A candidata 0.0.83 ainda exige os gates completos e a repetição da prova hospedada antes da release pública; o rascunho 0.0.82 foi preservado.
+
 ### Provas de desenvolvimento
 
 Resultados já confirmados: enquadramento compartilhado de Unidade/Explicação,
@@ -407,7 +417,7 @@ A matriz mantém todos os 167 IDs, incluindo erratas e fatos já aceitos.
 | D011 | Matriz permanece própria quando há interação interna. | Resolvido | src/resources/packages/matrix/index.js; catálogo de resources |
 | D012 | Visualização é principal e legenda é secundária. | Resolvido | src/resources/packages/plane/index.js; src/resources/packages/chart/index.js; public/styles.css |
 | D013 | Citações devem ficar separadas da prosa explicativa. | Resolvido por mudança transversal | src/study/studyCitations.js; src/ui/CourseSourcesPanel.js; src/resources/packages/paragraph/richText.js |
-| D014 | Conteúdo pedagógico não deve expor mensagens operacionais. | Resolvido por mudança transversal | src/resources/kernel/packageRegistry.js; src/ui/renderState.js; packages de áudio e parágrafo |
+| D014 | Conteúdo pedagógico não deve expor mensagens operacionais. | Resolvido por mudança transversal; correção final validada localmente | packageRegistry.js; renderState.js; áudio/parágrafo; studyExplanation.js e oito cenários de study-explanation.spec.js, após detectar o aviso restante na hospedagem |
 | D015 | Calculadora deve ter experiência convencional real. | Resolvido | src/resources/packages/calculator/index.js; src/resources/packages/calculator/interaction.js |
 | D016 | Estruturas complexas devem oferecer zoom/ampliação. | Resolvido por mudança transversal | src/resources/sdk/diagramViewport.js; packages de diagrama |
 | D017 | Toda correção relevante exige validação humana focal posterior. | Investigado e mantido aberto por decisão humana | Roteiro público na seção “Validação humana posterior e limites” deste relatório |
@@ -478,7 +488,7 @@ A matriz mantém todos os 167 IDs, incluindo erratas e fatos já aceitos.
 | O004 | Controles administrativos do Editar não eram compreensíveis. | Investigado e mantido aberto por decisão humana | CourseAuthoringSurface.js; manualStudyUnitEdit.js |
 | O005 | Conta e Aparência ainda não foram julgadas diretamente. | Investigado e mantido aberto por decisão humana | VisitorSettings.js; StudyDeviceSettings.js; public/main.js |
 | O006 | M01 tem desalinhamento pedagógico. | Mecanismo transversal validado; conteúdo hospedado pendente | Barreira upstream em coursePedagogicalAudit.js e courseHumanMaterialization.js; a reautoria do conteúdo hospedado não foi aplicada nesta entrega local |
-| O007 | Mensagens de bastidor aparecem no conteúdo. | Resolvido por mudança transversal | packageRegistry.js accessibleText; renderState.js; audio/index.js |
+| O007 | Mensagens de bastidor aparecem no conteúdo. | Resolvido por mudança transversal; correção final validada localmente | packageRegistry.js accessibleText; renderState.js; audio/index.js; remoção efetiva das mensagens de revisão em studyExplanation.js, validada nos quatro estados em telefone e computador |
 | O008 | Explicação mistura fontes próprias e fontes de unidade. | Resolvido por mudança transversal | src/study/studyExplanation.js; studyCitations.js |
 | O009 | Dicionário/Gramática sobrepõem Explicação. | Resolvido por mudança transversal | resourceCatalog.js; docs; migrations históricas; remoção de packages |
 | O010 | Leitura complementar duplica encaminhamento externo. | Resolvido por mudança transversal | resourceCatalog.js; docs; migration component removal |
