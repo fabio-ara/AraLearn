@@ -233,6 +233,16 @@ comandos selecionados pelo plano de impacto do projeto. Essas provas de desenvol
 antecedem a preparação formal da candidata, a CI protegida e os recibos de promoção.
 A matriz distingue prova técnica local, investigação e julgamento humano.
 
+### Regressões encontradas na preparação da publicação
+
+A [CI completa da candidata inicial](https://github.com/fabio-ara/AraLearn/actions/runs/36083398546) passou no Android e nos testes SQL, mas apontou 27 falhas de navegador e oito objetos novos ausentes do inventário de paridade. Essa execução não autoriza promoção. As expectativas de áudio, cache versão 3, calculadora, fontes por escopo e avisos da Home foram alinhadas aos comportamentos da v7, conservando as verificações de dados, geometria, foco e isolamento entre cursos.
+
+As jornadas também expuseram regressões de produto: fechar fontes conservava um estado interno que quebrava o próximo retorno; a transição de tela inteira podia sobrescrever o scroll e retirar o foco do canvas; as opções de lacunas aumentavam a moldura do texto apesar de o botão já oferecer uma área de toque de 44 px. O encerramento agora limpa o estado da folha, ações de scroll do usuário invalidam reposicionamentos pendentes e o rótulo das opções conserva a apresentação da lacuna preenchida. A inspeção de pixels identificou ainda foco cortado nas laterais dos diagramas: fluxogramas, grafos e diagramas de sistemas compartilham o contorno interno arredondado.
+
+O teste de regressão de `diagramViewport` controla apenas a fila de quadros da transição no navegador real. O controle com o SDK anterior reproduziu o deslocamento horizontal de 76 para zero; o teste exige preservar a posição e o foco depois dos quadros pendentes e recusa erros de execução na página. As jornadas naturais continuam exercitando Unidade e Explicação sem substituir o agendamento do navegador. O inventário exato passou a abranger os 734 objetos reais, associando as guardas de áudio e a base pedagógica aos casos funcionais correspondentes; seus 12 testes passaram.
+
+### Provas de desenvolvimento
+
 Resultados já confirmados: enquadramento compartilhado de Unidade/Explicação,
 valores tipados em prática, ordenação vertical, recuperação de edição, áudio,
 calculadora, fontes, configurações, observações, remoções e provas de geração.

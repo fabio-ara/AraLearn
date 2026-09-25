@@ -102,7 +102,7 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     expect(upload).toMatchObject({ courseId: "e3060000-0000-4000-8000-000000000010", expectedCourseRevision: 1,
       name: names[1], type: "audio/wav", size: bytes.length, bytes: [...bytes] });
     expect(upload.requestId).toMatch(/^[\da-f-]{36}$/u);
-    await expect(dialog.getByRole("status")).toHaveText("Áudio atualizado.");
+    await expect(dialog.getByRole("status")).toHaveText("Áudio guardado na biblioteca.");
     await expect(name).toHaveText("");
     expect(await geometry()).toEqual(empty);
     await expect(input).toBeHidden();
@@ -178,7 +178,7 @@ test("Áudio conserva rascunho, pedido incerto e posição de salvar após mensa
   await expect(retry).toBeVisible();
   await page.evaluate(() => { window.audioProbe.fail = false; });
   await retry.click();
-  await expect(page.getByRole("status")).toHaveText("Áudio atualizado.");
+  await expect(page.getByRole("status")).toHaveText("Configuração de áudio salva.");
   await trigger.click();
   expect(await save.boundingBox()).toEqual(before);
   expect(await page.getByLabel("Idioma padrão").boundingBox()).toEqual(fieldBefore);

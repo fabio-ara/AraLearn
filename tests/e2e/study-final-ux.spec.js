@@ -507,7 +507,7 @@ test("Abrir ignora a Unidade salva, mostra os Módulos e volta ao controle de or
   await capture(page, "1280-home-retorno");
 });
 
-test("avisos da Home preservam exatamente a geometria do seletor e do Curso", async ({ page }) => {
+test("avisos da Home preservam dimensões e entram no fluxo sem sobrepor o Curso", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountStudy(page);
   const geometry = await page.evaluate(async (project) => {
@@ -539,17 +539,26 @@ test("avisos da Home preservam exatamente a geometria do seletor e do Curso", as
       homeNotice: "Seu acesso ao Curso selecionado foi encerrado."
     });
     const after = bounds();
+    const feedback = document.querySelector(".study-home-feedback-layer").getBoundingClientRect();
     return {
       before,
       after,
+      feedbackBottom: feedback.bottom,
       feedbackPosition: getComputedStyle(
         document.querySelector(".study-home-feedback-layer")
       ).position
     };
   }, fixture);
 
-  expect(geometry.after).toEqual(geometry.before);
-  expect(geometry.feedbackPosition).toBe("fixed");
+  for (const key of ["card", "preview"]) {
+    expect(geometry.after[key].slice(1)).toEqual(geometry.before[key].slice(1));
+    expect(geometry.after[key][0]).toBeGreaterThan(geometry.before[key][0]);
+  }
+  expect(geometry.after.preview[0] - geometry.after.card[0])
+    .toBe(geometry.before.preview[0] - geometry.before.card[0]);
+  expect(geometry.feedbackBottom).toBeLessThanOrEqual(geometry.after.card[0]);
+  expect(geometry.feedbackPosition).not.toBe("fixed");
+  expect(geometry.feedbackPosition).not.toBe("absolute");
   await expect(page.getByText("Seu acesso ao Curso selecionado foi encerrado."))
     .toBeVisible();
 });

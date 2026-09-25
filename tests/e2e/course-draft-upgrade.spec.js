@@ -84,7 +84,7 @@ test("#334 IndexedDB real: upgrade de duas intenções, exportação integral e 
   }
   await expect(page.locator(".study-draft-recovery")).toHaveCount(0);
   expect(await page.evaluate(async () => ({ version: globalThis.draftUpgrade334.store.database.version,
-    rows: await globalThis.draftUpgrade334.store.readCachePrefix("course.v1") }))).toEqual({ version: 2,
+    rows: await globalThis.draftUpgrade334.store.readCachePrefix("course.v1") }))).toEqual({ version: 3,
     rows: [{ key: "course.v1.header:preserved", value: { revision: 8, useful: "Cache corrente" } }] });
 });
 
@@ -136,5 +136,5 @@ test("#334 IndexedDB real: interrupção no upgrade reverte versão e ambas as i
   expect(result.errorMessage).toContain("preservados");
   expect(result.before).toHaveLength(3);
   expect(result.after.entries.map(entry => entry.originalSnapshot)).toEqual(snapshots);
-  expect(result.version).toBe(2);
+  expect(result.version).toBe(3);
 });

@@ -4005,9 +4005,12 @@ button.account-settings-back[hidden] {
   cursor: grabbing;
 }
 
-.package-flow-canvas:focus-visible {
+.package-flow-canvas:focus-visible,
+.package-math-graph-canvas:focus-visible,
+.package-system-diagram-canvas:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: -3px;
+  border-radius: 0 0 13px 13px;
 }
 
 .package-flowchart .package-diagram-frame {
@@ -4169,9 +4172,6 @@ button.account-settings-back[hidden] {
 }
 
 .token-option-label {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
   margin: 0;
   cursor: inherit;
   pointer-events: none;

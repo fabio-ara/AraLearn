@@ -1319,6 +1319,14 @@
       "caseId": "person-profile-and-course-access"
     },
     {
+      "object": "function:private.course_pedagogical_basis_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_source_json_hash_v1(p_value jsonb)",
       "caseId": "course-source-provenance"
     },
@@ -1427,7 +1435,15 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:private.guard_course_audio_delivery_v7()",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "function:private.guard_course_audio_object_write_v1()",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "function:private.guard_course_audio_publication_v7()",
       "caseId": "course-audio-media"
     },
     {
@@ -1561,6 +1577,10 @@
     {
       "object": "function:private.require_course_access_v1(p_course_id uuid, p_actor_id uuid, p_require_owner boolean)",
       "caseId": "person-profile-and-course-access"
+    },
+    {
+      "object": "function:private.require_course_audio_ready_v7(p_course_id uuid, p_content jsonb)",
+      "caseId": "course-audio-media"
     },
     {
       "object": "function:private.require_course_read_access_v1(p_course_id uuid, p_actor_id uuid)",
@@ -2875,6 +2895,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "trigger:private.course_entities/course_audio_content_delivery_v7",
+      "caseId": "course-audio-media"
+    },
+    {
       "object": "trigger:private.course_entities/course_content_review_guard",
       "caseId": "course-authoring-experience"
     },
@@ -2897,6 +2921,14 @@
     {
       "object": "trigger:private.course_source_attachments/course_source_attachments_lifecycle_v1",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "trigger:public.course_access/course_audio_access_delivery_v7",
+      "caseId": "course-audio-media"
+    },
+    {
+      "object": "trigger:public.courses/course_audio_publication_v7",
+      "caseId": "course-audio-media"
     },
     {
       "object": "trigger:public.courses/courses_authoring_relations_delete_v1",

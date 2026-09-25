@@ -92,7 +92,16 @@ for (const width of [390, 1280]) for (const name of ['entity_relationship', 'dat
         for (const label of measured) expect(label.fits, label.text).toBe(true);
         await root.getByRole('button', { name: 'Explorar diagrama em tela inteira', exact: true }).click();
         const canvas = page.locator('dialog[open] [data-resource-scroll-frame="diagram"]');
-        await canvas.focus(); await page.keyboard.press('End');
+        await canvas.focus();
+        await expect(canvas).toBeFocused();
+        await page.keyboard.press('End');
+        const focus = await canvas.evaluate(node => {
+          const style = getComputedStyle(node);
+          return { width: parseFloat(style.outlineWidth), offset: parseFloat(style.outlineOffset), radius: parseFloat(style.borderBottomLeftRadius) };
+        });
+        expect(focus.width).toBeGreaterThan(0);
+        expect(focus.offset + focus.width).toBeLessThanOrEqual(0);
+        expect(focus.radius).toBeGreaterThan(0);
         const moved = await canvas.evaluate(node => ({ x: node.scrollLeft, y: node.scrollTop, canScroll: node.scrollWidth > node.clientWidth || node.scrollHeight > node.clientHeight }));
         if (moved.canScroll) expect(moved.x + moved.y).toBeGreaterThan(0);
         await page.screenshot({ path: info.outputPath(`${name}-${width}-${host.includes('explanation') ? 'explanation' : 'unit'}.png`) });
@@ -101,6 +110,58 @@ for (const width of [390, 1280]) for (const name of ['entity_relationship', 'dat
     }
   });
 }
+
+test('D016: gesto durante a abertura do diagrama prevalece sobre o reposicionamento pendente', async ({ page }, info) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await mount(page, 'entity_relationship', 390);
+  await expect(page.locator('[data-graphviz-status="ready"]')).toHaveCount(1);
+  // Controla somente os quadros da transição; geometria, foco e teclado são do navegador.
+  await page.evaluate(() => {
+    const original = { request: window.requestAnimationFrame, cancel: window.cancelAnimationFrame };
+    const queued = new Map();
+    let nextId = -1;
+    window.requestAnimationFrame = callback => { const id = nextId--; queued.set(id, callback); return id; };
+    window.cancelAnimationFrame = id => { if (!queued.delete(id)) original.cancel.call(window, id); };
+    window.diagramFrameProbe = {
+      size: () => queued.size,
+      flush: async () => {
+        let frames = 0;
+        for (let round = 0; round < 8; round += 1) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+          if (!queued.size) return frames;
+          const batch = [...queued.values()]; queued.clear();
+          for (const callback of batch) { frames += 1; callback(performance.now()); }
+        }
+        throw new Error('A fila de quadros não estabilizou.');
+      },
+      restore: () => {
+        window.requestAnimationFrame = original.request;
+        window.cancelAnimationFrame = original.cancel;
+        for (const callback of queued.values()) original.request.call(window, callback);
+        delete window.diagramFrameProbe;
+      }
+    };
+    document.querySelector('[data-diagram-action="toggle-expanded"]').click();
+  });
+  try {
+    const canvas = page.locator('dialog[open] [data-resource-scroll-frame="diagram"]');
+    await canvas.focus();
+    await page.keyboard.press('End');
+    const before = await canvas.evaluate(node => ({ x: node.scrollLeft, y: node.scrollTop }));
+    expect(before.x + before.y).toBeGreaterThan(0);
+    expect(await page.evaluate(() => window.diagramFrameProbe.size())).toBeGreaterThan(0);
+    const frames = await page.evaluate(() => window.diagramFrameProbe.flush());
+    const after = await canvas.evaluate(node => ({ x: node.scrollLeft, y: node.scrollTop }));
+    await info.attach('diagram-transition.json', { body: JSON.stringify({ before, after, frames }), contentType: 'application/json' });
+    expect(errors).toEqual([]);
+    expect(frames).toBeGreaterThanOrEqual(2);
+    expect(after).toEqual(before);
+    await expect(canvas).toBeFocused();
+  } finally {
+    await page.evaluate(() => window.diagramFrameProbe?.restore());
+  }
+});
 
 test('SysML conserva rótulo de lacuna longo e resposta após explorar e retornar', async ({ page }, info) => {
   await mount(page, 'system_internal_block', 390, true);

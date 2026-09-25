@@ -323,8 +323,12 @@ test("Home escolhe um entre três Cursos e usa uma entrada única sem expor a ca
   await page.getByRole("button", { name: "Tentar novamente Curso A" }).press("Enter");
   await openFirstStudyUnitByClicks(page);
   await page.getByRole("button", { name: "Explicação" }).click();
-  await expect(page.getByText("Fonte exibida apenas para comprovar o isolamento entre Cursos.", { exact: true })).toBeVisible();
+  await expect(page.locator(".study-explanation-panel"))
+    .not.toContainText("Fonte exibida apenas para comprovar o isolamento entre Cursos.");
   await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
+  await page.getByRole("button", { name: "Fontes da unidade", exact: true }).click();
+  await expect(page.getByText("Fonte exibida apenas para comprovar o isolamento entre Cursos.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
   await page.evaluate(() => {
     for (let index = 0; index < 5; index += 1) globalThis.__home148Probe.app.handleBack();
   });
@@ -723,6 +727,11 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect.poll(() => page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
   await page.locator("[data-action='open-explanation']").click();
   await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeVisible();
+  await expect(page.locator(".study-explanation-panel"))
+    .not.toContainText("Autoria. Fonte somente citada. 2026.");
+  await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Explicação", exact: true })).toBeFocused();
+  await page.locator("[data-action='open-unit-sources']").click();
   await expect(page.getByText("Autoria. Fonte somente citada. 2026.", { exact: true })).toBeVisible();
   await expect(page.getByText("Capítulo 4, seção 2 · pp. 8–9", {
     exact: true
@@ -735,12 +744,12 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(page.locator(".study-explanation-panel"))
     .not.toContainText("Legado não resolvido");
   await expect(page.locator(".study-explanation-panel [data-source-action]")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Fechar explicação" })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Fechar explicação" })).toBeInViewport();
-  await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toBeInViewport();
+  await expect(page.getByRole("region", { name: "Referências desta unidade", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeInViewport();
+  await expect(page.getByRole("heading", { name: "Fontes da unidade", exact: true })).toBeInViewport();
   expect(await page.locator(".study-explanation-panel").evaluate((panel) =>
     panel.parentElement?.classList.contains("study-explanation-overlay"))).toBe(true);
-  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Fontes da unidade", exact: true })).toBeVisible();
   expect(await page.locator(".app-shell > .screen").evaluate((screen) => screen.inert)).toBe(true);
   expect(await page.evaluate(() => ({
     documentFits: document.documentElement.scrollHeight <= innerHeight + 1,
@@ -753,25 +762,26 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   });
   await expect(page.getByText("Autoria. Fonte extensa 18. 2026.", { exact: true })).toBeInViewport();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fechar explicação", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Explicação", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Fontes da unidade", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Fontes da unidade", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Fontes da unidade", exact: true }).click();
   await expect(page.getByRole("link", { name: "Autoria. Fonte com link público. 2026.", exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(1);
-  await page.getByRole("button", { name: "Fechar explicação" }).click();
+  await page.getByRole("button", { name: "Fechar fontes" }).click();
 
   await page.evaluate(async (documentValue) => {
     globalThis.__courseStudyProbe.citationRevision = 5;
     await globalThis.__courseStudyApp.replaceProject(structuredClone(documentValue));
   }, project);
   await expect(page.locator(".study-explanation-panel")).toHaveCount(0);
-  await page.locator("[data-action='open-explanation']").click();
+  await page.locator("[data-action='open-unit-sources']").click();
   await expect(page.getByText("Autoria. Fonte somente citada atualizada. 2026.", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Autoria. Fonte com link público atualizada. 2026.", exact: true }))
     .toHaveAttribute("href", "https://example.test/fonte-publica");
   await expect(page.getByRole("link", { name: "Autoria. Fonte com link público atualizada. 2026.", exact: true })).toBeVisible();
   expect(await page.evaluate(() => globalThis.__courseStudyProbe.citationReads.length)).toBe(2);
-  await page.getByRole("button", { name: "Fechar explicação" }).click();
+  await page.getByRole("button", { name: "Fechar fontes" }).click();
 
   await page.evaluate(() => globalThis.__courseStudyApp.setOfflineStatus(true));
   await page.getByRole("button", { name: "Sem conexão" }).click();
@@ -853,8 +863,9 @@ test("Cursos navegam até a unidade, praticam e salvam estado pessoal no runtime
   await expect(observationClose).toBeFocused();
   await expect(studyScreen).toHaveAttribute("inert", "");
   await expect(studyScreen).toHaveAttribute("aria-hidden", "true");
+  await expect(page.getByRole("button", { name: "Enviar observação" })).toBeDisabled();
   await page.keyboard.press("Shift+Tab");
-  await expect(page.getByRole("button", { name: "Enviar observação" })).toBeFocused();
+  await expect(page.getByRole("combobox", { name: "Categoria da observação (opcional)" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(observationClose).toBeFocused();
   await page.keyboard.press("Escape");

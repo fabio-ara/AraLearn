@@ -106,6 +106,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     if (scrollByContext.size > 32) scrollByContext.delete(scrollByContext.keys().next().value);
     tools?.destroy(); tools = null;
     overlay.remove(); overlay = null;
+    sourceOpen = false; sourceReturn = null;
     root.ownerDocument.removeEventListener("keydown", handleKeyDown);
     setBackground(false);
     if (restore) {

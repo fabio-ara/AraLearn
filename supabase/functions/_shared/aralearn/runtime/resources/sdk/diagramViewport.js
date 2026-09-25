@@ -121,6 +121,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   let controlsReady = false;
   let resizeFrame = 0;
   let scrollFrame = 0;
+  let userScrollEpoch = 0;
   let panOrigin = null;
   let pinchOrigin = null;
   let dockedPrompt = null;
@@ -191,12 +192,19 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
       Math.max(currentScale, MIN_NUMERIC_DIAGRAM_SCALE)
   });
 
+  // A rolagem pedida pelo usuário define a posição final: ela vence o
+  // reposicionamento que a abertura/fechamento do diálogo agenda para quadros seguintes.
+  const markUserScroll = () => {
+    userScrollEpoch += 1;
+  };
+
   const setScale = (value, {
     anchorClientX,
     anchorClientY,
     anchorContent = null,
     restoreScroll = null,
-    persist = true
+    persist = true,
+    scrollEpoch = userScrollEpoch
   } = {}) => {
     const nextScale = normalizeDiagramScale(value, { min: fitScale(), max: MAX_DIAGRAM_SCALE });
     const rect = canvas.getBoundingClientRect();
@@ -221,6 +229,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
     cancelAnimationFrame(scrollFrame);
     scrollFrame = requestAnimationFrame(() => {
+      if (scrollEpoch !== userScrollEpoch) return;
       if (restoreScroll) {
         canvas.scrollLeft = Math.max(0, finiteNumber(restoreScroll.left));
         canvas.scrollTop = Math.max(0, finiteNumber(restoreScroll.top));
@@ -232,11 +241,12 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     });
   };
 
-  const applyFit = ({ persist = true } = {}) => {
+  const applyFit = ({ persist = true, scrollEpoch = userScrollEpoch } = {}) => {
     scaleMode = "fit";
     setScale(fitScale(), {
       restoreScroll: { left: 0, top: 0 },
-      persist
+      persist,
+      scrollEpoch
     });
   };
 
@@ -254,6 +264,9 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
   const moveViewport = async ({ toDialog }) => {
     const content = centeredContentPoint();
+    // A transição agenda a reposição da rolagem para quadros seguintes: um
+    // gesto surgido nesse intervalo a invalida.
+    const scrollEpoch = userScrollEpoch;
     if (toDialog) {
       dialog.append(viewport);
       dockPracticePrompt();
@@ -266,18 +279,21 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     }
     rememberViewport(stateKey, { expanded });
     updateControls();
+    // O foco entra já na fase síncrona da abertura, para não roubar um gesto
+    // entregue à superfície rolável no quadro seguinte.
+    toggleExpanded.focus({ preventScroll: true });
     await nextFrame();
     if (scaleMode === "fit") {
-      applyFit({ persist: false });
+      applyFit({ persist: false, scrollEpoch });
     } else {
       const rect = canvas.getBoundingClientRect();
       setScale(currentScale, {
         anchorContent: content,
         anchorClientX: rect.left + canvas.clientWidth / 2,
-        anchorClientY: rect.top + canvas.clientHeight / 2
+        anchorClientY: rect.top + canvas.clientHeight / 2,
+        scrollEpoch
       });
     }
-    toggleExpanded.focus({ preventScroll: true });
   };
 
   const restoreInlineViewport = async () => {
@@ -338,11 +354,13 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     const movements = { ArrowLeft: [-64, 0], ArrowRight: [64, 0], ArrowUp: [0, -64], ArrowDown: [0, 64] };
     if (movements[event.key]) {
       event.preventDefault();
+      markUserScroll();
       const [left, top] = movements[event.key];
       canvas.scrollLeft += left;
       canvas.scrollTop += top;
     } else if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
+      markUserScroll();
       canvas.scrollLeft = event.key === "Home" ? 0 : canvas.scrollWidth;
       canvas.scrollTop = event.key === "Home" ? 0 : canvas.scrollHeight;
     } else if (["+", "=", "-"].includes(event.key)) {
@@ -351,13 +369,17 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     }
   });
   canvas.addEventListener("wheel", (event) => {
-    if (!event.ctrlKey) return;
+    if (!event.ctrlKey) {
+      markUserScroll();
+      return;
+    }
     event.preventDefault();
     zoomBy(event.deltaY < 0 ? DIAGRAM_SCALE_STEP : 1 / DIAGRAM_SCALE_STEP, event);
   }, { passive: false });
   canvas.addEventListener("pointerdown", (event) => {
     if (isDiagramControl(event.target) || (event.pointerType === "mouse" && event.button !== 0)) return;
     event.preventDefault();
+    markUserScroll();
     canvas.focus({ preventScroll: true });
     canvas.setPointerCapture?.(event.pointerId);
     activePointers.set(event.pointerId, {
