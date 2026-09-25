@@ -27,7 +27,7 @@ const record = async (db, request, { id = "u1", actor = OWNER, hash, value = rep
   "select public.record_course_ai_inspection_for_actor_v1($1,$2,'study_unit',$3,$4,$5,$6) value",
   [actor, COURSE, id, hash || (await read(db, id)).basisHash, value, request]);
 
-// Real basis SQL and complete migration run in PGlite; authentication and digest
+// Real basis SQL and inspection migrations run in PGlite; authentication and digest
 // are minimal fixture adapters, not proof of hosted access or a semantic review.
 async function fixture() {
   const db = new PGlite();
@@ -78,7 +78,13 @@ async function fixture() {
   await db.exec(functionSql(await migration("20260909025232_contextual_content_review_access.sql"), "private.course_content_basis_hash_v1"));
   await db.exec(await migration("20260916025342_contextual_ai_inspection.sql"));
   await db.exec(await migration("20260924164623_revisao_v7_pedagogical_inspection.sql"));
-  await db.exec(await migration("20260924175938_revisao_v7_focal_audit_basis.sql"));
+  const focalMigration = await migration("20260924175938_revisao_v7_focal_audit_basis.sql");
+  // Este fixture cobre inspeção; não contém o materializador. Seu bloco SQL
+  // independente é executado em incremental-materialization-pglite.test.js e
+  // no banco completo da integração, sem substituir a função por um stub.
+  const materializationBlock = /do \$focal_curricular_dependencies\$[\s\S]*?end \$focal_curricular_dependencies\$;/u;
+  assert.match(focalMigration, materializationBlock);
+  await db.exec(focalMigration.replace(materializationBlock, ""));
   return db;
 }
 
