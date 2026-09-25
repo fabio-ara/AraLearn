@@ -158,6 +158,13 @@ oculto, `legacy_only` ou fallback permanente para esses componentes. Conteúdo
 quando necessário. Comandos de recuperação que contêm estruturas retiradas
 perdem a capacidade de replay.
 
+A conversão técnica preserva integralmente o histórico de autoria: contadores,
+origem, ator, canal e indicação de completude. O ensaio restaurado identificou
+que o trigger editorial poderia tratar essa conversão como uma intervenção de
+autoria; a migration passou a usar uma origem técnica restrita à sua transação.
+O teste de remoção executa o trigger real e verifica tanto a preservação do
+histórico de Unidade e Explicação quanto o fim dessa configuração no commit.
+
 | Migration | Finalidade |
 | --- | --- |
 | `20260924164623_revisao_v7_pedagogical_inspection.sql` | Parecer pedagógico com cinco dimensões e estado de insuficiência |
@@ -171,7 +178,7 @@ O cache IndexedDB passa à versão 3 com conversão transacional e recuperação
 originais. Valores estruturados sem componentes retirados, incluindo binários,
 inteiros grandes e ciclos, não são reescritos por uma conversão de JSON genérica.
 
-A prova descartável de backup, restauração, atualização e instalação limpa
+A prova de desenvolvimento de backup, restauração, atualização e instalação limpa
 passou com 236 migrations. Atualização e instalação limpa produziram o mesmo
 schema (`02c366499189a2f5ebe22249d67685abb678a256ab87e9a3e0d231ce066b69a7`)
 e catálogo (`37181071ac4e44e6265eb43e0cf63d14b31ba546cb8cbc19f1ef635a1c61f31d`),
@@ -182,7 +189,9 @@ Os contêineres dessa prova são cópias offline, com workers assíncronos e par
 desativados apenas nelas para impedir reconexões durante a recriação do banco.
 Extensões, constraints, permissões e todo o conteúdo do backup permanecem na
 verificação. A prova não certifica execução de tarefas em segundo plano; os
-clientes reais foram testados separadamente na stack local completa.
+clientes reais foram testados separadamente na stack local completa. Esses hashes
+antecedem a sincronização final da impressão do catálogo e o ajuste de proveniência
+editorial; a publicação exige novo ensaio com as migrations da candidata final.
 
 ## Experimentos pedagógicos
 

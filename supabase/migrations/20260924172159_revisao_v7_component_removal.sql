@@ -2,6 +2,9 @@
 begin;
 set local lock_timeout='5s';
 set local statement_timeout='5min';
+-- Technical conversion is neither human nor AI authorship. The editorial
+-- trigger preserves the previous ledger for this transaction-only origin.
+set local aralearn.editorial_origin='migration';
 lock table private.course_entities,private.course_component_policy_assignments,
   private.course_sources,private.course_source_attributions in share row exclusive mode;
 

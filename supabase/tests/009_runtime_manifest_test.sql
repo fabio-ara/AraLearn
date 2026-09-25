@@ -9,7 +9,7 @@ select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
 select is(private.course_component_catalog_v1()->>'version','1-ab1319c0',
   'a projeção SQL acompanha a descoberta corrente de componentes');
 select is(private.course_component_catalog_v1()->>'schemaFingerprint',
-  'sha256:6ed739177801ffe86379971c468cdd7dacd25342b6c3fd578f82c3b466202db1',
+  'sha256:8656f6c68cff1ab3df4ca1576b1ec758c6275a0b2b4adab4ceab45f39893cac3',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');

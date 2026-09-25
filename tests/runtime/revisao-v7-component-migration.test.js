@@ -9,6 +9,11 @@ const sourceMigration = await fs.readFile(new URL("../../supabase/migrations/202
 const start = sourceMigration.indexOf("CREATE OR REPLACE FUNCTION private.apply_course_source_attribution_v2(");
 const finish = sourceMigration.indexOf("$function$", sourceMigration.indexOf("$function$", start) + 10);
 const sourceWriter = sourceMigration.slice(start, finish + 10).replace("('plan_item','study_unit')", "('plan_item','study_unit','microsequence_explanation')") + ";";
+const editorialMigration = await fs.readFile(new URL("../../supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql", import.meta.url), "utf8");
+const editorialTriggers = editorialMigration.slice(
+  editorialMigration.indexOf("create function private.next_course_editorial_intervention_v1("),
+  editorialMigration.indexOf("-- Origin is known at the authorized writer boundary")
+);
 const course = "10000000-0000-4000-8000-000000000001";
 const paragraph = text => ({ id: "feedback", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
 
@@ -16,12 +21,13 @@ test("corte migra conteúdo, links, PDF e políticas, conserva eventos e elimina
   const db = new PGlite();
   try {
     // Real migration and attribution writer; source hash/auth are local stubs.
-    // Complete triggers and permissions are exercised by the database upgrade gate.
+    // The real editorial trigger is included; complete permissions and the other
+    // triggers are exercised by the database upgrade gate.
     await db.exec(`create schema private; create schema extensions;
       create role anon; create role authenticated; create role service_role;
       create function extensions.gen_random_uuid() returns uuid language sql as $$select gen_random_uuid()$$;
       create table public.courses(id uuid primary key,revision bigint,updated_at timestamptz);
-      create table private.course_entities(course_id uuid,entity_type text,entity_id text,parent_id text,content jsonb,version bigint default 1,updated_at timestamptz, primary key(course_id,entity_type,entity_id));
+      create table private.course_entities(course_id uuid,entity_type text,entity_id text,parent_id text,content jsonb,version bigint default 1,updated_at timestamptz,last_revision_origin text default 'ai',editorial_interventions jsonb default '{"lastOrigin":null,"human":0,"ai":0,"historyComplete":false}', primary key(course_id,entity_type,entity_id));
       create table private.course_sources(course_id uuid,source_id text,revision bigint,status text,kind text,title text,citation_text text,url text,origin text,availability text,verification_status text,study_visibility text,default_roles jsonb,primary key(course_id,source_id));
       create table private.course_source_attachments(course_id uuid,source_id text,content_hash text);
       create table private.course_source_anchors(course_id uuid,anchor_id text,source_id text,status text);
@@ -35,6 +41,7 @@ test("corte migra conteúdo, links, PDF e políticas, conserva eventos e elimina
       create table private.course_component_policy_assignments(policy jsonb,origin text,reason text, constraint course_component_policy_assignments_policy_v1 check(private.valid_course_component_policy_v1(policy)));
       create table private.test_historic_answers(answer jsonb);
       ${sourceWriter}
+      ${editorialTriggers}
       insert into public.courses values('${course}',8,now());
       insert into private.test_historic_answers values('{"text":"Minha explicação preservada","complete":true}');
       insert into private.course_sources(course_id,source_id,status) values('${course}','pdf','active');
@@ -51,6 +58,18 @@ test("corte migra conteúdo, links, PDF e políticas, conserva eventos e elimina
       feedback: [paragraph("A mudança decorre da causa comum.")], topics: []
     };
     await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_id,content) values($1,'study_unit','unit','micro',$2)", [course, content]);
+    await db.query("insert into private.course_entities(course_id,entity_type,entity_id,content) values($1,'microsequence','micro',$2)", [course, {
+      explanation: { title: "Causalidade", content: [content.content[0]] }
+    }]);
+    await db.query("update private.course_entities set editorial_interventions=$1 where entity_id='unit'", [{
+      lastOrigin: "human", human: 4, ai: 3, historyComplete: false, actorId: "original-human", channel: "web"
+    }]);
+    await db.query("update private.course_entities set editorial_interventions=$1 where entity_id='micro'", [{
+      lastOrigin: "ai", human: 2, ai: 5, historyComplete: true, actorId: "original-assistant", channel: "mcp"
+    }]);
+    const editorialQuery = "select entity_id,last_revision_origin,editorial_interventions from private.course_entities order by entity_id";
+    const editorialBefore = (await db.query(editorialQuery)).rows;
+    await db.exec("set aralearn.editorial_origin='ai'; set aralearn.editorial_actor='current-actor'; set aralearn.editorial_channel='actions';");
     const oldOccurrences = [
       ["content", "table", "prompt", "Compare os casos."],
       ["content", "table", "caption", "Amostra limitada."],
@@ -64,7 +83,11 @@ test("corte migra conteúdo, links, PDF e políticas, conserva eventos e elimina
       { linkId: "original-link", sourceId: "pdf", relation: "informed_by", roles: ["recommended_reading"], anchors: [], occurrences: oldOccurrences }
     ]]);
     await db.exec(migration);
-    const converted = (await db.query("select content,version from private.course_entities")).rows[0];
+    assert.deepEqual((await db.query(editorialQuery)).rows, editorialBefore,
+      "Conversão técnica não pode contar autoria nem apagar ator, canal ou completude do histórico.");
+    assert.equal((await db.query("select current_setting('aralearn.editorial_origin') as origin")).rows[0].origin, "ai",
+      "A origem técnica deve ficar restrita à transação da migration.");
+    const converted = (await db.query("select content,version from private.course_entities where entity_id='unit'")).rows[0];
     assert.equal(converted.version, 2);
     assert.equal(converted.content.role, "theory");
     assert.equal(converted.content.response, null);
