@@ -2,6 +2,7 @@ import {
   parsePackageManualTextSegments,
   stripPackageManualTextMarkers
 } from "../kernel/manualTextMarkers.js";
+import { renderTexDelimitedText } from "./mathExpression.js";
 
 function escapePackageHtmlText(value) {
   return String(value ?? "")
@@ -17,6 +18,11 @@ export function escapePackageAttribute(value) {
 }
 
 export function renderPackageActionIcon(kind) {
+  if (["play", "pause", "stop", "transcript"].includes(kind)) {
+    const path = { play: "m8 4 12 8-12 8Z", pause: "M8 4v16M16 4v16", stop: "M5 5h14v14H5Z",
+      transcript: "M4 4h16v16H4ZM8 8h8M8 12h8M8 16h5" }[kind];
+    return `<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
+  }
   if (kind === "answer") {
     return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
   }
@@ -28,6 +34,9 @@ export function renderPackageActionIcon(kind) {
   }
   if (kind === "right") {
     return '<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>';
+  }
+  if (kind === "up" || kind === "down") {
+    return `<svg class="runtime-feedback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${kind === "up" ? "M12 20V4m-6 6 6-6 6 6" : "M12 4v16m-6-6 6 6 6-6"}"/></svg>`;
   }
   throw new RangeError(`Ícone de ação desconhecido: ${String(kind || "ausente")}.`);
 }
@@ -63,7 +72,7 @@ export function escapePackageHtml(value) {
   return escapePackageHtmlText(stripPackageManualTextMarkers(value));
 }
 
-function renderPackageOrderingMarker(marker) {
+function renderPackageOrderingMarker(marker, separator = "") {
   const current = String(marker.value ?? "");
   const blockKey = escapePackageAttribute(marker.blockKey);
   const itemId = escapePackageAttribute(marker.itemId);
@@ -73,19 +82,19 @@ function renderPackageOrderingMarker(marker) {
   const slotWidth = Math.max(4, Math.min(80, Math.ceil(layoutLength * 1.2)));
   const groupLabel = `Expressão ${current}, posição ${position} de ${total}`;
   const moveButton = (direction, enabled) => {
-    const directionLabel = direction === "left" ? "esquerda" : "direita";
-    return `<button class="runtime-ordering-move" type="button" data-action="ordering-move" data-response-block-key="${blockKey}" data-ordering-item-id="${itemId}" data-ordering-direction="${direction}" aria-label="Mover ${escapePackageAttribute(current)} para a ${directionLabel}" title="Mover para a ${directionLabel}"${enabled ? "" : " disabled"}>${renderPackageActionIcon(direction)}</button>`;
+    const directionLabel = direction === "up" ? "cima" : "baixo";
+    return `<button class="runtime-ordering-move" type="button" data-action="ordering-move" data-response-block-key="${blockKey}" data-ordering-item-id="${itemId}" data-ordering-direction="${direction}" aria-label="Mover ${escapePackageAttribute(current)} para ${directionLabel}" title="Mover para ${directionLabel}"${enabled ? "" : " disabled"}>${renderPackageActionIcon(direction)}</button>`;
   };
-  return `<span class="runtime-ordering-slot" role="group" tabindex="-1" contenteditable="false" dir="auto" data-ordering-slot-index="${escapePackageAttribute(marker.slotIndex)}" data-ordering-item-id="${itemId}" aria-label="${escapePackageAttribute(groupLabel)}" aria-atomic="true" style="--ordering-slot-ch:${slotWidth}ch">${moveButton("left", marker.canMoveLeft)}<span class="runtime-ordering-value">${escapePackageHtml(current)}</span>${moveButton("right", marker.canMoveRight)}</span>`;
+  return `<span class="runtime-ordering-slot" role="group" tabindex="-1" contenteditable="false" dir="auto" data-ordering-slot-index="${escapePackageAttribute(marker.slotIndex)}" data-ordering-item-id="${itemId}" aria-label="${escapePackageAttribute(groupLabel)}" aria-atomic="true" style="--ordering-slot-ch:${slotWidth}ch"><span class="runtime-ordering-value">${escapePackageHtml(current)}${escapePackageHtml(separator)}</span>${moveButton("up", marker.canMoveUp)}${moveButton("down", marker.canMoveDown)}</span>`;
 }
 
-function renderPackageGapMarker(marker) {
+function renderPackageGapMarker(marker, separator = "") {
   if (!marker) return "";
   if (typeof marker.manualText === "string") {
     const { manualText, ...practiceMarker } = marker;
-    return `<span data-manual-practice-text="${escapePackageAttribute(manualText)}" contenteditable="false">${renderPackageGapMarker(practiceMarker)}</span>`;
+    return `<span data-manual-practice-text="${escapePackageAttribute(manualText + separator)}" contenteditable="false">${renderPackageGapMarker(practiceMarker, separator)}</span>`;
   }
-  if (marker.responseMode === "ordering") return renderPackageOrderingMarker(marker);
+  if (marker.responseMode === "ordering") return renderPackageOrderingMarker(marker, separator);
   const blockKey = escapePackageAttribute(marker.blockKey);
   const blankIndex = escapePackageAttribute(marker.index);
   const current = String(marker.value ?? "");
@@ -113,7 +122,7 @@ function renderPackageInlineText(value, state) {
   let html = "";
   segments.forEach((segment, index) => {
     const code = state ? state.inCode : inCode;
-    html += code ? escapePackageHtmlText(segment).replace(/\n/g, "<br>") : renderInlineMarkup(segment);
+    html += code ? escapePackageHtmlText(segment).replace(/\n/g, "<br>") : renderTexDelimitedText(segment, renderInlineMarkup);
     if (index < segments.length - 1) {
       html += code ? "</code>" : "<code>";
       if (state) state.inCode = !code;
@@ -143,10 +152,18 @@ function renderPackageInlineSegment(value, state) {
   const source = String(value || "");
   let cursor = 0;
   let html = "";
-  for (const match of source.matchAll(GAP_MARKER)) {
+  const matches = [...source.matchAll(GAP_MARKER)];
+  for (const [index, match] of matches.entries()) {
     html += renderPackageInlineText(source.slice(cursor, match.index), state);
-    html += renderPackageGapMarker(readPackageGapMarker(match[1]));
+    const marker = readPackageGapMarker(match[1]);
     cursor = Number(match.index) + match[0].length;
+    const next = matches[index + 1]?.index ?? source.length;
+    const between = source.slice(cursor, next);
+    // Punctuation separating list items belongs to the same visual line. Keep
+    // meaningful intervening prose in its original position, outside controls.
+    const separator = marker?.responseMode === "ordering" && /^[\p{P}\p{Z}\s]*$/u.test(between) ? between : "";
+    html += renderPackageGapMarker(marker, separator);
+    cursor += separator.length;
   }
   html += renderPackageInlineText(source.slice(cursor), state);
   return html;

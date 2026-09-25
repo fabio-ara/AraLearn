@@ -100,6 +100,7 @@ export function readVegaTheme(container, colorSelectors = []) {
 }
 
 async function renderVegaLiteOnce(container, specification) {
+  const accessibleLabel = container.getAttribute("aria-label");
   const { vega, vegaLite } = await loadVegaRuntime();
   const compiled = vegaLite.compile(specification).spec;
   const previous = container.__aralearnVegaView;
@@ -125,6 +126,9 @@ async function renderVegaLiteOnce(container, specification) {
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
   }
+  // Vega names its host generically. Keep the semantic description supplied by
+  // the component, including axis names and the represented data.
+  if (accessibleLabel) container.setAttribute("aria-label", accessibleLabel);
   container.dataset.vegaStatus = "ready";
   container.setAttribute("aria-busy", "false");
   return view;

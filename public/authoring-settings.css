@@ -14,6 +14,7 @@
 .assistant-connection [role=status]:empty { display: none; }
 .assistant-openapi, .assistant-openapi [data-openapi-account], .assistant-openapi form,
 .assistant-connection-field { display: grid; gap: 10px; min-width: 0; }
+.assistant-connection-field > button { justify-self: end; }
 .assistant-openapi { padding-block: 8px; }
 .assistant-openapi h2 { font-size: var(--type-md); margin: 14px 0 0; }
 .assistant-openapi button { min-height: 44px; }

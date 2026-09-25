@@ -691,17 +691,13 @@ async function mountCourseAuthoring(page, {
       for (const ordinal of [12, 13]) {
         studyUnits[ordinal - 1].content.push(
           { id: "calculator", package: "aralearn.resource.calculator", version: "1.0.0", data: { title: `Cálculo da unidade ${ordinal}`, initialExpression: "2+3", angleUnit: "radians" } },
-          { id: "grammar", package: "aralearn.resource.grammar", version: "1.0.0", data: { title: "Consulte as duas explicações", items: [
-            { id: "web", label: "Explicação na web", target: { kind: "url", url: `${location.origin}/synthetic-grammar` } },
-            { id: "pdf", label: "PDF da construção", target: { kind: "source_attachment", sourceId: "source-01", sourceRevision: 1, contentHash: "a".repeat(64) } }
-          ] } },
           { id: "audio", package: "aralearn.resource.audio", version: "1.0.0", data: { tracks: [
             { id: "file", label: "Tom sintético", locale: "pt-BR", kind: "file", media: globalThis.__inspectionToolProbe.media, alternative: { text: "Alternativa inspecionável pelo proprietário.", visibility: "after_response" } }
           ] } }
         );
         if (requestedInspectionTools === "single") {
           studyUnits[ordinal - 1].content = studyUnits[ordinal - 1].content.filter(instance =>
-            !["grammar", "audio"].includes(instance.id));
+            instance.id !== "audio");
           studyUnits[ordinal - 1].content.find(instance => instance.id === "calculator").data.prompt =
             "Estime o resultado, compare sua previsão com o cálculo e explique a relação entre as quantidades. ".repeat(12);
         }
@@ -2530,18 +2526,16 @@ test("#345 Parâmetros mostra produção inspecionada e conserva retorno à unid
   expect(probe.analyticsReads.at(-1).options.query.scope).toEqual({ kind: 'study_unit', ref: 'study-unit-01' });
 });
 
-test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm edição completa", async ({ page, context }) => {
+test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm edição completa", async ({ page }) => {
   const errors = captureClientErrors(page);
   await page.setViewportSize({ width: 390, height: 850 });
-  await context.route("**/synthetic-grammar", route => route.fulfill({ status: 200, contentType: "text/plain", body: "Explicação sintética." }));
-  await context.route("**/synthetic-source.pdf?*", route => route.fulfill({ status: 200, contentType: "text/plain", body: "PDF autorizado sintético." }));
   await mountCourseAuthoring(page, { inspectionTools: true,
     hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
   const wav = await page.evaluate(() => globalThis.__inspectionToolProbe.wav);
   await page.route("**/storage/v1/object/sign/course-media/**", route => route.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from(wav) }));
   const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
   await expect(card.locator(".study-tool-actions button")).toHaveCount(1);
-  await expect(card.locator("[data-calculator-form], .package-auxiliary-links, [data-audio-track]")).toHaveCount(0);
+  await expect(card.locator("[data-calculator-form], [data-audio-track]")).toHaveCount(0);
   const calculator = card.getByRole("button", { name: "Ferramentas da unidade", exact: true });
   await calculator.focus();
   const before = await calculator.boundingBox();
@@ -2551,7 +2545,7 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   await expect(dialog.getByRole("heading", { name: "Calculadora", exact: true })).toBeVisible();
   await expect(page.locator(".course-authoring-surface")).toHaveAttribute("inert", "");
   await dialog.getByRole("button", { name: "Calcular", exact: true }).click();
-  await expect(dialog.locator("output")).toHaveText("Resultado aproximado: 5");
+  await expect(dialog.locator("output")).toHaveText("5");
   await dialog.getByRole("button", { name: "Fechar ferramenta" }).focus();
   await page.keyboard.press("Shift+Tab");
   expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true);
@@ -2561,19 +2555,7 @@ test("#304 ferramentas na inspeção usam host real, retornam ao card e mantêm 
   for (const key of ["x", "y", "width", "height"]) expect(Math.abs(after[key] - before[key])).toBeLessThanOrEqual(1);
 
   await calculator.tap();
-  await dialog.locator('[data-open-study-tool="grammar"]').tap();
-  await expect(dialog.locator("[data-tool-link-index]")).toHaveCount(2);
-  for (const [label, expected] of [["Explicação na web", "/synthetic-grammar"], ["PDF da construção", "/synthetic-source.pdf?token=synthetic"]]) {
-    const opened = page.waitForEvent("popup");
-    await dialog.getByRole("button", { name: label, exact: true }).click();
-    const popup = await opened;
-    await expect(popup).toHaveURL(new RegExp(expected.replace(/[?]/gu, "\\?")));
-    await popup.close();
-  }
-  expect(await page.evaluate(() => globalThis.__inspectionToolProbe.pdfs[0])).toEqual({ courseId: COURSE_IDS[0], expectedCourseRevision: 5, sourceId: "source-01", sourceRevision: 1, contentHash: "a".repeat(64) });
-  await page.keyboard.press("Escape");
-  await calculator.tap();
-  await expect(dialog.locator("[data-open-study-tool]")).toHaveCount(3);
+  await expect(dialog.locator("[data-open-study-tool]")).toHaveCount(2);
   await dialog.locator('[data-open-study-tool="audio"]').tap();
   await expect(dialog.locator(".package-audio-alternative")).toHaveText("Alternativa inspecionável pelo proprietário.");
   await dialog.locator('[data-audio-action="play"]').tap();
@@ -2761,7 +2743,7 @@ test("#304 resultado da calculadora longa é alcançado por rolagem no modal390"
   await dialog.getByRole("button", { name: "Calcular", exact: true }).scrollIntoViewIfNeeded();
   await dialog.getByRole("button", { name: "Calcular", exact: true }).click();
   const output = dialog.locator("output");
-  await expect(output).toHaveText("Resultado aproximado: 5");
+  await expect(output).toHaveText("5");
   await body.evaluate(node => { node.scrollTop = 0; });
   const hiddenResult = await output.boundingBox();
   const viewport = await body.boundingBox();
@@ -2778,24 +2760,11 @@ test("#304 resultado da calculadora longa é alcançado por rolagem no modal390"
   await expect(calculator).toBeFocused();
 });
 
-test("#304 ferramentas recusam identidade divergente e PDF tardio após fechar", async ({ page, context }) => {
+test("#304 áudio recusa identidade divergente e aborta download após fechar", async ({ page }) => {
   await mountCourseAuthoring(page, { inspectionTools: true,
     hash: `#/authoring/courses/${COURSE_IDS[0]}?section=content&studyUnitId=study-unit-12` });
   const card = page.locator('[data-inspection-study-unit="study-unit-12"]');
   const dialog = page.getByRole("dialog");
-  await page.evaluate(() => { globalThis.__inspectionToolProbe.wrongPdf = true; });
-  await card.getByRole("button", { name: "Ferramentas da unidade", exact: true }).tap();
-  await dialog.locator('[data-open-study-tool="grammar"]').tap();
-  await dialog.getByRole("button", { name: "PDF da construção" }).tap();
-  await expect(dialog.locator('[data-tool-link-status="1"]')).toContainText("Não foi possível abrir");
-  expect(context.pages()).toHaveLength(1);
-  await page.evaluate(() => { globalThis.__inspectionToolProbe.wrongPdf = false; globalThis.__inspectionToolProbe.deferPdf = true; });
-  await dialog.getByRole("button", { name: "PDF da construção" }).tap();
-  await expect(dialog.locator('[data-tool-link-status="1"]')).toContainText("Abrindo");
-  await page.keyboard.press("Escape");
-  await page.evaluate(() => globalThis.__inspectionToolProbe.releasePdf());
-  await expect(card.getByRole("button", { name: "Ferramentas da unidade", exact: true })).toBeFocused();
-  expect(context.pages()).toHaveLength(1);
   await page.evaluate(() => { globalThis.__inspectionToolProbe.failConfig = true; globalThis.__inspectionToolProbe.wrongUnit = true; });
   await card.getByRole("button", { name: "Ferramentas da unidade" }).tap();
   await dialog.locator('[data-open-study-tool="audio"]').tap();
@@ -2954,12 +2923,12 @@ test.describe("Autoria canônica mobile-first", () => {
       await expect(page.locator("#course-source-detail-title")).toHaveText(
         "Fonte"
       );
-      await expect(page.locator(".course-source-display-title")).toHaveText("Fonte verificável 1");
+      await expect(page.locator(".course-source-display-title")).toHaveText("Obra · Fonte verificável 1");
       await expectSourceMetadataDoesNotOverlap(page);
       await expect(page.locator(".course-source-current .source-formatted-reference")).toContainText(
         "Autoria 1. Fonte verificável 1. 2026."
       );
-      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();
+      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras na fonte$/u }).click();
       await expect(page.getByText("Capítulo 2, seção 3 · Páginas 10–12", {
         exact: true
       })).toBeVisible();
@@ -3161,7 +3130,7 @@ test.describe("aceite focal do shell simples da Autoria", () => {
             await expect(page.locator("#course-source-detail-title")).toHaveText(
               "Fonte"
             );
-            await expect(page.locator(".course-source-display-title")).toHaveText("Fonte verificável 1");
+            await expect(page.locator(".course-source-display-title")).toHaveText("Obra · Fonte verificável 1");
             await expect(page.getByRole("button", {
               name: /Trabalhar com o ChatGPT/u
             })).toHaveCount(0);
@@ -3770,7 +3739,7 @@ test("Observações em 390 px criam por contexto, filtram e abrem deep link corr
     .fill("Observação autoral situada no Módulo.");
   await expect(page.locator("#course-author-observation-count"))
     .toHaveText("37/2.000 caracteres · 40 B/16 KiB");
-  await page.getByRole("button", { name: "Registrar", exact: true }).click();
+  await page.getByRole("button", { name: "Registrar observação", exact: true }).click();
   await expect(page.getByText("Observação autoral situada no Módulo.", { exact: true }))
     .toBeVisible();
 
@@ -3814,7 +3783,7 @@ test("Observações confirmam a escrita uma vez quando a atualização da lista 
     .selectOption({ label: "Base conceitual · módulo" });
   await composer.locator('select[name="category"]').selectOption("suggestion");
   await composer.locator("textarea").fill("Argumento confirmado antes da falha de leitura.");
-  await composer.getByRole("button", { name: "Registrar", exact: true }).click();
+  await composer.getByRole("button", { name: "Registrar observação", exact: true }).click();
 
   await expect(page.getByRole("status").filter({
     hasText: "Observação registrada. A lista será atualizada na próxima sincronização."
@@ -5147,7 +5116,7 @@ test("Fonte conserva edição e pedido incerto ao cancelar fechamento", async ({
   await confirmation.getByRole("button", { name: "Cancelar", exact: true }).click();
   await expect(title).toHaveValue("Referência revisada sem perder o trabalho");
   await dialog.getByRole("button", { name: "Confirmar a mesma operação" }).click();
-  await expect(dialog.locator(".course-source-display-title")).toHaveText("Referência revisada sem perder o trabalho");
+  await expect(dialog.locator(".course-source-display-title")).toHaveText("Obra · Referência revisada sem perder o trabalho");
   const mutations = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations);
   expect(mutations).toHaveLength(2);
   expect(mutations[1]).toEqual(mutations[0]);

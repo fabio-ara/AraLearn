@@ -21,7 +21,7 @@ Para configurar a conexão pela interface, siga o [manual ilustrado do ChatGPT](
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas semânticas** de Actions. O OpenAPI as oferece por
+definem as **56 tarefas semânticas** do catálogo **8.0.0**. O OpenAPI as oferece por
 **30 operações HTTP**: 24 diretas e seis grupos contextuais. Uma operação HTTP
 é o pedido enviado a um endereço do serviço; um grupo permite escolher entre
 várias tarefas por esse mesmo endereço. Argumentos, validação e efeitos derivam
@@ -94,7 +94,14 @@ só altera o conteúdo mediante uma operação autorizada.
 
 ## Materialização e parâmetros
 
-`preparar_materializacao` recebe o plano compacto e verifica de uma vez a base reconciliada, repertório, vínculos, requisitos, formas, componentes, fontes, prática e cobertura. Só `ready` permite escrever com a mesma referência; a materialização não é um ciclo de descoberta. `unidade` identifica uma unidade existente a substituir, `posicao` é final e omitidas permanecem; `concluir: false` conserva produção parcial. Práticas novas exigem resposta avaliável e feedback offline, com resposta aberta preservada somente no legado. Uma escolha
+`preparar_materializacao` permite uma consulta antecipada opcional: recebe o
+plano compacto e verifica a base reconciliada, repertório, vínculos, requisitos,
+formas, componentes, fontes, prática e cobertura. Sem `referenciaPreparo`, a
+materialização executa essa verificação internamente antes de gravar e devolve
+os bloqueios para correção. Uma referência explícita precisa continuar válida
+para a base e a intenção atuais.
+
+`materializar_parte` recebe o foco de uma única microssequência; a parte é derivada pelo servidor. IDs de instâncias, versões correntes e posições finais podem ser omitidos e são materializados pelo contrato. `unidade` identifica uma unidade existente a substituir, e omitidas permanecem; `concluir: false` conserva produção parcial. Práticas novas exigem resposta avaliável e feedback offline. Uma escolha
 automática exige um valor contextual e sua justificativa antes da produção.
 Valores fixados e condições de pesquisa prevalecem. A configuração aplicada
 registra as escolhas daquela produção e permanece distinta da intenção para
@@ -118,6 +125,14 @@ e as [regras de acesso](aralearn-contract.md#revisão-do-conteúdo) distinguem
 essas operações de tornar um curso acessível e disponibilizar seus arquivos.
 
 A fila fornece `referenciasComparacao` por alvo. Envie a referência inteira em `preparar_revisao.comparacao` e recupere suas continuações antes de examinar o conteúdo e as fontes anteriores e vigentes. A lista compacta conserva hashes e versões; a comparação recupera o conteúdo literal sem reduzi-lo.
+
+`registrar_inspecao` recebe uma base focal e exige cinco dimensões (`alignment`,
+`evidence`, `representation`, `feedback` e `sufficiency`) com justificativas e
+*quotes* existentes no recorte. O servidor confere versão e `basisHash` e
+marca a inspeção para atualização quando a base muda. O relatório semântico é
+julgamento do auditor; não é garantia de qualidade pedagógica nem de
+aprendizagem. Experimentos de prompts, contratos e materialização continuam em
+revisão, sem conclusão geral.
 
 Para um pedido explícito de curso público, execute `definir_visibilidade` no grupo
 `acesso_do_curso` e confirme o estado persistido com `consultar_acesso` antes de
@@ -185,6 +200,11 @@ recupera referências lógicas para reutilização em
 uma conversa posterior. A [composição nos canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-de-autoria)
 relaciona essas referências aos componentes usados no conteúdo.
 
+Publicar, compartilhar ou materializar conteúdo novo com áudio exige faixa de
+arquivo ativa, com tipo, tamanho e hash conferidos e acesso compatível. Voz
+nativa continua ensaio de reprodução e não atende a essa exigência. A guarda é
+aplicada no servidor antes da escrita ou da entrega.
+
 A documentação oficial permite até dez referências de arquivos recebidos, com
 links válidos por cinco minutos; o AraLearn limita cada uma dessas tarefas a um
 arquivo. O limite oficial de 10 MB por arquivo devolvido por uma Action trata da
@@ -210,7 +230,7 @@ OpenAPI. Por isso, a importação do artefato corrente constitui a verificação
 desse limite na prática.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
-que conservam as 56 tarefas do catálogo 5.0.0. Essa organização permite
+que conservam as 56 tarefas do catálogo 8.0.0. Essa organização permite
 selecionar cada tarefa com seus próprios argumentos sem ampliar o número de
 operações apresentado ao editor. A aceitação do arquivo pelo editor, a
 publicação do assistente e a execução contra o serviço são verificações

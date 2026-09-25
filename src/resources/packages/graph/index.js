@@ -137,7 +137,7 @@ function renderGraphFigure(data) {
     ...data.edges.filter((edge) => edgeLabel(edge)).map((edge) => labelTemplate("edge", edge.id, edgeLabel(edge)))
   ].join("");
   const canvas = `<div class="package-math-graph-canvas" data-resource-scroll-frame="diagram" role="region" aria-label="${escapePackageAttribute(graphAccessibleText(data))}" aria-busy="true" tabindex="0" data-graphviz-source="${escapePackageAttribute(source)}"></div>`;
-  return `<figure class="package-math-graph" data-graphviz-engine="${engine}">${renderDiagramViewportShell({ canvasHtml: canvas })}${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>) · |<i>V</i>| = ${data.vertices.length} · |<i>E</i>| = ${data.edges.length}</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInlineReference(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
+  return `<figure class="package-math-graph" data-graphviz-engine="${engine}">${renderDiagramViewportShell({ canvasHtml: canvas })}${templates}<figcaption><i>${renderPackageInline(data.name)}</i> = (<i>V</i>, <i>E</i>). <i>V</i>: vértices (${data.vertices.length}); <i>E</i>: ${data.directed ? "arestas direcionadas" : "arestas"} (${data.edges.length}).</figcaption><p class="package-math-graph-layout-error" hidden>Não foi possível diagramar o grafo.</p><ol class="visually-hidden">${data.edges.map((edge) => `<li>${renderPackageInlineReference(edgeAccessibleText(data, edge))}</li>`).join("")}</ol></figure>`;
 }
 
 function vertexBounds(group) {

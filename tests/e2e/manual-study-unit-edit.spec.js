@@ -73,12 +73,6 @@ function responseUnit(manifest, index) {
         answer: instance.data.text
       }))
     };
-  } else if (manifest.id === "aralearn.response.open") {
-    // Corpus histórico: esta prova só renderiza o editor, sem criar ou alterar respostas abertas.
-    data = RESOURCE_PACKAGE_REGISTRY.getAuthoringContract(
-      manifest.id,
-      manifest.version
-    ).contract.example;
   } else {
     throw new Error(`Formato de resposta sem fixture: ${manifest.id}`);
   }
@@ -437,7 +431,7 @@ async function openInspectionUnit(page, ownership, { longTitles = false, variant
     };
     if (variant === "table") {
       studyUnit.content = [{ id: "inspection-table-1", package: "aralearn.resource.table", version: "1.0.0",
-        data: { columns: ["Camada do ambiente", "Responsabilidade"], rows: [["Computador hospedeiro", "Oferece os recursos físicos."], ["Hipervisor", "Cria e controla máquinas virtuais."]], layout: "compact" } }];
+        data: { columns: ["Camada do ambiente", "Responsabilidade"], rows: [["Computador hospedeiro", "Oferece os recursos físicos."], ["Hipervisor", "Cria e controla máquinas virtuais."]] } }];
     }
     if (variant === "gap" || variant === "gap-text") {
       studyUnit.role = "practice";
@@ -642,9 +636,9 @@ async function prepareContextualAssistance(page, request) {
   return dialog;
 }
 
-test("todos os pacotes preservam edição textual no renderer entre 360 e 1280 px", async ({ page }) => {
+test("todos os pacotes preservam edição textual no renderer entre 360 e 1280 px", async ({ page }, testInfo) => {
   const catalog = packageCatalogDocument();
-  expect(catalog.cases).toHaveLength(38);
+  expect(catalog.cases).toHaveLength(34);
   expect(catalog.cases.map(({ packageId }) => packageId)).toEqual(
     RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id }) => id)
   );
@@ -678,13 +672,25 @@ test("todos os pacotes preservam edição textual no renderer entre 360 e 1280 p
           }))
       ])
     ));
+    const failures = [];
     for (const entry of catalog.cases) {
       for (const target of entry.expected) {
         const fields = (actual[entry.packageId] || [])
           .filter(({ path }) => path === target.path);
-        expect(fields.length, `${width}px ${entry.packageId}:${target.path}`).toBeGreaterThan(0);
-        expect(fields.some(({ editable }) => editable === "plaintext-only")).toBe(true);
-        expect(fields.some(({ ariaLabel }) => ariaLabel === target.label)).toBe(true);
+        const field = `${entry.packageId}:${target.path}`;
+        if (!fields.length) failures.push(`${field}: campo visível ausente`);
+        else {
+          if (!fields.some(({ editable }) => editable === "plaintext-only")) failures.push(`${field}: edição indisponível`);
+          if (!fields.some(({ ariaLabel }) => ariaLabel === target.label)) failures.push(`${field}: rótulo acessível divergente`);
+        }
+      }
+    }
+    expect(failures, `${width}px: folhas textuais editáveis de todos os componentes`).toEqual([]);
+    if (width === 360) {
+      for (const packageId of ["aralearn.response.choice", "aralearn.resource.formula", "aralearn.resource.terminal_session"]) {
+        await page.locator(`[data-manual-package="${packageId}"]`).screenshot({
+          path: testInfo.outputPath(`editing-${packageId.split(".").at(-1)}-${width}.png`)
+        });
       }
     }
   }

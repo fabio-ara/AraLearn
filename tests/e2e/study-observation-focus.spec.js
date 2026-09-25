@@ -7,14 +7,21 @@ const project = JSON.parse(readFileSync(new URL(
 ), "utf8"));
 
 async function openObservationSheet(page, { existing = false, controlledSave = false } = {}) {
+  for (const file of ["styles.css", "course-authoring.css"]) {
+    await page.route(`**/${file}`, route => route.fulfill({
+      path: fileURLToPath(new URL(`../../public/${file}`, import.meta.url)), contentType: "text/css"
+    }));
+  }
   await page.route("**/main.js", route => route.fulfill({
     contentType: "text/javascript", body: ""
   }));
   // Exercise the current study controller without replacing the served artifact.
-  await page.route("**/src/study/CourseStudyApplication.js", route => route.fulfill({
-    path: fileURLToPath(new URL("../../src/study/CourseStudyApplication.js", import.meta.url)),
-    contentType: "text/javascript"
-  }));
+  for (const source of ["study/CourseStudyApplication.js", "ui/renderStudyUnitObservationSheet.js"]) {
+    await page.route(`**/src/${source}`, route => route.fulfill({
+      path: fileURLToPath(new URL(`../../src/${source}`, import.meta.url)),
+      contentType: "text/javascript"
+    }));
+  }
   const html = '<!doctype html><html lang="pt-BR"><head>' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     ["styles-tokens.css", "styles-shell-baseline.css", "styles.css", "course-authoring.css"]
@@ -121,7 +128,12 @@ for (const theme of ["light", "dark"]) {
     const field = page.getByRole("textbox", { name: "Observação", exact: true });
     const submit = page.getByRole("button", { name: "Enviar observação", exact: true });
     const text = "Rascunho sintético preservado para repetir após erro.";
+    await expect(submit).toBeDisabled();
+    await field.fill(" \n\t ");
+    await expect(submit).toBeDisabled();
+    await expect(submit).toHaveAttribute("title", "Escreva a observação antes de salvar.");
     await field.fill(text);
+    await expect(submit).toBeEnabled();
     await submit.click();
     await expect(page.getByRole("button", { name: "Salvando observação", exact: true })).toBeDisabled();
     await page.evaluate(() => globalThis.observationFocusProbe.rejectSave());
@@ -176,7 +188,7 @@ for (const theme of ["light", "dark"]) {
     await page.evaluate(() => globalThis.observationFocusProbe.completeSave());
     await expect(page.getByText(text, { exact: true })).toBeVisible();
     await expect(field).toHaveValue("");
-    await expect(submit).toBeEnabled();
+    await expect(submit).toBeDisabled();
     const saves = await page.evaluate(() => globalThis.observationFocusProbe.saves);
     expect(saves).toHaveLength(2);
     expect(saves[1]).toEqual(saves[0]);

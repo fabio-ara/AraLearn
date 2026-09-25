@@ -140,6 +140,7 @@ async function fixture({ legacyUnitObservation = false } = {}) {
     legacyUnitObservation ? "u1" : "micro", "Preservar nota anterior", "before-migration-001");
   await db.exec(await load("20260909032748_contextual_observation_correction_queue.sql"));
   await db.exec(await load("20260916025032_author_observation_decisions.sql"));
+  await db.exec(await load("20260924171236_revisao_v7_observation_preservation.sql"));
   return db;
 }
 
@@ -170,6 +171,29 @@ const decision = (item, selected = item.targets.filter(t => t.state === "pending
   type: "decide_anchored_annotation", annotationId: item.annotationId, expectedAnnotationVersion: item.annotationVersion,
   expectedTargetSetVersion: item.targetSetVersion, decision: kind, reason: kind === "cancel" ? "teste" : null,
   targets: selected.map(t => ({ kind: t.kind, id: t.id, expectedBasisHash: t.current?.hash ?? null }))
+});
+
+test("editar conserva resposta e decisão; responder não considera a observação implicitamente", async () => {
+  const db = await fixture();
+  try {
+    const id = ids[2];
+    const response = await command(db, { type: "respond_to_anchored_annotation", annotationId: id,
+      expectedAnnotationVersion: 1, ownerResponse: "A regra depende do contexto.", responseKind: "answer", consideredSourceLinks: [] }, "response-preserve-001");
+    assert.equal(response.annotation.state, "open");
+    const considered = await command(db, { type: "consider_anchored_annotation", annotationId: id,
+      expectedAnnotationVersion: 2 }, "consider-preserve-001");
+    const revised = await command(db, { type: "revise_anchored_annotation", annotationId: id,
+      expectedAnnotationVersion: 3, rawText: "Esclareço a dúvida original.", category: "question", briefSummary: null }, "revise-preserve-001");
+    assert.equal(revised.annotation.state, "considered");
+    assert.deepEqual(revised.annotation.ownerResponse, considered.annotation.ownerResponse);
+    assert.equal(revised.annotation.timestamps.respondedAt, considered.annotation.timestamps.respondedAt);
+    assert.equal(revised.annotation.timestamps.firstConsideredAt, considered.annotation.timestamps.firstConsideredAt);
+    assert.equal(revised.annotation.annotationVersion, 4);
+    const same = await command(db, { type: "revise_anchored_annotation", annotationId: id,
+      expectedAnnotationVersion: 4, rawText: revised.annotation.rawText, category: "question", briefSummary: null }, "revise-preserve-002");
+    assert.equal(same.changed, false);
+    assert.equal(same.annotation.annotationVersion, 4);
+  } finally { await db.close(); }
 });
 
 test("seis conflitos da comparação e decisão são PT409 sem escrita, recibo ou perda de base", async () => {
@@ -316,7 +340,7 @@ test("fila migra pendências, aceita base independente e bloqueia retirada/resol
     }
     await command(db, { type: "respond_to_anchored_annotation", annotationId: ids[0], expectedAnnotationVersion: 1,
       ownerResponse: "Uma resposta não salva a correção.", responseKind: "answer", consideredSourceLinks: [] }, "answer-keeps-pending-001");
-    assert.equal((await state(db)).state, "considered");
+    assert.equal((await state(db)).state, "open");
     assert.equal((await state(db)).version, 2);
     assert.equal((await detail(db)).targets[0].state, 'pending');
     assert.equal((await detail(db)).capabilities.canReopen, false);

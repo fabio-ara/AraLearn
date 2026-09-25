@@ -183,9 +183,6 @@ As condições de reprodução e uso estão em [Áudio](audio.md) e
 | --- | --- | --- |
 | `audio` | escuta de faixas e acesso a alternativas textuais | quando ouvir participa da tarefa; alternativa e momento de exibição precisam respeitar o objetivo |
 | `calculator` | cálculo numérico aproximado | quando conferir valores apoia o raciocínio; não substitui cálculo mental ou demonstração se forem a operação exigida |
-| `dictionary` | consulta a obras escolhidas pela autoria | quando interpretar uma palavra é necessário; a escolha da acepção depende do contexto |
-| `grammar` | consulta a explicações de construções e usos | quando comparar uma regra com exemplos ajuda a análise; não corrige a produção do estudante |
-| `reading` | leitura para ampliar ou contrastar o conteúdo | quando há orientação sobre o que procurar e como retornar à tarefa; o material essencial precisa continuar desenvolvido no curso |
 
 ## 5. Matriz dos formatos de resposta
 
@@ -194,7 +191,6 @@ As condições de reprodução e uso estão em [Áudio](audio.md) e
 | `choice` | discriminar uma ou mais alternativas | distratores representam erros plausíveis; modo simples ou múltiplo é explícito | alternativa correta revelada antes da solicitação, enunciado duplicado ou avaliação a cada toque |
 | `gap` | completar elemento localizado | alvo pertence ao pacote de conteúdo; cada lacuna tem opções e estado próprios | lacuna aparece no enunciado por conveniência, ou todas as lacunas compartilham resposta |
 | `ordering` | reconstruir uma sequência entre trechos textuais | pelo menos dois alvos pertencem a `paragraph` ou `table`, aparecem na ordem correta de leitura e são movidos no próprio ponto por setas à esquerda ou à direita | itens são duplicados numa lista de resposta, a sequência é espacial/vertical ou a ordem não tem fundamento semântico |
-| `open` | explicar, justificar ou prever com palavras próprias | produção livre é a operação necessária e o retorno posterior oferece referência | a tarefa exige correção automática ou o campo oferece uma resposta-modelo antes da produção |
 
 Correspondências simples são lacunas de escolha aplicadas aos campos reais de
 um `paragraph` ou de uma `table`. Não constituem outro pacote de resposta. Um
@@ -224,7 +220,7 @@ verificações dos demais pacotes.
 
 | Pacote | Decisão estática | Razão e fronteira | Instâncias nos dez arquivos de curso |
 | --- | --- | --- | ---: |
-| `paragraph` | `manter` | exposição verbal progressiva e alternativa simples para relações que não exigem outra gramática | 5.370 |
+| `paragraph` | `manter` | exposição verbal progressiva e alternativa simples para relações que não exigem outra gramática | 5.373 |
 | `annotated_text` | `manter` | conserva a ligação precisa entre trecho e anotação, ausente na prosa comum | 0 |
 | `interlinear_gloss` | `manter` | preserva o alinhamento entre forma, morfema, glosa e tradução | 0 |
 | `code` | `manter` | sintaxe, indentação e posição de token participam da tarefa | 859 |
@@ -255,15 +251,13 @@ verificações dos demais pacotes.
 | `chart` | `restringir` | admite linhas, dispersão e barras; distribuições e painéis exigem outro contrato | 0 |
 | `audio` | `manter` | conserva faixas, idioma e alternativa acessível quando a escuta participa da tarefa; voz do dispositivo não promete gravação exportável | 0 |
 | `calculator` | `restringir` | confere expressões numéricas finitas com funções permitidas; não executa código nem substitui demonstração algébrica | 0 |
-| `dictionary` | `restringir` | abre dicionários selecionados para o contexto; não afirma analisar ou verificar automaticamente o verbete externo | 0 |
-| `grammar` | `restringir` | oferece consultas gramaticais escolhidas pela autoria; não certifica a análise linguística do estudante | 0 |
-| `reading` | `restringir` | relaciona leitura complementar e orientação de uso; a disponibilidade e a autorização do documento continuam explícitas | 0 |
 | `choice` | `manter` | discriminação entre alternativas plausíveis constitui operação de resposta própria | 2.386 |
 | `gap` | `manter` | completa um alvo semântico no componente de conteúdo, com estado independente por lacuna | 604 |
 | `ordering` | `restringir` | atua somente em alvos textuais de `paragraph` e `table`, sem representar ordem espacial | 0 |
-| `open` | `manter` | permite produção livre sem afirmar correção semântica automática | 0 |
 
-O inventário sustenta a conservação atual dos pacotes, com as restrições
+A revisão v7 retirou Dicionário, Gramática, Leitura e resposta aberta do catálogo e do runtime. A conversão de conteúdo está na [migration de remoção](../supabase/migrations/20260924172159_revisao_v7_component_removal.sql); não há renderer de compatibilidade.
+
+O inventário sustenta a conservação atual dos pacotes restantes, com as restrições
 indicadas na tabela. Problemas de contrato, apresentação ou interação continuam
 gerando correções dentro dessas gramáticas. Uma revisão disciplinar ou a
 demonstração de equivalência representacional pode mudar a decisão; a frequência
@@ -274,23 +268,22 @@ de uso é apenas uma das informações a considerar.
 A comparação usa dez documentos completos de curso versionados no repositório:
 cinco arquivos de teste de conteúdo, três cursos de catálogo do servidor e dois
 arquivos integrais de regressão do estudo. Trata-se de um corpus técnico, distinto
-do acervo hospedado e do uso por estudantes. Esses cursos contêm 10.388
+do acervo hospedado e do uso por estudantes. Esses cursos contêm 10.391
 instâncias de onze pacotes. A contagem da tabela registra ocorrências no
 conteúdo. Os arquivos estão em `tests/fixtures/course-catalog`,
 `supabase/fixtures/catalog` e `tests/fixtures/package`. Os dois arquivos de
 regressão são `tests/fixtures/package/project-minimal.json` e
 `tests/fixtures/package/project-visual.json`.
 
-Os outros 27 pacotes aparecem no curso de catálogo, mas ainda não no corpus
+Os outros 23 pacotes aparecem no curso de catálogo, mas ainda não no corpus
 de dez cursos: `annotated_text`, `interlinear_gloss`, `chart`, `formula`,
 `reaction`, `truth_table`, `set_diagram`, `bpmn_process`, `call_stack`,
 `state_machine`, `state_transition_table`, `terminal_session`,
 `database_schema`, `entity_relationship`, `software_container`,
 `software_system_context`, `system_internal_block`, `memory_layout`,
-`network_topology`, `packet_layout`, `ordering`, `open`, `audio`, `calculator`,
-`dictionary`, `grammar` e `reading`.
+`network_topology`, `packet_layout`, `ordering`, `audio` e `calculator`.
 
-O curso de catálogo deriva os 38 pacotes do registro. Cada pacote possui uma
+O curso de catálogo deriva os 34 pacotes do registro. Cada pacote possui uma
 microssequência independente com uma unidade de teoria e outra de prática. Os
 exemplos e as respostas usam conteúdo disciplinar concreto; perguntas que
 pedem apenas a finalidade ou o nome do pacote são recusadas pelo teste. Essa
@@ -301,8 +294,7 @@ As fixtures de [estresse acadêmico](../tests/fixtures/pedagogy/academic-stress-
 e de [notação matemática e química](../tests/fixtures/formulas-matematica-quimica.json)
 complementam esses dez cursos; não entram naquela contagem. A matriz visual é
 construída pelo [gerador de curso de teste](../scripts/buildResourceTestCourse.mjs),
-com exemplos dos pacotes instalados. Ela inclui produção textual com `open`,
-além de escolha, lacuna e ordenação. Acrescentar um caso de prova não instala
+com exemplos dos pacotes instalados. Ela inclui escolha, lacuna e ordenação. Acrescentar um caso de prova não instala
 um pacote no produto nem altera as identidades do corpus.
 
 ### Legendas, instruções e prova por pacote
@@ -355,12 +347,8 @@ notação possível nem avaliação com leitor de tela humano.
 | `choice` | pergunta, critério e modo de seleção; sem segundo botão de confirmação no pacote | discriminação entre alternativas na matriz e no corpus |
 | `gap` | contexto do alvo e opções da lacuna ativa; sem repetir o estímulo numa lista de respostas | [preenchimento independente no próprio conteúdo](../tests/resource-course/resource-test-matrix.spec.js) |
 | `ordering` | orientação da sequência e controles junto aos trechos; sem segunda lista duplicada | reconstrução da resolução no parágrafo da matriz |
-| `open` | pergunta que pede produção livre; campo inicial sem resposta-modelo | explicação do encaminhamento de um switch; [digitação e foco no celular](../tests/resource-course/resource-annotations-open.spec.js) |
 | `audio` | título, idioma, orientação e alternativa textual no momento apropriado | formatos, disponibilidade e reprodução descritos em [Áudio](audio.md) |
 | `calculator` | expressão, unidade angular, resultado aproximado e erros compreensíveis | precedência, limites e teclado descritos em [Ferramentas](ferramentas-calculo-e-consulta.md#calculadora) |
-| `dictionary` | idioma, obra e finalidade da consulta | múltiplos destinos e acesso descritos no [contrato de consulta](ferramentas-calculo-e-consulta.md#contrato-dos-recursos-de-consulta) |
-| `grammar` | construção ou uso a examinar e orientação de retorno à tarefa | mesmos controles de consulta, preservando itens e idiomas distintos |
-| `reading` | título do material, propósito da leitura e condição de acesso | destinos externos ou PDF autorizado, sem tratar a abertura como revisão da fonte |
 
 As orientações da tabela dependem da função de cada legenda; coincidência de
 palavras é insuficiente para decidir sua retirada. A alternativa textual

@@ -20,9 +20,9 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` 5.0.0, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **8.0.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
-O catálogo contém 16 leituras e 38 escritas. Cada definição reúne nome,
+O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
 estruturados de entrada, ou schemas, são gerados dessa fonte.
 
@@ -35,7 +35,7 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `comparar_cursos` | confrontar inventário, configuração e dimensões declaradas de dois recortes próprios |
 | `exportar_autoria` | obter o artefato literal e a leitura autoral de um recorte próprio |
 | `consultar_planejamento` | ler o mapa completo por continuação, o foco em uma parte ou microssequência, ou recuperar situação e referência vigente com `resumo: true` |
-| `preparar_materializacao` | reunir base explicativa, fontes, repertório acumulado e configuração do lote antes de produzir unidades |
+| `preparar_materializacao` | consultar antecipadamente a prontidão do foco; a materialização executa essa verificação quando a referência é omitida |
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_repertorio_instrucional` | ler unidades de análise, requisitos de evidência, vínculos e aplicações salvas |
 | `consultar_observacoes` | ler as entradas versionadas da fila pertinente à explicação ou às unidades |
@@ -63,7 +63,7 @@ estruturados de entrada, ou schemas, são gerados dessa fonte.
 | `remover_ramo_curricular` | remover explicitamente ramo e descendentes, protegendo referências sobreviventes e fontes compartilhadas |
 | `salvar_parte` | agrupar microssequências já previstas num lote operacional e registrar sua progressão local |
 | `salvar_explicacoes` | produzir ou corrigir bases explicativas e fontes antes ou depois das unidades, preservando as unidades existentes |
-| `materializar_parte` | gravar as unidades de estudo de uma parte preparada |
+| `materializar_parte` | gravar uma microssequência, com parte e preparação resolvidas pelo servidor |
 | `reordenar_unidades` | salvar a ordem completa das unidades de uma microssequência, preservando IDs, conteúdo e configuração aplicada |
 | `ajustar_configuracao` | fixar valores de autoria ou pesquisa, delegar parâmetros automáticos ou restaurar herança no escopo |
 | `ajustar_orientacao` | alterar a orientação do objeto corrente para trabalho futuro |
@@ -148,10 +148,22 @@ inspeção. **Reorganizar lotes** apresenta essa prévia no aplicativo.
 
 ## Repertório e materialização
 
-Antes de produzir unidades, `preparar_materializacao` recebe o `plano` compacto e confronta a Explicação reconciliada com repertório, vínculos, requisitos, formas, componentes, fontes, prática e cobertura. `blocked` agrega causas previsíveis; resolva-as antes da escrita. `ready` fornece a referência usada em `referenciaPreparo`. Mudança da base exige novo preparo. O repertório identifica o
+`preparar_materializacao` permite consultar antecipadamente a prontidão: recebe
+o `plano` compacto e confronta a Explicação reconciliada com repertório, vínculos,
+requisitos, formas, componentes, fontes, prática e cobertura. A chamada separada
+é opcional. Ao omitir `referenciaPreparo`, a materialização executa a verificação
+com o conteúdo solicitado antes de gravar. `blocked` agrega as causas que precisam
+de correção. Se usar uma referência explícita, ela deve corresponder à base,
+configuração e intenção correntes. O repertório identifica o
 conhecimento a introduzir, usar ou retomar, conforme o
 [fluxo de produção](fluxos-prompts-e-contratos.md#repertório-acumulado).
-`materializar_parte` recebe as unidades novas ou explicitamente alteradas e suas escolhas. `unidade` identifica a existente a substituir; sem ela, cria uma nova. `posicao` é final, omitidas permanecem. `concluir: false` mantém produção parcial; a conclusão verifica o acumulado. Práticas novas exigem resposta avaliável e feedback offline; resposta aberta permanece apenas como legado.
+`materializar_parte` recebe o foco de uma única microssequência e as unidades
+novas ou explicitamente alteradas desse foco. A parte é resolvida no servidor.
+IDs, versões correntes de packages e posições finais podem ser omitidos e são
+derivados pela materialização. `unidade` identifica a existente a substituir;
+sem ela, cria uma nova. Unidades omitidas permanecem. `concluir: false` mantém
+produção parcial; a conclusão verifica o acumulado. Práticas novas exigem
+resposta avaliável e feedback offline.
 O contrato de [desenho](aralearn-contract.md#desenho) descreve seus campos.
 
 As explicações existentes são reutilizadas. O campo `explicacoes` recebe
@@ -191,6 +203,20 @@ explica quais referências precisam ser conservadas.
 A declaração humana de revisão pertence ao conteúdo inspecionado. Acesso ao
 curso e aos arquivos têm operações próprias; a política opcional de somente
 conteúdo revisado é explicada nas [regras de revisão e acesso](aralearn-contract.md#revisão-do-conteúdo).
+
+### Inspeção pedagógica
+
+`registrar_inspecao` usa a referência da base focal efetivamente lida. O
+parecer deve trazer cinco dimensões — `alignment`, `evidence`,
+`representation`, `feedback` e `sufficiency` — e *quotes* que existam no
+conteúdo salvo. O servidor vincula o parecer à versão e ao `basisHash`, detecta
+quando a base precisa de nova inspeção e recusa evidência que não esteja no
+recorte.
+
+O relatório semântico é julgamento do auditor. Hash, quotes, validade
+estrutural e estado `consistent` não são garantia de qualidade pedagógica nem
+de aprendizagem. Experimentos de prompt, contrato e materialização continuam
+em revisão e não têm conclusão geral.
 
 ## Respostas e erros
 

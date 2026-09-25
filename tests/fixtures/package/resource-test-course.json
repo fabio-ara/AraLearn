@@ -397,9 +397,9 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
-                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
-                            "layout": "wide",
+                            "title": "Respostas ao congestionamento",
+                            "legend": "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.",
+                            "note": "Detalhes dependem do algoritmo e da implementação.",
                             "columns": [
                               "Mecanismo",
                               "Sinal observado",
@@ -450,9 +450,9 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
-                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
-                            "layout": "wide",
+                            "title": "Respostas ao congestionamento",
+                            "legend": "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.",
+                            "note": "Detalhes dependem do algoritmo e da implementação.",
                             "columns": [
                               "Mecanismo",
                               "Sinal observado",
@@ -523,9 +523,9 @@
                           "package": "aralearn.resource.table",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.",
-                            "caption": "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.",
-                            "layout": "wide",
+                            "title": "Respostas ao congestionamento",
+                            "legend": "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.",
+                            "note": "Detalhes dependem do algoritmo e da implementação.",
                             "columns": [
                               "Mecanismo",
                               "Sinal observado",
@@ -2890,122 +2890,7 @@
                             "prompt": "Em teoria de campos, uma ação pode ser definida por uma integral sobre uma região. Leia a expressão e identifique a integral, a derivada parcial, a contração entre índices tensoriais e a função aplicada.",
                             "notation": "mathematics",
                             "accessibleText": "A ação S de u é a integral sobre ômega de um meio vezes a derivada parcial da componente u índice i em relação à coordenada x índice j, contraída com o tensor T índices superiores i e j, mais f de u, em relação ao volume V.",
-                            "expression": {
-                              "type": "row",
-                              "children": [
-                                {
-                                  "type": "function",
-                                  "name": "S",
-                                  "arguments": [
-                                    {
-                                      "type": "identifier",
-                                      "value": "u"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "operator",
-                                  "value": "="
-                                },
-                                {
-                                  "type": "integral",
-                                  "kind": "single",
-                                  "lower": {
-                                    "type": "identifier",
-                                    "value": "Ω"
-                                  },
-                                  "variable": {
-                                    "type": "identifier",
-                                    "value": "V"
-                                  },
-                                  "integrand": {
-                                    "type": "fenced",
-                                    "open": "[",
-                                    "close": "]",
-                                    "content": {
-                                      "type": "row",
-                                      "children": [
-                                        {
-                                          "type": "fraction",
-                                          "numerator": {
-                                            "type": "number",
-                                            "value": "1"
-                                          },
-                                          "denominator": {
-                                            "type": "number",
-                                            "value": "2"
-                                          }
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "derivative",
-                                          "kind": "partial",
-                                          "expression": {
-                                            "type": "tensor",
-                                            "symbol": "u",
-                                            "lowerIndices": [
-                                              {
-                                                "type": "identifier",
-                                                "value": "i"
-                                              }
-                                            ]
-                                          },
-                                          "variables": [
-                                            {
-                                              "symbol": {
-                                                "type": "tensor",
-                                                "symbol": "x",
-                                                "lowerIndices": [
-                                                  {
-                                                    "type": "identifier",
-                                                    "value": "j"
-                                                  }
-                                                ]
-                                              }
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "·"
-                                        },
-                                        {
-                                          "type": "tensor",
-                                          "symbol": "T",
-                                          "upperIndices": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "i"
-                                            },
-                                            {
-                                              "type": "identifier",
-                                              "value": "j"
-                                            }
-                                          ]
-                                        },
-                                        {
-                                          "type": "operator",
-                                          "value": "+"
-                                        },
-                                        {
-                                          "type": "function",
-                                          "name": "f",
-                                          "arguments": [
-                                            {
-                                              "type": "identifier",
-                                              "value": "u"
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    }
-                                  }
-                                }
-                              ]
-                            }
+                            "tex": "S(u)=\\int_{\\Omega} \\left[\\frac{1}{2}\\cdot\\frac{\\partial u_i}{\\partial x_j}\\cdot T^{ij}+f(u)\\right]\\,dV"
                           }
                         }
                       ],
@@ -3321,7 +3206,7 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+                            "prompt": "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
                             "chartType": "line",
                             "xAxis": {
                               "label": "Concorrência",
@@ -3439,7 +3324,7 @@
                                 "value": 300
                               }
                             ],
-                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+                            "caption": "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
                           }
                         }
                       ],
@@ -3458,7 +3343,7 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+                            "prompt": "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
                             "chartType": "line",
                             "xAxis": {
                               "label": "Concorrência",
@@ -3576,7 +3461,7 @@
                                 "value": 300
                               }
                             ],
-                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+                            "caption": "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
                           }
                         }
                       ],
@@ -3615,7 +3500,7 @@
                           "package": "aralearn.resource.chart",
                           "version": "1.0.0",
                           "data": {
-                            "prompt": "Compare o comportamento das duas arquiteturas. Os pontos representam médias de 30 execuções independentes e as barras verticais mostram a incerteza da estimativa.",
+                            "prompt": "Compare a latência das duas arquiteturas à medida que aumenta a concorrência. Cada ponto indica o percentil 95 da latência; as barras verticais mostram a incerteza dessa estimativa.",
                             "chartType": "line",
                             "xAxis": {
                               "label": "Concorrência",
@@ -3733,7 +3618,7 @@
                                 "value": 300
                               }
                             ],
-                            "caption": "Dados sintéticos para inspeção do resource; IC de 95% calculado por bootstrap percentil."
+                            "caption": "Dados simulados. A cada passo, a concorrência dobra. A linha horizontal marca o limite de 300 ms; as barras mostram intervalos de confiança de 95%."
                           }
                         }
                       ],
@@ -6554,13 +6439,13 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-20-choice-content",
-                              "targetPath": "segments[0].label",
-                              "label": "Lacuna no segmento 1",
+                              "targetPath": "segments[0].start",
+                              "label": "Endereço inicial 1",
                               "responseMode": "choice",
-                              "answer": "Código",
+                              "answer": "0x00400000",
                               "distractors": [
-                                "não Código",
-                                "outro Código"
+                                "não 0x00400000",
+                                "outro 0x00400000"
                               ]
                             }
                           ]
@@ -6653,10 +6538,10 @@
                             {
                               "id": "blank-1",
                               "targetInstanceId": "resource-test-20-text-content",
-                              "targetPath": "segments[0].label",
-                              "label": "Lacuna no segmento 1",
+                              "targetPath": "segments[0].start",
+                              "label": "Endereço inicial 1",
                               "responseMode": "text",
-                              "answer": "Código"
+                              "answer": "0x00400000"
                             }
                           ]
                         }
@@ -9651,8 +9536,12 @@
                                 "id": "greeting",
                                 "label": "Saudação em inglês",
                                 "locale": "en-US",
-                                "kind": "native",
-                                "text": "Good morning. How are you?",
+                                "kind": "file",
+                                "media": {
+                                  "contentHash": "2884adedf324fda1a7a2ad4cdf4d34df27e998d3a89d7cbf7f7001ca9b5aa0d6",
+                                  "byteSize": 133416,
+                                  "mediaType": "audio/wav"
+                                },
                                 "alternative": {
                                   "text": "Good morning. How are you?",
                                   "visibility": "on_request"
@@ -9759,289 +9648,6 @@
         },
         {
           "id": "resource-test-31-module",
-          "title": "Dicionário",
-          "guide": {
-            "goal": "Avaliar aralearn.resource.dictionary somente nas modalidades declaradas pelo próprio package.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação-alvo da tarefa"
-            ],
-            "notation": [
-              "idioma identificado",
-              "obra de consulta explícita",
-              "sentido interpretado no contexto"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "resource-test-31-lesson",
-              "title": "Dicionário",
-              "guide": {
-                "goal": "Avaliar aralearn.resource.dictionary somente nas modalidades declaradas pelo próprio package.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "idioma identificado",
-                  "obra de consulta explícita",
-                  "sentido interpretado no contexto"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "resource-test-31-microsequence",
-                  "title": "Dicionário",
-                  "goal": "Avaliar aralearn.resource.dictionary somente nas modalidades declaradas pelo próprio package.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "confirmação da resposta"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "resource-test-31-exposition",
-                      "position": 1,
-                      "title": "Exposição",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "resource-test-31-exposition-content",
-                          "package": "aralearn.resource.dictionary",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Compare os usos da palavra",
-                            "prompt": "Consulte os exemplos e escolha o sentido compatível com a passagem.",
-                            "items": [
-                              {
-                                "id": "lexicon",
-                                "label": "Dicionário escolhido para a unidade",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/dicionario"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "resource-test-32-module",
-          "title": "Gramática",
-          "guide": {
-            "goal": "Avaliar aralearn.resource.grammar somente nas modalidades declaradas pelo próprio package.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação-alvo da tarefa"
-            ],
-            "notation": [
-              "idioma identificado",
-              "recurso com propósito explícito",
-              "consulta ligada à tarefa"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "resource-test-32-lesson",
-              "title": "Gramática",
-              "guide": {
-                "goal": "Avaliar aralearn.resource.grammar somente nas modalidades declaradas pelo próprio package.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "idioma identificado",
-                  "recurso com propósito explícito",
-                  "consulta ligada à tarefa"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "resource-test-32-microsequence",
-                  "title": "Gramática",
-                  "goal": "Avaliar aralearn.resource.grammar somente nas modalidades declaradas pelo próprio package.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "confirmação da resposta"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "resource-test-32-exposition",
-                      "position": 1,
-                      "title": "Exposição",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "resource-test-32-exposition-content",
-                          "package": "aralearn.resource.grammar",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Consulte a construção antes de responder",
-                            "prompt": "Compare a posição dos constituintes nos exemplos do texto.",
-                            "items": [
-                              {
-                                "id": "construction",
-                                "label": "Explicação da construção",
-                                "description": "Leia a seção indicada e volte para justificar sua análise.",
-                                "languageTag": "pt-BR",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/gramatica/construcao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "resource-test-33-module",
-          "title": "Leitura complementar",
-          "guide": {
-            "goal": "Avaliar aralearn.resource.reading somente nas modalidades declaradas pelo próprio package.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação-alvo da tarefa"
-            ],
-            "notation": [
-              "finalidade da leitura explícita",
-              "recurso identificado",
-              "retorno à tarefa"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "resource-test-33-lesson",
-              "title": "Leitura complementar",
-              "guide": {
-                "goal": "Avaliar aralearn.resource.reading somente nas modalidades declaradas pelo próprio package.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "finalidade da leitura explícita",
-                  "recurso identificado",
-                  "retorno à tarefa"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "resource-test-33-microsequence",
-                  "title": "Leitura complementar",
-                  "goal": "Avaliar aralearn.resource.reading somente nas modalidades declaradas pelo próprio package.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "confirmação da resposta"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "resource-test-33-exposition",
-                      "position": 1,
-                      "title": "Exposição",
-                      "role": "theory",
-                      "content": [
-                        {
-                          "id": "resource-test-33-exposition-content",
-                          "package": "aralearn.resource.reading",
-                          "version": "1.0.0",
-                          "data": {
-                            "title": "Amplie a comparação",
-                            "prompt": "Leia a perspectiva adicional e volte para comparar os argumentos.",
-                            "items": [
-                              {
-                                "id": "reading",
-                                "label": "Perspectiva complementar",
-                                "description": "Compare a explicação deste texto com o mecanismo estudado.",
-                                "target": {
-                                  "kind": "url",
-                                  "url": "https://example.org/leitura/comparacao"
-                                }
-                              }
-                            ]
-                          }
-                        }
-                      ],
-                      "response": null,
-                      "feedback": [],
-                      "topics": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "resource-test-34-module",
           "title": "Sessão de terminal",
           "guide": {
             "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
@@ -10064,7 +9670,7 @@
           },
           "lessons": [
             {
-              "id": "resource-test-34-lesson",
+              "id": "resource-test-31-lesson",
               "title": "Sessão de terminal",
               "guide": {
                 "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
@@ -10088,7 +9694,7 @@
               "topics": [],
               "microsequences": [
                 {
-                  "id": "resource-test-34-microsequence",
+                  "id": "resource-test-31-microsequence",
                   "title": "Sessão de terminal",
                   "goal": "Avaliar aralearn.resource.terminal_session somente nas modalidades declaradas pelo próprio package.",
                   "role": "practice",
@@ -10102,13 +9708,13 @@
                   "errors": [],
                   "studyUnits": [
                     {
-                      "id": "resource-test-34-exposition",
+                      "id": "resource-test-31-exposition",
                       "position": 1,
                       "title": "Exposição",
                       "role": "theory",
                       "content": [
                         {
-                          "id": "resource-test-34-exposition-content",
+                          "id": "resource-test-31-exposition-content",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -10154,13 +9760,13 @@
                       "topics": []
                     },
                     {
-                      "id": "resource-test-34-choice",
+                      "id": "resource-test-31-choice",
                       "position": 2,
                       "title": "Lacuna com alternativas",
                       "role": "practice",
                       "content": [
                         {
-                          "id": "resource-test-34-choice-content",
+                          "id": "resource-test-31-choice-content",
                           "package": "aralearn.resource.terminal_session",
                           "version": "1.0.0",
                           "data": {
@@ -10202,14 +9808,14 @@
                         }
                       ],
                       "response": {
-                        "id": "resource-test-34-choice-response",
+                        "id": "resource-test-31-choice-response",
                         "package": "aralearn.response.gap",
                         "version": "1.0.0",
                         "data": {
                           "blanks": [
                             {
                               "id": "blank-1",
-                              "targetInstanceId": "resource-test-34-choice-content",
+                              "targetInstanceId": "resource-test-31-choice-content",
                               "targetPath": "interactions[0].input",
                               "label": "Lacuna de escolha na entrada 1",
                               "responseMode": "choice",
@@ -10570,83 +10176,6 @@
                               "answer": "Devolver o endereço encontrado"
                             }
                           ]
-                        }
-                      },
-                      "feedback": [],
-                      "topics": []
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "response-open-test-module",
-          "title": "Resposta aberta · legado",
-          "guide": {
-            "goal": "Verificar a leitura de prática legada sem criar nova autoria com este componente.",
-            "include": [
-              "representação canônica e interação declarada"
-            ],
-            "exclude": [
-              "adaptação artificial de outra operação-alvo da tarefa"
-            ],
-            "notation": [
-              "representação legível"
-            ],
-            "avoid": [
-              "usar a forma quando ela não acrescenta significado"
-            ]
-          },
-          "lessons": [
-            {
-              "id": "response-open-test-lesson",
-              "title": "Resposta aberta · legado",
-              "guide": {
-                "goal": "Verificar a leitura de prática legada sem criar nova autoria com este componente.",
-                "include": [
-                  "exposição e práticas semanticamente suportadas"
-                ],
-                "exclude": [
-                  "práticas universais presumidas"
-                ],
-                "notation": [
-                  "representação legível"
-                ],
-                "avoid": [
-                  "lacuna fora da representação"
-                ]
-              },
-              "topics": [],
-              "microsequences": [
-                {
-                  "id": "response-open-test-microsequence",
-                  "title": "Resposta aberta · legado",
-                  "goal": "Verificar a leitura de prática legada sem criar nova autoria com este componente.",
-                  "role": "practice",
-                  "dependsOn": [],
-                  "covers": [],
-                  "checks": [
-                    "sem sobreposição",
-                    "alvo de prática dentro da representação",
-                    "confirmação da resposta"
-                  ],
-                  "errors": [],
-                  "studyUnits": [
-                    {
-                      "id": "open-card",
-                      "position": 1,
-                      "title": "Explique a decisão do switch",
-                      "role": "practice",
-                      "content": [],
-                      "response": {
-                        "id": "response-open",
-                        "package": "aralearn.response.open",
-                        "version": "1.0.0",
-                        "data": {
-                          "prompt": "Explique com suas palavras por que o switch aprende pela origem e consulta o destino.",
-                          "placeholder": "Relacione origem, tabela MAC e decisão de saída."
                         }
                       },
                       "feedback": [],

@@ -11,6 +11,8 @@ import { normalizeCourseSourceLinks, requireCourseSourceEvidence } from "../aral
 import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
+import { inspectPedagogicalEvidence } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
+import { inspectCourseAudioReadiness, normalizeCourseMediaRead } from "../aralearn/runtime/domain/courseMedia.js";
 import { canonicalReconciliationLocator, explanationReconciliationTargets, inspectExplanationReconciliation,
   locateExplanationPassage, RECONCILIATION_PASSAGE_LIMIT, RECONCILIATION_PASSAGE_TEXT_LIMIT }
   from "../aralearn/runtime/domain/courseExplanationReconciliation.js";
@@ -130,7 +132,7 @@ function existingStudyUnitSlot(item) {
   return { key: `${microsequenceId}\0${position}`, studyUnitId };
 }
 
-async function listExistingPartStudyUnits({ adapter, principal, context, deadlineAt }) {
+export async function listExistingPartStudyUnits({ adapter, principal, context, deadlineAt }) {
   const bySlot = new Map();
   const seenIds = new Set();
   const seenCursors = new Set();
@@ -498,6 +500,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   const groups = new Map();
   const sourceCache = new Map();
   const scopedDesigns = new Map();
+  const audioCandidates = planUnits.map((unit, index) => ({ content: unit.conteudo, unit: index + 1 }));
   const arrangement = arrangeMaterializationUnits(existingBySlot, planUnits, micros, add);
   const targetMicrosequenceIds = new Set([...arrangement.planned.values()]
     .map(value => value.microsequenceId).filter(Boolean));
@@ -549,6 +552,10 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       normalizedContent = structuredClone(contentValidation.normalized);
       try { requireCoursePracticeAuthoring(normalizedContent); }
       catch (error) { add(error.code ?? "invalid_human_study_unit", error.message, details); }
+      for (const issue of inspectPedagogicalEvidence({ content: normalizedContent, practices,
+        requirements: planItems(context.plan, "evidenceRequirements") }).issues) {
+        add(issue.code, issue.message, { ...details, path: issue.path });
+      }
       delete normalizedContent.id;
       delete normalizedContent.position;
     }
@@ -668,6 +675,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     const explanation = supplied ? supplied.content
       : allMicros.find(item => item.id === micro.id)?.explanation ?? micro.explanation;
     if (!explanation) { add("human_materialization_missing_explanation", "Salve e reconcilie a Explicação antes de produzir as unidades.", { microsequence: micro.title }); continue; }
+    audioCandidates.push({ content: explanation, microsequence: micro.title });
     if (!supplied) {
       const sources = await adapter.getCourseSources({ principal, courseId: context.course.id,
         expectedRevision: context.course.revision, mode: "target", sourceId: null,
@@ -718,10 +726,39 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   capture(() => validatePedagogicalPart([...groups.values()], context.plan,
     affectedExistingStudyUnitIds, blockers, { complete, changedIntroductionIds }));
   const normalizedPlan = structuredClone(planUnits);
+  const audioInstances = audioCandidates.flatMap(({ content }) => [content?.content, content?.feedback]
+    .flatMap(instances => Array.isArray(instances) ? instances : []))
+    .filter(instance => instance?.package === "aralearn.resource.audio");
+  const hasAudio = audioInstances.length > 0;
+  let audioLibrary = null;
+  if (hasAudio) {
+    audioLibrary = [];
+    const hasFile = audioInstances.some(instance => Array.isArray(instance.data?.tracks) &&
+      instance.data.tracks.some(track => track?.kind === "file"));
+    try { if (hasFile) {
+      let cursor = null;
+      const seen = new Set();
+      do {
+        const page = normalizeCourseMediaRead(await adapter.getCourseMedia({ principal, courseId: context.course.id,
+          expectedRevision: context.course.revision, mode: "catalog", cursor, limit: 50, deadlineAt }));
+        if (page.courseId !== context.course.id || page.courseRevision !== context.course.revision ||
+            page.nextCursor !== null && seen.has(page.nextCursor)) fail("course_revision_conflict", "A biblioteca de áudio mudou; releia o recorte.", 409);
+        audioLibrary.push(...page.items);
+        cursor = page.nextCursor; seen.add(cursor);
+      } while (cursor !== null && seen.size <= MAX_PART_STUDY_UNIT_PAGES);
+      if (cursor !== null) fail("course_service_unavailable", "A biblioteca de áudio excedeu o limite de leitura.", 503);
+    }
+    } catch (error) {
+      add(error.code ?? "course_media_unavailable", "Não foi possível conferir as gravações deste recorte. Consulte a biblioteca de áudio antes de materializar.");
+    }
+    for (const { content, ...scope } of audioCandidates) for (const issue of inspectCourseAudioReadiness(content, audioLibrary)) {
+      add(issue.code, issue.message, { ...scope, path: issue.path });
+    }
+  }
   const identity = await sha256Hex(canonicalAuthoringValue({ courseId: context.course.id, courseRevision: context.course.revision,
     part: context.part, plan: context.plan, designs: [...designs], scopedDesigns: [...scopedDesigns],
     existing: [...existingBySlot], sourceBases: [...sourceCache], savedSourceBases,
-    explanations: [...suppliedByMicro], planUnits: normalizedPlan, complete }));
+    explanations: [...suppliedByMicro], planUnits: normalizedPlan, audioLibrary, complete }));
   const unique = [...new Map(blockers.map(blocker => [JSON.stringify(blocker), blocker])).values()];
   return { state: unique.length ? "blocked" : "ready", referencia: unique.length ? null : `materialization-v1:${identity}`,
     blockers: unique, reconciliations, completion: complete ? "complete" : "partial" };
@@ -1753,9 +1790,9 @@ export async function materializeHumanCoursePart({
       : "Conteúdo solicitado salvo.",
     ...buildHumanNavigationEnvelope(producedContentTarget ? createHumanNavigation(adapter, {
       courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
-    }) : null, [], { nextDecision: complete ? "Leia o percurso salvo e registre sua revisão quando terminar."
-      : null }),
+    }) : null, [], { nextDecision: "Use preparar_revisao para uma segunda leitura pedagógica do percurso salvo. Registre as cinco dimensões da inspeção; corrija insuficiências antes de considerar a produção satisfatória." }),
     context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
+      qualidadePedagogica: "pending_independent_inspection",
       cursoRevision: receipt.courseRevision }
   };
 }

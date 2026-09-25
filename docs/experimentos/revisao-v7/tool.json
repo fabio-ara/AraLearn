@@ -1,0 +1,1087 @@
+{
+  "name": "materializar_parte",
+  "title": "Produzir uma microssequência",
+  "description": "Produz uma microssequência por chamada, com verificação automática. A parte é derivada do planejamento. Reutiliza explicações salvas; inclua somente bases a alterar. IDs, versões, posições novas e oportunidades são derivados quando omitidos. Salvar não certifica qualidade: inspecione a base salva e corrija insuficiências.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "curso": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300,
+        "description": "Nome"
+      },
+      "parte": {
+        "type": [
+          "integer",
+          "string"
+        ],
+        "minimum": 1,
+        "maximum": 1000000,
+        "minLength": 1,
+        "maxLength": 300,
+        "description": "Parte: posição ou título."
+      },
+      "microssequencia": {
+        "type": [
+          "integer",
+          "string"
+        ],
+        "minimum": 1,
+        "maximum": 1000000,
+        "minLength": 1,
+        "maxLength": 300,
+        "description": "Microssequência por posição/título."
+      },
+      "explicacoes": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "description": "Uma explicação previamente autorada por microssequência, compartilhada pelas unidades. Produzir não aprova conteúdo.",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "microssequencia",
+            "conteudo",
+            "fontes"
+          ],
+          "properties": {
+            "microssequencia": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "minimum": 1,
+              "maximum": 1000000,
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "conteudo": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "title",
+                "content"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "content": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "package",
+                      "data"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Omita para gerar content-1, response-1, feedback-1 etc. Informe apenas quando referenciado por outro componente."
+                      },
+                      "package": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Nome do componente, como paragraph, code, choice ou gap; também aceita o nome completo do catálogo."
+                      },
+                      "version": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Omitir usa a versão corrente disponível."
+                      },
+                      "data": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "fontes": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "fonte",
+                  "relacao",
+                  "papeis"
+                ],
+                "properties": {
+                  "fonte": {
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000000,
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "relacao": {
+                    "type": "string",
+                    "enum": [
+                      "informed_by",
+                      "supported_by",
+                      "adapted_from",
+                      "quoted_from",
+                      "contrasted_with",
+                      "exemplified_by",
+                      "inspired_by",
+                      "needs_verification"
+                    ]
+                  },
+                  "papeis": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "escopo_curricular",
+                        "evidencia_de_avaliacao",
+                        "tecnica_conceitual",
+                        "leitura_complementar"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "ancoras": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "minimum": 1,
+                      "maximum": 1000000,
+                      "minLength": 1,
+                      "maxLength": 300
+                    },
+                    "description": "Posição na ficha consultada, localizador humano ou trecho de verificação da âncora existente. Evidência exige âncora vigente; não basta cadastrar a fonte."
+                  },
+                  "ocorrencias": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "lugar",
+                        "recurso",
+                        "folha",
+                        "trecho"
+                      ],
+                      "properties": {
+                        "lugar": {
+                          "type": "string",
+                          "enum": [
+                            "conteudo",
+                            "resposta",
+                            "feedback"
+                          ]
+                        },
+                        "recurso": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 64
+                        },
+                        "folha": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "trecho": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 4000
+                        },
+                        "prefixo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 500
+                        },
+                        "sufixo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 500
+                        }
+                      }
+                    },
+                    "description": "Afirmações sustentadas no conteúdo. Evidência exige ocorrência e âncora; afirmações contíguas da mesma passagem podem compartilhar uma ocorrência."
+                  }
+                }
+              }
+            },
+            "reconciliacao": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 512,
+              "description": "Classifique as passagens da base corrente; persistir/vincular repertório precede o preparo. O servidor localiza a passagem declarada: não recopie a base; omita trecho para classificar a folha inteira ou indique um trecho curto e distintivo. Ambiguidade real devolve candidatos e o que ficar sem classificação volta como passagens explícitas. Prévia não conta como ensino concluído.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "recurso",
+                  "folha",
+                  "papel",
+                  "motivo",
+                  "ideias",
+                  "requisitos"
+                ],
+                "properties": {
+                  "recurso": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 64
+                  },
+                  "folha": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  },
+                  "trecho": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000,
+                    "description": "Trecho curto e distintivo da passagem. Omita para classificar a folha inteira."
+                  },
+                  "ocorrencia": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 512,
+                    "description": "Escolha explícita quando a resposta devolver candidatos."
+                  },
+                  "prefixo": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Só para compatibilidade; o servidor deriva o contexto."
+                  },
+                  "sufixo": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "description": "Só para compatibilidade; o servidor deriva o contexto."
+                  },
+                  "papel": {
+                    "type": "string",
+                    "enum": [
+                      "introduced",
+                      "established",
+                      "revisited",
+                      "preview",
+                      "example",
+                      "support",
+                      "deferred"
+                    ]
+                  },
+                  "motivo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "ideias": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "minimum": 1,
+                      "maximum": 1000000,
+                      "minLength": 1,
+                      "maxLength": 300
+                    }
+                  },
+                  "requisitos": {
+                    "type": "array",
+                    "maxItems": 64,
+                    "items": {
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "minimum": 1,
+                      "maximum": 1000000,
+                      "minLength": 1,
+                      "maxLength": 300
+                    }
+                  },
+                  "destino": {
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000000,
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "concluir": {
+        "type": "boolean",
+        "default": false,
+        "description": "concluir."
+      },
+      "processo": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 16384,
+        "description": "Referência opaca do processo já combinado, devolvida na retomada ou preparação. Reutilize durante o fluxo; uma nova leitura sem referência adota as preferências correntes."
+      },
+      "unidades": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conteudo",
+            "aplicacaoPedagogica"
+          ],
+          "properties": {
+            "microssequencia": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "minimum": 1,
+              "maximum": 1000000,
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "unidade": {
+              "type": [
+                "integer",
+                "string"
+              ],
+              "minimum": 1,
+              "maximum": 1000000,
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Referência atual da unidade a substituir ou mover. Omita para criar; posição final não identifica uma unidade existente."
+            },
+            "posicao": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "conteudo": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "title",
+                "content"
+              ],
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "theory",
+                    "practice"
+                  ]
+                },
+                "content": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "package",
+                      "data"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Omita para gerar content-1, response-1, feedback-1 etc. Informe apenas quando referenciado por outro componente."
+                      },
+                      "package": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Nome do componente, como paragraph, code, choice ou gap; também aceita o nome completo do catálogo."
+                      },
+                      "version": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Omitir usa a versão corrente disponível."
+                      },
+                      "data": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                },
+                "response": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "package",
+                        "data"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Omita para gerar content-1, response-1, feedback-1 etc. Informe apenas quando referenciado por outro componente."
+                        },
+                        "package": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Nome do componente, como paragraph, code, choice ou gap; também aceita o nome completo do catálogo."
+                        },
+                        "version": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "Omitir usa a versão corrente disponível."
+                        },
+                        "data": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "feedback": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "package",
+                      "data"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Omita para gerar content-1, response-1, feedback-1 etc. Informe apenas quando referenciado por outro componente."
+                      },
+                      "package": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Nome do componente, como paragraph, code, choice ou gap; também aceita o nome completo do catálogo."
+                      },
+                      "version": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Omitir usa a versão corrente disponível."
+                      },
+                      "data": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                },
+                "topics": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "role"
+                    ],
+                    "properties": {
+                      "role": {
+                        "const": "theory"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "content": {
+                        "minItems": 1
+                      },
+                      "response": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              ],
+              "description": "Conteúdo sem controles internos."
+            },
+            "configuracao": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "parametros",
+                "motivo"
+              ],
+              "properties": {
+                "parametros": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "minProperties": 1,
+                  "properties": {
+                    "maximo_ideias_novas_por_unidade": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 64
+                    },
+                    "formas_de_explicacao": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 8,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "plain_definition",
+                          "concrete_example",
+                          "mechanism",
+                          "contrast",
+                          "application_condition",
+                          "limit_or_exception",
+                          "worked_example",
+                          "representation_link"
+                        ]
+                      }
+                    },
+                    "oportunidades_distintas_por_requisito": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 64
+                    },
+                    "dimensoes_de_variacao_da_pratica": {
+                      "type": "array",
+                      "minItems": 1,
+                      "maxItems": 5,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "case_or_data",
+                          "context",
+                          "task_feature",
+                          "external_representation",
+                          "support_level"
+                        ]
+                      }
+                    },
+                    "alvo_palavras_conversa": {
+                      "type": "integer",
+                      "minimum": 20,
+                      "maximum": 500
+                    },
+                    "alvo_palavras_unidade": {
+                      "type": "integer",
+                      "minimum": 40,
+                      "maximum": 1000
+                    },
+                    "distribuicao_da_pratica": {
+                      "type": "string",
+                      "enum": [
+                        "interleaved",
+                        "clustered"
+                      ]
+                    },
+                    "posicao_da_pratica": {
+                      "type": "string",
+                      "enum": [
+                        "before_explanation",
+                        "after_explanation",
+                        "before_and_after"
+                      ]
+                    },
+                    "alvo_microssequencias_por_parte": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 64
+                    },
+                    "alvo_partes_por_lote": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 64
+                    },
+                    "frequencia_de_pausa": {
+                      "type": "string",
+                      "enum": [
+                        "each_microsequence",
+                        "each_part",
+                        "each_batch",
+                        "on_request"
+                      ]
+                    },
+                    "preferencia_da_conversa": {
+                      "type": "string",
+                      "enum": [
+                        "concise",
+                        "debate",
+                        "explanation"
+                      ]
+                    }
+                  }
+                },
+                "motivo": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "direcaoEditorial": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4000
+                }
+              }
+            },
+            "aplicacaoPedagogica": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [],
+              "properties": {
+                "ideiasIntroduzidas": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": [
+                          "integer",
+                          "string"
+                        ],
+                        "minimum": 1,
+                        "maximum": 1000000,
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "nome",
+                          "descricao"
+                        ],
+                        "properties": {
+                          "nome": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          },
+                          "descricao": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "ideiasUtilizadas": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000000,
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "description": "Toda ideia estabelecida mobilizada sem reexplicação nesta unidade."
+                },
+                "explicacoes": {
+                  "type": "array",
+                  "maxItems": 256,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "ideia",
+                      "formas"
+                    ],
+                    "properties": {
+                      "ideia": {
+                        "type": [
+                          "integer",
+                          "string"
+                        ],
+                        "minimum": 1,
+                        "maximum": 1000000,
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      "formas": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "plain_definition",
+                            "concrete_example",
+                            "mechanism",
+                            "contrast",
+                            "application_condition",
+                            "limit_or_exception",
+                            "worked_example",
+                            "representation_link"
+                          ]
+                        }
+                      },
+                      "formasNaoAplicaveis": {
+                        "type": "array",
+                        "maxItems": 8,
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "forma",
+                            "motivo"
+                          ],
+                          "properties": {
+                            "forma": {
+                              "type": "string",
+                              "enum": [
+                                "plain_definition",
+                                "concrete_example",
+                                "mechanism",
+                                "contrast",
+                                "application_condition",
+                                "limit_or_exception",
+                                "worked_example",
+                                "representation_link"
+                              ]
+                            },
+                            "motivo": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 240
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "formas": {
+                            "minItems": 1
+                          }
+                        }
+                      },
+                      {
+                        "required": [
+                          "formasNaoAplicaveis"
+                        ],
+                        "properties": {
+                          "formasNaoAplicaveis": {
+                            "minItems": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "praticas": {
+                  "type": "array",
+                  "maxItems": 256,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "requisito"
+                    ],
+                    "properties": {
+                      "requisito": {
+                        "type": [
+                          "integer",
+                          "string"
+                        ],
+                        "minimum": 1,
+                        "maximum": 1000000,
+                        "minLength": 1,
+                        "maxLength": 300,
+                        "description": "Posição/título de requisito já persistido e vinculado à microssequência antes do preparo."
+                      },
+                      "oportunidade": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 240
+                      },
+                      "dimensoesVariadas": {
+                        "type": "array",
+                        "maxItems": 5,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "case_or_data",
+                            "context",
+                            "task_feature",
+                            "external_representation",
+                            "support_level"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                },
+                "cobertura": {
+                  "type": "array",
+                  "maxItems": 64,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000000,
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "description": "Itens obrigatórios do recorte efetivamente desenvolvidos nesta unidade."
+                }
+              }
+            },
+            "fontes": {
+              "type": "array",
+              "maxItems": 32,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "fonte",
+                  "relacao",
+                  "papeis"
+                ],
+                "properties": {
+                  "fonte": {
+                    "type": [
+                      "integer",
+                      "string"
+                    ],
+                    "minimum": 1,
+                    "maximum": 1000000,
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "relacao": {
+                    "type": "string",
+                    "enum": [
+                      "informed_by",
+                      "supported_by",
+                      "adapted_from",
+                      "quoted_from",
+                      "contrasted_with",
+                      "exemplified_by",
+                      "inspired_by",
+                      "needs_verification"
+                    ]
+                  },
+                  "papeis": {
+                    "type": "array",
+                    "maxItems": 4,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "escopo_curricular",
+                        "evidencia_de_avaliacao",
+                        "tecnica_conceitual",
+                        "leitura_complementar"
+                      ]
+                    },
+                    "minItems": 1
+                  },
+                  "ancoras": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": [
+                        "integer",
+                        "string"
+                      ],
+                      "minimum": 1,
+                      "maximum": 1000000,
+                      "minLength": 1,
+                      "maxLength": 300
+                    },
+                    "description": "Posição na ficha consultada, localizador humano ou trecho de verificação da âncora existente. Evidência exige âncora vigente; não basta cadastrar a fonte."
+                  },
+                  "ocorrencias": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "lugar",
+                        "recurso",
+                        "folha",
+                        "trecho"
+                      ],
+                      "properties": {
+                        "lugar": {
+                          "type": "string",
+                          "enum": [
+                            "conteudo",
+                            "resposta",
+                            "feedback"
+                          ]
+                        },
+                        "recurso": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 64
+                        },
+                        "folha": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 240
+                        },
+                        "trecho": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 4000
+                        },
+                        "prefixo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 500
+                        },
+                        "sufixo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "maxLength": 500
+                        }
+                      }
+                    },
+                    "description": "Afirmações sustentadas no conteúdo. Evidência exige ocorrência e âncora; afirmações contíguas da mesma passagem podem compartilhar uma ocorrência."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Unidades de uma única microssequência, em ordem pedagógica. Não abrevie conteúdo para reduzir o número de unidades."
+      }
+    },
+    "required": [
+      "curso",
+      "unidades"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": [
+      "result",
+      "deepLink",
+      "nextDecision"
+    ],
+    "properties": {
+      "result": {
+        "type": "string"
+      },
+      "deepLink": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "links": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "relation",
+            "target",
+            "label",
+            "url"
+          ],
+          "properties": {
+            "relation": {
+              "type": "string",
+              "enum": [
+                "content",
+                "observations",
+                "sources",
+                "planning",
+                "parameters"
+              ]
+            },
+            "target": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "label": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "revision": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "nextDecision": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "openWorldHint": false
+  }
+}

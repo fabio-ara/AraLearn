@@ -203,6 +203,10 @@
           "^function:private\\.(?:course_ai_inspection_basis_hash_v1|guard_course_ai_inspection_v1|course_ai_inspection_state_v1|course_ai_inspection_pending_v1|course_ai_inspection_payload_v1|valid_course_ai_inspection_report_v1|record_course_ai_inspection_v1)\\(.*\\)$",
           "^function:public\\.(?:get_course_ai_inspection_for_actor_v1|record_course_ai_inspection_for_actor_v1|get_course_ai_inspection_v1)\\(.*\\)$",
           "^function:private\\.(?:next_course_editorial_intervention_v1|record_course_editorial_intervention_v1|count_course_editorial_intervention_v1|valid_explanation_reconciliation_v1|assert_course_practice_authoring_v1|prepare_incremental_course_part_v1)\\(.*\\)$"
+        ],
+        "database": [
+          "function:private.course_pedagogical_basis_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
+          "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)"
         ]
       },
       "ui": [
@@ -339,6 +343,14 @@
           "token": "record_course_ai_inspection_v1"
         },
         {
+          "path": "supabase/migrations/20260924175938_revisao_v7_focal_audit_basis.sql",
+          "token": "course_pedagogical_basis_v1"
+        },
+        {
+          "path": "supabase/migrations/20260924175938_revisao_v7_focal_audit_basis.sql",
+          "token": "course_pedagogical_report_grounded_v1"
+        },
+        {
           "path": "supabase/migrations/20260916025635_evaluable_offline_authoring_practice.sql",
           "token": "assert_course_practice_authoring_v1"
         },
@@ -447,7 +459,7 @@
         "tests/runtime/course-human-navigation.test.js",
         "tests/runtime/course-authoring-route.test.js"
       ],
-      "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental. Expansão do mapa, folhas de contexto e seleção vertical preservam a leitura; a seleção não cria parte. Dividir, reunir e reordenar partes reutiliza o escritor com revisão e recibo, preservando currículo e aplicações históricas. Ramos podem ser incluídos, editados, movidos, duplicados ou removidos por intenção expressa, mantendo descendentes e vínculos úteis; dependência sobrevivente impede remoção incompatível. Reordenar unidades exige a seleção completa e conserva suas identidades. A aprovação do mapa usa referência à versão persistida inspecionada e não declara revisão de conteúdo. A base explicativa pode ser salva antes das unidades. O repertório mantém análise e evidência por item versionado, sem remoção por omissão; vínculos e aplicações são operações expressas. Aplicar configuração às unidades existentes resolve a intenção corrente, exige calibração contextual para parâmetros automáticos e respeita fixações e condições de pesquisa. Texto e base permanecem; mudança material no snapshot ou na aplicação desatualiza a revisão pertinente. Orientações percorrem os cinco níveis reais. Edição manual conserva o restante da microssequência e sua proveniência. Escrita incerta conserva a identidade e reconcilia recibo e efeito pela leitura prevista no caso de uso. A existência dos testes listados é rastreabilidade do contrato, não recibo de execução, prova hospedada ou revisão humana de curso real. O preflight agrega repertório, vínculos, cobertura reconciliada, formas, componentes e práticas avaliáveis com feedback offline antes da escrita. Materialização incremental conserva conteúdo omitido e exige identidade explícita para substituir unidades, com posição final transacional. Parecer contextual da IA registra a base e permanece distinto da declaração humana; mudanças editoriais invalidam somente a evidência pertinente. A origem corrente é ai, com intervenções humanas e de IA contadas por alternância efetiva. Links tipados conservam intenção e identidade mesmo após mover um alvo."
+      "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental. Expansão do mapa, folhas de contexto e seleção vertical preservam a leitura; a seleção não cria parte. Dividir, reunir e reordenar partes reutiliza o escritor com revisão e recibo, preservando currículo e aplicações históricas. Ramos podem ser incluídos, editados, movidos, duplicados ou removidos por intenção expressa, mantendo descendentes e vínculos úteis; dependência sobrevivente impede remoção incompatível. Reordenar unidades exige a seleção completa e conserva suas identidades. A aprovação do mapa usa referência à versão persistida inspecionada e não declara revisão de conteúdo. A base explicativa pode ser salva antes das unidades. O repertório mantém análise e evidência por item versionado, sem remoção por omissão; vínculos e aplicações são operações expressas. Aplicar configuração às unidades existentes resolve a intenção corrente, exige calibração contextual para parâmetros automáticos e respeita fixações e condições de pesquisa. Texto e base permanecem; mudança material no snapshot ou na aplicação desatualiza a revisão pertinente. Orientações percorrem os cinco níveis reais. Edição manual conserva o restante da microssequência e sua proveniência. Escrita incerta conserva a identidade e reconcilia recibo e efeito pela leitura prevista no caso de uso. A existência dos testes listados é rastreabilidade do contrato, não recibo de execução, prova hospedada ou revisão humana de curso real. O preflight agrega repertório, vínculos, cobertura reconciliada, formas, componentes e práticas avaliáveis com feedback offline antes da escrita. Materialização incremental conserva conteúdo omitido e exige identidade explícita para substituir unidades, com posição final transacional. Parecer contextual da IA registra a base e permanece distinto da declaração humana; mudanças editoriais invalidam somente a evidência pertinente. A origem corrente é ai, com intervenções humanas e de IA contadas por alternância efetiva. Links tipados conservam intenção e identidade mesmo após mover um alvo. A base pedagógica focal reúne contexto, aplicações e fontes para a inspeção; o registro do parecer exige trechos dessa base, sem converter correspondência textual em certificação pedagógica."
     },
     {
       "id": "course-audio-media",
@@ -469,6 +481,14 @@
           "^function:private\\.guard_shared_course_media_v1\\(.*\\)$",
           "^function:private\\.(?:course_content_media_hashes_v1|get_course_target_media_download_v1)\\(.*\\)$",
           "^function:public\\.(?:get_course_explanation_media_download_for_actor_v1)\\(.*\\)$"
+        ],
+        "database": [
+          "function:private.guard_course_audio_delivery_v7()",
+          "function:private.guard_course_audio_publication_v7()",
+          "function:private.require_course_audio_ready_v7(p_course_id uuid, p_content jsonb)",
+          "trigger:private.course_entities/course_audio_content_delivery_v7",
+          "trigger:public.course_access/course_audio_access_delivery_v7",
+          "trigger:public.courses/course_audio_publication_v7"
         ]
       },
       "ui": [
@@ -507,6 +527,18 @@
         {
           "path": "supabase/tests/020_course_audio_media_test.sql",
           "token": "select finish();"
+        },
+        {
+          "path": "supabase/migrations/20260924182348_revisao_v7_audio_readiness.sql",
+          "token": "require_course_audio_ready_v7"
+        },
+        {
+          "path": "supabase/migrations/20260924182348_revisao_v7_audio_readiness.sql",
+          "token": "guard_course_audio_publication_v7"
+        },
+        {
+          "path": "supabase/migrations/20260924182348_revisao_v7_audio_readiness.sql",
+          "token": "guard_course_audio_delivery_v7"
         }
       ],
       "routes": [
@@ -535,9 +567,10 @@
         "tests/runtime/resource-audio.test.js",
         "tests/runtime/course-postgres-concurrency.test.js",
         "tests/runtime/generated-package-catalog-upgrade-pglite.test.js",
+        "tests/runtime/revisao-v7-audio-readiness.test.js",
         "tests/e2e/course-audio-local.spec.js"
       ],
-      "justification": "WAV PCM e MP3 usam Storage privado, hash e cota conjunta de64MiB com PDFs, até20MiB por arquivo. O serviço deriva e reverifica bytes antes da confirmação, usa revisão e recibo únicos e retoma limpeza por intenção. Leituras públicas exigem política disponível e trio vinculado à unidade; voz nativa não promete arquivo exportável e serviços externos só geram áudio por ação explícita do proprietário."
+      "justification": "WAV PCM e MP3 usam Storage privado, hash e cota conjunta de64MiB com PDFs, até20MiB por arquivo. O serviço deriva e reverifica bytes antes da confirmação, usa revisão e recibo únicos e retoma limpeza por intenção. Leituras públicas exigem política disponível e trio vinculado à unidade; voz nativa não promete arquivo exportável e serviços externos só geram áudio por ação explícita do proprietário. As guardas de prontidão pertencem a este caso de áudio mesmo quando executadas nas tabelas de curso, conteúdo ou acesso: publicar, compartilhar ou editar conteúdo já oferecido exige gravações disponíveis e política pública de arquivos compatível."
     },
     {
       "id": "course-source-provenance",

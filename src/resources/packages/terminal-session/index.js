@@ -1,5 +1,6 @@
 import { academicProfile } from "../../sdk/academic.js";
 import {
+  renderPackageActionIcon,
   renderPackageCode,
   renderPackageInline,
   renderPackageProse
@@ -24,7 +25,7 @@ function streamBlock(interaction, interactionIndex, field, label) {
   if (!hasOwn(interaction, field)) return "";
   const value = interaction[field];
   const empty = value.length === 0;
-  return `<div class="package-terminal-stream is-${field}${empty ? " is-empty" : ""}" role="group" aria-label="${label} da interação ${interactionIndex + 1}"><span class="package-terminal-stream-label"><code>${field}</code><small>${label}</small></span><pre tabindex="0" aria-label="${label} da interação ${interactionIndex + 1}"><samp>${empty ? '<span class="package-terminal-empty">(vazia)</span>' : renderPackageCode(value)}</samp></pre></div>`;
+  return `<div class="package-terminal-stream is-${field}${empty ? " is-empty" : ""}" role="group" aria-label="${label} da interação ${interactionIndex + 1}"><span class="package-terminal-stream-label">${label}</span><pre tabindex="0" aria-label="${label} da interação ${interactionIndex + 1}"><samp>${empty ? '<span class="package-terminal-empty">(vazia)</span>' : renderPackageCode(value)}</samp></pre></div>`;
 }
 
 function accessibleStream(interaction, field, label) {
@@ -223,8 +224,8 @@ export const terminalSessionPackage = Object.freeze({
     });
     return errors;
   },
-  render(data) {
-    return `<div class="runtime-block package-terminal-session">${renderPackageProse(data.prompt)}<figure><figcaption><span>Sessão textual observada</span><strong>${renderPackageInline(data.environment)}</strong></figcaption>${data.initialContext ? `<p class="package-terminal-context"><span>Contexto inicial</span>${renderPackageInline(data.initialContext)}</p>` : ""}<ol aria-label="Interações da sessão">${data.interactions.map((interaction, index) => `<li data-terminal-interaction="${index + 1}"><header><strong>Interação ${index + 1}</strong>${interaction.effect ? `<small><span class="package-terminal-effect-label">Estado ou efeito:</span> ${renderPackageInline(interaction.effect)}</small>` : ""}</header><div class="package-terminal-input" role="group" aria-label="Entrada da interação ${index + 1}"><span class="package-terminal-stream-label"><code>input</code><small>comando ou entrada</small></span><pre tabindex="0" aria-label="Entrada da interação ${index + 1}"><code>${interaction.prompt ? `<span class="package-terminal-prompt">${renderPackageCode(interaction.prompt)} </span>` : ""}${renderPackageCode(interaction.input)}</code></pre></div><div class="package-terminal-streams">${streamBlock(interaction, index, "stdout", "Saída padrão")}${streamBlock(interaction, index, "stderr", "Erro padrão")}</div>${hasOwn(interaction, "exitCode") ? `<p class="package-terminal-exit${interaction.exitCode === 0 ? " is-success" : " is-error"}"><span>exit code</span><code>${interaction.exitCode}</code></p>` : ""}</li>`).join("")}</ol></figure></div>`;
+  render(data, options = {}) {
+    return `<div class="runtime-block package-terminal-session">${renderPackageProse(data.prompt)}<figure><figcaption><strong>${renderPackageInline(data.environment)}</strong></figcaption>${data.initialContext ? `<p class="package-terminal-context"><span>Contexto inicial</span>${renderPackageInline(data.initialContext)}</p>` : ""}<ol aria-label="Interações da sessão">${data.interactions.map((interaction, index) => `<li data-terminal-interaction="${index + 1}"><header><strong>Interação ${index + 1}</strong>${interaction.effect ? `<small><span class="package-terminal-effect-label">Estado ou efeito:</span> ${renderPackageInline(interaction.effect)}</small>` : ""}</header><div class="package-terminal-input" role="group" aria-label="Entrada da interação ${index + 1}"><span class="package-terminal-stream-label">Entrada</span><pre tabindex="0" aria-label="Entrada da interação ${index + 1}"><code>${interaction.prompt ? `<span class="package-terminal-prompt">${renderPackageCode(interaction.prompt)} </span>` : ""}${renderPackageCode(interaction.input)}</code></pre></div><details class="package-terminal-result"${index === 0 || options.manualEditing === true ? " open" : ""}><summary aria-label="Mostrar ou recolher resultado da interação ${index + 1}" title="Resultado da interação ${index + 1}">${renderPackageActionIcon("down")}</summary><div class="package-terminal-streams">${streamBlock(interaction, index, "stdout", "Saída padrão")}${streamBlock(interaction, index, "stderr", "Erro padrão")}</div>${hasOwn(interaction, "exitCode") ? `<p class="package-terminal-exit${interaction.exitCode === 0 ? " is-success" : " is-error"}"><span>Código de saída</span><code>${interaction.exitCode}</code></p>` : ""}</details></li>`).join("")}</ol></figure></div>`;
   },
   accessibleText(data) {
     const context = data.initialContext ? ` ${accessibleField("Contexto inicial", data.initialContext)}` : "";

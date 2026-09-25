@@ -44,7 +44,7 @@ export const COURSE_HUMAN_DESIGN_TASK_DEFINITIONS = [
   task("registrar_aplicacoes_instrucionais", "Registrar aplicações instrucionais", "Registra aplicações expressas nas unidades inspecionadas de uma microssequência, mantendo texto, base explicativa e configuração aplicada. Unidades omitidas permanecem. Valida introdução, uso, formas e oportunidades no estado final.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
       unidades: { ...list(object({ unidade: reference, ...applicationFields }), 64), minItems: 1 } }, ["curso", "microssequencia", "unidades"]),
-  task("aplicar_configuracao_instrucional", "Aplicar configuração às unidades existentes", "Aplica a intenção corrente às unidades inspecionadas. Calibração explicita somente parâmetros automáticos; fixações e condições de pesquisa são preservadas. A aplicação salva é validada; uma unidade sem aplicação precisa recebê-la expressamente. Preserva texto e base e não declara revisão humana.",
+  task("aplicar_configuracao_instrucional", "Aplicar configuração às unidades existentes", "Aplica a intenção às unidades inspecionadas. Calibra apenas parâmetros automáticos; preserva fixações, pesquisa, texto e base. Valida aplicações salvas; unidades sem aplicação exigem uma explícita. Não declara revisão humana.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
       unidades: { ...list(object({ unidade: reference,
         calibracao: object({ parametros: { ...object(calibrationFields, []), minProperties: 1 }, motivo: text(1000) }),

@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { audioPackage } from "../../src/resources/packages/audio/index.js";
 import { selectNativeAudioVoice } from "../../src/resources/packages/audio/interaction.js";
 import { createPackageRegistry } from "../../src/resources/kernel/packageRegistry.js";
@@ -17,12 +19,29 @@ const request = { text: "Olá, mundo.\nSegunda linha.", locale: "pt-BR", voice: 
 const response = (data = "AAABAP//", mimeType = "audio/L16;codec=pcm;rate=24000") => ({ candidates: [{ finishReason: "STOP", content: { parts: [{ inlineData: { mimeType, data } }] } }] });
 const fetchResponse = payload => async () => Response.json(payload);
 
+test("exemplo autoral de áudio referencia gravação real, verificável e utilizável após guardar no curso", async () => {
+  const bytes = await readFile(new URL("../fixtures/audio/aralearn-greeting.wav", import.meta.url));
+  const inspected = inspectCourseAudioBytes(bytes);
+  const example = audioPackage.authoringContract.example;
+  const sample = example.tracks[0];
+  assert.equal(sample.kind, "file");
+  assert.equal(sample.media.byteSize, inspected.byteSize);
+  assert.equal(sample.media.mediaType, inspected.mediaType);
+  assert.equal(sample.media.contentHash, createHash("sha256").update(bytes).digest("hex"));
+  assert.equal(registry.validateInstance(instance(example), "content").valid, true);
+  assert.doesNotMatch(audioPackage.accessibleText(example), /Good morning/u);
+});
+
 test("áudio usa o catálogo existente, valida faixas e não revela resposta antes da condição", () => {
   assert.equal(registry.validateInstance(instance({ tracks: [track] }), "content").valid, true);
   assert.equal(registry.validateInstance(instance({ tracks: [track] }), "response").valid, false);
   const html = audioPackage.render({ tracks: [track] });
   assert.doesNotMatch(html, /Resposta auditiva reservada|Alternativa reservada|onerror/);
   assert.doesNotMatch(audioPackage.accessibleText({ tracks: [track] }), /reservada/);
+  const reading = { ...track, alternative: { text: '早上好', reading: 'zǎoshang hǎo', translation: 'Bom dia', visibility: 'always' } };
+  assert.match(audioPackage.accessibleText({ tracks: [reading] }), /早上好 zǎoshang hǎo Bom dia/u);
+  reading.alternative.visibility = 'after_response';
+  assert.doesNotMatch(audioPackage.accessibleText({ tracks: [reading] }), /早上好|zǎoshang|Bom dia/u);
   assert.match(audioPackage.render({ tracks: [track] }, { canRevealAnswers: true }), /&lt;img/);
   assert.match(audioPackage.render({ tracks: [track] }, { manualEditing: true }), /Resposta auditiva reservada/);
   assert.equal(audioPackage.editableTargets({ tracks: [track] }).length, 3);

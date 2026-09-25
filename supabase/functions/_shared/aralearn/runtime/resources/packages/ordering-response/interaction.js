@@ -16,7 +16,7 @@ export const orderingResponseInteraction = Object.freeze({
       if (!state) return;
       const id = node.getAttribute("data-ordering-item-id");
       const index = state.order.indexOf(id);
-      const delta = node.getAttribute("data-ordering-direction") === "left" ? -1 : 1;
+      const delta = node.getAttribute("data-ordering-direction") === "up" ? -1 : 1;
       const target = index + delta;
       if (index < 0 || target < 0 || target >= state.order.length) return;
       [state.order[index], state.order[target]] = [state.order[target], state.order[index]];

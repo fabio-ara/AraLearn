@@ -3261,6 +3261,25 @@ test("normaliza targetPlanItems somente para leitura e rejeita segundo writer", 
   );
 });
 
+test("prontidão de áudio preserva a causa corrigível sem expor detalhes internos do banco", async () => {
+  for (const [databaseCode, message, expectedCode, fragment] of [
+    ["PT422", "A faixa 2 precisa de gravação antes de publicar ou compartilhar. private.secret", "course_audio_recording_required", "faixa 2"],
+    ["PT422", "O arquivo da faixa 3 não está disponível neste curso. private.secret", "course_audio_file_unavailable", "faixa 3"],
+    ["PT422", "O áudio necessário ao estudo não está liberado para o público. Defina a política de acesso aos arquivos antes de publicar.", "course_audio_public_access_required", "acesso público"],
+    ["PT409", "Esta gravação ainda compõe o estudo. Substitua ou retire suas faixas antes de remover o arquivo.", "course_audio_in_use", "Substitua ou retire"],
+    ["PT422", "private.secret", "invalid_course_command", "dados do Curso"]
+  ]) {
+    const status = databaseCode === "PT409" ? 409 : 422;
+    const value = adapter(async () => json({ code: databaseCode, message }, status));
+    await assert.rejects(value.setCourseVisibility({ principal: { actorId: USER_ID }, courseId: COURSE_ID,
+      expectedRevision: 1, visibility: "public", publicFileAccess: "restricted", confirmed: true, requestId: "audio-readiness-test" }), error => {
+      assert.equal(error.status, status); assert.equal(error.code, expectedCode);
+      assert.ok(error.message.includes(fragment)); assert.ok(!error.message.includes("private.secret"));
+      return true;
+    });
+  }
+});
+
 test("leitura de Fontes traduz PT409 sem repetir a revisão desatualizada", async () => {
   let sourceCalls = 0;
   const value = adapter(async (url, init) => {

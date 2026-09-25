@@ -13,25 +13,25 @@ export const tablePackage = Object.freeze({
     accessibility: "Cabeçalhos e células usam semântica de tabela e leitura linear."
   }),
   authoringContract: Object.freeze({
-    intent: "Declare uma comparação pequena, com cabeçalhos autoexplicativos e contexto anterior.",
-    required: Object.freeze(["columns", "rows"]), optional: Object.freeze(["prompt", "caption", "layout"]),
-    rules: Object.freeze(["Cada linha tem a mesma quantidade de células que columns.", "Explique antes toda sigla usada."]),
-    example: Object.freeze({ prompt: "Compare mecanismos de controle de congestionamento depois de estudar janela de congestionamento, perda e atraso.", caption: "Sinais e respostas típicas; detalhes dependem do algoritmo e da implementação.", layout: "wide", columns: ["Mecanismo", "Sinal observado", "Resposta principal", "Efeito esperado"], rows: [["Slow start", "Início da conexão ou reinício após timeout", "Crescimento exponencial de cwnd por RTT", "Descobrir rapidamente a capacidade disponível"], ["Congestion avoidance", "cwnd alcança ssthresh", "Crescimento aproximadamente linear", "Sondar capacidade com mais cautela"], ["Fast retransmit", "ACKs duplicados", "Retransmitir antes do timeout", "Reduzir o tempo de recuperação"], ["Timeout", "Ausência de confirmação dentro do RTO", "Reduzir cwnd e reiniciar crescimento", "Responder a indício forte de perda"]] })
+    intent: "Declare os atributos e casos que precisam ser comparados, com cabeçalhos autoexplicativos.",
+    required: Object.freeze(["columns", "rows"]), optional: Object.freeze(["title", "legend", "note"]),
+    rules: Object.freeze(["Cada linha tem a mesma quantidade de células que columns.", "title identifica a comparação; legend decodifica símbolos ou abreviações; note registra uma ressalva breve.", "Explique conceitos e operações em conteúdo anterior; as fontes usam o mecanismo comum de referências.", "O AraLearn calcula a largura e oferece rolagem sem reduzir a legibilidade."]),
+    example: Object.freeze({ title: "Respostas ao congestionamento", legend: "cwnd: janela de congestionamento; RTT: tempo de ida e volta; RTO: prazo de retransmissão.", note: "Detalhes dependem do algoritmo e da implementação.", columns: ["Mecanismo", "Sinal observado", "Resposta principal", "Efeito esperado"], rows: [["Slow start", "Início da conexão ou reinício após timeout", "Crescimento exponencial de cwnd por RTT", "Descobrir rapidamente a capacidade disponível"], ["Congestion avoidance", "cwnd alcança ssthresh", "Crescimento aproximadamente linear", "Sondar capacidade com mais cautela"], ["Fast retransmit", "ACKs duplicados", "Retransmitir antes do timeout", "Reduzir o tempo de recuperação"], ["Timeout", "Ausência de confirmação dentro do RTO", "Reduzir cwnd e reiniciar crescimento", "Responder a indício forte de perda"]] })
   }),
   schema: Object.freeze({
     type: "object", additionalProperties: false, required: ["columns", "rows"],
     properties: {
-      prompt: { type: "string", maxLength: 2000 }, caption: { type: "string", maxLength: 500 },
-      layout: { type: "string", enum: ["compact", "auto", "wide"] },
+      title: { type: "string", minLength: 1, maxLength: 300 },
+      legend: { type: "string", minLength: 1, maxLength: 2000 },
+      note: { type: "string", minLength: 1, maxLength: 500 },
       columns: { type: "array", minItems: 1, maxItems: 8, items: { type: "string", minLength: 1, maxLength: 300 } },
       rows: { type: "array", minItems: 1, maxItems: 30, items: { type: "array", minItems: 1, maxItems: 8, items: { type: "string", maxLength: 2000 } } }
     }
   }),
   normalize(data) {
     return {
-      ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}),
-      ...(data?.caption ? { caption: String(data.caption).trim() } : {}),
-      ...(data?.layout ? { layout: String(data.layout).trim() } : {}),
+      ...Object.fromEntries(["title", "legend", "note"].filter(key => data?.[key] !== undefined)
+        .map(key => [key, String(data[key]).trim()])),
       columns: (data?.columns || []).map((value) => String(value).trim()),
       rows: (data?.rows || []).map((row) => (row || []).map((value) => String(value)))
     };
@@ -41,17 +41,16 @@ export const tablePackage = Object.freeze({
       ? ["Toda linha precisa ter a mesma quantidade de células que columns."] : [];
   },
   render(data) {
-    const caption = data.caption ? `<caption>${renderPackageInline(data.caption)}</caption>` : "";
+    const caption = data.title ? `<caption>${renderPackageInline(data.title)}</caption>` : "";
     const head = `<thead><tr>${data.columns.map((column) => `<th scope="col"><div class="runtime-table-cell-content">${renderPackageInline(column)}</div></th>`).join("")}</tr></thead>`;
     const body = `<tbody>${data.rows.map((row) => `<tr>${row.map((cell) => `<td><div class="runtime-table-cell-content">${renderPackageProse(cell)}</div></td>`).join("")}</tr>`).join("")}</tbody>`;
-    const layout = ["compact", "wide"].includes(data.layout) ? ` is-layout-${data.layout}` : "";
-    return `<div class="runtime-block runtime-table-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap${layout}"><div class="runtime-table-frame"><table class="runtime-table">${caption}${head}${body}</table></div></div></div>`;
+    return `<div class="runtime-block runtime-table-block"><div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">${caption}${head}${body}</table></div></div>${data.legend ? `<div class="runtime-table-legend">${renderPackageProse(data.legend)}</div>` : ""}${data.note ? `<div class="runtime-table-note">${renderPackageProse(data.note)}</div>` : ""}</div>`;
   },
-  accessibleText(data) { return [data.prompt, ...data.columns, ...data.rows.flat()].filter(Boolean).join(". "); },
+  accessibleText(data) { return [data.title, ...data.columns, ...data.rows.flat(), data.legend, data.note].filter(Boolean).join(". "); },
   editableTargets(data) {
     return [
-      ...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []),
-      ...(data.caption ? [{ path: "caption", label: "Editar legenda" }] : []),
+      ...[ ["title", "título"], ["legend", "legenda"], ["note", "ressalva"] ]
+        .filter(([key]) => data[key]).map(([path, label]) => ({ path, label: `Editar ${label}` })),
       ...data.columns.map((_, index) => ({ path: `columns[${index}]`, label: `Editar cabeçalho ${index + 1}` })),
       ...data.rows.flatMap((row, rowIndex) => row.map((_, columnIndex) => ({ path: `rows[${rowIndex}][${columnIndex}]`, label: `Editar célula ${rowIndex + 1}, ${columnIndex + 1}` })))
     ];

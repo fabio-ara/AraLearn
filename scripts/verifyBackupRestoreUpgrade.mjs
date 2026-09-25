@@ -75,7 +75,18 @@ function command(command, args, { allowFailure = false, timeout = 120_000, input
     maxBuffer: 32 * 1024 * 1024,
     timeout
   });
-  if (result.error) throw result.error;
+  if (result.error) {
+    if (allowFailure) {
+      return {
+        ...result,
+        status: null,
+        stdout: result.stdout || "",
+        stderr: result.stderr || "",
+        timedOut: result.error.code === "ETIMEDOUT"
+      };
+    }
+    throw result.error;
+  }
   if (!allowFailure && result.status !== 0) {
     const detail = String(result.stderr || result.stdout || "").trim().slice(-8000);
     throw new Error(`${command} falhou (${result.status}).${detail ? `\n${detail}` : ""}`);
@@ -134,34 +145,56 @@ function containerRunning(name) {
   const result = command("docker", [
     "inspect", "--format", "{{.State.Running}}", name
   ], { allowFailure: true });
+  if (result.timedOut) {
+    throw new Error("O Docker Desktop expirou ao verificar o contêiner Supabase de origem.");
+  }
   return result.status === 0 && result.stdout.trim() === "true";
 }
 
 async function waitForPostgres(container) {
   let stableReads = 0;
+  let consecutiveTimeouts = 0;
+  let lastFailure = "";
+  const maxConsecutiveTimeouts = 8;
   for (let attempt = 0; attempt < 160; attempt += 1) {
-    const health = command("docker", [
-      "inspect", "--format", "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
-      container
+    // The readiness query is authoritative for this disposable Postgres. A
+    // Docker inspect can block independently of the container and used to
+    // abort the gate during a daemon hiccup immediately after a reset.
+    const ready = command("docker", [
+      "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
+      "-X", "-At", "-c",
+      "select not pg_is_in_recovery() and current_setting('transaction_read_only')='off'"
     ], { allowFailure: true, timeout: 5000 });
-    const ready = health.status === 0 && new Set(["healthy", "none"]).has(
-      health.stdout.trim()
-    ) ? command("docker", [
-        "exec", container, "psql", "-U", "supabase_admin", "-d", "postgres",
-        "-X", "-At", "-c",
-        "select not pg_is_in_recovery() and current_setting('transaction_read_only')='off'"
-      ], { allowFailure: true, timeout: 5000 }) : { status: 1, stdout: "" };
     stableReads = ready.status === 0 && ready.stdout.trim() === "t" ? stableReads + 1 : 0;
     if (stableReads >= 3) return;
+    if (ready.timedOut) {
+      consecutiveTimeouts += 1;
+      lastFailure = "docker exec ETIMEDOUT";
+      if (consecutiveTimeouts >= maxConsecutiveTimeouts) {
+        throw new Error(
+          `O Postgres descartável não respondeu a ${consecutiveTimeouts} sondagens Docker consecutivas.`
+        );
+      }
+    } else {
+      consecutiveTimeouts = 0;
+      lastFailure = String(ready.stderr || ready.stdout || "").trim().slice(-1000);
+    }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`O Postgres descartável ${container} não ficou pronto.`);
+  throw new Error(
+    `O Postgres descartável ${container} não ficou pronto.` +
+    (lastFailure ? ` Última sondagem: ${lastFailure}` : "")
+  );
 }
 
 async function startDisposableContainer(container, image) {
+  // Esta cópia offline prova schema/dados, sem executar serviços assíncronos.
+  // Workers de extensões herdados da origem podem reconectar ao banco enquanto
+  // ele é recriado. Desative-os só nos containers descartáveis, preservando as
+  // bibliotecas, extensões, constraints e permissões que a restauração verifica.
   command("docker", [
     "run", "--detach", "--network", "none", "--name", container, "--entrypoint", "sh", image,
-    "-c", "docker-entrypoint.sh postgres -D /etc/postgresql"
+    "-c", "docker-entrypoint.sh postgres -D /etc/postgresql -c max_worker_processes=0 -c max_parallel_workers=0"
   ]);
   await waitForPostgres(container);
 }
@@ -1085,7 +1118,12 @@ export async function verifyBackupRestoreUpgrade({
   const clean = `aralearn_restore_clean_${token}`;
   const backupPath = `/tmp/aralearn-backup-${token}.dump`;
   try {
-    command("docker", ["commit", "--pause=false", resolved.sourceContainer, image]);
+    // On this Docker Desktop, the source snapshot is about 1.7 GB and the
+    // measured commit took 206 s. Keep this budget local to the snapshot;
+    // readiness probes and SQL commands retain their existing limits.
+    command("docker", ["commit", "--no-pause", resolved.sourceContainer, image], {
+      timeout: 5 * 60_000
+    });
     await startDisposableContainer(source, image);
     await cloneDatabase(resolved.sourceContainer, source);
     resetDisposableApplicationState(source, resolved.migrations[0]);

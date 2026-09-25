@@ -1,0 +1,410 @@
+[
+  {
+    "curso": "Modelos computacionais em ação",
+    "microssequencia": "Garantias e limites de protocolos",
+    "explicacoes": [
+      {
+        "microssequencia": "Garantias e limites de protocolos",
+        "conteudo": {
+          "title": "Garantias e limites de protocolos",
+          "content": [
+            {
+              "id": "protocol-overview",
+              "package": "paragraph",
+              "data": {
+                "text": "Escolher um transporte começa por separar três perguntas: os dados precisam chegar em ordem e ser recuperados quando houver perda? Existe um prazo máximo, depois do qual uma mensagem deixa de ser útil? O conteúdo precisa permanecer confidencial? TCP responde às duas primeiras necessidades de entrega ordenada e recuperação enquanto a conexão funciona: usa números de sequência, confirmações e retransmissões. Isso não fixa um prazo máximo e não cifra o conteúdo automaticamente. UDP entrega datagramas, mas não promete entrega, ordem ou recuperação; a aplicação pode acrescentar mecanismos para tratar essas necessidades. TLS pode oferecer confidencialidade quando usado adequadamente, mas não transforma TCP em um transporte com prazo garantido. Assim, arquivo íntegro, controle com prazo e áudio interativo podem levar a escolhas diferentes conforme a condição considerada."
+              }
+            },
+            {
+              "id": "protocol-comparison",
+              "package": "table",
+              "data": {
+                "title": "Propriedades e limites a comparar",
+                "columns": [
+                  "Opção ou mecanismo",
+                  "O que oferece",
+                  "O que não oferece por si só",
+                  "Leitura para a decisão"
+                ],
+                "rows": [
+                  [
+                    "TCP",
+                    "Fluxo ordenado; confirmações e retransmissões para recuperar perdas enquanto a conexão funciona",
+                    "Prazo máximo de entrega e cifra automática; a conexão pode falhar",
+                    "Adequado quando a integridade e a ordem do arquivo são essenciais"
+                  ],
+                  [
+                    "UDP",
+                    "Datagramas independentes, com baixo acoplamento ao mecanismo de recuperação",
+                    "Entrega, ordem e recuperação garantidas",
+                    "Pode servir a interações sensíveis a atraso quando a aplicação trata suas próprias perdas e prazos"
+                  ],
+                  [
+                    "TLS",
+                    "Confidencialidade quando empregado adequadamente",
+                    "Não é garantia de prazo e não transforma TCP em transporte com prazo máximo",
+                    "É uma proteção de confidencialidade que deve ser analisada separadamente do transporte"
+                  ]
+                ],
+                "note": "Nenhuma opção é universal: a escolha depende do requisito e da condição do cenário."
+              }
+            }
+          ]
+        },
+        "fontes": []
+      }
+    ],
+    "concluir": false,
+    "unidades": [
+      {
+        "posicao": 1,
+        "conteudo": {
+          "title": "Separando os requisitos de transporte",
+          "role": "theory",
+          "content": [
+            {
+              "id": "requirements-map",
+              "package": "paragraph",
+              "data": {
+                "text": "Antes de escolher TCP ou UDP, classifique a situação em três eixos: ordem e recuperação de perdas, prazo de utilidade e confidencialidade. Uma transferência de arquivo íntegro valoriza ordem e recuperação. Um controle interativo pode considerar inútil uma mensagem atrasada, então precisa de uma política explícita de prazo. Um canal que não pode expor seu conteúdo precisa de um mecanismo de confidencialidade, como TLS quando seu uso for adequado. Esses eixos são independentes: confiabilidade não é prazo, e transporte não é cifra automática."
+              }
+            },
+            {
+              "id": "requirements-table",
+              "package": "table",
+              "data": {
+                "title": "Requisito, garantia e limite",
+                "columns": [
+                  "Requisito do cenário",
+                  "Garantia ou mecanismo relacionado",
+                  "Limite a verificar"
+                ],
+                "rows": [
+                  [
+                    "Arquivo deve ser reconstruído integralmente e em ordem",
+                    "TCP usa fluxo ordenado, confirmações e retransmissões",
+                    "Não há prazo máximo garantido; a conexão pode falhar"
+                  ],
+                  [
+                    "Comando atrasado perde sua utilidade",
+                    "A aplicação precisa tratar o prazo e decidir o que fazer com atrasos ou perdas",
+                    "TCP não promete prazo; UDP sozinho não promete entrega nem recuperação"
+                  ],
+                  [
+                    "Terceiros não devem ler o conteúdo",
+                    "TLS pode oferecer confidencialidade quando empregado adequadamente",
+                    "TCP não cifra automaticamente e TLS não cria prazo máximo"
+                  ]
+                ],
+                "note": "A condição do cenário determina quais garantias precisam ser combinadas."
+              }
+            }
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            "Entrega ordenada e recuperação de perdas",
+            "Prazo e confidencialidade são requisitos distintos"
+          ],
+          "explicacoes": [
+            {
+              "ideia": "Entrega ordenada e recuperação de perdas",
+              "formas": ["plain_definition", "mechanism", "concrete_example", "limit_or_exception"]
+            },
+            {
+              "ideia": "Prazo e confidencialidade são requisitos distintos",
+              "formas": ["plain_definition", "contrast", "application_condition", "limit_or_exception"]
+            }
+          ],
+          "cobertura": ["Propriedades e limites de transporte"]
+        }
+      },
+      {
+        "posicao": 2,
+        "conteudo": {
+          "title": "Recuperando um arquivo íntegro",
+          "role": "practice",
+          "content": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "Considere uma transferência em que o arquivo só pode ser usado depois de reconstruído integralmente. Observe quais propriedades pertencem ao transporte e quais seriam uma suposição indevida sobre prazo ou cifra."
+              }
+            }
+          ],
+          "response": {
+            "package": "choice",
+            "data": {
+              "question": "Uma aplicação transfere um arquivo e precisa reconstruí-lo integralmente. Considerando somente as propriedades descritas nesta microssequência, quais afirmações são garantias fornecidas por TCP enquanto a conexão funciona?",
+              "selectionMode": "multiple",
+              "selectionCriterion": "correct",
+              "options": [
+                {
+                  "id": "ordered-flow",
+                  "text": "Os bytes podem ser apresentados ao destino em ordem.",
+                  "feedback": "Correto: o fluxo usa números de sequência para manter a ordem."
+                },
+                {
+                  "id": "loss-recovery",
+                  "text": "Uma perda pode ser recuperada por confirmações e retransmissões.",
+                  "feedback": "Correto: a confirmação sinaliza o recebimento e a retransmissão repõe um segmento perdido enquanto a conexão funciona."
+                },
+                {
+                  "id": "deadline",
+                  "text": "A entrega ocorrerá dentro de um prazo máximo garantido.",
+                  "feedback": "Esse é um erro plausível: retransmitir ajuda na recuperação, mas não fixa um prazo máximo."
+                },
+                {
+                  "id": "automatic-encryption",
+                  "text": "O conteúdo será cifrado automaticamente pelo transporte.",
+                  "feedback": "Esse é um erro plausível: TCP não cifra automaticamente; confidencialidade exige um mecanismo como TLS quando adequado."
+                }
+              ],
+              "answerIds": ["ordered-flow", "loss-recovery"]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "A resposta precisa separar duas garantias de entrega de duas ausências: TCP mantém o fluxo ordenado e usa confirmações e retransmissões para recuperar perdas, mas não promete um prazo máximo nem cifra por conta própria. Uma conexão também pode falhar; portanto, a frase correta é condicionada ao funcionamento da conexão."
+              }
+            }
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Entrega ordenada e recuperação de perdas", "Prazo e confidencialidade são requisitos distintos"],
+          "explicacoes": [
+            {
+              "ideia": "Entrega ordenada e recuperação de perdas",
+              "formas": ["mechanism", "limit_or_exception"]
+            },
+            {
+              "ideia": "Prazo e confidencialidade são requisitos distintos",
+              "formas": ["contrast"]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Discriminar simultaneamente as garantias presentes e ausentes num cenário de transporte",
+              "oportunidade": "arquivo íntegro: garantias de ordem e recuperação, limites de prazo e cifra",
+              "dimensoesVariadas": ["case_or_data", "task_feature"]
+            }
+          ],
+          "cobertura": ["Propriedades e limites de transporte"]
+        }
+      },
+      {
+        "posicao": 3,
+        "conteudo": {
+          "title": "Ligando confirmação e retransmissão à perda",
+          "role": "practice",
+          "content": [
+            {
+              "id": "loss-sequence",
+              "package": "paragraph",
+              "data": {
+                "text": "Em uma transferência TCP, imagine que o receptor confirma os segmentos que chegam e que o segmento 7 não aparece. A confirmação que não avança informa ao emissor que falta uma parte; ao detectar a perda, o emissor pode fazer uma retransmissão. Esse mecanismo explica a recuperação, mas o tempo até ela depende das condições da conexão e não é um prazo máximo garantido."
+              }
+            }
+          ],
+          "response": {
+            "package": "gap",
+            "data": {
+              "prompt": "Complete o mecanismo de recuperação descrito.",
+              "blanks": [
+                {
+                  "id": "missing-segment-action",
+                  "targetInstanceId": "loss-sequence",
+                  "targetPath": "text",
+                  "responseMode": "text",
+                  "label": "ação que repõe o segmento perdido",
+                  "answer": "retransmissão"
+                }
+              ]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "A confirmação informa o que chegou; a retransmissão envia novamente o que faltou. Dizer apenas confirmação descreve o sinal, mas não a ação que recupera o segmento. Dizer prazo garantido confundiria recuperação de perda com limite temporal."
+              }
+            }
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Entrega ordenada e recuperação de perdas", "Prazo e confidencialidade são requisitos distintos"],
+          "explicacoes": [
+            {
+              "ideia": "Entrega ordenada e recuperação de perdas",
+              "formas": ["mechanism", "worked_example"]
+            },
+            {
+              "ideia": "Prazo e confidencialidade são requisitos distintos",
+              "formas": ["limit_or_exception"]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Relacionar confirmação e retransmissão à recuperação de uma perda",
+              "oportunidade": "segmento 7 ausente: identificar a ação que repõe o dado faltante",
+              "dimensoesVariadas": ["case_or_data", "support_level"]
+            }
+          ],
+          "cobertura": ["Propriedades e limites de transporte"]
+        }
+      },
+      {
+        "posicao": 4,
+        "conteudo": {
+          "title": "Escolhendo para um controle com prazo",
+          "role": "practice",
+          "content": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "Agora o requisito muda: um comando de controle perde utilidade quando chega tarde, e seu conteúdo também precisa ser protegido contra leitura por terceiros. A escolha deve declarar como o prazo, as perdas e a confidencialidade serão tratados, em vez de atribuir todos esses comportamentos ao transporte."
+              }
+            }
+          ],
+          "response": {
+            "package": "choice",
+            "data": {
+              "question": "Qual projeto explicita todos os requisitos do controle com prazo e confidencialidade sem atribuir ao transporte uma garantia que ele não oferece?",
+              "selectionMode": "single",
+              "selectionCriterion": "best",
+              "options": [
+                {
+                  "id": "tcp-alone",
+                  "text": "Usar TCP sozinho, pois sua confiabilidade garante que todo comando chegará no prazo e ficará protegido.",
+                  "feedback": "TCP ajuda na ordem e na recuperação, mas não garante prazo máximo nem confidencialidade automática."
+                },
+                {
+                  "id": "tcp-tls-only",
+                  "text": "Usar TCP com TLS, pois a confidencialidade também garante que os comandos chegarão no prazo.",
+                  "feedback": "TLS pode fornecer confidencialidade, mas não transforma TCP em transporte com prazo garantido."
+                },
+                {
+                  "id": "udp-alone",
+                  "text": "Usar UDP sozinho, pois datagramas sempre chegam rápido e já são confidenciais.",
+                  "feedback": "UDP não promete entrega, ordem, recuperação ou confidencialidade por si só."
+                },
+                {
+                  "id": "application-deadline",
+                  "text": "Usar UDP com prazo e tratamento de perdas definidos pela aplicação, acrescentando um mecanismo apropriado de confidencialidade.",
+                  "feedback": "Correto: o prazo e o tratamento de perdas são explicitados pela aplicação, e a confidencialidade é tratada separadamente."
+                }
+              ],
+              "answerIds": ["application-deadline"]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "O cenário exige separar as responsabilidades. Como atraso pode invalidar o comando, a aplicação precisa definir prazo e comportamento para dados tardios ou perdidos. Como há confidencialidade, é preciso acrescentar um mecanismo apropriado. TCP com TLS resolve a confidencialidade, mas não cria prazo máximo; UDP sozinho não resolve nenhuma dessas garantias."
+              }
+            }
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Entrega ordenada e recuperação de perdas", "Prazo e confidencialidade são requisitos distintos"],
+          "explicacoes": [
+            {
+              "ideia": "Entrega ordenada e recuperação de perdas",
+              "formas": ["application_condition", "limit_or_exception"]
+            },
+            {
+              "ideia": "Prazo e confidencialidade são requisitos distintos",
+              "formas": ["concrete_example", "contrast", "application_condition"]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Discriminar simultaneamente as garantias presentes e ausentes num cenário de transporte",
+              "oportunidade": "controle com prazo: separar política de atraso, perdas e confidencialidade",
+              "dimensoesVariadas": ["context", "task_feature", "support_level"]
+            }
+          ],
+          "cobertura": ["Propriedades e limites de transporte"]
+        }
+      },
+      {
+        "posicao": 5,
+        "conteudo": {
+          "title": "Analisando áudio interativo",
+          "role": "practice",
+          "content": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "Em áudio interativo, uma amostra que chega muito tarde pode ser inútil, embora alguma perda seja tolerável. Isso muda a prioridade em relação ao arquivo: a aplicação pode preferir continuar com dados recentes e tratar perdas ou ordem conforme sua necessidade. Se o áudio também exigir confidencialidade, essa exigência continua separada da decisão sobre prazo."
+              }
+            }
+          ],
+          "response": {
+            "package": "choice",
+            "data": {
+              "question": "Qual decisão é coerente com áudio interativo em que atraso excessivo torna uma amostra inútil?",
+              "selectionMode": "single",
+              "selectionCriterion": "best",
+              "options": [
+                {
+                  "id": "audio-tcp-always",
+                  "text": "Escolher sempre TCP, porque recuperar toda perda é mais importante que o atraso em qualquer áudio.",
+                  "feedback": "A escolha universal ignora a condição: retransmissões podem atrasar dados que já perderam utilidade."
+                },
+                {
+                  "id": "audio-udp-application",
+                  "text": "Considerar UDP quando a aplicação puder lidar com perdas e dados fora de prazo, acrescentando confidencialidade se necessário.",
+                  "feedback": "Correto: datagramas podem combinar com uma interação sensível a atraso quando a aplicação explicita como tratar perdas, ordem e confidencialidade."
+                },
+                {
+                  "id": "audio-udp-deadline-guarantee",
+                  "text": "Escolher UDP porque ele garante que toda amostra chegará dentro do prazo.",
+                  "feedback": "UDP não garante entrega nem prazo; a condição de atraso precisa ser tratada pela aplicação."
+                },
+                {
+                  "id": "audio-tcp-tls-deadline",
+                  "text": "Escolher TCP com TLS porque a cifra transforma a conexão em transporte com prazo máximo.",
+                  "feedback": "TLS trata confidencialidade, não prazo. TCP continua sem garantia de prazo máximo."
+                }
+              ],
+              "answerIds": ["audio-udp-application"]
+            }
+          },
+          "feedback": [
+            {
+              "package": "paragraph",
+              "data": {
+                "text": "O ponto decisivo é a utilidade temporal: recuperar uma perda pode ser menos útil que seguir com dados recentes. UDP pode ser considerado, mas não traz uma promessa de entrega ou prazo; a aplicação precisa declarar como tratar perdas, ordem e atraso. Confidencialidade, quando necessária, é uma decisão adicional."
+              }
+            }
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["Entrega ordenada e recuperação de perdas", "Prazo e confidencialidade são requisitos distintos"],
+          "explicacoes": [
+            {
+              "ideia": "Entrega ordenada e recuperação de perdas",
+              "formas": ["concrete_example", "application_condition", "limit_or_exception"]
+            },
+            {
+              "ideia": "Prazo e confidencialidade são requisitos distintos",
+              "formas": ["concrete_example", "contrast"]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Discriminar simultaneamente as garantias presentes e ausentes num cenário de transporte",
+              "oportunidade": "áudio interativo: comparar utilidade temporal com recuperação integral",
+              "dimensoesVariadas": ["context", "case_or_data"]
+            }
+          ],
+          "cobertura": ["Propriedades e limites de transporte"]
+        }
+      }
+    ]
+  }
+]

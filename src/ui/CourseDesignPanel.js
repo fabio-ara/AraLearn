@@ -182,14 +182,14 @@ function renderParameterCard(design, definition, resolution, busy, { editing = f
       `<label for="course-design-reason-${escapeHtml(definition.id)}">Justificativa</label>` +
       `<textarea id="course-design-reason-${escapeHtml(definition.id)}" name="reason" maxlength="1000"` +
       ` rows="3" required>${escapeHtml(local?.reason || "")}</textarea>` +
-      '<div class="course-design-form-actions">' +
+      '<div class="course-design-form-actions" role="group" aria-label="Ações do parâmetro">' +
       '<button type="button" class="is-secondary" data-course-authoring-action="clear-design-parameter"' +
-      ` data-parameter-id="${escapeHtml(definition.id)}" aria-label="Restaurar herança" title="Restaurar herança"${busy || !local ? " disabled" : ""}>` +
+      ` data-parameter-id="${escapeHtml(definition.id)}" data-action-effect="restores-inherited-value" aria-label="Restaurar herança" title="Restaurar herança"${busy || !local ? " disabled" : ""}>` +
       `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>` +
-      '<button type="reset" class="is-secondary" aria-label="Descartar alterações" title="Descartar alterações">' +
+      '<button type="reset" class="is-secondary" data-action-effect="discards-form-draft" aria-label="Descartar alterações" title="Descartar alterações">' +
       `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
       '<button type="submit" aria-label="Salvar neste escopo" title="Salvar neste escopo"' +
-      `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></div></form>`
+      ` data-action-effect="updates-next-production"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button></div></form>`
     : '<div class="course-design-disabled-editor" aria-disabled="true"><p>' +
       `Ajuste disponível em: ${escapeHtml(definition.supportedScopes.map((kind) => SCOPE_LABELS[kind]).join(", "))}. ` +
       "A configuração e o registro de produção continuam inspecionáveis neste escopo.</p></div>";
@@ -254,11 +254,11 @@ function renderGuidance(design, busy) {
     formOriginOptions(local && local.origin !== "migration" ? local.origin : "author") + "</select></label>" +
     '<label>Justificativa<textarea name="reason" maxlength="1000" rows="3" required>' +
     `${escapeHtml(local?.reason || "")}</textarea></label>` +
-    '<div class="course-design-form-actions"><button type="submit" aria-label="Salvar direção editorial" title="Salvar direção editorial"' +
-    `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
-    (local
-      ? `<button type="button" class="is-secondary" data-course-authoring-action="clear-design-guidance"` +
-        ` aria-label="Restaurar herança" title="Restaurar herança"${busy ? " disabled" : ""}>` +
+    '<div class="course-design-form-actions" role="group" aria-label="Ações da direção editorial"><button type="submit" aria-label="Salvar direção editorial" title="Salvar direção editorial"' +
+    ` data-action-effect="updates-next-production-guidance"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+      (local
+        ? `<button type="button" class="is-secondary" data-course-authoring-action="clear-design-guidance"` +
+        ` data-action-effect="restores-inherited-guidance" aria-label="Restaurar herança" title="Restaurar herança"${busy ? " disabled" : ""}>` +
         `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
       : "") + "</div></form></details></section>";
 }
@@ -271,11 +271,7 @@ function renderComponentPolicy(design, busy) {
   const allowed = new Set(draft.allowedRefs);
   const excluded = new Set(draft.excludedRefs);
   const preferred = new Set(draft.preferredRefs);
-  const components = catalog.options.map((option) => option.authoringEligibility === "legacy_only"
-    ? '<article class="course-design-component-option"><div><strong>' +
-      `${escapeHtml(option.label)}</strong><span>Disponível somente em conteúdo legado.</span></div>` +
-      `<p>${allowed.has(option.ref) || preferred.has(option.ref) ? "A política histórica inclui este componente; novas produções usam práticas avaliáveis." : "Não disponível para nova autoria."}</p></article>`
-    :
+  const components = catalog.options.map((option) =>
     '<article class="course-design-component-option"><div><strong>' +
     `${escapeHtml(option.label)}</strong><span>${escapeHtml(option.purpose)}</span></div>` +
     '<div class="course-design-component-choices">' +
@@ -309,11 +305,11 @@ function renderComponentPolicy(design, busy) {
     formOriginOptions(local?.origin || "author") + "</select></label>" +
     '<label>Justificativa<textarea name="reason" maxlength="1000" rows="3" required>' +
     `${escapeHtml(local?.reason || "")}</textarea></label>` +
-    '<div class="course-design-form-actions"><button type="submit" aria-label="Salvar componentes" title="Salvar componentes"' +
-    `${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
-    (local
-      ? `<button type="button" class="is-secondary" data-course-authoring-action="clear-design-policy"` +
-        ` aria-label="Restaurar herança" title="Restaurar herança"${busy ? " disabled" : ""}>` +
+    '<div class="course-design-form-actions" role="group" aria-label="Ações dos componentes"><button type="submit" aria-label="Salvar componentes" title="Salvar componentes"' +
+    ` data-action-effect="updates-next-production-components"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
+      (local
+        ? `<button type="button" class="is-secondary" data-course-authoring-action="clear-design-policy"` +
+        ` data-action-effect="restores-inherited-components" aria-label="Restaurar herança" title="Restaurar herança"${busy ? " disabled" : ""}>` +
         `${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`
       : "") + "</div></form></details></section>";
 }

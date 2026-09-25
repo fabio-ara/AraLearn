@@ -39,7 +39,7 @@ export const codePackage = Object.freeze({
   },
   validate() { return []; },
   render(data) {
-    return `<div class="runtime-block runtime-code-block">${renderPackageProse(data.prompt, data)}<pre><code class="language-${escapePackageHtml(data.language)}">${renderPackageCode(data.code)}</code></pre></div>`;
+    return `<div class="runtime-block runtime-code-block">${renderPackageProse(data.prompt, data)}<div class="runtime-code-language">${escapePackageHtml(data.language)}</div><pre><code class="language-${escapePackageHtml(data.language)}">${renderPackageCode(data.code)}</code></pre></div>`;
   },
   accessibleText(data) { return `${data.prompt} Código ${data.language}: ${data.code}`; },
   editableTargets() { return [{ path: "prompt", label: "Editar orientação" }, { path: "code", label: "Editar código", preserveWhitespace: true }]; },

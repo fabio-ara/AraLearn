@@ -50,29 +50,6 @@ for (const theme of ["light", "dark"]) {
     expect(errors).toEqual([]);
   });
 
-  test(`resposta aberta legada aceita produção própria na matriz em ${theme}`, async ({ page }, testInfo) => {
-    const errors = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    await openMatrix(page, theme);
-    const card = page.locator('.resource-test-card[data-package="aralearn.response.open"]');
-    await expect(card).toHaveCount(1);
-    const input = card.getByRole("textbox", { name: "Explique com suas palavras por que o switch aprende pela origem e consulta o destino." });
-    await expect(input).toHaveValue("");
-    const response = "O endereço de origem informa por qual porta aquele emissor pode ser alcançado.\n" +
-      "O destino determina onde encaminhar o quadro; ele não identifica a porta de entrada.";
-    await input.focus();
-    await page.keyboard.insertText(response);
-    await expect(input).toHaveValue(response);
-    await expect(input).toBeFocused();
-    await expect(card.getByRole("radio")).toHaveCount(0);
-    await expect(card.getByRole("checkbox")).toHaveCount(0);
-    await expect(card.locator(".inline-feedback")).toHaveCount(0);
-    expect(await card.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);
-    await input.evaluate((element) => { element.scrollTop = 0; });
-    await card.screenshot({ path: testInfo.outputPath(`open-response-${theme}.png`) });
-    expect(errors).toEqual([]);
-  });
-
   test(`condição da reação mantém um único campo na seta em ${theme}`, async ({ page }, testInfo) => {
     const matrixCourse = buildResourceTestCourse();
     const reactionModule = matrixCourse.courses[0].modules.find((moduleValue) =>

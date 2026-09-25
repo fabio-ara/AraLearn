@@ -1,6 +1,6 @@
 import { FORMULA_EXPRESSION_INPUT_SCHEMA, validateFormulaExpression } from "../../../domain/formulaExpression.js";
-import { escapePackageAttribute, packageReferenceText, packageTextAttributes, renderPackageInline } from "../../sdk/html.js";
-import { hydrateMathExpression, renderMathNode } from "../../sdk/mathExpression.js";
+import { escapePackageAttribute, packageReferenceText, packageTextAttributes, renderPackageInline, renderPackageLiteral } from "../../sdk/html.js";
+import { hasDelimitedTexNotation, hydrateMathExpression, renderMathNode, resolveFormulaExpression, stripLiteralMarkers, validateTexNotation } from "../../sdk/mathExpression.js";
 
 export const PARAGRAPH_LANGUAGE_PROPERTIES = Object.freeze({
   languageTag: { type: "string", minLength: 2, maxLength: 63 },
@@ -8,15 +8,23 @@ export const PARAGRAPH_LANGUAGE_PROPERTIES = Object.freeze({
 });
 
 const textSchema = { type: "string", minLength: 1, maxLength: 12000 };
+// A leitura anotada tem sistema próprio (kana, pinyin, IPA). O campo reaproveita a
+// identificação BCP 47 já usada no parágrafo: ja-Kana, zh-Latn-pinyin, und-fonipa ou
+// pt-PT-fonipa quando a variedade da língua for relevante. Não há vocabulário novo.
+const readingProperties = {
+  readingLanguageTag: { type: "string", minLength: 2, maxLength: 63 }
+};
 const mathProperties = {
   kind: { const: "math" },
   notation: { type: "string", enum: ["mathematics", "chemistry"] },
   accessibleText: { type: "string", minLength: 1, maxLength: 3000 },
-  expression: FORMULA_EXPRESSION_INPUT_SCHEMA
+  expression: FORMULA_EXPRESSION_INPUT_SCHEMA,
+  tex: { type: "string", minLength: 1, maxLength: 2000 }
 };
 const mathSchema = {
   type: "object", additionalProperties: false,
-  required: ["kind", "notation", "accessibleText", "expression"], properties: mathProperties
+  required: ["kind", "notation", "accessibleText"], properties: mathProperties,
+  oneOf: [{ required: ["tex"] }, { required: ["expression"] }]
 };
 const inlineSchema = {
   oneOf: [
@@ -27,7 +35,8 @@ const inlineSchema = {
     { $ref: "#/$defs/math" },
     {
       type: "object", additionalProperties: false, required: ["kind", "base", "reading"],
-      properties: { kind: { const: "ruby" }, base: textSchema, reading: textSchema, ...PARAGRAPH_LANGUAGE_PROPERTIES }
+      properties: { kind: { const: "ruby" }, base: textSchema, reading: textSchema,
+        ...readingProperties, ...PARAGRAPH_LANGUAGE_PROPERTIES }
     }
   ]
 };
@@ -55,6 +64,10 @@ export const RICH_PARAGRAPH_SCHEMA = Object.freeze({
   }
 });
 
+export const RICH_PARAGRAPH_AUTHORING_SCHEMA = Object.freeze({ ...RICH_PARAGRAPH_SCHEMA,
+  $defs: { math: { type: "object", additionalProperties: false, required: ["kind", "notation", "accessibleText", "tex"],
+    properties: Object.fromEntries(Object.entries(mathProperties).filter(([key]) => key !== "expression")) } } });
+
 function nodes(data) {
   return data.blocks.flatMap((block) => block.kind === "paragraph" ? [block, ...block.inlines] : [block]);
 }
@@ -69,8 +82,9 @@ export function richParagraphTextTargets(data) {
         { path: `${path}.base`, label: `Editar escrita do ${label}` },
         { path: `${path}.reading`, label: `Editar leitura do ${label}` }
       ];
+      if (inline.kind === "math") return [{ path: `${path}.accessibleText`, label: `Editar leitura matemática do ${label}` }];
       return [];
-    }) : []);
+    }) : [{ path: `blocks[${blockIndex}].accessibleText`, label: `Editar leitura matemática do bloco ${blockIndex + 1}` }]);
 }
 
 export function validateRichParagraph(data, validateProse) {
@@ -89,9 +103,9 @@ export function validateRichParagraph(data, validateProse) {
       catch { errors.push("Idioma precisa ser uma identificação BCP 47 válida, como pt-BR, zh-Hans ou ar."); }
     }
     if (node.kind === "math") {
-      const result = validateFormulaExpression(node.expression);
+      const result = node.tex !== undefined ? validateTexNotation(node.tex) : validateFormulaExpression(node.expression);
       errors.push(...result.errors.map((error) => `${error.path}: ${error.message}`));
-      if (result.ok) countFormulaNodes(node.expression);
+      if (result.ok) countFormulaNodes(resolveFormulaExpression(node));
       textLength += node.accessibleText.length;
       if (!node.accessibleText.trim()) errors.push("A matemática exige uma leitura acessível equivalente.");
     } else if (node.kind === "text") {
@@ -100,6 +114,10 @@ export function validateRichParagraph(data, validateProse) {
     } else if (node.kind === "ruby") {
       textLength += node.base.length + node.reading.length;
       if (!node.base.trim() || !node.reading.trim()) errors.push("Ruby exige escrita e leitura não vazias.");
+      if (node.readingLanguageTag) {
+        try { Intl.getCanonicalLocales(node.readingLanguageTag); }
+        catch { errors.push("A leitura anotada precisa de uma identificação BCP 47 válida, como ja-Kana, zh-Latn-pinyin ou und-fonipa."); }
+      }
     }
   }
   if (textLength > 12000) errors.push("Texto e leituras do parágrafo excedem 12000 caracteres; distribua a explicação em mais componentes.");
@@ -110,8 +128,8 @@ export function validateRichParagraph(data, validateProse) {
 function renderMath(node, display) {
   const tag = display === "block" ? "figure" : "span";
   return `<${tag} class="package-rich-math is-${display}" dir="ltr">` +
-    `<math display="${display}" aria-label="${escapePackageAttribute(node.accessibleText)}">` +
-    `${renderMathNode(node.expression)}</math></${tag}>`;
+    `<math display="${display}" aria-label="${escapePackageAttribute(packageReferenceText(node.accessibleText))}">` +
+    `${renderMathNode(resolveFormulaExpression(node))}</math><span class="visually-hidden">${renderPackageLiteral(node.accessibleText)}</span></${tag}>`;
 }
 
 function inheritedTextAttributes(node) {
@@ -123,8 +141,12 @@ function renderInline(node) {
   if (node.kind === "math") return renderMath(node, "inline");
   if (node.kind === "ruby") {
     const reading = `${packageReferenceText(node.base)} (${packageReferenceText(node.reading)})`;
+    // O idioma declarado descreve a própria leitura; a direção é resolvida pelo conteúdo
+    // real do trecho, sem tabela de escrita inventada.
+    const readingTag = node.readingLanguageTag
+      ? ` lang="${escapePackageAttribute(node.readingLanguageTag)}" dir="auto"` : "";
     return `<ruby role="group" aria-label="${escapePackageAttribute(reading)}"${inheritedTextAttributes(node)}>${renderPackageInline(node.base)}` +
-      `<rp>(</rp><rt>${renderPackageInline(node.reading)}</rt><rp>)</rp></ruby>`;
+      `<rp>(</rp><rt${readingTag}>${renderPackageInline(node.reading)}</rt><rp>)</rp></ruby>`;
   }
   return `<span${inheritedTextAttributes(node)}>${renderPackageInline(node.text)}</span>`;
 }
@@ -137,12 +159,13 @@ export function renderRichParagraph(data) {
 }
 
 export function hydrateRichParagraph(root) {
-  root.querySelectorAll(".package-rich-math").forEach(hydrateMathExpression);
+  root.querySelectorAll(".package-rich-math, .package-rich-tex").forEach(hydrateMathExpression);
 }
 
 export function accessibleRichParagraph(data) {
   const inlineText = (node) => node.kind === "math" ? node.accessibleText
-    : node.kind === "ruby" ? `${node.base} (${node.reading})` : node.text.replace(/`/g, "");
+    : node.kind === "ruby" ? `${node.base} (${node.reading})`
+      : hasDelimitedTexNotation(node.text) ? node.text : stripLiteralMarkers(node.text);
   return data.blocks.map((block) => block.kind === "math" ? block.accessibleText
     : block.inlines.map(inlineText).join("")).join("\n\n");
 }

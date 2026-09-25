@@ -7,7 +7,12 @@ import { trapAuthoringConfirmationTab } from "./courseAuthoringConfirmation.js";
 
 const escape = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
   .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-const sizeLabel = (value) => `${(value / 1024 / 1024).toFixed(1)} MiB`;
+const sizeLabel = (value) => {
+  const bytes = Number.isFinite(value) && value > 0 ? Math.round(value) : 0;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10240 ? 1 : 0)} KiB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
+};
 const requestId = () => globalThis.crypto.randomUUID();
 const ambiguous = (error) => !error?.status && !error?.code ||
   [0, 408, 429].includes(Number(error?.status)) || Number(error?.status) >= 500 ||
@@ -112,10 +117,11 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
   }
 
   function sheetActions(disabled) {
-    const button = (action, label, icon, { form = null, unavailable = false } = {}) =>
-      `<button type="${form ? "submit" : "button"}"${form ? ` form="${form}"` : ` data-audio-action="${action}"`}` +
+    const button = (action, label, icon, { form = null, unavailable = false, className = "" } = {}) =>
+      `<button type="${form ? "submit" : "button"}"${className ? ` class="${className}"` : ""}${form ? ` form="${form}"` : ` data-audio-action="${action}"`}` +
       ` aria-label="${label}" title="${label}"${disabled || unavailable ? " disabled" : ""}>${renderUiIcon(icon, "course-authoring-button-icon")}</button>`;
-    if (state.confirmingHash) return button("confirm-remove", "Remover arquivo", "trash");
+    if (state.confirmingHash) return button("cancel-remove", "Cancelar remoção do áudio", "remove-state") +
+      button("confirm-remove", "Remover arquivo", "trash", { className: "is-danger" });
     if (state.section === "configuration") return button("reset-config", "Descartar configuração", "remove-state") +
       button(null, "Salvar configuração de áudio", "save", { form: "course-audio-config-form" });
     if (state.section === "upload") return button("preview-file", "Ouvir arquivo selecionado", "play", { unavailable: !state.file }) +
@@ -229,13 +235,16 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
       }
       state.revision = Math.max(state.revision, value.courseRevision);
       onCourseRevisionChange(state.revision);
+      const resultMessage = pending.file ? "Áudio guardado na biblioteca."
+        : pending.command?.type === "remove_media" ? "Arquivo de áudio removido."
+          : "Configuração de áudio salva.";
       if (pending.command?.type === "set_audio_config") state.baseline = structuredClone(pending.command.config);
       if (pending.file) {
         if (state.generated) { state.generationText = ""; state.generationName = ""; }
         state.file = null; state.generated = false;
       }
       state.pending = null; state.confirmingHash = null;
-      state.message = "Áudio atualizado.";
+      state.message = resultMessage;
       await read();
     } catch (error) {
       if (!state.opened) return;
@@ -343,8 +352,18 @@ export function createCourseAudioPanel({ root, controller, courseId, courseRevis
       if (action === "section") { state.section = button.dataset.section; returnSection = state.section; }
       if (action === "reset-config") state.config = structuredClone(state.baseline || createDefaultCourseAudioConfig());
       if (action === "discard-file") { state.file = null; state.generated = false; }
-      if (action === "remove") { state.confirmingHash = button.dataset.mediaHash; returnSection = "upload"; }
-      if (action === "cancel-remove") state.confirmingHash = null;
+      if (action === "remove") {
+        state.confirmingHash = button.dataset.mediaHash; returnSection = state.section;
+        render();
+        root.querySelector("[data-audio-action='cancel-remove']")?.focus?.({ preventScroll: true });
+        return;
+      }
+      if (action === "cancel-remove") {
+        const removed = state.confirmingHash; state.confirmingHash = null;
+        render();
+        root.querySelector(`[data-audio-action='remove'][data-media-hash='${removed}']`)?.focus?.({ preventScroll: true });
+        return;
+      }
       if (action === "confirm-remove") { await mutate({ type: "remove_media", contentHash: state.confirmingHash }); return; }
       if (action === "more") { await read({ append: true }); return; }
       if (action === "preview" || action === "preview-file") {

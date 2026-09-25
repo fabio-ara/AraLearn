@@ -32,8 +32,9 @@ function topbar(title, backTitle = "Voltar", modeControls = "", runtimeStatus = 
     renderRuntimeStatusControl(runtimeStatus) + '<details class="course-authoring-task-menu"><summary class="course-authoring-header-action" aria-label="Abrir tarefas do curso" title="Tarefas">' +
     renderUiIcon("more", "course-authoring-button-icon") + '</summary><nav aria-label="Tarefas do curso">' +
     '<div class="course-authoring-course-identity" tabindex="0"><span>Curso</span><p id="context-editor-course-identity">' +
-    escapeHtml(authoringContext.courseTitle) + '</p></div><button type="button" data-action="authoring-context-back">' +
-    renderUiIcon("arrow-left", "course-authoring-button-icon") + '<span>Voltar ao Conteúdo</span></button>' +
+    escapeHtml(authoringContext.courseTitle) + '</p></div><button type="button" data-action="authoring-context-back"' +
+    ' aria-label="Voltar ao Conteúdo" title="Voltar ao Conteúdo">' +
+    renderUiIcon("arrow-left", "course-authoring-button-icon") + '</button>' +
     '</nav></details><button class="course-authoring-header-action" type="button" data-action="open-settings"' +
     ' title="Configurações" aria-label="Configurações" aria-haspopup="dialog">' + renderUiIcon("account", "course-authoring-button-icon") +
     '</button></div></header></div>';
@@ -246,8 +247,7 @@ function renderAssistanceDraftDock(assistance = {}, scope) {
     `${renderUiIcon("arrow-left", "home-tab-icon")}</button>` +
     '<button class="open-mini" type="button" data-action="save-assistance-draft" ' +
     `aria-label="Salvar proposta" title="Salvar proposta"${assistance.saving ? ' disabled aria-disabled="true"' : ""}>` +
-    `${renderUiIcon(assistance.saving ? "rotate" : "save", "home-tab-icon")}<span>` +
-    `${assistance.saving ? "Salvando…" : "Salvar"}</span></button></div></section>`;
+    `${renderUiIcon(assistance.saving ? "rotate" : "save", "home-tab-icon")}</button></div></section>`;
 }
 
 function assistanceSelectionLabel(selection, scope) {
@@ -571,7 +571,7 @@ function renderStudyManualDock(manualEditor) {
       `${renderUiIcon("arrow-left", "home-tab-icon")}</button>` +
       '<button class="open-mini" type="button" data-action="study-manual-discard-unknown"' +
       ' aria-label="Descartar rascunho com resultado incerto" title="Descartar rascunho">' +
-      `${renderUiIcon("remove-state", "home-tab-icon")}<span>Descartar</span></button></div></section>`;
+      `${renderUiIcon("remove-state", "home-tab-icon")}</button></div></section>`;
   }
   return '<section class="study-manual-edit-dock" aria-label="Edição manual">' +
     (manualEditor.error ? `<p role="alert">${escapeHtml(manualEditor.error)}</p>` : "") +
@@ -664,6 +664,11 @@ function renderStudyUnit({
     '<section class="study-reader-context"><div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
     escapeHtml(microsequence.title || lesson.title || "Unidade de estudo") + "</span>" +
+    (citations?.citations?.length && !manualEditor.editing && !assistanceSelection
+      ? '<button class="icon-ghost study-unit-sources" type="button" data-action="open-unit-sources"' +
+        ' aria-label="Fontes da unidade" title="Fontes da unidade" aria-haspopup="dialog" aria-expanded="false">' +
+        renderUiIcon("book-text", "home-tab-icon") + "</button>"
+      : "") +
     "</div>" +
     '<div class="study-reader-progress"><span style="width:' +
     String(units.length ? ((studyUnitIndex + 1) / units.length) * 100 : 0) + '%"></span></div></section>' +
@@ -814,10 +819,12 @@ export function renderAuthoringEditorExitConfirmation({ unknown = false } = {}) 
     '<h2 id="authoring-editor-exit-title">Voltar ao Conteúdo?</h2><p id="authoring-editor-exit-message">' +
     (unknown ? 'A gravação pode ter sido concluída. Sair descarta a recuperação deste pedido, sem desfazer o que foi salvo no curso.' :
       'As alterações ainda não foram salvas. Descartar este rascunho e voltar?') +
-    '</p><div class="course-authoring-confirm-actions"><button type="button" data-action="cancel-authoring-exit">' +
-    renderUiIcon("remove-state", "course-authoring-button-icon") + '<span>Continuar editando</span></button>' +
-    '<button type="button" class="is-danger" data-action="confirm-authoring-exit">' +
-    renderUiIcon("trash", "course-authoring-button-icon") + '<span>Descartar e voltar</span></button></div></section></div>';
+    '</p><div class="course-authoring-confirm-actions"><button type="button" data-action="cancel-authoring-exit"' +
+    ' aria-label="Continuar editando" title="Continuar editando">' +
+    renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>' +
+    '<button type="button" class="is-danger" data-action="confirm-authoring-exit"' +
+    ' aria-label="Descartar e voltar" title="Descartar e voltar">' +
+    renderUiIcon("trash", "course-authoring-button-icon") + '</button></div></section></div>';
 }
 
 export function renderStudyDraftRecovery({ recovery, error = "" } = {}) {
@@ -845,8 +852,8 @@ export function renderStudyDraftRecovery({ recovery, error = "" } = {}) {
     (error ? '<p role="alert">' + escapeHtml(error) + '</p>' : '') +
     '<div class="study-draft-recovery-content">' + content.map((value) =>
       '<pre>' + escapeHtml(value) + '</pre>').join('') + '</div>' +
-    (confirmed ? '<button class="open-mini" type="button" data-action="open-course" data-course-id="' +
-      escapeHtml(recovery.targetCourseId) + '">Abrir meu curso</button>' : '') +
-    '<button class="open-mini" type="button" data-action="export-study-draft-recovery">Exportar rascunho integral</button>' +
-    '<button class="open-mini" type="button" data-action="discard-study-draft-recovery">Descartar rascunho guardado</button></details>';
+    (confirmed ? '<button class="open-mini course-authoring-icon-action" type="button" data-action="open-course" data-course-id="' +
+      escapeHtml(recovery.targetCourseId) + '" aria-label="Abrir meu curso" title="Abrir meu curso">' + renderUiIcon("arrow-right", "course-authoring-button-icon") + '</button>' : '') +
+    '<button class="open-mini course-authoring-icon-action" type="button" data-action="export-study-draft-recovery" aria-label="Exportar rascunho integral" title="Exportar rascunho integral">' + renderUiIcon("download", "course-authoring-button-icon") + '</button>' +
+    '<button class="open-mini course-authoring-icon-action is-danger" type="button" data-action="discard-study-draft-recovery" aria-label="Descartar rascunho guardado" title="Descartar rascunho guardado">' + renderUiIcon("trash", "course-authoring-button-icon") + '</button></details>';
 }

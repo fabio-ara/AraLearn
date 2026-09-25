@@ -110,13 +110,16 @@ select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]
   where n.nspname in('public','private') and p.prokind='f'),0::bigint,'contratos atuais não levantam serialização para conflito de negócio');
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),94::bigint,'94 guardas de negócio usam PT409, incluindo decisões multialvo e inspeção por IA');
+  where n.nspname in('public','private') and p.prokind='f'),95::bigint,'95 guardas de negócio usam PT409, incluindo decisões multialvo, inspeção por IA e retirada de áudio ainda usado pelo estudo');
 select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i') from pg_proc
   where oid='public.get_course_observation_comparison_for_actor_v1(uuid,uuid,uuid,text,text,bigint,bigint)'::regprocedure),
   1,'comparação usa conflito de negócio para a versão apresentada');
 select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i') from pg_proc
   where oid='private.execute_course_anchored_annotation_command_core_v1(uuid,uuid,bigint,jsonb,text,text,text,boolean)'::regprocedure),
   9,'decisão usa conflito de negócio para versão, estado, curso, incidência, base, validade e inspeção');
+select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i') from pg_proc
+  where oid='public.execute_course_media_for_actor_v1(uuid,uuid,bigint,jsonb,text)'::regprocedure),
+  3,'áudio usa conflito de negócio para revisão, remoção pendente e gravação ainda usada');
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname in('public','private') and p.prokind='f'
     and p.prosrc~$rx$exception when serialization_failure or sqlstate 'PT409' then$rx$),

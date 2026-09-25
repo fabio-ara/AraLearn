@@ -57,7 +57,7 @@ informações; uma operação de escrita pode modificar o estado salvo.
 | --- | --- | --- |
 | planejar | `consultar_planejamento` | `salvar_mapa_curricular`, `salvar_ramo_curricular`, `aprovar_mapa_curricular` |
 | desenvolver a explicação | `consultar_planejamento`, `preparar_revisao` | `salvar_explicacoes` |
-| produzir unidades | `preparar_materializacao` | `salvar_parte`, `materializar_parte` |
+| produzir unidades | `preparar_materializacao` (consulta antecipada opcional) | `salvar_parte`, `materializar_parte` |
 | ajustar escolhas | `consultar_configuracao` | `ajustar_configuracao` |
 | corrigir material | `consultar_observacoes`, `preparar_revisao` | `aplicar_correcoes`, `retomar_correcao` |
 | conferir fontes | `consultar_fontes` | `manter_fonte`, `incorporar_pdf_como_fonte` |
@@ -154,11 +154,29 @@ continuam aplicáveis.
 
 Antes da escrita, a Explicação salva é reconciliada por passagens com o repertório persistido. Cada ensinamento é identificado como introdução, conhecimento estabelecido, retomada, exemplo, apoio ou dependência adiada com destino. O inventário inclui as relações necessárias: seis ensinamentos sob teto dois precisam aparecer no percurso completo, sem desaparecer em um tópico agregado.
 
-`preparar_materializacao` recebe `plano`, uma declaração compacta das unidades, e confere conjuntamente repertório, vínculos, requisitos, formas, componentes, fontes, práticas e cobertura. Um resultado `blocked` traz todas as causas previsíveis; resolva-as antes de escrever. `ready` fornece a referência para `referenciaPreparo` em `materializar_parte`. Alterar a base, configuração ou intenção exige novo preparo. A escrita não serve para descobrir incompatibilidades uma a uma.
+`preparar_materializacao` é uma consulta antecipada opcional. Recebe `plano`,
+uma declaração compacta das unidades, e confere conjuntamente repertório,
+vínculos, requisitos, formas, componentes, fontes, práticas e cobertura.
+Sem `referenciaPreparo`, `materializar_parte` faz essa verificação internamente
+com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
+causas previsíveis para correção. Quando fornecida, a referência explícita de
+preparo deve corresponder à base, configuração e intenção correntes.
 
-`materializar_parte` recebe somente unidades novas ou explicitamente alteradas. `unidade` identifica uma existente a substituir; sua ausência cria uma nova. `posicao` é a posição final. As unidades omitidas permanecem e podem ser deslocadas sem reenvio do conteúdo. `concluir: false` conserva produção parcial; `concluir: true` verifica a cobertura do acumulado salvo e solicitado. Explicações salvas são reutilizadas; `explicacoes` contém somente bases criadas ou alteradas.
+O contrato de autoria corrente é o catálogo **8.0.0**. `materializar_parte`
+recebe o foco de **uma microssequência** e somente unidades novas ou
+explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
+continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,
+versões correntes e posições finais podem ser omitidos e são derivados pelo
+servidor. `unidade` identifica uma existente a substituir; sua ausência cria
+uma nova. Unidades omitidas permanecem e podem ser deslocadas sem reenvio do
+conteúdo. `concluir: false` conserva produção parcial; `concluir: true` verifica
+a cobertura do acumulado salvo e solicitado. Explicações salvas são
+reutilizadas; `explicacoes` contém somente bases criadas ou alteradas.
 
-Prática nova tem resposta avaliável e feedback explicativo local, utilizáveis offline. `aralearn.response.open` permanece legível como legado e não é oferecido para criação. `gap.text` serve para respostas curtas e canônicas, com equivalentes explícitos; comparação literal não substitui avaliação semântica de uma redação.
+Prática nova tem resposta avaliável e feedback explicativo local, utilizáveis
+offline. `gap.text` serve para respostas curtas e canônicas, com equivalentes
+explícitos; comparação literal não substitui avaliação semântica de uma
+redação.
 
 ### Conservar o acordo durante a retomada
 
@@ -268,6 +286,21 @@ Se o alvo foi removido, a fila conserva a incidência e informa sua ausência co
 
 `decidir_observacao` executa a aprovação expressa do vigente ou o encerramento sem alteração. A decisão identifica observação, versão, conjunto de alvos e base examinada. Aprovação parcial conserva as demais incidências; “todas” exige leitura completa e um conjunto fixado, sem alcançar novas entradas ou versões posteriores. Cancelar uma observação de teste ou engano dispensa correção artificial e não declara aprovação. Após a última decisão, o conteúdo operacional e as bases dispensáveis são liberados; arquivos ainda usados pelo vigente ou por outra pendência permanecem. A [declaração humana de revisão](explicacao-e-revisao-humana.md) continua distinta dessas decisões.
 
+### Auditoria pedagógica focal
+
+`registrar_inspecao` recebe a referência da base focal lida, seu `basisHash` e
+um relatório semântico. O parecer precisa examinar cinco dimensões, cada uma
+com justificativa e *quotes* que existam na base salva: `alignment`,
+`evidence`, `representation`, `feedback` e `sufficiency`. A implementação
+confere identidade, versão, hash, correspondência dos trechos e a necessidade
+de atualizar o parecer quando a base muda.
+
+Essa verificação estrutural do relatório não é garantia de qualidade
+pedagógica, suficiência ou aprendizagem. A auditoria é uma segunda leitura
+semântica; contagem de componentes, schema válido, hash ou relatório
+`consistent` não substituem julgamento. Os experimentos com prompts, contratos
+e novas materializações continuam em revisão e não têm conclusão geral.
+
 O curso conserva os dados necessários à autoria e ao estudo. Os dados de autoria
 derivam desses registros salvos; a conversa permanece na sessão, e o painel não
 se baseia em cliques ou tempo de tela. O capítulo de
@@ -280,6 +313,12 @@ estado persistido é público antes de anunciar sucesso. Publicar sem outra esco
 disponibiliza os arquivos por padrão; uma restrição explícita pode ser indicada no
 curso, e as exceções de fonte e arquivo permanecem. Em Actions, essas tarefas usam
 o grupo `acesso_do_curso`, cada uma com seus próprios argumentos.
+
+Se o conteúdo novo ou alterado contém `audio`, a materialização, o
+compartilhamento e a publicação exigem que cada faixa seja um arquivo ativo,
+com tamanho, tipo e hash conferidos e acesso compatível. Voz nativa continua
+um ensaio de reprodução do dispositivo e não satisfaz essa guarda. Consulte
+[Áudio](audio.md) para o comportamento do player e dos arquivos.
 
 ## Confirmar o resultado e recuperar uma interrupção
 

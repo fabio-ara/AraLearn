@@ -4,6 +4,8 @@
 .study-explanation-reading > .editor-head > h2 { margin: 0; min-width: 0; }
 .study-explanation-reading > .editor-head > button { width: var(--tap); height: var(--tap); padding: 0; }
 .study-explanation-overlay.is-without-base .study-explanation-panel { height: auto; }
+.study-reader-line > .study-unit-sources { flex: 0 0 var(--tap); width: var(--tap); height: var(--tap); padding: 0; }
+.study-reader-line > .study-unit-sources:focus-visible { outline-offset: -3px; }
 .study-explanation-body { font-size: var(--type-prose); line-height: var(--leading-prose); color: var(--resource-text); overflow-anchor: none; }
 .study-bibliography { margin-block-start: 24px; padding-block-start: 12px; border-block-start: 1px solid var(--border-subtle); overflow-wrap: anywhere; }
 .study-bibliography > h3 { margin-block: 0 12px; font-size: var(--type-base); font-weight: 600; }
@@ -51,6 +53,33 @@
 .study-bibliography .study-citation-web-link:focus-visible,
 .study-citation-info > summary:focus-visible,
 .study-citation-backlink:focus-visible, .study-bibliography [data-citation-reference-id]:focus { outline: 2px solid var(--action-primary); outline-offset: 3px; }
+/* P014/O017: na folha de estudo a referência da obra conduz a hierarquia; o trecho
+   citado e a localização da âncora ficam menores e em cor secundária. */
+.study-explanation-body .study-bibliography .study-citation-quote {
+  margin-block: 6px;
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  font-style: normal;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.study-explanation-body .study-bibliography .study-citation-locations {
+  margin-block: 4px 0;
+  padding-inline-start: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1.5;
+}
+.study-explanation-body .study-bibliography .study-citation-locations > li { margin-block: 4px; gap: 4px 10px; }
+/* O031/O058: a fonte existe, mas o trecho citado não foi localizado nesta cópia. */
+.study-citation-unplaced {
+  margin-block: 14px 0;
+  color: var(--text-secondary);
+  font-size: var(--type-xs);
+  line-height: 1.5;
+}
 .study-contextual-authoring { margin-block-end: 8px; }
 .study-contextual-authoring .study-mode-actions { justify-content: flex-end; }
 .course-microsequence-review > .editor-body { font-size: var(--type-prose); line-height: var(--leading-prose); color: var(--resource-text); }

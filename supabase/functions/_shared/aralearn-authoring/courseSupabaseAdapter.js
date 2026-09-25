@@ -589,6 +589,24 @@ function databaseError(status, body) {
   if (code === "PN409") {
     return new AuthoringApiError(409, "authoring_profile_name_unavailable", "Já existe um perfil com este nome nesta conta.");
   }
+  if (code === "PT409" && databaseMessage === "Esta gravação ainda compõe o estudo. Substitua ou retire suas faixas antes de remover o arquivo.") {
+    return new AuthoringApiError(409, "course_audio_in_use", databaseMessage);
+  }
+  if (code === "PT422") {
+    const track = databaseMessage.match(/^(?:A faixa|O arquivo da faixa) ([1-9]\d*) /u)?.[1];
+    if (track && databaseMessage.startsWith(`A faixa ${track} precisa de gravação antes de publicar ou compartilhar.`)) {
+      return new AuthoringApiError(422, "course_audio_recording_required", `A faixa ${track} precisa de gravação. Gere ou forneça o arquivo e guarde-o no curso antes de publicar ou compartilhar.`);
+    }
+    if (track && databaseMessage.startsWith(`O arquivo da faixa ${track} não está disponível neste curso.`)) {
+      return new AuthoringApiError(422, "course_audio_file_unavailable", `O arquivo da faixa ${track} não está disponível. Guarde uma gravação válida no curso antes de publicar ou compartilhar.`);
+    }
+    if (new Set([
+      "O áudio necessário ao estudo não está liberado para o público. Defina a política de acesso aos arquivos antes de publicar.",
+      "A política pública de arquivos ainda não permite escutar este áudio."
+    ]).has(databaseMessage)) {
+      return new AuthoringApiError(422, "course_audio_public_access_required", "Libere o acesso público aos arquivos de áudio necessários ao estudo antes de publicar este curso.");
+    }
+  }
   if (code === "40001" || code === "PT409") {
     return new AuthoringApiError(
       409,

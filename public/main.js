@@ -343,8 +343,8 @@ function renderSettings(root, authClient, controller, {
         <div class="account-settings-content">
           <nav class="account-settings-view account-settings-groups" data-settings-view="main" aria-label="Grupos de Configurações">
             ${[["account", "account", "Conta"], ["appearance", "theme-system", "Aparência"],
-              ["device", "cloud", "Sincronização e dados deste dispositivo"], ["authoring", "intent", "Preferências de autoria"],
-              ["assistant", "intent", "Conectar assistente"], ["maintenance", "rotate", "Manutenção"]].map(([view, icon, label]) => `<button class="account-settings-subview-entry" type="button" data-settings-open-view="${view}"${view === "maintenance" ? " data-settings-maintenance hidden" : ""}>
+              ["device", "cloud", "Sincronização e dados deste dispositivo"], ["authoring", "edit", "Preferências de autoria"],
+              ["assistant", "sparkles", "Conectar assistente"], ["maintenance", "rotate", "Manutenção"]].map(([view, icon, label]) => `<button class="account-settings-subview-entry" type="button" data-settings-open-view="${view}"${view === "maintenance" ? " data-settings-maintenance hidden" : ""}>
                 <span>${renderUiIcon(icon, "account-settings-action-icon")}<strong>${label}</strong></span>${renderUiIcon("arrow-right", "account-settings-action-icon")}</button>`).join("")}
           </nav>
           <section class="account-settings-view account-device-data" data-settings-view="account" hidden aria-label="Conta">
@@ -363,9 +363,9 @@ function renderSettings(root, authClient, controller, {
             </div>
           </form>
             <div class="account-device-data-actions">
-              <button type="button" data-settings-signout>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair</span></button>
-              <button class="is-danger" type="button" data-settings-signout-clear>${renderUiIcon("sign-out", "account-settings-action-icon")}<span>Sair e remover dados deste dispositivo</span></button>
-              <button class="is-danger" type="button" data-settings-delete-account>${renderUiIcon("trash", "account-settings-action-icon")}<span>Excluir conta</span></button>
+              <button type="button" data-settings-signout title="Sair desta conta" aria-label="Sair desta conta">${renderUiIcon("sign-out", "account-settings-action-icon")}</button>
+              <button class="is-danger" type="button" data-settings-signout-clear title="Sair e remover dados deste dispositivo" aria-label="Sair e remover dados deste dispositivo">${renderUiIcon("sign-out", "account-settings-action-icon")}</button>
+              <button class="is-danger" type="button" data-settings-delete-account title="Excluir conta" aria-label="Excluir conta">${renderUiIcon("trash", "account-settings-action-icon")}</button>
             </div>
           </section>
           <section class="account-settings-view" data-settings-view="appearance" hidden aria-label="Aparência">
@@ -379,7 +379,7 @@ function renderSettings(root, authClient, controller, {
           </section>
           <section class="account-settings-view account-device-data" data-settings-view="device" hidden aria-label="Sincronização e dados deste dispositivo">
             <div data-study-device-settings></div>
-            <div class="account-device-data-actions"><button type="button" data-settings-clear-device>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover dados deste dispositivo</span></button></div>
+            <div class="account-device-data-actions"><button class="is-danger" type="button" data-settings-clear-device title="Remover dados deste dispositivo" aria-label="Remover dados deste dispositivo">${renderUiIcon("trash", "account-settings-action-icon")}</button></div>
           </section>
           <section class="account-settings-view" data-settings-view="authoring" hidden aria-label="Preferências de autoria"><div data-authoring-process-settings></div></section>
           <section class="account-settings-view" data-settings-view="assistant" hidden aria-label="Conectar assistente"><div data-assistant-connection></div></section>
@@ -391,7 +391,7 @@ function renderSettings(root, authClient, controller, {
             <p data-maintenance-status role="status" aria-live="polite"></p>
             <div data-maintenance-summary></div>
             <div class="account-maintenance-actions">
-              <button type="button" data-maintenance-retention>${renderUiIcon("rotate", "account-settings-action-icon")}<span>Executar retenção corrente</span></button>
+              <button type="button" data-maintenance-retention title="Executar retenção corrente" aria-label="Executar retenção corrente">${renderUiIcon("rotate", "account-settings-action-icon")}</button>
             </div>
             <div data-maintenance-inventory></div>
           </section>
@@ -402,8 +402,8 @@ function renderSettings(root, authClient, controller, {
               <img data-profile-avatar-view-image alt="" hidden>
             </div>
             <div class="account-profile-photo-actions">
-              <button type="button" data-profile-avatar-choose>${renderUiIcon("upload", "account-settings-action-icon")}<span data-profile-avatar-choose-label>Escolher foto</span></button>
-              <button class="is-danger" type="button" data-profile-avatar-remove hidden>${renderUiIcon("trash", "account-settings-action-icon")}<span>Remover foto</span></button>
+              <button type="button" data-profile-avatar-choose title="Escolher foto" aria-label="Escolher foto">${renderUiIcon("upload", "account-settings-action-icon")}</button>
+              <button class="is-danger" type="button" data-profile-avatar-remove hidden title="Remover foto" aria-label="Remover foto">${renderUiIcon("trash", "account-settings-action-icon")}</button>
             </div>
           </section>
         </div>
@@ -423,7 +423,7 @@ function renderSettings(root, authClient, controller, {
   const profileViewImage = root.querySelector("[data-profile-avatar-view-image]");
   const profileViewFallback = root.querySelector("[data-profile-avatar-view-fallback]");
   const profileRemove = root.querySelector("[data-profile-avatar-remove]");
-  const profileChooseLabel = root.querySelector("[data-profile-avatar-choose-label]");
+  const profileChooseButton = root.querySelector("[data-profile-avatar-choose]");
   const maintenance = root.querySelector("[data-settings-maintenance]");
   const maintenanceStatus = root.querySelector("[data-maintenance-status]");
   const maintenanceSummary = root.querySelector("[data-maintenance-summary]");
@@ -566,7 +566,9 @@ function renderSettings(root, authClient, controller, {
     profileViewImage.src = avatarUrl;
     profileViewFallback.hidden = Boolean(avatarUrl);
     profileRemove.hidden = !(avatarUrl || profile?.avatarObjectKey || selectedFile);
-    profileChooseLabel.textContent = avatarUrl ? "Substituir foto" : "Escolher foto";
+    const chooseLabel = avatarUrl ? "Substituir foto" : "Escolher foto";
+    profileChooseButton.title = chooseLabel;
+    profileChooseButton.ariaLabel = chooseLabel;
     onProfileChange({
       handle: profile?.handle || null,
       avatarUrl

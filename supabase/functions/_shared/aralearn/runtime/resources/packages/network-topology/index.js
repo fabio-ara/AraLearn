@@ -189,7 +189,7 @@ export const networkTopologyPackage = Object.freeze({
   },
   render(data) {
     const diagramLabels = labels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: topologyAccessibleText(data), caption: "Topologia de rede · segmentos, equipamentos e enlaces", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.devices[0]?.id || ""}`, errorMessage: "Não foi possível diagramar a topologia." });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: topologyAccessibleText(data), caption: "As linhas ligam interfaces dos equipamentos. O rótulo de cada enlace identifica a ligação usada no percurso.", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.devices[0]?.id || ""}`, errorMessage: "Não foi possível diagramar a topologia." });
     return `<div class="runtime-block package-network-topology">${data.prompt ? renderPackageProse(data.prompt) : ""}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

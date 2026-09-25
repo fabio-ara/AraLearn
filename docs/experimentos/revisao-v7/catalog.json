@@ -1,0 +1,3128 @@
+[
+  {
+    "id": "aralearn.resource.paragraph",
+    "version": "1.0.0",
+    "label": "Texto explicado",
+    "purpose": "Desenvolver uma explicação progressiva em prosa, listas, literais, escrita anotada e matemática integrada.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "situate",
+      "explain",
+      "exemplify",
+      "summarize-locally",
+      "give-feedback"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.ordering"
+    ],
+    "limitations": [
+      "Não representa relações espaciais ou tabulares.",
+      "Não deve condensar conceitos independentes para reduzir Unidades de estudo."
+    ],
+    "accessibility": "O próprio texto constitui a alternativa não visual.",
+    "academic": {
+      "domains": [
+        "transversal"
+      ],
+      "knowledgeObjects": [
+        "conceito",
+        "explicação",
+        "exemplo narrado"
+      ],
+      "conventions": [
+        "prosa acadêmica contínua",
+        "termo apresentado antes do uso"
+      ],
+      "appropriateWhen": [
+        "a relação espacial não acrescenta significado"
+      ],
+      "avoidWhen": [
+        "a estrutura do objeto exige notação própria"
+      ],
+      "technologies": [
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection",
+        "ordering"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.text_language",
+        "familyIds": [
+          "family.text_language"
+        ],
+        "disciplineIds": [
+          "discipline.transversal"
+        ],
+        "structureIds": [
+          "structure.prose"
+        ],
+        "taskOperationIds": [
+          "task_operation.explain"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection",
+          "practice.ordering"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.code",
+    "version": "1.0.0",
+    "label": "Código",
+    "purpose": "Apresentar código cuja sintaxe, indentação e execução mental são relevantes.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "inspect-code",
+      "trace",
+      "compare-implementations",
+      "explain-syntax"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não executa o programa.",
+      "Não substitui a explicação do contexto e do efeito do código."
+    ],
+    "accessibility": "Prompt, linguagem e código são expostos como texto selecionável.",
+    "academic": {
+      "domains": [
+        "programação",
+        "engenharia de software",
+        "bancos de dados"
+      ],
+      "knowledgeObjects": [
+        "trecho de programa",
+        "consulta",
+        "configuração textual"
+      ],
+      "conventions": [
+        "fonte monoespaçada",
+        "indentação preservada",
+        "linguagem identificada"
+      ],
+      "appropriateWhen": [
+        "a sintaxe e a execução mental fazem parte da aprendizagem"
+      ],
+      "avoidWhen": [
+        "pseudocódigo ou prosa expressam melhor a ideia"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "texto pré-formatado"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.text_language",
+        "familyIds": [
+          "family.text_language"
+        ],
+        "disciplineIds": [
+          "discipline.computing",
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.code"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.trace",
+          "task_operation.compare",
+          "task_operation.explain"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.table",
+    "version": "1.0.0",
+    "label": "Tabela",
+    "purpose": "Comparar atributos repetidos ou consultar valores organizados por linhas e colunas.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "compare-fields",
+      "lookup",
+      "classify",
+      "contrast-cases"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice",
+      "aralearn.response.ordering"
+    ],
+    "limitations": [
+      "Não introduz sozinha siglas, números ou categorias ainda não explicados.",
+      "Evite tabelas densas em primeiro contato."
+    ],
+    "accessibility": "Cabeçalhos e células usam semântica de tabela e leitura linear.",
+    "academic": {
+      "domains": [
+        "transversal",
+        "estatística descritiva"
+      ],
+      "knowledgeObjects": [
+        "registros homogêneos",
+        "atributos comparáveis"
+      ],
+      "conventions": [
+        "cabeçalhos explícitos",
+        "unidade declarada",
+        "uma observação por linha"
+      ],
+      "appropriateWhen": [
+        "os mesmos atributos são comparados entre casos"
+      ],
+      "avoidWhen": [
+        "os valores formam uma matriz algébrica",
+        "há apenas uma lista sem comparação bidimensional"
+      ],
+      "technologies": [
+        "tabela HTML semântica"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection",
+        "classification",
+        "ordering"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.transversal",
+          "discipline.statistics"
+        ],
+        "structureIds": [
+          "structure.table"
+        ],
+        "taskOperationIds": [
+          "task_operation.compare",
+          "task_operation.identify",
+          "task_operation.classify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection",
+          "practice.ordering",
+          "practice.classification"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.annotated_text",
+    "version": "1.0.0",
+    "label": "Texto anotado",
+    "purpose": "Relacionar trechos precisos de um texto a observações, funções ou explicações.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "annotate",
+      "identify-function",
+      "connect-evidence",
+      "close-reading"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.choice",
+      "aralearn.response.gap"
+    ],
+    "limitations": [
+      "Não use para comentários sem alvo textual preciso."
+    ],
+    "accessibility": "Trechos e notas usam marcadores numerados, controles associados e repetição textual do excerto.",
+    "academic": {
+      "domains": [
+        "linguagens",
+        "direito",
+        "humanidades",
+        "programação"
+      ],
+      "knowledgeObjects": [
+        "trecho",
+        "evidência",
+        "anotação localizada"
+      ],
+      "conventions": [
+        "alvo e comentário identificados",
+        "citação preservada",
+        "anotação próxima ao alvo"
+      ],
+      "appropriateWhen": [
+        "a tarefa exige leitura minuciosa ou associação entre evidência e explicação"
+      ],
+      "avoidWhen": [
+        "a observação não possui alvo textual preciso"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "ARIA"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.text_language",
+        "familyIds": [
+          "family.text_language"
+        ],
+        "disciplineIds": [
+          "discipline.language",
+          "discipline.computing",
+          "discipline.humanities"
+        ],
+        "structureIds": [
+          "structure.annotation"
+        ],
+        "taskOperationIds": [
+          "task_operation.annotate",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.bpmn_process",
+    "version": "1.0.0",
+    "label": "Processo BPMN",
+    "purpose": "Representar participantes, raias, eventos, atividades, gateways e fluxos segundo o subconjunto didático de BPMN 2.0.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "trace-business-process",
+      "distinguish-responsibility",
+      "inspect-gateway",
+      "compare-message-and-sequence-flow"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Cobre eventos, tarefas, gateways, raias e fluxos; coreografia e conversação exigem packages próprios.",
+      "Processos extensos devem ser decompostos por subprocesso."
+    ],
+    "accessibility": "Participantes, raias, elementos e fluxos possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "gestão de processos",
+        "análise de negócios",
+        "engenharia de software"
+      ],
+      "knowledgeObjects": [
+        "participante",
+        "raia",
+        "evento",
+        "atividade",
+        "gateway",
+        "fluxo de sequência",
+        "fluxo de mensagem"
+      ],
+      "conventions": [
+        "eventos circulares",
+        "atividades em retângulos arredondados",
+        "gateways em losangos",
+        "fluxo de sequência contínuo",
+        "fluxo de mensagem tracejado",
+        "responsabilidade delimitada por participante e raia"
+      ],
+      "appropriateWhen": [
+        "o processo de negócio e a responsabilidade entre participantes são parte da tarefa"
+      ],
+      "avoidWhen": [
+        "o objeto é um algoritmo de programação",
+        "o percurso depende de estado persistente",
+        "um simples procedimento linear basta"
+      ],
+      "technologies": [
+        "BPMN 2.0",
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.process_state",
+        "familyIds": [
+          "family.process_state"
+        ],
+        "disciplineIds": [
+          "discipline.engineering",
+          "discipline.business"
+        ],
+        "structureIds": [
+          "structure.process"
+        ],
+        "taskOperationIds": [
+          "task_operation.trace",
+          "task_operation.compare",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.interlinear_gloss",
+    "version": "1.0.0",
+    "label": "Glosa interlinear",
+    "purpose": "Alinhar formas linguísticas segmentadas, glosas morfema a morfema, tradução livre e legenda de abreviações.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "align-form-gloss",
+      "analyze-morphemes",
+      "compare-language-forms",
+      "interpret-grammatical-category"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não substitui uma análise morfológica explicada.",
+      "As abreviações precisam ser introduzidas ao estudante antes ou junto do primeiro uso."
+    ],
+    "accessibility": "Cada unidade anuncia forma e glosa; a tradução livre e a legenda de abreviações são lidas separadamente.",
+    "academic": {
+      "domains": [
+        "linguística",
+        "morfologia",
+        "sintaxe",
+        "ensino de línguas"
+      ],
+      "knowledgeObjects": [
+        "forma segmentada",
+        "morfema",
+        "glosa",
+        "tradução livre",
+        "abreviação gramatical"
+      ],
+      "conventions": [
+        "alinhamento interlinear por unidade",
+        "mesmas fronteiras na forma e na glosa",
+        "tradução livre separada",
+        "abreviações gramaticais em versal"
+      ],
+      "appropriateWhen": [
+        "a análise depende da correspondência entre formas e propriedades gramaticais"
+      ],
+      "avoidWhen": [
+        "uma citação ou tradução simples é suficiente",
+        "a tarefa não é linguística"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "atributos de idioma e direção"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.text_language",
+        "familyIds": [
+          "family.text_language"
+        ],
+        "disciplineIds": [
+          "discipline.language"
+        ],
+        "structureIds": [
+          "structure.interlinear"
+        ],
+        "taskOperationIds": [
+          "task_operation.compare",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.response.choice",
+    "version": "1.0.0",
+    "label": "Escolha",
+    "purpose": "Pedir que o estudante discrimine uma ou mais alternativas plausíveis.",
+    "authoringEligibility": "current",
+    "slots": [
+      "response"
+    ],
+    "taskOperations": [
+      "discriminate",
+      "select-best",
+      "identify-set",
+      "diagnose-misconception"
+    ],
+    "responseCompatibility": [],
+    "limitations": [
+      "Não use quando recordar ou produzir a resposta for a operação desejada."
+    ],
+    "accessibility": "Alternativas usam fieldset, legend e controles nativos.",
+    "academic": {
+      "domains": [
+        "transversal"
+      ],
+      "knowledgeObjects": [
+        "alternativas",
+        "distratores",
+        "conjunto de respostas"
+      ],
+      "conventions": [
+        "enunciado único",
+        "distratores plausíveis",
+        "confirmação antes do feedback"
+      ],
+      "appropriateWhen": [
+        "discriminar opções é a operação desejada"
+      ],
+      "avoidWhen": [
+        "o estudante deve produzir a resposta sem pistas"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "ARIA"
+      ],
+      "practiceModes": [
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.response",
+        "familyIds": [
+          "family.response"
+        ],
+        "disciplineIds": [
+          "discipline.transversal"
+        ],
+        "structureIds": [
+          "structure.response_options"
+        ],
+        "taskOperationIds": [
+          "task_operation.decide",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.response.gap",
+    "version": "1.0.0",
+    "label": "Lacuna",
+    "purpose": "Pedir recuperação ou discriminação exatamente no campo semântico declarado pelo conteúdo.",
+    "authoringEligibility": "current",
+    "slots": [
+      "response"
+    ],
+    "taskOperations": [
+      "recall",
+      "complete",
+      "label",
+      "calculate"
+    ],
+    "responseCompatibility": [],
+    "limitations": [
+      "O package de conteúdo precisa declarar o targetPath como editável por resposta."
+    ],
+    "accessibility": "Cada lacuna tem prompt, rótulo e controle nativo próprios.",
+    "academic": {
+      "domains": [
+        "transversal"
+      ],
+      "knowledgeObjects": [
+        "lacuna semântica",
+        "resposta curta"
+      ],
+      "conventions": [
+        "lacuna no lugar exato do conceito",
+        "equivalentes aceitos explícitos"
+      ],
+      "appropriateWhen": [
+        "recordar ou completar um elemento localizado é a operação desejada"
+      ],
+      "avoidWhen": [
+        "a resposta exige argumentação extensa"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "controles nativos"
+      ],
+      "practiceModes": [
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.response",
+        "familyIds": [
+          "family.response"
+        ],
+        "disciplineIds": [
+          "discipline.transversal"
+        ],
+        "structureIds": [
+          "structure.response_gap"
+        ],
+        "taskOperationIds": [
+          "task_operation.recall",
+          "task_operation.annotate",
+          "task_operation.calculate"
+        ],
+        "practiceModeIds": [
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.response.ordering",
+    "version": "3.0.0",
+    "label": "Ordenação",
+    "purpose": "Pedir que o estudante reconstrua a ordem de expressões nos próprios campos textuais em que elas são lidas.",
+    "authoringEligibility": "current",
+    "slots": [
+      "response"
+    ],
+    "taskOperations": [
+      "order",
+      "reconstruct-process",
+      "sequence-causes"
+    ],
+    "responseCompatibility": [],
+    "limitations": [
+      "Cada alvo precisa pertencer a um campo textual que declare a modalidade ordering.",
+      "Não use para diagramas ou para ordem meramente decorativa."
+    ],
+    "accessibility": "Cada expressão conserva sua posição anunciada e oferece botões nomeados de movimento para esquerda e direita.",
+    "academic": {
+      "domains": [
+        "transversal"
+      ],
+      "knowledgeObjects": [
+        "ordem de expressões",
+        "procedimento reconstruído"
+      ],
+      "conventions": [
+        "expressões nos campos de origem",
+        "movimento para esquerda ou direita",
+        "conjunto preservado"
+      ],
+      "appropriateWhen": [
+        "reconstruir a ordem entre ao menos duas expressões textuais é a evidência de aprendizagem"
+      ],
+      "avoidWhen": [
+        "a ordem é arbitrária",
+        "o conteúdo depende de leitura vertical ou espacial"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "controles de movimento acessíveis"
+      ],
+      "practiceModes": [
+        "ordering"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.response",
+        "familyIds": [
+          "family.response"
+        ],
+        "disciplineIds": [
+          "discipline.transversal"
+        ],
+        "structureIds": [],
+        "taskOperationIds": [
+          "task_operation.order",
+          "task_operation.transform"
+        ],
+        "practiceModeIds": [
+          "practice.ordering"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.tree",
+    "version": "1.0.0",
+    "label": "Árvore enraizada",
+    "purpose": "Representar hierarquia com relação pai-filho, raiz explícita e no máximo um pai por nó.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "locate-parent",
+      "trace-ancestry",
+      "compare-depth",
+      "identify-subtree"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Relações muitos-para-muitos exigem outro package.",
+      "Árvores grandes devem ser recortadas por subárvore ou objetivo."
+    ],
+    "accessibility": "Cada nó é descrito com seu pai; a ordem visual acompanha os níveis.",
+    "academic": {
+      "domains": [
+        "matemática discreta",
+        "estruturas de dados",
+        "computação",
+        "classificação"
+      ],
+      "knowledgeObjects": [
+        "árvore enraizada",
+        "raiz",
+        "pai",
+        "filho",
+        "ancestral",
+        "subárvore"
+      ],
+      "conventions": [
+        "raiz no topo",
+        "um pai por nó",
+        "níveis alinhados",
+        "arestas sem cruzamento sempre que a estrutura permitir"
+      ],
+      "appropriateWhen": [
+        "a relação pai-filho e o caminho até a raiz são o objeto do raciocínio"
+      ],
+      "avoidWhen": [
+        "há múltiplos pais ou relações cruzadas",
+        "a notação especializada de classes, estados, sintaxe ou filogenia é parte do conteúdo"
+      ],
+      "technologies": [
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection",
+        "classification"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.relational",
+        "familyIds": [
+          "family.relational"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.hierarchy"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.trace",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection",
+          "practice.classification"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.matrix",
+    "version": "1.0.0",
+    "label": "Matriz",
+    "purpose": "Representar um arranjo retangular de escalares ou expressões e operações da álgebra linear.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "inspect-matrix",
+      "calculate-matrix",
+      "compare-matrices"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não use como tabela de atributos."
+    ],
+    "accessibility": "Cada matriz possui leitura por linhas e dimensões anunciadas.",
+    "academic": {
+      "domains": [
+        "álgebra linear",
+        "matemática discreta",
+        "computação gráfica"
+      ],
+      "knowledgeObjects": [
+        "matriz",
+        "entrada",
+        "dimensão",
+        "operação matricial"
+      ],
+      "conventions": [
+        "entradas sem grade de tabela",
+        "delimitadores matriciais",
+        "índices por linha e coluna"
+      ],
+      "appropriateWhen": [
+        "as posições das entradas participam de uma operação algébrica"
+      ],
+      "avoidWhen": [
+        "linhas são registros e colunas são atributos",
+        "há cabeçalhos heterogêneos"
+      ],
+      "technologies": [
+        "estrutura matemática sem grade tabular",
+        "HTML acessível"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.table",
+          "structure.symbolic"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.calculate",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.reaction",
+    "version": "1.0.0",
+    "label": "Reação",
+    "purpose": "Representar reagentes, produtos, proporções, estados e condições de uma reação.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "balance-reaction",
+      "identify-reactant",
+      "trace-transformation"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não substitui a explicação microscópica ou energética da reação."
+    ],
+    "accessibility": "A equação possui descrição textual com nomes, coeficientes e estados.",
+    "academic": {
+      "domains": [
+        "química"
+      ],
+      "knowledgeObjects": [
+        "equação de reação",
+        "espécie química",
+        "coeficiente estequiométrico"
+      ],
+      "conventions": [
+        "reagentes à esquerda",
+        "produtos à direita",
+        "estados e condições explícitos"
+      ],
+      "appropriateWhen": [
+        "a transformação química simbólica é parte da tarefa"
+      ],
+      "avoidWhen": [
+        "a tarefa exige somente descrição macroscópica"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "notação química estruturada"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.natural_sciences"
+        ],
+        "structureIds": [
+          "structure.symbolic"
+        ],
+        "taskOperationIds": [
+          "task_operation.calculate",
+          "task_operation.identify",
+          "task_operation.trace"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.flow",
+    "version": "1.0.0",
+    "label": "Fluxograma",
+    "purpose": "Representar sequência, decisão, ramificação e repetição com a convenção visual de fluxogramas.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "trace-control-flow",
+      "decide",
+      "recognize-loop",
+      "predict-path"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Sem decisão ou repetição, prefira prosa enumerada ou uma prática de ordenação textual.",
+      "A geometria é derivada e nunca autoral."
+    ],
+    "accessibility": "O fluxograma visual possui uma descrição linear equivalente para tecnologia assistiva.",
+    "academic": {
+      "domains": [
+        "algoritmos",
+        "processos",
+        "engenharia de software"
+      ],
+      "knowledgeObjects": [
+        "fluxograma",
+        "decisão",
+        "ramificação",
+        "repetição"
+      ],
+      "conventions": [
+        "terminais arredondados",
+        "processos retangulares",
+        "entrada e saída em paralelogramo",
+        "decisões em losango",
+        "ramos nomeados na própria aresta",
+        "fluxo orientado",
+        "junções explícitas"
+      ],
+      "appropriateWhen": [
+        "o caminho depende de decisão ou repetição"
+      ],
+      "avoidWhen": [
+        "há apenas ordem linear ou estados persistentes"
+      ],
+      "technologies": [
+        "Graphviz dot",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.process_state",
+        "familyIds": [
+          "family.process_state"
+        ],
+        "disciplineIds": [
+          "discipline.computing",
+          "discipline.engineering",
+          "discipline.business"
+        ],
+        "structureIds": [
+          "structure.graph",
+          "structure.process"
+        ],
+        "taskOperationIds": [
+          "task_operation.trace",
+          "task_operation.decide",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.formula",
+    "version": "1.0.0",
+    "label": "Fórmula",
+    "purpose": "Representar expressão matemática ou química estruturada com leitura acessível explícita.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "read-formula",
+      "transform-expression",
+      "identify-operator",
+      "calculate"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "accessibleText não pode apenas repetir símbolos incompreensíveis."
+    ],
+    "accessibility": "A expressão sempre exige descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "matemática",
+        "estatística",
+        "física",
+        "química",
+        "computação"
+      ],
+      "knowledgeObjects": [
+        "expressão simbólica",
+        "equação",
+        "identidade"
+      ],
+      "conventions": [
+        "estrutura bidimensional preservada",
+        "símbolos conforme a área",
+        "leitura acessível equivalente"
+      ],
+      "appropriateWhen": [
+        "a forma simbólica participa do raciocínio"
+      ],
+      "avoidWhen": [
+        "uma frase é mais clara que a notação"
+      ],
+      "technologies": [
+        "MathML"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.statistics",
+          "discipline.computing",
+          "discipline.natural_sciences"
+        ],
+        "structureIds": [
+          "structure.symbolic"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.transform",
+          "task_operation.calculate"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.plane",
+    "version": "1.0.0",
+    "label": "Plano cartesiano",
+    "purpose": "Situar pontos, vetores, trajetórias e regiões em duas dimensões com escala acadêmica explícita.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "locate-coordinate",
+      "compare-vector",
+      "inspect-transformation",
+      "trace-path",
+      "read-domain"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Somente duas dimensões.",
+      "Campos vetoriais, contornos e superfícies exigem packages específicos.",
+      "O autor declara objetos e domínios, nunca pixels ou sintaxe Vega."
+    ],
+    "accessibility": "Eixos, domínios, pontos, vetores e trajetórias possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "geometria analítica",
+        "álgebra linear",
+        "computação gráfica",
+        "modelagem matemática"
+      ],
+      "knowledgeObjects": [
+        "ponto",
+        "vetor livre ou aplicado",
+        "trajetória",
+        "região no plano",
+        "transformação linear"
+      ],
+      "conventions": [
+        "eixos e unidades nomeados",
+        "domínios explícitos",
+        "escala quantitativa consistente",
+        "origem e extremidade de vetores distintas"
+      ],
+      "appropriateWhen": [
+        "posição, direção, deslocamento, trajetória ou transformação bidimensional são parte da tarefa"
+      ],
+      "avoidWhen": [
+        "a operação é somente algébrica",
+        "o objeto exige três dimensões, campo vetorial denso ou curvas implícitas"
+      ],
+      "technologies": [
+        "Vega-Lite",
+        "Vega",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.coordinate_space"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.compare",
+          "task_operation.trace"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.chart",
+    "version": "1.0.0",
+    "label": "Gráfico estatístico",
+    "purpose": "Tornar tendência, comparação quantitativa, escala e incerteza visualmente observáveis.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "compare-quantity",
+      "identify-trend",
+      "inspect-uncertainty",
+      "read-scale",
+      "find-outlier"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Representa linhas, dispersão e barras; distribuições exigem package específico.",
+      "O autor declara semântica e dados, nunca coordenadas ou sintaxe Vega."
+    ],
+    "accessibility": "Eixos, séries, valores, intervalos e nota metodológica possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "estatística",
+        "ciência de dados",
+        "métodos quantitativos"
+      ],
+      "knowledgeObjects": [
+        "série quantitativa",
+        "tendência",
+        "intervalo de incerteza",
+        "referência quantitativa"
+      ],
+      "conventions": [
+        "eixos, unidades e domínios nomeados",
+        "escala quantitativa, temporal ou ordinal explícita",
+        "intervalos identificados",
+        "tipo de marca coerente com o dado"
+      ],
+      "appropriateWhen": [
+        "a forma quantitativa, a escala ou a incerteza são parte da evidência"
+      ],
+      "avoidWhen": [
+        "poucos valores são mais claros em texto ou tabela",
+        "o objetivo exige distribuição, boxplot ou histograma sem um package específico"
+      ],
+      "technologies": [
+        "Vega-Lite",
+        "Vega",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.statistics"
+        ],
+        "structureIds": [
+          "structure.quantitative_series"
+        ],
+        "taskOperationIds": [
+          "task_operation.compare",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.software_system_context",
+    "version": "1.0.0",
+    "label": "Contexto de sistema de software",
+    "purpose": "Situar um sistema de software entre pessoas e sistemas externos segundo o diagrama de contexto do modelo C4.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "identify-scope",
+      "distinguish-actor",
+      "trace-external-dependency",
+      "explain-system-context"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não representa contêineres, componentes, classes, infraestrutura ou sequência temporal."
+    ],
+    "accessibility": "O sistema, as pessoas, os sistemas externos e todas as relações possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "arquitetura de software",
+        "engenharia de software",
+        "análise de sistemas"
+      ],
+      "knowledgeObjects": [
+        "sistema em foco",
+        "pessoa",
+        "sistema externo",
+        "relação externa",
+        "fronteira de escopo"
+      ],
+      "conventions": [
+        "um único sistema em foco",
+        "pessoas e sistemas externos identificados por tipo",
+        "relações direcionais rotuladas",
+        "ausência de componentes internos"
+      ],
+      "appropriateWhen": [
+        "a tarefa é explicar o contexto e a fronteira externa de um sistema de software"
+      ],
+      "avoidWhen": [
+        "a tarefa exige contêineres internos",
+        "o objeto é um grafo matemático",
+        "a tarefa trata de hardware e portas internas"
+      ],
+      "technologies": [
+        "C4 Model",
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.software_data",
+        "familyIds": [
+          "family.software_data"
+        ],
+        "disciplineIds": [
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.correspondence",
+          "structure.system_architecture"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.compare",
+          "task_operation.trace",
+          "task_operation.explain"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.software_container",
+    "version": "1.0.0",
+    "label": "Contêineres de software",
+    "purpose": "Representar aplicações e armazenamentos executáveis ou implantáveis dentro de um sistema segundo o nível de contêiner do C4.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "identify-runtime-boundary",
+      "trace-container-dependency",
+      "compare-responsibility",
+      "explain-deployment-unit"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não representa classes, módulos internos, processos temporais ou nós físicos de implantação."
+    ],
+    "accessibility": "Fronteira, contêineres, tecnologias, responsabilidades e relações possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "arquitetura de software",
+        "engenharia de software",
+        "sistemas distribuídos"
+      ],
+      "knowledgeObjects": [
+        "contêiner",
+        "aplicação",
+        "armazenamento de dados",
+        "fila",
+        "tecnologia",
+        "responsabilidade"
+      ],
+      "conventions": [
+        "fronteira única de sistema",
+        "contêineres internos tipados",
+        "tecnologia e responsabilidade explícitas",
+        "relações direcionais rotuladas"
+      ],
+      "appropriateWhen": [
+        "a tarefa exige compreender unidades executáveis ou armazenamentos e suas dependências"
+      ],
+      "avoidWhen": [
+        "o contexto externo basta",
+        "a tarefa exige componentes internos de um contêiner",
+        "a topologia de infraestrutura física é o objeto"
+      ],
+      "technologies": [
+        "C4 Model",
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.software_data",
+        "familyIds": [
+          "family.software_data"
+        ],
+        "disciplineIds": [
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.system_architecture"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.trace",
+          "task_operation.compare",
+          "task_operation.explain"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.system_internal_block",
+    "version": "1.0.0",
+    "label": "Diagrama interno de bloco",
+    "purpose": "Representar partes, portas, itens e conectores internos de um bloco segundo a gramática de diagrama interno do SysML.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "inspect-part",
+      "trace-item-flow",
+      "identify-port",
+      "compare-interface",
+      "explain-internal-connection"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não substitui diagramas paramétricos, de requisitos, de sequência ou de estados.",
+      "Lacunas incidem em rótulos de conectores; portas e partes permanecem estruturalmente estáveis durante a prática."
+    ],
+    "accessibility": "Bloco, partes, portas, tipos de item, direções e conectores possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "engenharia de sistemas",
+        "modelagem de sistemas",
+        "sistemas embarcados",
+        "arquitetura de hardware"
+      ],
+      "knowledgeObjects": [
+        "bloco",
+        "parte",
+        "porta",
+        "tipo de item",
+        "conector",
+        "fluxo"
+      ],
+      "conventions": [
+        "quadro ibd nomeado",
+        "partes tipadas",
+        "portas ancoradas à parte",
+        "conectores entre portas",
+        "direção de fluxo explícita"
+      ],
+      "appropriateWhen": [
+        "a tarefa exige compreender a composição interna e as interfaces de um bloco"
+      ],
+      "avoidWhen": [
+        "a tarefa é o contexto externo de software",
+        "a tarefa trata apenas de contêineres executáveis",
+        "o objeto é um grafo abstrato"
+      ],
+      "technologies": [
+        "SysML",
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.software_data",
+        "familyIds": [
+          "family.software_data"
+        ],
+        "disciplineIds": [
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.system_architecture"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.trace",
+          "task_operation.compare",
+          "task_operation.explain"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.graph",
+    "version": "1.0.0",
+    "label": "Grafo matemático",
+    "purpose": "Representar grafos e dígrafos abstratos segundo a notação de teoria dos grafos.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "inspect-adjacency",
+      "trace-path",
+      "identify-cycle",
+      "compare-degree",
+      "locate-bridge",
+      "analyze-connectivity"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Diagramas nó-aresta densos devem ser divididos ou substituídos por representação matricial apropriada.",
+      "A geometria é derivada e nunca autoral."
+    ],
+    "accessibility": "Vértices, cardinalidades e arestas possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "teoria dos grafos",
+        "algoritmos",
+        "pesquisa operacional",
+        "matemática discreta"
+      ],
+      "knowledgeObjects": [
+        "grafo",
+        "dígrafo",
+        "vértice",
+        "aresta",
+        "caminho",
+        "ciclo",
+        "ponte",
+        "componente"
+      ],
+      "conventions": [
+        "vértices como círculos discretos",
+        "arestas sem seta em grafos",
+        "setas apenas em dígrafos",
+        "pesos e rótulos associados à aresta",
+        "layout calculado com redução de cruzamentos"
+      ],
+      "appropriateWhen": [
+        "a topologia abstrata é o próprio objeto de estudo"
+      ],
+      "avoidWhen": [
+        "os nós são componentes de software, equipamentos de rede, estados ou conceitos",
+        "uma matriz de adjacência é mais adequada à tarefa"
+      ],
+      "technologies": [
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.relational",
+        "familyIds": [
+          "family.relational"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.graph"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.trace",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.relation_map",
+    "version": "1.0.0",
+    "label": "Diagrama de relação",
+    "purpose": "Tornar visíveis domínio, contradomínio, imagens, preimagens e cardinalidade de uma relação binária.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "map-correspondence",
+      "inspect-image",
+      "inspect-preimage",
+      "inspect-cardinality"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.choice",
+      "aralearn.response.gap"
+    ],
+    "limitations": [
+      "Não representa interseção de conjuntos; para isso use diagrama de conjuntos.",
+      "Uma relação densa deve ser dividida ou apresentada por matriz de incidência, conforme a operação-alvo da tarefa."
+    ],
+    "accessibility": "A descrição textual enumera os conjuntos e todos os pares da relação; o desenho não é a única fonte de informação.",
+    "academic": {
+      "domains": [
+        "teoria dos conjuntos",
+        "lógica",
+        "álgebra linear",
+        "matemática discreta"
+      ],
+      "knowledgeObjects": [
+        "relação binária",
+        "domínio",
+        "contradomínio",
+        "imagem",
+        "preimagem",
+        "par ordenado"
+      ],
+      "conventions": [
+        "dois conjuntos delimitados",
+        "elementos individualizados",
+        "seta por par ordenado",
+        "notação extensional complementar"
+      ],
+      "appropriateWhen": [
+        "as incidências entre elementos dos dois conjuntos precisam ser percebidas simultaneamente"
+      ],
+      "avoidWhen": [
+        "pares independentes cabem em tabela",
+        "a tarefa é apenas associar respostas",
+        "há interseção de conjuntos"
+      ],
+      "technologies": [
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.relational",
+        "familyIds": [
+          "family.relational"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics"
+        ],
+        "structureIds": [
+          "structure.correspondence"
+        ],
+        "taskOperationIds": [
+          "task_operation.classify",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.database_schema",
+    "version": "1.0.0",
+    "label": "Esquema relacional",
+    "purpose": "Representar relações, atributos, chaves e dependências referenciais no modelo lógico relacional.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "identify-key",
+      "trace-foreign-key",
+      "normalize-schema",
+      "inspect-cardinality"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não confunde esquema com linhas de dados.",
+      "Esquemas densos devem ser recortados pela dependência em estudo."
+    ],
+    "accessibility": "Cada relação lista atributos, chaves, tipos e nulabilidade; cada referência é repetida em texto.",
+    "academic": {
+      "domains": [
+        "bancos de dados",
+        "modelagem lógica de dados"
+      ],
+      "knowledgeObjects": [
+        "relação",
+        "atributo",
+        "chave primária",
+        "chave estrangeira",
+        "integridade referencial"
+      ],
+      "conventions": [
+        "relações como esquemas nomeados",
+        "PK e FK junto dos atributos",
+        "tipo e nulabilidade explícitos",
+        "referência orientada da FK para a chave-alvo"
+      ],
+      "appropriateWhen": [
+        "estrutura lógica relacional, normalização ou integridade referencial são parte da tarefa"
+      ],
+      "avoidWhen": [
+        "é necessário representar instâncias de dados",
+        "a tarefa exige o modelo conceitual ER"
+      ],
+      "technologies": [
+        "notação de esquema relacional",
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection",
+        "classification"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.software_data",
+        "familyIds": [
+          "family.software_data"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.correspondence",
+          "structure.data_model"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.trace",
+          "task_operation.transform"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection",
+          "practice.classification"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.memory_layout",
+    "version": "1.0.0",
+    "label": "Mapa de memória",
+    "purpose": "Representar intervalos de endereços, segmentos e ocupação de memória na ordem convencional.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "locate-address",
+      "calculate-range",
+      "inspect-allocation"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Endereços precisam usar a mesma base.",
+      "Layouts muito extensos devem focar somente os intervalos relevantes."
+    ],
+    "accessibility": "Segmentos são lidos na ordem dos endereços com início, fim, rótulo e descrição.",
+    "academic": {
+      "domains": [
+        "organização de computadores",
+        "sistemas operacionais",
+        "programação de baixo nível"
+      ],
+      "knowledgeObjects": [
+        "endereço",
+        "segmento de memória",
+        "pilha",
+        "heap"
+      ],
+      "conventions": [
+        "endereços nas extremidades",
+        "ordem crescente ou decrescente declarada",
+        "intervalos contíguos",
+        "papel do segmento nomeado"
+      ],
+      "appropriateWhen": [
+        "posição e intervalo de memória participam do raciocínio"
+      ],
+      "avoidWhen": [
+        "a tarefa exige somente listar variáveis",
+        "quadros e encadeamento de chamadas são o objeto; nesse caso use call_stack"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "CSS grid"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.infrastructure",
+        "familyIds": [
+          "family.infrastructure"
+        ],
+        "disciplineIds": [
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.memory_layout"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.calculate"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.network_topology",
+    "version": "1.0.0",
+    "label": "Topologia de rede",
+    "purpose": "Representar equipamentos, segmentos e enlaces de uma rede sem confundi-los com vértices abstratos.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "trace-packet-path",
+      "locate-network-role",
+      "inspect-segmentation",
+      "compare-link"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Topologias muito densas devem ser recortadas por domínio de broadcast, caminho ou camada.",
+      "A geometria é calculada; não declare coordenadas.",
+      "Hub significa repetidor Ethernet multiporta; o diagrama não simula sinais, colisões nem encaminhamento."
+    ],
+    "accessibility": "Segmentos, equipamentos e enlaces possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "redes de computadores",
+        "segurança de redes",
+        "infraestrutura"
+      ],
+      "knowledgeObjects": [
+        "equipamento de rede",
+        "segmento",
+        "enlace",
+        "caminho de pacote"
+      ],
+      "conventions": [
+        "equipamentos tipados e nomeados",
+        "segmentos como fronteiras",
+        "enlaces com meio e direção",
+        "endereçamento junto do equipamento"
+      ],
+      "appropriateWhen": [
+        "a organização física ou lógica da rede e o caminho entre equipamentos participam do raciocínio"
+      ],
+      "avoidWhen": [
+        "a tarefa é teoria abstrata de grafos",
+        "a pilha de protocolos ou o layout de pacote é o objeto"
+      ],
+      "technologies": [
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection",
+        "classification"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.infrastructure",
+        "familyIds": [
+          "family.infrastructure"
+        ],
+        "disciplineIds": [
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.network_topology"
+        ],
+        "taskOperationIds": [
+          "task_operation.trace",
+          "task_operation.identify",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection",
+          "practice.classification"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.packet_layout",
+    "version": "1.0.0",
+    "label": "Layout de pacote",
+    "purpose": "Representar cabeçalhos e registros binários em palavras de largura fixa, com posição e extensão de cada campo.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "locate-field",
+      "calculate-offset",
+      "interpret-header",
+      "compare-width"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Cabeçalhos extensos mantêm tamanho natural e rolagem horizontal.",
+      "Descrições longas ficam na legenda, não comprimidas dentro do campo."
+    ],
+    "accessibility": "Cada campo é descrito por nome, intervalo de bits, largura e função.",
+    "academic": {
+      "domains": [
+        "redes de computadores",
+        "organização de computadores",
+        "sistemas embarcados"
+      ],
+      "knowledgeObjects": [
+        "cabeçalho de protocolo",
+        "campo de bits",
+        "offset",
+        "palavra"
+      ],
+      "conventions": [
+        "régua de bits",
+        "palavras de largura fixa",
+        "campos contíguos",
+        "continuação automática entre linhas",
+        "ordem de transmissão explícita"
+      ],
+      "appropriateWhen": [
+        "posição, largura e fronteira dos campos alteram a interpretação"
+      ],
+      "avoidWhen": [
+        "é preciso comparar registros heterogêneos",
+        "o conteúdo não possui layout binário"
+      ],
+      "technologies": [
+        "CSS Grid",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.infrastructure",
+        "familyIds": [
+          "family.infrastructure"
+        ],
+        "disciplineIds": [
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.binary_layout"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.calculate",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.set_diagram",
+    "version": "1.0.0",
+    "label": "Diagrama de conjuntos",
+    "purpose": "Representar inclusão, exclusão e interseção entre dois ou três conjuntos, preservando as regiões de Venn ou a topologia de Euler.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "inspect-intersection",
+      "classify-membership",
+      "compare-sets",
+      "apply-set-operation"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "No máximo três conjuntos por Unidade de estudo.",
+      "Os contornos não codificam cardinalidade; números e itens pertencem à legenda ancorada por marcadores.",
+      "Para mais de três conjuntos, use uma representação de interseções própria, como UpSet."
+    ],
+    "accessibility": "Cada marcador liga uma região visual a uma descrição textual completa; o desenho nunca é a única fonte de informação.",
+    "academic": {
+      "domains": [
+        "teoria dos conjuntos",
+        "lógica",
+        "probabilidade",
+        "bancos de dados"
+      ],
+      "knowledgeObjects": [
+        "conjunto",
+        "interseção",
+        "união",
+        "complemento",
+        "região"
+      ],
+      "conventions": [
+        "contorno por conjunto",
+        "interseções por sobreposição",
+        "universo explícito quando necessário",
+        "marcador ancorado à região exata",
+        "distinção explícita entre Venn e Euler"
+      ],
+      "appropriateWhen": [
+        "pertencimento simultâneo, ausência de interseção ou operações entre conjuntos são parte da inferência"
+      ],
+      "avoidWhen": [
+        "a relação é entre elementos de domínio e contradomínio",
+        "a tarefa é apenas classificar itens em categorias sem sobreposição",
+        "há mais de três conjuntos relevantes"
+      ],
+      "technologies": [
+        "@upsetjs/venn.js",
+        "SVG responsivo",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection",
+        "classification"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.relational",
+        "familyIds": [
+          "family.relational"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.set_regions"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.classify",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection",
+          "practice.classification"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.state_machine",
+    "version": "1.0.0",
+    "label": "Diagrama de estados",
+    "purpose": "Representar comportamento dependente de estado com a notação gráfica de autômatos ou máquinas de estados.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "trace-transition",
+      "recognize-state",
+      "evaluate-input",
+      "inspect-acceptance"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Autômatos densos devem ser recortados por submáquina ou objetivo.",
+      "Use tabela de transição quando a completude da função, e não o percurso, for a operação-alvo da tarefa."
+    ],
+    "accessibility": "Estados e transições possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "linguagens formais",
+        "engenharia de software",
+        "redes de computadores",
+        "sistemas digitais"
+      ],
+      "knowledgeObjects": [
+        "estado",
+        "evento ou símbolo",
+        "transição",
+        "guarda",
+        "ação",
+        "estado inicial e final"
+      ],
+      "conventions": [
+        "estado como nó",
+        "marcador inicial sem estado",
+        "aceitação por circunferência dupla",
+        "evento, guarda e ação na aresta"
+      ],
+      "appropriateWhen": [
+        "o comportamento depende do estado corrente e de um evento ou símbolo"
+      ],
+      "avoidWhen": [
+        "a tarefa exige comparar exaustivamente a função de transição em forma tabular",
+        "a tarefa é apenas seguir um fluxo sem estado persistente"
+      ],
+      "technologies": [
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG",
+        "HTML semântico"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.process_state",
+        "familyIds": [
+          "family.process_state"
+        ],
+        "disciplineIds": [
+          "discipline.language",
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.graph",
+          "structure.state_transition"
+        ],
+        "taskOperationIds": [
+          "task_operation.trace",
+          "task_operation.identify",
+          "task_operation.calculate"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.truth_table",
+    "version": "1.0.0",
+    "label": "Tabela-verdade",
+    "purpose": "Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "evaluate-proposition",
+      "compare-valuations",
+      "identify-tautology",
+      "inspect-equivalence"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Use no máximo cinco variáveis por Unidade de estudo móvel.",
+      "Explique os conectivos antes da primeira tabela densa."
+    ],
+    "accessibility": "Cabeçalhos identificam variáveis, subfórmulas e resultado; cada valoração é uma linha.",
+    "academic": {
+      "domains": [
+        "lógica proposicional",
+        "matemática discreta",
+        "circuitos digitais"
+      ],
+      "knowledgeObjects": [
+        "valoração",
+        "fórmula proposicional",
+        "coluna de resultado"
+      ],
+      "conventions": [
+        "V e F por valoração",
+        "uma linha por combinação",
+        "subfórmulas em colunas quando necessárias"
+      ],
+      "appropriateWhen": [
+        "é preciso observar o valor de uma fórmula em diferentes valorações"
+      ],
+      "avoidWhen": [
+        "a tarefa é apenas definir um conectivo em prosa"
+      ],
+      "technologies": [
+        "tabela HTML semântica"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics"
+        ],
+        "structureIds": [
+          "structure.symbolic"
+        ],
+        "taskOperationIds": [
+          "task_operation.calculate",
+          "task_operation.compare",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.entity_relationship",
+    "version": "1.0.0",
+    "label": "Modelo entidade-relacionamento",
+    "purpose": "Representar entidades, atributos e cardinalidades no nível conceitual da modelagem de dados.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "identify-entity",
+      "inspect-cardinality",
+      "compare-optional-participation",
+      "derive-relational-model"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Relacionamentos ternários complexos devem ser reificados ou receber package próprio.",
+      "O renderer não mistura modelo conceitual e físico."
+    ],
+    "accessibility": "Entidades, atributos, relações e cardinalidades possuem descrição textual equivalente.",
+    "academic": {
+      "domains": [
+        "bancos de dados",
+        "modelagem conceitual de dados",
+        "engenharia de software"
+      ],
+      "knowledgeObjects": [
+        "entidade",
+        "atributo",
+        "relacionamento",
+        "cardinalidade",
+        "participação"
+      ],
+      "conventions": [
+        "entidades como caixas nomeadas",
+        "atributos internos",
+        "cardinalidade em cada extremidade",
+        "participação opcional explícita",
+        "relação identificadora distinguida"
+      ],
+      "appropriateWhen": [
+        "o modelo conceitual e as regras de cardinalidade são o objeto"
+      ],
+      "avoidWhen": [
+        "o objeto é o esquema relacional com PK e FK já transformadas",
+        "é preciso mostrar instâncias de dados"
+      ],
+      "technologies": [
+        "notação pé-de-galinha",
+        "Graphviz",
+        "Viz.js WebAssembly",
+        "SVG"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.software_data",
+        "familyIds": [
+          "family.software_data"
+        ],
+        "disciplineIds": [
+          "discipline.computing",
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.correspondence",
+          "structure.data_model"
+        ],
+        "taskOperationIds": [
+          "task_operation.identify",
+          "task_operation.compare",
+          "task_operation.transform"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.state_transition_table",
+    "version": "1.0.0",
+    "label": "Tabela de transição",
+    "purpose": "Comparar de forma exaustiva a função de transição por estado e evento ou símbolo.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "compare-transition-function",
+      "locate-missing-transition",
+      "test-determinism",
+      "evaluate-input"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Alfabetos ou conjuntos de estados extensos devem ser recortados."
+    ],
+    "accessibility": "Cabeçalhos identificam eventos; cada linha declara um estado e seus destinos.",
+    "academic": {
+      "domains": [
+        "linguagens formais",
+        "sistemas digitais",
+        "protocolos"
+      ],
+      "knowledgeObjects": [
+        "função de transição",
+        "estado",
+        "evento",
+        "destino"
+      ],
+      "conventions": [
+        "estado por linha",
+        "evento por coluna",
+        "marcador de estado inicial e final",
+        "destinos múltiplos explícitos"
+      ],
+      "appropriateWhen": [
+        "é preciso comparar a cobertura ou a completude da função de transição"
+      ],
+      "avoidWhen": [
+        "o percurso e a estrutura visual dos estados são o objeto"
+      ],
+      "technologies": [
+        "tabela HTML semântica"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.process_state",
+        "familyIds": [
+          "family.process_state"
+        ],
+        "disciplineIds": [
+          "discipline.language",
+          "discipline.engineering"
+        ],
+        "structureIds": [
+          "structure.state_transition"
+        ],
+        "taskOperationIds": [
+          "task_operation.compare",
+          "task_operation.identify",
+          "task_operation.calculate"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.call_stack",
+    "version": "1.0.0",
+    "label": "Pilha de chamadas",
+    "purpose": "Representar quadros de ativação, parâmetros, variáveis locais e continuações durante chamadas de função.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "trace-call",
+      "inspect-frame",
+      "locate-local-variable",
+      "explain-return"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Recursões profundas devem ser recortadas aos quadros relevantes."
+    ],
+    "accessibility": "Os quadros são lidos do topo ativo até a base; campos têm nome, papel e valor.",
+    "academic": {
+      "domains": [
+        "programação",
+        "compiladores",
+        "sistemas operacionais",
+        "segurança de software"
+      ],
+      "knowledgeObjects": [
+        "quadro de ativação",
+        "pilha de chamadas",
+        "parâmetro",
+        "variável local",
+        "continuação no chamador"
+      ],
+      "conventions": [
+        "quadro ativo no topo",
+        "chamada inicial na base",
+        "função nomeada",
+        "parâmetros e locais agrupados",
+        "continuação explícita"
+      ],
+      "appropriateWhen": [
+        "o encadeamento de chamadas e o conteúdo de cada quadro participam do raciocínio"
+      ],
+      "avoidWhen": [
+        "endereços e segmentos do espaço de memória são o objeto",
+        "a estrutura é uma pilha abstrata sem chamadas"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "CSS Grid"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "typing",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.process_state",
+        "familyIds": [
+          "family.process_state"
+        ],
+        "disciplineIds": [
+          "discipline.computing"
+        ],
+        "structureIds": [
+          "structure.call_stack"
+        ],
+        "taskOperationIds": [
+          "task_operation.trace",
+          "task_operation.identify",
+          "task_operation.explain"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.audio",
+    "version": "1.0.0",
+    "label": "Áudio",
+    "purpose": "Escutar e comparar falas ou gravações quando o som participa da aprendizagem.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content"
+    ],
+    "taskOperations": [
+      "listen",
+      "compare-pronunciation",
+      "identify-sound",
+      "listen-and-respond"
+    ],
+    "responseCompatibility": [],
+    "limitations": [
+      "Voz nativa depende do dispositivo e não gera arquivo exportável.",
+      "Arquivo precisa estar autorizado e disponível no dispositivo.",
+      "Síntese remota só ocorre por escolha explícita do proprietário antes da materialização."
+    ],
+    "accessibility": "Faixas têm nome e idioma; transcrição ou alternativa obedece à condição declarada, sem antecipar resposta auditiva.",
+    "tool": {
+      "label": "Áudio",
+      "icon": "audio"
+    },
+    "academic": {
+      "domains": [
+        "linguagens",
+        "música",
+        "comunicação"
+      ],
+      "knowledgeObjects": [
+        "fala",
+        "pronúncia",
+        "contraste sonoro",
+        "gravação"
+      ],
+      "conventions": [
+        "faixas identificadas",
+        "idioma explícito",
+        "alternativa textual com condição de apresentação"
+      ],
+      "appropriateWhen": [
+        "o som fornece informação necessária à tarefa"
+      ],
+      "avoidWhen": [
+        "ler a prosa oferece toda a informação necessária"
+      ],
+      "technologies": [
+        "Web Speech API",
+        "HTML Audio",
+        "Storage privado"
+      ],
+      "practiceModes": [
+        "exposition",
+        "selection",
+        "typing"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.text_language",
+        "familyIds": [
+          "family.text_language"
+        ],
+        "disciplineIds": [
+          "discipline.language"
+        ],
+        "structureIds": [],
+        "taskOperationIds": [
+          "task_operation.compare",
+          "task_operation.identify"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.typing",
+          "practice.selection"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.calculator",
+    "version": "1.0.0",
+    "label": "Calculadora",
+    "purpose": "Disponibilizar cálculo numérico real para verificar resultados, explorar valores e comparar uma previsão com um cálculo explícito.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content"
+    ],
+    "taskOperations": [
+      "calculate",
+      "compare-values",
+      "check-prediction"
+    ],
+    "responseCompatibility": [],
+    "limitations": [
+      "Cálculo real aproximado, com até 12 algarismos significativos na exibição. Não resolve equações nem calcula com unidades ou números complexos."
+    ],
+    "accessibility": "Expressão e unidade angular têm rótulos; Enter calcula e resultado ou erro é anunciado sem deslocar o foco.",
+    "tool": {
+      "label": "Calculadora",
+      "icon": "calculator"
+    },
+    "academic": {
+      "domains": [
+        "matemática",
+        "estatística",
+        "física",
+        "engenharia"
+      ],
+      "knowledgeObjects": [
+        "expressão numérica",
+        "resultado aproximado",
+        "ângulo"
+      ],
+      "conventions": [
+        "precedência explícita",
+        "unidade angular visível",
+        "precisão limitada"
+      ],
+      "appropriateWhen": [
+        "o cálculo apoia o raciocínio da tarefa, sem substituir a justificativa"
+      ],
+      "avoidWhen": [
+        "a tarefa avalia cálculo mental sem apoio",
+        "é necessário cálculo simbólico ou precisão arbitrária"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "parser numérico delimitado"
+      ],
+      "practiceModes": [
+        "exposition"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.quantitative_symbolic",
+        "familyIds": [
+          "family.quantitative_symbolic"
+        ],
+        "disciplineIds": [
+          "discipline.mathematics",
+          "discipline.statistics",
+          "discipline.engineering",
+          "discipline.natural_sciences"
+        ],
+        "structureIds": [
+          "structure.symbolic"
+        ],
+        "taskOperationIds": [
+          "task_operation.calculate",
+          "task_operation.compare"
+        ],
+        "practiceModeIds": [
+          "practice.exposition"
+        ],
+        "specificity": "disciplinary"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  },
+  {
+    "id": "aralearn.resource.terminal_session",
+    "version": "1.0.0",
+    "label": "Sessão de terminal",
+    "purpose": "Representar uma interação textual temporal entre pessoa e sistema, preservando entradas, saídas, erros e mudanças observáveis de estado.",
+    "authoringEligibility": "current",
+    "slots": [
+      "content",
+      "feedback"
+    ],
+    "taskOperations": [
+      "trace-interaction",
+      "interpret-output",
+      "identify-error",
+      "relate-action-consequence",
+      "compare-state",
+      "diagnose-situation",
+      "predict-result",
+      "recognize-command"
+    ],
+    "responseCompatibility": [
+      "aralearn.response.gap",
+      "aralearn.response.choice"
+    ],
+    "limitations": [
+      "Não executa nem interpreta comandos e não consulta shell, banco de dados, rede ou ambiente externo.",
+      "Registra uma sessão observável; não comprova que o resultado ocorrerá em outra versão, configuração ou contexto.",
+      "Não substitui prática real quando operar o sistema faz parte do objetivo de aprendizagem."
+    ],
+    "accessibility": "A sessão é uma lista cronológica; entrada, stdout, stderr, código de saída e efeito têm rótulos textuais, e todo conteúdo monoespaçado permanece selecionável.",
+    "academic": {
+      "domains": [
+        "computação",
+        "programação",
+        "bancos de dados",
+        "administração de sistemas",
+        "infraestrutura em nuvem"
+      ],
+      "knowledgeObjects": [
+        "sessão textual de terminal",
+        "interação temporal",
+        "comando ou entrada",
+        "saída padrão",
+        "erro padrão",
+        "código de saída",
+        "estado observável"
+      ],
+      "conventions": [
+        "interações em ordem temporal",
+        "prompt visual separado da entrada",
+        "stdout e stderr identificados",
+        "espaços e quebras preservados",
+        "efeito ligado à interação que o produziu"
+      ],
+      "appropriateWhen": [
+        "a aprendizagem depende de acompanhar ação textual, resposta do sistema e evolução observável da sessão",
+        "uma situação operacional precisa permanecer observável sem acesso ao ambiente original"
+      ],
+      "avoidWhen": [
+        "apenas a sintaxe de um trecho de código ou configuração importa",
+        "registros homogêneos precisam ser comparados em linhas e colunas",
+        "a ideia pode ser explicada adequadamente como prosa sem uma sequência de interações"
+      ],
+      "technologies": [
+        "HTML semântico",
+        "texto pré-formatado",
+        "CSS com rolagem local"
+      ],
+      "practiceModes": [
+        "exposition",
+        "gap",
+        "selection"
+      ],
+      "taxonomy": {
+        "primaryFamilyId": "family.process_state",
+        "familyIds": [
+          "family.process_state"
+        ],
+        "disciplineIds": [
+          "discipline.computing",
+          "discipline.engineering",
+          "discipline.business"
+        ],
+        "structureIds": [
+          "structure.terminal_session",
+          "structure.process",
+          "structure.state_transition"
+        ],
+        "taskOperationIds": [
+          "task_operation.trace",
+          "task_operation.identify",
+          "task_operation.compare",
+          "task_operation.decide"
+        ],
+        "practiceModeIds": [
+          "practice.exposition",
+          "practice.gap",
+          "practice.selection"
+        ],
+        "specificity": "versatile"
+      },
+      "authoring": {
+        "aiSelection": true,
+        "manualTextEditing": true,
+        "structureEditing": false
+      }
+    }
+  }
+]

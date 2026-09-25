@@ -153,7 +153,7 @@ test.describe("folhas contextuais com curso local real", () => {
       await expect(sourceDialog.getByRole("button", { name: "Salvar fontes", exact: true })).toBeEnabled();
       await verifySheetGeometry(page, sourceDialog, "sources-context", info);
       await sourceDialog.locator('.course-source-target-link [data-source-action="open-source"]').click();
-      await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");
+      await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Obra · Documento de consulta sintético");
       // Antes de salvar, a fonte é consultada pela autoria no catálogo; o vínculo
       // ainda local não pode filtrar a leitura como se estivesse no servidor.
       expect(sourceReads.at(-1)).toEqual({ sourceId: "fonte-contextual-sintetica", targetKind: null, targetId: null });
@@ -175,7 +175,7 @@ test.describe("folhas contextuais com curso local real", () => {
       ]);
       await sources.click();
       await sourceDialog.locator('.course-source-target-link [data-source-action="open-source"]').click();
-      await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Documento de consulta sintético");
+      await expect(sourceDialog.locator(".course-source-display-title")).toHaveText("Obra · Documento de consulta sintético");
       expect(sourceReads.at(-1)).toEqual({ sourceId: "fonte-contextual-sintetica", targetKind: "study_unit", targetId: UNIT_ID });
       await sourceDialog.getByRole("button", { name: "Voltar ao catálogo" }).click();
       await sourceDialog.getByRole("button", { name: "Fechar", exact: true }).click();

@@ -14,13 +14,10 @@ test("ferramentas integradas preservam card, foco e calculadora em oito combina�
     const module = course.modules[0]; const lesson = module.lessons[0]; const micro = lesson.microsequences[0];
     const tool = (name) => ({ id: `tool-${name}`, package: `aralearn.resource.${name}`, version: "1.0.0",
       data: structuredClone(registry.get(`aralearn.resource.${name}`, "1.0.0").authoringContract.example) });
-    const grammar = tool("grammar");
-    grammar.data.items = [{ id: "one", label: "Primeira leitura", target: { kind: "url", url: "https://example.test/gramatica-1" } },
-      { id: "two", label: "Segunda leitura", target: { kind: "url", url: "https://example.test/gramatica-2" } }];
     micro.studyUnits = [{ id: "tools-unit", position: 1, title: "Notação, escuta e consulta", role: "theory",
       content: [{ id: "lead", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
-        text: "Use a calculadora para comparar os resultados; escute o áudio e consulte a gramática quando necessário. ".repeat(24)
-      } }, tool("calculator"), tool("audio"), grammar], response: null, feedback: [], topics: [] }];
+        text: "Use a calculadora para comparar os resultados e escute o áudio quando necessário. ".repeat(24)
+      } }, tool("calculator"), tool("audio")], response: null, feedback: [], topics: [] }];
     const path = [course.id, module.id, lesson.id, micro.id, "tools-unit"];
     document.body.innerHTML = '<main id="tools-root"></main>';
     const probe = { release: null };
@@ -54,38 +51,31 @@ test("ferramentas integradas preservam card, foco e calculadora em oito combina�
     expect(launcherSize.width).toBe(44); expect(launcherSize.height).toBe(44);
     await launcher.focus(); await page.keyboard.press("Enter");
     const menu = page.getByRole("dialog", { name: "Ferramentas", exact: true });
-    await expect(menu.locator("[data-open-study-tool]")).toHaveCount(3);
+    await expect(menu.locator("[data-open-study-tool]")).toHaveCount(2);
     await expect(menu.getByRole("button", { name: /Áudio/u })).toBeVisible();
-    await expect(menu.getByRole("button", { name: /Gramática/u })).toBeVisible();
     await menu.getByRole("button", { name: /Calculadora/u }).click();
     await expect(page.getByRole("dialog", { name: "Calculadora", exact: true })).toBeVisible();
     await page.getByRole("textbox", { name: "Expressão", exact: true }).fill("2^3^2");
     await page.getByRole("button", { name: "Calcular", exact: true }).click();
-    await expect(page.locator("[data-calculator-output]")).toHaveText("Resultado aproximado: 512");
+    await expect(page.locator("[data-calculator-output]")).toHaveText("512");
     if (width === 360 && mode === "light") {
       await page.evaluate(() => globalThis.__toolsProbe.release());
-      await expect(page.locator("[data-calculator-output]")).toHaveText("Resultado aproximado: 512");
+      await expect(page.locator("[data-calculator-output]")).toHaveText("512");
     }
     expect(await page.locator(".app-shell > .screen").evaluate(node => node.inert)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     const dimensions = await page.locator(".study-tool-body button, .study-tool-body input, .study-tool-body select")
-      .evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })));
+      .evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })).filter(node => node.width && node.height));
     expect(dimensions.every(({ height }) => height >= 44)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath(`calculator-${width}-${mode}.png`), fullPage: true });
     await page.locator(".package-calculator-limits > summary").click();
-    await expect(page.locator(".package-calculator-limits dl")).toBeVisible();
+    await expect(page.locator(".package-calculator-functions")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Unidade dos ângulos" })).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`calculator-help-${width}-${mode}.png`), fullPage: true });
     await page.keyboard.press("Escape");
     await expect(launcher).toBeFocused();
     expect(Math.abs(await page.locator(".card-sheet-content").evaluate(node => node.scrollTop) - before)).toBeLessThanOrEqual(1);
   }
-  await launcher.click();
-  await page.getByRole("dialog").getByRole("button", { name: /Gramática/u }).click();
-  await expect(page.getByRole("button", { name: /Primeira leitura/u })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Segunda leitura/u })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath("grammar-1280-dark.png"), fullPage: true });
-  await page.getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
-  await expect(launcher).toBeFocused();
 });
 
 test("biblioteca conserva configuração e confirma upload perdido sem repetir geração", async ({ page }) => {
@@ -141,7 +131,7 @@ test("biblioteca conserva configuração e confirma upload perdido sem repetir g
   await page.locator("[data-audio-service] summary").click();
   await page.getByRole("combobox", { name: "Serviço", exact: true }).selectOption("gemini");
   await page.getByRole("button", { name: "Salvar configuração de áudio", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Áudio atualizado.");
+  await expect(page.getByRole("status")).toHaveText("Configuração de áudio salva.");
   await expect(page.getByLabel("Idioma padrão")).toHaveValue("zh-CN");
   await page.getByRole("button", { name: "Fechar ajustes de áudio", exact: true }).click();
   await page.getByRole("button", { name: "Gerar voz", exact: true }).click();
@@ -156,7 +146,7 @@ test("biblioteca conserva configuração e confirma upload perdido sem repetir g
   await expect(page.getByRole("dialog").getByRole("button", { name: "Confirmar operação pendente", exact: true })).toBeVisible();
   await page.evaluate(async () => { await globalThis.__audioPanel.refresh(globalThis.__audioPanelProbe.revision); });
   await page.getByRole("dialog").getByRole("button", { name: "Confirmar operação pendente", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Áudio atualizado.");
+  await expect(page.getByRole("status")).toHaveText("Áudio guardado na biblioteca.");
   const result = await page.evaluate(() => globalThis.__audioPanelProbe);
   expect(result.generations).toBe(1);
   expect(result.writes[2]).toEqual(result.writes[1]);

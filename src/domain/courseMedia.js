@@ -2,6 +2,28 @@ export const COURSE_MEDIA_MAX_BYTES = 20 * 1024 * 1024;
 export const COURSE_MEDIA_COURSE_MAX_BYTES = 64 * 1024 * 1024;
 export const COURSE_AUDIO_MEDIA_TYPES = Object.freeze(["audio/wav", "audio/mpeg"]);
 export const COURSE_MEDIA_BUCKET = "course-media";
+
+// A device voice is a rehearsal capability, not a portable recording. Only a
+// verified file can promise the published track's timing and seek behavior.
+export function inspectCourseAudioReadiness(content, availableMedia = null) {
+  const issues = [];
+  for (const [slot, instances] of [["content", content?.content], ["feedback", content?.feedback]]) {
+    for (const [index, instance] of (Array.isArray(instances) ? instances : []).entries()) if (instance?.package === "aralearn.resource.audio") {
+      for (const [trackIndex, track] of (Array.isArray(instance.data?.tracks) ? instance.data.tracks : []).entries()) {
+        if (!track || typeof track !== "object") continue;
+        const path = `${slot}[${index}].data.tracks[${trackIndex}]`;
+        if (track.kind !== "file") issues.push({ code: "audio_recording_required", path,
+          message: `A faixa “${track.label}” precisa de gravação verificada antes de concluir a produção. Gere ou forneça um arquivo e use guardar_audio; a voz de um dispositivo não garante disponibilidade, duração ou busca nos demais.` });
+        else if (availableMedia !== null && !availableMedia.some(media => media.contentHash === track.media?.contentHash &&
+            media.byteSize === track.media?.byteSize && media.mediaType === track.media?.mediaType)) {
+          issues.push({ code: "audio_file_unavailable", path,
+            message: `A gravação de “${track.label}” não está disponível na biblioteca deste curso. Guarde o arquivo antes de materializar a faixa.` });
+        }
+      }
+    }
+  }
+  return issues;
+}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const HASH = /^[a-f0-9]{64}$/u;
 const REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;

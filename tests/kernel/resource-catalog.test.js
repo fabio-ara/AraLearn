@@ -147,12 +147,7 @@ test("operação inicial distingue explicação principal de ferramentas auxilia
   assert.equal(result.candidates[0].fit, "canonical");
   assert.ok(result.candidates[0].matched.includes("taskOperation:task_operation.explain"));
 
-  for (const packageId of ["aralearn.resource.dictionary", "aralearn.resource.grammar", "aralearn.resource.reading"]) {
-    const profile = RESOURCE_CATALOG.getProfile(packageId, "1.0.0");
-    assert.ok(profile, packageId);
-    const direct = RESOURCE_CATALOG.search({ query: profile.label, slot: "content" });
-    assert.equal(direct.candidates[0].packageId, packageId, profile.label);
-  }
+
 });
 
 test("operação omitida não é inventada a partir de negações ou menções internas", () => {

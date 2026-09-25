@@ -4,8 +4,7 @@ import {
   getPackageStudyUnitResponseEntry
 } from "../render/renderPackageStudyUnit.js";
 import {
-  formatObservationTextBudget,
-  isObservationTextOverLimit,
+  syncStudyUnitObservationComposer,
   renderStudyUnitObservationSheet,
   revealStudyObservationControl,
   validateStudyUnitObservationText
@@ -1392,9 +1391,9 @@ export function createCourseStudyApplication({
     return '<section class="study-draft-recovery clean-card" aria-label="Ações de curso pendentes">' +
       '<p>A conclusão destas ações ainda precisa ser confirmada, incluindo os arquivos do curso.</p>' +
       attempts.map(item => '<div role="group" aria-label="' + escapeLifecycleText(item.title) + '"><p>' + escapeLifecycleText(item.title) + '</p>' +
-        '<button class="open-mini" type="button" data-action="resume-course-lifecycle" data-course-id="' +
-        escapeLifecycleText(item.courseId) + '"' + (state.homeLoadingCourseId ? ' disabled' : '') + '>' +
-        (item.operation === "delete_owned_course" ? "Retomar exclusão" : "Retomar saída do curso") +
+        `<button class="open-mini course-authoring-icon-action${item.operation === "delete_owned_course" ? " is-danger" : ""}" type="button" data-action="resume-course-lifecycle" data-course-id="` +
+        escapeLifecycleText(item.courseId) + `" aria-label="${item.operation === "delete_owned_course" ? "Retomar exclusão" : "Retomar saída do curso"}" title="${item.operation === "delete_owned_course" ? "Retomar exclusão" : "Retomar saída do curso"}"` + (state.homeLoadingCourseId ? ' disabled' : '') + '>' +
+        renderUiIcon(item.operation === "delete_owned_course" ? "trash" : "sign-out", "course-authoring-button-icon") +
         '</button></div>').join("") + '</section>';
   }
 
@@ -2334,6 +2333,7 @@ export function createCourseStudyApplication({
     if (!entry) return true;
     const complete = RESOURCE_PACKAGE_REGISTRY.submitResponseState(entry.instance, ensureResponseState(entry), {
       blockKey: entry.blockKey,
+      studyUnit: context().studyUnit,
       focus: queueStudyFocus,
       setActivePrompt: (prompt) => { state.activeGapPrompt = prompt; }
     });
@@ -2898,6 +2898,10 @@ export function createCourseStudyApplication({
     );
     root.querySelector("[data-action='toggle-review']")?.addEventListener("click", () => void toggleReview());
     root.querySelector("[data-action='open-explanation']")?.addEventListener("click", () => explanation.open());
+    root.querySelector("[data-action='open-unit-sources']")?.addEventListener("click", event => {
+      event.preventDefault(); event.stopPropagation();
+      explanation.open({ source: "unit", trigger: event.currentTarget });
+    });
     bindCitationMarkers();
 
     root.querySelector(".study-reader-screen")?.addEventListener("click", (event) => {
@@ -2913,14 +2917,9 @@ export function createCourseStudyApplication({
     root.querySelector("[data-field='study-unit-observation']")?.addEventListener("input", (event) => {
       state.observationDraft.rawText = event.currentTarget.value;
       state.observationDraftTouched = true;
-      const counter = root.querySelector("#study-observation-counter");
-      if (counter) {
-        counter.textContent = formatObservationTextBudget(state.observationDraft.rawText);
-        counter.classList?.toggle(
-          "is-over-limit",
-          isObservationTextOverLimit(state.observationDraft.rawText)
-        );
-      }
+      syncStudyUnitObservationComposer(root, {
+        draft: state.observationDraft, editingId: state.observationEditingId, saving: state.observationSaving
+      });
     });
     root.querySelectorAll("[data-field='study-unit-observation-category']").forEach((node) =>
       node.addEventListener("change", () => {

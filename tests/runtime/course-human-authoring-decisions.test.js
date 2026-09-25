@@ -9,9 +9,13 @@ const actorId = "10000000-0000-4000-8000-000000000001";
 const courseId = "20000000-0000-4000-8000-000000000002";
 const annotationId = "30000000-0000-4000-8000-000000000003";
 const principal = { actorId, authenticationKind: "action", scopes: ["authoring:read", "authoring:write"] };
-const report = { summary: "Base e relações examinadas.", outcome: "consistent", findings: [] };
+const report = { summary: "Base e relações examinadas.", outcome: "consistent", findings: [],
+  checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+    dimension, result: "sufficient", reason: "A explicação desenvolve a relação solicitada.", evidence: ["Relações"] })) };
 const initial = () => ({ contract: "aralearn.course-ai-inspection.v1", courseId, courseRevision: 5,
   targetKind: "microsequence_explanation", targetId: "micro", basisHash: "a".repeat(64),
+  pedagogicalBasis: { targetKind: "microsequence_explanation", targetId: "micro",
+    microsequence: { title: "Relações", goal: "Explicar relações" }, planItems: [], studyUnits: [], dependencies: [] },
   inspection: { state: "pending", basisHash: "a".repeat(64) } });
 const execute = (adapter, name, args) => executeHumanCourseTask({ adapter, principal, name, rawArguments: args });
 

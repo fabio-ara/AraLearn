@@ -241,8 +241,10 @@ for (const width of [360, 390, 430, 1280]) for (const theme of ["light", "dark"]
     const tool = await box(page, ".study-tools-panel");
     expect(await page.locator("#study-tool-title").evaluate(node => parseFloat(getComputedStyle(node).fontSize))).toBeLessThanOrEqual(17);
     await page.getByRole("textbox", { name: "Expressão" }).press("Enter");
-    await expect(page.locator("[data-calculator-output]")).toHaveText("Resultado aproximado: 5");
-    await page.getByText("Operações e precisão", { exact: true }).click();
+    await expect(page.locator("[data-calculator-output]")).toHaveText("5");
+    // v7 separa o rótulo acessível do valor anunciado no próprio resultado.
+    await expect(page.locator(".package-calculator").getByRole("status", { name: "Resultado aproximado", exact: true })).toHaveText("5");
+    await page.getByText("Funções e precisão", { exact: true }).click();
     sameBox(await box(page, ".study-tools-panel"), tool, "Ajuda não altera ferramenta");
     await expect(page.locator(".package-calculator-limits")).not.toContainText(/256|128|32 níveis|10¹²/u);
     await page.screenshot({ path: testInfo.outputPath(`calculator-${width}-${theme}.png`) });

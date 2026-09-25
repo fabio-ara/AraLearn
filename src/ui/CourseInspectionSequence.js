@@ -36,8 +36,8 @@ import { renderCourseInspectionMetadata, contentReviewLabel } from "./renderCour
 import { createCourseInspectionPracticePreview } from "./courseInspectionPracticePreview.js";
 import { createCourseInspectionCitations } from "./courseInspectionCitations.js";
 import {
-  formatObservationTextBudget,
-  isObservationTextOverLimit,
+  syncStudyUnitObservationComposer,
+  syncAuthoringObservationDecisions,
   renderStudyUnitObservationComposer,
   renderStudyUnitObservationSheet,
   renderObservationComparison,
@@ -861,7 +861,7 @@ function renderManualEditDock(item, state, editing, resourceTargetIds) {
       `${renderUiIcon("arrow-left", "course-authoring-button-icon")}</button>` +
       '<button type="button" data-inspection-manual-action="discard-unknown"' +
       ' aria-label="Descartar rascunho com resultado incerto" title="Descartar rascunho">' +
-      `${renderUiIcon("remove-state", "course-authoring-button-icon")}<span>Descartar</span></button>` +
+      `${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
       '</div></footer>';
   }
   return '<footer class="course-inspection-manual-dock" aria-label="Edição manual">' +
@@ -888,16 +888,19 @@ function inspectionCitationEntry(item, state) {
 function renderInspectionBibliography(item, state) {
   const entry = inspectionCitationEntry(item, state);
   if (state.manualStudyUnitId && !entry?.applied) return "";
-  if (entry?.status === "ready" && entry.snapshot.value.citations.length) {
-    return renderStudyCitations({ open: true, value: entry.snapshot.value, courseId: state.courseId, studyUnit: item.studyUnit,
-      formattedReferences: entry.snapshot.formattedReferences, heading: "Referências desta unidade", contextId: "unit" });
+  if (entry?.status === "ready") {
+    return entry.snapshot.value.citations.length
+      ? renderStudyCitations({ open: true, value: entry.snapshot.value, courseId: state.courseId, studyUnit: item.studyUnit,
+        formattedReferences: entry.snapshot.formattedReferences, heading: "Referências desta unidade", contextId: "unit" })
+      : '<p class="course-authoring-notice" role="status">Nenhuma referência preparada para esta unidade.</p>';
   }
-  return entry?.status === "error"
-    ? '<p class="course-authoring-notice is-error" role="status">Não foi possível carregar as referências.</p>' +
+  if (entry?.status === "error") {
+    return '<p class="course-authoring-notice is-error" role="status">Não foi possível carregar as referências.</p>' +
       '<div class="course-source-compact-actions"><button type="button" data-inspection-retry-citations' +
       ' aria-label="Tentar carregar referências novamente" title="Tentar novamente">' +
-      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div>`
-    : "";
+      `${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div>`;
+  }
+  return "";
 }
 
 function renderInspectionReferences(item, state) {
@@ -1003,9 +1006,10 @@ function renderInspectionObservationSheet(state) {
         section: "review",
         studyUnitId: state.observationStudyUnitId
       });
-  const sheet = renderStudyUnitObservationSheet({
+  return renderStudyUnitObservationSheet({
     items: state.observationItems,
     authoringQueue: true,
+    draftManaged: true,
     draft: state.observationDraft,
     editingId: state.observationEditingId,
     error: state.observationError,
@@ -1039,7 +1043,6 @@ function renderInspectionObservationSheet(state) {
       ? "selection:observe"
       : `observations:${state.observationStudyUnitId}`
   });
-  return sheet.replace('role="dialog"', 'role="dialog" data-course-authoring-draft-managed');
 }
 
 function renderInspectionSearchResults(state) {
@@ -1143,8 +1146,9 @@ function renderTemporarySelection(state) {
       draft: state.observationDraft,
       error: state.observationError,
       saving: state.observationSaving,
-      compact: true
-    }).replace('data-observation-composer', 'data-observation-composer data-inspection-selection-composer') +
+      compact: true,
+      selectionComposer: true
+    }) +
       (state.observationMessage ? `<p class="course-inspection-selection-status" role="status">${escapeHtml(state.observationMessage)}</p>` : '') : '') +
     '</aside>';
 }
@@ -1156,10 +1160,9 @@ function renderSelectionPagination(state, direction) {
   const label = previous ? "Carregar unidades anteriores" : "Carregar unidades posteriores";
   return '<div class="course-inspection-selection-pagination">' +
     `<button type="button" data-inspection-selection-action="${direction}"` +
-    ` data-inspection-control-key="selection:${direction}" aria-label="${label}"` +
+    ` data-inspection-control-key="selection:${direction}" aria-label="${label}" title="${label}"` +
     `${state.loadingDirection ? ' disabled aria-disabled="true"' : ""}>` +
-    `${renderUiIcon(previous ? "arrow-left" : "arrow-right", "course-authoring-button-icon")}` +
-    `<span>${label}</span></button></div>`;
+    `${renderUiIcon(previous ? "arrow-left" : "arrow-right", "course-authoring-button-icon")}</button></div>`;
 }
 
 function renderSequence(state, practicePreview) {
@@ -3529,7 +3532,13 @@ export function createCourseInspectionSequence({
         const presented = filterAuthoringObservations(state.observationItems, state.observationFilters).filter(value => value.targetSetVersion);
         const items = annotationId ? presented.filter(item => item.annotationId === annotationId)
           : action.endsWith("-all") ? presented : presented.filter(item => selectedIds.has(item.annotationId));
-        if (!items.length) { state.observationError = "Selecione as observações que deseja decidir."; render(); return true; }
+        if (!items.length) {
+          state.observationError = action.endsWith("-selected")
+            ? "Selecione ao menos uma observação elegível para decidir."
+            : "Não há observações elegíveis para decidir neste contexto.";
+          render();
+          return true;
+        }
         const targetKeysByAnnotation = observationDecisionSelection(root);
         const decision = action.startsWith("approve") ? "approve" : "cancel";
         const reason = decision === "cancel" ? root.querySelector("[data-observation-cancel-reason]").value : null;
@@ -3656,7 +3665,12 @@ export function createCourseInspectionSequence({
       state.observationFilters[event.target.dataset.observationFilter] = event.target.value; render(); return;
     }
     if (event.target.matches?.('[data-observation-select]')) {
-      state.observationSelectedIds = [...root.querySelectorAll('[data-observation-select]:checked')].map(node => node.dataset.observationId); return;
+      state.observationSelectedIds = [...root.querySelectorAll('[data-observation-select]:checked')].map(node => node.dataset.observationId);
+      syncAuthoringObservationDecisions(root, {
+        items: state.observationItems, filters: state.observationFilters,
+        selectedObservationIds: state.observationSelectedIds, saving: state.observationSaving
+      });
+      return;
     }
     if (event.target.matches?.('[data-observation-target-select]')) {
       state.observationDecisionTargets = { ...state.observationDecisionTargets, ...observationDecisionSelection(root) }; return;
@@ -3692,11 +3706,9 @@ export function createCourseInspectionSequence({
         event.target.closest?.("[data-observation-composer]")?.dataset?.studyUnitId ||
         state.observationStudyUnitId || state.selectedStudyUnitId || ""
       );
-      const counter = root.querySelector?.("#study-observation-counter");
-      if (counter) {
-        counter.textContent = formatObservationTextBudget(event.target.value);
-        counter.classList?.toggle("is-over-limit", isObservationTextOverLimit(event.target.value));
-      }
+      syncStudyUnitObservationComposer(root, {
+        draft: state.observationDraft, editingId: state.observationEditingId, saving: state.observationSaving
+      });
     }
   }
 

@@ -146,6 +146,30 @@ test("o grafo e o artefato web contêm somente o runtime canônico de Cursos", a
     assert.match(mainSource, new RegExp(`data-settings-view="${view}" hidden aria-label="${label}"`, "u"),
       `O grupo ${label} deve abrir no mesmo diálogo de Configurações.`);
   }
+  assert.match(mainSource,
+    /\["authoring", "edit", "Preferências de autoria"\][\s\S]*?\["assistant", "sparkles", "Conectar assistente"\]/u,
+    "Preferências de autoria e Conectar assistente precisam manter ícones distintos.");
+  for (const [selector, label, icon] of [
+    ["data-settings-signout", "Sair desta conta", "sign-out"],
+    ["data-settings-signout-clear", "Sair e remover dados deste dispositivo", "sign-out"],
+    ["data-settings-delete-account", "Excluir conta", "trash"],
+    ["data-settings-clear-device", "Remover dados deste dispositivo", "trash"],
+    ["data-maintenance-retention", "Executar retenção corrente", "rotate"],
+    ["data-profile-avatar-choose", "Escolher foto", "upload"],
+    ["data-profile-avatar-remove", "Remover foto", "trash"]
+  ]) {
+    const action = new RegExp(`data-${selector.replace("data-", "")}[^>]*title="${label}"[^>]*aria-label="${label}"[^>]*>\\$\\{renderUiIcon\\("${icon}"`, "u");
+    assert.match(mainSource, action, `${selector} precisa ser icon-only e ter nome acessível.`);
+  }
+  for (const selector of ["data-settings-signout-clear", "data-settings-delete-account", "data-settings-clear-device"]) {
+    assert.match(mainSource, new RegExp(`<button[^>]*class="[^"]*is-danger[^"]*"[^>]*${selector}`, "u"),
+      `${selector} precisa sinalizar a perda de dados como destrutiva.`);
+  }
+  for (const selector of ["data-settings-signout", "data-settings-signout-clear", "data-settings-delete-account",
+    "data-profile-avatar-choose", "data-profile-avatar-remove"]) {
+    const button = mainSource.match(new RegExp(`${selector}[^>]*>[\\s\\S]*?<\\/button>`, "u"))?.[0] || "";
+    assert.doesNotMatch(button, /<span[ >]/u, `${selector} não pode carregar texto visível.`);
+  }
   assert.match(
     mainSource,
     /data-settings-signout\][\s\S]*?Sair desta conta\?[\s\S]*?Alterações ainda abertas e não salvas serão perdidas[\s\S]*?quiesceAraLearnAuthenticatedInteractions\(\)[\s\S]*?repository\?\.flush\(\)[\s\S]*?authClient\.signOut\(\)/u,

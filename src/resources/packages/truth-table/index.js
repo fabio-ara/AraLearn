@@ -1,10 +1,20 @@
+import { getPackagePracticeMarker } from "../../sdk/practice.js";
 import { academicProfile } from "../../sdk/academic.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 
 const VALUES = Object.freeze(["true", "false", "unknown"]);
 const SYMBOLS = Object.freeze({ true: "V", false: "F", unknown: "—" });
 
+function cellValue(data, row, index, value) {
+  const path = `rows[${row}].${index < data.variables.length ? `values[${index}]` : `results[${index - data.variables.length}]`}`;
+  return getPackagePracticeMarker(data, path) ?? SYMBOLS[value] ?? value;
+}
+
 export const truthTablePackage = Object.freeze({
+  normalizePracticeValue(_data, path, value) {
+    if (!/^rows\[\d+\]\.(values|results)\[\d+\]$/u.test(path)) return value;
+    return ({ V: "true", F: "false", "—": "unknown" })[value.toUpperCase()] ?? value;
+  },
   manifest: Object.freeze({
     id: "aralearn.resource.truth_table", version: "1.0.0", label: "Tabela-verdade",
     purpose: "Representar valorações e o resultado de uma fórmula proposicional segundo a convenção lógica.",
@@ -28,8 +38,9 @@ export const truthTablePackage = Object.freeze({
   } }),
   normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), variables: (data?.variables || []).map(String), derivedColumns: (data?.derivedColumns || []).map(String), rows: (data?.rows || []).map((row) => ({ values: (row?.values || []).map(String), results: (row?.results || []).map(String) })) }; },
   validate(data) { return data.rows.flatMap((row, index) => [row.values.length === data.variables.length ? "" : `Linha ${index + 1} não cobre todas as variáveis.`, row.results.length === data.derivedColumns.length ? "" : `Linha ${index + 1} não cobre todas as colunas derivadas.`]).filter(Boolean); },
-  render(data) { const headers = [...data.variables, ...data.derivedColumns]; return `<div class="runtime-block package-truth-table">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table"><thead><tr>${headers.map((label, index) => `<th scope="col"${index >= data.variables.length ? ' class="is-derived"' : ""}>${renderPackageInline(label)}</th>`).join("")}</tr></thead><tbody>${data.rows.map((row) => `<tr>${[...row.values, ...row.results].map((value, index) => `<td${index >= data.variables.length ? ' class="is-derived"' : ""}>${SYMBOLS[value] || renderPackageInline(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div></div>`; },
-  accessibleText(data) { return `${data.prompt || "Tabela-verdade."} ${data.rows.map((row) => [...row.values, ...row.results].map((value, index) => `${[...data.variables, ...data.derivedColumns][index]} ${SYMBOLS[value]}`).join(", ")).join("; ")}.`; },
+  render(data) { const headers = [...data.variables, ...data.derivedColumns]; return `<div class="runtime-block package-truth-table">${data.prompt ? renderPackageProse(data.prompt) : ""}<div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table"><thead><tr>${headers.map((label, index) => `<th scope="col"${index >= data.variables.length ? ' class="is-derived"' : ""}>${renderPackageInline(label)}</th>`).join("")}</tr></thead><tbody>${data.rows.map((row, rowIndex) => `<tr>${[...row.values, ...row.results].map((value, index) => `<td${index >= data.variables.length ? ' class="is-derived"' : ""}>${renderPackageInline(cellValue(data, rowIndex, index, value))}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div></div>`; },
+  accessibleText(data) { return `${data.prompt || "Tabela-verdade."} ${data.rows.map((row, rowIndex) => [...row.values, ...row.results].map((value, index) => `${[...data.variables, ...data.derivedColumns][index]} ${getPackagePracticeMarker(data, `rows[${rowIndex}].${index < data.variables.length ? `values[${index}]` : `results[${index - data.variables.length}]`}`) ? "lacuna" : SYMBOLS[value]}`).join(", ")).join("; ")}.`; },
+  practiceValueLabel(_data, path, value) { return /rows\[\d+\]\.(values|results)\[\d+\]/u.test(path) ? SYMBOLS[value] ?? value : value; },
   editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), ...data.variables.map((_, index) => ({ path: `variables[${index}]`, label: `Editar variável ${index + 1}` })), ...data.derivedColumns.map((_, index) => ({ path: `derivedColumns[${index}]`, label: `Editar fórmula ${index + 1}` }))]; },
-  practiceTargets(data) { return [...data.rows.flatMap((row, rowIndex) => [...row.values.map((_, valueIndex) => ({ path: `rows[${rowIndex}].values[${valueIndex}]`, label: `Lacuna na valoração ${rowIndex + 1}.${valueIndex + 1}`, modes: ["gap", "typing"] })), ...row.results.map((_, resultIndex) => ({ path: `rows[${rowIndex}].results[${resultIndex}]`, label: `Lacuna no resultado ${rowIndex + 1}.${resultIndex + 1}`, modes: ["gap", "typing"] }))]), ...data.variables.map((_, index) => ({ path: `variables[${index}]`, label: `Lacuna na variável ${index + 1}`, modes: ["gap", "typing"] })), ...data.derivedColumns.map((_, index) => ({ path: `derivedColumns[${index}]`, label: `Lacuna na fórmula ${index + 1}`, modes: ["gap", "typing"] }))]; }
+  practiceTargets(data) { return [...data.rows.flatMap((row, rowIndex) => [...row.values.map((_, valueIndex) => ({ path: `rows[${rowIndex}].values[${valueIndex}]`, preserveReference: true, label: `Lacuna na valoração ${rowIndex + 1}.${valueIndex + 1}`, modes: ["gap", "typing"] })), ...row.results.map((_, resultIndex) => ({ path: `rows[${rowIndex}].results[${resultIndex}]`, preserveReference: true, label: `Lacuna no resultado ${rowIndex + 1}.${resultIndex + 1}`, modes: ["gap", "typing"] }))]), ...data.variables.map((_, index) => ({ path: `variables[${index}]`, label: `Lacuna na variável ${index + 1}`, modes: ["gap", "typing"] })), ...data.derivedColumns.map((_, index) => ({ path: `derivedColumns[${index}]`, label: `Lacuna na fórmula ${index + 1}`, modes: ["gap", "typing"] }))]; }
 });

@@ -258,7 +258,7 @@ function databaseEvidence() {
     )::text;
   `;
   const result = spawnSync("docker", [
-    "exec", "-i", "supabase_db_aralearn", "psql", "-U", "postgres", "-d", "postgres",
+    "exec", "-i", process.env.ARALEARN_TEST_DATABASE_CONTAINER || "supabase_db_aralearn", "psql", "-U", "postgres", "-d", "postgres",
     "--no-psqlrc", "--quiet", "--tuples-only", "--no-align", "--set", "ON_ERROR_STOP=1",
     "--command", sql
   ], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -473,7 +473,7 @@ async function setProfile(page, handle, { avatar = false } = {}) {
     signOutDialogMessage = dialog.message();
     await dialog.dismiss();
   });
-  await page.getByRole("button", { name: "Sair", exact: true }).click();
+  await page.getByRole("button", { name: "Sair desta conta", exact: true }).click();
   expect(signOutDialogMessage).toBe(
     "Sair desta conta? Cursos e dados já salvos permanecerão neste dispositivo. Alterações ainda abertas e não salvas serão perdidas."
   );
@@ -655,7 +655,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await attachScreenshot(page, testInfo, "source-form-390-dark.png");
       await form.getByRole("button", { name: "Salvar fonte", exact: true }).click();
-      await expect(page.locator(".course-source-display-title")).toHaveText(title);
+      await expect(page.locator(".course-source-display-title")).toHaveText(`Obra · ${title}`);
       sourceId = (await catalog()).items[0].sourceId;
       await page.getByRole("button", { name: "Editar fonte", exact: true }).click();
       await form.getByRole("combobox", { name: "Referência", exact: true }).selectOption("manual");
@@ -687,7 +687,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
         attached = await detail();
         return attached.attachments.length;
       }).toBe(1);
-      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Trechos na fonte$/u }).click();
+      await page.locator(".course-source-detail-section > summary").filter({ hasText: /^Âncoras na fonte$/u }).click();
       await expect(page.getByRole("button", { name: "Adicionar âncora", exact: true })).toBeEnabled();
       await page.getByRole("button", { name: "Adicionar âncora", exact: true }).click();
       await page.getByLabel("Página inicial", { exact: true }).fill("1");
@@ -762,11 +762,13 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       expect(attribution.items[0].sourceLinks[1].anchors[0].anchorId).toBe(sourceWithAnchor.anchors[0].anchorId);
       await page.goto(`/#/estudo/${courseId}/module-access-local/lesson-access-local/microsequence-access-local/study-unit-access-local-1`);
       await page.getByRole("button", { name: "Referência 1", exact: true }).click();
-      const explanation = page.getByRole("dialog", { name: "Explicação", exact: true });
-      const unitReferences = explanation.getByRole("region", { name: "Referências desta unidade", exact: true });
+      const unitSources = page.getByRole("dialog", { name: "Fontes da unidade", exact: true });
+      const unitReferences = unitSources.getByRole("region", { name: "Referências desta unidade", exact: true });
       await expect(unitReferences).toContainText(title);
+      await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toHaveCount(0);
+      await attachScreenshot(page, testInfo, "source-unit-real-390-dark.png");
       await unitReferences.getByRole("button", { name: "Voltar ao trecho 1 da referência 1 na unidade", exact: true }).click();
-      await expect(explanation).toBeHidden();
+      await expect(unitSources).toBeHidden();
       await expect(page.getByRole("button", { name: "Referência 1", exact: true })).toBeFocused();
       expect(failures).toEqual([]);
     } catch (error) {
@@ -1565,7 +1567,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
       await page.reload();
       await expect(page.getByRole("button", { name: "Marcar para rever", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await page.getByRole("button", { name: "Explicação", exact: true }).click();
+      await page.getByRole("button", { name: "Fontes da unidade", exact: true }).click();
       await expect(page.getByText("Documento usado na prova local de acesso.", { exact: true })).toBeVisible();
       const openedDocument = page.waitForEvent("popup");
       const downloadedDocument = page.waitForEvent("download");
@@ -1587,7 +1589,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       expect(failures.failures).toEqual([]);
       const databases = await page.evaluate(() => indexedDB.databases());
       expect(databases.map(({ name }) => name)).toContain("aralearn-course-v1-visitor");
-      await page.getByRole("button", { name: "Fechar explicação" }).click();
+      await page.getByRole("button", { name: "Fechar fontes", exact: true }).click();
       await page.getByRole("button", { name: "Entre para enviar observações" }).click();
       await page.getByLabel("E-mail").fill(outsider.email);
       await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -1728,7 +1730,7 @@ test.describe("acesso direto de Curso no Supabase local", () => {
       await page.getByRole("button", { name: "Voltar", exact: true }).click();
       await page.getByRole("button", { name: "Conta", exact: true }).click();
       page.once("dialog", (dialog) => dialog.accept());
-      await page.getByRole("button", { name: "Sair", exact: true }).click();
+      await page.getByRole("button", { name: "Sair desta conta", exact: true }).click();
       await openUnit(page, 1);
       await expect(review(page)).toHaveAttribute("aria-pressed", "true");
       await openUnit(page, 2);

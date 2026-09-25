@@ -89,6 +89,13 @@ async function mount(page, { visitor = false, administrator = false } = {}) {
 
 const groups = ["Conta", "Aparência", "Sincronização e dados deste dispositivo", "Preferências de autoria", "Conectar assistente"];
 
+async function expectIconOnly(locator, label) {
+  await expect(locator).toHaveAttribute("aria-label", label);
+  await expect(locator).toHaveAttribute("title", label);
+  await expect(locator).toHaveText("");
+  await expect(locator.locator("svg")).toHaveCount(1);
+}
+
 for (const visitor of [false, true]) {
   test(`conectar assistente apresenta endereço e cópia sem gravar cursos (${visitor ? "visitante" : "conta"})`, async ({ page }, testInfo) => {
     await mount(page, { visitor });
@@ -227,6 +234,29 @@ test("Configurações mantém os grupos, papel, retorno e rascunho de perfil ent
   await page.screenshot({ path: testInfo.outputPath("common-settings-dark.png") });
   await expect(page.locator("[data-settings-view='appearance']")).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.settingsHarness.maintenanceReads)).toBe(0);
+});
+
+test("ações autenticadas de conta, foto e manutenção são icon-only e preservam o risco", async ({ page }) => {
+  await mount(page, { administrator: true });
+  await page.getByRole("button", { name: "Conta", exact: true }).click();
+  for (const [selector, label] of [
+    ["[data-settings-signout]", "Sair desta conta"],
+    ["[data-settings-signout-clear]", "Sair e remover dados deste dispositivo"],
+    ["[data-settings-delete-account]", "Excluir conta"]
+  ]) await expectIconOnly(page.locator(selector), label);
+  await expect(page.locator("[data-settings-signout-clear]")).toHaveClass(/is-danger/u);
+  await expect(page.locator("[data-settings-delete-account]")).toHaveClass(/is-danger/u);
+  await page.getByRole("button", { name: "Abrir Foto do perfil", exact: true }).click();
+  await expectIconOnly(page.locator("[data-profile-avatar-choose]"), "Escolher foto");
+  await expect(page.locator("[data-profile-avatar-remove]")).toHaveClass(/is-danger/u);
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
+  await page.getByRole("button", { name: "Sincronização e dados deste dispositivo", exact: true }).click();
+  await expectIconOnly(page.locator("[data-settings-clear-device]"), "Remover dados deste dispositivo");
+  await expect(page.locator("[data-settings-clear-device]")).toHaveClass(/is-danger/u);
+  await page.getByRole("button", { name: "Voltar", exact: true }).click();
+  await page.getByRole("button", { name: "Manutenção", exact: true }).click();
+  await expectIconOnly(page.locator("[data-maintenance-retention]"), "Executar retenção corrente");
 });
 
 test("perfil descarta leituras antigas e conserva edição posterior ao salvar em outro painel", async ({ page }) => {

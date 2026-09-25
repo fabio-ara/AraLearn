@@ -14,6 +14,15 @@ import {
 const PDF_BUCKET = "course-source-pdfs";
 const MEDIA_TYPE = "application/pdf";
 
+// Conteúdo sintético do cenário de retenção. O parecer da v7 cita estes trechos
+// e a base pedagógica devolvida pelo servidor para o próprio alvo.
+const RETENTION_CONTENT = Object.freeze({
+  explanationTitle: "Base observada",
+  observedText: "A referência sustenta esta explicação sintética.",
+  unitTitle: "Unidade observada",
+  sourceTitle: "PDF descartável da prova de armazenamento"
+});
+
 function first(value) {
   return Array.isArray(value) && value.length === 1 ? value[0] : value;
 }
@@ -89,7 +98,7 @@ function sourceDocument() {
   return normalizeCourseSourceDocument({
     kind: "document",
     defaultRoles: ["technical_conceptual"],
-    title: "PDF descartável da prova de armazenamento",
+    title: RETENTION_CONTENT.sourceTitle,
     authors: [{ literal: "AraLearn" }],
     publicationDate: "2026-09-02",
     identifier: null,
@@ -247,18 +256,56 @@ async function downloadPdf(config, {
   return fetch(signedUrl);
 }
 
+// Parecer fixo do cenário sintético de retenção, não uma avaliação pedagógica
+// independente. Os trechos vêm da base corrente para exercitar o contrato real
+// sem enfraquecer a prova de preservação dos arquivos e das observações.
+function retentionInspectionReport(basis) {
+  const quotedText = (value, label) => {
+    const text = typeof value === "string" ? value.trim() : "";
+    assert.ok(text, `A base pedagógica devolvida não expõe ${label}.`);
+    return text;
+  };
+  const explanationTitle = quotedText(basis?.microsequence?.explanation?.title, "o título da Explicação");
+  const observedUnit = basis?.studyUnits?.[0];
+  const unitTitle = quotedText(observedUnit?.content?.title, "o título da unidade observada");
+  const observedText = quotedText(observedUnit?.content?.content?.[0]?.data?.text, "o trecho observado da unidade");
+  const sourceTitle = quotedText(basis?.citations?.[0]?.links?.[0]?.source?.title, "o título da fonte vinculada");
+  return {
+    summary: "Leitura sintética da base observada antes do parecer: explicação, unidade teórica e vínculo de fonte conferidos nos trechos citados.",
+    outcome: "consistent",
+    findings: [],
+    checks: [
+      { dimension: "alignment", result: "sufficient",
+        reason: `A Explicação "${explanationTitle}" sustenta a intenção declarada para o alvo observado.`,
+        evidence: [explanationTitle] },
+      { dimension: "evidence", result: "sufficient",
+        reason: `A fonte "${sourceTitle}" expõe o trecho que o vínculo declara sustentar.`,
+        evidence: [observedText, sourceTitle] },
+      { dimension: "representation", result: "sufficient",
+        reason: `A unidade "${unitTitle}" representa o recorte observado sem exigir reconstrução fora da base.`,
+        evidence: [unitTitle] },
+      { dimension: "feedback", result: "not_applicable",
+        reason: "O cenário é teórico, sem alternativa de resposta e retorno associado para julgar.",
+        evidence: [unitTitle] },
+      { dimension: "sufficiency", result: "sufficient",
+        reason: "A explicação e o único vínculo de fonte cobrem o recorte observado deste cenário sintético.",
+        evidence: [observedText] }
+    ]
+  };
+}
+
 async function proveObservationRetention(config, { actorId, courseId, revision, sourceId, sourceRevision, attachment, bytes, onRevision }) {
   const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text } });
-  const text = "A referência sustenta esta explicação sintética.";
+  const text = RETENTION_CONTENT.observedText;
   const composition = await rpc(config, "commit_course_composition_for_actor_v1", {
     p_actor_id: actorId, p_course_id: courseId, p_expected_revision: revision,
     p_upserts: [
       { entityType: "module", entityId: "retention-module", parentType: null, parentId: null, position: 0, content: { title: "Retenção" } },
       { entityType: "lesson", entityId: "retention-lesson", parentType: "module", parentId: "retention-module", position: 0, content: { title: "Base compartilhada" } },
       { entityType: "microsequence", entityId: "retention-micro", parentType: "lesson", parentId: "retention-lesson", position: 0,
-        content: { title: "Explicação", dependsOn: [], explanation: { title: "Base observada", content: [paragraph("base", text)] } } },
+        content: { title: "Explicação", dependsOn: [], explanation: { title: RETENTION_CONTENT.explanationTitle, content: [paragraph("base", text)] } } },
       { entityType: "study_unit", entityId: "retention-unit", parentType: "microsequence", parentId: "retention-micro", position: 1,
-        content: { title: "Unidade observada", role: "theory", content: [paragraph("body", text)], response: null, feedback: [], topics: [] } }
+        content: { title: RETENTION_CONTENT.unitTitle, role: "theory", content: [paragraph("body", text)], response: null, feedback: [], topics: [] } }
     ], p_deletes: [], p_source_attribution_applications: [
       { targetKind: "microsequence_explanation", targetId: "retention-micro", sourceLinks: [] },
       { studyUnitId: "retention-unit", sourceLinks: [] }
@@ -319,7 +366,7 @@ async function proveObservationRetention(config, { actorId, courseId, revision, 
       p_actor_id: actorId, p_course_id: courseId, p_target_kind: target.kind, p_target_id: target.id });
     const result = await rpc(config, "record_course_ai_inspection_for_actor_v1", {
       p_actor_id: actorId, p_course_id: courseId, p_target_kind: target.kind, p_target_id: target.id,
-      p_expected_basis_hash: state.basisHash, p_report: { outcome: "consistent", summary: "Base sintética conferida.", findings: [] }, p_request_id: randomUUID() });
+      p_expected_basis_hash: state.basisHash, p_report: retentionInspectionReport(state.pedagogicalBasis), p_request_id: randomUUID() });
     revision = result.courseRevision; onRevision(revision);
     inspected.set(target.id, (await comparison(notes[0], target)).current.hash);
   }

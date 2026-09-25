@@ -38,6 +38,44 @@ export function validateStudyUnitObservationText(value) {
   return "";
 }
 
+function observationSubmitState({ draft = {}, editingId = null, saving = false } = {}) {
+  const invalid = validateStudyUnitObservationText(draft.rawText);
+  const label = saving ? "Salvando observação" : editingId ? "Salvar edição" : "Enviar observação";
+  return { disabled: saving || Boolean(invalid), label, title: saving ? label : invalid || label };
+}
+
+export function syncStudyUnitObservationComposer(root, props) {
+  const { disabled, label, title } = observationSubmitState(props);
+  const submit = root.querySelector?.('[data-observation-composer] [data-observation-action="save"]');
+  if (submit) {
+    submit.disabled = disabled;
+    submit.setAttribute("aria-disabled", String(disabled));
+    submit.setAttribute("aria-label", label);
+    submit.setAttribute("title", title);
+  }
+  const counter = root.querySelector?.("#study-observation-counter");
+  if (counter) {
+    counter.textContent = formatObservationTextBudget(props.draft.rawText);
+    counter.classList?.toggle("is-over-limit", isObservationTextOverLimit(props.draft.rawText));
+  }
+}
+
+function observationDecisionState({ items = [], filters = {}, selectedObservationIds = [], saving = false } = {}) {
+  const selectable = filterAuthoringObservations(items, filters).filter(item => item.targetSetVersion);
+  return {
+    allDisabled: saving || !selectable.length,
+    selectedDisabled: saving || !selectable.some(item => selectedObservationIds.includes(item.annotationId))
+  };
+}
+
+export function syncAuthoringObservationDecisions(root, props) {
+  const { allDisabled, selectedDisabled } = observationDecisionState(props);
+  for (const button of root.querySelectorAll('[data-observation-action$="-all"], [data-observation-action$="-selected"]')) {
+    button.disabled = button.dataset.observationAction.endsWith("-all") ? allDisabled : selectedDisabled;
+    button.setAttribute("aria-disabled", String(button.disabled));
+  }
+}
+
 export function revealStudyObservationControl(control) {
   const body = control?.closest?.(".study-observation-body");
   if (!body || typeof control.getBoundingClientRect !== "function") return;
@@ -107,18 +145,20 @@ export function renderStudyUnitObservationComposer({
   error = "",
   saving = false,
   compact = false,
+  selectionComposer = false,
   studyUnitId = "",
   actionHref = "",
   actionLabel = "",
   actionControlKey = ""
 } = {}) {
   const category = draft.category ?? null;
+  const submit = observationSubmitState({ draft, editingId, saving });
   const categories = [null, ...COURSE_ANCHORED_ANNOTATION_CATEGORIES].map((value) =>
     '<option value="' + escapeHtml(value ?? "") + '"' + (value === category ? " selected" : "") +
     ">" + escapeHtml(categoryLabel(value)) + "</option>"
   ).join("");
   return '<form class="study-observation-composer' + (compact ? " is-compact" : "") +
-    '" data-observation-composer' + (studyUnitId
+    '" data-observation-composer' + (selectionComposer ? ' data-inspection-selection-composer' : '') + (studyUnitId
       ? ' data-study-unit-id="' + escapeHtml(studyUnitId) + '"'
       : "") + ">" +
     (editingId ? '<h3>Editar observação</h3>' : "") +
@@ -142,9 +182,8 @@ export function renderStudyUnitObservationComposer({
         (saving ? " disabled" : "") + ">" + renderUiIcon("remove-state", "home-tab-icon") + "</button>"
       : "") +
     '<button type="submit" class="open-mini study-observation-submit" data-observation-action="save"' +
-    ' title="' + (saving ? "Salvando observação" : editingId ? "Salvar edição" : "Enviar observação") +
-    '" aria-label="' + (saving ? "Salvando observação" : editingId ? "Salvar edição" : "Enviar observação") + '"' +
-    (saving ? ' disabled aria-disabled="true"' : "") + ">" +
+    ' title="' + escapeHtml(submit.title) + '" aria-label="' + submit.label + '"' +
+    (submit.disabled ? ' disabled aria-disabled="true"' : "") + ">" +
     renderUiIcon("ready-state", "home-tab-icon") +
     "</button></div></form>";
 }
@@ -195,16 +234,16 @@ export function renderObservationIncidences(item, { saving = false, availableTar
       (target.kind === 'microsequence_explanation' ? ' · Explicação' : '') + '</span></label>' +
       (target.state !== 'pending' ? '<small>' + (target.state === 'approved' ? 'Aprovado' : 'Encerrado sem alteração') + '</small>' :
         '<details><summary>Comparar antes e vigente</summary><div data-observation-comparison>' +
-        (target.basis?.deferred || target.current?.deferred ? `<button type="button" data-observation-action="compare" data-observation-id="${escapeHtml(item.annotationId)}" data-observation-target-key="${escapeHtml(`${target.kind}:${target.id}`)}">Carregar comparação deste alvo</button>` : renderObservationComparison(target)) + '</div></details>') + '</div>').join('') +
+        (target.basis?.deferred || target.current?.deferred ? `<button class="course-authoring-icon-action" type="button" data-observation-action="compare" data-observation-id="${escapeHtml(item.annotationId)}" data-observation-target-key="${escapeHtml(`${target.kind}:${target.id}`)}" aria-label="Carregar comparação deste alvo" title="Carregar comparação deste alvo">${renderUiIcon("preview", "course-authoring-button-icon")}</button>` : renderObservationComparison(target)) + '</div></details>') + '</div>').join('') +
     '</fieldset>' + (pending.length && item.targetSetVersion ? '<div class="study-observation-decisions">' +
-      `<button type="button" data-observation-action="approve" data-observation-id="${escapeHtml(item.annotationId)}"${disabled}>Aprovar alvos selecionados</button>` +
-      `<button type="button" data-observation-action="cancel" data-observation-id="${escapeHtml(item.annotationId)}"${disabled}>Encerrar sem alteração</button>` +
+      `<button class="course-authoring-icon-action" type="button" data-observation-action="approve" data-observation-id="${escapeHtml(item.annotationId)}" aria-label="Aprovar alvos selecionados" title="Aprovar alvos selecionados"${disabled}>${renderUiIcon("ready-state", "course-authoring-button-icon")}</button>` +
+      `<button class="course-authoring-icon-action is-danger" type="button" data-observation-action="cancel" data-observation-id="${escapeHtml(item.annotationId)}" aria-label="Encerrar sem alteração" title="Encerrar sem alteração"${disabled}>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` +
       '</div><small>Encerrar mantém o conteúdo vigente e retira somente a pendência selecionada.</small>' : '') +
     (availableTargets.length && item.targetSetVersion ? '<details class="study-observation-target-editor"><summary>Alterar alvos</summary>' +
       '<select multiple data-observation-retarget="' + escapeHtml(item.annotationId) + '" aria-label="Alvos da observação"' + disabled + '>' +
       availableTargets.map(target => `<option value="${escapeHtml(`${target.kind}:${target.id}`)}"` +
         (pending.some(t => t.kind === target.kind && t.id === target.id) ? ' selected' : '') + '>' + escapeHtml(target.label || target.id) + '</option>').join('') + '</select>' +
-      `<button type="button" data-observation-action="retarget" data-observation-id="${escapeHtml(item.annotationId)}"${disabled}>Salvar alvos</button>` +
+      `<button class="course-authoring-icon-action" type="button" data-observation-action="retarget" data-observation-id="${escapeHtml(item.annotationId)}" aria-label="Salvar alvos" title="Salvar alvos"${disabled}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
       '<small>Retirar um alvo não restaura seu conteúdo. Para retirar todos, encerre a observação.</small></details>' : '');
 }
 
@@ -290,9 +329,11 @@ export function renderStudyUnitObservationSheet({
   filters = {},
   selectedObservationIds = [],
   selectedTargetKeysByAnnotation = {},
-  cancelReason = "withdrawal"
+  cancelReason = "withdrawal",
+  draftManaged = false
 } = {}) {
   const visibleItems = filterAuthoringObservations(items.filter((item) => item && typeof item === "object"), filters);
+  const { allDisabled, selectedDisabled } = observationDecisionState({ items: visibleItems, selectedObservationIds, saving });
   const matchingTotal = Number.isSafeInteger(collectionSummary?.matchingTotal)
     ? collectionSummary.matchingTotal
     : visibleItems.length;
@@ -301,8 +342,9 @@ export function renderStudyUnitObservationSheet({
     : visibleItems.filter(({ state }) => state !== "withdrawn").length;
   const truncated = collectionSummary?.truncated === true && matchingTotal > visibleItems.length;
   return `<section class="editor-overlay study-observation-overlay" aria-label="${escapeHtml(ariaLabel)}">` +
-    '<article class="editor-sheet study-observation-sheet" role="dialog" aria-modal="true"' +
-    ' aria-labelledby="study-observation-title">' +
+    '<article class="editor-sheet study-observation-sheet" role="dialog"' +
+    (draftManaged ? ' data-course-authoring-draft-managed' : '') +
+    ' aria-modal="true" aria-labelledby="study-observation-title">' +
     '<header class="editor-head">' +
     (activeTotal > 0
       ? '<span class="study-observation-count" aria-label="Quantidade de observações">' +
@@ -321,9 +363,9 @@ export function renderStudyUnitObservationSheet({
     (contextMessage
       ? `<p class="study-observation-stale" role="status">${escapeHtml(contextMessage)}</p>`
       : "") +
-    (authoringQueue ? '<div class="study-observation-central-controls"><button type="button" data-observation-action="refresh" aria-label="Atualizar central"' + (saving ? ' disabled' : '') + '>Atualizar</button>' +
-      (pending ? '<button type="button" data-observation-action="retry">Retomar envio pendente</button>' : '') +
-      (recoveryExpired ? '<button type="button" data-observation-action="abandon-expired">Encerrar tentativa antiga e conservar rascunho</button>' : '') +
+    (authoringQueue ? '<div class="study-observation-central-controls"><button class="course-authoring-icon-action" type="button" data-observation-action="refresh" aria-label="Atualizar central" title="Atualizar central"' + (saving ? ' disabled' : '') + '>' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' +
+      (pending ? '<button class="course-authoring-icon-action" type="button" data-observation-action="retry" aria-label="Retomar envio pendente" title="Retomar envio pendente">' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>' : '') +
+      (recoveryExpired ? '<button class="course-authoring-icon-action is-danger" type="button" data-observation-action="abandon-expired" aria-label="Encerrar tentativa antiga e conservar rascunho" title="Encerrar tentativa antiga e conservar rascunho">' + renderUiIcon("trash", "course-authoring-button-icon") + '</button>' : '') +
       '<label>Filtrar por alvo<select data-observation-filter="target"><option value="">Todos os alvos</option>' +
       availableTargets.map(target => `<option value="${escapeHtml(`${target.kind}:${target.id}`)}"${filters.target === `${target.kind}:${target.id}` ? ' selected' : ''}>${escapeHtml(target.label || target.id)}</option>`).join('') + '</select></label>' +
       '<label>Filtrar por categoria<select data-observation-filter="category"><option value="">Todas as categorias</option>' +
@@ -334,7 +376,7 @@ export function renderStudyUnitObservationSheet({
       Object.entries({withdrawal: 'Retirada', test: 'Teste', mistake: 'Engano', superseded: 'Duplicidade ou superação', answered: 'Dúvida respondida', keep_current: 'Manter conteúdo'})
         .map(([value, label]) => `<option value="${value}"${cancelReason === value ? ' selected' : ''}>${label}</option>`).join('') + '</select></label>' +
       '<div>' + Object.entries({'approve-selected': 'Aprovar selecionadas', 'cancel-selected': 'Encerrar selecionadas', 'approve-all': 'Aprovar todas apresentadas', 'cancel-all': 'Encerrar todas apresentadas'})
-        .map(([action, label]) => `<button type="button" data-observation-action="${action}"${saving ? ' disabled' : ''}>${label}</button>`).join('') + '</div></div>' : '') +
+        .map(([action, label]) => `<button class="course-authoring-icon-action${action.startsWith("cancel") ? " is-danger" : ""}" type="button" data-observation-action="${action}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"${(action.endsWith("-all") ? allDisabled : selectedDisabled) ? ' disabled aria-disabled="true"' : ''}>${renderUiIcon(action.startsWith("cancel") ? "remove-state" : "ready-state", "course-authoring-button-icon")}</button>`).join('') + '</div></div>' : '') +
     (!showComposer && actionHref && actionLabel
       ? renderObservationReviewAction({ actionHref, actionLabel, actionControlKey })
       : "") +

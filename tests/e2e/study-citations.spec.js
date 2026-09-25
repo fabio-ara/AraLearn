@@ -88,7 +88,7 @@ test("ocorrência repetida retorna ao trecho exato e vínculo geral não oferece
   expect(await marker.evaluate(node => node.closest("[data-package-manual-field-path]").textContent))
     .toBe("Um quadro liga duas interfaces. Outro quadro\u20602 recebe dados.");
   await marker.click();
-  const bibliography = page.getByRole("dialog", { name: "Explicação", exact: true });
+  const bibliography = page.getByRole("dialog", { name: "Fontes da unidade", exact: true });
   await expect(bibliography.locator('[data-citation-reference-id="whole"] [data-action="return-citation"]')).toHaveCount(0);
   await expect(bibliography.locator('[data-citation-reference-id="ambiguous"] [data-action="return-citation"]')).toHaveCount(0);
   const back = bibliography.getByRole("button", { name: "Voltar ao trecho 1 da referência 2 na unidade", exact: true });
@@ -111,8 +111,8 @@ test("chamadas de unidade e trecho abrem folha acessível e restauram leitura em
     await marker.scrollIntoViewIfNeeded(); await marker.focus();
     const before = await page.locator(".card-sheet-content").evaluate(node => node.scrollTop);
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Explicação", exact: true }).locator('[data-citation-reference-id="context"]')).toBeFocused();
+    await expect(page.getByRole("dialog", { name: "Fontes da unidade", exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Fontes da unidade", exact: true }).locator('[data-citation-reference-id="context"]')).toBeFocused();
     await expect(page.getByText("Seção 2 · p. 6", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Informações sobre o uso da referência 2", { exact: true })).toHaveCount(0);
     await expect(page.getByRole("dialog").getByText("Sustentação conceitual", { exact: true })).toHaveCount(0);
@@ -120,21 +120,22 @@ test("chamadas de unidade e trecho abrem folha acessível e restauram leitura em
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     const last = page.getByRole("dialog").locator("a,button,summary").last();
     await last.focus(); await page.keyboard.press("Tab");
-    await expect(page.getByRole("button", { name: "Fechar explicação" })).toBeFocused();
+    await expect(page.getByRole("button", { name: "Fechar fontes" })).toBeFocused();
     if (width === 390 && theme === "dark") await page.screenshot({ path: testInfo.outputPath("study-reference-390-dark.png"), fullPage: true });
     await page.keyboard.press("Escape");
     await expect(marker).toBeFocused();
     expect(Math.abs(await page.locator(".card-sheet-content").evaluate(node => node.scrollTop) - before)).toBeLessThanOrEqual(1);
   }
   await expect(page.getByRole("button", { name: "Referência 3, trecho a revisar" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await page.getByRole("button", { name: "Fontes da unidade", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Referências desta unidade", exact: true })).toBeFocused();
   await expect(page.getByText("O trecho citado não foi localizado nesta cópia. A referência foi conservada.", { exact: true })).toBeVisible();
   const unresolvedReference = page.locator('[data-citation-reference-id="ambiguous"]');
   await expect(unresolvedReference).toContainText("Referência manual íntegra <sem dados inventados>.");
   await expect(unresolvedReference).toContainText("Trecho anteriormente presente.");
   await expect(unresolvedReference.getByText("Leitura complementar", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("dialog")).not.toContainText("missing");
-  await page.getByRole("button", { name: "Fechar explicação" }).click();
+  await page.getByRole("button", { name: "Fechar fontes" }).click();
 });
 
 test("toque mantém rolagem interna e PDF escolhe hash/posição com autorização nova em cada tentativa", async ({ page }) => {
@@ -170,8 +171,8 @@ test("toque mantém rolagem interna e PDF escolhe hash/posição com autorizaç�
   await expect(popup).toHaveTitle("Fonte sintética aberta");
   expect(await popup.evaluate(() => window.opener)).toBeNull();
   await popup.close();
-  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Fechar explicação" }).tap();
+  await expect(page.getByRole("dialog", { name: "Fontes da unidade", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Fechar fontes" }).tap();
   await expect(page.getByRole("button", { name: "Referência 2", exact: true })).toBeFocused();
 });
 
@@ -182,8 +183,10 @@ test("resposta tardia da unidade anterior não reaponta chamadas nem reabre a fo
   await page.evaluate(() => { globalThis.__citationProbe.release(); });
   await expect(page.locator(".source-marker")).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Fontes da unidade", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Explicação", exact: true }).click();
-  await expect(page.getByText("Nenhuma fonte.", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Nenhuma fonte.", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog").locator(".study-bibliography")).toHaveCount(0);
   await expect(page.getByRole("dialog")).not.toContainText("Fonte do trecho");
 });
 
@@ -221,7 +224,7 @@ test("editar a folha citada conserva vínculo sem persistir números e torna tre
   expect(await page.evaluate(() => globalThis.__citationProbe.edits[1].studyUnit.content.find(item => item.id === "cited").data))
     .toEqual({ text: "Um bloco liga interfaces e preserva a explicação completa." });
   await expect(page.getByRole("button", { name: "Referência 2, trecho a revisar", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await page.getByRole("button", { name: "Fontes da unidade", exact: true }).click();
   await expect(page.locator('[data-citation-reference-id="context"]')).toContainText("O trecho mudou e precisa de revisão. A referência foi conservada.");
   await expect(page.locator('[data-citation-reference-id="context"] .study-citation-quote')).toHaveText("quadro");
   expect(await page.evaluate(() => globalThis.__citationProbe.reads.length)).toBe(3);

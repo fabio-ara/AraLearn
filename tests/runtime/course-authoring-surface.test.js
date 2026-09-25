@@ -810,7 +810,7 @@ test("Conteúdo monta uma única sequência sem árvore paralela nem carga de ou
   assert.doesNotMatch(root.innerHTML, /course-authoring-content-hierarchy|Estrutura do Curso/u);
   assert.match(
     root.innerHTML,
-    /class="course-authoring-task-menu"[\s\S]*data-target-kind="course"[\s\S]*<span>Editar curso<\/span>/u
+    /class="course-authoring-task-menu"[\s\S]*data-target-kind="course" aria-label="Editar curso" title="Editar curso"/u
   );
   assert.match(root.innerHTML, /data-course-inspection-host/u);
   assert.doesNotMatch(root.innerHTML, />Estrutura<|>Inspeção</u);

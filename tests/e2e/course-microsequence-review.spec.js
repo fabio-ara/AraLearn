@@ -91,7 +91,7 @@ test("ferramentas da explicação abrem áudio nos três idiomas, cancelam e dev
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.configurationReads)).toEqual([]);
   await openTool(page);
   const audio = audioDialog(page);
-  await expect(audio.locator("[data-audio-configuration-status]")).toContainText("Velocidade 1.25×");
+  await expect(audio.locator("[data-audio-configuration-status]")).toBeEmpty();
   await expect(audio.locator('[data-audio-action="play"]')).toHaveCount(3);
   for (const play of await audio.locator('[data-audio-action="play"]').all()) await expect(play).toBeEnabled();
   for (const consent of await audio.locator(".package-audio-remote-consent").all()) await expect(consent).toBeHidden();
@@ -105,7 +105,8 @@ test("ferramentas da explicação abrem áudio nos três idiomas, cancelam e dev
   for (const id of ["pt", "ja", "zh"]) {
     const row = audio.locator(`[data-audio-track="${id}"]`);
     await row.locator('[data-audio-action="play"]').click();
-    await expect(row.locator("[data-audio-track-status]")).toHaveText("Reproduzindo com voz local.");
+    await expect(row.locator('[data-audio-action="play"]')).toHaveAttribute("aria-label", /^Pausar /u);
+    await expect(row.locator("[data-audio-track-status]")).toBeEmpty();
   }
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.audio.spoke)).toEqual([
     { text: "Bom dia.", lang: "pt-BR", rate: 1.25, voice: "synthetic-pt-BR" },
@@ -122,7 +123,7 @@ test("ferramentas da explicação abrem áudio nos três idiomas, cancelam e dev
   const calculator = page.getByRole("dialog", { name: "Calculadora", exact: true });
   await calculator.getByRole("textbox", { name: "Expressão", exact: true }).fill("sqrt(9) + 2");
   await calculator.getByRole("button", { name: "Calcular", exact: true }).click();
-  await expect(calculator.getByRole("status")).toHaveText("Resultado aproximado: 5");
+  await expect(calculator.locator("output")).toHaveText("5");
   await calculator.getByRole("button", { name: "Fechar ferramenta", exact: true }).click();
   await expect(toolsLauncher(page)).toBeFocused();
   expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
@@ -155,7 +156,7 @@ test("áudio da explicação descarta catálogo tardio e fecha reprodução com 
   await openTool(page);
   const audio = audioDialog(page);
   await audio.locator('[data-audio-track="pt"] [data-audio-action="play"]').click();
-  await expect(audio.locator('[data-audio-track="pt"] [data-audio-track-status]')).toHaveText("Preparando a voz…");
+  await expect(audio.locator('[data-audio-track="pt"] [data-audio-track-status]')).toHaveText("Carregando…");
   await page.keyboard.press("Escape"); await expect(toolsLauncher(page)).toBeFocused();
   await page.evaluate(() => globalThis.__reviewFixture.probe.audio.publishVoices());
   await openTool(page);
@@ -219,7 +220,7 @@ test("arquivo de áudio da explicação usa alvo e revisão inspecionados e libe
   await openTool(page);
   const row = audioDialog(page).locator('[data-audio-track="file"]');
   await row.locator('[data-audio-action="play"]').click();
-  await expect(row.locator("audio")).toBeVisible();
+  await expect(row.locator("[data-audio-progress]")).toBeVisible();
   await expect.poll(() => row.locator("audio").evaluate(node => node.readyState)).toBeGreaterThanOrEqual(2);
   expect(await row.locator("audio").evaluate(node => ({ duration: node.duration, playbackRate: node.playbackRate, error: node.error })))
     .toEqual({ duration: 0.5, playbackRate: 1.25, error: null });

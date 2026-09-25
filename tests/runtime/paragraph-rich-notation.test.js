@@ -69,7 +69,8 @@ test("edição textual altera prosa e leitura ruby sem modificar AST, identidade
   assert.ok(paths.includes("blocks[0].inlines[0].text"));
   assert.ok(paths.includes("blocks[2].inlines[0].base"));
   assert.ok(paths.includes("blocks[2].inlines[0].reading"));
-  assert.ok(paths.every((path) => !path.includes("expression") && !path.includes("accessibleText")));
+  assert.ok(paths.every((path) => !path.includes("expression")));
+  assert.ok(paths.includes("blocks[1].accessibleText"));
   const edited = applyManualStudyUnitEdit(richParagraphStudyUnit, targetId, { pathValues: {
     "blocks[0].inlines[0].text": "A razão expressa a comparação. Em ",
     "blocks[2].inlines[0].reading": "xué xí",

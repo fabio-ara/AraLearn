@@ -1,19 +1,20 @@
 import { readSupabaseRuntimeConfig } from "../supabase/runtimeConfig.js";
 import { publicErrorMessage } from "./publicErrorMessage.js";
+import { renderUiIcon } from "./renderUiIcons.js";
 
 export function mountAssistantConnectionSettings(root, { authClient = null, onSignIn = null } = {}) {
   const config = readSupabaseRuntimeConfig();
   const field = (name, label, { readonly = true, type = "text" } = {}) => `<div class="assistant-connection-field">
     <label for="assistant-${name}">${label}</label>
     <input id="assistant-${name}" data-openapi-field="${name}" type="${type}" ${readonly ? "readonly" : ""} autocomplete="off" spellcheck="false" autocapitalize="off">
-    <button type="button" data-openapi-copy="${name}">Copiar ${label.toLowerCase()}</button>
+    <button type="button" data-openapi-copy="${name}" title="Copiar ${label.toLowerCase()}" aria-label="Copiar ${label.toLowerCase()}">${renderUiIcon("copy", "account-settings-action-icon")}</button>
   </div>`;
   root.innerHTML = `<div class="assistant-connection">
     <div class="assistant-mcp" data-assistant-mcp>
     <p>Adicione este endereço nas conexões do seu assistente e autorize sua conta AraLearn.</p>
     <label for="assistant-server-address">Endereço MCP</label>
     <input id="assistant-server-address" data-assistant-address type="url" readonly spellcheck="false">
-    <button type="button" data-assistant-copy>Copiar endereço</button>
+    <button type="button" data-assistant-copy title="Copiar endereço" aria-label="Copiar endereço">${renderUiIcon("copy", "account-settings-action-icon")}</button>
     <p data-assistant-status role="status" aria-live="polite"></p>
     <a href="https://github.com/fabio-ara/AraLearn/blob/main/docs/conectar-assistente.md" target="_blank" rel="noopener noreferrer">Como conectar (nova aba)</a>
     </div>
@@ -23,16 +24,16 @@ export function mountAssistantConnectionSettings(root, { authClient = null, onSi
         <p>Use esta opção se o seu assistente pedir uma especificação OpenAPI e credenciais OAuth.</p>
         <div data-openapi-signin>
           <p>Entre na sua conta AraLearn para configurar esta conexão.</p>
-          <button type="button" data-openapi-login>Entrar ou criar conta</button>
+          <button type="button" data-openapi-login title="Entrar ou criar conta" aria-label="Entrar ou criar conta">${renderUiIcon("sign-in", "account-settings-action-icon")}</button>
         </div>
         <div data-openapi-account hidden>
           <h2>Credenciais da conexão</h2>
           <p>Gere credenciais para uma nova conexão ou informe o identificador do cliente que você já configurou. O segredo aparece somente nesta sessão: copie-o para a configuração do seu assistente antes de fechar esta tela.</p>
-          <button type="button" data-openapi-register>Gerar credenciais</button>
+          <button type="button" data-openapi-register title="Gerar credenciais" aria-label="Gerar credenciais">${renderUiIcon("key", "account-settings-action-icon")}</button>
           ${field("client-id", "Identificador do cliente", { readonly: false })}
           <div data-openapi-secret hidden>
             ${field("client-secret", "Segredo do cliente", { type: "password" })}
-            <button type="button" data-openapi-reveal aria-pressed="false">Mostrar segredo</button>
+            <button type="button" data-openapi-reveal aria-pressed="false" title="Mostrar segredo" aria-label="Mostrar segredo">${renderUiIcon("preview", "account-settings-action-icon")}</button>
           </div>
           <p>Se você já copiou o segredo para o assistente, retome apenas com o identificador do cliente. Se perdeu o segredo antes de configurá-lo, gere novas credenciais e substitua o par no assistente.</p>
           <h2>Configuração do assistente</h2>
@@ -46,7 +47,7 @@ export function mountAssistantConnectionSettings(root, { authClient = null, onSi
           <form data-openapi-link-form autocomplete="off">
             <label for="assistant-callback">Identificador ou URL de retorno do assistente</label>
             <input id="assistant-callback" data-openapi-callback type="text" required autocomplete="off" spellcheck="false" autocapitalize="off">
-            <button type="submit" data-openapi-link>Vincular assistente</button>
+            <button type="submit" data-openapi-link title="Vincular assistente" aria-label="Vincular assistente">${renderUiIcon("ready-state", "account-settings-action-icon")}</button>
           </form>
         </div>
         <p data-openapi-status role="status" aria-live="polite"></p>
@@ -95,14 +96,18 @@ export function mountAssistantConnectionSettings(root, { authClient = null, onSi
     secret.hidden = true;
     callback.value = "";
     connectionStatus.textContent = "";
-    reveal.textContent = "Mostrar segredo";
+    reveal.title = "Mostrar segredo";
+    reveal.setAttribute("aria-label", "Mostrar segredo");
     reveal.setAttribute("aria-pressed", "false");
     details.open = false;
     updateControls();
   };
   const restoreRequestFocus = (control, current) => {
-    if (!destroyed && current === generation && details.open &&
-        root.ownerDocument.activeElement === root.ownerDocument.body) control.focus({ preventScroll: true });
+    if (destroyed || current !== generation || !details.open ||
+        root.ownerDocument.activeElement !== root.ownerDocument.body) return;
+    control.focus({ preventScroll: true });
+    // O contorno de foco não pode ser cortado pela borda do contêiner de rolagem.
+    control.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   };
   address.value = config.configured ? `${config.projectUrl}/functions/v1/aralearn-authoring-mcp` : "";
   button.disabled = !address.value;
@@ -137,7 +142,9 @@ export function mountAssistantConnectionSettings(root, { authClient = null, onSi
   reveal.addEventListener("click", () => {
     const visible = fields["client-secret"].type === "password";
     fields["client-secret"].type = visible ? "text" : "password";
-    reveal.textContent = visible ? "Ocultar segredo" : "Mostrar segredo";
+    const label = visible ? "Ocultar segredo" : "Mostrar segredo";
+    reveal.title = label;
+    reveal.setAttribute("aria-label", label);
     reveal.setAttribute("aria-pressed", String(visible));
   });
   register.addEventListener("click", async () => {

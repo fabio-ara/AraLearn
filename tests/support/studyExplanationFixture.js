@@ -8,7 +8,7 @@ const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", v
 const resource = (id, name, data) => ({ id, package: `aralearn.resource.${name}`, version: "1.0.0", data });
 
 /** UI sintética: nenhum cliente de conta, geração, download real ou escrita remota. */
-export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light" } = {}) {
+export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null } = {}) {
   document.documentElement.dataset.colorMode = theme;
   const response = await fetch(new URL("../fixtures/package/project-minimal.json", import.meta.url));
   if (!response.ok) throw new Error("Fixture curricular local indisponível.");
@@ -21,7 +21,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     resource("calculator-second", "calculator", { title: "Conferir uma segunda estimativa", angleUnit: "radians" })];
   const support = { title: "Processos, interfaces e transporte: distinguir os participantes da comunicação sem confundir sinais, quadros e conexões",
     content: [paragraph("support-lead", "Um **quadro** transporta informações entre interfaces de uma rede local. Um processo é um programa em execução; sua interface com o transporte é chamada socket. Essa interface local não representa toda a conexão entre os participantes."),
-      resource("comparison", "table", { prompt: "Compare o papel de cada elemento antes de examinar o diagrama.",
+      resource("comparison", "table", { title: "Papéis na comunicação",
         columns: ["Elemento", "Papel", "O que não representa"], rows: [
           ["Processo", "Programa em execução", "Toda a rede"], ["Socket", "Interface local com o transporte", "A conexão inteira"],
           ["Hub", "Repetição de sinais para as demais portas", "Seleção de destino por endereço MAC"],
@@ -35,10 +35,17 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     position: role === "practice" ? 2 : 1, role, content, feedback: [], topics: [], response: null });
   const theory = baseUnit("explanation-theory", "theory", [paragraph("theory", "O socket é a interface local usada pelo processo para entregar dados ao transporte. Uma conexão relaciona pontas de comunicação. A interface pode existir antes da conexão. ".repeat(8)), ...structuredClone(tools)]);
   const practice = baseUnit("explanation-practice", "practice", [paragraph("practice", "Um programa inicia uma comunicação. Explique por que a interface local usada por ele não equivale à relação inteira entre os participantes."), ...structuredClone(tools)]);
-  // Prática legada: os ensaios verificam que abrir a base não apaga texto já
-  // preenchido offline. Nova autoria usa componentes avaliáveis localmente.
-  practice.response = { id: "pending-response", package: "aralearn.response.open", version: "1.0.0",
-    data: { prompt: "Explique a diferença com suas palavras." } };
+  practice.response = { id: "pending-response", package: "aralearn.response.choice", version: "1.0.0",
+    data: { question: "Quais afirmações distinguem a interface da conexão?", selectionMode: "multiple", selectionCriterion: "correct",
+      options: [{ id: "local", text: "O socket é uma interface local." }, { id: "prior", text: "A interface pode existir antes da conexão." },
+        { id: "whole", text: "O socket representa a rede inteira." }], answerIds: ["local", "prior"] } };
+  practice.feedback = [paragraph("feedback", "A interface local permite ao processo usar o transporte e existe antes da conexão. A conexão relaciona as pontas; nenhuma interface representa a rede inteira.")];
+  if (resourceContent) {
+    theory.content = structuredClone(resourceContent);
+    practice.content = structuredClone(resourceContent);
+    support.content = structuredClone(resourceContent);
+  }
+  if (practiceResponse) practice.response = structuredClone(practiceResponse);
   ms.studyUnits = [theory, practice]; ms.explanation = support;
   const path = [course.id, module.id, lesson.id, ms.id];
   const probe = { reads: [], downloads: [], opened: [], completions: [], state, offline: state === "offline", sourceError: false };
@@ -54,6 +61,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
         quote: "Um processo", prefix: null, suffix: " é um programa", status: "resolved" }],
       anchors: [{ anchorId: "support-page", selector: { kind: "page_range", startPage: 3, endPage: 3 }, humanLocator: "Mecanismo", contentHash: hash }],
       attachments: [{ contentHash: hash, byteSize: 128, mediaType: "application/pdf" }] }] };
+  if (citationOccurrences) citations.citations[0].occurrences = structuredClone(citationOccurrences);
   const repository = {
     loadProject: () => structuredClone(project), loadCourse: async () => structuredClone(course),
     loadProgress: () => ({ version: 1, lessons: {} }), loadAnnotationsForPath: () => [], loadReviewItems: () => [],
@@ -64,7 +72,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     loadStudyUnitCitations: async reference => {
       const unitCitations = structuredClone(citations);
       delete unitCitations.targetKind; delete unitCitations.targetId;
-      return { ...unitCitations, studyUnitId: reference.studyUnitId, citations: [] };
+      return { ...unitCitations, studyUnitId: reference.studyUnitId, citations: citationOccurrences ? unitCitations.citations : [] };
     },
     loadExplanationContext: reference => {
       if (probe.state === "error") throw new Error("A explicação desta cópia está indisponível.");

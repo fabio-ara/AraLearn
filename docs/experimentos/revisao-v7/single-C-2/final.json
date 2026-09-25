@@ -1,0 +1,237 @@
+[
+  {
+    "curso": "Modelos computacionais em ação",
+    "parte": "Transições de um controle de acesso",
+    "microssequencia": 2,
+    "explicacoes": [
+      {
+        "microssequencia": 2,
+        "conteudo": {
+          "title": "Estado, evento e transição no controle de acesso",
+          "content": [
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "Um controle de acesso não reage apenas ao nome do evento: ele reage ao par estado corrente + evento. O estado é a memória resumida do sistema. Para prever o próximo estado, localize a linha do estado atual e siga a transição rotulada pelo evento ocorrido. A mesma entrada pode produzir efeitos diferentes porque a memória do sistema pode ser diferente."
+              }
+            },
+            {
+              "package": "aralearn.resource.state_machine",
+              "data": {
+                "prompt": "Leia cada seta como evento recebido e acompanhe o destino indicado.",
+                "machineKind": "deterministic",
+                "states": [
+                  { "id": "bloqueado", "label": "Bloqueado", "initial": true, "accepting": false },
+                  { "id": "liberado", "label": "Liberado", "initial": false, "accepting": false },
+                  { "id": "alarme", "label": "Alarme", "initial": false, "accepting": false }
+                ],
+                "events": [
+                  { "id": "credencial-valida", "label": "credencial válida" },
+                  { "id": "passagem-forcada", "label": "passagem forçada" },
+                  { "id": "tempo-esgotado", "label": "tempo esgotado" },
+                  { "id": "rearme", "label": "rearme" },
+                  { "id": "passagem", "label": "passagem" }
+                ],
+                "transitions": [
+                  { "id": "b-credencial", "from": "bloqueado", "event": "credencial-valida", "to": "liberado" },
+                  { "id": "b-forcada", "from": "bloqueado", "event": "passagem-forcada", "to": "alarme" },
+                  { "id": "b-tempo", "from": "bloqueado", "event": "tempo-esgotado", "to": "bloqueado" },
+                  { "id": "b-rearme", "from": "bloqueado", "event": "rearme", "to": "bloqueado" },
+                  { "id": "b-passagem", "from": "bloqueado", "event": "passagem", "to": "bloqueado" },
+                  { "id": "l-credencial", "from": "liberado", "event": "credencial-valida", "to": "liberado" },
+                  { "id": "l-passagem", "from": "liberado", "event": "passagem", "to": "bloqueado" },
+                  { "id": "l-forcada", "from": "liberado", "event": "passagem-forcada", "to": "alarme" },
+                  { "id": "l-tempo", "from": "liberado", "event": "tempo-esgotado", "to": "bloqueado" },
+                  { "id": "l-rearme", "from": "liberado", "event": "rearme", "to": "bloqueado" },
+                  { "id": "a-credencial", "from": "alarme", "event": "credencial-valida", "to": "alarme" },
+                  { "id": "a-forcada", "from": "alarme", "event": "passagem-forcada", "to": "alarme" },
+                  { "id": "a-tempo", "from": "alarme", "event": "tempo-esgotado", "to": "alarme" },
+                  { "id": "a-rearme", "from": "alarme", "event": "rearme", "to": "bloqueado" },
+                  { "id": "a-passagem", "from": "alarme", "event": "passagem", "to": "alarme" }
+                ]
+              }
+            },
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "A máquina começa em Bloqueado. Uma credencial válida leva a Liberado; uma passagem em Liberado leva de volta a Bloqueado; uma passagem forçada em Bloqueado ou em Liberado leva a Alarme. Em Alarme, somente rearme leva a Bloqueado; os demais eventos mantêm Alarme. A ausência de uma seta não autoriza inventar um comportamento: use somente as transições declaradas."
+              }
+            }
+          ]
+        },
+        "fontes": []
+      }
+    ],
+    "concluir": false,
+    "unidades": [
+      {
+        "microssequencia": 2,
+        "posicao": 1,
+        "conteudo": {
+          "title": "O estado muda o significado do evento",
+          "role": "theory",
+          "content": [
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "Pense no estado como a memória que o controle carrega entre eventos. Uma transição é uma regra do tipo: estando em um estado e recebendo um evento, vá para um destino. Assim, credencial válida em Bloqueado produz Liberado, enquanto passagem em Bloqueado continua em Bloqueado. O evento só ganha significado quando combinado com o estado atual."
+              }
+            },
+            {
+              "package": "aralearn.resource.state_machine",
+              "data": {
+                "prompt": "Use o estado marcado como inicial e siga uma seta por evento.",
+                "machineKind": "deterministic",
+                "states": [
+                  { "id": "bloqueado", "label": "Bloqueado", "initial": true, "accepting": false },
+                  { "id": "liberado", "label": "Liberado", "initial": false, "accepting": false },
+                  { "id": "alarme", "label": "Alarme", "initial": false, "accepting": false }
+                ],
+                "events": [
+                  { "id": "credencial-valida", "label": "credencial válida" },
+                  { "id": "passagem-forcada", "label": "passagem forçada" },
+                  { "id": "tempo-esgotado", "label": "tempo esgotado" },
+                  { "id": "rearme", "label": "rearme" },
+                  { "id": "passagem", "label": "passagem" }
+                ],
+                "transitions": [
+                  { "id": "b-credencial", "from": "bloqueado", "event": "credencial-valida", "to": "liberado" },
+                  { "id": "b-forcada", "from": "bloqueado", "event": "passagem-forcada", "to": "alarme" },
+                  { "id": "b-tempo", "from": "bloqueado", "event": "tempo-esgotado", "to": "bloqueado" },
+                  { "id": "b-rearme", "from": "bloqueado", "event": "rearme", "to": "bloqueado" },
+                  { "id": "b-passagem", "from": "bloqueado", "event": "passagem", "to": "bloqueado" },
+                  { "id": "l-credencial", "from": "liberado", "event": "credencial-valida", "to": "liberado" },
+                  { "id": "l-passagem", "from": "liberado", "event": "passagem", "to": "bloqueado" },
+                  { "id": "l-forcada", "from": "liberado", "event": "passagem-forcada", "to": "alarme" },
+                  { "id": "l-tempo", "from": "liberado", "event": "tempo-esgotado", "to": "bloqueado" },
+                  { "id": "l-rearme", "from": "liberado", "event": "rearme", "to": "bloqueado" },
+                  { "id": "a-credencial", "from": "alarme", "event": "credencial-valida", "to": "alarme" },
+                  { "id": "a-forcada", "from": "alarme", "event": "passagem-forcada", "to": "alarme" },
+                  { "id": "a-tempo", "from": "alarme", "event": "tempo-esgotado", "to": "alarme" },
+                  { "id": "a-rearme", "from": "alarme", "event": "rearme", "to": "bloqueado" },
+                  { "id": "a-passagem", "from": "alarme", "event": "passagem", "to": "alarme" }
+                ]
+              }
+            }
+          ],
+          "response": null,
+          "feedback": [],
+          "topics": ["estado", "evento", "transição", "máquina de estados"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            { "nome": "estado-como-memoria", "descricao": "O estado registra a situação corrente que condiciona a próxima resposta do controle." },
+            { "nome": "transicao-condicionada", "descricao": "O destino é determinado pela combinação do estado atual com o evento recebido." }
+          ],
+          "ideiasUtilizadas": [],
+          "explicacoes": [
+            { "ideia": "estado-como-memoria", "formas": ["plain_definition", "concrete_example", "mechanism", "application_condition"] },
+            { "ideia": "transicao-condicionada", "formas": ["plain_definition", "worked_example", "contrast", "representation_link"] }
+          ],
+          "cobertura": ["Rastreamento de máquinas de estados"]
+        }
+      },
+      {
+        "microssequencia": 2,
+        "posicao": 2,
+        "conteudo": {
+          "title": "Rastreie uma sequência de eventos",
+          "role": "practice",
+          "content": [
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "O controle começa em Bloqueado. Em ordem, ocorrem estes eventos: credencial válida; tempo esgotado; credencial válida; passagem; passagem forçada. A cada passo, use o estado alcançado no passo anterior."
+              }
+            }
+          ],
+          "response": {
+            "package": "aralearn.response.choice",
+            "data": {
+              "question": "Qual é o estado final depois de toda a sequência?",
+              "selectionMode": "single",
+              "selectionCriterion": "correct",
+              "options": [
+                { "id": "final-alarme", "text": "Alarme", "feedback": "Correto. A sequência chega a Liberado após a segunda credencial válida, volta a Bloqueado com passagem e termina em Alarme com passagem forçada." },
+                { "id": "final-liberado", "text": "Liberado", "feedback": "A primeira e a terceira credenciais levam a Liberado, mas a passagem seguinte leva a Bloqueado e a passagem forçada leva de Bloqueado a Alarme." },
+                { "id": "final-bloqueado", "text": "Bloqueado", "feedback": "Bloqueado é o estado depois de tempo esgotado e depois de passagem em Liberado; o último evento ainda produz a transição para Alarme." },
+                { "id": "final-indefinido", "text": "Indefinido, porque há mais de um evento", "feedback": "A máquina é determinística: em cada passo, o par estado atual e evento seleciona uma única transição declarada." }
+              ],
+              "answerIds": ["final-alarme"]
+            }
+          },
+          "feedback": [
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "Para rastrear, registre o estado após cada evento: Bloqueado → Liberado → Bloqueado → Liberado → Bloqueado → Alarme. Um erro comum é olhar apenas para a última entrada sem carregar a memória produzida pelas entradas anteriores."
+              }
+            }
+          ],
+          "topics": ["sequência de transições", "estado final"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["estado-como-memoria", "transicao-condicionada"],
+          "explicacoes": [
+            { "ideia": "transicao-condicionada", "formas": ["worked_example", "mechanism", "limit_or_exception"] }
+          ],
+          "praticas": [
+            { "requisito": "Compor uma sequência de transições para prever o estado final", "oportunidade": "Sequência de cinco eventos iniciada em Bloqueado", "dimensoesVariadas": ["case_or_data", "support_level"] }
+          ],
+          "cobertura": ["Rastreamento de máquinas de estados"]
+        }
+      },
+      {
+        "microssequencia": 2,
+        "posicao": 3,
+        "conteudo": {
+          "title": "O mesmo evento depende do estado",
+          "role": "practice",
+          "content": [
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "Agora compare o evento passagem em dois estados diferentes. Examine as duas situações separadamente: o controle está em Bloqueado e ocorre passagem; o controle está em Liberado e ocorre passagem. Escolha todas as afirmações que seguem as transições declaradas."
+              }
+            }
+          ],
+          "response": {
+            "package": "aralearn.response.choice",
+            "data": {
+              "question": "Quais afirmações são corretas sobre o evento passagem?",
+              "selectionMode": "multiple",
+              "selectionCriterion": "correct",
+              "options": [
+                { "id": "bloqueado-mantem", "text": "Em Bloqueado, passagem mantém o controle em Bloqueado.", "feedback": "Correto. Essa é a transição b-passagem; a passagem não é tratada como credencial válida." },
+                { "id": "liberado-bloqueia", "text": "Em Liberado, passagem leva o controle a Bloqueado.", "feedback": "Correto. Essa é a transição l-passagem, que encerra o estado Liberado." },
+                { "id": "ambos-alarme", "text": "Em ambos os estados, passagem leva a Alarme.", "feedback": "A passagem forçada leva a Alarme, mas o evento passagem comum tem destinos diferentes: Bloqueado ou Liberado, conforme o estado inicial." },
+                { "id": "bloqueado-libera", "text": "Em Bloqueado, passagem leva a Liberado porque houve uma passagem.", "feedback": "Liberado só é alcançado em Bloqueado quando ocorre credencial válida. O nome passagem não substitui o evento exigido pela transição." }
+              ],
+              "answerIds": ["bloqueado-mantem", "liberado-bloqueia"]
+            }
+          },
+          "feedback": [
+            {
+              "package": "aralearn.resource.paragraph",
+              "data": {
+                "text": "O contraste mostra por que não existe uma resposta universal para um evento isolado. Em Bloqueado, passagem mantém Bloqueado; em Liberado, a mesma passagem leva a Bloqueado. O estado corrente é parte da entrada da regra de transição."
+              }
+            }
+          ],
+          "topics": ["estado corrente", "evento", "comparação de transições"]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasUtilizadas": ["estado-como-memoria", "transicao-condicionada"],
+          "explicacoes": [
+            { "ideia": "estado-como-memoria", "formas": ["contrast", "application_condition", "representation_link"] },
+            { "ideia": "transicao-condicionada", "formas": ["contrast", "worked_example", "limit_or_exception"] }
+          ],
+          "praticas": [
+            { "requisito": "Comparar o efeito do mesmo evento em estados distintos", "oportunidade": "Evento passagem comparado em Bloqueado e Liberado", "dimensoesVariadas": ["context", "task_feature", "external_representation"] }
+          ],
+          "cobertura": ["Rastreamento de máquinas de estados"]
+        }
+      }
+    ]
+  }
+]

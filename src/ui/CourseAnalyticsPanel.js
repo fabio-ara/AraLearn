@@ -84,6 +84,13 @@ function escapeHtml(value) {
 }
 
 function errorText(error) {
+  if (Number(error?.status) === 413 && [
+    "response_too_large",
+    "course_authoring_analytics_response_too_large",
+    "course_response_too_large"
+  ].includes(String(error?.code || ""))) {
+    return "Leitura acima do limite. Escolha outro curso ou uma parte menor, se disponível.";
+  }
   return publicErrorMessage(
     error,
     "Não foi possível carregar os dados de autoria. Tente novamente."
@@ -192,7 +199,7 @@ function renderMetrics(items, label) {
 function renderTableDetails({ title, definition, rows }) {
   if (!rows.length) return "";
   return '<details class="course-analytics-details"><summary><span>' + escapeHtml(title) +
-    `</span><small>${escapeHtml(plural(rows.length, "linha", "linhas"))}</small></summary>` +
+    `</span> <small>${escapeHtml(plural(rows.length, "linha", "linhas"))}</small></summary>` +
     `<p>${escapeHtml(definition)}</p><table aria-label="${escapeHtml(title)}"><thead>` +
     '<tr><th scope="col">Item</th>' +
     '<th scope="col">Leitura</th></tr></thead><tbody>' +
@@ -542,7 +549,7 @@ function sheetContent(state) {
   if (state.sheet === "details") return '<details class="course-analytics-details"><summary>Configuração solicitada</summary>' + parametersHtml(buildCourseAuthoringComparison({ left: state.page, right: state.page }).requestedParameters, { single: true }) + '</details><h3>Leitura aplicada e intervenções</h3>' + renderDesign(state.page.design, state.page.basis) + renderAuthorship(state.page.authorship) + renderMissingData(state.page.missingData);
   if (state.sheet === "compare") return '<form data-course-analytics-compare><label>Curso para comparar<select name="comparisonCourse"><option value="">Escolha um curso próprio</option>' +
     state.courses.map((course, index) => `<option value="${index}"${course.courseId === state.opponent?.course.id ? " selected" : ""}>${escapeHtml(course.title)}</option>`).join("") + '</select></label>' +
-    (state.courseCursor ? '<button type="button" data-course-analytics-action="more-courses">Carregar mais cursos</button>' : '') +
+    (state.courseCursor ? iconAction("more-courses", "Carregar mais cursos", "arrow-down") : '') +
     (state.opponent ? `<label>Parte do curso<select name="comparisonScope">` +
       state.opponent.scope.options.map((scope, index) => `<option value="${index}"${scope.kind === state.opponent.scope.selected.kind && scope.ref === state.opponent.scope.selected.ref ? " selected" : ""}>${escapeHtml(scope.label)}</option>`).join("") + '</select></label>' : '') +
     `<dl class="course-analytics-context"><div><dt>Comparar com</dt><dd>${escapeHtml(state.page.scope.selected.label)}</dd></div></dl></form>` +
@@ -567,6 +574,7 @@ function renderPanel(state) {
   const comparisonDimension = selectedDimension(state, "comparison");
   const busy = state.loading || state.busy;
   const failure = state.failure ? `<p class="course-authoring-notice is-error" role="alert">${escapeHtml(state.failure)}</p>` : '';
+  const notice = state.notice ? `<p class="course-analytics-caption" role="status">${escapeHtml(state.notice)}</p>` : '';
   const status = busy ? '<p class="course-analytics-caption" role="status">Carregando leitura…</p>' : '';
   const titles = { configuration: "Dimensão e escopo", compare: "Comparar cursos", details: "Dados e definições", drill: "Unidades desta distribuição", export: "Exportar curso e análise" };
   return '<section class="course-analytics" aria-label="Dados de autoria">' +
@@ -574,13 +582,13 @@ function renderPanel(state) {
     iconAction("configuration", "Escolher dimensão e escopo", "tags", busy || !state.page) + iconAction("compare", "Comparar cursos", "copy", busy || !state.page) +
     iconAction("details", "Abrir dados e definições", "review", busy || !state.page) + iconAction("export", "Exportar curso e análise", "download", busy || !state.page) + '</nav></header>' +
     '<div class="course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' +
-    (!state.sheet ? status + failure : '') + '</div>' +
+    (!state.sheet ? status + failure + notice : '') + '</div>' +
     (!state.sheet && (!state.page || state.failure) && !busy ? iconAction("reload", "Atualizar leitura", "rotate") : '') + '</div>' +
     (dimension ? `<p class="course-analytics-caption">${escapeHtml(dimension.id === "novelty" ? "Novas unidades de análise em cada unidade de estudo." : dimension.definition)}</p>` +
       (state.comparison ? '<div class="course-analytics-comparison"><section><h4>' + escapeHtml(state.comparison.left.course.title) + '</h4>' + dimensionReading(dimension, comparisonDimension.left, "left") + '</section><section><h4>' + escapeHtml(state.comparison.right.course.title) + '</h4>' + dimensionReading(dimension, comparisonDimension.right, "right") + '</section></div>' +
         `<p class="course-analytics-caption">${comparisonDimension.delta === null ? "Diferença numérica não aplicável." : `Diferença entre os totais: ${formatCount(comparisonDimension.delta)}.`} Contagens não medem qualidade.</p>` +
         iconAction("clear-comparison", "Encerrar comparação", "remove-state", busy) : dimensionReading(dimension, dimension)) : '') +
-    (state.sheet ? `<dialog class="course-analytics-sheet" aria-labelledby="course-analytics-sheet-title"><header><h2 id="course-analytics-sheet-title">${titles[state.sheet]}</h2>` + iconAction("close-sheet", "Fechar análise contextual", "remove-state", busy) + '</header><div class="course-analytics-sheet-feedback course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' + status + failure + '</div></div>' +
+    (state.sheet ? `<dialog class="course-analytics-sheet" aria-labelledby="course-analytics-sheet-title"><header><h2 id="course-analytics-sheet-title">${titles[state.sheet]}</h2>` + iconAction("close-sheet", "Fechar análise contextual", "remove-state", busy) + '</header><div class="course-analytics-sheet-feedback course-operation-feedback" aria-live="polite"><div class="course-operation-feedback-copy">' + status + failure + (state.sheet === "export" ? notice : '') + '</div></div>' +
       '<div class="course-analytics-sheet-body"><fieldset' + (busy ? ' disabled' : '') + '>' + sheetContent(state) + '</fieldset></div><footer>' +
       (state.sheet === "configuration" ? iconAction("apply-configuration", "Aplicar leitura", "ready-state", busy) : '') +
       (state.sheet === "compare" ? iconAction("apply-comparison", "Comparar cursos", "copy", busy || !state.opponent) : '') +
@@ -589,7 +597,7 @@ function renderPanel(state) {
 
 export function createCourseAnalyticsPanel({ root, controller, course, initialQuery = undefined, expectedCourseRevision = course?.revision, onSnapshotDisplayed = null, download = downloadTextFile } = {}) {
   if (!root || !controller || !course?.courseId || !Number.isSafeInteger(expectedCourseRevision) || expectedCourseRevision < 1 || typeof controller.loadCourseAuthoringAnalytics !== "function") throw new TypeError("Painel de dados de autoria inválido.");
-  const state = { course: { ...course, revision: expectedCourseRevision }, query: normalizeCourseAuthoringAnalyticsQuery(initialQuery), page: null, dimension: "novelty", sheet: null, returnAction: null, loading: false, busy: false, failure: "", comparison: null, opponent: null, courses: [], courseCursor: null, drill: null };
+  const state = { course: { ...course, revision: expectedCourseRevision }, query: normalizeCourseAuthoringAnalyticsQuery(initialQuery), page: null, dimension: "novelty", sheet: null, returnAction: null, loading: false, busy: false, failure: "", notice: "", comparison: null, opponent: null, courses: [], courseCursor: null, drill: null };
   let epoch = 0; let destroyed = false;
   const render = () => {
     if (destroyed) return;
@@ -613,7 +621,7 @@ export function createCourseAnalyticsPanel({ root, controller, course, initialQu
   }
   async function load({ close = false } = {}) {
     const ownEpoch = ++epoch; const query = structuredClone(state.query); const revision = state.course.revision;
-    state.loading = true; state.failure = ""; render();
+    state.loading = true; state.failure = ""; state.notice = ""; render();
     try {
       const incoming = normalizeCourseAuthoringAnalyticsPage(await controller.loadCourseAuthoringAnalytics(state.course.courseId, { expectedCourseRevision: revision, query }), { expectedCourseId: state.course.courseId, expectedRevision: revision, expectedQuery: query });
       if (destroyed || epoch !== ownEpoch) return false;
@@ -664,11 +672,14 @@ export function createCourseAnalyticsPanel({ root, controller, course, initialQu
   async function exportArtifact() {
     if (!state.page || state.busy || typeof controller.exportCourseAuthoring !== "function") return null;
     const expectedSelection = { courseId: state.page.course.id, expectedRevision: state.page.course.revision, scope: { kind: state.page.scope.selected.kind, ref: state.page.scope.selected.ref } };
-    const ownEpoch = epoch; state.busy = true; state.failure = ""; render();
+    const ownEpoch = epoch; state.busy = true; state.failure = ""; state.notice = ""; render();
     try {
       const result = normalizeCourseAuthoringExport(await controller.exportCourseAuthoring(expectedSelection), { expectedSelection });
       if (destroyed || ownEpoch !== epoch) return null;
-      return download({ name: `aralearn-curso-e-analise-edicao-${result.course.revision}.json`, type: "application/json;charset=utf-8", content: serializeCourseAuthoringExport(result) });
+      const name = `aralearn-curso-e-analise-edicao-${result.course.revision}.json`;
+      const artifact = download({ name, type: "application/json;charset=utf-8", content: serializeCourseAuthoringExport(result) });
+      state.notice = `Arquivo preparado para download: ${name}.`;
+      return artifact;
     } catch (error) { state.failure = errorText(error); return null; }
     finally { if (!destroyed && ownEpoch === epoch) { state.busy = false; render(); } }
   }
@@ -676,7 +687,7 @@ export function createCourseAnalyticsPanel({ root, controller, course, initialQu
     const node = event.target?.closest?.("[data-course-analytics-action]"); const action = node?.dataset.courseAnalyticsAction;
     if (!action || state.loading || state.busy) return;
     if (["configuration", "details", "compare", "export"].includes(action)) {
-      state.sheet = action; state.returnAction = action; state.failure = ""; render();
+      state.sheet = action; state.returnAction = action; state.failure = ""; state.notice = ""; render();
       if (action === "compare" && !state.courses.length) void readCourses();
     } else if (action === "close-sheet") closeSheet();
     else if (action === "export-json") void exportArtifact();

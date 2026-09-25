@@ -34,10 +34,6 @@ async function mount(page, kind) {
     const module = await import(`/src/resources/packages/${kind}/index.js`);
     const definition = module[`${kind}Package`];
     const data = structuredClone(definition.authoringContract.example);
-    if (kind !== "calculator") data.items = [
-      { id: "external", label: "語法 — gramática /ɐ/ العربية", description: "Compare a explicação e volte à tarefa.", languageTag: "zh-Hant", target: { kind: "url", url: "https://example.org/consulta" } },
-      { id: "pdf", label: "Leitura complementar em PDF", target: { kind: "source_attachment", sourceId: "source-local", sourceRevision: 2, contentHash: "a".repeat(64) } }
-    ];
     const root = document.querySelector("main");
     root.innerHTML = definition.render(data, { instanceId: "tool-example" });
     window.__opened = []; window.__pdfAttempts = 0;
@@ -67,17 +63,18 @@ test("calculadora móvel calcula por teclado, explica erro e invalida resultado 
   const limitsTop = (await page.locator(".package-calculator-limits").boundingBox()).y;
   const stableResult = async () => expect((await page.locator(".package-calculator-limits").boundingBox()).y).toBe(limitsTop);
   await input.focus(); await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toHaveText("Resultado aproximado: 5");
+  await expect(page.getByRole("status")).toHaveText("5");
   await expect(input).toBeFocused();
   await stableResult();
   await input.fill("1/0"); await page.keyboard.press("Enter");
   await expect(page.getByRole("status")).toContainText("dividir por zero");
   await expect(input).toHaveAttribute("aria-invalid", "true");
   await stableResult();
+  await page.getByText("Funções e precisão", { exact: true }).click();
   await input.fill("sin(90)");
   await page.getByRole("combobox", { name: "Unidade dos ângulos" }).selectOption("degrees");
   await page.getByRole("button", { name: "Calcular", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveText("Resultado aproximado: 1");
+  await expect(page.getByRole("status")).toHaveText("1");
   await page.getByRole("combobox", { name: "Unidade dos ângulos" }).selectOption("radians");
   await expect(page.locator("[data-calculator-output]")).toBeEmpty();
   await input.fill("<img src=x onerror=alert(1)>"); await page.keyboard.press("Enter");
@@ -87,7 +84,7 @@ test("calculadora móvel calcula por teclado, explica erro e invalida resultado 
   await expect(input).toBeEmpty(); await expect(input).toBeFocused();
   await stableResult();
   await input.fill("sqrt(3^2 + 4^2)"); await page.keyboard.press("Enter");
-  await page.getByText("Operações e precisão", { exact: true }).click();
+  await page.getByText("Funções e precisão", { exact: true }).click();
   for (const theme of ["light", "dark"]) {
     await page.evaluate(theme => { document.documentElement.dataset.colorMode = theme; }, theme);
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe(theme);
@@ -96,40 +93,35 @@ test("calculadora móvel calcula por teclado, explica erro e invalida resultado 
   }
 });
 
-test("auxiliares plurais abrem pelo host, conservam alvo lógico e permitem tentar novamente sem duplicar listeners", async ({ page }, testInfo) => {
+test("teclado numérico compõe, calcula, continua pelo resultado e apaga sem executar código", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const kind of ["grammar", "dictionary", "reading"]) {
-    await mount(page, kind);
-    const external = page.getByRole("button", { name: "語法 — gramática /ɐ/ العربية" });
-    await expect(external).toHaveText("");
-    await expect(page.locator(".package-tool-resource").first().locator("span")).toHaveText("語法 — gramática /ɐ/ العربية");
-    const secondTop = (await page.locator(".package-tool-resource").nth(1).boundingBox()).y;
-    await external.focus(); await page.keyboard.press("Enter");
-    await expect.poll(() => page.evaluate(() => window.__opened.length)).toBe(1);
-    expect((await page.locator(".package-tool-resource").nth(1).boundingBox()).y).toBe(secondTop);
-    const pdf = page.getByRole("button", { name: "Leitura complementar em PDF" });
-    await pdf.click();
-    await expect(page.getByRole("status").last()).toContainText("tente novamente");
-    await expect(pdf).toBeEnabled();
-    expect(await page.locator("main").innerText()).not.toContain("private-internal-token");
-    await page.evaluate(() => {
-      const oldCleanup = window.__cleanupTool;
-      const { definition, root, data, host } = window.__tool;
-      window.__cleanupTool = definition.toolInteraction.bind(root, data, host);
-      oldCleanup();
-      window.__cleanupTool = definition.toolInteraction.bind(root, data, host);
-    });
-    await pdf.click();
-    await expect(page.getByRole("status").last()).toContainText("Recurso aberto");
-    const opened = await page.evaluate(() => window.__opened);
-    expect(opened).toHaveLength(3);
-    expect(opened[1]).toEqual(opened[2]);
-    expect(opened[2]).toEqual({ attachment: { sourceId: "source-local", sourceRevision: 2, contentHash: "a".repeat(64) } });
-    await page.evaluate(() => window.__cleanupTool());
-    await external.click();
-    expect(await page.evaluate(() => window.__opened.length)).toBe(3);
-    expect(await page.locator("main").ariaSnapshot()).toContain("Leitura complementar em PDF");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
-    if (kind === "grammar") await page.screenshot({ path: testInfo.outputPath("grammar-items.png"), fullPage: true });
+  await mount(page, "calculator");
+  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  const press = async name => page.getByRole("button", { name, exact: true }).click();
+  for (const key of ["2", "Somar", "3", "Multiplicar", "4", "Calcular"]) await press(key);
+  await expect(page.getByRole("status")).toHaveText("14");
+  for (const key of ["Dividir", "2"]) await press(key);
+  await expect(page.getByRole("textbox", { name: "Expressão" })).toHaveValue("14÷2");
+  await press("Calcular");
+  await expect(page.getByRole("status")).toHaveText("7");
+  for (const key of ["1", "2", "Apagar último caractere", "Separador decimal", "5", "Calcular"]) await press(key);
+  await expect(page.getByRole("status")).toHaveText("1.5");
+  const input = page.getByRole("textbox", { name: "Expressão" });
+  await input.fill("23");
+  await input.evaluate(element => element.setSelectionRange(1, 1));
+  await press("Somar");
+  await expect(input).toHaveValue("2+3");
+  await press("Calcular");
+  await expect(page.getByRole("status")).toHaveText("5");
+  await page.evaluate(() => {
+    const { root, definition, data, host } = window.__tool;
+    window.__cleanupTool = definition.toolInteraction.bind(root, data, host);
+  });
+  await press("Limpar"); await press("9");
+  await expect(input).toHaveValue("9");
+  for (const button of await page.locator('.package-calculator-keypad button').all()) {
+    const box = await button.boundingBox();
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
   }
 });

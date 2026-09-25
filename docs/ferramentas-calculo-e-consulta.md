@@ -1,15 +1,13 @@
 # Ferramentas de cálculo e consulta
 
-As ferramentas oferecem apoio pontual durante uma tarefa. Elas permitem, por
-exemplo, conferir um cálculo, consultar uma construção linguística ou abrir uma
-leitura selecionada pela autoria. Seus controles mantêm a unidade aberta e
-permitem voltar ao mesmo ponto do estudo.
+As ferramentas oferecem apoio pontual durante uma tarefa. Seus controles
+mantêm a unidade aberta e permitem voltar ao mesmo ponto do estudo.
 
 As ferramentas pertencem ao [catálogo de componentes didáticos](componentes-didaticos.md),
 conjunto de formatos que o autor pode incluir numa unidade. A calculadora
-opera no dispositivo; gramática, dicionário e leitura abrem materiais
-selecionados para consulta. A disponibilidade de um destino externo depende
-de sua conexão e das permissões do material.
+opera no dispositivo. Fontes, documentos e referências são consultados pelo
+mecanismo comum de fontes; não há packages separados de consulta neste
+catálogo corrente.
 
 O título e a orientação explicam por que usar a ferramenta naquela tarefa. A
 abertura registra apenas a consulta; respostas e conclusões pertencem à
@@ -68,42 +66,16 @@ Expressão e unidade angular têm rótulos. Enter calcula, o resultado ou erro
 retira um resultado antigo; **Limpar** devolve o foco à expressão. Nenhum cálculo
 envia texto a um serviço externo.
 
-## Gramática
+### Teclado da calculadora
 
-`aralearn.resource.grammar@1.0.0` abre explicações escolhidas sobre construções,
-formas e usos. Serve para comparar uma regra com os exemplos estudados ou
-retomar uma distinção necessária à análise. Cada item deve indicar o que
-examinar e como voltar à tarefa. Não faz análise sintática, correção automática
-nem tradução da produção do estudante.
+O teclado visível é composto por botões acessíveis e insere somente tokens da
+gramática permitida. Enter calcula pelo formulário; **Limpar** apaga a expressão
+e devolve o foco ao campo; apagar remove o caractere ou a seleção atual. A
+entrada por teclado físico e pelo teclado visível preserva o mesmo parser.
 
-Use vários itens quando uma comparação pedir explicações diferentes. Identifique
-o idioma quando pertinente. Um artigo recomendado como leitura gramatical é
-apoio instrucional; se também sustenta um enunciado, o vínculo de evidência é
-registrado separadamente em fontes.
+<a id="contrato-dos-recursos-de-consulta"></a>
 
-## Dicionário
-
-`aralearn.resource.dictionary@1.0.0` abre as obras de consulta selecionadas pela
-autoria. Um link pode levar a um verbete ou à página de consulta; múltiplos
-dicionários ocupam itens distintos, com rótulos que deixem claro idioma e
-finalidade. O pacote não depende de fornecedor, não escolhe o sentido correto
-e não envia a frase da unidade automaticamente.
-
-A orientação deve pedir interpretação contextual, quando necessária: localizar
-uma palavra não basta para escolher sua acepção. Evite oferecer consulta quando
-a recuperação sem apoio constitui a tarefa avaliada.
-
-## Leitura complementar
-
-`aralearn.resource.reading@1.0.0` oferece textos para ampliar, contrastar ou
-aplicar o conteúdo. A descrição de cada item deve dizer o que procurar e qual
-comparação ou decisão fazer ao retornar. O material essencial continua explicado
-no percurso; um link sem orientação não substitui o conteúdo da unidade.
-
-O pacote não resume nem verifica o texto externo. Leitura instrucional e
-evidência são papéis distintos, ainda que compartilhem documento ou URL.
-
-## Contrato dos recursos de consulta
+## Contrato das ferramentas
 
 Uma ferramenta precisa abrir e fechar sem perder o estado da unidade. Para que
 o aplicativo faça isso do mesmo modo com todos os pacotes, cada ocorrência é
@@ -114,12 +86,9 @@ procedimento que desfaz esses vínculos ao fechar. `host` representa os serviço
 oferecidos pelo aplicativo ao componente, como abrir um arquivo autorizado. O
 [contrato comum dos pacotes](componentes-didaticos.md) explica essa separação.
 
-Os três pacotes de consulta compartilham os mesmos dados: `title`, `items` e
-`prompt` opcional. Há de um a 32 itens por instância; cada item tem `id`,
-`label`, `target` e, opcionalmente, `description` e `languageTag`. Rótulos usam
-direção automática, preservando escritas chinesa, japonesa e coreana, símbolos
-fonéticos e idiomas da direita para a esquerda; o idioma informado
-acompanha o controle.
+`calculator` usa `title`, `angleUnit`, `prompt` e `initialExpression`. O package
+`audio` tem contrato próprio para faixas, idioma e alternativas textuais; veja
+[Áudio](audio.md). Fontes e anexos seguem seus contratos de origem e acesso.
 
 Um destino externo tem `{kind: "url", url}` com URL HTTP ou HTTPS completa,
 sem credenciais embutidas. Um PDF guardado no curso tem
@@ -136,13 +105,14 @@ mensagem. Ao fechar a ferramenta, o aplicativo remove os vínculos de eventos e 
 a conclusão de operações iniciadas naquela abertura.
 
 As provas locais verificam a interpretação e a precedência dos cálculos, o
-domínio real e os limites dos contratos, além da normalização e da apresentação
-segura dos destinos. A prova isolada no navegador exercita teclado, unidades
-angulares e múltiplos itens, junto ao ciclo de abrir, falhar, tentar novamente e
-fechar usando um aplicativo simulado. A abertura hospedada de um PDF e os
-serviços externos pertencem ao teste do fluxo integrado.
+domínio real e os limites do contrato, além da normalização e apresentação
+segura dos destinos de fontes. A prova isolada no navegador exercita teclado,
+unidades angulares, foco, anúncio e o ciclo de abrir, falhar, tentar novamente
+e fechar. A abertura hospedada de um PDF e o acesso a arquivos pertencem ao
+teste do fluxo integrado.
 
 <a id="composição-nos-canais-humanos"></a>
+<a id="composição-nos-canais-de-autoria"></a>
 
 ## Composição nos canais de autoria
 

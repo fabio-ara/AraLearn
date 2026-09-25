@@ -553,7 +553,7 @@ test("todo package materializa cada alvo como uma lacuna única e independente",
 
 test("packages de resposta avaliam escolha, lacuna e ordenação", () => {
   const cases = [
-    ["aralearn.response.choice", { selectedIds: ["tcp"] }],
+    ["aralearn.response.choice", { selectedIds: ["order", "recovery"] }],
     ["aralearn.response.gap", { values: { protocol: "protocolo" } }],
     ["aralearn.response.ordering", { order: ["prepare", "execute"] }]
   ];
@@ -887,6 +887,7 @@ test("kernel delega hidratação opcional apenas ao package da instância", asyn
   };
   const registry = createPackageRegistry([paragraphPackage, fixture]);
   const instanceRoot = {
+    querySelectorAll() { return []; },
     getAttribute(name) {
       return name === "data-package" ? fixture.manifest.id : fixture.manifest.version;
     }

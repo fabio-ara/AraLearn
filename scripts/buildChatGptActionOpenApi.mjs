@@ -118,7 +118,7 @@ const designParametersSchema = structuredClone(actionTools
 const DESIGN_PARAMETERS_REF = "#/components/schemas/HumanDesignParameters";
 
 const humanReferenceSchema = structuredClone(actionTools
-  .find(({ name }) => name === "preparar_materializacao").inputSchema.properties.parte);
+  .find(({ name }) => name === "preparar_materializacao").inputSchema.properties.microssequencia);
 delete humanReferenceSchema.description;
 const sourceTaskSchema = actionTools.find(({ name }) => name === "manter_fonte").inputSchema;
 const sourceMetadataSchema = sourceTaskSchema.properties.metadados;

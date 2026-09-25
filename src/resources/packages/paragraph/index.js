@@ -1,8 +1,9 @@
 import { renderPackageProse } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
+import { hasDelimitedTexNotation, stripLiteralMarkers } from "../../sdk/mathExpression.js";
 import {
   accessibleRichParagraph, hydrateRichParagraph, PARAGRAPH_LANGUAGE_PROPERTIES,
-  renderRichParagraph, richParagraphTextTargets, RICH_PARAGRAPH_SCHEMA, validateRichParagraph
+  renderRichParagraph, richParagraphTextTargets, RICH_PARAGRAPH_SCHEMA, RICH_PARAGRAPH_AUTHORING_SCHEMA, validateRichParagraph
 } from "./richText.js";
 
 function validateProse(text) {
@@ -38,11 +39,13 @@ export const paragraphPackage = Object.freeze({
     optional: Object.freeze(["text", "format", "blocks", "languageTag", "textDirection"]),
     rules: Object.freeze([
       "Situe termos novos antes de depender deles.",
+      "Separe a sentença citada, sua leitura, a tradução e o comentário em parágrafos ou blocos distintos; não os concatene numa frase única.",
       "Use crases somente para a unidade literal completa intencionada.",
       "Declare text para prosa usual; ou format rich e blocks para prosa com matemática e ruby. Nunca combine text e blocks.",
-      "Em rich, cada bloco é paragraph com inlines ou math. Cada trecho é text, ruby (base e reading) ou math (notation, accessibleText e expression).",
-      "Matemática usa a AST semântica do contrato de fórmula; não envie LaTeX, HTML ou MathML. A mesma AST pode aparecer inline ou em bloco.",
+      "Em rich, cada bloco é paragraph com inlines ou math. Cada trecho é text, ruby (base e reading) ou math (notation, accessibleText e tex).",
+      "Escreva fórmulas em TeX no campo tex ou na prosa com \\(…\\) e \\[…\\]. O AraLearn interpreta a notação; não envie HTML ou MathML.",
       "Informe languageTag BCP 47 e textDirection quando necessários; trechos herdam idioma e direção. Ruby associa a escrita a uma leitura, sem inferir pronúncia.",
+      "Em ruby, base é o trecho pedagógico completo e reading é sua leitura (kana, pinyin ou IPA); readingLanguageTag identifica a notação/variante quando relevante. Segmente pelo sentido ensinado, sem inserir espaços artificiais na escrita original.",
       "Edição manual altera somente folhas textuais; fórmulas e a organização dos blocos continuam estruturais.",
       "Separe conceitos independentes em outras instâncias ou Unidades de estudo."
     ]),
@@ -64,6 +67,9 @@ export const paragraphPackage = Object.freeze({
     }
     }, RICH_PARAGRAPH_SCHEMA]
   }),
+  authoringSchema: { oneOf: [{ type: "object", additionalProperties: false, required: ["text"],
+    properties: { text: { type: "string", minLength: 1, maxLength: 12000 }, format: { const: "plain" }, ...PARAGRAPH_LANGUAGE_PROPERTIES }
+  }, RICH_PARAGRAPH_AUTHORING_SCHEMA] },
   normalize(data) {
     if (data?.format === "rich") return structuredClone(data);
     return {
@@ -83,7 +89,11 @@ export const paragraphPackage = Object.freeze({
   hydrate(instanceRoot) { hydrateRichParagraph(instanceRoot); },
   accessibleText(data) {
     if (data?.format === "rich") return accessibleRichParagraph(data);
-    return String(data?.text || "").replace(/`/g, "").replace(/\s+/g, " ").trim();
+    // Com notação delimitada, os marcadores literais seguem até a projeção compartilhada
+    // do registry; sem ela continuam sendo apresentação e saem aqui como antes.
+    const value = String(data?.text || "");
+    const readable = hasDelimitedTexNotation(value) ? value : stripLiteralMarkers(value);
+    return readable.replace(/\s+/g, " ").trim();
   },
   editableTargets(data) {
     if (data?.format === "rich") return richParagraphTextTargets(data);

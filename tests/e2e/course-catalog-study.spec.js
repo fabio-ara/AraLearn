@@ -200,12 +200,12 @@ async function solveChoiceWithKeyboard(page, response) {
 async function solveOrderingWithKeyboard(page, response) {
   const firstId = response.data.targets[0].id;
   for (let index = 1; index < response.data.targets.length; index += 1) {
-    const moveLeft = page.locator(
+    const moveUp = page.locator(
       `[data-action="ordering-move"][data-ordering-item-id="${firstId}"]` +
-      '[data-ordering-direction="left"]'
+      '[data-ordering-direction="up"]'
     );
-    await moveLeft.focus();
-    await moveLeft.press("Enter");
+    await moveUp.focus();
+    await moveUp.press("Enter");
   }
   await expect(page.locator(".runtime-ordering-slot").first())
     .toHaveAttribute("data-ordering-item-id", firstId);
@@ -257,8 +257,10 @@ test("Curso de catÃ¡logo exercita todos os pacotes no Estudo e permanece disponÃ
   page
 }) => {
   test.setTimeout(120_000);
-  expect(packageIds).toHaveLength(37);
-  expect(packageIds).not.toContain("aralearn.response.open");
+  expect(packageIds).toHaveLength(34);
+  for (const removed of ["aralearn.response.open", "aralearn.resource.dictionary", "aralearn.resource.grammar", "aralearn.resource.reading"]) {
+    expect(packageIds).not.toContain(removed);
+  }
   expect(packageIds).toEqual(RESOURCE_PACKAGE_REGISTRY.listCatalog()
     .filter(({ authoringEligibility }) => authoringEligibility === "current")
     .map(({ id }) => id).sort());

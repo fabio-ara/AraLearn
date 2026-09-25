@@ -80,6 +80,7 @@ test("leitura do apoio identifica vínculos e âncoras pela ficha corrente sem I
       resourceId: "private-resource", slot: "content", path: "text", quote: "Um quadro", prefix: null, suffix: null }] }));
   const details = [
     { sourceId: sourceA, title: "Fonte de interfaces", citationText: "Autoria A. Interfaces.", status: "active",
+      url: "https://example.test/interfaces",
       anchors: [{ anchorId: anchorA, status: "active", humanLocator: "seção 1",
         verificationExcerpt: "Uma interface liga sistemas.", selector: { kind: "whole_source" }, needsReverification: false }] },
     { sourceId: sourceB, title: "Fonte de comparação", citationText: "Autoria B. Comparação.", status: "retired",
@@ -102,6 +103,8 @@ test("leitura do apoio identifica vínculos e âncoras pela ficha corrente sem I
   assert.equal(actual[1].anchors[0].verificationExcerpt, "Um quadro permite a comparação.");
   assert.equal(actual[1].anchors[0].needsReverification, true);
   assert.equal(actual[1].occurrences[0].quote, "Um quadro");
+  assert.equal(actual[0].fonte.url, "https://example.test/interfaces");
+  assert.equal(Object.hasOwn(actual[1].fonte, "url"), false);
   assert.equal(reads.filter(input => input.mode === "source").length, 2, "a mesma Fonte é lida uma vez");
   assert.ok(reads.every(input => input.expectedRevision === 7 && input.deadlineAt === deadlineAt && input.limit === 1));
   assert.doesNotMatch(JSON.stringify(result.context), /[0-9a-f]{8}-[0-9a-f-]{27}|sourceId|linkId|anchorId|requestId|storagePath|private-pdf-path|private-resource/u);

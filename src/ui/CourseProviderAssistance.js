@@ -93,9 +93,9 @@ function proposalHtml(proposal, pending, prepared) {
     `<p>${escapeHtml(proposal.summary)}</p>` +
     '<ul aria-label="Mudanças propostas">' + proposal.changes
       .map((change) => `<li>${escapeHtml(change)}</li>`).join("") + '</ul>' +
-    (prepared ? "" : '<button class="open-mini" type="button" data-course-assistance-accept' +
-    `${pending ? ' disabled aria-disabled="true"' : ""}>` +
-    `${renderUiIcon("preview", "course-authoring-button-icon")}<span>Preparar prévia</span></button>`) +
+    (prepared ? "" : '<button class="open-mini course-authoring-icon-action" type="button" data-course-assistance-accept' +
+    ` aria-label="Preparar prévia" title="Preparar prévia"${pending ? ' disabled aria-disabled="true"' : ""}>` +
+    `${renderUiIcon("preview", "course-authoring-button-icon")}</button>`) +
     '</section>';
 }
 
@@ -124,9 +124,12 @@ function previewHtml(prepared, active, mode, pending) {
     ).join("") + '</div><fieldset disabled aria-label="Conteúdo para conferência">' +
     previewTargetHtml(target, active.scope) + '</fieldset>' +
     '<div class="course-assistance-preview-actions">' +
-    '<button type="button" data-course-assistance-discard-preview' + (pending ? " disabled" : "") + '>Descartar prévia</button>' +
-    '<button class="open-mini" type="button" data-course-assistance-apply disabled' +
-    '>Aplicar ao rascunho</button></div></section>';
+    '<button class="course-authoring-icon-action is-danger" type="button" data-course-assistance-discard-preview' +
+    ` aria-label="Descartar prévia" title="Descartar prévia"${pending ? " disabled" : ""}>` +
+    renderUiIcon("remove-state", "course-authoring-button-icon") + '</button>' +
+    '<button class="open-mini course-authoring-icon-action" type="button" data-course-assistance-apply disabled' +
+    ' aria-label="Aplicar ao rascunho" title="Aplicar ao rascunho">' +
+    renderUiIcon("ready-state", "course-authoring-button-icon") + '</button></div></section>';
 }
 
 function focusable(sheet) {

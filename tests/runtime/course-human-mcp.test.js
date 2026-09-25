@@ -408,7 +408,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "7.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.0.0");
   // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
 });
@@ -1126,7 +1126,7 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
     adapter: value,
     principal: PRINCIPAL,
     name: "preparar_materializacao",
-    rawArguments: { curso: "Redes para iniciantes", parte: 2, unidades: [candidate] }
+    rawArguments: { curso: "Redes para iniciantes", unidades: [candidate] }
   });
 
   assert.equal(output.result, "A produção solicitada está coerente com o percurso e pode ser salva.");
@@ -1219,7 +1219,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
   };
   const materializationArguments = {
     curso: "Redes",
-    parte: 1,
+    microssequencia: 1,
     explicacoes: [{ microssequencia: 1,
       conteudo: { title: "Processo e socket", content: structuredClone(content.content) }, fontes: [] }],
     unidades: [{
@@ -1340,8 +1340,9 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
   const contract = inspected.context.componentAuthoringContract;
   assert.equal(inspected.result, "Li os detalhes de uso do componente escolhido.");
   assert.equal(contract.referencia, "aralearn.resource.plane@1.0.0");
-  assert.equal(contract.modeloDeInstancia.package, "aralearn.resource.plane");
-  assert.equal(contract.modeloDeInstancia.version, "1.0.0");
+  assert.equal(contract.modeloDeInstancia.package, "plane");
+  assert.equal(Object.hasOwn(contract.modeloDeInstancia, "version"), false);
+  assert.equal(Object.hasOwn(contract.modeloDeInstancia, "id"), false);
   assert.equal(contract.schema.properties.groups.items.properties.id.type, "string");
   assert.deepEqual(contract.contrato.required, ["xAxis", "yAxis"]);
   assert.match(contract.contrato.rules.join(" "), /indicativa, não exclusiva/u);
@@ -1376,24 +1377,12 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
     }
   });
   assert.equal(open.context.components.candidates.some(item => item.referencia === "aralearn.response.open@1.0.0"), false,
-    "a busca de nova autoria exclui resposta aberta legada");
-  const inspectedOpen = await executeHumanCourseTask({
-    adapter: adapter(),
-    principal: PRINCIPAL,
-    name: "consultar_componentes",
+    "a busca de nova autoria exclui o componente removido");
+  const removed = await executeHumanCourseTask({
+    adapter: adapter(), principal: PRINCIPAL, name: "consultar_componentes",
     rawArguments: { componente: "aralearn.response.open@1.0.0" }
   });
-  assert.deepEqual(
-    inspectedOpen.context.componentAuthoringContract.contrato.required,
-    ["prompt"]
-  );
-  assert.equal(
-    Object.hasOwn(
-      inspectedOpen.context.componentAuthoringContract.modeloDeInstancia.data,
-      "answer"
-    ),
-    false
-  );
+  assert.equal(removed.context.componentAuthoringContract, undefined);
 
   const table = await executeHumanCourseTask({
     adapter: adapter(),

@@ -38,6 +38,7 @@ export function createCourseInspectionPracticePreview({ render } = {}) {
       if (!entry || editing || !scope?.querySelectorAll) return;
       const host = {
         blockKey: entry.blockKey,
+        studyUnit,
         getState: () => entry.state,
         setActivePrompt: prompt => { activePrompt = prompt; },
         focus,

@@ -7,6 +7,7 @@ export const preflightCommands = [
   ["buildReadableReferences.mjs", "--check"],
   ["buildVegaInterpreterVendor.mjs", "--check"],
   ["buildBibliographyVendor.mjs", "--check"],
+  ["generateResourcePackageIndex.mjs", "--check"],
   ["syncEdgeResourceRuntime.mjs", "--check"],
   ["buildResourceCatalogCourse.mjs", "--check"],
   ["buildResourceGalleryFixture.mjs", "--check"],

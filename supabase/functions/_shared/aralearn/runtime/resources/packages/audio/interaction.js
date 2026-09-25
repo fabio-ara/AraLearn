@@ -1,4 +1,5 @@
 import { inspectCourseAudioBytes, normalizeCourseAudioConfig, normalizeCourseMediaReference } from "../../../domain/courseMedia.js";
+import { renderPackageActionIcon } from "../../sdk/html.js";
 
 const message = {
   "not-allowed": "O navegador bloqueou a reprodução. Toque em Reproduzir novamente e confira a permissão de áudio.",
@@ -40,8 +41,33 @@ export function bindAudioTool(root, data, host = {}) {
   let active = null;
   let cancelVoiceWait = null;
   const status = (row, value) => { row.querySelector("[data-audio-track-status]").textContent = value; };
+  const time = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, "0")}`;
+  function playing(row, value) {
+    const button = row.querySelector('[data-audio-action="play"]');
+    const label = value ? "Pausar" : "Reproduzir";
+    button.innerHTML = renderPackageActionIcon(value ? "pause" : "play");
+    button.title = label;
+    button.setAttribute("aria-label", `${label} ${tracks.get(row.dataset.audioTrack).label}`);
+    row.dataset.audioPlaying = String(value);
+  }
+  function progress(row, current, duration) {
+    const range = row.querySelector("[data-audio-progress]");
+    const known = Number.isFinite(duration) && duration > 0;
+    range.max = known ? String(duration) : "1";
+    range.value = known ? String(current) : "0";
+    range.disabled = !known;
+    row.querySelector("[data-audio-elapsed]").textContent = time(current);
+    row.querySelector("[data-audio-duration]").textContent = known ? time(duration) : "–:––";
+    range.setAttribute("aria-valuetext", known ? `${time(current)} de ${time(duration)}` : "Duração ainda indisponível");
+    row.querySelector('[data-audio-action="stop"]').disabled = current <= 0;
+  }
   const enable = () => rows.forEach(row => { row.querySelector('[data-audio-action="play"]').disabled = !config; });
-  function stop() {
+  function stop(release = true) {
+    if (!release && active?.audio) {
+      active.audio.pause(); active.audio.currentTime = 0;
+      playing(active.row, false); progress(active.row, 0, active.audio.duration); status(active.row, "");
+      return;
+    }
     playbackRequest += 1;
     cancelVoiceWait?.();
     if (!active) return;
@@ -51,11 +77,17 @@ export function bindAudioTool(root, data, host = {}) {
     if (utterance) {
       utterance.onend = null;
       utterance.onerror = null;
+      utterance.onboundary = null;
+      utterance.onstart = null;
       synthesis.cancel();
     }
     if (audio) {
       audio.onended = null;
       audio.onerror = null;
+      audio.ontimeupdate = null;
+      audio.onloadedmetadata = null;
+      audio.onpause = null;
+      audio.onplay = null;
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
@@ -63,7 +95,7 @@ export function bindAudioTool(root, data, host = {}) {
     }
     if (objectUrl) win.URL.revokeObjectURL(objectUrl);
     row.querySelector('[data-audio-action="stop"]').disabled = true;
-    status(row, "Reprodução encerrada.");
+    playing(row, false); progress(row, 0, null); status(row, "");
   }
   function waitForVoices() {
     const current = synthesis.getVoices();
@@ -93,7 +125,7 @@ export function bindAudioTool(root, data, host = {}) {
       const next = normalizeCourseAudioConfig(received);
       if (disposed || request !== configRequest) return;
       config = next;
-      configurationStatus.textContent = `Velocidade ${config.rate}×. ${config.allowRemoteNativeVoice ? "Vozes remotas autorizadas nos ajustes." : "Voz nativa somente local."}`;
+      configurationStatus.textContent = "";
       enable();
     } catch {
       if (disposed || request !== configRequest) return;
@@ -103,11 +135,24 @@ export function bindAudioTool(root, data, host = {}) {
   }
   async function play(row, track) {
     if (!config || disposed) return;
+    if (active?.row === row && active.audio) {
+      if (!active.audio.paused) active.audio.pause();
+      else {
+        try { await active.audio.play(); }
+        catch { status(row, message["not-allowed"]); }
+      }
+      return;
+    }
+    if (active?.row === row && active.utterance) {
+      if (active.paused) synthesis.resume(); else synthesis.pause();
+      active.paused = !active.paused;
+      playing(row, !active.paused);
+      return;
+    }
     stop();
     const request = playbackRequest;
     active = { row };
-    row.querySelector('[data-audio-action="stop"]').disabled = false;
-    status(row, track.kind === "native" ? "Preparando a voz…" : "Obtendo o arquivo autorizado…");
+    status(row, "Carregando…");
     const isCurrent = () => !disposed && request === playbackRequest;
     try {
       if (track.kind === "native") {
@@ -134,13 +179,15 @@ export function bindAudioTool(root, data, host = {}) {
         utterance.lang = track.locale;
         utterance.rate = config.rate;
         active.utterance = utterance;
+        utterance.onstart = () => { if (isCurrent()) row.querySelector('[data-audio-action="stop"]').disabled = false; };
         utterance.onend = () => { if (isCurrent()) stop(); };
         utterance.onerror = event => {
           if (!isCurrent()) return;
           stop();
           status(row, message[event.error] || "Não foi possível reproduzir a fala. Confira a voz e tente novamente.");
         };
-        status(row, voice.localService === true ? "Reproduzindo com voz local." : "Reproduzindo com voz remota autorizada.");
+        utterance.onboundary = event => { if (isCurrent()) progress(row, Number(event.elapsedTime) || 0, null); };
+        status(row, ""); playing(row, true);
         synthesis.speak(utterance);
       } else {
         if (typeof host.downloadMedia !== "function") throw new Error("O arquivo não está disponível nesta leitura.");
@@ -161,11 +208,14 @@ export function bindAudioTool(root, data, host = {}) {
         Object.assign(active, { audio, objectUrl });
         audio.src = objectUrl;
         audio.playbackRate = config.rate;
-        audio.hidden = false;
-        audio.onended = () => { if (isCurrent()) { status(row, "Reprodução concluída. Use os controles para escutar novamente."); } };
+        const update = () => { if (isCurrent()) progress(row, audio.currentTime, audio.duration); };
+        audio.ontimeupdate = update; audio.onloadedmetadata = update;
+        audio.onplay = () => { if (isCurrent()) playing(row, true); };
+        audio.onpause = () => { if (isCurrent()) playing(row, false); };
+        audio.onended = () => { if (isCurrent()) { update(); playing(row, false); status(row, ""); } };
         audio.onerror = () => { if (isCurrent()) { stop(); status(row, "O navegador não conseguiu decodificar este áudio. Tente novamente ou consulte a alternativa textual."); } };
         await audio.play();
-        if (isCurrent()) status(row, "Áudio disponível. Use os controles para pausar ou percorrer a faixa.");
+        if (isCurrent()) { update(); status(row, ""); }
       }
     } catch (error) {
       if (!isCurrent()) return;
@@ -184,25 +234,45 @@ export function bindAudioTool(root, data, host = {}) {
     const track = tracks.get(row?.dataset.audioTrack);
     if (!track) return;
     if (action === "play") void play(row, track);
-    if (action === "stop") stop();
+    if (action === "stop") stop(false);
     if (action === "show-alternative" && (track.alternative.visibility === "on_request" || host.canRevealAnswers === true)) {
-      row.querySelector("[data-audio-alternative]").textContent = track.alternative.text;
+      reveal(row, track);
       button.hidden = true;
     }
+  }
+  function reveal(row, track) {
+    const target = row.querySelector("[data-audio-alternative]");
+    if (!target) return;
+    target.replaceChildren();
+    for (const key of ["text", "reading", "translation"]) if (track.alternative[key]) {
+      const paragraph = root.ownerDocument.createElement("p");
+      paragraph.className = `package-audio-${key}`;
+      paragraph.textContent = track.alternative[key];
+      target.append(paragraph);
+    }
+  }
+  function seek(event) {
+    if (!event.target.matches("[data-audio-progress]") || !active?.audio ||
+        event.target.closest("[data-audio-track]") !== active.row) return;
+    const audio = active.audio;
+    if (!Number.isFinite(audio.duration)) return;
+    audio.currentTime = Math.max(0, Math.min(audio.duration, Number(event.target.value) || 0));
+    progress(active.row, audio.currentTime, audio.duration);
   }
   for (const row of rows) {
     const track = tracks.get(row.dataset.audioTrack);
     if (track?.alternative.visibility === "after_response" && host.canRevealAnswers === true) {
-      const target = row.querySelector("[data-audio-alternative]");
-      if (target) target.textContent = track.alternative.text;
+      reveal(row, track);
     }
   }
   root.addEventListener("click", onClick);
+  root.addEventListener("input", seek);
   void configure();
   return () => {
     disposed = true;
     configRequest += 1;
     stop();
     root.removeEventListener("click", onClick);
+    root.removeEventListener("input", seek);
   };
 }

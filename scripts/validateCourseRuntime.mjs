@@ -297,7 +297,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260917232000" ||
+  if (manifest.schemaRevision !== "20260924185630" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -369,20 +369,18 @@ async function validateManifest() {
     "private.save_course_part_explanations_v1(uuid,uuid,jsonb)", "'designApplication', inspected.design_application"]) {
     if (!incremental.includes(token)) fail(`A materialização incremental não demonstra ${token}.`);
   }
-  const openResponseCatalog = await read(
-    "supabase/migrations/20260903193000_add_open_response_component.sql"
+  const removedComponents = await read(
+    "supabase/migrations/20260924172159_revisao_v7_component_removal.sql"
   );
   for (const token of [
-    "'1-3e5629f8'",
-    "'1-4616b2e5'",
-    "aralearn.response.open@1.0.0",
+    "pg_temp.v7_component",
+    "aralearn.response.open",
     "course_component_policy_assignments",
-    "{componentPolicy,policy,catalogVersion}",
-    "to_jsonb('20260903193000'::text)",
+    "course_source_attributions",
     "commit;"
   ]) {
-    if (!openResponseCatalog.includes(token)) {
-      fail(`A instalação de resposta aberta não demonstra ${token}.`);
+    if (!removedComponents.includes(token)) {
+      fail(`A conversão dos componentes removidos não demonstra ${token}.`);
     }
   }
   const actionCallback = await read(

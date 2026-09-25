@@ -1,0 +1,100 @@
+{
+  "contract": "aralearn.gap-q020-experiment-corpus.v1",
+  "language": "pt-BR",
+  "scope": "Casos sintéticos locais, sem banco, rede ou chamada remota.",
+  "rules": [
+    {
+      "id": "memory-inclusive-interval",
+      "statement": "Um intervalo de memória [início, fim] é inclusivo: os dois endereços pertencem ao segmento.",
+      "evidence": "A resposta deve conservar exatamente a grafia do endereço que aparece na extremidade observada."
+    },
+    {
+      "id": "memory-order",
+      "statement": "Em ordem crescente, os segmentos são lidos pelo endereço inicial; o rótulo identifica a função do intervalo.",
+      "evidence": "A resposta deve recuperar o rótulo do intervalo indicado, sem trocar o papel de outro segmento."
+    },
+    {
+      "id": "gerund",
+      "statement": "Para os verbos regulares usados no corpus, a transformação didática pedida acrescenta -ando ao radical indicado.",
+      "evidence": "A resposta precisa ser a forma transformada que aparece no exemplo, não o infinitivo."
+    },
+    {
+      "id": "regular-plural",
+      "statement": "Nos substantivos terminados em vogal escolhidos no corpus, o plural regular acrescenta -s.",
+      "evidence": "A resposta precisa preservar a palavra-base e o morfema de plural apresentado."
+    },
+    {
+      "id": "re-prefix",
+      "statement": "O prefixo re- marca repetição nos exemplos do corpus.",
+      "evidence": "A resposta precisa nomear a transformação sem confundir prefixo, verbo e significado."
+    }
+  ],
+  "materializations": {
+    "A": {
+      "equivalenceClass": "intervalos inclusivos + transformações regulares",
+      "memory": {
+        "prompt": "Leia intervalos inclusivos: início e fim pertencem ao segmento.",
+        "segments": [
+          {
+            "id": "a-code",
+            "start": "0x1000",
+            "end": "0x10ff",
+            "label": "Código",
+            "kind": "code",
+            "description": "Instruções somente leitura"
+          },
+          {
+            "id": "a-data",
+            "start": "0x1100",
+            "end": "0x11ff",
+            "label": "Dados",
+            "kind": "data",
+            "description": "Valores inicializados"
+          },
+          {
+            "id": "a-stack",
+            "start": "0x1200",
+            "end": "0x12ff",
+            "label": "Pilha",
+            "kind": "stack",
+            "description": "Chamadas automáticas"
+          }
+        ]
+      },
+      "language": "Pela regra do corpus, mapear vira mapeando no gerúndio; o plural de bloco é blocos; em reler, o prefixo re- indica repetição."
+    },
+    "B": {
+      "equivalenceClass": "intervalos inclusivos + transformações regulares",
+      "memory": {
+        "prompt": "Considere que cada faixa inclui seus dois limites e leia os segmentos em ordem crescente.",
+        "segments": [
+          {
+            "id": "b-code",
+            "start": "0x2000",
+            "end": "0x20ff",
+            "label": "Instruções",
+            "kind": "code",
+            "description": "Rotinas executáveis"
+          },
+          {
+            "id": "b-data",
+            "start": "0x2100",
+            "end": "0x21ff",
+            "label": "Entradas",
+            "kind": "data",
+            "description": "Valores recebidos"
+          },
+          {
+            "id": "b-stack",
+            "start": "0x2200",
+            "end": "0x22ff",
+            "label": "Quadro",
+            "kind": "stack",
+            "description": "Estado de chamadas"
+          }
+        ]
+      },
+      "language": "Pela regra do corpus, testar vira testando no gerúndio; o plural de pacote é pacotes; em reabrir, o prefixo re- indica repetição."
+    }
+  }
+}

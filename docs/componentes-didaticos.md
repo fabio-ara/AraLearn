@@ -92,7 +92,7 @@ enquanto a estrutura permanece protegida.
 
 ## 3. Catálogo como vocabulário controlado
 
-O registro instalado reúne 38 pacotes: 34 de conteúdo e quatro de resposta.
+O registro instalado reúne 34 pacotes: 31 de conteúdo e três de resposta.
 O inventário e a decisão de manter ou restringir cada gramática estão na
 [auditoria dos componentes](auditoria-academica-dos-resources.md#6-decisão-corrente-e-uso-observado).
 Diretórios auxiliares, como `system-diagrams`, não são pacotes adicionais.
@@ -192,8 +192,7 @@ um gráfico que mostra o comportamento. A composição é inadequada quando dupl
 o estímulo ou obriga o estudante a reconciliar representações sem finalidade.
 
 A prática acrescenta uma resposta compatível com o conteúdo. `choice` apresenta
-alternativas próprias. `open` recebe explicação, justificativa ou previsão em
-texto livre sem fingir correção semântica automática. `gap` e `ordering` atuam nos campos que os pacotes de
+alternativas próprias. `gap` e `ordering` atuam nos campos que os pacotes de
 conteúdo declaram como alvos: não duplicam o texto numa lista ou num painel de
 resposta. Uma correspondência simples é expressa por lacunas independentes nos
 campos reais de um `paragraph` ou de uma `table`, sem um pacote paralelo de
@@ -308,6 +307,33 @@ improvisada ou frases concatenadas. Isso reduz ambiguidades e permite que o
 pacote preserve convenções. Quando duas áreas usam diagramas superficialmente
 parecidos com semânticas distintas, pacotes separados são preferíveis a um
 contrato genérico repleto de exceções.
+
+Em `aralearn.resource.table`, o contrato autoral usa `columns` e `rows`, com
+`title` para identificar a comparação, `legend` para decodificar símbolos ou
+abreviações e `note` para uma ressalva breve. `layout`, `prompt` e `caption` não
+fazem parte da forma corrente. O renderer calcula a largura e oferece rolagem
+local; a semântica não depende de instruções de posicionamento.
+
+Os campos de prosa, células, rótulos e feedback que usam a apresentação textual
+compartilhada aceitam TeX delimitado por `\(...\)` ou `\[...\]`. Essa capacidade
+atravessa os componentes; não exige transformar uma tabela ou um diagrama em
+parágrafo. Código e sessões de terminal preservam o texto literal. O subconjunto
+documentado é convertido para a árvore semântica interna; comandos desconhecidos
+produzem erro localizado, e o autor não fornece HTML ou MathML livre.
+
+Em `aralearn.resource.paragraph`, blocos matemáticos enriquecidos usam a mesma
+entrada. Uma árvore válida já persistida pode ser conservada; ela permanece
+detalhe interno, sem obrigar a pessoa autora ou o GPT a administrá-la.
+
+Sentenças citadas, leitura, tradução e comentário ocupam parágrafos distintos.
+Em escrita anotada, `ruby` associa `base` a `reading`; o trecho base pode conter
+mais de um caractere em línguas sem espaços. `readingLanguageTag` pode distinguir
+kana (`ja-Kana`), pinyin (`zh-Latn-pinyin`) ou IPA (`und-fonipa`), incluindo a
+variante linguística quando declarada. O renderer conserva o agrupamento
+pedagógico; não adivinha pronúncia nem segmenta uma palavra em caracteres.
+Esse agrupamento enriquecido pertence ao parágrafo. A glosa interlinear conserva
+seu alinhamento próprio de formas e glosas; símbolos IPA podem aparecer como
+texto Unicode nos demais componentes, sem um segundo esquema de pronúncia.
 
 Em `aralearn.resource.chart`, o título do eixo horizontal apresenta o rótulo
 na primeira linha e a unidade, entre parênteses, na segunda. Essa divisão
@@ -579,7 +605,7 @@ pacote. Reúnem detalhes que variam conforme a representação.
 
 ### Inventário tipográfico do catálogo
 
-O registro em `src/resources/packages/generated.js` contém os 38 pacotes abaixo.
+O registro em `src/resources/packages/generated.js` contém os 34 pacotes abaixo.
 `aralearn.response.ordering` está na versão 3.0.0; os demais estão na 1.0.0. A
 lista deriva das identidades instaladas, enquanto diretórios de apoio cumprem
 outra função. `public/styles-tokens.css` fornece os
@@ -621,22 +647,14 @@ do próprio pacote, enquanto acerto, erro e ausência de resposta são estados.
 | `aralearn.resource.entity_relationship` | Entidades, atributos e relações; Graphviz/SVG + HTML | Cardinalidade, opcionalidade e nomes extensos |
 | `aralearn.resource.state_transition_table` | Estado atual, entrada, saída e destino; tabela HTML | Condições, transições e ausência de destino explícita |
 | `aralearn.resource.call_stack` | Quadros, chamada, variáveis e retorno; HTML | Topo, função ativa, continuação e valores longos |
-| `aralearn.resource.audio` | Títulos, orientação, transcrição e estado; controles nativos | Transcrição longa, símbolos fonéticos, consentimento e faixa indisponível |
-| `aralearn.resource.calculator` | Expressão, resultado, rótulos e limites; formulário HTML | Sinal, separador decimal, erro e alcance dos controles |
-| `aralearn.resource.dictionary` | Verbetes, idioma e orientação de consulta; HTML | Palavra em outro alfabeto e destino de consulta |
-| `aralearn.resource.grammar` | Construções, idioma e orientação de consulta; HTML | Exemplos em outro idioma e descrições longas |
-| `aralearn.resource.reading` | Título, orientação e destino; HTML | Referência extensa, PDF autorizado e retorno ao estudo |
+| `aralearn.resource.audio` | Títulos, orientação, transcrição e estado; controles de faixa | Transcrição longa, símbolos fonéticos, consentimento e faixa indisponível |
+| `aralearn.resource.calculator` | Expressão, resultado, rótulos e limites; visor e teclado | Sinal, separador decimal, erro e alcance dos controles |
 | `aralearn.resource.terminal_session` | Prompt, comando, streams e código de saída; `pre/code/samp` | Espaços, stdout/stderr, linhas longas e saída vazia |
-| `aralearn.response.open` (legado) | Enunciado, resposta e estado; textarea associado ao prompt | Leitura e manutenção de respostas existentes; inelegível para nova autoria |
 
-A autoria nova usa respostas avaliáveis localmente (`gap`, `choice` ou `ordering`)
-e feedback explicativo salvo no curso. `gap` por digitação representa termo,
+As respostas correntes são avaliáveis localmente (`gap`, `choice` ou `ordering`)
+e usam feedback explicativo salvo no curso. `gap` por digitação representa termo,
 número ou comando canônico, com equivalentes explícitos quando necessários;
 justificativas extensas exigem decisões observáveis adequadas à tarefa.
-O package `open` permanece no runtime para leitura, backup e restauração de
-legado, mas não aparece na busca para nova autoria. Uma edição alheia à resposta
-conserva a instância existente; criar ou substituir a resposta exige prática
-avaliável offline.
 
 As medidas em `rem` acompanham o tamanho de fonte de referência da página;
 as decisões tipográficas completas estão no [sistema visual](sistema-visual.md).

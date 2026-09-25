@@ -1,0 +1,334 @@
+[
+  {
+    "curso": "Modelos computacionais em ação",
+    "parte": "Intervalos e limites de memória",
+    "microssequencia": "Intervalos e limites de memória",
+    "concluir": false,
+    "explicacoes": [
+      {
+        "microssequencia": "Intervalos e limites de memória",
+        "conteudo": {
+          "title": "Intervalos e limites de memória",
+          "content": [
+            {
+              "id": "intervalo-explicacao",
+              "package": "paragraph",
+              "data": {
+                "text": "A memória deste modelo é endereçada a bytes: cada endereço identifica um byte. Um intervalo inclusivo [início, fim] contém o byte do início e também o byte do fim. Por isso, seu tamanho é fim − início + 1. Para calcular o extremo a partir do início e do tamanho, use fim = início + tamanho − 1. Endereços escritos em hexadecimal continuam sendo valores inteiros exatos; mesmo em endereços de 64 bits, não os arredonde nem os trate como aproximações de ponto flutuante."
+              }
+            },
+            {
+              "id": "intervalo-exemplo",
+              "package": "table",
+              "data": {
+                "title": "Exemplo construído: intervalo de 16 bytes",
+                "columns": [
+                  "Elemento",
+                  "Valor",
+                  "Como obtido"
+                ],
+                "rows": [
+                  [
+                    "Início",
+                    "0x1000",
+                    "primeiro byte incluído"
+                  ],
+                  [
+                    "Tamanho",
+                    "16 bytes",
+                    "quantidade de bytes incluídos"
+                  ],
+                  [
+                    "Fim",
+                    "0x100F",
+                    "0x1000 + 16 − 1"
+                  ],
+                  [
+                    "Próximo byte",
+                    "0x1010",
+                    "0x100F + 1; fica fora do intervalo"
+                  ]
+                ],
+                "note": "O próximo byte não pertence aos 16 bytes do intervalo."
+              }
+            }
+          ]
+        },
+        "fontes": []
+      }
+    ],
+    "unidades": [
+      {
+        "microssequencia": "Intervalos e limites de memória",
+        "posicao": 1,
+        "conteudo": {
+          "title": "Ler um intervalo inclusivo de bytes",
+          "role": "theory",
+          "content": [
+            {
+              "id": "intervalo-base",
+              "package": "paragraph",
+              "data": {
+                "text": "Um intervalo inclusivo [início, fim] conta os dois extremos. Assim, tamanho = fim − início + 1; isolando o fim, fim = início + tamanho − 1. Em um intervalo que começa em 0x1000 e tem 16 bytes, o fim é 0x100F, pois 0x1000 + 16 − 1 = 0x100F. O endereço 0x1010 é o próximo byte e já está fora do intervalo. Hexadecimal é apenas uma forma de escrever o valor inteiro do endereço, portanto endereços de 64 bits devem ser calculados exatamente, sem arredondamento de ponto flutuante."
+              }
+            },
+            {
+              "id": "intervalo-base-tabela",
+              "package": "table",
+              "data": {
+                "title": "Conferência do exemplo",
+                "columns": [
+                  "Dado",
+                  "Valor",
+                  "Regra"
+                ],
+                "rows": [
+                  [
+                    "início",
+                    "0x1000",
+                    "primeiro byte incluído"
+                  ],
+                  [
+                    "tamanho",
+                    "16 bytes",
+                    "fim − início + 1"
+                  ],
+                  [
+                    "fim",
+                    "0x100F",
+                    "início + tamanho − 1"
+                  ],
+                  [
+                    "próximo endereço",
+                    "0x1010",
+                    "fim + 1; não incluído"
+                  ]
+                ],
+                "note": "Contar de 0x1000 até 0x100F inclui exatamente 16 endereços."
+              }
+            }
+          ],
+          "topics": [
+            "intervalo inclusivo",
+            "tamanho em bytes",
+            "aritmética hexadecimal"
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            "Intervalo inclusivo de bytes"
+          ],
+          "ideiasUtilizadas": [],
+          "explicacoes": [
+            {
+              "ideia": "Intervalo inclusivo de bytes",
+              "formas": [
+                "plain_definition",
+                "worked_example",
+                "limit_or_exception",
+                "representation_link"
+              ]
+            }
+          ],
+          "cobertura": [
+            "Aritmética de endereços e intervalos"
+          ]
+        }
+      },
+      {
+        "microssequencia": "Intervalos e limites de memória",
+        "posicao": 2,
+        "conteudo": {
+          "title": "Contiguidade, lacuna e sobreposição",
+          "role": "theory",
+          "content": [
+            {
+              "id": "relacoes-intervalos",
+              "package": "paragraph",
+              "data": {
+                "text": "Considere o primeiro intervalo já ordenado pelo endereço inicial. Dois intervalos são contíguos quando o início do segundo é exatamente fim do primeiro + 1: eles encostam, mas não compartilham byte. Há uma lacuna quando o início do segundo é maior que fim do primeiro + 1; os endereços entre esses limites ficam sem cobertura. Há sobreposição quando o início do segundo é menor ou igual ao fim do primeiro, pois pelo menos um byte pertence aos dois intervalos. A relação depende dos extremos, não do fato de os intervalos terem sido apresentados como duas linhas."
+              }
+            },
+            {
+              "id": "relacoes-tabela",
+              "package": "table",
+              "data": {
+                "title": "Comparar extremos",
+                "columns": [
+                  "Primeiro intervalo",
+                  "Segundo intervalo",
+                  "Relação",
+                  "Teste"
+                ],
+                "rows": [
+                  [
+                    "[0x1000, 0x100F]",
+                    "[0x1010, 0x1017]",
+                    "contíguos",
+                    "0x100F + 1 = 0x1010"
+                  ],
+                  [
+                    "[0x1000, 0x100F]",
+                    "[0x100F, 0x1017]",
+                    "sobrepostos",
+                    "0x100F pertence aos dois"
+                  ],
+                  [
+                    "[0x1000, 0x100F]",
+                    "[0x1012, 0x1017]",
+                    "separados com lacuna",
+                    "0x1010 e 0x1011 ficam entre eles"
+                  ]
+                ],
+                "note": "A contiguidade não é sobreposição: em intervalos contíguos, nenhum byte é compartilhado."
+              }
+            }
+          ],
+          "topics": [
+            "contiguidade",
+            "sobreposição",
+            "lacuna entre intervalos"
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [
+            "Contiguidade e sobreposição"
+          ],
+          "ideiasUtilizadas": [
+            "Intervalo inclusivo de bytes"
+          ],
+          "explicacoes": [
+            {
+              "ideia": "Contiguidade e sobreposição",
+              "formas": [
+                "plain_definition",
+                "contrast",
+                "concrete_example",
+                "application_condition"
+              ]
+            }
+          ],
+          "cobertura": [
+            "Aritmética de endereços e intervalos"
+          ]
+        }
+      },
+      {
+        "microssequencia": "Intervalos e limites de memória",
+        "posicao": 3,
+        "conteudo": {
+          "title": "Calcular e comparar intervalos",
+          "role": "practice",
+          "content": [
+            {
+              "id": "pratica-intervalos",
+              "package": "paragraph",
+              "data": {
+                "text": "Um intervalo inclusivo começa em 0x2000 e tem 0x20 bytes. Aplicando fim = início + tamanho − 1, seu extremo final é 0x201F. Um segundo intervalo começa em 0x2020; comparando com o primeiro, eles são contíguos, pois 0x201F + 1 = 0x2020. Se um terceiro intervalo começar em 0x2022, haverá uma lacuna: 0x2020 e 0x2021 não estarão cobertos."
+              }
+            }
+          ],
+          "response": {
+            "package": "gap",
+            "data": {
+              "prompt": "Complete os resultados do cálculo e da comparação. Digite os valores ou termos pedidos.",
+              "blanks": [
+                {
+                  "id": "fim-2000",
+                  "targetInstanceId": "pratica-intervalos",
+                  "targetPath": "text:0x201F",
+                  "label": "extremo final",
+                  "responseMode": "text",
+                  "answer": "0x201F",
+                  "acceptedAnswers": [
+                    "0x201f"
+                  ]
+                },
+                {
+                  "id": "relacao-2020",
+                  "targetInstanceId": "pratica-intervalos",
+                  "targetPath": "text:contíguos",
+                  "label": "relação entre os dois primeiros intervalos",
+                  "responseMode": "text",
+                  "answer": "contíguos",
+                  "acceptedAnswers": [
+                    "contiguos"
+                  ]
+                },
+                {
+                  "id": "relacao-2022",
+                  "targetInstanceId": "pratica-intervalos",
+                  "targetPath": "text:uma lacuna",
+                  "label": "efeito de começar em 0x2022",
+                  "responseMode": "text",
+                  "answer": "uma lacuna",
+                  "acceptedAnswers": [
+                    "lacuna"
+                  ]
+                }
+              ]
+            }
+          ],
+          "feedback": [
+            {
+              "id": "feedback-intervalos",
+              "package": "paragraph",
+              "data": {
+                "text": "O extremo é 0x201F porque um intervalo inclusivo de 0x20 bytes começa em 0x2000 e termina em 0x2000 + 0x20 − 1. O segundo intervalo começa em 0x2020, exatamente um byte depois de 0x201F; portanto os dois são contíguos e não compartilham bytes. Se o início fosse 0x2022, os bytes 0x2020 e 0x2021 ficariam sem cobertura, formando uma lacuna. Se o segundo começasse em 0x201F ou antes, haveria sobreposição, porque algum endereço pertenceria aos dois intervalos."
+              }
+            }
+          ],
+          "topics": [
+            "cálculo de extremos",
+            "contiguidade",
+            "lacuna",
+            "sobreposição"
+          ]
+        },
+        "aplicacaoPedagogica": {
+          "ideiasIntroduzidas": [],
+          "ideiasUtilizadas": [
+            "Intervalo inclusivo de bytes",
+            "Contiguidade e sobreposição"
+          ],
+          "explicacoes": [
+            {
+              "ideia": "Intervalo inclusivo de bytes",
+              "formas": [
+                "worked_example"
+              ]
+            },
+            {
+              "ideia": "Contiguidade e sobreposição",
+              "formas": [
+                "contrast",
+                "application_condition"
+              ]
+            }
+          ],
+          "praticas": [
+            {
+              "requisito": "Calcular um extremo e o tamanho de um intervalo inclusivo",
+              "oportunidade": "calcular o extremo final de [0x2000, ?] com tamanho 0x20",
+              "dimensoesVariadas": [
+                "case_or_data",
+                "task_feature"
+              ]
+            },
+            {
+              "requisito": "Distinguir contiguidade de sobreposição comparando extremos",
+              "oportunidade": "comparar os inícios 0x2020 e 0x2022 com o fim 0x201F",
+              "dimensoesVariadas": [
+                "case_or_data",
+                "external_representation"
+              ]
+            }
+          ],
+          "cobertura": [
+            "Aritmética de endereços e intervalos"
+          ]
+        }
+      }
+    ]
+  }
+]

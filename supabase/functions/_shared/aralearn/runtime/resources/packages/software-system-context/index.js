@@ -183,7 +183,7 @@ export const softwareSystemContextPackage = Object.freeze({
   },
   render(data) {
     const diagramLabels = labels(data);
-    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: contextAccessibleText(data), caption: "Diagrama de contexto de sistema · C4", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.system.id}` });
+    const figure = renderSystemDiagramFigure({ source: graphvizSource(data), engine: "dot", accessibleText: contextAccessibleText(data), caption: "O sistema em destaque se relaciona com pessoas e outros sistemas. Leia cada seta junto com o que é trocado.", labels: diagramLabels, model: { labels: systemDiagramModelLabels(diagramLabels) }, focusId: `system-node-${data.system.id}` });
     return `<div class="runtime-block runtime-software-system-context-block">${renderPackageProse(data.prompt)}${figure}</div>`;
   },
   hydrate: hydrateSystemDiagrams,

@@ -334,7 +334,6 @@ test("preparo focal verifica o candidato sem reexportar apoio ou repertório ext
     }));
     const read = await channelCall(channel, adapter, "preparar_materializacao", {
       curso: TITLE,
-      parte: 1,
       unidades: [focalCandidate()]
     });
     assert.equal(read.status, 200, read.envelope);
@@ -354,7 +353,6 @@ test("preparo recebe exatamente o mesmo candidato usado pela escrita", async () 
     const candidate = focalCandidate();
     const read = await channelCall(channel, adapter, "preparar_materializacao", {
       curso: TITLE,
-      parte: 1,
       unidades: [candidate]
     });
     assert.equal(read.status, 200, read.envelope);
@@ -579,6 +577,119 @@ test("revisão inclui um apoio literal por microssequência, com proposta e situ
   assert.equal(read.context.explicacoes[0].revisao, "Rascunho");
   assert.equal(read.context.studyUnits.length, 2);
   assert.equal(adapter.calls.sources[0].targetKind, "microsequence_explanation");
+});
+
+function sourceReviewFixture() {
+  const claims = ["A interseção \\(A \\cap B\\) reúne elementos comuns.",
+    "Uma relação liga pares do domínio e do contradomínio.", "O próximo estado depende do estado atual."];
+  const support = { title: "Relações e estados", content: claims.map((quote, index) => ({
+    id: `raw-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0",
+    data: { text: `Definição: ${quote} Confira.` }
+  })) };
+  const adapter = fixture();
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
+    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Relações e estados",
+      productionPosition: 0, explanation: support }] }] } });
+  const details = [
+    { sourceId: "logic", title: "Lógica sintética", citationText: "Autoria sintética. Lógica.",
+      url: "https://example.test/logic.pdf", status: "active", anchors: [
+        { anchorId: "unused", verificationExcerpt: "PRIVATE_UNSELECTED_EXCERPT" },
+        { anchorId: "truth", status: "active", humanLocator: "Seção de tabelas-verdade",
+          selector: { kind: "text_quote", exact: "A truth table lists truth values.", prefix: null, suffix: null },
+          verificationExcerpt: "A truth table lists truth values.", needsReverification: false }
+      ], attachments: [{ storagePath: "PRIVATE_STORAGE_PATH" }] },
+    { sourceId: "relations", title: "Relações sintéticas", citationText: "Autoria sintética. Relações.",
+      url: "https://example.test/relations.pdf", status: "active", anchors: [
+        { anchorId: "page", status: "active", humanLocator: "Página 3", selector: { kind: "page_range", startPage: 3, endPage: 3 },
+          verificationExcerpt: null, needsReverification: false }
+      ] },
+    { sourceId: "states", title: "Estados sintéticos", status: "active", anchors: [] }
+  ];
+  const links = details.map((source, index) => ({ sourceId: source.sourceId, linkId: `link-${index}`,
+    relation: index === 2 ? "needs_verification" : "supported_by", roles: ["technical_conceptual"],
+    anchors: index === 2 ? [] : [{ anchorId: index === 0 ? "truth" : "page" }],
+    occurrences: [{ occurrenceId: `occurrence-${index}`, slot: "content", resourceId: `raw-${index}`, path: "text",
+      quote: claims[index], prefix: "Definição: ", suffix: " Confira." }] }));
+  adapter.getCourseSources = async input => {
+    adapter.calls.sources.push(input);
+    return { items: input.mode === "target" ? [{ targetKind: input.targetKind, targetId: input.targetId, sourceLinks: links }]
+      : details.filter(source => source.sourceId === input.sourceId), nextCursor: null };
+  };
+  return { adapter, support, claims, details, links };
+}
+
+test("MCP entrega ocorrência e âncora selecionada juntas, inclusive divergência e fonte sem passagem demonstrada", async () => {
+  const { adapter, support, claims } = sourceReviewFixture();
+  const response = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE });
+  assert.equal(response.status, 200);
+  const explanation = response.value.context.explicacoes[0];
+  assert.deepEqual(explanation.conteudo, support, "a prévia não substitui os dados brutos citados");
+  const links = explanation.fontes.items[0].sourceLinks;
+  assert.deepEqual(links.map(link => link.occurrences[0].quote), claims);
+  assert.ok(links.every(link => link.occurrences[0].prefix === "Definição: " && link.occurrences[0].suffix === " Confira."));
+  assert.equal(links[0].anchors[0].posicao, 2, "somente a âncora selecionada chega no vínculo");
+  assert.equal(links[0].anchors[0].selector.exact, "A truth table lists truth values.");
+  assert.equal(links[0].anchors[0].verificationExcerpt, "A truth table lists truth values.");
+  assert.equal(links[0].fonte.url, "https://example.test/logic.pdf");
+  assert.deepEqual(links[0].evidencia, { located: true, issues: [] }, "localização estrutural não certifica a afirmação sobre interseção");
+  assert.equal(links[1].fonte.titulo, "Relações sintéticas");
+  assert.equal(links[1].fonte.url, "https://example.test/relations.pdf");
+  assert.equal(links[1].anchors[0].selector.kind, "page_range");
+  assert.equal(links[1].anchors[0].verificationExcerpt, null);
+  assert.equal(links[2].fonte.localizada, true);
+  assert.deepEqual(links[2].anchors, []);
+  assert.ok(links[2].evidencia.issues.includes("missing_anchor"));
+  assert.ok(adapter.calls.sources.every(input => input.expectedRevision === COURSE.revision));
+  assert.equal(adapter.calls.sources.filter(input => input.mode === "source").length, 3);
+  assert.doesNotMatch(response.envelope, /PRIVATE_UNSELECTED_EXCERPT|PRIVATE_STORAGE_PATH|storagePath/u);
+});
+
+test("enriquecimento das fontes da revisão propaga revisão obsoleta e recusa de acesso", async () => {
+  for (const code of ["stale_course_state", "course_revision_conflict", "access_denied"]) {
+    const { adapter } = sourceReviewFixture();
+    const read = adapter.getCourseSources;
+    adapter.getCourseSources = async input => {
+      if (input.mode === "source") throw Object.assign(new Error("Leitura recusada"), { code });
+      return read(input);
+    };
+    await assert.rejects(() => execute(adapter, "preparar_revisao", {}), { code });
+  }
+});
+
+test("revisão de unidade conserva base, citações associadas e orientação, filtrando somente units", async () => {
+  const units = [studyUnit(1), studyUnit(2)];
+  const adapter = fixture({ units: units.slice(0, 1) });
+  const { details, links } = sourceReviewFixture();
+  const citations = ["study_unit", "microsequence_explanation"].map((targetKind, index) => ({
+    targetKind, targetId: index === 0 ? "unit-1" : "ms", targetTitle: index === 0 ? "Unidade 1" : "Explicação",
+    links: [{ relation: links[index].relation, roles: links[index].roles, occurrences: links[index].occurrences,
+      source: { title: details[index].title, citationText: details[index].citationText,
+        url: details[index].url, status: details[index].status },
+      anchors: details[index].anchors.filter(anchor => anchor.anchorId === links[index].anchors[0].anchorId)
+        .map(anchor => ({ selector: anchor.selector, humanLocator: anchor.humanLocator,
+          verificationExcerpt: anchor.verificationExcerpt, status: anchor.status, needsReverification: anchor.needsReverification })) }]
+  }));
+  const readInspection = adapter.getCourseContentInspection;
+  adapter.getCourseContentInspection = async input => ({ ...await readInspection(input), pedagogicalBasis: {
+    targetKind: input.targetKind, targetId: input.targetId,
+    microsequence: { title: "Relações", goal: "Relacionar conjuntos e estados", explanation: { title: "Base compartilhada", content: [] } },
+    planItems: [], dependencies: [{ title: "Pré-requisito", goal: "Distinguir elementos" }],
+    studyUnits: units.map(unit => ({ id: unit.studyUnit.id, content: unit.studyUnit })), citations
+  } });
+  const response = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE });
+  const audit = response.value.context.studyUnits[0].auditoriaPedagogica;
+  assert.equal(audit.basis.microsequence.goal, "Relacionar conjuntos e estados");
+  assert.equal(audit.basis.dependencies[0].title, "Pré-requisito");
+  assert.equal(audit.basis.studyUnits.length, 2, "o restante do percurso continua na base");
+  assert.deepEqual(audit.units.map(unit => unit.observation.title), ["Unidade 1"]);
+  assert.match(audit.instruction, /leitura crítica/u);
+  assert.deepEqual(audit.basis.citations.map(citation => [citation.targetKind, citation.targetTitle]),
+    [["study_unit", "Unidade 1"], ["microsequence_explanation", "Explicação"]]);
+  assert.equal(audit.basis.citations[0].links[0].occurrences[0].quote, links[0].occurrences[0].quote);
+  assert.equal(audit.basis.citations[0].links[0].anchors[0].verificationExcerpt, details[0].anchors[1].verificationExcerpt);
+  assert.equal(audit.basis.citations[0].links[0].source.url, details[0].url);
+  assert.equal(audit.basis.citations[1].links[0].anchors[0].verificationExcerpt, null);
+  assert.deepEqual(adapter.calls.sources, [], "a base já associa as fontes; não pedir consultas para juntar IDs");
 });
 
 test("curso, busca ou revisão trocados recusam continuação antes de ler outra página", async () => {

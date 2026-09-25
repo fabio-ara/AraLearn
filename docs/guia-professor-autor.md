@@ -64,7 +64,7 @@ Quando uma tarefa tem vários passos, um exemplo resolvido pode mostrar o racioc
 
 Os **componentes didáticos** são as formas que o aplicativo usa para apresentar conteúdo ou receber respostas, como parágrafo, tabela e atividade de lacunas. O [catálogo de componentes](componentes-didaticos.md) explica suas possibilidades.
 
-Escolha a representação pelo que o estudante precisa examinar. Uma tabela ajuda a comparar dados lado a lado; um diagrama pode tornar uma relação espacial visível. Se o objetivo exige justificar uma escolha, uma resposta aberta permite formular essa justificativa, enquanto uma seleção de alternativas oferece razões já escritas para serem avaliadas. Na resposta aberta, o estudante compara seu texto com o retorno disponível, e a apreciação do significado cabe a uma pessoa.
+Escolha a representação pelo que o estudante precisa examinar. Uma tabela ajuda a comparar dados lado a lado; um diagrama pode tornar uma relação espacial visível. Alternativas podem pedir a comparação de decisões e de suas justificativas; lacunas podem recolher cálculos ou relações no próprio objeto. Uma seleção de razões fornecidas não demonstra elaboração espontânea de uma justificativa: descreva a evidência realmente recolhida. O objetivo deve orientar a prática e o feedback, inclusive quando a atividade combina várias decisões.
 
 A prática pode preparar uma explicação, testar uma distinção ou mobilizar conhecimentos depois dela. Uma previsão antes do exemplo, seguida de uma comparação com o resultado, cumpre outra função que uma pergunta de aplicação ao final. Uma nova oportunidade de prática muda o caso, a tarefa ou o apoio de maneira pertinente ao objetivo.
 

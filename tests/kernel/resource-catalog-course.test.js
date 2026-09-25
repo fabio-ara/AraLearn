@@ -35,7 +35,7 @@ const EXPECTED_CURRENT_USES = Object.freeze({
   "aralearn.resource.flow": 214,
   "aralearn.resource.graph": 183,
   "aralearn.resource.matrix": 46,
-  "aralearn.resource.paragraph": 5370,
+  "aralearn.resource.paragraph": 5373,
   "aralearn.resource.plane": 8,
   "aralearn.resource.relation_map": 125,
   "aralearn.resource.table": 541,
@@ -46,6 +46,40 @@ const EXPECTED_CURRENT_USES = Object.freeze({
 
 function byteLength(value) {
   return UTF8.encode(typeof value === "string" ? value : JSON.stringify(value)).byteLength;
+}
+
+// Vocabulário de bastidor: processo de autoria, package, renderer e contrato não pertencem ao
+// texto que o estudante lê ao praticar o exemplo.
+const BASTIDOR_VOCABULARY = /(?:critério de revis|finalidade declarada|operação-alvo|evite este recurso|\bpackages?\b|renderer|targetPath|accessibleText|\bVega\b|Unidades? de estudo|materializa(?:ção|do)|bastidor|fixtures?|\bcontratos?\b)/iu;
+
+function expectedPracticeResults(response) {
+  const data = response?.data || {};
+  const optionById = new Map((data.options || []).map((option) => [option.id, option.text]));
+  return [
+    ...(data.blanks || []).map(({ answer }) => answer),
+    ...(data.answerIds || []).map((id) => optionById.get(id)),
+    ...(data.targets || []).map(({ answer }) => answer)
+  ].filter((value) => typeof value === "string" && value.length > 0);
+}
+
+// Tokens do exemplo exibido e do enunciado, sem os próprios resultados esperados: comprovam que a
+// explicação se apoia no material da prática, não em frase genérica.
+function practiceExampleTokens(practice, expected) {
+  const values = [];
+  const collect = (value) => {
+    if (typeof value === "string") values.push(value);
+    else if (Array.isArray(value)) value.forEach(collect);
+    else if (value && typeof value === "object") Object.values(value).forEach(collect);
+  };
+  practice.content.forEach((instance) => collect(instance.data));
+  collect(practice.response?.data?.prompt);
+  collect(practice.response?.data?.question);
+  const ignored = new Set(expected.map((value) => value.toLocaleLowerCase("pt-BR")));
+  return new Set(
+    values.flatMap((value) => value.match(/[\p{L}\p{N}_]{4,}/gu) || [])
+      .map((token) => token.toLocaleLowerCase("pt-BR"))
+      .filter((token) => !ignored.has(token))
+  );
 }
 
 function collectPackageUses(value, uses = new Map()) {
@@ -86,11 +120,11 @@ test("fixture publicada do catálogo não diverge do gerador determinístico", a
   assert.equal(current, serializeResourceCatalogCourse());
 });
 
-test("registry oferece 38 exemplos e contratos exatos estruturalmente válidos", () => {
+test("registry oferece 34 exemplos e contratos exatos estruturalmente válidos", () => {
   const manifests = allManifests();
-  assert.equal(manifests.length, 38);
-  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).length, 34);
-  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" }).length, 4);
+  assert.equal(manifests.length, 34);
+  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "content" }).length, 31);
+  assert.equal(RESOURCE_PACKAGE_REGISTRY.listCatalog({ slot: "response" }).length, 3);
 
   for (const manifest of manifests) {
     const slot = manifest.slots.includes("content") ? "content" : "response";
@@ -129,6 +163,72 @@ test("curso apresenta operações-alvo da tarefa com rótulos pedagógicos, não
   }
 });
 
+test("feedback das práticas explica o resultado do exemplo sem metadado editorial nem bastidor", () => {
+  const course = buildResourceCatalogCourse().courses[0];
+  const manifests = new Map(allManifests().map((manifest) => [manifest.id, manifest]));
+  const coveredByFeedback = new Set();
+  const feedbackTexts = [];
+
+  for (const moduleValue of course.modules) {
+    for (const microsequence of moduleValue.lessons[0].microsequences) {
+      const packageId = microsequence.covers[0];
+      const manifest = manifests.get(packageId);
+      assert.ok(manifest, `package desconhecido: ${packageId}`);
+      const [theory, practice] = microsequence.studyUnits;
+      const feedback = practice.feedback.map(instance =>
+        RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "feedback")).join("\n");
+      const normalizedFeedback = feedback.toLocaleLowerCase("pt-BR");
+      coveredByFeedback.add(packageId);
+      feedbackTexts.push(feedback);
+
+      assert.doesNotMatch(feedback, BASTIDOR_VOCABULARY, `${packageId}: feedback com texto de bastidor.`);
+      assert.doesNotMatch(feedback, /aralearn\./u, `${packageId}: feedback cita identificador interno.`);
+
+      const editorial = [
+        manifest.purpose,
+        ...(manifest.academic?.appropriateWhen || []),
+        ...(manifest.academic?.avoidWhen || []),
+        ...(manifest.limitations || [])
+      ].filter(Boolean);
+      for (const phrase of editorial) {
+        assert.ok(
+          !feedback.includes(phrase),
+          `${packageId}: feedback repete metadado editorial do catálogo.`
+        );
+      }
+
+      const expected = expectedPracticeResults(practice.response);
+      assert.ok(expected.length > 0, `${packageId}: prática sem resultado esperado declarado.`);
+      for (const value of expected) {
+        assert.ok(
+          feedback.includes(value),
+          `${packageId}: feedback não informa o resultado esperado da prática.`
+        );
+      }
+
+      const exampleTokens = practiceExampleTokens(practice, expected);
+      if (exampleTokens.size) {
+        assert.ok(
+          [...exampleTokens].some((token) => normalizedFeedback.includes(token)),
+          `${packageId}: feedback não se apoia nos dados do exemplo praticado.`
+        );
+      }
+
+      const theoryText = theory.content[0].data.text;
+      assert.doesNotMatch(theoryText, BASTIDOR_VOCABULARY, `${packageId}: teoria com texto de bastidor.`);
+      for (const limitation of manifest.limitations || []) {
+        assert.ok(
+          !theoryText.includes(limitation),
+          `${packageId}: teoria expõe limite de package ao estudante.`
+        );
+      }
+    }
+  }
+
+  assert.deepEqual(coveredByFeedback, new Set(allManifests().map(({ id }) => id)));
+  assert.equal(new Set(feedbackTexts).size, feedbackTexts.length, "feedback genérico repetido.");
+});
+
 test("curso deriva as famílias correntes sem fixar o crescimento do catálogo", () => {
   const project = buildResourceCatalogCourse();
   const validation = validateProjectDocument(project);
@@ -142,7 +242,7 @@ test("curso deriva as famílias correntes sem fixar o crescimento do catálogo",
   assert.ok(families.length > 0);
   assert.equal(course.modules.length, families.length);
 
-  const manifests = allManifests().filter(manifest => manifest.authoringEligibility !== "legacy_only");
+  const manifests = allManifests();
   const manifestById = new Map(manifests.map((manifest) => [manifest.id, manifest]));
   const coveredPackageIds = [];
   const studyUnitIds = new Set();
@@ -249,19 +349,19 @@ test("dez Cursos correntes distinguem uso observado da cobertura do Curso de cat
     Object.fromEntries([...uses].sort(([left], [right]) => left.localeCompare(right, "en"))),
     EXPECTED_CURRENT_USES
   );
-  assert.equal([...uses.values()].reduce((total, count) => total + count, 0), 10_388);
+  assert.equal([...uses.values()].reduce((total, count) => total + count, 0), 10_391);
 
   const catalogPackages = new Set(
     buildResourceCatalogCourse().courses[0].modules.flatMap((moduleValue) => (
       moduleValue.lessons[0].microsequences.flatMap(({ covers }) => covers)
     ))
   );
-  assert.equal(catalogPackages.size, 37);
+  assert.equal(catalogPackages.size, 34);
   assert.deepEqual(
     catalogPackages,
-    new Set(allManifests().filter(manifest => manifest.authoringEligibility !== "legacy_only").map(({ id }) => id))
+    new Set(allManifests().map(({ id }) => id))
   );
-  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 26);
+  assert.equal([...catalogPackages].filter((packageId) => !uses.has(packageId)).length, 23);
 });
 
 test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => {
@@ -336,7 +436,9 @@ test("catálogo MCP e recursos Edge respeitam orçamentos locais de regressão",
   const localValidator = path.join("kernel", "courseContract.js");
   assert.ok(source.files.includes(localValidator));
   assert.deepEqual(runtime.files, source.files.filter((file) => file !== localValidator));
-  assert.ok(runtime.bytes <= 640 * 1024);
+  // O parser TeX e as interações de faixa/viewport acrescentam código executável,
+  // sem ampliar os budgets de contexto MCP/Actions acima.
+  assert.ok(runtime.bytes <= 672 * 1024);
 });
 
 test("documento registra uma decisão estática para cada pacote sem confundi-la com adequação", async () => {
@@ -347,8 +449,8 @@ test("documento registra uma decisão estática para cada pacote sem confundi-la
   const rows = [...document.matchAll(
     /^\| `([a-z][a-z0-9_]*)` \| `(manter|restringir)` \|/gmu
   )].map((match) => ({ packageName: match[1], decision: match[2] }));
-  assert.equal(rows.length, 38);
-  assert.equal(new Set(rows.map(({ packageName }) => packageName)).size, 38);
+  assert.equal(rows.length, 34);
+  assert.equal(new Set(rows.map(({ packageName }) => packageName)).size, 34);
   assert.deepEqual(
     new Set(rows.map(({ packageName }) => packageName)),
     new Set(allManifests().map(({ id }) => id.split(".").at(-1)))

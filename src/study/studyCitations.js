@@ -60,7 +60,8 @@ function placeAfterQuote(field, occurrence, marker) {
   let remaining = matches[0];
   for (const node of nodes) {
     if (remaining > node.data.length) { remaining -= node.data.length; continue; }
-    const notation = node.parentElement.closest("math, svg");
+    const notation = node.parentElement.closest("math, svg") ||
+      node.parentElement.closest(".visually-hidden")?.closest(".package-formula, .package-rich-math")?.querySelector("math");
     if (notation) notation.after(marker);
     else {
       const range = field.ownerDocument.createRange();
@@ -124,7 +125,7 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
   if (!open) return "";
   let content;
   if (loading) content = '<p class="study-citations-status" role="status">Carregando fontes…</p>';
-  else if (error) content = `<p class="study-citations-status is-error" role="alert">${escape(error)}</p>` + '<button type="button" data-action="retry-citations">Tentar novamente</button>';
+  else if (error) content = `<p class="study-citations-status is-error" role="alert">${escape(error)}</p>` + '<button class="course-authoring-icon-action" type="button" data-action="retry-citations" aria-label="Tentar novamente" title="Tentar novamente">' + renderUiIcon("rotate", "course-authoring-button-icon") + '</button>';
   else if (!value?.citations?.length) content = '<p class="study-citations-status">Nenhuma fonte.</p>';
   else content = '<ol class="study-citation-list">' + value.citations.flatMap((citation, citationIndex) => {
     const resolvedOccurrences = studyUnit ? (citation.occurrences || []).map(item => resolveCourseSourceOccurrence(studyUnit,

@@ -97,7 +97,7 @@ test("oferece zeragem de progresso nos quatro escopos didáticos", async () => {
       entityPath: [course.id, moduleValue.id, lesson.id, microsequence.id, studyUnit.id]
     }]
   });
-  assert.match(homeHtml, /data-action="load-more-review-items"[^>]*>.*Mostrar mais/su);
+  assert.match(homeHtml, /data-action="load-more-review-items"[^>]+aria-label="Mostrar mais"/u);
   assert.match(homeHtml, /<details class="study-review-queue clean-card" open>/u);
   assert.match(homeHtml, /<strong>Rever<\/strong><span class="muted tiny">1<\/span>/u);
   assert.match(homeHtml, /aria-label="Sem conexão"/u);
@@ -553,7 +553,7 @@ test("a Home oferece um seletor de Curso, uma prévia rica e uma única entrada"
     assert.doesNotMatch(home, />Começar<|>Continuar<|>Retomar</u);
     if (completedStudyUnitIds.length) {
       assert.match(home, /role="menuitem" data-action="reset-course-progress"/u);
-      assert.match(home, />Zerar progresso<\/span>/u);
+      assert.match(home, /data-action="reset-course-progress"[^>]+aria-label="Zerar progresso"/u);
     } else {
       assert.doesNotMatch(home, /data-action="reset-course-progress"/u);
     }
@@ -610,7 +610,7 @@ test("a Home distingue propriedade e preserva cursos copiados como cursos própr
   assert.match(html, /home-course-ownership" aria-label="Curso próprio"/u);
   assert.match(html, /<button[^>]+aria-label="Ações deste curso"[^>]+aria-haspopup="menu"/u);
   assert.match(html, /data-action="delete-owned-course"/u);
-  assert.match(html, />Excluir este curso<\/span>/u);
+  assert.match(html, /data-action="delete-owned-course"[^>]+aria-label="Excluir este curso"/u);
   const sharedHtml = renderHomeScreen({
     project: { ...project, courses },
     progress: { version: 1, lessons: {} },
@@ -618,7 +618,7 @@ test("a Home distingue propriedade e preserva cursos copiados como cursos própr
     selectedCourseId: shared.id
   });
   assert.match(sharedHtml, /data-action="leave-shared-course"/u);
-  assert.match(sharedHtml, />Sair deste curso<\/span>/u);
+  assert.match(sharedHtml, /data-action="leave-shared-course"[^>]+aria-label="Sair deste curso"/u);
   assert.doesNotMatch(text, /11111111|22222222|33333333|44444444|8f3c40a2/u);
 });
 

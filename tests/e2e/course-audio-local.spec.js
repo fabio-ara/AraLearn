@@ -3,7 +3,8 @@ import { writeFile } from "node:fs/promises";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 import { createConfirmedLocalUser, createLocalFixtureClient, recordLocalFixtureFiles, removeLocalUser, signInLocalUser } from "../support/localSupabaseE2e.js";
 import { createSyntheticWave, createSyntheticMp3, createAudioCourseRows, audioStudyPath,
-  AUDIO_COURSE_TITLE, AUDIO_UNIT_ID, CALCULATOR_UNIT_ID, AUDIO_ALTERNATIVE } from "../fixtures/package/course-audio.js";
+  AUDIO_COURSE_TITLE, AUDIO_UNIT_ID, CALCULATOR_UNIT_ID, AUDIO_ALTERNATIVE,
+  AUDIO_WRITING_NOTE } from "../fixtures/package/course-audio.js";
 
 const ENABLED = process.env.ARALEARN_E2E_REAL_SUPABASE === "1";
 const PROJECT_URL = String(process.env.ARALEARN_SUPABASE_URL || "").replace(/\/+$/u, "");
@@ -64,7 +65,7 @@ async function assertDownloaded(client, request, bytes) {
 test.describe("áudio persistido no Supabase local", () => {
   test.skip(!ENABLED, "Exige stack local explícita e migration de áudio aplicada.");
   test.setTimeout(180000);
-  test("autoria guarda e relê, estudante escuta, público respeita arquivo e revogação encerra novo acesso", async ({ browser }, info) => {
+  test("autoria guarda e relê, estudante escuta, público exige arquivos liberados e revogação encerra novo acesso", async ({ browser }, info) => {
     expect(PROJECT_URL).toMatch(/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/u);
     expect(PUBLIC_KEY).not.toBe(""); expect(ADMIN_KEY).not.toBe("");
     let owner, student, courseId, primaryError, cleanupError;
@@ -95,7 +96,7 @@ test.describe("áudio persistido no Supabase local", () => {
       await panel.getByLabel("Idioma padrão").fill("zh-CN");
       await panel.getByLabel("Velocidade de reprodução").selectOption("1.25");
       await panel.getByRole("button", { name: "Salvar configuração de áudio" }).click();
-      await expect(panel.getByText("Áudio atualizado.", { exact: true })).toBeVisible();
+      await expect(panel.getByText("Configuração de áudio salva.", { exact: true })).toBeVisible();
       expect((await catalog()).audioConfig).toMatchObject({ locale: "zh-CN", rate: 1.25, nativeVoiceURI: null, service: null, allowRemoteNativeVoice: false });
       await panel.getByRole("button", { name: "Fechar ajustes de áudio", exact: true }).click();
       await panel.getByRole("button", { name: "Enviar áudio", exact: true }).click();
@@ -104,7 +105,7 @@ test.describe("áudio persistido no Supabase local", () => {
       await expect(panel.getByRole("alert")).toBeVisible(); expect((await catalog()).items).toHaveLength(0);
       await panel.getByLabel("Arquivo de áudio", { exact: true }).setInputFiles({ name: "tom-sintetico.wav", mimeType: "audio/wav", buffer: Buffer.from(wave) });
       await panel.getByRole("button", { name: "Guardar áudio" }).click();
-      await expect(panel.getByText("Áudio atualizado.", { exact: true })).toBeVisible();
+      await expect(panel.getByText("Áudio guardado na biblioteca.", { exact: true })).toBeVisible();
       const waveItem = (await catalog()).items.find(item => item.contentHash === waveHash);
       expect(waveItem).toMatchObject({ byteSize: wave.length, mediaType: "audio/wav", fileName: "tom-sintetico.wav" });
       await page.reload();
@@ -123,10 +124,10 @@ test.describe("áudio persistido no Supabase local", () => {
       await owner.client.uploadCourseAudio({ courseId, expectedCourseRevision: await revision(), requestId: crypto.randomUUID(), file: new File([orphan], "orfao-sintetico.wav", { type: "audio/wav" }) });
       const rows = createAudioCourseRows(courseId, reference(waveItem), uploadedMp3.media).map(row => row.entityType !== "microsequence" ? row : {
         ...row, content: { ...row.content,
-          explanationPlan: { purpose: "Distinguir a fala dos sinais de calibração e conferir o cálculo da diagonal.", prerequisites: [], relations: [], sourceIds: [] },
+          explanationPlan: { purpose: "Distinguir sinais de calibração de uma representação escrita e conferir o cálculo da diagonal.", prerequisites: [], relations: [], sourceIds: [] },
           explanation: { title: "Sinais e cálculo da fixture", content: [
             { id: "synthetic-signal-support", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
-              text: "O WAV desta fixture mantém a frequência de 440 Hz durante um segundo; o MP3 contém silêncio. Esses sinais verificam a reprodução de arquivos e não representam a fala em chinês, apresentada em outra faixa." } },
+              text: "O WAV desta fixture mantém a frequência de 440 Hz durante um segundo; o MP3 contém silêncio. Esses sinais verificam a reprodução de arquivos. O chinês aparece apenas como escrita com pinyin no texto da unidade." } },
             { id: "synthetic-calculation-support", package: "aralearn.resource.paragraph", version: "1.0.0", data: {
               text: "Para um retângulo de lados 3 e 4, os quadrados dos lados são 9 e 16. A diagonal é a raiz de 25, portanto mede 5. A calculadora permite conferir esse resultado." } }
           ] }
@@ -165,17 +166,21 @@ test.describe("áudio persistido no Supabase local", () => {
       const studentFailures = failures(study);
       await signInBrowser(study, student); await study.goto(audioStudyPath(courseId));
       await expect(study.locator("ruby").first()).toBeVisible();
-      const unitTools = study.getByRole("button", { name: "Ferramentas da unidade", exact: true });
-      const openUnitTool = async (toolId) => {
-        await unitTools.click();
-        await study.getByRole("dialog", { name: "Ferramentas", exact: true })
-          .locator(`[data-open-study-tool="${toolId}"]`).click();
-      };
-      await openUnitTool("audio-tracks");
+      await expect(study.locator(".card-sheet-content")).toContainText(AUDIO_WRITING_NOTE);
+      // Sem Gramática, Dicionário e Leitura no catálogo corrente, a unidade tem uma única
+      // ferramenta e o botão icon-only abre a ferramenta direto, sem menu intermediário.
+      const audioToolButton = study.locator('.study-tool-actions button[data-study-tool-id="audio-tracks"]');
+      await expect(audioToolButton).toHaveAttribute("aria-label", "Áudio");
+      await audioToolButton.click();
       const tool = study.getByRole("dialog", { name: "Áudio", exact: true });
       await expect(tool).toBeVisible();
       expect(await tool.textContent()).not.toContain(AUDIO_ALTERNATIVE);
-      await expect(tool.locator("[data-audio-configuration-status]")).toContainText("1.25×");
+      // Unidade publicável só com gravações guardadas: nenhuma faixa nativa e nenhum consentimento remoto.
+      await expect(tool.locator("[data-audio-track]")).toHaveCount(2);
+      await expect(tool.locator("[data-audio-track] audio")).toHaveCount(2);
+      await expect(tool.locator("[data-audio-remote-consent]")).toHaveCount(0);
+      await expect(tool.locator('[data-audio-track="tone-wave"] [data-audio-action="play"]')).toBeEnabled();
+      await expect(tool.locator("[data-audio-configuration-status]")).toBeEmpty();
       for (const id of ["tone-wave", "silence-mp3"]) {
         const row = tool.locator(`[data-audio-track="${id}"]`);
         await row.locator('[data-audio-action="play"]').click();
@@ -186,31 +191,39 @@ test.describe("áudio persistido no Supabase local", () => {
       expect(await study.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
       await study.screenshot({ path: info.outputPath("study-audio-real-390.png"), fullPage: true });
       await tool.getByRole("button", { name: "Fechar ferramenta" }).click();
-      await expect(unitTools).toBeFocused();
-      await openUnitTool("grammar-consultation");
-      await expect(study.getByRole("dialog", { name: "Gramática", exact: true }).locator("[data-tool-link-index]")).toHaveCount(2);
-      await study.getByRole("button", { name: "Fechar ferramenta" }).click();
+      await expect(audioToolButton).toBeFocused();
       await study.getByRole("radio", { name: "A altura permanece constante." }).click();
       await study.locator('[data-action="next-study-unit"]').click();
       await expect(study.locator(".study-continue-popup")).toBeVisible();
       await study.locator(".study-reader-context").click();
       await expect(study.locator(".study-continue-popup")).toBeHidden();
-      await openUnitTool("audio-tracks");
+      await audioToolButton.click();
       await expect(tool).toContainText(AUDIO_ALTERNATIVE);
       await study.getByRole("button", { name: "Fechar ferramenta" }).click();
       await study.goto(audioStudyPath(courseId, CALCULATOR_UNIT_ID));
       await expect(study.locator("math")).toBeVisible();
-      await study.getByRole("button", { name: "Calculadora", exact: true }).click();
-      await study.getByRole("button", { name: "Calcular", exact: true }).click();
-      await expect(study.locator("[data-calculator-output]")).toContainText("5");
+      const calculatorButton = study.locator('.study-tool-actions button[data-study-tool-id="calculator-tool"]');
+      await expect(calculatorButton).toHaveAttribute("aria-label", "Calculadora");
+      await calculatorButton.click();
+      const calculate = study.getByRole("button", { name: "Calcular", exact: true });
+      await expect(calculate).toHaveText("");
+      await calculate.click();
+      await expect(study.locator("[data-calculator-output]")).toHaveText("5");
       await study.getByRole("button", { name: "Fechar ferramenta" }).click();
       expect(ownerFailures).toEqual([]); expect(studentFailures).toEqual([]);
       const guest = new CourseApiClient({ projectUrl: PROJECT_URL, publishableKey: PUBLIC_KEY, visitor: true,
         authClient: { getAccessToken() { throw new Error("Visitante não usa conta."); } },
         fetchImpl: (url, init) => { const headers = new Headers(init.headers); headers.set("Origin", ORIGIN); return fetch(url, { ...init, headers }); } });
-      await owner.client.setCourseVisibility({ courseId, expectedRevision: await revision(), visibility: "public", publicFileAccess: "restricted", confirmed: true });
+      // v7: curso com áudio publica somente com os arquivos liberados. O guard de prontidão
+      // responde PT422, então a recusa precisa ser exatamente 422 — não qualquer 4xx.
+      const refused = await owner.client.setCourseVisibility({ courseId, expectedRevision: await revision(),
+        visibility: "public", publicFileAccess: "restricted", confirmed: true }).then(() => null, error => error);
+      expect(refused, "Publicar áudio com arquivos restritos precisa ser recusado.").not.toBeNull();
+      expect(refused.status).toBe(422);
+      expect(refused.code).toBe("course_audio_public_access_required");
+      expect(refused.message).toMatch(/áudio|arquivos/iu);
       currentRevision = await revision();
-      await expect(guest.getCourseMediaDownload({ courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash })).rejects.toMatchObject({ status: 403 });
+      await expect(guest.getCourseMediaDownload({ courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash })).rejects.toMatchObject({ status: 404 });
       await owner.client.setCourseVisibility({ courseId, expectedRevision: currentRevision, visibility: "public", publicFileAccess: "available", confirmed: true });
       currentRevision = await revision();
       await assertDownloaded(guest, { courseId, expectedRevision: currentRevision, studyUnitId: AUDIO_UNIT_ID, contentHash: waveHash }, wave);

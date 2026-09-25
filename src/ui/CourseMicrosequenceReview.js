@@ -270,8 +270,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     componentsReady = false;
     const snapshot = session?.snapshot; const busy = session?.busy;
     let content = message ? '<p>Não há recorte coerente disponível para uma nova decisão.</p>' : '<p role="status">Carregando o conteúdo e suas fontes para inspeção…</p>';
-    if (!snapshot && session?.pending) content += `<button type="button" data-review-set${busy ? " disabled" : ""}>Confirmar resultado da mesma decisão</button>`;
-    if (!snapshot && session?.pendingEdit) content += `<button type="button" data-review-save${busy ? " disabled" : ""}>Confirmar resultado da gravação</button>`;
+    if (!snapshot && session?.pending) content += `<button class="course-authoring-icon-action" type="button" data-review-set aria-label="Confirmar resultado da mesma decisão" title="Confirmar resultado da mesma decisão"${busy ? " disabled" : ""}>${renderUiIcon("rotate", "course-authoring-button-icon")}</button>`;
+    if (!snapshot && session?.pendingEdit) content += `<button class="course-authoring-icon-action" type="button" data-review-save aria-label="Confirmar resultado da gravação" title="Confirmar resultado da gravação"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>`;
     if (snapshot) {
       const ms = snapshot.microsequence; const explanation = ms.explanation;
       const baseTarget = snapshot.targetKind === "microsequence_explanation";
@@ -288,7 +288,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         (hasSavedContent ? `<label title="A marca registra sua declaração de revisão do conteúdo salvo e de suas fontes."><input type="checkbox" data-review-confirm${confirmed ? " checked" : ""} disabled> Revisei esta versão e suas fontes.</label>` : '<p>Salve a base explicativa antes de declarar sua revisão.</p>') +
         (hasSavedContent || session.pending ? `<button type="button" data-review-set aria-label="${session.pending ? "Confirmar resultado da mesma decisão" : "Marcar como revisado"}" title="${session.pending ? "Confirmar resultado da mesma decisão" : "Marcar como revisado"}" disabled>${renderUiIcon(session.pending ? "rotate" : "ready-state", "course-authoring-button-icon")}</button>` : '') +
         (["current", "stale"].includes(snapshot.contentReview.state) && !session.pending
-          ? `<button type="button" data-review-withdraw aria-label="Retirar marca de revisão" title="Retirar marca de revisão" disabled>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` : '') + '</section>';
+          ? `<button class="course-authoring-icon-action is-danger" type="button" data-review-withdraw aria-label="Retirar marca de revisão" title="Retirar marca de revisão" disabled>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` : '') + '</section>';
       content = !baseTarget
         ? '<section class="course-review-unit-declaration">' + reviewDeclaration + '</section>'
         : '<section class="course-review-authoring-context" aria-label="Contexto autoral">' +
@@ -312,7 +312,7 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
         (explanation && typeof controller.saveMicrosequenceExplanation === "function" && !editing
           ? `<button type="button" data-review-edit aria-label="Editar explicação" title="Editar explicação"${busy || session.pending ? " disabled" : ""}>${renderUiIcon("edit", "course-authoring-button-icon")}</button>` : "") +
         (editing ? `<button type="button" data-review-save aria-label="${session.pendingEdit ? "Confirmar resultado da gravação" : "Salvar explicação"}" title="${session.pendingEdit ? "Confirmar resultado da gravação" : "Salvar explicação"}"${busy ? " disabled" : ""}>${renderUiIcon("save", "course-authoring-button-icon")}</button>` +
-          `<button type="button" data-review-cancel-edit aria-label="Cancelar edição" title="Cancelar edição"${busy || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` : '') + '</nav>' +
+          `<button class="course-authoring-icon-action is-danger" type="button" data-review-cancel-edit aria-label="Cancelar edição" title="Cancelar edição"${busy || session.pendingEdit ? " disabled" : ""}>${renderUiIcon("remove-state", "course-authoring-button-icon")}</button>` : '') + '</nav>' +
         '<div data-review-observation-queue></div></div>' +
         (explanation ? renderExplanation(explanation, { editable: editing, busy })
           : '<p>Esta microssequência ainda não tem explicação.</p>') + sourceLinks(snapshot.explanationSources, explanation) +
@@ -324,7 +324,8 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
     }
     const scroll = dialog.querySelector(".editor-body")?.scrollTop || 0;
     stopInlineEditors();
-    dialog.innerHTML = `<header class="editor-head"><h2>${snapshot?.targetKind === "study_unit" ? "Revisão da unidade" : "Explicação"}</h2><button type="button" data-review-close aria-label="Fechar inspeção ${snapshot?.targetKind === "study_unit" ? "da unidade" : "da explicação"}" title="Fechar">${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
+    const closeLabel = `Fechar inspeção ${snapshot?.targetKind === "study_unit" ? "da unidade" : "da explicação"}`;
+    dialog.innerHTML = `<header class="editor-head"><h2>${snapshot?.targetKind === "study_unit" ? "Revisão da unidade" : "Explicação"}</h2><button class="course-authoring-icon-action" type="button" data-review-close aria-label="${closeLabel}" title="${closeLabel}">${renderUiIcon("remove-state", "course-authoring-button-icon")}</button></header>` +
       `<div class="editor-body"><p role="${failure ? "alert" : "status"}" data-review-status>${escape(message)}</p>${content}</div>`;
     const queueHost = dialog.querySelector("[data-review-observation-queue]");
     if (queueHost && snapshot && typeof controller.loadCourseAnchoredAnnotations === "function") {

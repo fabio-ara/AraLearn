@@ -25,7 +25,7 @@ test("formula e matrix dependem do delimitador compartilhado e não ampliam glif
     .map((path) => fs.readFileSync(new URL(String(path).replaceAll("\\", "/"), packagesDirectory), "utf8"))
     .join("\n");
 
-  assert.match(formula, /import \{ hydrateMathExpression, renderMathNode \} from "\.\.\/\.\.\/sdk\/mathExpression\.js"/u);
+  assert.match(formula, /import \{[^}]*\bhydrateMathExpression\b[^}]*\brenderMathNode\b[^}]*\} from "\.\.\/\.\.\/sdk\/mathExpression\.js"/u);
   assert.match(math, /import \{ renderStretchDelimiter \} from "\.\/stretchDelimiter\.js"/u);
   const fenced = renderMathNode({ type: "fenced", open: "(", close: ")", content: {
     type: "fraction", numerator: { type: "identifier", value: "x" }, denominator: { type: "number", value: "2" }
