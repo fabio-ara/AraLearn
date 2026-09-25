@@ -275,7 +275,7 @@ A seleção de navegador executou 282 cenários. A primeira passagem teve 264
 sucessos e 18 falhas. A atualização das expectativas antigas revelou também
 campos inacessíveis na edição de choice, fórmula e terminal; a correção expõe
 esses campos somente durante a edição. Os 18 cenários foram reexecutados e
-passaram. Outros 25 cenários do editor de Fontes, descobertos na análise de
+passaram. Outros 25 cenários do editor de fontes, descobertos na análise de
 consumidores, também passaram após atualização de seus nomes acessíveis.
 São 307 cenários distintos validados pela união das execuções, sem retries
 automáticos. As capturas da edição de choice, fórmula e terminal foram
@@ -285,7 +285,7 @@ Outras dez jornadas usaram navegador, autenticação, API, PostgreSQL e Storage
 locais reais: sete de acesso/fontes/sincronização, uma de edição contextual,
 uma de reorganização de partes e uma de áudio. Todas passaram após corrigir
 expectativas de escopo/rótulos e as fixtures de áudio retiradas. As provas de
-Fontes e Parâmetros foram inspecionadas em 360/1280 px; o player com WAV/MP3 foi
+fontes e parâmetros foram inspecionadas em 360/1280 px; o player com WAV/MP3 foi
 inspecionado em 390 px. O gate de compartilhamento consulta explicitamente o
 container descartável, sem depender do nome da instalação local existente.
 O total de navegador é 317 cenários distintos pela união dessas execuções.
