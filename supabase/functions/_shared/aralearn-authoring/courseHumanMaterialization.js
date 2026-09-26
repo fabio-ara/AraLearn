@@ -493,7 +493,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     add("human_materialization_map_approval_required",
       "O mapa curricular precisa estar aprovado antes da materialização. Consulte o mapa e obtenha a aprovação da pessoa autora.",
       { curriculumMapStatus: mapStatus });
-  } else if (mapStatus !== "approved") {
+  } else if (mapStatus !== "approved" && !(mapStatus === "draft" && allowDraftCurricularMap)) {
     add("course_service_unavailable", "O estado de aprovação do mapa curricular não pôde ser confirmado.");
   }
   const micros = partMicrosequences(context.part);

@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.85] - 2026-09-26
+
+### Corrigido
+
+- a autoria por conversa permite combinar produção autônoma para um curso sem alterar os pontos de revisão da conta nem registrar aprovação humana; a retomada apresenta o processo e a situação do trabalho em um contexto compacto, preservando as leituras completas e focais.
+
 ## [0.0.84] - 2026-09-26
 
 ### Melhorado

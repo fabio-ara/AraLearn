@@ -46,7 +46,7 @@ import { sha256Hex } from "./security.js";
 import { normalizeAuthoringProfilePreferences } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AUTHORING_PROCESS_FOCUS, AUTHORING_PROCESS_CADENCE, AUTHORING_PROCESS_REVIEW_POINTS,
   AUTHORING_PROCESS_PARAMETER_DEFINITIONS, normalizeAuthoringProcessPreferences,
-  resolveAuthoringProcessPreferences } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
+  resolveAuthoringProcessPreferences, createAuthoringProcessMandate } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
@@ -649,6 +649,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+      autonomo: { type: "boolean", description: "Produzir sem aguardar revisão humana neste curso; conta intacta." },
       continuacao: READ_CONTINUATION_SCHEMA
     }),
     { readOnly: true }
@@ -885,7 +886,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     { readOnly: false }
   ),
   task("registrar_inspecao", "Registrar inspeção da base lida",
-    "Registra a inspeção pedagógica da base lida em preparar_revisao. Não edita nem declara revisão humana.",
+    "Registra a inspeção da base lida em preparar_revisao. Não edita nem declara revisão humana.",
     inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 }, parecer: { type: "object", additionalProperties: false,
       required: ["summary", "outcome", "findings", "checks"], properties: { summary: { type: "string", minLength: 1, maxLength: 2000 },
         outcome: { type: "string", enum: ["consistent", "needs_attention", "human_preference_retained"] },
@@ -1092,9 +1093,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "8.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "8.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:24d785ae754cc2d5d4174712406b5f78c13c9baf734d5f5bf5a900793aefe191";
+  "sha256:396c4d7ae898f3a873c67c5ab54ab552f80f19820e5fb6daba4fdae114e04da6";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1409,21 +1410,53 @@ function processPreferencesContext(value) {
     parametros: profileContext({ name: "Processo de autoria", preferences: value.parameters }).preferencias };
 }
 
-async function currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference = null }) {
+function compactProcessPreferencesContext(value) {
+  return { foco: value.foco, cadencia: value.cadencia, pontosDeRevisao: value.pontosDeRevisao };
+}
+
+function compactAuthoringProcessContext(value) {
+  return {
+    preferenciasPessoais: compactProcessPreferencesContext(value.preferenciasPessoais),
+    processoCorrente: compactProcessPreferencesContext(value.processoCorrente),
+    ...(value.referenciaProcesso ? { referenciaProcesso: value.referenciaProcesso } : {}),
+    conflitos: value.conflitos,
+    exigeConciliacao: value.exigeConciliacao,
+    preferenciasMudaram: value.preferenciasMudaram
+  };
+}
+
+function autonomousCourseResolution(resolution) {
+  const preferences = normalizeAuthoringProcessPreferences({
+    ...resolution.currentPreferences,
+    reviewPoints: []
+  });
+  const mandate = createAuthoringProcessMandate(resolution, preferences);
+  return { ...resolution, preferences: mandate.preferences };
+}
+
+async function currentAuthoringProcessContext({
+  adapter, principal, resolved, deadlineAt, processReference = null, autonomous = false
+}) {
   const scope = designScope(resolved);
   const [account, courseDesign] = await Promise.all([
     adapter.getAuthoringProcessPreferences({ principal, deadlineAt }),
     adapter.getCourseDesign({ principal, courseId: resolved.course.id, scopeKind: scope.kind, scopeRef: scope.ref, deadlineAt })
   ]);
+  if (autonomous && processReference !== null) {
+    fail("invalid_human_task_argument", "Combine autonomia do curso com uma nova retomada, ou reutilize a referência já emitida.");
+  }
   const mandate = processReference === null ? null : openAuthoringProcessReference(processReference, principal, resolved.course.id);
   const resolution = resolveAuthoringProcessPreferences({ account, courseDesign, mandate });
-  if (resolution.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "As condições do recorte mudaram; releia antes de continuar.", null, 409);
+  const effectiveResolution = autonomous ? autonomousCourseResolution(resolution) : resolution;
+  if (effectiveResolution.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "As condições do recorte mudaram; releia antes de continuar.", null, 409);
   return { preferenciasPessoais: processPreferencesContext(account.preferences),
-    processoCorrente: processPreferencesContext(resolution.preferences),
-    preferenciasMudaram: resolution.personalPreferencesChanged,
-    ...(!resolution.requiresReconciliation ? { referenciaProcesso: processReference ?? createAuthoringProcessReference(principal, resolution) } : {}),
-    condicoesDoRecorte: projectConfiguration(courseDesign), conflitos: resolution.conflicts,
-    exigeConciliacao: resolution.requiresReconciliation };
+    processoCorrente: processPreferencesContext(effectiveResolution.preferences),
+    preferenciasMudaram: effectiveResolution.personalPreferencesChanged,
+    ...(!effectiveResolution.requiresReconciliation ? {
+      referenciaProcesso: processReference ?? createAuthoringProcessReference(principal, effectiveResolution)
+    } : {}),
+    condicoesDoRecorte: projectConfiguration(courseDesign), conflitos: effectiveResolution.conflicts,
+    exigeConciliacao: effectiveResolution.requiresReconciliation };
 }
 
 HUMAN_TASK_HANDLERS.consultar_preferencias_autoria = async ({ adapter, principal, args, deadlineAt }) => {
@@ -2574,7 +2607,14 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
       }
     );
   }
+  if (args.autonomo !== undefined && typeof args.autonomo !== "boolean") {
+    fail("invalid_human_task_argument", "autonomo precisa ser booleano.");
+  }
+  if (args.autonomo === true && args.processo !== undefined) {
+    fail("invalid_human_task_argument", "autonomo e processo não podem ser combinados na mesma retomada.");
+  }
   const titulo = text(args.titulo, "titulo", 300);
+  const focusedRequest = args.parte !== undefined || args.microssequencia !== undefined;
   const resolved = await resolveHumanCourseContext({
     adapter, principal, course: titulo, part: optionalReference(args.parte, "parte") ?? null,
     microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null, deadlineAt
@@ -2584,19 +2624,36 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
   const focal = { ...resolved, plan, part };
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "retomar_curso" });
   const [process, observations, explanations] = await Promise.all([
-    currentAuthoringProcessContext({ adapter, principal, resolved: focal, deadlineAt, processReference: args.processo ?? null }),
-    readObservations({ adapter, principal, resolved: focal, args: { somenteAbertas: true }, deadlineAt }),
-    explanationReadContext({ adapter, principal, resolved: focal, microsequences: focalMicrosequences(focal), deadlineAt })
+    currentAuthoringProcessContext({ adapter, principal, resolved: focal, deadlineAt,
+      processReference: args.processo ?? null, autonomous: args.autonomo === true }),
+    focusedRequest ? readObservations({ adapter, principal, resolved: focal, args: { somenteAbertas: true }, deadlineAt })
+      : Promise.resolve({ items: [] }),
+    focusedRequest ? explanationReadContext({ adapter, principal, resolved: focal,
+      microsequences: focalMicrosequences(focal), deadlineAt }) : Promise.resolve([])
   ]);
   const map = curricularMapFromPlan(plan);
+  const confirmation = planConfirmationContext(plan);
+  const nextDecision = process.processoCorrente.foco === "content"
+    ? "Continue a explicação e as fontes da microssequência no foco e na cadência vigentes."
+    : process.processoCorrente.pontosDeRevisao.includes("curricular_map")
+      ? focusedRequest && map && map.approval !== "approved"
+        ? "Inspecione o mapa salvo e suas pendências antes da aprovação."
+        : "Confira o planejamento antes de continuar."
+      : focusedRequest
+        ? "Continue a produção autorizada no recorte e na cadência vigentes."
+        : "Escolha uma parte ou microssequência para continuar a produção autorizada.";
+  const context = {
+    ...compactAuthoringProcessContext(process),
+    ...(focusedRequest
+      ? focusedReviewPlan(plan, part, [], focalMicrosequences(focal))
+      : { titulo: confirmation.titulo, mapaCurricular: confirmation.mapaCurricular }),
+    ...(focusedRequest ? { observations, explicacoes: explanations } : {})
+  };
   return result(`Retomei o curso “${resolved.course.title}”.`, {
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
-    nextDecision: process.processoCorrente.foco === "content" ? "Continue a explicação e as fontes da microssequência no foco e na cadência vigentes."
-      : map && map.approval !== "approved" ? "Inspecione o mapa salvo e suas pendências antes da aprovação." : null,
-    context: await paginateHumanReadContext(withoutTechnicalState({ ...(args.parte !== undefined || args.microssequencia !== undefined
-      ? focusedReviewPlan(plan, part, [], focalMicrosequences(focal)) : projectedPlanContext(plan, part)),
-      ...process, observations, explicacoes: explanations }), { state: continuation })
+    nextDecision,
+    context: await paginateHumanReadContext(withoutTechnicalState(context), { state: continuation })
   });
 };
 
