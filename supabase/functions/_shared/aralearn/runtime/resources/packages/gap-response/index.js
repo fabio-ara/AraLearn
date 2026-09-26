@@ -4,6 +4,7 @@ import { gapAuthoringEditableTargets, renderGapAuthoringOptions } from "./author
 import {
   createPackageGapMarker,
   escapePackageAttribute,
+  packageReferenceText,
   renderPackageActionIcon,
   renderPackageInline
 } from "../../sdk/html.js";
@@ -120,7 +121,8 @@ function choicePrompt(data, options) {
     `${options.exerciseShuffleSeed || "runtime"}::${options.responseBlockKey || options.blockKey}` +
       `::gap:${blank.id}:${Number(active.blankIndex)}`
   );
-  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1"><div class="token-options">${values.map((value) => `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}"><span class="runtime-text-gap-blank token-option-label">${renderPackageInline(practiceValueLabel(blank, value, options))}</span></button>`).join("")}</div></section>`;
+  const label = blank.label ? `Alternativas para ${packageReferenceText(blank.label)}` : "Alternativas";
+  return `<section class="runtime-flow-prompt" data-text-gap-prompt="true" tabindex="-1" aria-label="${escapePackageAttribute(label)}"><div class="token-options">${values.map((value) => { const visible = practiceValueLabel(blank, value, options); return `<button class="token-option${normalizeAnswer(value) === normalizeAnswer(current) ? " active" : ""}" type="button" dir="auto" data-action="text-gap-set-choice" data-complete-block-key="${escapePackageAttribute(options.blockKey)}" data-complete-blank-index="${escapePackageAttribute(active.blankIndex)}" data-text-gap-value="${escapePackageAttribute(value)}"><span class="token-option-label">${renderPackageInline(visible)}</span></button>`; }).join("")}</div></section>`;
 }
 
 function materializesGap(registry, instance, response, index) {

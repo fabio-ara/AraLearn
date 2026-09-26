@@ -37,6 +37,9 @@ test("áudio usa o catálogo existente, valida faixas e não revela resposta ant
   assert.equal(registry.validateInstance(instance({ tracks: [track] }), "response").valid, false);
   const html = audioPackage.render({ tracks: [track] });
   assert.doesNotMatch(html, /Resposta auditiva reservada|Alternativa reservada|onerror/);
+  const legacyPlaceholder = String.fromCodePoint(0x2013, 0x3a, 0x2013, 0x2013);
+  assert.equal(html.includes(legacyPlaceholder), false);
+  assert.match(html, /data-audio-duration>duração desconhecida/u);
   assert.doesNotMatch(audioPackage.accessibleText({ tracks: [track] }), /reservada/);
   const reading = { ...track, alternative: { text: '早上好', reading: 'zǎoshang hǎo', translation: 'Bom dia', visibility: 'always' } };
   assert.match(audioPackage.accessibleText({ tracks: [reading] }), /早上好 zǎoshang hǎo Bom dia/u);

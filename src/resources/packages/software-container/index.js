@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizHtmlLines, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotAttributesWithHtmlLabel, dotQuote, graphvizEdgeLabelAttributes, graphvizHtmlLines, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -74,7 +74,7 @@ function containerAccessibleText(data) {
 function graphvizSource(data) {
   const externalLines = externalObjects(data).map((item) => `  ${dotQuote(item.id)} ${dotAttributesWithHtmlLabel({ id: `system-node-${item.id}`, class: `package-software-container-node is-${item.role}`, shape: "box", style: "rounded", margin: "0.16,0.11" }, externalGraphvizLabel(item))};`);
   const containerLines = data.containers.map((item) => `    ${dotQuote(item.id)} ${dotAttributesWithHtmlLabel({ id: `system-node-${item.id}`, class: `package-software-container-node is-${item.role}`, shape: item.kind === "data_store" ? "cylinder" : item.kind === "queue" ? "component" : "box", style: item.kind === "application" ? "rounded" : "solid", margin: "0.16,0.11" }, containerGraphvizLabel(item))};`);
-  const edgeLines = data.relationships.map((item) => `  ${dotQuote(item.from)} -> ${dotQuote(item.to)} ${dotAttributes({ id: `system-edge-${item.id}`, class: "package-software-container-relationship", label: wrapGraphvizLabel(item.label, 16), arrowsize: "0.72" })};`);
+  const edgeLines = data.relationships.map((item) => `  ${dotQuote(item.from)} -> ${dotQuote(item.to)} ${dotAttributes({ id: `system-edge-${item.id}`, class: "package-software-container-relationship", ...graphvizEdgeLabelAttributes(item.label, 16), arrowsize: "0.72" })};`);
   return [
     "digraph SoftwareContainers {",
     `  graph ${dotAttributes(graphvizLayoutAttributes("block", { bgcolor: "transparent", pad: "0.2", margin: "0", overlap: "false", splines: "polyline", outputorder: "edgesfirst", nodesep: "0.42", ranksep: "0.72", newrank: "true" }))};`,

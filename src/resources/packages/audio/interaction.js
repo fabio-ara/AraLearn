@@ -1,5 +1,6 @@
 import { inspectCourseAudioBytes, normalizeCourseAudioConfig, normalizeCourseMediaReference } from "../../../domain/courseMedia.js";
 import { renderPackageActionIcon } from "../../sdk/html.js";
+import { createNativeSpeechTimeline } from "./nativeTimeline.js";
 
 const message = {
   "not-allowed": "O navegador bloqueou a reprodução. Toque em Reproduzir novamente e confira a permissão de áudio.",
@@ -42,6 +43,20 @@ export function bindAudioTool(root, data, host = {}) {
   let cancelVoiceWait = null;
   const status = (row, value) => { row.querySelector("[data-audio-track-status]").textContent = value; };
   const time = seconds => `${Math.floor(Math.max(0, seconds) / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, "0")}`;
+  // Duração só existe quando alguma fonte confiável a informa: metadados do arquivo ou o
+  // `elapsedTime` do evento `end` da própria fala. Antes disso ela é declarada desconhecida.
+  const UNKNOWN_DURATION = "duração desconhecida";
+  const measuredDurations = new Map();
+  const durationFor = row => measuredDurations.get(row) ?? null;
+  // Normaliza a unidade dos eventos e desconta pausas; sem evento não estimamos.
+  const syncNativeElapsed = (event, phase) => {
+    if (!active?.utterance) return;
+    const seconds = active.timeline.update(event, phase);
+    if (seconds === null || (active.paused && phase === "boundary")) return null;
+    active.spokenSeconds = seconds;
+    progress(active.row, active.spokenSeconds, durationFor(active.row));
+    return seconds;
+  };
   function playing(row, value) {
     const button = row.querySelector('[data-audio-action="play"]');
     const label = value ? "Pausar" : "Reproduzir";
@@ -55,11 +70,18 @@ export function bindAudioTool(root, data, host = {}) {
     const known = Number.isFinite(duration) && duration > 0;
     range.max = known ? String(duration) : "1";
     range.value = known ? String(current) : "0";
-    range.disabled = !known;
+    const seekable = known && active?.row === row && Boolean(active.audio);
+    range.disabled = !seekable;
     row.querySelector("[data-audio-elapsed]").textContent = time(current);
-    row.querySelector("[data-audio-duration]").textContent = known ? time(duration) : "–:––";
-    range.setAttribute("aria-valuetext", known ? `${time(current)} de ${time(duration)}` : "Duração ainda indisponível");
-    row.querySelector('[data-audio-action="stop"]').disabled = current <= 0;
+    row.querySelector("[data-audio-duration]").textContent = known ? time(duration) : UNKNOWN_DURATION;
+    row.dataset.audioDurationState = known ? "known" : "unknown";
+    range.setAttribute("aria-valuetext", seekable
+      ? `${time(current)} de ${time(duration)}`
+      : known
+        ? `Posição informada: ${time(current)} de ${time(duration)}; ajuste indisponível`
+        : `Posição não ajustável: ${UNKNOWN_DURATION}`);
+    row.querySelector('[data-audio-action="stop"]').disabled = active?.row !== row ||
+      !(active.utterance || active.audio) || Boolean(active.audio && active.audio.paused && current <= 0);
   }
   const enable = () => rows.forEach(row => { row.querySelector('[data-audio-action="play"]').disabled = !config; });
   function stop(release = true) {
@@ -78,6 +100,8 @@ export function bindAudioTool(root, data, host = {}) {
       utterance.onend = null;
       utterance.onerror = null;
       utterance.onboundary = null;
+      utterance.onpause = null;
+      utterance.onresume = null;
       utterance.onstart = null;
       synthesis.cancel();
     }
@@ -95,7 +119,25 @@ export function bindAudioTool(root, data, host = {}) {
     }
     if (objectUrl) win.URL.revokeObjectURL(objectUrl);
     row.querySelector('[data-audio-action="stop"]').disabled = true;
-    playing(row, false); progress(row, 0, null); status(row, "");
+    playing(row, false); progress(row, 0, durationFor(row)); status(row, "");
+  }
+  function finishNative(event) {
+    if (!active?.utterance) return;
+    const duration = syncNativeElapsed(event, "end");
+    const { row, utterance, spokenSeconds } = active;
+    if (typeof duration === "number" && Number.isFinite(duration) && duration > 0 && duration >= spokenSeconds) {
+      measuredDurations.set(row, duration);
+    }
+    active = null;
+    utterance.onend = null;
+    utterance.onerror = null;
+    utterance.onboundary = null;
+    utterance.onpause = null;
+    utterance.onresume = null;
+    utterance.onstart = null;
+    playing(row, false);
+    progress(row, spokenSeconds || 0, durationFor(row));
+    status(row, "");
   }
   function waitForVoices() {
     const current = synthesis.getVoices();
@@ -144,14 +186,17 @@ export function bindAudioTool(root, data, host = {}) {
       return;
     }
     if (active?.row === row && active.utterance) {
-      if (active.paused) synthesis.resume(); else synthesis.pause();
       active.paused = !active.paused;
+      if (active.paused) synthesis.pause(); else synthesis.resume();
       playing(row, !active.paused);
       return;
     }
     stop();
     const request = playbackRequest;
+    // Uma nova fala pode usar outra voz ou cadência e ter duração diferente.
+    if (track.kind === "native") measuredDurations.delete(row);
     active = { row };
+    progress(row, 0, durationFor(row));
     status(row, "Carregando…");
     const isCurrent = () => !disposed && request === playbackRequest;
     try {
@@ -179,14 +224,33 @@ export function bindAudioTool(root, data, host = {}) {
         utterance.lang = track.locale;
         utterance.rate = config.rate;
         active.utterance = utterance;
-        utterance.onstart = () => { if (isCurrent()) row.querySelector('[data-audio-action="stop"]').disabled = false; };
-        utterance.onend = () => { if (isCurrent()) stop(); };
+        active.timeline = createNativeSpeechTimeline();
+        active.spokenSeconds = 0;
+        active.paused = false;
+        utterance.onstart = event => {
+          if (!isCurrent()) return;
+          syncNativeElapsed(event, "start");
+          row.querySelector('[data-audio-action="stop"]').disabled = false;
+        };
+        utterance.onend = event => { if (isCurrent()) finishNative(event); };
         utterance.onerror = event => {
           if (!isCurrent()) return;
           stop();
           status(row, message[event.error] || "Não foi possível reproduzir a fala. Confira a voz e tente novamente.");
         };
-        utterance.onboundary = event => { if (isCurrent()) progress(row, Number(event.elapsedTime) || 0, null); };
+        utterance.onboundary = event => { if (isCurrent()) syncNativeElapsed(event, "boundary"); };
+        utterance.onpause = event => {
+          if (!isCurrent()) return;
+          syncNativeElapsed(event, "pause");
+          active.paused = true;
+          playing(row, false);
+        };
+        utterance.onresume = event => {
+          if (!isCurrent()) return;
+          syncNativeElapsed(event, "resume");
+          active.paused = false;
+          playing(row, true);
+        };
         status(row, ""); playing(row, true);
         synthesis.speak(utterance);
       } else {
@@ -214,7 +278,12 @@ export function bindAudioTool(root, data, host = {}) {
         audio.onpause = () => { if (isCurrent()) playing(row, false); };
         audio.onended = () => { if (isCurrent()) { update(); playing(row, false); status(row, ""); } };
         audio.onerror = () => { if (isCurrent()) { stop(); status(row, "O navegador não conseguiu decodificar este áudio. Tente novamente ou consulte a alternativa textual."); } };
-        await audio.play();
+        try { await audio.play(); }
+        catch (error) {
+          // Pausar/parar durante o início pode cancelar a promessa do próprio
+          // navegador. A ação é válida e não deve liberar a faixa carregada.
+          if (error?.name !== "AbortError" || !isCurrent() || !audio.paused) throw error;
+        }
         if (isCurrent()) { update(); status(row, ""); }
       }
     } catch (error) {
@@ -264,6 +333,7 @@ export function bindAudioTool(root, data, host = {}) {
     if (track?.alternative.visibility === "after_response" && host.canRevealAnswers === true) {
       reveal(row, track);
     }
+    progress(row, 0, durationFor(row));
   }
   root.addEventListener("click", onClick);
   root.addEventListener("input", seek);

@@ -9,6 +9,20 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.84] - 2026-09-26
+
+### Melhorado
+
+- diagramas de estados, processos e contêineres ligam seus rótulos às arestas, e a abertura dos contêineres mostra objetos sem reduzir o texto para caber;
+- pilhas de chamadas, sessões de terminal e mapas de memória organizam melhor função, resultado, intervalos e direção; Unidade e Explicação compartilham essas melhorias;
+- a consulta de recursos na autoria permite conhecer todo o catálogo sem filtros obrigatórios; o processo automático respeita o mandato salvo sem registrar aprovação humana inexistente.
+
+### Corrigido
+
+- alternativas longas de lacuna preservam espaço de toque e contorno de foco, URLs extensas quebram dentro da prosa, e estados físicos de reações ficam unidos às fórmulas;
+- o player distingue duração desconhecida e informada, normaliza o tempo dos motores de voz nativa e conserva a faixa ao pausar durante o início da reprodução;
+- rótulos de referência em gráficos mantêm a leitura quando as séries passam por trás do texto.
+
 ## [0.0.83] - 2026-09-25
 
 ### Corrigido

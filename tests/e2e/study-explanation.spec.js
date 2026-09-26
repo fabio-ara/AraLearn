@@ -172,6 +172,121 @@ test("mudança de conexão conserva overlay, foco e resposta pendente", async ({
   expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
 });
 
+// Ferramentas reais a partir da Unidade e da Explicação: o parágrafo explicativo não
+// prova o renderer da ferramenta. Cada caso abre o painel da ferramenta, opera e fecha
+// devolvendo o foco ao acionador do próprio host, sem bloquear o caminho de estudo.
+const toolWidths = [320, 390, 430, 1280];
+const toolGroup = host => host.getByRole("button", { name: "Ferramentas da unidade", exact: true });
+const toolMenu = page => page.getByRole("dialog", { name: "Ferramentas", exact: true });
+
+async function openToolPanel(page, host, toolId) {
+  const group = toolGroup(host);
+  await expect(group).toBeVisible(); await group.click();
+  await expect(toolMenu(page)).toBeVisible();
+  await toolMenu(page).locator(`[data-open-study-tool="${toolId}"]`).click();
+  await expect(toolMenu(page)).toHaveCount(0);
+  return group;
+}
+
+async function closeToolPanel(page, group, hostName) {
+  const close = page.getByRole("button", { name: "Fechar ferramenta", exact: true });
+  // O controle do cabeçalho precisa estar visível e alcançável sem rolagem: o painel
+  // é o mesmo em qualquer ferramenta, e o clique real pode cair em outro elemento.
+  await expect(close).toBeVisible();
+  const reachable = await close.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return Boolean(hit && (hit === node || node.contains(hit)));
+  });
+  expect(reachable, "Fechar ferramenta alcançável sem rolagem").toBe(true);
+  await close.click();
+  await expect(page.locator(".study-tools-overlay")).toHaveCount(0);
+  await expect(group).toBeFocused();
+  // O caminho de estudo continua disponível no host de origem.
+  if (hostName === "explicacao") await expect(overlay(page)).toBeVisible();
+  else await expect(page.locator(".card-sheet-content")).toBeVisible();
+}
+
+async function openHostScope(page, hostName) {
+  if (hostName === "explicacao") {
+    await openButton(page).click();
+    await expect(overlay(page)).toBeVisible();
+    return overlay(page).locator(".study-explanation-tools");
+  }
+  return page.locator(".study-reader-footer");
+}
+
+for (const [hostName, hostLabel] of [["unidade", "Unidade"], ["explicacao", "Explicação"]]) {
+  test(`ferramenta real: calculadora opera 2 + 3 = 5 na ${hostLabel} e devolve o foco`, async ({ page }, testInfo) => {
+    for (const width of toolWidths) {
+      await page.setViewportSize({ width, height: 844 });
+      const errors = await mount(page, "?unit=theory");
+      const host = await openHostScope(page, hostName);
+      const group = await openToolPanel(page, host, "calculator");
+      const panel = page.getByRole("dialog", { name: "Calculadora", exact: true });
+      await expect(panel).toBeVisible();
+      const input = panel.getByRole("textbox", { name: "Expressão", exact: true });
+      await input.fill("2 + 3"); await page.keyboard.press("Enter");
+      const output = panel.locator("[data-calculator-output]");
+      await expect(output).toHaveText("5");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      if (width === 320 || width === 390) {
+        await page.screenshot({ path: testInfo.outputPath(`tool-calculadora-${hostName}-${width}.png`), fullPage: true });
+      }
+      await closeToolPanel(page, group, hostName);
+      expect(errors).toEqual([]);
+    }
+  });
+
+  test(`ferramenta real: áudio abre player com estado explícito na ${hostLabel}`, async ({ page }, testInfo) => {
+    for (const width of toolWidths) {
+      await page.setViewportSize({ width, height: 844 });
+      const errors = await mount(page, "?unit=theory&audio=1");
+      const host = await openHostScope(page, hostName);
+      const group = await openToolPanel(page, host, "audio");
+      const panel = page.getByRole("dialog", { name: "Áudio", exact: true });
+      await expect(panel).toBeVisible();
+      const track = panel.locator('[data-audio-track="synthetic-native-notice"]');
+      await expect(track.getByRole("heading", { name: "Aviso sintético em português", exact: true })).toBeVisible();
+      const play = track.getByRole("button", { name: "Reproduzir Aviso sintético em português", exact: true });
+      const stop = track.getByRole("button", { name: "Parar Aviso sintético em português", exact: true });
+      await expect(play).toBeVisible();
+      await expect(stop).toBeVisible();
+      // Prova de interface: controles configurados e estado explícito, sem acionar fala.
+      // A prova não exige voz, síntese nem hardware de áudio.
+      await expect(play).toBeEnabled();
+      await expect(stop).toBeDisabled();
+      await expect(track.locator("[data-audio-duration]")).toHaveText(/desconhecida/i);
+      await expect(track.locator("[data-audio-progress]")).toBeDisabled();
+      await expect(track.locator("[data-audio-elapsed]")).toHaveText("0:00");
+      expect(await panel.locator("audio").count(), "faixa nativa não usa elemento de mídia").toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      if (width === 320 || width === 390) {
+        await page.screenshot({ path: testInfo.outputPath(`tool-audio-${hostName}-${width}.png`), fullPage: true });
+      }
+      await closeToolPanel(page, group, hostName);
+      expect(errors).toEqual([]);
+    }
+  });
+
+  test(`ferramenta real: mount padrão mantém duas calculadoras e nenhum player na ${hostLabel}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const errors = await mount(page, "?unit=theory");
+    const host = await openHostScope(page, hostName);
+    const group = toolGroup(host);
+    await expect(group).toBeVisible(); await group.click();
+    await expect(toolMenu(page)).toBeVisible();
+    await expect(toolMenu(page).locator("[data-open-study-tool]")).toHaveCount(2);
+    await expect(toolMenu(page).locator('[data-open-study-tool="audio"]')).toHaveCount(0);
+    await toolMenu(page).locator('[data-open-study-tool="calculator"]').click();
+    const panel = page.getByRole("dialog", { name: "Calculadora", exact: true });
+    await expect(panel).toBeVisible();
+    await closeToolPanel(page, group, hostName);
+    expect(errors).toEqual([]);
+  });
+}
+
+
 test("ferramentas condicionais usam o grupo existente e altura reduzida mantém controles acessíveis", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 360, height: 500 }); await mount(page, "?unit=practice&theme=dark");
   await openButton(page).click();

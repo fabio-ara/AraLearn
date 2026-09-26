@@ -480,7 +480,8 @@ export async function reconcileHumanExplanation(content, entries, context) {
 // Preparation and writing consume the same candidate units. The preflight
 // derives structural facts from content instead of maintaining a parallel plan.
 export async function preflightHumanCourseMaterialization({ adapter, principal, context,
-  planUnits = [], explanations = [], complete = false, deadlineAt = null }) {
+  planUnits = [], explanations = [], complete = false, allowDraftCurricularMap = false,
+  deadlineAt = null }) {
   const blockers = [];
   const add = (code, message, details = {}) => blockers.push({ code, message, ...details });
   const capture = (callback, details = {}) => {
@@ -488,7 +489,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     catch (error) { add(error.code ?? "invalid_human_materialization", error.message, details); return null; }
   };
   const mapStatus = context.plan?.plan?.curriculumMapStatus;
-  if (mapStatus === "draft" || mapStatus === "absent") {
+  if (mapStatus === "draft" && !allowDraftCurricularMap || mapStatus === "absent") {
     add("human_materialization_map_approval_required",
       "O mapa curricular precisa estar aprovado antes da materialização. Consulte o mapa e obtenha a aprovação da pessoa autora.",
       { curriculumMapStatus: mapStatus });
@@ -1681,6 +1682,7 @@ export async function materializeHumanCoursePart({
   explanations,
   preparationReference = null,
   complete = false,
+  allowDraftCurricularMap = false,
   deadlineAt = null
 }) {
   validateUnits(units);
@@ -1698,7 +1700,8 @@ export async function materializeHumanCoursePart({
     async build(context, { newId }) {
       producedPartPosition = Number(context.part.position) + 1;
       const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context,
-        planUnits: units.map(humanMaterializationUnitPlan), explanations, complete, deadlineAt });
+        planUnits: units.map(humanMaterializationUnitPlan), explanations, complete,
+        allowDraftCurricularMap, deadlineAt });
       if (preparationReference && preflight.referencia !== preparationReference) {
         throw new AuthoringApiError(409, "human_materialization_preflight_stale",
           "A base ou as intenções mudaram depois do preparo; releia o preflight antes de escrever.", { preflight });

@@ -1248,7 +1248,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
   };
   assert.equal(config({ curso: "Redes" }), false);
   assert.equal(source({ curso: "Redes" }), false);
-  assert.equal(components({}), false);
+  assert.equal(components({}), true);
   assert.equal(materialization(materializationArguments), true,
     JSON.stringify(materialization.errors));
   assert.equal(materialization({

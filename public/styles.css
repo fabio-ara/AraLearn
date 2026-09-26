@@ -1691,6 +1691,14 @@ button.account-settings-back[hidden] {
   padding-left: 1.2rem;
 }
 
+.runtime-markdown-paragraph,
+.runtime-markdown-list,
+.study-explanation-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .runtime-markdown-list li + li {
   margin-top: 4px;
 }
@@ -1875,9 +1883,10 @@ button.account-settings-back[hidden] {
   font-size: var(--type-sm);
 }
 
-.package-terminal-session li > header small {
+.package-terminal-session li > header .package-terminal-effect {
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: inherit;
+  flex: 1;
   overflow-wrap: anywhere;
 }
 
@@ -2222,7 +2231,7 @@ button.account-settings-back[hidden] {
 .package-call-stack figure > p {
   margin: 0;
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: var(--type-sm);
   text-align: center;
 }
 
@@ -2236,18 +2245,16 @@ button.account-settings-back[hidden] {
 
 .package-call-stack li {
   background: var(--resource-surface);
-  border: 1px solid var(--resource-border-strong);
+  border: 2px solid var(--resource-border-strong);
   border-radius: 10px;
   padding: 4px;
-}
-
-.package-call-stack li + li {
-  border-top: 1px solid var(--resource-border-strong);
+  font-size: var(--type-sm);
+  line-height: var(--leading-normal);
 }
 
 .package-call-stack li.is-active {
-  border-color: var(--resource-accent);
-  box-shadow: inset 3px 0 0 var(--resource-accent);
+  border: 2px solid var(--resource-accent);
+  box-shadow: inset 4px 0 0 var(--resource-accent);
 }
 
 .package-call-stack header,
@@ -2265,10 +2272,14 @@ button.account-settings-back[hidden] {
   border-radius: 7px;
 }
 
-.package-call-stack-state { grid-column: 1 / -1; color: var(--resource-text-secondary); font-size: var(--type-sm); }
+.package-call-stack-state { grid-column: 1 / -1; color: var(--resource-text-secondary); font-size: var(--type-sm); font-weight: 600; }
 .is-active .package-call-stack-state { color: var(--resource-accent); font-weight: 700; }
-.package-call-stack-return { display: flex; gap: 8px; margin: 4px 8px; font-size: var(--type-sm); }
-.package-call-stack-return small { display: block; color: var(--resource-text-secondary); }
+.package-call-stack header strong,
+.package-call-stack dd,
+.package-call-stack dd code { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+.package-call-stack dd code { white-space: normal; font: inherit; }
+.package-call-stack-return { display: flex; gap: 8px; margin: 4px 8px; padding-top: 8px; border-top: 2px solid var(--resource-border-strong); }
+.package-call-stack-return small { display: block; color: var(--resource-text-secondary); font-size: inherit; }
 .package-set-marker-leader { fill: none; stroke: var(--resource-text-secondary); stroke-width: 1; }
 .package-set-marker-anchor { fill: var(--resource-text); }
 .package-terminal-result > summary { display: flex; align-items: center; justify-content: center; width: var(--tap); height: var(--tap); cursor: pointer; color: var(--resource-accent); }
@@ -2279,7 +2290,7 @@ button.account-settings-back[hidden] {
 .package-call-stack header small,
 .package-call-stack dt small {
   color: var(--resource-text-secondary);
-  font-size: var(--type-xs);
+  font-size: inherit;
 }
 
 .package-call-stack dl {
@@ -2287,7 +2298,7 @@ button.account-settings-back[hidden] {
 }
 
 .package-call-stack dl > div + div {
-  border-top: 1px solid var(--resource-border);
+  border-top: 1px solid var(--resource-border-strong);
 }
 
 .package-call-stack dt {
@@ -2603,7 +2614,10 @@ button.account-settings-back[hidden] {
   place-items: center;
   padding: 7px 5px;
   color: var(--resource-text-secondary);
-  font-size: var(--type-sm);
+  font-family: var(--font-mono);
+  font-size: var(--type-base);
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .package-memory-stack li > div {
@@ -2617,11 +2631,25 @@ button.account-settings-back[hidden] {
   overflow-wrap: anywhere;
 }
 
+.package-memory-stack li > div strong { font-size: var(--type-base); }
+.package-memory-stack li > div span { color: var(--resource-text-secondary); font-size: var(--type-sm); line-height: var(--leading-normal); }
+
 .package-memory-stack li small {
   color: var(--resource-text-secondary);
   font-size: var(--type-sm);
   text-transform: uppercase;
 }
+
+.package-memory-direction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  color: var(--resource-text);
+}
+.package-memory-direction span:first-child { color: var(--resource-text-secondary); font-size: var(--type-sm); }
+.package-memory-direction strong { color: var(--resource-accent); font-size: var(--type-base); }
+.package-memory-direction span:last-child { color: var(--resource-accent); font-size: 1.2em; font-weight: 700; }
 
 @media (max-width: 620px) {
   .package-memory-stack li {
@@ -3279,7 +3307,7 @@ button.account-settings-back[hidden] {
   stroke: var(--resource-accent);
 }
 
-.package-system-diagram-svg :is(.package-network-topology-link, .package-state-machine-transition, .package-rooted-tree-edge, .package-er-relationship, .package-relational-reference, .package-bpmn-flow) path {
+.package-system-diagram-svg :is(.package-network-topology-link, .package-state-machine-transition, .package-rooted-tree-edge, .package-er-relationship, .package-relational-reference, .package-bpmn-flow) :is(path, polyline) {
   fill: none;
   stroke: var(--resource-border-strong);
   stroke-width: 1.15px;
@@ -3403,7 +3431,7 @@ button.account-settings-back[hidden] {
   stroke-dasharray: 5 4;
 }
 
-.package-system-diagram-svg :is(.package-system-context-relationship, .package-software-container-relationship, .package-system-internal-connector) path {
+.package-system-diagram-svg :is(.package-system-context-relationship, .package-software-container-relationship, .package-system-internal-connector) :is(path, polyline) {
   fill: none;
   stroke: var(--resource-border-strong);
   stroke-width: 1.15px;
@@ -3955,7 +3983,11 @@ button.account-settings-back[hidden] {
   color: var(--resource-text);
   font-size: var(--type-base);
   font-weight: 400;
+  white-space: nowrap;
 }
+
+.package-reaction-species,
+.package-reaction-state { white-space: nowrap; }
 
 .package-reaction-coefficient,
 .package-reaction-formula {
@@ -4156,12 +4188,14 @@ button.account-settings-back[hidden] {
 .token-option {
   min-height: 44px;
   min-width: 44px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   color: var(--text-primary);
-  padding: 0 2px;
-  display: inline-block;
+  padding: 6px 8px;
+  display: flex;
+  align-items: flex-start;
+  text-align: start;
   font-size: var(--type-base);
   font-weight: 400;
   line-height: var(--leading-normal);
@@ -4172,9 +4206,19 @@ button.account-settings-back[hidden] {
 }
 
 .token-option-label {
+  display: block;
+  width: 100%;
+  min-width: 0;
   margin: 0;
   cursor: inherit;
   pointer-events: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-decoration-break: initial;
+  -webkit-box-decoration-break: initial;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
@@ -4194,7 +4238,12 @@ button.account-settings-back[hidden] {
 }
 
 .token-option:hover .token-option-label {
+  border-color: transparent;
+}
+
+.token-option:hover {
   border-color: var(--resource-accent);
+  background: var(--resource-accent-subtle);
 }
 
 .token-option:focus-visible {
@@ -4203,15 +4252,16 @@ button.account-settings-back[hidden] {
 }
 
 .token-option:active .token-option-label {
-  background: var(--resource-accent-subtle);
+  background: transparent;
 }
 
-.token-option.active .token-option-label {
+.token-option.active {
   border-color: color-mix(in srgb, var(--resource-accent) 92%, transparent);
-  box-shadow: none;
   background: color-mix(in srgb, var(--resource-surface-subtle) 94%, transparent);
   color: var(--resource-text);
 }
+
+.token-option.active .token-option-label { box-shadow: none; background: transparent; }
 
 .runtime-flow-block {
   display: grid;

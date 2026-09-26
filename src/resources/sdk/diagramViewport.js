@@ -134,6 +134,73 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     viewportHeight: canvas.clientHeight
   });
 
+  const canvasWindow = () => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.left + canvas.clientWidth,
+      bottom: rect.top + canvas.clientHeight
+    };
+  };
+
+  const screenBoxes = (elements) => elements
+    .map((element) => element.getBoundingClientRect())
+    .filter((box) => box.width > 0 && box.height > 0);
+
+  const boxInWindow = (box, windowRect) => box.right > windowRect.left + 1 &&
+    box.left < windowRect.right - 1 && box.bottom > windowRect.top + 1 &&
+    box.top < windowRect.bottom - 1;
+
+  const clampScroll = (left, top) => ({
+    left: Math.min(Math.max(0, canvas.scrollWidth - canvas.clientWidth), Math.max(0, finiteNumber(left))),
+    top: Math.min(Math.max(0, canvas.scrollHeight - canvas.clientHeight), Math.max(0, finiteNumber(top)))
+  });
+
+  const centeredScroll = (boxes) => {
+    const windowRect = canvasWindow();
+    const left = Math.min(...boxes.map((box) => box.left));
+    const right = Math.max(...boxes.map((box) => box.right));
+    const top = Math.min(...boxes.map((box) => box.top));
+    const bottom = Math.max(...boxes.map((box) => box.bottom));
+    return clampScroll(
+      canvas.scrollLeft + (left + right) / 2 - (windowRect.left + canvas.clientWidth / 2),
+      canvas.scrollTop + (top + bottom) / 2 - (windowRect.top + canvas.clientHeight / 2)
+    );
+  };
+
+  // Enquadramento inicial compartilhado por Unidade e Explicação (D021): a escala
+  // natural 1:1 preserva a tipografia do diagrama; a rolagem inicial só é deslocada
+  // quando a origem do SVG abriria numa região sem nenhum objeto (O074). O conteúdo é
+  // a primeira escolha; o objeto focal do pacote e o primeiro nó garantem que a
+  // primeira vista nunca abra em outro vazio.
+  const initialFramingScroll = () => {
+    const current = { left: canvas.scrollLeft, top: canvas.scrollTop };
+    const nodes = [...svg.querySelectorAll("g.node")];
+    const nodeBoxes = screenBoxes(nodes);
+    if (!nodeBoxes.length || nodeBoxes.some((box) => boxInWindow(box, canvasWindow()))) return current;
+    const shiftBy = (box, scroll) => {
+      const deltaX = scroll.left - canvas.scrollLeft;
+      const deltaY = scroll.top - canvas.scrollTop;
+      return { left: box.left - deltaX, top: box.top - deltaY, right: box.right - deltaX, bottom: box.bottom - deltaY };
+    };
+    const focusId = figure.dataset.systemDiagramFocusId || "";
+    const focus = focusId ? svg.querySelector(`g#${CSS.escape(focusId)}`) : null;
+    const candidates = [
+      [...svg.querySelectorAll("g.node, g.cluster")],
+      focus ? [focus] : nodes,
+      [nodes[0]]
+    ];
+    for (const elements of candidates) {
+      const boxes = screenBoxes(elements);
+      if (!boxes.length) continue;
+      const scroll = centeredScroll(boxes);
+      const windowRect = canvasWindow();
+      if (nodeBoxes.some((box) => boxInWindow(shiftBy(box, scroll), windowRect))) return scroll;
+    }
+    return current;
+  };
+
   const updateControls = () => {
     zoomOut.disabled = !controlsReady || scaleMode === "fit";
     zoomIn.disabled = !controlsReady || currentScale >= MAX_DIAGRAM_SCALE - 0.001;
@@ -472,7 +539,9 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     scaleMode = "custom";
     setScale(initialScale, { restoreScroll: { left: 0, top: 0 }, persist: false });
   } else {
-    applyFit({ persist: false });
+    // "initialScale: null" = enquadramento inicial compartilhado em escala natural.
+    scaleMode = "custom";
+    setScale(1, { restoreScroll: initialFramingScroll(), persist: false });
   }
   controlsReady = true;
   updateControls();

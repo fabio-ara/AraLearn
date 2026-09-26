@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Diagramas de sistema — fixture sintética do AraLearn</title>
+  <link rel="stylesheet" href="/styles-tokens.css">
+  <link rel="stylesheet" href="/styles-shell-baseline.css">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/course-authoring.css">
+  <link rel="stylesheet" href="/study-references.css">
+</head>
+<body>
+  <div id="app-root"></div>
+  <script type="module">
+    import { mountRevisaoV10DiagramFixture } from "../support/revisaoV10DiagramFixture.js";
+    const parameters = new URLSearchParams(location.search);
+    await mountRevisaoV10DiagramFixture(document.querySelector("#app-root"), {
+      unit: parameters.get("unit") || "theory",
+      theme: parameters.get("theme") || "light",
+      diagram: parameters.get("diagram") || "container"
+    });
+  </script>
+</body>
+</html>
