@@ -185,7 +185,10 @@ async function hydrateFigure(figure, stateKey) {
     }
     svg.setAttribute("aria-hidden", "true");
     model.labels.forEach((label) => replaceInteractiveLabel(figure, svg, label));
-    await hydrateDiagramViewport({ figure, canvas, svg, stateKey });
+    // Enquadramento inicial compartilhado por Unidade e Explicação (D021): escala
+    // natural 1:1 para preservar a tipografia e, se a origem do SVG abrir sem
+    // nenhum objeto (O074), uma rolagem inicial alinhada ao conteúdo.
+    await hydrateDiagramViewport({ figure, canvas, svg, stateKey, initialScale: null });
     svg.style.removeProperty("visibility");
     svg.removeAttribute("aria-hidden");
     figure.classList.remove("is-horizontally-scrollable");

@@ -102,7 +102,7 @@ test('Código exibe linguagem e terminal conserva saída com expansão progressi
   assert.match(code, /class="runtime-code-language">python</u);
   const terminal = registry.get('aralearn.resource.terminal_session', '1.0.0');
   const html = terminal.render(terminal.authoringContract.example);
-  assert.equal((html.match(/package-terminal-result" open/gu) ?? []).length, 1);
+  assert.equal((html.match(/package-terminal-result" open/gu) ?? []).length, 0);
   const editing = terminal.render(terminal.authoringContract.example, { manualEditing: true });
   assert.equal((editing.match(/package-terminal-result" open/gu) ?? []).length,
     terminal.authoringContract.example.interactions.length);

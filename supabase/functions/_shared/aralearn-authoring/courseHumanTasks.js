@@ -752,9 +752,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         lugar: Object.freeze({
           type: "string", enum: Object.freeze(["conteudo", "resposta", "feedback"]),
           description: "Lugar na unidade de estudo."
-        })
-      }),
-      minProperties: 1
+        }),
+        continuacao: READ_CONTINUATION_SCHEMA
+      })
     }),
     { readOnly: true }
   ),
@@ -801,7 +801,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "salvar_parte",
     "Salvar uma parte do planejamento",
-    "No mandato recebido, divida, reúna ou reordene lotes. Preserve intenções e progressão; não muda o currículo.",
+    "No mandato, divida, reúna ou reordene lotes sem mudar o currículo. Sem revisão curricular, o mandato pode materializar mapa em rascunho sem registrar aprovação humana.",
     inputSchema({
       curso: COURSE_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
@@ -816,7 +816,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       progressao: Object.freeze({
         type: "array", minItems: 1, maxItems: 64,
         items: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 })
-      })
+      }),
+      processo: AUTHORING_PROCESS_REFERENCE_SCHEMA
     }, ["curso", "titulo", "intencao", "microssequencias", "progressao"]),
     { readOnly: false }
   ),
@@ -1093,7 +1094,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "8.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:54e3da363940c6025dc58ce377f2ea52757055f2dd10dca6782606dcde6f9b34";
+  "sha256:24d785ae754cc2d5d4174712406b5f78c13c9baf734d5f5bf5a900793aefe191";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2100,9 +2101,10 @@ function normalizePartMicrosequenceTitles(value) {
   });
 }
 
-async function buildProductionPart({ state, titles, progression, title, intent, position, newId }) {
+async function buildProductionPart({ state, titles, progression, title, intent, position, newId,
+  allowDraftMap = false }) {
   const map = curricularMapFromPlan(state.plan);
-  if (!map || map.approval !== "approved") {
+  if (!map || map.approval === "absent" || map.approval !== "approved" && !allowDraftMap) {
     fail(
       "curricular_map_not_approved",
       "A primeira parte só pode ser preparada depois da aprovação do mapa curricular completo.",
@@ -2703,6 +2705,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     planUnits: safeClone(focal.units, "unidades", 480 * 1024),
     explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024),
     complete: args.concluir === true,
+    allowDraftCurricularMap: process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false,
     deadlineAt
   });
   if (process.exigeConciliacao) {
@@ -2972,6 +2975,7 @@ function componentLookupText(value) {
 function componentSearchProjection(catalog) {
   return {
     coverage: catalog.coverage,
+    total: Number.isSafeInteger(catalog.total) ? catalog.total : catalog.candidates.length,
     candidates: catalog.candidates.map(({ packageId, version, ...candidate }) => ({
       referencia: `${packageId}@${version}`,
       ...candidate
@@ -3023,8 +3027,17 @@ function componentVocabularyFilter(value, field, records) {
 }
 
 HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
-  if (!Object.keys(args).length) {
-    fail("missing_human_task_argument", "Informe função, busca, componente ou filtro focal.");
+  const continuation = await openHumanReadContinuation({
+    args,
+    course: { id: RESOURCE_CATALOG.catalogVersion, revision: "components-v1" },
+    task: "consultar_componentes"
+  });
+  let cursor = 0;
+  if (continuation.p !== null) {
+    try { cursor = JSON.parse(continuation.p); } catch { cursor = NaN; }
+    if (!Number.isSafeInteger(cursor) || cursor < 0) {
+      fail("invalid_read_continuation", "A continuação da descoberta é inválida. Repita a consulta inicial.");
+    }
   }
   const query = [args.busca, args.funcao, args.componente]
     .filter((value) => value !== undefined)
@@ -3033,6 +3046,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
   const catalog = RESOURCE_CATALOG.search({
     query,
     limit: 8,
+    cursor,
     studyUnitRole: componentFilter(
       args.papel,
       "papel",
@@ -3082,9 +3096,17 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
       });
     }
   }
+  const context = await paginateHumanReadContext(withoutTechnicalState({
+    components: componentSearchProjection(catalog)
+  }), {
+    state: continuation,
+    nextPage: catalog.nextCursor == null ? null : JSON.stringify(catalog.nextCursor)
+  });
   return result("Encontrei representações candidatas para a função instrucional.", {
-    nextDecision: "Qual representação cumpre melhor a função desta unidade?",
-    context: { components: componentSearchProjection(catalog) }
+    nextDecision: catalog.hasMore
+      ? `A consulta encontrou ${catalog.total} representações; este trecho mostra ${catalog.candidates.length}. Continue com os mesmos filtros e a continuação antes de concluir a escolha.`
+      : "Qual representação cumpre melhor a função desta unidade?",
+    context
   });
 };
 
@@ -3196,6 +3218,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   });
   let savedPartId = null;
   let savedCourse = null;
+  let process = null;
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
       const resolved = await resolveHumanCourseContext({
@@ -3212,10 +3235,21 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
         ...resolved.course,
         revision: Number(plan.courseRevision)
       };
+      process = await currentAuthoringProcessContext({
+        adapter,
+        principal,
+        resolved: { ...resolved, course: currentCourse, plan },
+        deadlineAt,
+        processReference: args.processo ?? null
+      });
+      if (process.exigeConciliacao) {
+        fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
+      }
       return {
         ...resolved,
         course: currentCourse,
         plan,
+        process,
         entities: await loadAllCourseEntities(
           adapter,
           principal,
@@ -3226,7 +3260,8 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     },
     build: async (state, { newId }) => {
       const built = await buildProductionPart({
-        state, titles, progression, title, intent, position: args.posicao == null ? null : args.posicao - 1, newId
+        state, titles, progression, title, intent, position: args.posicao == null ? null : args.posicao - 1, newId,
+        allowDraftMap: state.process?.processoCorrente?.pontosDeRevisao?.includes("curricular_map") === false
       });
       savedPartId = built.part.partId;
       return built;
@@ -3242,7 +3277,8 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
     nextDecision: "A parte está pronta para leitura focal e produção.",
     context: {
       parte: { titulo: title, intencao: intent, microssequencias: titles, progressao: progression },
-      changed: receipt.changed !== false
+      changed: receipt.changed !== false,
+      ...(process || {})
     }
   });
 };
@@ -3259,6 +3295,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
     complete: args.concluir === true,
+    allowDraftCurricularMap: process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false,
     units: safeClone(focal.units, "unidades", 480 * 1024),
     explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },

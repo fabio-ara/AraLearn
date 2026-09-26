@@ -414,7 +414,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
     /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
-  assert.match(openApi.info.description, /Aprove só o mapa salvo visto pela pessoa/iu);
+  assert.match(openApi.info.description, /Aprovação humana é só do mapa salvo visto pela pessoa/iu);
+  assert.match(openApi.info.description, /mandato automático.*sem fabricar aprovação/iu);
   assert.match(openApi.info.description, /Parte é lote operacional/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);

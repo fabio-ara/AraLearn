@@ -519,7 +519,7 @@ function contentPackageStudyUnits(manifest, prefix, packageIndex) {
     {
       id: `${prefix}-theory-card`,
       position: 1,
-      title: `Como ler: ${manifest.label}`,
+      title: manifest.label,
       role: "theory",
       content: [
         paragraphInstance(`${prefix}-theory-introduction`, theoryIntroduction(manifest)),

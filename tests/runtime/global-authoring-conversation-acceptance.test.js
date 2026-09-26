@@ -521,9 +521,9 @@ test("as instruções primárias preservam mandato, leitura literal e segurança
     /Siga preferências, fixações e mandato/iu,
     /pergunte só por decisão material/iu,
     /respeite confirmações/iu,
-    /revisão exige pedido humano expresso/iu,
+    /revisão de conteúdo exige pedido humano expresso/iu,
     /Persistência não aprova observações/iu,
-    /Escrita incerta conserva a mesma tentativa/iu,
+    /Escrita incerta conserva a tentativa/iu,
     /Chat breve; conteúdo completo e literal/iu
   ]) assert.match(first512, requirement);
   assert.doesNotMatch(
@@ -532,7 +532,7 @@ test("as instruções primárias preservam mandato, leitura literal e segurança
   );
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Ensine dependências antes do uso/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /resolva autonomamente escolhas deriváveis/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Só interrompa por decisão que altere a aprendizagem/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Só interrompa por decisão de aprendizagem/iu);
   assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Pendências fora do alvo não bloqueiam produção focal/iu);
   const planning = courseAuthoringGuidanceForCall("aprovar_mapa_curricular").instructions.join(" ");
   assert.match(planning, /curso, parte, explicação, fonte e unidade em minúsculas/iu);

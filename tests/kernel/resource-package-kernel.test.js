@@ -468,9 +468,10 @@ test("destinos repetidos da tabela de transição viram lacunas independentes co
   assert.doesNotMatch(firstFilled.contentHtml, /…/u);
 
   const prompt = renderWithValues(["q0", ""], 1).responseHtml;
-  assert.match(prompt, /data-text-gap-value="q0"[^>]*><span class="runtime-text-gap-blank token-option-label">q₀<\/span><\/button>/u);
-  assert.match(prompt, /data-text-gap-value="q1"[^>]*><span class="runtime-text-gap-blank token-option-label">q₁<\/span><\/button>/u);
-  assert.match(prompt, /data-text-gap-value="q2"[^>]*><span class="runtime-text-gap-blank token-option-label">q₂<\/span><\/button>/u);
+  assert.match(prompt, /data-text-gap-value="q0"[^>]*><span class="token-option-label">q₀<\/span><\/button>/u);
+  assert.match(prompt, /data-text-gap-value="q1"[^>]*><span class="token-option-label">q₁<\/span><\/button>/u);
+  assert.match(prompt, /data-text-gap-value="q2"[^>]*><span class="token-option-label">q₂<\/span><\/button>/u);
+  assert.doesNotMatch(prompt, /runtime-text-gap-blank/u);
   assert.equal(
     RESOURCE_PACKAGE_REGISTRY.evaluateResponse(response, {
       values: { "destination-1": "q0", "destination-2": "q0" }

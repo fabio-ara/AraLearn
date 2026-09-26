@@ -36,7 +36,7 @@ const screenshotPractice = practiceUnits.find(({ packages }) =>
   packages.includes("aralearn.resource.software_container"));
 
 const visualCases = [
-  { width: 360, height: 800 },
+  { width: 320, height: 800 },
   { width: 390, height: 844 },
   { width: 430, height: 932 },
   { width: 1280, height: 800 }
@@ -83,6 +83,28 @@ async function installStudyRuntime(page) {
     });
     const repository = {
       loadProject: () => structuredClone(project),
+      // Contraste sintético dos mesmos componentes nos dois hosts. Não é uma
+      // Explicação produzida por GPT nem evidência de conteúdo hospedado.
+      loadExplanationContext: reference => {
+        const microsequence = project.courses.flatMap(item => item.modules)
+          .flatMap(item => item.lessons).flatMap(item => item.microsequences)
+          .find(item => item.id === reference.microsequenceId);
+        const theory = microsequence.studyUnits.find(item => item.role === "theory");
+        return {
+          courseId: reference.courseId, courseRevision: 1,
+          microsequenceId: microsequence.id, targetKind: "microsequence_explanation",
+          targetId: microsequence.id,
+          explanation: { title: microsequence.title, content: structuredClone(theory.content) },
+          contentReview: { state: "current" }, state: "available", availableRevision: 1,
+          retainedForReview: false, offline: probe.offline
+        };
+      },
+      loadExplanationCitations: async reference => ({
+        contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+        courseId: reference.courseId, courseRevision: 1,
+        targetKind: "microsequence_explanation", targetId: reference.microsequenceId, citations: []
+      }),
+      loadExplanationCitationStatus: () => ({ courseRevision: 1, source: "fixture", offline: false }),
       loadProgress: () => structuredClone(progress),
       loadCourseSummaries: () => [{
         ...courseSummary,
@@ -252,6 +274,48 @@ async function auditVisibleStudyUnit(page) {
   });
 }
 
+async function captureReadingSegments(page, testInfo, selector, name) {
+  const body = page.locator(selector);
+  const segments = [];
+  await body.evaluate(node => { node.scrollTop = 0; });
+  while (true) {
+    const bounds = await body.evaluate(node => ({
+      top: node.scrollTop, height: node.clientHeight, total: node.scrollHeight
+    }));
+    expect(bounds.height).toBeGreaterThan(0);
+    const filename = `${name}-${segments.length + 1}.png`;
+    const path = testInfo.outputPath(filename);
+    await page.screenshot({ path });
+    segments.push({ file: filename, scrollTop: bounds.top, viewportHeight: bounds.height,
+      contentHeight: bounds.total });
+    if (bounds.top + bounds.height >= bounds.total - 1) break;
+    await body.evaluate(node => { node.scrollTop += Math.max(1, Math.floor(node.clientHeight * 0.8)); });
+    expect(await body.evaluate(node => node.scrollTop)).toBeGreaterThan(bounds.top);
+  }
+  await body.evaluate(node => { node.scrollTop = 0; });
+  return segments;
+}
+
+async function inspectExplanation(page, unit) {
+  const trigger = page.getByRole("button", { name: "Explicação", exact: true });
+  await trigger.click();
+  const overlay = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByRole("button", { name: "Fechar explicação", exact: true })).toBeFocused();
+  await expect.poll(() => overlay.locator(
+    '[data-graphviz-status]:not([data-graphviz-status="ready"]), ' +
+    '[data-vega-status]:not([data-vega-status="ready"]), ' +
+    '[data-flow-layout-status]:not([data-flow-layout-status="ready"])'
+  ).count()).toBe(0);
+  const rendered = await overlay.locator(".study-explanation-body .package-instance")
+    .evaluateAll(nodes => nodes.map(node => node.dataset.package));
+  expect(rendered).toEqual(inlinePackages(unit));
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+  expect(await overlay.locator(".study-explanation-body").evaluate(node =>
+    node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  return { trigger, overlay, rendered };
+}
+
 test("Curso de catálogo exercita todos os pacotes no Estudo e permanece disponível sem conexão", async ({
   context,
   page
@@ -332,7 +396,8 @@ test("Curso de catálogo exercita todos os pacotes no Estudo e permanece dispon�
 
 for (const { width, height, theme } of visualCases) {
   test(`Curso de catálogo cabe em ${width} px no tema ${theme}`, async ({ page }, testInfo) => {
-    test.setTimeout(120_000);
+    // Inclui agora dois hosts e segmentos sobrepostos de cada leitura.
+    test.setTimeout(240_000);
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.setViewportSize({ width, height });
@@ -344,6 +409,7 @@ for (const { width, height, theme } of visualCases) {
 
     let maximumDocumentOverflow = 0;
     let minimumDockTarget = Number.POSITIVE_INFINITY;
+    const evidence = [];
     for (const unit of studyUnits) {
       await openStudyUnit(page, unit);
       const audit = await auditVisibleStudyUnit(page);
@@ -364,6 +430,22 @@ for (const { width, height, theme } of visualCases) {
       );
       for (const target of audit.dockTargets) {
         minimumDockTarget = Math.min(minimumDockTarget, target.width, target.height);
+      }
+      if (theme === "light") {
+        evidence.push({ unit: unit.id, packages: unit.packages, host: "unidade",
+          segments: await captureReadingSegments(page, testInfo, ".card-sheet-content",
+            `${width}-${unit.id}`) });
+      }
+      if (unit.role === "theory") {
+        const explanation = await inspectExplanation(page, unit);
+        if (theme === "light") {
+          evidence.push({ unit: unit.id, packages: explanation.rendered, host: "explicacao",
+            segments: await captureReadingSegments(page, testInfo, ".study-explanation-body",
+              `${width}-${unit.id}-explicacao`) });
+        }
+        await explanation.overlay.getByRole("button", { name: "Fechar explicação", exact: true }).click();
+        await expect(explanation.overlay).toHaveCount(0);
+        await expect(explanation.trigger).toBeFocused();
       }
     }
 
@@ -393,6 +475,9 @@ for (const { width, height, theme } of visualCases) {
       theoryUnits: theoryUnits.length,
       practiceUnits: practiceUnits.length,
       packages: packageIds.length,
+      evidenceKind: "fixture sintética local; sem persistência hospedada ou julgamento humano",
+      explanationHosts: theoryUnits.length,
+      evidence,
       maximumDocumentOverflow,
       minimumDockTarget
     }, null, 2));

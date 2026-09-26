@@ -34,7 +34,7 @@ Abra o link para **Planejamento** e confira a proposta completa; a síntese da c
 
 > Na primeira lição, quero distinguir mensagem, origem e destino antes de apresentar os meios de transmissão. Na segunda, use o mesmo caso de comunicação para desenvolver a inversão dos papéis na resposta. Preserve os demais assuntos e me mostre o mapa atualizado.
 
-Volte ao aplicativo e confira se a mudança corresponde ao pedido. Quando aprovar o mapa, a decisão fica ligada à versão salva que você examinou. Explicações e atividades receberão sua própria inspeção quando forem produzidas.
+Volte ao aplicativo e confira se a mudança corresponde ao pedido. Quando o mandato incluir revisão curricular, aprove o mapa pela referência da versão salva que você examinou. Um mandato automático pode planejar e materializar o curso com o mapa em rascunho, sem registrar aprovação humana. Explicações e atividades receberão sua própria inspeção quando forem produzidas.
 
 A explicação desenvolve o conteúdo de uma microssequência e suas fontes. Pode ser produzida antes das unidades, inclusive enquanto o mapa ainda está em rascunho. Um pedido como “desenvolva primeiro a explicação sobre origem, destino e mensagem, com as fontes que sustentam cada relação” permite trabalhar a base antes de decidir sua apresentação em unidades. Veja [Explicação e revisão humana](explicacao-e-revisao-humana.md).
 
@@ -69,6 +69,8 @@ Um alvo de palavras ajuda a ajustar a extensão depois que o percurso já conté
 Explique o que deseja tornar visível: comparar estados, seguir um percurso ou justificar uma escolha. Por exemplo, “uma tabela deve permitir comparar quem envia e quem recebe no pedido e na resposta” é um pedido de função, não apenas de variedade visual.
 
 O assistente pode escolher entre os [componentes didáticos](componentes-didaticos.md) disponíveis. Ao pedir uma atividade, informe também o que a pessoa deverá fazer com o conhecimento. Identificar a origem de uma mensagem, prever o destinatário e explicar por que os papéis mudam são tarefas diferentes.
+
+Uma consulta ampla pode retornar apenas um trecho do catálogo. Quando o retorno indicar `temMais`, continue com os mesmos filtros e `continuacao` antes de concluir a escolha; compare as alternativas pela função didática e preserve a diversidade que ajuda a tornar o raciocínio visível.
 
 Confira na prévia se a representação cumpre sua função, se o texto ensina a lê-la e se a atividade pode ser resolvida com o que o percurso já ensinou. Peça que o retorno da resposta desenvolva o raciocínio necessário. O [guia autoral](guia-professor-autor.md#escolher-componentes-e-prática) relaciona essas escolhas ao desenho do curso.
 

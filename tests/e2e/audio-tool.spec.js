@@ -15,7 +15,7 @@ async function mount(page, { remote = false, late = false, configFailure = false
     const synthesis = new EventTarget();
     synthesis.voices = options.late ? [] : [options.remote ? remote : local];
     synthesis.getVoices = () => synthesis.voices;
-    synthesis.speak = utterance => { probe.spoke.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate, voice: utterance.voice.voiceURI }); probe.currentUtterance = utterance; utterance.onstart?.(); };
+    synthesis.speak = utterance => { probe.spoke.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate, voice: utterance.voice.voiceURI }); probe.currentUtterance = utterance; utterance.onstart?.({ elapsedTime: 0, timeStamp: 0 }); };
     synthesis.pause = () => { probe.paused = true; }; synthesis.resume = () => { probe.paused = false; };
     synthesis.cancel = () => { probe.cancellations++; };
     Object.defineProperty(window, "speechSynthesis", { configurable: true, value: synthesis });
@@ -48,6 +48,7 @@ async function mount(page, { remote = false, late = false, configFailure = false
       }
     });
     probe.publishVoices = () => { synthesis.voices = [local]; synthesis.dispatchEvent(new Event("voiceschanged")); };
+    probe.emit = (name, elapsedTime, timeStamp = elapsedTime * 1000) => probe.currentUtterance?.[`on${name}`]?.({ elapsedTime, timeStamp });
     window.__audioProbe = probe;
     await document.fonts.ready;
   }, { remote, late, configFailure, reveal, corrupt, duration });
@@ -66,7 +67,7 @@ test("voz nativa recebe idioma/ritmo, alternativa explícita não executa markup
   await first.getByRole("button", { name: "Mostrar alternativa textual" }).tap();
   await expect(first.locator("[data-audio-alternative]")).toHaveText("Alternativa solicitada <script>hostil</script>.");
   expect(await first.locator("script").count()).toBe(0);
-  for (const width of [360, 390, 1280]) {
+  for (const width of [320, 390, 430, 1280]) {
     await page.setViewportSize({ width, height: 850 });
     await page.evaluate(width => { document.documentElement.dataset.colorMode = width === 390 ? "dark" : "light"; }, width);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
@@ -75,6 +76,44 @@ test("voz nativa recebe idioma/ritmo, alternativa explícita não executa markup
   }
   await page.evaluate(() => window.__audioProbe.cleanup());
   expect(await page.evaluate(() => window.__audioProbe.cancellations)).toBe(1);
+});
+
+for (const unitsPerSecond of [1, 1000]) test(`voz nativa normaliza eventos em ${unitsPerSecond === 1 ? "segundos" : "milissegundos"}, desconta pausa e mede duração no fim`, async ({ page }) => {
+  await mount(page);
+  const emit = (name, seconds) => page.evaluate(({ name, seconds, unitsPerSecond }) =>
+    window.__audioProbe.emit(name, seconds * unitsPerSecond, seconds * 1000), { name, seconds, unitsPerSecond });
+  const row = page.locator('[data-audio-track="first"]');
+  const slider = row.locator("[data-audio-progress]");
+  await row.locator('[data-audio-action="play"]').tap();
+  await expect(row.locator('[data-audio-duration]')).toHaveText("duração desconhecida");
+  await emit("boundary", 1.25);
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText("0:01");
+  await expect(slider).toBeDisabled();
+  await row.locator('[data-audio-action="play"]').tap();
+  await emit("pause", 1.4);
+  await emit("boundary", 2); // Alguns motores entregam uma fronteira já enfileirada.
+  await page.waitForTimeout(300);
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText("0:01");
+  await row.locator('[data-audio-action="play"]').tap();
+  await emit("resume", 6.4);
+  await emit("boundary", 7.5);
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText("0:02");
+  await emit("end", 8.1);
+  await expect(row.locator('[data-audio-duration]')).toHaveText("0:03");
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText("0:03");
+  await expect(slider).toBeDisabled();
+  await expect(slider).toHaveAttribute("aria-valuetext", /ajuste indisponível/u);
+  await expect(row.locator('[data-audio-action="stop"]')).toBeDisabled();
+  await row.locator('[data-audio-action="play"]').tap();
+  await expect(row.locator('[data-audio-duration]')).toHaveText("duração desconhecida");
+  await emit("boundary", 2.5);
+  await emit("boundary", 1);
+  await expect(row.locator('[data-audio-elapsed]')).toHaveText("0:02");
+  // Alguns motores encerram sem duração: a última fronteira não é o fim da fala.
+  await page.evaluate(() => window.__audioProbe.emit("end"));
+  await expect(row.locator('[data-audio-duration]')).toHaveText("duração desconhecida");
+  await expect(row.locator('[data-audio-action="stop"]')).toBeDisabled();
+  await page.evaluate(() => window.__audioProbe.cleanup());
 });
 
 test("voz remota exige consentimento de quem escuta, mesmo autorizada no curso", async ({ page }) => {
@@ -141,6 +180,30 @@ test("player único pausa, busca pelo teclado e reinicia uma faixa longa sem bai
   expect(await page.evaluate(() => window.__audioProbe.downloads.length)).toBe(1);
   await row.getByRole("button", { name: /^Pausar/u }).tap();
   await page.screenshot({ path: info.outputPath('audio-player.png'), fullPage: true });
+  await page.evaluate(() => window.__audioProbe.cleanup());
+});
+
+test("pausar durante o início conserva o arquivo quando o navegador cancela a promessa de play", async ({ page }) => {
+  await mount(page, { duration: 4 });
+  const row = page.locator('[data-audio-track="file"]');
+  // O WAV é real; só controlamos a conclusão da promessa para reproduzir a corrida.
+  await row.locator('audio').evaluate(audio => {
+    const play = audio.play.bind(audio);
+    audio.play = async () => {
+      await play();
+      return new Promise((resolve, reject) => {
+        window.__audioProbe.finishStarting = () => reject(new DOMException('Reprodução interrompida pela pausa.', 'AbortError'));
+      });
+    };
+  });
+  await row.getByRole('button', { name: /^Reproduzir/u }).tap();
+  await expect.poll(() => page.evaluate(() => typeof window.__audioProbe.finishStarting)).toBe('function');
+  await row.getByRole('button', { name: /^Pausar/u }).tap();
+  await page.evaluate(() => window.__audioProbe.finishStarting());
+  await expect(row.locator('[data-audio-track-status]')).toBeEmpty();
+  await expect(row.locator('[data-audio-duration]')).toHaveText('0:04');
+  expect(await row.locator('audio').evaluate(audio => audio.paused && audio.src.startsWith('blob:'))).toBe(true);
+  expect(await page.evaluate(() => window.__audioProbe.downloads.length)).toBe(1);
   await page.evaluate(() => window.__audioProbe.cleanup());
 });
 

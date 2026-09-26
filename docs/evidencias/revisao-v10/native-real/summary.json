@@ -1,0 +1,103 @@
+{
+  "contract": "aralearn.evidencias.native-real.v1",
+  "geradoEm": "2026-09-26T17:31:48.612Z",
+  "origem": {
+    "registro": "native-real-after.json (resumo sanitizado; original permanece em .tmp/agent/revisao-v10/)",
+    "navegador": "Chrome 153.0.0.0 em Windows (x64 no UA; a versão do sistema não é provada pelo UA)",
+    "sintese": "SpeechSynthesis nativa original, com ouvintes passivos de eventos",
+    "voz": "Microsoft Daniel - Portuguese (Brazil), lang pt-BR, localService=true — verificado diretamente em native-real-voice-stop.json",
+    "texto": "sintético e ético, sem serviço remoto",
+    "escopo": "DOM local com renderer/binding real; nenhum curso persistido é exercitado",
+    "naoAtribuir": "a prova vale para Chrome 153 no Windows; não deve ser atribuída a outros navegadores"
+  },
+  "coleta": {
+    "snapshots": 41,
+    "eventos": 33,
+    "porTipo": {
+      "start": 2,
+      "boundary": 27,
+      "pause": 1,
+      "resume": 1,
+      "end": 1,
+      "error": 1
+    },
+    "camposDeSnapshot": [
+      "at",
+      "elapsed",
+      "duration",
+      "status",
+      "seekDisabled",
+      "stopDisabled",
+      "speaking",
+      "paused",
+      "playing"
+    ]
+  },
+  "transicoes": [
+    {
+      "type": "start",
+      "ms": 809.6,
+      "timeStampMs": 9622,
+      "charIndex": 0,
+      "error": null
+    },
+    {
+      "type": "pause",
+      "ms": 2454.8,
+      "timeStampMs": 11267,
+      "charIndex": 0,
+      "error": null
+    },
+    {
+      "type": "resume",
+      "ms": 9973.1,
+      "timeStampMs": 18785,
+      "charIndex": 0,
+      "error": null
+    },
+    {
+      "type": "end",
+      "ms": 21221.7,
+      "timeStampMs": 30034,
+      "charIndex": 0,
+      "error": null
+    },
+    {
+      "type": "start",
+      "ms": 819.7,
+      "timeStampMs": 61145,
+      "charIndex": 0,
+      "error": null
+    },
+    {
+      "type": "error",
+      "ms": 1320.4,
+      "timeStampMs": 61646,
+      "charIndex": 0,
+      "error": "interrupted"
+    }
+  ],
+  "boundary": {
+    "count": 27,
+    "firstMs": 813.9,
+    "lastMs": 949.5,
+    "charIndexMin": 0,
+    "charIndexMax": 136
+  },
+  "ui": {
+    "pausa": "elapsed congelado em 0:01 (paused=true, playing=false) em at=11268ms",
+    "retomada": "playing=true de volta em at=18786ms; a leitura seguiu até 0:04 em at=21194ms",
+    "fim": "elapsed 0:12 com duration 0:12 em at=30036ms",
+    "novoPlay": "elapsed volta a 0:00 e duration retorna a \"duração desconhecida\" em at=61147ms",
+    "stop": "speaking=false e playing=false em at=61643ms (+0:00)",
+    "seek": "seekDisabled=true durante toda a coleta",
+    "esperado": "o erro \"interrupted\" decorre do término voluntário (Stop) na segunda execução"
+  },
+  "sanitizacao": "verificado no JSON original: 0 UUIDs, 0 cookies, 0 tokens, 0 sessões, 0 credenciais e nenhum dado real; apenas o UA do navegador é preservado",
+  "paradaVerificada": {
+    "arquivo": ".tmp/agent/revisao-v10/native-real-voice-stop.json",
+    "playing": "playing=true, speaking=true, elapsed 0:00 em at=370852,2ms",
+    "stopped": "playing=false, speaking=false, stopDisabled=true, elapsed 0:00 em at=370852,9ms",
+    "nota": "Stop cancela imediatamente (+0:00) com a voz local confirmada no próprio arquivo"
+  }
+}

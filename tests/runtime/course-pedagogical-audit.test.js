@@ -49,6 +49,37 @@ test("feedback específico não encobre bastidor no mesmo trecho, em outro bloco
   }
 });
 
+test("feedback de operação relacional ou procedural explica o raciocínio; reconhecimento simples continua válido", () => {
+  const content = unit();
+  content.feedback = [paragraph("f", "Correto.")];
+  const practice = [{ evidenceRequirementId: "r1", invariantTaskOperation: "Comparar os mecanismos de recuperação" }];
+  let audit = inspectPedagogicalEvidence({ content, practices: practice });
+  assert.ok(audit.issues.some(issue => issue.code === "pedagogical_feedback_non_explanatory"));
+  assert.equal(audit.observation.feedbackAssessment.requiresExplanatoryFeedback, true);
+
+  content.feedback = [paragraph("f", "O TCP confirma o recebimento e retransmite o segmento perdido; o UDP não oferece essa recuperação.")];
+  audit = inspectPedagogicalEvidence({ content, practices: practice, requirements: [{ id: "r1" }] });
+  assert.deepEqual(audit.issues, []);
+
+  content.feedback = [paragraph("f", "Correto.")];
+  audit = inspectPedagogicalEvidence({ content, practices: [{
+    evidenceRequirementId: "r1", invariantTaskOperation: "Reconhecer o protocolo apresentado"
+  }], requirements: [{ id: "r1" }] });
+  assert.deepEqual(audit.issues, []);
+  assert.equal(audit.observation.feedbackAssessment.requiresExplanatoryFeedback, false);
+});
+
+test("feedback geral explicativo cobre rótulo curto de alternativa", () => {
+  const content = unit();
+  content.feedback = [paragraph("f", "A alternativa está correta porque o TCP confirma o recebimento e retransmite o segmento perdido; o UDP não oferece essa recuperação.")];
+  content.response.data.options[0].feedback = "Correto.";
+  const audit = inspectPedagogicalEvidence({ content,
+    practices: [{ evidenceRequirementId: "r1", invariantTaskOperation: "Comparar os mecanismos de recuperação" }],
+    requirements: [{ id: "r1" }] });
+  assert.equal(audit.issues.some(issue => issue.code === "pedagogical_feedback_non_explanatory"), false);
+  assert.equal(audit.observation.feedbackAssessment.genericOptionFeedback, true);
+});
+
 test("uma lacuna e single são legítimos; alternativas duplicadas e equivalentes incorretos não", () => {
   const content = unit();
   content.feedback = [paragraph("f", "TCP confirma os dados e retransmite os segmentos perdidos; UDP não faz essa recuperação.")];

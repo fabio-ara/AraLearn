@@ -1,5 +1,5 @@
 import { academicProfile } from "../../sdk/academic.js";
-import { dotAttributes, dotQuote, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
+import { dotAttributes, dotQuote, graphvizEdgeLabelAttributes, graphvizLayoutAttributes, wrapGraphvizLabel } from "../../sdk/graphviz.js";
 import { renderPackageInline, renderPackageProse } from "../../sdk/html.js";
 import {
   hydrateSystemDiagrams,
@@ -44,7 +44,7 @@ function graphvizSource(data) {
     `  ${dotQuote("__initial__")} ${dotAttributes({ id: "state-initial-marker", class: "package-state-machine-initial", label: "", shape: "point", width: "0.12" })};`,
     ...data.states.map((state) => `  ${dotQuote(state.id)} ${dotAttributes({ id: `system-node-${state.id}`, class: `package-state-machine-state${state.accepting ? " is-accepting" : ""}`, label: wrapGraphvizLabel(state.label, 22), shape: state.accepting ? "doublecircle" : "circle", margin: "0.11,0.07" })};`),
     `  ${dotQuote("__initial__")} -> ${dotQuote(data.states.find(({ initial }) => initial)?.id)} ${dotAttributes({ id: "state-initial-edge", class: "package-state-machine-transition", arrowsize: "0.72" })};`,
-    ...data.transitions.map((transition) => `  ${dotQuote(transition.from)} -> ${dotQuote(transition.to)} ${dotAttributes({ id: `system-edge-${transition.id}`, class: "package-state-machine-transition", label: wrapGraphvizLabel(transitionLabel(transition, eventNames), 22), arrowsize: "0.72" })};`),
+    ...data.transitions.map((transition) => `  ${dotQuote(transition.from)} -> ${dotQuote(transition.to)} ${dotAttributes({ id: `system-edge-${transition.id}`, class: "package-state-machine-transition", ...graphvizEdgeLabelAttributes(transitionLabel(transition, eventNames), 22), arrowsize: "0.72" })};`),
     "}"
   ].join("\n");
 }

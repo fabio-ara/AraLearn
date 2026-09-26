@@ -107,6 +107,21 @@ function referenceLayers(reference, data, theme) {
   ];
 }
 
+// O rótulo de uma linha de referência fica dentro da área de dados e uma série pode
+// passar exatamente sobre o texto. O contorno na cor da superfície (halo) mantém o
+// rótulo legível e a associação com a linha, sem deslocar nem ocultar dados.
+function outlineReferenceLabels(canvas, lines, color) {
+  const labels = new Set((lines || []).map((line) => String(line?.label || "").trim()).filter(Boolean));
+  if (!labels.size) return;
+  canvas.querySelectorAll("svg g[class*='role-mark'] text").forEach((node) => {
+    if (!labels.has(node.textContent.trim())) return;
+    node.setAttribute("paint-order", "stroke fill");
+    node.setAttribute("stroke", color);
+    node.setAttribute("stroke-width", "3");
+    node.setAttribute("stroke-linejoin", "round");
+  });
+}
+
 export function compileChartVegaLite(data, theme) {
   const values = flattenedValues(data);
   const base = baseEncoding(data, theme);
@@ -207,6 +222,7 @@ async function hydrateChart(figure) {
     delete canvas.dataset.packageManualXAxisSuffix;
     delete canvas.dataset.packageManualYAxisPath;
     delete canvas.dataset.packageManualYAxisSuffix;
+    outlineReferenceLabels(canvas, data.referenceLines, theme.surface);
   } catch (error) {
     canvas.dataset.vegaStatus = "error";
     canvas.setAttribute("aria-busy", "false");

@@ -143,6 +143,13 @@ export function wrapGraphvizLabel(value, lineLength = 32) {
   return markers + lines.join("\n");
 }
 
+export function graphvizEdgeLabelAttributes(value, lineLength = 32) {
+  return {
+    label: wrapGraphvizLabel(value, lineLength),
+    decorate: "true"
+  };
+}
+
 export function hasGraphvizGap(value) {
   GAP_MARKER.lastIndex = 0;
   return GAP_MARKER.test(String(value || ""));

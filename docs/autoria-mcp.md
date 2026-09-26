@@ -26,6 +26,12 @@ O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
 estruturados de entrada, ou schemas, são gerados dessa fonte.
 
+As mudanças aditivas desta revisão preservam a versão `8.0.0`: `consultar_componentes`
+aceita `{}` para descobrir o catálogo completo em páginas de oito, e os campos de
+continuação e `processo` são opcionais. Clientes que já usam os campos anteriores
+continuam compatíveis; quando a lista completa for necessária, o cliente deve
+seguir `temMais` e `continuacao` até a última página.
+
 | Leitura | Quando usar |
 | --- | --- |
 | `consultar_preferencias_autoria` | ler foco, cadência, pontos de revisão e diálogo pessoais, com as condições do curso quando indicado |
@@ -121,7 +127,7 @@ WAV são recusados. Permanecem as verificações de origem, tamanho e
 redirecionamento aplicáveis à operação.
 
 As ferramentas do estudo, como áudio e calculadora, são componentes do catálogo
-comum, incluídos no campo `content` da unidade ou da explicação. A consulta focal de componentes fornece um contrato por vez; a de
+comum, incluídos no campo `content` da unidade ou da explicação. A consulta focal de componentes fornece um trecho de até oito representações, com `total`, `temMais` e `continuacao`; quando houver continuação, repita os mesmos filtros antes de concluir a descoberta. A leitura de contrato continua focal e fornece um contrato por vez; a de
 fontes fornece alvos lógicos de PDF; a biblioteca fornece referências de áudio
 sem endereços internos de armazenamento. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-de-autoria).
 
@@ -228,7 +234,7 @@ pessoa autora.
 
 `links` identifica cada destino por `relation`, `target`, `label`, `url` e, quando disponível, `revision`. O primeiro destino corresponde a `deepLink`. A relação distingue conteúdo, observações, fontes, planejamento e parâmetros; conserve o endereço e a identidade retornados ao oferecer a próxima etapa.
 
-`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa.
+`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; quando o mandato tem ponto de revisão curricular, não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa. Um mandato automático sem esse ponto pode seguir com o mapa em rascunho e materializar lotes operacionais, sem marcar aprovação humana.
 
 Em `retomar_curso` e `consultar_planejamento`, indicar `parte` ou `microssequencia` limita o contexto ao ramo selecionado e às dependências pertinentes. O planejamento integral continua disponível sem esse foco, com continuação quando necessário. Essas regras são compartilhadas com Actions.
 

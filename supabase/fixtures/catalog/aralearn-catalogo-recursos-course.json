@@ -64,7 +64,7 @@
                     {
                       "id": "catalog-aralearn-resource-annotated-text-theory-card",
                       "position": 1,
-                      "title": "Como ler: Texto anotado",
+                      "title": "Texto anotado",
                       "role": "theory",
                       "content": [
                         {
@@ -246,7 +246,7 @@
                     {
                       "id": "catalog-aralearn-resource-audio-theory-card",
                       "position": 1,
-                      "title": "Como ler: Áudio",
+                      "title": "Áudio",
                       "role": "theory",
                       "content": [
                         {
@@ -388,7 +388,7 @@
                     {
                       "id": "catalog-aralearn-resource-code-theory-card",
                       "position": 1,
-                      "title": "Como ler: Código",
+                      "title": "Código",
                       "role": "theory",
                       "content": [
                         {
@@ -485,7 +485,7 @@
                     {
                       "id": "catalog-aralearn-resource-interlinear-gloss-theory-card",
                       "position": 1,
-                      "title": "Como ler: Glosa interlinear",
+                      "title": "Glosa interlinear",
                       "role": "theory",
                       "content": [
                         {
@@ -684,7 +684,7 @@
                     {
                       "id": "catalog-aralearn-resource-paragraph-theory-card",
                       "position": 1,
-                      "title": "Como ler: Texto explicado",
+                      "title": "Texto explicado",
                       "role": "theory",
                       "content": [
                         {
@@ -824,7 +824,7 @@
                     {
                       "id": "catalog-aralearn-resource-calculator-theory-card",
                       "position": 1,
-                      "title": "Como ler: Calculadora",
+                      "title": "Calculadora",
                       "role": "theory",
                       "content": [
                         {
@@ -940,7 +940,7 @@
                     {
                       "id": "catalog-aralearn-resource-chart-theory-card",
                       "position": 1,
-                      "title": "Como ler: Gráfico estatístico",
+                      "title": "Gráfico estatístico",
                       "role": "theory",
                       "content": [
                         {
@@ -1269,7 +1269,7 @@
                     {
                       "id": "catalog-aralearn-resource-formula-theory-card",
                       "position": 1,
-                      "title": "Como ler: Fórmula",
+                      "title": "Fórmula",
                       "role": "theory",
                       "content": [
                         {
@@ -1385,7 +1385,7 @@
                     {
                       "id": "catalog-aralearn-resource-matrix-theory-card",
                       "position": 1,
-                      "title": "Como ler: Matriz",
+                      "title": "Matriz",
                       "role": "theory",
                       "content": [
                         {
@@ -1516,7 +1516,7 @@
                     {
                       "id": "catalog-aralearn-resource-plane-theory-card",
                       "position": 1,
-                      "title": "Como ler: Plano cartesiano",
+                      "title": "Plano cartesiano",
                       "role": "theory",
                       "content": [
                         {
@@ -1922,7 +1922,7 @@
                     {
                       "id": "catalog-aralearn-resource-reaction-theory-card",
                       "position": 1,
-                      "title": "Como ler: Reação",
+                      "title": "Reação",
                       "role": "theory",
                       "content": [
                         {
@@ -2067,7 +2067,7 @@
                     {
                       "id": "catalog-aralearn-resource-table-theory-card",
                       "position": 1,
-                      "title": "Como ler: Tabela",
+                      "title": "Tabela",
                       "role": "theory",
                       "content": [
                         {
@@ -2233,7 +2233,7 @@
                     {
                       "id": "catalog-aralearn-resource-truth-table-theory-card",
                       "position": 1,
-                      "title": "Como ler: Tabela-verdade",
+                      "title": "Tabela-verdade",
                       "role": "theory",
                       "content": [
                         {
@@ -2489,7 +2489,7 @@
                     {
                       "id": "catalog-aralearn-resource-graph-theory-card",
                       "position": 1,
-                      "title": "Como ler: Grafo matemático",
+                      "title": "Grafo matemático",
                       "role": "theory",
                       "content": [
                         {
@@ -2775,7 +2775,7 @@
                     {
                       "id": "catalog-aralearn-resource-relation-map-theory-card",
                       "position": 1,
-                      "title": "Como ler: Diagrama de relação",
+                      "title": "Diagrama de relação",
                       "role": "theory",
                       "content": [
                         {
@@ -3012,7 +3012,7 @@
                     {
                       "id": "catalog-aralearn-resource-set-diagram-theory-card",
                       "position": 1,
-                      "title": "Como ler: Diagrama de conjuntos",
+                      "title": "Diagrama de conjuntos",
                       "role": "theory",
                       "content": [
                         {
@@ -3236,7 +3236,7 @@
                     {
                       "id": "catalog-aralearn-resource-tree-theory-card",
                       "position": 1,
-                      "title": "Como ler: Árvore enraizada",
+                      "title": "Árvore enraizada",
                       "role": "theory",
                       "content": [
                         {
@@ -3458,7 +3458,7 @@
                     {
                       "id": "catalog-aralearn-resource-bpmn-process-theory-card",
                       "position": 1,
-                      "title": "Como ler: Processo BPMN",
+                      "title": "Processo BPMN",
                       "role": "theory",
                       "content": [
                         {
@@ -3858,7 +3858,7 @@
                     {
                       "id": "catalog-aralearn-resource-call-stack-theory-card",
                       "position": 1,
-                      "title": "Como ler: Pilha de chamadas",
+                      "title": "Pilha de chamadas",
                       "role": "theory",
                       "content": [
                         {
@@ -4045,7 +4045,7 @@
                     {
                       "id": "catalog-aralearn-resource-flow-theory-card",
                       "position": 1,
-                      "title": "Como ler: Fluxograma",
+                      "title": "Fluxograma",
                       "role": "theory",
                       "content": [
                         {
@@ -4223,7 +4223,7 @@
                     {
                       "id": "catalog-aralearn-resource-state-machine-theory-card",
                       "position": 1,
-                      "title": "Como ler: Diagrama de estados",
+                      "title": "Diagrama de estados",
                       "role": "theory",
                       "content": [
                         {
@@ -4478,7 +4478,7 @@
                     {
                       "id": "catalog-aralearn-resource-state-transition-table-theory-card",
                       "position": 1,
-                      "title": "Como ler: Tabela de transição",
+                      "title": "Tabela de transição",
                       "role": "theory",
                       "content": [
                         {
@@ -4727,7 +4727,7 @@
                     {
                       "id": "catalog-aralearn-resource-terminal-session-theory-card",
                       "position": 1,
-                      "title": "Como ler: Sessão de terminal",
+                      "title": "Sessão de terminal",
                       "role": "theory",
                       "content": [
                         {
@@ -4933,7 +4933,7 @@
                     {
                       "id": "catalog-aralearn-resource-database-schema-theory-card",
                       "position": 1,
-                      "title": "Como ler: Esquema relacional",
+                      "title": "Esquema relacional",
                       "role": "theory",
                       "content": [
                         {
@@ -5303,7 +5303,7 @@
                     {
                       "id": "catalog-aralearn-resource-entity-relationship-theory-card",
                       "position": 1,
-                      "title": "Como ler: Modelo entidade-relacionamento",
+                      "title": "Modelo entidade-relacionamento",
                       "role": "theory",
                       "content": [
                         {
@@ -5574,7 +5574,7 @@
                     {
                       "id": "catalog-aralearn-resource-software-container-theory-card",
                       "position": 1,
-                      "title": "Como ler: Contêineres de software",
+                      "title": "Contêineres de software",
                       "role": "theory",
                       "content": [
                         {
@@ -5860,7 +5860,7 @@
                     {
                       "id": "catalog-aralearn-resource-software-system-context-theory-card",
                       "position": 1,
-                      "title": "Como ler: Contexto de sistema de software",
+                      "title": "Contexto de sistema de software",
                       "role": "theory",
                       "content": [
                         {
@@ -6063,7 +6063,7 @@
                     {
                       "id": "catalog-aralearn-resource-system-internal-block-theory-card",
                       "position": 1,
-                      "title": "Como ler: Diagrama interno de bloco",
+                      "title": "Diagrama interno de bloco",
                       "role": "theory",
                       "content": [
                         {
@@ -6379,7 +6379,7 @@
                     {
                       "id": "catalog-aralearn-resource-memory-layout-theory-card",
                       "position": 1,
-                      "title": "Como ler: Mapa de memória",
+                      "title": "Mapa de memória",
                       "role": "theory",
                       "content": [
                         {
@@ -6597,7 +6597,7 @@
                     {
                       "id": "catalog-aralearn-resource-network-topology-theory-card",
                       "position": 1,
-                      "title": "Como ler: Topologia de rede",
+                      "title": "Topologia de rede",
                       "role": "theory",
                       "content": [
                         {
@@ -6826,7 +6826,7 @@
                     {
                       "id": "catalog-aralearn-resource-packet-layout-theory-card",
                       "position": 1,
-                      "title": "Como ler: Layout de pacote",
+                      "title": "Layout de pacote",
                       "role": "theory",
                       "content": [
                         {

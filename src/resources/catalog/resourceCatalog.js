@@ -79,6 +79,14 @@ function validateLimit(value, fallback, maximum, label = "limit") {
   return value;
 }
 
+function validateSearchCursor(value, maximum) {
+  if (value == null) return 0;
+  if (!Number.isSafeInteger(value) || value < 0 || value > maximum) {
+    throw new RangeError("cursor de descoberta inválido.");
+  }
+  return value;
+}
+
 function vocabularySet(field) {
   const records = field === "familyIds"
     ? RESOURCE_FAMILIES
@@ -418,11 +426,16 @@ export function createResourceCatalog(registry) {
 
   function search(rawIntent = {}) {
     const { intent, candidates } = rankedCandidates(profiles, rawIntent, SEARCH_LIMIT);
+    const start = validateSearchCursor(rawIntent.cursor, candidates.length);
+    const end = Math.min(start + intent.limit, candidates.length);
     return {
       contract: CATALOG_CONTRACT,
       catalogVersion,
       coverage: coverage(candidates, intent),
-      candidates: candidates.slice(0, intent.limit)
+      total: candidates.length,
+      hasMore: end < candidates.length,
+      nextCursor: end < candidates.length ? end : null,
+      candidates: candidates.slice(start, end)
     };
   }
 

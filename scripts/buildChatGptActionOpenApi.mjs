@@ -134,9 +134,9 @@ const sharedInputSchemas = {
   HumanPedagogicalApplication: actionTools.find(({ name }) => name === "materializar_parte")
     .inputSchema.properties.unidades.items.properties.aplicacaoPedagogica,
   HumanCourseSelection: actionTools.find(({ name }) => name === "comparar_cursos").inputSchema.properties.esquerda,
-  HumanReferences: actionTools.find(({ name }) => name === "consultar_observacoes").inputSchema.properties.unidades,
-  HumanReadContinuation: actionTools.find(({ name }) => name === "preparar_revisao").inputSchema.properties.continuacao,
-  HumanCourseTitle: sourceTaskSchema.properties.curso,
+  References: actionTools.find(({ name }) => name === "consultar_observacoes").inputSchema.properties.unidades,
+  Continuation: actionTools.find(({ name }) => name === "preparar_revisao").inputSchema.properties.continuacao,
+  CourseTitle: sourceTaskSchema.properties.curso,
   HumanSourceLinks: sourceLinksSchema,
   HumanSourceOccurrences: sourceLinksSchema.items.properties.ocorrencias,
   HumanSourceNames: sourceMetadataSchema.properties.autores,
@@ -156,8 +156,8 @@ function schemaKey(value) {
   if (!value || typeof value !== "object") return JSON.stringify(value);
   return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${schemaKey(value[key])}`).join(",")}}`;
 }
-function shareHumanReferences(value) {
-  if (Array.isArray(value)) return value.map(shareHumanReferences);
+function shareReferences(value) {
+  if (Array.isArray(value)) return value.map(shareReferences);
   if (!value || typeof value !== "object") return value;
   const { description, ...shape } = value;
   if (shape.minItems === 1) {
@@ -168,14 +168,14 @@ function shareHumanReferences(value) {
     }
   }
   if (schemaKey(shape) === schemaKey(humanReferenceSchema)) {
-    return { $ref: "#/components/schemas/HumanReference", ...(description ? { description } : {}) };
+    return { $ref: "#/components/schemas/Reference", ...(description ? { description } : {}) };
   }
   for (const [name, schema] of Object.entries(sharedInputSchemas)) {
     if (schemaKey(shape) === schemaKey(schema)) {
       return { $ref: `#/components/schemas/${name}`, ...(description ? { description } : {}) };
     }
   }
-  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, shareHumanReferences(entry)]));
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, shareReferences(entry)]));
 }
 
 function inputSchemaWithSharedContent(tool) {
@@ -214,7 +214,7 @@ function inputSchemaWithSharedContent(tool) {
       ])
     );
   }
-  return shareHumanReferences(schema);
+  return shareReferences(schema);
 }
 
 const groupedInputSchemas = {};
@@ -275,12 +275,12 @@ const document = {
     schemas: {
       HumanTaskResult: resultSchema,
       HumanTaskError: errorSchema,
-      HumanStudyUnitContent: shareHumanReferences(studyUnitContentSchema),
+      HumanStudyUnitContent: shareReferences(studyUnitContentSchema),
       HumanDesignParameters: designParametersSchema,
-      HumanReference: humanReferenceSchema,
+      Reference: humanReferenceSchema,
       ...groupedInputSchemas,
       ...Object.fromEntries(Object.entries(sharedInputSchemas).map(([name, schema]) => [name,
-        Object.fromEntries(Object.entries(schema).map(([key, value]) => [key, shareHumanReferences(value)]))
+        Object.fromEntries(Object.entries(schema).map(([key, value]) => [key, shareReferences(value)]))
       ]))
     },
     responses: {

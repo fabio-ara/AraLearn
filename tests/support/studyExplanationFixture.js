@@ -8,7 +8,10 @@ const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", v
 const resource = (id, name, data) => ({ id, package: `aralearn.resource.${name}`, version: "1.0.0", data });
 
 /** UI sintética: nenhum cliente de conta, geração, download real ou escrita remota. */
-export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null } = {}) {
+export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false } = {}) {
+  // A galeria de fixture não repassa opções extras: o parâmetro ?audio=1 da própria
+  // URL habilita a ferramenta de áudio sem alterar a página compartilhada.
+  const withAudio = includeAudio || new URLSearchParams(globalThis.location?.search || "").has("audio");
   document.documentElement.dataset.colorMode = theme;
   const response = await fetch(new URL("../fixtures/package/project-minimal.json", import.meta.url));
   if (!response.ok) throw new Error("Fixture curricular local indisponível.");
@@ -19,6 +22,16 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
   ms.title = "Interfaces, sinais e quadros";
   const tools = [resource("calculator", "calculator", structuredClone(calculatorPackage.authoringContract.example)),
     resource("calculator-second", "calculator", { title: "Conferir uma segunda estimativa", angleUnit: "radians" })];
+
+  // Faixa nativa sintética para a prova de ferramenta: o leitor abre o player com os
+  // controles e a duração declarada desconhecida; a prova não exige fala nem hardware.
+  const syntheticAudioTool = () => resource("audio", "audio", { tracks: [{
+    id: "synthetic-native-notice", label: "Aviso sintético em português", locale: "pt-BR", kind: "native",
+    text: "Aviso sintético para prova de interface.",
+    alternative: { text: "Alternativa textual sintética do aviso.", visibility: "on_request" }
+  }] });
+
+  const toolResources = includeAudio => [...structuredClone(tools), ...(includeAudio ? [syntheticAudioTool()] : [])];
   const support = { title: "Processos, interfaces e transporte: distinguir os participantes da comunicação sem confundir sinais, quadros e conexões",
     content: [paragraph("support-lead", "Um **quadro** transporta informações entre interfaces de uma rede local. Um processo é um programa em execução; sua interface com o transporte é chamada socket. Essa interface local não representa toda a conexão entre os participantes."),
       resource("comparison", "table", { title: "Papéis na comunicação",
@@ -30,11 +43,11 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       resource("socket-code", "code", { prompt: "Observe a criação de uma interface local antes da conexão. O trecho é ilustrativo e não é executado.",
         language: "python", code: "import socket\ninterface_local = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n# A interface existe antes de connect()." }),
       ...Array.from({ length: 8 }, (_, index) => paragraph(`selective-${index}`, `Caso ${index + 1}: um programa entrega dados à interface local. O transporte recebe os dados e trata a comunicação entre as pontas. Identifique primeiro o programa em execução, depois a interface usada por ele e por fim a relação entre participantes. Essa ordem ajuda a separar os papéis sem exigir que um único elemento represente toda a comunicação. Um hub repete sinais; um switch encaminha quadros segundo sua função. A distinção depende do mecanismo observado, não apenas da aparência do equipamento.`)),
-      ...structuredClone(tools)] };
+      ...toolResources(withAudio)] };
   const baseUnit = (id, role, content) => ({ id, title: role === "practice" ? "Justifique os papéis no caso" : "Distinguir interface e conexão",
     position: role === "practice" ? 2 : 1, role, content, feedback: [], topics: [], response: null });
-  const theory = baseUnit("explanation-theory", "theory", [paragraph("theory", "O socket é a interface local usada pelo processo para entregar dados ao transporte. Uma conexão relaciona pontas de comunicação. A interface pode existir antes da conexão. ".repeat(8)), ...structuredClone(tools)]);
-  const practice = baseUnit("explanation-practice", "practice", [paragraph("practice", "Um programa inicia uma comunicação. Explique por que a interface local usada por ele não equivale à relação inteira entre os participantes."), ...structuredClone(tools)]);
+  const theory = baseUnit("explanation-theory", "theory", [paragraph("theory", "O socket é a interface local usada pelo processo para entregar dados ao transporte. Uma conexão relaciona pontas de comunicação. A interface pode existir antes da conexão. ".repeat(8)), ...toolResources(withAudio)]);
+  const practice = baseUnit("explanation-practice", "practice", [paragraph("practice", "Um programa inicia uma comunicação. Explique por que a interface local usada por ele não equivale à relação inteira entre os participantes."), ...toolResources(withAudio)]);
   practice.response = { id: "pending-response", package: "aralearn.response.choice", version: "1.0.0",
     data: { question: "Quais afirmações distinguem a interface da conexão?", selectionMode: "multiple", selectionCriterion: "correct",
       options: [{ id: "local", text: "O socket é uma interface local." }, { id: "prior", text: "A interface pode existir antes da conexão." },
@@ -66,6 +79,10 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     loadProject: () => structuredClone(project), loadCourse: async () => structuredClone(course),
     loadProgress: () => ({ version: 1, lessons: {} }), loadAnnotationsForPath: () => [], loadReviewItems: () => [],
     isStudyUnitMarkedForReview: () => false, loadRuntimeStatus: () => ({ offline: probe.offline }),
+    // Configuração sintética que habilita os controles do player; a prova de interface
+    // não depende de voz, de fala nem de hardware de áudio.
+    loadStudyAudioConfiguration: async () => ({ nativeVoiceURI: null, rate: 1, locale: "pt-BR",
+      allowRemoteNativeVoice: false, service: null }),
     setStudyUnitCompleted: async reference => { probe.completions.push(structuredClone(reference)); return true; },
     loadCourseSummaries: () => [{ courseId: course.id, title: course.title, ownership: "public", canEdit: false,
       revision: 1, studyUnitCount: 2, availableOffline: true }],

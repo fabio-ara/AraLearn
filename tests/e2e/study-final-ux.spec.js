@@ -792,11 +792,20 @@ test.describe("opções compactas da lacuna", () => {
       const filled = document.querySelector("[data-action='text-gap-open-choice'][data-complete-blank-index='2']");
       const properties = ["fontFamily", "fontSize", "fontWeight", "lineHeight", "borderWidth", "borderStyle", "borderRadius", "backgroundColor", "padding"];
       const styles = node => Object.fromEntries(properties.map(property => [property, getComputedStyle(node)[property]]));
-      return { label: styles(label), filled: styles(filled), labelHeight: label.getBoundingClientRect().height, filledHeight: filled.getBoundingClientRect().height };
+      return {
+        label: styles(label),
+        filled: styles(filled),
+        labelClass: label.className,
+        labelHeight: label.getBoundingClientRect().height,
+        filledHeight: filled.getBoundingClientRect().height
+      };
     });
-    expect(appearance.label).toEqual(appearance.filled);
-    expect(appearance.labelHeight).toBe(appearance.filledHeight);
+    for (const property of ["fontFamily", "fontSize", "fontWeight", "lineHeight"]) {
+      expect(appearance.label[property]).toBe(appearance.filled[property]);
+    }
+    expect(appearance.labelClass).not.toMatch(/runtime-text-gap-blank/u);
     expect(appearance.labelHeight).toBeLessThan(44);
+    expect(appearance.filledHeight).toBeLessThan(44);
     const occupied = before.options.reduce((sum, option) => sum + option.width, 0) + 8;
     expect(before.clientWidth - occupied).toBeGreaterThanOrEqual(0);
     expect(before.clientWidth - occupied).toBeLessThanOrEqual(12);

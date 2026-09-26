@@ -5,6 +5,9 @@ export const PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([
   "alignment", "evidence", "representation", "feedback", "sufficiency"
 ]);
 const comparable = value => String(value ?? "").normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
+const folded = value => comparable(value).normalize("NFD").replace(/\p{M}/gu, "");
+const explanatoryOperation = value => /\b(?:compar|calcul|justific|relacion|explic|infer|interpret|analis|transform)/u.test(folded(value));
+const genericFeedback = value => /^(?:corret[oa]|incorret[oa]|cert[oa]|errad[oa]|resposta\s+(?:in)?correta|isso\s+mesmo|boa\s+tentativa|tente\s+novamente)[.!?…\s]*$/iu.test(comparable(value));
 const controlText = value => [...value].some(character => {
   const code = character.codePointAt(0);
   return code < 32 && ![9, 10, 13].includes(code) || code === 127;
@@ -38,6 +41,15 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
   });
   const data = response?.data ?? {};
   const feedbackTexts = [...feedback, ...(data.options ?? []).map(option => option.feedback).filter(value => typeof value === "string")];
+  const operationTexts = practices.map(practice => practice.invariantTaskOperation).filter(Boolean);
+  const requiresExplanatoryFeedback = operationTexts.some(explanatoryOperation);
+  const optionFeedback = (data.options ?? []).map(option => option.feedback).filter(value => typeof value === "string");
+  const genericOptionFeedback = optionFeedback.some(genericFeedback);
+  const onlyGenericFeedback = feedbackTexts.length > 0 && feedbackTexts.every(genericFeedback);
+  if (response && requiresExplanatoryFeedback && onlyGenericFeedback) {
+    add("pedagogical_feedback_non_explanatory", "feedback",
+      "A operação declarada exige relação ou procedimento; um rótulo de acerto, erro ou tentativa não explica a resposta nem ajuda a superar o erro.");
+  }
   if (response && feedbackTexts.some(value =>
     /(?:^|[.!?]\s+)(?:critério de revisão\b|conteúdo salvo sem revisão autoral\b|accessibleText\b|a operação-alvo da tarefa é(?:\s|$))/iu.test(value))) {
     add("pedagogical_editorial_feedback", "feedback",
@@ -84,7 +96,9 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
     selectionMode: data.selectionMode ?? null, options, correctAlternativeCount: data.answerIds?.length ?? null,
     alternatives: (data.options ?? []).map(option => ({ text: option.text ?? option.code ?? "",
       expected: (data.answerIds ?? []).includes(option.id), feedback: option.feedback ?? "" })),
-    targets, studentContent, feedback, content: (content?.content ?? []).map(instance => text(instance, "content")).filter(Boolean),
+    targets, studentContent, feedback, operation: operationTexts,
+    feedbackAssessment: { requiresExplanatoryFeedback, genericOptionFeedback, onlyGenericFeedback },
+    content: (content?.content ?? []).map(instance => text(instance, "content")).filter(Boolean),
     review: "Compare a operação realmente exigida e a resposta observável com cada requisito. studentContent já oculta as lacunas; verifique se outros trechos entregam a resposta e se os dados determinam o cálculo. answerAppearsInStudentText é um indício, não um defeito automático: julgue sua função no enunciado. Um rótulo correto não demonstra uma relação ou procedimento. Examine distratores cruzados, suficiência da explicação, variedade necessária e feedback específico. Contagem e schema não certificam suficiência. Cite fragmentos da base salva nas evidências."
   } };
 }
