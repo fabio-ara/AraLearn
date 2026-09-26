@@ -26,7 +26,7 @@ O relatório traz a integridade da exportação; a contagem de microssequências
 
 Sem unidade de estudo materializada a análise é vazia. Nesse estado, zero envelopes inválidos e nenhum código de contradição não significam aprovação: significam que não havia o que validar, e o relatório marca `analiseVazia: true`. A cobertura mede apenas o que já foi materializado; enquanto o curso está bloqueado, ela não é indicador de qualidade.
 
-As oito dimensões — objetivo, explicação, operação cognitiva, evidência, prática, feedback, adequação de representação e carga visual — saem como `NAO_VERIFICADO`. O script não julga significado nem pixels; a leitura semântica das sete primeiras e as capturas do Estudo para a oitava continuam obrigatórias, e nenhuma contagem ou envelope válido substitui esse julgamento.
+As oito dimensões — objetivo, explicação, operação-alvo da tarefa, evidência, prática, feedback, adequação de representação e carga visual — saem como `NAO_VERIFICADO`. O script não julga significado nem pixels; a leitura semântica das sete primeiras e as capturas do Estudo para a oitava continuam obrigatórias, e nenhuma contagem ou envelope válido substitui esse julgamento.
 
 O resultado é pré-triagem do produtor, não certificação de aprendizagem nem parecer por alvo.
 

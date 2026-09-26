@@ -82,7 +82,7 @@ const { RESOURCE_PACKAGE_REGISTRY } = await CARREGAR("src/resources/packages/ind
 const DIMENSOES_8 = Object.freeze([
   { id: "objetivo", rotulo: "1 objetivo", natureza: "semantico" },
   { id: "explicacao", rotulo: "2 explicação", natureza: "semantico" },
-  { id: "operacao_cognitiva", rotulo: "3 operação cognitiva coerente", natureza: "semantico" },
+  { id: "operacao_cognitiva", rotulo: "3 operação-alvo da tarefa coerente", natureza: "semantico" },
   { id: "evidencia", rotulo: "4 evidência", natureza: "semantico" },
   { id: "pratica", rotulo: "5 prática adequada", natureza: "semantico" },
   { id: "feedback", rotulo: "6 feedback", natureza: "semantico" },
