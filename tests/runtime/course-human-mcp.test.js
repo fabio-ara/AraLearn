@@ -408,7 +408,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.1.0");
   // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
 });
@@ -1767,7 +1767,7 @@ test("chamada MCP entrega o deep link como link Markdown sem expor estado técni
   assert.equal(payload.result.structuredContent.context.preferenciasPessoais.foco, "full_cycle");
   assert.equal(payload.result.structuredContent.context.processoCorrente.cadencia, "part");
   assert.equal(typeof payload.result.structuredContent.context.referenciaProcesso, "string");
-  assert.deepEqual(payload.result.structuredContent.context.observations.items, []);
+  assert.equal(Object.hasOwn(payload.result.structuredContent.context, "observations"), false);
 
 });
 

@@ -277,7 +277,7 @@ test("#272 Action executa a tarefa humana e devolve resultado sem wrapper técni
   assert.equal(payload.context.preferenciasPessoais.foco, "full_cycle");
   assert.equal(payload.context.processoCorrente.cadencia, "part");
   assert.equal(typeof payload.context.referenciaProcesso, "string");
-  assert.deepEqual(payload.context.observations.items, []);
+  assert.equal(Object.hasOwn(payload.context, "observations"), false);
   assert.deepEqual(Object.keys(payload).sort(), ["context", "deepLink", "links", "nextDecision", "result"]);
   assert.equal(payload.links[0].url, payload.deepLink);
   assert.equal(payload.links[0].relation, "planning");

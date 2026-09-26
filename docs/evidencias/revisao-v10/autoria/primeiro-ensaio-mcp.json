@@ -1,0 +1,95 @@
+{
+  "versaoHospedada": "0.0.84",
+  "canal": "ChatGPT Chat com AraLearn MCP",
+  "natureza": "Snapshot intermediário de chamadas solicitadas; não implica sucesso de cada escrita.",
+  "totalChamadasDiretas": 79,
+  "operacoes": [
+    {
+      "operacao": "ajustar_orientacao",
+      "chamadas": 1
+    },
+    {
+      "operacao": "consultar_componentes",
+      "chamadas": 12
+    },
+    {
+      "operacao": "consultar_configuracao",
+      "chamadas": 1
+    },
+    {
+      "operacao": "consultar_planejamento",
+      "chamadas": 1
+    },
+    {
+      "operacao": "consultar_preferencias_autoria",
+      "chamadas": 1
+    },
+    {
+      "operacao": "criar_curso",
+      "chamadas": 1
+    },
+    {
+      "operacao": "definir_politica_revisao",
+      "chamadas": 1
+    },
+    {
+      "operacao": "definir_visibilidade",
+      "chamadas": 1
+    },
+    {
+      "operacao": "manter_requisito_evidencia",
+      "chamadas": 5
+    },
+    {
+      "operacao": "manter_unidade_analise",
+      "chamadas": 5
+    },
+    {
+      "operacao": "materializar_parte",
+      "chamadas": 1
+    },
+    {
+      "operacao": "preparar_materializacao",
+      "chamadas": 4
+    },
+    {
+      "operacao": "retomar_curso",
+      "chamadas": 38
+    },
+    {
+      "operacao": "salvar_explicacoes",
+      "chamadas": 1
+    },
+    {
+      "operacao": "salvar_mapa_curricular",
+      "chamadas": 2
+    },
+    {
+      "operacao": "salvar_parte",
+      "chamadas": 3
+    },
+    {
+      "operacao": "vincular_repertorio_instrucional",
+      "chamadas": 1
+    }
+  ],
+  "retomadaGlobal": {
+    "caracteres": 169640,
+    "fragmentosUnicos": 16,
+    "fragmentosLidosNestaCadeia": 34,
+    "posicaoDaReferenciaProcesso": 29115
+  },
+  "persistencia": {
+    "canalDeConferencia": "MCP de engenharia, separado da autoria ChatGPT",
+    "curso": "68d099a5-60d6-4a26-bd93-4a990a4789c3",
+    "revisao": 16,
+    "modulos": 8,
+    "microssequencias": 24,
+    "explicacoes": 1,
+    "unidadesDeEstudo": 0,
+    "paginasExportadas": 5,
+    "caracteresExportados": 49947,
+    "sha256ExportPrivado": "7d66d26cab019e1ccfabe15c79fc3c600a059265752aa8d36d57842dff95eb2d"
+  },
+  "limite": "Ensaio bloqueado antes de práticas persistidas. Nenhuma validação humana pós-correção."
+}

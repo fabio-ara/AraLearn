@@ -349,7 +349,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.1.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -415,8 +415,8 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
     /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
   assert.match(openApi.info.description, /Aprovação humana é só do mapa salvo visto pela pessoa/iu);
-  assert.match(openApi.info.description, /mandato automático.*sem fabricar aprovação/iu);
-  assert.match(openApi.info.description, /Parte é lote operacional/iu);
+  assert.match(openApi.info.description, /mandato automático.*rascunho sem aprovação humana/iu);
+  assert.match(openApi.info.description, /Parte é lote técnico, não dependência pedagógica/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
   assert.match(openApi.info.description, /respeite confirmações/iu);
@@ -466,7 +466,7 @@ test("contrato global mantém a calibração automática fora do chat", () => {
   );
   assert.match(
     openApi.info.description,
-    /Chat breve; conteúdo completo e literal[\s\S]*Use link exato em Markdown/iu
+    /Chat breve; conteúdo completo e literal[\s\S]*Use o link exato em Markdown/iu
   );
   assert.match(
     planningGuidance,

@@ -1,6 +1,6 @@
 # Evidência — revisão v10
 
-Pasta **versionável** com evidência sintética do catálogo de recursos (390 px, tema claro), recortes de inspeção e evidência **nativa real** de voz em DOM local. Nada de dados reais, snapshots privados, backups, logs, cookies ou JSON de curso: só PNGs copiados sem manipulação de pixels mais `manifest.json`, `links.md` e este README.
+Pasta **versionável** com evidência sintética do catálogo de recursos (390 px, tema claro), recortes de inspeção e evidência **nativa real** de voz em DOM local. As imagens foram copiadas sem manipulação de pixels. A pasta `autoria/` acrescenta pedidos e recibos sanitizados das conversas reais; não contém backups integrais de cursos, credenciais, cookies ou logs brutos.
 
 | série | arquivos | bytes | sha256 do conjunto |
 | --- | --- | --- | --- |
@@ -13,6 +13,10 @@ Pasta **versionável** com evidência sintética do catálogo de recursos (390 p
 | `bpmn/` — painel e recorte H009 após correção | 2 PNG | 214294 | (sha por arquivo no manifesto) |
 
 Total: 83 PNG, 15.653.263 bytes. O hash de conjunto concatena, sem terminador final, os hashes SHA-256 em hexadecimal minúsculo separados por LF; calcula SHA-256 desses bytes ASCII. A ordem é `Sort-Object Name` do PowerShell. O conjunto do catálogo usa somente os 72 arquivos listados em `manifest.capturas`, sem incluir a série de lacunas no mesmo diretório.
+
+## Autoria real por conversa — em execução
+
+[Pedidos em linguagem humana](autoria/prompts.md), [primeiro ensaio MCP](autoria/primeiro-ensaio-mcp.json) e [consulta por Actions](autoria/consulta-actions.json) distinguem autoria ChatGPT, conferência pelo MCP de engenharia e diagnóstico do backend. O primeiro ensaio salvou curso, mapa e Explicação, mas ficou bloqueado antes das práticas; a correção do contrato está em execução. A consulta Actions percorreu cinco páginas com resposta 200 e confirmou 34 componentes. Esses registros não declaram o curso completo nem validação humana.
 
 ## Cobertura
 
@@ -49,7 +53,7 @@ Medições do primeiro comando (scrollWidth × clientWidth → cauda alcançada)
 
 ## Proveniência
 
-Capturas de catálogo geradas de fixture sintética do repositório público (`scripts/buildResourceCatalogCourse.mjs`, `src/resources/packages/*`); capturas do gráfico, de `test-results-chart`; evidência nativa, de execução local em Chrome 153 no Windows. Curso novo/legado real não está incluído.
+Capturas de catálogo geradas de fixture sintética do repositório público (`scripts/buildResourceCatalogCourse.mjs`, `src/resources/packages/*`); capturas do gráfico, de `test-results-chart`; evidência nativa, de execução local em Chrome 153 no Windows. O conteúdo integral do curso novo e o backup do legado não estão incluídos nesta coleção.
 
 ## Painéis de ferramentas abertos
 
