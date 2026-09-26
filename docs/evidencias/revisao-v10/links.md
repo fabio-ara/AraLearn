@@ -1,15 +1,15 @@
 # Lista de links — evidências revisão v10
 
-72 capturas de catálogo (390 px, claro) · 34 componentes em Unidade e Explicação · 1 recorte · 2 capturas nativas reais
+72 capturas de catálogo (390 px, claro): 29 recursos inline nos dois hosts, prática e textos de apoio. Também há quatro painéis reais de ferramentas, duas capturas de pressionamento/preenchimento de lacuna, um recorte e duas capturas nativas reais. Textos de apoio não comprovam a execução do renderer da ferramenta ou da resposta.
 
-Conjunto catálogo: `f941acc010bd037c176b24e336c216aacd697f5b1d6f1fdcda5bbc58e46f5d16` · conjunto nativo real: `b059c5ca591dbc285787bd514fe5c9ad92bd7fc9080a40844145539273e39c1f`
+Conjunto catálogo: `561b850ca53f8e38f68a6ae0c55e531533fedb9aa382706fcde165f6e885f6ae` · conjunto nativo real: `b059c5ca591dbc285787bd514fe5c9ad92bd7fc9080a40844145539273e39c1f`
 
 ## Catálogo 390 px (tema claro)
 
 - **resource.annotated_text** — [Unidade](capturas/390-catalog-aralearn-resource-annotated-text-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-annotated-text-theory-card-explicacao-1.png)
-- **resource.audio** — [Unidade](capturas/390-catalog-aralearn-resource-audio-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-audio-theory-card-explicacao-1.png)
+- **resource.audio — textos de apoio** — [Unidade](capturas/390-catalog-aralearn-resource-audio-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-audio-theory-card-explicacao-1.png). Painéis reais na série de ferramentas abaixo.
 - **resource.bpmn_process** — [Unidade](capturas/390-catalog-aralearn-resource-bpmn-process-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-bpmn-process-theory-card-explicacao-1.png)
-- **resource.calculator** — [Unidade](capturas/390-catalog-aralearn-resource-calculator-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-calculator-theory-card-explicacao-1.png)
+- **resource.calculator — textos de apoio** — [Unidade](capturas/390-catalog-aralearn-resource-calculator-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-calculator-theory-card-explicacao-1.png). Painéis reais na série de ferramentas abaixo.
 - **resource.call_stack** — [Unidade](capturas/390-catalog-aralearn-resource-call-stack-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-call-stack-theory-card-explicacao-1.png)
 - **resource.chart** — [Explicação](capturas/chart-explicacao-390-light.png) · [Unidade](capturas/chart-unidade-390-light.png)
 - **resource.code** — [Unidade](capturas/390-catalog-aralearn-resource-code-theory-card-1.png) · [Explicação](capturas/390-catalog-aralearn-resource-code-theory-card-explicacao-1.png) · [Unidade](capturas/code-390-unidade-rolagem-final.png)
@@ -57,3 +57,17 @@ Conjunto catálogo: `f941acc010bd037c176b24e336c216aacd697f5b1d6f1fdcda5bbc58e46
 - **resource.calculator**, a partir de Explicação: [painel aberto](ferramentas/tool-calculadora-explicacao-390.png)
 - **resource.audio**, a partir de Explicação: [painel aberto](ferramentas/tool-audio-explicacao-390.png)
 - **resource.audio**, a partir de Unidade: [painel aberto](ferramentas/tool-audio-unidade-390.png)
+
+## Alternativa de lacuna
+
+- [1. Pressionamento mantido](capturas/gap-opcoes-pressionamento.png)
+- [2. Preenchimento após soltar o botão](capturas/gap-opcoes-preenchimento.png)
+
+As imagens pertencem ao mesmo cenário local. A segunda ainda contém uma alternativa incorreta em outra lacuna; a correção e o avanço são verificados pelo E2E descrito no README.
+
+## BPMN — H009 após correção
+
+- [Painel com f7 centralizado para inspeção](bpmn/h009-390-painel.png)
+- [Recorte do rótulo, vínculo e gateway](bpmn/h009-390-recorte.png)
+
+Exemplo sintético em Explicação, 390 px. As duas imagens do catálogo acima também foram renovadas após a correção, preservando o conteúdo daquela fixture.

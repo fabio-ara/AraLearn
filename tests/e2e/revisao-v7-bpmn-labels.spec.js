@@ -70,6 +70,41 @@ const measureFlowLabel = (hostSelector) => {
     const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
     return Math.hypot(dx, dy);
   };
+  const pointInBox = point => point.x >= box.x && point.x <= box.x + box.width
+    && point.y >= box.y && point.y <= box.y + box.height;
+  const cross = (first, second, third) => (second.x - first.x) * (third.y - first.y)
+    - (second.y - first.y) * (third.x - first.x);
+  const onSegment = (first, second, point) => point.x >= Math.min(first.x, second.x) - 0.001
+    && point.x <= Math.max(first.x, second.x) + 0.001
+    && point.y >= Math.min(first.y, second.y) - 0.001
+    && point.y <= Math.max(first.y, second.y) + 0.001;
+  const segmentsIntersect = (first, second, third, fourth) => {
+    const orientations = [cross(first, second, third), cross(first, second, fourth),
+      cross(third, fourth, first), cross(third, fourth, second)];
+    const signs = orientations.map(value => Math.abs(value) <= 0.001 ? 0 : Math.sign(value));
+    if (signs[0] * signs[1] < 0 && signs[2] * signs[3] < 0) return true;
+    return (signs[0] === 0 && onSegment(first, second, third))
+      || (signs[1] === 0 && onSegment(first, second, fourth))
+      || (signs[2] === 0 && onSegment(third, fourth, first))
+      || (signs[3] === 0 && onSegment(third, fourth, second));
+  };
+  const boxEdges = [
+    [{ x: box.x, y: box.y }, { x: box.x + box.width, y: box.y }],
+    [{ x: box.x + box.width, y: box.y }, { x: box.x + box.width, y: box.y + box.height }],
+    [{ x: box.x + box.width, y: box.y + box.height }, { x: box.x, y: box.y + box.height }],
+    [{ x: box.x, y: box.y + box.height }, { x: box.x, y: box.y }],
+  ];
+  const segmentDistanceToBox = (first, second) => {
+    if (pointInBox(first) || pointInBox(second)
+      || boxEdges.some(([third, fourth]) => segmentsIntersect(first, second, third, fourth))) return 0;
+    return Math.min(...Array.from({ length: 33 }, (_, index) => {
+      const fraction = index / 32;
+      return distanceToBox({
+        x: first.x + (second.x - first.x) * fraction,
+        y: first.y + (second.y - first.y) * fraction,
+      });
+    }));
+  };
   const ranking = [...svg.querySelectorAll('g[id^="system-edge-"]')].map(group => {
     const path = group.querySelector("path");
     if (!path) return null;
@@ -82,6 +117,30 @@ const measureFlowLabel = (hostSelector) => {
   }).filter(Boolean).sort((first, second) => first.distance - second.distance);
   const client = label.getBoundingClientRect();
   const frame = canvas.getBoundingClientRect();
+  // Associação pelo líder do `decorate`: a polilinha da própria aresta sai do rótulo
+  // até a spline, e nenhum líder estranho toca a caixa do rótulo.
+  const leaderPoints = edge ? [...edge.querySelectorAll(":scope > polyline")]
+    .flatMap(polyline => [...polyline.points].map(point => ({ x: point.x, y: point.y }))) : [];
+  const leaderTouchesLabel = leaderPoints.length ? round(Math.min(...leaderPoints.map(distanceToBox))) : null;
+  const ownPath = edge ? edge.querySelector(":scope > path") : null;
+  const leaderEnd = leaderPoints.length ? leaderPoints[leaderPoints.length - 1] : null;
+  const distancePointToOwnSpline = leaderEnd && ownPath ? (() => {
+    const length = ownPath.getTotalLength();
+    let best = Number.POSITIVE_INFINITY;
+    for (let step = 0; step <= 200; step += 1) {
+      const point = ownPath.getPointAtLength((length * step) / 200);
+      best = Math.min(best, Math.hypot(point.x - leaderEnd.x, point.y - leaderEnd.y));
+    }
+    return round(best);
+  })() : null;
+  const foreignLeaderDistance = round(Math.min(...[...svg.querySelectorAll('g[id^="system-edge-"]')]
+    .filter(group => group !== edge)
+    .flatMap(group => [...group.querySelectorAll(":scope > polyline")])
+    .flatMap(polyline => {
+      const points = [...polyline.points].map(point => ({ x: point.x, y: point.y }));
+      return points.slice(0, -1).map((point, index) => segmentDistanceToBox(point, points[index + 1]));
+    })
+    .concat([Number.POSITIVE_INFINITY])));
   return {
     labelPresent: true,
     text: label.textContent,
@@ -90,6 +149,10 @@ const measureFlowLabel = (hostSelector) => {
     nearestEdge: ranking[0] ? ranking[0].edge : null,
     nearestEdgeDistance: ranking[0] ? ranking[0].distance : null,
     runnerUpDistance: ranking[1] ? ranking[1].distance : null,
+    leaderInFlowEdge: edge ? edge.querySelectorAll(":scope > polyline").length : 0,
+    leaderTouchesLabel,
+    leaderReachesOwnSpline: distancePointToOwnSpline,
+    foreignLeaderDistance,
     visibleInFrame: client.left >= frame.left - 0.5 && client.right <= frame.right + 0.5
       && client.top >= frame.top - 0.5 && client.bottom <= frame.bottom + 0.5
   };
@@ -125,10 +188,14 @@ for (const width of [390, 1280]) {
         expect(measured.text, JSON.stringify(measured)).toBe(FLOW_LABEL);
         expect(measured.insideFlowEdge, JSON.stringify(measured)).toBe(true);
         expect(measured.nodeOcclusion, JSON.stringify(measured)).toBe(0);
-        expect(measured.nearestEdge, JSON.stringify(measured)).toBe(FLOW_EDGE_ID);
-        expect(measured.nearestEdgeDistance, JSON.stringify(measured)).toBeLessThanOrEqual(1);
-        expect(measured.runnerUpDistance - measured.nearestEdgeDistance,
-          JSON.stringify(measured)).toBeGreaterThan(12);
+        // O critério antigo media só a proximidade da caixa à spline. Com `label` +
+        // `decorate`, o rótulo é reservado fora do traçado e a associação passa a ser
+        // explícita pelo líder: mesma aresta, líder do rótulo até a própria spline e
+        // nenhum líder estranho encostando na caixa.
+        expect(measured.leaderInFlowEdge, JSON.stringify(measured)).toBe(1);
+        expect(measured.leaderTouchesLabel, JSON.stringify(measured)).toBeLessThanOrEqual(4);
+        expect(measured.leaderReachesOwnSpline, JSON.stringify(measured)).toBeLessThanOrEqual(1);
+        expect(measured.foreignLeaderDistance, JSON.stringify(measured)).toBeGreaterThan(2);
         expect(await page.evaluate(centerOnFlowLabel, host)).toBe(true);
         await page.waitForTimeout(120);
         const visible = await page.evaluate(measureFlowLabel, host);
@@ -178,6 +245,11 @@ test("H009: lacuna de prática no fluxo f7 continua operável", async ({ page })
   const figure = page.locator(".card-sheet-content .package-system-diagram");
   const control = figure.locator('[data-action="text-gap-open-choice"]');
   await expect(control).toBeVisible();
+  // Com o enquadramento de escala natural, a caixa interativa pode nascer fora da
+  // largura inicial do quadro; a rolagem do próprio quadro é o caminho aprovado e a
+  // prova exige o controle dentro do quadro nesse estado, antes de operar a lacuna.
+  await control.evaluate(node => node.scrollIntoView({ block: "center", inline: "center" }));
+  await page.waitForTimeout(120);
   const geometry = await control.evaluate(node => {
     const frame = node.closest("foreignObject").getBoundingClientRect();
     const box = node.getBoundingClientRect();

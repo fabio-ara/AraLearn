@@ -1,18 +1,18 @@
 {
-  "contract": "aralearn.evidencias.revisao-v10.v3",
-  "geradoEm": "2026-09-26T17:37:44.691Z",
+  "contract": "aralearn.evidencias.revisao-v10.v4",
+  "geradoEm": "2026-09-26T19:52:59.9398704Z",
   "titulo": "Evidência versionável — revisão v10 (catálogo de recursos, recortes e voz nativa real)",
   "series": {
     "catalog390": {
       "titulo": "29 recursos inline nos dois hosts, três respostas na prática e textos de apoio para ferramentas/respostas",
       "capturas": 72,
       "componentes": 34,
-      "bytes": 14732874,
-      "sha256Conjunto": "f941acc010bd037c176b24e336c216aacd697f5b1d6f1fdcda5bbc58e46f5d16",
+      "bytes": 14680154.0,
+      "sha256Conjunto": "561b850ca53f8e38f68a6ae0c55e531533fedb9aa382706fcde165f6e885f6ae",
       "limites": [
         "Capturas estáticas demonstram composição e cortes aparentes; não demonstram interação, foco, abrir/fechar, rolagem horizontal nem pan/zoom.",
         "O gráfico estatístico do probe antigo foi substituído pela evidência pós-correção de `test-results-chart`: o input difere (fixture studyExplanation com o exemplo do package, em vez do curso de catálogo), mas a semântica é a mesma — 2 séries × 12 pontos, nada cortado.",
-        "Os outros 33 componentes do catálogo seguem representados pelas capturas válidas do probe; a cobertura inclui os dois hosts para todos os 34 componentes."
+        "A série inclui 29 recursos inline nos dois hosts, três respostas na prática e cenários de apoio com parágrafos para ferramentas/respostas; esses parágrafos não comprovam a execução do renderer da ferramenta ou resposta. Os painéis reais têm série própria."
       ]
     },
     "recortes": {
@@ -29,15 +29,25 @@
     "ferramentas": {
       "titulo": "Painéis de Áudio e Calculadora abertos a partir dos dois hosts",
       "capturas": 4,
-      "bytes": 462704.0
+      "bytes": 462704
+    },
+    "lacunaPressionamento": {
+      "titulo": "Alternativa durante o pressionamento e lacuna após o preenchimento",
+      "capturas": 2,
+      "bytes": 235889
+    },
+    "bpmn": {
+      "capturas": 2,
+      "titulo": "H009: rótulo f7, vínculo com aresta e gateway após correção",
+      "bytes": 214294.0
     }
   },
   "totais": {
     "capturas": 72,
     "recortes": 1,
     "nativeReal": 2,
-    "arquivosImagem": 79,
-    "bytesImagem": 15255800.0
+    "arquivosImagem": 83,
+    "bytesImagem": 15653263.0
   },
   "capturas": [
     {
@@ -98,26 +108,26 @@
       "arquivo": "capturas/390-catalog-aralearn-resource-bpmn-process-theory-card-1.png",
       "componente": "resource.bpmn_process",
       "host": "Unidade",
-      "frame": "segmento 1 de 2",
+      "frame": "representação após rolagem do corpo; viewport do diagrama preservado",
       "sequencia": null,
       "larguraCssPx": 390,
-      "bytes": 241645,
-      "sha256": "3c17ceda7a05e9e9db5153601cf68e384211402a9074e70952dd7453206b5c1e",
-      "origem": "catalog-390-probe",
-      "input": "fixture sintética do catálogo (repositório público), tema claro, Android Chromium, 390px CSS, DPR 2.625",
+      "bytes": 216552,
+      "sha256": "8d38eb3e41ab62baa72435fad14b636ab9380c3da5b672d45d6ab41a9a8672e4",
+      "origem": "bpmn-catalog-probe pós-correção H009/O073",
+      "input": "mesma unidade da fixture pública aralearn-catalogo-recursos-course.json; renderer real, repositório simulado, Chromium headless, 390 px CSS",
       "limite": "captura estática: não demonstra interação, foco, rolagem horizontal nem pan/zoom"
     },
     {
       "arquivo": "capturas/390-catalog-aralearn-resource-bpmn-process-theory-card-explicacao-1.png",
       "componente": "resource.bpmn_process",
       "host": "Explicação",
-      "frame": "segmento 1 de 2",
+      "frame": "representação após rolagem do corpo; viewport do diagrama preservado",
       "sequencia": null,
       "larguraCssPx": 390,
-      "bytes": 244800,
-      "sha256": "ebf4c0f2ee5ebbae40248072afac38e77bca484d7f8d7b2f214b6dc77a89e505",
-      "origem": "catalog-390-probe",
-      "input": "fixture sintética do catálogo (repositório público), tema claro, Android Chromium, 390px CSS, DPR 2.625",
+      "bytes": 217173,
+      "sha256": "b091e643c2593ca000ddc86acf886db892a839951a1eb1cb9b4ffc9c392244f2",
+      "origem": "bpmn-catalog-probe pós-correção H009/O073",
+      "input": "mesma unidade da fixture pública aralearn-catalogo-recursos-course.json; renderer real, repositório simulado, Chromium headless, 390 px CSS",
       "limite": "captura estática: não demonstra interação, foco, rolagem horizontal nem pan/zoom"
     },
     {
@@ -1062,6 +1072,54 @@
       "sha256": "848f50ef4c3b0fc1a0ea76e665a5754931bcb0184455e9a7742ef49eff65f7aa",
       "input": "studyExplanationFixture, renderer e binding reais em fixture local, Chromium headless",
       "limite": "Captura estática; interação comprovada em study-explanation.spec.js. Não aciona síntese de voz."
+    }
+  ],
+  "lacunaPressionamento": [
+    {
+      "arquivo": "capturas/gap-opcoes-pressionamento.png",
+      "componente": "response.gap",
+      "host": "Unidade",
+      "sequencia": 1,
+      "estado": "pressionamento mantido da alternativa espaço de usuário",
+      "viewport": "largura calculada a partir das opções; altura de 900 px CSS",
+      "bytes": 129858,
+      "sha256": "c7aa33d43beb605f27ab7c28ae566e406a57d1c0ae6a5bd0ba7f2303c9be8459",
+      "input": "fixture sintética de study-final-ux.spec.js: opções compactas, tema escuro, Chromium headless",
+      "limite": "Capturas complementam o E2E sequencial; isoladamente não comprovam interação, correção, avanço ou persistência hospedada."
+    },
+    {
+      "arquivo": "capturas/gap-opcoes-preenchimento.png",
+      "componente": "response.gap",
+      "host": "Unidade",
+      "sequencia": 2,
+      "estado": "lacuna preenchida após soltar o botão; a alternativa incorreta de outra lacuna ainda está presente",
+      "viewport": "largura calculada a partir das opções; altura de 900 px CSS",
+      "bytes": 106031,
+      "sha256": "63a944dc1fec98346f28bedcc9da30f041ea59d7164c02938c0fc18f706c387b",
+      "input": "fixture sintética de study-final-ux.spec.js: opções compactas, tema escuro, Chromium headless",
+      "limite": "Capturas complementam o E2E sequencial; isoladamente não comprovam interação, correção, avanço ou persistência hospedada."
+    }
+  ],
+  "bpmn": [
+    {
+      "componente": "resource.bpmn_process",
+      "host": "Explicação",
+      "larguraCssPx": 390,
+      "arquivo": "bpmn/h009-390-painel.png",
+      "limite": "captura de painel/recorte não comprova interação ou enquadramento inicial; pan/zoom/tela inteira exercitados na spec H009",
+      "bytes": 179739,
+      "input": "exemplo público do package, studyExplanationFixture, Chromium headless, f7 centralizado para inspeção",
+      "sha256": "de3ff49024e0545ffa29a7788c62cef7e95ca66645c09adefcd46fef44fc6cb4"
+    },
+    {
+      "componente": "resource.bpmn_process",
+      "host": "Explicação",
+      "larguraCssPx": 390,
+      "arquivo": "bpmn/h009-390-recorte.png",
+      "limite": "captura de painel/recorte não comprova interação ou enquadramento inicial; pan/zoom/tela inteira exercitados na spec H009",
+      "bytes": 34555,
+      "input": "exemplo público do package, studyExplanationFixture, Chromium headless, f7 centralizado para inspeção",
+      "sha256": "d497337f926fd7aaecec373a0c0ec4c9a8c038c8bf20e60ee58f2242b0305231"
     }
   ]
 }

@@ -4230,7 +4230,7 @@ button.account-settings-back[hidden] {
   border-bottom: 1px solid var(--resource-border);
 }
 
-.package-system-diagram-svg .package-state-machine-transition > text {
+.package-system-diagram-svg :is(.package-state-machine-transition, .package-bpmn-flow, .package-bpmn-node) > text {
   paint-order: stroke fill;
   stroke: var(--resource-surface);
   stroke-width: 5px;
