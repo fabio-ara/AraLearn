@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FLOW_LABEL = "dados recebidos";
-const FLOW_EDGE_ID = "system-edge-f7";
 const FLOW_EDGE_SELECTOR = "g#system-edge-f7";
 
 async function mount(page, width, options = {}) {
