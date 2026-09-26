@@ -191,7 +191,8 @@ test("normalização distingue stream vazio de stream omitido e conserva texto m
   assert.match(rendered, /tool &lt;&lt;&#39;END&#39;\n {2}linha com dois espaços {2}\nEND/u);
   assert.match(rendered, /<pre tabindex="0" aria-label="Entrada da interação 1">/u);
   assert.match(rendered, /role="group" aria-label="Saída padrão da interação 1"/u);
-  assert.match(rendered, /Estado ou efeito:<\/span> entrada recebida/u);
+  assert.match(rendered, /<span class="package-terminal-effect">entrada recebida<\/span>/u);
+  assert.match(RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content"), /Estado ou efeito: entrada recebida/u);
 });
 
 test("validação recusa forma aberta, entrada vazia e interação sem observação", () => {
