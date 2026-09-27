@@ -41,4 +41,3 @@ Ver `05-reidratacao-320.png`.
 ## Limites
 
 Capturas de um fixture local headless com os hosts reais do estudo; não é produção. O canvas interno mantém largura natural e exige rolagem em largura estreita — comportamento compartilhado, escolhido no lugar de encolher rótulos e eixos. Sem `syncEdge`, Chrome pessoal, curso hospedado, deploy, CI ou gate amplo nesta entrega.
-
