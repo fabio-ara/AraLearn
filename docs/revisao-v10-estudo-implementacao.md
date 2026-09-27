@@ -210,7 +210,7 @@ O catálogo hospedado é **9.0.0**, fingerprint `sha256:728afffe0bb835de51787433
 
 O [novo fluxo MCP](evidencias/revisao-v10/autoria/ensaio-mcp-086.md) preservou a primeira produção antes de feedback: a revisão 55 passou a 67, com uma sétima explicação e nenhuma unidade. O GPT criou a primeira parte, mas a gravação de unidades recusou um pré-requisito curricular ainda não produzido. A causa foi confirmada pelos logs e pelo código SQL hospedado: a pré-validação não verificava a mesma condição, e o erro público genérico impedia a recuperação informada. A correção mantém a regra curricular e alinha os dois caminhos.
 
-A conversa nova recuperou dois chats anteriores e uma memória, conforme o painel Fontes. Portanto, não demonstra isolamento do contexto anterior. Os três parágrafos persistidos foram auditados como conteúdo parcial; não comprovam prática, feedback ou realização das condições de design instrucional. Este resultado é diagnóstico, sem aprovação humana ou conclusão causal sobre qualidade por padrão.
+A conversa nova recuperou dois chats anteriores e uma memória, conforme o painel de fontes. Portanto, não demonstra isolamento do contexto anterior. Os três parágrafos persistidos foram auditados como conteúdo parcial; não comprovam prática, feedback ou realização das condições de design instrucional. Este resultado é diagnóstico, sem aprovação humana ou conclusão causal sobre qualidade por padrão.
 
 ### Correção local 0.0.87: pré-requisitos e parâmetros
 
