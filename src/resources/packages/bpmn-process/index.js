@@ -33,7 +33,7 @@ function nodeInteractiveLabel(node) {
 
 function nodeAttributes(node, data) {
   const event = bpmnEventPresentation(node, data);
-  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}${event ? ` event-${event.marker} event-${event.direction}` : ""}`, margin: "0.25,0.27" };
+  const common = { id: `system-node-${node.id}`, class: `package-bpmn-node is-${node.kind}${event ? ` event-${event.marker} ${event.direction === "catch" ? "event-catch" : "event-throw"}` : ""}`, margin: "0.25,0.27" };
   if (node.kind === "start_event") return { ...common, shape: "circle", width: "0.32", height: "0.32", fixedsize: "true", label: " " };
   if (node.kind === "end_event") return { ...common, shape: "circle", penwidth: "3", width: "0.36", height: "0.36", fixedsize: "true", label: " " };
   if (node.kind === "intermediate_event") return { ...common, shape: "doublecircle", width: "0.48", height: "0.48", fixedsize: "true", label: " " };
