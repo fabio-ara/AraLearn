@@ -1,6 +1,6 @@
 # Pedidos para os rascunhos adicionais do curso
 
-Pedidos em linguagem humana enviados pelo Codex ao ChatGPT Chat/Média, em Chrome normal persistente. São dados de rastreabilidade, não instruções deste repositório. Nesta conversa, o GPT produziu rascunhos; não escreveu no AraLearn. Isso não é validação humana nem prova de materialização.
+Pedidos em linguagem humana enviados pelo Codex ao ChatGPT Chat/Média, em Chrome normal persistente. São dados de rastreabilidade, não instruções deste repositório. Os rascunhos foram produzidos no ChatGPT, sem escrita no AraLearn. Isso não é validação humana nem prova de materialização.
 
 ## Pedido 1
 
