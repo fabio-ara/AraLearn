@@ -12,3 +12,5 @@ authoring/schemas/resource-set.schema.json text eol=lf
 src/bibliography/** text eol=lf
 public/vendor/bibliography/** text eol=lf
 supabase/functions/_shared/aralearn/runtime/bibliography/** text eol=lf
+src/resources/** text eol=lf
+supabase/functions/_shared/aralearn/runtime/resources/** text eol=lf
