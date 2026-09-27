@@ -56,6 +56,40 @@ for (const width of [360, 390, 430, 1280]) {
   });
 }
 
+// Conteúdo consecutivo de prosa, tabela e visual: a Explicação recebe o mesmo ritmo
+// da Unidade de estudo, sem margem por host nem espaço vazio antes do primeiro recurso.
+for (const width of [320, 390, 430, 1280]) {
+  test(`recursos consecutivos da Explicação mantêm o ritmo compartilhado em ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 850 });
+    const errors = await mount(page);
+    await openButton(page).click();
+    const body = page.locator(".study-explanation-body");
+    await expect(body.locator(":scope > .runtime-resource-stack")).toHaveCount(1);
+    const measured = await body.evaluate(node => {
+      const stack = node.querySelector(":scope > .runtime-resource-stack");
+      const resources = [...stack.children].filter(child => child.matches(".package-instance"));
+      const rects = resources.map(resource => resource.getBoundingClientRect());
+      return { count: resources.length,
+        gaps: rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+        leading: rects[0].top - node.querySelector(":scope > h3").getBoundingClientRect().bottom,
+        overflow: node.scrollWidth - node.clientWidth };
+    });
+    expect(measured.count).toBeGreaterThanOrEqual(2);
+    for (const gap of measured.gaps) { expect(gap).toBeGreaterThanOrEqual(7); expect(gap).toBeLessThanOrEqual(9); }
+    expect(measured.leading).toBeGreaterThanOrEqual(11); expect(measured.leading).toBeLessThanOrEqual(13);
+    expect(measured.overflow).toBeLessThanOrEqual(1);
+    const table = body.locator('[data-package-instance-id="comparison"] .runtime-table-wrap');
+    await expect(table).toHaveCount(1);
+    expect(await table.evaluate(node => getComputedStyle(node).overflowX)).toBe("auto");
+    await page.screenshot({ path: testInfo.outputPath(`explanation-resource-rhythm-${width}.png`), fullPage: true });
+    await expect(page.getByRole("button", { name: "Fechar explicação", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(overlay(page)).toHaveCount(0); await expect(openButton(page)).toBeFocused();
+    expect(await page.evaluate(() => globalThis.__explanationFixture.probe.completions)).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+}
+
 test("referência no fim da explicação abre PDF e retorna à ocorrência sem ocultar a leitura", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 }); await mount(page);
   await openButton(page).tap();

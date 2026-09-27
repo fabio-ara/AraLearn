@@ -70,7 +70,7 @@ export function channelFixtures(course) {
     for (const [position, explanation] of explanations.entries()) {
       const index = indexes[position];
       explanation.fontes = links(explanation.conteudo);
-      explanation.reconciliacao = [{ recurso: 1, folha: "text", trecho: explanation.conteudo.content[0].data.text,
+      explanation.reconciliacao = [{ recurso: 1, trecho: explanation.conteudo.content[0].data.text,
         papel: index === 0 ? "introduced" : "revisited", ideias: [idea.nome], requisitos: [coverage[index]],
         motivo: index === 0 ? "Introduz a interface local a partir dos pré-requisitos de processo e transporte."
           : "Retoma a interface local estabelecida no primeiro caso para uma aplicação distinta." }];

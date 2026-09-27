@@ -159,7 +159,13 @@ o `plano` compacto e confronta a Explicação reconciliada com repertório, vín
 requisitos, formas, componentes, fontes, prática e cobertura. A chamada separada
 é opcional. Ao omitir `referenciaPreparo`, a materialização executa a verificação
 com o conteúdo solicitado antes de gravar. `blocked` agrega as causas que precisam
-de correção. Se usar uma referência explícita, ela deve corresponder à base,
+de correção. A Explicação se reconcilia declarando a função do recurso inteiro
+(sem trecho), o que cobre todas as folhas derivadas, inclusive a representação
+acessível, ou de um trecho literal resolvido pelo mesmo mecanismo das citações;
+`alvo` distingue partes repetidas. A Explicação é a base consultável da microssequência;
+as unidades apresentam o ensino, os exemplos e, conforme a condição escolhida, as
+práticas. Quando o percurso ainda não apresenta um ensino, o retorno de
+`preparar_materializacao` nomeia a ideia e o passo de recuperação. Se usar uma referência explícita, ela deve corresponder à base,
 configuração e intenção correntes. O repertório identifica o
 conhecimento a introduzir, usar ou retomar, conforme o
 [fluxo de produção](fluxos-prompts-e-contratos.md#repertório-acumulado).

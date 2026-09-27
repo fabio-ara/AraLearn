@@ -1646,6 +1646,16 @@ button.account-settings-back[hidden] {
   margin: 0;
 }
 
+/* Moldura compartilhada de leitura: a pilha define o ritmo entre recursos e serve
+   a Unidade de estudo e a Explicação, sem regra de espaçamento por host. */
+.runtime-resource-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-copy);
+  min-width: 0;
+}
+
 .package-instance {
   width: 100%;
   max-width: 100%;
@@ -5135,7 +5145,6 @@ button.account-settings-back[hidden] {
   line-height: 1.4;
   overflow-wrap: break-word;
 }
-.study-explanation-body .package-instance { min-width: 0; margin-block: 12px; }
 .study-explanation-tools { padding: 0 12px 8px; }
 .study-explanation-tools:empty { display: none; }
 

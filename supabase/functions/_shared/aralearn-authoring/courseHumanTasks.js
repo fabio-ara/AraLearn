@@ -40,7 +40,8 @@ import { resolveOpenAiTemporaryAudio } from "./openAiTemporaryAudio.js";
 import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeCourseMediaRead } from
   "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
-  resolveHumanSourceOccurrences, preflightHumanCourseMaterialization, listExistingPartStudyUnits } from "./courseHumanMaterialization.js";
+  resolveHumanSourceOccurrences, preflightHumanCourseMaterialization, listExistingPartStudyUnits,
+  humanMaterializationRecovery } from "./courseHumanMaterialization.js";
 import { completeFocalMaterialization } from "./courseFocalMaterialization.js";
 import { applyHumanCourseCorrections, resumeHumanCourseObservationCorrection } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
@@ -363,17 +364,18 @@ const STUDY_UNIT_CONTENT_SCHEMA = Object.freeze({
 });
 
 const EXPLANATION_RECONCILIATION_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems: 512,
-  description: "Vincule repertório às passagens. Omita trecho para a folha inteira. O servidor aponta ambiguidades e passagens restantes. Prévia não conclui ensino.",
+  description: "Declare a função do recurso inteiro (sem trecho) ou de um trecho; o servidor deriva as folhas e devolve o que falta. Prévia não conclui ensino.",
   items: { type: "object", additionalProperties: false,
-    required: ["recurso", "folha", "papel", "motivo", "ideias", "requisitos"],
+    required: ["recurso", "papel", "motivo", "ideias", "requisitos"],
     properties: { recurso: { type: "integer", minimum: 1, maximum: 64 },
-      folha: { type: "string", minLength: 1, maxLength: 240 },
       trecho: { type: "string", minLength: 1, maxLength: 4000,
-        description: "Fragmento distintivo; omita para a folha inteira." },
+        description: "Trecho literal e distintivo; omita para o recurso inteiro." },
       ocorrencia: { type: "integer", minimum: 1, maximum: 512,
-        description: "Escolha explícita quando a resposta devolver candidatos." },
-      prefixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
-      sufixo: { type: "string", maxLength: 500, description: "Só para compatibilidade; o servidor deriva o contexto." },
+        description: "Escolha entre os candidatos devolvidos." },
+      prefixo: { type: "string", maxLength: 500, description: "Contexto literal anterior; distingue repetições." },
+      sufixo: { type: "string", maxLength: 500, description: "Contexto literal posterior; distingue repetições." },
+      alvo: { type: ["integer", "string"], minimum: 1, maxLength: 300,
+        description: "Parte por posição ou rótulo." },
       papel: { type: "string", enum: ["introduced", "established", "revisited", "preview", "example", "support", "deferred"] },
       motivo: { type: "string", minLength: 1, maxLength: 4000 },
       ideias: { type: "array", maxItems: 64, items: HUMAN_REFERENCE_SCHEMA },
@@ -829,7 +831,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Produzir uma microssequência",
-    "Produz uma microssequência com verificação automática. Deriva parte, IDs, versões e posições. Inclua explicações somente para alterar a base salva. Depois, inspecione a qualidade pedagógica e corrija insuficiências.",
+    "Produz uma microssequência com verificação automática e deriva parte, IDs, versões e posições. A Explicação é a base consultável; as unidades apresentam o ensino e as práticas conforme a condição. Depois, inspecione a qualidade pedagógica.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
@@ -1099,9 +1101,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "9.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "10.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:728afffe0bb835de517874332ea601517f8581bc633892d90d56db2b0a6bc5a6";
+  "sha256:7cad32b8a501ac5699af30464d2592e974ebddfe0e9f64823fedba1799eb385c";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2781,13 +2783,14 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     });
   }
   const ready = preflight.state === "ready";
+  const recovery = ready ? null : humanMaterializationRecovery(preflight);
   return result(
     ready
       ? "A produção solicitada está coerente com o percurso e pode ser salva."
-      : "Ainda há uma dependência a resolver antes desta produção.",
+      : recovery ?? "Ainda há uma dependência a resolver antes desta produção.",
     {
       deepLink: null,
-      nextDecision: null,
+      nextDecision: recovery,
       context: withoutTechnicalState({
         preflight,
         parte: {

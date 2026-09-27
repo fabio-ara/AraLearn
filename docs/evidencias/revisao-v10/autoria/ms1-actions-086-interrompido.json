@@ -1,0 +1,455 @@
+{
+  "prompt": "Agora quero desenvolver a etapa “Qual plano realmente compensa?” do curso “Do sinal à decisão: como representamos situações para prever o que acontece depois” até ela ficar pronta para estudar. Siga o planejamento e a condição de pesquisa que acabamos de registrar. Prepare o iniciante com explicações e exemplos suficientes, proponha atividades que mostrem se ele consegue comparar os planos e dê retornos que ajudem a entender cada resposta. Pode concluir essa etapa autonomamente, conferindo o que ficou salvo, e me dar o link para estudá-la. As outras etapas vêm depois.",
+  "observedSubmissionUtc": "2026-09-27T06:53:39.643Z",
+  "channel": "ChatGPT Actions",
+  "productVersion": "0.0.86",
+  "commit": "76d6a2a4a61e3111e422c9e6f152dc6bafbdbb24",
+  "courseRevisionBefore": 71,
+  "evidenceClass": "recuperação; conversa previamente corrigida",
+  "researchCondition": "A — prática após o ensino",
+  "status": "interrupted_by_operator_after_reproduced_product_failures",
+  "interruptionConfirmedUtc": "2026-09-27T07:30:35.282Z",
+  "courseId": "68d099a5-60d6-4a26-bd93-4a990a4789c3",
+  "microsequenceId": "7b5ad12d-439d-8cd6-8307-7121e067f7c4",
+  "courseRevisionAfter": 74,
+  "explanationCount": 7,
+  "studyUnitCount": 0,
+  "export": {
+    "pages": 12,
+    "sha256": "ac868d04c2150a47362d5d30b281c55df65894ac8f95bd99def762916b73efbb"
+  },
+  "http": {
+    "source": "consulta de logs somente leitura; cliente ChatGPT-User; Actions",
+    "windowUtc": [
+      "2026-09-27T06:53:39Z",
+      "2026-09-27T07:32:22Z"
+    ],
+    "count": 58,
+    "summary": {
+      "retomar_curso 200": 5,
+      "consultar_configuracao 200": 2,
+      "exportar_autoria 200": 3,
+      "preparar_revisao 200": 3,
+      "consultar_componentes 200": 9,
+      "desenho_instrucional 200": 3,
+      "preparar_materializacao 422": 4,
+      "materializar_parte 422": 4,
+      "salvar_parte 409": 1,
+      "salvar_parte 200": 1,
+      "preparar_materializacao 200": 15,
+      "salvar_explicacoes 422": 5,
+      "desenho_instrucional 404": 1,
+      "salvar_explicacoes 200": 2
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/retomar_curso",
+        "status": "200",
+        "timestamp": "2026-09-27T06:53:45.650000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_configuracao",
+        "status": "200",
+        "timestamp": "2026-09-27T06:53:49.283000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/exportar_autoria",
+        "status": "200",
+        "timestamp": "2026-09-27T06:53:54.083000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_revisao",
+        "status": "200",
+        "timestamp": "2026-09-27T06:54:00.301000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:54:05.966000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:54:09.065000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:54:12.166000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:54:17.408000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/desenho_instrucional",
+        "status": "200",
+        "timestamp": "2026-09-27T06:56:07.912000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "422",
+        "timestamp": "2026-09-27T06:57:07.108000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:57:12.539000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:57:16.499000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T06:57:22.860000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "422",
+        "timestamp": "2026-09-27T06:58:28.664000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "422",
+        "timestamp": "2026-09-27T06:58:40.581000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/materializar_parte",
+        "status": "422",
+        "timestamp": "2026-09-27T06:59:07.484000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/retomar_curso",
+        "status": "200",
+        "timestamp": "2026-09-27T06:59:21.418000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/materializar_parte",
+        "status": "422",
+        "timestamp": "2026-09-27T06:59:40.994000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "422",
+        "timestamp": "2026-09-27T07:00:06.286000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/retomar_curso",
+        "status": "200",
+        "timestamp": "2026-09-27T07:00:15.392000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_parte",
+        "status": "409",
+        "timestamp": "2026-09-27T07:00:31.121000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_parte",
+        "status": "200",
+        "timestamp": "2026-09-27T07:01:06.947000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:01:22.131000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "422",
+        "timestamp": "2026-09-27T07:02:33.199000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/exportar_autoria",
+        "status": "200",
+        "timestamp": "2026-09-27T07:02:44.132000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T07:02:53.842000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "422",
+        "timestamp": "2026-09-27T07:03:17.051000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_componentes",
+        "status": "200",
+        "timestamp": "2026-09-27T07:03:28.719000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "422",
+        "timestamp": "2026-09-27T07:04:14.469000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/consultar_configuracao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:04:42.316000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:05:22.098000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "422",
+        "timestamp": "2026-09-27T07:06:19.378000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:07:11.284000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_revisao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:07:25.164000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_revisao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:07:37.523000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "422",
+        "timestamp": "2026-09-27T07:08:24.922000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:09:17.603000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:09:50.354000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:10:38.392000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:11:21.391000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:12:01.416000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/exportar_autoria",
+        "status": "200",
+        "timestamp": "2026-09-27T07:12:36.701000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/retomar_curso",
+        "status": "200",
+        "timestamp": "2026-09-27T07:13:04.346000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/retomar_curso",
+        "status": "200",
+        "timestamp": "2026-09-27T07:13:14.700000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:13:50.750000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/desenho_instrucional",
+        "status": "404",
+        "timestamp": "2026-09-27T07:15:36.906000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:16:08.904000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:17:19.679000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:18:03.923000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/desenho_instrucional",
+        "status": "200",
+        "timestamp": "2026-09-27T07:18:23.484000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:18:45.973000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/desenho_instrucional",
+        "status": "200",
+        "timestamp": "2026-09-27T07:19:11.836000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "200",
+        "timestamp": "2026-09-27T07:20:03.076000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:21:44.991000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/materializar_parte",
+        "status": "422",
+        "timestamp": "2026-09-27T07:23:14.394000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/preparar_materializacao",
+        "status": "200",
+        "timestamp": "2026-09-27T07:25:10.277000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/salvar_explicacoes",
+        "status": "200",
+        "timestamp": "2026-09-27T07:25:45.388000"
+      },
+      {
+        "method": "POST",
+        "path": "/functions/v1/aralearn-authoring-action/materializar_parte",
+        "status": "422",
+        "timestamp": "2026-09-27T07:27:21.309000"
+      }
+    ]
+  },
+  "diagnostic": {
+    "channel": "MCP do Codex, somente leitura; não autoria",
+    "preflight": {
+      "state": "blocked",
+      "referencia": null,
+      "blockers": [
+        {
+          "code": "human_materialization_incomplete_analysis_inventory",
+          "message": "O percurso ainda não cobre um ensinamento introduzido na base.",
+          "microsequence": "Qual plano realmente compensa?",
+          "idea": "Papéis das parcelas de preço"
+        },
+        {
+          "code": "human_materialization_incomplete_analysis_inventory",
+          "message": "O percurso ainda não cobre um ensinamento introduzido na base.",
+          "microsequence": "Qual plano realmente compensa?",
+          "idea": "Limite de generalização a partir de casos"
+        },
+        {
+          "code": "human_materialization_incomplete_analysis_inventory",
+          "message": "O percurso ainda não cobre um ensinamento introduzido na base.",
+          "microsequence": "Qual plano realmente compensa?",
+          "idea": "Fronteira de uma faixa de cobrança"
+        },
+        {
+          "code": "human_materialization_incomplete_analysis_inventory",
+          "message": "O percurso ainda não cobre um ensinamento introduzido na base.",
+          "microsequence": "Qual plano realmente compensa?",
+          "idea": "Custo total para uma quantidade de uso"
+        },
+        {
+          "code": "human_materialization_use_before_introduction",
+          "message": "Uma unidade usa uma ideia antes que ela tenha sido estabelecida no percurso."
+        }
+      ],
+      "reconciliations": [
+        {
+          "microssequencia": "Qual plano realmente compensa?",
+          "ready": true,
+          "blockers": [],
+          "introduced": [
+            "713fe888-35aa-8c72-9d30-7886899ae7a2",
+            "1bb39b92-7326-8e38-a7db-8a1f06d6d526",
+            "96e0e320-cb00-879e-a9ba-da913b0805e0",
+            "ecae796a-0493-8aa2-84d2-60897c178c76"
+          ],
+          "requirements": [
+            "cabfc8ca-27f3-878b-85c7-222c74b3b63d",
+            "49b13d5c-f14f-8cae-af31-799d992299ae",
+            "6f25e93b-f80b-819c-a62d-f98bc3fb200c",
+            "b16d7473-fd07-8656-b58d-fc52628e194e",
+            "dc620f2f-04b0-8d61-80ae-3f4d293944f4"
+          ],
+          "deferred": []
+        }
+      ],
+      "completion": "complete"
+    }
+  },
+  "humanValidation": false
+}

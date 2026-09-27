@@ -15,6 +15,8 @@ import { encodeCourseActionTaskRequest } from
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { completeFocalMaterialization } from
   "../../supabase/functions/_shared/aralearn-authoring/courseFocalMaterialization.js";
+import { listExistingPartStudyUnits } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { fixture, COURSE, IDEA, EVIDENCE } from "../support/authoringMaterializationPglite.js";
 
 const TITLE = "Curso sintético";
@@ -159,32 +161,15 @@ function stateReader(db, { stalePlan = false } = {}) {
         parameters: base.parameters.map(entrada => ({ ...entrada,
           effectiveAssignment: aplicados.get(entrada.parameterId) ?? entrada.effectiveAssignment })) };
     },
+    // O leitor real do fixture é o contrato SQL de 11 parâmetros (guarda 22023
+    // inclusive); a decoração pública de inspeção não é instalada aqui.
     async listCourseStudyUnits(request = {}) {
-      let escopo = null;
-      if (request.scopeKind === "authoring_part") {
-        if (!request.scopeId) return { items: [], hasMore: false, nextCursor: null };
-        escopo = new Set((await db.query("select didactic_microsequence_id id from" +
-          " private.course_authoring_part_didactic_microsequences where course_id=$1 and authoring_part_id=$2",
-        [COURSE, request.scopeId])).rows.map(linha => linha.id));
-      } else if (request.scopeKind === "didactic_microsequence") {
-        escopo = new Set(request.scopeId ? [request.scopeId] : []);
-      }
-      const linhas = (await db.query("select entity_id id, parent_id micro, position, version, content," +
-        " design_snapshot, design_application from private.course_entities" +
-        " where course_id=$1 and entity_type='study_unit' order by position, entity_id", [COURSE])).rows
-        .filter(linha => escopo === null || escopo.has(linha.micro));
-      const titulos = new Map((await db.query("select entity_id id, content->>'title' title" +
-        " from private.course_entities where course_id=$1 and entity_type='microsequence'", [COURSE]))
-        .rows.map(linha => [linha.id, linha.title ?? linha.id]));
-      return { items: linhas.map((linha, index) => ({
-        studyUnit: { id: linha.id, title: linha.content?.title ?? linha.id, role: linha.content?.role,
-          position: Number(linha.position), content: linha.content?.content ?? [] },
-        designSnapshot: linha.design_snapshot ?? undefined,
-        designApplication: linha.design_application ?? undefined,
-        version: Number(linha.version), ordinal: index + 1,
-        curriculumPath: { didacticMicrosequence: { id: linha.micro, title: titulos.get(linha.micro) ?? linha.micro } },
-        authorship: { createdOrigin: "ai", lastRevisionOrigin: "ai", design: {} }, authoringPart: null
-      })), hasMore: false, nextCursor: null };
+      const rows = await db.query(
+        "select private.list_course_study_units_for_actor_v1($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) value",
+        [PRINCIPAL.actorId, COURSE, request.expectedRevision ?? await curso(), request.scopeKind ?? "course",
+          request.scopeId ?? null, null, request.cursorStudyUnitId ?? null, "forward",
+          request.limit ?? 24, request.maxBytes ?? 524288, request.entry ?? null]);
+      return rows.rows[0].value;
     }
   };
 }
@@ -310,6 +295,18 @@ function payloadSegunda() {
 
 function payloadTerceira() {
   return { ...payloadSegunda(), microssequencia: MICRO_3_TITLE };
+}
+
+// Sem posição declarada, o núcleo precisa reler as unidades existentes do
+// recorte antes de decidir a posição da unidade nova.
+function payloadSemPosicao() {
+  const base = { ...gptPayload() };
+  delete base.posicao;
+  return { ...base, aplicacaoPedagogica: { ...base.aplicacaoPedagogica, ideiasIntroduzidas: [],
+    ideiasUtilizadas: ["Relação central"], explicacoes: [],
+    // A unidade nova não repete a oportunidade já registrada na preservada.
+    praticas: base.aplicacaoPedagogica.praticas.map(pratica =>
+      ({ ...pratica, oportunidade: "Comparar o custo total na mesma quantidade." })) } };
 }
 
 async function seedChainPart(db, adapter) {
@@ -658,6 +655,64 @@ test("dependência produzida fora do agrupamento técnico é reconhecida pelo es
     assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
     await runCore(adapter, "materializar_parte", argsTerceira);
     assert.equal((await snapshot(db)).unidades.length, 3);
+  } finally { await db.close(); }
+});
+
+test("primeira Parte derivada preserva unidade existente sem agrupamento e posição omitida", async () => {
+  const { db, adapter } = await setup();
+  try {
+    const { referencia } = await retomadaAutonoma(adapter);
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const anterior = (await db.query("select entity_id id, position, content, design_snapshot, design_application" +
+      " from private.course_entities where course_id=$1 and entity_type='study_unit'", [COURSE])).rows[0];
+    // A unidade passa a existir sem agrupamento: a Parte é apenas técnica.
+    await db.query("delete from private.course_authoring_part_didactic_microsequences where course_id=$1", [COURSE]);
+    await db.query("delete from private.course_authoring_parts where course_id=$1", [COURSE]);
+
+    const semPosicao = { curso: TITLE, microssequencia: MICRO_TITLE, unidades: [payloadSemPosicao()],
+      concluir: false, processo: referencia };
+    const preparo = await runCore(adapter, "preparar_materializacao", semPosicao);
+    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
+    await runCore(adapter, "materializar_parte", semPosicao);
+
+    const unidades = (await db.query("select entity_id id, position, content from private.course_entities" +
+      " where course_id=$1 and entity_type='study_unit' order by position, entity_id", [COURSE])).rows;
+    assert.equal(unidades.length, 2);
+    assert.deepEqual(unidades[0], { id: anterior.id, position: 1, content: anterior.content }, "a unidade pré-existente é preservada");
+    assert.equal(unidades[1].position, 2, "a unidade nova recebe a posição seguinte");
+    assert.equal((await db.query("select count(*)::int total from private.course_authoring_part_didactic_microsequences" +
+      " where course_id=$1 and didactic_microsequence_id=$2", [COURSE, MICRO])).rows[0].total, 1);
+  } finally { await db.close(); }
+});
+
+test("leitor real recusa authoring_part sem identidade e a derivação lê pela Microssequência", async () => {
+  const { db } = await setup();
+  try {
+    await assert.rejects(() => db.query("select private.list_course_study_units_for_actor_v1(" +
+      "$1,$2,$3,'authoring_part',null,null,null,'forward',24,524288,null) value", [COURSE, COURSE, 1]),
+    error => {
+      assert.equal(error.code, "22023");
+      return true;
+    });
+
+    await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content)" +
+      " select $1,'study_unit','antiga-'||n,'microsequence','micro',n," +
+      " jsonb_build_object('title','Antiga '||n,'role','theory','content','[]'::jsonb)" +
+      " from generate_series(1,25) n", [COURSE]);
+    const leitor = stateReader(db);
+    const leituras = [];
+    const adapter = { ...leitor, async listCourseStudyUnits(request) {
+      leituras.push({ scopeKind: request.scopeKind, scopeId: request.scopeId, cursor: request.cursorStudyUnitId });
+      return await leitor.listCourseStudyUnits(request);
+    } };
+    const existentes = await listExistingPartStudyUnits({ adapter,
+      principal: PRINCIPAL, deadlineAt: null,
+      context: { course: { id: COURSE, revision: 1 }, part: { id: null, microsequences: [{ id: MICRO, position: 0 }] } } });
+    assert.equal(existentes.size, 25, "a paginação do leitor é percorrida até o fim");
+    assert.ok(leituras.length >= 2, JSON.stringify(leituras));
+    assert.ok(leituras.every(leitura => leitura.scopeKind === "didactic_microsequence" && leitura.scopeId === MICRO),
+      JSON.stringify(leituras));
+    assert.ok(existentes.has(MICRO + "\u0000" + 25));
   } finally { await db.close(); }
 });
 

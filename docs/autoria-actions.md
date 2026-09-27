@@ -99,7 +99,11 @@ plano compacto e verifica a base reconciliada, repertório, vínculos, requisito
 formas, componentes, fontes, prática e cobertura. Sem `referenciaPreparo`, a
 materialização executa essa verificação internamente antes de gravar e devolve
 os bloqueios para correção. Uma referência explícita precisa continuar válida
-para a base e a intenção atuais.
+para a base e a intenção atuais. A reconciliação declara a função do recurso
+inteiro (sem trecho) ou de um trecho literal; o servidor deriva as folhas e
+`alvo` distingue partes repetidas. A Explicação é a base consultável; as unidades
+apresentam o ensino, os exemplos e, conforme a condição escolhida, as práticas, e
+o preparo devolve o passo de recuperação quando o percurso ainda não apresenta um ensino.
 
 `materializar_parte` recebe o foco de uma única microssequência; a parte é derivada pelo servidor. IDs de instâncias, versões correntes e posições finais podem ser omitidos e são materializados pelo contrato. `unidade` identifica uma unidade existente a substituir, e omitidas permanecem; `concluir: false` conserva produção parcial. Práticas novas exigem resposta avaliável e feedback offline. Uma escolha
 automática exige um valor contextual e sua justificativa antes da produção.

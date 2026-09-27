@@ -113,12 +113,11 @@ function materializationExplanations(batch) {
   const explanations = structuredClone(batch.explicacoes);
   explanations[0].conteudo = completeHumanContent(explanations[0].conteudo, { explanation: true });
   const content = explanations[0].conteudo.content;
-  explanations[0].reconciliacao = explanationReconciliationTargets(explanations[0].conteudo)
-    .filter(target => target.text.trim())
-    .map((target, index) => ({
-      recurso: content.findIndex(instance => instance.id === target.resourceId) + 1,
-      folha: target.path,
-      trecho: target.text,
+  const resourceIds = [...new Set(explanationReconciliationTargets(explanations[0].conteudo)
+    .filter(target => target.text.trim()).map(target => target.resourceId))];
+  explanations[0].reconciliacao = resourceIds
+    .map((resourceId, index) => ({
+      recurso: content.findIndex(instance => instance.id === resourceId) + 1,
       papel: index === 0 ? "introduced" : "support",
       motivo: index === 0
         ? "A passagem introduz inclusão dos extremos e prepara as três práticas do B-2."

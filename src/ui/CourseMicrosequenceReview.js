@@ -456,16 +456,17 @@ export function createCourseMicrosequenceReview({ root, controller, onEditSource
   function renderExplanation(explanation, { editable, busy }) {
     const unit = explanationRenderingUnit(explanation);
     const title = editable ? fields.find(field => field.targetId === "study_unit" && field.path === "title")?.value ?? explanation.title : explanation.title;
+    const components = unit.content.filter(instance => editable ||
+      !RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool).map(instance => {
+      const targetId = `content:${instance.id}`;
+      return `<div class="course-explanation-component${editable ? ' is-editing' : ''}" data-review-edit-target="${escape(targetId)}">` +
+        renderPackageStudyUnitBlocks({ ...unit, content: [instance] }, { revealPracticeAnswers: true,
+          sourceTextTargets: listCourseSourceOccurrenceTargets(explanation, { targetKind: "microsequence_explanation" }),
+          blockKeyPrefix: "review-explanation", manualEditingTargetId: editable ? targetId : "" }) + '</div>';
+    }).join('');
     return '<div class="course-explanation-inline" data-review-explanation-content>' +
       `<h3 data-review-title${editable ? ` contenteditable="${busy || session.pendingEdit ? "false" : "plaintext-only"}" role="textbox" aria-label="Título da explicação"` : ''}>${escape(title)}</h3>` +
-      unit.content.filter(instance => editable ||
-        !RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool).map(instance => {
-        const targetId = `content:${instance.id}`;
-        return `<div class="course-explanation-component${editable ? ' is-editing' : ''}" data-review-edit-target="${escape(targetId)}">` +
-          renderPackageStudyUnitBlocks({ ...unit, content: [instance] }, { revealPracticeAnswers: true,
-            sourceTextTargets: listCourseSourceOccurrenceTargets(explanation, { targetKind: "microsequence_explanation" }),
-            blockKeyPrefix: "review-explanation", manualEditingTargetId: editable ? targetId : "" }) + '</div>';
-      }).join('') + '</div>';
+      (components ? `<div class="runtime-resource-stack">${components}</div>` : '') + '</div>';
   }
   async function click(event) {
     if (event.target.closest("[data-review-close]")) return close();

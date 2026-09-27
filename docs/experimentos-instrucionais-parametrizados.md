@@ -34,7 +34,7 @@ ultrapassados para preservar explicações e relações necessárias.
 ## Fixar valores e conferir o que foi produzido
 
 No modo automático, o assistente calibra os valores conforme conteúdo, função
-e público; no contrato, esse modo recebe o nome `default`. Para uma comparação
+e público; a escolha fica pendente até ser registrada na produção. Para uma comparação
 com condições definidas, o pesquisador escolhe os valores que precisam
 permanecer fixos e registra sua justificativa. Também confere se uma decisão
 mais específica, numa parte do curso, altera o valor esperado.
