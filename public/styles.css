@@ -3935,6 +3935,12 @@ button.account-settings-back[hidden] {
   background: transparent;
 }
 
+.package-plane-key-symbol.trajectory {
+  width: 18px;
+  height: 0;
+  border-top: 2px dashed currentColor;
+}
+
 .package-chart-layout-error,
 .package-plane-layout-error {
   margin: 8px 0 0;

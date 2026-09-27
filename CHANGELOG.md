@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.86] - 2026-09-26
+
+### Corrigido
+
+- a autoria organiza as partes de produção a partir da microssequência escolhida e aplica ao salvamento o processo combinado para o curso, preservando os pontos de revisão da conta e o estado de rascunho do mapa;
+- planos cartesianos só exibem convenções geométricas quando elas ajudam a distinguir tipos de objetos; regiões fechadas e trajetórias abertas recebem símbolos próprios, mantendo a legenda dos grupos comparados.
+
 ## [0.0.85] - 2026-09-26
 
 ### Corrigido

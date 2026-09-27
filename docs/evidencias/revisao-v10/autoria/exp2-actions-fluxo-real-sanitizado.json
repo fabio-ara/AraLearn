@@ -1,0 +1,508 @@
+{
+  "contract": "aralearn.evidence.actions-flow.v1",
+  "natureza": "Prova pública sanitizada do fluxo real de ChatGPT Actions da Exp2; separa evidência de servidor, captura visual e limites.",
+  "escopo": {
+    "curso": "Do sinal à decisão: como representamos situações para prever o que acontece depois",
+    "exp": "segunda explicação, \"Quando a comparação muda?\"",
+    "disciplina": "autoria; sem StudyUnit, sem Estudo e sem validação humana"
+  },
+  "consentimento": "Consentimento pontual, operado por Codex sob mandato do proprietário: o proprietário autorizou trabalho autônomo apenas nesse curso (\"Permitir uma vez\"), incluindo corrigir o que produziu, sem alterar preferências gerais e sem registrar aprovação humana. Não houve pessoa revisando a produção neste momento; esta prova não afirma consentimento total único nem aprovação humana. Nenhum segredo, token ou credencial entra aqui.",
+  "servidor": {
+    "fonte": "function_edge_logs do projeto hospedado, lido por consulta somente leitura",
+    "janelaUtc": [
+      "2026-09-26T23:46:00Z",
+      "2026-09-27T00:12:00Z"
+    ],
+    "naturezaDaFonte": "Diagnóstico somente leitura de logs hospedados, separado das chamadas reais do ChatGPT Actions.",
+    "chamadas": 35,
+    "todas200": true,
+    "cliente": "ChatGPT-User/1.0",
+    "porOperacao": {
+      "retomar_curso": 2,
+      "consultar_planejamento": 1,
+      "exportar_autoria": 5,
+      "consultar_componentes": 10,
+      "desenho_instrucional": 1,
+      "salvar_explicacoes": 1,
+      "preparar_revisao": 13,
+      "aplicar_correcoes": 2
+    },
+    "sequencia": [
+      {
+        "utc": "2026-09-26T23:50:08.227Z",
+        "operacao": "retomar_curso",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:13.575Z",
+        "operacao": "consultar_planejamento",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:18.196Z",
+        "operacao": "exportar_autoria",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:27.591Z",
+        "operacao": "exportar_autoria",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:35.079Z",
+        "operacao": "exportar_autoria",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:42.667Z",
+        "operacao": "exportar_autoria",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:48.953Z",
+        "operacao": "exportar_autoria",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:52.747Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:50:57.337Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:51:01.617Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:51:05.317Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:52:57.030Z",
+        "operacao": "desenho_instrucional",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:53:02.949Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:53:06.914Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:53:12.463Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:53:15.688Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:53:20.001Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:54:15.388Z",
+        "operacao": "salvar_explicacoes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:54:21.276Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:54:30.746Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:54:38.646Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:54:45.176Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:55:35.773Z",
+        "operacao": "aplicar_correcoes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-26T23:55:42.046Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:00:43.951Z",
+        "operacao": "retomar_curso",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:00:49.823Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:00:57.570Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:01:05.058Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:01:11.820Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:01:15.847Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:04:39.749Z",
+        "operacao": "aplicar_correcoes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:04:47.080Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:04:56.495Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:05:04.383Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T00:05:11.310Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      }
+    ]
+  },
+  "marcos": {
+    "salvarExplicacoes": "2026-09-26T23:54:15.388Z",
+    "aplicarCorrecoes": [
+      "2026-09-26T23:55:35.773Z",
+      "2026-09-27T00:04:39.749Z"
+    ],
+    "retomadas": [
+      "2026-09-26T23:50:08.227Z",
+      "2026-09-27T00:00:43.951Z"
+    ]
+  },
+  "conversa": {
+    "prompts": 2,
+    "resumo": "pedido de criação e salvamento da segunda explicação e pedido de correção visual a partir de captura real, seguidos de releitura",
+    "promptsLiterais": [
+      "Continue no curso já existente “Do sinal à decisão: como representamos situações para prever o que acontece depois”, sem criar cópia. Pode trabalhar autonomamente apenas nesse curso e corrigir o que produzir, sem alterar minhas preferências gerais nem registrar aprovação humana. Quero agora desenvolver e salvar a explicação da segunda sequência, “Quando a comparação muda?”, a partir do rascunho original do ChatGPT anexado. Ensine como a quantidade de entregas muda o custo dos dois planos, com as regras por faixa, uma representação em plano cartesiano que ajude a localizar a mudança de vantagem e exemplos resolvidos suficientes. Preserve que entregas são contagens inteiras; linhas de apoio não significam entregas fracionárias. Use os recursos de fórmula, gráfico e calculadora quando ajudarem ao raciocínio, sem virar vitrine de ferramentas. Confira o conteúdo já salvo para manter os mesmos valores e condições do primeiro exemplo. Nesta etapa salve só essa explicação; retomaremos as atividades em seguida. Releia o resultado, corrija inconsistências e traga o link para abrir o que ficou salvo.",
+      "Abri a explicação salva. Veja a captura real: os rótulos dos pontos se amontoam e a legenda repete quase todas as coordenadas, ficando maior que a figura. Como educador, o que essa apresentação permite ou impede que um iniciante perceba? Faça uma leitura crítica, aceite ou contraponha a minha observação e corrija o material salvo para tornar visíveis as duas mudanças de vantagem, entre 1 e 2 e depois em 32 entregas, sem perder a visão do comportamento dos planos. Se forem necessárias visões complementares, cada uma deve responder a uma pergunta clara. Preserve os valores e o domínio inteiro. Retire também títulos redundantes como “Como ler o gráfico” quando a explicação pode começar diretamente. Depois de salvar, releia, confira a consistência e me envie novamente o link. Continue somente nessa explicação, sem criar práticas ou registrar aprovação humana."
+    ],
+    "linksPrivados": "omitidos"
+  },
+  "exportacaoAposCorrecao": {
+    "contract": "aralearn.course-authoring-export.v2",
+    "curso": "Do sinal à decisão: como representamos situações para prever o que acontece depois",
+    "revisao": 19,
+    "modulos": 8,
+    "microssequencias": 24,
+    "unidadesDeEstudo": 0,
+    "explicacoes": [
+      {
+        "titulo": "Qual plano realmente compensa?",
+        "blocos": 5,
+        "caracteresAproximados": 3090
+      },
+      {
+        "titulo": "Quando a comparação muda?",
+        "blocos": 20,
+        "caracteresAproximados": 11143
+      }
+    ],
+    "caracteresSerializacaoCompacta": 61818,
+    "caracteresFragmentosOriginais": 61838,
+    "bytesArquivoPretty": 119426,
+    "observacaoMetricas": "métricas distintas: 61.838 caracteres é a soma dos fragmentos originais (métrica registrada pela raiz Codex); 61.818 caracteres é a minha reserialização compacta do export completo; 119.426 bytes é o arquivo pretty em disco",
+    "observacao": "exportação integral não é copiada: continha referências operacionais e histórico privado; só contagens e títulos entram aqui"
+  },
+  "calculadora": {
+    "textoDoDialogoNoJson": "Expressão\n192",
+    "resultadoExibido": 192,
+    "expressaoDigitada": "24+(32-4)*6",
+    "origemDaExpressao": "digitada pela raiz Codex durante o ensaio; não deduzida do estado final registrado no JSON",
+    "em": "2026-09-27T00:12:40.292Z",
+    "viewport": [
+      390,
+      844
+    ],
+    "focoInicial": "Calcular",
+    "retornoDeFocoEm": "2026-09-27T00:17:43.754Z",
+    "focoRetornado": "Calculadora",
+    "observacao": "a primeira captura leu o texto visível do diálogo, sem o valor do input; não demonstra substituição da expressão pelo resultado. A repetição posterior preserva expressão e resultado na imagem",
+    "captura": "a captura original falhou; recuperada em exp2-actions-390-calculadora-recuperada.jpg, que exibe 24+(32-4)*6 e o resultado 192"
+  },
+  "capturas": [
+    {
+      "arquivo": "exp2-actions-1920-grafico-antes.png",
+      "origem": "actions-exp2-web-grafico-antes.png",
+      "bytes": 161240,
+      "sha256": "240ab5f5a3cd9a9704c6a6d55f30ce685837eee5244e8648002c13a5bb9c7eca",
+      "formato": "png",
+      "largura": 1920,
+      "altura": 855
+    },
+    {
+      "arquivo": "exp2-actions-390-grafico-1-apos.png",
+      "origem": "actions-exp2-390-grafico-1-apos.png",
+      "bytes": 89441,
+      "sha256": "8d796cde69bd9feba95bcf9363e893a793fbbea0ed01c8cdd19e9ff4aff4b94d",
+      "formato": "png",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "exp2-actions-390-grafico-2-apos.png",
+      "origem": "actions-exp2-390-grafico-2-apos.png",
+      "bytes": 71339,
+      "sha256": "299db451e6a65ecd9b7a250ac27a39c7fdb62d0f83ba9d27c77f395ef87aac2e",
+      "formato": "png",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "exp2-actions-390-grafico-3-apos.png",
+      "origem": "actions-exp2-390-grafico-3-apos.png",
+      "bytes": 79124,
+      "sha256": "e1e9a927ce143d8b77bf873d9d0c0f59675ad9f43f8e3acb805cec60a220828f",
+      "formato": "png",
+      "largura": 390,
+      "altura": 844
+    }
+  ],
+  "recuperacaoDeCaptura": {
+    "metodo": "Chrome normal, mesma aba 103; bytes salvos pela API de screenshot e gravados em disco; pixels inspecionados antes desta prova",
+    "historico": "a primeira captura pela ferramenta de DevTools falhou e essa falha continua registrada; as capturas recuperadas abaixo resolvem a limitação atual",
+    "capturas": [
+      {
+        "arquivo": "exp2-actions-390-calculadora-recuperada.jpg",
+        "origem": "actions-exp2-390-calculadora-recuperada.png",
+        "bytes": 31932,
+        "sha256": "7762f9ca4cc5c9e7ef4fb0eefa04398bfd383959c25b5c15f68c0fe85447e1db",
+        "formato": "jpeg",
+        "altura": 844,
+        "largura": 390,
+        "observacaoNome": "fonte nomeada .png pelo produtor, mas os bytes são JPEG JFIF; a cópia pública usa .jpg"
+      },
+      {
+        "arquivo": "exp2-actions-390-tabela-esquerda-recuperada.jpg",
+        "origem": "actions-exp2-390-tabela-esquerda-recuperada.png",
+        "bytes": 57674,
+        "sha256": "a20d65b8187dc24244cddfcdc2db89dbbe9af787673298ad212edd6566141f26",
+        "formato": "jpeg",
+        "altura": 844,
+        "largura": 390,
+        "observacaoNome": "fonte nomeada .png pelo produtor, mas os bytes são JPEG JFIF; a cópia pública usa .jpg"
+      },
+      {
+        "arquivo": "exp2-actions-390-tabela-direita-recuperada.jpg",
+        "origem": "actions-exp2-390-tabela-direita-recuperada.png",
+        "bytes": 59073,
+        "sha256": "821a8f3c6be1cc51fe7e755c2d86f8f3ad7d0a4785634d7e71e75016163a0fe0",
+        "formato": "jpeg",
+        "altura": 844,
+        "largura": 390,
+        "observacaoNome": "fonte nomeada .png pelo produtor, mas os bytes são JPEG JFIF; a cópia pública usa .jpg"
+      },
+      {
+        "arquivo": "exp2-actions-390-lista-retorno.jpg",
+        "origem": "actions-exp2-390-lista-retorno.png",
+        "bytes": 20120,
+        "sha256": "e176f076d25938dd5378ed02a74b183113ddb1552c421a1eee840c676de0ab7c",
+        "formato": "jpeg",
+        "altura": 844,
+        "largura": 390,
+        "observacaoNome": "fonte nomeada .png pelo produtor, mas os bytes são JPEG JFIF; a cópia pública usa .jpg"
+      }
+    ],
+    "repeticaoCalculadora": {
+      "em": "2026-09-27T00:37:31.445Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "expressaoRegistrada": "24+(32-4)*6",
+      "resultadoRegistrado": null,
+      "resultadoNoDialogoLiteral": 192,
+      "observacao": "o seletor de resultado pode vir nulo no JSON; o diálogo literal e o PNG mostram 192",
+      "confirmacaoVisual": "exp2-actions-390-calculadora-recuperada.jpg exibe a expressão 24+(32-4)*6 e o resultado 192"
+    },
+    "repeticaoTabela": {
+      "em": "2026-09-27T00:39:47.738Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "posicaoFinal": 247,
+      "maximo": 247,
+      "overflowDoDocumento": false,
+      "noLimiteDireito": true,
+      "confirmacaoVisual": "exp2-actions-390-tabela-direita-recuperada.jpg mostra a última coluna integral"
+    }
+  },
+  "interacoes": {
+    "tabelaRolagemHorizontal": {
+      "legenda": "Como as regras mudam por faixa",
+      "larguraVisivel": 356,
+      "larguraConteudo": 603,
+      "posicaoInicial": 0,
+      "em": "2026-09-27T00:28:46.492Z",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "posicaoFinal": 247,
+      "maximo": 247,
+      "noLimiteDireito": true,
+      "overflowDoDocumento": false,
+      "ultimaColunaIntegral": true,
+      "ultimaColunaCelulas": 6
+    },
+    "fecharDialogo": {
+      "em": "2026-09-27T00:29:31.918Z",
+      "dialogosNativos": 0,
+      "focoDevolvido": "Explicação de Quando a comparação muda?",
+      "tituloDoFoco": "Abrir explicação",
+      "alvo": {
+        "x": 322,
+        "y": 375.828125,
+        "width": 44,
+        "height": 44,
+        "top": 375.828125,
+        "right": 366,
+        "bottom": 419.828125,
+        "left": 322
+      },
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "confirmacaoPorAX": "o controle alternativo confirmou o foco no mesmo botão no mesmo turno"
+    },
+    "capturaVisual": {
+      "devtoolsHistorico": "a primeira captura pela ferramenta de DevTools falhou; a falha histórica permanece registrada",
+      "recuperacaoAtual": "capturas recuperadas pelo Chrome normal na mesma aba 103, com bytes salvos pela API de screenshot mais disco, e pixels inspecionados",
+      "inventarioPng": "nenhum PNG foi inventado; as capturas válidas são as de capturas e recuperacaoDeCaptura"
+    }
+  },
+  "capturasDeViewport": {
+    "metodo": "viewports reais por emulação no Chrome normal; bytes salvos pela API de screenshot e gravados em disco; pixels inspecionados antes desta prova",
+    "itens": [
+      {
+        "arquivo": "exp2-actions-320-cruzamento-inicial.jpg",
+        "origem": "actions-exp2-320-cruzamento-inicial.png",
+        "largura": 320,
+        "altura": 844,
+        "bytes": 40265,
+        "sha256": "a432284edd7599528bc31522ec43d1b8a25da6e2da7e4c26854cd24e55bddd9c",
+        "overflowDoDocumento": false,
+        "plotWidths": [
+          286
+        ],
+        "fonteDaMedicao": "DOM medido pela raiz Codex"
+      },
+      {
+        "arquivo": "exp2-actions-430-cruzamento-final.jpg",
+        "origem": "actions-exp2-430-cruzamento-final.png",
+        "largura": 430,
+        "altura": 844,
+        "bytes": 53404,
+        "sha256": "c2bf6ef17ab309a2f5c9b8942b8324af0af237f0b3e94594ba69cc7c82cc965a",
+        "overflowDoDocumento": false,
+        "plotWidths": [
+          396,
+          396,
+          396
+        ],
+        "fonteDaMedicao": "actions-exp2-430-geometria.json"
+      },
+      {
+        "arquivo": "exp2-actions-1280-visao-geral-real.jpg",
+        "origem": "actions-exp2-1280-visao-geral-real.png",
+        "largura": 1280,
+        "altura": 900,
+        "bytes": 74092,
+        "sha256": "f6b63b28341f168e4e4de98079aa05bd37d333a3e7a33a62c9f95ce0df94aee0",
+        "overflowDoDocumento": false,
+        "dialogWidth": 430,
+        "plotWidths": [
+          386,
+          386,
+          386
+        ],
+        "fonteDaMedicao": "actions-exp2-1280-geometria.json"
+      }
+    ],
+    "limites": [
+      "As três capturas de viewport são a inicial em 320, a final em 430 e a visão geral em 1280; os três gráficos de 390 já registrados são outro conjunto.",
+      "Não afirmar que todos os gráficos foram vistos em todas as larguras: a cobertura é a dos conjuntos realmente capturados.",
+      "A runtime 0.0.85 publicada ainda carrega a chave geométrica antiga; a correção do pacote plane é local e aguarda publicação."
+    ]
+  },
+  "capturaNaoUsada": {
+    "arquivo": "actions-exp2-1280-inicio.png",
+    "motivo": "mede 1920x855: não é 1280 e não deve ser rotulada assim; não foi copiada"
+  },
+  "fontesHash": {
+    "logsSanitizados": "ef3902b6779bc3ea486635c26021f59ac1b89c344fd8abda59ddf13ce8bce2dd",
+    "conversa": "c6f47b0f8baee1efe334e6385a9e09e57a764688efba1d2fcd82264106249c55",
+    "exportacao": "21e1e20eca0295896f576f50b58a4eaa8f7616b4108a8d7c354ba02144b31400",
+    "calculadoraResultado": "10cbbeb9c5df674a34f410833eef367d0d712a9254f0796898c7c668eb325749",
+    "calculadoraRetornoFoco": "3d9f0295b02f6dc8c003fe5de6b7b7c86a27fccac80a120a2575dee743be3353",
+    "tabelaAntes": "be5dabbf5feee80d48887e8a56f7132bffe60bb30d870fc86e6a800e7303c0af",
+    "tabelaDireita": "4e806e1f1f1d7c5847a37fda3ba2fc508372ce7c5e02a6f94151c78b876cf473",
+    "fecharRetornoFoco": "657553a74bfb0799d4b949b3b1925e36cda0b9124bb55baa864ac261d0a18b0c",
+    "calculadoraRecuperadaPng": "7762f9ca4cc5c9e7ef4fb0eefa04398bfd383959c25b5c15f68c0fe85447e1db",
+    "tabelaEsquerdaRecuperadaPng": "a20d65b8187dc24244cddfcdc2db89dbbe9af787673298ad212edd6566141f26",
+    "tabelaDireitaRecuperadaPng": "821a8f3c6be1cc51fe7e755c2d86f8f3ad7d0a4785634d7e71e75016163a0fe0",
+    "listaRetornoPng": "e176f076d25938dd5378ed02a74b183113ddb1552c421a1eee840c676de0ab7c",
+    "calculadoraRepeticao": "20d57491ff4900d74c2aba90fd2559c947dfeff0d0e43919ab95f952a6d52a19",
+    "tabelaRepeticao": "2fe94dc73a15bf0a140fec1e08a5b1b11aed8fe6cb3792b1b3af39dbfc6a9b8f",
+    "viewport320": "a432284edd7599528bc31522ec43d1b8a25da6e2da7e4c26854cd24e55bddd9c",
+    "viewport430": "c2bf6ef17ab309a2f5c9b8942b8324af0af237f0b3e94594ba69cc7c82cc965a",
+    "viewport1280": "f6b63b28341f168e4e4de98079aa05bd37d333a3e7a33a62c9f95ce0df94aee0",
+    "geometria430": "d16e50caf7501a7a2aaf359f70790fb687c1d0eaf85bbe53ca23739e5b6f23e9",
+    "geometria1280": "bf3138159c2c89bce22afe8e8ca38db8f2a4001b72dab1a45b88576bd0cfc1d2"
+  },
+  "limites": [
+    "Logs de borda são diagnóstico de engenharia: comprovam chamada e status, não autoria nem qualidade pedagógica.",
+    "A fonte visual é a Explicação na superfície de autoria; não há Unidade de estudo, Estudo, prática ou avaliação nesta prova.",
+    "Zero StudyUnits: nenhuma prática foi produzida, então não há evidência de aprendizagem.",
+    "Nenhuma aprovação humana foi registrada.",
+    "Nenhum token, header, IP, cookie, identificador de conta ou link privado de conversa foi copiado."
+  ]
+}

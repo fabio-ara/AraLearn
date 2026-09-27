@@ -1776,6 +1776,7 @@ export async function materializeHumanCoursePart({
         expectedAuthoringPartVersion: context.part.version,
         planItemUpserts: prepared.inventory.upserts,
         placements, complete,
+        allowDraftMap: allowDraftCurricularMap,
         targetPlanItems,
         explanations: preparedExplanations,
         units: preparedUnits.map((entry) => {

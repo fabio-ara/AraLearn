@@ -3276,6 +3276,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   let savedPartId = null;
   let savedCourse = null;
   let process = null;
+  let allowDraftMap = false;
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
       const resolved = await resolveHumanCourseContext({
@@ -3316,15 +3317,16 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
       };
     },
     build: async (state, { newId }) => {
+      allowDraftMap = state.process?.processoCorrente?.pontosDeRevisao?.includes("curricular_map") === false;
       const built = await buildProductionPart({
         state, titles, progression, title, intent, position: args.posicao == null ? null : args.posicao - 1, newId,
-        allowDraftMap: state.process?.processoCorrente?.pontosDeRevisao?.includes("curricular_map") === false
+        allowDraftMap
       });
       savedPartId = built.part.partId;
       return built;
     },
     commit: async ({ requestId, ...value }) => await adapter.saveCourseAuthoringPart({
-      principal, ...value, requestId, deadlineAt
+      principal, ...value, requestId, allowDraftMap, deadlineAt
     })
   });
   return result(partReference === undefined
@@ -3344,15 +3346,45 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const course = humanCourseTitle(args);
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
-  const focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
-  const part = Number(focal.part.position) + 1;
+  let resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+  let focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
   resolved.part = focal.part;
-  const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+  let process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
+  let allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
+  if (focal.part.id === null) {
+    // Agrupamento técnico derivado do mapa em rascunho: persiste a Parte com a
+    // autonomia que o processo validado autoriza e relê antes de materializar.
+    // Mapa aprovado dispensa autonomia; só o rascunho exige o mandato autorizado.
+    const mapaAprovado = resolved.plan?.plan?.curriculumMapStatus === "approved";
+    if (!allowDraft && !mapaAprovado) fail("curricular_map_not_approved",
+      "A primeira parte só pode ser preparada depois da aprovação do mapa curricular completo.", null, 409);
+    await adapter.saveCourseAuthoringPart({
+      principal,
+      courseId: resolved.course.id,
+      requestId: ("parte-tecnica-" + String(focal.microsequence.id).replace(/[^A-Za-z0-9._:-]/gu, "-") +
+        "-" + resolved.course.revision).slice(0, 128),
+      expectedCourseRevision: resolved.course.revision,
+      expectedPlanVersion: planVersion(resolved.plan),
+      allowDraftMap: allowDraft && !mapaAprovado,
+      part: { partId: null, position: focal.part.position, title: focal.part.title,
+        intent: focal.part.intent, progression: focal.part.progression,
+        microsequences: focal.part.microsequences.map((item, index) => ({ microsequenceId: item.id, position: index })) },
+      deadlineAt
+    });
+    resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+    focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
+    if (focal.part.id === null) throw new AuthoringApiError(503, "course_service_unavailable",
+      "A Parte derivada não pôde ser relida antes da materialização.");
+    resolved.part = focal.part;
+    process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+    if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
+    allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
+  }
+  const part = Number(focal.part.position) + 1;
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
     complete: args.concluir === true,
-    allowDraftCurricularMap: process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false,
+    allowDraftCurricularMap: allowDraft,
     units: safeClone(focal.units, "unidades", 480 * 1024),
     explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
