@@ -9,7 +9,7 @@ const explanation = { title: "Quadros e interfaces", content: [{ id: "shared-p",
   data: { text: "Um quadro transporta dados entre interfaces." } }] };
 const binding = { explicacao: "Quadros", relacao: "supported_by", papeis: ["tecnica_conceitual"],
   ancoras: [1],
-  ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Um quadro", sufixo: " transporta" }] };
+  ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "Um quadro", sufixo: " transporta" }] };
 
 function fixture({ content = explanation } = {}) {
   let revision = 7;
@@ -51,6 +51,14 @@ test("schema de vínculo escolhe uma única superfície e não expõe aprovaçã
   assert.equal(validate({ curso: "Redes sintéticas", fonte: "Fonte sintética", vinculos: [binding] }), true, JSON.stringify(validate.errors));
   assert.equal(validate({ curso: "Redes sintéticas", fonte: "Fonte sintética", vinculos: [{ ...binding, unidade: 1 }] }), false);
   assert.equal(validate({ curso: "Redes sintéticas", fonte: "Fonte sintética", vinculos: [{ ...binding, aprovado: true }] }), false);
+  const withAlvo = alvo => ({ curso: "Redes sintéticas", fonte: "Fonte sintética",
+    vinculos: [{ ...binding, ocorrencias: [{ ...binding.ocorrencias[0], alvo }] }] });
+  for (const alvo of [1, 2, "Editar nó 2"]) {
+    assert.equal(validate(withAlvo(alvo)), true, `alvo ${JSON.stringify(alvo)}: ${JSON.stringify(validate.errors)}`);
+  }
+  for (const alvo of [1.5, true, {}, []]) {
+    assert.equal(validate(withAlvo(alvo)), false, `alvo ${JSON.stringify(alvo)} não pertence ao contrato`);
+  }
 });
 
 test("consulta de fonte do apoio usa identidade MS, inclusive contexto de uma Fonte", async () => {
@@ -162,4 +170,63 @@ test("apoio ausente e ocorrência fora de conteúdo falham antes de qualquer esc
   await assert.rejects(() => call(adapter, "manter_fonte", { fonte: "Fonte sintética",
     vinculos: [{ ...binding, ocorrencias: [{ ...binding.ocorrencias[0], lugar: "feedback" }] }] }), { code: "invalid_human_source_occurrence" });
   assert.equal(adapter.writes.length, 0);
+});
+
+// Dois nós com o mesmo texto produzem duas folhas indistinguíveis pelo trecho: só o
+// alvo humano (posição ou rótulo público) decide, e a releitura confirma a escolha.
+const identicalTreeExplanation = { title: "Hierarquia e rede", content: [{ id: "tree-p",
+  package: "aralearn.resource.tree", version: "1.0.0", data: { prompt: "Observe a árvore.",
+    variant: "hierarchy", nodes: [{ id: "n1", label: "Central", parentId: null },
+      { id: "n2", label: "Central", parentId: "n1" }] } }] };
+const identicalBinding = alvo => ({ explicacao: "Quadros", relacao: "supported_by",
+  papeis: ["tecnica_conceitual"], ancoras: [1],
+  ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "Central",
+    ...(alvo === undefined ? {} : { alvo }) }] });
+
+test("dois rótulos idênticos escolhem a folha pelo alvo e a releitura confirma", async () => {
+  const written = [];
+  for (const alvo of [1, 2]) {
+    const adapter = fixture({ content: identicalTreeExplanation });
+    await call(adapter, "manter_fonte", { fonte: "Fonte sintética", vinculos: [identicalBinding(alvo)] });
+    const link = adapter.writes[0].command.sourceLinks.at(-1);
+    const [occurrence] = link.occurrences;
+    assert.deepEqual(Object.keys(occurrence).sort(),
+      ["occurrenceId", "path", "prefix", "quote", "resourceId", "slot", "suffix"],
+      "o alvo é entrada de decisão e não integra a ocorrência salva");
+    assert.equal(occurrence.slot, "content");
+    assert.equal(occurrence.resourceId, "tree-p");
+    assert.equal(occurrence.quote, "Central");
+    assert.equal(occurrence.prefix, null);
+    assert.equal(occurrence.suffix, null);
+    written.push(occurrence.path);
+    const readSource = adapter.getCourseSources;
+    adapter.getCourseSources = async input => input.mode === "target"
+      ? { items: [{ targetKind: input.targetKind, targetId: input.targetId,
+        sourceLinks: [link] }], nextCursor: null }
+      : readSource(input);
+    const result = await call(adapter, "consultar_fontes", { explicacao: "Quadros" });
+    const read = result.context.sources.items[0].sourceLinks[0];
+    assert.equal(read.posicao, 1);
+    assert.equal(read.evidencia.located, true, JSON.stringify(read.evidencia.issues));
+    assert.deepEqual(read.evidencia.issues, []);
+  }
+  assert.deepEqual(written, ["nodes[0].label", "nodes[1].label"],
+    "alternar o alvo grava folhas distintas para textos idênticos");
+});
+
+test("trecho idêntico sem alvo não grava e devolve as partes numeradas", async () => {
+  const adapter = fixture({ content: identicalTreeExplanation });
+  const error = await call(adapter, "manter_fonte", { fonte: "Fonte sintética",
+    vinculos: [identicalBinding(undefined)] }).then(() => null, value => value);
+  assert.equal(error.code, "invalid_human_source_occurrence");
+  assert.equal(error.details.blockers[0].code, "ambiguous_source_occurrence");
+  assert.deepEqual(error.details.blockers[0].candidates,
+    ["1. nó 1 — Central", "2. nó 2 — Central"]);
+  assert.equal(adapter.writes.length, 0, "ambíguo não persiste citação");
+  const absent = fixture({ content: identicalTreeExplanation });
+  const missing = await call(absent, "manter_fonte", { fonte: "Fonte sintética",
+    vinculos: [identicalBinding(7)] }).then(() => null, value => value);
+  assert.equal(missing.details.blockers[0].code, "source_occurrence_part_not_found");
+  assert.equal(missing.details.blockers[0].candidates.length, 2);
+  assert.equal(absent.writes.length, 0);
 });

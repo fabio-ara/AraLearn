@@ -123,3 +123,19 @@ test("recibo incompatível e escopo somente leitura não viram confirmação de 
   await assert.rejects(read.client.saveCurricularMapSlice(change), { status: 403 });
   assert.equal(read.calls.length, 0);
 });
+
+test("leitura HTTP expõe microssequência sem cobertura como pendência própria", async () => {
+  const scopeId = "20000000-0000-4000-8000-000000000009";
+  const initialMap = baseMap();
+  initialMap.scopeItems = [{ id: scopeId, statement: "Relacionar mecanismo e evidência.", position: 0 }];
+  initialMap.modules[0].lessons = [{ lessonId: "l1", title: "Lição", objective: "Explicar", position: 0,
+    microsequences: [{ microsequenceId: "micro-sem-escopo", title: "Sem cobertura", objective: "Explicar", position: 0,
+      dependencyMicrosequenceIds: [], scopeItemIds: [],
+      explanationPlan: { purpose: "Explicar a relação", prerequisites: [], relations: [], sourceIds: [] } }] }];
+  const { client } = harness({ initialMap });
+  const read = await client.getCurricularMap(courseId);
+  assert.deepEqual(read.completeness.pending.filter(item => item.reason === "coverage_missing"),
+    [{ reason: "coverage_missing", targetId: "micro-sem-escopo" }]);
+  assert.ok(read.completeness.pending.some(item => item.reason === "scope_uncovered" && item.targetId === scopeId));
+  assert.equal(read.completeness.complete, false);
+});

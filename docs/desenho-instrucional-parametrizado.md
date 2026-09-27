@@ -296,6 +296,10 @@ explícita sobre o conflito. Mistas interrompem uma sequência sem prática some
 quando há oportunidade real; a exposição anterior e posterior continua visível
 pela ordem dos eventos.
 
+Prática anterior à explicação pode investigar um alvo ainda não ensinado. O conhecimento necessário para compreender a solicitação continua sendo pré-requisito; o alvo da tentativa não precisa ser declarado como conhecimento estabelecido. No contrato de autoria, o requisito de evidência identifica o que a resposta investiga, enquanto `ideiasUtilizadas` registra apenas ideias já estabelecidas. A tentativa não é uma introdução; o desenvolvimento posterior continua necessário. Essa distinção permite variar a posição sem fabricar ensino anterior ou apagar a aplicação pedagógica.
+
+Há estudos experimentais sobre tentativas malsucedidas anteriores à apresentação do conteúdo, como [Kornell, Hays e Bjork (2009)](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Kornell_Hays_Bjork_2009_JEP-LMC.pdf). Isso fundamenta tratar a antecipação como possibilidade de investigação, sem presumir benefício em qualquer conteúdo ou público. O parâmetro registrado expressa a condição pretendida; sua realização exige conferir a sequência, os alvos e o conteúdo efetivamente salvo.
+
 ## Medidas observáveis e seus denominadores
 
 Para que duas medições possam ser comparadas, estas definições fixam como cada
@@ -568,6 +572,15 @@ comparar esses estados não acrescenta parâmetros ou provoca materialização.
 restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
 indica o curso e o escopo a consultar ou ajustar; o servidor verifica a versão
 atual antes de gravar e conserva a identidade de uma tentativa repetida.
+
+Ao ajustar uma configuração pelo MCP ou por Actions, o campo opcional `motivo`
+preserva a justificativa da escolha no registro existente. Ele pode identificar
+uma condição de pesquisa em linguagem humana, por exemplo “Condição A: comparar
+casos com variação apenas dos dados”. A justificativa acompanha os parâmetros,
+a direção editorial ou a delegação indicados na chamada; sua presença não altera
+origem, precedência ou proteção de uma condição fixa. Se for omitida, permanece
+a descrição padrão da operação. Não é preciso criar uma entidade de experimento
+para conservar essa informação junto da escolha aplicada.
 
 ## Identificadores para integração
 

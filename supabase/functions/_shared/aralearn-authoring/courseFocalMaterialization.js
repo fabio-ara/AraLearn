@@ -54,11 +54,45 @@ function microReference(micros, reference) {
   return matches[0];
 }
 
+// Sem parte persistida, o agrupamento é derivado do mapa em rascunho quando a
+// microssequência autorizada é inequívoca. A derivação é técnica: não declara
+// aprovação, não grava nada e serve apenas para resolver o foco da produção.
+function derivedTechnicalPart(planRead, reference, groupedIds, position) {
+  const modules = planRead?.plan?.curriculum?.modules;
+  if (!Array.isArray(modules)) return null;
+  const micros = modules.flatMap((module) => (Array.isArray(module?.lessons) ? module.lessons : []).flatMap((lesson) =>
+    (Array.isArray(lesson?.microsequences) ? lesson.microsequences : []).map((micro) => ({
+      id: micro?.microsequenceId ?? micro?.id ?? null, title: micro?.title ?? ""
+    })))).filter((micro) => micro.id && micro.title && !groupedIds.has(micro.id));
+  if (!micros.length) return null;
+  let micro;
+  if (Number.isSafeInteger(reference)) {
+    // A posição pertence ao recorte produzido, não a um índice global do mapa.
+    if (reference !== 1 || micros.length !== 1) return null;
+    micro = micros[0];
+  } else {
+    const matches = micros.filter((candidate) => key(candidate.title) === key(reference));
+    if (matches.length !== 1) return null;
+    micro = matches[0];
+  }
+  return { id: null, position, title: micro.title,
+    intent: "Agrupamento técnico derivado da microssequência autorizada.",
+    progression: [micro.title],
+    microsequences: [{ id: micro.id, position: 0, title: micro.title }] };
+}
+
 // Parts remain operational groups. One request asks the model to reason about
 // exactly one microsequence; the existing transactional backend may still batch.
 export function completeFocalMaterialization(args, context, existing = []) {
   const parts = context.plan?.plan?.parts ?? [];
-  const candidates = context.part?.microsequences ?? parts.flatMap(part => part.microsequences ?? []);
+  const groupedIds = new Set(parts.flatMap(part => (part.microsequences ?? []).map(item => item.id)));
+  let derived = null;
+  if (!context.part) {
+    derived = derivedTechnicalPart(context.plan, args.microssequencia, groupedIds, parts.length) ??
+      derivedTechnicalPart(context.plan, (args.unidades ?? [])[0]?.microssequencia, groupedIds, parts.length);
+  }
+  const candidates = context.part?.microsequences ??
+    (derived ? derived.microsequences : parts.flatMap(part => part.microsequences ?? []));
   const micros = [...new Map(candidates.map(micro => [micro.id, micro])).values()];
   const references = [args.microssequencia, ...(args.unidades ?? []).map(unit => unit.microssequencia),
     ...(args.explicacoes ?? []).map(entry => entry.microssequencia)].filter(value => value !== undefined);
@@ -68,8 +102,9 @@ export function completeFocalMaterialization(args, context, existing = []) {
   if (identities.size !== 1) fail("human_materialization_focus_required",
     "Produza uma microssequência por chamada. A parte continua sendo o agrupamento de trabalho; não reduza seu conteúdo para caber aqui.");
   const micro = selected[0];
-  const matchingParts = context.part ? [context.part] : parts.filter(part =>
-    (part.microsequences ?? []).some(item => item.id === micro.id));
+  const matchingParts = context.part ? [context.part]
+    : [...(derived ? [derived] : []), ...parts].filter(part =>
+      (part.microsequences ?? []).some(item => item.id === micro.id));
   if (matchingParts.length !== 1) fail("human_materialization_part_required",
     "A microssequência precisa pertencer a uma parte de autoria antes da produção.");
   const part = matchingParts[0];

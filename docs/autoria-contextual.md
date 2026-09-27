@@ -57,7 +57,8 @@ necessária para retomar sua edição.
 A aprovação exige público e escopo definidos e uma hierarquia com ao menos um
 módulo e sem ramos vazios: cada módulo contém ao menos uma lição, e cada lição
 alcança uma microssequência.
-Todo item de escopo precisa estar coberto, e cada
+Todo item de escopo precisa estar coberto, cada microssequência precisa declarar
+os itens de escopo que desenvolve, e cada
 dependência precisa apontar para uma microssequência anterior no percurso global.
 A decisão corresponde ao mapa salvo e inspecionável corrente. Persistir um recorte
 volta o mapa para rascunho; revisão do conteúdo e acesso ao curso continuam sendo

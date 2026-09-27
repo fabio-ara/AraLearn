@@ -3280,6 +3280,29 @@ test("prontidão de áudio preserva a causa corrigível sem expor detalhes inter
   }
 });
 
+test("mapa em rascunho recusa a produção com causa específica, sem expor detalhes internos do banco", async () => {
+  const value = adapter(async () => json({ code: "23514",
+    message: "A producao so pode ser organizada depois da aprovacao do mapa curricular. private.secret" }, 422));
+  await assert.rejects(
+    () => value.saveCourseAuthoringPart({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      requestId: "map-approval-test",
+      expectedCourseRevision: 5,
+      expectedPlanVersion: 5,
+      part: { partId: null, position: 0, title: "Parte 1", intent: "Exemplo de intenção.",
+        progression: ["Primeiro passo"], microsequences: [{ microsequenceId: "micro-a", position: 0 }] }
+    }),
+    error => {
+      assert.equal(error.status, 409);
+      assert.equal(error.code, "curricular_map_not_approved");
+      assert.ok(error.message.includes("aprovação do mapa curricular"));
+      assert.ok(!error.message.includes("private.secret"));
+      return true;
+    }
+  );
+});
+
 test("leitura de Fontes traduz PT409 sem repetir a revisão desatualizada", async () => {
   let sourceCalls = 0;
   const value = adapter(async (url, init) => {

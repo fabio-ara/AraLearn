@@ -28,6 +28,14 @@ const ANALYSIS_ID = "30000000-0000-4000-8000-000000000001";
 const SECOND_ANALYSIS_ID = "30000000-0000-4000-8000-000000000002";
 const EVIDENCE_ID = "30000000-0000-4000-8000-000000000003";
 const CURRICULUM_SCOPE_ID = "50000000-0000-4000-8000-000000000001";
+const CURRICULUM_SCOPE_STATEMENT = "Resolução de nomes pelo DNS.";
+// Fixture semântica coerente: o mapa atribui o item de escopo à microssequência
+// e as unidades declaradas o desenvolvem. Casos deliberados removem a cobertura.
+function plannedCurricularScope(statement = CURRICULUM_SCOPE_STATEMENT) {
+  return [{ id: CURRICULUM_SCOPE_ID, position: 0, statement, state: "planned",
+    curriculumTargets: [{ moduleId: "module-network", lessonId: "lesson-network",
+      didacticMicrosequenceIds: ["micro-dns"] }], developedIn: [] }];
+}
 const PRINCIPAL = {
   actorId: "40000000-0000-4000-8000-000000000001",
   scopes: ["authoring:read", "authoring:write"]
@@ -93,7 +101,7 @@ test("Explicação conserva fonte e âncora na mesma operação das unidades", a
   const adapter = adapterFixture();
   const support = explanationFixtures()[0];
   support.fontes = [{ fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"],
-    ancoras: ["Seção 2 — Introdução"], ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "O DNS associa nomes a endereços." }] }];
+    ancoras: ["Seção 2 — Introdução"], ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "O DNS associa nomes a endereços." }] }];
   await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [unit()], explanations: [support] });
   assert.equal(adapter.calls.length, 1);
@@ -104,7 +112,7 @@ test("Explicação conserva fonte e âncora na mesma operação das unidades", a
 
 test("explicação rejeita vínculo técnico genérico e reutiliza um PDF com âncoras distintas", async () => {
   const support = explanationFixtures()[0];
-  const occurrence = { lugar: "conteudo", recurso: 1, folha: "text", trecho: "O DNS associa nomes a endereços." };
+  const occurrence = { lugar: "conteudo", recurso: 1, trecho: "O DNS associa nomes a endereços." };
   for (const sourceLink of [
     { fonte: "RFC 1035", relacao: "informed_by", papeis: ["tecnica_conceitual"] },
     { fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"], ocorrencias: [occurrence] },
@@ -224,10 +232,12 @@ function adapterFixture({ savedExplanation = true } = {}) {
                 position: 0,
                 title: "Serviços de rede",
                 microsequences: [{ id: "micro-dns", position: 0, title: "DNS",
+                  scopeItemIds: [CURRICULUM_SCOPE_ID],
                   ...(savedExplanation ? { explanation: dnsExplanation() } : {}) }]
               }]
             }]
           },
+          curriculumScopeItems: plannedCurricularScope(),
           instructionalAnalysisUnits: [{
             id: ANALYSIS_ID,
             position: 8,
@@ -360,7 +370,7 @@ function unit(fontes = []) {
         }]
       }],
       praticas: [],
-      cobertura: []
+      cobertura: [CURRICULUM_SCOPE_STATEMENT]
     },
     fontes
   };
@@ -421,6 +431,7 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
             position: 0,
             title: "Serviços de rede",
             microsequences: [{ id: "micro-dns", position: 0, title: "DNS",
+              scopeItemIds: [CURRICULUM_SCOPE_ID],
               explanation: reconciledExplanationFixture([
                 ...analysis.map(item => ({ text: `${item.statement} ${item.description}`, analysisUnitIds: [item.id] })),
                 ...(withEvidence ? [{ text: "Classifique o caso de rede a partir dos dados disponíveis.",
@@ -430,6 +441,7 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
           }]
         }]
       },
+      curriculumScopeItems: plannedCurricularScope(),
       instructionalAnalysisUnits: analysis,
       evidenceRequirements: withEvidence ? [{
         id: EVIDENCE_ID,
@@ -513,7 +525,7 @@ function pedagogicalUnit(position, {
     ideiasUtilizadas: used,
     explicacoes: explanations,
     praticas: practices,
-    cobertura: []
+    cobertura: [CURRICULUM_SCOPE_STATEMENT]
   };
   return value;
 }
@@ -532,7 +544,7 @@ test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou request
       relacao: "supported_by",
       papeis: ["tecnica_conceitual"],
       ancoras: ["Seção 2 — Introdução"],
-      ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Um resolvedor consulta registros para obter o endereço associado." }]
+      ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "Um resolvedor consulta registros para obter o endereço associado." }]
     }])]
   });
 
@@ -1035,7 +1047,7 @@ test("#302 materialização conserva dois usos da mesma fonte, trecho literal e 
     units: [unit([
       { fonte: "RFC 1035", relacao: "informed_by", papeis: ["leitura_complementar"] },
       { fonte: "RFC 1035", relacao: "quoted_from", papeis: ["tecnica_conceitual"], ancoras: [1],
-        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "registros", prefixo: "consulta ", sufixo: " para obter" }] }
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "registros", prefixo: "consulta ", sufixo: " para obter" }] }
     ])] });
   const links = adapter.calls[0].units[0].sourceLinks;
   assert.equal(links.length, 2);
@@ -1238,7 +1250,7 @@ test("preflight acumulado conserva exigências aplicadas às omitidas após muda
     return design;
   };
   const next = { ...unit(), posicao: 2, aplicacaoPedagogica: { ideiasIntroduzidas: [], ideiasUtilizadas: ["O DNS associa nomes a endereços."],
-    explicacoes: [], praticas: [], cobertura: [] } };
+    explicacoes: [], praticas: [], cobertura: [CURRICULUM_SCOPE_STATEMENT] } };
   // Use the same observed reference as the rest of this fixture.
   next.aplicacaoPedagogica.ideiasUtilizadas = [unit().aplicacaoPedagogica.ideiasIntroduzidas[0]];
   const blocked = await prepareMaterialization(adapter, [next], { complete: true });
@@ -1734,6 +1746,55 @@ test("formas podem continuar depois da introdução, mas nunca antes dela", asyn
   }), (error) => Boolean(preflightBlocker(error, "human_materialization_explanation_before_introduction")));
 });
 
+test("conclusão exige cobertura da microssequência, mas preserva produção parcial", async () => {
+  const adapter = pedagogicalAdapter({ analysisCount: 0 });
+  const content = pedagogicalUnit(1, { mode: "pratica" });
+  // Negativo deliberado: sem cobertura declarada, a conclusão é bloqueada.
+  content.aplicacaoPedagogica.cobertura = [];
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    complete: true, units: [content]
+  }), error => Boolean(preflightBlocker(error, "human_materialization_incomplete_scope_coverage")));
+  assert.deepEqual(adapter.calls, []);
+  await materializeHumanCoursePart({
+    adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    complete: false, units: [content]
+  });
+  assert.equal(adapter.calls.length, 1);
+  assert.deepEqual(adapter.calls[0].units[0].designApplication.curriculumScopeItemIds, []);
+});
+
+test("conclusão exige cobertura declarada no mapa e permite concluir com o vínculo resolvido", async () => {
+  const adapter = pedagogicalAdapter({ analysisCount: 0 });
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = async () => {
+    const read = await readPlan();
+    read.plan.curriculumScopeItems = [];
+    read.plan.curriculum.modules[0].lessons[0].microsequences[0].scopeItemIds = [];
+    return read;
+  };
+  const pending = pedagogicalUnit(1, { mode: "pratica" });
+  pending.aplicacaoPedagogica.cobertura = [];
+  // Negativo: alvo sem cobertura declarada no mapa não conclui, mesmo com
+  // unidade completa; a produção parcial segue permitida com a pendência.
+  await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
+    part: 1, complete: true, units: [pending] }), error => {
+    const blocker = preflightBlocker(error, "human_materialization_incomplete_scope_coverage");
+    assert.match(blocker.message, /ainda não tem cobertura declarada no mapa/u);
+    return true;
+  });
+  assert.deepEqual(adapter.calls, []);
+  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
+    part: 1, complete: false, units: [pending] });
+  assert.equal(adapter.calls.length, 1);
+  assert.deepEqual(adapter.calls[0].units[0].designApplication.curriculumScopeItemIds, []);
+  // Positivo: o mapa declara o item e a unidade o desenvolve.
+  const coherent = pedagogicalAdapter({ analysisCount: 0 });
+  await materializeHumanCoursePart({ adapter: coherent, principal: PRINCIPAL, course: "Curso de Redes",
+    part: 1, complete: true, units: [pedagogicalUnit(1, { mode: "pratica" })] });
+  assert.deepEqual(coherent.calls[0].units[0].designApplication.curriculumScopeItemIds, [CURRICULUM_SCOPE_ID]);
+});
+
 test("materialização desenvolve de fato cada item de escopo atribuído à microssequência", async () => {
   const adapter = pedagogicalAdapter({ analysisCount: 0 });
   const readPlan = adapter.getCourseInstructionalPlan;
@@ -1754,6 +1815,8 @@ test("materialização desenvolve de fato cada item de escopo atribuído à micr
     return current;
   };
   const content = pedagogicalUnit(1, { mode: "pratica" });
+  // Negativo deliberado: a unidade ainda não declara o item atribuído pela aula.
+  content.aplicacaoPedagogica.cobertura = [];
 
   await assert.rejects(() => materializeHumanCoursePart({
     adapter,
@@ -1765,7 +1828,7 @@ test("materialização desenvolve de fato cada item de escopo atribuído à micr
   }), (error) => Boolean(preflightBlocker(error, "human_materialization_incomplete_scope_coverage")));
   assert.deepEqual(adapter.calls, []);
 
-  content.aplicacaoPedagogica.cobertura = ["Resolução de nomes pelo DNS."];
+  content.aplicacaoPedagogica.cobertura = [CURRICULUM_SCOPE_STATEMENT];
   await materializeHumanCoursePart({
     adapter,
     principal: PRINCIPAL,
@@ -2049,6 +2112,9 @@ test("item focal percorre a microssequência e chega às unidades como introduç
   });
   revisit.microssequencia = "Usar e retomar a associação";
   revisit.conteudo.title = "Retomar a associação por contraste";
+  revisit.aplicacaoPedagogica.cobertura = [
+    "Aprender e aplicar uma associação de rede."
+  ];
 
   await materializeHumanCoursePart({
     adapter,
@@ -2413,4 +2479,117 @@ test("caso real: completar lacunas classifica sem recopiar a base e sem manter a
   assert.deepEqual(preserved, preservedBefore, "a unidade independente não é mantida nem reescrita");
   const reread = await prepareMaterialization(adapter, [firstUnit, secondUnit]);
   assert.equal(reread.state, "ready", JSON.stringify(reread.blockers));
+});
+
+// Pré-tentativa antes do ensino: o alvo novo entra pelo requisito de evidência,
+// cuja operação é derivada para a prática. ideiasUtilizadas recebe apenas ideia
+// ESTABELECIDA, então a primeira prática não declara introdução nem uso e o
+// ensino seguinte introduz a ideia. Sem campo, regra ou parâmetro novo.
+const PRE_ATTEMPT_OPERATION = "Classificar casos de rede.";
+
+function preAttemptAdapter(declaredPosition) {
+  const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 1, withEvidence: true });
+  const readDesign = adapter.getCourseDesign;
+  adapter.getCourseDesign = async (request) => {
+    const read = await readDesign(request);
+    if (request.scopeKind === "didactic_microsequence") {
+      const setValue = (id, value) => {
+        const parameter = read.parameters.find((entry) => entry.parameterId === id);
+        if (parameter) parameter.effectiveAssignment.value = value;
+      };
+      setValue("practice_position", declaredPosition);
+      // Mínimo já satisfeito pela própria sequência: nenhum blocker espúrio
+      // mascara o único defeito do caso negativo.
+      setValue("minimum_distinct_practice_opportunities_per_evidence_requirement", 1);
+      setValue("required_practice_variation_dimensions", ["case_or_data"]);
+    }
+    return read;
+  };
+  return adapter;
+}
+
+const attempt = (position, opportunity) => pedagogicalUnit(position, { mode: "pratica",
+  practices: [{ requisito: 1, oportunidade: opportunity, dimensoesVariadas: ["case_or_data"] }] });
+const teaching = position => pedagogicalUnit(position, { novelty: [1],
+  explanations: [{ ideia: 1, formas: ["plain_definition", "mechanism"] }] });
+const afterTeachingPractice = position => pedagogicalUnit(position, { mode: "pratica", used: [1],
+  practices: [{ requisito: 1, oportunidade: "pos-1", dimensoesVariadas: ["case_or_data"] }] });
+const positionedParameter = writeUnit =>
+  writeUnit.designSnapshot.parameters.find(({ parameterId }) => parameterId === "practice_position");
+
+test("pré-tentativa do alvo novo antes da explicação declara o alvo pelo requisito, não por ideia estabelecida", async () => {
+  for (const declared of ["before_explanation", "before_and_after"]) {
+    const adapter = preAttemptAdapter(declared);
+    const both = declared === "before_and_after";
+    const units = [attempt(1, "pre-1"), teaching(2), ...(both ? [afterTeachingPractice(3)] : [])];
+    const ready = await prepareMaterialization(adapter, units, { complete: true });
+    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+    assert.deepEqual(ready.blockers, []);
+    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
+      part: 1, complete: true, units, preparationReference: ready.referencia });
+    assert.equal(adapter.calls.length, 1);
+    const write = adapter.calls[0];
+    const [first, taught, later] = write.units;
+    assert.deepEqual(write.units.map(unitWrite => unitWrite.position), both ? [1, 2, 3] : [1, 2]);
+    assert.deepEqual(write.units.map(unitWrite => unitWrite.designApplication.mode),
+      both ? ["practice", "expository", "practice"] : ["practice", "expository"]);
+    // A pré-tentativa não afirma introdução nem mobilização de conhecimento estabelecido.
+    assert.deepEqual(first.designApplication.introducedInstructionalAnalysisUnitIds, []);
+    assert.deepEqual(first.designApplication.usedInstructionalAnalysisUnitIds, []);
+    // A operação vem derivada do requisito e a prática é avaliável offline com feedback local.
+    assert.deepEqual(first.designApplication.practiceApplications.map(({ invariantTaskOperation }) =>
+      invariantTaskOperation), [PRE_ATTEMPT_OPERATION]);
+    assert.equal(first.content.response.package, "aralearn.response.choice");
+    assert.ok(first.content.response.data.options.length >= 2);
+    assert.ok(first.content.feedback.length >= 1);
+    // O ensino seguinte é quem introduz a ideia-alvo.
+    assert.deepEqual(taught.designApplication.introducedInstructionalAnalysisUnitIds, [ANALYSIS_ID]);
+    assert.deepEqual(taught.designApplication.usedInstructionalAnalysisUnitIds, []);
+    // Na condição antes/depois, a última prática mobiliza o que passou a estar estabelecido.
+    if (both) {
+      assert.deepEqual(later.designApplication.introducedInstructionalAnalysisUnitIds, []);
+      assert.deepEqual(later.designApplication.usedInstructionalAnalysisUnitIds, [ANALYSIS_ID]);
+      assert.deepEqual(later.designApplication.practiceApplications.map(({ invariantTaskOperation }) =>
+        invariantTaskOperation), [PRE_ATTEMPT_OPERATION]);
+    }
+    for (const unitWrite of write.units) assert.equal(positionedParameter(unitWrite).value, declared);
+  }
+});
+
+test("declarar a ideia da pré-tentativa como estabelecida é recusado sem blockers espúrios", async () => {
+  const adapter = preAttemptAdapter("before_explanation");
+  await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, complete: true,
+    units: [pedagogicalUnit(1, { mode: "pratica", used: [1],
+      practices: [{ requisito: 1, oportunidade: "pre-1", dimensoesVariadas: ["case_or_data"] }] }), teaching(2)] }),
+  (error) => {
+    assert.equal(error.code, "human_materialization_preflight_blocked");
+    assert.deepEqual(error.details.preflight.blockers.map(({ code }) => code),
+      ["human_materialization_use_before_introduction"]);
+    return true;
+  });
+  assert.deepEqual(adapter.calls, []);
+});
+
+test("valor declarado de posição da prática não certifica a ordem executada", async () => {
+  // Este teste NÃO declara a sequência adequada: mostra só que o parâmetro é
+  // declaração preservada, não prova de ordem. A validação semântica permanece
+  // necessária e é responsabilidade da revisão.
+  const declared = "before_explanation";
+  const practiceFirst = await prepareMaterialization(preAttemptAdapter(declared),
+    [attempt(1, "pre-1"), teaching(2)], { complete: true });
+  assert.equal(practiceFirst.state, "ready", JSON.stringify(practiceFirst.blockers));
+
+  const teachingFirst = preAttemptAdapter(declared);
+  const units = [teaching(1), afterTeachingPractice(2)];
+  const ready = await prepareMaterialization(teachingFirst, units, { complete: true });
+  assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+  await materializeHumanCoursePart({ adapter: teachingFirst, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, complete: true, units,
+    preparationReference: ready.referencia });
+  const write = teachingFirst.calls[0];
+  assert.deepEqual(write.units.map(unitWrite => unitWrite.designApplication.mode),
+    ["expository", "practice"]);
+  assert.equal(positionedParameter(write.units[1]).value, declared,
+    "o valor declarado é preservado mesmo quando a ordem executada não o realiza");
 });

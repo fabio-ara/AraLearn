@@ -143,7 +143,7 @@ for (const authenticationKind of ["oauth", "action"]) {
     };
     const fontes = current.map((link, i) => ({ fonte: `Fonte ${i + 1}`, relacao: link.relation,
       papeis: i === 0 ? ["tecnica_conceitual"] : ["leitura_complementar"], ancoras: [1],
-      ...(i === 0 ? { ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: occurrence.quote }] } : {}) }));
+      ...(i === 0 ? { ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: occurrence.quote }] } : {}) }));
     const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind }, course: "Curso de Redes",
       explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content }, fontes }] };
     const result = await applyHumanCourseCorrections(input);
@@ -444,7 +444,7 @@ test("#272 correção application focal resolve Fonte/Âncora e marca provider_a
         relacao: "supported_by",
         papeis: ["tecnica_conceitual"],
         ancoras: ["Seção 2"],
-        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Conteúdo corrigido" }]
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "Conteúdo corrigido" }]
       }]
     }]
   });

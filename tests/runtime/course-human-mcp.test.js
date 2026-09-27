@@ -408,7 +408,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.1.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "9.0.0");
   // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
   assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
 });
@@ -1903,7 +1903,7 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
         relacao: "informed_by",
         papeis: ["tecnica_conceitual"],
         ancoras: ["Seção 4.2"],
-        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "Trecho A" }]
+        ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "Trecho A" }]
       }]
     }
   });
@@ -2905,7 +2905,7 @@ test("Actions e MCP recusam sustentação vazia e expõem âncoras reutilizávei
     assert.equal(value.commands.length, 0);
     await call("manter_fonte", { ...args, vinculos: [{ unidade: 1, relacao: "supported_by",
       papeis: ["tecnica_conceitual"], ancoras: [source.context.sources.items[0].anchors[0].posicao],
-      ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: "literal" }] }] });
+      ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "literal" }] }] });
     assert.deepEqual(value.commands[0].command.sourceLinks.at(-1).anchors, [{ anchorId: "anchor-context" }]);
   }
 });
@@ -2947,7 +2947,7 @@ test('#302 fonte conserva vínculos distintos e ocorrências; novo vínculo rece
   assert.equal(edited[0].linkId,original[0].linkId);
   assert.deepEqual(edited[0].occurrences,original[0].occurrences);
   await sourceTask(value,{fonte:1,vinculos:[{unidade:1,relacao:'informed_by',papeis:['evidencia_de_avaliacao'],
-    ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'literal',prefixo:'Texto ',sufixo:' do curso.'}]}]});
+    ocorrencias:[{lugar:'conteudo',recurso:1,trecho:'literal',prefixo:'Texto ',sufixo:' do curso.'}]}]});
   const appended=value.commands.at(-1).command.sourceLinks;
   assert.deepEqual(appended.slice(0,2),original);
   assert.equal(appended.length,3);
@@ -2961,7 +2961,7 @@ test('#302 fonte conserva vínculos distintos e ocorrências; novo vínculo rece
     {unidade:1,relacao:'informed_by'},
     {unidade:1,vinculo:3,relacao:'informed_by',papeis:['tecnica_conceitual']},
     {unidade:1,relacao:'quoted_from',papeis:['tecnica_conceitual']},
-    {unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual'],ocorrencias:[{lugar:'conteudo',recurso:2,folha:'text',trecho:'literal'}]}
+    {unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual'],ocorrencias:[{lugar:'conteudo',recurso:2,trecho:'literal'}]}
   ]) {
     const before=value.commands.length;
     await assert.rejects(()=>sourceTask(value,{fonte:1,vinculos:[invalid]}));
@@ -2979,7 +2979,7 @@ test('#302 fonte retenta escrita incerta com mesmas identidades de vínculo e oc
   };
   await sourceTask(value,{fonte:1,vinculos:[{unidade:1,relacao:'informed_by',papeis:['tecnica_conceitual'],
     ancoras:[1],
-    ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'literal'}]}]});
+    ocorrencias:[{lugar:'conteudo',recurso:1,trecho:'literal'}]}]});
   assert.equal(attempts.length,2);
   assert.deepEqual(attempts[1],attempts[0]);
 });
@@ -3004,4 +3004,163 @@ test('#302 âncora associa PDF apenas por hash explícito e preserva associaçã
     await assert.rejects(()=>sourceTask(value,{fonte:1,...invalid}),error=>error.code==='invalid_human_task_argument');
     assert.equal(value.commands.length,before);
   }
+});
+
+// Motivo opcional de `ajustar_configuracao`: rótulo curto declarado pela pessoa,
+// preservado no campo `reason` existente (parâmetro, direção editorial e
+// delegação). Sem novo ID, entidade ou campo obrigatório. Limite alinhado ao
+// `reason` persistido (1000).
+function configurationWriter({ protectedParameterOrigin = null } = {}) {
+  const commands = [];
+  return {
+    commands,
+    ...adapter(),
+    async getCourseInstructionalPlan() {
+      return {
+        courseId: COURSE_ID,
+        courseRevision: 7,
+        plan: {
+          id: "40000000-0000-4000-8000-000000000004",
+          version: 3,
+          title: "Redes para iniciantes",
+          objective: "Explicar serviços em rede.",
+          instructionalAnalysisUnits: [],
+          evidenceRequirements: [],
+          parts: [{
+            id: PART_ID,
+            version: 2,
+            position: 0,
+            title: "Sockets",
+            intent: "Relacionar processos e comunicação.",
+            microsequences: [{
+              id: "micro-sockets",
+              productionPosition: 0,
+              title: "Sockets",
+              goal: "Relacionar processos e comunicação.",
+              role: "explain"
+            }]
+          }]
+        }
+      };
+    },
+    async getCourseDesign() {
+      return {
+        definitions: [],
+        parameters: protectedParameterOrigin === null ? [] : [{
+          parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
+          localAssignment: {
+            mode: "fixed",
+            value: 2,
+            origin: protectedParameterOrigin,
+            reason: "Condição fixada antes desta chamada."
+          },
+          effectiveAssignment: {
+            mode: "fixed",
+            value: 2,
+            inherited: false,
+            origin: protectedParameterOrigin,
+            reason: "Condição fixada antes desta chamada.",
+            sourceScope: { kind: "course", ref: COURSE_ID }
+          },
+          conflicts: []
+        }],
+        guidance: { localAssignment: null, effectiveAssignments: [] }
+      };
+    },
+    async applyCourseDesignCommand({ command }) {
+      commands.push(structuredClone(command));
+      return { changed: true };
+    }
+  };
+}
+
+const configure = (writer, rawArguments) => executeHumanCourseTask({
+  adapter: writer, principal: PRINCIPAL, name: "ajustar_configuracao",
+  rawArguments: { curso: "Redes para iniciantes", ...rawArguments }
+});
+
+test("motivo declarado distingue duas condições de mesmo valor em escopos distintos", async () => {
+  const writer = configurationWriter();
+  await configure(writer, {
+    condicao: "pesquisa",
+    parametros: { maximo_ideias_novas_por_unidade: 2 },
+    motivo: "Condição A: teto dois com leitura de comparação."
+  });
+  await configure(writer, {
+    microssequencia: "Sockets",
+    condicao: "pesquisa",
+    parametros: { maximo_ideias_novas_por_unidade: 2 },
+    motivo: "Condição B: teto dois com outra ordem de casos."
+  });
+  assert.equal(writer.commands.length, 2);
+  assert.deepEqual(writer.commands.map(({ type }) => type),
+    ["set_parameter", "set_parameter"]);
+  assert.deepEqual(writer.commands.map(({ scope }) => scope.kind),
+    ["course", "didactic_microsequence"]);
+  assert.deepEqual(writer.commands.map(({ parameterId }) => parameterId),
+    ["new_analysis_unit_ceiling_per_expository_study_unit",
+      "new_analysis_unit_ceiling_per_expository_study_unit"]);
+  assert.deepEqual(writer.commands.map(({ value }) => value), [2, 2]);
+  assert.deepEqual(writer.commands.map(({ origin }) => origin),
+    ["research_condition", "research_condition"]);
+  assert.deepEqual(writer.commands.map(({ reason }) => reason), [
+    "Condição A: teto dois com leitura de comparação.",
+    "Condição B: teto dois com outra ordem de casos."
+  ]);
+});
+
+test("motivo preserva o padrão atual quando omitido e acompanha delegação e direção", async () => {
+  const writer = configurationWriter();
+  await configure(writer, { condicao: "pesquisa",
+    parametros: { maximo_ideias_novas_por_unidade: 2 } });
+  await configure(writer, { condicao: "fixada_pelo_autor",
+    parametros: { maximo_ideias_novas_por_unidade: 2 } });
+  await configure(writer, { condicao: "automatica",
+    automaticos: ["distribuicao_da_pratica"] });
+  assert.deepEqual(writer.commands.slice(0, 3).map(({ reason }) => reason), [
+    "Condição de pesquisa fixada explicitamente.",
+    "Condição fixada explicitamente pela pessoa autora.",
+    "A pessoa autora delegou a escolha ao contexto de produção."
+  ]);
+
+  const withMotivo = configurationWriter();
+  await configure(withMotivo, { condicao: "pesquisa",
+    automaticos: ["distribuicao_da_pratica"],
+    motivo: "Condição C: delegação rotulada." });
+  await configure(withMotivo, { condicao: "pesquisa",
+    direcaoEditorial: "Prefira exemplos com dados observados.",
+    motivo: "Condição C: direção rotulada." });
+  assert.deepEqual(withMotivo.commands.map(({ type }) => type),
+    ["delegate_parameter", "set_guidance"]);
+  assert.deepEqual(withMotivo.commands.map(({ reason }) => reason), [
+    "Condição C: delegação rotulada.",
+    "Condição C: direção rotulada."
+  ]);
+});
+
+test("motivo vazio ou acima do limite é recusado sem escrita", async () => {
+  const writer = configurationWriter();
+  const before = writer.commands.length;
+  for (const motivo of ["", "   ", "x".repeat(1001), 7, {}]) {
+    await assert.rejects(() => configure(writer, { condicao: "pesquisa",
+      parametros: { maximo_ideias_novas_por_unidade: 2 }, motivo }),
+    error => error.code === "invalid_human_task_argument");
+    assert.equal(writer.commands.length, before);
+  }
+  await assert.rejects(() => configure(writer, { condicao: "pesquisa",
+    motivo: "Condição sem alvo." }), error => error.code === "missing_human_task_argument");
+  assert.equal(writer.commands.length, before);
+});
+
+test("motivo não substitui autoridade de condição fixada ou de pesquisa", async () => {
+  const writer = configurationWriter({ protectedParameterOrigin: "research_condition" });
+  const preserved = await configure(writer, {
+    condicao: "automatica",
+    parametros: { maximo_ideias_novas_por_unidade: null },
+    motivo: "Condição D: tentativa automática rotulada."
+  });
+  assert.equal(writer.commands.length, 0);
+  assert.match(preserved.result, /Mantive a condição de pesquisa/u);
+  assert.equal(preserved.deepLink, null);
+  assert.equal(preserved.nextDecision, null);
 });

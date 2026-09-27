@@ -658,6 +658,16 @@ function databaseError(status, body) {
     return new AuthoringApiError(422, "curricular_explanation_plan_required",
       "Defina o propósito e o planejamento da explicação antes de criar a microssequência ou aprovar o mapa. Preserve os planos existentes.");
   }
+  if (code === "23514" &&
+      databaseMessage.startsWith("A producao so pode ser organizada depois da aprovacao do mapa curricular.")) {
+    return new AuthoringApiError(409, "curricular_map_not_approved",
+      "A produção só pode ser organizada depois da aprovação do mapa curricular. Aprove o mapa ou retome o foco autorizado antes de continuar.");
+  }
+  if (code === "23514" &&
+      databaseMessage.startsWith("O mapa curricular precisa estar aprovado antes da materializacao.")) {
+    return new AuthoringApiError(409, "curricular_map_not_approved",
+      "O mapa curricular precisa estar aprovado antes da materialização. Aprove o mapa ou retome o foco autorizado antes de continuar.");
+  }
   if (status === 422 || code === "22023" || code === "23514") {
     return new AuthoringApiError(422, "invalid_course_command", "Os dados do Curso são inválidos.");
   }
@@ -3389,6 +3399,7 @@ export class CourseSupabaseAdapter {
     expectedCourseRevision,
     expectedPlanVersion,
     part,
+    allowDraftMap = false,
     deadlineAt = null
   }) {
     let command;
@@ -3410,7 +3421,8 @@ export class CourseSupabaseAdapter {
         p_expected_plan_version: expectedPlanVersion,
         p_part: normalizedPart,
         p_request_id: requestId,
-        p_request_hash: requestHash
+        p_request_hash: requestHash,
+        p_allow_draft_map: allowDraftMap === true
       },
       { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 32 * 1024, retry: false }
     ));
@@ -3691,6 +3703,7 @@ export class CourseSupabaseAdapter {
     explanations,
     placements,
     complete = true,
+    allowDraftMap = false,
     deadlineAt = null
   }) {
     if (!Array.isArray(planItemUpserts) || planItemUpserts.length > 256 ||
@@ -3747,7 +3760,8 @@ export class CourseSupabaseAdapter {
         p_placements: normalizedPlacements,
         p_complete: complete,
         p_request_id: requestId,
-        p_request_hash: requestHash
+        p_request_hash: requestHash,
+        p_allow_draft_map: allowDraftMap === true
       },
       {
         deadlineAt,

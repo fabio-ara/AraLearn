@@ -8,7 +8,8 @@ import { validateCourseEntityContent } from
 import { observeCoursePracticeDistribution } from
   "../aralearn/runtime/domain/coursePracticeDistribution.js";
 import { normalizeCourseSourceLinks, requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
-import { normalizeCourseSourceOccurrence } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
+import { normalizeCourseSourceOccurrence, listCourseSourceOccurrenceTargets, locateCourseSourceOccurrenceTargets }
+  from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
 import { inspectPedagogicalEvidence } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
@@ -33,6 +34,10 @@ export const HUMAN_SOURCE_ROLES = Object.freeze({
   tecnica_conceitual: "technical_conceptual", leitura_complementar: "recommended_reading"
 });
 
+// A Explicação só aceita ocorrência no próprio conteúdo; o autor informa o alvo
+// semântico (lugar, recurso e trecho literal) e nunca o nome interno da folha.
+export const EXPLANATION_SOURCE_OCCURRENCE_OPTIONS = Object.freeze({ targetKind: "microsequence_explanation" });
+
 export function resolveHumanSourceRoles(value, { allowEmpty = false } = {}) {
   if (!Array.isArray(value) || value.length > 4 || (!allowEmpty && value.length === 0) ||
       value.some((role) => !Object.hasOwn(HUMAN_SOURCE_ROLES, role)) || new Set(value).size !== value.length) {
@@ -41,23 +46,109 @@ export function resolveHumanSourceRoles(value, { allowEmpty = false } = {}) {
   return value.map((role) => HUMAN_SOURCE_ROLES[role]);
 }
 
-export async function resolveHumanSourceOccurrences({ requested = [], content, newId, identityPrefix }) {
+// O autor declara o alvo semântico (lugar, recurso e trecho literal) e o servidor
+// resolve a folha exata no registro de folhas do componente. Uma correspondência
+// única localiza a citação; ausência volta como pendência, pluralidade volta como
+// decisão humana (alvo por posição ou rótulo público) e repetição dentro da mesma
+// folha exige prefixo e sufixo. Nada é gravado sem resolução única.
+const SOURCE_OCCURRENCE_ALVO_LIMIT = 300;
+const SOURCE_OCCURRENCE_PART_LIST_LIMIT = 12;
+
+const occurrencePartName = label => String(label || "").replace(/^Editar\s+/u, "");
+
+// Candidatos numerados com rótulo humano e texto: dado suficiente para escolher sem
+// adivinhar o nome interno da folha, que nunca é exposto.
+function occurrencePartCandidates(located) {
+  return located.slice(0, 8).map((candidate, index) =>
+    `${index + 1}. ${occurrencePartName(candidate.label)} — ${candidate.text.slice(0, 300)}`);
+}
+
+function occurrencePartRoute(located) {
+  const listed = located.slice(0, SOURCE_OCCURRENCE_PART_LIST_LIMIT)
+    .map((candidate, index) => `${index + 1}. ${occurrencePartName(candidate.label)}`).join("; ");
+  return located.length > SOURCE_OCCURRENCE_PART_LIST_LIMIT
+    ? `${listed}; e mais ${located.length - SOURCE_OCCURRENCE_PART_LIST_LIMIT} partes, escolhíveis pelo rótulo público`
+    : listed;
+}
+
+function selectLocatedPart(located, alvo) {
+  if (Number.isSafeInteger(alvo)) return alvo >= 1 && alvo <= located.length ? [located[alvo - 1]] : [];
+  if (typeof alvo !== "string") return [];
+  const wanted = normalizedText(alvo);
+  if (!wanted) return [];
+  return located.filter((candidate) => normalizedText(candidate.label) === wanted ||
+    normalizedText(occurrencePartName(candidate.label)) === wanted);
+}
+
+export async function resolveHumanSourceOccurrences({ requested = [], content, newId, identityPrefix,
+  options = {} }) {
   if (!Array.isArray(requested) || requested.length > 16) fail("invalid_human_source_occurrence", "Informe até 16 ocorrências.");
   const slots = { conteudo: "content", resposta: "response", feedback: "feedback" };
-  const fields = new Set(["lugar", "recurso", "folha", "trecho", "prefixo", "sufixo"]);
-  return await Promise.all(requested.map(async (entry, index) => {
+  const fields = new Set(["lugar", "recurso", "trecho", "prefixo", "sufixo", "alvo"]);
+  const targets = listCourseSourceOccurrenceTargets(content, options);
+  const occurrences = [];
+  const blockers = [];
+  for (const [index, entry] of requested.entries()) {
     if (!plainObject(entry) || Object.keys(entry).some((key) => !fields.has(key)) ||
-        !Object.hasOwn(slots, entry.lugar) || !Number.isSafeInteger(entry.recurso) || entry.recurso < 1) {
-      fail("invalid_human_source_occurrence", "Informe o lugar, a posição do recurso e o trecho literal da ocorrência.");
+        !Object.hasOwn(slots, entry.lugar) || !Number.isSafeInteger(entry.recurso) || entry.recurso < 1 ||
+        typeof entry.trecho !== "string" || !entry.trecho.length ||
+        [entry.prefixo, entry.sufixo].some((value) => value !== undefined && value !== null && typeof value !== "string") ||
+        entry.alvo !== undefined && !(Number.isSafeInteger(entry.alvo) && entry.alvo >= 1) &&
+          !(typeof entry.alvo === "string" && entry.alvo.trim().length > 0 &&
+            entry.alvo.length <= SOURCE_OCCURRENCE_ALVO_LIMIT)) {
+      fail("invalid_human_source_occurrence",
+        "Informe o lugar, a posição do recurso e o trecho literal da ocorrência, com prefixo e sufixo textuais; o alvo aceita a posição ou o rótulo público da parte.");
     }
     const slot = slots[entry.lugar];
     const instances = slot === "response" ? (content?.response ? [content.response] : []) : content?.[slot];
     const resource = Array.isArray(instances) ? instances[entry.recurso - 1] : null;
     if (!resource?.id) fail("human_reference_not_found", "O recurso da ocorrência não foi localizado.", 404);
-    return normalizeCourseSourceOccurrence({ occurrenceId: await newId(`${identityPrefix}:occurrence:${index}`),
-      slot, resourceId: resource.id, path: entry.folha, quote: entry.trecho,
-      prefix: entry.prefixo ?? null, suffix: entry.sufixo ?? null });
-  }));
+    const prefix = entry.prefixo ?? null;
+    const suffix = entry.sufixo ?? null;
+    const located = locateCourseSourceOccurrenceTargets(targets, { slot, resourceId: resource.id,
+      quote: entry.trecho, prefix, suffix });
+    const blocker = (code, message, extra = {}) => ({ code, message, entry: index + 1,
+      resourceId: String(resource.id), ...extra });
+    if (located.length === 0) {
+      blockers.push(blocker("source_occurrence_not_located",
+        "O trecho literal não foi localizado no recurso indicado; confira o recurso e o trecho literal."));
+      continue;
+    }
+    if (located.length === 1 && located[0].matches > 1) {
+      blockers.push(blocker("source_occurrence_repeated_in_part",
+        "O trecho repete dentro de uma única parte do recurso; informe prefixo e sufixo para distinguir a ocorrência."));
+      continue;
+    }
+    let selected = null;
+    if (located.length > 1 || entry.alvo !== undefined) {
+      const informed = entry.alvo !== undefined;
+      const chosen = selectLocatedPart(located, informed ? entry.alvo : null);
+      if (chosen.length !== 1) {
+        const needsChoice = chosen.length > 1 || !informed;
+        blockers.push(blocker(needsChoice ? "ambiguous_source_occurrence" : "source_occurrence_part_not_found",
+          chosen.length > 1
+            ? "Mais de uma parte do recurso tem o rótulo informado; escolha pela posição da lista ou por um rótulo que identifique uma única parte."
+            : !informed
+              ? `O trecho aparece em ${located.length} partes do recurso; informe alvo pela posição ou pelo rótulo público da parte (${occurrencePartRoute(located)}).`
+              : `O alvo informado não identifica uma parte do trecho; use a posição ou o rótulo público (${occurrencePartRoute(located)}).`,
+          { candidates: occurrencePartCandidates(located) }));
+        continue;
+      }
+      if (chosen[0].matches > 1) {
+        blockers.push(blocker("source_occurrence_repeated_in_part",
+          "O trecho repete dentro da parte escolhida; informe prefixo e sufixo para distinguir a ocorrência."));
+        continue;
+      }
+      selected = chosen[0];
+    }
+    const path = selected ? selected.path : located[0].path;
+    occurrences.push(normalizeCourseSourceOccurrence({
+      occurrenceId: await newId(`${identityPrefix}:occurrence:${index}`),
+      slot, resourceId: resource.id, path, quote: entry.trecho, prefix, suffix }));
+  }
+  if (blockers.length) fail("invalid_human_source_occurrence",
+    "Uma ou mais ocorrências não correspondem ao conteúdo salvo; nenhuma citação foi gravada.", 422, { blockers });
+  return occurrences;
 }
 const UNIT_PARAMETER_FIELD_TO_ID = Object.freeze(Object.fromEntries(
   COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField, id }) => [humanField, id])
@@ -233,6 +324,7 @@ export async function resolveHumanSourceLinks({
   sourceCache = new Map(),
   newId,
   content,
+  options = {},
   allowMissingOccurrences = false,
   identityPrefix = "source-link"
 }) {
@@ -297,7 +389,7 @@ export async function resolveHumanSourceLinks({
       relation: entry.relacao,
       roles: resolveHumanSourceRoles(entry.papeis),
       occurrences: await resolveHumanSourceOccurrences({ requested: entry.ocorrencias, content, newId,
-        identityPrefix: `${identityPrefix}:${index}` }),
+        options, identityPrefix: `${identityPrefix}:${index}` }),
       anchors: selectedAnchors.map((anchor) => ({
         anchorId: anchor.anchorId
       }))
@@ -1601,9 +1693,12 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics
     );
     const coveredScopeIds = new Set(group.units.flatMap((unit) =>
       unit.curriculumScopeItemIds));
-    if (options.complete !== false && plannedCurriculumScopeIds(plan, group.microsequenceId)
-      .some((id) => !coveredScopeIds.has(id))) {
-      const message = "A microssequência precisa desenvolver os itens de escopo que o mapa curricular atribuiu a ela.";
+    const plannedScopeIds = plannedCurriculumScopeIds(plan, group.microsequenceId);
+    if (options.complete !== false && (!plannedScopeIds.length ||
+      plannedScopeIds.some((id) => !coveredScopeIds.has(id)))) {
+      const message = plannedScopeIds.length
+        ? "A microssequência precisa desenvolver os itens de escopo que o mapa curricular atribuiu a ela."
+        : "A microssequência ainda não tem cobertura declarada no mapa; indique os itens de escopo antes de concluir esta produção.";
       if (!diagnostics) fail("human_materialization_incomplete_scope_coverage", message);
       diagnostics.push({ code: "human_materialization_incomplete_scope_coverage", message });
     }
@@ -1651,7 +1746,8 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
       fail("invalid_human_explanation", "A fonte da explicação deve apontar ao seu conteúdo, sem resposta ou feedback de uma unidade.");
     }
     const sourceLinks = await resolveHumanSourceLinks({ adapter, principal, courseContext: context,
-      requested: entry.fontes ?? [], deadlineAt, newId, content, identityPrefix: `explanation:${index}` });
+      requested: entry.fontes ?? [], deadlineAt, newId, content,
+      options: EXPLANATION_SOURCE_OCCURRENCE_OPTIONS, identityPrefix: `explanation:${index}` });
     prepared.push({ microsequenceId: microsequence.id, content, sourceLinks });
   }
   if (!includeSaved) return prepared;
@@ -1776,6 +1872,7 @@ export async function materializeHumanCoursePart({
         expectedAuthoringPartVersion: context.part.version,
         planItemUpserts: prepared.inventory.upserts,
         placements, complete,
+        allowDraftMap: allowDraftCurricularMap,
         targetPlanItems,
         explanations: preparedExplanations,
         units: preparedUnits.map((entry) => {

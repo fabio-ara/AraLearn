@@ -3114,6 +3114,17 @@ export function createCourseAuthoringSurface({
     return refreshPromise;
   }
 
+  async function retryPlanning(courseId) {
+    const result = await refresh();
+    if (result === "deferred" || !state.opened || state.course?.courseId !== courseId ||
+        state.section !== "planning") return result;
+    const focus = result === true
+      ? "[data-curriculum-query]"
+      : '[data-course-authoring-action="retry-planning"]';
+    globalThis.queueMicrotask?.(() => root.querySelector?.(focus)?.focus?.({ preventScroll: true }));
+    return result;
+  }
+
 
 
   function closeDirectDesign() {
@@ -4028,7 +4039,7 @@ export function createCourseAuthoringSurface({
     } else if (action === "retry") {
       void refresh();
     } else if (action === "retry-planning" && state.course) {
-      void loadPlanning(state.course.courseId);
+      void retryPlanning(state.course.courseId);
     } else if (action === "retry-design" && state.course) {
       void loadDesign(state.course.courseId, {
         scope: state.parameterTarget?.scope || designScopeForRoute(state.course.courseId, state.routeTarget)

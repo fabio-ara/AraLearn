@@ -4,7 +4,8 @@ import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
 } from "./courseHumanTaskExecutor.js";
-import { resolveHumanSourceLinks, reconcileHumanExplanation } from "./courseHumanMaterialization.js";
+import { resolveHumanSourceLinks, reconcileHumanExplanation, EXPLANATION_SOURCE_OCCURRENCE_OPTIONS }
+  from "./courseHumanMaterialization.js";
 import { requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
 import { validateCourseEntityContent } from
@@ -399,6 +400,7 @@ export async function applyHumanCourseCorrections({
         ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
           requested: entry.requestedSources, content: entry.support, newId,
+          options: EXPLANATION_SOURCE_OCCURRENCE_OPTIONS,
           identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache, allowMissingOccurrences: true }), entry.currentLinks, entry.requestedSources)
       }))));
       for (const application of applications.filter(item => item.replaceExisting)) {

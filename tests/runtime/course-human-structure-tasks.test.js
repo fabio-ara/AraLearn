@@ -201,3 +201,27 @@ test("transportes recusam confirmação de outro alvo, versão ou ordem sem decl
   await assert.rejects(reorderCourseStudyUnits(adapter, { principal: PRINCIPAL, courseId: COURSE, expectedRevision: 7, microsequenceId: "a",
     studyUnitIds: ["u1", "u2"], requestId: "transport-attempt" }), error => error.status === 503);
 });
+
+test("microssequência nova sem cobertura segue rascunho com próximo passo e cobertura declarada resolve", async () => {
+  const adapter = fixture();
+  const lastMicro = () => adapter.state.map.modules[0].lessons[0].microsequences.at(-1);
+  const created = await run(adapter, "salvar_ramo_curricular", { tipo: "microssequencia",
+    destino: { modulo: "Introdução", licao: "Princípios" }, titulo: "Sem cobertura", objetivo: "Delimitar a decisão" });
+  assert.deepEqual(lastMicro().scopeItemIds, []);
+  assert.match(created.result, /ainda não cobre item de escopo/u);
+  assert.match(created.result, /indique a cobertura/u);
+  // Editar outro ramo preserva a pendência anterior sem repetir o aviso.
+  const renamed = await run(adapter, "salvar_ramo_curricular", { tipo: "modulo", alvo: { modulo: "Introdução" }, titulo: "Fundamentos" });
+  assert.doesNotMatch(renamed.result, /ainda não cobre item de escopo/u);
+  assert.deepEqual(lastMicro().scopeItemIds, []);
+  const covered = await run(adapter, "salvar_ramo_curricular", { tipo: "microssequencia",
+    alvo: { modulo: "Fundamentos", licao: "Princípios", microssequencia: "Sem cobertura" }, cobertura: ["Compreender relações"] });
+  assert.doesNotMatch(covered.result, /ainda não cobre item de escopo/u);
+  assert.deepEqual(lastMicro().scopeItemIds, [SCOPE]);
+  // Nova microssequência que já declara cobertura não recebe aviso.
+  const fresh = await run(adapter, "salvar_ramo_curricular", { tipo: "microssequencia",
+    destino: { modulo: "Fundamentos", licao: "Princípios" }, titulo: "Coberta desde o início",
+    objetivo: "Aplicar", cobertura: ["Compreender relações"] });
+  assert.doesNotMatch(fresh.result, /ainda não cobre item de escopo/u);
+  assert.deepEqual(lastMicro().scopeItemIds, [SCOPE]);
+});

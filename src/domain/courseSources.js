@@ -1,4 +1,5 @@
-import { normalizeCourseSourceOccurrence, COURSE_SOURCE_MAX_OCCURRENCES } from "./courseSourceOccurrences.js";
+import { normalizeCourseSourceOccurrence, COURSE_SOURCE_MAX_OCCURRENCES, courseSourceOccurrenceResolves }
+  from "./courseSourceOccurrences.js";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
@@ -492,7 +493,9 @@ export function normalizeCourseSourceLinks(value, options) {
 
 // Structural provenance only. The producer must still compare each substantive
 // claim with the passage; a located link does not certify semantic coverage.
-export function inspectCourseSourceEvidence(link, source) {
+// Quando o chamador entrega o registro de folhas do conteúdo corrente, a citação
+// precisa resolver nele: uma ocorrência que não localiza não é evidência localizada.
+export function inspectCourseSourceEvidence(link, source, { targets = null } = {}) {
   const issues = [];
   if (link.relation === "needs_verification") issues.push("pending_verification");
   if (!link.roles?.some(role => role !== "curricular_scope")) issues.push("curricular_only");
@@ -513,6 +516,8 @@ export function inspectCourseSourceEvidence(link, source) {
       issues.push("missing_human_locator");
     }
   }
+  if (Array.isArray(targets) && (link.occurrences ?? []).some((occurrence) =>
+    !courseSourceOccurrenceResolves(targets, occurrence))) issues.push("occurrence_not_located");
   return { located: issues.length === 0, issues: [...new Set(issues)] };
 }
 

@@ -20,6 +20,7 @@ import {
   requireCourseSourceEvidence,
   normalizeCourseSourcePdfSourceIntent
 } from "../aralearn/runtime/domain/courseSources.js";
+import { listCourseSourceOccurrenceTargets } from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import {
   COURSE_ANCHORED_ANNOTATION_CATEGORIES,
   normalizeCourseAnchoredAnnotationCommand,
@@ -253,25 +254,28 @@ const SOURCE_BIBLIOGRAPHIC_SCHEMA = Object.freeze({
     })]))
   })
 });
+// Sem nome de folha: o autor declara o recurso e o trecho literal, e o servidor
+// resolve a folha exata no registro de folhas do componente. Quando o trecho
+// repetir, alvo escolhe a parte pela posição ou pelo rótulo público.
 const SOURCE_OCCURRENCES_SCHEMA = Object.freeze({
   type: "array", maxItems: 16,
   items: Object.freeze({ type: "object", additionalProperties: false,
-    required: Object.freeze(["lugar", "recurso", "folha", "trecho"]), properties: Object.freeze({
+    required: Object.freeze(["lugar", "recurso", "trecho"]), properties: Object.freeze({
       lugar: Object.freeze({ type: "string", enum: Object.freeze(["conteudo", "resposta", "feedback"]) }),
       recurso: Object.freeze({ type: "integer", minimum: 1, maximum: 64 }),
-      folha: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
       trecho: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
       prefixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
-      sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 })
+      sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
+      alvo: HUMAN_REFERENCE_SCHEMA
     }) })
 });
 const SOURCE_LINK_PROPERTIES = Object.freeze({
   relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
   papeis: Object.freeze({ ...SOURCE_ROLES_SCHEMA, minItems: 1 }),
   ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA,
-    description: "Âncora vigente por posição, localizador ou trecho. Cadastro da fonte não comprova evidência." }),
+    description: "Âncora vigente por posição, localizador ou trecho, após consulta." }),
   ocorrencias: Object.freeze({ ...SOURCE_OCCURRENCES_SCHEMA,
-    description: "Afirmações sustentadas: vincule ocorrência e âncora. Afirmações contíguas podem compartilhar ocorrência." })
+    description: "Trecho literal no recurso. O servidor localiza o campo; alvo distingue partes repetidas." })
 });
 const SOURCE_LINKS_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
@@ -854,6 +858,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "string",
         enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"])
       }),
+      motivo: { type: "string", minLength: 1, maxLength: 1000,
+        description: "Justificativa da escolha, incluindo a condição de pesquisa quando pertinente." },
       parametros: PARAMETERS_SCHEMA,
       automaticos: { type: "array", minItems: 1, maxItems: PARAMETER_FIELDS.length, uniqueItems: true,
         items: { type: "string", enum: PARAMETER_FIELDS } },
@@ -1093,9 +1099,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "8.1.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "9.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:396c4d7ae898f3a873c67c5ab54ab552f80f19820e5fb6daba4fdae114e04da6";
+  "sha256:728afffe0bb835de517874332ea601517f8581bc633892d90d56db2b0a6bc5a6";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2707,7 +2713,8 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
       conteudo: microsequence.explanation ?? null,
       ...review,
       fontes: citations ? withoutTechnicalState(await humanTargetSourceReferences({
-        adapter, principal, course: resolved.course, sources: citations, deadlineAt
+        adapter, principal, course: resolved.course, sources: citations, deadlineAt,
+        target: { kind: "microsequence_explanation", content: microsequence.explanation }
       })) : null
     };
   }));
@@ -2937,8 +2944,12 @@ async function resolveHumanSourceContentTarget({ adapter, principal, resolved, d
     version: entity.version, content: entity.content?.explanation ?? null };
 }
 
-async function humanTargetSourceReferences({ adapter, principal, course, sources, deadlineAt }) {
+// O auditor recebe o registro de folhas do alvo lido: sem ele, a evidência é apenas
+// estrutural; com ele, uma ocorrência que não localiza impede alegar `located`.
+async function humanTargetSourceReferences({ adapter, principal, course, sources, deadlineAt, target = null }) {
   const details = new Map();
+  const targets = target
+    ? listCourseSourceOccurrenceTargets(target.content, { targetKind: target.kind }) : null;
   const readSource = (sourceId) => {
     if (!details.has(sourceId)) details.set(sourceId, (async () => {
       const read = await adapter.getCourseSources({ principal, courseId: course.id,
@@ -2955,7 +2966,7 @@ async function humanTargetSourceReferences({ adapter, principal, course, sources
   return { ...sources, items: await Promise.all(sources.items.map(async (item) => ({
     ...item, sourceLinks: await Promise.all(item.sourceLinks.map(async (link, index) => {
       const source = await readSource(link.sourceId);
-      return { ...link, posicao: index + 1, evidencia: inspectCourseSourceEvidence(link, source),
+      return { ...link, posicao: index + 1, evidencia: inspectCourseSourceEvidence(link, source, { targets }),
         fonte: source ? { localizada: true, titulo: source.title, citacao: source.citationText,
           status: source.status, ...(source.url ? { url: source.url } : {}) } : { localizada: false },
         anchors: link.anchors.map((reference) => {
@@ -2998,7 +3009,8 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   });
   if (!Array.isArray(sources?.items)) fail('course_service_unavailable', 'A página de fontes é inválida.', null, 503);
   const readableSources = mode === "target"
-    ? await humanTargetSourceReferences({ adapter, principal, course: resolved.course, sources, deadlineAt })
+    ? await humanTargetSourceReferences({ adapter, principal, course: resolved.course, sources, deadlineAt,
+      target })
     : mode === "source" ? { ...sources, items: sources.items.map(source => ({ ...source,
       anchors: (source.anchors ?? []).map((anchor, index) => ({ ...anchor, posicao: index + 1 })) })) } : sources;
   const context = args.busca === undefined
@@ -3276,6 +3288,7 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
   let savedPartId = null;
   let savedCourse = null;
   let process = null;
+  let allowDraftMap = false;
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
       const resolved = await resolveHumanCourseContext({
@@ -3316,15 +3329,16 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
       };
     },
     build: async (state, { newId }) => {
+      allowDraftMap = state.process?.processoCorrente?.pontosDeRevisao?.includes("curricular_map") === false;
       const built = await buildProductionPart({
         state, titles, progression, title, intent, position: args.posicao == null ? null : args.posicao - 1, newId,
-        allowDraftMap: state.process?.processoCorrente?.pontosDeRevisao?.includes("curricular_map") === false
+        allowDraftMap
       });
       savedPartId = built.part.partId;
       return built;
     },
     commit: async ({ requestId, ...value }) => await adapter.saveCourseAuthoringPart({
-      principal, ...value, requestId, deadlineAt
+      principal, ...value, requestId, allowDraftMap, deadlineAt
     })
   });
   return result(partReference === undefined
@@ -3344,15 +3358,45 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const course = humanCourseTitle(args);
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
-  const focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
-  const part = Number(focal.part.position) + 1;
+  let resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+  let focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
   resolved.part = focal.part;
-  const process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+  let process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
+  let allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
+  if (focal.part.id === null) {
+    // Agrupamento técnico derivado do mapa em rascunho: persiste a Parte com a
+    // autonomia que o processo validado autoriza e relê antes de materializar.
+    // Mapa aprovado dispensa autonomia; só o rascunho exige o mandato autorizado.
+    const mapaAprovado = resolved.plan?.plan?.curriculumMapStatus === "approved";
+    if (!allowDraft && !mapaAprovado) fail("curricular_map_not_approved",
+      "A primeira parte só pode ser preparada depois da aprovação do mapa curricular completo.", null, 409);
+    await adapter.saveCourseAuthoringPart({
+      principal,
+      courseId: resolved.course.id,
+      requestId: ("parte-tecnica-" + String(focal.microsequence.id).replace(/[^A-Za-z0-9._:-]/gu, "-") +
+        "-" + resolved.course.revision).slice(0, 128),
+      expectedCourseRevision: resolved.course.revision,
+      expectedPlanVersion: planVersion(resolved.plan),
+      allowDraftMap: allowDraft && !mapaAprovado,
+      part: { partId: null, position: focal.part.position, title: focal.part.title,
+        intent: focal.part.intent, progression: focal.part.progression,
+        microsequences: focal.part.microsequences.map((item, index) => ({ microsequenceId: item.id, position: index })) },
+      deadlineAt
+    });
+    resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+    focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
+    if (focal.part.id === null) throw new AuthoringApiError(503, "course_service_unavailable",
+      "A Parte derivada não pôde ser relida antes da materialização.");
+    resolved.part = focal.part;
+    process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+    if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
+    allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
+  }
+  const part = Number(focal.part.position) + 1;
   const output = await materializeHumanCoursePart({ adapter, principal, course, part,
     complete: args.concluir === true,
-    allowDraftCurricularMap: process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false,
+    allowDraftCurricularMap: allowDraft,
     units: safeClone(focal.units, "unidades", 480 * 1024),
     explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024), deadlineAt });
   return { ...output, context: { ...output.context, ...process },
@@ -3535,6 +3579,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   if (!origin) {
     fail("invalid_human_task_argument", "condicao é inválida.", { field: "condicao" });
   }
+  const reason = text(args.motivo, "motivo", 1000, { optional: true });
   if (microsequence !== undefined && studyUnit !== undefined) {
     fail(
       "ambiguous_human_scope",
@@ -3589,11 +3634,11 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
               parameterId,
               value: safeClone(value, field, 16 * 1024),
               origin,
-              reason: origin === "automatic"
+              reason: reason ?? (origin === "automatic"
                 ? "Valor calibrado automaticamente para o contexto corrente."
                 : origin === "research_condition"
                   ? "Condição de pesquisa fixada explicitamente."
-                  : "Condição fixada explicitamente pela pessoa autora."
+                  : "Condição fixada explicitamente pela pessoa autora.")
             }, { knownComponentRefs }));
     }
   }
@@ -3603,7 +3648,7 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
     }
     commands.push(normalizeCourseDesignCommand({ type: "delegate_parameter",
       scope: designScope(preflightState), parameterId: PARAMETER_FIELD_TO_ID[field],
-      reason: "A pessoa autora delegou a escolha ao contexto de produção." }));
+      reason: reason ?? "A pessoa autora delegou a escolha ao contexto de produção." }));
   }
   if (guidance !== undefined) {
     commands.push(normalizeCourseDesignCommand(guidance === null
@@ -3613,11 +3658,11 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
           scope: designScope(preflightState),
           guidance,
           origin,
-          reason: origin === "automatic"
+          reason: reason ?? (origin === "automatic"
             ? "Direção editorial calibrada automaticamente para o contexto corrente."
             : origin === "research_condition"
               ? "Direção editorial fixada como condição de pesquisa."
-            : "Direção editorial fixada explicitamente pela pessoa autora."
+            : "Direção editorial fixada explicitamente pela pessoa autora.")
         }, { knownComponentRefs }));
   }
   const preservedOrigins = new Set();
@@ -4221,7 +4266,7 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
           anchors: binding.ancoras === undefined ? existing?.anchors ?? [] : selectedAnchors,
           occurrences: binding.ocorrencias === undefined ? existing?.occurrences ?? [] :
             await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: target.content,
-              newId, identityPrefix: `source-link:${index}` })
+              options: { targetKind: target.kind }, newId, identityPrefix: `source-link:${index}` })
         };
         requireCourseSourceEvidence(requestedLink, state.sourceDetail);
         return {

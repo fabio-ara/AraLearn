@@ -770,6 +770,18 @@ async function legacyDatabase({
   return database;
 }
 
+// Cada banco carrega um Postgres WASM completo. Manter vários deles vivos no
+// mesmo corpo de teste acumula heap e derruba o initdb do próximo sob pressão
+// de memória do host; o cenário fecha um banco antes de liberar a referência.
+async function withLegacyDatabase(options, body) {
+  const database = await legacyDatabase(options);
+  try {
+    await body(database);
+  } finally {
+    await database.close();
+  }
+}
+
 async function applyMigration(database) {
   await database.exec(await fs.readFile(migrationUrl, "utf8"));
 }
@@ -1887,62 +1899,62 @@ test("estado JS v2 atravessa a fronteira e preserva evidência órfã sem inflar
 });
 
 test("aborta raiz ausente sem inventar fallback", async () => {
-  const publicationOnly = await legacyDatabase();
-  await publicationOnly.query(`
-    update private.trail_items
-    set workspace_id=null,workspace_course_id=null
-    where id=$1
-  `, [COURSES[7]]);
-  await assert.rejects(
-    () => applyMigration(publicationOnly),
-    /course_identity_cutover_map_source_v1|check constraint/iu
-  );
-  await publicationOnly.close();
+  await withLegacyDatabase(undefined, async (publicationOnly) => {
+    await publicationOnly.query(`
+      update private.trail_items
+      set workspace_id=null,workspace_course_id=null
+      where id=$1
+    `, [COURSES[7]]);
+    await assert.rejects(
+      () => applyMigration(publicationOnly),
+      /course_identity_cutover_map_source_v1|check constraint/iu
+    );
+  });
 
-  const missing = await legacyDatabase({ missingRoot: true });
-  await assert.rejects(() => applyMigration(missing), /Raiz viva, owner ou título ausente/u);
-  await missing.close();
+  await withLegacyDatabase({ missingRoot: true }, async (missing) => {
+    await assert.rejects(() => applyMigration(missing), /Raiz viva, owner ou título ausente/u);
+  });
 
-  const unstaged = await legacyDatabase({ staging: false });
-  await assert.rejects(() => applyMigration(unstaged), /staging TEMP/u);
-  await unstaged.close();
+  await withLegacyDatabase({ staging: false }, async (unstaged) => {
+    await assert.rejects(() => applyMigration(unstaged), /staging TEMP/u);
+  });
 
-  const invalidManifest = await legacyDatabase();
-  await invalidManifest.query(`
-    update pg_temp.course_content_import_v1 set manifest_hash='incompleto'
-    where course_id=$1
-  `, [COURSES[0]]);
-  await assert.rejects(() => applyMigration(invalidManifest), /manifestos/u);
-  await invalidManifest.close();
+  await withLegacyDatabase(undefined, async (invalidManifest) => {
+    await invalidManifest.query(`
+      update pg_temp.course_content_import_v1 set manifest_hash='incompleto'
+      where course_id=$1
+    `, [COURSES[0]]);
+    await assert.rejects(() => applyMigration(invalidManifest), /manifestos/u);
+  });
 
-  const invalidEntityMetadata = await legacyDatabase();
-  await invalidEntityMetadata.query(`
-    update pg_temp.course_content_import_v1 set entity_version=entity_version+1
-    where course_id=$1 and entity_type='module'
-  `, [COURSES[0]]);
-  await assert.rejects(
-    () => applyMigration(invalidEntityMetadata),
-    /manifestos|staging|estrutura convertida/iu
-  );
-  await invalidEntityMetadata.close();
+  await withLegacyDatabase(undefined, async (invalidEntityMetadata) => {
+    await invalidEntityMetadata.query(`
+      update pg_temp.course_content_import_v1 set entity_version=entity_version+1
+      where course_id=$1 and entity_type='module'
+    `, [COURSES[0]]);
+    await assert.rejects(
+      () => applyMigration(invalidEntityMetadata),
+      /manifestos|staging|estrutura convertida/iu
+    );
+  });
 
-  const eventDrift = await legacyDatabase();
-  await eventDrift.exec(`
-    update private.authoring_workspace_events set operation='legacy_drift'
-    where id=(select min(id) from private.authoring_workspace_events)
-  `);
-  await assert.rejects(() => applyMigration(eventDrift), /Vocabulário/u);
-  await eventDrift.close();
+  await withLegacyDatabase(undefined, async (eventDrift) => {
+    await eventDrift.exec(`
+      update private.authoring_workspace_events set operation='legacy_drift'
+      where id=(select min(id) from private.authoring_workspace_events)
+    `);
+    await assert.rejects(() => applyMigration(eventDrift), /Vocabulário/u);
+  });
 
-  const inaccessiblePersonalState = await legacyDatabase();
-  await inaccessiblePersonalState.query(`
-    update public.trail_personal_states set user_id=$1
-  `, [LEARNER]);
-  await assert.rejects(
-    () => applyMigration(inaccessiblePersonalState),
-    /sem acesso canônico/u
-  );
-  await inaccessiblePersonalState.close();
+  await withLegacyDatabase(undefined, async (inaccessiblePersonalState) => {
+    await inaccessiblePersonalState.query(`
+      update public.trail_personal_states set user_id=$1
+    `, [LEARNER]);
+    await assert.rejects(
+      () => applyMigration(inaccessiblePersonalState),
+      /sem acesso canônico/u
+    );
+  });
 });
 
 test("banco sem dados aplica o schema e lista zero Cursos", async () => {

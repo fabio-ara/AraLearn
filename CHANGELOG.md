@@ -9,6 +9,17 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.86] - 2026-09-26
+
+### Corrigido
+
+- A autoria localiza citações a partir do trecho informado e oferece recuperação quando a passagem é ambígua, sem exigir nomes de campos internos.
+- Microssequências sem ligação ao escopo ficam visíveis como pendências do mapa e precisam dessa definição antes da conclusão.
+- Os ajustes de design instrucional aceitam justificativas próprias, preservando a identificação de condições de pesquisa.
+
+- a autoria organiza as partes de produção a partir da microssequência escolhida e aplica ao salvamento o processo combinado para o curso, preservando os pontos de revisão da conta e o estado de rascunho do mapa;
+- planos cartesianos só exibem convenções geométricas quando elas ajudam a distinguir tipos de objetos; regiões fechadas e trajetórias abertas recebem símbolos próprios, mantendo a legenda dos grupos comparados.
+
 ## [0.0.85] - 2026-09-26
 
 ### Corrigido

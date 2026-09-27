@@ -182,6 +182,10 @@ export function inspectCurricularMapCompleteness(map) {
   for (const { item } of collection(map, "lesson")) if (!item.microsequences.length) pending.push({ reason: "microsequences_missing", targetId: item.lessonId });
   for (const item of map.scopeItems) if (!covered.has(item.id)) pending.push({ reason: "scope_uncovered", targetId: item.id });
   for (const item of micros) {
+    // O vínculo de cobertura é decisão pedagógica: a microssequência sem
+    // referência nasce como pendência do mapa (o rascunho segue editável) e não
+    // herda escopo vizinho. Espelha scope_uncovered no outro sentido do vínculo.
+    if (!item.scopeItemIds.length) pending.push({ reason: "coverage_missing", targetId: item.microsequenceId });
     if (item.explanationPlan === null) pending.push({ reason: "explanation_plan_missing", targetId: item.microsequenceId });
     for (const reference of item.dependencyMicrosequenceIds) if (!order.has(reference) || order.get(reference) >= order.get(item.microsequenceId)) {
       pending.push({ reason: order.has(reference) ? "dependency_order" : "dependency_missing", targetId: item.microsequenceId, reference });

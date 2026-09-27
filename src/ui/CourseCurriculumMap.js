@@ -8,7 +8,9 @@ const PENDING_LABELS = Object.freeze({ audience_missing: "Público ainda não de
   scope_missing: "Escopo ainda não definido", lessons_missing: "Módulo sem lições", microsequences_missing: "Lição sem microssequências",
   scope_uncovered: "Item de escopo sem cobertura", dependency_order: "Pré-requisito fora da ordem do percurso",
   dependency_missing: "Pré-requisito ainda não localizado", scope_reference_missing: "Referência de escopo ainda não localizada",
-  explanation_plan_missing: "Explicação ainda não planejada" });
+  explanation_plan_missing: "Explicação ainda não planejada", coverage_missing: "Microssequência sem cobertura do escopo" });
+const PENDING_NEXT_STEPS = Object.freeze({
+  coverage_missing: "Vincule esta microssequência ao escopo pela autoria assistida antes de aprovar o mapa." });
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/gu, (character) => ({
@@ -32,7 +34,9 @@ function contextualActions(kind, id, label, enabled) {
 
 function pendingDescription(item, nodes) {
   const target = nodes.modules.get(item.targetId) || nodes.lessons.get(item.targetId) || nodes.microsequences.get(item.targetId) || nodes.scopeItems.get(item.targetId);
-  return `${PENDING_LABELS[item.reason] || "Referência pendente"}${target ? ` · ${target.title || target.statement}` : ""}`;
+  const nextStep = PENDING_NEXT_STEPS[item.reason];
+  return `${PENDING_LABELS[item.reason] || "Referência pendente"}${target ? ` · ${target.title || target.statement}` : ""}` +
+    (nextStep ? ` — ${nextStep}` : "");
 }
 
 function nodeAttributes(kind, node, nodes) {

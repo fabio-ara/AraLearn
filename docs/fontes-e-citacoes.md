@@ -226,7 +226,7 @@ Para implementar um cliente, os campos e operações têm as seguintes relaçõe
 | `consultar_fontes` com `explicacao` | Consulta os vínculos da base pelo título ou pela posição da microssequência. |
 | `manter_fonte`, itens de `vinculos` | Cada item escolhe `unidade` ou `explicacao`; a operação conserva os outros vínculos ao editar um uso pela posição apresentada. |
 | `ancoras` no vínculo | Seleciona explicitamente as âncoras existentes pela posição, localizador ou trecho retornados na consulta. Cadastrar a âncora na fonte não a associa automaticamente ao texto. |
-| Ocorrência | Registra lugar, posição do componente, campo textual e trecho literal no curso. A âncora guarda separadamente a localização na obra. |
+| Ocorrência | Informa lugar, posição do componente e trecho literal no curso. O servidor deriva o campo textual; uma ambiguidade devolve opções para identificar a passagem. A âncora guarda separadamente a localização na obra. |
 | `apa7` e `abnt-2025` | Selecionam o estilo do curso sem reescrever o conteúdo ou apagar referências manuais. |
 
 A posição do vínculo pertence à consulta atual; não é o número da fonte no catálogo. Fichas e âncoras são relidas na mesma revisão do curso, com continuações quando necessário. O estado de localização de uma ocorrência é calculado na leitura, não aceito como uma confirmação fornecida pelo cliente. Os contratos dos canais estão em [Autoria por MCP](autoria-mcp.md) e [Autoria por Actions](autoria-actions.md).

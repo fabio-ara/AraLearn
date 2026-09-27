@@ -270,6 +270,13 @@ vínculo e fica pendente de revisão; o sistema não inventa outra posição. Ci
 manual preserva seu texto; a citação gerada usa metadados estruturados e o estilo
 escolhido no curso.
 
+Na autoria por MCP e Actions, a ocorrência nova é declarada pelo recurso e pelo
+trecho literal. O servidor encontra a folha textual no registro do componente;
+o modelo não precisa conhecer o nome do campo interno. Ausência ou ambiguidade
+impede gravar essa ocorrência e devolve o contexto necessário para corrigi-la.
+Os vínculos já salvos continuam preservados quando uma edição posterior torna
+seu trecho não localizável.
+
 A área privada de arquivos, ou bucket, `course-source-pdfs` contém os bytes. O banco
 conserva o descritor e o vínculo ativo ou removido. A ingestão calcula e verifica
 SHA-256, uma impressão digital usada para conferir os bytes recebidos, usa uma

@@ -42,7 +42,7 @@ export function channelFixtures(course) {
       ...microsequence.explicacao.pressupostos, ...microsequence.explicacao.relacoes]) assert.ok(text.length <= 2000);
   }
   const links = content => [{ fonte: SOURCE, relacao: "supported_by", papeis: ["tecnica_conceitual"], ancoras: [1],
-    ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text", trecho: content.content[0].data.text }] }];
+    ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: content.content[0].data.text }] }];
   const parts = [0, 1].map(lot => {
     const indexes = [lot * 3, lot * 3 + 1, lot * 3 + 2];
     const units = indexes.flatMap(index => {
