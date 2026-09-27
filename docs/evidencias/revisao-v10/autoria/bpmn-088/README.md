@@ -1,0 +1,15 @@
+# BPMN — contornos e legenda na candidata 0.0.88
+
+O Estudo hospedado 0.0.87 exibiu contornos muito fracos no tema escuro e legenda sobre losangos ausentes no diagrama da MS9. A inspeção local encontrou contornos Graphviz `path`, com traço preto; o CSS temático selecionava somente `polygon`. A correção cobre ambas as formas de participante/raia. A legenda é derivada dos tipos semânticos presentes e omite a instrução redundante de seguir as setas.
+
+As 16 [capturas do manifesto](manifesto.json) usam o recurso BPMN exato da primeira produção do GPT, revisão 116, extraído da unidade 1 da etapa “Quem faz cada parte?”. O recurso foi colocado na fixture local já existente dos dois hosts. Os títulos e o contexto de fontes dessa fixture não são o restante do curso real. Esta é prova local do renderer, separada da [interação hospedada na 0.0.87](../ms9-mcp-087-primeira-producao.md).
+
+Foram exercidos Unidade e Explicação em 320, 390, 430 e 1280 px, temas claro e escuro, sem erros de página. O diagrama conservou quatro participantes, 14 nós, 13 fluxos e `viewBox 751×2431`; o canvas mantém pan/rolagem, sem force-fit. Em 390 px, o pan da Unidade moveu a posição de `[0,0]` para `[64,64]`. O host web conserva a coluna conceitual mobile.
+
+A legenda do recurso real passou a ser: “Raias: responsáveis; círculos: eventos; retângulos arredondados: atividades; linhas contínuas: sequência; linhas tracejadas: mensagens.” Não há referência a gateway porque nenhum nó desse tipo está presente. Na Unidade, o texto ocupa 5/4/3 linhas em 320/390/1280 px, respectivamente. Em 430 px, foram medidas três linhas em ambos os hosts, com a legenda inteira visível. O scroll da página permaneceu igual. As métricas iniciais da Explicação usavam um seletor que podia atingir a Unidade ao fundo; não são usadas como prova independente daquele host. As capturas permanecem válidas e o complemento de 430 usa seleção explícita de cada host.
+
+O traço computado dos contornos passou do preto para o token temático, conservando a linha tracejada das raias e a espessura de 1,15 px. No escuro, o contraste medido contra o canvas passou de 1,45:1 para 3,18:1. Isso comprova essa fronteira específica; não é certificação geral de acessibilidade. Os bounds do botão Fechar ficaram dentro do painel, mas a coleta não ativou seu contorno de foco por teclado; essas medidas não certificam ausência de clipping de um outline desenhado.
+
+A raiz inspecionou 12 capturas deste conjunto: Unidade escura/320, Explicação escura/390, Explicação clara/320, Unidade clara/390 e os oito casos em 430/1280. Os contornos e a legenda estão consistentes nesses pixels. Quatro outras capturas permanecem disponíveis para revisão posterior. A prova focal anterior exercitou dois testes de runtime e quatro E2E com um worker; a extração real percorreu 12 combinações e o complemento acrescentou somente os quatro casos de 430, preservando por hash os arquivos anteriores.
+
+Estado: implementado/testado localmente, evidência visual autônoma consistente nos casos inspecionados; publicação e releitura hospedada pendentes. Nenhum resultado desta intervenção constitui validação humana pós-correção.

@@ -1,4 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
+import { COURSE_AUTHORING_ALIGNMENT_GUIDANCE } from "./courseKnowledge.js";
 import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
@@ -831,7 +832,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Produzir uma microssequência",
-    "Produz uma microssequência com verificação automática e deriva parte, IDs, versões e posições. A Explicação é a base consultável; as unidades apresentam o ensino e as práticas conforme a condição. Depois, inspecione a qualidade pedagógica.",
+    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. Explicação consultável; ensino e prática conforme a condição. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Inspecione a qualidade.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
@@ -1103,7 +1104,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "10.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:09d5fc603d33ce66f03f4ee6e9f8497dd31c3c3d62864a6c05bceb1642825f4f";
+  "sha256:9c1198f92e19d7db76367c8913458cfbdb04719a7dda4bdc78055ead06fbed0f";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

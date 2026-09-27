@@ -16,6 +16,9 @@ explica os termos usados na implementação atual.
 - Reabrir um curso no Estudo em sincronização automática verifica alterações feitas por conversa e recupera as unidades atuais, preservando progresso pendente e o funcionamento manual ou offline.
 - Fluxogramas deixam de mostrar uma junção isolada quando todos os caminhos terminam. Rótulos de arestas consideram a fonte efetivamente exibida para evitar que uma palavra curta quebre por falta de espaço calculado.
 - Correções por conversa informam quando o conteúdo alterado exige reaplicação das escolhas instrucionais. A inspeção não aceita parecer de consistência enquanto essa base estiver ausente.
+- A preparação da prática identifica o requisito, a quantidade declarada e as dimensões de variação que ainda faltam, preservando as escolhas instrucionais fixadas.
+- Diagramas BPMN exibem contornos temáticos também em áreas arredondadas e apresentam legenda somente para os símbolos usados.
+- O contrato de produção compartilhado por MCP e Actions explicita a relação entre objetivo, operação do estudante e evidência da resposta, preservando as condições instrucionais escolhidas.
 
 ## [0.0.87] - 2026-09-27
 

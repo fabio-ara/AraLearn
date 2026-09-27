@@ -1578,14 +1578,18 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
     mutate(units) {
       units[0].aplicacaoPedagogica.praticas.pop();
     },
-    code: "human_materialization_insufficient_practice"
+    code: "human_materialization_insufficient_practice",
+    requirement: "Classificar casos de rede.",
+    message: /2 oportunidades distintas declaradas; mínimo efetivo 3/iu
   }, {
     mutate(units) {
       for (const practice of units[0].aplicacaoPedagogica.praticas) {
         practice.dimensoesVariadas = ["case_or_data"];
       }
     },
-    code: "human_materialization_insufficient_practice"
+    code: "human_materialization_insufficient_practice",
+    requirement: "Classificar casos de rede.",
+    message: /3 oportunidades distintas declaradas; mínimo efetivo 3; faltam as dimensões de variação exigidas: Nível de apoio/iu
   }];
   for (const scenario of cases) {
     const units = unitScopedMaterialization();
@@ -1600,9 +1604,23 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
     }), (error) => {
       const blocker = preflightBlocker(error, scenario.code);
       if (scenario.message) assert.match(blocker.message, scenario.message);
+      if (scenario.requirement) {
+        assert.equal(blocker.requirement, scenario.requirement);
+        assert.equal(blocker.microsequence, "DNS");
+      }
       return true;
     }, scenario.code);
   }
+  const validAdapter = unitScopedPedagogicalAdapter();
+  await materializeHumanCoursePart({
+    adapter: validAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    complete: true,
+    units: unitScopedMaterialization()
+  });
+  assert.equal(validAdapter.calls.length, 1, "a prática válida continua materializável");
   await assert.rejects(() => materializeHumanCoursePart({
     adapter: unitScopedPedagogicalAdapter({ blockedComponent: true }),
     principal: PRINCIPAL,

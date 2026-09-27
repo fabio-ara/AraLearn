@@ -29,6 +29,10 @@ import {
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 
 const MAX_PART_STUDY_UNIT_PAGES = 100;
+const PRACTICE_VARIATION_DIMENSION_LABELS = Object.freeze(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) =>
+    id === "required_practice_variation_dimensions")?.optionLabels ?? {}
+);
 export const HUMAN_SOURCE_ROLES = Object.freeze({
   escopo_curricular: "curricular_scope", evidencia_de_avaliacao: "assessment_evidence",
   tecnica_conceitual: "technical_conceptual", leitura_complementar: "recommended_reading"
@@ -1559,7 +1563,8 @@ function validatePedagogicalGroup(
   establishedAnalysis,
   introducedAnywhere,
   analysisLabels, diagnostics = null,
-  { complete = true, changedIntroductionIds = new Set(), microsequenceLabels = new Map() } = {}
+  { complete = true, changedIntroductionIds = new Set(), microsequenceLabels = new Map(),
+    evidenceLabels = new Map() } = {}
 ) {
   const report = (code, message, status, details = undefined) => {
     if (!diagnostics) fail(code, message, status, details);
@@ -1795,12 +1800,28 @@ function validatePedagogicalGroup(
       );
     }
   }
-  for (const state of practiceByEvidence.values()) {
-    if (state.opportunities.size < state.minimum ||
-        [...state.requiredDimensions].some((dimension) => !state.dimensions.has(dimension))) {
+  for (const [evidenceId, state] of practiceByEvidence.entries()) {
+    const missingDimensions = [...state.requiredDimensions]
+      .filter((dimension) => !state.dimensions.has(dimension));
+    const missingOpportunities = state.opportunities.size < state.minimum;
+    if (missingOpportunities || missingDimensions.length) {
+      const requirement = evidenceLabels.get(evidenceId) ?? evidenceId;
+      const opportunityLabel = state.opportunities.size === 1
+        ? "oportunidade distinta declarada"
+        : "oportunidades distintas declaradas";
+      const reasons = [
+        `${state.opportunities.size} ${opportunityLabel}; mínimo efetivo ${state.minimum}`
+      ];
+      if (missingDimensions.length) {
+        const labels = missingDimensions.map((dimension) =>
+          PRACTICE_VARIATION_DIMENSION_LABELS[dimension] ?? dimension);
+        reasons.push(`faltam as dimensões de variação exigidas: ${labels.join(", ")}`);
+      }
       report(
         "human_materialization_insufficient_practice",
-        "A prática não cumpre o mínimo ou as dimensões de variação efetivas."
+        `A prática não cumpre o mínimo ou as dimensões de variação efetivas para o requisito “${requirement}”: ${reasons.join("; ")}.`,
+        undefined,
+        { ...microsequenceDetail, requirement }
       );
     }
   }
@@ -1822,6 +1843,8 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics
   const introducedAnywhere = introducedAnalysisUnitIds(plan, replacedStudyUnitIds);
   const analysisLabels = new Map(planItems(plan, "instructionalAnalysisUnits")
     .map((item) => [item.id, item.statement]));
+  const evidenceLabels = new Map(planItems(plan, "evidenceRequirements")
+    .map((item) => [item.id, item.statement]));
   for (const { group, order } of orderedGroups) {
     for (const id of establishedAnalysisUnitIds(
       plan,
@@ -1833,7 +1856,7 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics
       group,
       establishedAnalysis,
       introducedAnywhere,
-      analysisLabels, diagnostics, { ...options, microsequenceLabels }
+      analysisLabels, diagnostics, { ...options, microsequenceLabels, evidenceLabels }
     );
     const coveredScopeIds = new Set(group.units.flatMap((unit) =>
       unit.curriculumScopeItemIds));
