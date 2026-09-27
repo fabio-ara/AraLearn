@@ -20,7 +20,7 @@ A comparação 105→116 preservou as outras 24 microssequências do documento e
 | --- | --- | --- |
 | Objetivo claro | Consistente com os alvos salvos | O objetivo sintético prioriza escolher BPMN quando importa a responsabilidade; os quatro requisitos detalham responsáveis, mensagens, dependência e representação. O objetivo foi preservado do planejamento anterior. |
 | Explicação suficiente | Consistente | Apresenta os participantes, distingue solicitar de executar e desenvolve resposta externa, espera e recusa. |
-| Operação cognitiva | Consistente no alcance planejado | O requisito de mensagem pede determinar quem pode agir em seguida. As práticas 3–4 exigem essa transição; 5–6 comparam ausência de resposta e recusa. Não há requisito de número mínimo de saltos. |
+| Operação exigida | Consistente no alcance planejado | O requisito de mensagem pede determinar quem pode agir em seguida. As práticas 3–4 exigem essa transição; 5–6 comparam ausência de resposta e recusa. Não há requisito de número mínimo de saltos. |
 | Evidência recolhida | Consistente no alcance planejado | As respostas recolhem identificação de responsáveis, previsão local e comparação de estados, conforme os requisitos. Não demonstram rastreamento independente de uma cadeia inteira; essa é uma limitação da evidência, não uma violação do alvo salvo. |
 | Prática adequada | Consistente no alcance planejado | Há duas oportunidades por cada um dos quatro focos. Escolha única não impede raciocínio: o critério é a relação exigida pela pergunta e a resposta que a observa. |
 | Feedback específico | Consistente | Todas as 31 alternativas e oito unidades têm comentários contextuais. A UI mostrou a distinção entre solicitar e avaliar tanto no erro quanto na recuperação. |
