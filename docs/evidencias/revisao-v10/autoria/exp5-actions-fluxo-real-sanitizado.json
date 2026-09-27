@@ -1,0 +1,244 @@
+{
+  "contract": "aralearn.evidence.actions-flow.v1",
+  "natureza": "Prova privada sanitizada do fluxo real de ChatGPT Actions da quinta explicação, pronta para publicação.",
+  "escopo": {
+    "curso": "Do sinal à decisão: como representamos situações para prever o que acontece depois",
+    "exp": "quinta explicação, \"Como chegar ao destino?\"",
+    "revisao": 27,
+    "modulos": 8,
+    "microssequencias": 25,
+    "explicacoes": 5,
+    "unidadesDeEstudo": 0
+  },
+  "consentimento": "Consentimento pontual operado por Codex sob mandato do proprietário, restrito a este curso; não houve pessoa revisando a produção neste momento e esta prova não afirma aprovação humana.",
+  "servidor": {
+    "fonte": "function_edge_logs do projeto hospedado, lido por consulta somente leitura",
+    "chamadas": 9,
+    "todas200": true,
+    "cliente": "ChatGPT-User/1.0",
+    "sequencia": [
+      {
+        "utc": "2026-09-27T01:50:40.066Z",
+        "operacao": "retomar_curso",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T01:50:44.093Z",
+        "operacao": "consultar_planejamento",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T01:50:47.971Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T01:50:53.226Z",
+        "operacao": "consultar_componentes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T01:55:11.075Z",
+        "operacao": "salvar_explicacoes",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T01:55:17.605Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T01:55:24.905Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T02:07:29.338Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      },
+      {
+        "utc": "2026-09-27T02:07:46.917Z",
+        "operacao": "preparar_revisao",
+        "status": 200
+      }
+    ]
+  },
+  "marcos": {
+    "escrita": "2026-09-27T01:55:11.075Z",
+    "preparosAntesDoFeedback": [
+      "2026-09-27T01:55:17.605Z",
+      "2026-09-27T01:55:24.905Z"
+    ],
+    "preparosDepoisDoFeedback": [
+      "2026-09-27T02:07:29.338Z",
+      "2026-09-27T02:07:46.917Z"
+    ]
+  },
+  "conversa": {
+    "capturadaEm": "2026-09-27T02:08:39.807Z",
+    "promptsExp5Literais": [
+      "Você disse:\nrascunho-gpt-sequencia5.md\nDocumento\nRetome agora a sequência “Como chegar ao destino?”, a quinta do percurso original. Anexei seu rascunho revisado. Salve somente sua explicação no mesmo curso: quero aprender a verificar se um caminho é permitido, seguir o sentido das ligações, somar seus custos e comparar rotas quando uma restrição muda. Use o grafo de verdade para tornar essas relações visíveis e exploráveis no telefone, com custos claramente associados às ligações. Uma lista de trajetos não substitui essa representação. Ensine os termos necessários, desenvolva os exemplos resolvidos e preserve rigorosamente as ligações, sentidos e valores do rascunho, sem antecipar os gabaritos das futuras práticas. Deixe claro por que menos trechos não significa necessariamente menor custo e por que duas rotas podem empatar. Releia o conteúdo salvo, corrija qualquer inconsistência e traga o link específico. Não materialize práticas nesta etapa, não altere as outras explicações nem o planejamento e não registre aprovação humana.",
+      "Você disse:\nAbri a quinta explicação no telefone e testei a exploração dos dois grafos. O anexo das capturas não funcionou nesta tentativa, então descrevo fielmente o que vi: na janela inicial aparece só parte do primeiro grafo; ao abrir a tela inteira, todos os nós e ligações ficam visíveis e os pesos ficam próximos das respectivas setas. No segundo grafo, a ligação de Q a T contorna S e seu custo 2 fica separado do custo 2 de S a T. Ampliar, arrastar e voltar à explicação funcionou. Minha leitura é que a exploração permite comparar as rotas, sem precisar encolher tudo na janela inicial. Como educador, avalie essa observação junto do conteúdo que você salvou: ela sustenta a aprendizagem proposta ou aponta alguma ambiguidade que precisa ser corrigida? Você pode manter ou contrapor minha leitura. Não presuma que viu imagens, não altere números ou ligações corretas e não faça mudanças apenas para concordar. Se precisar melhorar a explicação, corrija somente essa sequência, releia o resultado e mantenha os gabaritos das práticas fora dela."
+    ],
+    "promptsForaDoEscopo": "os dois primeiros prompts são da etapa SysML e não entram nesta prova",
+    "respostaFinalDoGpt": "ChatGPT disse:\n\nSua leitura é consistente com o objetivo da sequência. Pelo que você descreveu, a necessidade de abrir em tela cheia não prejudica a aprendizagem: ao contrário, ela permite preservar o grafo com setas e pesos legíveis, em vez de comprimi-lo até perder justamente as relações que o estudante precisa comparar.\n\nReli toda a explicação salva até o fim. O texto prepara bem essa exploração: primeiro define nó, direção e peso; depois pede que o estudante verifique cada ligação no sentido correto e some apenas os pesos das arestas realmente usadas. No segundo grafo, a separação visual entre os dois custos 2 — Q→T e S→T — é especialmente importante, e sua descrição indica que isso está funcionando.\n\nTambém não encontrei uma ambiguidade que exija alteração. A lista textual de ligações e os exemplos resolvidos funcionam como apoio para iniciantes, mas não substituem o grafo: o raciocínio continua dependendo de enxergar a topologia, o sentido das setas e quais ligações pertencem a cada rota. Da mesma forma, o trecho sobre Q→T bloqueado pressupõe uma rede que o estudante pode explorar, e não uma lista isolada.\n\nPor isso, não alterei a explicação. Os números, ligações, sentidos e gabaritos futuros permanecem exatamente como estavam, e nenhuma revisão humana foi registrada."
+  },
+  "grafosConferidos": [
+    {
+      "id": "content-2",
+      "nome": "G",
+      "directed": true,
+      "vertices": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "arestas": [
+        "A→B 4",
+        "A→C 2",
+        "B→D 3",
+        "B→C 2",
+        "C→D 6"
+      ],
+      "custos": {
+        "A→B→D": 7,
+        "A→C→D": 8,
+        "A→B→C→D": 12
+      }
+    },
+    {
+      "id": "content-7",
+      "nome": "H",
+      "directed": true,
+      "vertices": [
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T"
+      ],
+      "arestas": [
+        "P→Q 5",
+        "P→R 3",
+        "Q→T 2",
+        "R→S 3",
+        "S→T 2",
+        "Q→S 1"
+      ],
+      "custos": {
+        "P→Q→T": 7,
+        "P→R→S→T": 8,
+        "P→Q→S→T": 8
+      },
+      "restricaoQparaT": "remove o caminho de 7 e deixa dois empates em 8"
+    }
+  ],
+  "capturas": [
+    {
+      "arquivo": "actions-exp5-390-grafo-g.jpg",
+      "papel": "inicial, rede G parcial (visão embutida na explicação)",
+      "bytes": 50751,
+      "sha256": "f59e6ecd5284186dbaca6068e063296db35b498f8c804f6b9544afd7cb099534",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-g-zoom-out.jpg",
+      "papel": "zoom afastado da rede G",
+      "bytes": 51306,
+      "sha256": "ba77d8fd318d9c14ac838d0e833b154ab32faaafb4a23bf53bba5660c0bc4b6a",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-g-tela-inteira.jpg",
+      "papel": "tela cheia da rede G com A, B, C e D e as cinco arestas com pesos",
+      "bytes": 10835,
+      "sha256": "d62efcb03ce2e51babd47cf885edb3b2b8c6e020f5e056dd855db3a43c8e6568",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-g-zoom-inteiro.jpg",
+      "papel": "zoom inteiro da rede G",
+      "bytes": 11757,
+      "sha256": "eaea5b803621da54d358285830e9cd850329f9c5d9c2514420dd4d9d1e3b6441",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-g-ampliado.jpg",
+      "papel": "ampliado, conteúdo maior que a área visível",
+      "bytes": 17090,
+      "sha256": "4cd778a0cce037ba0167e00641fbc5da403fcbb45bf5cddf23ea7245fe99bf30",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-g-pan-ampliado.jpg",
+      "papel": "arraste sobre o ampliado; aqui há movimento real de conteúdo",
+      "bytes": 16789,
+      "sha256": "562cafb05a937662adb119816e39c437dae9c4ea495ed8158f213bdeb14ad072",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-g-pan.jpg",
+      "papel": "arraste SEM movimento: conteúdo já cabia inteiro",
+      "bytes": 11757,
+      "sha256": "eaea5b803621da54d358285830e9cd850329f9c5d9c2514420dd4d9d1e3b6441",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-h-tela-inteira.jpg",
+      "papel": "tela cheia da rede H com P, Q, R, S, T e as seis arestas",
+      "bytes": 11195,
+      "sha256": "e529de5ab2e4f12120f4d2c06c2bffef5c9304e9a375397f445bc643014d6047",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    },
+    {
+      "arquivo": "actions-exp5-390-grafo-retorno-foco.jpg",
+      "papel": "retorno de foco ao botão Explorar diagrama",
+      "bytes": 50963,
+      "sha256": "e124a2984f1d9afb48a7fa56b8fca36ea501ac0f4d5f883eeda63f86a9df1d07",
+      "formato": "jpeg",
+      "largura": 390,
+      "altura": 844
+    }
+  ],
+  "panSemMovimento": {
+    "arquivo": "actions-exp5-390-grafo-g-pan.jpg",
+    "prova": "byte-idêntico a actions-exp5-390-grafo-g-zoom-inteiro.jpg: sha256 eaea5b803621da54d358285830e9cd850329f9c5d9c2514420dd4d9d1e3b6441",
+    "nota": "não alegar pan nesse arquivo; a evidência de arraste é actions-exp5-390-grafo-g-pan-ampliado.jpg"
+  },
+  "inspecaoDePixels": "feita pela raiz Codex sobre as capturas; não é inspeção humana proprietária",
+  "historicoDeUpload": {
+    "falhas": "o anexo das capturas falhou duas vezes antes do seletor",
+    "observacaoUsada": "a raiz forneceu observação textual fiel, sem imagem; o GPT explicitamente não viu as imagens",
+    "recuperacao": "a recuperação por nova aba/AX atendeu o rascunho 6; não se deve inventar revisão por imagem para a Exp5"
+  },
+  "fontesHash": {
+    "logs": "78d3de1ecb90ff08f5ef2cd219d91f05e21205692096c62e5bd1380badd32918",
+    "observacao": "6d727733c551e1aee431d8a6057b7e74341f7705503b4cd087ba730f01f5341d",
+    "exportacao": "1187320d8f7f0e3926d835965888037a3c9a5bd1c0c4984d09291ef37d136651",
+    "rascunho": "e7bd89304b00c7c356d271dc1c16b01b997ffc85a2256f9a39b91ead6726c281"
+  },
+  "limites": [
+    "Logs de borda são diagnóstico: comprovam chamada e status, não conteúdo devolvido.",
+    "Zero unidades de estudo: sem prática, sem evidência de aprendizagem e sem feedback.",
+    "A inspeção das capturas foi feita por Codex, não por humano proprietário; nenhuma validação humana.",
+    "A explicação foi salva sem revisão por imagem; o feedback textual é a evidência disponível."
+  ]
+}

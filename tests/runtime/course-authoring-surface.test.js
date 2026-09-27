@@ -1209,7 +1209,7 @@ for (const failure of ["unavailable", "stale-plan"]) {
       failNextPlan = false;
       designAction(root, "retry-planning");
       await new Promise(resolve => setImmediate(resolve));
-      assert.deepEqual(reads, ["course:5", "plan:5", "course:6", "plan:6", "plan:6"]);
+      assert.deepEqual(reads, ["course:5", "plan:5", "course:6", "plan:6", "course:6", "plan:6"]);
       assert.match(root.innerHTML, /Público da revisão 6\./u);
       assert.doesNotMatch(root.innerHTML, /Planejamento indisponível/u);
       assert.equal(root.renderWrites.some(html => /Público da revisão 5\./u.test(html)), false);
@@ -1218,6 +1218,63 @@ for (const failure of ["unavailable", "stale-plan"]) {
     }
   });
 }
+
+test("retry do Planejamento relê a autoridade atual na transição 24→26 e preserva rota, curso e foco", async () => {
+  const root = new TrackingRoot();
+  const focuses = [];
+  const reads = [];
+  const authReads = [];
+  root.querySelector = (selector) => selector === "[data-curriculum-query]"
+    ? { focus() { focuses.push(selector); } } : null;
+  let serverRevision = 24;
+  const locationValue = {
+    pathname: "/", search: "",
+    hash: buildCourseAuthoringRoute(COURSE_ID, { section: "content" })
+  };
+  const surface = createCourseAuthoringSurface({
+    root,
+    controller: controllerFixture({
+      async getCourse(courseId) {
+        reads.push(`course:${serverRevision}`);
+        const detail = courseDetailFixture({ courseId, revision: serverRevision });
+        authReads.push({ courseId: detail.courseId, ownership: detail.ownership, canEdit: detail.canEdit });
+        return detail;
+      },
+      async loadAuthoringPlan(courseId) {
+        reads.push(`plan:${serverRevision}`);
+        const plan = { ...authoringPlanFixture({ courseRevision: serverRevision }), courseId };
+        plan.plan.audience = `Público da revisão ${serverRevision}.`;
+        return plan;
+      }
+    }),
+    locationValue,
+    windowValue: new FakeWindow()
+  });
+  try {
+    assert.equal(await surface.open(), true);
+    serverRevision = 26;
+    locationValue.hash = buildCourseAuthoringRoute(COURSE_ID, { section: "planning" });
+    assert.equal(await surface.open(), false, "o guard deve rejeitar plano novo sob detalhe antigo");
+    assert.deepEqual(reads, ["course:24", "plan:26"]);
+    assert.match(root.innerHTML, /Planejamento indisponível/u);
+
+    designAction(root, "retry-planning");
+    await new Promise(resolve => setImmediate(resolve));
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.deepEqual(reads, ["course:24", "plan:26", "course:26", "plan:26"]);
+    assert.equal(locationValue.hash, buildCourseAuthoringRoute(COURSE_ID, { section: "planning" }));
+    assert.match(root.innerHTML, /Público da revisão 26\./u);
+    assert.doesNotMatch(root.innerHTML, /Planejamento indisponível/u);
+    assert.deepEqual(authReads, [
+      { courseId: COURSE_ID, ownership: "owned", canEdit: true },
+      { courseId: COURSE_ID, ownership: "owned", canEdit: true }
+    ]);
+    assert.ok(focuses.includes("[data-curriculum-query]"));
+  } finally {
+    surface.destroy();
+  }
+});
 
 test("refresh do Planejamento aplica revisão nova uma vez sem telas intermediárias", async () => {
   const root = new TrackingRoot();

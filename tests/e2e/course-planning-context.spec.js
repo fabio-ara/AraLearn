@@ -18,14 +18,26 @@ async function mount(page, options = {}) {
     ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, replaceIdentities(item)])) : identities.get(value) || value;
   fixture.exported = replaceIdentities(microsequenceReviewExport({ revision: 1, withUnits: false }));
   const errors = [];
+  fixture.initialSection = options.initialSection || "planning";
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   await page.goto("/");
   await page.evaluate(async (fixture) => {
     document.body.innerHTML = '<div id="app-root"><main id="course-authoring-root" class="course-authoring-root"></main></div>';
     const { createCourseAuthoringSurface } = await import("/src/ui/CourseAuthoringSurface.js");
-    const h = window.planningHarness = { data: fixture, requests: [], pending: null, entityReads: [], exportReads: [], deferEntity: false };
+    const h = window.planningHarness = { data: fixture, requests: [], reads: [], pending: null, entityReads: [], exportReads: [], deferEntity: false };
     const clone = value => structuredClone(value);
+    h.setRevision = revision => {
+      const d = h.data;
+      d.course.revision = revision;
+      d.plan.courseRevision = revision;
+      d.plan.plan.version += 1;
+      d.plan.plan.curriculumMapStatus = "approved";
+      d.read.courseRevision = revision;
+      d.read.planVersion = d.plan.plan.version;
+      d.read.mapApprovalReference = `current_map_${revision}_${d.read.planVersion}`;
+      for (const design of Object.values(d.designs)) design.courseRevision = revision;
+    };
     h.advance = () => {
       const d = h.data;
       d.course.revision += 1; d.plan.courseRevision = d.course.revision; d.plan.plan.version += 1;
@@ -36,8 +48,10 @@ async function mount(page, options = {}) {
     };
     h.controller = {
       listCourses: async () => ({ contract: "aralearn.course-list.v2", items: [], hasMore: false, nextCursor: null }),
-      getCourse: async () => clone(h.data.course), loadAuthoringPlan: async () => clone(h.data.plan),
-      getCurricularMap: async () => clone(h.data.read), getPendingCurricularMapChange: async () => clone(h.pending),
+      getCourse: async () => { h.reads.push(`course:${h.data.course.revision}`); return clone(h.data.course); },
+      loadAuthoringPlan: async () => { h.reads.push(`plan:${h.data.plan.courseRevision}`); return clone(h.data.plan); },
+      getCurricularMap: async () => { h.reads.push(`map:${h.data.read.courseRevision}`); return clone(h.data.read); },
+      getPendingCurricularMapChange: async () => clone(h.pending),
       approveCurricularMap: (courseId, reference) => new Promise((resolve, reject) => {
         h.pending = { operation: "approval", command: { courseId, reference }, uncertain: true };
         h.requests.push({ courseId, reference, resolve: ({ lost = false, advance = true } = {}) => {
@@ -61,14 +75,42 @@ async function mount(page, options = {}) {
       loadAuthoringInspectionPosition: async () => null, saveAuthoringInspectionPosition: async () => {},
       createCourse: async () => {}, mutateCourseDesign: async () => {}
     };
-    history.replaceState(null, "", `/#/authoring/courses/${fixture.courseId}?section=planning`);
+    history.replaceState(null, "", `/#/authoring/courses/${fixture.courseId}?section=${fixture.initialSection}`);
     h.surface = createCourseAuthoringSurface({ root: document.querySelector("main"), controller: h.controller, onOpenSettings: () => {} });
     await h.surface.open();
     await document.fonts.ready;
   }, fixture);
-  await expect(page.getByRole("region", { name: "Mapa curricular", exact: true })).toBeVisible();
+  if (fixture.initialSection === "planning") {
+    await expect(page.getByRole("region", { name: "Mapa curricular", exact: true })).toBeVisible();
+  } else {
+    await expect(page.locator(".course-inspection-host")).toBeVisible();
+  }
   return errors;
 }
+
+test("retry do Planejamento relê curso e mapa na revisão atual pelo DOM real", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 844 });
+  const errors = await mount(page, { revision: 24, initialSection: "content" });
+  await page.evaluate(() => window.planningHarness.setRevision(26));
+  await page.evaluate(async () => {
+    const { data, surface } = window.planningHarness;
+    history.replaceState(null, "", `/#/authoring/courses/${data.courseId}?section=planning`);
+    await surface.open();
+  });
+  await expect(page.getByText("Planejamento indisponível", { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("planning-retry-before-error.png"), fullPage: true });
+  await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
+  const query = page.locator("[data-curriculum-query]");
+  await expect(query).toBeVisible();
+  await expect(query).toBeFocused();
+  await expect(page.getByRole("region", { name: "Mapa curricular", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("planning-retry-after-recovery.png"), fullPage: true });
+  expect(new URL(page.url()).hash).toBe(`#/authoring/courses/${await page.evaluate(() => window.planningHarness.data.courseId)}?section=planning`);
+  expect(await page.evaluate(() => window.planningHarness.reads)).toEqual([
+    "course:24", "plan:26", "map:26", "course:26", "plan:26", "map:26"
+  ]);
+  expect(errors).toEqual([]);
+});
 
 const microAction = (page, action) => page.locator(`[data-curriculum-context="${action}"][data-target-id="micro-context"]`);
 async function expand(page) {
