@@ -296,6 +296,10 @@ explícita sobre o conflito. Mistas interrompem uma sequência sem prática some
 quando há oportunidade real; a exposição anterior e posterior continua visível
 pela ordem dos eventos.
 
+Prática anterior à explicação pode investigar um alvo ainda não ensinado. O conhecimento necessário para compreender a solicitação continua sendo pré-requisito; o alvo da tentativa não precisa ser declarado como conhecimento estabelecido. No contrato de autoria, o requisito de evidência identifica o que a resposta investiga, enquanto `ideiasUtilizadas` registra apenas ideias já estabelecidas. A tentativa não é uma introdução; o desenvolvimento posterior continua necessário. Essa distinção permite variar a posição sem fabricar ensino anterior ou apagar a aplicação pedagógica.
+
+Há estudos experimentais sobre tentativas malsucedidas anteriores à apresentação do conteúdo, como [Kornell, Hays e Bjork (2009)](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Kornell_Hays_Bjork_2009_JEP-LMC.pdf). Isso fundamenta tratar a antecipação como possibilidade de investigação, sem presumir benefício em qualquer conteúdo ou público. O parâmetro registrado expressa a condição pretendida; sua realização exige conferir a sequência, os alvos e o conteúdo efetivamente salvo.
+
 ## Medidas observáveis e seus denominadores
 
 Para que duas medições possam ser comparadas, estas definições fixam como cada

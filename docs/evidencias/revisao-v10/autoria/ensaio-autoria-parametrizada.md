@@ -22,7 +22,7 @@ As conversas anteriores, suas exportações e intervenções permanecem identifi
 | --- | --- |
 | Objetivo | Está claro o que o estudante deve conseguir fazer? |
 | Explicação | O desenvolvimento prepara a tarefa para o público e os pressupostos definidos? |
-| Operação cognitiva | A tarefa exige a operação pretendida, em vez de apenas aparentá-la? |
+| Operação-alvo da tarefa | A tarefa exige a operação pretendida, em vez de apenas aparentá-la? |
 | Evidência | A resposta efetivamente recolhida permite observar essa operação? |
 | Prática | Os dados, alternativas, lacunas ou ordenação sustentam uma tarefa adequada e inequívoca? |
 | Feedback | O retorno explica a resposta e ajuda a superar o erro plausível? |
