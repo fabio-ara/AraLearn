@@ -2,11 +2,52 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
 import { canonicalAuthoringValue } from "../../src/domain/courseAuthoringBasis.js";
+import { bpmnInstance } from "../helpers/bpmnFixture.js";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+
+test("BPMN nas correções mantém legado textual e recusa nova estrutura em Unidade, feedback e Explicação", async () => {
+  for (const slot of ["content", "feedback", "explanation"]) {
+    const adapter = adapterFixture();
+    const candidate = correctedContent("Revisão BPMN");
+    const instance = bpmnInstance({ invalid: true });
+    let prior = null;
+    if (slot === "explanation") {
+      candidate.content = [instance];
+      const read = adapter.listCourseEntities;
+      adapter.listCourseEntities = async () => {
+        const page = await read();
+        if (prior) page.items[0].content.explanation = prior;
+        return page;
+      };
+    } else {
+      candidate[slot].push(instance);
+      const read = adapter.listCourseStudyUnits;
+      adapter.listCourseStudyUnits = async () => {
+        const page = await read();
+        if (prior) page.items[0].studyUnit = { ...prior, id: "unit-1", position: 1 };
+        return page;
+      };
+    }
+    const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" }, course: "Curso de Redes",
+      ...(slot === "explanation" ? { explanations: [{ microssequencia: "Microssequência A", conteudo: { title: candidate.title, content: candidate.content } }] }
+        : { corrections: [{ unidade: 1, conteudo: candidate }] }) };
+    await assert.rejects(() => applyHumanCourseCorrections(input), error => error.code === "bpmn_semantics_invalid" && error.status === 422);
+    assert.equal(adapter.commits.length, 0);
+    prior = structuredClone(slot === "explanation" ? input.explanations[0].conteudo : candidate);
+    instance.data.nodes[1].label = "Texto revisto";
+    const result = await applyHumanCourseCorrections(input);
+    assert.equal(result.context.bpmnReview.state, "needs_review");
+    assert.equal(result.context.bpmnReview.issues[0].blocking, false);
+    assert.equal(adapter.commits.length, 1);
+    instance.data.nodes[1].kind = "service_task";
+    await assert.rejects(() => applyHumanCourseCorrections(input), error => error.code === "bpmn_semantics_invalid");
+    assert.equal(adapter.commits.length, 1);
+  }
+});
 
 function sourceLink(suffix) {
   return {

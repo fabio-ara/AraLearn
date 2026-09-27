@@ -27,6 +27,7 @@ import {
 import {
   normalizeFocalStudyUnitCompositionCommand,
   normalizeFocalStudyUnitCompositionReceipt,
+  normalizeCourseCompositionBpmnReview,
   normalizeCourseMetadata,
   normalizeOwnedCourseCopyRecoveryCommand,
   normalizeOwnedCourseCopyRecoveryReceipt
@@ -1543,7 +1544,7 @@ export class CourseApiClient {
     exactObject(result, new Set(["courseId", "revision", "operation", "createdCount", "updatedCount",
       "upsertedCount", "deletedCount", "idempotent", "updatedAt", "channel", "applicationOrigin",
       "expectedStudyUnitVersion", "expectedMicrosequenceVersion", "microsequenceId", "microsequenceVersion",
-      "changeOrigin", "deepLink"]), "Confirmação da edição da explicação");
+      "changeOrigin", "deepLink", "bpmnReview"]), "Confirmação da edição da explicação");
     if (result?.courseId !== courseId || result?.operation !== "commit_course_composition" ||
         result?.microsequenceId !== microsequenceId || result?.channel !== "application" ||
         result?.applicationOrigin !== "manual" || result?.changeOrigin !== "human" ||
@@ -1558,7 +1559,8 @@ export class CourseApiClient {
         result.microsequenceVersion !== expectedEntityVersion + result.updatedCount) {
       throw new TypeError("A confirmação não corresponde à edição manual da explicação.");
     }
-    return { ...structuredClone(result), requestId, changed: result.revision !== expectedRevision };
+    return { ...structuredClone(result), requestId, changed: result.revision !== expectedRevision,
+      ...(Object.hasOwn(result, "bpmnReview") ? { bpmnReview: normalizeCourseCompositionBpmnReview(result.bpmnReview) } : {}) };
   }
 
   async commitCourseComposition(value = {}) {
@@ -1620,7 +1622,8 @@ export class CourseApiClient {
     return {
       ...result,
       requestId: result?.requestId || requestId,
-      courseRevision: Number(result?.courseRevision ?? result?.revision)
+      courseRevision: Number(result?.courseRevision ?? result?.revision),
+      ...(Object.hasOwn(result ?? {}, "bpmnReview") ? { bpmnReview: normalizeCourseCompositionBpmnReview(result.bpmnReview) } : {})
     };
   }
 

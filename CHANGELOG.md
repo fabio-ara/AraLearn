@@ -17,8 +17,11 @@ explica os termos usados na implementação atual.
 - Fluxogramas deixam de mostrar uma junção isolada quando todos os caminhos terminam. Rótulos de arestas consideram a fonte efetivamente exibida para evitar que uma palavra curta quebre por falta de espaço calculado.
 - Correções por conversa informam quando o conteúdo alterado exige reaplicação das escolhas instrucionais. A inspeção não aceita parecer de consistência enquanto essa base estiver ausente.
 - A preparação da prática identifica o requisito, a quantidade declarada e as dimensões de variação que ainda faltam, preservando as escolhas instrucionais fixadas.
-- Diagramas BPMN exibem contornos temáticos também em áreas arredondadas e apresentam legenda somente para os símbolos usados.
+- Diagramas BPMN distinguem eventos iniciais, intermediários e finais, preservam títulos completos das tarefas e mostram legenda somente para os símbolos usados. A autoria aponta conexões incompatíveis, mantendo acessível o conteúdo já salvo.
 - O contrato de produção compartilhado por MCP e Actions explicita a relação entre objetivo, operação do estudante e evidência da resposta, preservando as condições instrucionais escolhidas.
+- A leitura de auditoria apresenta o contexto comum uma vez por microssequência, preservando os parâmetros e as referências de cada alvo. Inspeções com conteúdos ou pareceres extensos podem ser registradas sem duplicar essa base no recibo.
+- A auditoria conserva as relações e os alvos internos das representações ao simplificar os metadados da leitura, e recusa um parecer consistente quando há uma falha formal BPMN conhecida no alvo.
+- Repetir uma composição já confirmada recupera o resultado original mesmo após novas alterações no curso, com as mesmas verificações de acesso e identidade.
 
 ## [0.0.87] - 2026-09-27
 

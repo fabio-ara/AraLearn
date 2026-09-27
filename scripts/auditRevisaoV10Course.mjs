@@ -16,7 +16,7 @@
  * exportação completa antes de auditar. O mecanismo de continuação pertence ao canal.
  *
  * Reutiliza normalizeCourseAuthoringExport, inspectPedagogicalEvidence,
- * PEDAGOGICAL_AUDIT_DIMENSIONS, validateStudyUnitEnvelope e RESOURCE_PACKAGE_REGISTRY.
+ * PEDAGOGICAL_AUDIT_DIMENSIONS, inspectBpmnAuthoring, validateStudyUnitEnvelope e RESOURCE_PACKAGE_REGISTRY.
  * Sem unidade de estudo materializada a análise é vazia: envelopes válidos e ausência de
  * códigos não significam aprovação. Semântica e pixels permanecem NAO_VERIFICADO.
  */
@@ -75,6 +75,7 @@ if (!fs.existsSync(path.join(RAIZ, "src/domain/coursePedagogicalAudit.js"))) {
 
 const { normalizeCourseAuthoringExport } = await CARREGAR("src/domain/courseAuthoringComparison.js");
 const { inspectPedagogicalEvidence, PEDAGOGICAL_AUDIT_DIMENSIONS } = await CARREGAR("src/domain/coursePedagogicalAudit.js");
+const { inspectBpmnAuthoring } = await CARREGAR("src/resources/packages/bpmn-process/semantics.js");
 const { validateStudyUnitEnvelope } = await CARREGAR("src/resources/kernel/studyUnitEnvelope.js");
 const { RESOURCE_PACKAGE_REGISTRY } = await CARREGAR("src/resources/packages/index.js");
 
@@ -151,8 +152,9 @@ function dimensoesDaMicrossequencia({ microssequencia, unidades, requisitos, apl
       sinaisMecanicos: { unidadesPratica: papeis.filter((papel) => papel === "practice").length, aplicacoesDeclaradas: aplicacoes.length } },
     { id: "feedback", veredito: NAO_VERIFICADO, motivo: "Explicar o erro específico é semântico; o script só aplica o piso mecânico.",
       sinaisMecanicos: { instanciasFeedback, contradicoesObservadas: codigos("pedagogical_feedback").concat(codigos("pedagogical_editorial")) } },
-    { id: "representacao", veredito: NAO_VERIFICADO, motivo: "Escolher a representação certa para a tarefa é semântico; o script confere instalação, slot e envelope.",
-      sinaisMecanicos: { pacotes: coletarPacotes(microssequencia), errosEnvelope: issues.filter((item) => item.origem === "envelope").length } },
+    { id: "representacao", veredito: NAO_VERIFICADO, motivo: "Escolher a representação certa para a tarefa exige julgamento; o script confere envelope e regras formais compartilhadas do BPMN.",
+      sinaisMecanicos: { pacotes: coletarPacotes(microssequencia), errosEnvelope: issues.filter((item) => item.origem === "envelope").length,
+        contradicoesFormais: codigos("bpmn_") } },
     { id: "carga_visual", veredito: NAO_VERIFICADO, motivo: "Hierarquia, densidade e foco exigem pixels do Estudo; o JSON não os observa.",
       sinaisMecanicos: { observavelSemPixels: false, unidades: unidades.length } }
   ];
@@ -203,6 +205,15 @@ for (const [indiceModulo, modulo] of (curso.modules ?? []).entries()) {
       const unidades = microssequencia.studyUnits ?? [];
       const aplicacoesPorUnidade = {};
       const issuesDaMs = [];
+      const conferirRepresentacoes = (conteudo, alvo) => {
+        try {
+          inspectBpmnAuthoring(conteudo).forEach((item) => issuesDaMs.push({ origem: "representacao", ...alvo,
+            code: item.code, path: item.path, resourceId: item.resourceId, message: item.message }));
+        } catch (erro) {
+          issuesDaMs.push({ origem: "representacao", ...alvo, code: "representation_inspection_failed", path: "content", message: String(erro?.message ?? erro) });
+        }
+      };
+      if (microssequencia.explanation) conferirRepresentacoes(microssequencia.explanation, { explanation: microssequencia.id });
       for (const [indiceUnidade, unidade] of unidades.entries()) {
         totalUnidades += 1;
         const declaracao = basePorUnidade.get(texto(unidade.id))?.declaration ?? null;
@@ -214,6 +225,7 @@ for (const [indiceModulo, modulo] of (curso.modules ?? []).entries()) {
           totalEnvelopesInvalidos += 1;
           envelope.errors.slice(0, 10).forEach((mensagem) => issuesDaMs.push({ origem: "envelope", unit: unidade.id, code: "estudo_unidade_envelope", path: mensagem, message: "" }));
         }
+        conferirRepresentacoes(unidade, { unit: unidade.id });
         try {
           const auditoria = inspectPedagogicalEvidence({ content: unidade, objective: texto(microssequencia.goal), requirements: requisitos, practices: praticas });
           auditoria.issues.forEach((item) => issuesDaMs.push({ origem: "pre_triagem", unit: unidade.id, code: item.code, path: item.path, message: item.message }));
@@ -251,11 +263,12 @@ const relatorio = {
   analiseVazia,
   limitesObservados: { semantica: NAO_VERIFICADO, pixels: NAO_VERIFICADO,
     nota: analiseVazia
-      ? "Sem unidade de estudo materializada a análise mecânica é vazia: envelopes válidos e zero códigos não significam aprovação. Cada microssequência sai com as 8 dimensões em NAO_VERIFICADO e apenas sinais mecânicos anexados."
+      ? "Sem unidade de estudo materializada a análise de unidades é vazia. Explicações existentes ainda recebem a inspeção formal de representações. Zero códigos não significa aprovação; as 8 dimensões permanecem NAO_VERIFICADO."
       : "O script não julga significado nem pixels. Cada microssequência sai com as 8 dimensões em NAO_VERIFICADO e apenas sinais mecânicos anexados; a leitura semântica e as capturas do Estudo continuam obrigatórias." },
   preTriagem: { dimensoesDoCodigo: [...PEDAGOGICAL_AUDIT_DIMENSIONS], microssequencias: microssequencias.length, unidades: totalUnidades,
     requisitos: requisitos.length, aplicacoesDeclaradas: totalAplicacoes, envelopesInvalidos: totalEnvelopesInvalidos,
-    unidadesComIssue: new Set(issuesRelatorio.map((item) => item.unit)).size,
+    unidadesComIssue: new Set(issuesRelatorio.map((item) => item.unit).filter(Boolean)).size,
+    explicacoesComIssue: new Set(issuesRelatorio.map((item) => item.explanation).filter(Boolean)).size,
     codigos: Object.fromEntries(Object.entries(contagemCodigos).sort()) },
   inventario: { catalogoRegistrado: idsCatalogo.length, catalogoEsperado: CATALOGO_ESPERADO,
     divergenciaCatalogo: idsCatalogo.length - CATALOGO_ESPERADO, pacotesUsados, pacotesAusentes,
@@ -284,6 +297,7 @@ const resumo = {
   aplicacoesDeclaradas: totalAplicacoes,
   envelopesInvalidos: totalEnvelopesInvalidos,
   unidadesComIssue: relatorio.preTriagem.unidadesComIssue,
+  explicacoesComIssue: relatorio.preTriagem.explicacoesComIssue,
   codigos: relatorio.preTriagem.codigos,
   inventario: { catalogo: idsCatalogo.length, usados: pacotesUsados.length, cobertura: relatorio.inventario.cobertura,
     ausentes: pacotesAusentes.length, desconhecidos: pacotesDesconhecidos },

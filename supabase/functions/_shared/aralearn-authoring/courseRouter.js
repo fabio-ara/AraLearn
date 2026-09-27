@@ -1,5 +1,6 @@
 import { CourseAuthoringPartsError, normalizeCourseAuthoringPartRequest } from "../aralearn/runtime/domain/courseAuthoringParts.js";
 import { normalizeCourseMetadata } from "../aralearn/runtime/domain/courseComposition.js";
+import { inspectBpmnAuthoring } from "../aralearn/runtime/resources/packages/bpmn-process/semantics.js";
 import { CourseCopyError, normalizeCourseCopyRequest } from "../aralearn/runtime/domain/courseCopy.js";
 import { CourseMediaError, normalizeCourseMediaCommand } from "../aralearn/runtime/domain/courseMedia.js";
 import { AuthoringApiError } from "./errors.js";
@@ -762,6 +763,50 @@ async function validateCompositionChange(body, request) {
   };
 }
 
+// Before a new write, only a server read at the command's revision establishes legacy preservation.
+// Valid new diagrams need no additional read; clients cannot supply this basis.
+function compositionBpmnContent(row) {
+  return row.entityType === "study_unit" ? row.content
+    : row.entityType === "microsequence" ? row.content?.explanation : null;
+}
+
+async function inspectCompositionBpmn(value, { adapter, principal, courseId, deadlineAt }) {
+  const candidates = value.upserts.filter(row => inspectBpmnAuthoring(compositionBpmnContent(row)).length);
+  if (!candidates.length) return [];
+  if (typeof adapter.listCourseEntities !== "function") {
+    throw new AuthoringApiError(503, "course_service_unavailable", "Não foi possível conferir os diagramas com o conteúdo salvo.");
+  }
+  const saved = [];
+  let cursor = null;
+  const cursors = new Set();
+  for (let pageIndex = 0; pageIndex < 100; pageIndex += 1) {
+    const page = await adapter.listCourseEntities({ principal, courseId,
+      expectedRevision: value.expectedRevision, limit: 200, afterEntityType: cursor?.entityType ?? null,
+      afterEntityId: cursor?.entityId ?? null, deadlineAt });
+    if (!Array.isArray(page?.items)) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A leitura do conteúdo salvo está incompleta. Releia o recorte antes de editar o BPMN.");
+    }
+    saved.push(...page.items);
+    if (!page.hasMore) break;
+    const key = JSON.stringify(page.nextCursor);
+    if (!page.nextCursor || cursors.has(key) || pageIndex === 99) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A leitura do conteúdo salvo perdeu o ponto de continuação.");
+    }
+    cursor = page.nextCursor;
+    cursors.add(key);
+  }
+  const issues = candidates.flatMap(row => {
+    const previous = saved.find(item => item.entityType === row.entityType && item.entityId === row.entityId &&
+      item.parentType === row.parentType && item.parentId === row.parentId);
+    return inspectBpmnAuthoring(compositionBpmnContent(row), compositionBpmnContent(previous ?? {}))
+      .map(issue => ({ ...issue, target: row.content.title }));
+  });
+  const blockers = issues.filter(issue => issue.blocking);
+  if (blockers.length) throw new AuthoringApiError(422, "bpmn_semantics_invalid",
+    blockers.map(issue => `${issue.target}: ${issue.message}`).join(" "), { blockers });
+  return issues;
+}
+
 async function validateOwnedCourseCopyRecovery(body, request, sourceCourseId) {
   exactFields(body, new Set([
     "requestId", "sourceCourseId", "expectedSourceCourseRevision",
@@ -1493,27 +1538,46 @@ export async function executeCourseRoute({ request, route, adapter, principal, d
       request,
       route.sourceCourseId
     );
+    // Confirmation lookup only: the original draft identifies a persisted copy.
+    // The source may have advanced or become inaccessible since that write.
     return {
       requestId: value.requestId,
-      data: await adapter.recoverOwnedCourseCopy({
-        principal,
-        sourceCourseId: route.sourceCourseId,
-        ...value,
-        deadlineAt
-      })
+      data: await adapter.recoverOwnedCourseCopy({ principal, sourceCourseId: route.sourceCourseId, ...value, deadlineAt })
     };
   }
   if (route.name === "commitCourseComposition") {
     assertPrincipal(principal, { write: true });
     const value = await validateCompositionChange(await readCourseJsonBody(request), request);
+    let bpmnIssues = [];
+    let replayOnly = false;
+    try {
+      bpmnIssues = await inspectCompositionBpmn(value, { adapter, principal, courseId: route.courseId, deadlineAt });
+    } catch (error) {
+      if (!(error instanceof AuthoringApiError) || error.status !== 409 || error.code !== "stale_course_state" ||
+          typeof adapter.getCourse !== "function") throw error;
+      const current = await adapter.getCourse({ principal, courseId: route.courseId, includeOutline: false, deadlineAt });
+      // Revisions only advance. A strictly past CAS cannot perform a new write;
+      // the unchanged SQL command may only recover its receipt or fail. A future
+      // revision could become current concurrently, so it must NOT take this path.
+      if (current?.courseId !== route.courseId || !Number.isSafeInteger(current.revision) ||
+          current.revision <= value.expectedRevision) throw error;
+      replayOnly = true;
+    }
+    const data = await adapter.commitCourseComposition({ principal, courseId: route.courseId, ...value, deadlineAt });
+    if (replayOnly) {
+      if (data?.idempotent !== true) throw new AuthoringApiError(503, "course_service_unavailable",
+        "A resposta não confirmou o recibo da composição original.");
+      // Receipt/hash validation proves that this exact content was already saved,
+      // even if the target now contains something else. Diagnose that receipt's
+      // content, without treating today's target as its preservation basis.
+      bpmnIssues = value.upserts.flatMap(row => {
+        const content = compositionBpmnContent(row);
+        return inspectBpmnAuthoring(content, content).map(issue => ({ ...issue, target: row.content.title }));
+      });
+    }
     return {
       requestId: value.requestId,
-      data: await adapter.commitCourseComposition({
-        principal,
-        courseId: route.courseId,
-        ...value,
-        deadlineAt
-      })
+      data: bpmnIssues.length ? { ...data, bpmnReview: { state: "needs_review", issues: bpmnIssues } } : data
     };
   }
   if (route.name === "compareCourseAuthoring") {

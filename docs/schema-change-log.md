@@ -17,6 +17,18 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260928100000 — catálogo BPMN e manifesto de inspeção
+
+O catálogo conserva os 34 componentes e passa a refletir as regras estáticas dos eventos BPMN, com exemplo coerente e distinção entre leitura de conteúdo existente e nova autoria. Sua identidade é `1-fca7730b`, fingerprint `sha256:e97467a8e1a1fb436f743a1d9fae39e686b1537211e68d66ab61f6c339223475`. A projeção SQL deriva do registro canônico; nenhuma migração já aplicada foi reescrita.
+
+O manifesto passa a exigir esta revisão depois da correção do recibo de inspeção. Os recursos e assinaturas existentes permanecem, sem converter conteúdo dos cursos ou modificar configurações aplicadas. Os dois arquivos novos foram criados pelo CLI e ordenados após o histórico remoto; seus identificadores expressam essa ordem, não uma data de execução futura.
+
+## 20260928094500 — recibo compacto da inspeção pedagógica
+
+O comando de inspeção deixa de duplicar a base pedagógica e o parecer no recibo sujeito ao limite compartilhado de 64 KiB. A entidade conserva o parecer completo; as consultas conservam conteúdo, configuração aplicada, dependências e fontes. A resposta de gravação devolve o parecer e seus metadados, sem repetir a base.
+
+A repetição de um pedido verifica autorização, identidade e hash antes de reconstruir o parecer a partir do mesmo pedido, conservando revisão e timestamp originais mesmo após outra inspeção. Recibos antigos e dados de curso não são reescritos. Testes com a constraint literal cobrem bases e pareceres Unicode maiores que o limite, rollback, replay histórico, conflito e acesso; a [prova focal](evidencias/revisao-v10/autoria/ms9-inspecao-088.md) distingue execução local de implantação hospedada.
+
 ## 20260928093000 — manifesto da produção autônoma focal
 
 A revisão do manifesto passa a identificar o contrato da primeira parte autônoma, introduzido por `20260928090000_autonomous_first_part.sql`. As duas funções de gravação preservam a exigência de mapa aprovado como padrão; o serviço pode permitir um mapa em rascunho quando deriva essa autorização do mandato explícito do processo. O parâmetro não é oferecido ao autor e não cria aprovação humana. Autorização, comparação de revisões e recibos permanecem na mesma transação.

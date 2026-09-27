@@ -2,6 +2,7 @@
 import { validateStudyUnitEnvelope } from "../resources/kernel/studyUnitEnvelope.js";
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { requireCoursePracticeAuthoring } from "../domain/coursePracticeAuthoring.js";
+import { requireBpmnAuthoring } from "../resources/packages/bpmn-process/semantics.js";
 import { reconcileGapResponseAnswerEdit } from "../resources/packages/gap-response/authoring.js";
 import {
   activateManualInlineFields,
@@ -178,6 +179,7 @@ export function applyManualStudyUnitEdit(studyUnit = {}, targetId = "study_unit"
     throw new Error("A edição deixou a unidade de estudo incompleta ou inválida.");
   }
   requireCoursePracticeAuthoring(nextStudyUnit, studyUnit);
+  requireBpmnAuthoring(nextStudyUnit, studyUnit);
   return nextStudyUnit;
 }
 

@@ -51,6 +51,7 @@ import { AUTHORING_PROCESS_FOCUS, AUTHORING_PROCESS_CADENCE, AUTHORING_PROCESS_R
   AUTHORING_PROCESS_PARAMETER_DEFINITIONS, normalizeAuthoringProcessPreferences,
   resolveAuthoringProcessPreferences, createAuthoringProcessMandate } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
+import { shareHumanAuditContext } from './courseHumanAuditContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
@@ -1236,6 +1237,13 @@ function normalizeObservationComparisonReference(value) {
 function withoutTechnicalState(value) {
   if (Array.isArray(value)) return value.map(withoutTechnicalState);
   if (!value || typeof value !== "object") return value;
+  // Resource IDs and paths are disciplinary content. Validate the original
+  // envelope before preserving it; normalization could silently drop metadata.
+  const definition = typeof value.package === "string" && typeof value.version === "string"
+    ? RESOURCE_PACKAGE_REGISTRY.get(value.package, value.version) : null;
+  if (definition?.manifest.slots.some(slot => RESOURCE_PACKAGE_REGISTRY.validateInstance(value, slot).valid)) {
+    return structuredClone(value);
+  }
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
@@ -1278,7 +1286,8 @@ function withoutTechnicalState(value) {
         Array.isArray(entry) ? entry.map((role) => SOURCE_ROLE_HUMAN_NAMES.get(role)) : [];
       continue;
     }
-    if (normalizedKey === "study_units" && Array.isArray(entry)) {
+    if (normalizedKey === "study_units" && Array.isArray(entry) && entry.every(item =>
+      item && typeof item === "object" && Object.hasOwn(item, "studyUnit"))) {
       projected[key] = entry.map(({ studyUnit, ...metadata }) => ({
         ...withoutTechnicalState(metadata), studyUnit: structuredClone(studyUnit)
       }));
@@ -2662,7 +2671,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
     nextDecision,
-    context: await paginateHumanReadContext(withoutTechnicalState(context), { state: continuation })
+    context: await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext(context, resolved.course)), { state: continuation })
   });
 };
 
@@ -2913,11 +2922,11 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   const studyUnits = await Promise.all(unitPage.items.map(async unit => ({ ...unit,
     ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit", targetId: unit.studyUnit.id, deadlineAt })
   })));
-  const context = await paginateHumanReadContext(withoutTechnicalState({
+  const context = await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext({
     observations, studyUnits,
     explicacoes: explanations,
     plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
-  }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
+  }, resolved.course)), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
   return result("Preparei este recorte da revisão sem aplicar mudanças.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content", unitPage.items.length
       ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length

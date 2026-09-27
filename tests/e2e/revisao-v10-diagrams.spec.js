@@ -16,13 +16,19 @@ const FIXTURE_FILES = [
 
 const WIDTHS = [320, 390, 430, 1280];
 
-async function mount(page, { width, height = 844, diagram, unit = "theory" }) {
+async function mount(page, { width, height = 844, diagram, unit = "theory", owned = false }) {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.setViewportSize({ width, height });
   for (const [url, file, contentType] of FIXTURE_FILES) {
-    await page.route(url, (route) => route.fulfill({ status: 200, contentType,
-      body: readFileSync(new URL(file, import.meta.url), "utf8") }));
+    await page.route(url, (route) => {
+      let body = readFileSync(new URL(file, import.meta.url), "utf8");
+      if (owned && file.endsWith("/studyExplanationFixture.js")) body = body
+        .replace('ownership: "public", canEdit: false', 'ownership: "owned", canEdit: true')
+        .replace('const repository = {', 'const repository = { loadStudyUnitCompositionContext: reference => ({ ...reference, courseRevision: 1, studyUnitVersion: 1 }),')
+        .replace('repository, visitor: true,', 'repository, visitor: false, onSaveManualEdit: async () => { throw new Error("Fixture sem escrita"); },');
+      return route.fulfill({ status: 200, contentType, body });
+    });
   }
   await page.goto("/tests/gallery/revisao-v10-diagrams.html?diagram=" + diagram + "&unit=" + unit);
   await expect.poll(() => page.evaluate(() => globalThis.__EXPLANATION_FIXTURE_READY__ === true)).toBe(true);
@@ -177,6 +183,33 @@ test("BPMN com rótulo longo preserva texto e vínculo decorado", async ({ page 
   expect(geometry.collisions, JSON.stringify(geometry)).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+for (const hostName of ["unidade", "explicacao"]) {
+  test("BPMN conserva título HTML completo dentro da tarefa na " + hostName, async ({ page }) => {
+    const errors = await mount(page, { width: 390, diagram: "bpmn-long-label", owned: true });
+    if (hostName === "unidade") {
+      await page.getByRole("button", { name: "Editar", exact: true }).click();
+      await page.locator('[data-action="toggle-study-unit-assistance-resource"][data-resource-target-id="content:representation"]').click();
+    }
+    const host = await openHost(page, hostName);
+    const figure = host.locator(".package-system-diagram");
+    await figure.locator('[data-diagram-action="toggle-expanded"]').click();
+    for (let step = 0; step < 2; step++) await figure.locator('[data-diagram-action="zoom-out"]').click();
+    const title = figure.locator("#system-node-send foreignObject strong");
+    await expect(title).toHaveText("Encaminhar solicitação para análise");
+    const geometry = await title.evaluate(node => {
+      const bounds = node.closest("foreignObject").getBoundingClientRect();
+      const range = document.createRange(); range.selectNodeContents(node);
+      return [...range.getClientRects()].filter(r => r.width && r.height).map(r => ({
+        left: r.left - bounds.left, right: bounds.right - r.right,
+        top: r.top - bounds.top, bottom: bounds.bottom - r.bottom
+      }));
+    });
+    expect(geometry.length).toBeGreaterThan(0);
+    expect(geometry.every(box => Object.values(box).every(gap => gap >= -0.75)), JSON.stringify(geometry)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+}
 
 test("máquina de estados mantém guarda, ação e self-loop com vínculo decorado", async ({ page }) => {
   const errors = await mount(page, { width: 390, diagram: "guarded-machine" });

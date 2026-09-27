@@ -3240,8 +3240,15 @@ button.account-settings-back[hidden] {
   line-height: 1.15;
 }
 
-.package-bpmn-node .package-system-diagram-node-content :is(small, strong) {
+.package-bpmn-task-content small {
   white-space: nowrap;
+}
+
+/* Keep the HTML measurement probe and the final SVG label on the same rules. */
+.package-bpmn-task-content strong {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: normal;
 }
 
 .package-math-graph figcaption,
@@ -3337,6 +3344,42 @@ button.account-settings-back[hidden] {
 
 .package-system-diagram-svg .package-bpmn-flow.is-message path {
   stroke-dasharray: 6 4;
+}
+
+.package-system-diagram-svg .package-bpmn-node:is(.is-start_event, .is-intermediate_event, .is-end_event) > ellipse {
+  stroke: var(--resource-text-secondary);
+}
+
+.package-system-diagram-svg .package-bpmn-node.is-end_event > ellipse {
+  stroke-width: 3px;
+}
+
+/* Graphviz emits the inner ring first; the outer ring must not paint over it. */
+.package-system-diagram-svg .package-bpmn-node.is-intermediate_event > ellipse + ellipse {
+  fill: none;
+}
+
+.package-system-diagram-svg .package-bpmn-event-marker {
+  pointer-events: none;
+}
+
+.package-system-diagram-svg .package-bpmn-event-marker > path {
+  fill: var(--resource-surface);
+  stroke: var(--resource-text-secondary);
+  stroke-width: 1px;
+}
+
+.package-system-diagram-svg .package-bpmn-node.event-throw .package-bpmn-event-marker > path {
+  fill: var(--resource-text-secondary);
+}
+
+.package-system-diagram-svg .package-bpmn-event-marker > .package-bpmn-envelope-fold {
+  fill: none;
+}
+
+.package-system-diagram-svg .package-bpmn-node.event-throw .package-bpmn-event-marker > .package-bpmn-envelope-fold {
+  fill: none;
+  stroke: var(--resource-surface);
 }
 
 .package-system-diagram-svg :is(.package-bpmn-participant, .package-bpmn-lane) > :is(path, polygon) {

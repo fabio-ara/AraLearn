@@ -5,11 +5,13 @@ import {
   paginateHumanReadContext
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
-import { openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
+import { createContentReviewReference, openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { largeObservationComparison } from "../helpers/largeObservationComparisonFixture.js";
+import { bpmnInstance } from "../helpers/bpmnFixture.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
@@ -672,12 +674,16 @@ test("revisão de unidade conserva base, citações associadas e orientação, f
   const readInspection = adapter.getCourseContentInspection;
   adapter.getCourseContentInspection = async input => ({ ...await readInspection(input), pedagogicalBasis: {
     targetKind: input.targetKind, targetId: input.targetId,
-    microsequence: { title: "Relações", goal: "Relacionar conjuntos e estados", explanation: { title: "Base compartilhada", content: [] } },
+    microsequence: { id: "ms", title: "Relações", goal: "Relacionar conjuntos e estados", explanation: { title: "Base compartilhada", content: [] } },
     planItems: [], dependencies: [{ title: "Pré-requisito", goal: "Distinguir elementos" }],
     studyUnits: units.map(unit => ({ id: unit.studyUnit.id, content: unit.studyUnit })), citations
   } });
   const response = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE });
-  const audit = response.value.context.studyUnits[0].auditoriaPedagogica;
+  const context = response.value.context;
+  const targetAudit = context.studyUnits[0].auditoriaPedagogica;
+  assert.equal(context.auditoriasPedagogicas.length, 1);
+  const shared = context.auditoriasPedagogicas.find(item => item.foco === targetAudit.foco);
+  const audit = { ...targetAudit, instruction: shared.instruction, basis: { ...shared.basis, ...targetAudit.basis } };
   assert.equal(audit.basis.microsequence.goal, "Relacionar conjuntos e estados");
   assert.equal(audit.basis.dependencies[0].title, "Pré-requisito");
   assert.equal(audit.basis.studyUnits.length, 2, "o restante do percurso continua na base");
@@ -690,6 +696,340 @@ test("revisão de unidade conserva base, citações associadas e orientação, f
   assert.equal(audit.basis.citations[0].links[0].source.url, details[0].url);
   assert.equal(audit.basis.citations[1].links[0].anchors[0].verificationExcerpt, null);
   assert.deepEqual(adapter.calls.sources, [], "a base já associa as fontes; não pedir consultas para juntar IDs");
+});
+
+function focalAuditFixture({ unitCount = 3 } = {}) {
+  const units = Array.from({ length: unitCount }, (_, index) => ({ ...studyUnit(index + 1),
+    curriculumPath: { didacticMicrosequence: { id: index >= 2 ? "ms-b" : "ms-a", title: "Mesmo título" } } }));
+  const adapter = fixture({ units });
+  const microsequences = ["ms-a", "ms-b"].map((id, index) => ({ id, title: "Mesmo título", position: index,
+    goal: `Objetivo ${index + 1}`, explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: [], sourceIds: [] },
+    explanation: { title: "Explicação", content: [{ id: `paragraph-${id}`, package: "aralearn.resource.paragraph",
+      version: "1.0.0", data: { text: `Base ${id}. ` + 'Texto literal 😀 α "citado".\n'.repeat(80) } }] },
+    contentReview: { state: "draft" } }));
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
+    parts: [{ id: PART, position: 0, title: "Foco", microsequences }] } });
+  const originalInspection = adapter.getCourseContentInspection;
+  const inspections = new Map();
+  adapter.getCourseContentInspection = async input => {
+    const { targetKind, targetId } = input;
+    const ms = microsequences.find(item => item.id === (targetKind === "microsequence_explanation" ? targetId
+      : units.find(unit => unit.studyUnit.id === targetId).curriculumPath.didacticMicrosequence.id));
+    const read = { ...await originalInspection(input), pedagogicalBasis: {
+      targetKind, targetId, audience: null, microsequence: ms, planItems: [], dependencies: [],
+      studyUnits: units.filter(unit => unit.curriculumPath.didacticMicrosequence.id === ms.id).map(unit => ({
+        id: unit.studyUnit.id, content: unit.studyUnit, application: null,
+        design: { parameters: { before_and_after: true, variation: ["case_or_data", "external_representation"] } }
+      })),
+      citations: [{ targetKind, targetId, targetTitle: targetId, links: [{
+        source: { title: targetId, url: `https://example.test/${targetId}` },
+        anchors: [{ selector: { kind: "text_quote", exact: `Passagem de ${targetId}.` },
+          verificationExcerpt: null, humanLocator: "p. 2" }],
+        occurrences: [{ quote: `Afirmação de ${targetId}.`, prefix: "😀", suffix: "\n" }]
+      }] }], additionalContext: { literal: "Desconhecido preservado", empty: null }
+    } };
+    inspections.set(targetId, read);
+    return read;
+  };
+  return { adapter, inspections };
+}
+
+test("revisão e retomada focal compartilham por identidade antes da projeção, com fontes próprias e paridade dos canais", async () => {
+  for (const name of ["preparar_revisao", "retomar_curso"]) {
+    const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE };
+    const channelPages = [];
+    for (const channel of ["mcp", "actions"]) {
+      const { adapter, inspections } = focalAuditFixture();
+      let cursor, literal = "";
+      const pages = [];
+      do {
+        const response = await channelCall(channel, adapter, name, { ...args, ...(cursor ? { continuacao: cursor } : {}) });
+        assert.equal(response.status, 200);
+        assert.ok(response.envelope.length < 100_000);
+        assert.ok(JSON.stringify(response.value.context).length <= 12_000);
+        assert.ok(Buffer.byteLength(JSON.stringify(response.value.context)) <= 16 * 1024);
+        pages.push(response.value);
+        const fragment = response.value.context.fragmento;
+        assert.ok(fragment, "a prova deve atravessar a paginação do contexto compartilhado");
+        assert.equal(fragment.inicio, literal.length);
+        literal += fragment.texto;
+        cursor = response.value.context.continuacao;
+      } while (cursor);
+      const context = JSON.parse(literal);
+      assert.equal(context.auditoriasPedagogicas.length, 2, "mesmo título conserva dois focos internos");
+      assert.ok(context.auditoriasPedagogicas.every(item => !Object.hasOwn(item.basis.microsequence, "id")));
+      for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
+        const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
+        assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: inspections.get(ref.targetId) }),
+          "a referência opaca continua derivada da leitura canônica integral");
+        assert.match(target.referenciaInspecao, /^[A-Za-z0-9_-]+$/u);
+        const review = openContentReviewReference(target.referenciaRevisao, PRINCIPAL);
+        assert.equal(review.targetId, ref.targetId);
+        assert.equal(review.targetKind, ref.targetKind);
+        assert.equal(ref.courseId, COURSE.id);
+        const audit = target.auditoriaPedagogica;
+        const shared = context.auditoriasPedagogicas.find(item => item.foco === audit.foco);
+        assert.ok(shared);
+        assert.equal(audit.basis.targetKind, ref.targetKind);
+        assert.equal(audit.basis.citations.length, 1);
+        assert.equal(audit.basis.citations[0].targetTitle, ref.targetId);
+        const link = audit.basis.citations[0].links[0];
+        assert.equal(link.source.url, `https://example.test/${ref.targetId}`);
+        assert.equal(link.anchors[0].selector.exact, `Passagem de ${ref.targetId}.`);
+        assert.equal(link.anchors[0].verificationExcerpt, null);
+        assert.equal(link.occurrences[0].quote, `Afirmação de ${ref.targetId}.`);
+        assert.equal(link.occurrences[0].suffix, "\n");
+        assert.deepEqual(audit.basis.additionalContext, { literal: "Desconhecido preservado", empty: null });
+        const expectedMs = ref.targetId === "unit-3" || ref.targetId === "ms-b" ? "ms-b" : "ms-a";
+        assert.equal(shared.basis.microsequence.goal, expectedMs === "ms-b" ? "Objetivo 2" : "Objetivo 1");
+        assert.equal(shared.basis.studyUnits.length, expectedMs === "ms-b" ? 1 : 2);
+        assert.ok(shared.basis.studyUnits.every(unit => unit.application === null && unit.design.parameters.before_and_after === true));
+      }
+      assert.ok(pages.length > 1);
+      channelPages.push(pages);
+    }
+    assert.deepEqual(channelPages[0], channelPages[1]);
+  }
+});
+
+test("MCP e Actions expõem BPMN inconsistente no alvo, preservam a base compartilhada e registram needs_attention", async () => {
+  const channelContexts = [];
+  for (const channel of ["mcp", "actions"]) {
+    const { adapter, inspections } = focalAuditFixture();
+    const withDiagram = (content, invalid) => ({ ...content, content: [...content.content, bpmnInstance({ invalid })] });
+    const withUnitDiagram = content => ({ id: content.id, title: content.title, role: "theory",
+      position: 1, topics: [], response: null, feedback: [], content: [bpmnInstance({ invalid: content.id === "unit-2" })] });
+    const originalPlan = adapter.getCourseInstructionalPlan;
+    adapter.getCourseInstructionalPlan = async () => {
+      const plan = structuredClone(await originalPlan());
+      for (const ms of plan.plan.parts[0].microsequences) ms.explanation = withDiagram(ms.explanation, ms.id === "ms-a");
+      return plan;
+    };
+    const originalUnits = adapter.listCourseStudyUnits;
+    adapter.listCourseStudyUnits = async input => {
+      const page = await originalUnits(input);
+      page.items = page.items.map(item => ({ ...item, studyUnit: withUnitDiagram(item.studyUnit) }));
+      return page;
+    };
+    const originalInspection = adapter.getCourseContentInspection;
+    adapter.getCourseContentInspection = async input => {
+      const read = structuredClone(await originalInspection(input));
+      const basis = read.pedagogicalBasis;
+      basis.microsequence.explanation = withDiagram(basis.microsequence.explanation, basis.microsequence.id === "ms-a");
+      basis.studyUnits = basis.studyUnits.map(unit => ({ ...unit, application: { practiceApplications: [] },
+        content: withUnitDiagram(unit.content) }));
+      basis.dependencies = [{ title: "Dependência fora do alvo", explanation: withDiagram({ content: [] }, true) }];
+      inspections.set(input.targetId, read);
+      return read;
+    };
+    adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] });
+    adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action", scopes: ["authoring:read", "authoring:write"] });
+    let writes = 0;
+    adapter.recordCourseContentInspection = async input => {
+      writes++;
+      assert.equal(input.expectedBasisHash, "b".repeat(64));
+      assert.deepEqual(Object.keys(input).sort(), ["courseId", "deadlineAt", "expectedBasisHash", "principal", "report", "requestId", "targetId", "targetKind"]);
+      return { ...inspections.get(input.targetId), inspection: { state: "current", basisHash: input.expectedBasisHash,
+        inspectedAt: "2026-09-28T00:00:00Z", report: input.report } };
+    };
+    let cursor, literal = "", fragments = 0;
+    do {
+      const read = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, ...(cursor ? { continuacao: cursor } : {}) });
+      assert.equal(read.status, 200);
+      assert.ok(read.value.context, JSON.stringify(read.value));
+      assert.ok(read.envelope.length < 100_000);
+      assert.ok(JSON.stringify(read.value.context).length <= 12_000);
+      assert.ok(Buffer.byteLength(JSON.stringify(read.value.context)) <= 16 * 1024);
+      const fragment = read.value.context.fragmento;
+      assert.equal(fragment.inicio, literal.length);
+      literal += fragment.texto;
+      cursor = read.value.context.continuacao;
+      fragments++;
+      assert.ok(fragments < 30);
+    } while (cursor);
+    assert.ok(fragments > 1);
+    const context = JSON.parse(literal);
+    channelContexts.push(context);
+    assert.equal(context.auditoriasPedagogicas.length, 2);
+    assert.deepEqual(context.studyUnits.map(target => target.auditoriaPedagogica.representationIssues.length), [0, 1, 0]);
+    assert.deepEqual(context.explicacoes.map(target => target.auditoriaPedagogica.representationIssues.length), [2, 0]);
+    for (const target of [...context.studyUnits, ...context.explicacoes]) {
+      const audit = target.auditoriaPedagogica;
+      const shared = context.auditoriasPedagogicas.find(item => item.foco === audit.foco);
+      const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
+      const original = inspections.get(ref.targetId);
+      assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: original }));
+      assert.equal(shared.basis.studyUnits.length, original.pedagogicalBasis.studyUnits.length);
+      assert.deepEqual(shared.basis.studyUnits.map(unit => unit.design), original.pedagogicalBasis.studyUnits.map(unit => unit.design));
+      assert.deepEqual(shared.basis.studyUnits.map(unit => unit.application), original.pedagogicalBasis.studyUnits.map(unit => unit.application));
+      assert.deepEqual(shared.basis.studyUnits.map(unit => unit.content.content), original.pedagogicalBasis.studyUnits.map(unit => unit.content.content));
+      assert.deepEqual(shared.basis.microsequence.explanation.content, original.pedagogicalBasis.microsequence.explanation.content);
+      assert.deepEqual(shared.basis.studyUnits.map(unit => unit.content.content.at(-1).data.flows.map(flow => [flow.kind, flow.from, flow.to, flow.label])),
+        original.pedagogicalBasis.studyUnits.map(unit => unit.content.content.at(-1).data.flows.map(flow => [flow.kind, flow.from, flow.to, flow.label])));
+      assert.equal(shared.basis.dependencies[0].title, original.pedagogicalBasis.dependencies[0].title);
+      // Only outer metadata is filtered; resource envelopes inside basis stay
+      // literal, and complete targets and opaque references are also delivered.
+      if (ref.targetKind === "study_unit") {
+        assert.deepEqual(target.studyUnit, original.pedagogicalBasis.studyUnits.find(unit => unit.id === ref.targetId).content);
+      } else {
+        assert.deepEqual(target.conteudo, normalizeMicrosequenceExplanation(original.pedagogicalBasis.microsequence.explanation));
+      }
+      assert.equal(audit.basis.citations[0].targetTitle, ref.targetId);
+      for (const issue of audit.representationIssues) {
+        assert.match(issue.message, /entrega/u);
+        assert.match(issue.message, /evento final não recebe mensagem/u);
+        assert.doesNotMatch(issue.message, /Dependência fora do alvo/u);
+      }
+    }
+    const report = { summary: "Base examinada.", outcome: "consistent", findings: [],
+      checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+        dimension, result: "sufficient", reason: "Relação examinada na base salva.", evidence: ["Mesmo título"] })) };
+    for (const target of [context.studyUnits[1], context.explicacoes[0]]) {
+      const before = writes;
+      const args = { referencia: target.referenciaInspecao, parecer: report };
+      const rejected = await channelCall(channel, adapter, "registrar_inspecao", args);
+      assert.equal(rejected.status, channel === "actions" ? 422 : 200);
+      assert.equal(rejected.value.error.code, "pedagogical_audit_contradiction");
+      assert.match(rejected.value.error.message, /evento final não recebe mensagem/u);
+      assert.match(rejected.value.error.message, /representationIssues/u);
+      assert.equal(writes, before, "consistent falha antes da persistência");
+      const accepted = await channelCall(channel, adapter, "registrar_inspecao", { ...args, parecer: { ...report,
+        outcome: "needs_attention", findings: ["Mensagem chega a um evento final."],
+        checks: report.checks.map(check => ({ ...check, result: check.dimension === "representation" ? "insufficient" : "sufficient" })) } });
+      assert.equal(accepted.status, 200);
+      assert.ok(accepted.value.context, JSON.stringify(accepted.value));
+      assert.equal(accepted.value.context.inspecaoIA.report.outcome, "needs_attention");
+      assert.equal(writes, before + 1);
+    }
+    const valid = await channelCall(channel, adapter, "registrar_inspecao", {
+      referencia: context.studyUnits[0].referenciaInspecao, parecer: report });
+    assert.ok(valid.value.context, JSON.stringify(valid.value));
+    assert.equal(valid.value.context.inspecaoIA.report.outcome, "consistent");
+    assert.equal(writes, 3);
+  }
+  assert.deepEqual(channelContexts[0], channelContexts[1]);
+});
+
+test("envelopes validados ficam literais na base por MCP e Actions, sem liberar metadados de pacotes adulterados", async () => {
+  const diagram = bpmnInstance({ invalid: true });
+  const code = { id: "literal-code", package: "aralearn.resource.code", version: "1.0.0", data: {
+    prompt: "Examine os campos da configuração.", language: "json",
+    code: '  {"steps":["α","β"],"duration":2,"path":"/dados/😀","requestId":"exemplo-disciplinar"}\r\n'
+  } };
+  const response = { id: "literal-gap", package: "aralearn.response.gap", version: "1.0.0", data: {
+    prompt: "Complete o caminho.", blanks: [{ id: "path-answer", targetInstanceId: code.id,
+      targetPath: "code:path", responseMode: "text", answer: "/dados/😀" }]
+  } };
+  const feedback = { ...code, id: "literal-feedback" };
+  for (const [instance, slot] of [[diagram, "content"], [code, "content"], [response, "response"], [feedback, "feedback"]]) {
+    assert.equal(RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, slot).valid, true);
+  }
+  const privateMetadata = { requestId: "PRIVATE_META_REQUEST", CAS: "PRIVATE_META_CAS", hash: "PRIVATE_META_HASH",
+    revision: 99, steps: ["PRIVATE_META_STEPS"], duration: "PRIVATE_META_DURATION", path: "PRIVATE_META_PATH" };
+  const forged = [
+    { ...code, ...privateMetadata },
+    { ...code, data: { ...code.data, ...privateMetadata } },
+    { ...code, id: "PRIVATE_META_UNKNOWN_PACKAGE", package: "aralearn.resource.uninstalled" },
+    { ...code, id: "PRIVATE_META_UNKNOWN_VERSION", version: "99.0.0" },
+    { ...code, id: "PRIVATE_META_INVALID_DATA", data: { ...code.data, prompt: "" } }
+  ];
+  for (const instance of forged) assert.equal(RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, "content").valid, false);
+  for (const name of ["preparar_revisao", "retomar_curso"]) {
+    const channelPages = [];
+    for (const channel of ["mcp", "actions"]) {
+      const { adapter, inspections } = focalAuditFixture({ unitCount: 2 });
+      const original = adapter.getCourseContentInspection;
+      adapter.getCourseContentInspection = async input => {
+        const read = structuredClone(await original(input));
+        const basis = read.pedagogicalBasis;
+        basis.microsequence.explanation.content = [diagram, code];
+        basis.studyUnits = basis.studyUnits.map(unit => ({ ...unit, ...privateMetadata, content: {
+          id: unit.id, title: unit.content.title, position: 1, role: "practice", topics: [],
+          content: [diagram, code], response, feedback: [feedback]
+        } }));
+        basis.additionalContext = { ...basis.additionalContext, ...privateMetadata, forged };
+        inspections.set(input.targetId, read);
+        return read;
+      };
+      const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE };
+      let cursor, literal = "";
+      const pages = [];
+      do {
+        const read = await channelCall(channel, adapter, name, { ...args, ...(cursor ? { continuacao: cursor } : {}) });
+        assert.equal(read.status, 200);
+        assert.ok(read.value.context, JSON.stringify(read.value));
+        assert.ok(read.envelope.length < 100_000);
+        assert.ok(JSON.stringify(read.value.context).length <= 12_000);
+        assert.ok(Buffer.byteLength(JSON.stringify(read.value.context)) <= 16 * 1024);
+        const fragment = read.value.context.fragmento;
+        assert.equal(fragment.inicio, literal.length);
+        literal += fragment.texto;
+        cursor = read.value.context.continuacao;
+        pages.push(read.value);
+        assert.ok(pages.length < 40);
+      } while (cursor);
+      assert.ok(pages.length > 1);
+      const context = JSON.parse(literal);
+      assert.doesNotMatch(literal, /PRIVATE_META_/u);
+      assert.equal(context.auditoriasPedagogicas.length, 2);
+      for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
+        const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
+        const saved = inspections.get(ref.targetId);
+        assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: saved }));
+        const shared = context.auditoriasPedagogicas.find(item => item.foco === target.auditoriaPedagogica.foco);
+        assert.deepEqual(shared.basis.microsequence.explanation.content, [diagram, code]);
+        for (const unit of shared.basis.studyUnits) {
+          assert.deepEqual(unit.content.content, [diagram, code]);
+          assert.deepEqual(unit.content.response, response);
+          assert.deepEqual(unit.content.feedback, [feedback]);
+          assert.equal(Object.hasOwn(unit, "studyUnit"), false);
+          for (const key of Object.keys(privateMetadata)) assert.equal(Object.hasOwn(unit, key), false);
+          const data = unit.content.content[0].data;
+          assert.ok(data.flows.every(flow => data.nodes.some(node => node.id === flow.from) && data.nodes.some(node => node.id === flow.to)));
+          assert.equal(unit.content.response.data.blanks[0].targetInstanceId, unit.content.content[1].id);
+          assert.equal(unit.content.response.data.blanks[0].targetPath, "code:path");
+        }
+        assert.deepEqual(target.auditoriaPedagogica.basis.additionalContext.forged.map(item => Object.hasOwn(item, "id")),
+          [false, false, false, false, false]);
+      }
+      channelPages.push(pages);
+    }
+    assert.deepEqual(channelPages[0], channelPages[1]);
+  }
+});
+
+test("studyUnits da base conserva formato de linha sem inventar studyUnit undefined", async () => {
+  const adapter = fixture({ units: [studyUnit(1)] });
+  const original = adapter.getCourseContentInspection;
+  adapter.getCourseContentInspection = async input => ({ ...await original(input), pedagogicalBasis: {
+    targetKind: input.targetKind, targetId: input.targetId, microsequence: { id: "ms", goal: "Ler" },
+    planItems: [], dependencies: [], studyUnits: [{ id: input.targetId, content: {
+      title: "Unidade", content: [], feedback: [], response: null
+    }, application: null }]
+  } });
+  const read = await execute(adapter, "preparar_revisao", {});
+  assert.equal(read.context.fragmento, undefined, "examina o objeto antes de serializar undefined");
+  const row = read.context.auditoriasPedagogicas[0].basis.studyUnits[0];
+  assert.equal(Object.hasOwn(row, "studyUnit"), false);
+  assert.deepEqual(row.content, { title: "Unidade", content: [], feedback: [], response: null });
+  assert.deepEqual(read.context.studyUnits[0].studyUnit, studyUnit(1).studyUnit);
+});
+
+test("segunda página lógica entrega sua base completa com foco local, sem depender da primeira", async () => {
+  const { adapter } = focalAuditFixture({ unitCount: 14 });
+  const first = await readLogicalPage(adapter, "preparar_revisao");
+  assert.equal(first.context.auditoriasPedagogicas.length, 2);
+  assert.equal(first.context.temMais, true);
+  const second = await readLogicalPage(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
+  assert.equal(second.context.auditoriasPedagogicas.length, 2, "a leitura sem filtro mantém as explicações do planejamento nesta página");
+  assert.equal(second.context.auditoriasPedagogicas[0].foco, 1);
+  assert.equal(second.context.auditoriasPedagogicas[0].basis.microsequence.goal, "Objetivo 2");
+  assert.equal(second.context.auditoriasPedagogicas[0].basis.studyUnits.length, 12, "a base contém a MS inteira, não só os alvos da página");
+  assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit.id), ["unit-13", "unit-14"]);
+  assert.ok(second.context.studyUnits.every(item => item.auditoriaPedagogica.foco === 1));
+  assert.deepEqual(second.context.explicacoes.map(item => item.auditoriaPedagogica.foco), [2, 1]);
+  assert.equal(second.context.temMais, false);
+  assert.equal(second.context.continuacao, null);
 });
 
 test("curso, busca ou revisão trocados recusam continuação antes de ler outra página", async () => {
