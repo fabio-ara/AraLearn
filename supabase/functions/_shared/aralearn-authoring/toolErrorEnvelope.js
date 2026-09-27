@@ -69,6 +69,13 @@ export function projectExplanationReconciliationBlockers(error) {
   return projectedBlockers(error.details);
 }
 
+// Ocorrência que não localiza (ausente ou ambígua) devolve os candidatos da folha
+// para o autor decidir sobre o trecho sem adivinhar o alvo nem reenviar às cegas.
+export function projectHumanSourceOccurrenceBlockers(error) {
+  if (error?.code !== "invalid_human_source_occurrence") return undefined;
+  return projectedBlockers(error.details);
+}
+
 export function projectHumanWriteRecovery(error) {
   if (!["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error?.code)) {
     return undefined;
@@ -376,8 +383,10 @@ export function toolErrorData(
   const normalized = asAuthoringApiError(error);
   const message = publicErrorMessage(normalized);
   const reconciliationBlockers = projectExplanationReconciliationBlockers(normalized);
+  const occurrenceBlockers = projectHumanSourceOccurrenceBlockers(normalized);
   const details = { ...(compactErrorDetails(normalized.details, normalized.message) ?? {}),
-    ...(reconciliationBlockers ? { blockers: reconciliationBlockers } : {}) };
+    ...(reconciliationBlockers || occurrenceBlockers
+      ? { blockers: reconciliationBlockers ?? occurrenceBlockers } : {}) };
   const issues = errorIssues(normalized, details, message);
   return {
     code: normalized.code,

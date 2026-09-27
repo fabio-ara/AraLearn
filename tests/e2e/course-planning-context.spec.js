@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { coursePlanningContextFixture } from "../helpers/coursePlanningContextFixture.js";
 import { microsequenceReviewExport, REVIEW_COURSE_ID, REVIEW_MS_ID } from "../helpers/courseMicrosequenceReviewFixture.js";
+import { inspectCurricularMapCompleteness } from "../../src/domain/courseCurricularMapSlices.js";
+
+const COVERAGE_GAP_MS_ID = "micro-sem-cobertura";
 
 async function mount(page, options = {}) {
   const fixture = coursePlanningContextFixture(options);
@@ -11,6 +14,17 @@ async function mount(page, options = {}) {
       const module = curriculum.modules[0];
       module.objective = module.lessons[0].objective = module.lessons[0].microsequences[0].objective = objective;
     }
+  }
+  if (options.coverageGap) {
+    const explanationPlan = { purpose: "Relacionar mecanismo e evidência em outra situação.", prerequisites: [], relations: [], sourceIds: [] };
+    const lesson = fixture.read.map.modules[0].lessons[0];
+    lesson.microsequences.push({ microsequenceId: COVERAGE_GAP_MS_ID, title: "Base depois das unidades",
+      objective: "Relacionar mecanismo e evidência.", position: 1, dependencyMicrosequenceIds: [], scopeItemIds: [], explanationPlan });
+    fixture.plan.plan.curriculum.modules[0].lessons[0].microsequences.push({ id: COVERAGE_GAP_MS_ID,
+      title: "Base depois das unidades", objective: "Relacionar mecanismo e evidência.", position: 1,
+      dependencyMicrosequenceIds: [], explanationPlan, role: null });
+    fixture.plan.plan.curriculumScopeItems[0].curriculumTargets[0].didacticMicrosequenceIds = ["micro-context", COVERAGE_GAP_MS_ID];
+    fixture.read.completeness = inspectCurricularMapCompleteness(fixture.read.map);
   }
   const identities = new Map([[REVIEW_COURSE_ID, fixture.courseId], [REVIEW_MS_ID, "micro-context"],
     ["module-review", "module-context"], ["lesson-review", "lesson-context"], ["Curso sintético", fixture.course.title]]);
@@ -398,5 +412,124 @@ test("leitura tardia de fontes não substitui outro contexto e ações mantêm �
     await page.evaluate(() => { document.querySelector("main").scrollTop = 0; });
     await page.screenshot({ path: testInfo.outputPath(`planning-context-${width}.png`) });
   }
+  expect(errors).toEqual([]);
+});
+
+test("cobertura ausente identifica a microssequência e a releitura do mapa libera a aprovação", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const errors = await mount(page, { coverageGap: true });
+  await page.evaluate(() => { document.documentElement.dataset.colorMode = "dark"; });
+  const pendingList = page.locator(".course-curriculum-pending-list");
+  const approval = page.getByRole("region", { name: "Aprovação do mapa", exact: true });
+  const inspected = approval.getByRole("checkbox", { name: "Revisei o mapa completo" });
+  const approve = approval.getByRole("button", { name: "Aprovar mapa inspecionado", exact: true });
+
+  // A pendência nomeia a microssequência sem cobertura e bloqueia a revisão do mapa.
+  await expect(pendingList).toHaveAttribute("open", "");
+  await expect(pendingList.locator("summary")).toHaveText("Pendências do mapa · 1");
+  await expect(pendingList.getByText(
+    /^Microssequência sem cobertura do escopo · Base depois das unidades — Vincule esta microssequência ao escopo pela autoria assistida antes de aprovar o mapa\.$/u
+  )).toBeVisible();
+  await expect(inspected).toBeDisabled();
+  await expect(approve).toBeDisabled();
+  expect(await page.evaluate(() => window.planningHarness.requests.length)).toBe(0);
+
+  await expand(page);
+  const gapNode = page.locator(`[data-curriculum-node-id="${COVERAGE_GAP_MS_ID}"]`);
+  await expect(gapNode).toHaveAttribute("data-curriculum-pending", "true");
+  await expect(page.locator('[data-curriculum-node-id="micro-context"]')).toHaveAttribute("data-curriculum-pending", "false");
+
+  // O filtro de pendências mantém a microssequência sem cobertura e oculta a irmã coberta.
+  await page.getByRole("button", { name: /Mostrar somente pendências do mapa/u }).click();
+  await expect(gapNode).toBeVisible();
+  await expect(page.locator('[data-curriculum-node-id="micro-context"]')).toBeHidden();
+  await page.getByRole("button", { name: /Mostrar somente pendências do mapa/u }).click();
+  await expect(page.locator('[data-curriculum-node-id="micro-context"]')).toBeVisible();
+
+  // Consulta e edição de outro objetivo continuam disponíveis com a pendência ativa.
+  await page.locator('[data-curriculum-context="guidance"][data-target-id="module-context"]').click();
+  const panel = page.locator('[data-course-design-context-dialog]');
+  await expect(panel).toBeVisible();
+  await panel.locator('.course-design-local-editor > summary').click();
+  const draft = panel.getByRole("textbox", { name: "Direção editorial", exact: true });
+  await draft.fill("Consulta a outro objetivo com a pendência de cobertura ativa.");
+  await panel.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
+  await expect(page.locator('[data-curriculum-context="guidance"][data-target-id="module-context"]')).toBeFocused();
+  await expect(pendingList.locator("summary")).toHaveText("Pendências do mapa · 1");
+  expect(await page.evaluate(() => window.planningHarness.requests.length)).toBe(0);
+
+  const geometry = await page.evaluate(() => {
+    const main = document.querySelector("main");
+    const pending = document.querySelector(".course-curriculum-pending-list");
+    const note = document.querySelector(".course-curriculum-approval");
+    const viewportTop = main.getBoundingClientRect().top;
+    return { overflow: document.documentElement.scrollWidth - innerWidth,
+      mainScrollHeight: main.scrollHeight, mainClientHeight: main.clientHeight,
+      pendingTop: pending.getBoundingClientRect().top - viewportTop,
+      pendingHeight: pending.getBoundingClientRect().height,
+      approvalTop: note.getBoundingClientRect().top - viewportTop,
+      approvalHeight: note.getBoundingClientRect().height };
+  });
+  console.log("coverage-gap-geometry", JSON.stringify(geometry));
+  expect(geometry.overflow).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 390, height: 1620 });
+  await page.evaluate(() => { document.querySelector("main").scrollTop = 0; });
+  await page.screenshot({ path: testInfo.outputPath("coverage-missing-390-antes.png"), fullPage: true });
+  await page.screenshot({ path: ".tmp/agent/revisao-v10/coverage-missing-390-antes.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  // O mock passa a cobrir a microssequência; o controle existente relê o mapa persistido.
+  const revision = await page.evaluate(async () => {
+    const { data } = window.planningHarness;
+    const { inspectCurricularMapCompleteness: inspect } = await import("/src/domain/courseCurricularMapSlices.js");
+    const nextRevision = data.course.revision + 1;
+    data.course.revision = nextRevision;
+    data.plan.courseRevision = nextRevision;
+    data.plan.plan.version += 1;
+    data.read.courseRevision = nextRevision;
+    data.read.planVersion = data.plan.plan.version;
+    data.read.mapApprovalReference = `coverage_ready_${nextRevision}_${data.plan.plan.version}`;
+    for (const design of Object.values(data.designs)) design.courseRevision = nextRevision;
+    const microsequence = data.read.map.modules[0].lessons[0].microsequences
+      .find(item => item.microsequenceId === "micro-sem-cobertura");
+    microsequence.scopeItemIds = [data.read.map.scopeItems[0].id];
+    data.read.completeness = inspect(data.read.map);
+    return nextRevision;
+  });
+  await page.locator(".course-authoring-task-menu > summary").click();
+  await page.getByRole("button", { name: "Atualizar curso", exact: true }).click();
+  await expect(pendingList.locator("summary")).toHaveText("Pendências do mapa · 0");
+  const focusAfterRefresh = await page.evaluate(() => {
+    const active = document.activeElement;
+    return { tag: active?.tagName || "", className: String(active?.className || ""),
+      ariaLabel: active?.getAttribute?.("aria-label") || "", role: active?.getAttribute?.("role") || "",
+      mainScrollTop: document.querySelector("main").scrollTop };
+  });
+  console.log("coverage-gap-focus-after-refresh", JSON.stringify(focusAfterRefresh));
+  await expect(pendingList).not.toHaveAttribute("open", "");
+  await pendingList.locator("summary").click();
+  await expect(pendingList.getByText("Nenhuma pendência encontrada.")).toBeVisible();
+  await expect(gapNode).toHaveAttribute("data-curriculum-pending", "false");
+  await expect(inspected).toBeEnabled();
+  await inspected.check();
+  await expect(approve).toBeEnabled();
+  const afterResolution = await page.evaluate(() => ({
+    reads: window.planningHarness.reads.slice(-3),
+    activeTag: document.activeElement?.tagName || "",
+    activeRole: document.activeElement?.getAttribute?.("role") || "",
+    activeAriaLabel: document.activeElement?.getAttribute?.("aria-label") || "",
+    activeCurriculumKey: document.activeElement?.dataset?.curriculumKey || "",
+    inspectedChecked: document.querySelector("[data-curriculum-inspected]")?.checked === true,
+    approvalEnabled: document.querySelector("[data-curriculum-approve]")?.disabled === false,
+    mainScrollTop: document.querySelector("main").scrollTop
+  }));
+  console.log("coverage-gap-after", JSON.stringify(afterResolution));
+  expect(afterResolution.reads).toEqual([`course:${revision}`, `plan:${revision}`, `map:${revision}`]);
+  expect(await page.evaluate(() => window.planningHarness.requests.length)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 1620 });
+  await page.evaluate(() => { document.querySelector("main").scrollTop = 0; });
+  await page.screenshot({ path: testInfo.outputPath("coverage-missing-390-depois.png"), fullPage: true });
+  await page.screenshot({ path: ".tmp/agent/revisao-v10/coverage-missing-390-depois.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
   expect(errors).toEqual([]);
 });

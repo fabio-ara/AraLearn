@@ -104,6 +104,33 @@ export function resolveCourseSourceOccurrences(studyUnit, value, options) {
   return normalizeCourseSourceOccurrences(value, options).map((occurrence) => resolveFromTargets(targets, occurrence));
 }
 
+// Consumidor auditor: reaproveita a resolução da leitura sobre uma lista de folhas
+// já montada, sem reconstruir o registro do componente por ocorrência.
+export function courseSourceOccurrenceResolves(targets, occurrence) {
+  return resolveFromTargets(targets, occurrence).status === "resolved";
+}
+
+// O autor declara o alvo semântico (lugar, recurso e trecho literal); o registro de
+// folhas do componente decide o caminho. Devolve todas as folhas com correspondência,
+// sem escolher entre várias: uma única correspondência localiza a citação, e a
+// ausência ou a pluralidade voltam como decisão para o autor. Prefixo e sufixo
+// distinguem repetições deliberadas dentro da mesma folha.
+export function locateCourseSourceOccurrenceTargets(targets,
+  { slot, resourceId, quote, prefix = null, suffix = null }) {
+  const leaves = new Map();
+  for (const target of targets) {
+    if (target.slot !== slot || target.resourceId !== resourceId || typeof target.text !== "string") continue;
+    if (!leaves.has(target.path)) leaves.set(target.path, target);
+  }
+  const located = [];
+  for (const leaf of leaves.values()) {
+    const matches = matchingQuoteCount(leaf.text, { quote, prefix, suffix });
+    if (matches > 0) located.push({ slot, resourceId, path: leaf.path, label: leaf.label,
+      text: leaf.text, matches });
+  }
+  return located;
+}
+
 // A mesma lista de folhas já usada pelo editor instrumenta a cópia de renderização.
 // Não acrescenta contenteditable nem marcadores ao conteúdo persistido.
 export function courseSourceOccurrenceTextTargets(studyUnit, values, options) {

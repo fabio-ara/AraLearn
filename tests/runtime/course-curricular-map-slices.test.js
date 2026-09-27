@@ -91,3 +91,25 @@ test("recorte rejeita árvore livre, identidade ausente e movimentação para pa
   assert.throws(() => applyCurricularMapSlice(map(), { type: "save_module", moduleId: "novo", title: "Sem objetivo" }));
   assert.throws(() => normalizeCurricularMapSlice({ type: "save_microsequence", microsequenceId: "ms1", dependencyMicrosequenceIds: ["ms0", "ms0"] }));
 });
+
+test("microssequência sem cobertura declara pendência própria sem herdar escopo da irmã", () => {
+  const empty = applyCurricularMapSlice(map(), { type: "save_microsequence", microsequenceId: "ms2", lessonId: "l1",
+    title: "Aplicação", objective: "Aplicar", dependencyMicrosequenceIds: ["ms1"] });
+  assert.deepEqual(empty.modules[0].lessons[0].microsequences[1].scopeItemIds, []);
+  assert.deepEqual(inspectCurricularMapCompleteness(empty).pending.filter(item => item.reason === "coverage_missing"),
+    [{ reason: "coverage_missing", targetId: "ms2" }]);
+  assert.equal(inspectCurricularMapCompleteness(empty).complete, false);
+
+  const filled = applyCurricularMapSlice(empty, { type: "save_microsequence", microsequenceId: "ms2", scopeItemIds: [scopeId] });
+  assert.deepEqual(inspectCurricularMapCompleteness(filled).pending.filter(item => item.reason === "coverage_missing"), []);
+  assert.deepEqual(filled.modules[0].lessons[0].microsequences[0].scopeItemIds, [scopeId]);
+  assert.deepEqual(filled.modules[0].lessons[0].microsequences[1].scopeItemIds, [scopeId]);
+
+  const pendingDependency = applyCurricularMapSlice(empty, { type: "save_microsequence", microsequenceId: "ms2",
+    dependencyMicrosequenceIds: ["micro-ainda-ausente"] });
+  const combined = inspectCurricularMapCompleteness(pendingDependency).pending;
+  assert.ok(combined.some(item => item.reason === "coverage_missing" && item.targetId === "ms2"));
+  assert.ok(combined.some(item => item.reason === "dependency_missing" && item.targetId === "ms2" &&
+    item.reference === "micro-ainda-ausente"));
+  assert.deepEqual(pendingDependency.modules[0].lessons[0].microsequences[0].scopeItemIds, [scopeId]);
+});

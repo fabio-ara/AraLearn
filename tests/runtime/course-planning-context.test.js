@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeCourseAuthoringPlan, projectPersistedCurricularMap } from "../../src/ui/courseAuthoringViewModel.js";
 import { renderCourseCurriculumMap } from "../../src/ui/CourseCurriculumMap.js";
+import { inspectCurricularMapCompleteness } from "../../src/domain/courseCurricularMapSlices.js";
 import { renderCourseDesignPanel } from "../../src/ui/CourseDesignPanel.js";
 import { coursePlanningContextFixture } from "../helpers/coursePlanningContextFixture.js";
 
@@ -70,4 +71,20 @@ test("Parâmetros mantém inventário não associado recolhido e destaca aplica�
   assert.match(html, /<details><summary>Outros itens do curso · 1<\/summary><ul><li[^>]*><strong>Outro conhecimento/u);
   assert.match(html, /Descrição preservada/u);
   assert.doesNotMatch(html, /Unidades produzidas<\/dt><dd>0/u);
+});
+
+test("microssequência sem cobertura aparece como pendência com próximo passo e bloqueia a aprovação", () => {
+  const fixture = coursePlanningContextFixture();
+  const uncovered = structuredClone(fixture.read.map);
+  uncovered.modules[0].lessons[0].microsequences[0].scopeItemIds = [];
+  const read = { ...fixture.read, map: uncovered, completeness: inspectCurricularMapCompleteness(uncovered) };
+  const projection = projectPersistedCurricularMap(read, normalizeCourseAuthoringPlan(fixture.plan));
+  assert.equal(projection.completeness.complete, false);
+  assert.ok(projection.completeness.pending.some(item => item.reason === "coverage_missing" && item.targetId === "micro-context"));
+  const html = renderCourseCurriculumMap({ courseId: fixture.courseId, ...projection, curriculumMapStatus: "draft",
+    approval: { planVersion: fixture.read.planVersion, inspected: true }, contextual: true });
+  assert.match(html, /Microssequência sem cobertura do escopo/u);
+  assert.match(html, /Vincule esta microssequência ao escopo pela autoria assistida antes de aprovar o mapa/u);
+  assert.match(html, /data-curriculum-pending="true"/u);
+  assert.match(html, /data-curriculum-approve[^>]* disabled/u);
 });

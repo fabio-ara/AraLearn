@@ -17,6 +17,12 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260928093000 — manifesto da produção autônoma focal
+
+A revisão do manifesto passa a identificar o contrato da primeira parte autônoma, introduzido por `20260928090000_autonomous_first_part.sql`. As duas funções de gravação preservam a exigência de mapa aprovado como padrão; o serviço pode permitir um mapa em rascunho quando deriva essa autorização do mandato explícito do processo. O parâmetro não é oferecido ao autor e não cria aprovação humana. Autorização, comparação de revisões e recibos permanecem na mesma transação.
+
+A migração de fechamento avança a revisão declarada pelo manifesto e sincroniza a identidade do catálogo após a orientação compartilhada sobre a função de títulos, legendas e instruções. O catálogo conserva seus componentes. O escritor do mapa passa também a exigir cobertura declarada por cada microssequência antes da aprovação; rascunhos continuam aceitando essa pendência para edição incremental. A alteração não modifica conteúdo, preferências da conta ou estado de revisão dos cursos existentes.
+
 ## 20260917232000 — validação focal por dependência pedagógica
 
 A produção parcial valida as unidades novas ou substituídas juntamente com as unidades preservadas das mesmas microssequências. Unidades de outras microssequências da parte deixam de participar da validação apenas por compartilharem o mesmo lote operacional. A conclusão explícita continua validando o acumulado completo da parte.

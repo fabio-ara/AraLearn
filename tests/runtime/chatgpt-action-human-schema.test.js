@@ -349,7 +349,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "8.1.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "9.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -967,7 +967,7 @@ test('#302 Actions e MCP validam fontes estruturadas, papéis do vínculo e trec
       papeisSugeridos:['leitura_complementar'],bibliografia:{doi:'10.1000/exemplo',dataDeAcesso:'2026-09-05'}},
     ancoras:[{seletor:{tipo:'paginas',paginaInicial:1,paginaFinal:2},hashDoPdf:'a'.repeat(64)}],
     vinculos:[{unidade:1,vinculo:2,relacao:'quoted_from',papeis:['tecnica_conceitual'],ancoras:[1],
-      ocorrencias:[{lugar:'conteudo',recurso:1,folha:'text',trecho:'Trecho literal'}]}]};
+      ocorrencias:[{lugar:'conteudo',recurso:1,trecho:'Trecho literal'}]}]};
   const schemas=[COURSE_HUMAN_TASKS.find(task=>task.name==='manter_fonte').inputSchema,
     operation('manter_fonte').requestBody.content['application/json'].schema];
   for(const schema of schemas){
@@ -977,6 +977,8 @@ test('#302 Actions e MCP validam fontes estruturadas, papéis do vínculo e trec
     assert.equal(validate(noRoles),false);
     const inferredStatus=structuredClone(sample);inferredStatus.vinculos[0].ocorrencias[0].status='resolved';
     assert.equal(validate(inferredStatus),false);
+    const leafName=structuredClone(sample);leafName.vinculos[0].ocorrencias[0].folha='text';
+    assert.equal(validate(leafName),false,"o nome interno da folha não pertence ao contrato da ocorrência");
     const legacy=structuredClone(sample);legacy.metadados.autoria='Nome não decomposto';
     assert.equal(validate(legacy),false);
   }

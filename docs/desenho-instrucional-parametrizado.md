@@ -569,6 +569,15 @@ restaura herança. Interface, MCP e Actions chegam ao mesmo domínio. A pessoa
 indica o curso e o escopo a consultar ou ajustar; o servidor verifica a versão
 atual antes de gravar e conserva a identidade de uma tentativa repetida.
 
+Ao ajustar uma configuração pelo MCP ou por Actions, o campo opcional `motivo`
+preserva a justificativa da escolha no registro existente. Ele pode identificar
+uma condição de pesquisa em linguagem humana, por exemplo “Condição A: comparar
+casos com variação apenas dos dados”. A justificativa acompanha os parâmetros,
+a direção editorial ou a delegação indicados na chamada; sua presença não altera
+origem, precedência ou proteção de uma condição fixa. Se for omitida, permanece
+a descrição padrão da operação. Não é preciso criar uma entidade de experimento
+para conservar essa informação junto da escolha aplicada.
+
 ## Identificadores para integração
 
 Os nomes abaixo identificam as decisões no catálogo e nos registros de

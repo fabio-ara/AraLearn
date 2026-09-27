@@ -481,14 +481,14 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
           relacao: "supported_by",
           papeis: ["tecnica_conceitual"],
           ancoras: [1],
-          ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text",
+          ocorrencias: [{ lugar: "conteudo", recurso: 1,
             trecho: units.items[0].studyUnit.content[0].data.text }]
         }, {
           explicacao: "O que é um socket",
           relacao: "supported_by",
           papeis: ["tecnica_conceitual"],
           ancoras: [1],
-          ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text",
+          ocorrencias: [{ lugar: "conteudo", recurso: 1,
             trecho: sharedExplanations()[0].conteudo.content[0].data.text }]
         }]
       }
@@ -571,7 +571,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       rawArguments: { curso: title, explicacoes: [{ ...sharedExplanations()[0], fontes: [{
         fonte: "Referência sobre sockets", relacao: "supported_by",
         papeis: ["tecnica_conceitual"], ancoras: [1],
-        ocorrencias: [{ lugar: "conteudo", recurso: 1, folha: "text",
+        ocorrencias: [{ lugar: "conteudo", recurso: 1,
           trecho: sharedExplanations()[0].conteudo.content[0].data.text }]
       }] }] } });
     assert.equal((await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision,

@@ -24,7 +24,7 @@ export const COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS = [
   definition("excluir_curso", "Excluir curso próprio", "Prepara uma referência inequívoca. Após a decisão de excluir, use a confirmação original; a limpeza de arquivos segue o ciclo de vida existente.", ["curso"], {
     confirmacao: continuation
   }, true),
-  definition("salvar_ramo_curricular", "Incluir ou editar ramo curricular", "Após contexto e escopo, constrói o mapa por módulo, lição ou microssequência. Sem alvo, inclui; destino indica o pai. Usa referências humanas. Preserva campos omitidos e descendentes.", ["curso", "tipo"], {
+  definition("salvar_ramo_curricular", "Incluir ou editar ramo curricular", "Constrói o mapa por módulo, lição ou microssequência. Sem alvo, inclui; destino indica o pai. Usa referências humanas e preserva campos omitidos e descendentes. Sem cobertura do escopo, a microssequência fica pendente e não permite aprovar o mapa.", ["curso", "tipo"], {
     tipo: { type: "string", enum: Object.keys(kindByHuman) }, alvo: path, destino: path,
     titulo: { type: "string", minLength: 1, maxLength: 300 }, objetivo: { type: "string", minLength: 1, maxLength: 2000 },
     posicao: { type: "integer", minimum: 1, maximum: 64 }, dependencias: refs, cobertura: refs,
@@ -256,8 +256,16 @@ async function perform(name, { adapter, principal, args, deadlineAt }) {
     }
     throw error;
   });
+  // A cobertura declarada vem do comando já validado: lista vazia é decisão
+  // pendente e a ausência da lista só é pendência numa microssequência nova.
+  // Editar outro campo não afirma nada sobre a cobertura salva e não vira aviso.
+  const declaredCoverage = prepared.command?.scopeItemIds;
+  const coverageMissing = name === "salvar_ramo_curricular" && kindByHuman[args.tipo] === "microsequence" &&
+    (Array.isArray(declaredCoverage) ? declaredCoverage.length === 0 : !args.alvo);
   return { result: result.idempotent ? "Recuperei a mesma alteração confirmada." : name === "alterar_curso" ? "Atualizei os metadados indicados do curso."
-    : name === "salvar_ramo_curricular" ? "Salvei o recorte curricular. A aprovação do mapa depende da inspeção da versão salva."
+    : name === "salvar_ramo_curricular" ? (coverageMissing
+      ? "Salvei o recorte curricular. Esta microssequência ainda não cobre item de escopo: indique a cobertura com referências de escopo antes de aprovar o mapa."
+      : "Salvei o recorte curricular. A aprovação do mapa depende da inspeção da versão salva.")
       : name === "remover_ramo_curricular" ? "Removi o ramo indicado e seus descendentes." : name === "duplicar_ramo_curricular" ? "Dupliquei o ramo completo."
         : name === "reordenar_unidades" ? "Salvei a ordem das unidades, preservando o conteúdo e os registros aplicados." : "Atualizei a posição do ramo completo.",
     ...buildHumanNavigationEnvelope(createHumanNavigation(adapter, { courseId: prepared.courseId,

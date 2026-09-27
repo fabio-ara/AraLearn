@@ -655,3 +655,38 @@ test("referência desatualizada, incompleta ou de outro ator não aprova; recibo
     }
   } finally { await db.close(); }
 });
+
+test("aprovacao exige cobertura declarada por microssequencia sem copiar escopo da irma", async () => {
+  const db = await fixture();
+  try {
+    await db.exec(await load("20260928093000_autonomous_first_part_runtime_contract.sql"));
+    // O escopo inteiro já é coberto pela irmã: a microssequência nova sem
+    // cobertura salva como rascunho, mas não aprova enquanto não declarar o
+    // próprio vínculo, e nada é copiado do vizinho.
+    const requestId = "map-target-coverage";
+    const sister = map();
+    micros(sister).push({ ...micro("micro-sem-escopo", 1), scopeItemIds: [] });
+    const saved = await save(db, sister, { requestId });
+    assert.equal(saved.approval, "draft");
+    assert.deepEqual(await canonical(db), sister);
+    assert.deepEqual(await save(db, sister, { requestId, expected: await revisions(db) }), { ...saved, idempotent: true });
+    const revisionsBefore = await revisions(db);
+    await assert.rejects(save(db, sister, { approved: true }), code("23514"));
+    assert.deepEqual(await revisions(db), revisionsBefore);
+    assert.equal(await value(db, "select curriculum_map_status value from private.course_instructional_plans"), "draft");
+    // Declarar a cobertura da microssequência nova permite aprovar o mapa.
+    const filled = structuredClone(sister);
+    micros(filled)[1].scopeItemIds = [SCOPE];
+    await save(db, filled);
+    assert.equal((await save(db, filled, { approved: true })).approval, "approved");
+    // Editar outro campo segue possível; a pendência volta sem inventar escopo.
+    const edited = structuredClone(filled);
+    micros(edited)[1].title = "Titulo ajustado";
+    micros(edited)[1].scopeItemIds = [];
+    assert.equal((await save(db, edited)).approval, "draft");
+    assert.equal(micros(await canonical(db))[1].title, "Titulo ajustado");
+    assert.deepEqual(micros(await canonical(db))[1].scopeItemIds, []);
+    await assert.rejects(save(db, edited, { approved: true }), code("23514"));
+    assert.equal(await value(db, "select curriculum_map_status value from private.course_instructional_plans"), "draft");
+  } finally { await db.close(); }
+});

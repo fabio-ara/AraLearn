@@ -1,0 +1,81 @@
+{
+  "contract": "aralearn.evidence.local-ui-proof.v1",
+  "natureza": "Prova local de UI do estado coverage_missing no mapa curricular de autoria. Não é prova hospedada nem validação humana.",
+  "escopo": {
+    "superficie": "mapa curricular (Planejamento) da autoria",
+    "estado": "microssequência sem cobertura do escopo (coverage_missing)",
+    "larguraCss": 390,
+    "arquivoDeProdutoAlterado": "src/ui/CourseCurriculumMap.js",
+    "arquivoDeTeste": "tests/e2e/course-planning-context.spec.js"
+  },
+  "execucao": {
+    "comando": "node scripts/runE2eTests.mjs tests/e2e/course-planning-context.spec.js -g \"cobertura ausente\"",
+    "resultado": "1 passed (6.8s)",
+    "navegador": "chromium isolado do próprio caso, com fechamento automático; sem Chrome persistente, CUA, curso real ou aba manual",
+    "workers": 1,
+    "suitesReexecutadas": "somente o caso focal; nenhuma outra suíte, build completo ou commit"
+  },
+  "mudancaDeTexto": {
+    "campo": "PENDING_NEXT_STEPS.coverage_missing",
+    "antes": "Abra a microssequência e indique a cobertura de escopo antes de aprovar o mapa.",
+    "depois": "Vincule esta microssequência ao escopo pela autoria assistida antes de aprovar o mapa.",
+    "motivo": "o mapa não expõe controle para gravar scopeItemIds; a redação anterior mandava executar uma ação indisponível na tela"
+  },
+  "cenario": {
+    "escopo": "1 item, integralmente coberto pela microssequência irmã Base antes das unidades",
+    "novaMicrossequencia": "Base depois das unidades, com objetivo e plano e sem cobertura",
+    "fonte": "fixture e harness reais do spec; completude recalculada pelo domínio real"
+  },
+  "sequenciaObservada": [
+    "Pendências do mapa · 1, aberta, nomeando a microssequência sem cobertura e o novo próximo passo",
+    "nó da nova microssequência com data-curriculum-pending=true; irmã coberta com false",
+    "caixa Revisei o mapa completo e botão Aprovar mapa inspecionado desabilitados; nenhuma escrita",
+    "filtro de pendências mantém a microssequência sem cobertura visível e oculta a irmã coberta",
+    "consulta e edição de outro objetivo (Orientações do módulo) continuam disponíveis com a pendência ativa, com retorno de foco ao botão acionador",
+    "resolução simulada no mapa persistido e releitura pelo controle existente Atualizar curso: course:2, plan:2, map:2",
+    "após a releitura: Pendências do mapa · 0, Nenhuma pendência encontrada., data-curriculum-pending=false, caixa habilitada e aprovação habilitada sem ser acionada"
+  ],
+  "geometria390x844": {
+    "overflowHorizontal": 0,
+    "mainScrollHeight": 1536,
+    "mainClientHeight": 844,
+    "distanciaEntrePendenciaEAprovacao": 1026,
+    "nota": "as capturas usam a mesma largura de 390 px com 1620 px CSS de altura para enquadrar contorno completo e aprovação"
+  },
+  "foco": {
+    "medicao": "document.activeElement (funcional, não visual)",
+    "aposReleitura": "permaneceu no controle do próprio mapa Orientações de Mecanismos (data-curriculum-context=guidance, data-target-id=module-context), com main.scrollTop = 0",
+    "estadoFinal": "caixa de inspeção marcada como elemento ativo",
+    "ressalva": "as capturas não exibem anel de foco; nenhuma alegação visual de foco"
+  },
+  "capturas": [
+    {
+      "arquivo": "cobertura-mapa-prova-local-390-antes.png",
+      "papel": "pendência identificando a microssequência sem cobertura e aprovação bloqueada",
+      "bytes": 287336,
+      "sha256": "a2919390827315c63b914e3e429f38efe5e1be634c945a4a6e5d3c28f93cf2d2",
+      "formato": "png",
+      "dimensoes": "1024x4253",
+      "viewportCss": "390x1620",
+      "byteIdenticoAoGerado": true
+    },
+    {
+      "arquivo": "cobertura-mapa-prova-local-390-depois.png",
+      "papel": "pendência zerada após a releitura e aprovação liberada",
+      "bytes": 251605,
+      "sha256": "012985bcb01c2ce7b7722412d6370b4cf5c3ca67b600e177c1f567c10b0c5e19",
+      "formato": "png",
+      "dimensoes": "1024x4253",
+      "viewportCss": "390x1620",
+      "byteIdenticoAoGerado": true
+    }
+  ],
+  "limites": [
+    "Prova local com controller mock e servidor de artefato do caso focal; não é prova hospedada.",
+    "Resolução da cobertura simulada no mapa persistido do harness: o mapa não tem controle de UI para gravar scopeItemIds; a prova cobre a releitura pelo controle real e a mudança de estado.",
+    "A aprovação foi habilitada e não acionada; nenhuma escrita ocorreu.",
+    "Verificação de foco é funcional (activeElement); as capturas não mostram contorno focado.",
+    "A inspeção autônoma dos pixels confirmou texto legível e ausência de corte horizontal; nenhuma validação humana.",
+    "A execução de navegador abrange somente o caso focal. A integração alinhou a asserção no teste de projeção do mapa, que passou em 6/6 testes."
+  ]
+}

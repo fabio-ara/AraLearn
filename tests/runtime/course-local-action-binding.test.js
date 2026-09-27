@@ -7,7 +7,8 @@ import { COURSE_HUMAN_TASKS } from "../../supabase/functions/_shared/aralearn-au
 import { humanMaterializationUnitPlan, reconcileHumanExplanation, explanationContentBasis } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
-import { resolveCourseSourceOccurrence } from "../../src/domain/courseSourceOccurrences.js";
+import { listCourseSourceOccurrenceTargets, locateCourseSourceOccurrenceTargets }
+  from "../../src/domain/courseSourceOccurrences.js";
 
 const CONFIG = Object.freeze({ projectUrl: "http://127.0.0.1:54321",
   publishableKey: "synthetic-public-key", adminKey: "synthetic-admin-key" });
@@ -55,11 +56,11 @@ test("fixture dos canais vincula seis requisitos, fontes literais e reconciliaç
         assert.equal(link.relacao, "supported_by");
         assert.deepEqual(link.ancoras, [1]);
         const occurrence = link.ocorrencias[0];
-        const resolved = resolveCourseSourceOccurrence(entry.conteudo, { occurrenceId: "synthetic-occurrence",
+        const options = { targetKind: entry.conteudo.role ? "study_unit" : "microsequence_explanation" };
+        const located = locateCourseSourceOccurrenceTargets(listCourseSourceOccurrenceTargets(entry.conteudo, options), {
           slot: "content", resourceId: entry.conteudo.content[occurrence.recurso - 1].id,
-          path: occurrence.folha, quote: occurrence.trecho, prefix: null, suffix: null },
-        { targetKind: entry.conteudo.role ? "study_unit" : "microsequence_explanation" });
-        assert.equal(resolved.status, "resolved");
+          quote: occurrence.trecho, prefix: occurrence.prefixo ?? null, suffix: occurrence.sufixo ?? null });
+        assert.equal(located.length, 1, "o trecho declarado localiza uma única folha do componente");
       }
     }
     for (const unit of lot.materialization.unidades.filter(entry => entry.conteudo.role === "practice")) {
