@@ -21,7 +21,7 @@ Para configurar a conexão pela interface, siga o [manual ilustrado do ChatGPT](
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas semânticas** do catálogo **8.0.0**. O OpenAPI as oferece por
+definem as **56 tarefas semânticas** do catálogo **10.0.0**. O OpenAPI as oferece por
 **30 operações HTTP**: 24 diretas e seis grupos contextuais. Uma operação HTTP
 é o pedido enviado a um endereço do serviço; um grupo permite escolher entre
 várias tarefas por esse mesmo endereço. Argumentos, validação e efeitos derivam
@@ -130,6 +130,8 @@ essas operações de tornar um curso acessível e disponibilizar seus arquivos.
 
 A fila fornece `referenciasComparacao` por alvo. Envie a referência inteira em `preparar_revisao.comparacao` e recupere suas continuações antes de examinar o conteúdo e as fontes anteriores e vigentes. A lista compacta conserva hashes e versões; a comparação recupera o conteúdo literal sem reduzi-lo.
 
+O núcleo compartilhado com MCP informa quando uma correção invalida a aplicação instrucional. Nesse caso, releia o conteúdo, verifique e reaplique as escolhas com `aplicar_configuracao_instrucional` e faça nova inspeção. As condições fixadas permanecem; declarações antigas não são copiadas para texto novo. Parecer `consistent` é recusado enquanto faltar aplicação instrucional na base focal; `needs_attention` pode registrar a insuficiência.
+
 `registrar_inspecao` recebe uma base focal e exige cinco dimensões (`alignment`,
 `evidence`, `representation`, `feedback` e `sufficiency`) com justificativas e
 *quotes* existentes no recorte. O servidor confere versão e `basisHash` e
@@ -234,7 +236,7 @@ OpenAPI. Por isso, a importação do artefato corrente constitui a verificação
 desse limite na prática.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
-que conservam as 56 tarefas do catálogo 8.0.0. Essa organização permite
+que conservam as 56 tarefas do catálogo 10.0.0. Essa organização permite
 selecionar cada tarefa com seus próprios argumentos sem ampliar o número de
 operações apresentado ao editor. A aceitação do arquivo pelo editor, a
 publicação do assistente e a execução contra o serviço são verificações

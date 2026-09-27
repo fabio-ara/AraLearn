@@ -390,6 +390,127 @@ test("manual usa lista e conteúdo em cache, mantém versão aberta e verifica r
   assert.equal(checked.project.courses.length, 0);
 });
 
+test("reentrada no Estudo revalida a revisão do Curso aberto quando a atualização comum foi adiada", async () => {
+  const previous = course(COURSE_A, "a");
+  previous.modules[0].lessons[0].microsequences.push({
+    id: "micro-a-next", title: "Qual é o próximo passo?", goal: "Explicar o próximo passo.",
+    role: "explain", dependsOn: [], covers: [], checks: [], errors: [], studyUnits: []
+  });
+  const current = structuredClone(previous);
+  const baseUnit = previous.modules[0].lessons[0].microsequences[0].studyUnits[0];
+  const nextUnit = { ...structuredClone(baseUnit), id: "unit-a-next-1", title: "Primeiro passo" };
+  nextUnit.content = nextUnit.content.map((item) => ({ ...item, id: `${item.id}-next` }));
+  current.modules[0].lessons[0].microsequences[1].studyUnits.push(nextUnit);
+
+  let revision = 1;
+  const documents = { 1: previous, 2: current };
+  const reads = { list: 0, content: 0, access: 0 };
+  const studyUnitCount = () => documents[revision].modules[0].lessons[0].microsequences
+    .reduce((total, microsequence) => total + microsequence.studyUnits.length, 0);
+  const descriptor = () => ({
+    courseId: COURSE_A, title: "Curso a", revision, ownership: "owned", canEdit: true,
+    canObserve: true, visibility: "private", publicFileAccess: "restricted",
+    moduleCount: 1, lessonCount: 1, microsequenceCount: 2,
+    studyUnitCount: studyUnitCount(), completedStudyUnitCount: 0
+  });
+  const bridge = {
+    async listAccessibleCourses() { reads.list += 1; return { items: [descriptor()], hasMore: false }; },
+    async listCachedCourses() { return { items: [descriptor()], hasMore: false }; },
+    async loadCourse() {
+      reads.content += 1;
+      return { course: descriptor(), revision, document: { courses: [documents[revision]] }, rows: [] };
+    },
+    async checkCourseAccess(courseId) {
+      reads.access += 1;
+      return { contract: "aralearn.course.v1", courseId, revision };
+    },
+    async clearCourse() {}
+  };
+  const api = {
+    async loadPersonalState() {
+      return { contract: "aralearn.course-personal-state.v2", courseId: COURSE_A, revision: 1,
+        updatedAt: "2026-09-27T10:00:00.000Z",
+        state: { version: 2, progress: { version: 3, lessons: {} }, reviewMarks: {} } };
+    },
+    async mutatePersonalState() { throw new Error("Esta prova não grava estado pessoal"); }
+  };
+  const navigatorValue = { onLine: true };
+  const repository = new CourseStudyRepository({ bridge, api, cache: cache(),
+    synchronizationMode: "automatic", windowValue: { navigator: navigatorValue } });
+  const microsequenceUnits = (project, microsequenceId) => project.courses[0].modules[0].lessons[0]
+    .microsequences.find((microsequence) => microsequence.id === microsequenceId).studyUnits.length;
+  try {
+    await repository.initialize();
+    await repository.loadCourseById(COURSE_A);
+    assert.equal(microsequenceUnits(repository.loadProject(), "micro-a-next"), 0);
+    const preservedReference = [COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"];
+    await repository.setStudyUnitCompleted(preservedReference, true, { synchronize: false });
+    assert.equal(repository.isStudyUnitCompleted(preservedReference), true);
+    assert.equal(repository.loadRuntimeStatus(COURSE_A).pending, true);
+
+    // Alteração externa de revisão; a atualização comum foi adiada antes da reentrada.
+    revision = 2;
+    await repository.loadCourseById(COURSE_A);
+
+    const project = repository.loadProject();
+    assert.equal(repository.courseList[0].revision, 2);
+    assert.equal(repository.loadedCourseById.get(COURSE_A).revision, 2);
+    assert.equal(microsequenceUnits(project, "micro-a-next"), 1,
+      "A reentrada precisa usar as unidades da revisão atual");
+    assert.equal(repository.isStudyUnitCompleted(preservedReference), true,
+      "A atualização do conteúdo não pode perder progresso local pendente");
+    assert.equal(repository.loadRuntimeStatus(COURSE_A).pending, true,
+      "A atualização do conteúdo não pode limpar estado sujo local");
+    assert.equal(repository.loadCourseSummaries()[0].studyUnitCount, 2,
+      "A lista também precisa refletir as unidades atuais");
+    assert.equal(repository.loadRuntimeStatus(COURSE_A).stale, false);
+    assert.equal(reads.access, 1, "A revisão é verificada na reentrada, sem custo extra na primeira abertura");
+    assert.equal(reads.list, 2);
+    assert.equal(reads.content, 2);
+
+    // Sem conexão, a reentrada reutiliza a cópia carregada sem consultar a nuvem.
+    navigatorValue.onLine = false;
+    revision = 3;
+    await repository.loadCourseById(COURSE_A);
+    assert.equal(reads.access, 1);
+    assert.equal(repository.loadedCourseById.get(COURSE_A).revision, 2);
+    assert.equal(microsequenceUnits(repository.loadProject(), "micro-a-next"), 1);
+  } finally { await repository.close({ flush: false }); }
+});
+
+test("reentrada automática purga Curso cuja autorização foi revogada", async () => {
+  let revoked = false;
+  let cleared = 0;
+  const descriptor = { courseId: COURSE_A, title: "Curso", revision: 1,
+    ownership: "owned", canEdit: true };
+  const bridge = {
+    async listAccessibleCourses() { return { items: [descriptor], hasMore: false }; },
+    async loadCourse() { return { course: descriptor, revision: 1,
+      document: { courses: [course(COURSE_A, "a")] }, rows: [] }; },
+    async checkCourseAccess() {
+      if (revoked) throw Object.assign(new Error("Acesso revogado"), { status: 403 });
+      return descriptor;
+    },
+    async clearCourse() { cleared += 1; }
+  };
+  const api = {
+    async loadPersonalState() { return { contract: "aralearn.course-personal-state.v2",
+      courseId: COURSE_A, revision: 1, updatedAt: "2026-09-27T10:00:00.000Z",
+      state: { version: 2, progress: { version: 3, lessons: {} }, reviewMarks: {} } }; },
+    async mutatePersonalState() { throw new Error("não usado"); }
+  };
+  const repository = new CourseStudyRepository({ bridge, api, cache: cache(),
+    synchronizationMode: "automatic", windowValue: { navigator: { onLine: true } } });
+  try {
+    await repository.initialize();
+    await repository.loadCourseById(COURSE_A);
+    revoked = true;
+    await assert.rejects(() => repository.loadCourseById(COURSE_A), /Acesso revogado/u);
+    assert.deepEqual(repository.loadProject().courses, []);
+    assert.equal(cleared, 1);
+  } finally { await repository.close({ flush: false }); }
+});
+
 test("acesso confirmado após reconexão retira offline em Manual sem sincronizar conteúdo ou pendências", async (context) => {
   for (const offlineSource of ["lista", "curso"]) {
     await context.test(offlineSource, async () => {

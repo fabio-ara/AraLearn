@@ -5,8 +5,12 @@ import { buildCourseAuthoringComparison, assembleCourseAuthoringExport } from ".
 import test from "node:test";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
+import { createCourseApiHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseApiServer.js";
+import { bpmnInstance } from "../helpers/bpmnFixture.js";
+import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const USER_ID = "20000000-0000-4000-8000-000000000002";
@@ -160,6 +164,280 @@ function clientWithFetch(fetchImpl, { accessToken = "token", userId = USER_ID } 
     })
   };
 }
+
+// Exercise the production client, HTTP envelope, handler and router together.
+// Only persistence/authentication are in-memory doubles; no real course is read.
+function clientWithRouter(adapter) {
+  const principal = { actorId: USER_ID, authenticationKind: "application", scopes: ["authoring:write"] };
+  const handler = createCourseApiHandler({ allowedOrigins: new Set(["https://app.example"]),
+    adapter: { resolveApplicationPrincipal: async () => principal, ...adapter } });
+  return clientWithFetch((url, init) => handler(new Request(url, init))).client;
+}
+
+test("BPMN cliente-router confirma edição textual de Unidade, feedback e Explicação com diagnóstico", async context => {
+  for (const slot of ["content", "feedback", "explanation"]) await context.test(slot, async () => {
+    const unit = editableStudyUnit("Diagrama salvo");
+    if (slot !== "explanation") unit[slot] = [bpmnInstance({ invalid: true })];
+    const { id, position, ...content } = unit;
+    const row = slot === "explanation"
+      ? { entityType: "microsequence", entityId: "micro-a", parentType: "lesson", parentId: "lesson-a", position: 0,
+        content: { title: "Microssequência", goal: "Ler o processo", role: "explain", dependsOn: [], covers: [], checks: [], errors: [],
+          explanation: { title: "Base salva", content: [bpmnInstance({ invalid: true })] } } }
+      : { entityType: "study_unit", entityId: id, parentType: "microsequence", parentId: "micro-a", position, content };
+    const resource = slot === "explanation" ? row.content.explanation.content[0] : unit[slot][0];
+    resource.data.nodes.push({ ...resource.data.nodes.find(node => node.kind === "end_event"),
+      id: "isolated-final", label: "Final isolado" });
+    // A separate participant has a start but no final; other pools cannot supply it.
+    resource.data.participants.push({ id: "open-process", label: "Processo incompleto", lanes: [{ id: "lane", label: "Responsável" }] });
+    resource.data.nodes.push({ id: "open-start", kind: "start_event", label: "Iniciar", participant: "open-process", lane: "lane" },
+      { id: "open-task", kind: "task", label: "Executar", participant: "open-process", lane: "lane" });
+    resource.data.flows.push({ id: "open-sequence", kind: "sequence", from: "open-start", to: "open-task" });
+    resource.data.participants.push({ id: "missing-start", label: "Processo sem início", lanes: [{ id: "lane", label: "Responsável" }] });
+    resource.data.nodes.push({ id: "startless-task", kind: "task", label: "Executar", participant: "missing-start", lane: "lane" },
+      { id: "startless-end", kind: "end_event", label: "Concluir", participant: "missing-start", lane: "lane" });
+    resource.data.flows.push({ id: "startless-sequence", kind: "sequence", from: "startless-task", to: "startless-end" });
+    let saved = []; let writes = 0;
+    const receipt = { courseId: COURSE_ID, revision: 5, operation: "commit_course_composition",
+      createdCount: 0, updatedCount: 1, upsertedCount: 1, deletedCount: 0, idempotent: false,
+      updatedAt: "2026-09-27T12:00:00.000Z", channel: "application", applicationOrigin: "manual",
+      expectedStudyUnitVersion: slot === "explanation" ? null : 2, deepLink: `https://app.example/#/authoring/courses/${COURSE_ID}`,
+      ...(slot === "explanation" ? { expectedMicrosequenceVersion: 2, microsequenceId: "micro-a", microsequenceVersion: 3, changeOrigin: "human" } : {}) };
+    const client = clientWithRouter({
+      async listCourseEntities(options) {
+        assert.equal(options.principal.actorId, USER_ID);
+        assert.equal(options.courseId, COURSE_ID); assert.equal(options.expectedRevision, 4);
+        return { items: structuredClone(saved), hasMore: false, nextCursor: null };
+      },
+      async commitCourseComposition() { writes++; return structuredClone(receipt); }
+    });
+    const command = { requestId: "request-bpmn-client-001", courseId: COURSE_ID, expectedCourseRevision: 4,
+      expectedStudyUnitVersion: 2, didacticMicrosequenceId: "micro-a", studyUnit: unit, sourceLinks: [], origin: "manual" };
+    const run = () => slot === "explanation" ? client.saveMicrosequenceExplanation({ courseId: COURSE_ID,
+      microsequenceId: "micro-a", expectedRevision: 4, expectedEntityVersion: 2,
+      requestId: command.requestId, entity: row, sourceLinks: [] }) : client.commitCourseComposition(command);
+    await assert.rejects(run, error => error.code === "bpmn_semantics_invalid");
+    assert.equal(writes, 0);
+    saved = [structuredClone(row)];
+    resource.data.nodes[1].label = "Texto revisto";
+    const result = await run();
+    assert.equal(writes, 1);
+    assert.equal(result.changed, true);
+    assert.equal(result.courseRevision ?? result.revision, 5);
+    assert.equal(result.studyUnitVersion ?? result.microsequenceVersion, 3);
+    assert.equal(result.bpmnReview.state, "needs_review");
+    assert.equal(result.bpmnReview.issues[0].blocking, false);
+    assert.match(result.bpmnReview.issues[0].message, /evento final não recebe mensagem/u);
+    assert.equal(result.bpmnReview.issues[0].target, row.content.title);
+    assert.ok(result.bpmnReview.issues.some(issue => issue.code === "bpmn_event_sequence_input" && issue.nodeId === "isolated-final"));
+    assert.ok(result.bpmnReview.issues.some(issue => issue.code === "bpmn_start_without_end" && issue.nodeId === "open-start"));
+    assert.ok(result.bpmnReview.issues.some(issue => issue.code === "bpmn_end_without_start" && issue.nodeId === "startless-end"));
+    resource.data.nodes[1].kind = "service_task";
+    await assert.rejects(run, error => error.code === "bpmn_semantics_invalid");
+    resource.data.nodes[1].kind = "user_task";
+    saved[0].parentId = "another-scope";
+    await assert.rejects(run, error => error.code === "bpmn_semantics_invalid");
+    assert.equal(writes, 1);
+    saved[0].parentId = row.parentId;
+    const structural = await client.commitCourseStructuralComposition({ requestId: command.requestId,
+      courseId: COURSE_ID, expectedRevision: 4, upserts: [row], deletes: [],
+      sourceAttributionApplications: [slot === "explanation"
+        ? { targetKind: "microsequence_explanation", targetId: "micro-a", sourceLinks: [] }
+        : { studyUnitId: unit.id, sourceLinks: [] }] });
+    assert.deepEqual(structural.bpmnReview, result.bpmnReview);
+    // Strict receipts still reject extra keys, altered identity/counts and invalid diagnostics.
+    const wire = { ...receipt, bpmnReview: result.bpmnReview };
+    const parse = payload => {
+      const reader = clientWithFetch(async () => jsonResponse({ ok: true, data: payload })).client;
+      return slot === "explanation" ? reader.saveMicrosequenceExplanation({ courseId: COURSE_ID,
+        microsequenceId: "micro-a", expectedRevision: 4, expectedEntityVersion: 2,
+        requestId: command.requestId, entity: row, sourceLinks: [] }) : reader.commitCourseComposition(command);
+    };
+    assert.equal(Object.hasOwn(await parse(receipt), "bpmnReview"), false);
+    const unchanged = await parse({ ...wire, revision: 4, updatedCount: 0, upsertedCount: 0, idempotent: true,
+      ...(slot === "explanation" ? { microsequenceVersion: 2 } : {}) });
+    assert.equal(unchanged.changed, false);
+    assert.equal(unchanged.studyUnitVersion ?? unchanged.microsequenceVersion, 2);
+    assert.deepEqual(unchanged.bpmnReview, result.bpmnReview);
+    for (const bad of [{ ...wire, extra: true }, { ...wire, updatedCount: 2 }, { ...wire, courseId: AVATAR_ID },
+      { ...wire, bpmnReview: { ...result.bpmnReview, state: "pass" } },
+      { ...wire, bpmnReview: { state: "needs_review", issues: [] } },
+      { ...wire, bpmnReview: { state: "needs_review", issues: [{ ...result.bpmnReview.issues[0], blocking: true }] } },
+      { ...wire, bpmnReview: { state: "needs_review", issues: [{ ...result.bpmnReview.issues[0], extra: true }] } }]) {
+      await assert.rejects(() => parse(bad), TypeError);
+    }
+    for (const patch of [{ code: "bpmn_unknown" }, { path: "outside[0]" }, { resourceId: "" }, { target: "" }, { nodeId: "wrong-kind" }]) {
+      await assert.rejects(() => parse({ ...wire, bpmnReview: { state: "needs_review",
+        issues: [{ ...result.bpmnReview.issues[0], ...patch }] } }), TypeError);
+    }
+    await assert.rejects(() => client.requestCourseApi(`/v1/courses/${COURSE_ID}/composition`, { method: "POST",
+      body: { requestId: command.requestId, expectedRevision: 4, upserts: [row], deletes: [], previous: row } }));
+    assert.equal(writes, 2);
+  });
+});
+
+test("BPMN replay atravessa o writer padrão após avanço real da revisão sem permitir nova autoria inválida", async context => {
+  for (const slot of ["content", "feedback", "explanation"]) await context.test(slot, async () => {
+    const unit = editableStudyUnit("BPMN salvo");
+    if (slot !== "explanation") unit[slot] = [bpmnInstance({ invalid: true })];
+    const { id, position, ...content } = unit;
+    const row = slot === "explanation" ? { entityType: "microsequence", entityId: "micro-a", parentType: "lesson", parentId: "lesson-a", position: 0,
+      content: { title: "Microssequência", goal: "Ler o processo", role: "explain", dependsOn: [], covers: [], checks: [], errors: [],
+        explanation: { title: "Explicação", content: [bpmnInstance({ invalid: true })] } } }
+      : { entityType: "study_unit", entityId: id, parentType: "microsequence", parentId: "micro-a", position, content };
+    let revision = 4, entityVersion = 2, writes = 0, writerCalls = 0;
+    let saved = [structuredClone(row)], access = true, readError = null, afterSummary = null;
+    const receipts = new Map(), rpcCalls = [];
+    // Stateful RPC transport models the SQL receipt/hash-before-CAS contract.
+    // The client, handler, router AND CourseSupabaseAdapter writer are production code.
+    const adapter = new CourseSupabaseAdapter({ supabaseUrl: "https://project.invalid", serverApiKey: "sb_secret_test",
+      publishableKey: "publishable", publicAppUrl: "https://app.example", attempts: 1,
+      fetchImpl: async (url, init) => {
+        const body = parsedBody(init), rpc = url.split("/").at(-1); rpcCalls.push({ rpc, body: structuredClone(body) });
+        assert.equal(body.p_actor_id, USER_ID); assert.equal(body.p_course_id, COURSE_ID);
+        if (rpc === "commit_course_composition_for_actor_v1") writerCalls++;
+        if (!access) return jsonResponse({ code: "42501", message: "Acesso negado." }, 403);
+        if (rpc === "list_owned_course_entities_for_actor_v1") {
+          if (readError) return jsonResponse(readError, readError.status);
+          if (body.p_expected_revision !== revision) return jsonResponse({ code: "40001", message: "O Curso mudou." }, 409);
+          return jsonResponse({ courseId: COURSE_ID, revision, items: structuredClone(saved), hasMore: false, nextCursor: null });
+        }
+        if (rpc === "get_owned_course_for_actor_v1") {
+          assert.equal(body.p_include_outline, false);
+          const result = { courseId: COURSE_ID, revision };
+          afterSummary?.(); afterSummary = null;
+          return jsonResponse(result);
+        }
+        assert.equal(rpc, "commit_course_composition_for_actor_v1");
+        const { p_request_id: requestId, ...intent } = body;
+        const hash = createHash("sha256").update(JSON.stringify(intent)).digest("hex");
+        const prior = receipts.get(requestId);
+        if (prior) return prior.hash === hash ? jsonResponse({ ...prior.result, idempotent: true })
+          : jsonResponse({ code: "23514", message: "requestId reutilizado com composição incompatível." }, 409);
+        if (body.p_expected_revision !== revision ||
+            (body.p_expected_microsequence_version ?? body.p_expected_study_unit_version) !== entityVersion) {
+          return jsonResponse({ code: "40001", message: "O Curso mudou." }, 409);
+        }
+        writes++; revision++; entityVersion++; saved = structuredClone(body.p_upserts);
+        const result = { courseId: COURSE_ID, revision, operation: "commit_course_composition", createdCount: 0, updatedCount: 1,
+          upsertedCount: 1, deletedCount: 0, idempotent: false, updatedAt: "2026-09-27T12:00:00.000Z", channel: "application",
+          applicationOrigin: "manual", expectedStudyUnitVersion: body.p_expected_study_unit_version,
+          ...(slot === "explanation" ? { expectedMicrosequenceVersion: body.p_expected_microsequence_version,
+            microsequenceId: "micro-a", microsequenceVersion: entityVersion, changeOrigin: "human" } : {}) };
+        receipts.set(requestId, { hash, result }); return jsonResponse(result);
+      }
+    });
+    const client = clientWithRouter({
+      listCourseEntities: args => adapter.listCourseEntities(args), getCourse: args => adapter.getCourse(args),
+      commitCourseComposition: args => adapter.commitCourseComposition(args)
+    });
+    const resource = slot === "explanation" ? row.content.explanation.content[0] : unit[slot][0];
+    resource.data.nodes[1].label = "Texto revisto";
+    const command = slot === "explanation" ? { courseId: COURSE_ID, microsequenceId: "micro-a", expectedRevision: 4,
+      expectedEntityVersion: 2, requestId: "bpmn-replay-original-001", entity: row, sourceLinks: [] }
+      : { courseId: COURSE_ID, expectedCourseRevision: 4, expectedStudyUnitVersion: 2, requestId: "bpmn-replay-original-001",
+        didacticMicrosequenceId: "micro-a", studyUnit: unit, sourceLinks: [], origin: "manual" };
+    const run = value => slot === "explanation" ? client.saveMicrosequenceExplanation(value) : client.commitCourseComposition(value);
+    const first = await run(command);
+    assert.equal(writes, 1); assert.equal(revision, 5); assert.equal(first.idempotent, false);
+    const replay = await run(command);
+    assert.deepEqual(replay, { ...first, idempotent: true });
+    assert.equal(writes, 1); assert.equal(revision, 5);
+    const replacement = structuredClone(command);
+    replacement.requestId = "bpmn-replay-replacement-001";
+    if (slot === "explanation") {
+      replacement.expectedRevision = 5; replacement.expectedEntityVersion = 3;
+      replacement.entity.content.explanation.content = editableStudyUnit().content;
+    } else {
+      replacement.expectedCourseRevision = 5; replacement.expectedStudyUnitVersion = 3;
+      replacement.studyUnit[slot] = editableStudyUnit().content.map(item => ({ ...item, id: `replacement-${slot}` }));
+    }
+    await run(replacement);
+    const currentContent = structuredClone(saved);
+    assert.equal(writes, 2); assert.equal(revision, 6);
+    assert.deepEqual(await run(command), { ...first, idempotent: true });
+    assert.deepEqual(saved, currentContent); assert.equal(writes, 2);
+    const changedHash = structuredClone(command);
+    if (slot === "explanation") changedHash.entity.content.explanation.title += " alterada";
+    else changedHash.studyUnit.title += " alterada";
+    await assert.rejects(() => run(changedHash), { code: "request_id_conflict" });
+    assert.equal(writes, 2);
+    // No receipt, but current entity version: only the stale course CAS prevents this write.
+    const unknown = { ...command, requestId: "bpmn-replay-unknown-001" };
+    if (slot === "explanation") unknown.expectedEntityVersion = entityVersion;
+    else unknown.expectedStudyUnitVersion = entityVersion;
+    await assert.rejects(() => run(unknown), { code: "stale_course_state" });
+    assert.equal(writes, 2); assert.deepEqual(saved, currentContent);
+    const callsBeforeInvalid = writerCalls;
+    const newInvalid = structuredClone(command); newInvalid.requestId = "bpmn-new-invalid-001";
+    if (slot === "explanation") { newInvalid.expectedRevision = 6; newInvalid.expectedEntityVersion = 4; }
+    else { newInvalid.expectedCourseRevision = 6; newInvalid.expectedStudyUnitVersion = 4; }
+    await assert.rejects(() => run(newInvalid), { code: "bpmn_semantics_invalid" });
+    assert.equal(writerCalls, callsBeforeInvalid);
+    // A future revision is NOT safe for replay: it may become current concurrently.
+    const future = structuredClone(newInvalid);
+    if (slot === "explanation") future.expectedRevision = 7; else future.expectedCourseRevision = 7;
+    afterSummary = () => { revision = 7; };
+    await assert.rejects(() => run(future), { code: "stale_course_state" });
+    assert.equal(writerCalls, callsBeforeInvalid); assert.equal(writes, 2);
+    // Neither failed reads nor denied access can open the replay route.
+    for (const error of [{ code: "22023", message: "Leitura inválida.", status: 422 },
+      { code: "service_unavailable", message: "Serviço indisponível.", status: 503 }]) {
+      readError = error;
+      await assert.rejects(() => run(command));
+      assert.equal(writerCalls, callsBeforeInvalid);
+    }
+    readError = null; access = false;
+    await assert.rejects(() => run(command), error => error.status === 403);
+    assert.equal(writerCalls, callsBeforeInvalid);
+    access = true; afterSummary = () => { access = false; };
+    await assert.rejects(() => run(command), error => error.status === 403);
+    assert.equal(writerCalls, callsBeforeInvalid + 1); // Writer rechecks access after the summary.
+    assert.equal(writes, 2); assert.deepEqual(saved, currentContent);
+    const originalRpcBodies = rpcCalls.filter(c => c.rpc === "commit_course_composition_for_actor_v1" && c.body.p_request_id === command.requestId);
+    assert.ok(originalRpcBodies.length >= 5);
+    assert.deepEqual(originalRpcBodies[1].body, originalRpcBodies[0].body);
+    assert.deepEqual(originalRpcBodies[2].body, originalRpcBodies[0].body);
+    assert.ok(originalRpcBodies.every(c => c.body.p_expected_revision === 4));
+  });
+});
+
+test("BPMN cliente-router recupera confirmação persistida sem reler origem avançada ou revogada", async context => {
+  for (const unavailable of ["course_revision_changed", "forbidden"]) await context.test(unavailable, async () => {
+    const studyUnit = editableStudyUnit(); studyUnit.content = [bpmnInstance({ invalid: true })];
+    const data = studyUnit.content[0].data;
+    const end = data.nodes.find(node => node.kind === "end_event");
+    end.kind = "task"; // A saved draft can also lack the final of an explicit process.
+    const original = structuredClone(studyUnit);
+    let queries = 0; let reads = 0;
+    let receipt = { contract: "aralearn.owned-course-copy-recovery.v1", status: "confirmed",
+      sourceCourseId: COURSE_ID, targetCourseId: AVATAR_ID, currentCourseRevision: 8,
+      currentStudyUnitVersion: null, studyUnitId: studyUnit.id, initialCourseRevision: 2,
+      initialStudyUnitVersion: 1, applicationOrigin: "manual", confirmedAt: "2026-09-27T12:00:00.000Z" };
+    const client = clientWithRouter({
+      async listCourseEntities() { reads++; throw Object.assign(new Error(unavailable), { code: unavailable, status: 403 }); },
+      async commitCourseComposition() { assert.fail("Recuperação não pode escrever."); },
+      async recoverOwnedCourseCopy(value) {
+        queries++; assert.deepEqual(value.studyUnit, original);
+        assert.equal(value.expectedSourceCourseRevision, 4);
+        return structuredClone(receipt);
+      }
+    });
+    const command = { requestId: "request-bpmn-recovery-001", sourceCourseId: COURSE_ID, expectedSourceCourseRevision: 4,
+      expectedStudyUnitVersion: 2, didacticMicrosequenceId: "micro-a", studyUnit, origin: "manual" };
+    const confirmed = await client.recoverOwnedCourseCopy(command);
+    assert.deepEqual(confirmed, receipt);
+    assert.equal(Object.hasOwn(confirmed, "bpmnReview"), false);
+    for (const status of ["unchanged", "unresolved"]) {
+      receipt = { ...receipt, status, targetCourseId: null, currentCourseRevision: null, currentStudyUnitVersion: null,
+        initialCourseRevision: null, initialStudyUnitVersion: null, confirmedAt: null };
+      assert.deepEqual(await client.recoverOwnedCourseCopy(command), receipt);
+    }
+    assert.equal(queries, 3); assert.equal(reads, 0);
+    assert.deepEqual(studyUnit, original);
+    receipt.extra = true;
+    await assert.rejects(() => client.recoverOwnedCourseCopy(command), /recuperação inválida/u);
+  });
+});
 
 test("lista Cursos com cursor completo e sem expor recipiente indireto", async () => {
   let request = null;

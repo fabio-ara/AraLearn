@@ -1,4 +1,5 @@
 import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
+import { inspectBpmnSemantics } from "../resources/packages/bpmn-process/semantics.js";
 import { inspectCourseAudioReadiness } from "./courseMedia.js";
 
 export const PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([
@@ -103,6 +104,16 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
   } };
 }
 
+function representationIssues(content, targetKind, targetId) {
+  const target = `${targetKind === "study_unit" ? "Unidade" : "Explicação"} “${content?.title ?? ""}”`;
+  return ["content", "feedback"].flatMap(slot => (content?.[slot] ?? []).flatMap((instance, index) => {
+    if (instance.package !== "aralearn.resource.bpmn_process") return [];
+    return inspectBpmnSemantics(instance.data).map(issue => ({ ...issue, targetKind, targetId,
+      resourceId: instance.id, path: `${slot}[${index}].data.${issue.path}`,
+      message: `${target}, ${slot === "feedback" ? "Feedback" : "Conteúdo"}, diagrama ${index + 1}: ${issue.message}` }));
+  }));
+}
+
 // A focal packet is assembled by the database under the same revision/hash as
 // the report. The projection makes the demanded operation and collected answer
 // inspectable, without asking the model to join IDs or infer hidden feedback.
@@ -114,7 +125,15 @@ export function projectPedagogicalAudit(basis) {
       requirements: basis.planItems.filter(item => item.kind === "evidence_requirement") });
     return { unitId: unit.id, ...audit };
   });
-  return { basis, units, instruction: "Faça uma segunda leitura crítica do percurso salvo. Compare objetivo, Explicação, operação exigida, evidência esperada, resposta efetivamente recolhida e feedback. Julgue alinhamento, evidência, representação, feedback e suficiência; cite passagens reais. Examine a combinação das lacunas, os distratores e o conjunto de alternativas corretas. Procure atalhos óbvios, repetições mecânicas, explicação rasa ou quantidade artificialmente mínima. No feedback, verifique se cada trecho ajuda a compreender a resposta ou superar o erro; a extensão deve servir à necessidade, sem repetir a Explicação inteira nem acrescentar títulos internos dispensáveis. Considere também o feedback específico das alternativas. Uma alternativa ou lacuna não é insuficiente por contagem: demonstre qual relação necessária foi perdida. " +
+  // Inspect only the saved target/percurso. Dependencies and citations remain
+  // context; legacy-compatible materialization keeps its separate checks above.
+  const representations = [
+    ...(basis.targetKind === "microsequence_explanation"
+      ? representationIssues(basis.microsequence?.explanation, basis.targetKind, basis.targetId) : []),
+    ...basis.studyUnits.filter(unit => basis.targetKind === "microsequence_explanation" || unit.id === basis.targetId)
+      .flatMap(unit => representationIssues(unit.content, "study_unit", unit.id))
+  ];
+  return { basis, units, representationIssues: representations, instruction: "Faça uma segunda leitura crítica do percurso salvo. Compare objetivo, Explicação, operação exigida, evidência esperada, resposta efetivamente recolhida e feedback. Julgue alinhamento, evidência, representação, feedback e suficiência; cite passagens reais. Examine a combinação das lacunas, os distratores e o conjunto de alternativas corretas. Procure atalhos óbvios, repetições mecânicas, explicação rasa ou quantidade artificialmente mínima. No feedback, verifique se cada trecho ajuda a compreender a resposta ou superar o erro; a extensão deve servir à necessidade, sem repetir a Explicação inteira nem acrescentar títulos internos dispensáveis. Considere também o feedback específico das alternativas. Uma alternativa ou lacuna não é insuficiente por contagem: demonstre qual relação necessária foi perdida. " +
     "Em citations, confronte as ocorrências locais com as passagens das âncoras selecionadas, considerando a relação declarada em cada vínculo. A pertinência geral da obra não demonstra suporte a uma afirmação que o vínculo declara sustentar ou citar. Não cruze âncoras de fontes diferentes nem presuma pareamento por posição quando há várias ocorrências. Se a âncora só indicar uma página, confira a passagem no destino ou registre que falta verificação; fonte existente não é fonte ausente. Divergência ou suporte declarado mas não demonstrado devem constar no parecer e impedir declarar consistência. " +
     "Confronte também os parâmetros aplicados em design com sua realização no conteúdo e na ordem: formas de explicação, oportunidades, variação e posição da prática. Uma tentativa anterior à explicação pode investigar um alvo ainda não ensinado; examine se a tarefa é compreensível com os pré-requisitos disponíveis e se o ensino posterior desenvolve esse alvo. Não confunda essa tentativa com uso de conhecimento já estabelecido nem a conte como ensino. Valor registrado não demonstra condição realizada: explicite divergências e preserve condições de pesquisa. " +
     "Insuficiência exige correção e nova inspeção; a gravação não certifica aprendizagem." };
@@ -123,9 +142,18 @@ export function projectPedagogicalAudit(basis) {
 export function requirePedagogicalAuditConsistency(report, basis) {
   const audit = projectPedagogicalAudit(basis);
   const units = basis.targetKind === "study_unit" ? audit.units.filter(unit => unit.unitId === basis.targetId) : audit.units;
+  if (report.outcome === "consistent" && audit.representationIssues.length) {
+    throw Object.assign(new TypeError(`Há inconsistências BPMN no alvo inspecionado. ${audit.representationIssues[0].message} Consulte representationIssues na auditoria, registre as insuficiências e corrija antes de declarar consistência.`),
+      { code: "pedagogical_audit_contradiction", issues: audit.representationIssues });
+  }
   if (report.outcome === "consistent" && units.some(unit => unit.issues.length)) {
     throw Object.assign(new TypeError("Há contradições objetivas na prática. Registre as insuficiências e corrija antes de declarar consistência."),
       { code: "pedagogical_audit_contradiction", issues: units.flatMap(unit => unit.issues) });
+  }
+  if (report.outcome === "consistent" && basis.studyUnits.some(unit =>
+      (basis.targetKind !== "study_unit" || unit.id === basis.targetId) && unit.application == null)) {
+    throw Object.assign(new TypeError("A base de aplicação instrucional está ausente. Verifique ou reaplique as escolhas sobre o conteúdo atual antes de declarar consistência."),
+      { code: "pedagogical_audit_unapplied_design" });
   }
   const hasPractice = basis.studyUnits.some(unit => (basis.targetKind !== "study_unit" || unit.id === basis.targetId) && unit.content?.response);
   if (report.checks.some(check => check.result === "not_applicable" &&

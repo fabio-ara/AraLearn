@@ -20,17 +20,23 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **8.0.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **10.0.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
 estruturados de entrada, ou schemas, são gerados dessa fonte.
 
-As mudanças aditivas desta revisão preservam a versão `8.0.0`: `consultar_componentes`
+Na versão 8.0.0, a descoberta foi ampliada sem quebra: `consultar_componentes`
 aceita `{}` para descobrir o catálogo completo em páginas de oito, e os campos de
 continuação e `processo` são opcionais. Clientes que já usam os campos anteriores
 continuam compatíveis; quando a lista completa for necessária, o cliente deve
 seguir `temMais` e `continuacao` até a última página.
+
+No contrato corrente, citações e reconciliação pedagógica identificam o recurso e
+o trecho por referências de autoria; o servidor deriva os localizadores internos.
+A reconciliação também pode declarar a função do recurso inteiro. A leitura focal
+e a auditoria preservam a distinção entre intenção, configuração aplicada e
+conteúdo efetivamente produzido.
 
 | Leitura | Quando usar |
 | --- | --- |
@@ -218,12 +224,16 @@ conteúdo revisado é explicada nas [regras de revisão e acesso](aralearn-contr
 
 ### Inspeção pedagógica
 
+Quando uma correção altera a estrutura de uma unidade, `aplicar_correcoes` informa a invalidação da aplicação instrucional e orienta a releitura, a reaplicação contextual das escolhas e a nova inspeção. A tarefa existente `aplicar_configuracao_instrucional` retoma esse fluxo, preservando as condições fixadas e exigindo uma declaração sobre o conteúdo atual. Alterar somente título ou vínculos de fontes não é apresentado como invalidação estrutural. O recibo não copia declarações antigas para conteúdo novo.
+
 `registrar_inspecao` usa a referência da base focal efetivamente lida. O
 parecer deve trazer cinco dimensões — `alignment`, `evidence`,
 `representation`, `feedback` e `sufficiency` — e *quotes* que existam no
 conteúdo salvo. O servidor vincula o parecer à versão e ao `basisHash`, detecta
 quando a base precisa de nova inspeção e recusa evidência que não esteja no
 recorte.
+
+Um parecer `consistent` é recusado quando falta a aplicação instrucional de uma unidade relevante da base focal. `needs_attention` permanece disponível para registrar a insuficiência. Isso verifica a existência da base; o auditor ainda precisa confrontar as escolhas aplicadas com a experiência realmente proposta.
 
 O relatório semântico é julgamento do auditor. Hash, quotes, validade
 estrutural e estado `consistent` não são garantia de qualidade pedagógica nem

@@ -17,6 +17,7 @@ import { materializeHumanCoursePart as materializeCompletePart, humanMaterializa
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
 import { createDefaultCourseAudioConfig, COURSE_MEDIA_COURSE_MAX_BYTES } from "../../src/domain/courseMedia.js";
+import { bpmnInstance } from "../helpers/bpmnFixture.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 function explanationFixtures() {
@@ -61,6 +62,32 @@ async function prepareMaterialization(adapter, units, options = {}) {
   return preflightHumanCourseMaterialization({ adapter, principal: PRINCIPAL, context,
     planUnits: units.map(humanMaterializationUnitPlan), ...options });
 }
+
+test("BPMN na materialização recusa produção inválida e diagnostica legado preservado", async () => {
+  for (const slot of ["content", "feedback"]) {
+    const adapter = adapterFixture();
+    const candidate = unit();
+    candidate.conteudo[slot].push(bpmnInstance({ invalid: true }));
+    const blocked = await prepareMaterialization(adapter, [candidate]);
+    assert.ok(blocked.blockers.some(issue => issue.code === "bpmn_message_to_end"), slot);
+    assert.equal(adapter.calls.length, 0);
+    const saved = persistedStudyUnit("saved-bpmn-unit", 1, { content: candidate.conteudo });
+    adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(saved)], hasMore: false, nextCursor: null });
+    candidate.unidade = 1;
+    candidate.conteudo[slot].at(-1).data.nodes[1].label = "Texto revisto";
+    const retained = await prepareMaterialization(adapter, [candidate]);
+    assert.equal(retained.state, "ready", JSON.stringify(retained.blockers));
+    assert.equal(retained.bpmnReview.state, "needs_review");
+    assert.equal(retained.bpmnReview.issues[0].blocking, false);
+    candidate.conteudo[slot].at(-1).data.nodes[1].kind = "service_task";
+    assert.ok((await prepareMaterialization(adapter, [candidate])).blockers.some(issue => issue.code === "bpmn_message_to_end"));
+  }
+  const adapter = adapterFixture();
+  const explanation = { microssequencia: "DNS", conteudo: { title: "Base BPMN", content: [bpmnInstance({ invalid: true })] }, fontes: [] };
+  const blocked = await prepareMaterialization(adapter, [unit()], { explanations: [explanation] });
+  assert.ok(blocked.blockers.some(issue => issue.code === "bpmn_message_to_end" && issue.explanation === 1));
+  assert.equal(adapter.calls.length, 0);
+});
 
 test("materialização pelo catálogo relê processo pessoal e mantém cadência, revisão e curso independentes", async () => {
   for (const focus of ["content", "full_cycle"]) {
@@ -1578,14 +1605,18 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
     mutate(units) {
       units[0].aplicacaoPedagogica.praticas.pop();
     },
-    code: "human_materialization_insufficient_practice"
+    code: "human_materialization_insufficient_practice",
+    requirement: "Classificar casos de rede.",
+    message: /2 oportunidades distintas declaradas; mínimo efetivo 3/iu
   }, {
     mutate(units) {
       for (const practice of units[0].aplicacaoPedagogica.praticas) {
         practice.dimensoesVariadas = ["case_or_data"];
       }
     },
-    code: "human_materialization_insufficient_practice"
+    code: "human_materialization_insufficient_practice",
+    requirement: "Classificar casos de rede.",
+    message: /3 oportunidades distintas declaradas; mínimo efetivo 3; faltam as dimensões de variação exigidas: Nível de apoio/iu
   }];
   for (const scenario of cases) {
     const units = unitScopedMaterialization();
@@ -1600,9 +1631,23 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
     }), (error) => {
       const blocker = preflightBlocker(error, scenario.code);
       if (scenario.message) assert.match(blocker.message, scenario.message);
+      if (scenario.requirement) {
+        assert.equal(blocker.requirement, scenario.requirement);
+        assert.equal(blocker.microsequence, "DNS");
+      }
       return true;
     }, scenario.code);
   }
+  const validAdapter = unitScopedPedagogicalAdapter();
+  await materializeHumanCoursePart({
+    adapter: validAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    complete: true,
+    units: unitScopedMaterialization()
+  });
+  assert.equal(validAdapter.calls.length, 1, "a prática válida continua materializável");
   await assert.rejects(() => materializeHumanCoursePart({
     adapter: unitScopedPedagogicalAdapter({ blockedComponent: true }),
     principal: PRINCIPAL,

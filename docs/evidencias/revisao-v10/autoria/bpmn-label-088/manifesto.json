@@ -1,0 +1,59 @@
+{
+  "product": "candidata local 0.0.88",
+  "dataCourseRevision": 122,
+  "sourceSha256": "acedba4d515db419ad97b879dc8258ffe74ac4e336c6484134ef55d777b87d43",
+  "resource": "u1bpmn",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "zoom": 0.64,
+  "hosts": [
+    "Unidade",
+    "Explicação"
+  ],
+  "label": "Avisar chegada para entrega",
+  "baseline": {
+    "textWidth": 139.74,
+    "windowWidth": 110.55
+  },
+  "after": {
+    "lines": 2,
+    "textHeight": 23.54,
+    "windowWidth": 110.55
+  },
+  "inspection": "Quatro casos finais inspecionados pelo executor; raiz inspecionou dark Unidade e light Explicação.",
+  "limit": "Projeção local de dados reais, sem escrita de curso; não conformidade semântica completa, nem prova hospedada.",
+  "files": [
+    {
+      "file": "bpmn-label-088-rev122-baseline-dark-390-unidade.png",
+      "sha256": "0a1a472e3ee42bb586adfdb658b8883831894575344c875f6c615874adc15b29",
+      "bytes": 43431
+    },
+    {
+      "file": "bpmn-label-088-rev122-baseline-dark-390-explicacao.png",
+      "sha256": "083054c8a90e1ddf724e520a6fe4ae36de0a1892e90c804ea7da88d31649c68c",
+      "bytes": 39600
+    },
+    {
+      "file": "bpmn-label-088-rev122-fixed-dark-390-unidade.png",
+      "sha256": "b013d1376839dfed7bd13ada8436f98015ce3e1c4e27da4a74919ceaca58e2a5",
+      "bytes": 44769
+    },
+    {
+      "file": "bpmn-label-088-rev122-fixed-dark-390-explicacao.png",
+      "sha256": "3b1179b1c1d0d939c85858e1515451a73b6849d27002ad7d6c164dd986e851bd",
+      "bytes": 40119
+    },
+    {
+      "file": "bpmn-label-088-rev122-fixed-light-390-unidade.png",
+      "sha256": "64c7186fbb84c3bd4b6fd7603a631a7492a27c5856531bf5fe16c8a8563595d9",
+      "bytes": 45053
+    },
+    {
+      "file": "bpmn-label-088-rev122-fixed-light-390-explicacao.png",
+      "sha256": "1772e0ebf888e7289685d9edfa23332111cc9f53e7c0c991f49c3bc27c9821c2",
+      "bytes": 40235
+    }
+  ]
+}

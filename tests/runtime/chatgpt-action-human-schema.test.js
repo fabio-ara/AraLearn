@@ -7,7 +7,8 @@ import Ajv2020 from "ajv/dist/2020.js";
 
 import {
   COURSE_HUMAN_TASK_CATALOG_METADATA,
-  COURSE_HUMAN_TASKS
+  COURSE_HUMAN_TASKS,
+  courseHumanTasksForPrincipal
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
   COURSE_ACTION_TASK_GROUPS,
@@ -375,6 +376,20 @@ test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real"
       group.includes(candidate.name) && candidate.annotations.readOnlyHint !== true);
     assert.equal(action["x-openai-isConsequential"], consequential, task.name);
   }
+});
+
+test("produção expõe alinhamento pedagógico em MCP e Actions", () => {
+  const guidance = "Relacione objetivo, operação do estudante e evidência da resposta.";
+  const mcpTools = courseHumanTasksForPrincipal({ actorId: "author-fixture",
+    scopes: ["authoring:read", "authoring:write"] });
+  const name = "materializar_parte";
+  const canonical = COURSE_HUMAN_TASKS.find(task => task.name === name);
+  assert.ok(canonical.description.includes(guidance));
+  assert.equal(mcpTools.find(task => task.name === name).description, canonical.description);
+  assert.equal(actionTools.find(task => task.name === name).description, canonical.description);
+  assert.equal(courseActionOperationName(name), name);
+  assert.equal(operation(name).description, canonical.description);
+  assert.ok(planningGuidance.includes(guidance));
 });
 
 test("#272 argumentos humanos são documentados e não recebem controles internos", () => {

@@ -2,11 +2,52 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
 import { canonicalAuthoringValue } from "../../src/domain/courseAuthoringBasis.js";
+import { bpmnInstance } from "../helpers/bpmnFixture.js";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+
+test("BPMN nas correções mantém legado textual e recusa nova estrutura em Unidade, feedback e Explicação", async () => {
+  for (const slot of ["content", "feedback", "explanation"]) {
+    const adapter = adapterFixture();
+    const candidate = correctedContent("Revisão BPMN");
+    const instance = bpmnInstance({ invalid: true });
+    let prior = null;
+    if (slot === "explanation") {
+      candidate.content = [instance];
+      const read = adapter.listCourseEntities;
+      adapter.listCourseEntities = async () => {
+        const page = await read();
+        if (prior) page.items[0].content.explanation = prior;
+        return page;
+      };
+    } else {
+      candidate[slot].push(instance);
+      const read = adapter.listCourseStudyUnits;
+      adapter.listCourseStudyUnits = async () => {
+        const page = await read();
+        if (prior) page.items[0].studyUnit = { ...prior, id: "unit-1", position: 1 };
+        return page;
+      };
+    }
+    const input = { adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" }, course: "Curso de Redes",
+      ...(slot === "explanation" ? { explanations: [{ microssequencia: "Microssequência A", conteudo: { title: candidate.title, content: candidate.content } }] }
+        : { corrections: [{ unidade: 1, conteudo: candidate }] }) };
+    await assert.rejects(() => applyHumanCourseCorrections(input), error => error.code === "bpmn_semantics_invalid" && error.status === 422);
+    assert.equal(adapter.commits.length, 0);
+    prior = structuredClone(slot === "explanation" ? input.explanations[0].conteudo : candidate);
+    instance.data.nodes[1].label = "Texto revisto";
+    const result = await applyHumanCourseCorrections(input);
+    assert.equal(result.context.bpmnReview.state, "needs_review");
+    assert.equal(result.context.bpmnReview.issues[0].blocking, false);
+    assert.equal(adapter.commits.length, 1);
+    instance.data.nodes[1].kind = "service_task";
+    await assert.rejects(() => applyHumanCourseCorrections(input), error => error.code === "bpmn_semantics_invalid");
+    assert.equal(adapter.commits.length, 1);
+  }
+});
 
 function sourceLink(suffix) {
   return {
@@ -204,6 +245,60 @@ test("correção só do apoio preserva percurso e fontes, sem transportar aprova
   assert.equal(receipt.context.explanationCorrectionCount, 1);
 });
 
+test("correção estrutural expõe a invalidação da aplicação e orienta a retomada sobre a base atual", async () => {
+  const adapter = adapterFixture();
+  const receipt = await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    corrections: [{ unidade: 1, conteudo: correctedContent("Unidade estruturalmente revista") }]
+  });
+  assert.deepEqual(receipt.context.aplicacaoInstrucional, {
+    estado: "invalidada_por_conteudo",
+    recorte: "unidades com conteúdo estrutural alterado",
+    retomada: "Leia o conteúdo atual, verifique e reaplique as escolhas instrucionais sobre essa base e depois registre a inspeção."
+  });
+  assert.match(receipt.result, /aplicação instrucional.*reaplicada.*conteúdo atual/iu);
+  assert.match(receipt.nextDecision, /conteúdo atual.*reaplique.*inspeção/iu);
+});
+
+test("fonte-only e mudança de título não são reportadas como invalidação estrutural", async () => {
+  const adapter = adapterFixture();
+  const stable = correctedContent("Título anterior");
+  adapter.listCourseStudyUnits = async () => ({
+    items: [{ ordinal: 1, version: 2, studyUnit: { ...stable, id: "unit-1", position: 1 },
+      curriculumPath: { didacticMicrosequence: { id: "micro-a", title: "Microssequência A" } } }],
+    hasMore: false, nextCursor: null
+  });
+  const titleOnly = await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    corrections: [{ unidade: 1, conteudo: { ...structuredClone(stable), title: "Título novo" } }]
+  });
+  assert.equal(titleOnly.context.aplicacaoInstrucional.estado, "preservada");
+  assert.equal(titleOnly.context.aplicacaoInstrucional.recorte, "conteúdo corrigido sem alteração estrutural da aplicação");
+  assert.doesNotMatch(titleOnly.nextDecision, /reapliqu/iu);
+
+  const explanationContent = correctedContent("Apoio preservado");
+  const explanation = { title: explanationContent.title, content: explanationContent.content };
+  const listEntities = adapter.listCourseEntities;
+  adapter.listCourseEntities = async () => {
+    const page = await listEntities();
+    page.items[0].content.explanation = structuredClone(explanation);
+    return page;
+  };
+  const sourceOnly = await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    explanations: [{ microssequencia: "Microssequência A", conteudo: explanation, fontes: [] }]
+  });
+  assert.equal(sourceOnly.context.aplicacaoInstrucional.estado, "preservada");
+  assert.equal(sourceOnly.context.aplicacaoInstrucional.recorte, "somente vínculos de fontes");
+  assert.doesNotMatch(sourceOnly.nextDecision, /reapliqu/iu);
+});
+
 for (const authenticationKind of ["oauth", "action"]) {
   test(`Explicações ${authenticationKind} devolvem todos os destinos de conteúdo sem herdar revisão do recibo`, async () => {
     const adapter = adapterFixture();
@@ -304,7 +399,7 @@ test("#272 correções MCP multi-Unit preservam Fontes e usam composição gené
   assert.match(commit.requestId, /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u);
   assert.equal(receipt.context.correctionCount, 2);
   assert.equal(receipt.context.sourceMode, "preserved");
-  assert.match(receipt.nextDecision, /conteúdo corrigido.*observações pendentes/u);
+  assert.match(receipt.nextDecision, /conteúdo atual.*reaplique.*observações/iu);
   assert.equal(
     receipt.deepLink,
     `https://app.example/#/authoring/courses/${COURSE_ID}` +

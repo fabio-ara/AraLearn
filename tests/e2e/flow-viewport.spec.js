@@ -172,3 +172,81 @@ test("decisões sucessivas e repetição preservam rótulos CJK, IPA e bidi mist
   const unchanged = await page.evaluate(() => globalThis.__flowSave());
   expect(unchanged.content[0].data.structure).toEqual(structure);
 });
+
+test("rótulos de ramo reservam a métrica real do texto", async ({ page }, testInfo) => {
+  const longEdgeLabel = "Continuar com a operação prolongada: 木 — العربية — português";
+  const structure = { kind: "sequence", items: [{ id: "start", kind: "start", text: "Início" }, {
+    id: "decision", kind: "if_then_else", condition: "O processo foi autorizado?",
+    branchLabels: { yes: "Autorizado", no: "Recusado" },
+    thenBranch: [{ id: "allowed", kind: "process", text: "Executar processo autorizado" }, {
+      id: "follow-up", kind: "if_then_else", condition: "A operação pode continuar?",
+      branchLabels: { yes: longEdgeLabel, no: "Interromper operação" },
+      thenBranch: [{ id: "continue", kind: "process", text: "Continuar" }],
+      elseBranch: [{ id: "stop", kind: "process", text: "Interromper" }]
+    }, { id: "allowed-end", kind: "end", text: "Fim autorizado" }],
+    elseBranch: [{ id: "refused", kind: "process", text: "Registrar a recusa e orientar nova tentativa" }, { id: "refused-end", kind: "end", text: "Fim recusado — 木 — العربية" }]
+  }] };
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountFlow(page, { structure });
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--type-base", "20px");
+    document.documentElement.style.setProperty("--type-sm", "18px");
+    return globalThis.__flowRender(false);
+  });
+  const widths = [320, 390, 1280];
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => globalThis.__flowRender(false));
+    const labels = await page.locator("foreignObject.package-flow-edge-label .package-flow-label-content").evaluateAll((nodes) => nodes.map((node) => ({
+      text: node.textContent.trim(),
+      font: getComputedStyle(node).font,
+      foreignObject: (() => { const box = node.closest("foreignObject").getBoundingClientRect(); return { width: box.width, height: box.height }; })(),
+      clientWidth: node.clientWidth,
+      scrollWidth: node.scrollWidth,
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+      lineCount: (() => {
+        const text = node.querySelector(".package-flow-label-text") || node;
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        return new Set([...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0).map((rect) => Math.round(rect.top * 10) / 10)).size;
+      })()
+    })));
+    expect(await page.locator(".package-flow-svg").getAttribute("data-diagram-scale")).toBe("1.000");
+    expect(labels.map(({ text }) => text)).toEqual(expect.arrayContaining(["Autorizado", "Recusado", longEdgeLabel]));
+    for (const label of labels) {
+      expect(label.scrollWidth - label.clientWidth, `${width}/${label.text}/${label.font}`).toBeLessThanOrEqual(1);
+      expect(label.scrollHeight - label.clientHeight, `${width}/${label.text}/${label.font}`).toBeLessThanOrEqual(1);
+    }
+    expect(labels.find(({ text }) => text === "Autorizado").lineCount).toBe(1);
+    expect(labels.find(({ text }) => text === longEdgeLabel).lineCount).toBeGreaterThan(1);
+    if (width === 390) {
+      const canvas = page.locator(".package-flow-canvas");
+      await canvas.focus();
+      await page.keyboard.press("+");
+      await expect(page.locator(".package-flow-svg")).toHaveAttribute("data-diagram-scale", "1.250");
+      const zoomMetrics = await page.locator(".package-flow-edge-label .package-flow-label-content").filter({ hasText: "Autorizado" }).evaluate((node) => {
+        const svg = node.closest("svg");
+        const contentBox = node.getBoundingClientRect();
+        const viewBox = svg.viewBox.baseVal;
+        return {
+          localScrollHeight: node.scrollHeight,
+          localClientHeight: node.clientHeight,
+          renderedHeight: contentBox.height,
+          svgScale: svg.getBoundingClientRect().width / viewBox.width
+        };
+      });
+      expect(zoomMetrics.localScrollHeight).toBe(zoomMetrics.localClientHeight);
+      expect(zoomMetrics.svgScale).toBeCloseTo(1.25, 2);
+      expect(zoomMetrics.renderedHeight / zoomMetrics.localScrollHeight).toBeCloseTo(zoomMetrics.svgScale, 2);
+      await page.keyboard.press("-");
+      await expect(page.locator(".package-flow-svg")).toHaveAttribute("data-diagram-scale", "1.000");
+    }
+    if (width === 1280) {
+      await page.getByRole("button", { name: "Explorar diagrama em tela inteira" }).click();
+      await expect(page.locator("dialog")).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath("flow-authorized-refused-1280.png") });
+      await page.keyboard.press("Escape");
+    }
+  }
+});

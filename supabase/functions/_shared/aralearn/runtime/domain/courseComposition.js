@@ -121,11 +121,37 @@ export function normalizeFocalStudyUnitCompositionCommand(value) {
   };
 }
 
+// Optional diagnostics on a confirmed composition are warnings about preserved
+// content, never a semantic PASS or a second mutation receipt.
+export function normalizeCourseCompositionBpmnReview(value) {
+  const message = "Diagnóstico BPMN da composição inválido.";
+  const review = exactObject(value, new Set(["state", "issues"]), message);
+  if (review.state !== "needs_review" || !Array.isArray(review.issues) || !review.issues.length) fail(message);
+  const flowCodes = new Set(["bpmn_sequence_from_end", "bpmn_sequence_to_start", "bpmn_message_from_start",
+    "bpmn_message_to_end", "bpmn_message_gateway"]);
+  const nodeCodes = new Set(["bpmn_event_sequence_input", "bpmn_event_sequence_output", "bpmn_intermediate_message_direction",
+    "bpmn_start_without_end", "bpmn_end_without_start"]);
+  for (const value of review.issues) {
+    const flow = flowCodes.has(value?.code);
+    const idField = flow ? "flowId" : "nodeId";
+    const issue = exactObject(value, new Set(["code", "path", idField, "message", "resourceId", "blocking", "target"]), message);
+    if ((!flow && !nodeCodes.has(issue.code)) || issue.blocking !== false ||
+        typeof issue.path !== "string" || !/^(content|feedback)\[\d+\]\.data\.(flows|nodes)\[\d+\]$/u.test(issue.path) ||
+        !issue.path.includes(flow ? ".flows[" : ".nodes[") ||
+        [issue.message, issue.target].some(text => typeof text !== "string" || !text.trim())) fail(message);
+    opaqueId(issue[idField], "Alvo do diagnóstico BPMN");
+    opaqueId(issue.resourceId, "Recurso do diagnóstico BPMN");
+  }
+  return structuredClone(review);
+}
+
 export function normalizeFocalStudyUnitCompositionReceipt(value, command) {
+  const hasBpmnReview = Object.hasOwn(value ?? {}, "bpmnReview");
   const receipt = exactObject(value, new Set([
     "courseId", "revision", "operation", "createdCount", "updatedCount",
     "upsertedCount", "deletedCount", "idempotent", "updatedAt", "channel",
-    "applicationOrigin", "expectedStudyUnitVersion", "deepLink"
+    "applicationOrigin", "expectedStudyUnitVersion", "deepLink",
+    ...(hasBpmnReview ? ["bpmnReview"] : [])
   ]), "Confirmação da edição contextual inválida.");
   const revision = positiveInteger(receipt.revision, "Revisão confirmada do Curso");
   const counts = [
@@ -157,7 +183,8 @@ export function normalizeFocalStudyUnitCompositionReceipt(value, command) {
     idempotent: receipt.idempotent,
     channel: "application",
     origin: command.origin,
-    updatedAt: receipt.updatedAt
+    updatedAt: receipt.updatedAt,
+    ...(hasBpmnReview ? { bpmnReview: normalizeCourseCompositionBpmnReview(receipt.bpmnReview) } : {})
   };
 }
 

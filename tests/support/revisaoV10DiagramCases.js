@@ -48,6 +48,7 @@ function guardedMachine() {
 
 function longLabelBpmn() {
   const data = structuredClone(bpmnProcessPackage.authoringContract.example);
+  data.nodes.find(({ id }) => id === "send").label = "Encaminhar solicitação para análise";
   data.flows.find(({ id }) => id === "f7").label = "dados recebidos após validação do formulário";
   return data;
 }

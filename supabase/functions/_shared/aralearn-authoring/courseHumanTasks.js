@@ -1,4 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
+import { COURSE_AUTHORING_ALIGNMENT_GUIDANCE } from "./courseKnowledge.js";
 import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
@@ -50,6 +51,7 @@ import { AUTHORING_PROCESS_FOCUS, AUTHORING_PROCESS_CADENCE, AUTHORING_PROCESS_R
   AUTHORING_PROCESS_PARAMETER_DEFINITIONS, normalizeAuthoringProcessPreferences,
   resolveAuthoringProcessPreferences, createAuthoringProcessMandate } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
+import { shareHumanAuditContext } from './courseHumanAuditContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
@@ -831,7 +833,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Produzir uma microssequência",
-    "Produz uma microssequência com verificação automática e deriva parte, IDs, versões e posições. A Explicação é a base consultável; as unidades apresentam o ensino e as práticas conforme a condição. Depois, inspecione a qualidade pedagógica.",
+    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. Explicação consultável; ensino e prática conforme a condição. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Inspecione a qualidade.",
     inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
@@ -930,7 +932,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Corrige unidades ou explicações no curso corrente; a aprovação afetada precisa de nova revisão humana.",
+    "Corrige conteúdo; informa aplicação preservada ou invalidada; releia, reaplique escolhas, inspecione.",
     Object.freeze({ ...inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -1103,7 +1105,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "10.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:7cad32b8a501ac5699af30464d2592e974ebddfe0e9f64823fedba1799eb385c";
+  "sha256:9c1198f92e19d7db76367c8913458cfbdb04719a7dda4bdc78055ead06fbed0f";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1235,6 +1237,13 @@ function normalizeObservationComparisonReference(value) {
 function withoutTechnicalState(value) {
   if (Array.isArray(value)) return value.map(withoutTechnicalState);
   if (!value || typeof value !== "object") return value;
+  // Resource IDs and paths are disciplinary content. Validate the original
+  // envelope before preserving it; normalization could silently drop metadata.
+  const definition = typeof value.package === "string" && typeof value.version === "string"
+    ? RESOURCE_PACKAGE_REGISTRY.get(value.package, value.version) : null;
+  if (definition?.manifest.slots.some(slot => RESOURCE_PACKAGE_REGISTRY.validateInstance(value, slot).valid)) {
+    return structuredClone(value);
+  }
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
@@ -1277,7 +1286,8 @@ function withoutTechnicalState(value) {
         Array.isArray(entry) ? entry.map((role) => SOURCE_ROLE_HUMAN_NAMES.get(role)) : [];
       continue;
     }
-    if (normalizedKey === "study_units" && Array.isArray(entry)) {
+    if (normalizedKey === "study_units" && Array.isArray(entry) && entry.every(item =>
+      item && typeof item === "object" && Object.hasOwn(item, "studyUnit"))) {
       projected[key] = entry.map(({ studyUnit, ...metadata }) => ({
         ...withoutTechnicalState(metadata), studyUnit: structuredClone(studyUnit)
       }));
@@ -2661,7 +2671,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
     deepLink: courseDeepLink(adapter, resolved.course, "planning",
       part?.id ? [["authoringPartId", part.id]] : []),
     nextDecision,
-    context: await paginateHumanReadContext(withoutTechnicalState(context), { state: continuation })
+    context: await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext(context, resolved.course)), { state: continuation })
   });
 };
 
@@ -2912,11 +2922,11 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   const studyUnits = await Promise.all(unitPage.items.map(async unit => ({ ...unit,
     ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit", targetId: unit.studyUnit.id, deadlineAt })
   })));
-  const context = await paginateHumanReadContext(withoutTechnicalState({
+  const context = await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext({
     observations, studyUnits,
     explicacoes: explanations,
     plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
-  }), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
+  }, resolved.course)), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
   return result("Preparei este recorte da revisão sem aplicar mudanças.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content", unitPage.items.length
       ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length

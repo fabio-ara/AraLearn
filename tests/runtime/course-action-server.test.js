@@ -719,7 +719,9 @@ test("Actions mantém recusa operacional da cópia em 403 sem pedir nova autenti
 
 test("Actions devolve todos os bloqueios previsíveis sem transportar conteúdo privado do erro", async () => {
   const blockers = Array.from({ length: 24 }, (_, index) => ({ code: "human_reference_not_found",
-    message: `Vínculo persistido ausente ${index + 1}.`, unit: index + 1, microsequence: "DNS", rawSnapshot: "PRIVATE_SENTINEL" }));
+    message: `Vínculo persistido ausente ${index + 1}.`, unit: index + 1, microsequence: "DNS",
+    ...(index === 23 ? { requirement: "Classificar casos de rede." } : {}),
+    rawSnapshot: "PRIVATE_SENTINEL" }));
   const handler = createHandler({ async listCourses() {
     throw new AuthoringApiError(422, "human_materialization_preflight_blocked", "Resolva os bloqueios antes de produzir.",
       { preflight: { state: "blocked", referencia: null, completion: "complete", blockers,
@@ -730,7 +732,8 @@ test("Actions devolve todos os bloqueios previsíveis sem transportar conteúdo 
   const payload = await response.json();
   assert.equal(payload.error.details.preflight.blockers.length, 24);
   assert.deepEqual(payload.error.details.preflight.blockers.at(-1), {
-    code: "human_reference_not_found", message: "Vínculo persistido ausente 24.", unit: 24, microsequence: "DNS" });
+    code: "human_reference_not_found", message: "Vínculo persistido ausente 24.", unit: 24, microsequence: "DNS",
+    requirement: "Classificar casos de rede." });
   assert.equal(payload.error.message, "Ainda há uma dependência a resolver antes desta produção.");
   assert.match(payload.nextDecision, /Resolva autonomamente.*percurso de aprendizagem/iu);
   assert.doesNotMatch(payload.nextDecision,

@@ -341,6 +341,13 @@
                                 "label": "Solicitação decidida",
                                 "participant": "organization",
                                 "lane": "analysis"
+                              },
+                              {
+                                "id": "sent",
+                                "kind": "end_event",
+                                "label": "Solicitação enviada",
+                                "participant": "customer",
+                                "lane": "customer_lane"
                               }
                             ],
                             "flows": [
@@ -401,6 +408,12 @@
                                 "kind": "sequence",
                                 "from": "approve",
                                 "to": "finish"
+                              },
+                              {
+                                "id": "f9",
+                                "kind": "sequence",
+                                "from": "send",
+                                "to": "sent"
                               }
                             ]
                           }

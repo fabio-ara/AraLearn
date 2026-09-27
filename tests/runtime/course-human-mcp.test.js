@@ -1614,6 +1614,47 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
   );
 });
 
+test("MCP preserva requisito e microssequência no blocker de prática insuficiente", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async listCourses() {
+        throw new AuthoringApiError(
+          422,
+          "human_materialization_preflight_blocked",
+          "Resolva os bloqueios antes de produzir.",
+          { preflight: {
+            state: "blocked", referencia: null, completion: "complete",
+            blockers: [{
+              code: "human_materialization_insufficient_practice",
+              message: "A prática não cumpre o mínimo para o requisito “Classificar casos de rede.”: 1 oportunidade distinta declarada; mínimo efetivo 2; faltam as dimensões de variação exigidas: Contexto.",
+              microsequence: "DNS",
+              requirement: "Classificar casos de rede.",
+              rawSnapshot: "PRIVATE_SENTINEL"
+            }]
+          } }
+        );
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+  const payload = await response.json();
+  const blocker = payload.result.structuredContent.error.details.preflight.blockers[0];
+  assert.deepEqual(blocker, {
+    code: "human_materialization_insufficient_practice",
+    message: "A prática não cumpre o mínimo para o requisito “Classificar casos de rede.”: 1 oportunidade distinta declarada; mínimo efetivo 2; faltam as dimensões de variação exigidas: Contexto.",
+    microsequence: "DNS",
+    requirement: "Classificar casos de rede."
+  });
+  assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL/u);
+});
+
 test("MCP distingue recusa de acesso da autenticação e do escopo OAuth", async () => {
   for (const [status, code, challenged] of [
     [403, "not_authorized", false],

@@ -145,6 +145,17 @@ test("auditoria expõe o requisito e o que a resposta realmente recolhe, inclusi
   assert.doesNotThrow(() => requirePedagogicalAuditConsistency(report, basis));
 });
 
+test("consistência exige aplicação instrucional presente na base focal", () => {
+  const content = { id: "u", position: 1, title: "Relações", role: "theory", topics: [],
+    content: [paragraph("p", "A explicação apresenta a relação entre nomes e endereços.")], response: null, feedback: [] };
+  const basis = { targetKind: "study_unit", targetId: "u", microsequence: { goal: "Explicar relações" },
+    planItems: [], studyUnits: [{ id: "u", content, application: null }], dependencies: [] };
+  const report = { summary: "Base lida.", outcome: "consistent", findings: [], checks: checks() };
+  assert.throws(() => requirePedagogicalAuditConsistency(report, basis), { code: "pedagogical_audit_unapplied_design" });
+  basis.studyUnits[0].application = { contract: "aralearn.study-unit-design-application.v1", mode: "expository", practiceApplications: [] };
+  assert.doesNotThrow(() => requirePedagogicalAuditConsistency(report, basis));
+});
+
 test("banco conserva a segunda barreira para relatório incompleto e needs_attention", async () => {
   const db = new PGlite();
   try {

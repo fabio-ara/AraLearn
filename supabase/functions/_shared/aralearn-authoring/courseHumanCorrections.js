@@ -8,6 +8,7 @@ import { resolveHumanSourceLinks, reconcileHumanExplanation, EXPLANATION_SOURCE_
   from "./courseHumanMaterialization.js";
 import { requireCourseSourceEvidence } from "../aralearn/runtime/domain/courseSources.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
+import { requireBpmnAuthoring } from "../aralearn/runtime/resources/packages/bpmn-process/semantics.js";
 import { validateCourseEntityContent } from
   "../aralearn/runtime/domain/courseEntities.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
@@ -22,6 +23,43 @@ function plainObject(value) {
 
 function fail(code, message, status = 422) {
   throw new AuthoringApiError(status, code, message);
+}
+
+function withoutIdentity(value) {
+  const copy = structuredClone(value ?? {});
+  delete copy.id;
+  delete copy.position;
+  return copy;
+}
+
+function withoutTitle(value) {
+  const copy = withoutIdentity(value);
+  delete copy.title;
+  return copy;
+}
+
+function correctionApplicationImpact(prepared, preparedExplanations) {
+  const unitContentChanged = prepared.some(({ unit, content }) =>
+    canonicalAuthoringValue(withoutIdentity(unit.studyUnit)) !== canonicalAuthoringValue(withoutIdentity(content)));
+  const applicationInvalidated = prepared.some(({ unit, content }) =>
+    canonicalAuthoringValue(withoutTitle(unit.studyUnit)) !== canonicalAuthoringValue(withoutTitle(content)));
+  const explanationContentChanged = preparedExplanations.some(entry => entry.contentChanged);
+  const contentChanged = unitContentChanged || explanationContentChanged;
+  const sourceRequested = [...prepared, ...preparedExplanations].some(entry => entry.requestedSources !== undefined);
+  const recorte = applicationInvalidated
+    ? "unidades com conteúdo estrutural alterado"
+    : contentChanged
+    ? "conteúdo corrigido sem alteração estrutural da aplicação"
+    : sourceRequested
+    ? "somente vínculos de fontes"
+    : "sem alteração de conteúdo";
+  return {
+    estado: applicationInvalidated ? "invalidada_por_conteudo" : "preservada",
+    recorte,
+    retomada: applicationInvalidated
+      ? "Leia o conteúdo atual, verifique e reaplique as escolhas instrucionais sobre essa base e depois registre a inspeção."
+      : "Leia o conteúdo atual e registre ou atualize a inspeção conforme o recorte."
+  };
 }
 
 function validateCorrections(corrections, explanations) {
@@ -75,10 +113,13 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
     if (context.course.revision !== course.revision || !entity) fail("course_revision_conflict", "O curso mudou; releia a explicação antes de corrigir.", 409);
     if (seen.has(entity.entityId)) fail("invalid_human_explanation", "Uma correção não pode repetir a mesma explicação.");
     seen.add(entity.entityId);
-    const support = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context);
     const currentSupport = entity.content?.explanation
       ? normalizeMicrosequenceExplanation(entity.content.explanation)
       : null;
+    let bpmnIssues;
+    try { bpmnIssues = requireBpmnAuthoring(normalizeMicrosequenceExplanation(entry.conteudo), currentSupport); }
+    catch (error) { throw new AuthoringApiError(422, error.code, error.message, error.details); }
+    const support = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context);
     if (entry.reconciliacao === undefined && currentSupport?.reconciliation &&
         canonicalAuthoringValue({ title: support.title, content: support.content }) ===
         canonicalAuthoringValue({ title: currentSupport.title, content: currentSupport.content })) {
@@ -91,7 +132,9 @@ async function loadExplanationCorrections({ adapter, principal, course, explanat
       mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: entity.entityId,
       cursor: null, limit: 1, deadlineAt });
     const currentLinks = page.items?.[0]?.sourceLinks ?? [];
-    return { entity, content, support, currentLinks,
+    return { entity, content, support, bpmnIssues, contentChanged: !currentSupport ||
+      canonicalAuthoringValue({ title: support.title, content: support.content }) !==
+      canonicalAuthoringValue({ title: currentSupport.title, content: currentSupport.content }), currentLinks,
       sourceLinks: entry.fontes === undefined ? currentLinks : null, requestedSources: entry.fontes };
   }));
 }
@@ -163,6 +206,9 @@ async function loadCorrectionState({
       );
     }
     const currentRole = unit.studyUnit?.role;
+    let bpmnIssues;
+    try { bpmnIssues = requireBpmnAuthoring(validation.normalized, unit.studyUnit); }
+    catch (error) { throw new AuthoringApiError(422, error.code, error.message, error.details); }
     try { requireCoursePracticeAuthoring(validation.normalized, unit.studyUnit); }
     catch (error) { fail(error.code, error.message); }
     if (!new Set(["theory", "practice"]).has(currentRole)) {
@@ -182,10 +228,11 @@ async function loadCorrectionState({
     const content = structuredClone(validation.normalized);
     delete content.id;
     delete content.position;
-    return { unit, content, currentLinks, sourceLinks, requestedSources: correction.fontes };
+    return { unit, content, bpmnIssues, currentLinks, sourceLinks, requestedSources: correction.fontes };
   }));
   const preparedExplanations = await loadExplanationCorrections({ adapter, principal,
     course: resolved.course, explanations, deadlineAt });
+  const applicationImpact = correctionApplicationImpact(prepared, preparedExplanations);
   const targets = [...prepared.map(({ unit }) => ({ targetKind: "study_unit", targetId: unit.studyUnit.id })),
     ...preparedExplanations.map(({ entity }) => ({ targetKind: "microsequence_explanation", targetId: entity.entityId }))];
   const pendingObservations = await readPendingObservations({ adapter, principal, course: resolved.course, targets, deadlineAt });
@@ -197,7 +244,7 @@ async function loadCorrectionState({
       fail("course_observation_version_conflict", "A observação mudou; releia a fila antes de corrigir a versão indicada.", 409);
     }
   }
-  return { ...resolved, prepared, preparedExplanations, pendingObservations };
+  return { ...resolved, prepared, preparedExplanations, pendingObservations, applicationImpact };
 }
 
 function hasPendingTarget(annotation, targetKind, targetId) {
@@ -364,7 +411,9 @@ export async function applyHumanCourseCorrections({
   let correctedCourseId = null;
   let correctedStudyUnits = [];
   let correctedExplanations = [];
+  let bpmnIssues = [];
   let pendingObservationCount = 0;
+  let applicationImpact = null;
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
       const state = await loadCorrectionState({
@@ -382,9 +431,11 @@ export async function applyHumanCourseCorrections({
         id: entity.entityId, title: support.title
       }));
       pendingObservationCount = state.pendingObservations.length;
+      applicationImpact = state.applicationImpact;
       return state;
     },
     async build(state, { newId }) {
+      bpmnIssues = [...state.prepared, ...state.preparedExplanations].flatMap(item => item.bpmnIssues ?? []);
       const sourceCache = new Map();
       const applications = await Promise.all(state.prepared.map(async (entry, index) => ({
         studyUnitId: entry.unit.studyUnit.id,
@@ -460,16 +511,23 @@ export async function applyHumanCourseCorrections({
     { courseId: correctedCourseId, relation: "content", target: { kind: "microsequence_explanation", id }, label: title }));
   const links = [...unitLinks, ...supportLinks];
   const explanationLinks = correctedExplanations.map(({ title }, index) => ({ titulo: title, deepLink: supportLinks[index]?.url ?? null }));
+  const baseResult = explanations.length ? "Corrigi o conteúdo e as explicações indicados; a revisão humana afetada precisa ser atualizada."
+    : corrections.length === 1
+    ? "A correção foi aplicada à unidade de estudo afetada."
+    : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`;
   return {
-    result: explanations.length ? "Corrigi o conteúdo e as explicações indicados; a revisão humana afetada precisa ser atualizada."
-      : corrections.length === 1
-      ? "A correção foi aplicada à unidade de estudo afetada."
-      : `As ${corrections.length} correções coerentes foram aplicadas às unidades de estudo afetadas.`,
+    result: applicationImpact.estado === "invalidada_por_conteudo"
+      ? `${baseResult} A aplicação instrucional afetada precisa ser verificada e reaplicada sobre o conteúdo atual antes da inspeção.`
+      : baseResult,
     ...buildHumanNavigationEnvelope(links[0], links.slice(1), {
-      nextDecision: "Leia o conteúdo corrigido e decida sobre as observações pendentes." }),
+      nextDecision: applicationImpact.estado === "invalidada_por_conteudo"
+        ? "Leia o conteúdo atual, verifique e reaplique as escolhas instrucionais sobre essa base e depois registre a inspeção; decida também sobre as observações pendentes."
+        : "Leia o conteúdo corrigido e decida sobre as observações pendentes." }),
     context: {
+      ...(bpmnIssues.length ? { bpmnReview: { state: "needs_review", issues: bpmnIssues } } : {}),
       correctionCount: corrections.length,
       explanationCorrectionCount: explanations.length,
+      aplicacaoInstrucional: applicationImpact,
       ...(explanationLinks.length ? { explicacoes: explanationLinks } : {}),
       ...(observations.length ? { correctionRequestId: receipt.requestId,
         confirmedObservationCount: receipt.observations.filter((entry) => entry.confirmed).length,

@@ -12,6 +12,7 @@ import { normalizeCourseSourceOccurrence, listCourseSourceOccurrenceTargets, loc
   from "../aralearn/runtime/domain/courseSourceOccurrences.js";
 import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/courseExplanation.js";
 import { requireCoursePracticeAuthoring } from "../aralearn/runtime/domain/coursePracticeAuthoring.js";
+import { inspectBpmnAuthoring, requireBpmnAuthoring } from "../aralearn/runtime/resources/packages/bpmn-process/semantics.js";
 import { inspectPedagogicalEvidence } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { inspectCourseAudioReadiness, normalizeCourseMediaRead } from "../aralearn/runtime/domain/courseMedia.js";
 import { canonicalReconciliationLocator, explanationReconciliationTargets, inspectExplanationReconciliation,
@@ -29,6 +30,10 @@ import {
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 
 const MAX_PART_STUDY_UNIT_PAGES = 100;
+const PRACTICE_VARIATION_DIMENSION_LABELS = Object.freeze(
+  COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) =>
+    id === "required_practice_variation_dimensions")?.optionLabels ?? {}
+);
 export const HUMAN_SOURCE_ROLES = Object.freeze({
   escopo_curricular: "curricular_scope", evidencia_de_avaliacao: "assessment_evidence",
   tecnica_conceitual: "technical_conceptual", leitura_complementar: "recommended_reading"
@@ -653,6 +658,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   planUnits = [], explanations = [], complete = false, allowDraftCurricularMap = false,
   deadlineAt = null }) {
   const blockers = [];
+  const bpmnIssues = [];
   const add = (code, message, details = {}) => blockers.push({ code, message, ...details });
   const capture = (callback, details = {}) => {
     try { return callback(); }
@@ -675,6 +681,10 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   const scopedDesigns = new Map();
   const audioCandidates = planUnits.map((unit, index) => ({ content: unit.conteudo, unit: index + 1 }));
   const arrangement = arrangeMaterializationUnits(existingBySlot, planUnits, micros, add);
+  for (const retained of arrangement.retained) {
+    const saved = retained.existing.item.studyUnit;
+    bpmnIssues.push(...inspectBpmnAuthoring(saved, saved).map(issue => ({ ...issue, studyUnit: saved.title })));
+  }
   const targetMicrosequenceIds = new Set([...arrangement.planned.values()]
     .map(value => value.microsequenceId).filter(Boolean));
   const designMicros = complete ? micros : micros.filter(micro => targetMicrosequenceIds.has(micro.id));
@@ -725,6 +735,10 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       normalizedContent = structuredClone(contentValidation.normalized);
       try { requireCoursePracticeAuthoring(normalizedContent); }
       catch (error) { add(error.code ?? "invalid_human_study_unit", error.message, details); }
+      for (const issue of inspectBpmnAuthoring(normalizedContent, existing?.studyUnit)) {
+        bpmnIssues.push({ ...issue, ...details });
+        if (issue.blocking) add(issue.code, issue.message, { ...details, path: issue.path });
+      }
       for (const issue of inspectPedagogicalEvidence({ content: normalizedContent, practices,
         requirements: planItems(context.plan, "evidenceRequirements") }).issues) {
         add(issue.code, issue.message, { ...details, path: issue.path });
@@ -897,6 +911,8 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
       : allMicros.find(item => item.id === micro.id)?.explanation ?? micro.explanation;
     if (!explanation) { add("human_materialization_missing_explanation", "Salve e reconcilie a Explicação antes de produzir as unidades.", { microsequence: micro.title }); continue; }
     audioCandidates.push({ content: explanation, microsequence: micro.title });
+    bpmnIssues.push(...inspectBpmnAuthoring(explanation, explanation)
+      .map(issue => ({ ...issue, explanation: micro.title })));
     if (!supplied) {
       const sources = await adapter.getCourseSources({ principal, courseId: context.course.id,
         expectedRevision: context.course.revision, mode: "target", sourceId: null,
@@ -985,7 +1001,8 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     explanations: [...suppliedByMicro], planUnits: normalizedPlan, audioLibrary, complete }));
   const unique = [...new Map(blockers.map(blocker => [JSON.stringify(blocker), blocker])).values()];
   return { state: unique.length ? "blocked" : "ready", referencia: unique.length ? null : `materialization-v1:${identity}`,
-    blockers: unique, reconciliations, completion: complete ? "complete" : "partial" };
+    blockers: unique, reconciliations, completion: complete ? "complete" : "partial",
+    ...(bpmnIssues.length ? { bpmnReview: { state: "needs_review", issues: bpmnIssues } } : {}) };
 }
 
 function validateUnitConfiguration(configuration) {
@@ -1559,7 +1576,8 @@ function validatePedagogicalGroup(
   establishedAnalysis,
   introducedAnywhere,
   analysisLabels, diagnostics = null,
-  { complete = true, changedIntroductionIds = new Set(), microsequenceLabels = new Map() } = {}
+  { complete = true, changedIntroductionIds = new Set(), microsequenceLabels = new Map(),
+    evidenceLabels = new Map() } = {}
 ) {
   const report = (code, message, status, details = undefined) => {
     if (!diagnostics) fail(code, message, status, details);
@@ -1795,12 +1813,28 @@ function validatePedagogicalGroup(
       );
     }
   }
-  for (const state of practiceByEvidence.values()) {
-    if (state.opportunities.size < state.minimum ||
-        [...state.requiredDimensions].some((dimension) => !state.dimensions.has(dimension))) {
+  for (const [evidenceId, state] of practiceByEvidence.entries()) {
+    const missingDimensions = [...state.requiredDimensions]
+      .filter((dimension) => !state.dimensions.has(dimension));
+    const missingOpportunities = state.opportunities.size < state.minimum;
+    if (missingOpportunities || missingDimensions.length) {
+      const requirement = evidenceLabels.get(evidenceId) ?? evidenceId;
+      const opportunityLabel = state.opportunities.size === 1
+        ? "oportunidade distinta declarada"
+        : "oportunidades distintas declaradas";
+      const reasons = [
+        `${state.opportunities.size} ${opportunityLabel}; mínimo efetivo ${state.minimum}`
+      ];
+      if (missingDimensions.length) {
+        const labels = missingDimensions.map((dimension) =>
+          PRACTICE_VARIATION_DIMENSION_LABELS[dimension] ?? dimension);
+        reasons.push(`faltam as dimensões de variação exigidas: ${labels.join(", ")}`);
+      }
       report(
         "human_materialization_insufficient_practice",
-        "A prática não cumpre o mínimo ou as dimensões de variação efetivas."
+        `A prática não cumpre o mínimo ou as dimensões de variação efetivas para o requisito “${requirement}”: ${reasons.join("; ")}.`,
+        undefined,
+        { ...microsequenceDetail, requirement }
       );
     }
   }
@@ -1822,6 +1856,8 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics
   const introducedAnywhere = introducedAnalysisUnitIds(plan, replacedStudyUnitIds);
   const analysisLabels = new Map(planItems(plan, "instructionalAnalysisUnits")
     .map((item) => [item.id, item.statement]));
+  const evidenceLabels = new Map(planItems(plan, "evidenceRequirements")
+    .map((item) => [item.id, item.statement]));
   for (const { group, order } of orderedGroups) {
     for (const id of establishedAnalysisUnitIds(
       plan,
@@ -1833,7 +1869,7 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics
       group,
       establishedAnalysis,
       introducedAnywhere,
-      analysisLabels, diagnostics, { ...options, microsequenceLabels }
+      analysisLabels, diagnostics, { ...options, microsequenceLabels, evidenceLabels }
     );
     const coveredScopeIds = new Set(group.units.flatMap((unit) =>
       unit.curriculumScopeItemIds));
@@ -1870,15 +1906,18 @@ async function prepareExplanations({ explanations, adapter, principal, context, 
     });
     if (seen.has(microsequence.id)) fail("invalid_human_explanation", "A parte repete a explicação de uma microssequência.");
     seen.add(microsequence.id);
+    const persistedSupport = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id)?.explanation ?? null;
     let content;
-    try { content = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context); }
+    try {
+      requireBpmnAuthoring(normalizeMicrosequenceExplanation(entry.conteudo), persistedSupport);
+      content = await reconcileHumanExplanation(entry.conteudo, entry.reconciliacao, context);
+    }
     catch (error) {
       // Actionable diagnostics (pending passages, candidates) travel with the
       // failure instead of being replaced by a generic message.
       if (Array.isArray(error?.details?.blockers) && error.details.blockers.length) throw error;
       fail("invalid_human_explanation", error.message);
     }
-    const persistedSupport = saved.find(item => (item.id ?? item.microsequenceId) === microsequence.id)?.explanation ?? null;
     if (entry.reconciliacao === undefined && persistedSupport?.reconciliation &&
         canonicalAuthoringValue({ title: content.title, content: content.content }) ===
         canonicalAuthoringValue({ title: persistedSupport.title, content: persistedSupport.content })) {
@@ -1929,6 +1968,7 @@ export async function materializeHumanCoursePart({
   let producedPartPosition = null;
   let producedContentTarget = null;
   let practiceObservations = [];
+  let bpmnReview = null;
   const receipt = await executeTrustedCourseWrite({
     load: () => resolveHumanCourseContext({
       adapter,
@@ -1950,6 +1990,7 @@ export async function materializeHumanCoursePart({
         throw new AuthoringApiError(422, "human_materialization_preflight_blocked",
           "Resolva os bloqueios agregados de preparar_materializacao antes de materializar.", { preflight });
       }
+      bpmnReview = preflight.bpmnReview ?? null;
       const prepared = await prepareUnits({
         adapter,
         principal,
@@ -2036,6 +2077,7 @@ export async function materializeHumanCoursePart({
       courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
     }) : null, [], { nextDecision: "Use preparar_revisao para uma segunda leitura pedagógica do percurso salvo. Registre as cinco dimensões da inspeção; corrija insuficiências antes de considerar a produção satisfatória." }),
     context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
+      ...(bpmnReview ? { bpmnReview } : {}),
       qualidadePedagogica: "pending_independent_inspection",
       cursoRevision: receipt.courseRevision }
   };
