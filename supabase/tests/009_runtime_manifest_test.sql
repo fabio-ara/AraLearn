@@ -166,8 +166,8 @@ select is(array(
 select is(array(
   select signature from unnest(array[
     'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
-    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)',
+    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text,boolean)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb,boolean)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
@@ -196,6 +196,8 @@ select is(array(
     'public.get_course_microsequence_review_v1(uuid,text)',
     'private.course_microsequence_basis_hash_v1(uuid,text)',
     'private.valid_course_audit_study_unit_content_v1(jsonb)',
+    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)',
     'public.get_owned_course_instructional_plan_for_actor_v2(uuid,uuid)',
     'public.materialize_course_authoring_part_for_actor_v1(uuid,uuid,uuid,bigint,bigint,jsonb,text,text)',
     'public.get_owned_course_instructional_plan_for_actor_v1(uuid,uuid,integer)',
@@ -220,8 +222,8 @@ select is(array(
 select is(array(
   select signature from unnest(array[
     'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
-    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)',
+    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text,boolean)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb,boolean)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
@@ -246,8 +248,8 @@ select is(array(
 select is(array(
   select signature from unnest(array[
     'public.save_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,boolean,jsonb,text,text)',
-    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text)',
-    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb)',
+    'public.save_course_authoring_part_for_actor_v1(uuid,uuid,bigint,bigint,jsonb,text,text,boolean)',
+    'public.materialize_course_authoring_part_for_actor_v2(uuid,uuid,uuid,bigint,bigint,jsonb,jsonb,jsonb,text,text,jsonb,boolean,jsonb,boolean)',
     'public.get_owned_course_instructional_plan_for_actor_v3(uuid,uuid)',
     'public.get_owned_course_design_for_actor_v3(uuid,uuid,text,text,integer,text)',
     'public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)',
