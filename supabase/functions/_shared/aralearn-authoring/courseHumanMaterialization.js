@@ -589,6 +589,8 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     add("course_service_unavailable", "O estado de aprovação do mapa curricular não pôde ser confirmado.");
   }
   const micros = partMicrosequences(context.part);
+  const curriculumMicros = (context.plan?.plan?.curriculum?.modules ?? [])
+    .flatMap(module => (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
   const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
   const groups = new Map();
   const sourceCache = new Map();
@@ -742,8 +744,56 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
     groups.get(micro.id).units.push(unit);
   }
-  const allMicros = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
-    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+  // O materializador exige que cada dependência curricular da microssequência
+  // produzida esteja persistida ou integre exatamente o lote desta escrita.
+  // Repetir esse recorte evita devolver "ready" a uma escrita que o SQL recusa,
+  // sem transformar uma Microssequência vizinha fora do alvo num pré-requisito.
+  const batchMicrosequenceIds = new Set(micros
+    .filter(micro => complete || targetMicrosequenceIds.has(micro.id))
+    .map(micro => micro.id));
+  const persistedUnitCounts = new Map();
+  for (const part of Array.isArray(context.plan?.plan?.parts) ? context.plan.plan.parts : []) {
+    for (const micro of Array.isArray(part?.microsequences) ? part.microsequences : []) {
+      if (typeof micro?.id === "string" && Number.isSafeInteger(micro.studyUnitCount)) {
+        persistedUnitCounts.set(micro.id, micro.studyUnitCount);
+      }
+    }
+  }
+  const declaredDependencies = new Map(curriculumMicros
+    .filter(micro => typeof micro?.id === "string")
+    .map(micro => [micro.id, Array.isArray(micro.dependencyMicrosequenceIds)
+      ? micro.dependencyMicrosequenceIds.filter(id => typeof id === "string" && id) : []]));
+  const dependencyIsProduced = async (microsequenceId) => {
+    if (persistedUnitCounts.has(microsequenceId)) return persistedUnitCounts.get(microsequenceId) > 0;
+    try {
+      const page = await adapter.listCourseStudyUnits({ principal, courseId: context.course.id,
+        expectedRevision: context.course.revision, scopeKind: "didactic_microsequence", scopeId: microsequenceId,
+        cursorStudyUnitId: null, direction: "forward", limit: 1, maxBytes: 64 * 1024,
+        inspectionVersion: 2, deadlineAt });
+      if (!plainObject(page) || !Array.isArray(page.items)) {
+        add("course_service_unavailable", "Não foi possível conferir as dependências curriculares desta produção.");
+        return null;
+      }
+      return page.items.length > 0;
+    } catch (error) {
+      add(error?.code ?? "course_service_unavailable",
+        "Não foi possível conferir as dependências curriculares desta produção.");
+      return null;
+    }
+  };
+  for (const micro of micros) {
+    if (!batchMicrosequenceIds.has(micro.id)) continue;
+    for (const dependencyId of declaredDependencies.get(micro.id) ?? []) {
+      if (batchMicrosequenceIds.has(dependencyId)) continue;
+      if (await dependencyIsProduced(dependencyId) !== false) continue;
+      const dependency = curriculumMicros.find(item => item?.id === dependencyId);
+      add("curricular_dependency_not_produced",
+        `A microssequência “${micro.title}” depende de “${dependency?.title ?? dependencyId}”, ` +
+        "que ainda não tem unidade produzida. Produza essa dependência antes ou inclua as duas no mesmo lote.",
+        { microsequence: micro.title });
+    }
+  }
+  const allMicros = curriculumMicros;
   const reconciliations = [];
   const savedSourceBases = [];
   const suppliedByMicro = new Map();

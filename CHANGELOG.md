@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.87] - 2026-09-27
+
+### Corrigido
+
+- A preparação das atividades informa quais pré-requisitos ainda precisam de conteúdo, com orientação para continuar a autoria. Etapas futuras fora do pedido não bloqueiam a produção focal.
+- A recuperação do painel de parâmetros atualiza o curso e o escopo após alterações feitas por conversa, preservando rascunhos locais e devolvendo o foco ao painel.
+
 ## [0.0.86] - 2026-09-26
 
 ### Corrigido

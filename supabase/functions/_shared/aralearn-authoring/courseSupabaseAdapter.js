@@ -668,6 +668,11 @@ function databaseError(status, body) {
     return new AuthoringApiError(409, "curricular_map_not_approved",
       "O mapa curricular precisa estar aprovado antes da materialização. Aprove o mapa ou retome o foco autorizado antes de continuar.");
   }
+  if (code === "23514" &&
+      databaseMessage.startsWith("Uma dependencia curricular precisa estar produzida ou integrar o mesmo lote.")) {
+    return new AuthoringApiError(409, "curricular_dependency_not_produced",
+      "Há um pré-requisito curricular ainda sem unidade produzida fora deste lote. Produza essa dependência antes ou inclua as duas no mesmo pedido.");
+  }
   if (status === 422 || code === "22023" || code === "23514") {
     return new AuthoringApiError(422, "invalid_course_command", "Os dados do Curso são inválidos.");
   }

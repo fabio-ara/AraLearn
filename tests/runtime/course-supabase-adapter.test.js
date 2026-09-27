@@ -3303,6 +3303,36 @@ test("mapa em rascunho recusa a produção com causa específica, sem expor deta
   );
 });
 
+test("dependência curricular ausente recusa com causa recuperável, sem expor detalhes internos do banco", async () => {
+  const value = adapter(async (url) => {
+    assert.match(url, /\/rpc\/materialize_course_authoring_part_for_actor_v2$/u);
+    return json({ code: "23514",
+      message: "Uma dependencia curricular precisa estar produzida ou integrar o mesmo lote. private.secret" }, 422);
+  });
+  await assert.rejects(
+    () => value.materializeCourseAuthoringPart({
+      principal: { actorId: USER_ID },
+      courseId: COURSE_ID,
+      authoringPartId: PART_ID,
+      requestId: "curricular-dependency-test",
+      expectedCourseRevision: 5,
+      expectedAuthoringPartVersion: 2,
+      targetPlanItems: [{ didacticMicrosequenceId: "micro-b", instructionalAnalysisUnitIds: [], evidenceRequirementIds: [] }],
+      units: [{ studyUnitId: "unit-b", didacticMicrosequenceId: "micro-b", position: 1, content: { title: "B" } }],
+      explanations: [],
+      placements: [{ studyUnitId: "unit-b", didacticMicrosequenceId: "micro-b", position: 1 }],
+      complete: false
+    }),
+    error => {
+      assert.equal(error.status, 409);
+      assert.equal(error.code, "curricular_dependency_not_produced");
+      assert.match(error.message, /Produza essa dependência antes ou inclua as duas no mesmo pedido/u);
+      assert.ok(!/23514|private\.secret|materialize_course_authoring_part/u.test(error.message));
+      return true;
+    }
+  );
+});
+
 test("leitura de Fontes traduz PT409 sem repetir a revisão desatualizada", async () => {
   let sourceCalls = 0;
   const value = adapter(async (url, init) => {

@@ -66,6 +66,18 @@ test("envelope de erro expõe somente diagnóstico estrutural permitido", () => 
   for (const sentinel of SENTINELS) assert.equal(serialized.includes(sentinel), false, sentinel);
 });
 
+test("dependência curricular pendente recebe recuperação própria em vez de repetição cega", () => {
+  const projected = toolErrorData(new AuthoringApiError(409, "curricular_dependency_not_produced",
+    "Há um pré-requisito curricular ainda sem unidade produzida fora deste lote."), {
+    requestId: "request-curricular-dependency-0001"
+  });
+  assert.equal(projected.recovery.strategy, "correct_and_retry");
+  assert.equal(projected.recovery.retryable, true);
+  assert.equal(projected.recovery.requestIdMode, "new");
+  assert.match(projected.recovery.steps.join(" "), /dependência antes ou envie as duas microssequências no mesmo lote/u);
+  assert.doesNotMatch(projected.recovery.steps.join(" "), /lote menor/iu);
+});
+
 test("campo desconhecido não é refletido no erro público", () => {
   const unknownField = "Authorization";
   const projected = toolErrorData(new AuthoringApiError(
