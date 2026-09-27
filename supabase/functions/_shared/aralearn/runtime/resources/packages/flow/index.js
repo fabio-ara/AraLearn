@@ -76,6 +76,10 @@ function createFlowGraphCompiler() {
     });
   }
 
+  function needsMerge(fragments) {
+    return fragments.some(({ entry, exits }) => !entry || exits.length > 0);
+  }
+
   function compileSequence(items, depth = 0) {
     let entry = null;
     let exits = [];
@@ -91,33 +95,48 @@ function createFlowGraphCompiler() {
 
   function compileChoice(node, branches, depth) {
     const decision = addNode("decision", nodeSummary(node) || FLOW_KIND_LABELS[node.kind], depth, node.id);
-    const merge = addMerge(depth);
-    branches.forEach((branch) => {
-      const fragment = compileSequence(branch.items, depth + 1);
-      addEdge(decision, fragment.entry || merge, { label: branch.label, kind: "branch" });
-      if (fragment.entry) connectExits(fragment.exits, merge);
+    const fragments = branches.map((branch) => ({
+      ...branch,
+      ...compileSequence(branch.items, depth + 1)
+    }));
+    const merge = needsMerge(fragments) ? addMerge(depth) : null;
+    fragments.forEach((fragment) => {
+      addEdge(decision, fragment.entry || merge, { label: fragment.label, kind: "branch" });
+      if (merge && fragment.entry) connectExits(fragment.exits, merge);
     });
-    return { entry: decision, exits: [{ node: merge }] };
+    return { entry: decision, exits: merge ? [{ node: merge }] : [] };
   }
 
   function compileConditionalChain(node, depth) {
-    const merge = addMerge(depth);
-    let entry = null;
-    let previous = null;
-    (node.cases || []).forEach((item) => {
+    const cases = (node.cases || []).map((item) => {
       const decision = addNode("decision", item.condition, depth, item.id);
-      if (!entry) entry = decision;
-      if (previous) addEdge(previous.id, decision, { label: previous.no, kind: "branch" });
       const labels = branchLabels(item);
-      const branch = compileSequence(item.thenBranch, depth + 1);
-      addEdge(decision, branch.entry || merge, { label: labels.yes, kind: "branch" });
-      if (branch.entry) connectExits(branch.exits, merge);
-      previous = { id: decision, no: labels.no };
+      return {
+        decision,
+        labels,
+        ...compileSequence(item.thenBranch, depth + 1)
+      };
     });
     const otherwise = compileSequence(node.elseBranch, depth + 1);
-    if (previous) addEdge(previous.id, otherwise.entry || merge, { label: previous.no, kind: "branch" });
-    if (otherwise.entry) connectExits(otherwise.exits, merge);
-    return { entry: entry || otherwise.entry || merge, exits: [{ node: merge }] };
+    const fragments = [...cases, otherwise];
+    const merge = needsMerge(fragments) ? addMerge(depth) : null;
+    cases.forEach((item, index) => {
+      if (index > 0) {
+        const previous = cases[index - 1];
+        addEdge(previous.decision, item.decision, { label: previous.labels.no, kind: "branch" });
+      }
+      addEdge(item.decision, item.entry || merge, { label: item.labels.yes, kind: "branch" });
+      if (merge && item.entry) connectExits(item.exits, merge);
+    });
+    if (cases.length) {
+      const previous = cases[cases.length - 1];
+      addEdge(previous.decision, otherwise.entry || merge, { label: previous.labels.no, kind: "branch" });
+    }
+    if (merge && otherwise.entry) connectExits(otherwise.exits, merge);
+    return {
+      entry: cases[0]?.decision || otherwise.entry || merge,
+      exits: merge ? [{ node: merge }] : []
+    };
   }
 
   function compileFor(node, depth) {
@@ -370,12 +389,46 @@ function nodeLabelBounds(group) {
   };
 }
 
+function fitFlowForeignLabel(foreignObject, bounds, { lineCount = 1, expandWidth = false } = {}) {
+  const content = foreignObject?.querySelector(".package-flow-label-content");
+  if (!content) return foreignObject;
+  const initialWidth = Number(foreignObject.getAttribute("width")) || bounds.width;
+  const renderedWidth = foreignObject.getBoundingClientRect().width;
+  const scale = renderedWidth / initialWidth || 1;
+  const previous = {
+    width: content.style.width,
+    minWidth: content.style.minWidth,
+    height: content.style.height,
+    whiteSpace: content.style.whiteSpace,
+    overflowWrap: content.style.overflowWrap
+  };
+  content.style.width = "max-content";
+  content.style.minWidth = "max-content";
+  content.style.height = "auto";
+  content.style.whiteSpace = "nowrap";
+  content.style.overflowWrap = "normal";
+  const naturalWidth = content.getBoundingClientRect().width / scale;
+  Object.assign(content.style, previous);
+
+  const width = expandWidth && lineCount === 1
+    ? Math.max(bounds.width, naturalWidth + (1 / scale))
+    : bounds.width;
+  foreignObject.setAttribute("x", String(bounds.x + (bounds.width - width) / 2));
+  foreignObject.setAttribute("width", String(width));
+  const contentHeight = content.scrollHeight;
+  const height = Math.max(bounds.height, contentHeight + 1);
+  foreignObject.setAttribute("y", String(bounds.y + (bounds.height - height) / 2));
+  foreignObject.setAttribute("height", String(height));
+  return foreignObject;
+}
+
 function replaceGraphvizLabels(chart, svg, graph) {
   graph.nodes.filter((node) => node.kind !== "merge").forEach((node) => {
     const group = graphvizGroupById(svg, node.id);
     const template = chart.querySelector(`template[data-flow-node-template="${CSS.escape(node.id)}"]`);
     group?.querySelectorAll("text").forEach((text) => { text.style.visibility = "hidden"; text.setAttribute("aria-hidden", "true"); });
-    appendGraphvizForeignLabel(group, template, nodeLabelBounds(group), "package-flow-node-label");
+    const bounds = nodeLabelBounds(group);
+    appendGraphvizForeignLabel(group, template, bounds, "package-flow-node-label");
     if (group) {
       group.dataset.flowNodeId = node.id;
       group.dataset.flowKind = node.kind;
@@ -393,12 +446,17 @@ function replaceGraphvizLabels(chart, svg, graph) {
     if (box) {
       const width = hasGap ? Math.max(48, box.width + 16) : box.width + 8;
       const height = Math.max(24, box.height + 8);
-      appendGraphvizForeignLabel(group, template, {
+      const bounds = {
         x: box.x + (box.width - width) / 2,
         y: box.y + (box.height - height) / 2,
         width,
         height
-      }, "package-flow-edge-label");
+      };
+      const foreignObject = appendGraphvizForeignLabel(group, template, bounds, "package-flow-edge-label");
+      fitFlowForeignLabel(foreignObject, bounds, {
+        lineCount: wrapGraphvizLabel(edge.label, 24).split("\n").length,
+        expandWidth: !hasGap
+      });
     }
   });
 }
