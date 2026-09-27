@@ -38,6 +38,8 @@ Ver `05-reidratacao-320.png`.
 - `eslint` nos arquivos do recorte e `git diff --check`: exit 0.
 - Hashes SHA256 dos arquivos de código e das capturas: ver `manifesto.json` nesta pasta.
 
+O renderizador do plano foi enxugado apenas em comentários depois da primeira coleta. Os hashes do arquivo mudaram e estão atualizados no manifesto; o código executável, sem comentários, tem o mesmo hash antes e depois, então as capturas históricas continuam válidas e não foram repetidas.
+
 ## Limites
 
 Capturas de um fixture local headless com os hosts reais do estudo; não é produção. O canvas interno mantém largura natural e exige rolagem em largura estreita — comportamento compartilhado, escolhido no lugar de encolher rótulos e eixos. Sem `syncEdge`, Chrome pessoal, curso hospedado, deploy, CI ou gate amplo nesta entrega.

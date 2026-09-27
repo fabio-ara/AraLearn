@@ -14,9 +14,17 @@
     ]
   },
   "hashes": {
-    "src/resources/packages/plane/index.js": "9fd8eb4654e5ca7feac84a5fa6591314486d5bbf692527d5df7f59e331de3e4c",
-    "supabase/functions/_shared/aralearn/runtime/resources/packages/plane/index.js": "9fd8eb4654e5ca7feac84a5fa6591314486d5bbf692527d5df7f59e331de3e4c",
+    "src/resources/packages/plane/index.js": "be06bcd7ee63db4b4b3d8597ece1f57addc03fdba2587a19fe72a1c9481233af",
+    "supabase/functions/_shared/aralearn/runtime/resources/packages/plane/index.js": "be06bcd7ee63db4b4b3d8597ece1f57addc03fdba2587a19fe72a1c9481233af",
     "tests/runtime/chart-plane-academic.test.js": "401f88e975cb63df8986c9b6b37bb56f7ef6085e9250ca9aaf80c119fcb52e4d"
+  },
+  "notaDeIdentidade": {
+    "arquivo": "src/resources/packages/plane/index.js",
+    "hashAnterior": "9fd8eb4654e5ca7feac84a5fa6591314486d5bbf692527d5df7f59e331de3e4c",
+    "alteracao": "Somente comentários e linhas em branco; nenhum código executável mudou.",
+    "codigoExecutavelHashAntes": "72b94c6687fd5654914da729d6614f6b490e7bee9ffe152f3f5623784faca660",
+    "codigoExecutavelHashDepois": "72b94c6687fd5654914da729d6614f6b490e7bee9ffe152f3f5623784faca660",
+    "capturas": "Coleta visual histórica preservada (U2/U6, eixo da Explicação, densidade e reidratação); não repetida por mudança de comentário."
   },
   "imagens": [
     {
