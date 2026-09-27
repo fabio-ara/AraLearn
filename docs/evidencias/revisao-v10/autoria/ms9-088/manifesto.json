@@ -1,0 +1,99 @@
+{
+  "product": "0.0.88",
+  "courseRevision": 143,
+  "images": [
+    {
+      "file": "01-destino-unidade-390-estavel.png",
+      "bytes": 48686,
+      "sha256": "d43af0bbddaabfa6011826ab98cfa7bdb3a614d85b2ea677ab55f5eaf0870de0"
+    },
+    {
+      "file": "04-unidade-390-espera-e-fim-pagamento.png",
+      "bytes": 29226,
+      "sha256": "9835bdbf65424b605f6fbca22a370e2c9efd2dbee26f724f1ac9a2cbb6d0af1b"
+    },
+    {
+      "file": "05-unidade-390-fim-pagamento.png",
+      "bytes": 32009,
+      "sha256": "1dd7967b3e3625aebae1e9ba53ad18b8619d357a4b3628f258410019b8521078"
+    },
+    {
+      "file": "06-unidade-390-fim-loja.png",
+      "bytes": 25621,
+      "sha256": "138b02e1a01905d6b029cf307d258024988e02c6562bad18d0bf85c9655442cb"
+    },
+    {
+      "file": "11-estudo-320-unidade.png",
+      "bytes": 44847,
+      "sha256": "36392350b06a54a6415a7fde6610f8b5def5520dc1822635f440cdac852ba2af"
+    },
+    {
+      "file": "12-estudo-unidade-320-diagrama.png",
+      "bytes": 27114,
+      "sha256": "0be976b03338fc603234190062298cc70cd6858adb9beee33ead335b1caf9e5e"
+    },
+    {
+      "file": "13-estudo-unidade-390-diagrama.png",
+      "bytes": 31623,
+      "sha256": "909b14e7f01dc1c5c5345f5eeb70526d50688767f7f763ee01485faf89ef052e"
+    },
+    {
+      "file": "14-estudo-unidade-430-diagrama.png",
+      "bytes": 33309,
+      "sha256": "b3f64e79b3dc6f5b4bb234f234fe13be9f5c2b5114324bae3dbd674ea627aeca"
+    },
+    {
+      "file": "15-estudo-unidade-web-diagrama.png",
+      "bytes": 40273,
+      "sha256": "648a6bf7634ada907447363e7b65fbc4c29797fd5604fafa919094a559a1163b"
+    },
+    {
+      "file": "16-estudo-explicacao-web-diagrama.png",
+      "bytes": 40634,
+      "sha256": "598ca0543753af76f999bf78efbbfdf6301b4f80c654dd54db5ba6a58daf9dcd"
+    },
+    {
+      "file": "17-estudo-explicacao-430-diagrama.png",
+      "bytes": 33680,
+      "sha256": "1956d3e9a13cdc1d3c1e897dcf60527908a6f4ed94b7e40cd88c6e77b5379a10"
+    },
+    {
+      "file": "18-estudo-explicacao-390-diagrama.png",
+      "bytes": 32559,
+      "sha256": "20aaf8c9a9c05cd0aad6a6065945b2fc0fcf0beb35bff6f043e81778d74c3652"
+    },
+    {
+      "file": "19-estudo-explicacao-320-diagrama.png",
+      "bytes": 27678,
+      "sha256": "ad45a3e4224c4ed7ada0dfc91be946e3c7bfd0b7799eaf40b674381bb4135255"
+    },
+    {
+      "file": "20-pratica-390-incorreta.png",
+      "bytes": 46076,
+      "sha256": "eeedc19b115b95a8eb78283694dbd0f844c44dc5e1e20f9e9184e0b60b2918a9"
+    },
+    {
+      "file": "21-pratica-390-correta-comentario.png",
+      "bytes": 46686,
+      "sha256": "e61effdefe2d500b745a901e9d5060bbfeb975033d4bbe96b6a0dee2c8ab693d"
+    },
+    {
+      "file": "23-progresso-depois-reload.png",
+      "bytes": 26902,
+      "sha256": "ed79f6de88327a36b383a2da6bddd93254d528d0b85b7d628f4974e5cd8a8539"
+    }
+  ],
+  "limits": [
+    "Captura transitória inicial ficou privada.",
+    "Progresso numérico13/36 foi conferido na árvore acessível; a imagem mostra a barra.",
+    "Nenhuma validação humana."
+  ],
+  "sequence": [
+    "DeepLink retornado abriu a prévia real da unidade1.",
+    "Zoom e pan alcançaram ligação para espera e os dois finais novos.",
+    "Home e reabertura do curso mostraram conteúdo persistido no Estudo.",
+    "Unidade e Explicação:320,390,430,1280; Escape devolveu foco.",
+    "Prática3: Avaliar pagamento incorreta; retorno específico; Tentar de novo; Preparar pedido correta; comentário; avanço para unidade6.",
+    "Home e recarga:13/36, a partir de12/36."
+  ]
+}

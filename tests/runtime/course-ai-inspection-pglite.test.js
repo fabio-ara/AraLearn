@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../../src/domain/courseContentInspection.js";
+import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { createContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 
 const OWNER = "10000000-0000-4000-8000-000000000001";
 const OTHER = "10000000-0000-4000-8000-000000000002";
@@ -18,23 +21,29 @@ function functionSql(source, name) {
   assert.ok(end);
   return body.slice(0, end.index + end[0].length);
 }
-const report = { summary: "Inspeção do conteúdo e correspondência das fontes realizada.", outcome: "consistent", findings: [],
+const legacyReport = { summary: "Inspeção do conteúdo e correspondência das fontes realizada.", outcome: "consistent", findings: [],
   checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
     dimension, result: "sufficient", reason: "Relação exposta na base.", evidence: ["Base"] })) };
+const report = { ...legacyReport, checks: [...legacyReport.checks, { ...legacyReport.checks[0], dimension: "configuration" }] };
+const CONFIGURATION_MIGRATION = "20260928110000_configuration_realization_inspection.sql";
 const queryValue = async (db, sql, params = []) => (await db.query(sql, params)).rows[0].value;
 const read = (db, id = "u1", actor = OWNER, kind = "study_unit") => queryValue(db,
   "select public.get_course_ai_inspection_for_actor_v1($1,$2,$3,$4) value", [actor, COURSE, kind, id]);
 const record = async (db, request, { id = "u1", actor = OWNER, hash, value = report } = {}) => queryValue(db,
   "select public.record_course_ai_inspection_for_actor_v1($1,$2,'study_unit',$3,$4,$5,$6) value",
   [actor, COURSE, id, hash || (await read(db, id)).basisHash, value, request]);
+const receipt = (db, request, hash, value = legacyReport, actor = OWNER, course = COURSE, id = "u1") => queryValue(db,
+  "select public.get_course_ai_inspection_receipt_for_actor_v1($1,$2,'study_unit',$3,$4,$5,$6) value",
+  [actor, course, id, hash, value, request]);
 
 // Real basis SQL and inspection migrations run in PGlite; authentication and digest
 // are minimal fixture adapters, not proof of hosted access or a semantic review.
-async function fixture({ receiptFix = true } = {}) {
+async function fixture({ receiptFix = true, configuration = receiptFix } = {}) {
   const db = new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role;
     create schema private;
+    create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$select '{"features":[]}'::jsonb$$;
     create table public.courses(id uuid primary key, owner_id uuid, revision bigint default 1,
       bibliography_style text default 'abnt-2025',updated_at timestamptz);
     create table private.course_entities(course_id uuid,entity_type text,entity_id text,parent_id text,
@@ -91,6 +100,7 @@ async function fixture({ receiptFix = true } = {}) {
   assert.match(focalMigration, materializationBlock);
   await db.exec(focalMigration.replace(materializationBlock, ""));
   if (receiptFix) await db.exec(await migration(RECEIPT_MIGRATION));
+  if (configuration) await db.exec(await migration(CONFIGURATION_MIGRATION));
   return db;
 }
 
@@ -114,6 +124,68 @@ async function largeFocalBasis(db) {
   }
 }
 
+test("seis dimensões para nova gravação; legado current permanece legível e recibo atravessa base e parecer posteriores", async () => {
+  const db = await fixture({ configuration: false });
+  try {
+    const before = await read(db);
+    const principal = { actorId: OWNER, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] };
+    const oldRequest = "50000000-0000-4000-8000-000000000001";
+    const reference = await createContentReviewReference({ principal, read: before, requestId: oldRequest });
+    await record(db, oldRequest, { value: legacyReport });
+    const saved = await record(db, "legacy-five-01", { value: legacyReport });
+    await db.exec(await migration(CONFIGURATION_MIGRATION));
+    assert.deepEqual(normalizeCourseContentInspection(await read(db)).inspection.report, legacyReport);
+    assert.equal((await read(db)).inspection.state, "current");
+    const pending = () => queryValue(db, "select private.course_ai_inspection_pending_v1($1,'study_unit','u1') value", [COURSE]);
+    assert.equal(await pending(), true, "completude separada da atualidade da base");
+    for (const value of [legacyReport, { ...legacyReport, checks: undefined }]) {
+      assert.equal(await queryValue(db, "select private.valid_course_ai_inspection_report_v1($1) value", [value]), true);
+      await assert.rejects(record(db, "new-five-01", { value }), { code: "22023" });
+    }
+    assert.equal(await receipt(db, "not-saved-01", before.basisHash), null);
+    assert.deepEqual(await receipt(db, "legacy-five-01", before.basisHash), { ...saved, idempotent: true });
+    const current = await record(db, "new-six-01");
+    assert.equal(await pending(), false);
+    assert.equal(current.inspection.report.checks.length, 6);
+    const insufficient = { ...report, outcome: "needs_attention", findings: ["Realização ainda não demonstrada."],
+      checks: report.checks.map(check => ({ ...check, result: check.dimension === "configuration" ? "insufficient" : "sufficient" })) };
+    await record(db, "configuration-attention-01", { value: insufficient });
+    assert.equal(await pending(), true);
+    await db.exec("update private.course_entities set content=content||'{\"goal\":\"Base posterior\"}' where entity_id='ms'");
+    assert.notEqual((await read(db)).basisHash, before.basisHash);
+    const later = await record(db, "new-base-six-01");
+    const adapter = Object.create(CourseSupabaseAdapter.prototype);
+    adapter.publicAppUrl = "https://example.test";
+    adapter.rpc = async (name, input) => {
+      assert.equal(name, "get_course_ai_inspection_receipt_for_actor_v1", "o replay não relê a base nem tenta gravar");
+      return receipt(db, input.p_request_id, input.p_expected_basis_hash, input.p_report,
+        input.p_actor_id, input.p_course_id, input.p_target_id);
+    };
+    const recovered = await executeHumanCourseTask({ adapter, principal, name: "registrar_inspecao",
+      rawArguments: { referencia: reference, parecer: legacyReport } });
+    assert.deepEqual(recovered.context.inspecaoIA.report, legacyReport);
+    assert.equal(recovered.context.inspecaoIA.dimensoesAtuaisCompletas, false);
+    const newReference = await createContentReviewReference({ principal, read: before,
+      requestId: "50000000-0000-4000-8000-000000000002" });
+    await assert.rejects(executeHumanCourseTask({ adapter, principal, name: "registrar_inspecao",
+      rawArguments: { referencia: newReference, parecer: legacyReport } }), { code: "pedagogical_audit_configuration_required" });
+    assert.deepEqual(await receipt(db, "legacy-five-01", before.basisHash), { ...saved, idempotent: true });
+    assert.deepEqual(await record(db, "legacy-five-01", { hash: before.basisHash, value: legacyReport }), { ...saved, idempotent: true });
+    assert.deepEqual((await read(db)).inspection, later.inspection);
+    await assert.rejects(receipt(db, "legacy-five-01", before.basisHash, report), { code: "23514" });
+    await assert.rejects(receipt(db, "legacy-five-01", "b".repeat(64)), { code: "23514" });
+    await assert.rejects(receipt(db, "legacy-five-01", before.basisHash, legacyReport, OWNER, COURSE, "u2"), { code: "23514" });
+    await assert.rejects(receipt(db, "legacy-five-01", before.basisHash, legacyReport, OTHER), { code: "42501" });
+    const otherCourse = "20000000-0000-4000-8000-000000000002";
+    await db.query("insert into public.courses(id,owner_id) values($1,$2)", [otherCourse, OWNER]);
+    await assert.rejects(receipt(db, "legacy-five-01", before.basisHash, legacyReport, OWNER, otherCourse), { code: "23514" });
+    await db.exec("select set_config('fixture.role','authenticated',false)");
+    await assert.rejects(receipt(db, "legacy-five-01", before.basisHash), { code: "42501" });
+    assert.equal(await queryValue(db, "select has_function_privilege('authenticated','public.get_course_ai_inspection_receipt_for_actor_v1(uuid,uuid,text,text,text,jsonb,text)','execute') value"), false);
+    assert.equal(await queryValue(db, "select has_function_privilege('service_role','public.get_course_ai_inspection_receipt_for_actor_v1(uuid,uuid,text,text,text,jsonb,text)','execute') value"), true);
+  } finally { await db.close(); }
+});
+
 test("recibo compacto registra base focal acima de 76 KiB e conserva replay histórico após outro parecer e outra base", async t => {
   const db = await fixture({ receiptFix: false });
   try {
@@ -122,11 +194,11 @@ test("recibo compacto registra base focal acima de 76 KiB e conserva replay hist
     const bytes = await queryValue(db, "select pg_column_size(private.course_ai_inspection_payload_v1($1,'study_unit','u1')) value", [COURSE]);
     assert.ok(bytes > 76_502);
     assert.equal(before.pedagogicalBasis.studyUnits.length, 10);
-    await assert.rejects(record(db, "large-original-01"), { code: "23514", constraint: "course_change_receipts_result_v1" });
+    await assert.rejects(record(db, "large-original-01", { value: legacyReport }), { code: "23514", constraint: "course_change_receipts_result_v1" });
     assert.deepEqual(await read(db), before, "a recusa do recibo reverte a inspeção e a revisão na mesma transação");
     assert.equal(await queryValue(db, "select count(*)::int value from private.course_change_receipts"), 0);
     await db.exec(await migration(RECEIPT_MIGRATION));
-    const saved = normalizeCourseContentInspection(await record(db, "large-original-01"));
+    const saved = normalizeCourseContentInspection(await record(db, "large-original-01", { value: legacyReport }));
     assert.equal(Object.hasOwn(saved, "pedagogicalBasis"), false, "o comando retorna o parecer, a leitura retorna a base");
     assert.deepEqual((await read(db)).pedagogicalBasis, before.pedagogicalBasis);
     const receipt = await queryValue(db, "select result value from private.course_change_receipts where request_id='large-original-01'");
@@ -134,19 +206,20 @@ test("recibo compacto registra base focal acima de 76 KiB e conserva replay hist
     assert.equal(Object.hasOwn(receipt.inspection, "report"), false);
     const receiptBytes = await queryValue(db, "select pg_column_size(result) value from private.course_change_receipts where request_id='large-original-01'");
     assert.ok(receiptBytes < 4096);
+    await db.exec(await migration(CONFIGURATION_MIGRATION));
     const laterReport = { ...report, summary: "Inspeção posterior sobre a mesma base." };
     const later = await record(db, "large-later-01", { value: laterReport });
     assert.ok(later.courseRevision > saved.courseRevision);
-    assert.deepEqual(await record(db, "large-original-01", { hash: before.basisHash }), { ...saved, idempotent: true });
+    assert.deepEqual(await record(db, "large-original-01", { hash: before.basisHash, value: legacyReport }), { ...saved, idempotent: true });
     assert.deepEqual((await read(db)).inspection, later.inspection, "replay não restaura o parecer anterior no alvo");
     await assert.rejects(record(db, "large-original-01", { hash: before.basisHash, value: laterReport }), { code: "23514" });
-    await assert.rejects(record(db, "large-original-01", { id: "u2", hash: before.basisHash }), { code: "23514" });
-    await assert.rejects(record(db, "large-original-01", { actor: OTHER, hash: before.basisHash }), { code: "42501" });
+    await assert.rejects(record(db, "large-original-01", { id: "u2", hash: before.basisHash, value: legacyReport }), { code: "23514" });
+    await assert.rejects(record(db, "large-original-01", { actor: OTHER, hash: before.basisHash, value: legacyReport }), { code: "42501" });
     await db.exec("update private.course_entities set content=content||'{\"title\":\"Base concorrente\"}' where entity_id='u2'");
     const current = await read(db);
     assert.notEqual(current.basisHash, before.basisHash);
     await assert.rejects(record(db, "stale-new-attempt", { hash: before.basisHash }), { code: "PT409" });
-    assert.deepEqual(await record(db, "large-original-01", { hash: before.basisHash }), { ...saved, idempotent: true });
+    assert.deepEqual(await record(db, "large-original-01", { hash: before.basisHash, value: legacyReport }), { ...saved, idempotent: true });
     assert.deepEqual(await read(db), current, "replay não altera a revisão ou a base concorrente");
     t.diagnostic(`Base completa: ${bytes} bytes; recibo compacto: ${receiptBytes} bytes.`);
   } finally { await db.close(); }
@@ -183,10 +256,11 @@ test("migração conserva recibo anterior e repetição simultânea não duplica
   const db = await fixture({ receiptFix: false });
   try {
     const before = await read(db);
-    const legacy = await record(db, "legacy-receipt-01");
+    const legacy = await record(db, "legacy-receipt-01", { value: legacyReport });
     assert.ok(legacy.pedagogicalBasis);
     const legacyReceipt = await queryValue(db, "select result value from private.course_change_receipts where request_id='legacy-receipt-01'");
     await db.exec(await migration(RECEIPT_MIGRATION));
+    await db.exec(await migration(CONFIGURATION_MIGRATION));
     const laterReport = { ...report, summary: "Parecer posterior ao recibo legado." };
     const revision = (await read(db)).courseRevision;
     // PGlite serializes these submissions on one connection. The production
@@ -195,7 +269,7 @@ test("migração conserva recibo anterior e repetição simultânea não duplica
       record(db, "same-request-01", { value: laterReport })]);
     assert.deepEqual(attempts.map(value => value.idempotent).sort(), [false, true]);
     assert.equal((await read(db)).courseRevision, revision + 1);
-    assert.deepEqual(await record(db, "legacy-receipt-01", { hash: before.basisHash }), { ...legacy, idempotent: true });
+    assert.deepEqual(await record(db, "legacy-receipt-01", { hash: before.basisHash, value: legacyReport }), { ...legacy, idempotent: true });
     assert.deepEqual(await queryValue(db, "select result value from private.course_change_receipts where request_id='legacy-receipt-01'"), legacyReceipt);
     const current = await read(db);
     assert.deepEqual(current.inspection.report, laterReport);

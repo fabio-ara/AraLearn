@@ -20,7 +20,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **10.0.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.0.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -227,11 +227,17 @@ conteúdo revisado é explicada nas [regras de revisão e acesso](aralearn-contr
 Quando uma correção altera a estrutura de uma unidade, `aplicar_correcoes` informa a invalidação da aplicação instrucional e orienta a releitura, a reaplicação contextual das escolhas e a nova inspeção. A tarefa existente `aplicar_configuracao_instrucional` retoma esse fluxo, preservando as condições fixadas e exigindo uma declaração sobre o conteúdo atual. Alterar somente título ou vínculos de fontes não é apresentado como invalidação estrutural. O recibo não copia declarações antigas para conteúdo novo.
 
 `registrar_inspecao` usa a referência da base focal efetivamente lida. O
-parecer deve trazer cinco dimensões — `alignment`, `evidence`,
-`representation`, `feedback` e `sufficiency` — e *quotes* que existam no
+parecer novo deve trazer seis dimensões — `alignment`, `evidence`,
+`representation`, `feedback`, `sufficiency` e `configuration` — e *quotes* que existam no
 conteúdo salvo. O servidor vincula o parecer à versão e ao `basisHash`, detecta
 quando a base precisa de nova inspeção e recusa evidência que não esteja no
 recorte.
+
+`configuration` confronta os parâmetros aplicados com a realização observável
+no alvo e no percurso pertinente, respeitando preferências contextuais e fixações.
+Pareceres históricos continuam legíveis; cinco dimensões só são aceitas na
+recuperação da tentativa exata já salva. A referência opaca contém essa identidade.
+Consulte a [compatibilidade e os critérios comuns](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
 
 Um parecer `consistent` é recusado quando falta a aplicação instrucional de uma unidade relevante da base focal. `needs_attention` permanece disponível para registrar a insuficiência. Isso verifica a existência da base; o auditor ainda precisa confrontar as escolhas aplicadas com a experiência realmente proposta.
 

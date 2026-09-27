@@ -2075,7 +2075,7 @@ export async function materializeHumanCoursePart({
       : "Conteúdo solicitado salvo.",
     ...buildHumanNavigationEnvelope(producedContentTarget ? createHumanNavigation(adapter, {
       courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
-    }) : null, [], { nextDecision: "Use preparar_revisao para uma segunda leitura pedagógica do percurso salvo. Registre as cinco dimensões da inspeção; corrija insuficiências antes de considerar a produção satisfatória." }),
+    }) : null, [], { nextDecision: "Use preparar_revisao para uma segunda leitura pedagógica do percurso salvo. Registre as seis dimensões, incluindo configuration, da inspeção; corrija insuficiências antes de considerar a produção satisfatória." }),
     context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
       ...(bpmnReview ? { bpmnReview } : {}),
       qualidadePedagogica: "pending_independent_inspection",

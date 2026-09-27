@@ -1,0 +1,126 @@
+{
+  "product": "0.0.88",
+  "courseRevision": 153,
+  "baselineRevision": 143,
+  "directory": "docs/evidencias/revisao-v10/autoria/ms2-088",
+  "origin": "Capturas da raiz em .tmp/agent/revisao-v10/ms2-autonomia-088/, copiadas sem manipulacao de pixels; bytes JPEG/JFIF preservados, extensao .png conforme a convencao das pastas ms9-088/ e ms10-088/.",
+  "sanitization": "Selecao revista imagem a imagem pelo worker: sem nome, e-mail, credencial, cookie ou referencia opaca visivel; cabecalho do app mostra apenas marca e icone generico.",
+  "images": [
+    {
+      "file": "01-u1-320-erro-generalizacao.png",
+      "bytes": 41654,
+      "sha256": "90d356340b6d3a565fae837c22ff76d23ee814f527753c7606700fa7968c9094",
+      "width": 320,
+      "height": 844,
+      "source": "04-erro-generalizacao-320.png"
+    },
+    {
+      "file": "02-u1-320-correta-comentario.png",
+      "bytes": 45126,
+      "sha256": "fe67ae5fb2f4ddd4d8e63c77bf2abb94ae5b62dfa4554c1bf3edf9bb8b6b8d8c",
+      "width": 320,
+      "height": 844,
+      "source": "05-correta-comentario-320.png"
+    },
+    {
+      "file": "03-explicacao-320-eixo-cortado.png",
+      "bytes": 35684,
+      "sha256": "2340216f49d1cfed2ff0f39a6582ff7835cfb631ed06f99370638cf1f015110d",
+      "width": 320,
+      "height": 844,
+      "source": "10-explicacao-320-grafico.png"
+    },
+    {
+      "file": "04-unidade-390-rotulos-coincidentes.png",
+      "bytes": 46018,
+      "sha256": "ce5a5adb41ec194bf3fe295d6f019475758d3c674202e0a45ef70ab7abaac016",
+      "width": 390,
+      "height": 844,
+      "source": "15-unidade-grafico-390.png"
+    },
+    {
+      "file": "05-u3-390-incorreta.png",
+      "bytes": 47549,
+      "sha256": "ff85d8588fbc858dc734e90150c58d6f344e0ee467cd412d9116166fc8bf247e",
+      "width": 390,
+      "height": 844,
+      "source": "16-pos-ensino-incorreta-390.png"
+    },
+    {
+      "file": "06-u3-390-correta-comentario.png",
+      "bytes": 49091,
+      "sha256": "f65035cbfdc2ba1bb51f0a76971d6b1c8450cce80b74e55ae75bd26ae44e9f62",
+      "width": 390,
+      "height": 844,
+      "source": "18-pos-ensino-correta-390.png"
+    },
+    {
+      "file": "07-progresso-apos-reload-390.png",
+      "bytes": 26867,
+      "sha256": "cb99bb642f0f65d670a77a08d7d1f59df285354c84ba0251d9ba2cfb41509f59",
+      "width": 390,
+      "height": 844,
+      "source": "19-progresso-apos-reload.png"
+    },
+    {
+      "file": "08-u4-390-comentario-correto.jpg",
+      "bytes": 48400,
+      "sha256": "2606875c69c1d442e0e12178c366726886f45033dd21815af227da6bdfdd5270",
+      "source": "04-u4-comentario-visivel.jpg",
+      "note": "U4 em390: comentario visivel apos a previsao correta em32 entregas; botao de avanco disponivel."
+    },
+    {
+      "file": "09-u6-390-comentario-correto.jpg",
+      "bytes": 50603,
+      "sha256": "683d24e3bb7ec028155015cd33cb4e5018fd188183d51403ef346295eeee5115",
+      "source": "08-u6-correta-comentario.jpg",
+      "note": "U6 em390: tres alternativas corretas e comentario que distingue31, empate32 e vantagem do Flex em33."
+    },
+    {
+      "file": "10-etapa-6-de-6.jpg",
+      "bytes": 50503,
+      "sha256": "19d91f09d5b70a565b81ee4736c7889ac534f4e4cb193d4adbd87df385037eff",
+      "source": "09-etapa-seis-de-seis.jpg",
+      "note": "Licao em390: MS2 concluida6/6 e sincronizacao confirmada."
+    }
+  ],
+  "sequence": [
+    "DeepLink retornado abriu a previa real da U1/6.",
+    "Inicio mostrou 42 unidades e 13/42; o Estudo abriu a MS2 com 6 unidades.",
+    "U1 em 320: generalizacao incorreta, retorno especifico, Tentar de novo, quatro alternativas corretas de vencedor/diferenca em 10 e 40, comentario e avanco ao ensino da U2.",
+    "Tabela larga rolada ate o extremo direito: 471+232=703.",
+    "Grafico da U2 conferido em 320/390/430/1280; Explicacao conferida em 320/390/430/1280; Escape devolveu o foco a Explicacao.",
+    "U3 em 390: erro de ritmo, retorno especifico 6/5, Tentar de novo, comparacao correta das aproximacoes, comentario e avanco a U4.",
+    "Inicio e recarga: 16/42, sincronizado com o progresso anterior de 13/42.",
+    "Viewport sobrescrito limpo e navegador restaurado."
+  ],
+  "findings": [
+    "Explicacao em 320: titulo longo do eixo X cortado, sem acesso horizontal (SVG 222/250).",
+    "Grafico da U2 em 320/390/430/1280: rotulos Base32/Flex32 coincidentes; as coordenadas (32,192) representam o empate corretamente."
+  ],
+  "limits": [
+    "U4-U6 nao respondidas nesta sequencia de UI.",
+    "Numeros de progresso 13/42 e 16/42 vem da arvore acessivel; as imagens mostram a barra.",
+    "Os defeitos de renderer permanecem abertos; a primeira correcao local 0.0.89 foi rejeitada na revisao visual da raiz (rotulos afastados sem vinculo) e segue em correcao, sem prova hospedada.",
+    "Nenhuma validacao humana; a sequencia interativa pertence a raiz."
+  ],
+  "resumption": {
+    "at": "2026-09-27T21:32:48Z",
+    "where": "0.0.88, Estudo em390x844, mesma sessao de autoria",
+    "before": "16/42; MS23/6",
+    "after": "19/42; MS26/6",
+    "sequence": [
+      "U4:28incorreta->feedback4reais->retry32correta->comentario->U5",
+      "U5:empatefracionarioincorreto->feedbackdiscreto->retrytrocasemempate->comentario->U6",
+      "U6:31,5incorreta->feedbackcontagensinteiras->retry3corretas->comentario->retornoalição",
+      "Sincronizado->Home->reload->19/42sincronizado"
+    ],
+    "limits": [
+      "19/42 vem da arvore acessivel; a captura do Inicio mostra a barra.",
+      "O feedback especifico de U5/U6 incorretas foi observado pela raiz/AX; nas capturas de erro a opcao especifica fica fora da area visivel, entao nao ha pixel integral disso.",
+      "A captura 03 original registrou a transicao antes de pintar a correta e nao e usada como prova.",
+      "O defeito de rotulos do grafico em .88 continua aberto; sem aprovacao visual do grafico, sem correcao hospedada.",
+      "Nenhuma validacao humana."
+    ]
+  }
+}

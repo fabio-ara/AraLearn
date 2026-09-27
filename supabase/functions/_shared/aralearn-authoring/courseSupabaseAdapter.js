@@ -65,7 +65,7 @@ import {
   assembleCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
-import { CourseAuthoringBasisError } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
+import { CourseAuthoringBasisError, canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
 import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExport, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { composeCourseDocument } from "../aralearn/runtime/domain/courseEntities.js";
 import { collectAppliedExplanationBases } from "../aralearn/runtime/domain/appliedExplanationBasis.js";
@@ -3160,6 +3160,21 @@ export class CourseSupabaseAdapter {
     }, { deadlineAt }));
     try { return normalizeCourseContentInspection(value, { courseId, targetKind, targetId }); }
     catch { throw new AuthoringApiError(503, "course_service_unavailable", "O parecer de inspeção não corresponde ao objeto."); }
+  }
+
+  async getCourseContentInspectionReceipt({ principal, courseId, targetKind, targetId, expectedBasisHash, report, requestId, deadlineAt = null }) {
+    const normalized = normalizeCourseContentInspectionReport(report);
+    const value = first(await this.rpc("get_course_ai_inspection_receipt_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_target_kind: targetKind, p_target_id: targetId,
+      p_expected_basis_hash: expectedBasisHash, p_report: normalized, p_request_id: requestId
+    }, { deadlineAt }));
+    if (value === null) return null;
+    try {
+      const receipt = normalizeCourseContentInspection(value, { courseId, targetKind, targetId, expectedBasisHash });
+      if (receipt.contract !== "aralearn.course-ai-inspection-change.v1" || receipt.idempotent !== true ||
+          canonicalAuthoringValue(receipt.inspection.report) !== canonicalAuthoringValue(normalized)) throw new TypeError();
+      return receipt;
+    } catch { throw new AuthoringApiError(503, "course_service_unavailable", "O recibo de inspeção não corresponde à mesma tentativa."); }
   }
 
   async recordCourseContentInspection({ principal, courseId, targetKind, targetId, expectedBasisHash, report, requestId, deadlineAt = null }) {

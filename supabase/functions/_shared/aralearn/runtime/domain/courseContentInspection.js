@@ -1,4 +1,4 @@
-import { normalizePedagogicalAudit } from "./coursePedagogicalAudit.js";
+import { normalizePedagogicalAudit, hasCurrentPedagogicalAudit } from "./coursePedagogicalAudit.js";
 
 const HASH = /^[a-f0-9]{64}$/u;
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/u;
@@ -6,7 +6,9 @@ const TARGETS = new Set(["study_unit", "microsequence_explanation"]);
 const OUTCOMES = new Set(["consistent", "needs_attention", "human_preference_retained"]);
 const plain = value => value && typeof value === "object" && !Array.isArray(value) &&
   [Object.prototype, null].includes(Object.getPrototypeOf(value));
-function fail() { throw Object.assign(new TypeError("O parecer de inspeção por IA é inválido."), { code: "invalid_course_ai_inspection" }); }
+function fail(message = "O parecer de inspeção por IA é inválido.") {
+  throw Object.assign(new TypeError(message), { code: "invalid_course_ai_inspection" });
+}
 function exact(value, required, optional = []) {
   if (!plain(value) || required.some(key => !Object.hasOwn(value, key)) ||
       Object.keys(value).some(key => !required.includes(key) && !optional.includes(key))) fail();
@@ -22,17 +24,23 @@ export function normalizeCourseContentInspectionReport(value) {
   exact(value, ["summary", "outcome", "findings"], ["checks"]);
   if (!boundedText(value.summary, 2000) || !OUTCOMES.has(value.outcome) ||
       !Array.isArray(value.findings) || value.findings.length > 20 ||
-      value.findings.some(item => !boundedText(item, 1000)) ||
-      value.outcome === "needs_attention" && !value.findings.length ||
-      value.outcome === "consistent" && value.findings.length) fail();
-  const checks = value.checks === undefined ? null : normalizePedagogicalAudit(value.checks);
-  if (checks?.some(check => check.result === "insufficient") && value.outcome !== "needs_attention") fail();
+      value.findings.some(item => !boundedText(item, 1000))) fail();
+  if (value.outcome === "needs_attention" && !value.findings.length) {
+    fail("needs_attention exige ao menos uma pendência em findings. Descreva o que precisa de atenção; se não há pendências, reveja outcome conforme o julgamento da base.");
+  }
+  if (value.outcome === "consistent" && value.findings.length) {
+    fail("findings registra pendências. consistent exige findings: []; registre observações positivas em summary ou em checks[].reason. Se houver pendências, preserve-as e reveja outcome.");
+  }
+  const checks = value.checks === undefined ? null : normalizePedagogicalAudit(value.checks, null, { allowLegacy: true });
+  if (checks?.some(check => check.result === "insufficient") && value.outcome !== "needs_attention") {
+    fail("Um check insufficient exige outcome: needs_attention e pendências em findings. Preserve as insuficiências constatadas ao reconciliar o parecer.");
+  }
   return { summary: value.summary, outcome: value.outcome, findings: [...value.findings], ...(checks ? { checks } : {}) };
 }
 
 export function isCourseContentInspectionSatisfied(inspection) {
   return inspection?.state === "current" && inspection.report?.outcome === "consistent" &&
-    Array.isArray(inspection.report.checks) && inspection.report.checks.length === 5 &&
+    hasCurrentPedagogicalAudit(inspection.report.checks) &&
     inspection.report.checks.every(check => check.result !== "insufficient");
 }
 

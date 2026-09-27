@@ -10,7 +10,7 @@ const courseId = "20000000-0000-4000-8000-000000000002";
 const annotationId = "30000000-0000-4000-8000-000000000003";
 const principal = { actorId, authenticationKind: "action", scopes: ["authoring:read", "authoring:write"] };
 const report = { summary: "Base e relações examinadas.", outcome: "consistent", findings: [],
-  checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+  checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
     dimension, result: "sufficient", reason: "A explicação desenvolve a relação solicitada.", evidence: ["Relações"] })) };
 const initial = () => ({ contract: "aralearn.course-ai-inspection.v1", courseId, courseRevision: 5,
   targetKind: "microsequence_explanation", targetId: "micro", basisHash: "a".repeat(64),
@@ -18,6 +18,30 @@ const initial = () => ({ contract: "aralearn.course-ai-inspection.v1", courseId,
     microsequence: { title: "Relações", goal: "Explicar relações" }, planItems: [], studyUnits: [], dependencies: [] },
   inspection: { state: "pending", basisHash: "a".repeat(64) } });
 const execute = (adapter, name, args) => executeHumanCourseTask({ adapter, principal, name, rawArguments: args });
+
+test("parecer de cinco dimensões só pode recuperar recibo exato, nunca gravar como nova inspeção", async () => {
+  const before = initial();
+  const reference = await createContentReviewReference({ principal, read: before });
+  const legacy = { ...report, checks: report.checks.filter(check => check.dimension !== "configuration") };
+  let writes = 0;
+  const adapter = { publicAppUrl: "https://example.org", getCourseContentInspection: async () => before,
+    getCourseContentInspectionReceipt: async () => null,
+    recordCourseContentInspection: async input => { writes++; return { ...before, inspection: { state: "current",
+      basisHash: before.basisHash, inspectedAt: "2026-09-28T00:00:00Z", report: input.report } }; } };
+  await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: legacy }),
+    { code: "pedagogical_audit_configuration_required" });
+  assert.equal(writes, 0);
+  adapter.getCourseContentInspection = async () => { throw new Error("Replay não relê base posterior"); };
+  adapter.getCourseContentInspectionReceipt = async input => {
+    assert.deepEqual(input.report, legacy);
+    assert.equal(input.expectedBasisHash, before.basisHash);
+    return { ...before, idempotent: true, changed: true, contract: "aralearn.course-ai-inspection-change.v1",
+      inspection: { state: "current", basisHash: before.basisHash, inspectedAt: "2026-09-28T00:00:00Z", report: legacy } };
+  };
+  const replay = await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: legacy });
+  assert.deepEqual(replay.context.inspecaoIA.report, legacy);
+  assert.equal(writes, 0);
+});
 
 test("comparação focal preserva bases literais e continuações sem carregar o curso inteiro", async () => {
   const reference = { annotationId, annotationVersion: 3, targetSetVersion: 2, targetKind: "study_unit", targetId: "unit-a" };
@@ -51,6 +75,7 @@ test("parecer vincula a base lida e reconcilia resposta perdida sem editar ou re
   let read = initial(); const calls = [];
   const reference = await createContentReviewReference({ principal, read });
   const adapter = { publicAppUrl: "https://example.org",
+    getCourseContentInspectionReceipt: async () => null,
     getCourseContentInspection: async () => structuredClone(read),
     async recordCourseContentInspection(request) {
       calls.push(request);
@@ -73,7 +98,7 @@ test("parecer não escreve base obsoleta e recusa conflito sem repetir a tentati
   const before = initial();
   const reference = await createContentReviewReference({ principal, read: before });
   let writes = 0;
-  const adapter = { getCourseContentInspection: async () => ({ ...before, basisHash: "b".repeat(64),
+  const adapter = { getCourseContentInspectionReceipt: async () => null, getCourseContentInspection: async () => ({ ...before, basisHash: "b".repeat(64),
     inspection: { state: "pending", basisHash: "b".repeat(64) } }),
     recordCourseContentInspection: async () => { writes++; } };
   await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report }),
@@ -96,7 +121,7 @@ test("registrar_inspecao recusa consistência quando a base aplicada está nula"
       dependencies: [] } };
   const reference = await createContentReviewReference({ principal, read });
   let writes = 0;
-  const adapter = { getCourseContentInspection: async () => structuredClone(read),
+  const adapter = { getCourseContentInspectionReceipt: async () => null, getCourseContentInspection: async () => structuredClone(read),
     recordCourseContentInspection: async () => { writes++; } };
   await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report }),
     error => error.code === "pedagogical_audit_unapplied_design");

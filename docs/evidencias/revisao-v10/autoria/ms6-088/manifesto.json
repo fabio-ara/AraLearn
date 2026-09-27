@@ -1,0 +1,111 @@
+{
+  "product": "0.0.88",
+  "courseId": "68d099a5-60d6-4a26-bd93-4a990a4789c3",
+  "explanationId": "4f360ef6-bf47-8590-8c8b-20e2da57cd0d",
+  "baselineExportRevision": 153,
+  "sourcesCreatedAt": "2026-09-27T21:47:36Z",
+  "origin": "Capturas do painel Fontes da explicação no Chrome persistente (aba 899818587), salvas via Chrome DevTools MCP por filePath e copiadas sem manipulacao de pixels.",
+  "sanitization": "Revistas imagem a imagem: apenas UI do app e conteudo do curso, sem nome, e-mail, credencial, cookie ou referencia opaca.",
+  "sanction": "Nenhuma validacao humana; revisao conduzida por IA.",
+  "images": [
+    {
+      "file": "01-fontes-referencia-1-stanley.png",
+      "bytes": 112040,
+      "sha256": "a7eb1d4daeed6bdd4b2b4cf1dcdd66175f9265ed8594af7429fe0d4e55368d31",
+      "source": "ms6-actions-088-fontes-painel.png",
+      "note": "Painel Fontes da explicação: referência1 (Bijective Proof Problems — seção4 Trees) com as duas âncoras."
+    },
+    {
+      "file": "02-fontes-referencia-3-schwarz-lema2.png",
+      "bytes": 99180,
+      "sha256": "1548b4a5f004700ec0f398b18d48f68eb0b7bcae87a7b2de228708444b6ac3ef",
+      "source": "ms6-actions-088-fontes-schwarz.png",
+      "note": "ANTES da recuperação: localizador ambíguo “(p. 194 do PDF)” no vínculo da referência 3."
+    },
+    {
+      "file": "03-fontes-referencia-6-cs280-teorema-34-3.png",
+      "bytes": 111882,
+      "sha256": "c2928fdd1996872fc31c434b4a4627ed8566818dd15e9e77afb583dfa1b071ca",
+      "source": "ms6-actions-088-fontes-cs280.png",
+      "note": "Referência6 (CS280 Handout34): apenas a âncora do Theorem34.3 marcada; as âncoras da Definição34.4 (incluindo o typo three) ficam desmarcadas."
+    },
+    {
+      "file": "04-fontes-referencia-3-schwarz-corrigido.png",
+      "bytes": 92108,
+      "sha256": "5e250149f64769e5ebc465cf0171e05ebd1587581d67f572705d1a602575649a",
+      "source": "ms6-actions-088-fontes-schwarz-depois.png",
+      "note": "DEPOIS da recuperação: referência 3 com o localizador corrigido “página impressa 195, seção 4.2.3, Lema 2” e trecho localizado."
+    }
+  ],
+  "anchors": [
+    {
+      "n": 1,
+      "obra": "Bijective Proof Problems — seção4: Trees",
+      "url": "https://math.mit.edu/~rstan/bij.pdf",
+      "ancoras": 2,
+      "status": "active"
+    },
+    {
+      "n": 2,
+      "obra": "Trees and their Iterators — Tree Terminology (CS2110)",
+      "url": "https://www.cs.cornell.edu/courses/cs2110/2025fa/lectures/lec16/",
+      "ancoras": 3,
+      "status": "active"
+    },
+    {
+      "n": 3,
+      "obra": "Properties of Trees (Schwarz)",
+      "url": "https://theory.stanford.edu/~trevisan/cs103-14/keith.pdf",
+      "ancoras": 1,
+      "localizacao": "Capítulo 4, seção 4.2.3, página impressa 195, Lema 2 (localizador corrigido na recuperação)",
+      "status": "active, localizada"
+    },
+    {
+      "n": 4,
+      "obra": "Trees — More Tree Terminology (CS106B)",
+      "url": "https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1252/lectures/22-trees/slides",
+      "ancoras": 2,
+      "status": "active"
+    },
+    {
+      "n": 5,
+      "obra": "Graphs — Overview and Terminology (CS106B)",
+      "url": "https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1258/lectures/25-graphs/",
+      "ancoras": 3,
+      "status": "active"
+    },
+    {
+      "n": 6,
+      "obra": "CS280 Handout34 — Trees",
+      "url": "https://www.cs.cornell.edu/courses/cs280/2001sp/handouts/h34.pdf",
+      "ancoras": "1 marcada (Theorem34.3); 2 desmarcadas (Definição34.4)",
+      "status": "active"
+    }
+  ],
+  "primaryConference": {
+    "origem": "conferência textual focal da raiz em fontes oficiais (open/find na web), registrada em ms6-fontes-conferencia-primaria-088.json",
+    "limites": "trechos declarados, não leitura integral das obras; sem validação humana",
+    "checks": [
+      {
+        "url": "https://math.mit.edu/~rstan/bij.pdf",
+        "locator": "seção 4 Trees, página impressa 30 (índice PDF 29)",
+        "finding": "Confirma árvore conexa sem ciclos e raiz como vértice distinguido."
+      },
+      {
+        "url": "https://www.cs.cornell.edu/courses/cs2110/2025fa/lectures/lec16/",
+        "locator": "Tree Terminology: Tree, Node, Root; Ancestor, Descendant",
+        "finding": "Confirma raiz sem entrada, um pai por outro nó, alcance a partir da raiz e convenção inclusiva de ancestral/descendente."
+      },
+      {
+        "url": "https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1252/lectures/22-trees/slides",
+        "locator": "slides 7 e 8",
+        "finding": "Confirma comprimento contado por arestas e estrutura sem múltiplos pais nem ciclos no modelo apresentado."
+      },
+      {
+        "url": "https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1258/lectures/25-graphs/",
+        "locator": "Overview e Terminology",
+        "finding": "Confirma que grafo não exige entrada única nem hierarquia; comprimento do caminho por arestas, ressalvadas convenções de caminho versus caminho simples."
+      }
+    ]
+  }
+}

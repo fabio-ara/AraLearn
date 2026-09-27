@@ -289,7 +289,10 @@ function retentionInspectionReport(basis) {
         evidence: [unitTitle] },
       { dimension: "sufficiency", result: "sufficient",
         reason: "A explicação e o único vínculo de fonte cobrem o recorte observado deste cenário sintético.",
-        evidence: [observedText] }
+        evidence: [observedText] },
+      { dimension: "configuration", result: "not_applicable",
+        reason: "Esta fixture de retenção cria conteúdo teórico diretamente, sem snapshot de parâmetros pedagógicos aplicados a confrontar; não certifica a realização de escolhas ausentes.",
+        evidence: [unitTitle] }
     ]
   };
 }

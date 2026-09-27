@@ -1,0 +1,40 @@
+{
+  "product": "0.0.89",
+  "environment": "Chromium headless, fixture local com controller controlado e renderer real",
+  "variants": [
+    "historico-5-consistent",
+    "historico-5-needs-attention",
+    "atual-6-sufficient",
+    "pendente"
+  ],
+  "widths": [
+    320,
+    390,
+    430,
+    1280
+  ],
+  "cases": 16,
+  "failures": 0,
+  "pageErrors": 0,
+  "images": [
+    {
+      "file": "inspection-ui-089-historico-5-needs-attention-dialogo-320.png",
+      "bytes": 52521,
+      "sha256": "d1cfebd89c1ad392efa9750a0da2d6296ba1d064427dba5ab9176d14aa9a42d1"
+    },
+    {
+      "file": "inspection-ui-089-atual-6-sufficient-390.png",
+      "bytes": 14250,
+      "sha256": "37808d488128564ff617453da3524febf012535f5bf78f2fd709c97bf0d0a1de"
+    }
+  ],
+  "inputs": {
+    "src/ui/renderCourseContentInspection.js": "c9a36ddaf6263314ec2737343ccf614a4314f01c2386dd6b40cda1f43dc5fe05",
+    "src/domain/courseContentInspection.js": "6fb4235a28fcd16e56b94d61b03cec65bd5eb8c0d162595651e8853f9836239c",
+    "src/domain/coursePedagogicalAudit.js": "24d0cb9f9e44920c909fdbc91426a325d4c82b8bad4c0e15c9026d1add2a9a38"
+  },
+  "limits": [
+    "Nao prova API ou persistencia hospedada.",
+    "Nenhuma validacao humana pos-correcao."
+  ]
+}

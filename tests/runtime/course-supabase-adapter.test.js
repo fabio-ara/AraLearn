@@ -1623,6 +1623,34 @@ test("parecer IA usa base/identidade do alvo e recusa resposta de outro objeto",
   await assert.rejects(wrong.getCourseContentInspection(request), error => error.code === "course_service_unavailable");
 });
 
+test("consulta recibo exato de inspeção legado sem ler alvo mutável e valida a resposta", async () => {
+  const report = { summary: "Parecer legado.", outcome: "consistent", findings: [], checks:
+    ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+      dimension, result: "sufficient", reason: "Base lida.", evidence: ["Base"] })) };
+  const request = { principal: { actorId: USER_ID }, courseId: COURSE_ID, targetKind: "study_unit", targetId: "unit-a",
+    expectedBasisHash: "a".repeat(64), requestId: "request-inspection-old", report };
+  const receipt = { contract: "aralearn.course-ai-inspection-change.v1", courseId: COURSE_ID, courseRevision: 5,
+    targetKind: "study_unit", targetId: "unit-a", basisHash: request.expectedBasisHash, changed: true, idempotent: true,
+    inspection: { state: "current", basisHash: request.expectedBasisHash, inspectedAt: "2026-09-16T00:00:00Z", report } };
+  let response = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/get_course_ai_inspection_receipt_for_actor_v1$/u);
+    const payload = JSON.parse(init.body);
+    assert.deepEqual(payload, { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_target_kind: "study_unit", p_target_id: "unit-a",
+      p_expected_basis_hash: request.expectedBasisHash, p_report: report, p_request_id: request.requestId });
+    return json(response);
+  });
+  assert.equal(await value.getCourseContentInspectionReceipt(request), null);
+  response = structuredClone(receipt);
+  response.inspection.report.checks = report.checks.map(({ dimension, result, reason, evidence }) => ({ evidence, reason, result, dimension }));
+  assert.deepEqual(await value.getCourseContentInspectionReceipt(request), response);
+  for (const wrong of [{ ...receipt, targetId: "other" }, { ...receipt, idempotent: false },
+    { ...receipt, inspection: { ...receipt.inspection, report: { ...report, summary: "Outro parecer" } } }]) {
+    response = wrong;
+    await assert.rejects(value.getCourseContentInspectionReceipt(request), error => error.code === "course_service_unavailable");
+  }
+});
+
 test("lê inspeção curricular com revisão, fila, evidência da prática e link exato da Unidade", async () => {
   let payload = null;
   const value = adapter(async (url, init) => {

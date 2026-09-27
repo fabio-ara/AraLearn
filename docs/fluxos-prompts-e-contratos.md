@@ -164,7 +164,7 @@ com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
 preparo deve corresponder à base, configuração e intenção correntes.
 
-O contrato de autoria corrente é o catálogo **10.0.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.0.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,
@@ -290,12 +290,43 @@ Se o alvo foi removido, a fila conserva a incidência e informa sua ausência co
 
 ### Auditoria pedagógica focal
 
-`registrar_inspecao` recebe a referência da base focal lida, seu `basisHash` e
-um relatório semântico. O parecer precisa examinar cinco dimensões, cada uma
+`registrar_inspecao` recebe a referência opaca da base focal lida e
+um relatório semântico; a referência já contém a identidade da tentativa e da base.
+Novos pareceres precisam examinar seis dimensões, cada uma
 com justificativa e *quotes* que existam na base salva: `alignment`,
-`evidence`, `representation`, `feedback` e `sufficiency`. A implementação
+`evidence`, `representation`, `feedback`, `sufficiency` e `configuration`. A implementação
 confere identidade, versão, hash, correspondência dos trechos e a necessidade
 de atualizar o parecer quando a base muda.
+
+`findings` registra pendências, não observações positivas: `consistent` exige
+`findings: []`. Registre os aspectos positivos em `summary` ou no `reason` de
+cada dimensão. `needs_attention` exige ao menos uma pendência; um resultado
+`insufficient` exige `needs_attention`. Uma contradição entre esses campos
+recebe mensagem específica para reconciliar o parecer com o julgamento da
+base, sem descartar insuficiências apenas para gravar. O sistema não interpreta
+o texto dos achados nem altera automaticamente a conclusão ou as evidências.
+
+`configuration` confronta a configuração pedagógica aplicada com conteúdo,
+ordem e percurso pertinentes, distinguindo valor registrado de realização.
+A leitura fornece nomes junto aos valores e definições do catálogo canônico
+uma vez no mesmo foco da página lógica, sem consulta adicional. Sem foco
+identificável, a definição permanece junto ao parâmetro.
+Uma preferência automática é contextual; não impõe alternância, formatos ou
+prática extra. Fixações e condições de pesquisa permanecem intactas. A dimensão
+registra resultado, motivo, evidências e limites do recorte; divergência ou
+realização relevante não demonstrada exige `insufficient` e `needs_attention`.
+`not_applicable` exige ausência de parâmetro pedagógico observável aplicável,
+nunca apenas falta de evidência. Detalhes em [Parâmetros de autoria](parametros-de-autoria.md#realização-da-configuração-na-inspeção).
+
+Pareceres históricos sem `checks` ou com as cinco dimensões anteriores continuam
+legíveis. `current` informa que a base continua atual, não que o parecer cobre
+o contrato atual. A interface informa quando a realização da configuração ainda
+não foi avaliada, sem atribuir defeito ao conteúdo. Não há sexta dimensão
+fabricada, alteração de hash ou backfill. O transporte aceita cinco dimensões
+somente para recuperar a tentativa exata já salva: recibo, acesso, curso e hash
+do comando são conferidos antes da base atual. Sem recibo, a gravação exige seis.
+Isso funciona mesmo após outro parecer ou mudança da base, sem substituir o
+parecer posterior. O produtor não calcula hashes nem reenvia a base pedagógica.
 
 Essa verificação estrutural do relatório não é garantia de qualidade
 pedagógica, suficiência ou aprendizagem. A auditoria é uma segunda leitura

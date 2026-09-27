@@ -6,6 +6,7 @@ import {
 } from "../../kernel/manualTextMarkers.js";
 import { readVegaTheme, renderVegaLite } from "../../sdk/vegaRuntime.js";
 import { annotateVegaManualAxisTitles } from "../../sdk/vegaManualLabels.js";
+import { hydrateDiagramViewport, renderDiagramViewportShell } from "../../sdk/diagramViewport.js";
 
 function coordinate(value) {
   return Array.isArray(value) && value.length === 2 ? value.map(Number) : null;
@@ -13,6 +14,21 @@ function coordinate(value) {
 
 function axisTitle(axis) {
   return `${axis.label}${axis.unit ? ` (${axis.unit})` : ""}`;
+}
+
+function axisTitleLines(axis) {
+  const words = String(axis.label).trim().split(/\s+/u);
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && candidate.length > 20) {
+      lines.push(line);
+      line = word;
+    } else line = candidate;
+  }
+  if (line) lines.push(line);
+  return axis.unit ? [...lines, `(${axis.unit})`] : lines.length > 1 ? lines : axis.label;
 }
 
 function planeObjects(data) {
@@ -71,13 +87,13 @@ function positionEncodings(data, { axes = false, xField = "x", yField = "y" } = 
       field: xField,
       type: "quantitative",
       scale: { domain: data.xAxis.domain, nice: false, zero: false },
-      ...(axes ? { axis: { title: axisTitle(data.xAxis), tickCount: 7, labelOverlap: "greedy", titlePadding: 10 } } : {})
+      ...(axes ? { axis: { title: axisTitleLines(data.xAxis), tickCount: 7, labelOverlap: "greedy", titlePadding: 10 } } : {})
     },
     y: {
       field: yField,
       type: "quantitative",
       scale: { domain: data.yAxis.domain, nice: false, zero: false },
-      ...(axes ? { axis: { title: axisTitle(data.yAxis), tickCount: 7, labelOverlap: "greedy", titlePadding: 10 } } : {})
+      ...(axes ? { axis: { title: axisTitleLines(data.yAxis), tickCount: 7, labelOverlap: "greedy", titlePadding: 10 } } : {})
     }
   };
 }
@@ -90,10 +106,18 @@ function dashEncoding(domain) {
   return { field: "tone", type: "nominal", scale: { domain, range: [[1, 0], [7, 4], [2, 3], [10, 3, 2, 3], [12, 4], [3, 2, 1, 2]] }, legend: null };
 }
 
-function pointLabelOffsets([x, y], [originX = 0, originY = 0] = []) {
+function pointLabelOffsets([x, y], [originX = 0, originY = 0] = [], {
+  xDomain = [0, 1], yDomain = [0, 1]
+} = {}) {
   const dx = x - originX;
   const dy = y - originY;
-  return { dx: dx < -0.2 ? -8 : 8, dy: dy > 0.2 ? -9 : 12, align: dx < -0.2 ? "right" : "left" };
+  const xSpan = xDomain[1] - xDomain[0] || 1;
+  const ySpan = yDomain[1] - yDomain[0] || 1;
+  const xFraction = (x - xDomain[0]) / xSpan;
+  const yFraction = (y - yDomain[0]) / ySpan;
+  const horizontal = xFraction <= 0.16 ? 1 : xFraction >= 0.84 ? -1 : (dx < -0.2 ? -1 : 1);
+  const vertical = yFraction <= 0.16 ? 1 : yFraction >= 0.84 ? -1 : (dy > 0.2 ? 1 : -1);
+  return { dx: horizontal * 8, dy: vertical > 0 ? -9 : 12, align: horizontal < 0 ? "right" : "left" };
 }
 
 function vectorLabelPosition(vector, data) {
@@ -114,6 +138,217 @@ function vectorLabelPosition(vector, data) {
     labelY: fromY + ((toY - fromY) * shaftFraction) +
       (perpendicularY * ySpan * offsetFraction)
   };
+}
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+// O quadro compartilhado de diagramas (rolagem, pinça, zoom e tela inteira) exige um canvas
+// rolável. Os estilos essenciais ficam no próprio markup do pacote para não alterar o CSS
+// global usado por outros pacotes.
+const planeCanvasScrollStyle = ' style="height:100%;min-height:0;padding:8px;overflow:auto;' +
+  'overscroll-behavior:contain;touch-action:none;-webkit-overflow-scrolling:touch"';
+
+// Deslocamentos candidatos em pixels, do mais próximo ao mais distante. Os passos derivam
+// da própria caixa do rótulo (altura + folga na vertical, largura + folga na horizontal),
+// com as direções verticais antes das horizontais porque rótulos são mais largos que altos.
+// A ordem é fixa para que o mesmo layout seja reproduzido a cada redimensionamento.
+function planeLabelCandidates(entry) {
+  const stepX = Math.max(24, Math.round(entry.boxOffset.right - entry.boxOffset.left) + 8);
+  const stepY = Math.max(16, Math.round(entry.boxOffset.bottom - entry.boxOffset.top) + 2);
+  const candidates = [[0, 0]];
+  for (let ring = 1; ring <= 12; ring += 1) {
+    candidates.push([0, -ring * stepY], [0, ring * stepY], [ring * stepX, 0], [-ring * stepX, 0],
+      [ring * stepX, -ring * stepY], [-ring * stepX, -ring * stepY],
+      [ring * stepX, ring * stepY], [-ring * stepX, ring * stepY]);
+  }
+  return candidates;
+}
+
+function labelOverlapArea(left, right) {
+  return Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left)) *
+    Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+}
+
+// Escolhe, para cada rótulo, o primeiro deslocamento que não colide com textos fixos, com os
+// limites do gráfico ou com os rótulos já posicionados. A posição de partida é sempre a origem
+// do rótulo (ponto do dado mais deslocamento fixo), nunca a posição anteriormente aplicada;
+// por isso a passagem é determinística e não acumula deslocamento.
+export function resolvePlaneLabelOffsets(entries, { bounds, blockedBoxes = [], candidates = planeLabelCandidates } = {}) {
+  const placed = [];
+  return entries.map((entry) => {
+    const boxFor = (offsetX, offsetY) => ({
+      left: entry.home.x + entry.boxOffset.left + offsetX,
+      right: entry.home.x + entry.boxOffset.right + offsetX,
+      top: entry.home.y + entry.boxOffset.top + offsetY,
+      bottom: entry.home.y + entry.boxOffset.bottom + offsetY
+    });
+    let best = null;
+    for (const [offsetX, offsetY] of (typeof candidates === "function" ? candidates(entry) : candidates)) {
+      const box = boxFor(offsetX, offsetY);
+      const outside = Math.max(0, bounds.left - box.left) + Math.max(0, box.right - bounds.right) +
+        Math.max(0, bounds.top - box.top) + Math.max(0, box.bottom - bounds.bottom);
+      const penalty = outside * 1_000_000 +
+        blockedBoxes.reduce((total, blocked) => total + labelOverlapArea(box, blocked), 0) +
+        placed.reduce((total, other) => total + labelOverlapArea(box, other), 0);
+      if (!best || penalty < best.penalty) best = { offsetX, offsetY, box, penalty };
+      if (penalty <= 0.5) break;
+    }
+    placed.push(best.box);
+    return { key: entry.key, offset: [best.offsetX, best.offsetY], box: best.box, displaced: Math.hypot(best.offsetX, best.offsetY) > 0.5 };
+  });
+}
+
+function planeLabelFrame(canvas) {
+  const svg = canvas.querySelector("svg");
+  const viewBox = svg?.viewBox?.baseVal;
+  if (!svg || !viewBox?.width || !viewBox?.height) return null;
+  const root = svg.getBoundingClientRect();
+  if (!root.width || !root.height) return null;
+  const scaleX = root.width / viewBox.width;
+  const scaleY = root.height / viewBox.height;
+  const toUser = (node) => {
+    const box = node.getBoundingClientRect();
+    return {
+      left: (box.left - root.left) / scaleX,
+      right: (box.right - root.left) / scaleX,
+      top: (box.top - root.top) / scaleY,
+      bottom: (box.bottom - root.top) / scaleY
+    };
+  };
+  return { svg, viewBox, toUser };
+}
+
+function labelTranslation(node) {
+  const match = /^translate\(\s*([-\d.]+)[, ]+\s*([-\d.]+)\s*\)$/u.exec(node.getAttribute("transform") || "");
+  return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
+}
+
+// Cada rótulo pertence ao ponto que compartilha o mesmo par de coordenadas; a âncora é a
+// marca do próprio ponto, não a posição textual. O deslocamento fixo original (dx/dy) é
+// medido uma vez e reaplicado sobre a âncora atual.
+function collectPlanePointLabels(data, frame, symbolGroups) {
+  const texts = [...frame.svg.querySelectorAll("g.mark-text.role-mark text")];
+  const used = new Set();
+  const anchorGroups = symbolGroups.filter((group) => group.querySelectorAll("path").length === data.points.length);
+  const anchorNodes = anchorGroups.length ? [...anchorGroups.at(-1).querySelectorAll("path")] : [];
+  return data.points.map((point, index) => {
+    const expected = `x: ${point.at[0]}; y: ${point.at[1]}; label: ${point.label}`;
+    const node = texts.find((candidate) => !used.has(candidate) && candidate.getAttribute("aria-label") === expected);
+    if (!node) return null;
+    used.add(node);
+    const anchorBox = anchorNodes[index] ? frame.toUser(anchorNodes[index]) : null;
+    const anchor = anchorBox ? { x: (anchorBox.left + anchorBox.right) / 2, y: (anchorBox.top + anchorBox.bottom) / 2 } : null;
+    const current = labelTranslation(node);
+    if (anchor && current && node.dataset.planeLabelDx === undefined) {
+      node.dataset.planeLabelDx = String(current.x - anchor.x);
+      node.dataset.planeLabelDy = String(current.y - anchor.y);
+    }
+    const dx = Number.parseFloat(node.dataset.planeLabelDx ?? "");
+    const dy = Number.parseFloat(node.dataset.planeLabelDy ?? "");
+    const home = anchor && Number.isFinite(dx) && Number.isFinite(dy) ? { x: anchor.x + dx, y: anchor.y + dy } : current;
+    if (!home) return null;
+    node.setAttribute("transform", `translate(${home.x},${home.y})`);
+    const box = frame.toUser(node);
+    return {
+      node,
+      anchor,
+      home,
+      boxOffset: { left: box.left - home.x, right: box.right - home.x, top: box.top - home.y, bottom: box.bottom - home.y }
+    };
+  }).filter(Boolean);
+}
+
+function ensurePlaneGuideLayer(svg) {
+  let layer = svg.querySelector(":scope > g.package-plane-label-guides");
+  if (!layer) {
+    layer = document.createElementNS(SVG_NAMESPACE, "g");
+    layer.setAttribute("class", "package-plane-label-guides");
+    layer.setAttribute("aria-hidden", "true");
+    svg.insertBefore(layer, svg.firstChild);
+  }
+  layer.replaceChildren();
+  return layer;
+}
+
+function readPlaneGuideColor(canvas) {
+  const styles = getComputedStyle(canvas);
+  return styles.getPropertyValue("--resource-text-secondary").trim() ||
+    styles.getPropertyValue("--resource-border-strong").trim() || "#475569";
+}
+
+function avoidPointLabelCollisions(canvas, data) {
+  if (!data.points?.length) return;
+  const frame = planeLabelFrame(canvas);
+  if (!frame) return;
+  const symbolGroups = [...frame.svg.querySelectorAll("g.mark-symbol.role-mark")];
+  const labels = collectPlanePointLabels(data, frame, symbolGroups);
+  if (labels.length < 2) return;
+  const pointNodes = new Set(labels.map(({ node }) => node));
+  const blockedBoxes = [...frame.svg.querySelectorAll("text")]
+    .filter((node) => !pointNodes.has(node))
+    .map((node) => frame.toUser(node));
+  // Área do gráfico, sem as margens dos eixos: mantém os números e títulos dos eixos
+  // legíveis. As esquinas do domínio são a camada invisível com dois pontos.
+  const cornerGroup = symbolGroups.find((group) => group.querySelectorAll("path").length === 2);
+  const corners = cornerGroup ? [...cornerGroup.querySelectorAll("path")].map((node) => frame.toUser(node)) : [];
+  const bounds = corners.length
+    ? { left: Math.min(...corners.map(({ left, right }) => (left + right) / 2)),
+      right: Math.max(...corners.map(({ left, right }) => (left + right) / 2)),
+      top: Math.min(...corners.map(({ top, bottom }) => (top + bottom) / 2)),
+      bottom: Math.max(...corners.map(({ top, bottom }) => (top + bottom) / 2)) }
+    : { left: 0, top: 0, right: frame.viewBox.width, bottom: frame.viewBox.height };
+  const plan = resolvePlaneLabelOffsets(labels.map(({ node, home, boxOffset }) => ({ key: node, home, boxOffset })), { bounds, blockedBoxes });
+  const guideLayer = ensurePlaneGuideLayer(frame.svg);
+  const guideColor = plan.some(({ displaced }) => displaced) ? readPlaneGuideColor(canvas) : "";
+  plan.forEach((item, index) => {
+    const { node, anchor, home } = labels[index];
+    const [offsetX, offsetY] = item.offset;
+    node.setAttribute("transform", `translate(${home.x + offsetX},${home.y + offsetY})`);
+    if (!item.displaced || !anchor) return;
+    const target = {
+      x: Math.min(Math.max(anchor.x, item.box.left), item.box.right),
+      y: Math.min(Math.max(anchor.y, item.box.top), item.box.bottom)
+    };
+    const dx = target.x - anchor.x;
+    const dy = target.y - anchor.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 4) return;
+    const line = document.createElementNS(SVG_NAMESPACE, "line");
+    line.setAttribute("class", "package-plane-label-guide");
+    line.setAttribute("x1", (anchor.x + (dx / length) * 3.5).toFixed(2));
+    line.setAttribute("y1", (anchor.y + (dy / length) * 3.5).toFixed(2));
+    line.setAttribute("x2", target.x.toFixed(2));
+    line.setAttribute("y2", target.y.toFixed(2));
+    line.setAttribute("stroke", guideColor);
+    line.setAttribute("stroke-width", "1");
+    line.setAttribute("stroke-dasharray", "1.5 2.5");
+    line.setAttribute("stroke-linecap", "round");
+    line.setAttribute("opacity", "0.75");
+    guideLayer.append(line);
+  });
+}
+
+// A primeira vista precisa abrir sobre o conteúdo do plano, não sobre a região vazia à
+// esquerda do gráfico: centraliza o conjunto de pontos e rótulos quando o quadro largo
+// exige rolagem. É o mesmo enquadramento inicial dos demais diagramas, aplicado às marcas
+// que o pacote materializa.
+function revealPlaneContent(canvas) {
+  const marks = [...canvas.querySelectorAll("g.mark-symbol.role-mark")].at(-1);
+  const texts = [...canvas.querySelectorAll('g.mark-text.role-mark text[aria-label*="label:"]')];
+  const nodes = [...(marks ? [marks] : []), ...texts];
+  const boxes = nodes.map((node) => node.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0);
+  if (!boxes.length) return;
+  const canvasBox = canvas.getBoundingClientRect();
+  const left = Math.min(...boxes.map((box) => box.left));
+  const right = Math.max(...boxes.map((box) => box.right));
+  const top = Math.min(...boxes.map((box) => box.top));
+  const bottom = Math.max(...boxes.map((box) => box.bottom));
+  const maxLeft = Math.max(0, canvas.scrollWidth - canvas.clientWidth);
+  const maxTop = Math.max(0, canvas.scrollHeight - canvas.clientHeight);
+  canvas.scrollLeft = Math.min(Math.max(0,
+    canvas.scrollLeft + (left + right) / 2 - (canvasBox.left + canvas.clientWidth / 2)), maxLeft);
+  canvas.scrollTop = Math.min(Math.max(0,
+    canvas.scrollTop + (top + bottom) / 2 - (canvasBox.top + canvas.clientHeight / 2)), maxTop);
 }
 
 export function compilePlaneVegaLite(data, theme) {
@@ -179,7 +414,17 @@ export function compilePlaneVegaLite(data, theme) {
     })));
   }
   if (data.points?.length) {
-    const values = data.points.map((point) => ({ id: point.id, tone: objectTone(point, data, "Ponto"), label: point.label, x: point.at[0], y: point.at[1], ...pointLabelOffsets(point.at) }));
+    const values = data.points.map((point) => ({
+      id: point.id,
+      tone: objectTone(point, data, "Ponto"),
+      label: point.label,
+      x: point.at[0],
+      y: point.at[1],
+      ...pointLabelOffsets(point.at, [], {
+        xDomain: data.xAxis.domain,
+        yDomain: data.yAxis.domain
+      })
+    }));
     layers.push({
       data: { values },
       mark: { type: "point", shape: "circle", filled: true, size: 72, strokeWidth: 1 },
@@ -193,9 +438,10 @@ export function compilePlaneVegaLite(data, theme) {
   }
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
-    width: "container",
+    // Largura natural fixa: o quadro compartilhado de diagramas oferece rolagem, pinça, zoom e
+    // tela inteira, em vez de espremer rótulos e eixos na largura conceitual do celular.
+    width: 520,
     height: 250,
-    autosize: { type: "fit", contains: "padding", resize: true },
     background: null,
     layer: layers,
     config: {
@@ -241,7 +487,7 @@ function applyVectorArrowMarkers(canvas, expectedCount) {
   svg.prepend(defs);
 }
 
-async function hydratePlane(figure) {
+async function hydratePlane(figure, stateKey) {
   const canvas = figure.querySelector(".package-plane-canvas");
   if (!canvas || canvas.dataset.vegaStatus === "ready") return;
   const message = figure.querySelector(".package-plane-layout-error");
@@ -251,6 +497,22 @@ async function hydratePlane(figure) {
     const selectors = planeGroups(data).map((_, index) => `.package-plane-swatch.tone-${index % 6}`);
     const theme = readVegaTheme(canvas, selectors);
     await renderVegaLite(canvas, compilePlaneVegaLite(data, theme));
+    const svg = canvas.querySelector("svg");
+    // O SVG conserva a largura natural; a rolagem compartilhada, não o limite de largura do
+    // CSS do pacote, decide o enquadramento.
+    svg.style.maxWidth = "none";
+    // Encaixe dos rótulos e enquadramento inicial acontecem antes do quadro compartilhado:
+    // quando há visão lembrada para a mesma stateKey, a restauração de escala e rolagem é a
+    // última palavra e substitui o enquadramento inicial.
+    avoidPointLabelCollisions(canvas, data);
+    revealPlaneContent(canvas);
+    // O enquadramento inicial acima altera a rolagem; o evento correspondente precisa ser
+    // entregue antes de o quadro instalar seu listener de persistência, senão ele sobrescreve
+    // a visão lembrada da mesma stateKey.
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    // Enquadramento e exploração compartilhados com os demais diagramas: escala natural 1:1,
+    // rolagem, pinça, zoom e tela inteira. A geometria não é forçada a caber no quadro.
+    await hydrateDiagramViewport({ figure, canvas, svg, stateKey, initialScale: null });
     applyVectorArrowMarkers(canvas, data.vectors?.length || 0);
     annotateVegaManualAxisTitles(canvas, [
       {
@@ -385,9 +647,20 @@ export const planePackage = Object.freeze({
       ? `<ul class="package-plane-object-key" aria-label="Convenções geométricas">${keys.filter(([present]) => present)
         .map(([, symbol, label]) => `<li><span class="package-plane-key-symbol ${symbol}" aria-hidden="true"></span>${label}</li>`).join("")}</ul>`
       : "";
-    return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}<figure class="package-plane-figure"><div class="package-plane-canvas" role="img" aria-label="${escapePackageAttribute(planeAccessibleText(data))}" aria-busy="true" data-vega-status="pending" data-plane-data="${escapePackageAttribute(encoded)}"${manualAxes}></div><p class="package-plane-layout-error" hidden>Não foi possível materializar o plano cartesiano.</p><figcaption><ul class="package-plane-legend" aria-label="Categorias comparadas">${legend}</ul>${objectKey}</figcaption></figure></div>`;
+    const canvas = `<div class="package-plane-canvas" data-resource-scroll-frame="diagram" role="img" ` +
+      `aria-label="${escapePackageAttribute(planeAccessibleText(data))}" aria-busy="true" tabindex="0" ` +
+      `data-vega-status="pending" data-plane-data="${escapePackageAttribute(encoded)}"${manualAxes}${planeCanvasScrollStyle}></div>`;
+    return `<div class="runtime-block runtime-plane-block">${data.prompt ? renderPackageProse(data.prompt) : ""}` +
+      `<figure class="package-plane-figure">${renderDiagramViewportShell({ canvasHtml: canvas })}` +
+      `<p class="package-plane-layout-error" hidden>Não foi possível materializar o plano cartesiano.</p>` +
+      `<figcaption><ul class="package-plane-legend" aria-label="Categorias comparadas">${legend}</ul>${objectKey}</figcaption></figure></div>`;
   },
-  async hydrate(instanceRoot) { await Promise.all([...instanceRoot.querySelectorAll(".package-plane-figure")].map(hydratePlane)); },
+  async hydrate(instanceRoot) {
+    const baseKey = instanceRoot.dataset.packageRenderKey ||
+      `${instanceRoot.dataset.package || "package"}:${instanceRoot.dataset.packageInstanceId || "instance"}`;
+    await Promise.all([...instanceRoot.querySelectorAll(".package-plane-figure")]
+      .map((figure, index) => hydratePlane(figure, `${baseKey}:plane:${index}`)));
+  },
   accessibleText(data) { return planeAccessibleText(data); },
   editableTargets(data) { return [...(data.prompt ? [{ path: "prompt", label: "Editar orientação" }] : []), { path: "xAxis.label", label: "Editar eixo x" }, { path: "yAxis.label", label: "Editar eixo y" }, ...(data.groups || []).map((_, index) => ({ path: `groups[${index}].label`, label: `Editar grupo ${index + 1}` })), ...(data.points || []).map((_, index) => ({ path: `points[${index}].label`, label: `Editar ponto ${index + 1}` })), ...(data.vectors || []).map((_, index) => ({ path: `vectors[${index}].label`, label: `Editar vetor ${index + 1}` })), ...(data.paths || []).map((_, index) => ({ path: `paths[${index}].label`, label: `Editar trajetória ${index + 1}` }))]; },
   practiceTargets() { return []; }

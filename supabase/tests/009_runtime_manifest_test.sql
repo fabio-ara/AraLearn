@@ -5,7 +5,7 @@ select plan(27);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260928100000','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20260928110000','o manifesto identifica as capacidades correntes em ordem canônica');
 select is(private.course_component_catalog_v1()->>'version','1-fca7730b',
   'a projeção SQL acompanha a descoberta corrente de componentes');
 select is(private.course_component_catalog_v1()->>'schemaFingerprint',
@@ -13,11 +13,12 @@ select is(private.course_component_catalog_v1()->>'schemaFingerprint',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),52,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),53,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "shared-microsequence-explanation-v1",
   "human-content-review-v1",
+  "configuration-realization-inspection-v1",
   "object-content-review-v1",
   "independent-review-access-v1",
   "course-anchored-annotations-atomic-create-v1",
@@ -178,6 +179,7 @@ select is(array(
     'public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)',
     'public.get_owned_course_instructional_plan_for_actor_v4(uuid,uuid)',
     'public.get_course_change_receipt_for_actor_v1(uuid,uuid,text,text,text)',
+    'public.get_course_ai_inspection_receipt_for_actor_v1(uuid,uuid,text,text,text,jsonb,text)',
     'public.approve_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,text,text,text)',
     'public.get_authoring_process_preferences_for_actor_v1(uuid)',
     'public.save_authoring_process_preferences_for_actor_v1(uuid,bigint,jsonb,text)',
@@ -233,6 +235,7 @@ select is(array(
     'public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)',
     'public.get_owned_course_instructional_plan_for_actor_v4(uuid,uuid)',
     'public.get_course_change_receipt_for_actor_v1(uuid,uuid,text,text,text)',
+    'public.get_course_ai_inspection_receipt_for_actor_v1(uuid,uuid,text,text,text,jsonb,text)',
     'public.approve_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,text,text,text)',
     'public.get_authoring_process_preferences_for_actor_v1(uuid)',
     'public.save_authoring_process_preferences_for_actor_v1(uuid,bigint,jsonb,text)',
@@ -259,6 +262,7 @@ select is(array(
     'public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)',
     'public.get_owned_course_instructional_plan_for_actor_v4(uuid,uuid)',
     'public.get_course_change_receipt_for_actor_v1(uuid,uuid,text,text,text)',
+    'public.get_course_ai_inspection_receipt_for_actor_v1(uuid,uuid,text,text,text,jsonb,text)',
     'public.approve_course_curricular_map_for_actor_v1(uuid,uuid,bigint,bigint,text,text,text)',
     'public.get_authoring_process_preferences_for_actor_v1(uuid)',
     'public.save_authoring_process_preferences_for_actor_v1(uuid,bigint,jsonb,text)',

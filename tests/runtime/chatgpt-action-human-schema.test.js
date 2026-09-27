@@ -68,7 +68,7 @@ const SAMPLE_THEORY_CONTENT = Object.freeze({
 const samples = {
   registrar_inspecao: { referencia: "referencia-opaca-da-base-inspecionada",
     parecer: { summary: "Conteúdo e citações conferidos.", outcome: "consistent", findings: [],
-      checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+      checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
         dimension, result: "sufficient", reason: "A relação do socket com o processo é demonstrada.", evidence: ["socket"]
       })) } },
   decidir_observacao: { curso: "Redes para iniciantes", referencia: {
@@ -350,7 +350,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "10.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -934,6 +934,10 @@ test("schemas compartilhados de Actions preservam integralmente os argumentos do
         `${task.name}: compartilhar descrições não pode perder a documentação do contrato.`);
     }
   }
+  const report = COURSE_HUMAN_TASKS.find(task => task.name === "registrar_inspecao").inputSchema.properties.parecer;
+  assert.match(report.properties.findings.description, /Pendências; consistent exige \[\].*summary\/checks.reason/u);
+  assert.equal(taskInputSchema("registrar_inspecao").properties.parecer.properties.findings.description,
+    report.properties.findings.description);
 });
 
 test("#305 instruções iniciais e confirmação de Actions preservam autoridade", () => {

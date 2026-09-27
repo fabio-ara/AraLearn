@@ -93,7 +93,7 @@ test("uma lacuna e single são legítimos; alternativas duplicadas e equivalente
 });
 
 test("inspeção semântica exige evidência real e insuficiência não pode ser declarada consistente", () => {
-  assert.equal(normalizePedagogicalAudit(checks(), unit()).length, 5);
+  assert.equal(normalizePedagogicalAudit(checks(), unit()).length, 6);
   const fabricated = checks(); fabricated[0].evidence = ["Passagem que não existe"];
   assert.throws(() => normalizePedagogicalAudit(fabricated, unit()), { code: "invalid_pedagogical_audit" });
   const insufficient = checks(); insufficient[1].result = "insufficient";
@@ -156,6 +156,35 @@ test("consistência exige aplicação instrucional presente na base focal", () =
   assert.doesNotThrow(() => requirePedagogicalAuditConsistency(report, basis));
 });
 
+test("configuration pede juízo contextual sem impor alternância, prática extra ou alteração da condição fixa", () => {
+  const studyUnits = Array.from({ length: 5 }, (_, index) => {
+    const content = { ...unit(), id: `u${index}`, position: index + 1 };
+    content.feedback = [paragraph("f", "Confirmações indicam recebimento; retransmissões recuperam perdas.")];
+    if (index < 2) { content.role = "theory"; content.response = null; content.feedback = []; }
+    return { id: content.id, content, application: { practiceApplications: [] }, design: { parameters: [
+      { parameterId: "practice_distribution", value: "interleaved", origin: "automatic", reason: "Preferência contextual." },
+      { parameterId: "practice_placement", value: "before_and_after", origin: "research_condition", reason: "Condição B." }
+    ] } };
+  });
+  const basis = { targetKind: "microsequence_explanation", targetId: "ms", microsequence: { title: "TCP" }, studyUnits, planItems: [], dependencies: [] };
+  const before = structuredClone(basis);
+  const report = { summary: "Percurso lido.", outcome: "consistent", findings: [], checks: checks() };
+  report.checks.at(-1).reason = "O julgamento confronta a preferência contextual com o percurso completo e explicita os limites do alvo; o esquema não decide sua realização pela ordem EEPPP.";
+  assert.doesNotThrow(() => normalizePedagogicalAudit(report.checks, basis));
+  assert.doesNotThrow(() => requirePedagogicalAuditConsistency(report, basis));
+  assert.deepEqual(basis, before, "o juízo não muda conteúdo ou configuração");
+  assert.throws(() => requirePedagogicalAuditConsistency({ ...report, checks: report.checks.slice(0, 5) }, basis),
+    { code: "pedagogical_audit_configuration_required" });
+  report.checks.at(-1).result = "insufficient";
+  assert.throws(() => normalizeCourseContentInspectionReport(report));
+  report.outcome = "needs_attention"; report.findings = ["A realização exige confronto adicional com o percurso pertinente."];
+  assert.doesNotThrow(() => requirePedagogicalAuditConsistency(normalizeCourseContentInspectionReport(report), basis));
+  const instruction = projectPedagogicalAudit(basis).instruction;
+  assert.match(instruction, /Em configuration/u);
+  assert.match(instruction, /Fixações e condições de pesquisa devem ser preservadas/u);
+  assert.match(instruction, /sem forçar alternância, formatos ou prática extra/u);
+});
+
 test("banco conserva a segunda barreira para relatório incompleto e needs_attention", async () => {
   const db = new PGlite();
   try {
@@ -164,8 +193,19 @@ test("banco conserva a segunda barreira para relatório incompleto e needs_atten
       create function private.course_ai_inspection_state_v1(uuid,text,text) returns jsonb language sql stable as $$
         select value from private.test_inspection limit 1 $$;`);
     await db.exec(await fs.readFile(new URL("../../supabase/migrations/20260924164623_revisao_v7_pedagogical_inspection.sql", import.meta.url), "utf8"));
+    const migration = await fs.readFile(new URL("../../supabase/migrations/20260928110000_configuration_realization_inspection.sql", import.meta.url), "utf8");
+    for (const name of ["valid_course_ai_inspection_report_v1", "complete_course_ai_inspection_report_v1", "course_ai_inspection_pending_v1"]) {
+      const start = migration.indexOf(`create or replace function private.${name}(`);
+      const end = migration.indexOf("$function$;", start);
+      await db.exec(migration.slice(start, end + "$function$;".length));
+    }
     const report = { summary: "Revisão", outcome: "consistent", findings: [], checks: checks() };
     assert.equal((await db.query("select private.valid_course_ai_inspection_report_v1($1::jsonb) valid", [JSON.stringify(report)])).rows[0].valid, true);
+    for (const state of ["unregistered", "pending"]) {
+      await db.query("insert into private.test_inspection values ($1::jsonb)", [JSON.stringify({ state })]);
+      assert.equal((await db.query("select private.course_ai_inspection_pending_v1(null,null,null) pending")).rows[0].pending, true);
+      await db.exec("delete from private.test_inspection");
+    }
     report.checks[1].result = "insufficient";
     assert.equal((await db.query("select private.valid_course_ai_inspection_report_v1($1::jsonb) valid", [JSON.stringify(report)])).rows[0].valid, false);
     report.outcome = "needs_attention"; report.findings = ["Evidência insuficiente"];
