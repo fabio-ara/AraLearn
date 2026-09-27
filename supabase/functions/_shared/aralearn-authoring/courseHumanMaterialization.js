@@ -226,46 +226,64 @@ function existingStudyUnitSlot(item) {
 export async function listExistingPartStudyUnits({ adapter, principal, context, deadlineAt }) {
   const bySlot = new Map();
   const seenIds = new Set();
-  const seenCursors = new Set();
-  let cursorStudyUnitId = null;
-  for (let pageIndex = 0; pageIndex < MAX_PART_STUDY_UNIT_PAGES; pageIndex += 1) {
-    const cursorKey = cursorStudyUnitId ?? "null";
-    if (seenCursors.has(cursorKey)) {
-      fail("course_service_unavailable", "A paginação da parte repetiu o mesmo ponto.", 503);
-    }
-    seenCursors.add(cursorKey);
-    const page = await adapter.listCourseStudyUnits({
-      principal,
-      courseId: context.course.id,
-      expectedRevision: context.course.revision,
-      scopeKind: "authoring_part",
-      scopeId: context.part.id,
-      cursorStudyUnitId,
-      direction: "forward",
-      limit: 24,
-      maxBytes: 512 * 1024,
-      inspectionVersion: 2,
-      deadlineAt
-    });
-    if (!plainObject(page) || !Array.isArray(page.items)) {
-      fail("course_service_unavailable", "A lista de unidades de estudo da parte é inválida.", 503);
-    }
-    for (const item of page.items) {
-      const slot = existingStudyUnitSlot(item);
-      if (seenIds.has(slot.studyUnitId) || bySlot.has(slot.key)) {
-        fail("course_service_unavailable", "A parte possui posições de unidade de estudo duplicadas.", 503);
-      }
-      seenIds.add(slot.studyUnitId);
-      bySlot.set(slot.key, { studyUnitId: slot.studyUnitId, item });
-    }
-    if (page.hasMore !== true) return bySlot;
-    const next = page.nextCursor?.studyUnitId;
-    if (typeof next !== "string" || !next) {
-      fail("course_service_unavailable", "A paginação da parte perdeu o ponto de retomada.", 503);
-    }
-    cursorStudyUnitId = next;
+  // A Parte persistida é lida pelo próprio agrupamento. A Parte técnica derivada
+  // ainda não existe no banco e o leitor real recusa "authoring_part" sem
+  // identidade; ela é lida pelas Microssequências reais do recorte, o que também
+  // preserva unidades já existentes dessas Microssequências ainda sem Parte.
+  const persistedPartId = typeof context.part?.id === "string" && context.part.id ? context.part.id : null;
+  const scopes = persistedPartId
+    ? [{ scopeKind: "authoring_part", scopeId: persistedPartId }]
+    : partMicrosequences(context.part)
+      .filter(micro => typeof micro?.id === "string" && micro.id)
+      .map(micro => ({ scopeKind: "didactic_microsequence", scopeId: micro.id }));
+  if (!scopes.length) {
+    fail("course_service_unavailable", "A parte técnica não possui microssequência para conferir as unidades existentes.", 503);
   }
-  fail("course_service_unavailable", "A parte excedeu o limite seguro de paginação.", 503);
+  for (const scope of scopes) {
+    const seenCursors = new Set();
+    let cursorStudyUnitId = null;
+    for (let pageIndex = 0; pageIndex < MAX_PART_STUDY_UNIT_PAGES; pageIndex += 1) {
+      const cursorKey = cursorStudyUnitId ?? "null";
+      if (seenCursors.has(cursorKey)) {
+        fail("course_service_unavailable", "A paginação da parte repetiu o mesmo ponto.", 503);
+      }
+      seenCursors.add(cursorKey);
+      const page = await adapter.listCourseStudyUnits({
+        principal,
+        courseId: context.course.id,
+        expectedRevision: context.course.revision,
+        scopeKind: scope.scopeKind,
+        scopeId: scope.scopeId,
+        cursorStudyUnitId,
+        direction: "forward",
+        limit: 24,
+        maxBytes: 512 * 1024,
+        inspectionVersion: 2,
+        deadlineAt
+      });
+      if (!plainObject(page) || !Array.isArray(page.items)) {
+        fail("course_service_unavailable", "A lista de unidades de estudo da parte é inválida.", 503);
+      }
+      for (const item of page.items) {
+        const slot = existingStudyUnitSlot(item);
+        if (seenIds.has(slot.studyUnitId) || bySlot.has(slot.key)) {
+          fail("course_service_unavailable", "A parte possui posições de unidade de estudo duplicadas.", 503);
+        }
+        seenIds.add(slot.studyUnitId);
+        bySlot.set(slot.key, { studyUnitId: slot.studyUnitId, item });
+      }
+      if (page.hasMore !== true) { cursorStudyUnitId = null; break; }
+      const next = page.nextCursor?.studyUnitId;
+      if (typeof next !== "string" || !next) {
+        fail("course_service_unavailable", "A paginação da parte perdeu o ponto de retomada.", 503);
+      }
+      cursorStudyUnitId = next;
+    }
+    if (cursorStudyUnitId !== null) {
+      fail("course_service_unavailable", "A parte excedeu o limite seguro de paginação.", 503);
+    }
+  }
+  return bySlot;
 }
 
 function planItems(plan, collection) {
@@ -514,6 +532,49 @@ function wholeLeafReconciliationLocators(target) {
   return locators;
 }
 
+// A declaração humana nomeia a função do recurso inteiro (trecho omitido) ou de
+// um trecho literal. O servidor deriva as folhas e o locator canônico; nunca
+// exige o nome interno do campo. O trecho localiza uma folha única pelo mesmo
+// mecanismo das citações: a pluralidade volta como candidatos e `alvo` escolhe
+// pela posição ou pelo rótulo público. A representação acessível agregada (`$`)
+// é folha legítima e permanece no denominador, mas só é escolhida quando é o
+// único conteúdo que contém o trecho, para não duplicar a mesma decisão.
+const RECONCILIATION_DECLARATION_FIELDS = new Set(["recurso", "trecho", "ocorrencia", "prefixo", "sufixo",
+  "alvo", "papel", "motivo", "ideias", "requisitos", "destino"]);
+
+function locateReconciliationDeclaration(entry, resourceTargets, index) {
+  const blocker = (message, extra = {}) => ({ code: "explanation_reconciliation_locator_stale",
+    message, entry: index + 1, ...extra });
+  if (entry.trecho === undefined || entry.trecho === null) return { targets: resourceTargets };
+  const located = [];
+  for (const target of resourceTargets) {
+    const result = locateExplanationPassage(target.text, { quote: entry.trecho, prefix: entry.prefixo ?? null,
+      suffix: entry.sufixo ?? null, occurrence: entry.ocorrencia ?? null },
+    { preserveMarkup: target.preserveMarkup === true });
+    if (result.status !== "missing") located.push({ ...target, location: result });
+  }
+  const primary = located.filter(target => target.path !== "$");
+  const pool = primary.length ? primary : located;
+  if (!pool.length) {
+    return { blocker: blocker("O trecho literal não foi localizado no recurso indicado; confira o recurso e o trecho literal.",
+      { passages: resourceTargets.slice(0, RECONCILIATION_PASSAGE_LIMIT)
+        .map(target => target.text.slice(0, RECONCILIATION_PASSAGE_TEXT_LIMIT)) }) };
+  }
+  let selected = pool[0];
+  if (pool.length > 1 || entry.alvo !== undefined) {
+    const chosen = selectLocatedPart(pool, entry.alvo ?? null);
+    if (chosen.length !== 1) return { blocker: blocker(entry.alvo === undefined
+      ? `O trecho aparece em ${pool.length} partes do recurso; informe alvo pela posição ou pelo rótulo público da parte.`
+      : "O alvo informado não identifica uma parte do trecho; use a posição ou o rótulo público.",
+    { candidates: occurrencePartCandidates(pool) }) };
+    selected = chosen[0];
+  }
+  if (selected.location.status === "ambiguous") return { blocker: blocker(
+    "O trecho repete dentro da parte escolhida; use prefixo, sufixo ou a ocorrência para distinguir a passagem.",
+    { candidates: selected.location.candidates }) };
+  return { targets: [selected] };
+}
+
 export async function reconcileHumanExplanation(content, entries, context) {
   const explanation = normalizeMicrosequenceExplanation(content);
   if (entries === undefined && explanation.reconciliation === undefined) return explanation;
@@ -526,21 +587,38 @@ export async function reconcileHumanExplanation(content, entries, context) {
     const targets = explanationReconciliationTargets(explanation);
     const declared = [];
     for (const [index, entry] of entries.entries()) {
+      const declarationBlocker = (message, extra = {}) => ({ code: "invalid_explanation_reconciliation",
+        message, entry: index + 1, ...extra });
+      if (!plainObject(entry) || Object.keys(entry).some(key => !RECONCILIATION_DECLARATION_FIELDS.has(key))) {
+        const legacy = plainObject(entry) && Object.hasOwn(entry, "folha");
+        fail("invalid_explanation_reconciliation", legacy
+          ? "O campo folha foi removido no catálogo 10.0.0: informe recurso, papel, motivo, ideias e requisitos e, para um trecho, informe trecho/alvo; o servidor deriva a folha exata."
+          : "Cada declaração informa recurso, papel, motivo, ideias e requisitos, com trecho, ocorrência, prefixo, sufixo e alvo opcionais.",
+        undefined, { blockers: [declarationBlocker(legacy
+          ? "O nome interno da folha não pertence mais ao contrato da reconciliação."
+          : "A declaração contém um campo que não pertence ao contrato da reconciliação.")] });
+      }
       const instance = explanation.content[(Number.isSafeInteger(entry?.recurso) ? entry.recurso : 0) - 1];
-      const target = targets.find(item => item.resourceId === instance?.id && item.path === entry?.folha);
-      if (!target || !target.text.trim()) {
+      const resourceTargets = targets.filter(item => item.resourceId === instance?.id && item.text.trim());
+      if (!resourceTargets.length) {
         fail("invalid_explanation_reconciliation",
-          "Uma passagem declarada não corresponde a uma folha com texto da base salva.", undefined,
+          "Uma declaração não corresponde a uma base com texto salvo na posição informada.", undefined,
           { blockers: [{ code: "explanation_reconciliation_locator_stale",
-            message: "Uma passagem não corresponde univocamente à base corrente.", entry: index + 1,
-            ...(typeof entry?.folha === "string" && entry.folha.length <= 240 ? { path: entry.folha } : {}),
+            message: "O recurso indicado não corresponde a uma base com texto salvo na posição informada.", entry: index + 1,
+            ...(instance?.id ? { resourceId: String(instance.id) } : {}),
             passages: targets.filter(item => item.text.trim()).slice(0, RECONCILIATION_PASSAGE_LIMIT)
               .map(item => item.text.slice(0, RECONCILIATION_PASSAGE_TEXT_LIMIT)) }] });
       }
-      const locators = entry.trecho === undefined || entry.trecho === null
-        ? wholeLeafReconciliationLocators(target)
-        : [declaredReconciliationLocator(target, entry)];
-      for (const locator of locators) declared.push({ ...locator, resourceId: target.resourceId, path: target.path, entry });
+      const selection = locateReconciliationDeclaration(entry, resourceTargets, index);
+      if (selection.blocker) fail("invalid_explanation_reconciliation",
+        "Uma declaração não corresponde univocamente à base salva; nenhuma reconciliação foi gravada.", undefined,
+        { blockers: [selection.blocker] });
+      for (const target of selection.targets) {
+        const locators = entry.trecho === undefined || entry.trecho === null
+          ? wholeLeafReconciliationLocators(target)
+          : [declaredReconciliationLocator(target, entry)];
+        for (const locator of locators) declared.push({ ...locator, resourceId: target.resourceId, path: target.path, entry });
+      }
     }
     explanation.reconciliation = {
       contract: "aralearn.explanation-reconciliation.v1", contentBasis: await explanationContentBasis(explanation),
@@ -589,6 +667,8 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     add("course_service_unavailable", "O estado de aprovação do mapa curricular não pôde ser confirmado.");
   }
   const micros = partMicrosequences(context.part);
+  const curriculumMicros = (context.plan?.plan?.curriculum?.modules ?? [])
+    .flatMap(module => (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
   const existingBySlot = await listExistingPartStudyUnits({ adapter, principal, context, deadlineAt });
   const groups = new Map();
   const sourceCache = new Map();
@@ -742,8 +822,56 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     if (!groups.has(micro.id)) groups.set(micro.id, { microsequenceId: micro.id, units: [] });
     groups.get(micro.id).units.push(unit);
   }
-  const allMicros = (context.plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
-    (module.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+  // O materializador exige que cada dependência curricular da microssequência
+  // produzida esteja persistida ou integre exatamente o lote desta escrita.
+  // Repetir esse recorte evita devolver "ready" a uma escrita que o SQL recusa,
+  // sem transformar uma Microssequência vizinha fora do alvo num pré-requisito.
+  const batchMicrosequenceIds = new Set(micros
+    .filter(micro => complete || targetMicrosequenceIds.has(micro.id))
+    .map(micro => micro.id));
+  const persistedUnitCounts = new Map();
+  for (const part of Array.isArray(context.plan?.plan?.parts) ? context.plan.plan.parts : []) {
+    for (const micro of Array.isArray(part?.microsequences) ? part.microsequences : []) {
+      if (typeof micro?.id === "string" && Number.isSafeInteger(micro.studyUnitCount)) {
+        persistedUnitCounts.set(micro.id, micro.studyUnitCount);
+      }
+    }
+  }
+  const declaredDependencies = new Map(curriculumMicros
+    .filter(micro => typeof micro?.id === "string")
+    .map(micro => [micro.id, Array.isArray(micro.dependencyMicrosequenceIds)
+      ? micro.dependencyMicrosequenceIds.filter(id => typeof id === "string" && id) : []]));
+  const dependencyIsProduced = async (microsequenceId) => {
+    if (persistedUnitCounts.has(microsequenceId)) return persistedUnitCounts.get(microsequenceId) > 0;
+    try {
+      const page = await adapter.listCourseStudyUnits({ principal, courseId: context.course.id,
+        expectedRevision: context.course.revision, scopeKind: "didactic_microsequence", scopeId: microsequenceId,
+        cursorStudyUnitId: null, direction: "forward", limit: 1, maxBytes: 64 * 1024,
+        inspectionVersion: 2, deadlineAt });
+      if (!plainObject(page) || !Array.isArray(page.items)) {
+        add("course_service_unavailable", "Não foi possível conferir as dependências curriculares desta produção.");
+        return null;
+      }
+      return page.items.length > 0;
+    } catch (error) {
+      add(error?.code ?? "course_service_unavailable",
+        "Não foi possível conferir as dependências curriculares desta produção.");
+      return null;
+    }
+  };
+  for (const micro of micros) {
+    if (!batchMicrosequenceIds.has(micro.id)) continue;
+    for (const dependencyId of declaredDependencies.get(micro.id) ?? []) {
+      if (batchMicrosequenceIds.has(dependencyId)) continue;
+      if (await dependencyIsProduced(dependencyId) !== false) continue;
+      const dependency = curriculumMicros.find(item => item?.id === dependencyId);
+      add("curricular_dependency_not_produced",
+        `A microssequência “${micro.title}” depende de “${dependency?.title ?? dependencyId}”, ` +
+        "que ainda não tem unidade produzida. Produza essa dependência antes ou inclua as duas no mesmo lote.",
+        { microsequence: micro.title });
+    }
+  }
+  const allMicros = curriculumMicros;
   const reconciliations = [];
   const savedSourceBases = [];
   const suppliedByMicro = new Map();
@@ -802,9 +930,12 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     if (complete && group) {
       const introduced = new Set(group.units.flatMap(unit => unit.noveltyIds));
       const practiced = new Set(group.units.flatMap(unit => unit.practices.map(practice => practice.evidenceRequirementId)));
-      for (const id of reconciliation.introduced) if (!introduced.has(id)) add("human_materialization_incomplete_analysis_inventory",
-        "O percurso ainda não cobre um ensinamento introduzido na base.", { microsequence: micro.title,
-          idea: planItems(context.plan, "instructionalAnalysisUnits").find(item => item.id === id)?.statement });
+      for (const id of reconciliation.introduced) if (!introduced.has(id)) {
+        const statement = planItems(context.plan, "instructionalAnalysisUnits").find(item => item.id === id)?.statement;
+        add("human_materialization_incomplete_analysis_inventory",
+          `O percurso ainda precisa apresentar o ensino de “${statement ?? id}” numa unidade da sequência.`,
+          { microsequence: micro.title, idea: statement });
+      }
       for (const id of reconciliation.requirements) if (!practiced.has(id)) add("human_materialization_insufficient_practice",
         "Um requisito da base ainda não tem prática no percurso.", { microsequence: micro.title,
           requirement: planItems(context.plan, "evidenceRequirements").find(item => item.id === id)?.statement });
@@ -1427,12 +1558,15 @@ function validatePedagogicalGroup(
   group,
   establishedAnalysis,
   introducedAnywhere,
-  analysisLabels, diagnostics = null, { complete = true, changedIntroductionIds = new Set() } = {}
+  analysisLabels, diagnostics = null,
+  { complete = true, changedIntroductionIds = new Set(), microsequenceLabels = new Map() } = {}
 ) {
-  const report = (code, message, status) => {
-    if (!diagnostics) fail(code, message, status);
-    diagnostics.push({ code, message });
+  const report = (code, message, status, details = undefined) => {
+    if (!diagnostics) fail(code, message, status, details);
+    diagnostics.push({ code, message, ...details });
   };
+  const microsequenceTitle = microsequenceLabels.get(group.microsequenceId);
+  const microsequenceDetail = microsequenceTitle ? { microsequence: microsequenceTitle } : {};
   const firstDesign = group.units.find(unit => !unit.preserved)?.design ?? group.units[0]?.design;
   const targets = firstDesign?.targetPlanItems;
   if (!plainObject(targets)) {
@@ -1463,14 +1597,16 @@ function validatePedagogicalGroup(
       for (const id of unit.usedIds) {
         if (changedIntroductionIds.has(id) && !establishedAnalysis.has(id)) {
           report("human_materialization_use_before_introduction",
-            `A alteração deixaria “${unit.content.title}” usando “${analysisLabels.get(id) ?? id}” antes de ensiná-la.`);
+            `A alteração deixaria “${unit.content.title}” usando “${analysisLabels.get(id) ?? id}” antes de ensiná-la.`,
+            undefined, { idea: analysisLabels.get(id) ?? id, studyUnit: unit.content.title, ...microsequenceDetail });
         }
       }
       for (const explanation of unit.explanations) {
         const id = explanation.instructionalAnalysisUnitId;
         if (changedIntroductionIds.has(id) && !unit.noveltyIds.includes(id) && !establishedAnalysis.has(id)) {
           report("human_materialization_explanation_before_introduction",
-            `A alteração deixaria “${unit.content.title}” retomando “${analysisLabels.get(id) ?? id}” antes de ensiná-la.`);
+            `A alteração deixaria “${unit.content.title}” retomando “${analysisLabels.get(id) ?? id}” antes de ensiná-la.`,
+            undefined, { idea: analysisLabels.get(id) ?? id, studyUnit: unit.content.title, ...microsequenceDetail });
         }
       }
       unit.noveltyIds.forEach(id => { establishedAnalysis.add(id); introducedAnywhere.add(id); });
@@ -1542,9 +1678,11 @@ function validatePedagogicalGroup(
     const knownBeforeUnit = new Set(establishedAnalysis);
     for (const id of unit.usedIds) {
       if (!knownBeforeUnit.has(id)) {
+        const idea = analysisLabels.get(id) ?? id;
         report(
           "human_materialization_use_before_introduction",
-          "Uma unidade usa uma ideia antes que ela tenha sido estabelecida no percurso."
+          `A unidade “${unit.content.title}” usa “${idea}” antes do ensino correspondente no percurso.`,
+          undefined, { idea, studyUnit: unit.content.title, ...microsequenceDetail }
         );
       }
     }
@@ -1566,7 +1704,8 @@ function validatePedagogicalGroup(
       if (!noveltySet.has(id) && !knownBeforeUnit.has(id)) {
         report(
           "human_materialization_explanation_before_introduction",
-          "Uma explicação retoma uma ideia antes que ela tenha sido estabelecida no percurso."
+          `A unidade “${unit.content.title}” retoma “${analysisLabels.get(id) ?? id}” antes do ensino correspondente no percurso.`,
+          undefined, { idea: analysisLabels.get(id) ?? id, studyUnit: unit.content.title, ...microsequenceDetail }
         );
       }
       const developed = developedByAnalysis.get(id) ?? new Set();
@@ -1630,10 +1769,13 @@ function validatePedagogicalGroup(
   }
 
   if (!complete) return;
-  if ([...targetAnalysis].some((id) => !representedAnalysis.has(id))) {
+  const missingAnalysis = [...targetAnalysis].filter((id) => !representedAnalysis.has(id));
+  if (missingAnalysis.length) {
     report(
       "human_materialization_incomplete_analysis_inventory",
-      "Toda ideia focal da microssequência precisa aparecer como introdução, uso ou retomada."
+      `O percurso ainda precisa apresentar ${missingAnalysis.map((id) => `“${analysisLabels.get(id) ?? id}”`).join(", ")} como introdução, uso ou retomada.`,
+      undefined, { ...microsequenceDetail,
+        ...(missingAnalysis.length === 1 ? { idea: analysisLabels.get(missingAnalysis[0]) ?? missingAnalysis[0] } : {}) }
     );
   }
   for (const id of introducedInGroup) {
@@ -1666,6 +1808,8 @@ function validatePedagogicalGroup(
 
 function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics = null, options = {}) {
   const curriculumOrder = curriculumMicrosequenceOrder(plan);
+  const microsequenceLabels = new Map((plan?.plan?.curriculum?.modules ?? []).flatMap(module =>
+    (module.lessons ?? []).flatMap(lesson => (lesson.microsequences ?? []).map(micro => [micro.id, micro.title]))));
   validatePreservedAnalysisReferences(groups, plan, replacedStudyUnitIds, curriculumOrder, diagnostics, options);
   const orderedGroups = [...groups].map((group) => {
     const order = curriculumOrder.get(group.microsequenceId);
@@ -1689,7 +1833,7 @@ function validatePedagogicalPart(groups, plan, replacedStudyUnitIds, diagnostics
       group,
       establishedAnalysis,
       introducedAnywhere,
-      analysisLabels, diagnostics, options
+      analysisLabels, diagnostics, { ...options, microsequenceLabels }
     );
     const coveredScopeIds = new Set(group.units.flatMap((unit) =>
       unit.curriculumScopeItemIds));
@@ -1895,4 +2039,19 @@ export async function materializeHumanCoursePart({
       qualidadePedagogica: "pending_independent_inspection",
       cursoRevision: receipt.courseRevision }
   };
+}
+
+// Recuperação curta e acionável para o retorno de preparar_materializacao: nomeia
+// o ensino ausente ou o uso prematuro no percurso, sem repetir códigos, campos ou
+// estado interno. A barreira didática permanece; só o próximo passo fica explícito.
+export function humanMaterializationRecovery(preflight) {
+  const blockers = Array.isArray(preflight?.blockers) ? preflight.blockers : [];
+  const inventory = blockers.find(blocker =>
+    blocker.code === "human_materialization_incomplete_analysis_inventory" && blocker.idea);
+  if (inventory) return `Apresente o ensino de “${inventory.idea}” no percurso desta microssequência, respeitando a posição de prática escolhida, e repita a verificação.`;
+  const useBefore = blockers.find(blocker =>
+    blocker.code === "human_materialization_use_before_introduction" && blocker.idea);
+  if (useBefore) return `Apresente o ensino de “${useBefore.idea}” antes da unidade “${useBefore.studyUnit ?? "em uso"}” e repita a verificação.`;
+  if (blockers.length) return "Corrija as pendências de percurso indicadas e repita a verificação.";
+  return null;
 }

@@ -7,6 +7,8 @@ import { explanationReconciliationTargets, inspectExplanationReconciliation, nor
   EXPLANATION_RECONCILIATION_CONTRACT } from "../../src/domain/courseExplanationReconciliation.js";
 import { chartPackage } from "../../src/resources/packages/chart/index.js";
 import { graphPackage } from "../../src/resources/packages/graph/index.js";
+import { annotatedTextPackage } from "../../src/resources/packages/annotated-text/index.js";
+import { tablePackage } from "../../src/resources/packages/table/index.js";
 import { applyExplanationTextFields } from "../../src/ui/CourseMicrosequenceReview.js";
 import { reconcileHumanExplanation } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 
@@ -23,6 +25,7 @@ function reconcile(explanation, entries) {
 }
 const inspect = (value, options = {}) => inspectExplanationReconciliation(value, { contentBasis: basis(value),
   analysisUnitIds: ["idea-a", "idea-b", "idea-c", "idea-d", "idea-e", "idea-f"], microsequenceIds: ["later"], ...options });
+const planContext = { plan: { plan: { instructionalAnalysisUnits: [{ id: "idea-a", statement: "Ideia A" }] } } };
 
 test("seis ensinamentos da base continuam no inventário quando o pedido só contempla dois", () => {
   const explanation = reconcile({ title: "Seis distinções", content: ["a", "b", "c", "d", "e", "f"]
@@ -153,7 +156,7 @@ test("limites e localizadores da reconciliação usam o contrato seguro de ocorr
 
 test("escrita de declaração nova recusa localização inexata e cobertura incompleta antes de persistir", async () => {
   const value = { title: "Base corrente", content: [paragraph("a", "Uma ideia. Outra relação.")] };
-  const declaration = { recurso: 1, folha: "text", trecho: value.content[0].data.text, papel: "introduced",
+  const declaration = { recurso: 1, trecho: value.content[0].data.text, papel: "introduced",
     ideias: ["Ideia A"], requisitos: [], motivo: "Este trecho ensina a ideia central." };
   const context = { plan: { plan: { instructionalAnalysisUnits: [{ id: "idea-a", statement: "Ideia A" }] } } };
   const valid = await reconcileHumanExplanation(value, [declaration], context);
@@ -203,4 +206,144 @@ test("passagem pendente longa volta fatiada em seletores utilizáveis, sem trunc
     assert.ok(!inspect(chosen).blockers.some(item => item.code === "explanation_reconciliation_locator_stale"),
       "cada passagem pendente é um seletor literal único");
   }
+});
+
+test("recursos ricos (tabela e texto anotado) se classificam por recurso inteiro sem enumerar folhas internas", async () => {
+  const content = [
+    paragraph("intro", "Compare as ofertas pelo custo total para a mesma quantidade de entregas."),
+    { id: "ofertas", package: annotatedTextPackage.manifest.id, version: annotatedTextPackage.manifest.version,
+      data: structuredClone(annotatedTextPackage.authoringContract.example) },
+    { id: "comparacao", package: tablePackage.manifest.id, version: tablePackage.manifest.version,
+      data: structuredClone(tablePackage.authoringContract.example) }
+  ];
+  const explanation = { title: "Ofertas e comparação", content };
+  const targets = explanationReconciliationTargets(normalizeMicrosequenceExplanation(explanation));
+  assert.ok(targets.length > 3, "cada recurso rico gera várias folhas derivadas");
+  assert.ok(targets.length >= 20, "o denominador cobre todas as folhas derivadas, inclusive $");
+  for (const resourceId of ["ofertas", "comparacao"])
+    assert.ok(targets.some(target => target.resourceId === resourceId && target.path === "$"),
+      `a representação acessível ${resourceId} permanece no denominador`);
+  const declarations = [
+    { recurso: 1, papel: "support", motivo: "Introduz a comparação.", ideias: [], requisitos: [] },
+    { recurso: 2, papel: "introduced", motivo: "Relaciona as cláusulas às suas funções.",
+      ideias: ["Ideia A"], requisitos: [] },
+    { recurso: 3, papel: "support", motivo: "Compara os mesmos atributos.", ideias: [], requisitos: [] }
+  ];
+  assert.equal(declarations.length, 3, "três declarações explícitas, sem enumerar folhas internas");
+  const reconciled = await reconcileHumanExplanation(explanation, declarations, planContext);
+  assert.equal(reconciled.reconciliation.entries.length, targets.length,
+    "o servidor derivou e expandiu todas as folhas, inclusive $, sem nomear campos internos");
+  assert.ok(reconciled.reconciliation.entries.every(entry => entry.path === "$" ||
+    targets.some(target => target.path === entry.path && target.resourceId === entry.resourceId)));
+  const checked = inspect(reconciled);
+  assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+});
+
+test("mesmo recurso aceita trechos com papéis distintos e cobre a folha inteira", async () => {
+  const text = "Primeiro passo: definir a quantidade. Depois, somar as parcelas.";
+  const explanation = { title: "Método", content: [paragraph("metodo", text)] };
+  const reconciled = await reconcileHumanExplanation(explanation, [
+    { recurso: 1, trecho: "Primeiro passo: definir a quantidade.", papel: "introduced",
+      motivo: "Introduz a decisão inicial.", ideias: ["Ideia A"], requisitos: [] },
+    { recurso: 1, trecho: "Depois, somar as parcelas.", papel: "established",
+      motivo: "Estabelece o cálculo final.", ideias: ["Ideia A"], requisitos: [] }
+  ], planContext);
+  assert.deepEqual(reconciled.reconciliation.entries.map(entry => entry.role), ["introduced", "established"]);
+  assert.deepEqual(reconciled.reconciliation.entries.map(entry => entry.path), ["text", "text"]);
+  const checked = inspect(reconciled);
+  assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+});
+
+test("trecho repetido devolve candidatos, recusa alvo inválido e localiza pela posição ou rótulo", async () => {
+  const data = { prompt: "Observe os dois trechos.", segments: [{ id: "s1", text: "mesma frase" },
+    { id: "s2", text: "mesma frase" }],
+  annotations: [{ id: "n1", targetIds: ["s1"], label: "Rótulo", note: "Nota da anotação." }] };
+  const explanation = { title: "Repetição", content: [{ id: "ann", package: annotatedTextPackage.manifest.id,
+    version: annotatedTextPackage.manifest.version, data }] };
+  const base = { recurso: 1, trecho: "mesma frase", papel: "support", motivo: "Classifica o trecho repetido.",
+    ideias: [], requisitos: [] };
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [base], planContext), error => {
+    assert.equal(error.code, "invalid_explanation_reconciliation");
+    assert.equal(error.details.blockers[0].code, "explanation_reconciliation_locator_stale");
+    assert.equal(error.details.blockers[0].candidates.length, 2);
+    return true;
+  });
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...base, alvo: "inexistente" }], planContext),
+    error => error.code === "invalid_explanation_reconciliation" &&
+      error.details.blockers[0].code === "explanation_reconciliation_locator_stale");
+  const covered = async alvo => {
+    try {
+      await reconcileHumanExplanation(explanation, [{ ...base, alvo }], planContext);
+      return [];
+    } catch (error) {
+      assert.equal(error.code, "invalid_explanation_reconciliation");
+      return error.details.blockers.map(blocker => blocker.path).filter(Boolean);
+    }
+  };
+  const first = await covered(1);
+  assert.ok(!first.includes("segments[0].text") && first.includes("segments[1].text"),
+    "a posição escolheu a primeira folha");
+  const second = await covered("trecho 2");
+  assert.ok(first.length && second.length && !second.includes("segments[1].text") &&
+    second.includes("segments[0].text"), "o rótulo público escolheu a segunda folha");
+});
+
+for (const definition of [chartPackage, graphPackage]) test(`${definition.manifest.id}: recurso inteiro preserva o $ acessível`, async () => {
+  const explanation = { title: "Visual", content: [{ id: "vis", package: definition.manifest.id,
+    version: definition.manifest.version, data: structuredClone(definition.authoringContract.example) }] };
+  const reconciled = await reconcileHumanExplanation(explanation, [{ recurso: 1, papel: "introduced",
+    motivo: "Explica a representação inteira.", ideias: ["Ideia A"], requisitos: [] }], planContext);
+  assert.ok(reconciled.reconciliation.entries.some(entry => entry.path === "$"),
+    "a leitura acessível não desaparece da cobertura");
+  const checked = inspect(reconciled);
+  assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+});
+
+test("folha longa é fatiada pelo servidor ao classificar o recurso inteiro", async () => {
+  const sentence = index => `A relação ${index} entre nome e endereço exige uma consulta verificável. `;
+  const long = Array.from({ length: 80 }, (_, index) => sentence(index + 1)).join("");
+  assert.ok(long.length > 4000);
+  const explanation = { title: "Base longa", content: [paragraph("a", long)] };
+  const reconciled = await reconcileHumanExplanation(explanation, [{ recurso: 1, papel: "introduced",
+    motivo: "Classifica a folha longa inteira.", ideias: ["Ideia A"], requisitos: [] }], planContext);
+  assert.ok(reconciled.reconciliation.entries.length > 1, "a folha longa é fatiada sem trabalho do autor");
+  for (const entry of reconciled.reconciliation.entries) assert.ok([...entry.quote].length <= 4000);
+  const checked = inspect(reconciled);
+  assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+});
+
+test("declaração legada com o nome interno da folha é recusada com erro útil, sem gravar", async () => {
+  const explanation = { title: "Base", content: [paragraph("a", "Uma ideia.")] };
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ recurso: 1, folha: "text", papel: "support",
+    motivo: "Declaração legada.", ideias: [], requisitos: [] }], planContext), error => {
+    assert.equal(error.code, "invalid_explanation_reconciliation");
+    assert.match(error.message, /folha/u);
+    assert.equal(error.details.blockers[0].code, "invalid_explanation_reconciliation");
+    return true;
+  });
+});
+
+test("repetição dentro de uma parte não torna outra parte uma escolha implícita", async () => {
+  const explanation = { title: "Trechos parecidos", content: [{ id: "ann", package: annotatedTextPackage.manifest.id,
+    version: annotatedTextPackage.manifest.version, data: {
+      prompt: "Compare os trechos.", segments: [{ id: "s1", text: "eco eco" }, { id: "s2", text: "eco" }],
+      annotations: [{ id: "n1", targetIds: ["s1"], label: "Repetição", note: "Observe a primeira parte." }]
+    } }] };
+  const declaration = { recurso: 1, trecho: "eco", papel: "support", motivo: "Trecho escolhido pela autoria.",
+    ideias: [], requisitos: [] };
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [declaration], planContext), error => {
+    assert.equal(error.details.blockers[0].code, "explanation_reconciliation_locator_stale");
+    assert.equal(error.details.blockers[0].candidates.length, 2);
+    return true;
+  });
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...declaration, alvo: 1 }], planContext), error => {
+    assert.equal(error.details.blockers[0].code, "explanation_reconciliation_locator_stale");
+    assert.match(error.details.blockers[0].message, /repete/u);
+    return true;
+  });
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...declaration, alvo: 2 }], planContext), error => {
+    assert.ok(error.details.blockers.every(blocker => blocker.code === "explanation_reconciliation_unmapped"));
+    assert.ok(!error.details.blockers.some(blocker => blocker.path === "segments[1].text"));
+    return true;
+  });
 });

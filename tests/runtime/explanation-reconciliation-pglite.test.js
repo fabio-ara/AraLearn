@@ -24,7 +24,7 @@ test("reconciliação permanece vigente após JSONB e detecta alteração real d
     const authored = await reconcileHumanExplanation({ ...explanation, content: passages.map((text, index) => ({
       id: index ? "b" : "a", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text }
     })) }, passages.map((trecho, index) => ({ recurso: index + 1,
-      folha: "text", trecho, papel: "support", motivo: "Contexto de apoio explícito." })), {});
+      trecho, papel: "support", motivo: "Contexto de apoio explícito." })), {});
     const persisted = (await db.query("select $1::jsonb as explanation", [authored])).rows[0].explanation;
     const basis = await explanationContentBasis(persisted);
     assert.equal(basis, authored.reconciliation.contentBasis);
@@ -98,7 +98,7 @@ test("guarda existente invalida só a declaração herdada do texto editado, sem
     const sameText = { ...original, goal: "Objetivo explicitado sem trocar o texto" };
     await db.query("update private.course_entities set content=$1 where entity_id='peer'", [sameText]);
     assert.deepEqual(await read("peer"), sameText, "Metadados antigos não são apagados por mudança fora da explicação.");
-    const declared = await reconcileHumanExplanation(changed.explanation, [{ recurso: 1, folha: "text",
+    const declared = await reconcileHumanExplanation(changed.explanation, [{ recurso: 1,
       trecho: changed.explanation.content[0].data.text, papel: "support", motivo: "Contexto de apoio explícito." }], {});
     await db.query("update private.course_entities set content=$1 where entity_id='target'", [{ ...changed, explanation: declared }]);
     assert.deepEqual((await read("target")).explanation, declared, "Uma declaração nova não é removida como se fosse herdada.");

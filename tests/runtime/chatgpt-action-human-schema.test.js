@@ -349,7 +349,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "9.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "10.0.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -981,5 +981,23 @@ test('#302 Actions e MCP validam fontes estruturadas, papéis do vínculo e trec
     assert.equal(validate(leafName),false,"o nome interno da folha não pertence ao contrato da ocorrência");
     const legacy=structuredClone(sample);legacy.metadados.autoria='Nome não decomposto';
     assert.equal(validate(legacy),false);
+  }
+});
+
+test('#v10 reconciliação declara recurso ou trecho e recusa o nome interno da folha',()=>{
+  const base={curso:'Redes para iniciantes',explicacoes:[{microssequencia:'Sockets',
+    conteudo:{title:'Processo e socket',content:SAMPLE_THEORY_CONTENT.content},fontes:[]}]};
+  const schemas=[COURSE_HUMAN_TASKS.find(task=>task.name==='salvar_explicacoes').inputSchema,
+    operation('salvar_explicacoes').requestBody.content['application/json'].schema];
+  const declaration={recurso:1,papel:'support',motivo:'Contexto de apoio explícito.',ideias:[],requisitos:[]};
+  for(const schema of schemas){
+    const validate=new Ajv2020({strict:false}).compile(schema);
+    const whole=structuredClone(base);whole.explicacoes[0].reconciliacao=[declaration];
+    assert.equal(validate(whole),true,JSON.stringify(validate.errors));
+    const trecho=structuredClone(whole);
+    trecho.explicacoes[0].reconciliacao=[{...declaration,trecho:'transporte',alvo:1,ocorrencia:1}];
+    assert.equal(validate(trecho),true,JSON.stringify(validate.errors));
+    const legacy=structuredClone(whole);legacy.explicacoes[0].reconciliacao=[{...declaration,folha:'text'}];
+    assert.equal(validate(legacy),false,'o nome interno da folha saiu do contrato da reconciliação');
   }
 });

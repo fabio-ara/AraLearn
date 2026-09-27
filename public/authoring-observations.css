@@ -83,7 +83,9 @@ dialog.course-microsequence-review.is-unit-review { height: fit-content; }
 .course-microsequence-review .course-review-context-body > button { min-width: var(--tap); width: var(--tap); padding: 8px; }
 .course-review-authoring-context summary:focus-visible,
 .course-review-authoring-panels summary:focus-visible { outline: 2px solid var(--action-primary); outline-offset: 3px; }
-.course-explanation-inline { display: grid; gap: 0; }
+/* A moldura da inspeção fornece apenas título e largura; o ritmo entre recursos
+   vem da pilha compartilhada, igual à leitura na Unidade de estudo e na Explicação. */
+.course-explanation-inline { display: block; min-width: 0; }
 .course-microsequence-review .course-explanation-inline > [data-review-title] { margin: 0 0 8px; font-size: var(--type-md); font-weight: var(--weight-title); line-height: var(--leading-normal); }
 .course-explanation-component { min-width: 0; position: relative; }
 .course-explanation-component [data-manual-edit-path],

@@ -316,6 +316,66 @@ async function inspectExplanation(page, unit) {
   return { trigger, overlay, rendered };
 }
 
+// O ritmo entre recursos é um contrato compartilhado: cada host fornece apenas a
+// própria moldura e entrega a mesma pilha, sem margem por host.
+async function expectResourceStack(page, host, label) {
+  const measured = await page.locator(host).first().evaluate((node) => {
+    const stack = node.querySelector(".runtime-resource-stack");
+    if (!stack) return { found: false };
+    const resources = [...stack.children].filter((child) =>
+      child.matches(".package-instance, .runtime-resource-edit-target"));
+    const rects = resources.map((resource) => resource.getBoundingClientRect());
+    return { found: true, count: resources.length,
+      gaps: rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+      overflow: node.scrollWidth - node.clientWidth };
+  });
+  expect(measured.found, `${label}: pilha de recursos compartilhada`).toBe(true);
+  expect(measured.count, `${label}: recursos na pilha`).toBeGreaterThanOrEqual(2);
+  for (const gap of measured.gaps) {
+    expect(gap, `${label}: recursos consecutivos separados`).toBeGreaterThanOrEqual(7);
+    expect(gap, `${label}: sem espaço vazio grande`).toBeLessThanOrEqual(9);
+  }
+  expect(measured.overflow, `${label}: sem estouro horizontal`).toBeLessThanOrEqual(1);
+  return measured;
+}
+
+const framingUnits = ["catalog-aralearn-resource-paragraph-theory-card",
+  "catalog-aralearn-resource-table-theory-card"]
+  .map((id) => theoryUnits.find((unit) => unit.id === id));
+
+for (const { width, height } of [{ width: 320, height: 800 }, { width: 390, height: 844 },
+  { width: 430, height: 932 }, { width: 1280, height: 800 }]) {
+  test(`Unidade de estudo e Explicação mantêm o mesmo ritmo entre recursos em ${width} px`, async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await page.setViewportSize({ width, height });
+    await installStudyRuntime(page);
+    const evidence = [];
+    expect(framingUnits.filter(Boolean)).toHaveLength(2);
+    for (const unit of framingUnits) {
+      await openStudyUnit(page, unit);
+      const unitRhythm = await expectResourceStack(page, ".card-sheet-content", `unidade ${unit.title} ${width}px`);
+      // A Unidade de estudo é registrada sem modal; a Explicação tem captura própria.
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await page.screenshot({ path: testInfo.outputPath(`unidade-ritmo-${width}-${unit.id}.png`) });
+      const explanation = await inspectExplanation(page, unit);
+      const explanationRhythm = await expectResourceStack(page, ".study-explanation-body", `explicação ${unit.title} ${width}px`);
+      expect(explanationRhythm.gaps).toEqual(unitRhythm.gaps);
+      expect(explanationRhythm.gaps[0]).toBe(unitRhythm.gaps[0]);
+      await page.screenshot({ path: testInfo.outputPath(`explicacao-ritmo-${width}-${unit.id}.png`) });
+      evidence.push({ unit: unit.id, packages: unit.packages, unitGaps: unitRhythm.gaps,
+        explanationGaps: explanationRhythm.gaps });
+      await explanation.overlay.getByRole("button", { name: "Fechar explicação", exact: true }).click();
+      await expect(explanation.overlay).toHaveCount(0);
+      await expect(explanation.trigger).toBeFocused();
+    }
+    await testInfo.attach("ritmo-entre-recursos", { body: JSON.stringify(evidence, null, 1),
+      contentType: "application/json" });
+    expect(pageErrors).toEqual([]);
+  });
+}
+
 test("Curso de catálogo exercita todos os pacotes no Estudo e permanece disponível sem conexão", async ({
   context,
   page

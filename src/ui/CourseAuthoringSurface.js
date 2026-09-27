@@ -2724,7 +2724,7 @@ export function createCourseAuthoringSurface({
     if (state.curricularMapBusy || planningExplanation?.hasPendingDraft() || hasPendingWriteEnvelope() || hasTransientAuthoringDraft() ||
         mountedPanelHasPendingDraft()) return true;
     if (root.querySelector?.(
-      '[role="alertdialog"], [role="dialog"]:not([data-course-authoring-readonly-dialog]):not([data-course-authoring-draft-managed])'
+      '[role="alertdialog"], [role="dialog"]:not([data-course-authoring-readonly-dialog]):not([data-course-authoring-draft-managed]):not([data-course-design-context-dialog])'
     )) return true;
     return [...(root.querySelectorAll?.("form") || [])].some((form) =>
       !form.closest?.('[data-course-authoring-draft-managed]') &&
@@ -2775,6 +2775,13 @@ export function createCourseAuthoringSurface({
     const previousMapReference = state.curricularMapRead?.mapApprovalReference;
     const previousDesign = state.courseDesign;
     const previousPeople = state.people;
+    const parameterTarget = state.parameterTarget;
+    const designScope = parameterTarget?.scope || designScopeForRoute(route.courseId, route.target);
+    const needsDesign = route.section === "parameters" || Boolean(parameterTarget);
+    const current = () => state.opened && state.view === "course" &&
+      state.routeKey === locationValue.hash && state.section === route.section &&
+      state.parameterTarget === parameterTarget && (!parameterTarget ||
+        sameDesignScope(state.parameterTarget.scope, designScope));
     try {
       let snapshot = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -2783,8 +2790,7 @@ export function createCourseAuthoringSurface({
         });
         setAuthoringSyncState({ offline: detail.offline, stale: detail.stale });
         const course = projectRefreshedCourse(detail, previousCourse);
-        const designScope = designScopeForRoute(route.courseId, route.target);
-        const needsTargetPlan = route.section === "parameters" &&
+        const needsTargetPlan = needsDesign &&
           designScope.kind === "didactic_microsequence";
         const needsPlan = route.section === "planning" || needsTargetPlan;
         let plan = needsPlan ? null : undefined;
@@ -2801,7 +2807,7 @@ export function createCourseAuthoringSurface({
             planRead = mapSnapshot.planRead;
             plan = mapSnapshot.plan;
           }
-          if (route.section === "parameters") {
+          if (needsDesign) {
             designRead = await controller.loadCourseDesign(route.courseId, {
               scope: designScope,
               limit: 32,
@@ -2836,11 +2842,11 @@ export function createCourseAuthoringSurface({
           throw error;
         }
       }
-      if (!snapshot || !state.opened || state.view !== "course" ||
-          state.routeKey !== locationValue.hash || state.section !== route.section) {
+      if (!snapshot || !current()) {
         return false;
       }
       const changed = JSON.stringify(previousCourse) !== JSON.stringify(snapshot.course) ||
+        Boolean(needsDesign && state.designFailure) ||
         previousMapReference !== snapshot.mapSnapshot?.map?.mapApprovalReference ||
         (snapshot.plan !== undefined &&
           JSON.stringify(previousPlan) !== JSON.stringify(snapshot.plan)) ||
@@ -2855,7 +2861,15 @@ export function createCourseAuthoringSurface({
         state.courseDesign = snapshot.design;
         state.designAppliedParameters = undefined;
         state.designAppliedFailure = "";
-        if (snapshot.design) void loadDesignAppliedParameters(snapshot.design, snapshot.design.scopeContext.current, ++designEpoch);
+        state.designInstructionalContext = null;
+        state.designInstructionalLoading = false;
+        const epoch = ++designEpoch;
+        if (snapshot.design) {
+          void loadDesignAppliedParameters(snapshot.design, snapshot.design.scopeContext.current, epoch);
+          if (state.designCategory === "instruction") {
+            void loadDesignInstructionalContext(snapshot.design, snapshot.design.scopeContext.current, epoch);
+          }
+        }
       }
       if (snapshot.people !== undefined) state.people = snapshot.people;
       state.failure = null;
@@ -2888,8 +2902,7 @@ export function createCourseAuthoringSurface({
       else updateAuthoringRuntimeStatus();
       return true;
     } catch (error) {
-      if (!state.opened || state.view !== "course" ||
-          state.routeKey !== locationValue.hash || state.section !== route.section) {
+      if (!current()) {
         return false;
       }
       const failure = classifyCourseAuthoringError(error, { knownCourse: previousCourse });
@@ -2918,6 +2931,7 @@ export function createCourseAuthoringSurface({
       return "deferred";
     }
     const route = parseCourseAuthoringRoute(locationValue.hash || "");
+    if (route && state.course && contextualDesignOpen()) return refreshCourseAtomically(route);
     if (!route && state.view === "list" && state.list) {
       return refreshCourseListAtomically();
     }
@@ -3121,6 +3135,20 @@ export function createCourseAuthoringSurface({
     const focus = result === true
       ? "[data-curriculum-query]"
       : '[data-course-authoring-action="retry-planning"]';
+    globalThis.queueMicrotask?.(() => root.querySelector?.(focus)?.focus?.({ preventScroll: true }));
+    return result;
+  }
+
+  async function retryDesign(courseId) {
+    const routeKey = state.routeKey;
+    const target = state.parameterTarget;
+    const result = await refresh();
+    if (result === "deferred" || !state.opened || state.course?.courseId !== courseId ||
+        state.routeKey !== routeKey || state.parameterTarget !== target ||
+        state.section !== "parameters" && !contextualDesignOpen()) return result;
+    const focus = result === true
+      ? '[data-course-design-category], [data-course-authoring-action="design-group-back"]'
+      : '[data-course-authoring-action="retry-design"]';
     globalThis.queueMicrotask?.(() => root.querySelector?.(focus)?.focus?.({ preventScroll: true }));
     return result;
   }
@@ -4041,9 +4069,7 @@ export function createCourseAuthoringSurface({
     } else if (action === "retry-planning" && state.course) {
       void retryPlanning(state.course.courseId);
     } else if (action === "retry-design" && state.course) {
-      void loadDesign(state.course.courseId, {
-        scope: state.parameterTarget?.scope || designScopeForRoute(state.course.courseId, state.routeTarget)
-      });
+      void retryDesign(state.course.courseId);
     } else if (action === "retry-people" && state.course) {
       void loadPeople(state.course.courseId);
     } else if (action === "load-more-design-scopes" && state.courseDesign?.scopeContext.hasMoreChildren &&

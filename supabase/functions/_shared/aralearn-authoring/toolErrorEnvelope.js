@@ -211,6 +211,18 @@ function errorRecovery(error, issues, requestId) {
     };
   }
   if (error.status === 409) {
+    if (error.code === "curricular_dependency_not_produced") {
+      return {
+        strategy: "correct_and_retry",
+        retryable: true,
+        requestIdMode: "new",
+        steps: [
+          "Identifique, no preparo da materialização, a microssequência exigida como pré-requisito ainda sem unidade produzida.",
+          "Produza essa dependência antes ou envie as duas microssequências no mesmo lote.",
+          "Repita a materialização depois de corrigir o recorte."
+        ]
+      };
+    }
     return {
       strategy: "reread_and_retry",
       retryable: true,

@@ -154,6 +154,8 @@ continuam aplicáveis.
 
 Antes da escrita, a Explicação salva é reconciliada por passagens com o repertório persistido. Cada ensinamento é identificado como introdução, conhecimento estabelecido, retomada, exemplo, apoio ou dependência adiada com destino. O inventário inclui as relações necessárias: seis ensinamentos sob teto dois precisam aparecer no percurso completo, sem desaparecer em um tópico agregado.
 
+A Explicação é a base consultável da microssequência; a sequência das unidades apresenta o ensino e os exemplos pertinentes e as práticas conforme a condição escolhida. Salvar a base orienta o percurso sem substituí-lo. Quando o percurso ainda não apresenta um ensino, o preparo é recusado nomeando a ideia, a unidade em uso e a microssequência e devolvendo o passo de recuperação.
+
 `preparar_materializacao` é uma consulta antecipada opcional. Recebe `plano`,
 uma declaração compacta das unidades, e confere conjuntamente repertório,
 vínculos, requisitos, formas, componentes, fontes, práticas e cobertura.

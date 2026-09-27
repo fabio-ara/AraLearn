@@ -76,7 +76,10 @@ async function mount(page, options = {}) {
             planVersion: h.data.plan.plan.version, approval: "approved", changed: true, idempotent: !advance });
         } });
       }),
-      loadCourseDesign: async (_id, { scope }) => clone(h.data.designs[scope.kind]),
+      loadCourseDesign: async (_id, { scope }) => {
+        h.reads.push(`design:${h.data.course.revision}:${scope.kind}`);
+        return clone(h.data.designs[scope.kind]);
+      },
       getMicrosequenceForExplanation: async (_id, microsequenceId) => {
         h.entityReads.push(microsequenceId);
         if (h.deferEntity) return new Promise(resolve => { h.resolveEntity = () => resolve(clone(h.data.entity)); });
@@ -131,6 +134,61 @@ async function expand(page) {
   await page.locator('[data-curriculum-expansion="module:module-context"] > summary').click();
   await page.locator('[data-curriculum-expansion="lesson:lesson-context"] > summary').click();
 }
+
+for (const entry of ["direct", "context"]) test(`retry de Parâmetros após escrita externa preserva escopo e foco: ${entry}`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: entry === "direct" ? 390 : 1280, height: 844 });
+  const errors = await mount(page, { revision: 67 });
+  await expand(page);
+  await page.evaluate(() => {
+    const h = window.planningHarness;
+    h.setRevision(71);
+    const parameter = h.data.designs.didactic_microsequence.parameters
+      .find(item => item.parameterId === "practice_position");
+    parameter.localAssignment = { mode: "fixed", value: "before_and_after", origin: "research_condition",
+      reason: "Condição B: conferir tentativas antes e depois do ensino." };
+    parameter.effectiveAssignment = { ...parameter.localAssignment, inherited: false,
+      sourceScope: { kind: "didactic_microsequence", ref: "micro-context" } };
+  });
+  if (entry === "direct") {
+    await page.evaluate(async () => {
+      const h = window.planningHarness;
+      history.replaceState(null, "", `/#/authoring/courses/${h.data.courseId}?section=parameters&didacticMicrosequenceId=micro-context`);
+      await h.surface.open();
+    });
+  } else {
+    await microAction(page, "parameters").click();
+  }
+  const panel = page.getByRole("dialog", { name: "Parâmetros", exact: true });
+  await expect(panel.getByRole("heading", { name: "Parâmetros indisponíveis", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath(`parameters-retry-${entry}-before.png`), fullPage: true });
+  const routeBefore = new URL(page.url()).hash;
+  await panel.getByRole("button", { name: "Tentar novamente", exact: true }).click();
+  const category = panel.getByLabel("Escolher grupo de ajustes");
+  await expect(category).toBeVisible();
+  await expect(category).toBeFocused();
+  await category.selectOption("practice");
+  const position = panel.locator('article[data-parameter-id="practice_position"]');
+  await expect(position).toContainText("Antes e depois");
+  await panel.getByRole("button", { name: "Ajustar Posição das práticas", exact: true }).click();
+  await expect(panel.getByLabel("Origem")).toHaveValue("research_condition");
+  await page.screenshot({ path: testInfo.outputPath(`parameters-retry-${entry}-after.png`), fullPage: true });
+  expect(new URL(page.url()).hash).toBe(routeBefore);
+  expect(await page.evaluate(() => window.planningHarness.reads.slice(-4))).toEqual([
+    "course:71", "plan:71", "map:71", "design:71:didactic_microsequence"
+  ]);
+  const readCount = await page.evaluate(() => window.planningHarness.reads.length);
+  const reason = panel.getByRole("textbox", { name: "Justificativa", exact: true });
+  await reason.fill("Rascunho local que precisa permanecer durante uma atualização.");
+  expect(await page.evaluate(() => window.planningHarness.surface.refresh())).toBe("deferred");
+  await expect(reason).toHaveValue("Rascunho local que precisa permanecer durante uma atualização.");
+  expect(await page.evaluate(() => window.planningHarness.reads.length)).toBe(readCount);
+  await panel.getByRole("button", { name: "Descartar alterações", exact: true }).click();
+  if (entry === "context") {
+    await panel.getByRole("button", { name: "Fechar parâmetros", exact: true }).click();
+    await expect(microAction(page, "parameters")).toBeFocused();
+  }
+  expect(errors).toEqual([]);
+});
 
 for (const width of [390, 430, 1280]) test(`hierarquia e ações do planejamento em ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 844 });

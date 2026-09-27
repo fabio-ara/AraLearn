@@ -1,13 +1,14 @@
 import { createCourseMicrosequenceReview } from "../../src/ui/CourseMicrosequenceReview.js";
 import { createCourseInspectionSequence } from "../../src/ui/CourseInspectionSequence.js";
 import { microsequenceReviewExport, REVIEW_COURSE_ID as courseId, REVIEW_MS_ID as microsequenceId } from "../helpers/courseMicrosequenceReviewFixture.js";
+import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
 
 export function mountMicrosequenceReviewFixture(root) {
   const cache = new Map();
   const probe = { calls: [], revision: 7, basis: "a".repeat(64), reviews: {}, uncertain: false,
     explanationText: "Um socket é a interface local usada pelo processo.", sources: null, changes: [],
     observations: [], observationWrites: [], observationLostResponse: false, delayObservationRead: false, finishObservationRead: null, withUnits: true,
-    withPdf: false, pdfReads: [], openedSources: [], explanationTools: [] };
+    withPdf: false, pdfReads: [], openedSources: [], explanationResources: [], explanationTools: [] };
   const observationReceipts = new Map();
   let pendingEdit = null;
   const controller = {
@@ -87,7 +88,8 @@ export function mountMicrosequenceReviewFixture(root) {
       contentReview: probe.reviews[`${targetKind}:${targetId}`] || { state: "draft" } }; },
     async exportCourseAuthoring() {
       const exported = microsequenceReviewExport({ revision: probe.revision, explanationText: probe.explanationText, withUnits: probe.withUnits, withPdf: probe.withPdf });
-      exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].explanation.content.push(...structuredClone(probe.explanationTools));
+      const explanation = exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].explanation;
+      explanation.content.push(...structuredClone(probe.explanationResources), ...structuredClone(probe.explanationTools));
       return exported;
     },
     async getCourseSourceAttachmentDownload(request) {
@@ -124,7 +126,11 @@ export function mountMicrosequenceReviewFixture(root) {
       pendingEdit = structuredClone(request); probe.calls.push({ kind: "save", request: structuredClone(request) });
       if (probe.uncertain) throw Object.assign(new Error("Sem resposta do serviço"), { status: 504 });
       pendingEdit = null; probe.explanationText = request.explanation.content[0].data.text;
-      probe.explanationTools = structuredClone(request.explanation.content.slice(1));
+      const rest = structuredClone(request.explanation.content.slice(1));
+      probe.explanationResources = rest.filter(instance =>
+        !RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool);
+      probe.explanationTools = rest.filter(instance =>
+        RESOURCE_PACKAGE_REGISTRY.get(instance.package, instance.version)?.manifest.tool);
       probe.revision++; probe.basis = "b".repeat(64);
       for (const [key, review] of Object.entries(probe.reviews)) if (review.state === "current") probe.reviews[key] = { ...review, state: "stale" };
       return { courseId, revision: probe.revision, microsequenceVersion: 3, changed: true, idempotent: false };

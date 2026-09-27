@@ -328,7 +328,7 @@ test("correção da explicação persiste reconciliação humana ligada à base 
   const { title, content } = correctedContent("Explicação reconciliada");
   await applyHumanCourseCorrections({ adapter, principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
     course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content },
-      reconciliacao: [{ recurso: 1, folha: "text", trecho: content[0].data.text, papel: "introduced",
+      reconciliacao: [{ recurso: 1, trecho: content[0].data.text, papel: "introduced",
         ideias: ["DNS resolve nomes"], requisitos: ["Distinguir nome de endereço"], motivo: "Este trecho ensina a relação central." }] }] });
   const saved = adapter.commits[0].upserts[0].content.explanation;
   assert.deepEqual(saved.reconciliation, { contract: "aralearn.explanation-reconciliation.v1",
@@ -357,7 +357,6 @@ test("nova reconciliação incompleta é recusada antes de qualquer escrita", as
       conteudo: { title, content },
       reconciliacao: [{
         recurso: 1,
-        folha: "text",
         trecho: "Conteúdo corrigido",
         papel: "introduced",
         ideias: ["DNS resolve nomes"],

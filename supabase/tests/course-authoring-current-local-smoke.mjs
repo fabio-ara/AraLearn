@@ -221,7 +221,7 @@ function sharedExplanations() {
       "Separe três perguntas: qual programa está executando, qual interface local ele usa e quais pontas estão relacionadas pela comunicação. Processo responde à primeira, socket à segunda e conexão à terceira. Por exemplo, duas aplicações podem executar no mesmo computador e usar sockets diferentes. Essa distinção permite explicar o caso sem tratar todo o computador como uma única aplicação.")]
   }, fontes: [] }];
   return explanations.map((entry, index) => ({ ...entry, reconciliacao: [{
-    recurso: 1, folha: "text", trecho: entry.conteudo.content[0].data.text,
+    recurso: 1, trecho: entry.conteudo.content[0].data.text,
     papel: index === 0 ? "introduced" : "established",
     motivo: index === 0 ? "Definição da interface, com processo e transporte já declarados como pré-requisitos."
       : "Retomada da distinção estabelecida para a aplicação.",

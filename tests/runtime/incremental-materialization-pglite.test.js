@@ -294,6 +294,40 @@ test("cadeia A→B→C da mesma parte exige o pré-requisito produzido antes do 
   } finally { await db.close(); }
 });
 
+test("dependência curricular aceita quando a produção conjunta integra o mesmo lote", async () => {
+  const db = await fixture();
+  try {
+    const { batchTarget, a, b } = await arrangeChain(db);
+    // A e B integram o mesmo lote: a dependência B→A é satisfeita pela produção conjunta.
+    const conjunto = await write(db, [a, b], [placement(a), placement(b)],
+      { request: "chain-batch-ab-001", targetPlanItems: [batchTarget("micro-a"), batchTarget("micro-b")] });
+    assert.equal(conjunto.changed, true);
+    assert.equal((await db.query("select count(*)::int total from private.course_entities where entity_type='study_unit'")).rows[0].total, 2);
+    assert.equal((await db.query("select count(*)::int total from private.course_entities where entity_type='study_unit' and parent_id='micro-b'")).rows[0].total, 1);
+  } finally { await db.close(); }
+});
+
+test("dependência curricular ausente fora do lote recusa sem gravar unidade", async () => {
+  const db = await fixture();
+  try {
+    const { batchTarget, a, b } = await arrangeChain(db);
+    const antes = await materializationSnapshot(db);
+    // B depende de A; o lote produz somente B, então o pré-requisito persistido falta.
+    await assert.rejects(write(db, [b], [placement(b)],
+      { request: "chain-focal-b-001", targetPlanItems: [batchTarget("micro-b")] }),
+    /dependencia curricular precisa estar produzida/u);
+    assert.deepEqual(await materializationSnapshot(db), antes);
+
+    // A produzida fora do lote focal libera B no pedido seguinte.
+    const primeiro = await write(db, [a], [placement(a)],
+      { request: "chain-focal-a-001", targetPlanItems: [batchTarget("micro-a")] });
+    const segundo = await write(db, [b], [placement(a), placement(b)],
+      { revision: primeiro.courseRevision, request: "chain-focal-b-002", targetPlanItems: [batchTarget("micro-b")] });
+    assert.equal(segundo.changed, true);
+    assert.equal((await db.query("select count(*)::int total from private.course_entities where entity_type='study_unit' and parent_id='micro-b'")).rows[0].total, 1);
+  } finally { await db.close(); }
+});
+
 test("controle negativo: sem o bloco corretivo o foco isolado da parte falha pela dependência futura", async () => {
   const db = await fixture({ focalCurricularDependencies: false });
   try {

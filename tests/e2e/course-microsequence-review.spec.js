@@ -334,6 +334,73 @@ async function expectObservationIcon(button, peer) {
   expect(Math.abs(icon.y + icon.height / 2 - other.y - other.height / 2)).toBeLessThanOrEqual(1);
 }
 
+// Conteúdo consecutivo de prosa, notação e tabela serve de caso discriminante para o
+// ritmo entre recursos da base explicativa.
+const framingResources = [
+  { id: "review-second", package: "aralearn.resource.paragraph", version: "1.0.0",
+    data: { text: "Uma conexão relaciona pontas; a interface local não representa a relação inteira entre os participantes." } },
+  { id: "review-rich", package: "aralearn.resource.paragraph", version: "1.0.0",
+    data: { format: "rich", languageTag: "pt-BR", textDirection: "ltr", blocks: [
+      { kind: "paragraph", inlines: [
+        { kind: "text", text: "A razão " },
+        { kind: "math", notation: "mathematics", accessibleText: "três dividido por quatro", expression: {
+          type: "fraction", numerator: { type: "number", value: "3" }, denominator: { type: "number", value: "4" } } },
+        { kind: "text", text: " conserva a escrita matemática no mesmo trecho." }
+      ] }
+    ] } },
+  { id: "review-table", package: "aralearn.resource.table", version: "1.0.0",
+    data: { title: "Papéis na comunicação", columns: ["Elemento", "Papel", "O que não representa"],
+      rows: [["Processo", "Programa em execução", "Toda a rede"],
+        ["Socket", "Interface local com o transporte", "A conexão inteira"]] } }
+];
+
+async function measureFraming(base) {
+  return base.evaluate(node => {
+    const inline = node.querySelector("[data-review-explanation-content]");
+    const resources = [...inline.querySelectorAll(":scope > .runtime-resource-stack > .course-explanation-component")];
+    const rects = resources.map(resource => resource.getBoundingClientRect());
+    return {
+      gaps: rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+      leading: rects[0].top - inline.querySelector("[data-review-title]").getBoundingClientRect().bottom,
+      firstTop: rects[0].top, height: inline.getBoundingClientRect().height,
+      overflow: Math.max(inline.scrollWidth - inline.clientWidth, node.scrollWidth - node.clientWidth)
+    };
+  });
+}
+
+for (const width of [320, 390, 430, 1280]) test(`base explicativa separa recursos consecutivos e conserva a geometria na edição em ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 850 });
+  const errors = await mount(page, () => page.evaluate(resources => {
+    globalThis.__reviewFixture.probe.explanationResources = resources;
+  }, framingResources));
+  const base = dialog(page).getByRole("region", { name: "Base explicativa", exact: true });
+  await expect(base.locator("[data-review-explanation-content] > .runtime-resource-stack")).toHaveCount(1);
+  await expect(base.locator(":scope > [data-review-explanation-content] > .runtime-resource-stack > .course-explanation-component")).toHaveCount(4);
+  const read = await measureFraming(base);
+  expect(read.gaps).toHaveLength(3);
+  for (const gap of read.gaps) { expect(gap).toBeGreaterThanOrEqual(7); expect(gap).toBeLessThanOrEqual(9); }
+  expect(Math.abs(read.gaps[0] - read.gaps[1])).toBeLessThanOrEqual(1);
+  expect(read.leading).toBeGreaterThanOrEqual(7); expect(read.leading).toBeLessThanOrEqual(9);
+  expect(read.overflow).toBeLessThanOrEqual(1);
+  expect(await base.locator('[data-package-instance-id="review-table"] .runtime-table-wrap')
+    .evaluate(node => getComputedStyle(node).overflowX)).toBe("auto");
+  await page.screenshot({ path: info.outputPath(`explanation-resource-rhythm-${width}.png`), fullPage: true });
+  await page.getByRole("button", { name: "Editar explicação", exact: true }).click();
+  const field = base.locator('[data-manual-edit-path="text"]').first();
+  await expect(field).toHaveAttribute("contenteditable", "plaintext-only"); await expect(field).toBeFocused();
+  const editing = await measureFraming(base);
+  expect(Math.abs(editing.firstTop - read.firstTop)).toBeLessThanOrEqual(1);
+  expect(Math.abs(editing.height - read.height)).toBeLessThanOrEqual(1);
+  editing.gaps.forEach((gap, index) => expect(Math.abs(gap - read.gaps[index])).toBeLessThanOrEqual(1));
+  const save = page.getByRole("button", { name: "Salvar explicação", exact: true });
+  const saveBox = await save.boundingBox();
+  expect(saveBox.width).toBe(44); expect(saveBox.height).toBe(44);
+  await expect(page.getByRole("button", { name: "Cancelar edição", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+  expect(await page.evaluate(() => globalThis.__reviewFixture.probe.calls)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 for (const width of [360, 1280]) test(`contexto autoral e ações ficam separados da base longa em ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 850 });
   const errors = await mount(page);

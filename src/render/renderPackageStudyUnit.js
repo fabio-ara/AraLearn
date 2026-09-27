@@ -93,7 +93,10 @@ export function renderPackageStudyUnitBlocks(studyUnit, options = {}) {
       studyUnit.feedback.map((instance, index) => renderInstance(studyUnit, instance, "feedback", index, options, dockExerciseParts)).join("") +
       "</section>"
     : "";
-  return content + response + authoringFeedback;
+  const blocks = content + response + authoringFeedback;
+  // A moldura de leitura é uma só: o host fornece rolagem e título, e recebe daqui o
+  // ritmo entre recursos. Unidade de estudo e Explicação compartilham a mesma pilha.
+  return blocks ? `<div class="runtime-resource-stack">${blocks}</div>` : "";
 }
 
 export function renderPackageStudyUnitBlocksWithDock(studyUnit, options = {}) {

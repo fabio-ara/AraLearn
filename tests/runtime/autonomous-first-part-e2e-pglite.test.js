@@ -15,11 +15,17 @@ import { encodeCourseActionTaskRequest } from
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { completeFocalMaterialization } from
   "../../supabase/functions/_shared/aralearn-authoring/courseFocalMaterialization.js";
+import { listExistingPartStudyUnits } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { fixture, COURSE, IDEA, EVIDENCE } from "../support/authoringMaterializationPglite.js";
 
 const TITLE = "Curso sintético";
 const MICRO = "micro";
 const MICRO_TITLE = "Sequência inicial";
+const MICRO_2 = "micro-2";
+const MICRO_3 = "micro-3";
+const MICRO_2_TITLE = "Segunda sequencia";
+const MICRO_3_TITLE = "Terceira sequencia";
 const IDEA_2 = "30000000-0000-4000-8000-000000000002";
 const IDEA_3 = "30000000-0000-4000-8000-000000000003";
 const IDEA_4 = "30000000-0000-4000-8000-000000000004";
@@ -55,11 +61,11 @@ async function seedDraftCourse(options = {}) {
 }
 
 function stateReader(db, { stalePlan = false } = {}) {
-  const alvosDaMicrossequencia = async () => {
+  const alvosDaMicrossequencia = async (microsequenceId = MICRO) => {
     const alvos = (await db.query(
       "select plan_item_id id, plan_item_kind kind from private.course_design_target_plan_items" +
       " where course_id=$1 and didactic_microsequence_id=$2 order by plan_item_kind, plan_item_id",
-      [COURSE, MICRO])).rows;
+      [COURSE, microsequenceId])).rows;
     return { instructionalAnalysisUnitIds: alvos.filter(alvo => alvo.kind === "instructional_analysis_unit").map(alvo => alvo.id),
       evidenceRequirementIds: alvos.filter(alvo => alvo.kind === "evidence_requirement").map(alvo => alvo.id) };
   };
@@ -93,12 +99,17 @@ function stateReader(db, { stalePlan = false } = {}) {
         "select authoring_part_id, didactic_microsequence_id id, production_position from private.course_authoring_part_didactic_microsequences where course_id=$1 order by production_position",
         [COURSE])).rows;
       const tituloPorMicro = new Map(micros.map(micro => [micro.id, micro.content?.title ?? micro.id]));
+      const dependenciasPorMicro = new Map(micros.map(micro => [micro.id, micro.content?.dependsOn ?? []]));
       const items = (await db.query(
         "select id, item_kind, position, statement, description from private.course_instructional_plan_items where course_id=$1 order by item_kind, position",
         [COURSE])).rows;
       const unidadesPersistidas = (await db.query("select entity_id, parent_id," +
         " design_application->'introducedInstructionalAnalysisUnitIds' ids" +
         " from private.course_entities where course_id=$1 and entity_type='study_unit'", [COURSE])).rows;
+      const unidadesPorMicro = new Map();
+      for (const unidade of unidadesPersistidas) {
+        unidadesPorMicro.set(unidade.parent_id, (unidadesPorMicro.get(unidade.parent_id) ?? 0) + 1);
+      }
       const introducaoPorIdeia = new Map();
       for (const unidade of unidadesPersistidas) {
         for (const ideia of unidade.ids ?? []) {
@@ -113,6 +124,7 @@ function stateReader(db, { stalePlan = false } = {}) {
           curriculum: { modules: [{ id: "module", position: 0, title: "Módulo", lessons: [{ id: "lesson", position: 0,
             title: "Lição", microsequences: micros.map(micro => ({ id: micro.id, position: micro.position,
               title: micro.content?.title ?? micro.id,
+              dependencyMicrosequenceIds: dependenciasPorMicro.get(micro.id) ?? [],
               ...(micro.content?.explanation ? { explanation: micro.content.explanation } : {}) })) }] }] },
           instructionalAnalysisUnits: items.filter(item => item.item_kind === "instructional_analysis_unit")
             .map(item => ({ id: item.id, position: item.position, statement: item.statement, description: item.description ?? "",
@@ -123,6 +135,7 @@ function stateReader(db, { stalePlan = false } = {}) {
           parts: partes.map(part => ({ id: part.id, position: part.position, title: part.title, version: part.version,
             microsequences: membros.filter(member => member.authoring_part_id === part.id)
               .map(member => ({ id: member.id, productionPosition: member.production_position,
+                studyUnitCount: unidadesPorMicro.get(member.id) ?? 0,
                 title: tituloPorMicro.get(member.id) ?? MICRO_TITLE })) })) } };
     },
     async getCourseDesign(request) {
@@ -143,12 +156,20 @@ function stateReader(db, { stalePlan = false } = {}) {
         sourceScope: { ...entrada.effectiveAssignment.sourceScope,
           ref: entrada.effectiveAssignment.sourceScope.kind === "course" ? COURSE : MICRO } }]));
       return { ...base,
-        targetPlanItems: scope === "course" ? base.targetPlanItems : await alvosDaMicrossequencia(),
+        targetPlanItems: scope === "course" ? base.targetPlanItems
+          : await alvosDaMicrossequencia(scope === "didactic_microsequence" ? request.scopeRef ?? MICRO : MICRO),
         parameters: base.parameters.map(entrada => ({ ...entrada,
           effectiveAssignment: aplicados.get(entrada.parameterId) ?? entrada.effectiveAssignment })) };
     },
-    async listCourseStudyUnits() {
-      return { items: [], hasMore: false, nextCursor: null };
+    // O leitor real do fixture é o contrato SQL de 11 parâmetros (guarda 22023
+    // inclusive); a decoração pública de inspeção não é instalada aqui.
+    async listCourseStudyUnits(request = {}) {
+      const rows = await db.query(
+        "select private.list_course_study_units_for_actor_v1($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) value",
+        [PRINCIPAL.actorId, COURSE, request.expectedRevision ?? await curso(), request.scopeKind ?? "course",
+          request.scopeId ?? null, null, request.cursorStudyUnitId ?? null, "forward",
+          request.limit ?? 24, request.maxBytes ?? 524288, request.entry ?? null]);
+      return rows.rows[0].value;
     }
   };
 }
@@ -162,6 +183,10 @@ function sqlAdapter(db, writes, options = {}) {
     if (codigo === "23514" && /aprovacao do mapa curricular|aprovado antes da materializacao/u.test(mensaje)) {
       return new AuthoringApiError(409, "curricular_map_not_approved",
         "A produção só pode ser organizada depois da aprovação do mapa curricular. Aprove o mapa ou retome o foco autorizado antes de continuar.");
+    }
+    if (codigo === "23514" && /Uma dependencia curricular precisa estar produzida/u.test(mensaje)) {
+      return new AuthoringApiError(409, "curricular_dependency_not_produced",
+        "Há um pré-requisito curricular ainda sem unidade produzida fora deste lote. Produza essa dependência antes ou inclua as duas no mesmo pedido.");
     }
     if (codigo === "40001" || /mudou; releia/u.test(mensaje)) return new AuthoringApiError(409, "stale_course_state",
       "O curso ou o planejamento mudou; releia antes de continuar.");
@@ -257,6 +282,52 @@ function gptPayload() {
       cobertura: []
     }
   };
+}
+
+// O segundo alvo utiliza a ideia já introduzida por A; o terceiro depende do
+// segundo. A Parte continua sendo o agrupamento técnico do lote.
+function payloadSegunda() {
+  const base = gptPayload();
+  return { ...base, microssequencia: MICRO_2_TITLE,
+    aplicacaoPedagogica: { ...base.aplicacaoPedagogica, ideiasIntroduzidas: [], ideiasUtilizadas: ["Relação central"],
+      explicacoes: [] } };
+}
+
+function payloadTerceira() {
+  return { ...payloadSegunda(), microssequencia: MICRO_3_TITLE };
+}
+
+// Sem posição declarada, o núcleo precisa reler as unidades existentes do
+// recorte antes de decidir a posição da unidade nova.
+function payloadSemPosicao() {
+  const base = { ...gptPayload() };
+  delete base.posicao;
+  return { ...base, aplicacaoPedagogica: { ...base.aplicacaoPedagogica, ideiasIntroduzidas: [],
+    ideiasUtilizadas: ["Relação central"], explicacoes: [],
+    // A unidade nova não repete a oportunidade já registrada na preservada.
+    praticas: base.aplicacaoPedagogica.praticas.map(pratica =>
+      ({ ...pratica, oportunidade: "Comparar o custo total na mesma quantidade." })) } };
+}
+
+async function seedChainPart(db, adapter) {
+  const explicacao = reconciledExplanationFixture([{ text: "Prosa humana preservada.", analysisUnitIds: [IDEA] }],
+    { title: "Base anterior" });
+  await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content) values" +
+    " ($1,'microsequence','micro-2','lesson','lesson',1,$2::jsonb),($1,'microsequence','micro-3','lesson','lesson',2,$3::jsonb)",
+  [COURSE, JSON.stringify({ title: MICRO_2_TITLE, dependsOn: [MICRO], explanation: explicacao }),
+    JSON.stringify({ title: MICRO_3_TITLE, dependsOn: [MICRO_2], explanation: explicacao })]);
+  await db.query("insert into private.course_design_target_plan_items values" +
+    " ($1,'micro-2',$2,'instructional_analysis_unit'),($1,'micro-2',$3,'evidence_requirement')," +
+    " ($1,'micro-3',$2,'instructional_analysis_unit'),($1,'micro-3',$3,'evidence_requirement')", [COURSE, IDEA, EVIDENCE]);
+  const version = (await db.query("select version v from private.course_instructional_plans where course_id=$1",
+    [COURSE])).rows[0].v;
+  await adapter.saveCourseAuthoringPart({ principal: PRINCIPAL, courseId: COURSE, requestId: "chain-part-0001",
+    expectedCourseRevision: 1, expectedPlanVersion: version, allowDraftMap: true,
+    part: { partId: null, position: 0, title: "Parte técnica",
+      intent: "Agrupar a cadeia sintética sem criar dependência pedagógica entre Microssequências.",
+      progression: ["Produzir as Microssequências na ordem das dependências."],
+      microsequences: [{ microsequenceId: MICRO, position: 0 }, { microsequenceId: MICRO_2, position: 1 },
+        { microsequenceId: MICRO_3, position: 2 }] } });
 }
 
 async function setup(options = {}) {
@@ -518,6 +589,130 @@ test("segunda microssequência não agrupada cria Parte 2 preservando Parte 1 e 
     assert.equal(depois.unidades.length, 2);
     assert.deepEqual(depois.unidades, estado.unidades);
     assert.deepEqual(depois.partes, estado.partes);
+  } finally { await db.close(); }
+});
+
+test("dependência curricular pendente bloqueia o foco sem refém de Microssequência fora do lote", async () => {
+  const { db, adapter } = await setup();
+  try {
+    await seedChainPart(db, adapter);
+    const { referencia } = await retomadaAutonoma(adapter);
+    const argsSegunda = { curso: TITLE, microssequencia: MICRO_2_TITLE, unidades: [payloadSegunda()],
+      concluir: false, processo: referencia };
+
+    // B depende de A: sem unidade produzida, o preflight não promete prontidão.
+    const preparoBloqueado = await runCore(adapter, "preparar_materializacao", argsSegunda);
+    assert.equal(preparoBloqueado.context.preflight.state, "blocked");
+    const bloqueio = preparoBloqueado.context.preflight.blockers
+      .find(blocker => blocker.code === "curricular_dependency_not_produced");
+    assert.ok(bloqueio, JSON.stringify(preparoBloqueado.context.preflight.blockers));
+    assert.match(bloqueio.message, new RegExp(MICRO_TITLE, "u"), "o bloqueio nomeia a dependência");
+    assert.match(bloqueio.message, /antes ou inclua as duas no mesmo lote/u, "o bloqueio informa o próximo passo");
+    await assert.rejects(() => runCore(adapter, "materializar_parte", argsSegunda), error => {
+      assert.equal(error.status, 422);
+      assert.equal(error.code, "human_materialization_preflight_blocked");
+      return true;
+    });
+    assert.deepEqual((await snapshot(db)).unidades, [], "nada é gravado antes da dependência");
+
+    // O canal real entrega a causa nomeada para a recuperação do cliente.
+    const envelope = await viaMcpHandler(adapter, "materializar_parte", argsSegunda);
+    assert.equal(envelope.payload.result.isError, true);
+    const erro = envelope.payload.result.structuredContent.error;
+    assert.equal(erro.code, "human_materialization_preflight_blocked");
+    assert.ok(erro.details.preflight.blockers.some(item => item.code === "curricular_dependency_not_produced"));
+
+    // A não depende de ninguém: produzi-la não é refém de B nem de C.
+    const preparoA = await runCore(adapter, "preparar_materializacao", { ...ARGS, processo: referencia });
+    assert.equal(preparoA.context.preflight.state, "ready", JSON.stringify(preparoA.context.preflight.blockers));
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    assert.deepEqual((await snapshot(db)).unidades.map(unidade => unidade.micro), [MICRO]);
+
+    // Com A produzida, B libera; C segue fora do lote sem bloquear B.
+    const preparoB = await runCore(adapter, "preparar_materializacao", argsSegunda);
+    assert.equal(preparoB.context.preflight.state, "ready", JSON.stringify(preparoB.context.preflight.blockers));
+    await runCore(adapter, "materializar_parte", argsSegunda);
+    assert.deepEqual((await snapshot(db)).unidades.map(unidade => unidade.micro).sort(), [MICRO, MICRO_2]);
+  } finally { await db.close(); }
+});
+
+test("dependência produzida fora do agrupamento técnico é reconhecida pelo estado persistido", async () => {
+  const { db, adapter } = await setup();
+  try {
+    await seedChainPart(db, adapter);
+    const { referencia } = await retomadaAutonoma(adapter);
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const argsSegunda = { curso: TITLE, microssequencia: MICRO_2_TITLE, unidades: [payloadSegunda()],
+      concluir: false, processo: referencia };
+    await runCore(adapter, "materializar_parte", argsSegunda);
+    // A e B saem do agrupamento: a dependência de C precisa vir do estado
+    // persistido, não da declaração do recorte desta escrita.
+    await db.query("delete from private.course_authoring_part_didactic_microsequences" +
+      " where course_id=$1 and didactic_microsequence_id=any($2)", [COURSE, [MICRO, MICRO_2]]);
+    const argsTerceira = { curso: TITLE, microssequencia: MICRO_3_TITLE, unidades: [payloadTerceira()],
+      concluir: false, processo: referencia };
+    const preparo = await runCore(adapter, "preparar_materializacao", argsTerceira);
+    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
+    await runCore(adapter, "materializar_parte", argsTerceira);
+    assert.equal((await snapshot(db)).unidades.length, 3);
+  } finally { await db.close(); }
+});
+
+test("primeira Parte derivada preserva unidade existente sem agrupamento e posição omitida", async () => {
+  const { db, adapter } = await setup();
+  try {
+    const { referencia } = await retomadaAutonoma(adapter);
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const anterior = (await db.query("select entity_id id, position, content, design_snapshot, design_application" +
+      " from private.course_entities where course_id=$1 and entity_type='study_unit'", [COURSE])).rows[0];
+    // A unidade passa a existir sem agrupamento: a Parte é apenas técnica.
+    await db.query("delete from private.course_authoring_part_didactic_microsequences where course_id=$1", [COURSE]);
+    await db.query("delete from private.course_authoring_parts where course_id=$1", [COURSE]);
+
+    const semPosicao = { curso: TITLE, microssequencia: MICRO_TITLE, unidades: [payloadSemPosicao()],
+      concluir: false, processo: referencia };
+    const preparo = await runCore(adapter, "preparar_materializacao", semPosicao);
+    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
+    await runCore(adapter, "materializar_parte", semPosicao);
+
+    const unidades = (await db.query("select entity_id id, position, content from private.course_entities" +
+      " where course_id=$1 and entity_type='study_unit' order by position, entity_id", [COURSE])).rows;
+    assert.equal(unidades.length, 2);
+    assert.deepEqual(unidades[0], { id: anterior.id, position: 1, content: anterior.content }, "a unidade pré-existente é preservada");
+    assert.equal(unidades[1].position, 2, "a unidade nova recebe a posição seguinte");
+    assert.equal((await db.query("select count(*)::int total from private.course_authoring_part_didactic_microsequences" +
+      " where course_id=$1 and didactic_microsequence_id=$2", [COURSE, MICRO])).rows[0].total, 1);
+  } finally { await db.close(); }
+});
+
+test("leitor real recusa authoring_part sem identidade e a derivação lê pela Microssequência", async () => {
+  const { db } = await setup();
+  try {
+    await assert.rejects(() => db.query("select private.list_course_study_units_for_actor_v1(" +
+      "$1,$2,$3,'authoring_part',null,null,null,'forward',24,524288,null) value", [COURSE, COURSE, 1]),
+    error => {
+      assert.equal(error.code, "22023");
+      return true;
+    });
+
+    await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content)" +
+      " select $1,'study_unit','antiga-'||n,'microsequence','micro',n," +
+      " jsonb_build_object('title','Antiga '||n,'role','theory','content','[]'::jsonb)" +
+      " from generate_series(1,25) n", [COURSE]);
+    const leitor = stateReader(db);
+    const leituras = [];
+    const adapter = { ...leitor, async listCourseStudyUnits(request) {
+      leituras.push({ scopeKind: request.scopeKind, scopeId: request.scopeId, cursor: request.cursorStudyUnitId });
+      return await leitor.listCourseStudyUnits(request);
+    } };
+    const existentes = await listExistingPartStudyUnits({ adapter,
+      principal: PRINCIPAL, deadlineAt: null,
+      context: { course: { id: COURSE, revision: 1 }, part: { id: null, microsequences: [{ id: MICRO, position: 0 }] } } });
+    assert.equal(existentes.size, 25, "a paginação do leitor é percorrida até o fim");
+    assert.ok(leituras.length >= 2, JSON.stringify(leituras));
+    assert.ok(leituras.every(leitura => leitura.scopeKind === "didactic_microsequence" && leitura.scopeId === MICRO),
+      JSON.stringify(leituras));
+    assert.ok(existentes.has(MICRO + "\u0000" + 25));
   } finally { await db.close(); }
 });
 

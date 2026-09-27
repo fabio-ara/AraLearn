@@ -12,7 +12,7 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 import { resolveHumanCourseContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 
 import { materializeHumanCoursePart as materializeCompletePart, humanMaterializationUnitPlan,
-  preflightHumanCourseMaterialization, reconcileHumanExplanation } from
+  preflightHumanCourseMaterialization, reconcileHumanExplanation, humanMaterializationRecovery } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
@@ -2417,7 +2417,7 @@ test("caso real: completar lacunas classifica sem recopiar a base e sem manter a
       return { ok: false, blockers: toolErrorData(error).details?.blockers ?? [] };
     }
   };
-  const wholeLeaf = { recurso: 1, folha: "text", papel: "introduced", motivo: reason, ideias: [idea], requisitos: [] };
+  const wholeLeaf = { recurso: 1, papel: "introduced", motivo: reason, ideias: [idea], requisitos: [] };
   const first = await declare([wholeLeaf]);
   assert.equal(first.ok, false);
   assert.deepEqual(first.blockers.map(({ code }) => code), ["explanation_reconciliation_unmapped"]);
@@ -2425,12 +2425,13 @@ test("caso real: completar lacunas classifica sem recopiar a base e sem manter a
   assert.deepEqual(first.blockers[0].passages, [leaves[1]],
     "o que falta classificar volta com o texto literal, sem exigir sondagem do cliente");
 
-  const ambiguous = { recurso: 2, folha: "text", trecho: "Verificar o cache", papel: "example", motivo: reason,
+  const ambiguous = { recurso: 2, trecho: "Verificar o cache", papel: "example", motivo: reason,
     ideias: [idea], requisitos: [] };
   const second = await declare([wholeLeaf, ambiguous]);
   assert.equal(second.ok, false);
-  assert.deepEqual(second.blockers.map(({ code }) => code),
-    ["explanation_reconciliation_locator_stale", "explanation_reconciliation_unmapped"]);
+  // A ambiguidade dentro da folha é recusada já na declaração, com candidatos
+  // explícitos; o que falta classificar volta depois de a escolha resolver.
+  assert.deepEqual(second.blockers.map(({ code }) => code), ["explanation_reconciliation_locator_stale"]);
   const candidates = second.blockers[0].candidates;
   assert.equal(candidates.length, 2);
   assert.notEqual(candidates[0], candidates[1], "os candidatos precisam ser distinguíveis pelo cliente");
@@ -2447,7 +2448,7 @@ test("caso real: completar lacunas classifica sem recopiar a base e sem manter a
   assert.equal(typeof remaining, "string");
 
   const fourth = await declare([wholeLeaf, { ...ambiguous, trecho: candidates[1] },
-    { recurso: 2, folha: "text", trecho: remaining, papel: "support", motivo: reason, ideias: [idea], requisitos: [] }]);
+    { recurso: 2, trecho: remaining, papel: "support", motivo: reason, ideias: [idea], requisitos: [] }]);
   assert.equal(fourth.ok, true);
   assert.equal(operations.length, 4, "quatro operações, cada uma resolvendo uma decisão real");
   assert.equal(new Set(operations).size, operations.length, "nenhuma tentativa idêntica foi repetida");
@@ -2592,4 +2593,82 @@ test("valor declarado de posição da prática não certifica a ordem executada"
     ["expository", "practice"]);
   assert.equal(positionedParameter(write.units[1]).value, declared,
     "o valor declarado é preservado mesmo quando a ordem executada não o realiza");
+});
+
+test("base introduzida e lote só de usos recusa nomeando ideia, unidade e microssequência; o ensino resolve", async () => {
+  const adapter = adapterFixture();
+  const practiceOnly = [pedagogicalUnit(1, { used: ["DNS associa nomes a endereços."] })];
+  const blocked = await prepareMaterialization(adapter, practiceOnly, { complete: true });
+  assert.equal(blocked.state, "blocked");
+  const inventory = blocked.blockers.find(({ code }) => code === "human_materialization_incomplete_analysis_inventory");
+  assert.equal(inventory.idea, "DNS associa nomes a endereços.");
+  assert.equal(inventory.microsequence, "DNS");
+  assert.match(inventory.message, /apresentar o ensino de “DNS associa nomes a endereços\.”/u);
+  const useBefore = blocked.blockers.find(({ code }) => code === "human_materialization_use_before_introduction");
+  assert.equal(useBefore.idea, "DNS associa nomes a endereços.");
+  assert.equal(useBefore.studyUnit, "Unidade 1");
+  assert.equal(useBefore.microsequence, "DNS");
+  assert.equal(humanMaterializationRecovery(blocked),
+    "Apresente o ensino de “DNS associa nomes a endereços.” no percurso desta microssequência, respeitando a posição de prática escolhida, e repita a verificação.");
+  await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
+    part: 1, complete: true, units: practiceOnly }), error => {
+    assert.equal(error.code, "human_materialization_preflight_blocked");
+    const named = error.details.preflight.blockers
+      .find(({ code }) => code === "human_materialization_use_before_introduction");
+    assert.equal(named.idea, "DNS associa nomes a endereços.");
+    assert.equal(named.studyUnit, "Unidade 1");
+    assert.equal(named.microsequence, "DNS");
+    return true;
+  });
+  assert.deepEqual(adapter.calls, [], "a recusa não chega à escrita");
+
+  const ready = await prepareMaterialization(adapter, [unit()], { complete: true });
+  assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+  assert.equal(humanMaterializationRecovery(ready), null);
+  assert.deepEqual(adapter.calls, [], "preparo é somente leitura");
+});
+
+test("condição antes/depois preserva a tentativa exploratória e o preparo bloqueado devolve passo útil", async () => {
+  for (const declared of ["before_explanation", "before_and_after"]) {
+    const adapter = preAttemptAdapter(declared);
+    const both = declared === "before_and_after";
+    const missingTeaching = await prepareMaterialization(adapter, [attempt(1, "pre-1")], { complete: true });
+    assert.equal(missingTeaching.state, "blocked");
+    const recovery = humanMaterializationRecovery(missingTeaching);
+    assert.match(recovery, /respeitando a posição de prática escolhida/u,
+      "recuperar o ensino ausente não substitui a condição fixada por prática após o ensino");
+    assert.doesNotMatch(recovery, /antes das práticas/u);
+    const ready = await prepareMaterialization(adapter,
+      [attempt(1, "pre-1"), teaching(2), ...(both ? [afterTeachingPractice(3)] : [])], { complete: true });
+    assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
+    assert.equal(humanMaterializationRecovery(ready), null);
+  }
+  const blockedAdapter = adapterFixture();
+  blockedAdapter.getAuthoringProcessPreferences = async () => ({
+    contract: "aralearn.authoring-process-preferences.v1", revision: 2, updatedAt: "2026-09-09T00:00:00Z",
+    preferences: { ...defaultAuthoringProcessPreferences(), focus: "content", cadence: "batch", reviewPoints: [] }
+  });
+  const readDesign = blockedAdapter.getCourseDesign;
+  blockedAdapter.getCourseDesign = async request => {
+    if (request.scopeKind === "course")
+      return courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 });
+    const raw = await readDesign(request);
+    const base = courseDesignFixture({ courseId: COURSE_ID, moduleId: "module-network",
+      lessonId: "lesson-network", microsequenceId: "micro-dns" },
+    { scope: "didactic_microsequence", revision: 8 });
+    return { ...base, targetPlanItems: raw.targetPlanItems,
+      parameters: fixtureAppliedParameters(
+        raw.parameters.map(entry => [entry.parameterId, entry.effectiveAssignment.value]),
+        { origin: "author", scope: "course" })
+        .map(entry => ({ localAssignment: null, ...entry })) };
+  };
+  const output = await executeHumanCourseTask({ adapter: blockedAdapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: { curso: "Curso de Redes", microssequencia: "DNS",
+      concluir: true, unidades: [pedagogicalUnit(1, { used: ["DNS associa nomes a endereços."] })] } });
+  assert.equal(output.context.preflight.state, "blocked");
+  assert.equal(typeof output.nextDecision, "string");
+  assert.match(output.nextDecision, /DNS associa nomes a endereços\./u);
+  assert.doesNotMatch(output.nextDecision,
+    /human_materialization|blocker|preflight|schema|contrato|servidor/iu);
+  assert.equal(output.result, output.nextDecision, "o retorno bloqueado também nomeia o ensino ausente");
 });
