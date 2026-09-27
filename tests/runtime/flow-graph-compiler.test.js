@@ -41,6 +41,88 @@ test("fluxograma binário liga Sim e Não aos caminhos corretos e usa uma única
   assert.ok(graph.edges.some((edge) => edge.source === merge.id && edge.target === end.id));
 });
 
+test("decisão cujos dois ramos terminam não cria junção órfã", () => {
+  const graph = compileFlowGraph({
+    kind: "if_then_else",
+    id: "decision",
+    condition: "Credenciais válidas?",
+    thenBranch: [{ id: "accepted", kind: "end", text: "Aceito" }],
+    elseBranch: [{ id: "rejected", kind: "end", text: "Rejeitado" }]
+  });
+  const decision = sourceNode(graph, "decision");
+  const accepted = sourceNode(graph, "accepted");
+  const rejected = sourceNode(graph, "rejected");
+
+  assert.equal(graph.nodes.filter((node) => node.kind === "merge").length, 0);
+  assert.ok(graph.edges.some((edge) => edge.source === decision.id && edge.target === accepted.id && edge.label === "Sim"));
+  assert.ok(graph.edges.some((edge) => edge.source === decision.id && edge.target === rejected.id && edge.label === "Não"));
+});
+
+test("decisão com um ramo terminal mantém junção para o ramo que continua", () => {
+  const graph = compileFlowGraph({
+    kind: "sequence",
+    items: [{
+      id: "decision",
+      kind: "if_then_else",
+      condition: "Credenciais válidas?",
+      thenBranch: [{ id: "rejected", kind: "end", text: "Rejeitado" }],
+      elseBranch: [{ id: "review", kind: "process", text: "Revisar" }]
+    }, { id: "finish", kind: "end", text: "Fim" }]
+  });
+  const decision = sourceNode(graph, "decision");
+  const rejected = sourceNode(graph, "rejected");
+  const review = sourceNode(graph, "review");
+  const finish = sourceNode(graph, "finish");
+  const merge = graph.nodes.find((node) => node.kind === "merge");
+
+  assert.ok(merge);
+  assert.ok(graph.edges.some((edge) => edge.source === decision.id && edge.target === rejected.id));
+  assert.ok(graph.edges.some((edge) => edge.source === review.id && edge.target === merge.id));
+  assert.ok(graph.edges.some((edge) => edge.source === merge.id && edge.target === finish.id));
+  assert.equal(graph.edges.some((edge) => edge.source === rejected.id && edge.target === merge.id), false);
+});
+
+test("ramo vazio preserva a junção necessária para a continuação", () => {
+  const graph = compileFlowGraph({
+    kind: "sequence",
+    items: [{
+      id: "decision",
+      kind: "if_then_else",
+      condition: "Há conteúdo?",
+      thenBranch: [],
+      elseBranch: [{ id: "prepare", kind: "process", text: "Preparar" }]
+    }, { id: "finish", kind: "end", text: "Fim" }]
+  });
+  const decision = sourceNode(graph, "decision");
+  const prepare = sourceNode(graph, "prepare");
+  const finish = sourceNode(graph, "finish");
+  const merge = graph.nodes.find((node) => node.kind === "merge");
+
+  assert.ok(merge);
+  assert.ok(graph.edges.some((edge) => edge.source === decision.id && edge.target === merge.id && edge.label === "Sim"));
+  assert.ok(graph.edges.some((edge) => edge.source === prepare.id && edge.target === merge.id));
+  assert.ok(graph.edges.some((edge) => edge.source === merge.id && edge.target === finish.id));
+});
+
+test("if_chain e switch_case sem continuação não criam junções", () => {
+  const chain = compileFlowGraph({
+    kind: "if_chain",
+    id: "chain",
+    cases: [{ id: "case-a", condition: "A?", thenBranch: [{ id: "chain-a", kind: "end", text: "A" }] }],
+    elseBranch: [{ id: "chain-other", kind: "end", text: "Outro" }]
+  });
+  const choice = compileFlowGraph({
+    kind: "switch_case",
+    id: "switch",
+    expression: "Status",
+    cases: [{ match: "200", body: [{ id: "switch-ok", kind: "end", text: "Sucesso" }] }],
+    defaultBranch: [{ id: "switch-other", kind: "end", text: "Outro" }]
+  });
+
+  assert.equal(chain.nodes.filter((node) => node.kind === "merge").length, 0);
+  assert.equal(choice.nodes.filter((node) => node.kind === "merge").length, 0);
+});
+
 test("fluxograma complexo preserva laço, decisão aninhada e continuação sem duplicar arestas", () => {
   const graph = compileFlowGraph({
     kind: "sequence",

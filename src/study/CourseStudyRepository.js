@@ -759,11 +759,44 @@ export class CourseStudyRepository {
     return this.loadedCourseById.get(courseId)?.revision === courseRevision;
   }
 
+  // A revisão observada ao reentrar no Curso corrige a lista quando a
+  // atualização comum foi adiada. A consulta dirigida só atualiza a lista
+  // quando necessário; não toca no estado pessoal nem promove cópia offline.
+  async #revalidateCourseRevision(courseId) {
+    if (this.visitor || this.synchronizationMode === "manual" ||
+        this.listRuntimeStatus.offline === true ||
+        this.navigatorValue?.onLine === false ||
+        typeof this.bridge.checkCourseAccess !== "function") return;
+    let observed;
+    try {
+      observed = await this.bridge.checkCourseAccess(courseId);
+    } catch (error) {
+      if (!courseAccessRevoked(error)) return;
+      await this.#purgeRevokedCourses([courseId]);
+      throw error;
+    }
+    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    const revision = Number(observed?.revision);
+    if (!descriptor || !Number.isSafeInteger(revision) || revision <= descriptor.revision) {
+      return;
+    }
+    await this.refreshCourses();
+  }
+
   async loadCourse(courseIdentity, { initialResult = null, explicit = false } = {}) {
     const courseId = this.resolveCourseContractKey(courseIdentity);
-    const descriptor = this.courseList.find((item) => item.courseId === courseId);
+    let descriptor = this.courseList.find((item) => item.courseId === courseId);
     if (!descriptor) throw new Error("O curso solicitado não está acessível.");
     let loaded = this.loadedCourseById.get(courseId);
+    // A primeira abertura já foi precedida pela leitura da lista. A validação
+    // adicional é necessária na reentrada, quando a composição atual seria
+    // reutilizada e a atualização externa pode ter ficado adiada.
+    if (initialResult === null && loaded && loaded.revision === descriptor.revision) {
+      await this.#revalidateCourseRevision(courseId);
+      descriptor = this.courseList.find((item) => item.courseId === courseId);
+      if (!descriptor) throw new Error("O curso solicitado não está acessível.");
+      loaded = this.loadedCourseById.get(courseId);
+    }
     if (!loaded || (explicit && initialResult !== null) ||
         (explicit || this.synchronizationMode !== "manual") && (loaded.revision !== descriptor.revision || (
       this.listRuntimeStatus.offline !== true &&

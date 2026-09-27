@@ -86,6 +86,23 @@ test("parecer não escreve base obsoleta e recusa conflito sem repetir a tentati
   assert.equal(writes, 1);
 });
 
+test("registrar_inspecao recusa consistência quando a base aplicada está nula", async () => {
+  const read = { ...initial(), targetKind: "study_unit", targetId: "unit-a",
+    pedagogicalBasis: { targetKind: "study_unit", targetId: "unit-a",
+      microsequence: { title: "Relações", goal: "Explicar relações" }, planItems: [],
+      studyUnits: [{ id: "unit-a", content: { id: "unit-a", position: 1, title: "Relações", role: "theory",
+        topics: [], content: [{ id: "p", package: "aralearn.resource.paragraph", version: "1.0.0",
+          data: { text: "A explicação apresenta a relação entre nomes e endereços." } }], response: null, feedback: [] }, application: null }],
+      dependencies: [] } };
+  const reference = await createContentReviewReference({ principal, read });
+  let writes = 0;
+  const adapter = { getCourseContentInspection: async () => structuredClone(read),
+    recordCourseContentInspection: async () => { writes++; } };
+  await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report }),
+    error => error.code === "pedagogical_audit_unapplied_design");
+  assert.equal(writes, 0);
+});
+
 test("decisão explícita encaminha somente alvos inspecionados e respectivas bases", async () => {
   const calls = [];
   const adapter = { publicAppUrl: "https://example.org", listCourses: async () => ({ items: [{ courseId, title: "Curso" }], hasMore: false }),

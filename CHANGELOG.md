@@ -9,6 +9,14 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.88] - 2026-09-27
+
+### Corrigido
+
+- Reabrir um curso no Estudo em sincronização automática verifica alterações feitas por conversa e recupera as unidades atuais, preservando progresso pendente e o funcionamento manual ou offline.
+- Fluxogramas deixam de mostrar uma junção isolada quando todos os caminhos terminam. Rótulos de arestas consideram a fonte efetivamente exibida para evitar que uma palavra curta quebre por falta de espaço calculado.
+- Correções por conversa informam quando o conteúdo alterado exige reaplicação das escolhas instrucionais. A inspeção não aceita parecer de consistência enquanto essa base estiver ausente.
+
 ## [0.0.87] - 2026-09-27
 
 ### Corrigido

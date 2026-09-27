@@ -930,7 +930,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aplicar_correcoes",
     "Aplicar correções pedagógicas",
-    "Corrige unidades ou explicações no curso corrente; a aprovação afetada precisa de nova revisão humana.",
+    "Corrige conteúdo; informa aplicação preservada ou invalidada; releia, reaplique escolhas, inspecione.",
     Object.freeze({ ...inputSchema({
       curso: COURSE_SCHEMA,
       correcoes: Object.freeze({
@@ -1103,7 +1103,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "10.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:7cad32b8a501ac5699af30464d2592e974ebddfe0e9f64823fedba1799eb385c";
+  "sha256:09d5fc603d33ce66f03f4ee6e9f8497dd31c3c3d62864a6c05bceb1642825f4f";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

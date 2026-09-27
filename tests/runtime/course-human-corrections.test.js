@@ -204,6 +204,60 @@ test("correção só do apoio preserva percurso e fontes, sem transportar aprova
   assert.equal(receipt.context.explanationCorrectionCount, 1);
 });
 
+test("correção estrutural expõe a invalidação da aplicação e orienta a retomada sobre a base atual", async () => {
+  const adapter = adapterFixture();
+  const receipt = await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    corrections: [{ unidade: 1, conteudo: correctedContent("Unidade estruturalmente revista") }]
+  });
+  assert.deepEqual(receipt.context.aplicacaoInstrucional, {
+    estado: "invalidada_por_conteudo",
+    recorte: "unidades com conteúdo estrutural alterado",
+    retomada: "Leia o conteúdo atual, verifique e reaplique as escolhas instrucionais sobre essa base e depois registre a inspeção."
+  });
+  assert.match(receipt.result, /aplicação instrucional.*reaplicada.*conteúdo atual/iu);
+  assert.match(receipt.nextDecision, /conteúdo atual.*reaplique.*inspeção/iu);
+});
+
+test("fonte-only e mudança de título não são reportadas como invalidação estrutural", async () => {
+  const adapter = adapterFixture();
+  const stable = correctedContent("Título anterior");
+  adapter.listCourseStudyUnits = async () => ({
+    items: [{ ordinal: 1, version: 2, studyUnit: { ...stable, id: "unit-1", position: 1 },
+      curriculumPath: { didacticMicrosequence: { id: "micro-a", title: "Microssequência A" } } }],
+    hasMore: false, nextCursor: null
+  });
+  const titleOnly = await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    corrections: [{ unidade: 1, conteudo: { ...structuredClone(stable), title: "Título novo" } }]
+  });
+  assert.equal(titleOnly.context.aplicacaoInstrucional.estado, "preservada");
+  assert.equal(titleOnly.context.aplicacaoInstrucional.recorte, "conteúdo corrigido sem alteração estrutural da aplicação");
+  assert.doesNotMatch(titleOnly.nextDecision, /reapliqu/iu);
+
+  const explanationContent = correctedContent("Apoio preservado");
+  const explanation = { title: explanationContent.title, content: explanationContent.content };
+  const listEntities = adapter.listCourseEntities;
+  adapter.listCourseEntities = async () => {
+    const page = await listEntities();
+    page.items[0].content.explanation = structuredClone(explanation);
+    return page;
+  };
+  const sourceOnly = await applyHumanCourseCorrections({
+    adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth" },
+    course: "Curso de Redes",
+    explanations: [{ microssequencia: "Microssequência A", conteudo: explanation, fontes: [] }]
+  });
+  assert.equal(sourceOnly.context.aplicacaoInstrucional.estado, "preservada");
+  assert.equal(sourceOnly.context.aplicacaoInstrucional.recorte, "somente vínculos de fontes");
+  assert.doesNotMatch(sourceOnly.nextDecision, /reapliqu/iu);
+});
+
 for (const authenticationKind of ["oauth", "action"]) {
   test(`Explicações ${authenticationKind} devolvem todos os destinos de conteúdo sem herdar revisão do recibo`, async () => {
     const adapter = adapterFixture();
@@ -304,7 +358,7 @@ test("#272 correções MCP multi-Unit preservam Fontes e usam composição gené
   assert.match(commit.requestId, /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u);
   assert.equal(receipt.context.correctionCount, 2);
   assert.equal(receipt.context.sourceMode, "preserved");
-  assert.match(receipt.nextDecision, /conteúdo corrigido.*observações pendentes/u);
+  assert.match(receipt.nextDecision, /conteúdo atual.*reaplique.*observações/iu);
   assert.equal(
     receipt.deepLink,
     `https://app.example/#/authoring/courses/${COURSE_ID}` +

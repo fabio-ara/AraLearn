@@ -164,7 +164,7 @@ com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
 preparo deve corresponder à base, configuração e intenção correntes.
 
-O contrato de autoria corrente é o catálogo **8.0.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **10.0.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,

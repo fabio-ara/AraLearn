@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { RESOURCE_PACKAGE_REGISTRY } from "../../src/resources/packages/index.js";
+import { flowPackage } from "../../src/resources/packages/flow/index.js";
 
 const catalogCourse = JSON.parse(readFileSync(new URL(
   "../../supabase/fixtures/catalog/aralearn-catalogo-recursos-course.json",
@@ -34,6 +35,40 @@ const screenshotTheory = theoryUnits.find(({ packages }) =>
   packages.includes("aralearn.resource.software_container"));
 const screenshotPractice = practiceUnits.find(({ packages }) =>
   packages.includes("aralearn.resource.software_container"));
+const flowTerminalStructure = {
+  kind: "sequence",
+  items: [{ id: "terminal-start", kind: "start", text: "Início" }, {
+    id: "terminal-decision", kind: "if_then_else", condition: "O processo foi autorizado?",
+    branchLabels: { yes: "Autorizado", no: "Recusado" },
+    thenBranch: [
+      { id: "terminal-process-yes", kind: "process", text: "Executar processo autorizado" },
+      { id: "terminal-end-yes", kind: "end", text: "Fim autorizado" }
+    ],
+    elseBranch: [
+      { id: "terminal-process-no", kind: "process", text: "Registrar recusa" },
+      { id: "terminal-end-no", kind: "end", text: "Fim recusado" }
+    ]
+  }]
+};
+const flowTerminalUnit = {
+  id: "catalog-flow-terminal-branches-unit", title: "Terminais de processo",
+  role: "theory", position: 999, content: [{
+    id: "catalog-flow-terminal-branches-content", package: flowPackage.manifest.id,
+    version: flowPackage.manifest.version,
+    data: { prompt: "Acompanhe os dois caminhos até seus terminais.", structure: flowTerminalStructure }
+  }], response: null, feedback: [], topics: []
+};
+const flowTerminalPath = [
+  course.id, course.modules[0].id, course.modules[0].lessons[0].id,
+  "catalog-flow-terminal-branches-microsequence", flowTerminalUnit.id
+];
+const flowTerminalMicrosequence = {
+  id: "catalog-flow-terminal-branches-microsequence", title: "Terminais de processo",
+  goal: "Acompanhar os dois caminhos até o fim.", role: "explain", dependsOn: [],
+  covers: [], checks: [], errors: [], studyUnits: [flowTerminalUnit]
+};
+const flowTerminalProject = structuredClone(catalogCourse);
+flowTerminalProject.courses[0].modules[0].lessons[0].microsequences.push(flowTerminalMicrosequence);
 
 const visualCases = [
   { width: 320, height: 800 },
@@ -56,7 +91,7 @@ function summary() {
   };
 }
 
-async function installStudyRuntime(page) {
+async function installStudyRuntime(page, { project = catalogCourse, courseSummary = summary() } = {}) {
   await page.route("**/main.js", (route) => route.fulfill({
     status: 200,
     contentType: "text/javascript",
@@ -145,7 +180,7 @@ async function installStudyRuntime(page) {
       repository,
       initialProject: project
     });
-  }, { project: catalogCourse, courseSummary: summary() });
+  }, { project, courseSummary });
 }
 
 async function openStudyUnit(page, unit) {
@@ -375,6 +410,93 @@ for (const { width, height } of [{ width: 320, height: 800 }, { width: 390, heig
     expect(pageErrors).toEqual([]);
   });
 }
+
+test("Flow com dois ramos processo-end não cria junção órfã nos dois hosts", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  const visualCases = [
+    { width: 320, height: 800 }, { width: 390, height: 844 },
+    { width: 430, height: 932 }, { width: 1280, height: 800 }
+  ];
+  const terminalCase = {
+    ...flowTerminalUnit,
+    path: flowTerminalPath,
+    packages: [flowPackage.manifest.id],
+    tools: RESOURCE_PACKAGE_REGISTRY.listStudyTools(flowTerminalUnit)
+  };
+  const courseSummary = { ...summary(), studyUnitCount: summary().studyUnitCount + 1 };
+  const assertTerminalGraph = async (host, label) => {
+    await expect(host.locator("[data-flow-layout-status]"), label).toHaveAttribute(
+      "data-flow-layout-status", "ready"
+    );
+    await expect(host.locator('[data-flow-kind="process"]'), `${label}: processos`).toHaveCount(2);
+    await expect(host.locator('[data-flow-kind="end"]'), `${label}: terminais`).toHaveCount(2);
+    await expect(host.locator('[data-flow-kind="merge"]'), `${label}: sem junção órfã`).toHaveCount(0);
+  };
+  for (const { width, height } of visualCases) {
+    await page.setViewportSize({ width, height });
+    await installStudyRuntime(page, { project: flowTerminalProject, courseSummary });
+    await openStudyUnit(page, terminalCase);
+
+    const unitHost = page.locator(".card-sheet-content");
+    await assertTerminalGraph(unitHost, `Unidade ${width}px`);
+    const unitNormalPath = testInfo.outputPath(`unidade-${width}-normal.png`);
+    await page.screenshot({ path: unitNormalPath, fullPage: true });
+    await testInfo.attach(`flow-terminal-unidade-${width}-normal`, {
+      path: unitNormalPath, contentType: "image/png"
+    });
+    const unitExpand = unitHost.getByRole("button", {
+      name: "Explorar diagrama em tela inteira", exact: true
+    });
+    await unitExpand.click();
+    const fullscreen = page.getByRole("dialog", { name: "Diagrama em tela inteira", exact: true });
+    await expect(fullscreen).toBeVisible();
+    const unitSvg = fullscreen.locator(".package-flow-svg");
+    const unitInitialScale = await unitSvg.getAttribute("data-diagram-scale");
+    await fullscreen.getByRole("button", { name: "Aumentar zoom", exact: true }).click();
+    await expect(unitSvg).not.toHaveAttribute("data-diagram-scale", unitInitialScale);
+    const unitFullscreenPath = testInfo.outputPath(`unidade-${width}-fullscreen-zoom.png`);
+    await page.screenshot({ path: unitFullscreenPath, fullPage: true });
+    await testInfo.attach(`flow-terminal-unidade-${width}-fullscreen-zoom`, {
+      path: unitFullscreenPath, contentType: "image/png"
+    });
+    await page.keyboard.press("Escape");
+    await expect(fullscreen).not.toBeVisible();
+    await expect(unitExpand).toBeFocused();
+
+    const explanationTrigger = page.getByRole("button", { name: "Explicação", exact: true });
+    await explanationTrigger.click();
+    const explanation = page.getByRole("dialog", { name: "Explicação", exact: true });
+    await expect(explanation).toBeVisible();
+    await assertTerminalGraph(explanation, `Explicação ${width}px`);
+    const explanationNormalPath = testInfo.outputPath(`explicacao-${width}-normal.png`);
+    await page.screenshot({ path: explanationNormalPath, fullPage: true });
+    await testInfo.attach(`flow-terminal-explicacao-${width}-normal`, {
+      path: explanationNormalPath, contentType: "image/png"
+    });
+    const explanationExpand = explanation.getByRole("button", {
+      name: "Explorar diagrama em tela inteira", exact: true
+    });
+    await explanationExpand.click();
+    await expect(fullscreen).toBeVisible();
+    const explanationSvg = fullscreen.locator(".package-flow-svg");
+    const explanationInitialScale = await explanationSvg.getAttribute("data-diagram-scale");
+    await fullscreen.getByRole("button", { name: "Aumentar zoom", exact: true }).click();
+    await expect(explanationSvg).not.toHaveAttribute(
+      "data-diagram-scale", explanationInitialScale
+    );
+    const explanationFullscreenPath = testInfo.outputPath(`explicacao-${width}-fullscreen-zoom.png`);
+    await page.screenshot({ path: explanationFullscreenPath, fullPage: true });
+    await testInfo.attach(`flow-terminal-explicacao-${width}-fullscreen-zoom`, {
+      path: explanationFullscreenPath, contentType: "image/png"
+    });
+    await page.keyboard.press("Escape");
+    await expect(fullscreen).not.toBeVisible();
+    await expect(explanationExpand).toBeFocused();
+    await explanation.getByRole("button", { name: "Fechar explicação", exact: true }).click();
+    await expect(explanation).not.toBeVisible();
+    await expect(explanationTrigger).toBeFocused();
+  }
+});
 
 test("Curso de catálogo exercita todos os pacotes no Estudo e permanece disponível sem conexão", async ({
   context,

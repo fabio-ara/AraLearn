@@ -127,6 +127,11 @@ export function requirePedagogicalAuditConsistency(report, basis) {
     throw Object.assign(new TypeError("Há contradições objetivas na prática. Registre as insuficiências e corrija antes de declarar consistência."),
       { code: "pedagogical_audit_contradiction", issues: units.flatMap(unit => unit.issues) });
   }
+  if (report.outcome === "consistent" && basis.studyUnits.some(unit =>
+      (basis.targetKind !== "study_unit" || unit.id === basis.targetId) && unit.application == null)) {
+    throw Object.assign(new TypeError("A base de aplicação instrucional está ausente. Verifique ou reaplique as escolhas sobre o conteúdo atual antes de declarar consistência."),
+      { code: "pedagogical_audit_unapplied_design" });
+  }
   const hasPractice = basis.studyUnits.some(unit => (basis.targetKind !== "study_unit" || unit.id === basis.targetId) && unit.content?.response);
   if (report.checks.some(check => check.result === "not_applicable" &&
       (["alignment", "representation", "sufficiency"].includes(check.dimension) || hasPractice))) {
