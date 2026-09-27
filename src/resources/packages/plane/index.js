@@ -142,16 +142,10 @@ function vectorLabelPosition(vector, data) {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-// O quadro compartilhado de diagramas (rolagem, pinça, zoom e tela inteira) exige um canvas
-// rolável. Os estilos essenciais ficam no próprio markup do pacote para não alterar o CSS
-// global usado por outros pacotes.
+// O quadro de diagramas exige canvas rolável; os estilos essenciais ficam no pacote.
 const planeCanvasScrollStyle = ' style="height:100%;min-height:0;padding:8px;overflow:auto;' +
   'overscroll-behavior:contain;touch-action:none;-webkit-overflow-scrolling:touch"';
 
-// Deslocamentos candidatos em pixels, do mais próximo ao mais distante. Os passos derivam
-// da própria caixa do rótulo (altura + folga na vertical, largura + folga na horizontal),
-// com as direções verticais antes das horizontais porque rótulos são mais largos que altos.
-// A ordem é fixa para que o mesmo layout seja reproduzido a cada redimensionamento.
 function planeLabelCandidates(entry) {
   const stepX = Math.max(24, Math.round(entry.boxOffset.right - entry.boxOffset.left) + 8);
   const stepY = Math.max(16, Math.round(entry.boxOffset.bottom - entry.boxOffset.top) + 2);
@@ -169,10 +163,7 @@ function labelOverlapArea(left, right) {
     Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
 }
 
-// Escolhe, para cada rótulo, o primeiro deslocamento que não colide com textos fixos, com os
-// limites do gráfico ou com os rótulos já posicionados. A posição de partida é sempre a origem
-// do rótulo (ponto do dado mais deslocamento fixo), nunca a posição anteriormente aplicada;
-// por isso a passagem é determinística e não acumula deslocamento.
+// Primeiro deslocamento livre a partir da âncora do dado; determinístico e sem acumular.
 export function resolvePlaneLabelOffsets(entries, { bounds, blockedBoxes = [], candidates = planeLabelCandidates } = {}) {
   const placed = [];
   return entries.map((entry) => {
@@ -223,9 +214,6 @@ function labelTranslation(node) {
   return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
 }
 
-// Cada rótulo pertence ao ponto que compartilha o mesmo par de coordenadas; a âncora é a
-// marca do próprio ponto, não a posição textual. O deslocamento fixo original (dx/dy) é
-// medido uma vez e reaplicado sobre a âncora atual.
 function collectPlanePointLabels(data, frame, symbolGroups) {
   const texts = [...frame.svg.querySelectorAll("g.mark-text.role-mark text")];
   const used = new Set();
@@ -287,8 +275,6 @@ function avoidPointLabelCollisions(canvas, data) {
   const blockedBoxes = [...frame.svg.querySelectorAll("text")]
     .filter((node) => !pointNodes.has(node))
     .map((node) => frame.toUser(node));
-  // Área do gráfico, sem as margens dos eixos: mantém os números e títulos dos eixos
-  // legíveis. As esquinas do domínio são a camada invisível com dois pontos.
   const cornerGroup = symbolGroups.find((group) => group.querySelectorAll("path").length === 2);
   const corners = cornerGroup ? [...cornerGroup.querySelectorAll("path")].map((node) => frame.toUser(node)) : [];
   const bounds = corners.length
@@ -328,10 +314,7 @@ function avoidPointLabelCollisions(canvas, data) {
   });
 }
 
-// A primeira vista precisa abrir sobre o conteúdo do plano, não sobre a região vazia à
-// esquerda do gráfico: centraliza o conjunto de pontos e rótulos quando o quadro largo
-// exige rolagem. É o mesmo enquadramento inicial dos demais diagramas, aplicado às marcas
-// que o pacote materializa.
+// Primeira vista sobre o conteúdo, não sobre a região vazia do gráfico.
 function revealPlaneContent(canvas) {
   const marks = [...canvas.querySelectorAll("g.mark-symbol.role-mark")].at(-1);
   const texts = [...canvas.querySelectorAll('g.mark-text.role-mark text[aria-label*="label:"]')];
@@ -438,8 +421,6 @@ export function compilePlaneVegaLite(data, theme) {
   }
   return {
     $schema: "https://vega.github.io/schema/vega-lite/v6.json",
-    // Largura natural fixa: o quadro compartilhado de diagramas oferece rolagem, pinça, zoom e
-    // tela inteira, em vez de espremer rótulos e eixos na largura conceitual do celular.
     width: 520,
     height: 250,
     background: null,
@@ -498,20 +479,12 @@ async function hydratePlane(figure, stateKey) {
     const theme = readVegaTheme(canvas, selectors);
     await renderVegaLite(canvas, compilePlaneVegaLite(data, theme));
     const svg = canvas.querySelector("svg");
-    // O SVG conserva a largura natural; a rolagem compartilhada, não o limite de largura do
-    // CSS do pacote, decide o enquadramento.
     svg.style.maxWidth = "none";
-    // Encaixe dos rótulos e enquadramento inicial acontecem antes do quadro compartilhado:
-    // quando há visão lembrada para a mesma stateKey, a restauração de escala e rolagem é a
-    // última palavra e substitui o enquadramento inicial.
+    // Enquadramento antes da hidratação: a visão lembrada da mesma stateKey prevalece.
     avoidPointLabelCollisions(canvas, data);
     revealPlaneContent(canvas);
-    // O enquadramento inicial acima altera a rolagem; o evento correspondente precisa ser
-    // entregue antes de o quadro instalar seu listener de persistência, senão ele sobrescreve
-    // a visão lembrada da mesma stateKey.
+    // O evento dessa rolagem precisa sair antes do listener do quadro, senão apaga a visão lembrada.
     await new Promise((resolve) => requestAnimationFrame(() => resolve()));
-    // Enquadramento e exploração compartilhados com os demais diagramas: escala natural 1:1,
-    // rolagem, pinça, zoom e tela inteira. A geometria não é forçada a caber no quadro.
     await hydrateDiagramViewport({ figure, canvas, svg, stateKey, initialScale: null });
     applyVectorArrowMarkers(canvas, data.vectors?.length || 0);
     annotateVegaManualAxisTitles(canvas, [
