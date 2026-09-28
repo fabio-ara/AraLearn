@@ -14,15 +14,19 @@ explica os termos usados na implementação atual.
 ### Alterado
 
 - A leitura de configuração da autoria separa a intenção solicitada do que está efetivamente aplicado na unidade, nomeando cada lado e preservando conjunto vazio, valor nulo e ausência como estados distintos.
+- A edição de conteúdo conserva a calibração automática já aplicada na unidade. Intenção humana vigente, fixações e condições de pesquisa continuam prevalecendo.
+- As referências por trecho expõem os campos necessários a cada tipo de seletor e usam a mesma representação humana na consulta e na escrita.
+- As asserções de presença dos argumentos de seis ferramentas conservam as propriedades tipadas e as combinações válidas, sem uniões parciais na raiz do objeto.
+- Retomada, planejamento e preparação da produção recebem orientações sobre clareza didática, explicação complementar, atividades alinhadas e fontes verificadas. Bloqueios de revisão indicam o alvo e a recuperação pertinente; gravação parcial permanece distinta de conclusão.
 - Esta candidata permanece local; não há promoção ou publicação 0.0.94 neste registro.
 
-## [0.0.93] - 2026-09-28 (estabilização local)
+## [0.0.93] - 2026-09-28
 
 ### Corrigido
 
 - O escritor instrucional preserva `[]` como escolha aplicada e distingue calibração contextual pendente de conflito com condição de pesquisa.
 - O adapter mantém códigos públicos distintos e mensagens seguras para calibração e conflito, sem repassar mensagem arbitrária do SQL.
-- Esta candidata permanece local; não há promoção ou publicação 0.0.93 neste registro.
+- Site e backend publicados; o APK assinado permanece no rascunho da release.
 
 ## [0.0.92] - 2026-09-28
 
