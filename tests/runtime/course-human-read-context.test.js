@@ -1408,20 +1408,12 @@ test("fontes extensas atravessam ambos os transportes em envelopes Actions abaix
   assert.deepEqual(allPages[0], allPages[1]);
 });
 
+
 test("critérios de entrega chegam uma vez na retomada, no planejamento e no preparo", async () => {
-  const coreBytes = new TextEncoder().encode(JSON.stringify(COURSE_AUTHORING_DELIVERY_CORE)).byteLength;
-  const guideBytes = new TextEncoder().encode(JSON.stringify(
-    courseAuthoringGuidanceForCall("preparar_materializacao").instructions)).byteLength;
-  assert.ok(coreBytes < 1_000, "o núcleo precisa continuar curto");
-  assert.ok(coreBytes * 4 < guideBytes, "o núcleo não substitui o guia inteiro");
-  const core = COURSE_AUTHORING_DELIVERY_CORE.join(" ");
-  assert.match(core, /clareza e progressão/iu);
-  assert.match(core, /bastidor de produção e ressalva sem função/iu);
-  assert.match(core, /negativa didática legítima/iu);
-  assert.match(core, /Explicação é a referência coesa[^.]*função própria[^.]*não copie a base integral/iu);
-  assert.match(core, /reutilize literalmente definição, dado ou passo necessário/iu);
-  assert.match(core, /atividade corresponde ao objetivo[^.]*evidência prevista/iu);
-  assert.match(core, /cálculo é meio para o objetivo[^.]*apoio/iu);
+  const encoder = new TextEncoder();
+  const coreBytes = encoder.encode(JSON.stringify(COURSE_AUTHORING_DELIVERY_CORE)).byteLength;
+  assert.equal(COURSE_AUTHORING_DELIVERY_CORE.length, 6, "o núcleo canônico tem seis linhas");
+  assert.ok(coreBytes <= 1_000, "o núcleo canônico precisa caber em 1000 bytes");
   for (const task of ["consultar_planejamento", "preparar_materializacao"]) {
     const guide = courseAuthoringGuidanceForCall(task);
     for (const line of COURSE_AUTHORING_DELIVERY_CORE) {
@@ -1440,20 +1432,22 @@ test("critérios de entrega chegam uma vez na retomada, no planejamento e no pre
     const resumed = await channelCall(channel, adapter, "retomar_curso", { titulo: TITLE });
     assert.equal(resumed.status, 200, resumed.envelope);
     assert.deepEqual(resumed.value.context.criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE],
-      channel + ": a retomada com curso entrega o critério");
+      channel + ": a retomada com curso entrega o núcleo canônico");
 
     const { adapter: preparation } = materializationPreparationFixture(1);
     const prepared = await channelCall(channel, preparation, "preparar_materializacao",
       { curso: TITLE, unidades: [focalCandidate()] });
     assert.equal(prepared.status, 200, prepared.envelope);
     assert.deepEqual(prepared.value.context.criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE],
-      channel + ": o preparo entrega o critério antes de salvar");
+      channel + ": o preparo entrega o núcleo antes de salvar");
+    assert.ok(prepared.envelope.length < 20_000,
+      channel + ": o preparo usa o orçamento próprio, sem paginador");
 
     const paged = fixture();
     paged.getCourseInstructionalPlan = async () => ({ courseRevision: paged.revision, plan: {
       title: TITLE, version: 1, curriculumMapStatus: "draft", parts: [], audience: "Iniciantes",
       declaredPrerequisites: [], curriculumScopeItems: [],
-      curriculum: { modules: Array.from({ length: 200 }, (_, moduleIndex) => ({
+      curriculum: { modules: Array.from({ length: 12 }, (_, moduleIndex) => ({
         id: "module-" + moduleIndex, position: moduleIndex, title: "Módulo " + (moduleIndex + 1),
         objective: "Objetivo do módulo. ".repeat(20),
         lessons: [{ id: "lesson-" + moduleIndex, position: 0, title: "Lição " + (moduleIndex + 1),
@@ -1464,30 +1458,35 @@ test("critérios de entrega chegam uma vez na retomada, no planejamento e no pre
             goal: "Relacionar conceitos e procedimentos. ".repeat(12) })) }]
       })) }
     } });
-    let continuation = undefined, literal = "", pages = 0, firstFragment = null, secondFragment = null;
-    while (true) {
+    let continuation = undefined, literal = "", pages = 0, total = null, expectedStart = 0;
+    let firstPageHasCore = false, laterPageHasCore = false;
+    for (let pageIndex = 0; pageIndex < 6; pageIndex += 1) {
       const page = await channelCall(channel, paged, "consultar_planejamento",
         { curso: TITLE, ...(continuation === undefined ? {} : { continuacao: continuation }) });
       assert.equal(page.status, 200, page.envelope);
       const context = page.value.context;
-      if (context.fragmento) {
-        if (pages === 0) firstFragment = context.fragmento.texto;
-        if (pages === 1) secondFragment = context.fragmento.texto;
-        literal += context.fragmento.texto;
-        pages += 1;
-      } else {
-        literal = JSON.stringify(context);
-        pages = 1;
-      }
+      assert.equal(typeof context.fragmento?.texto, "string",
+        channel + ": o mapa de prova precisa paginar em fragmentos JSON");
+      assert.equal(context.fragmento.inicio, expectedStart, channel + ": offsets contíguos entre páginas");
+      expectedStart = context.fragmento.fim;
+      if (total === null) total = context.fragmento.total;
+      assert.equal(context.fragmento.total, total, channel + ": o total do recorte é estável");
+      assert.ok(encoder.encode(JSON.stringify(context)).byteLength <= 16 * 1024,
+        channel + ": cada página cabe em 16 KiB");
+      assert.ok(JSON.stringify(context).length <= 12_000, channel + ": cada página cabe em 12000 caracteres");
+      if (pageIndex === 0) firstPageHasCore = context.fragmento.texto.includes("criteriosDeEntrega");
+      else if (context.fragmento.texto.includes("criteriosDeEntrega")) laterPageHasCore = true;
+      literal += context.fragmento.texto;
+      pages += 1;
       if (context.temMais !== true) break;
       continuation = context.continuacao;
     }
-    assert.ok(pages >= 2, channel + ": o mapa grande precisa de mais de uma página");
-    assert.match(firstFragment, /criteriosDeEntrega/u);
-    assert.doesNotMatch(secondFragment, /criteriosDeEntrega/u,
-      channel + ": a continuação não repete os critérios");
+    assert.ok(pages >= 2 && pages <= 5, channel + ": o recorte precisa de 2 a 5 páginas determinísticas");
+    assert.equal(literal.length, total, channel + ": os fragmentos remontam o recorte literal");
+    assert.ok(firstPageHasCore, channel + ": o núcleo entra na primeira página");
+    assert.equal(laterPageHasCore, false, channel + ": a continuação não repete o núcleo");
     assert.equal(literal.split("criteriosDeEntrega").length - 1, 1,
-      channel + ": os critérios aparecem uma única vez na leitura paginada");
+      channel + ": o núcleo aparece uma única vez no recorte remontado");
     assert.deepEqual(JSON.parse(literal).criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE]);
   }
 });

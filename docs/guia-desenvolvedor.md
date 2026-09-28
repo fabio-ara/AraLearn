@@ -101,7 +101,7 @@ Use o mapa para localizar a parte que decide o comportamento antes de editar:
 | `tests/runtime/` | domínio, contratos e integração sem navegador completo |
 | `tests/e2e/` | jornadas reais no Chromium |
 
-O núcleo de entrega (`COURSE_AUTHORING_DELIVERY_CORE`) reúne critérios curtos derivados dos guias e é entregue uma única vez na retomada com curso selecionado, no planejamento e no preparo focal; os guias extensos continuam nos recursos de conhecimento, sem repetição em continuações ou recibos de produção.
+O núcleo de entrega (`COURSE_AUTHORING_DELIVERY_CORE`) reúne seis critérios curtos derivados dos guias, em cerca de 870 bytes, e é entregue uma única vez na retomada com curso selecionado, no planejamento e no preparo focal; os guias extensos continuam nos recursos de conhecimento, sem repetição em continuações ou recibos de produção.
 
 Arquivos em `supabase/functions/_shared/aralearn/runtime/` espelham módulos comuns.
 Altere a fonte em `src/` e sincronize:

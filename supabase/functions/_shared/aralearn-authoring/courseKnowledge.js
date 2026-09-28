@@ -5,11 +5,12 @@ export const COURSE_AUTHORING_ALIGNMENT_GUIDANCE = "Relacione objetivo, operaç�
 // Núcleo curto derivado das regras vigentes dos guias. Entrega o critério antes da
 // primeira escrita sem repetir a política extensa nem criar validador próprio.
 export const COURSE_AUTHORING_DELIVERY_CORE = Object.freeze([
-  "Escreva para quem vai estudar: clareza e progressão vêm antes de completar campos ou exibir contagens.",
-  "Cada unidade trata do assunto ou da tarefa do aluno; retire bastidor de produção e ressalva sem função, sem proibir negativa didática legítima.",
-  "A Explicação é a referência coesa e cada unidade tem função própria; não copie a base integral, mas reutilize literalmente definição, dado ou passo necessário.",
-  "A atividade corresponde ao objetivo e recolhe a evidência prevista: a operação pedida é a operação avaliada.",
-  "Quando o cálculo é meio para o objetivo, reduza a carga aritmética e ofereça apoio, preservando o foco conceitual."
+  "Explique o assunto com linguagem clara, contexto suficiente e progressão adequada ao aluno.",
+  "No material de estudo e no feedback, trate do assunto e da tarefa; decisões e avaliações de autoria ficam fora desse texto. Use ressalvas que ajudem a compreender ou decidir.",
+  "Faça da explicação uma referência coesa e das unidades episódios com função própria. Reutilize definições e dados úteis, sem copiar integralmente o desenvolvimento.",
+  "Escolha atividades que permitam observar a operação prevista pelo objetivo e explique os acertos e erros no retorno.",
+  "Dimensione os cálculos ao objetivo da tarefa. Ofereça calculadora ou outro apoio quando a carga aritmética desviar o foco do que se pretende aprender.",
+  "Vincule afirmações substantivas às passagens verificadas que as sustentam; exemplos construídos dispensam citações artificiais."
 ]);
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
