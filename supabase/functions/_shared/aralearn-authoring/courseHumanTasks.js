@@ -96,6 +96,21 @@ const HUMAN_REFERENCE_LIST_SCHEMA = Object.freeze({
   uniqueItems: true,
   items: HUMAN_REFERENCE_SCHEMA
 });
+// Intenção humana explícita aceita também pelas operações de produção: mantém
+// o bloqueio padrão do mapa em rascunho e dispensa transportar a referência do
+// processo no caso comum autorizado. Não concede acesso nem aprova o mapa.
+const AUTONOMOUS_PRODUCTION_SCHEMA = Object.freeze({
+  type: "boolean",
+  description: "Pedido humano expresso; produz sem aguardar a revisão curricular. Não combine com processo."
+});
+// Recuperação compartilhada dos bloqueios de mapa: distingue ausência de
+// rascunho e nomeia as duas decisões humanas possíveis sem transformar
+// autonomia em aprovação nem o inverso.
+function curricularMapProductionBlockMessage(mapStatus) {
+  return mapStatus === "absent" || mapStatus === undefined || mapStatus === null
+    ? "Ainda não há mapa curricular salvo neste curso; construa e salve o mapa antes de produzir."
+    : "O mapa curricular está em rascunho. Aprove a base inspecionada pela pessoa ou produza com autonomia explícita solicitada para este curso.";
+}
 
 const OBSERVATION_REFERENCE_SCHEMA = Object.freeze({ type: "object", additionalProperties: false,
   required: ["annotationId", "annotationVersion", "targetKind", "targetId"], properties: {
@@ -276,9 +291,9 @@ const SOURCE_LINK_PROPERTIES = Object.freeze({
   relacao: Object.freeze({ type: "string", enum: COURSE_SOURCE_RELATIONS }),
   papeis: Object.freeze({ ...SOURCE_ROLES_SCHEMA, minItems: 1 }),
   ancoras: Object.freeze({ type: "array", maxItems: 8, uniqueItems: true, items: HUMAN_REFERENCE_SCHEMA,
-    description: "Âncora vigente por posição, localizador ou trecho, após consulta." }),
+    description: "Âncora vigente por posição, localizador ou trecho." }),
   ocorrencias: Object.freeze({ ...SOURCE_OCCURRENCES_SCHEMA,
-    description: "Trecho literal no recurso. O servidor localiza o campo; alvo distingue partes repetidas." })
+    description: "Trecho literal; o servidor localiza o campo e alvo distingue repetições." })
 });
 const SOURCE_LINKS_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
@@ -324,7 +339,7 @@ const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
   required: Object.freeze(["package", "data"]),
   properties: Object.freeze({
     id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe para referências entre componentes." }),
-    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto, como choice, ou completo do catálogo." }),
+    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto ou completo do catálogo." }),
     version: Object.freeze({ type: "string", minLength: 1, description: "Versão corrente se omitida." }),
     data: Object.freeze({ type: "object" })
   })
@@ -400,7 +415,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   ]),
   properties: Object.freeze({
     microssequencia: HUMAN_REFERENCE_SCHEMA,
-    unidade: { ...HUMAN_REFERENCE_SCHEMA, description: "Referência atual da unidade a substituir ou mover. Omita para criar; posição final não identifica uma unidade existente." },
+    unidade: { ...HUMAN_REFERENCE_SCHEMA, description: "Unidade existente a substituir ou mover; omita para criar; posição final não identifica uma unidade existente." },
     posicao: Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 }),
     conteudo: STUDY_UNIT_CONTENT_SCHEMA,
     configuracao: MATERIALIZATION_CONFIGURATION_SCHEMA,
@@ -429,7 +444,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         ideiasUtilizadas: Object.freeze({
           type: "array", maxItems: 64, uniqueItems: true,
           items: HUMAN_REFERENCE_SCHEMA,
-          description: "Toda ideia estabelecida mobilizada sem reexplicação nesta unidade."
+          description: "Ideias estabelecidas mobilizadas sem reexplicação.",
         }),
         explicacoes: Object.freeze({
           type: "array", maxItems: 256,
@@ -480,7 +495,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
             properties: Object.freeze({
               requisito: Object.freeze({
                 ...HUMAN_REFERENCE_SCHEMA,
-                description: "Posição/título de requisito já persistido e vinculado à microssequência antes do preparo."
+                description: "Requisito persistido e vinculado antes do preparo.",
               }),
               oportunidade: Object.freeze({ type: "string", minLength: 1, maxLength: 240 }),
               dimensoesVariadas: Object.freeze({
@@ -494,7 +509,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         cobertura: Object.freeze({
           type: "array", maxItems: 64, uniqueItems: true,
           items: HUMAN_REFERENCE_SCHEMA,
-          description: "Itens obrigatórios do recorte efetivamente desenvolvidos nesta unidade."
+          description: "Itens obrigatórios desenvolvidos nesta unidade.",
         })
       })
     }),
@@ -657,7 +672,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
-      autonomo: { type: "boolean", description: "Produzir sem aguardar revisão humana neste curso; conta intacta." },
+      autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
       continuacao: READ_CONTINUATION_SCHEMA
     }),
     { readOnly: true }
@@ -676,6 +691,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     "Preparar a materialização",
     "Confere uma microssequência e suas bases/dependências. Opcional: a escrita já faz esta verificação.",
     inputSchema({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+      autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
       unidades: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
     }, ["curso", "unidades"]),
     { readOnly: true }
@@ -780,7 +796,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "aprovar_mapa_curricular",
     "Aprovar o mapa inspecionado",
-    "Aprova a base persistida lida, por referência; não reenvia ou regenera o mapa.",
+    "Registra a aprovação explícita da pessoa sobre a base que ela inspecionou; continuar não aprova.",
     inputSchema({ referencia: Object.freeze({ type: "string", minLength: 1, maxLength: 2048 }) }, ["referencia"]),
     { readOnly: false }
   ),
@@ -826,7 +842,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         type: "array", minItems: 1, maxItems: 64,
         items: Object.freeze({ type: "string", minLength: 1, maxLength: 1000 })
       }),
-      processo: AUTHORING_PROCESS_REFERENCE_SCHEMA
+      processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+      autonomo: AUTONOMOUS_PRODUCTION_SCHEMA
     }, ["curso", "titulo", "intencao", "microssequencias", "progressao"]),
     { readOnly: false }
   ),
@@ -840,6 +857,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       explicacoes: EXPLANATIONS_SCHEMA,
       concluir: { type: "boolean", default: false },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+      autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
         description: "Unidades da mesma microssequência, em ordem pedagógica. Preserve a cobertura necessária."
@@ -1104,9 +1122,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:62ec2b77f44313f7d714ee27a46e29f1f9f7baf8fe994f4af5e489623523b887";
+  "sha256:b0fdcd6922a3cca6cd1fa71b48949303ea76f63747a606e43b2e1ae00873b9a1";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1464,6 +1482,19 @@ function autonomousCourseResolution(resolution) {
   return { ...resolution, preferences: mandate.preferences };
 }
 
+// A autonomia é uma decisão humana explícita para aquele curso e nunca convive
+// com a referência de um acordo anterior na mesma chamada.
+function humanAutonomyArgument(args) {
+  if (args.autonomo !== undefined && typeof args.autonomo !== "boolean") {
+    fail("invalid_human_task_argument", "autonomo precisa ser booleano.");
+  }
+  if (args.autonomo === true && args.processo !== undefined) {
+    fail("invalid_human_task_argument",
+      "Informe autonomia explícita numa nova produção ou reutilize a referência do processo; não envie as duas no mesmo pedido.");
+  }
+  return args.autonomo === true;
+}
+
 async function currentAuthoringProcessContext({
   adapter, principal, resolved, deadlineAt, processReference = null, autonomous = false
 }) {
@@ -1473,11 +1504,16 @@ async function currentAuthoringProcessContext({
     adapter.getCourseDesign({ principal, courseId: resolved.course.id, scopeKind: scope.kind, scopeRef: scope.ref, deadlineAt })
   ]);
   if (autonomous && processReference !== null) {
-    fail("invalid_human_task_argument", "Combine autonomia do curso com uma nova retomada, ou reutilize a referência já emitida.");
+    fail("invalid_human_task_argument",
+      "Informe autonomia explícita numa nova produção ou reutilize a referência do processo; não envie as duas no mesmo pedido.");
   }
   const mandate = processReference === null ? null : openAuthoringProcessReference(processReference, principal, resolved.course.id);
   const resolution = resolveAuthoringProcessPreferences({ account, courseDesign, mandate });
-  const effectiveResolution = autonomous ? autonomousCourseResolution(resolution) : resolution;
+  // A autonomia dispensa a referência no caso comum, mas não concilia
+  // condições incompatíveis: um conflito do recorte continua bloqueando.
+  const effectiveResolution = autonomous && resolution.conflicts.length === 0
+    ? autonomousCourseResolution(resolution)
+    : resolution;
   if (effectiveResolution.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "As condições do recorte mudaram; releia antes de continuar.", null, 409);
   return { preferenciasPessoais: processPreferencesContext(account.preferences),
     processoCorrente: processPreferencesContext(effectiveResolution.preferences),
@@ -2170,7 +2206,7 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
   if (!map || map.approval === "absent" || map.approval !== "approved" && !allowDraftMap) {
     fail(
       "curricular_map_not_approved",
-      "A primeira parte só pode ser preparada depois da aprovação do mapa curricular completo.",
+      curricularMapProductionBlockMessage(!map ? "absent" : map.approval),
       null,
       409
     );
@@ -2630,12 +2666,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
       }
     );
   }
-  if (args.autonomo !== undefined && typeof args.autonomo !== "boolean") {
-    fail("invalid_human_task_argument", "autonomo precisa ser booleano.");
-  }
-  if (args.autonomo === true && args.processo !== undefined) {
-    fail("invalid_human_task_argument", "autonomo e processo não podem ser combinados na mesma retomada.");
-  }
+  const autonomous = humanAutonomyArgument(args);
   const titulo = text(args.titulo, "titulo", 300);
   const focusedRequest = args.parte !== undefined || args.microssequencia !== undefined;
   const resolved = await resolveHumanCourseContext({
@@ -2648,7 +2679,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "retomar_curso" });
   const [process, observations, explanations] = await Promise.all([
     currentAuthoringProcessContext({ adapter, principal, resolved: focal, deadlineAt,
-      processReference: args.processo ?? null, autonomous: args.autonomo === true }),
+      processReference: args.processo ?? null, autonomous }),
     focusedRequest ? readObservations({ adapter, principal, resolved: focal, args: { somenteAbertas: true }, deadlineAt })
       : Promise.resolve({ items: [] }),
     focusedRequest ? explanationReadContext({ adapter, principal, resolved: focal,
@@ -2772,12 +2803,13 @@ async function prepareFocalTask({ adapter, principal, args, resolved, deadlineAt
 HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   adapter, principal, args, deadlineAt
 }) => {
+  const autonomous = humanAutonomyArgument(args);
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
   const focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
   const part = focal.part;
   resolved.part = part;
   const process = await currentAuthoringProcessContext({
-    adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null
+    adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null, autonomous
   });
   const preflight = await preflightHumanCourseMaterialization({
     adapter,
@@ -3290,6 +3322,7 @@ HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
 };
 
 HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt }) => {
+  const autonomous = humanAutonomyArgument(args);
   const course = humanCourseTitle(args);
   const partReference = optionalReference(args.parte, "parte");
   const title = text(args.titulo, "titulo", 300);
@@ -3328,7 +3361,8 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
         principal,
         resolved: { ...resolved, course: currentCourse, plan },
         deadlineAt,
-        processReference: args.processo ?? null
+        processReference: args.processo ?? null,
+        autonomous
       });
       if (process.exigeConciliacao) {
         fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
@@ -3375,11 +3409,13 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
 HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
 }) => {
+  const autonomous = humanAutonomyArgument(args);
   const course = humanCourseTitle(args);
   let resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
   let focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
   resolved.part = focal.part;
-  let process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+  let process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt,
+    processReference: args.processo ?? null, autonomous });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   let allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
   if (focal.part.id === null) {
@@ -3388,7 +3424,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
     // Mapa aprovado dispensa autonomia; só o rascunho exige o mandato autorizado.
     const mapaAprovado = resolved.plan?.plan?.curriculumMapStatus === "approved";
     if (!allowDraft && !mapaAprovado) fail("curricular_map_not_approved",
-      "A primeira parte só pode ser preparada depois da aprovação do mapa curricular completo.", null, 409);
+      curricularMapProductionBlockMessage(resolved.plan?.plan?.curriculumMapStatus), null, 409);
     await adapter.saveCourseAuthoringPart({
       principal,
       courseId: resolved.course.id,
@@ -3407,7 +3443,8 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
     if (focal.part.id === null) throw new AuthoringApiError(503, "course_service_unavailable",
       "A Parte derivada não pôde ser relida antes da materialização.");
     resolved.part = focal.part;
-    process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt, processReference: args.processo ?? null });
+    process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt,
+      processReference: args.processo ?? null, autonomous });
     if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
     allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
   }

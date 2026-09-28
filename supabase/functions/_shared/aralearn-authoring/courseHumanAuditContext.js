@@ -1,7 +1,38 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from '../aralearn/runtime/domain/courseDesignParameters.js';
 
 const SHARED_BASIS_FIELDS = ['audience', 'planItems', 'studyUnits', 'dependencies', 'microsequence'];
-const READING_GUIDANCE = 'Para cada alvo, leia basis, instruction e definicoesDosParametros do foco em auditoriasPedagogicas junto de sua auditoriaPedagogica.basis e units. O campo identifica a definição do parâmetro neste mesmo foco, sem consulta adicional. As citações pertencem ao alvo. Use referenciaInspecao para registrar o parecer, sem reenviar a base.';
+const READING_GUIDANCE = 'Para cada alvo, leia basis, instruction e definicoesDosParametros do foco em auditoriasPedagogicas junto de sua auditoriaPedagogica.basis. unidadesParaConfronto no alvo indica posições, começando em 1, na lista de mesmo nome do foco; units, quando presente, permanece local. Em observation, declarado contém requisitos e operação declarada pelo autor; tarefaApresentada contém enunciado, alternativas, respostas previstas e feedback, não uma operação efetiva calculada. Os demais campos conservam contexto e indícios. O campo identifica a definição do parâmetro neste mesmo foco, sem consulta adicional. As citações pertencem ao alvo. Use referenciaInspecao para registrar o parecer, sem reenviar a base.';
+const TASK_OBSERVATION_FIELDS = ['question', 'response', 'selectionMode', 'options', 'correctAlternativeCount',
+  'alternatives', 'targets', 'studentContent', 'feedback', 'content'];
+
+function shareUnitObservations(audit, group) {
+  if (Object.hasOwn(audit, 'unidadesParaConfronto') || !Array.isArray(audit.units) || !audit.units.length ||
+    !audit.units.every(unit => typeof unit?.unitId === 'string' && unit.unitId &&
+      unit.observation && typeof unit.observation === 'object' && !Array.isArray(unit.observation) &&
+      !Object.hasOwn(unit.observation, 'declarado') && !Object.hasOwn(unit.observation, 'tarefaApresentada'))) return audit;
+  const positions = audit.units.map(unit => {
+    const literal = JSON.stringify(unit);
+    let index = group.observations.findIndex(item => item.unitId === unit.unitId && item.literal === literal);
+    if (index < 0) {
+      const observation = { ...unit.observation };
+      const take = fields => Object.fromEntries(fields.filter(key => Object.hasOwn(observation, key)).map(key => {
+        const value = observation[key];
+        delete observation[key];
+        return [key, value];
+      }));
+      const declarado = take(['requirements', 'operation']);
+      const tarefaApresentada = take(TASK_OBSERVATION_FIELDS);
+      index = group.observations.length;
+      group.observations.push({ unitId: unit.unitId, literal });
+      (group.shared.unidadesParaConfronto ??= []).push({ ...unit,
+        observation: { ...observation, declarado, tarefaApresentada } });
+    }
+    return index + 1;
+  });
+  const local = { ...audit };
+  delete local.units;
+  return { ...local, unidadesParaConfronto: positions };
+}
 
 export function humanParameterLabel(parameterId, definitionById) {
   const definition = definitionById?.get(parameterId) ??
@@ -44,10 +75,10 @@ export function shareHumanAuditContext(context, course) {
     const literal = JSON.stringify(shared);
     let group = groups.find(item => item.identity === identity && item.literal === literal);
     if (!group) {
-      group = { identity, literal, shared: { foco: groups.length + 1, ...shared } };
+      group = { identity, literal, observations: [], shared: { foco: groups.length + 1, ...shared } };
       groups.push(group);
     }
-    const local = { ...audit };
+    const local = shareUnitObservations({ ...audit }, group);
     delete local.instruction;
     return { ...target, auditoriaPedagogica: { ...local,
       basis: Object.fromEntries(Object.entries(audit.basis).filter(([key]) => !SHARED_BASIS_FIELDS.includes(key))),

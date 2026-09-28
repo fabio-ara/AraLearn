@@ -126,6 +126,9 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   let pinchOrigin = null;
   let dockedPrompt = null;
   let promptMarker = null;
+  // Sem exploração, restaura inline; com exploração, conserva o ponto de conteúdo.
+  let inlineViewBeforeExpanded = null;
+  let expandedBaseline = null;
 
   const fitScale = () => calculateDiagramFitScale({
     naturalWidth,
@@ -169,11 +172,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     );
   };
 
-  // Enquadramento inicial compartilhado por Unidade e Explicação (D021): a escala
-  // natural 1:1 preserva a tipografia do diagrama; a rolagem inicial só é deslocada
-  // quando a origem do SVG abriria numa região sem nenhum objeto (O074). O conteúdo é
-  // a primeira escolha; o objeto focal do pacote e o primeiro nó garantem que a
-  // primeira vista nunca abra em outro vazio.
+  // Escala 1:1; evita origem vazia pelo conteúdo, foco ou primeiro nó (D021/O074).
   const initialFramingScroll = () => {
     const current = { left: canvas.scrollLeft, top: canvas.scrollTop };
     const nodes = [...svg.querySelectorAll("g.node")];
@@ -220,6 +219,8 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
       scale: currentScale,
       scrollLeft: canvas.scrollLeft,
       scrollTop: canvas.scrollTop,
+      viewportWidth: canvas.clientWidth,
+      viewportHeight: canvas.clientHeight,
       expanded
     });
   };
@@ -259,8 +260,19 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
       Math.max(currentScale, MIN_NUMERIC_DIAGRAM_SCALE)
   });
 
-  // A rolagem pedida pelo usuário define a posição final: ela vence o
-  // reposicionamento que a abertura/fechamento do diálogo agenda para quadros seguintes.
+  // "close" já oculta a caixa: a última posição conhecida reconstrói a âncora.
+  const anchorContentPoint = () => {
+    if (canvas.clientWidth > 0 && canvas.clientHeight > 0) return centeredContentPoint();
+    const remembered = rememberedViewport(stateKey);
+    if (!remembered?.viewportWidth || !remembered?.viewportHeight) return centeredContentPoint();
+    const scale = Math.max(finiteNumber(remembered.scale, 1), MIN_NUMERIC_DIAGRAM_SCALE);
+    return {
+      x: (finiteNumber(remembered.scrollLeft) + remembered.viewportWidth / 2) / scale,
+      y: (finiteNumber(remembered.scrollTop) + remembered.viewportHeight / 2) / scale
+    };
+  };
+
+  // A rolagem do usuário prevalece sobre reposições agendadas.
   const markUserScroll = () => {
     userScrollEpoch += 1;
   };
@@ -329,8 +341,8 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     });
   };
 
-  const moveViewport = async ({ toDialog }) => {
-    const content = centeredContentPoint();
+  const moveViewport = async ({ toDialog, anchorContent = null, restoreScroll = null }) => {
+    const content = anchorContent || anchorContentPoint();
     // A transição agenda a reposição da rolagem para quadros seguintes: um
     // gesto surgido nesse intervalo a invalida.
     const scrollEpoch = userScrollEpoch;
@@ -358,20 +370,43 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
         anchorContent: content,
         anchorClientX: rect.left + canvas.clientWidth / 2,
         anchorClientY: rect.top + canvas.clientHeight / 2,
+        restoreScroll,
         scrollEpoch
       });
+    }
+    if (toDialog) {
+      // Deixa o enquadramento da abertura assentar antes de fixar o retrato.
+      await nextFrame();
+      expandedBaseline = {
+        left: canvas.scrollLeft,
+        top: canvas.scrollTop,
+        scale: currentScale
+      };
     }
   };
 
   const restoreInlineViewport = async () => {
     if (!expanded) return;
-    persistCurrentView();
-    await moveViewport({ toDialog: false });
+    // A âncora é lida antes da remontagem; a gravação da posição restaurada
+    // acontece no quadro que aplica a rolagem.
+    const last = rememberedViewport(stateKey);
+    const untouched = expandedBaseline && inlineViewBeforeExpanded && last &&
+      Math.abs(finiteNumber(last.scrollLeft) - expandedBaseline.left) <= 1 &&
+      Math.abs(finiteNumber(last.scrollTop) - expandedBaseline.top) <= 1 &&
+      Math.abs(finiteNumber(last.scale, 1) - expandedBaseline.scale) <= 0.001;
+    const anchorContent = anchorContentPoint();
+    const restoreScroll = untouched
+      ? { left: inlineViewBeforeExpanded.left, top: inlineViewBeforeExpanded.top }
+      : null;
+    await moveViewport({ toDialog: false, anchorContent, restoreScroll });
+    inlineViewBeforeExpanded = null;
+    expandedBaseline = null;
   };
 
   const openExpandedViewport = async () => {
     if (expanded) return;
     persistCurrentView();
+    inlineViewBeforeExpanded = { left: canvas.scrollLeft, top: canvas.scrollTop, scale: currentScale };
     await moveViewport({ toDialog: true });
   };
 

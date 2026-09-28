@@ -134,6 +134,13 @@ serviço: o cliente a devolve integralmente, conforme o
 preservado; a autorização para produzir e a declaração de revisão humana
 continuam sendo decisões com seus próprios alcances.
 
+A outra forma reconhecida é a autonomia explícita `autonomo: true`, pedida pela
+pessoa para aquele curso. Ela vale na retomada, no preparo e na produção: o
+mapa pode permanecer em rascunho, sem registrar aprovação humana e sem trocar as
+preferências da conta. Não combine os dois campos na mesma chamada; no caso
+comum autorizado, a autonomia dispensa transportar a referência, que continua
+útil para conservar um acordo mais completo.
+
 Para quem integra um cliente, o contrato
 `aralearn.authoring-process-resolution.v1` apresenta `preferences` para o
 acordo vigente, `currentPreferences` para a resolução atual e

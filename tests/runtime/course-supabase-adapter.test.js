@@ -3324,7 +3324,7 @@ test("mapa em rascunho recusa a produção com causa específica, sem expor deta
     error => {
       assert.equal(error.status, 409);
       assert.equal(error.code, "curricular_map_not_approved");
-      assert.ok(error.message.includes("aprovação do mapa curricular"));
+      assert.match(error.message, /mapa curricular aprovado pela pessoa ou autonomia explícita solicitada para este curso/u);
       assert.ok(!error.message.includes("private.secret"));
       return true;
     }

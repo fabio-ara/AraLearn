@@ -102,8 +102,13 @@ unidades materializadas que o desenvolveram. O estado aprovado só é aceito par
 um mapa completo quanto ao escopo declarado; nenhuma unidade de estudo é criada
 como efeito dessa aprovação. A leitura completa do mapa salvo fornece
 `referenciaParaAprovar`; `aprovar_mapa_curricular` recebe esse valor, sem
-reenviar uma árvore reconstruída. Uma mudança posterior exige nova inspeção
-da versão que se pretende aprovar.
+reenviar uma árvore reconstruída. A aprovação registra a decisão explícita da
+pessoa sobre a base que ela inspecionou: um pedido genérico para continuar não
+a substitui nem permite inferi-la. Quando o pedido já autoriza produzir sem a
+revisão curricular, o preparo e a produção
+recebem `autonomo` expresso e seguem com o mapa em rascunho, sem registrar
+aprovação humana. Uma mudança posterior exige nova inspeção da versão que se
+pretende aprovar.
 
 ## Revisão do conteúdo
 

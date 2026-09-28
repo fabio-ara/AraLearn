@@ -350,7 +350,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.0.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -1018,5 +1018,39 @@ test('#v10 reconciliação declara recurso ou trecho e recusa o nome interno da 
     assert.equal(validate(trecho),true,JSON.stringify(validate.errors));
     const legacy=structuredClone(whole);legacy.explicacoes[0].reconciliacao=[{...declaration,folha:'text'}];
     assert.equal(validate(legacy),false,'o nome interno da folha saiu do contrato da reconciliação');
+  }
+});
+
+test("#091 autonomia explícita é opcional no preparo e na produção, sem combinar com processo", () => {
+  const names = new Set(["preparar_materializacao", "salvar_parte", "materializar_parte"]);
+  for (const tools of [COURSE_HUMAN_TASKS, actionTools]) {
+    for (const task of tools.filter(candidate => names.has(candidate.name))) {
+      const autonomy = task.inputSchema.properties.autonomo;
+      assert.equal(autonomy.type, "boolean", task.name);
+      assert.ok(autonomy.description.trim().length > 0, task.name);
+      assert.equal((task.inputSchema.required ?? []).includes("autonomo"), false, task.name);
+    }
+    const approval = tools.find(candidate => candidate.name === "aprovar_mapa_curricular").description;
+    assert.match(approval, /aprovação explícita da pessoa/iu,
+      "aprovar registra a aprovação explícita, não a inferência de inspeção ou continuação");
+    assert.match(approval, /inspecionou/iu, "aprovar conserva a base que a pessoa examinou");
+    assert.match(approval, /continuar não aprova/iu);
+    for (const task of tools.filter(candidate => ["materializar_parte", "preparar_materializacao"].includes(candidate.name))) {
+      assert.match(task.inputSchema.properties.unidades.items.properties.unidade.description,
+        /posição final não identifica uma unidade existente/u, task.name);
+    }
+  }
+  for (const name of names) {
+    const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
+      operation(name).requestBody.content["application/json"].schema);
+    assert.equal(validate({ ...samples[name], autonomo: true }), true, JSON.stringify(validate.errors));
+    assert.equal(validate({ ...samples[name], autonomo: "sim" }), false);
+    assert.equal(validate({ ...samples[name], autonomo: true, processo: "a".repeat(40) }), true,
+      "a combinação com processo é recusada pelo servidor, não pelo transporte");
+    if (name !== "salvar_parte") {
+      assert.match(operation(name).requestBody.content["application/json"].schema
+        .properties.unidades.items.properties.unidade.description,
+      /posição final não identifica uma unidade existente/u, name);
+    }
   }
 });

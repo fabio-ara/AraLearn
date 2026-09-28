@@ -23,7 +23,12 @@ function target(id, kind = 'study_unit', microsequenceId = 'ms-a') {
             humanLocator: 'p. 3', verificationExcerpt: null, needsReverification: false }],
           occurrences: [{ quote: literal, prefix: '\n', suffix: '😀', start: 0, end: 17 }]
         }] }], unknownBasisField: { belongsTo: id, empty: null } },
-      units: [{ observation: { title: id, literal } }], instruction: 'Leia criticamente.',
+      units: [{ unitId: id, issues: [], observation: { title: id, literal,
+        requirements: [{ statement: 'Relacionar elementos', description: literal }],
+        operation: ['Operação declarada'], question: 'Qual relação está correta?',
+        alternatives: [{ text: literal, expected: true, feedback: 'Relação explicada.' }],
+        studentContent: [{ text: literal }], targets: [], feedback: [], content: [literal]
+      } }], instruction: 'Leia criticamente.',
       unknownAuditField: [null, literal]
     }
   };
@@ -37,6 +42,14 @@ function restore(context) {
     assert.ok(shared);
     audit.basis = { ...shared.basis, ...audit.basis };
     if (Object.hasOwn(shared, 'instruction')) audit.instruction = shared.instruction;
+    if (!Object.hasOwn(audit, 'units') && Array.isArray(audit.unidadesParaConfronto)) {
+      audit.units = audit.unidadesParaConfronto.map(position => {
+        const unit = shared.unidadesParaConfronto[position - 1];
+        const { declarado, tarefaApresentada, ...context } = unit.observation;
+        return { ...unit, observation: { ...context, ...declarado, ...tarefaApresentada } };
+      });
+      delete audit.unidadesParaConfronto;
+    }
     delete audit.foco;
   }
   delete restored.auditoriasPedagogicas;
@@ -65,6 +78,79 @@ test('base focal resolvida preserva todos os valores, campos adicionais, ordem e
   }
   assert.match(shared.leituraDaAuditoria, /citações pertencem ao alvo/u);
   assert.match(shared.leituraDaAuditoria, /sem reenviar a base/u);
+  assert.match(shared.leituraDaAuditoria, /operação declarada pelo autor/u);
+  assert.match(shared.leituraDaAuditoria, /não uma operação efetiva calculada/u);
+});
+
+test('observações idênticas compartilham por unidade e base; declarado não vira operação efetiva', () => {
+  const a = target('unit-a'), z = target('unit-z');
+  const explanation = target('ms-a', 'microsequence_explanation');
+  explanation.auditoriaPedagogica.units = [z, a, z].map(t => structuredClone(t.auditoriaPedagogica.units[0]));
+  const input = { studyUnits: [a, z], explicacoes: [explanation] };
+  const before = structuredClone(input);
+  const output = shareHumanAuditContext(input, COURSE);
+  const focus = output.auditoriasPedagogicas[0];
+  assert.equal(focus.unidadesParaConfronto.length, 2);
+  assert.deepEqual(output.studyUnits.map(t => t.auditoriaPedagogica.unidadesParaConfronto), [[1], [2]]);
+  assert.deepEqual(output.explicacoes[0].auditoriaPedagogica.unidadesParaConfronto, [2, 1, 2]);
+  const observation = focus.unidadesParaConfronto[0].observation;
+  assert.deepEqual(observation.declarado, { requirements: a.auditoriaPedagogica.units[0].observation.requirements,
+    operation: ['Operação declarada'] });
+  assert.equal(observation.tarefaApresentada.question, 'Qual relação está correta?');
+  assert.deepEqual(observation.tarefaApresentada.alternatives, a.auditoriaPedagogica.units[0].observation.alternatives);
+  assert.equal(Object.hasOwn(observation, 'operation'), false);
+  assert.equal(Object.hasOwn(observation.tarefaApresentada, 'operation'), false);
+  assert.deepEqual(restore(output), input);
+  assert.deepEqual(input, before);
+});
+
+test('mesmo texto não une unidades distintas; mesma unidade com observação diferente conserva a variante', () => {
+  const a = target('unit-a'), z = target('unit-z'), changed = target('unit-a');
+  z.auditoriaPedagogica.units[0].observation = structuredClone(a.auditoriaPedagogica.units[0].observation);
+  changed.auditoriaPedagogica.units[0].observation.question = 'Outra pergunta literal.';
+  const input = { studyUnits: [a, z, changed] };
+  const output = shareHumanAuditContext(input, COURSE);
+  assert.equal(output.auditoriasPedagogicas.length, 1);
+  assert.equal(output.auditoriasPedagogicas[0].unidadesParaConfronto.length, 3);
+  assert.deepEqual(output.studyUnits.map(t => t.auditoriaPedagogica.unidadesParaConfronto), [[1], [2], [3]]);
+  assert.deepEqual(restore(output), input);
+});
+
+test('campos desconhecidos, histórico, pesquisa, null e ausência sobrevivem à ida e volta', () => {
+  const a = target('unit-a'), explanation = target('ms-a', 'microsequence_explanation');
+  const row = a.auditoriaPedagogica.units[0];
+  row.extra = { historical: [null, literal] };
+  row.observation.question = null;
+  delete row.observation.content;
+  row.observation.operation = null;
+  row.observation.unrecognized = { literal, empty: null };
+  a.auditoriaPedagogica.basis.studyUnits[0].design = { historical: null, parameters: {
+    practice_position: { mode: 'fixed', value: 'before_and_after', origin: 'research_condition',
+      reason: literal, sourceScope: { kind: 'didactic_microsequence', ref: 'ms-a' } }, unknown: null
+  } };
+  explanation.auditoriaPedagogica.basis.studyUnits = structuredClone(a.auditoriaPedagogica.basis.studyUnits);
+  explanation.auditoriaPedagogica.units = [structuredClone(row)];
+  const input = { studyUnits: [a], explicacoes: [explanation] };
+  const output = shareHumanAuditContext(input, COURSE);
+  assert.equal(output.auditoriasPedagogicas[0].unidadesParaConfronto.length, 1);
+  assert.deepEqual(restore(output), input);
+  const obs = output.auditoriasPedagogicas[0].unidadesParaConfronto[0].observation;
+  assert.equal(obs.declarado.operation, null);
+  assert.equal(obs.tarefaApresentada.question, null);
+  assert.equal(Object.hasOwn(obs.tarefaApresentada, 'content'), false);
+});
+
+test('observações sem identidade ou com nomes já ocupados continuam locais sem perda', () => {
+  const entries = [target('missing'), target('null'), target('occupied'), target('empty')];
+  delete entries[0].auditoriaPedagogica.units[0].unitId;
+  entries[1].auditoriaPedagogica.units[0].observation = null;
+  entries[2].auditoriaPedagogica.units[0].observation.declarado = { literal };
+  entries[3].auditoriaPedagogica.units = [];
+  const input = { studyUnits: entries };
+  const output = shareHumanAuditContext(input, COURSE);
+  assert.ok(output.studyUnits.every(t => !Object.hasOwn(t.auditoriaPedagogica, 'unidadesParaConfronto')));
+  assert.equal(Object.hasOwn(output.auditoriasPedagogicas[0], 'unidadesParaConfronto'), false);
+  assert.deepEqual(restore(output), input);
 });
 
 test('mesmo título não junta identidades, bases ou instruções diferentes', () => {

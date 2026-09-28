@@ -83,6 +83,7 @@ function autonomousPartAdapter(plan, { reviewPoints = defaultAuthoringProcessPre
   mutateDesign?.(design);
   const saved = [];
   const globalPreferenceWrites = [];
+  const approvals = [];
   const course = () => ({ courseId: COURSE_ID, title: "Curso autônomo", revision: state.courseRevision,
     deepLink: "https://app.example/#/authoring/courses/test" });
   const mapEntities = () => state.plan.plan.curriculum.modules.flatMap(module => [
@@ -96,7 +97,7 @@ function autonomousPartAdapter(plan, { reviewPoints = defaultAuthoringProcessPre
     ])
   ]);
   return {
-    saved, globalPreferenceWrites, processo,
+    saved, globalPreferenceWrites, approvals, processo,
     async listCourses() {
       return { items: [{ ...course() }], hasMore: false, nextCursor: null };
     },
@@ -104,6 +105,10 @@ function autonomousPartAdapter(plan, { reviewPoints = defaultAuthoringProcessPre
     async getCourseInstructionalPlan() { return { ...structuredClone(state.plan), courseRevision: state.courseRevision }; },
     async getAuthoringProcessPreferences() { return structuredClone(account); },
     async saveAuthoringProcessPreferences(input) { globalPreferenceWrites.push(structuredClone(input)); },
+    async approveCourseCurricularMap(input) {
+      approvals.push(structuredClone(input));
+      return { idempotent: false, courseId: COURSE_ID, courseRevision: state.courseRevision };
+    },
     async getCourseDesign({ scopeKind = "course" } = {}) {
       const result = courseDesignFixture({ courseId: COURSE_ID,
         moduleId: "60000000-0000-4000-8000-000000000001",
@@ -339,7 +344,7 @@ test("mandato padrão mantém aprovação curricular obrigatória e conflito da 
   const defaultAdapter = autonomousPartAdapter(plan, {
     reviewPoints: defaultAuthoringProcessPreferences().reviewPoints
   });
-  await assert.rejects(() => executeHumanCourseTask({
+  const draftError = await executeHumanCourseTask({
     adapter: defaultAdapter,
     principal: PRINCIPAL,
     name: "salvar_parte",
@@ -350,8 +355,25 @@ test("mandato padrão mantém aprovação curricular obrigatória e conflito da 
       microssequencias: ["Sockets"],
       progressao: ["Explicar a relação", "Praticar a aplicação"]
     }
-  }), error => error.code === "curricular_map_not_approved");
+  }).then(() => null, error => error);
+  assert.equal(draftError.code, "curricular_map_not_approved");
+  assert.match(draftError.message, /rascunho/u);
+  assert.match(draftError.message, /autonomia explícita/u,
+    "o rascunho sem mandato nomeia a autonomia expressa sem exigir aprovação incondicional");
+  assert.doesNotMatch(draftError.message, /aprovado pela pessoa/u);
   assert.equal(defaultAdapter.saved.length, 0);
+
+  const absentPlan = autonomousDraftPlan();
+  absentPlan.plan.curriculumMapStatus = "absent";
+  const absentAdapter = autonomousPartAdapter(absentPlan);
+  const absentError = await executeHumanCourseTask({ adapter: absentAdapter, principal: PRINCIPAL, name: "salvar_parte",
+    rawArguments: { curso: "Curso autônomo", titulo: "Lote sem mapa", intencao: "Relacionar processo e transporte.",
+      microssequencias: ["Sockets"], progressao: ["Explicar a relação."] } }).then(() => null, error => error);
+  assert.equal(absentError.code, "curricular_map_not_approved");
+  assert.match(absentError.message, /construa e salve o mapa/u,
+    "sem mapa, a recuperação manda construir e salvar antes de produzir");
+  assert.doesNotMatch(absentError.message, /aprove/iu);
+  assert.equal(absentAdapter.saved.length, 0);
 
   const adapter = autonomousPartAdapter(plan, {
     reviewPoints: defaultAuthoringProcessPreferences().reviewPoints,
@@ -381,4 +403,101 @@ test("mandato padrão mantém aprovação curricular obrigatória e conflito da 
     }
   }), error => error.code === "authoring_process_conflict");
   assert.equal(adapter.saved.length, 0);
+});
+
+test("autonomia explícita na produção dispensa a referência sem aprovar o mapa", async () => {
+  const adapter = autonomousPartAdapter(autonomousDraftPlan());
+  const saved = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, name: "salvar_parte",
+    rawArguments: { curso: "Curso autônomo", titulo: "Lote autônomo", intencao: "Relacionar processo e transporte.",
+      microssequencias: ["Sockets"], progressao: ["Explicar a relação."], autonomo: true } });
+  assert.deepEqual(saved.context.processoCorrente.pontosDeRevisao, []);
+  assert.equal(typeof saved.context.referenciaProcesso, "string");
+  assert.equal(adapter.saved.length, 1);
+  assert.equal(adapter.saved[0].allowDraftMap, true);
+  assert.equal(adapter.saved[0].approved, undefined);
+  const prepared = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, name: "preparar_materializacao",
+    rawArguments: { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()], autonomo: true } });
+  assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
+  assert.equal(prepared.context.preflight.blockers.some(({ code }) => code === "human_materialization_map_approval_required"), false);
+  assert.equal(adapter.approvals.length, 0, "autonomia não registra aprovação humana");
+  assert.equal(adapter.globalPreferenceWrites.length, 0, "autonomia não altera as preferências da conta");
+  assert.deepEqual((await adapter.getAuthoringProcessPreferences()).preferences.reviewPoints,
+    defaultAuthoringProcessPreferences().reviewPoints);
+});
+
+test("autonomia explícita recusa processo simultâneo nas operações de produção", async () => {
+  const adapter = autonomousPartAdapter(autonomousDraftPlan());
+  const cases = [
+    ["salvar_parte", { curso: "Curso autônomo", titulo: "Lote", intencao: "Relacionar.",
+      microssequencias: ["Sockets"], progressao: ["Explicar."] }],
+    ["preparar_materializacao", { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()] }],
+    ["materializar_parte", { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()] }]
+  ];
+  for (const [name, rawArguments] of cases) {
+    await assert.rejects(() => executeHumanCourseTask({ adapter, principal: PRINCIPAL, name,
+      rawArguments: { ...rawArguments, autonomo: true, processo: adapter.processo } }),
+    error => error.code === "invalid_human_task_argument");
+  }
+  assert.equal(adapter.saved.length, 0);
+  assert.equal(adapter.approvals.length, 0);
+});
+
+test("autonomia explícita preserva condição fixada e ainda exige conciliação de conflito", async () => {
+  const fixed = autonomousPartAdapter(autonomousDraftPlan(), { mutateDesign: design => {
+    const parameter = design.parameters.find(({ parameterId }) => parameterId === "authoring_part_microsequence_target");
+    parameter.effectiveAssignment = { mode: "fixed", value: 2, origin: "author",
+      reason: "Condição fixada pela autoria.", sourceScope: { kind: "course", ref: COURSE_ID }, inherited: false };
+  } });
+  const saved = await executeHumanCourseTask({ adapter: fixed, principal: PRINCIPAL, name: "salvar_parte",
+    rawArguments: { curso: "Curso autônomo", titulo: "Lote condicionado", intencao: "Relacionar.",
+      microssequencias: ["Sockets"], progressao: ["Explicar."], autonomo: true } });
+  const parameter = saved.context.processoCorrente.parametros
+    .find(({ campo }) => campo === "alvo_microssequencias_por_parte");
+  assert.equal(parameter.modo, "fixed");
+  assert.equal(parameter.valor, 2);
+  assert.equal(saved.context.exigeConciliacao, false);
+  assert.equal(fixed.saved.length, 1);
+
+  const conflicted = autonomousPartAdapter(autonomousDraftPlan(), { mutateDesign: design => {
+    design.parameters.find(({ parameterId }) => parameterId === "authoring_part_microsequence_target")
+      .conflicts = [{
+        fixedScope: { kind: "course", ref: COURSE_ID },
+        fixedValue: 2,
+        exceptionScope: { kind: "lesson", ref: "70000000-0000-4000-8000-000000000001" },
+        exceptionValue: 3
+      }];
+  } });
+  const blocked = await executeHumanCourseTask({ adapter: conflicted, principal: PRINCIPAL, name: "preparar_materializacao",
+    rawArguments: { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()], autonomo: true } });
+  assert.equal(blocked.context.preflight.state, "blocked");
+  assert.ok(blocked.context.preflight.blockers.some(({ code }) => code === "authoring_process_conflict"),
+    "autonomia não concilia condições incompatíveis do recorte");
+  await assert.rejects(() => executeHumanCourseTask({ adapter: conflicted, principal: PRINCIPAL, name: "materializar_parte",
+    rawArguments: { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()], autonomo: true } }),
+  error => error.code === "authoring_process_conflict");
+  assert.equal(conflicted.saved.length, 0);
+  assert.equal(conflicted.approvals.length, 0);
+});
+
+test("bloqueio da primeira Parte discrimina mapa ausente de rascunho sem exigir aprovação incondicional", async () => {
+  const draft = autonomousPartAdapter(autonomousDraftPlan());
+  const draftError = await executeHumanCourseTask({ adapter: draft, principal: PRINCIPAL, name: "materializar_parte",
+    rawArguments: { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()] } })
+    .then(() => null, error => error);
+  assert.equal(draftError.code, "curricular_map_not_approved");
+  assert.match(draftError.message, /rascunho/u);
+  assert.match(draftError.message, /autonomia explícita/u);
+  assert.doesNotMatch(draftError.message, /aprovado pela pessoa/u);
+  assert.equal(draft.saved.length, 0);
+
+  const absentPlan = autonomousDraftPlan();
+  absentPlan.plan.curriculumMapStatus = "absent";
+  const absent = autonomousPartAdapter(absentPlan);
+  const absentError = await executeHumanCourseTask({ adapter: absent, principal: PRINCIPAL, name: "materializar_parte",
+    rawArguments: { curso: "Curso autônomo", microssequencia: "Sockets", unidades: [autonomousCandidate()] } })
+    .then(() => null, error => error);
+  assert.equal(absentError.code, "curricular_map_not_approved");
+  assert.match(absentError.message, /construa e salve o mapa/u);
+  assert.doesNotMatch(absentError.message, /aprove/iu);
+  assert.equal(absent.saved.length, 0);
 });
