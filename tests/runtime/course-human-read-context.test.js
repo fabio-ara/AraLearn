@@ -1582,6 +1582,8 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
         for (const target of targets) {
           assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
           assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+          assert.equal(Object.hasOwn(target, "inspecaoIA"), false,
+            "não consultar a inspeção não pode inventar indisponibilidade");
         }
       } else {
         assert.equal(adapter.calls.inspections.length, targets.length * pages,
@@ -1590,6 +1592,7 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
         assert.match(nextDecision, /^Registre o parecer das seis dimensões/u,
           "com a base devolvida, a decisão seguinte registra o parecer");
         assert.ok(targets.every(target => target.referenciaInspecao && target.auditoriaPedagogica));
+        assert.ok(targets.every(target => target.inspecaoIA && target.inspecaoIA.state === "unregistered"));
       }
       if (mode === false) assert.deepEqual(sizes.false, sizes.default, "omitir auditoria equivale a auditoria: false");
     }
@@ -1601,6 +1604,23 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
   }
   assert.deepEqual(measurements[0].default, measurements[1].default, "a leitura comum é idêntica nos dois canais");
   assert.deepEqual(measurements[0].true, measurements[1].true, "a auditoria é idêntica nos dois canais");
+});
+
+test("auditoria sem serviço de inspeção mantém o estado unavailable de antes", async () => {
+  const adapter = fixture({ units: [studyUnit(1)] });
+  delete adapter.getCourseContentInspection;
+  const read = await execute(adapter, "preparar_revisao", { auditoria: true });
+  assert.ok(read.context.studyUnits.length > 0);
+  for (const target of read.context.studyUnits) {
+    assert.deepEqual(target.inspecaoIA, { state: "unavailable" }, "a inspeção pedida sem adapter continua unavailable");
+    assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+    assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
+  }
+  const common = fixture({ units: [studyUnit(1)] });
+  delete common.getCourseContentInspection;
+  const plain = await execute(common, "preparar_revisao", {});
+  assert.equal(Object.hasOwn(plain.context.studyUnits[0], "inspecaoIA"), false,
+    "a leitura comum omite o estado mesmo sem serviço");
 });
 
 test("continuação da revisão liga o modo de auditoria aos argumentos", async () => {
@@ -1622,7 +1642,7 @@ test("continuação da revisão liga o modo de auditoria aos argumentos", async 
   assert.ok(same.context.fragmento, "a mesma consulta continua a leitura comum");
 });
 
-function sharedExplanationFixture() {
+function sharedExplanationFixture({ sourceIds = [] } = {}) {
   const units = [studyUnit(1), studyUnit(2)].map(unit => ({ ...unit,
     curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
   const adapter = fixture({ units });
@@ -1630,7 +1650,7 @@ function sharedExplanationFixture() {
     version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
   adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
     parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
-      explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds: [] },
+      explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds },
       explanation: support, contentReview: { state: "draft" } }] }] } });
   return { adapter, support, units };
 }
@@ -1654,5 +1674,26 @@ test("unidades selecionadas recebem a Explicação compartilhada só como refer�
   assert.deepEqual(whole.context.explicacoes[0].conteudo, withoutSelection.support,
     "a microssequência sem seleção de unidades mantém a Explicação literal");
   assert.equal(whole.context.studyUnits.length, 2);
+});
+
+test("unidades selecionadas não buscam fontes da Explicação compartilhada", async () => {
+  const selected = sharedExplanationFixture({ sourceIds: ["fonte-da-explicacao"] });
+  selected.adapter.getCourseSources = async () => {
+    throw Object.assign(new Error("Leitura recusada"), { code: "access_denied" });
+  };
+  const read = await execute(selected.adapter, "preparar_revisao", { unidades: [1] });
+  assert.deepEqual(read.context.studyUnits[0].studyUnit, selected.units[0].studyUnit,
+    "a unidade selecionada continua literal mesmo com a fonte da Explicação recusada");
+  const explanation = read.context.explicacoes[0];
+  assert.equal(explanation.microssequencia, "Um avanço");
+  assert.equal(Object.hasOwn(explanation, "fontes"), false);
+  assert.equal(Object.hasOwn(explanation, "conteudo"), false);
+  assert.equal(Object.hasOwn(explanation, "proposta"), false);
+  assert.equal(selected.adapter.calls.sources.length, 0,
+    "nem fontes previstas nem vínculos do alvo são buscados para a Explicação descartada");
+  assert.equal(selected.adapter.calls.inspections.length, 0);
+  assert.equal(selected.adapter.calls.reviews.length,
+    read.context.studyUnits.length + read.context.explicacoes.length,
+    "a guarda de revisão continua rodando para cada alvo entregue");
 });
 

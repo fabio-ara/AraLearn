@@ -2763,6 +2763,12 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
   const sourceCache = new Map();
   return await Promise.all(microsequences.map(async (microsequence) => {
     const proposal = microsequence.explanationPlan;
+    const review = await readReviewContext({ adapter, principal, resolved,
+      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt, auditoria });
+    // A Explicação compartilhada não é o alvo da unidade: sai só como título e
+    // referência, antes de buscar fontes previstas ou vínculos que não serão
+    // entregues — nenhuma leitura descartada pode bloquear o alvo selecionado.
+    if (!auditoria && focal) return { microssequencia: microsequence.title, ...review };
     const plannedSources = await Promise.all((proposal?.sourceIds ?? []).map(async (sourceId) => {
       if (!sourceCache.has(sourceId)) sourceCache.set(sourceId, adapter.getCourseSources({
         principal, courseId: resolved.course.id, expectedRevision: resolved.course.revision,
@@ -2775,9 +2781,6 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
     const citations = microsequence.explanation ? await adapter.getCourseSources({ principal,
       courseId: resolved.course.id, expectedRevision: resolved.course.revision, mode: "target", sourceId: null,
       targetKind: "microsequence_explanation", targetId: microsequence.id, cursor: null, limit: 1, deadlineAt }) : null;
-    const review = await readReviewContext({ adapter, principal, resolved,
-      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt, auditoria });
-    if (!auditoria && focal) return { microssequencia: microsequence.title, ...review };
     return {
       microssequencia: microsequence.title,
       proposta: proposal ? { proposito: proposal.purpose, pressupostos: proposal.prerequisites,
@@ -2805,7 +2808,9 @@ async function readReviewContext({ adapter, principal, resolved, targetKind, tar
   return { revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
     stale: "Revisão precisa ser atualizada" }[read.contentReview.state],
     referenciaRevisao: await createContentReviewReference({ principal, read }),
-    inspecaoIA: inspection ? inspection.inspection : { state: "unavailable" },
+    // O estado de inspeção pertence à leitura que o consultou. Sem auditoria o
+    // campo é omitido; unavailable fica só para a inspeção solicitada sem serviço.
+    ...(auditoria ? { inspecaoIA: inspection ? inspection.inspection : { state: "unavailable" } } : {}),
     ...(audit ? { auditoriaPedagogica: { ...audit, units: targetKind === "study_unit"
       ? audit.units.filter(unit => unit.unitId === targetId) : audit.units } } : {}),
     ...(inspection ? { referenciaInspecao: await createContentReviewReference({ principal, read: inspection }) } : {}) };
