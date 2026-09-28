@@ -21,7 +21,7 @@ Para configurar a conexão pela interface, siga o [manual ilustrado do ChatGPT](
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas semânticas** do catálogo **11.0.0**. O OpenAPI as oferece por
+definem as **56 tarefas semânticas** do catálogo **11.1.0**. O OpenAPI as oferece por
 **30 operações HTTP**: 24 diretas e seis grupos contextuais. Uma operação HTTP
 é o pedido enviado a um endereço do serviço; um grupo permite escolher entre
 várias tarefas por esse mesmo endereço. Argumentos, validação e efeitos derivam
@@ -241,7 +241,7 @@ OpenAPI. Por isso, a importação do artefato corrente constitui a verificação
 desse limite na prática.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
-que conservam as 56 tarefas do catálogo 11.0.0. Essa organização permite
+que conservam as 56 tarefas do catálogo 11.1.0. Essa organização permite
 selecionar cada tarefa com seus próprios argumentos sem ampliar o número de
 operações apresentado ao editor. A aceitação do arquivo pelo editor, a
 publicação do assistente e a execução contra o serviço são verificações
@@ -268,7 +268,7 @@ leitura grande usa recorte ou paginação, e uma escrita possivelmente concluíd
 [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
 
 Respostas extensas de preparo e inspeção usam a continuação comum aos canais.
-Para recuperar uma confirmação perdida de `salvar_mapa_curricular`, use `consultar_planejamento` com `resumo: true`: a situação, revisão e referência vigente cabem numa resposta pequena. Inspecione o mapa antes de aprovar; recuperar a referência não constitui aprovação.
+Para recuperar uma confirmação perdida de `salvar_mapa_curricular`, use `consultar_planejamento` com `resumo: true`: a situação, revisão e referência vigente cabem numa resposta pequena. Inspecione o mapa antes de aprovar; recuperar a referência não constitui aprovação. Quando a produção for recusada por mapa não aprovado, a recuperação distingue mapa ausente de rascunho: no rascunho, apresente a versão salva para a pessoa aprovar ou retome a produção com `autonomo: true` se o pedido já autorizar produzir sem essa revisão.
 Cada página conserva uma parte literal do conteúdo e a referência necessária
 para obter a seguinte. A reunião das páginas recupera o documento completo;
 o assistente precisa concluí-la antes de avaliar ou alterar o recorte. O

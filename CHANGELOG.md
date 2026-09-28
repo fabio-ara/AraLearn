@@ -9,6 +9,14 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.91] - 2026-09-28
+
+### Corrigido
+
+- Continuidade da produção autônoma expressamente autorizada para o curso, com o mapa em rascunho, sem registrar aprovação humana nem alterar as preferências da conta.
+- Distinção entre a operação declarada e a tarefa apresentada na inspeção, preservando os parâmetros, suas definições e as referências de cada alvo.
+- Preservação da posição e da escala dos diagramas ao entrar e sair da tela inteira.
+
 ## [0.0.90] - 2026-09-28
 
 ### Corrigido

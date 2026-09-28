@@ -661,12 +661,12 @@ function databaseError(status, body) {
   if (code === "23514" &&
       databaseMessage.startsWith("A producao so pode ser organizada depois da aprovacao do mapa curricular.")) {
     return new AuthoringApiError(409, "curricular_map_not_approved",
-      "A produção só pode ser organizada depois da aprovação do mapa curricular. Aprove o mapa ou retome o foco autorizado antes de continuar.");
+      "A organização da produção exige o mapa curricular aprovado pela pessoa ou autonomia explícita solicitada para este curso.");
   }
   if (code === "23514" &&
       databaseMessage.startsWith("O mapa curricular precisa estar aprovado antes da materializacao.")) {
     return new AuthoringApiError(409, "curricular_map_not_approved",
-      "O mapa curricular precisa estar aprovado antes da materialização. Aprove o mapa ou retome o foco autorizado antes de continuar.");
+      "A materialização exige o mapa curricular aprovado pela pessoa ou autonomia explícita solicitada para este curso.");
   }
   if (code === "23514" &&
       databaseMessage.startsWith("Uma dependencia curricular precisa estar produzida ou integrar o mesmo lote.")) {

@@ -2373,6 +2373,18 @@ test("preflight exige aprovação explícita do mapa para materialização parci
     assert.equal(blocked.state, "blocked");
     assert.equal(blocked.referencia, null);
     assert.deepEqual(blocked.blockers.map(({ code }) => code), [expectedCode]);
+    if (status === "draft") {
+      assert.match(blocked.blockers[0].message, /autonomia explícita/u,
+        "o rascunho nomeia a aprovação humana e a autonomia expressa");
+      assert.match(humanMaterializationRecovery(blocked), /apresente o mapa salvo para a pessoa aprovar/u);
+      assert.match(humanMaterializationRecovery(blocked), /autonomia explícita/u);
+    }
+    if (status === "absent") {
+      assert.match(blocked.blockers[0].message, /não há mapa curricular salvo/u,
+        "o mapa ausente não se confunde com rascunho");
+      assert.doesNotMatch(blocked.blockers[0].message, /autonomia/u);
+      assert.match(humanMaterializationRecovery(blocked), /não há mapa curricular salvo/u);
+    }
     await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL,
       course: "Curso de Redes", part: 1, units, complete }), error => Boolean(preflightBlocker(error, expectedCode)));
     assert.deepEqual(adapter.calls, [], "preparar e materializar não aprovam o mapa nem chegam à escrita");

@@ -132,8 +132,10 @@ A aprovação do mapa, a autorização para produzir e a revisão do conteúdo t
 objetos diferentes. A primeira confirma a organização examinada; a segunda
 delimita o trabalho a executar; a terceira registra a inspeção humana de uma
 explicação ou unidade já salva. Aprovação e pedido de produção podem vir na
-mesma mensagem. A revisão de conteúdo futuro depende de sua produção e
-inspeção posteriores.
+mesma mensagem. Quando o pedido já autoriza produzir sem a revisão curricular,
+as operações de produção recebem `autonomo: true` por pedido humano expresso e
+seguem com o mapa em rascunho, sem registrar aprovação humana. A revisão de
+conteúdo futuro depende de sua produção e inspeção posteriores.
 
 ## Produção incremental por partes
 
@@ -164,7 +166,7 @@ com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
 preparo deve corresponder à base, configuração e intenção correntes.
 
-O contrato de autoria corrente é o catálogo **11.0.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.1.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,
@@ -191,8 +193,10 @@ continua vindo da pessoa.
 
 Os campos `preferenciasMudaram`, `conflitos` e `exigeConciliacao` distinguem uma
 mudança nas preferências de uma incompatibilidade com as condições do recorte.
-A produção que depende de uma escolha incompatível aguarda sua resolução. Os
-[parâmetros de autoria](parametros-de-autoria.md) explicam foco, cadência,
+A produção que depende de uma escolha incompatível aguarda sua resolução. No
+caso comum autorizado, a autonomia expressa dispensa transportar a referência;
+quem precisa conservar um acordo mais completo continua reutilizando `processo`.
+Os [parâmetros de autoria](parametros-de-autoria.md) explicam foco, cadência,
 pontos de revisão, diálogo e perfis reutilizáveis.
 
 ## Repertório acumulado

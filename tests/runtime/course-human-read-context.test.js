@@ -6,6 +6,7 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { shareHumanAuditContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js";
+import { projectPedagogicalAudit } from "../../src/domain/coursePedagogicalAudit.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import { createContentReviewReference, openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
@@ -55,6 +56,17 @@ async function readLogicalPage(adapter, name, args = {}) {
     assert.ok(continuacao);
     continuation = continuacao;
   }
+}
+
+function resolveAuditUnits(context, audit) {
+  if (Object.hasOwn(audit, "units")) return audit.units;
+  const focus = context.auditoriasPedagogicas.find(item => item.foco === audit.foco);
+  return audit.unidadesParaConfronto.map(position => {
+    const unit = focus.unidadesParaConfronto[position - 1];
+    assert.ok(unit, "posição resolvida no mesmo foco e página lógica");
+    const { declarado, tarefaApresentada, ...rest } = unit.observation;
+    return { ...unit, observation: { ...rest, ...declarado, ...tarefaApresentada } };
+  });
 }
 
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
@@ -689,7 +701,7 @@ test("revisão de unidade conserva base, citações associadas e orientação, f
   assert.equal(audit.basis.microsequence.goal, "Relacionar conjuntos e estados");
   assert.equal(audit.basis.dependencies[0].title, "Pré-requisito");
   assert.equal(audit.basis.studyUnits.length, 2, "o restante do percurso continua na base");
-  assert.deepEqual(audit.units.map(unit => unit.observation.title), ["Unidade 1"]);
+  assert.deepEqual(resolveAuditUnits(context, audit).map(unit => unit.observation.title), ["Unidade 1"]);
   assert.match(audit.instruction, /leitura crítica/u);
   assert.deepEqual(audit.basis.citations.map(citation => [citation.targetKind, citation.targetTitle]),
     [["study_unit", "Unidade 1"], ["microsequence_explanation", "Explicação"]]);
@@ -786,6 +798,19 @@ test("revisão e retomada focal compartilham por identidade antes da projeção,
         assert.equal(shared.basis.microsequence.goal, expectedMs === "ms-b" ? "Objetivo 2" : "Objetivo 1");
         assert.equal(shared.basis.studyUnits.length, expectedMs === "ms-b" ? 1 : 2);
         assert.ok(shared.basis.studyUnits.every(unit => unit.application === null && unit.design.parameters.before_and_after === true));
+        const expected = projectPedagogicalAudit(inspections.get(ref.targetId).pedagogicalBasis).units
+          .filter(unit => ref.targetKind !== "study_unit" || unit.unitId === ref.targetId);
+        assert.deepEqual(resolveAuditUnits(context, audit).map(unit => unit.observation), expected.map(unit => unit.observation));
+        assert.equal(Object.hasOwn(audit, "units"), false);
+        assert.equal(audit.unidadesParaConfronto.length, expected.length);
+        assert.equal(shared.unidadesParaConfronto.length, shared.basis.studyUnits.length,
+          "explicação e alvos reutilizam cada observação sem duplicar a vizinhança");
+        for (const position of audit.unidadesParaConfronto) {
+          const observation = shared.unidadesParaConfronto[position - 1].observation;
+          assert.ok(Object.hasOwn(observation, "declarado"));
+          assert.ok(Object.hasOwn(observation, "tarefaApresentada"));
+          assert.equal(Object.hasOwn(observation.tarefaApresentada, "operation"), false);
+        }
       }
       assert.ok(pages.length > 1);
       channelPages.push(pages);
@@ -1252,6 +1277,10 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
           assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: canonical }));
           assert.equal(target.auditoriaPedagogica.basis.citations[0].links[0].source.url, `https://example.test/${ref.targetId}`);
           assert.equal(target.auditoriaPedagogica.basis.citations[0].links[0].anchors[0].selector.exact, `Passagem de ${ref.targetId}.`);
+          const expected = projectPedagogicalAudit(basis).units
+            .filter(unit => ref.targetKind !== "study_unit" || unit.unitId === ref.targetId);
+          assert.deepEqual(resolveAuditUnits(context, target.auditoriaPedagogica).map(unit => unit.observation),
+            expected.map(unit => unit.observation), "a tarefa se reconstitui junto de parâmetros históricos e condição de pesquisa");
         }
         assert.equal(Boolean(continuation), logicalPage + 1 < logicalPages);
         pages.push(context);

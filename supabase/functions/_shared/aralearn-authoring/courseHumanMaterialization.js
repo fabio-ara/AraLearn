@@ -665,9 +665,13 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     catch (error) { add(error.code ?? "invalid_human_materialization", error.message, details); return null; }
   };
   const mapStatus = context.plan?.plan?.curriculumMapStatus;
-  if (mapStatus === "draft" && !allowDraftCurricularMap || mapStatus === "absent") {
+  if (mapStatus === "draft" && !allowDraftCurricularMap) {
     add("human_materialization_map_approval_required",
-      "O mapa curricular precisa estar aprovado antes da materialização. Consulte o mapa e obtenha a aprovação da pessoa autora.",
+      "O mapa curricular está em rascunho. Aprove a versão inspecionada pela pessoa ou produza com autonomia explícita solicitada para este curso.",
+      { curriculumMapStatus: mapStatus });
+  } else if (mapStatus === "absent") {
+    add("human_materialization_map_approval_required",
+      "Ainda não há mapa curricular salvo para este curso; construa e salve o mapa antes de materializar.",
       { curriculumMapStatus: mapStatus });
   } else if (mapStatus !== "approved" && !(mapStatus === "draft" && allowDraftCurricularMap)) {
     add("course_service_unavailable", "O estado de aprovação do mapa curricular não pôde ser confirmado.");
@@ -2088,6 +2092,10 @@ export async function materializeHumanCoursePart({
 // estado interno. A barreira didática permanece; só o próximo passo fica explícito.
 export function humanMaterializationRecovery(preflight) {
   const blockers = Array.isArray(preflight?.blockers) ? preflight.blockers : [];
+  const mapApproval = blockers.find(blocker => blocker.code === "human_materialization_map_approval_required");
+  if (mapApproval) return mapApproval.curriculumMapStatus === "absent"
+    ? "Ainda não há mapa curricular salvo neste curso; construa e salve o mapa antes de produzir a unidade."
+    : "O mapa curricular está em rascunho. Se a revisão curricular faz parte do pedido, apresente o mapa salvo para a pessoa aprovar; se o pedido já autoriza produzir sem essa revisão, retome a produção com autonomia explícita.";
   const inventory = blockers.find(blocker =>
     blocker.code === "human_materialization_incomplete_analysis_inventory" && blocker.idea);
   if (inventory) return `Apresente o ensino de “${inventory.idea}” no percurso desta microssequência, respeitando a posição de prática escolhida, e repita a verificação.`;

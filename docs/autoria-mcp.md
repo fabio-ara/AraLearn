@@ -20,7 +20,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.0.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.1.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -68,7 +68,7 @@ conteúdo efetivamente produzido.
 | `excluir_curso` | preparar e confirmar exclusão do curso próprio por alvo inequívoco, com a limpeza pertinente de arquivos |
 | `copiar_curso` | preparar e confirmar cópia independente de curso próprio ou explicitamente autorizado |
 | `salvar_mapa_curricular` | salvar uma proposta como rascunho para inspeção e receber uma confirmação pequena da revisão persistida |
-| `aprovar_mapa_curricular` | registrar a aprovação da versão persistida inspecionada, usando sua referência opaca |
+| `aprovar_mapa_curricular` | registrar a aprovação explícita da pessoa sobre a versão persistida inspecionada, usando sua referência opaca |
 | `salvar_ramo_curricular` | incluir ou editar módulo, lição ou microssequência por recorte, inclusive dependências, cobertura e fontes previstas |
 | `mover_ramo_curricular` | mover ou reordenar ramo completo preservando descendentes, identidades e registros |
 | `duplicar_ramo_curricular` | copiar ramo e dados úteis no mesmo curso, sem herdar declaração humana de revisão |
@@ -99,6 +99,14 @@ conteúdo efetivamente produzido.
 | `alterar_acesso` | conceder ou revogar acesso da pessoa identificada, com escolha expressa sobre cópia |
 | `definir_acesso_arquivos` | escolher herança, restrição ou disponibilidade dos arquivos da fonte inspecionada |
 | `definir_politica_revisao` | escolher entre conteúdo completo salvo e somente revisado sem alterar visibilidade ou direitos |
+
+Desde o catálogo 11.1.0, `preparar_materializacao`, `salvar_parte` e
+`materializar_parte` aceitam `autonomo: true`, a mesma intenção humana explícita
+de `retomar_curso`. Por pedido expresso da pessoa para aquele curso, a produção
+segue com o mapa em rascunho sem registrar aprovação humana e sem alterar as
+preferências da conta. O campo não combina com `processo`: a referência
+continua útil para conservar um acordo mais completo, e sem o pedido o bloqueio
+do mapa não aprovado permanece.
 
 O mesmo catálogo gera a descrição de dados aceita em Actions. Cada operação
 corresponde a uma tarefa delimitada. Atualizar o catálogo exige usar os nomes
@@ -256,7 +264,7 @@ pessoa autora.
 
 `links` identifica cada destino por `relation`, `target`, `label`, `url` e, quando disponível, `revision`. O primeiro destino corresponde a `deepLink`. A relação distingue conteúdo, observações, fontes, planejamento e parâmetros; conserve o endereço e a identidade retornados ao oferecer a próxima etapa.
 
-`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; quando o mandato tem ponto de revisão curricular, não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa. Um mandato automático sem esse ponto pode seguir com o mapa em rascunho e materializar lotes operacionais, sem marcar aprovação humana.
+`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; quando o mandato tem ponto de revisão curricular, não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa. Um mandato automático sem esse ponto pode seguir com o mapa em rascunho e materializar lotes operacionais, sem marcar aprovação humana. A mesma autonomia explícita é aceita em `preparar_materializacao`, `salvar_parte` e `materializar_parte`.
 
 Em `retomar_curso` e `consultar_planejamento`, indicar `parte` ou `microssequencia` limita o contexto ao ramo selecionado e às dependências pertinentes. O planejamento integral continua disponível sem esse foco, com continuação quando necessário. Essas regras são compartilhadas com Actions.
 

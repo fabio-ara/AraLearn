@@ -86,10 +86,11 @@ const errorSchema = {
 // Local artifact budgets for the complete contextual catalog (#357), measured
 // after shared-schema projection. They are not OpenAPI import limits: the
 // documented 100,000-character limit concerns each Actions call's payload.
-// Catalog 5.0.0 adds aggregate preflight, exact-basis inspection and multialvo
-// decisions and paged comparison. After shared-fragment factoring the measured
-// baseline is 98.974 minified / 204.676 pretty-printed characters. The per-call
-// 100k guard is unchanged.
+// Catalog 5.0.0 added aggregate preflight, exact-basis inspection and multialvo
+// decisions and paged comparison. The candidate unit contract is now shared by
+// preparar_materializacao and materializar_parte; with catalog 11.1.0 the
+// measured baseline is 97.510 minified / 198.682 pretty-printed characters. The
+// per-call 100k guard is unchanged.
 // Acceptance in the actual editor remains a separate hosted release gate.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
 const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 100_000;
@@ -187,7 +188,9 @@ function inputSchemaWithSharedContent(tool) {
       };
     }
   }
-  if (tool.name === "materializar_parte") {
+  // O preparo usa o mesmo lote candidato da escrita; compartilhar as mesmas
+  // referências evita repetir no artefato um contrato de unidade já publicado.
+  if (tool.name === "materializar_parte" || tool.name === "preparar_materializacao") {
     schema.properties.unidades.items.properties.conteudo = {
       $ref: STUDY_UNIT_CONTENT_REF
     };
@@ -197,7 +200,7 @@ function inputSchemaWithSharedContent(tool) {
       $ref: STUDY_UNIT_CONTENT_REF
     };
   }
-  if (tool.name === "materializar_parte") {
+  if (tool.name === "materializar_parte" || tool.name === "preparar_materializacao") {
     schema.properties.unidades.items.properties.configuracao.properties.parametros = {
       $ref: DESIGN_PARAMETERS_REF
     };

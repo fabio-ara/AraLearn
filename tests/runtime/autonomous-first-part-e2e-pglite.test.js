@@ -182,7 +182,7 @@ function sqlAdapter(db, writes, options = {}) {
     if (codigo === "42501") return new AuthoringApiError(403, "not_authorized", "A operação não foi autorizada.");
     if (codigo === "23514" && /aprovacao do mapa curricular|aprovado antes da materializacao/u.test(mensaje)) {
       return new AuthoringApiError(409, "curricular_map_not_approved",
-        "A produção só pode ser organizada depois da aprovação do mapa curricular. Aprove o mapa ou retome o foco autorizado antes de continuar.");
+        "A organização da produção exige o mapa curricular aprovado pela pessoa ou autonomia explícita solicitada para este curso.");
     }
     if (codigo === "23514" && /Uma dependencia curricular precisa estar produzida/u.test(mensaje)) {
       return new AuthoringApiError(409, "curricular_dependency_not_produced",
@@ -416,6 +416,24 @@ test("núcleo humano: mapa em rascunho, zero partes e autonomia derivada criam a
     assert.equal(estado.estado, "draft");
     assert.deepEqual(writes.map(item => item.allowDraftMap), [true, true]);
     assert.equal(writes.filter(item => item.operation === "save").length, 1);
+  } finally { await db.close(); }
+});
+
+test("autonomia explícita sem referência prepara e grava o mapa em rascunho com o mesmo lote", async () => {
+  const { db, writes, adapter } = await setup();
+  try {
+    const preparo = await runCore(adapter, "preparar_materializacao", { ...ARGS, autonomo: true });
+    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
+    assert.deepEqual((await snapshot(db)).partes, []);
+    assert.equal(writes.length, 0, "o preparo permanece somente leitura");
+    const saida = await runCore(adapter, "materializar_parte", { ...ARGS, autonomo: true });
+    assert.ok(saida.context);
+    const estado = await snapshot(db);
+    assert.equal(estado.partes.length, 1);
+    assert.equal(estado.partes[0].title, MICRO_TITLE);
+    assert.equal(estado.unidades.length, 1);
+    assert.equal(estado.estado, "draft", "a autonomia não registra aprovação humana");
+    assert.deepEqual(writes.map(item => item.allowDraftMap), [true, true]);
   } finally { await db.close(); }
 });
 
