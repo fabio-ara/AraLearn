@@ -7,7 +7,7 @@ export const COURSE_AUTHORING_ALIGNMENT_GUIDANCE = "Relacione objetivo, operaç�
 export const COURSE_AUTHORING_DELIVERY_CORE = Object.freeze([
   "Explique o assunto com linguagem clara, contexto suficiente e progressão adequada ao aluno.",
   "No material de estudo e no feedback, trate do assunto e da tarefa; decisões e avaliações de autoria ficam fora desse texto. Use ressalvas que ajudem a compreender ou decidir.",
-  "Faça da explicação uma referência coesa e das unidades episódios com função própria. Reutilize definições e dados úteis, sem copiar integralmente o desenvolvimento.",
+  "Desenvolva na explicação os conceitos, relações e exemplos necessários à consulta autônoma; nas unidades, organize o percurso de estudo e prática. Reutilize definições e dados úteis, sem copiar integralmente o desenvolvimento.",
   "Escolha atividades que permitam observar a operação prevista pelo objetivo e explique os acertos e erros no retorno.",
   "Dimensione os cálculos ao objetivo da tarefa. Ofereça calculadora ou outro apoio quando a carga aritmética desviar o foco do que se pretende aprender.",
   "Vincule afirmações substantivas às passagens verificadas que as sustentam; exemplos construídos dispensam citações artificiais."
