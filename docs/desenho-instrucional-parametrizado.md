@@ -64,7 +64,7 @@ essas mesmas decisões nos dados trocados pelos canais de autoria.
 | Teto de novidades na unidade expositiva | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
 | Formas de explicação | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso, lição, microssequência e unidade de estudo | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
 | Mínimo de oportunidades de prática | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | quantidade mínima de oportunidades distintas por requisito de evidência |
-| Variação da prática | conjunto; por exemplo, caso, contexto, representação ou apoio | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
+| Variação da prática | conjunto; por exemplo, caso, contexto, representação ou apoio; conjunto vazio declara que nenhuma dimensão é exigida | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
 | Extensão da resposta na conversa | inteiro; por exemplo, `80` ou `120` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para uma resposta de autoria |
 | Extensão da unidade de estudo | inteiro; por exemplo, `140` ou `180` | curso, lição, microssequência e unidade de estudo | alvo flexível de palavras para o conteúdo de uma unidade de estudo |
 | Distribuição da prática | intercalada ou agrupada | curso, lição, microssequência e unidade de estudo | organização das práticas na sequência |

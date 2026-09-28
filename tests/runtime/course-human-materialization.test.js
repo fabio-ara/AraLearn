@@ -428,7 +428,13 @@ function persistedStudyUnit(id, position, { introduced = [ANALYSIS_ID], used = [
   };
 }
 
-function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = false } = {}) {
+function pedagogicalAdapter({
+  ceiling = 1,
+  analysisCount = 2,
+  withEvidence = false,
+  practiceMinimum = 2,
+  variationDimensions = ["case_or_data", "context"]
+} = {}) {
   const value = adapterFixture();
   const analysis = [ANALYSIS_ID, SECOND_ANALYSIS_ID].slice(0, analysisCount)
     .map((id, position) => ({
@@ -493,8 +499,8 @@ function pedagogicalAdapter({ ceiling = 1, analysisCount = 2, withEvidence = fal
     parameters: fixtureAppliedParameters([
       ["new_analysis_unit_ceiling_per_expository_study_unit", ceiling],
       ["required_explanation_forms", ["plain_definition", "mechanism"]],
-      ["minimum_distinct_practice_opportunities_per_evidence_requirement", 2],
-      ["required_practice_variation_dimensions", ["case_or_data", "context"]],
+      ["minimum_distinct_practice_opportunities_per_evidence_requirement", practiceMinimum],
+      ["required_practice_variation_dimensions", variationDimensions],
       ["authoring_chat_response_word_target", 100],
       ["study_unit_content_word_target", 200]
     ], { origin: "automatic" }),
@@ -1738,6 +1744,105 @@ test("prática aplica mínimo, operação invariável e dimensões efetivas", as
       practices: [practice("caso-a", ["case_or_data"])]
     })]
   }), (error) => Boolean(preflightBlocker(error, "human_materialization_insufficient_practice")));
+});
+
+test("variação exigida vazia dispensa dimensões declaradas; exigência não vazia segue reprovando", async () => {
+  const practice = (oportunidade, dimensoesVariadas) => ({
+    requisito: 1,
+    oportunidade,
+    dimensoesVariadas
+  });
+  const empty = pedagogicalAdapter({
+    analysisCount: 0,
+    withEvidence: true,
+    practiceMinimum: 1,
+    variationDimensions: ["support_level"]
+  });
+  const configured = pedagogicalUnit(1, {
+    mode: "pratica",
+    practices: [practice("caso-unico", [])]
+  });
+  configured.configuracao = {
+    motivo: "A etapa não exige dimensão de variação própria.",
+    parametros: { dimensoes_de_variacao_da_pratica: [] }
+  };
+  await materializeHumanCoursePart({
+    adapter: empty,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    complete: true,
+    units: [configured]
+  });
+  assert.deepEqual(
+    empty.calls[0].units[0].designApplication.practiceApplications[0].variedDimensions,
+    []
+  );
+  assert.deepEqual(
+    empty.calls[0].units[0].designSnapshot.parameters
+      .find(({ parameterId }) => parameterId === "required_practice_variation_dimensions").value,
+    []
+  );
+  assert.equal(
+    empty.calls[0].units[0].designSnapshot.parameters
+      .find(({ parameterId }) => parameterId === "required_practice_variation_dimensions").origin,
+    "automatic"
+  );
+
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: pedagogicalAdapter({
+      analysisCount: 0,
+      withEvidence: true,
+      practiceMinimum: 1,
+      variationDimensions: ["support_level"]
+    }),
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    complete: true,
+    units: [pedagogicalUnit(1, {
+      mode: "pratica",
+      practices: [practice("caso-unico", [])]
+    })]
+  }), (error) => Boolean(preflightBlocker(error, "human_materialization_insufficient_practice")));
+});
+
+test("condição fixada de pesquisa em variação não é relaxada para conjunto vazio", async () => {
+  const fixedAdapter = pedagogicalAdapter({
+    analysisCount: 0,
+    withEvidence: true,
+    practiceMinimum: 1,
+    variationDimensions: ["support_level"]
+  });
+  const readDesign = fixedAdapter.getCourseDesign;
+  fixedAdapter.getCourseDesign = async (request) => {
+    const design = await readDesign(request);
+    const variation = design.parameters.find(({ parameterId }) =>
+      parameterId === "required_practice_variation_dimensions");
+    variation.effectiveAssignment = {
+      mode: "fixed",
+      value: ["support_level"],
+      origin: "research_condition",
+      sourceScope: { kind: "didactic_microsequence", ref: "micro-dns" }
+    };
+    return design;
+  };
+  const content = pedagogicalUnit(1, {
+    mode: "pratica",
+    practices: [{ requisito: 1, oportunidade: "caso-unico", dimensoesVariadas: [] }]
+  });
+  content.configuracao = {
+    motivo: "A etapa não exige dimensão de variação própria.",
+    parametros: { dimensoes_de_variacao_da_pratica: [] }
+  };
+  await assert.rejects(() => materializeHumanCoursePart({
+    adapter: fixedAdapter,
+    principal: PRINCIPAL,
+    course: "Curso de Redes",
+    part: 1,
+    units: [content]
+  }), (error) => Boolean(preflightBlocker(error, "human_materialization_fixed_configuration_conflict")));
+  assert.deepEqual(fixedAdapter.calls, []);
 });
 
 test("consolidação formativa não fabrica requisito de evidência", async () => {

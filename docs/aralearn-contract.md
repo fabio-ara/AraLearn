@@ -334,7 +334,7 @@ aplicadas a todo curso.
 | `maximo_ideias_novas_por_unidade` | Máximo de unidades de análise instrucional introduzidas numa unidade expositiva ou mista; a contagem não mede dificuldade. | Curso, lição, microssequência, unidade | Inteiro 1–64; referência 2. |
 | `formas_de_explicacao` | Formas usadas para explicar cada unidade de análise introduzida, com motivo quando uma forma não se aplica. | Curso, lição, microssequência, unidade | Conjunto de definição, exemplo concreto, mecanismo, contraste, condição de aplicação, limite/exceção, exemplo resolvido e relação entre representações. Referência: primeiras quatro. |
 | `oportunidades_distintas_por_requisito` | Quantas oportunidades diferentes de prática devem atender a cada requisito de evidência de aprendizagem. | Curso, lição, microssequência, unidade | Inteiro 1–64; referência 2. |
-| `dimensoes_de_variacao_da_pratica` | Variação de caso/dados, contexto, tarefa, representação ou apoio, preservando a operação pertinente. | Curso, lição, microssequência, unidade | Conjunto não vazio dessas cinco dimensões; referência caso/dados. |
+| `dimensoes_de_variacao_da_pratica` | Variação de caso/dados, contexto, tarefa, representação ou apoio, preservando a operação pertinente. | Curso, lição, microssequência, unidade | Conjunto dessas cinco dimensões; vazio declara explicitamente que nenhuma é exigida; referência caso/dados. |
 | `alvo_palavras_conversa` | Extensão flexível das respostas na conversa autoral. | Curso, lição, microssequência, unidade | Inteiro 20–500; referência 120. |
 | `alvo_palavras_unidade` | Extensão editorial flexível da unidade, depois de satisfeita sua função. | Curso, lição, microssequência, unidade | Inteiro 40–1.000; referência 180. |
 | `distribuicao_da_pratica` | Organização de práticas intercaladas ou agrupadas. | Curso, lição, microssequência, unidade | `interleaved`, `clustered`; referência `interleaved`. |
@@ -357,6 +357,10 @@ existentes inspecionadas, preservando texto, explicação, fixações e condiç�
 pesquisa. Se falta a declaração de aplicação, ela precisa ser fornecida
 expressamente; calibrar parâmetros não fabrica uma descrição do conteúdo.
 A operação conserva a separação entre aplicação instrucional e revisão humana.
+
+Na variação requerida da prática, o conjunto vazio declara ausência explícita de
+dimensão exigida. Valor nulo ou campo ausente continuam sendo pendência de
+calibração contextual e não equivalem ao conjunto vazio.
 
 `ajustar_orientacao` e `ajustar_componentes` alteram orientações para trabalho
 futuro. Nos perfis, a prévia e a aplicação verificam as versões do curso e do
