@@ -40,7 +40,8 @@ begin
       {"dimension":"evidence","result":"sufficient","reason":"A base compartilhada e a fonte corrente permanecem identificáveis.","evidence":["A base salva explicita os pressupostos e sustenta a comparação dos casos."]},
       {"dimension":"representation","result":"sufficient","reason":"O conteúdo do alvo permanece legível na representação autorada.","evidence":["Revisão por IA preservada"]},
       {"dimension":"feedback","result":"not_applicable","reason":"A unidade é teórica e não declara resposta ou prática nesta fixture.","evidence":["Compare dois elementos ligados e dois elementos sem ligação. Identifique a relação que permite a interação."]},
-      {"dimension":"sufficiency","result":"sufficient","reason":"A versão atual oferece base suficiente para a decisão autoral.","evidence":["Compare dois elementos ligados e dois elementos sem ligação. Identifique a relação que permite a interação."]}
+      {"dimension":"sufficiency","result":"sufficient","reason":"A versão atual oferece base suficiente para a decisão autoral.","evidence":["Compare dois elementos ligados e dois elementos sem ligação. Identifique a relação que permite a interação."]},
+      {"dimension":"configuration","result":"not_applicable","reason":"A fixture de restauração contém unidade teórica sem snapshot de parâmetros aplicados; não demonstra a realização de escolhas ausentes.","evidence":["Revisão por IA preservada"]}
     ]}',
     'restore-current-inspection');
   perform private.execute_course_anchored_annotation_command_core_v1(actor,course,null,

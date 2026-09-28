@@ -14,7 +14,7 @@ import {
 
 const EXPERIMENT_URL = new URL("../../docs/experimentos/revisao-v7/corrected-B-2/final.json", import.meta.url);
 const STACK_PORT = 44221;
-const REPORT_DIMENSIONS = ["alignment", "evidence", "representation", "feedback", "sufficiency"];
+const REPORT_DIMENSIONS = ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"];
 
 async function loadExperiment() {
   const value = JSON.parse(await readFile(EXPERIMENT_URL, "utf8"));
@@ -215,7 +215,8 @@ function initialNeedsAttentionReport(batch, review) {
       { dimension: "evidence", result: "sufficient", reason: "A primeira prática expõe o cálculo com dados e resposta observável.", evidence: [observed(first.content[0].data.text)] },
       { dimension: "representation", result: "sufficient", reason: "A tabela corrente explicita os testes nos extremos.", evidence: [observed(tableTitle)] },
       { dimension: "feedback", result: "insufficient", reason: "A degradação controlada removeu a explicação específica de cada alternativa; restaure o B-2 original antes de declarar consistência.", evidence: [observed(thirdFeedback)] },
-      { dimension: "sufficiency", result: "sufficient", reason: "As três práticas cobrem extremo, tamanho e comparação de relações.", evidence: batch.unidades.map(unit => observed(unit.conteudo.content[0].data.text)) }
+      { dimension: "sufficiency", result: "sufficient", reason: "As três práticas cobrem extremo, tamanho e comparação de relações.", evidence: batch.unidades.map(unit => observed(unit.conteudo.content[0].data.text)) },
+      { dimension: "configuration", result: "sufficient", reason: "O percurso sintético realiza as oportunidades e a variação declaradas nos cálculos de extremos e comparação de intervalos; a degradação controlada afeta o feedback.", evidence: batch.unidades.map(unit => observed(unit.conteudo.content[0].data.text)) }
     ] };
 }
 
@@ -227,7 +228,8 @@ function currentReport(batch, restoredThird) {
     { dimension: "evidence", result: "sufficient", reason: "Cada prática possui dados, resposta e regra observável.", evidence: batch.unidades.map(unit => observed(unit.conteudo.content[0].data.text)) },
     { dimension: "representation", result: "sufficient", reason: "A memória e a tabela representam os extremos e as relações necessárias.", evidence: [observed(batch.explicacoes[0].conteudo.content[1].data.prompt)] },
     { dimension: "feedback", result: "sufficient", reason: "O B-2 original restaurado retém feedback específico nas alternativas e a explicação geral da classificação.", evidence: [observed(restoredFeedback)] },
-    { dimension: "sufficiency", result: "sufficient", reason: "A sequência cobre cálculo, tamanho e classificação com variação real.", evidence: batch.unidades.map(unit => observed(unit.conteudo.title)) }
+    { dimension: "sufficiency", result: "sufficient", reason: "A sequência cobre cálculo, tamanho e classificação com variação real.", evidence: batch.unidades.map(unit => observed(unit.conteudo.title)) },
+    { dimension: "configuration", result: "sufficient", reason: "As oportunidades do percurso sintético realizam o cálculo e a comparação de intervalos declarados, variando os dados e as relações; não se deduz aprendizagem da quantidade.", evidence: batch.unidades.map(unit => observed(unit.conteudo.content[0].data.text)) }
   ] };
 }
 

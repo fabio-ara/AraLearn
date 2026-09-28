@@ -1127,6 +1127,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:private.complete_course_ai_inspection_report_v1(p_report jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.consume_course_people_rate_v1(p_actor_id uuid, p_search boolean)",
       "caseId": "person-profile-and-course-access"
     },
@@ -1868,6 +1872,10 @@
     },
     {
       "object": "function:public.get_course_ai_inspection_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_target_kind text, p_target_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_course_ai_inspection_receipt_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_target_kind text, p_target_id text, p_expected_basis_hash text, p_report jsonb, p_request_id text)",
       "caseId": "course-authoring-experience"
     },
     {

@@ -222,9 +222,9 @@ test("#274 fixture cobre estado útil e resíduos encerrados para o corte", () =
   assert.doesNotMatch(fixture, /(?:insert\s+into|update|delete\s+from) storage\./iu);
 });
 
-test("fixture corrente registra parecer completo nas cinco dimensões da auditoria", () => {
+test("fixture corrente registra parecer completo nas seis dimensões da auditoria", () => {
   assert.match(currentAuthoringFixture, /"outcome":"consistent","findings":\[\],"checks":\[/u);
-  for (const dimension of ["alignment", "evidence", "representation", "feedback", "sufficiency"]) {
+  for (const dimension of ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"]) {
     assert.match(currentAuthoringFixture, new RegExp(`"dimension":"${dimension}"`, "u"));
   }
 });

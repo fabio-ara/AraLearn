@@ -17,6 +17,37 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260928110000 — realização da configuração e replay da inspeção
+
+Esta entrada descreve a [migração candidata](../supabase/migrations/20260928110000_configuration_realization_inspection.sql)
+e suas provas locais; não registra implantação hospedada. O manifesto passa a
+identificar esta revisão e a capacidade `configuration-realization-inspection-v1`,
+totalizando 53 capacidades. O catálogo de componentes permanece igual.
+
+`valid_course_ai_inspection_report_v1` conserva a leitura de pareceres históricos
+sem `checks` ou com as cinco dimensões anteriores. A nova função
+`complete_course_ai_inspection_report_v1` exige seis dimensões, incluindo
+`configuration`, para a completude atual. `course_ai_inspection_pending_v1` usa
+essa distinção nas operações que já exigiam inspeção satisfatória. O estado
+`current` continua indicando a atualidade da base; um parecer histórico não
+ganha uma avaliação fictícia nem se torna inválido por não conter a sexta dimensão.
+
+`record_course_ai_inspection_v1` exige seis dimensões para nova gravação depois
+de conferir o recibo. O novo RPC interno
+`get_course_ai_inspection_receipt_for_actor_v1`, exclusivo de `service_role`,
+permite recuperar a tentativa exata antes de comparar a base atual. A recuperação
+confere acesso, ator, curso, operação e hash do pedido, mantendo o bloqueio por
+tentativa. Pareceres antigos continuam recuperáveis após outro parecer ou
+mudança da base, sem sobrescrever o resultado posterior. Novas gravações
+preservam a conferência da base e dos trechos citados. A referência opaca já
+carrega a identidade necessária; não há novos controles a preencher pelo produtor.
+
+Não há tabela, coluna ou backfill, nem reescrita dos pareceres e recibos existentes.
+As leituras conservam a base pedagógica integral; o recibo compacto continua
+sem cópia da base ou do parecer e sujeito ao limite de 64 KiB. A sexta dimensão
+registra um juízo contextual sobre a realização da configuração; sua presença
+não certifica qualidade ou aprendizagem.
+
 ## 20260928100000 — catálogo BPMN e manifesto de inspeção
 
 O catálogo conserva os 34 componentes e passa a refletir as regras estáticas dos eventos BPMN, com exemplo coerente e distinção entre leitura de conteúdo existente e nova autoria. Sua identidade é `1-fca7730b`, fingerprint `sha256:e97467a8e1a1fb436f743a1d9fae39e686b1537211e68d66ab61f6c339223475`. A projeção SQL deriva do registro canônico; nenhuma migração já aplicada foi reescrita.

@@ -2,9 +2,14 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { inspectBpmnSemantics } from "../resources/packages/bpmn-process/semantics.js";
 import { inspectCourseAudioReadiness } from "./courseMedia.js";
 
-export const PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([
+const LEGACY_PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([
   "alignment", "evidence", "representation", "feedback", "sufficiency"
 ]);
+export const PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([...LEGACY_PEDAGOGICAL_AUDIT_DIMENSIONS, "configuration"]);
+export function hasCurrentPedagogicalAudit(checks) {
+  return Array.isArray(checks) && checks.length === PEDAGOGICAL_AUDIT_DIMENSIONS.length &&
+    PEDAGOGICAL_AUDIT_DIMENSIONS.every(dimension => checks.some(check => check?.dimension === dimension));
+}
 const comparable = value => String(value ?? "").normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
 const folded = value => comparable(value).normalize("NFD").replace(/\p{M}/gu, "");
 const explanatoryOperation = value => /\b(?:compar|calcul|justific|relacion|explic|infer|interpret|analis|transform)/u.test(folded(value));
@@ -135,11 +140,16 @@ export function projectPedagogicalAudit(basis) {
   ];
   return { basis, units, representationIssues: representations, instruction: "Faça uma segunda leitura crítica do percurso salvo. Compare objetivo, Explicação, operação exigida, evidência esperada, resposta efetivamente recolhida e feedback. Julgue alinhamento, evidência, representação, feedback e suficiência; cite passagens reais. Examine a combinação das lacunas, os distratores e o conjunto de alternativas corretas. Procure atalhos óbvios, repetições mecânicas, explicação rasa ou quantidade artificialmente mínima. No feedback, verifique se cada trecho ajuda a compreender a resposta ou superar o erro; a extensão deve servir à necessidade, sem repetir a Explicação inteira nem acrescentar títulos internos dispensáveis. Considere também o feedback específico das alternativas. Uma alternativa ou lacuna não é insuficiente por contagem: demonstre qual relação necessária foi perdida. " +
     "Em citations, confronte as ocorrências locais com as passagens das âncoras selecionadas, considerando a relação declarada em cada vínculo. A pertinência geral da obra não demonstra suporte a uma afirmação que o vínculo declara sustentar ou citar. Não cruze âncoras de fontes diferentes nem presuma pareamento por posição quando há várias ocorrências. Se a âncora só indicar uma página, confira a passagem no destino ou registre que falta verificação; fonte existente não é fonte ausente. Divergência ou suporte declarado mas não demonstrado devem constar no parecer e impedir declarar consistência. " +
-    "Confronte também os parâmetros aplicados em design com sua realização no conteúdo e na ordem: formas de explicação, oportunidades, variação e posição da prática. Uma tentativa anterior à explicação pode investigar um alvo ainda não ensinado; examine se a tarefa é compreensível com os pré-requisitos disponíveis e se o ensino posterior desenvolve esse alvo. Não confunda essa tentativa com uso de conhecimento já estabelecido nem a conte como ensino. Valor registrado não demonstra condição realizada: explicite divergências e preserve condições de pesquisa. " +
+    "Em configuration, confronte os parâmetros pedagógicos aplicados em design com sua realização observável no alvo e no percurso pertinente: formas de explicação, oportunidades, variação e posição da prática. Cite conteúdo/ordem e distinga valor aplicado de realização. Preferência automática é contextual: justifique sua realização ou limite sem forçar alternância, formatos ou prática extra. Fixações e condições de pesquisa devem ser preservadas. Divergência ou realização relevante não demonstrada exige insufficient; pode demandar reconciliar declaração, calibrar o automático com justificativa ou corrigir conteúdo, sem alterar fixações. not_applicable só cabe quando não há parâmetro pedagógico observável aplicável, nunca por falta de evidência; conversa e cadência fora do alvo não são critérios sobre seu conteúdo. Uma tentativa anterior à explicação pode investigar um alvo ainda não ensinado: examine pré-requisitos e ensino posterior, sem contá-la como ensino. Seis juízos registrados não certificam sua correção nem aprendizagem. " +
+    "findings registra pendências: consistent exige []; observações positivas vão em summary ou checks.reason. needs_attention exige findings não vazio; insufficient exige needs_attention. " +
     "Insuficiência exige correção e nova inspeção; a gravação não certifica aprendizagem." };
 }
 
 export function requirePedagogicalAuditConsistency(report, basis) {
+  if (!hasCurrentPedagogicalAudit(report.checks)) {
+    throw Object.assign(new TypeError("Novos pareceres precisam avaliar também configuration: a realização observável da configuração aplicada."),
+      { code: "pedagogical_audit_configuration_required" });
+  }
   const audit = projectPedagogicalAudit(basis);
   const units = basis.targetKind === "study_unit" ? audit.units.filter(unit => unit.unitId === basis.targetId) : audit.units;
   if (report.outcome === "consistent" && audit.representationIssues.length) {
@@ -157,7 +167,8 @@ export function requirePedagogicalAuditConsistency(report, basis) {
   }
   const hasPractice = basis.studyUnits.some(unit => (basis.targetKind !== "study_unit" || unit.id === basis.targetId) && unit.content?.response);
   if (report.checks.some(check => check.result === "not_applicable" &&
-      (["alignment", "representation", "sufficiency"].includes(check.dimension) || hasPractice))) {
+      (["alignment", "representation", "sufficiency"].includes(check.dimension) ||
+        hasPractice && ["evidence", "feedback"].includes(check.dimension)))) {
     throw Object.assign(new TypeError("Alinhamento, representação e suficiência sempre precisam de julgamento; com prática, examine também evidência e feedback."),
       { code: "pedagogical_audit_not_applicable" });
   }
@@ -169,16 +180,18 @@ function strings(value) {
   return value && typeof value === "object" ? Object.values(value).flatMap(strings) : [];
 }
 
-export function normalizePedagogicalAudit(checks, basis = null) {
+export function normalizePedagogicalAudit(checks, basis = null, { allowLegacy = false } = {}) {
   const fail = message => { throw Object.assign(new TypeError(message), { code: "invalid_pedagogical_audit" }); };
-  if (!Array.isArray(checks) || checks.length !== PEDAGOGICAL_AUDIT_DIMENSIONS.length ||
+  const dimensions = allowLegacy && checks?.length === LEGACY_PEDAGOGICAL_AUDIT_DIMENSIONS.length
+    ? LEGACY_PEDAGOGICAL_AUDIT_DIMENSIONS : PEDAGOGICAL_AUDIT_DIMENSIONS;
+  if (!Array.isArray(checks) || checks.length !== dimensions.length ||
       new Set(checks.map(check => check?.dimension)).size !== checks.length) {
-    fail("A inspeção deve examinar alinhamento, evidência, representação, feedback e suficiência.");
+    fail("A inspeção deve examinar alinhamento, evidência, representação, feedback, suficiência e realização da configuração.");
   }
   const passages = basis === null ? null : strings(basis).map(comparable);
   return checks.map(check => {
     if (!check || typeof check !== "object" || Object.keys(check).sort().join() !== "dimension,evidence,reason,result" ||
-        !PEDAGOGICAL_AUDIT_DIMENSIONS.includes(check.dimension) || !["sufficient", "insufficient", "not_applicable"].includes(check.result) ||
+        !dimensions.includes(check.dimension) || !["sufficient", "insufficient", "not_applicable"].includes(check.result) ||
         typeof check.reason !== "string" || !check.reason.trim() || [...check.reason].length > 1000 || controlText(check.reason) ||
         !Array.isArray(check.evidence) || check.evidence.length < 1 || check.evidence.length > 6 ||
         check.evidence.some(quote => typeof quote !== "string" || !quote.trim() || [...quote].length > 500 || controlText(quote))) {

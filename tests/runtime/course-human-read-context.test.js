@@ -5,6 +5,8 @@ import {
   paginateHumanReadContext
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { shareHumanAuditContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import { createContentReviewReference, openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
@@ -825,6 +827,7 @@ test("MCP e Actions expõem BPMN inconsistente no alvo, preservam a base compart
     adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] });
     adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action", scopes: ["authoring:read", "authoring:write"] });
     let writes = 0;
+    adapter.getCourseContentInspectionReceipt = async () => null;
     adapter.recordCourseContentInspection = async input => {
       writes++;
       assert.equal(input.expectedBasisHash, "b".repeat(64));
@@ -882,7 +885,7 @@ test("MCP e Actions expõem BPMN inconsistente no alvo, preservam a base compart
       }
     }
     const report = { summary: "Base examinada.", outcome: "consistent", findings: [],
-      checks: ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+      checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
         dimension, result: "sufficient", reason: "Relação examinada na base salva.", evidence: ["Mesmo título"] })) };
     for (const target of [context.studyUnits[1], context.explicacoes[0]]) {
       const before = writes;
@@ -1013,6 +1016,267 @@ test("studyUnits da base conserva formato de linha sem inventar studyUnit undefi
   assert.equal(Object.hasOwn(row, "studyUnit"), false);
   assert.deepEqual(row.content, { title: "Unidade", content: [], feedback: [], response: null });
   assert.deepEqual(read.context.studyUnits[0].studyUnit, studyUnit(1).studyUnit);
+});
+
+test("parâmetros recebem definição no foco e fallback local quando a identidade não é mapeável", async () => {
+  for (const mappable of [true, false]) {
+    const { adapter } = focalAuditFixture({ unitCount: 2 });
+    const original = adapter.getCourseContentInspection;
+    const parameter = { parameterId: "practice_distribution", value: "interleaved", origin: "automatic", reason: "Contextual.",
+      sourceScopeKind: "study_unit", sourceScopeId: "PRIVATE_SCOPE" };
+    adapter.getCourseContentInspection = async input => {
+      const read = structuredClone(await original(input));
+      for (const unit of read.pedagogicalBasis.studyUnits) unit.design.parameters = [parameter];
+      if (!mappable) delete read.pedagogicalBasis.microsequence.id;
+      return read;
+    };
+    const originalUnits = adapter.listCourseStudyUnits;
+    adapter.listCourseStudyUnits = async input => { const page = await originalUnits(input);
+      page.items = page.items.map(item => ({ ...item, designSnapshot: { parameters: [parameter] } })); return page; };
+    const read = await readLogicalPage(adapter, "preparar_revisao");
+    const focus = read.context.auditoriasPedagogicas?.[0];
+    const applied = (focus?.basis ?? read.context.studyUnits[0].auditoriaPedagogica.basis).studyUnits[0].design.parameters[0];
+    assert.equal(applied.nome, "Distribuição das práticas");
+    assert.equal(applied.campo, "distribuicao_da_pratica");
+    const meaning = mappable ? focus.definicoesDosParametros[0].definicao : applied.definicao;
+    assert.match(meaning.operacionalizacao, /entre exposições/u);
+    assert.match(meaning.limites, /contextual/u);
+    assert.equal(Object.hasOwn(applied, "definicao"), !mappable);
+    assert.equal(applied.value, "interleaved");
+    assert.equal(applied.origin, "automatic");
+    assert.deepEqual(read.context.studyUnits[0].designSnapshot.parameters[0], applied);
+    assert.doesNotMatch(JSON.stringify(read.context), /PRIVATE_SCOPE|parameterId/u);
+  }
+});
+
+test("MCP e Actions leem parâmetros nomináveis e histórico, gravam seis e só recuperam cinco pelo recibo", async () => {
+  for (const channel of ["mcp", "actions"]) {
+    const { adapter } = focalAuditFixture({ unitCount: 2 });
+    const original = adapter.getCourseContentInspection;
+    const checks = ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+      dimension, result: "sufficient", reason: "Relação examinada.", evidence: ["Mesmo título"] }));
+    const old = { summary: "Parecer histórico.", outcome: "consistent", findings: [], checks };
+    const parameters = [{ parameterId: "practice_distribution", value: "interleaved", origin: "automatic", reason: "Contextual.", sourceScopeId: "PRIVATE_SCOPE" },
+      { parameterId: "practice_position", value: "before_and_after", origin: "research_condition", reason: "Fixação preservada." },
+      { parameterId: "historical_parameter", value: 3, origin: "author", reason: null }];
+    adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] });
+    adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action", scopes: ["authoring:read", "authoring:write"] });
+    adapter.getCourseContentInspection = async input => {
+      const read = structuredClone(await original(input));
+      for (const unit of read.pedagogicalBasis.studyUnits) {
+        unit.design.parameters = parameters;
+        unit.application = { practiceApplications: [] };
+        unit.content.role = "theory";
+        unit.content.response = null;
+        unit.content.content = [{ id: "valid-paragraph", package: "aralearn.resource.paragraph", version: "1.0.0",
+          data: { text: "Mesmo título: a relação é desenvolvida no conteúdo." } }];
+      }
+      read.inspection = { state: "current", basisHash: read.basisHash, inspectedAt: "2026-09-28T00:00:00Z", report: old };
+      return read;
+    };
+    let literal = "", continuation, context, fragments = 0;
+    do {
+      const read = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(read.status, 200);
+      const page = read.value.context;
+      assert.ok(JSON.stringify(page).length <= 12_000);
+      assert.ok(Buffer.byteLength(JSON.stringify(page)) <= 16 * 1024);
+      if (!page.fragmento) { context = page; break; }
+      assert.equal(page.fragmento.inicio, literal.length);
+      literal += page.fragmento.texto; fragments++;
+      if (page.fragmento.fim === page.fragmento.total) { context = JSON.parse(literal); break; }
+      continuation = page.continuacao;
+      assert.ok(continuation);
+    } while (continuation);
+    assert.ok(fragments > 1);
+    const applied = context.auditoriasPedagogicas[0].basis.studyUnits[0].design.parameters;
+    assert.equal(applied[0].nome, "Distribuição das práticas");
+    assert.match(context.auditoriasPedagogicas[0].definicoesDosParametros[0].definicao.operacionalizacao, /entre exposições/u);
+    assert.equal(applied[1].origin, "research_condition");
+    assert.equal(applied[1].value, "before_and_after");
+    assert.equal(applied[2].nome, "historical_parameter", "identidade semântica desconhecida não some");
+    assert.equal(applied[2].reason, null);
+    assert.doesNotMatch(JSON.stringify(context), /PRIVATE_SCOPE|parameterId/u);
+    const target = context.studyUnits[0];
+    assert.equal(target.inspecaoIA.state, "current");
+    assert.equal(target.inspecaoIA.dimensoesAtuaisCompletas, false);
+    assert.deepEqual(target.inspecaoIA.report, old);
+    assert.match(target.inspecaoIA.orientacao, /configuração ainda não foi avaliada/u);
+    let writes = 0, receipt = null;
+    adapter.getCourseContentInspectionReceipt = async () => receipt;
+    adapter.recordCourseContentInspection = async input => {
+      writes++;
+      const before = await adapter.getCourseContentInspection(input);
+      return { ...before, contract: "aralearn.course-ai-inspection-change.v1", changed: true, idempotent: false,
+        inspection: { ...before.inspection, report: input.report } };
+    };
+    const rejected = await channelCall(channel, adapter, "registrar_inspecao", { referencia: target.referenciaInspecao, parecer: old });
+    assert.equal(rejected.value.error.code, "pedagogical_audit_configuration_required");
+    assert.equal(writes, 0);
+    const six = { ...old, checks: [...checks, { dimension: "configuration", result: "sufficient",
+      reason: "A realização foi julgada no contexto do percurso, preservando a condição de pesquisa.", evidence: ["Mesmo título"] }] };
+    const accepted = await channelCall(channel, adapter, "registrar_inspecao", { referencia: target.referenciaInspecao, parecer: six });
+    assert.equal(accepted.status, 200);
+    assert.ok(accepted.value.context, JSON.stringify(accepted.value));
+    assert.equal(accepted.value.context.inspecaoIA.dimensoesAtuaisCompletas, true);
+    assert.equal(writes, 1);
+    receipt = { inspection: { state: "current", basisHash: "b".repeat(64), inspectedAt: "2026-09-28T00:00:00Z", report: old } };
+    adapter.getCourseContentInspection = async () => { throw new Error("A recuperação não relê a base posterior"); };
+    const replay = await channelCall(channel, adapter, "registrar_inspecao", { referencia: target.referenciaInspecao, parecer: old });
+    assert.equal(replay.status, 200);
+    assert.deepEqual(replay.value.context.inspecaoIA.report, old);
+    assert.equal(replay.value.context.inspecaoIA.dimensoesAtuaisCompletas, false);
+    assert.equal(writes, 1);
+  }
+});
+
+test("MCP e Actions preservam as mensagens de contradição outcome/findings/checks sem escrever", async () => {
+  const messages = [];
+  for (const channel of ["mcp", "actions"]) {
+    const adapter = fixture();
+    adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] });
+    adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action", scopes: ["authoring:read", "authoring:write"] });
+    const read = await adapter.getCourseContentInspection({ courseId: COURSE.id, targetKind: "study_unit", targetId: "unit-1" });
+    const reference = await createContentReviewReference({ principal: PRINCIPAL, read });
+    let backendCalls = 0;
+    adapter.getCourseContentInspectionReceipt = adapter.getCourseContentInspection = adapter.recordCourseContentInspection = async () => { backendCalls++; };
+    const five = ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+      dimension, result: "sufficient", reason: "Base examinada.", evidence: ["Relação"] }));
+    const channelMessages = [];
+    for (const checks of [five, [...five, { ...five[0], dimension: "configuration" }]]) {
+      const report = { summary: "Base examinada.", outcome: "consistent", findings: [], checks };
+      const candidates = [
+        [{ ...report, findings: ["Dados disponíveis.", "Resposta completa.", "Feedback explicativo."] }, /findings.*pendências.*consistent.*\[\].*summary.*checks.*reason/u],
+        [{ ...report, outcome: "needs_attention" }, /needs_attention.*pendência.*findings/u],
+        [{ ...report, checks: checks.map((check, index) => index ? check : { ...check, result: "insufficient" }) }, /insufficient.*needs_attention.*findings/u]
+      ];
+      for (const [candidate, message] of candidates) {
+        const original = structuredClone(candidate);
+        const response = await channelCall(channel, adapter, "registrar_inspecao", { referencia: reference, parecer: candidate });
+        assert.equal(response.status, channel === "actions" ? 422 : 200);
+        assert.equal(response.value.error.code, "invalid_course_ai_inspection");
+        assert.match(response.value.error.message, message);
+        assert.deepEqual(candidate, original);
+        channelMessages.push(response.value.error.message);
+      }
+    }
+    assert.equal(backendCalls, 0, "contradição de contrato não consulta recibo nem grava parecer");
+    messages.push(channelMessages);
+  }
+  assert.deepEqual(messages[0], messages[1]);
+});
+
+test("definições e valores se reconstroem por foco e página lógica nos dois canais", async () => {
+  const parametersFor = id => [
+    { parameterId: "practice_distribution", value: id === "ms-a" ? "interleaved" : "blocked", origin: "automatic", reason: `Contexto ${id}.` },
+    { parameterId: "practice_position", value: "before_and_after", origin: "research_condition", reason: "Condição fixa.", sourceScopeKind: "course" },
+    { parameterId: "historical_unknown", value: null, origin: "author", reason: null, annotation: { literal: "α\n😀", empty: null } }
+  ];
+  const meaningsFor = parameters => parameters.flatMap(({ parameterId }) => {
+    const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(item => item.id === parameterId);
+    return definition ? [{ nome: definition.label, campo: definition.humanField, definicao: {
+      construto: definition.construct, operacionalizacao: definition.operationalization, limites: definition.limitations
+    } }] : [];
+  });
+  const completeParameters = parameters => parameters.map(({ parameterId, ...parameter }) => ({ ...parameter,
+    ...(meaningsFor([{ parameterId }])[0] ?? { nome: parameterId, campo: parameterId }) }));
+  for (const name of ["preparar_revisao", "retomar_curso"]) {
+    const channelPages = [];
+    for (const channel of ["mcp", "actions"]) {
+      const { adapter, inspections } = focalAuditFixture({ unitCount: 14 });
+      const original = adapter.getCourseContentInspection;
+      adapter.getCourseContentInspection = async input => {
+        const read = structuredClone(await original(input));
+        const basis = read.pedagogicalBasis;
+        for (const unit of basis.studyUnits) {
+          unit.design.parameters = parametersFor(basis.microsequence.id);
+          unit.content.content = [bpmnInstance({ invalid: false }), {
+            id: "literal-code", package: "aralearn.resource.code", version: "1.0.0", data: {
+              prompt: "Leia a configuração.", language: "json",
+              code: '  {"steps":["α","β"],"duration":2,"path":"/dados/😀"}\r\n'
+            }
+          }];
+          for (const instance of unit.content.content) assert.equal(RESOURCE_PACKAGE_REGISTRY.validateInstance(instance, "content").valid, true);
+        }
+        inspections.set(input.targetId, read);
+        return read;
+      };
+      const originalUnits = adapter.listCourseStudyUnits;
+      adapter.listCourseStudyUnits = async input => {
+        const page = await originalUnits(input);
+        page.items = page.items.map(item => ({ ...item,
+          designSnapshot: { parameters: parametersFor(item.curriculumPath.didacticMicrosequence.id) } }));
+        return page;
+      };
+      let continuation;
+      const pages = [];
+      const logicalPages = name === "preparar_revisao" ? 2 : 1;
+      for (let logicalPage = 0; logicalPage < logicalPages; logicalPage++) {
+        let literal = "", context, fragments = 0;
+        do {
+          const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE };
+          const read = await channelCall(channel, adapter, name, { ...args, ...(continuation ? { continuacao: continuation } : {}) });
+          assert.equal(read.status, 200);
+          assert.ok(read.envelope.length < 100_000);
+          const page = read.value.context;
+          assert.ok(JSON.stringify(page).length <= 12_000);
+          assert.ok(Buffer.byteLength(JSON.stringify(page)) <= 16 * 1024);
+          const fragment = page.fragmento;
+          assert.equal(fragment.inicio, literal.length);
+          literal += fragment.texto;
+          continuation = page.continuacao;
+          fragments++;
+          if (fragment.fim === fragment.total) { context = JSON.parse(literal); break; }
+          assert.ok(continuation);
+          assert.ok(fragments < 120);
+        } while (continuation);
+        assert.ok(fragments > 1);
+        assert.equal(context.auditoriasPedagogicas.length, 2, "dois focos de mesmo título, independentes em cada página");
+        for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
+          const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
+          const canonical = inspections.get(ref.targetId);
+          const basis = canonical.pedagogicalBasis;
+          const focus = context.auditoriasPedagogicas.find(item => item.foco === target.auditoriaPedagogica.foco);
+          const parameters = parametersFor(basis.microsequence.id);
+          assert.deepEqual(focus.definicoesDosParametros, meaningsFor(parameters));
+          assert.equal(focus.definicoesDosParametros.length, 2, "histórico desconhecido não recebe definição inventada");
+          const resolve = rows => rows.map(parameter => ({ ...parameter,
+            ...(focus.definicoesDosParametros.find(item => item.campo === parameter.campo) ?? {}) }));
+          for (const [index, unit] of focus.basis.studyUnits.entries()) {
+            assert.ok(unit.design.parameters.every(parameter => !Object.hasOwn(parameter, "definicao")));
+            assert.deepEqual(resolve(unit.design.parameters), completeParameters(parameters));
+            assert.deepEqual(unit.content.content, basis.studyUnits[index].content.content, "recursos literais, inclusive BPMN e steps/código");
+            assert.deepEqual(basis.studyUnits[index].design.parameters, parameters, "a base canônica não foi modificada");
+          }
+          if (target.designSnapshot) assert.deepEqual(resolve(target.designSnapshot.parameters), completeParameters(parameters));
+          assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: canonical }));
+          assert.equal(target.auditoriaPedagogica.basis.citations[0].links[0].source.url, `https://example.test/${ref.targetId}`);
+          assert.equal(target.auditoriaPedagogica.basis.citations[0].links[0].anchors[0].selector.exact, `Passagem de ${ref.targetId}.`);
+        }
+        assert.equal(Boolean(continuation), logicalPage + 1 < logicalPages);
+        pages.push(context);
+      }
+      if (logicalPages === 2) assert.deepEqual(pages[1].studyUnits.map(target => target.studyUnit.id), ["unit-13", "unit-14"]);
+      channelPages.push(pages);
+    }
+    assert.deepEqual(channelPages[0], channelPages[1]);
+  }
+});
+
+test("compartilhamento decide pela base exata antes de nomear parâmetros, sem unir bases distintas", () => {
+  const parameter = { parameterId: "practice_distribution", value: "interleaved", origin: "automatic", reason: null };
+  const basis = { microsequence: { id: "same-ms", title: "Mesmo título" }, studyUnits: [{ id: "same-unit", design: { parameters: [parameter] } }] };
+  const target = { auditoriaPedagogica: { basis, instruction: "Leia o foco." }, designSnapshot: { parameters: [parameter] } };
+  const changed = structuredClone(target);
+  changed.auditoriaPedagogica.basis.studyUnits[0].design.parameters[0].value = "blocked";
+  const context = { studyUnits: [target, structuredClone(target), changed] };
+  const original = structuredClone(context);
+  const projected = shareHumanAuditContext(context, COURSE);
+  assert.deepEqual(context, original);
+  assert.deepEqual(projected.studyUnits.map(item => item.auditoriaPedagogica.foco), [1, 1, 2]);
+  assert.equal(projected.auditoriasPedagogicas.length, 2);
+  assert.ok(projected.auditoriasPedagogicas.every(item => item.definicoesDosParametros.length === 1));
+  assert.equal(projected.auditoriasPedagogicas[1].basis.studyUnits[0].design.parameters[0].value, "blocked");
 });
 
 test("segunda página lógica entrega sua base completa com foco local, sem depender da primeira", async () => {

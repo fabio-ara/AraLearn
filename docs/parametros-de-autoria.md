@@ -218,6 +218,38 @@ base foi aplicada nem atribuir revisão humana. A
 formato; as [regras de persistência](../supabase/migrations/20260909030823_contextual_applied_explanation_basis.sql)
 limitam sua gravação à produção e à cópia autorizada.
 
+## Realização da configuração na inspeção
+
+A dimensão `configuration` do parecer de IA distingue configuração aplicada e
+realização observável. Na leitura focal compartilhada por MCP e Actions,
+`design.parameters` e snapshots apresentam nome e campo humano, preservando
+valor, origem e motivo aplicados. Construto, operacionalização e limites do
+catálogo canônico aparecem uma vez em `definicoesDosParametros` no mesmo foco
+de `auditoriasPedagogicas`; o campo associa cada parâmetro à definição já
+entregue, sem consulta adicional. Cada página lógica contém suas definições;
+sem foco identificável, elas permanecem junto ao parâmetro. Um parâmetro
+histórico desconhecido mantém seu nome semântico, sem definição inventada;
+identidades operacionais continuam fora da projeção humana. As definições
+orientam a leitura; as evidências do parecer citam o conteúdo e os valores da
+base salva, sem inventar passagens.
+
+O auditor confronta formas de explicação, oportunidades, variação e posição
+da prática com o alvo e o percurso pertinente, explicitando limites do recorte.
+Um valor automático é preferência contextual: justificar sua realização não
+exige alternância ou prática adicional por regra. Fixações autorais e condições
+de pesquisa não são relaxadas para aprovar o parecer. Divergência ou realização
+relevante não demonstrada pede `insufficient`: corrigir o conteúdo, reconciliar
+a declaração ou calibrar o automático com justificativa, conforme o caso.
+`not_applicable` cabe apenas sem parâmetro pedagógico observável aplicável,
+não por falta de evidência. Parâmetros de conversa e cadência fora do alvo não
+são critérios sobre seu conteúdo.
+
+Novos pareceres registram seis dimensões; isso não certifica qualidade ou
+aprendizagem. Históricos sem dimensões ou com as cinco anteriores mantêm sua
+base e seu parecer. A realização da configuração fica explicitamente ainda não
+avaliada, sem converter essa ausência em defeito pedagógico. Consulte a
+[compatibilidade de leitura e recuperação](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
+
 ## Como verificar as preferências e a base aplicada
 
 Os [testes de preferências](../tests/runtime/authoring-process-preferences.test.js)

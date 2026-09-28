@@ -76,10 +76,10 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 734);
+  assert.equal(inventory.objects.length, 736);
   assert.deepEqual(counts, {
     "study-course-experience": 31,
-    "course-authoring-experience": 295,
+    "course-authoring-experience": 297,
     "course-source-provenance": 134,
     "course-anchored-annotations": 89,
     "course-authoring-research": 2,
@@ -118,6 +118,8 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
   ]) assert.equal(assignments.get(object), "course-anchored-annotations", object);
   for (const object of [
     "function:public.record_course_ai_inspection_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_target_kind text, p_target_id text, p_expected_basis_hash text, p_report jsonb, p_request_id text)",
+    "function:private.complete_course_ai_inspection_report_v1(p_report jsonb)",
+    "function:public.get_course_ai_inspection_receipt_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_target_kind text, p_target_id text, p_expected_basis_hash text, p_report jsonb, p_request_id text)",
     "function:private.assert_course_practice_authoring_v1(p_course_id uuid, p_upserts jsonb)",
     "function:private.valid_explanation_reconciliation_v1(v jsonb)",
     "function:private.prepare_incremental_course_part_v1(p_course_id uuid, p_part_id uuid, p_units jsonb, p_placements jsonb, p_complete boolean, p_targets jsonb)",

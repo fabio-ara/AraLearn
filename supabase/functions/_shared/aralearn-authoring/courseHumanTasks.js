@@ -51,7 +51,7 @@ import { AUTHORING_PROCESS_FOCUS, AUTHORING_PROCESS_CADENCE, AUTHORING_PROCESS_R
   AUTHORING_PROCESS_PARAMETER_DEFINITIONS, normalizeAuthoringProcessPreferences,
   resolveAuthoringProcessPreferences, createAuthoringProcessMandate } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
-import { shareHumanAuditContext } from './courseHumanAuditContext.js';
+import { shareHumanAuditContext, projectHumanAppliedParameters, humanParameterLabel } from './courseHumanAuditContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
@@ -60,7 +60,7 @@ import { createContentReviewReference, openContentReviewReference } from "./cour
 import { normalizeCourseContentReview } from "../aralearn/runtime/domain/courseContentReview.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { normalizePedagogicalAudit, projectPedagogicalAudit, requirePedagogicalAuditConsistency,
-  PEDAGOGICAL_AUDIT_DIMENSIONS } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
+  PEDAGOGICAL_AUDIT_DIMENSIONS, hasCurrentPedagogicalAudit } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
 import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS } from "./courseHumanDesignTasks.js";
 import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS } from "./courseHumanStructureTasks.js";
@@ -896,13 +896,14 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     { readOnly: false }
   ),
   task("registrar_inspecao", "Registrar inspeção da base lida",
-    "Registra a inspeção da base lida em preparar_revisao. Não edita nem declara revisão humana.",
+    "Base de preparar_revisao. Não edita nem declara revisão humana.",
     inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 }, parecer: { type: "object", additionalProperties: false,
       required: ["summary", "outcome", "findings", "checks"], properties: { summary: { type: "string", minLength: 1, maxLength: 2000 },
         outcome: { type: "string", enum: ["consistent", "needs_attention", "human_preference_retained"] },
-        findings: { type: "array", maxItems: 20, items: { type: "string", minLength: 1, maxLength: 1000 } },
-        checks: { type: "array", minItems: 5, maxItems: 5,
-          description: "Julgue cada dimensão com trechos da base salva: a resposta demonstra a evidência pedida? Contagens e validade estrutural não comprovam qualidade.",
+        findings: { type: "array", description: "Pendências; consistent exige []. Positivos em summary/checks.reason.",
+          maxItems: 20, items: { type: "string", minLength: 1, maxLength: 1000 } },
+        checks: { type: "array", minItems: 5, maxItems: 6,
+          description: "Seis dimensões; cinco só recuperam tentativa salva. Cite a base.",
           items: { type: "object", additionalProperties: false, required: ["dimension", "result", "reason", "evidence"],
             properties: { dimension: { type: "string", enum: PEDAGOGICAL_AUDIT_DIMENSIONS },
               result: { type: "string", enum: ["sufficient", "insufficient", "not_applicable"] },
@@ -1103,9 +1104,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "10.0.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.0.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:9c1198f92e19d7db76367c8913458cfbdb04719a7dda4bdc78055ead06fbed0f";
+  "sha256:62ec2b77f44313f7d714ee27a46e29f1f9f7baf8fe994f4af5e489623523b887";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1247,6 +1248,17 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
+    if (normalizedKey === "inspecao_ia" && entry?.state === "current") {
+      const complete = hasCurrentPedagogicalAudit(entry.report?.checks);
+      projected[key] = { ...withoutTechnicalState(entry), dimensoesAtuaisCompletas: complete,
+        ...(!complete ? { orientacao: "A realização da configuração ainda não foi avaliada. Isso não indica defeito no conteúdo." } : {}) };
+      continue;
+    }
+    if (normalizedKey === "parameters" && Array.isArray(entry) && entry.every(parameter =>
+      parameter && typeof parameter.parameterId === "string" && Object.hasOwn(parameter, "value"))) {
+      projected[key] = withoutTechnicalState(projectHumanAppliedParameters(entry));
+      continue;
+    }
     if (normalizedKey === "authoring_export" || normalizedKey === "authoring_comparison") {
       projected[key] = normalizedKey === "authoring_export" ? normalizeCourseAuthoringExport(entry) : normalizeCourseAuthoringComparison(entry);
       continue;
@@ -2535,13 +2547,6 @@ function humanDesignScope(value) {
   }[value] ?? null;
 }
 
-function humanParameterLabel(parameterId, definitionById) {
-  const definition = definitionById.get(parameterId) ??
-    COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameterId);
-  if (!definition?.label) return "Parâmetro pedagógico";
-  return definition.label.replace(/\bUnidades?\b/gu, (term) => term.toLocaleLowerCase("pt-BR"));
-}
-
 function projectConfiguration(read) {
   const definitionById = new Map((read?.definitions ?? []).map((definition) => [
     definition.id,
@@ -3484,6 +3489,16 @@ HUMAN_TASK_HANDLERS.declarar_revisao = async ({ adapter, principal, args, deadli
 HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, deadlineAt }) => {
   const { courseId, targetKind, targetId, basisHash, requestId } = openContentReviewReference(args.referencia, principal);
   const report = normalizeCourseContentInspectionReport(args.parecer);
+  const recover = async () => adapter.getCourseContentInspectionReceipt({ principal, courseId, targetKind, targetId,
+    expectedBasisHash: basisHash, report, requestId, deadlineAt });
+  const recovered = await recover();
+  const response = (saved, message) => result(message, {
+    deepLink: createHumanNavigation(adapter, { courseId, relation: "content", target: { kind: targetKind, id: targetId } }),
+    context: { inspecaoIA: saved.inspection, referenciaInspecao: args.referencia }
+  });
+  if (recovered) return response(recovered, "Recuperei o parecer da mesma tentativa; ele não reavalia a base atual.");
+  if (!hasCurrentPedagogicalAudit(report.checks)) fail("pedagogical_audit_configuration_required",
+    "Novos pareceres precisam avaliar também configuration: a realização observável da configuração aplicada.");
   const read = async () => normalizeCourseContentInspection(await adapter.getCourseContentInspection({
     principal, courseId, targetKind, targetId, deadlineAt }), { courseId, targetKind, targetId });
   const before = await read();
@@ -3499,6 +3514,8 @@ HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, dead
       expectedBasisHash: basisHash, report, requestId, deadlineAt });
   } catch (error) {
     if (Number(error?.status) >= 400 && Number(error.status) < 500 && ![408, 425, 429].includes(Number(error.status))) throw error;
+    const receipt = await recover().catch(() => null);
+    if (receipt) return response(receipt, "Recuperei o parecer da mesma tentativa; ele não reavalia a base atual.");
     const current = await read().catch(() => null);
     if (!current || current.basisHash !== basisHash || current.inspection.state !== "current" ||
         canonicalAuthoringValue(current.inspection.report) !== canonicalAuthoringValue(report)) {
@@ -3507,12 +3524,9 @@ HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, dead
     }
     saved = current;
   }
-  return result(report.outcome === "needs_attention"
+  return response(saved, report.outcome === "needs_attention"
     ? "Registrei as insuficiências. Corrija o conteúdo e inspecione a nova base antes de considerá-lo satisfatório."
-    : "Registrei o parecer de IA sobre a base lida.", {
-    deepLink: createHumanNavigation(adapter, { courseId, relation: "content", target: { kind: targetKind, id: targetId } }),
-    context: { inspecaoIA: saved.inspection, referenciaInspecao: args.referencia }
-  });
+    : "Registrei o parecer de IA sobre a base lida.");
 };
 
 HUMAN_TASK_HANDLERS.decidir_observacao = async ({ adapter, principal, args, deadlineAt }) => {

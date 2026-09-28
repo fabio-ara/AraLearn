@@ -21,7 +21,7 @@ Para configurar a conexão pela interface, siga o [manual ilustrado do ChatGPT](
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas semânticas** do catálogo **10.0.0**. O OpenAPI as oferece por
+definem as **56 tarefas semânticas** do catálogo **11.0.0**. O OpenAPI as oferece por
 **30 operações HTTP**: 24 diretas e seis grupos contextuais. Uma operação HTTP
 é o pedido enviado a um endereço do serviço; um grupo permite escolher entre
 várias tarefas por esse mesmo endereço. Argumentos, validação e efeitos derivam
@@ -132,13 +132,18 @@ A fila fornece `referenciasComparacao` por alvo. Envie a referência inteira em 
 
 O núcleo compartilhado com MCP informa quando uma correção invalida a aplicação instrucional. Nesse caso, releia o conteúdo, verifique e reaplique as escolhas com `aplicar_configuracao_instrucional` e faça nova inspeção. As condições fixadas permanecem; declarações antigas não são copiadas para texto novo. Parecer `consistent` é recusado enquanto faltar aplicação instrucional na base focal; `needs_attention` pode registrar a insuficiência.
 
-`registrar_inspecao` recebe uma base focal e exige cinco dimensões (`alignment`,
-`evidence`, `representation`, `feedback` e `sufficiency`) com justificativas e
+`registrar_inspecao` recebe a referência da base focal e exige seis dimensões em novos pareceres (`alignment`,
+`evidence`, `representation`, `feedback`, `sufficiency` e `configuration`) com justificativas e
 *quotes* existentes no recorte. O servidor confere versão e `basisHash` e
 marca a inspeção para atualização quando a base muda. O relatório semântico é
 julgamento do auditor; não é garantia de qualidade pedagógica nem de
 aprendizagem. Experimentos de prompts, contratos e materialização continuam em
 revisão, sem conclusão geral.
+
+`configuration` confronta os parâmetros aplicados com conteúdo e percurso,
+preservando preferências contextuais e fixações. Históricos continuam legíveis;
+cinco dimensões só recuperam a tentativa exata já salva, sem reavaliar a base
+atual. Consulte os [critérios comuns e a compatibilidade](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
 
 Para um pedido explícito de curso público, execute `definir_visibilidade` no grupo
 `acesso_do_curso` e confirme o estado persistido com `consultar_acesso` antes de
@@ -236,7 +241,7 @@ OpenAPI. Por isso, a importação do artefato corrente constitui a verificação
 desse limite na prática.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos tipados,
-que conservam as 56 tarefas do catálogo 10.0.0. Essa organização permite
+que conservam as 56 tarefas do catálogo 11.0.0. Essa organização permite
 selecionar cada tarefa com seus próprios argumentos sem ampliar o número de
 operações apresentado ao editor. A aceitação do arquivo pelo editor, a
 publicação do assistente e a execução contra o serviço são verificações

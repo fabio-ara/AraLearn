@@ -8,12 +8,15 @@ export function renderCourseContentInspection(inspection, error = "") {
     ? inspection.report.outcome === "needs_attention" ? "Inspeção por IA: há pontos a conferir."
       : inspection.report.outcome === "human_preference_retained" ? "Inspeção por IA: preferência humana preservada."
         : isCourseContentInspectionSatisfied(inspection) ? "Inspeção pedagógica registrada para esta versão."
-          : "O parecer desta versão ainda não examina todas as dimensões pedagógicas."
+          : "Parecer da base atual em formato anterior."
     : inspection.state === "pending" ? "Inspeção por IA pendente. O texto salvo continua vigente."
       : "Este conteúdo ainda não tem parecer de inspeção por IA.";
   return `<section class="course-content-inspection" aria-label="Inspeção por IA" data-ai-inspection-state="${inspection.state}">` +
-    `<p>${label}</p>` + (inspection.state === "current" ? `<p>${escape(inspection.report.summary)}</p>` +
+    `<p>${label}</p>` + (inspection.state === "current" && !hasCurrentPedagogicalAudit(inspection.report.checks)
+      ? '<p>A realização da configuração ainda não foi avaliada. Isso não indica defeito no conteúdo.</p>' : "") +
+    (inspection.state === "current" ? `<p>${escape(inspection.report.summary)}</p>` +
       (inspection.report.findings.length ? `<ul>${inspection.report.findings.map(item => `<li>${escape(item)}</li>`).join("")}</ul>` : "")
       : '<p>Na conversa conectada, peça a inspeção do texto e das fontes atuais. O parecer fica registrado para essa versão.</p>') + '</section>';
 }
 import { isCourseContentInspectionSatisfied } from "../domain/courseContentInspection.js";
+import { hasCurrentPedagogicalAudit } from "../domain/coursePedagogicalAudit.js";

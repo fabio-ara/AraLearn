@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../../src/domain/courseContentInspection.js";
+import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport, isCourseContentInspectionSatisfied } from "../../src/domain/courseContentInspection.js";
 import { CourseApiClient } from "../../src/supabase/CourseApiClient.js";
 import { renderCourseContentInspection } from "../../src/ui/renderCourseContentInspection.js";
 
@@ -9,6 +9,56 @@ const report = { summary: "Texto e fontes lidos; a preferência editorial humana
 const payload = () => ({ contract: "aralearn.course-ai-inspection.v1", courseId: "10000000-0000-4000-8000-000000000001",
   courseRevision: 4, targetKind: "study_unit", targetId: "unit-a", basisHash: "a".repeat(64),
   inspection: { state: "current", basisHash: "a".repeat(64), inspectedAt: "2026-09-16T01:00:00Z", report } });
+
+test("contradições do parecer explicam findings como pendências sem alterar o julgamento", () => {
+  const checks = ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+    dimension, result: "sufficient", reason: "A relação está explícita.", evidence: ["Relação"] }));
+  const positive = { summary: "Base examinada.", outcome: "consistent", findings: [
+    "Os dados estão disponíveis.", "A resposta compara os casos.", "O feedback explica a resposta."
+  ], checks };
+  const snapshot = structuredClone(positive);
+  for (const currentChecks of [checks, [...checks, { ...checks[0], dimension: "configuration" }]]) {
+    const candidate = { ...positive, checks: currentChecks };
+    assert.throws(() => normalizeCourseContentInspectionReport(candidate), error => {
+      assert.equal(error.code, "invalid_course_ai_inspection");
+      assert.match(error.message, /findings.*pendências/u);
+      assert.match(error.message, /consistent.*\[\]/u);
+      assert.match(error.message, /summary.*checks.*reason/u);
+      return true;
+    });
+    const coherent = { ...candidate, findings: [] };
+    assert.deepEqual(normalizeCourseContentInspectionReport(coherent), coherent);
+    assert.throws(() => normalizeCourseContentInspectionReport({ ...coherent, outcome: "needs_attention" }),
+      error => error.code === "invalid_course_ai_inspection" && /needs_attention.*pendência.*findings/u.test(error.message));
+    const insufficient = currentChecks.map((check, index) => index ? check : { ...check, result: "insufficient" });
+    for (const outcome of ["consistent", "human_preference_retained"]) {
+      assert.throws(() => normalizeCourseContentInspectionReport({ ...coherent, outcome, checks: insufficient }),
+        error => error.code === "invalid_course_ai_inspection" && /insufficient.*needs_attention.*findings/u.test(error.message));
+    }
+    const attention = { ...coherent, outcome: "needs_attention", findings: ["A relação precisa ser explicitada."], checks: insufficient };
+    assert.deepEqual(normalizeCourseContentInspectionReport(attention), attention);
+  }
+  assert.deepEqual(positive, snapshot, "o normalizador não reescreve achados, conclusão ou dimensões");
+});
+
+test("parecer histórico continua legível e current, mas só seis dimensões completam a inspeção atual", () => {
+  const five = ["alignment", "evidence", "representation", "feedback", "sufficiency"].map(dimension => ({
+    dimension, result: "sufficient", reason: "Base examinada.", evidence: ["Base"] }));
+  for (const checks of [undefined, five]) {
+    const value = payload();
+    value.inspection.report = { summary: "Base examinada.", outcome: "consistent", findings: [], ...(checks ? { checks } : {}) };
+    assert.deepEqual(normalizeCourseContentInspection(value), value);
+    assert.equal(isCourseContentInspectionSatisfied(value.inspection), false);
+    assert.match(renderCourseContentInspection(value.inspection), /realização da configuração ainda não foi avaliada/iu);
+  }
+  const value = payload();
+  value.inspection.report = { summary: "Base examinada.", outcome: "consistent", findings: [], checks: [
+    ...five, { dimension: "configuration", result: "sufficient", reason: "Preferência contextual confrontada com o percurso.", evidence: ["Base"] }
+  ] };
+  assert.deepEqual(normalizeCourseContentInspection(value), value);
+  assert.equal(isCourseContentInspectionSatisfied(value.inspection), true);
+  assert.throws(() => normalizeCourseContentInspectionReport({ ...value.inspection.report, checks: [...five.slice(1), value.inspection.report.checks[5]] }));
+});
 
 test("parecer semântico preserva escolha humana e identifica objeto e base efetivamente lidos", () => {
   const value = payload();

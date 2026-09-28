@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260928100000",
+  "schemaRevision": "20260928110000",
   "contractVersion": 1,
   "requiredFeatures": [
     "object-content-review-v1",
@@ -53,6 +53,7 @@
     "gpt-actions-openapi-v1",
     "authoring-preference-profiles-v1",
     "shared-microsequence-explanation-v1",
-    "human-content-review-v1"
+    "human-content-review-v1",
+    "configuration-realization-inspection-v1"
   ]
 }
