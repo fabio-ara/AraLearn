@@ -753,6 +753,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
+      auditoria: Object.freeze({ type: "boolean", default: false,
+        description: "Use true na inspeção formal e no parecer; inclui bases de IA e o desenvolvimento completo." }),
       continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
@@ -1139,7 +1141,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:c524ff492dd7b5b39ebcf3dd37c707433916ca567d5f862a72ed8df2f8eeabbe";
+  "sha256:e1576a62c20f0df3fd47f6d4b6f6c10816b7ffb41c79c2de5fb15033d6fa8707";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2756,7 +2758,8 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   });
 };
 
-async function explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt }) {
+async function explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt,
+  auditoria = false, focal = false }) {
   const sourceCache = new Map();
   return await Promise.all(microsequences.map(async (microsequence) => {
     const proposal = microsequence.explanationPlan;
@@ -2773,7 +2776,8 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
       courseId: resolved.course.id, expectedRevision: resolved.course.revision, mode: "target", sourceId: null,
       targetKind: "microsequence_explanation", targetId: microsequence.id, cursor: null, limit: 1, deadlineAt }) : null;
     const review = await readReviewContext({ adapter, principal, resolved,
-      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt });
+      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt, auditoria });
+    if (!auditoria && focal) return { microssequencia: microsequence.title, ...review };
     return {
       microssequencia: microsequence.title,
       proposta: proposal ? { proposito: proposal.purpose, pressupostos: proposal.prerequisites,
@@ -2788,11 +2792,12 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
   }));
 }
 
-async function readReviewContext({ adapter, principal, resolved, targetKind, targetId, deadlineAt }) {
+async function readReviewContext({ adapter, principal, resolved, targetKind, targetId, deadlineAt, auditoria = false }) {
   const read = normalizeCourseContentReview(await adapter.getCourseContentReview({ principal,
     courseId: resolved.course.id, targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId });
   if (read.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O objeto mudou; releia o recorte antes da revisão.", null, 409);
-  const inspection = typeof adapter.getCourseContentInspection === "function"
+  // A leitura focal usual não busca nem devolve o contexto extenso de inspeção.
+  const inspection = auditoria && typeof adapter.getCourseContentInspection === "function"
     ? normalizeCourseContentInspection(await adapter.getCourseContentInspection({ principal, courseId: resolved.course.id,
       targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId }) : null;
   if (inspection && inspection.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "A base mudou durante a inspeção; releia o recorte.", null, 409);
@@ -3051,10 +3056,16 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     scopeUnits: unitPage.items,
     scopeMicrosequences: reviewMicrosequences
   });
-  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences, deadlineAt });
+  const auditoria = args.auditoria === true;
+  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences,
+    deadlineAt, auditoria, focal: units.length > 0 });
   const studyUnits = await Promise.all(unitPage.items.map(async unit => ({ ...unit,
-    ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit", targetId: unit.studyUnit.id, deadlineAt })
+    ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit",
+      targetId: unit.studyUnit.id, deadlineAt, auditoria })
   })));
+  // A leitura comum não devolve a base de inspeção; só a auditoria traz a
+  // referência que registrar_inspecao exige. A decisão seguinte acompanha isso.
+  const inspected = [...studyUnits, ...explanations].some(target => target.referenciaInspecao);
   const context = await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext({
     observations, studyUnits,
     explicacoes: explanations,
@@ -3065,7 +3076,9 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
       ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length
         ? [["explanationId", reviewMicrosequences[0].id]] : []),
     links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
-    nextDecision: null,
+    nextDecision: auditoria
+      ? inspected ? "Registre o parecer das seis dimensões, incluindo configuration, com a referência de inspeção devolvida." : null
+      : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
     context
   });
 };
