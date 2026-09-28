@@ -162,6 +162,11 @@ test("aplicação expressa envia calibração tipada, lê intenção e recupera 
   assert.equal(command.type, "apply_study_unit_configuration");
   assert.deepEqual(command.units[0].automaticParameters, [{ parameterId: "new_analysis_unit_ceiling_per_expository_study_unit", value: 2,
     reason: "Duas relações desenvolvidas nesta unidade." }]);
+  // Calibração e aplicação viajam no mesmo argumento RPC: uma escrita, sem comando paralelo.
+  assert.equal(f.writes.length, 1);
+  assert.equal(command.units.length, 1);
+  assert.equal(command.units[0].application.mode, "expository");
+  assert.deepEqual(command.units[0].application.introducedInstructionalAnalysisUnitIds, [analysisId]);
   assert.equal(command.units[0].expectedStudyUnitVersion, 4);
   assert.equal(Object.hasOwn(command.units[0], "content"), false);
   assert.equal(Object.hasOwn(command.units[0], "designSnapshot"), false);

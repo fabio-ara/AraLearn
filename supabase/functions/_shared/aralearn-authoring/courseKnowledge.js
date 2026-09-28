@@ -2,6 +2,12 @@ const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_ALIGNMENT_GUIDANCE = "Relacione objetivo, operação do estudante e evidência da resposta.";
 
+// Caminho de saída único para exigência de forma explicativa divergente da
+// declaração: recalibrar a intenção automática e aplicar na mesma chamada, sem
+// criar comando, transação ou fluxo paralelo.
+export const COURSE_AUTHORING_CALIBRATION_RECOVERY =
+  "Na atualização de uma unidade existente, omita configuracao para reutilizar a aplicação vigente ou reenvie exatamente o mesmo valor. Confira o alvo com consultar_configuracao: quando a exigência vier da calibração automática, recalibre e registre a aplicação real na mesma aplicar_configuracao_instrucional, que grava calibração e aplicação juntas e preserva fixações e condições de pesquisa; quando a exigência for pertinente, desenvolva a forma na Explicação ou justifique a não aplicação, sem fabricar realização. Depois repita a verificação.";
+
 // Núcleo curto derivado das regras vigentes dos guias. Entrega o critério antes da
 // primeira escrita sem repetir a política extensa nem criar validador próprio.
 export const COURSE_AUTHORING_DELIVERY_CORE = Object.freeze([

@@ -15,11 +15,35 @@ import { materializeHumanCoursePart as materializeCompletePart, humanMaterializa
   preflightHumanCourseMaterialization, reconcileHumanExplanation, humanMaterializationRecovery } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
+import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
+import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
 import { createDefaultCourseAudioConfig, COURSE_MEDIA_COURSE_MAX_BYTES } from "../../src/domain/courseMedia.js";
 import { bpmnInstance } from "../helpers/bpmnFixture.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+const CHANNEL_ORIGIN = "https://chatgpt.com";
+const CHANNEL_MCP_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
+const CHANNEL_ACTION_URL = "https://edge.example/functions/v1/aralearn-authoring-action";
+async function materializationChannel(channel, adapter, name, args) {
+  const handler = channel === "actions"
+    ? createAuthoringActionHandler({ adapter, allowedOrigins: new Set([CHANNEL_ORIGIN]),
+      actionBaseUrl: CHANNEL_ACTION_URL, publicAppUrl: adapter.publicAppUrl ?? "https://app.example/" })
+    : createAuthoringMcpHandler({ adapter, resourceUrl: CHANNEL_MCP_URL,
+      allowedOrigins: new Set([CHANNEL_ORIGIN]), authorizationServer: "https://project.example/auth/v1" });
+  const action = channel === "actions" ? encodeCourseActionTaskRequest(name, args) : null;
+  const body = channel === "actions" ? action.arguments
+    : { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } };
+  const response = await handler(new Request(channel === "actions"
+    ? `${CHANNEL_ACTION_URL}/${action.operationName}` : CHANNEL_MCP_URL, {
+    method: "POST", headers: { Origin: CHANNEL_ORIGIN, Authorization: "Bearer synthetic-token",
+      "Content-Type": "application/json", Accept: "application/json, text/event-stream",
+      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION }, body: JSON.stringify(body) }));
+  const envelope = await response.text();
+  const payload = JSON.parse(envelope);
+  return { status: response.status, envelope,
+    value: channel === "actions" ? payload : payload.result?.structuredContent, payload };
+}
 function explanationFixtures() {
   return [{ microssequencia: "DNS", conteudo: dnsExplanation(), fontes: [] }];
 }
@@ -822,10 +846,71 @@ test("MCP aceita escolha contextual explícita e distingue indisponibilidade de 
         parameterId === "minimum_distinct_practice_opportunities_per_evidence_requirement");
       assert.equal(applied.value, 1);
       assert.equal(applied.reason, candidate.configuracao.motivo);
-      assert.equal(payload.result.structuredContent.context.completion, "partial");
+        assert.equal(payload.result.structuredContent.context.completion, "partial");
+        assert.ok(payload.result.structuredContent.result.includes("parcial"),
+          "o recibo parcial não pode fingir conclusão");
+        assert.equal(/produzida/iu.test(payload.result.structuredContent.result), false,
+          "a gravação parcial não anuncia parte produzida");
+        assert.ok(payload.result.structuredContent.nextDecision.includes("parcial"));
+        assert.ok(payload.result.structuredContent.nextDecision.includes("inspeção final"),
+          "o parcial encaminha concluir antes da inspeção final");
     }
   }
 });
+test("bloqueio de forma explicativa nomeia o alvo e encaminha a recalibração nos dois canais", async () => {
+  for (const channel of ["actions", "mcp"]) {
+    const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 1 });
+    adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
+    adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action" });
+    adapter.getAuthoringProcessPreferences = async () => ({
+      contract: "aralearn.authoring-process-preferences.v1", revision: 2, updatedAt: "2026-09-09T00:00:00Z",
+      preferences: defaultAuthoringProcessPreferences()
+    });
+    const baseDesign = adapter.getCourseDesign;
+    adapter.getCourseDesign = async (request) => {
+      const base = courseDesignFixture({ courseId: COURSE_ID, moduleId: "module-network",
+        lessonId: "lesson-network", microsequenceId: "micro-dns", studyUnitId: "unit-dns" },
+      { scope: request.scopeKind ?? "study_unit", revision: 8 });
+      if (!["didactic_microsequence", "study_unit"].includes(request.scopeKind)) return base;
+      return { ...base, ...(await baseDesign(request)) };
+    };
+    const candidate = pedagogicalUnit(1, { novelty: [1],
+      explanations: [{ ideia: 1, formas: ["plain_definition"] }] });
+    const prepared = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", unidades: [candidate], concluir: true });
+    assert.equal(prepared.status, 200, prepared.envelope);
+    const preflight = prepared.value.context.preflight;
+    assert.equal(preflight.state, "blocked", channel + ": a forma ausente precisa bloquear o preparo");
+    const blocker = preflight.blockers.find(item =>
+      item.code === "human_materialization_missing_explanation_form");
+    assert.ok(blocker, channel + ": o preparo precisa expor a forma ausente");
+    assert.equal(blocker.microsequence, "DNS");
+    assert.equal(blocker.idea, "Novidade 1.");
+    assert.equal(blocker.studyUnit, "Unidade 1");
+    assert.match(blocker.message, /configuração aplicada e a declaração/u);
+    const exitPath = String(prepared.value.nextDecision ?? "");
+    for (const tool of ["consultar_configuracao", "aplicar_configuracao_instrucional"]) {
+      assert.ok(exitPath.includes(tool), channel + ": o preparo orienta " + tool);
+    }
+    assert.ok(exitPath.includes("calibração e aplicação juntas"), channel + ": orienta a escrita conjunta");
+    const rejected = await materializationChannel(channel, adapter, "materializar_parte", {
+      curso: "Curso de Redes", unidades: [candidate], explicacoes: explanationFixtures(), concluir: true });
+    const error = channel === "actions"
+      ? rejected.payload?.error : rejected.payload?.result?.structuredContent?.error;
+    assert.ok(error, channel + ": a materialização bloqueada devolve erro");
+    const projectedPreflight = error.details?.preflight;
+    assert.equal(projectedPreflight?.state, "blocked", channel);
+    const projected = projectedPreflight.blockers.find(item =>
+      item.code === "human_materialization_missing_explanation_form");
+    assert.equal(projected.microsequence, "DNS");
+    assert.equal(projected.idea, "Novidade 1.");
+    assert.equal(projected.studyUnit, "Unidade 1");
+    assert.ok(String(projectedPreflight.orientacao).includes("consultar_configuracao"), channel);
+    assert.ok(String(projectedPreflight.orientacao).includes("aplicar_configuracao_instrucional"), channel);
+    assert.equal(adapter.calls.length, 0, channel + ": o bloqueio não grava");
+  }
+});
+
 test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisão duplicada", async () => {
   const expositoryAdapter = adapterFixture();
   const expository = unit();
@@ -2836,3 +2921,54 @@ test("condição antes/depois preserva a tentativa exploratória e o preparo blo
     /human_materialization|blocker|preflight|schema|contrato|servidor/iu);
   assert.equal(output.result, output.nextDecision, "o retorno bloqueado também nomeia o ensino ausente");
 });
+
+test("conflito em unidade existente expõe solicitado, intenção efetiva e snapshot aplicado", async () => {
+  const fixtures = () => {
+    const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 1 });
+    const saved = persistedStudyUnit("unit-dns", 1);
+    saved.designSnapshot = { contract: "aralearn.study-unit-design-snapshot.v2",
+      parameterCatalogVersion: COURSE_DESIGN_PARAMETER_CATALOG_VERSION, didacticMicrosequenceId: "micro-dns",
+      parameters: COURSE_DESIGN_PARAMETER_DEFINITIONS.map(definition => ({
+        parameterId: definition.id,
+        value: definition.id === "required_explanation_forms"
+          ? ["plain_definition", "concrete_example", "mechanism", "contrast"] : definition.defaultValue,
+        origin: "automatic", reason: "Calibração aplicada anteriormente.", sourceScopeKind: "study_unit" })) };
+    adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(saved)], hasMore: false, nextCursor: null });
+    const candidate = pedagogicalUnit(1, { novelty: [1],
+      explanations: [{ ideia: 1, formas: ["plain_definition", "concrete_example", "mechanism", "contrast"] }] });
+    candidate.unidade = 1;
+    return { adapter, candidate };
+  };
+
+  const divergent = fixtures();
+  divergent.candidate.configuracao = { motivo: "Calibração divergente da intenção corrente.",
+    parametros: { formas_de_explicacao: ["plain_definition", "concrete_example"] } };
+  const blocked = await prepareMaterialization(divergent.adapter, [divergent.candidate]);
+  const conflict = blocked.blockers.find(item =>
+    item.code === "human_materialization_existing_configuration_conflict");
+  assert.ok(conflict, JSON.stringify(blocked.blockers));
+  assert.equal(conflict.field, "formas_de_explicacao");
+  assert.equal(conflict.studyUnit, "Unidade 1");
+  assert.ok(String(conflict.requested).includes("concrete_example"));
+  assert.ok(String(conflict.current).includes("mechanism"), "compara com a intenção efetiva, não com o snapshot");
+  assert.ok(String(conflict.applied).includes("contrast"), "expõe o snapshot aplicado sem rotulá-lo como intenção");
+  assert.match(conflict.message, /intenção efetiva corrente/u);
+  assert.match(conflict.message, /valor aplicado na unidade/u);
+  assert.doesNotMatch(conflict.message, /snapshot|schema|SQL|backend/iu);
+  assert.equal(divergent.adapter.calls.length, 0);
+
+  const same = fixtures();
+  same.candidate.configuracao = { motivo: "Reenvio coincidente com a intenção efetiva.",
+    parametros: { formas_de_explicacao: ["plain_definition", "mechanism"] } };
+  const reused = await prepareMaterialization(same.adapter, [same.candidate]);
+  assert.equal(reused.blockers.some(item =>
+    item.code === "human_materialization_existing_configuration_conflict"), false,
+  "valor coincidente com a intenção efetiva reutiliza sem conflito");
+
+  const omitted = fixtures();
+  const omittedPrep = await prepareMaterialization(omitted.adapter, [omitted.candidate]);
+  assert.equal(omittedPrep.blockers.some(item =>
+    item.code === "human_materialization_existing_configuration_conflict"), false,
+  "configuração omitida na unidade existente reutiliza o estado corrente");
+});
+

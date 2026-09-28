@@ -1,4 +1,6 @@
 import { asAuthoringApiError } from "./errors.js";
+import { COURSE_AUTHORING_CALIBRATION_RECOVERY } from "./courseKnowledge.js";
+import { humanMaterializationRecovery } from "./courseHumanMaterialization.js";
 
 const ERROR_ISSUE_LIMIT = 20;
 const BLOCKER_PASSAGE_LIMIT = 12;
@@ -41,6 +43,10 @@ function projectedBlockers(source) {
     for (const key of ["microsequence", "idea", "requirement", "studyUnit", "component", "resourceId", "path"]) {
       if (typeof item[key] === "string" && item[key].length <= 4000) blocker[key] = item[key];
     }
+    // Campos curtos e tipados do contraste solicitado/vigente; nenhum payload interno.
+    for (const key of ["field", "parameter", "requested", "current", "applied"]) {
+      if (typeof item[key] === "string" && item[key].length <= 320) blocker[key] = item[key];
+    }
     const passages = projectedPassages(item.passages);
     if (passages) blocker.passages = passages;
     const candidates = projectedCandidates(item.candidates);
@@ -59,9 +65,11 @@ export function projectHumanMaterializationPreflight(error) {
       !(source.referencia === null || /^materialization-v1:[a-f0-9]{64}$/u.test(source.referencia))) return undefined;
   const blockers = projectedBlockers(source);
   if (!blockers) return undefined;
+  const orientacao = humanMaterializationRecovery(source);
   // Preserve every actionable blocker, but never forward arbitrary adapter
   // details, snapshots, source credentials or raw payloads in an error.
-  return { state: source.state, referencia: source.referencia, completion: source.completion, blockers };
+  return { state: source.state, referencia: source.referencia, completion: source.completion,
+    ...(orientacao ? { orientacao } : {}), blockers };
 }
 
 export function projectExplanationReconciliationBlockers(error) {
@@ -363,6 +371,18 @@ function errorRecovery(error, issues, requestId) {
       retryable: true,
       requestIdMode: requestId == null ? "none" : "same",
       steps: ["Repita exatamente a mesma operação."]
+    };
+  }
+  if (new Set(["human_materialization_preflight_blocked",
+    "human_materialization_existing_configuration_conflict"]).has(error.code)) {
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: "new",
+      steps: [
+        COURSE_AUTHORING_CALIBRATION_RECOVERY,
+        "Repita o preparo com o mesmo candidato e use a referência devolvida antes de materializar."
+      ]
     };
   }
   if (error.status === 400 || error.status === 422) {
