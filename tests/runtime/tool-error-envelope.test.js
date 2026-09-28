@@ -24,11 +24,28 @@ test("preflight público preserva todas as causas e exclui bastidor arbitrário"
     } }));
   assert.equal(projected.blockers.length, 24, "o cliente recebe o conjunto agregado, sem truncar em vinte causas");
   assert.equal(projected.blockers[23].unit, 24);
-  assert.deepEqual(Object.keys(projected).sort(), ["blockers", "completion", "referencia", "state"]);
+  assert.deepEqual(Object.keys(projected).sort(), ["blockers", "completion", "orientacao", "referencia", "state"]);
   for (const sentinel of SENTINELS) assert.equal(JSON.stringify(projected).includes(sentinel), false);
   assert.equal(projectHumanMaterializationPreflight(new AuthoringApiError(500, "internal_error", "Falha", {
     preflight: projected
   })), undefined);
+});
+
+test("bloqueios de mapa e fontes recebem recuperação sem recalibração instrucional", () => {
+  for (const blocker of [
+    { code: "human_materialization_map_approval_required", message: "Mapa ausente.", curriculumMapStatus: "absent" },
+    { code: "incomplete_course_source_evidence", message: "Vínculo incompleto." }
+  ]) {
+    const original = new AuthoringApiError(422, "human_materialization_preflight_blocked",
+      "Resolva as pendências.", { preflight: { state: "blocked", completion: "complete",
+        referencia: null, blockers: [blocker] } });
+    const error = toolErrorData(original);
+    const preflight = projectHumanMaterializationPreflight(original);
+    assert.equal(error.recovery.strategy, "correct_and_retry");
+    assert.doesNotMatch(JSON.stringify({ error, preflight }), /aplicar_configuracao_instrucional|calibração/u);
+    assert.ok(preflight.orientacao);
+    if (blocker.curriculumMapStatus) assert.match(preflight.orientacao, /mapa curricular/u);
+  }
 });
 
 test("envelope de erro expõe somente diagnóstico estrutural permitido", () => {

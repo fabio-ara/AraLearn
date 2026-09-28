@@ -373,14 +373,17 @@ function errorRecovery(error, issues, requestId) {
       steps: ["Repita exatamente a mesma operação."]
     };
   }
-  if (new Set(["human_materialization_preflight_blocked",
-    "human_materialization_existing_configuration_conflict"]).has(error.code)) {
+  const calibrationCodes = new Set(["human_materialization_missing_explanation_form",
+    "human_materialization_existing_configuration_conflict"]);
+  if (calibrationCodes.has(error.code) || error.code === "human_materialization_preflight_blocked") {
     return {
       strategy: "correct_and_retry",
       retryable: true,
       requestIdMode: "new",
       steps: [
-        COURSE_AUTHORING_CALIBRATION_RECOVERY,
+        error.code === "human_materialization_preflight_blocked"
+          ? "Siga a orientação de recuperação devolvida com as pendências do preparo."
+          : COURSE_AUTHORING_CALIBRATION_RECOVERY,
         "Repita o preparo com o mesmo candidato e use a referência devolvida antes de materializar."
       ]
     };

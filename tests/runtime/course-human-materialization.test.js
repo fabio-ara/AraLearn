@@ -1,4 +1,4 @@
-import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION } from "../../src/domain/courseDesignParameters.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS, COURSE_DESIGN_PARAMETER_CATALOG_VERSION, normalizeCourseDesignParameterValue } from "../../src/domain/courseDesignParameters.js";
 import { fixtureAppliedParameters, courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
@@ -887,12 +887,12 @@ test("bloqueio de forma explicativa nomeia o alvo e encaminha a recalibração n
     assert.equal(blocker.microsequence, "DNS");
     assert.equal(blocker.idea, "Novidade 1.");
     assert.equal(blocker.studyUnit, "Unidade 1");
-    assert.match(blocker.message, /configuração aplicada e a declaração/u);
+    assert.match(blocker.message, /configuração aplicada e as declarações de ensino das unidades/u);
     const exitPath = String(prepared.value.nextDecision ?? "");
     for (const tool of ["consultar_configuracao", "aplicar_configuracao_instrucional"]) {
       assert.ok(exitPath.includes(tool), channel + ": o preparo orienta " + tool);
     }
-    assert.ok(exitPath.includes("calibração e aplicação juntas"), channel + ": orienta a escrita conjunta");
+    assert.match(exitPath, /calibração e aplicação real juntas/u, channel + ": orienta a escrita conjunta");
     const rejected = await materializationChannel(channel, adapter, "materializar_parte", {
       curso: "Curso de Redes", unidades: [candidate], explicacoes: explanationFixtures(), concluir: true });
     const error = channel === "actions"
@@ -907,6 +907,8 @@ test("bloqueio de forma explicativa nomeia o alvo e encaminha a recalibração n
     assert.equal(projected.studyUnit, "Unidade 1");
     assert.ok(String(projectedPreflight.orientacao).includes("consultar_configuracao"), channel);
     assert.ok(String(projectedPreflight.orientacao).includes("aplicar_configuracao_instrucional"), channel);
+    assert.equal(JSON.stringify(error).split("aplicar_configuracao_instrucional").length - 1, 1,
+      "o guia de recuperação aparece uma vez no erro, fora dos blockers");
     assert.equal(adapter.calls.length, 0, channel + ": o bloqueio não grava");
   }
 });
@@ -1586,7 +1588,6 @@ test("substituição reutiliza calibração automática aplicada com intenção 
 
 test("calibração aplicada não substitui intenção corrente nem permite recalibrar pela materialização", async () => {
   for (const assignment of [
-    { mode: "automatic", origin: "automatic", value: 100 },
     { mode: "automatic", origin: "author", value: null },
     { mode: "fixed", origin: "author", value: 100 },
     { mode: "fixed", origin: "research_condition", value: 100 }
@@ -1614,6 +1615,36 @@ test("calibração aplicada não substitui intenção corrente nem permite recal
   await assert.rejects(() => materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [replacement] }), error => Boolean(preflightBlocker(error, "human_materialization_existing_configuration_conflict")));
   assert.deepEqual(adapter.calls, []);
+});
+
+test("edição preserva calibração automática aplicada mesmo com intenção automática antiga", async () => {
+  for (const explicit of [false, true]) {
+    const { adapter, current, saved, replacement } = appliedAutomaticReplacement();
+    const parameter = current.parameters.find(entry => entry.parameterId === "authoring_chat_response_word_target");
+    const snapshot = saved.designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId);
+    assert.notEqual(snapshot.value, 100);
+    parameter.effectiveAssignment = { mode: "automatic", origin: "automatic", value: 100,
+      reason: "Intenção automática anterior à aplicação contextual.",
+      sourceScope: { kind: "study_unit", ref: saved.studyUnit.id }, inherited: false };
+    parameter.localAssignment = structuredClone(parameter.effectiveAssignment);
+    const original = structuredClone({ saved, current });
+    if (!explicit) delete replacement.configuracao;
+    replacement.conteudo.title = "Conteúdo revisto sem recalibrar";
+    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+      units: [replacement] });
+    assert.equal(adapter.calls.length, 1);
+    const written = adapter.calls[0].units[0];
+    assert.equal(written.studyUnitId, saved.studyUnit.id);
+    assert.equal(written.content.title, replacement.conteudo.title);
+    assert.deepEqual(written.designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId), snapshot);
+    assert.deepEqual({ saved, current }, original, "a escrita não altera a intenção nem as leituras recebidas");
+    replacement.configuracao = { motivo: "Reenvio da intenção antiga.", parametros: { alvo_palavras_conversa: 100 } };
+    const blocked = await prepareMaterialization(adapter, [replacement]);
+    const conflict = blocked.blockers.find(({ code }) => code === "human_materialization_existing_configuration_conflict");
+    assert.ok(conflict);
+    assert.equal(conflict.current, "100", "diagnóstico conserva intenção original");
+    assert.equal(conflict.applied, String(snapshot.value));
+  }
 });
 
 test("snapshot inválido da unidade alvo não recebe preenchimento genérico", async () => {
@@ -1656,8 +1687,9 @@ test("conjuntos aplicados e correntes com ordem SQL conservam a mesma configura�
   assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
   await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [replacement], preparationReference: ready.referencia });
-  assert.deepEqual(adapter.calls[0].units[0].designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId).value,
-    parameter.effectiveAssignment.value);
+  assert.deepEqual(normalizeCourseDesignParameterValue(parameter.parameterId,
+    adapter.calls[0].units[0].designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId).value),
+  normalizeCourseDesignParameterValue(parameter.parameterId, parameter.effectiveAssignment.value));
 });
 
 test("referência ready sela calibração aplicada e intenção corrente da unidade substituída", async () => {
@@ -2957,13 +2989,23 @@ test("conflito em unidade existente expõe solicitado, intenção efetiva e snap
   assert.doesNotMatch(conflict.message, /snapshot|schema|SQL|backend/iu);
   assert.equal(divergent.adapter.calls.length, 0);
 
-  const same = fixtures();
-  same.candidate.configuracao = { motivo: "Reenvio coincidente com a intenção efetiva.",
-    parametros: { formas_de_explicacao: ["plain_definition", "mechanism"] } };
-  const reused = await prepareMaterialization(same.adapter, [same.candidate]);
+  // O reuso passa a valer para a calibração automática já aplicada: reenviar o valor
+  // APLICADO reutiliza; reenviar a intenção automática antiga deixa de ser aceito.
+  const applied = fixtures();
+  applied.candidate.configuracao = { motivo: "Reenvio coincidente com o aplicado.",
+    parametros: { formas_de_explicacao: ["plain_definition", "concrete_example", "mechanism", "contrast"] } };
+  const reused = await prepareMaterialization(applied.adapter, [applied.candidate]);
   assert.equal(reused.blockers.some(item =>
     item.code === "human_materialization_existing_configuration_conflict"), false,
-  "valor coincidente com a intenção efetiva reutiliza sem conflito");
+  "valor coincidente com o aplicado reutiliza sem conflito");
+
+  const stale = fixtures();
+  stale.candidate.configuracao = { motivo: "Reenvio da intenção automática antiga.",
+    parametros: { formas_de_explicacao: ["plain_definition", "mechanism"] } };
+  const stalePrep = await prepareMaterialization(stale.adapter, [stale.candidate]);
+  assert.equal(stalePrep.blockers.some(item =>
+    item.code === "human_materialization_existing_configuration_conflict"), true,
+  "a intenção automática antiga não sobrescreve a calibração aplicada");
 
   const omitted = fixtures();
   const omittedPrep = await prepareMaterialization(omitted.adapter, [omitted.candidate]);

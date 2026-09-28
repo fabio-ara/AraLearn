@@ -45,7 +45,7 @@ function ambiguous(label, count, kind = "text") {
     409,
     "ambiguous_human_reference",
     kind === "position"
-      ? `${label} repete essa posição em mais de um recorte. Recomece a escolha pelo escopo pai (módulo, lição ou parte) ou informe um título completo e único; repetir a mesma numeração não distingue os objetos.`
+      ? `${label} repete essa posição em mais de um recorte. Informe um título completo e único ou qualifique o escopo pai aceito por esta ferramenta; repetir a mesma numeração não distingue os objetos.`
       : `${label} corresponde a mais de um objeto; use um título mais específico ou a posição.`,
     { matchingCount: count }
   );
