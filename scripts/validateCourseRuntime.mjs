@@ -12,6 +12,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "shared-microsequence-explanation-v1",
   "human-content-review-v1",
   "configuration-realization-inspection-v1",
+  "empty-practice-variation-dimensions-v1",
   "object-content-review-v1",
   "independent-review-access-v1",
   "single-live-course-identity-v1",
@@ -298,7 +299,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260928110000" ||
+  if (manifest.schemaRevision !== "20260928120000" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
