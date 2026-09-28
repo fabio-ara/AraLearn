@@ -1,6 +1,6 @@
 begin;
 
-select plan(28);
+select plan(27);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');

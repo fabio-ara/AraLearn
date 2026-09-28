@@ -31,7 +31,7 @@ begin
     'features',(select jsonb_agg(value order by value collate "C")
       from jsonb_array_elements_text(
         (public.get_aralearn_runtime_manifest()->'features')||
-        '["contextual-design-writer-edges-v1"]'::jsonb) feature(value));
+        '["contextual-design-writer-edges-v1"]'::jsonb) feature(value)));
   execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
     'select '||quote_literal(manifest::text)||'::jsonb');
 end $manifest$;
