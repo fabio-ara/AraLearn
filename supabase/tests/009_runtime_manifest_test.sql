@@ -1,11 +1,11 @@
 begin;
 
-select plan(27);
+select plan(28);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20260928120000','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20260928125507','o manifesto identifica as capacidades correntes em ordem canônica');
 select is(private.course_component_catalog_v1()->>'version','1-fca7730b',
   'a projeção SQL acompanha a descoberta corrente de componentes');
 select is(private.course_component_catalog_v1()->>'schemaFingerprint',
@@ -13,13 +13,14 @@ select is(private.course_component_catalog_v1()->>'schemaFingerprint',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),54,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),55,
   'o manifesto contém somente capacidades correntes');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "shared-microsequence-explanation-v1",
   "human-content-review-v1",
   "configuration-realization-inspection-v1",
   "empty-practice-variation-dimensions-v1",
+  "contextual-design-writer-edges-v1",
   "object-content-review-v1",
   "independent-review-access-v1",
   "course-anchored-annotations-atomic-create-v1",

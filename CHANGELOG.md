@@ -9,6 +9,14 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.93] - 2026-09-28 (estabilização local)
+
+### Corrigido
+
+- O escritor instrucional preserva `[]` como escolha aplicada e distingue calibração contextual pendente de conflito com condição de pesquisa.
+- O adapter mantém códigos públicos distintos e mensagens seguras para calibração e conflito, sem repassar mensagem arbitrária do SQL.
+- Esta candidata permanece local; não há promoção ou publicação 0.0.93 neste registro.
+
 ## [0.0.92] - 2026-09-28
 
 ### Corrigido

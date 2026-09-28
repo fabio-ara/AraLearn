@@ -4,8 +4,8 @@ Evidência focal do parâmetro **Variação da prática** no painel de Parâmetr
 
 ## O que as imagens mostram
 
-- “Aplicado nesta produção: **Nenhuma dimensão exigida**.” — o conjunto vazio é escolha explícita, não pendência.
-- “Aplicado nesta produção: **Automático · escolha contextual pendente**.” — o valor nulo continua pendência de calibração, distinto do conjunto vazio.
+- `variacao-vazia-092-aplicado.png` — parâmetro **Variação da prática**: “Aplicado nesta produção: **Nenhuma dimensão exigida**.” O conjunto vazio é escolha explícita, não pendência.
+- `variacao-vazia-092-pendencia.png` — parâmetro **Formas de explicação**: “Aplicado nesta produção: **Automático · escolha contextual pendente**.” Contraste do estado nulo de outro parâmetro, não variação da prática com valor nulo.
 
 ## Interação conferida
 
@@ -13,6 +13,6 @@ No editor do mesmo parâmetro, fixar valor sem marcar nenhuma dimensão e salvar
 
 ## Limites
 
-- Prova de fixture local com controlador simulado; a cobertura de migração, PGlite e adaptador tem provas focais próprias e a migração do corte ainda aguarda aplicação.
+- Fixture E2E local com renderer e CSS reais e **controlador simulado**; não é backend hospedado nem escrita real no Supabase (migração do corte: `20260928120000`).
 - Os trechos exigem rolagem do painel; o conteúdo não cabe inteiro no quadro.
 - Nenhum resultado constitui validação humana.

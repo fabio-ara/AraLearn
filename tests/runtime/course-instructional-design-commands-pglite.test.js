@@ -69,6 +69,7 @@ async function fixture({ units = false, currentOrder = false } = {}) {
     await db.exec(`create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$select '{"schemaRevision":"20260909063859","features":{"fixture":true}}'::jsonb$$;`);
     await db.exec(await load("20260909065357_contextual_instructional_snapshot_order.sql"));
   }
+  await db.exec(await load("20260928125507_contextual_design_writer_edges.sql"));
   if (units) {
     for (const [id, position] of [["unit-a", 1], ["unit-b", 2]]) await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content,
       design_snapshot,design_application,applied_explanation_basis,content_review) values($1,'study_unit',$2,'micro',$3,$4,$5,$6,$7,$8)`,
@@ -220,7 +221,7 @@ test("configuração expressa resolve intenção real e calibração, preserva c
     assert.equal(await value(db, "select design_snapshot->>'appliedAt' value from private.course_entities where entity_id='unit-a'"), after.design_snapshot.appliedAt);
     const param = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(item => item.valueSchema.type === "enum");
     await db.query("update private.course_design_parameter_assignments set mode='automatic',value='null',origin='author' where parameter_id=$1", [param.id]);
-    await assert.rejects(write(db, configure("unit-a"), "configuration-uncalibrated"), error => error.code === "PD409");
+    await assert.rejects(write(db, configure("unit-a"), "configuration-uncalibrated"), error => error.code === "PD410");
     const calibration = { automaticParameters: [{ parameterId: param.id, value: param.defaultValue, reason: "Escolha contextual para esta unidade." }] };
     await write(db, configure("unit-a", calibration), "configuration-calibrated");
     assert.equal(await value(db, "select v->'value' value from private.course_entities e cross join lateral jsonb_array_elements(e.design_snapshot->'parameters') v where e.entity_id='unit-a' and v->>'parameterId'=$1", [param.id]), param.defaultValue);

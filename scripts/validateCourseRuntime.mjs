@@ -38,6 +38,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-authoring-part-materialization-atomic-v2",
   "course-study-unit-inspection-v2",
   "course-authoring-configuration-v3",
+  "contextual-design-writer-edges-v1",
   "authoring-preference-profiles-v1",
   "course-sources-v1",
   "course-source-roles-v1",
@@ -299,7 +300,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20260928120000" ||
+  if (manifest.schemaRevision !== "20260928125507" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
