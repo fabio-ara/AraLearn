@@ -644,13 +644,13 @@ test("MCP entrega ocorrência e âncora selecionada juntas, inclusive divergênc
   assert.deepEqual(links.map(link => link.occurrences[0].quote), claims);
   assert.ok(links.every(link => link.occurrences[0].prefix === "Definição: " && link.occurrences[0].suffix === " Confira."));
   assert.equal(links[0].anchors[0].posicao, 2, "somente a âncora selecionada chega no vínculo");
-  assert.equal(links[0].anchors[0].selector.exact, "A truth table lists truth values.");
+  assert.equal(links[0].anchors[0].seletor.trechoExato, "A truth table lists truth values.");
   assert.equal(links[0].anchors[0].verificationExcerpt, "A truth table lists truth values.");
   assert.equal(links[0].fonte.url, "https://example.test/logic.pdf");
   assert.deepEqual(links[0].evidencia, { located: true, issues: [] }, "localização estrutural não certifica a afirmação sobre interseção");
   assert.equal(links[1].fonte.titulo, "Relações sintéticas");
   assert.equal(links[1].fonte.url, "https://example.test/relations.pdf");
-  assert.equal(links[1].anchors[0].selector.kind, "page_range");
+  assert.deepEqual(links[1].anchors[0].seletor, { tipo: "paginas", paginaInicial: 3, paginaFinal: 3 });
   assert.equal(links[1].anchors[0].verificationExcerpt, null);
   assert.equal(links[2].fonte.localizada, true);
   assert.deepEqual(links[2].anchors, []);

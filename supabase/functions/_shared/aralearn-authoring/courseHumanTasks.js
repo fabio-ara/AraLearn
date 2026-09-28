@@ -242,7 +242,25 @@ const SOURCE_SELECTOR_SCHEMA = Object.freeze({
     trechoExato: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
     prefixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
     sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 })
-  })
+  }),
+  oneOf: Object.freeze([
+    Object.freeze({
+      required: Object.freeze(["paginaInicial", "paginaFinal"]),
+      properties: Object.freeze({ tipo: Object.freeze({ const: "paginas" }) })
+    }),
+    Object.freeze({
+      required: Object.freeze(["inicioEmMilissegundos", "fimEmMilissegundos"]),
+      properties: Object.freeze({ tipo: Object.freeze({ const: "tempo" }) })
+    }),
+    Object.freeze({
+      required: Object.freeze(["fragmento"]),
+      properties: Object.freeze({ tipo: Object.freeze({ const: "fragmento" }) })
+    }),
+    Object.freeze({
+      required: Object.freeze(["trechoExato"]),
+      properties: Object.freeze({ tipo: Object.freeze({ const: "trecho" }) })
+    })
+  ])
 });
 
 const SOURCE_ROLES_SCHEMA = Object.freeze({
@@ -341,7 +359,7 @@ const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
   additionalProperties: false,
   required: Object.freeze(["package", "data"]),
   properties: Object.freeze({
-    id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe para referências entre componentes." }),
+    id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe ao referenciar." }),
     package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto ou completo do catálogo." }),
     version: Object.freeze({ type: "string", minLength: 1, description: "Versão corrente se omitida." }),
     data: Object.freeze({ type: "object" })
@@ -561,7 +579,7 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   parte: "Parte: posição ou título.",
   progressao: "Progressão do lote.",
   microssequencias: "Microssequências do lote.",
-  microssequencia: "Microssequência por posição/título.",
+  microssequencia: "Microssequência (posição/título).",
   unidade: "Unidade: posição ou título.",
   unidades: "Unidades: posições ou títulos.",
   fonte: "Fonte: posição ou título.",
@@ -1127,7 +1145,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:a0c9648ffe88e03d3b355049d4ec2a8bed8462444afc64e31d24e342339b1b62";
+  "sha256:622cd7f82e3092a3296559048b4c5d9b726e5b89722051292b2c0038af4fccc4";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3104,7 +3122,7 @@ async function humanTargetSourceReferences({ adapter, principal, course, sources
           const anchor = source.anchors[position];
           return { localizada: true, posicao: position + 1, status: anchor.status,
             humanLocator: anchor.humanLocator, verificationExcerpt: anchor.verificationExcerpt,
-            selector: anchor.selector, needsReverification: anchor.needsReverification };
+            seletor: humanSourceSelector(anchor.selector), needsReverification: anchor.needsReverification };
         }) };
     }))
   }))) };
@@ -3140,8 +3158,13 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   const readableSources = mode === "target"
     ? await humanTargetSourceReferences({ adapter, principal, course: resolved.course, sources, deadlineAt,
       target })
-    : mode === "source" ? { ...sources, items: sources.items.map(source => ({ ...source,
-      anchors: (source.anchors ?? []).map((anchor, index) => ({ ...anchor, posicao: index + 1 })) })) } : sources;
+    : mode === "source" ? { ...sources, items: sources.items.map(source => {
+      const { anchors, ...rest } = source;
+      return { ...rest, anchors: (anchors ?? []).map((anchor, index) => {
+        const { selector, ...anchorRest } = anchor;
+        return { ...anchorRest, posicao: index + 1, seletor: humanSourceSelector(selector) };
+      }) };
+    }) } : sources;
   const context = args.busca === undefined
     ? readableSources
     : {
@@ -4156,6 +4179,29 @@ function sourceSelector(publicValue) {
     prefix: value.prefixo ?? null,
     suffix: value.sufixo ?? null
   };
+}
+
+// Devolve a Âncora no mesmo vocabulário aceito pela escrita, para que a leitura
+// possa ser reutilizada em manter_fonte. Espécies sem forma humana equivalente
+// permanecem sem projeção em vez de expor o vocabulário interno.
+function humanSourceSelector(selector) {
+  if (selector === null || typeof selector !== "object" || Array.isArray(selector)) return null;
+  if (selector.kind === "page_range") {
+    return { tipo: "paginas", paginaInicial: selector.startPage ?? null,
+      paginaFinal: selector.endPage ?? null };
+  }
+  if (selector.kind === "time_range") {
+    return { tipo: "tempo", inicioEmMilissegundos: selector.startMilliseconds ?? null,
+      fimEmMilissegundos: selector.endMilliseconds ?? null };
+  }
+  if (selector.kind === "uri_fragment") {
+    return { tipo: "fragmento", fragmento: selector.fragment ?? null };
+  }
+  if (selector.kind === "text_quote") {
+    return { tipo: "trecho", trechoExato: selector.exact ?? null, prefixo: selector.prefix ?? null,
+      sufixo: selector.suffix ?? null };
+  }
+  return null;
 }
 
 async function detailedSource(adapter, principal, resolved, deadlineAt) {

@@ -9,7 +9,7 @@ const fail = message => { throw new AuthoringApiError(422, "invalid_human_struct
 const ref = { type: ["integer", "string"], minimum: 1, maximum: 1000000, minLength: 1, maxLength: 300 };
 const course = { type: "string", minLength: 1, maxLength: 300, description: "Nome do curso." };
 const path = { type: "object", additionalProperties: false, minProperties: 1,
-  properties: { modulo: ref, licao: ref, microssequencia: ref }, description: "Título ou posição humana; acrescente os pais para distinguir títulos repetidos." };
+  properties: { modulo: ref, licao: ref, microssequencia: ref }, description: "Título ou posição humana; acrescente os pais se houver repetição." };
 const refs = { type: "array", maxItems: 64, uniqueItems: true, items: ref };
 const continuation = { type: "string", minLength: 1, maxLength: 480000, description: "Referência original devolvida para retomar a mesma intenção; não edite seu conteúdo." };
 const kindByHuman = { modulo: "module", licao: "lesson", microssequencia: "microsequence" };
