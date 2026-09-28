@@ -41,9 +41,14 @@ const base = Object.freeze({
 const values = Object.freeze({
   ajustar_configuracao: { parametros: { maximo_ideias_novas_por_unidade: 2 }, automaticos: ["maximo_ideias_novas_por_unidade"],
     direcaoEditorial: "Relacione com o percurso." },
-  aplicar_correcoes: { correcoes: [{ unidade: 1, conteudo: null }], explicacoes: [] },
+  aplicar_correcoes: { correcoes: [{ unidade: 1, conteudo: { title: "Unidade sintética", role: "theory",
+    content: [{ id: "p-1", package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: "O DNS associa nomes a endereços." } }], response: null, feedback: [], topics: ["dns"] } }],
+  explicacoes: [{ microssequencia: "DNS", conteudo: { title: "Explicação de DNS",
+    content: [{ id: "e-1", package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: "O DNS associa nomes a endereços usados por aplicações." } }] }, fontes: [] }] },
   registrar_observacao: { unidades: [1], microssequencia: "Quadros" },
-  incorporar_pdf_como_fonte: { fonte: "Fonte sintética", titulo: "Rede local", papeisSugeridos: ["recommended_reading"] },
+  incorporar_pdf_como_fonte: { fonte: "Fonte sintética", titulo: "Rede local", papeisSugeridos: ["leitura_complementar"] },
   retomar_correcao: { curso, tentativa: "tentativa-1234", recuperacao: { courseId: "10000000-0000-4000-8000-000000000001",
     requestId: "tentativa-1234", operation: "course_observation_correction" } },
   manter_fonte: { metadados: {}, ancoras: [], vinculos: [], retirar: "fonte", estilo: "abnt",
@@ -147,5 +152,24 @@ test("quatro variantes do seletor seguem declaradas na raiz e implicadas por tip
     { tipo: "trecho", trechoExato: "Passagem", extra: 1 }];
   for (const value of accepted) assert.equal(validate({ seletor: value }), true, JSON.stringify(value) + " " + JSON.stringify(validate.errors));
   for (const value of rejected) assert.equal(validate({ seletor: value }), false, JSON.stringify(value) + " deveria ser recusado");
+});
+
+
+test("cada ferramenta aceita o modo isolado válido e a composição legítima", () => {
+  const correcoes = compile(schemaOf("aplicar_correcoes"));
+  const pdf = compile(schemaOf("incorporar_pdf_como_fonte"));
+  const soCorrecoes = { ...base.aplicar_correcoes, correcoes: structuredClone(values.aplicar_correcoes.correcoes) };
+  const soExplicacoes = { ...base.aplicar_correcoes, explicacoes: structuredClone(values.aplicar_correcoes.explicacoes) };
+  assert.equal(correcoes(soCorrecoes), true, JSON.stringify(correcoes.errors));
+  assert.equal(correcoes(soExplicacoes), true, JSON.stringify(correcoes.errors));
+  assert.equal(correcoes({ ...soCorrecoes, ...soExplicacoes }), true, "composição legítima");
+  assert.equal(correcoes({ ...base.aplicar_correcoes }), false, "sem ramificação");
+  const soFonte = { ...base.incorporar_pdf_como_fonte, fonte: values.incorporar_pdf_como_fonte.fonte };
+  const soTitulo = { ...base.incorporar_pdf_como_fonte, titulo: values.incorporar_pdf_como_fonte.titulo,
+    papeisSugeridos: structuredClone(values.incorporar_pdf_como_fonte.papeisSugeridos) };
+  assert.equal(pdf(soFonte), true, JSON.stringify(pdf.errors));
+  assert.equal(pdf(soTitulo), true, JSON.stringify(pdf.errors));
+  assert.equal(pdf({ ...soFonte, ...soTitulo }), false, "as duas ramificações juntas");
+  assert.equal(pdf({ ...base.incorporar_pdf_como_fonte }), false, "sem ramificação");
 });
 
