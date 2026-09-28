@@ -136,7 +136,7 @@ function nextDecisionForError(error, retryable) {
   if (projectHumanMaterializationPreflight(error) ||
       error.code === "human_materialization_contextual_calibration_required") return "Resolva autonomamente tudo que já estiver determinado pelo curso e repita a verificação. Se restar uma escolha que altere o percurso de aprendizagem, consolide as pendências relacionadas, explique ao autor o que precisa ser decidido e por que isso importa, faça uma única pergunta e, após a resposta, retome a produção original.";
   if (error.code === "ambiguous_human_reference") {
-    return "Informe um título mais específico ou a posição humana do objeto.";
+    return "Informe um título completo e único ou qualifique o escopo pai aceito pela ferramenta; repetir a mesma posição não distingue objetos.";
   }
   if (error.code === "human_reference_not_found") {
     return "Confira o título ou a posição e tente novamente.";

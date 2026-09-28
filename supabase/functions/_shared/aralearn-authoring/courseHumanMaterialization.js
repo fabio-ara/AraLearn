@@ -1,4 +1,5 @@
 import { AuthoringApiError } from "./errors.js";
+import { COURSE_AUTHORING_CALIBRATION_RECOVERY } from "./courseKnowledge.js";
 import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
@@ -662,7 +663,16 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   const add = (code, message, details = {}) => blockers.push({ code, message, ...details });
   const capture = (callback, details = {}) => {
     try { return callback(); }
-    catch (error) { add(error.code ?? "invalid_human_materialization", error.message, details); return null; }
+    catch (error) {
+      // Somente campos humanos e curtos atravessam o bloqueador; nenhum payload interno.
+      const projected = {};
+      for (const key of ["studyUnit", "microsequence", "field", "parameter", "requested", "current", "applied", "idea"]) {
+        const entry = error?.details?.[key];
+        if (typeof entry === "string" && entry.length <= 4000) projected[key] = entry;
+      }
+      add(error.code ?? "invalid_human_materialization", error.message, { ...details, ...projected });
+      return null;
+    }
   };
   const mapStatus = context.plan?.plan?.curriculumMapStatus;
   if (mapStatus === "draft" && !allowDraftCurricularMap) {
@@ -783,7 +793,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     scopedDesigns.set(existing?.studyUnit.id ?? `new:${index}`, scopedDesign);
     capture(() => validateUnitConfiguration(planned.configuracao), details);
     const design = capture(() => applyUnitContextualCalibration(scopedDesign, planned.configuracao,
-      { existing }), details);
+      { existing, studyUnit: planned.conteudo?.title ?? existing?.studyUnit?.title ?? null }), details);
     if (!design) continue;
     capture(() => designSnapshot(design, micro.id), details);
     for (const id of curriculumScopeItemIds) {
@@ -1238,21 +1248,40 @@ function sameJson(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function existingConfigurationConflict() {
+function boundedDiagnostic(value, limit = 240) {
+  if (value === null || value === undefined) return null;
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return text.length > limit ? `${text.slice(0, limit)}…` : text;
+}
+
+// O conflito nomeia o campo divergente e contrasta o solicitado com o vigente,
+// sem reler o curso: os dados vêm do design corrente e da configuração pedida.
+function existingConfigurationConflict(details = {}) {
+  const where = details.studyUnit ? ` na unidade “${details.studyUnit}”` : "";
+  const field = details.field ? ` no campo “${details.field}”` : "";
+  const compare = details.field
+    ? ` Solicitado: ${boundedDiagnostic(details.requested) ?? "—"}; intenção efetiva corrente: ${boundedDiagnostic(details.current) ?? "—"}; valor aplicado na unidade: ${boundedDiagnostic(details.applied) ?? "—"}.`
+    : "";
   fail(
     "human_materialization_existing_configuration_conflict",
-    "Esta unidade já possui outra configuração. Ajuste a configuração antes de revisar o conteúdo."
+    `Esta unidade já possui outra configuração${where}${field}.${compare}`,
+    undefined,
+    Object.keys(details).length ? details : undefined
   );
 }
 
-function applyUnitContextualCalibration(design, configuration, { existing = null } = {}) {
+function applyUnitContextualCalibration(design, configuration, { existing = null, studyUnit = null } = {}) {
   if (design?.parameters?.some((parameter) => parameter.conflicts?.length)) {
     fail("human_materialization_configuration_conflict", "Resolva a condição fixa e sua exceção antes de produzir.", 409);
   }
   const calibrated = structuredClone(design);
   const snapshot = existing?.designSnapshot;
+  // Guarda a intenção efetiva ORIGINAL: o reuso do aplicado não pode reescrever
+  // a camada relatada no diagnóstico nem afirmar que ela já era o valor novo.
+  const effectiveBeforeReuse = new Map((calibrated.parameters ?? [])
+    .map(parameter => [parameter.parameterId, parameter.effectiveAssignment?.value ?? null]));
   // Applying a contextual choice persists the snapshot, not an intention. Reuse
-  // only that unit's valid automatic choices while its intention is still unset.
+  // that unit's valid automatic choices while its control remains automatic.
   // Both reads are revision-bound and the preflight identity includes the snapshot.
   if (snapshot?.contract === "aralearn.study-unit-design-snapshot.v2" &&
       snapshot.parameterCatalogVersion === COURSE_DESIGN_PARAMETER_CATALOG_VERSION &&
@@ -1261,8 +1290,13 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
       new Set(snapshot.parameters.map(parameter => parameter?.parameterId)).size === snapshot.parameters.length) {
     for (const parameter of calibrated.parameters ?? []) {
       const effective = parameter.effectiveAssignment;
-      if (effective?.mode !== "automatic" || effective.value !== null || effective.origin !== "system_default" ||
-          effective.sourceScope != null || parameter.localAssignment != null) continue;
+      // Reusa quando a intenção corrente ainda é automática sem valor (regra original)
+      // ou quando é uma calibração automática já registrada, sem sobrepor fixação,
+      // pesquisa ou intenção humana corrente.
+      const unsetAutomatic = effective?.mode === "automatic" && effective.value === null &&
+        effective.origin === "system_default" && effective.sourceScope == null && parameter.localAssignment == null;
+      const appliedAutomatic = effective?.mode === "automatic" && effective.origin === "automatic";
+      if (!unsetAutomatic && !appliedAutomatic) continue;
       const applied = snapshot.parameters.find(entry => entry?.parameterId === parameter.parameterId);
       const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId);
       if (applied?.origin !== "automatic" || !["study_unit", "course"].includes(applied.sourceScopeKind) ||
@@ -1300,7 +1334,9 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
       const current = parameter.effectiveAssignment.value;
       if (current === null || current === undefined ||
           !sameJson(normalizeCourseDesignParameterValue(parameterId, current), value)) {
-        existingConfigurationConflict();
+        existingConfigurationConflict({ ...(studyUnit ? { studyUnit } : {}), field, parameter: field,
+          requested: boundedDiagnostic(value), current: boundedDiagnostic(effectiveBeforeReuse.get(parameterId)),
+          applied: boundedDiagnostic(snapshot?.parameters?.find(entry => entry?.parameterId === parameterId)?.value ?? null) });
       }
       continue;
     }
@@ -1336,7 +1372,9 @@ function applyUnitContextualCalibration(design, configuration, { existing = null
       : [];
     if (existing) {
       if (!effective.some((assignment) => assignment?.guidance === guidance)) {
-        existingConfigurationConflict();
+        existingConfigurationConflict({ ...(studyUnit ? { studyUnit } : {}), field: "direção editorial",
+          requested: boundedDiagnostic(guidance), current: boundedDiagnostic(effective[0]?.guidance ?? null),
+          applied: null });
       }
       return calibrated;
     }
@@ -1604,6 +1642,7 @@ function validatePedagogicalGroup(
   const developedByAnalysis = new Map([...targetAnalysis].map((id) => [id, new Set()]));
   const notApplicableByAnalysis = new Map([...targetAnalysis].map((id) => [id, new Set()]));
   const requiredFormsByAnalysis = new Map();
+  const introductionByAnalysis = new Map();
   const practiceByEvidence = new Map([...targetEvidence].map((id) => [id, {
     opportunities: new Set(),
     operation: null,
@@ -1720,6 +1759,7 @@ function validatePedagogicalGroup(
       }
       introducedInGroup.add(id);
       requiredFormsByAnalysis.set(id, new Set(requiredForms));
+      if (!introductionByAnalysis.has(id)) introductionByAnalysis.set(id, unit.content.title);
     }
     for (const explanation of unit.explanations) {
       const id = explanation.instructionalAnalysisUnitId;
@@ -1811,9 +1851,13 @@ function validatePedagogicalGroup(
       const idea = analysisLabels.get(id) || "ideia nova";
       const forms = missing.map((form) => EXPLANATION_FORM_LABELS[form] || form)
         .join(", ");
+      const introduction = introductionByAnalysis.get(id) ?? null;
+      const where = microsequenceTitle ? ` na microssequência “${microsequenceTitle}”` : "";
       report(
         "human_materialization_missing_explanation_form",
-        `A ideia “${idea}” ainda precisa destas formas: ${forms}. Desenvolva-as ou justifique as que não se aplicam.`
+        `A unidade “${introduction ?? "de introdução"}”${where} introduz “${idea}”, e a configuração aplicada exige ${forms}; as declarações de ensino das unidades ainda não cobrem essa exigência. A divergência é entre a configuração aplicada e as declarações de ensino das unidades, não uma conclusão sobre o conteúdo.`,
+        undefined,
+        { ...microsequenceDetail, idea, ...(introduction ? { studyUnit: introduction } : {}) }
       );
     }
   }
@@ -2076,10 +2120,12 @@ export async function materializeHumanCoursePart({
   });
   return {
     result: complete ? (producedPartPosition === 1 ? "Primeira parte produzida." : `Parte ${producedPartPosition} produzida.`)
-      : "Conteúdo solicitado salvo.",
+      : "Gravação parcial: o conteúdo solicitado foi salvo, mas a parte ainda não está concluída.",
     ...buildHumanNavigationEnvelope(producedContentTarget ? createHumanNavigation(adapter, {
       courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
-    }) : null, [], { nextDecision: "Use preparar_revisao para uma segunda leitura pedagógica do percurso salvo. Registre as seis dimensões, incluindo configuration, da inspeção; corrija insuficiências antes de considerar a produção satisfatória." }),
+    }) : null, [], { nextDecision: complete
+      ? "Use preparar_revisao com auditoria: true para uma segunda leitura pedagógica do percurso salvo. Registre as seis dimensões, incluindo configuration; corrija insuficiências antes de considerar a produção satisfatória."
+      : "A gravação é parcial: continue somente o que falta, confira o acumulado e conclua a parte antes da inspeção final. Só então use preparar_revisao com auditoria: true e as seis dimensões, incluindo configuration." }),
     context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
       ...(bpmnReview ? { bpmnReview } : {}),
       qualidadePedagogica: "pending_independent_inspection",
@@ -2102,6 +2148,15 @@ export function humanMaterializationRecovery(preflight) {
   const useBefore = blockers.find(blocker =>
     blocker.code === "human_materialization_use_before_introduction" && blocker.idea);
   if (useBefore) return `Apresente o ensino de “${useBefore.idea}” antes da unidade “${useBefore.studyUnit ?? "em uso"}” e repita a verificação.`;
+  const formGap = blockers.find(blocker =>
+    blocker.code === "human_materialization_missing_explanation_form");
+  if (formGap) {
+    const target = `${formGap.idea ? `a ideia “${formGap.idea}”` : "a ideia de introdução"}${formGap.studyUnit ? ` na unidade de introdução “${formGap.studyUnit}”` : ""}`;
+    return `As declarações de ensino das unidades ainda não cobrem ${target}. ` + COURSE_AUTHORING_CALIBRATION_RECOVERY;
+  }
+  const existingConfiguration = blockers.find(blocker =>
+    blocker.code === "human_materialization_existing_configuration_conflict");
+  if (existingConfiguration) return COURSE_AUTHORING_CALIBRATION_RECOVERY;
   if (blockers.length) return "Corrija as pendências de percurso indicadas e repita a verificação.";
   return null;
 }

@@ -507,7 +507,8 @@ test("#272 referência ambígua e indisponibilidade devolvem retomadas diferente
   const ambiguousPayload = await ambiguous.json();
   assert.equal(ambiguousPayload.error.code, "ambiguous_human_reference");
   assert.equal(ambiguousPayload.error.retryable, false);
-  assert.match(ambiguousPayload.nextDecision, /título mais específico ou a posição/iu);
+  assert.match(ambiguousPayload.nextDecision, /título completo e único ou qualifique o escopo pai/iu);
+  assert.doesNotMatch(ambiguousPayload.nextDecision, /ou a posição/iu);
 
   const unavailable = await createHandler({
     async listCourses() {

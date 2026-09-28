@@ -21,6 +21,10 @@ import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import {
+  COURSE_AUTHORING_DELIVERY_CORE,
+  courseAuthoringGuidanceForCall
+} from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 
 const COURSE = { id: "10000000-0000-4000-8000-000000000001", revision: 7 };
 const OTHER_COURSE = "10000000-0000-4000-8000-000000000002";
@@ -539,7 +543,7 @@ test("lista autorizada revela o curso 13 e recusa a continuação em outra conta
 test("revisão lê uma página de 12, conserva cada studyUnit literal e remove maquinaria dos metadados", async () => {
   const units = Array.from({ length: 24 }, (_, i) => studyUnit(i + 1));
   const adapter = fixture({ units, totalUnits: 1200 });
-  const first = await readLogicalPage(adapter, "preparar_revisao");
+  const first = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true });
   assert.deepEqual(first.context.studyUnits.map(item => item.studyUnit), units.slice(0, 12).map(item => item.studyUnit));
   for (const item of first.context.studyUnits) {
     const metadata = { ...item };
@@ -566,7 +570,8 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
     Array.from({ length: first.calls }, () => units.slice(0, 12).map(item => ({ courseId: COURSE.id,
       targetKind: "study_unit", targetId: item.studyUnit.id }))).flat());
   assert.deepEqual(adapter.calls.inspections, adapter.calls.reviews);
-  const second = await readLogicalPage(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
+  const second = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true,
+    continuacao: first.context.continuacao });
   assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit), units.slice(12).map(item => item.studyUnit));
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
   assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId),
@@ -644,13 +649,13 @@ test("MCP entrega ocorrência e âncora selecionada juntas, inclusive divergênc
   assert.deepEqual(links.map(link => link.occurrences[0].quote), claims);
   assert.ok(links.every(link => link.occurrences[0].prefix === "Definição: " && link.occurrences[0].suffix === " Confira."));
   assert.equal(links[0].anchors[0].posicao, 2, "somente a âncora selecionada chega no vínculo");
-  assert.equal(links[0].anchors[0].selector.exact, "A truth table lists truth values.");
+  assert.equal(links[0].anchors[0].seletor.trechoExato, "A truth table lists truth values.");
   assert.equal(links[0].anchors[0].verificationExcerpt, "A truth table lists truth values.");
   assert.equal(links[0].fonte.url, "https://example.test/logic.pdf");
   assert.deepEqual(links[0].evidencia, { located: true, issues: [] }, "localização estrutural não certifica a afirmação sobre interseção");
   assert.equal(links[1].fonte.titulo, "Relações sintéticas");
   assert.equal(links[1].fonte.url, "https://example.test/relations.pdf");
-  assert.equal(links[1].anchors[0].selector.kind, "page_range");
+  assert.deepEqual(links[1].anchors[0].seletor, { tipo: "paginas", paginaInicial: 3, paginaFinal: 3 });
   assert.equal(links[1].anchors[0].verificationExcerpt, null);
   assert.equal(links[2].fonte.localizada, true);
   assert.deepEqual(links[2].anchors, []);
@@ -692,7 +697,7 @@ test("revisão de unidade conserva base, citações associadas e orientação, f
     planItems: [], dependencies: [{ title: "Pré-requisito", goal: "Distinguir elementos" }],
     studyUnits: units.map(unit => ({ id: unit.studyUnit.id, content: unit.studyUnit })), citations
   } });
-  const response = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE });
+  const response = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE, auditoria: true });
   const context = response.value.context;
   const targetAudit = context.studyUnits[0].auditoriaPedagogica;
   assert.equal(context.auditoriasPedagogicas.length, 1);
@@ -750,7 +755,7 @@ function focalAuditFixture({ unitCount = 3 } = {}) {
 
 test("revisão e retomada focal compartilham por identidade antes da projeção, com fontes próprias e paridade dos canais", async () => {
   for (const name of ["preparar_revisao", "retomar_curso"]) {
-    const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE };
+    const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE, auditoria: true };
     const channelPages = [];
     for (const channel of ["mcp", "actions"]) {
       const { adapter, inspections } = focalAuditFixture();
@@ -764,12 +769,25 @@ test("revisão e retomada focal compartilham por identidade antes da projeção,
         assert.ok(Buffer.byteLength(JSON.stringify(response.value.context)) <= 16 * 1024);
         pages.push(response.value);
         const fragment = response.value.context.fragmento;
-        assert.ok(fragment, "a prova deve atravessar a paginação do contexto compartilhado");
+        if (!fragment) {
+          assert.equal(name, "retomar_curso", "a inspeção formal atravessa a paginação do contexto compartilhado");
+          break;
+        }
         assert.equal(fragment.inicio, literal.length);
         literal += fragment.texto;
         cursor = response.value.context.continuacao;
       } while (cursor);
-      const context = JSON.parse(literal);
+      const context = literal ? JSON.parse(literal) : pages.at(-1).context;
+      if (name === "retomar_curso") {
+        assert.equal(context.auditoriasPedagogicas, undefined, "a retomada focal não carrega a base de auditoria");
+        for (const target of context.explicacoes) {
+          assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
+          assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+          assert.equal(Object.hasOwn(target, "conteudo"), true, "a retomada mantém a Explicação literal");
+        }
+        channelPages.push(pages);
+        continue;
+      }
       assert.equal(context.auditoriasPedagogicas.length, 2, "mesmo título conserva dois focos internos");
       assert.ok(context.auditoriasPedagogicas.every(item => !Object.hasOwn(item.basis.microsequence, "id")));
       for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
@@ -862,7 +880,7 @@ test("MCP e Actions expõem BPMN inconsistente no alvo, preservam a base compart
     };
     let cursor, literal = "", fragments = 0;
     do {
-      const read = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, ...(cursor ? { continuacao: cursor } : {}) });
+      const read = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, auditoria: true, ...(cursor ? { continuacao: cursor } : {}) });
       assert.equal(read.status, 200);
       assert.ok(read.value.context, JSON.stringify(read.value));
       assert.ok(read.envelope.length < 100_000);
@@ -979,7 +997,7 @@ test("envelopes validados ficam literais na base por MCP e Actions, sem liberar 
         inspections.set(input.targetId, read);
         return read;
       };
-      const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE };
+      const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE, auditoria: true };
       let cursor, literal = "";
       const pages = [];
       do {
@@ -990,15 +1008,29 @@ test("envelopes validados ficam literais na base por MCP e Actions, sem liberar 
         assert.ok(JSON.stringify(read.value.context).length <= 12_000);
         assert.ok(Buffer.byteLength(JSON.stringify(read.value.context)) <= 16 * 1024);
         const fragment = read.value.context.fragmento;
+        if (!fragment) {
+          assert.equal(name, "retomar_curso", "a inspeção formal atravessa a paginação da base auditada");
+          pages.push(read.value);
+          break;
+        }
         assert.equal(fragment.inicio, literal.length);
         literal += fragment.texto;
         cursor = read.value.context.continuacao;
         pages.push(read.value);
         assert.ok(pages.length < 40);
       } while (cursor);
-      assert.ok(pages.length > 1);
-      const context = JSON.parse(literal);
-      assert.doesNotMatch(literal, /PRIVATE_META_/u);
+      if (name === "preparar_revisao") assert.ok(pages.length > 1, "a base auditada atravessa a paginação");
+      const context = literal ? JSON.parse(literal) : pages.at(-1).context;
+      assert.doesNotMatch(JSON.stringify(context), /PRIVATE_META_/u);
+      if (name === "retomar_curso") {
+        assert.equal(context.auditoriasPedagogicas, undefined, "a retomada focal não carrega a base de auditoria");
+        for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
+          assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
+          assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+        }
+        channelPages.push(pages);
+        continue;
+      }
       assert.equal(context.auditoriasPedagogicas.length, 2);
       for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
         const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
@@ -1035,7 +1067,7 @@ test("studyUnits da base conserva formato de linha sem inventar studyUnit undefi
       title: "Unidade", content: [], feedback: [], response: null
     }, application: null }]
   } });
-  const read = await execute(adapter, "preparar_revisao", {});
+  const read = await execute(adapter, "preparar_revisao", { auditoria: true });
   assert.equal(read.context.fragmento, undefined, "examina o objeto antes de serializar undefined");
   const row = read.context.auditoriasPedagogicas[0].basis.studyUnits[0];
   assert.equal(Object.hasOwn(row, "studyUnit"), false);
@@ -1058,7 +1090,7 @@ test("parâmetros recebem definição no foco e fallback local quando a identida
     const originalUnits = adapter.listCourseStudyUnits;
     adapter.listCourseStudyUnits = async input => { const page = await originalUnits(input);
       page.items = page.items.map(item => ({ ...item, designSnapshot: { parameters: [parameter] } })); return page; };
-    const read = await readLogicalPage(adapter, "preparar_revisao");
+    const read = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true });
     const focus = read.context.auditoriasPedagogicas?.[0];
     const applied = (focus?.basis ?? read.context.studyUnits[0].auditoriaPedagogica.basis).studyUnits[0].design.parameters[0];
     assert.equal(applied.nome, "Distribuição das práticas");
@@ -1101,7 +1133,7 @@ test("MCP e Actions leem parâmetros nomináveis e histórico, gravam seis e só
     };
     let literal = "", continuation, context, fragments = 0;
     do {
-      const read = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, ...(continuation ? { continuacao: continuation } : {}) });
+      const read = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, auditoria: true, ...(continuation ? { continuacao: continuation } : {}) });
       assert.equal(read.status, 200);
       const page = read.value.context;
       assert.ok(JSON.stringify(page).length <= 12_000);
@@ -1239,7 +1271,7 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
       for (let logicalPage = 0; logicalPage < logicalPages; logicalPage++) {
         let literal = "", context, fragments = 0;
         do {
-          const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE };
+          const args = name === "retomar_curso" ? { titulo: TITLE, parte: "Foco" } : { curso: TITLE, auditoria: true };
           const read = await channelCall(channel, adapter, name, { ...args, ...(continuation ? { continuacao: continuation } : {}) });
           assert.equal(read.status, 200);
           assert.ok(read.envelope.length < 100_000);
@@ -1247,6 +1279,12 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
           assert.ok(JSON.stringify(page).length <= 12_000);
           assert.ok(Buffer.byteLength(JSON.stringify(page)) <= 16 * 1024);
           const fragment = page.fragmento;
+          if (!fragment) {
+            assert.equal(name, "retomar_curso", "a inspeção formal atravessa a paginação da base auditada");
+            continuation = page.continuacao;
+            context = page;
+            break;
+          }
           assert.equal(fragment.inicio, literal.length);
           literal += fragment.texto;
           continuation = page.continuacao;
@@ -1255,7 +1293,17 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
           assert.ok(continuation);
           assert.ok(fragments < 120);
         } while (continuation);
-        assert.ok(fragments > 1);
+        if (name === "preparar_revisao") assert.ok(fragments > 1, "a base auditada atravessa a paginação");
+        if (name === "retomar_curso") {
+          assert.equal(context.auditoriasPedagogicas, undefined, "a retomada focal não carrega a base de auditoria");
+          for (const target of context.explicacoes) {
+            assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
+            assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+          }
+          assert.equal(Boolean(continuation), false, "a retomada comum entrega a página focal integral");
+          pages.push(context);
+          continue;
+        }
         assert.equal(context.auditoriasPedagogicas.length, 2, "dois focos de mesmo título, independentes em cada página");
         for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
           const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
@@ -1310,10 +1358,11 @@ test("compartilhamento decide pela base exata antes de nomear parâmetros, sem u
 
 test("segunda página lógica entrega sua base completa com foco local, sem depender da primeira", async () => {
   const { adapter } = focalAuditFixture({ unitCount: 14 });
-  const first = await readLogicalPage(adapter, "preparar_revisao");
+  const first = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true });
   assert.equal(first.context.auditoriasPedagogicas.length, 2);
   assert.equal(first.context.temMais, true);
-  const second = await readLogicalPage(adapter, "preparar_revisao", { continuacao: first.context.continuacao });
+  const second = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true,
+    continuacao: first.context.continuacao });
   assert.equal(second.context.auditoriasPedagogicas.length, 2, "a leitura sem filtro mantém as explicações do planejamento nesta página");
   assert.equal(second.context.auditoriasPedagogicas[0].foco, 1);
   assert.equal(second.context.auditoriasPedagogicas[0].basis.microsequence.goal, "Objetivo 2");
@@ -1403,3 +1452,248 @@ test("fontes extensas atravessam ambos os transportes em envelopes Actions abaix
   }
   assert.deepEqual(allPages[0], allPages[1]);
 });
+
+
+test("critérios de entrega chegam uma vez na retomada, no planejamento e no preparo", async () => {
+  const encoder = new TextEncoder();
+  const coreBytes = encoder.encode(JSON.stringify(COURSE_AUTHORING_DELIVERY_CORE)).byteLength;
+  assert.equal(COURSE_AUTHORING_DELIVERY_CORE.length, 6, "o núcleo canônico tem seis linhas");
+  assert.ok(coreBytes <= 1_000, "o núcleo canônico precisa caber em 1000 bytes");
+  for (const task of ["consultar_planejamento", "preparar_materializacao"]) {
+    const guide = courseAuthoringGuidanceForCall(task);
+    for (const line of COURSE_AUTHORING_DELIVERY_CORE) {
+      assert.ok(guide.instructions.includes(line), task + " reutiliza o núcleo de entrega");
+    }
+  }
+
+  for (const channel of ["actions", "mcp"]) {
+    const adapter = fixture();
+    const list = await channelCall(channel, adapter, "retomar_curso", {});
+    assert.equal(list.status, 200, list.envelope);
+    assert.equal(Object.hasOwn(list.value.context, "criteriosDeEntrega"), false,
+      channel + ": a listagem sem alvo não carrega os critérios");
+    assert.match(list.envelope, /cursos para retomar/u);
+
+    const resumed = await channelCall(channel, adapter, "retomar_curso", { titulo: TITLE });
+    assert.equal(resumed.status, 200, resumed.envelope);
+    assert.deepEqual(resumed.value.context.criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE],
+      channel + ": a retomada com curso entrega o núcleo canônico");
+
+    const { adapter: preparation } = materializationPreparationFixture(1);
+    const prepared = await channelCall(channel, preparation, "preparar_materializacao",
+      { curso: TITLE, unidades: [focalCandidate()] });
+    assert.equal(prepared.status, 200, prepared.envelope);
+    assert.deepEqual(prepared.value.context.criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE],
+      channel + ": o preparo entrega o núcleo antes de salvar");
+    assert.ok(prepared.envelope.length < 20_000,
+      channel + ": o preparo usa o orçamento próprio, sem paginador");
+
+    const paged = fixture();
+    paged.getCourseInstructionalPlan = async () => ({ courseRevision: paged.revision, plan: {
+      title: TITLE, version: 1, curriculumMapStatus: "draft", parts: [], audience: "Iniciantes",
+      declaredPrerequisites: [], curriculumScopeItems: [],
+      curriculum: { modules: Array.from({ length: 12 }, (_, moduleIndex) => ({
+        id: "module-" + moduleIndex, position: moduleIndex, title: "Módulo " + (moduleIndex + 1),
+        objective: "Objetivo do módulo. ".repeat(20),
+        lessons: [{ id: "lesson-" + moduleIndex, position: 0, title: "Lição " + (moduleIndex + 1),
+          objective: "Objetivo da lição. ".repeat(20),
+          microsequences: Array.from({ length: 3 }, (_, microIndex) => ({
+            id: "ms-" + moduleIndex + "-" + microIndex, position: microIndex,
+            title: "Microssequência " + (moduleIndex + 1) + "." + (microIndex + 1) + " do percurso de redes",
+            goal: "Relacionar conceitos e procedimentos. ".repeat(12) })) }]
+      })) }
+    } });
+    let continuation = undefined, literal = "", pages = 0, total = null, expectedStart = 0;
+    let firstPageHasCore = false, laterPageHasCore = false;
+    for (let pageIndex = 0; pageIndex < 6; pageIndex += 1) {
+      const page = await channelCall(channel, paged, "consultar_planejamento",
+        { curso: TITLE, ...(continuation === undefined ? {} : { continuacao: continuation }) });
+      assert.equal(page.status, 200, page.envelope);
+      const context = page.value.context;
+      assert.equal(typeof context.fragmento?.texto, "string",
+        channel + ": o mapa de prova precisa paginar em fragmentos JSON");
+      assert.equal(context.fragmento.inicio, expectedStart, channel + ": offsets contíguos entre páginas");
+      expectedStart = context.fragmento.fim;
+      if (total === null) total = context.fragmento.total;
+      assert.equal(context.fragmento.total, total, channel + ": o total do recorte é estável");
+      assert.ok(encoder.encode(JSON.stringify(context)).byteLength <= 16 * 1024,
+        channel + ": cada página cabe em 16 KiB");
+      assert.ok(JSON.stringify(context).length <= 12_000, channel + ": cada página cabe em 12000 caracteres");
+      if (pageIndex === 0) firstPageHasCore = context.fragmento.texto.includes("criteriosDeEntrega");
+      else if (context.fragmento.texto.includes("criteriosDeEntrega")) laterPageHasCore = true;
+      literal += context.fragmento.texto;
+      pages += 1;
+      if (context.temMais !== true) break;
+      continuation = context.continuacao;
+    }
+    assert.ok(pages >= 2 && pages <= 5, channel + ": o recorte precisa de 2 a 5 páginas determinísticas");
+    assert.equal(literal.length, total, channel + ": os fragmentos remontam o recorte literal");
+    assert.ok(firstPageHasCore, channel + ": o núcleo entra na primeira página");
+    assert.equal(laterPageHasCore, false, channel + ": a continuação não repete o núcleo");
+    assert.equal(literal.split("criteriosDeEntrega").length - 1, 1,
+      channel + ": o núcleo aparece uma única vez no recorte remontado");
+    assert.deepEqual(JSON.parse(literal).criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE]);
+  }
+});
+
+async function readChannelContext(channel, adapter, name, args) {
+  let continuation, literal = "", pages = 0, single = null, nextDecision = null;
+  for (;;) {
+    const response = await channelCall(channel, adapter, name, { ...args,
+      ...(continuation ? { continuacao: continuation } : {}) });
+    assert.equal(response.status, 200, response.envelope);
+    nextDecision ??= response.value.nextDecision ?? null;
+    const context = response.value.context;
+    assert.ok(JSON.stringify(context).length <= 12_000);
+    assert.ok(Buffer.byteLength(JSON.stringify(context)) <= 16 * 1024);
+    pages += 1;
+    if (!context.fragmento) { single = context; break; }
+    assert.equal(context.fragmento.inicio, literal.length);
+    literal += context.fragmento.texto;
+    if (context.fragmento.fim === context.fragmento.total) break;
+    continuation = context.continuacao;
+    assert.ok(continuation, "a página lógica continua enquanto faltarem trechos");
+    assert.ok(pages < 120);
+  }
+  return { context: single ?? JSON.parse(literal), pages, nextDecision };
+}
+
+test("leitura comum da revisão não busca a inspeção e auditoria: true devolve a base nos dois canais", async () => {
+  const measurements = [];
+  for (const channel of ["actions", "mcp"]) {
+    const sizes = {};
+    for (const mode of ["comum", false, true]) {
+      const { adapter } = focalAuditFixture();
+      const args = mode === "comum" ? { curso: TITLE } : { curso: TITLE, auditoria: mode };
+      const { context, pages, nextDecision } = await readChannelContext(channel, adapter, "preparar_revisao", args);
+      const json = JSON.stringify(context);
+      const key = mode === "comum" ? "default" : String(mode);
+      sizes[key] = { chars: json.length, bytes: Buffer.byteLength(json),
+        inspections: adapter.calls.inspections.length };
+      const targets = [...context.studyUnits, ...context.explicacoes];
+      assert.ok(targets.length > 0);
+      assert.equal(context.studyUnits[0].revisao, "Rascunho", "a leitura comum preserva o estado de revisão");
+      assert.match(context.studyUnits[0].referenciaRevisao, /^[A-Za-z0-9_-]+$/u);
+      if (mode !== true) {
+        assert.equal(adapter.calls.inspections.length, 0, "a leitura comum não busca getCourseContentInspection");
+        assert.equal(context.auditoriasPedagogicas, undefined);
+        assert.match(nextDecision, /auditoria: true/u, "a leitura comum orienta a auditoria explícita");
+        assert.doesNotMatch(nextDecision, /^Registre o parecer/u, "sem base, não instrui registrar o parecer");
+        for (const target of targets) {
+          assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
+          assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+          assert.equal(Object.hasOwn(target, "inspecaoIA"), false,
+            "não consultar a inspeção não pode inventar indisponibilidade");
+        }
+      } else {
+        assert.equal(adapter.calls.inspections.length, targets.length * pages,
+          "cada reexecução da página lógica inspeciona seus próprios alvos");
+        assert.ok(context.auditoriasPedagogicas.length >= 1);
+        assert.match(nextDecision, /^Registre o parecer das seis dimensões/u,
+          "com a base devolvida, a decisão seguinte registra o parecer");
+        assert.ok(targets.every(target => target.referenciaInspecao && target.auditoriaPedagogica));
+        assert.ok(targets.every(target => target.inspecaoIA && target.inspecaoIA.state === "unregistered"));
+      }
+      if (mode === false) assert.deepEqual(sizes.false, sizes.default, "omitir auditoria equivale a auditoria: false");
+    }
+    assert.ok(sizes.true.chars > sizes.default.chars, "a auditoria devolve mais caracteres que a leitura comum");
+    assert.ok(sizes.true.bytes > sizes.default.bytes);
+    assert.equal(sizes.default.inspections, 0);
+    assert.ok(sizes.true.inspections > 0);
+    measurements.push({ channel, ...sizes });
+  }
+  assert.deepEqual(measurements[0].default, measurements[1].default, "a leitura comum é idêntica nos dois canais");
+  assert.deepEqual(measurements[0].true, measurements[1].true, "a auditoria é idêntica nos dois canais");
+});
+
+test("auditoria sem serviço de inspeção mantém o estado unavailable de antes", async () => {
+  const adapter = fixture({ units: [studyUnit(1)] });
+  delete adapter.getCourseContentInspection;
+  const read = await execute(adapter, "preparar_revisao", { auditoria: true });
+  assert.ok(read.context.studyUnits.length > 0);
+  for (const target of read.context.studyUnits) {
+    assert.deepEqual(target.inspecaoIA, { state: "unavailable" }, "a inspeção pedida sem adapter continua unavailable");
+    assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
+    assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
+  }
+  const common = fixture({ units: [studyUnit(1)] });
+  delete common.getCourseContentInspection;
+  const plain = await execute(common, "preparar_revisao", {});
+  assert.equal(Object.hasOwn(plain.context.studyUnits[0], "inspecaoIA"), false,
+    "a leitura comum omite o estado mesmo sem serviço");
+});
+
+test("continuação da revisão liga o modo de auditoria aos argumentos", async () => {
+  const units = Array.from({ length: 24 }, (_, index) => studyUnit(index + 1,
+    "Conteúdo literal extenso da unidade. ".repeat(60)));
+  const audited = fixture({ units, totalUnits: 1200 });
+  const auditRead = await execute(audited, "preparar_revisao", { auditoria: true });
+  assert.ok(auditRead.context.continuacao, "a auditoria devolve continuação para a página seguinte");
+  await assert.rejects(() => execute(audited, "preparar_revisao", { auditoria: false,
+    continuacao: auditRead.context.continuacao
+  }), error => error.status === 409 && error.code === "human_read_context_changed");
+  const omitting = fixture({ units, totalUnits: 1200 });
+  const commonRead = await execute(omitting, "preparar_revisao", {});
+  assert.ok(commonRead.context.continuacao, "a leitura comum também pagina no recorte extenso");
+  await assert.rejects(() => execute(omitting, "preparar_revisao", { auditoria: true,
+    continuacao: commonRead.context.continuacao
+  }), error => error.status === 409 && error.code === "human_read_context_changed");
+  const same = await execute(omitting, "preparar_revisao", { continuacao: commonRead.context.continuacao });
+  assert.ok(same.context.fragmento, "a mesma consulta continua a leitura comum");
+});
+
+function sharedExplanationFixture({ sourceIds = [] } = {}) {
+  const units = [studyUnit(1), studyUnit(2)].map(unit => ({ ...unit,
+    curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
+  const adapter = fixture({ units });
+  const support = { title: "Relação completa", content: [{ id: "support", package: "aralearn.resource.paragraph",
+    version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
+    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
+      explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds },
+      explanation: support, contentReview: { state: "draft" } }] }] } });
+  return { adapter, support, units };
+}
+
+test("unidades selecionadas recebem a Explicação compartilhada só como referência e título", async () => {
+  const selected = sharedExplanationFixture();
+  const read = await execute(selected.adapter, "preparar_revisao", { unidades: [1] });
+  const explanation = read.context.explicacoes[0];
+  assert.equal(explanation.microssequencia, "Um avanço");
+  assert.equal(Object.hasOwn(explanation, "conteudo"), false, "a Explicação compartilhada não repete o conteúdo");
+  assert.equal(Object.hasOwn(explanation, "fontes"), false);
+  assert.equal(Object.hasOwn(explanation, "proposta"), false);
+  assert.match(explanation.referenciaRevisao, /^[A-Za-z0-9_-]+$/u);
+  assert.equal(read.context.studyUnits.length, 1);
+  assert.deepEqual(read.context.studyUnits[0].studyUnit, selected.units[0].studyUnit,
+    "a unidade selecionada continua literal");
+  assert.equal(selected.adapter.calls.inspections.length, 0);
+
+  const withoutSelection = sharedExplanationFixture();
+  const whole = await execute(withoutSelection.adapter, "preparar_revisao", { microssequencia: "Um avanço" });
+  assert.deepEqual(whole.context.explicacoes[0].conteudo, withoutSelection.support,
+    "a microssequência sem seleção de unidades mantém a Explicação literal");
+  assert.equal(whole.context.studyUnits.length, 2);
+});
+
+test("unidades selecionadas não buscam fontes da Explicação compartilhada", async () => {
+  const selected = sharedExplanationFixture({ sourceIds: ["fonte-da-explicacao"] });
+  selected.adapter.getCourseSources = async () => {
+    throw Object.assign(new Error("Leitura recusada"), { code: "access_denied" });
+  };
+  const read = await execute(selected.adapter, "preparar_revisao", { unidades: [1] });
+  assert.deepEqual(read.context.studyUnits[0].studyUnit, selected.units[0].studyUnit,
+    "a unidade selecionada continua literal mesmo com a fonte da Explicação recusada");
+  const explanation = read.context.explicacoes[0];
+  assert.equal(explanation.microssequencia, "Um avanço");
+  assert.equal(Object.hasOwn(explanation, "fontes"), false);
+  assert.equal(Object.hasOwn(explanation, "conteudo"), false);
+  assert.equal(Object.hasOwn(explanation, "proposta"), false);
+  assert.equal(selected.adapter.calls.sources.length, 0,
+    "nem fontes previstas nem vínculos do alvo são buscados para a Explicação descartada");
+  assert.equal(selected.adapter.calls.inspections.length, 0);
+  assert.equal(selected.adapter.calls.reviews.length,
+    read.context.studyUnits.length + read.context.explicacoes.length,
+    "a guarda de revisão continua rodando para cada alvo entregue");
+});
+

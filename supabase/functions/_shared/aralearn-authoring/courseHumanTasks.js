@@ -1,6 +1,7 @@
 import { AuthoringApiError } from "./errors.js";
 import {
   COURSE_AUTHORING_ALIGNMENT_GUIDANCE,
+  COURSE_AUTHORING_DELIVERY_CORE,
   courseAuthoringGuidanceForCall
 } from "./courseKnowledge.js";
 import {
@@ -225,6 +226,15 @@ const CURRICULAR_MAP_MODULE_SCHEMA = Object.freeze({
   })
 });
 
+const ifThen = (when, then) => Object.freeze({ if: Object.freeze(when), then: Object.freeze(then) });
+
+// "Ao menos um destes campos": nega a ausência conjunta, preservando o objeto
+// raiz legível e sem união de asserções no próprio objeto.
+const atLeastOneRequired = fields => Object.freeze({
+  not: Object.freeze({ allOf: Object.freeze(fields.map(field =>
+    Object.freeze({ not: Object.freeze({ required: Object.freeze([field]) }) }))) })
+});
+
 const SOURCE_SELECTOR_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -242,7 +252,15 @@ const SOURCE_SELECTOR_SCHEMA = Object.freeze({
     trechoExato: Object.freeze({ type: "string", minLength: 1, maxLength: 4000 }),
     prefixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
     sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 })
-  })
+  }),
+  // Variantes por implicação: o raiz conserva as propriedades e o tipo exigido,
+  // sem duplicar o objeto em ramos de união.
+  allOf: Object.freeze([
+    ifThen({ properties: { tipo: { const: "paginas" } } }, { required: ["paginaInicial", "paginaFinal"] }),
+    ifThen({ properties: { tipo: { const: "tempo" } } }, { required: ["inicioEmMilissegundos", "fimEmMilissegundos"] }),
+    ifThen({ properties: { tipo: { const: "fragmento" } } }, { required: ["fragmento"] }),
+    ifThen({ properties: { tipo: { const: "trecho" } } }, { required: ["trechoExato"] })
+  ])
 });
 
 const SOURCE_ROLES_SCHEMA = Object.freeze({
@@ -341,8 +359,8 @@ const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
   additionalProperties: false,
   required: Object.freeze(["package", "data"]),
   properties: Object.freeze({
-    id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe para referências entre componentes." }),
-    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto ou completo do catálogo." }),
+    id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe ao referenciar." }),
+    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto ou completo." }),
     version: Object.freeze({ type: "string", minLength: 1, description: "Versão corrente se omitida." }),
     data: Object.freeze({ type: "object" })
   })
@@ -561,7 +579,7 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   parte: "Parte: posição ou título.",
   progressao: "Progressão do lote.",
   microssequencias: "Microssequências do lote.",
-  microssequencia: "Microssequência por posição/título.",
+  microssequencia: "Microssequência (posição/título).",
   unidade: "Unidade: posição ou título.",
   unidades: "Unidades: posições ou títulos.",
   fonte: "Fonte: posição ou título.",
@@ -702,7 +720,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Lê configuração.",
+    "Lê a configuração solicitada e, na unidade, o aplicado. Intenção efetiva automática nula pede calibração; aplicado nulo é pendente; vazio é escolha resolvida.",
     inputSchema({
       curso: COURSE_SCHEMA,
       modulo: HUMAN_REFERENCE_SCHEMA,
@@ -735,6 +753,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       parte: HUMAN_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
+      auditoria: Object.freeze({ type: "boolean", default: false,
+        description: "Use true na inspeção formal e no parecer; inclui bases de IA e o desenvolvimento completo." }),
       continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
@@ -890,11 +910,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         items: { type: "string", enum: PARAMETER_FIELDS } },
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
       }, ["curso", "condicao"]),
-      anyOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["parametros"]) }),
-        Object.freeze({ required: Object.freeze(["automaticos"]) }),
-        Object.freeze({ required: Object.freeze(["direcaoEditorial"]) })
-      ])
+      allOf: Object.freeze([atLeastOneRequired(["parametros", "automaticos", "direcaoEditorial"])])
     }),
     { readOnly: false }
   ),
@@ -913,7 +929,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           null
         ])
       })
-    }, ["curso", "texto"]), anyOf: [{ required: ["unidades"] }, { required: ["microssequencia"] }] },
+    }, ["curso", "texto"]), allOf: Object.freeze([atLeastOneRequired(["unidades", "microssequencia"])]) },
     { readOnly: false }
   ),
   task("registrar_inspecao", "Registrar inspeção da base lida",
@@ -971,7 +987,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       }),
       explicacoes: EXPLANATIONS_SCHEMA,
       observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA
-    }, ["curso"]), anyOf: [{ required: ["correcoes"] }, { required: ["explicacoes"] }] }),
+    }, ["curso"]), allOf: Object.freeze([atLeastOneRequired(["correcoes", "explicacoes"])]) }),
     { readOnly: false }
   ),
   task("retomar_correcao", "Reconciliar uma correção de observações",
@@ -982,8 +998,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         description: "Objeto recovery devolvido pelo erro da correção. Use-o integralmente para preservar o alvo mesmo após renomeação.",
         properties: { courseId: { type: "string", format: "uuid" }, requestId: { type: "string", minLength: 8, maxLength: 128,
           pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }, operation: { type: "string", const: "course_observation_correction" } } }
-    }), oneOf: [{ required: ["curso", "tentativa"], not: { required: ["recuperacao"] } },
-      { required: ["recuperacao"], not: { anyOf: [{ required: ["curso"] }, { required: ["tentativa"] }] } }] }, { readOnly: false }),
+      }), allOf: Object.freeze([
+        ifThen({ required: ["recuperacao"] },
+          { allOf: [{ not: { required: ["curso"] } }, { not: { required: ["tentativa"] } }] }),
+        ifThen({ not: { required: ["recuperacao"] } }, { required: ["curso", "tentativa"] })
+      ]) }, { readOnly: false }),
   task("declarar_revisao", "Registrar ou retirar revisão expressa",
     "Use somente após a pessoa autora declarar sua inspeção. A referência vem do conteúdo salvo preparado para revisão; não deduza revisão da correção ou do estudo.",
     inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 },
@@ -1033,14 +1052,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           description: "Retire os PDFs ou a fonte inteira."
         })
       }, ["curso"]),
-      anyOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["metadados"]) }),
-        Object.freeze({ required: Object.freeze(["ancoras"]) }),
-        Object.freeze({ required: Object.freeze(["vinculos"]) }),
-        Object.freeze({ required: Object.freeze(["retirar"]) }),
-        Object.freeze({ required: Object.freeze(["estilo"]) })
-      ]),
-      allOf: Object.freeze([Object.freeze({
+      allOf: Object.freeze([
+        atLeastOneRequired(["metadados", "ancoras", "vinculos", "retirar", "estilo"]),
+        Object.freeze({
         if: Object.freeze({ required: Object.freeze(["retirar"]) }),
         then: Object.freeze({
           required: Object.freeze(["fonte"]),
@@ -1093,9 +1107,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           })
         })
       }, ["curso", "intencao", "pdf"]),
-      oneOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["fonte"]) }),
-        Object.freeze({ required: Object.freeze(["titulo", "papeisSugeridos"]) })
+      allOf: Object.freeze([
+        ifThen({ required: ["fonte"] }, { not: { required: ["titulo", "papeisSugeridos"] } }),
+        ifThen({ not: { required: ["fonte"] } }, { required: ["titulo", "papeisSugeridos"] })
       ])
     }),
     { readOnly: false, file: "pdf" }
@@ -1127,7 +1141,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:c7c2570cfa46ce86debf3caef5130d91385a12693d4cf3a3c0c8ad647b562707";
+  "sha256:e1576a62c20f0df3fd47f6d4b6f6c10816b7ffb41c79c2de5fb15033d6fa8707";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2608,6 +2622,7 @@ function projectConfiguration(read) {
       }))
     : [];
   return {
+    natureza: "intenção solicitada, não configuração aplicada",
     escopo: read?.scopeContext?.current?.label ?? null,
     parametros: parameters,
     precisaDeCalibracaoContextual: Array.isArray(read?.parameters) &&
@@ -2700,6 +2715,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
         ? "Continue a produção autorizada no recorte e na cadência vigentes."
         : "Escolha uma parte ou microssequência para continuar a produção autorizada.";
   const context = {
+    criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
     ...compactAuthoringProcessContext(process),
     ...(focusedRequest
       ? focusedReviewPlan(plan, part, [], focalMicrosequences(focal))
@@ -2724,10 +2740,13 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   const mapStatus = map?.approval === "approved" ? "aprovado" : map ? "em rascunho" : "ausente";
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "consultar_planejamento" });
   if (args.resumo !== undefined && typeof args.resumo !== "boolean") fail("invalid_human_task_argument", "resumo precisa ser booleano.");
-  const context = args.resumo === true ? planConfirmationContext(plan)
-    : args.parte !== undefined || args.microssequencia !== undefined
-      ? focusedReviewPlan(plan, part, [], focalMicrosequences({ ...resolved, plan, part }))
-      : projectedPlanContext(plan, part);
+  const context = {
+    criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
+    ...(args.resumo === true ? planConfirmationContext(plan)
+      : args.parte !== undefined || args.microssequencia !== undefined
+        ? focusedReviewPlan(plan, part, [], focalMicrosequences({ ...resolved, plan, part }))
+        : projectedPlanContext(plan, part))
+  };
   return result(args.resumo === true ? `Consultei a situação do mapa curricular; ele está ${mapStatus}.`
     : args.parte !== undefined || args.microssequencia !== undefined ? `Li o planejamento no foco solicitado; o mapa está ${mapStatus}.`
       : `Li o mapa curricular global; ele está ${mapStatus}.`, {
@@ -2739,10 +2758,17 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   });
 };
 
-async function explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt }) {
+async function explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt,
+  auditoria = false, focal = false }) {
   const sourceCache = new Map();
   return await Promise.all(microsequences.map(async (microsequence) => {
     const proposal = microsequence.explanationPlan;
+    const review = await readReviewContext({ adapter, principal, resolved,
+      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt, auditoria });
+    // A Explicação compartilhada não é o alvo da unidade: sai só como título e
+    // referência, antes de buscar fontes previstas ou vínculos que não serão
+    // entregues — nenhuma leitura descartada pode bloquear o alvo selecionado.
+    if (!auditoria && focal) return { microssequencia: microsequence.title, ...review };
     const plannedSources = await Promise.all((proposal?.sourceIds ?? []).map(async (sourceId) => {
       if (!sourceCache.has(sourceId)) sourceCache.set(sourceId, adapter.getCourseSources({
         principal, courseId: resolved.course.id, expectedRevision: resolved.course.revision,
@@ -2755,8 +2781,6 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
     const citations = microsequence.explanation ? await adapter.getCourseSources({ principal,
       courseId: resolved.course.id, expectedRevision: resolved.course.revision, mode: "target", sourceId: null,
       targetKind: "microsequence_explanation", targetId: microsequence.id, cursor: null, limit: 1, deadlineAt }) : null;
-    const review = await readReviewContext({ adapter, principal, resolved,
-      targetKind: "microsequence_explanation", targetId: microsequence.id, deadlineAt });
     return {
       microssequencia: microsequence.title,
       proposta: proposal ? { proposito: proposal.purpose, pressupostos: proposal.prerequisites,
@@ -2771,11 +2795,12 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
   }));
 }
 
-async function readReviewContext({ adapter, principal, resolved, targetKind, targetId, deadlineAt }) {
+async function readReviewContext({ adapter, principal, resolved, targetKind, targetId, deadlineAt, auditoria = false }) {
   const read = normalizeCourseContentReview(await adapter.getCourseContentReview({ principal,
     courseId: resolved.course.id, targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId });
   if (read.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O objeto mudou; releia o recorte antes da revisão.", null, 409);
-  const inspection = typeof adapter.getCourseContentInspection === "function"
+  // A leitura focal usual não busca nem devolve o contexto extenso de inspeção.
+  const inspection = auditoria && typeof adapter.getCourseContentInspection === "function"
     ? normalizeCourseContentInspection(await adapter.getCourseContentInspection({ principal, courseId: resolved.course.id,
       targetKind, targetId, deadlineAt }), { courseId: resolved.course.id, targetKind, targetId }) : null;
   if (inspection && inspection.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "A base mudou durante a inspeção; releia o recorte.", null, 409);
@@ -2783,7 +2808,9 @@ async function readReviewContext({ adapter, principal, resolved, targetKind, tar
   return { revisao: { unregistered: "Revisão não registrada", draft: "Rascunho", current: "Revisado nesta versão",
     stale: "Revisão precisa ser atualizada" }[read.contentReview.state],
     referenciaRevisao: await createContentReviewReference({ principal, read }),
-    inspecaoIA: inspection ? inspection.inspection : { state: "unavailable" },
+    // O estado de inspeção pertence à leitura que o consultou. Sem auditoria o
+    // campo é omitido; unavailable fica só para a inspeção solicitada sem serviço.
+    ...(auditoria ? { inspecaoIA: inspection ? inspection.inspection : { state: "unavailable" } } : {}),
     ...(audit ? { auditoriaPedagogica: { ...audit, units: targetKind === "study_unit"
       ? audit.units.filter(unit => unit.unitId === targetId) : audit.units } } : {}),
     ...(inspection ? { referenciaInspecao: await createContentReviewReference({ principal, read: inspection }) } : {}) };
@@ -2842,6 +2869,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
       deepLink: null,
       nextDecision: recovery,
       context: withoutTechnicalState({
+        criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
         preflight,
         parte: {
           posicao: Number(part.position) + 1,
@@ -2853,6 +2881,68 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     }
   );
 };
+
+function humanAppliedReading({ present, value }) {
+  if (!present) return "sem registro de valor aplicado nesta unidade";
+  if (value === null) return "valor aplicado pendente (sem valor), diferente de conjunto vazio";
+  if (Array.isArray(value) && value.length === 0) {
+    return "conjunto vazio explicitamente aplicado (diferente de ausente)";
+  }
+  return "valor efetivamente aplicado na unidade";
+}
+
+function unitAppliedParameters(unit) {
+  const snapshot = unit?.designSnapshot;
+  if (snapshot === null || snapshot === undefined || typeof snapshot !== "object" ||
+      Array.isArray(snapshot) || !Array.isArray(snapshot.parameters)) return null;
+  return new Map(snapshot.parameters
+    .filter((entry) => entry !== null && typeof entry === "object" && !Array.isArray(entry) &&
+      typeof entry.parameterId === "string" && entry.parameterId)
+    .map((entry) => [entry.parameterId, entry]));
+}
+
+// Projeta SOMENTE o snapshot aplicado da unidade; a intenção solicitada segue na
+// projeção própria do leitor, sem duplicar o mesmo recorte duas vezes.
+// Conserva conjunto vazio, valor nulo e ausência como estados distintos, lendo
+// sourceScopeKind/sourceScopeRef como o snapshot real grava.
+function humanAppliedUnitConfiguration(unit, definitionById) {
+  const applied = unitAppliedParameters(unit);
+  const scope = unit === null ? null : "unidade de estudo";
+  if (applied === null) {
+    return {
+      natureza: "configuração efetivamente aplicada na unidade",
+      disponivel: false,
+      escopo: scope,
+      aplicadoEm: null,
+      parametros: [],
+      leitura: unit === null
+        ? "Sem unidade no recorte, o valor aplicado não é lido."
+        : "Esta unidade não tem configuração aplicada registrada."
+    };
+  }
+  const parameters = [...applied.values()].map((entry) => {
+    const parameterId = entry.parameterId;
+    const present = Object.hasOwn(entry, "value");
+    const value = present ? entry.value : null;
+    return {
+      nome: humanParameterLabel(parameterId, definitionById),
+      campo: definitionById.get(parameterId)?.humanField ?? parameterId,
+      valorPresente: present,
+      valor: value,
+      origem: humanDesignOrigin(entry.origin),
+      motivo: entry.reason ?? null,
+      escopoDeOrigem: humanDesignScope(entry.sourceScopeKind ?? entry.sourceScope?.kind ?? null),
+      leitura: humanAppliedReading({ present, value })
+    };
+  });
+  return {
+    natureza: "configuração efetivamente aplicada na unidade",
+    disponivel: true,
+    escopo: scope,
+    aplicadoEm: typeof unit?.designSnapshot?.appliedAt === "string" ? unit.designSnapshot.appliedAt : null,
+    parametros: parameters
+  };
+}
 
 HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
   adapter, principal, args, deadlineAt
@@ -2874,20 +2964,33 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
     childCursor: null,
     deadlineAt
   });
-  return result("Li a configuração pedagógica e a direção editorial vigentes.", {
-    deepLink: courseDeepLink(adapter, resolved.course, "parameters",
-      scopeKind === "study_unit"
-        ? [["studyUnitId", scopeRef]]
-        : scopeKind === "didactic_microsequence"
-          ? [["didacticMicrosequenceId", scopeRef]]
-          : scopeKind === "lesson" ? [["lessonId", scopeRef]]
-            : scopeKind === "module" ? [["moduleId", scopeRef]] : []),
-    nextDecision: "Quer manter a herança ou fixar alguma condição?",
-    context: {
-      configuracao: projectConfiguration(configuration),
-      aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null
-    }
-  });
+  const definitionById = new Map((configuration?.definitions ?? [])
+    .map((definition) => [definition.id, definition]));
+  const appliedConfiguration = humanAppliedUnitConfiguration(unit, definitionById);
+  return result(
+    unit === null
+      ? "Li a configuração solicitada e a direção editorial; o valor aplicado aparece ao indicar uma unidade."
+      : appliedConfiguration.disponivel
+        ? "Li a configuração solicitada e o valor efetivamente aplicado nesta unidade; os dois podem divergir legitimamente."
+        : "Li a configuração solicitada; esta unidade não tem configuração aplicada registrada.",
+      {
+        deepLink: courseDeepLink(adapter, resolved.course, "parameters",
+          scopeKind === "study_unit"
+            ? [["studyUnitId", scopeRef]]
+            : scopeKind === "didactic_microsequence"
+              ? [["didacticMicrosequenceId", scopeRef]]
+              : scopeKind === "lesson" ? [["lessonId", scopeRef]]
+                : scopeKind === "module" ? [["moduleId", scopeRef]] : []),
+        nextDecision: unit === null
+          ? "Quer manter a herança ou fixar alguma condição?"
+          : "A intenção solicitada e o valor aplicado podem divergir legitimamente; quer manter a herança, fixar alguma condição ou detalhar um parâmetro?",
+        context: {
+          configuracaoSolicitada: projectConfiguration(configuration),
+          aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null,
+          configuracaoAplicadaNaUnidade: appliedConfiguration
+        }
+      }
+  );
 };
 
 HUMAN_TASK_HANDLERS.consultar_observacoes = async ({
@@ -2958,10 +3061,16 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     scopeUnits: unitPage.items,
     scopeMicrosequences: reviewMicrosequences
   });
-  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences, deadlineAt });
+  const auditoria = args.auditoria === true;
+  const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences,
+    deadlineAt, auditoria, focal: units.length > 0 });
   const studyUnits = await Promise.all(unitPage.items.map(async unit => ({ ...unit,
-    ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit", targetId: unit.studyUnit.id, deadlineAt })
+    ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit",
+      targetId: unit.studyUnit.id, deadlineAt, auditoria })
   })));
+  // A leitura comum não devolve a base de inspeção; só a auditoria traz a
+  // referência que registrar_inspecao exige. A decisão seguinte acompanha isso.
+  const inspected = [...studyUnits, ...explanations].some(target => target.referenciaInspecao);
   const context = await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext({
     observations, studyUnits,
     explicacoes: explanations,
@@ -2972,7 +3081,9 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
       ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length
         ? [["explanationId", reviewMicrosequences[0].id]] : []),
     links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
-    nextDecision: null,
+    nextDecision: auditoria
+      ? inspected ? "Registre o parecer das seis dimensões, incluindo configuration, com a referência de inspeção devolvida." : null
+      : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
     context
   });
 };
@@ -3028,7 +3139,7 @@ async function humanTargetSourceReferences({ adapter, principal, course, sources
           const anchor = source.anchors[position];
           return { localizada: true, posicao: position + 1, status: anchor.status,
             humanLocator: anchor.humanLocator, verificationExcerpt: anchor.verificationExcerpt,
-            selector: anchor.selector, needsReverification: anchor.needsReverification };
+            seletor: humanSourceSelector(anchor.selector), needsReverification: anchor.needsReverification };
         }) };
     }))
   }))) };
@@ -3064,8 +3175,13 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   const readableSources = mode === "target"
     ? await humanTargetSourceReferences({ adapter, principal, course: resolved.course, sources, deadlineAt,
       target })
-    : mode === "source" ? { ...sources, items: sources.items.map(source => ({ ...source,
-      anchors: (source.anchors ?? []).map((anchor, index) => ({ ...anchor, posicao: index + 1 })) })) } : sources;
+    : mode === "source" ? { ...sources, items: sources.items.map(source => {
+      const { anchors, ...rest } = source;
+      return { ...rest, anchors: (anchors ?? []).map((anchor, index) => {
+        const { selector, ...anchorRest } = anchor;
+        return { ...anchorRest, posicao: index + 1, seletor: humanSourceSelector(selector) };
+      }) };
+    }) } : sources;
   const context = args.busca === undefined
     ? readableSources
     : {
@@ -4080,6 +4196,29 @@ function sourceSelector(publicValue) {
     prefix: value.prefixo ?? null,
     suffix: value.sufixo ?? null
   };
+}
+
+// Devolve a Âncora no mesmo vocabulário aceito pela escrita, para que a leitura
+// possa ser reutilizada em manter_fonte. Espécies sem forma humana equivalente
+// permanecem sem projeção em vez de expor o vocabulário interno.
+function humanSourceSelector(selector) {
+  if (selector === null || typeof selector !== "object" || Array.isArray(selector)) return null;
+  if (selector.kind === "page_range") {
+    return { tipo: "paginas", paginaInicial: selector.startPage ?? null,
+      paginaFinal: selector.endPage ?? null };
+  }
+  if (selector.kind === "time_range") {
+    return { tipo: "tempo", inicioEmMilissegundos: selector.startMilliseconds ?? null,
+      fimEmMilissegundos: selector.endMilliseconds ?? null };
+  }
+  if (selector.kind === "uri_fragment") {
+    return { tipo: "fragmento", fragmento: selector.fragment ?? null };
+  }
+  if (selector.kind === "text_quote") {
+    return { tipo: "trecho", trechoExato: selector.exact ?? null, prefixo: selector.prefix ?? null,
+      sufixo: selector.suffix ?? null };
+  }
+  return null;
 }
 
 async function detailedSource(adapter, principal, resolved, deadlineAt) {

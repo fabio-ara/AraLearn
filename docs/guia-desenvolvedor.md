@@ -95,11 +95,13 @@ Use o mapa para localizar a parte que decide o comportamento antes de editar:
 | `src/resources/` e `src/render/` | catálogo, contratos e renderização didática |
 | `supabase/migrations/` | esquema, funções, privilégios e segurança em nível de linha (RLS) versionados |
 | `supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js` | catálogo humano e execução compartilhada por MCP e Actions |
-| `supabase/functions/_shared/aralearn-authoring/courseKnowledge.js` | orientação focal por fase autoral |
+| `supabase/functions/_shared/aralearn-authoring/courseKnowledge.js` | orientação focal por fase autoral e núcleo de entrega reutilizado |
 | `scripts/projectHumanAuthoringActions.mjs` | projeção do catálogo para Actions |
 | `scripts/buildChatGptActionOpenApi.mjs` | geração do OpenAPI importável |
 | `tests/runtime/` | domínio, contratos e integração sem navegador completo |
 | `tests/e2e/` | jornadas reais no Chromium |
+
+O núcleo de entrega (`COURSE_AUTHORING_DELIVERY_CORE`) reúne seis critérios curtos derivados dos guias, em cerca de 930 bytes, e é entregue uma única vez na retomada com curso selecionado, no planejamento e no preparo focal; os guias extensos continuam nos recursos de conhecimento, sem repetição em continuações ou recibos de produção.
 
 Arquivos em `supabase/functions/_shared/aralearn/runtime/` espelham módulos comuns.
 Altere a fonte em `src/` e sincronize:

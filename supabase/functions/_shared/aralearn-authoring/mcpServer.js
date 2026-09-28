@@ -294,7 +294,7 @@ function toolFailure(
     ...(preflight ? { details: { preflight } } : {})
   };
   let nextDecision = normalized.code === "ambiguous_human_reference"
-    ? "Informe um título mais específico ou a posição humana do objeto."
+    ? "Informe um título completo e único ou qualifique o escopo pai aceito pela ferramenta; repetir a mesma posição não distingue objetos."
     : normalized.code === "human_reference_not_found"
       ? "Confira o título ou a posição e tente novamente."
       : normalized.code === "human_task_result_too_large"

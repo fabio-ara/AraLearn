@@ -166,7 +166,8 @@ function decodeBasisHash(reference) {
 }
 
 async function readFocalReview(client, course, batch) {
-  const query = { curso: course, microssequencia: batch.microssequencia };
+  // A inspeção formal exige a base completa: auditoria: true na leitura focal.
+  const query = { curso: course, microssequencia: batch.microssequencia, auditoria: true };
   const response = await client.call("preparar_revisao", query);
   let context = response.context;
   if (context?.fragmento) {

@@ -5,6 +5,7 @@ import { openContentReviewReference } from '../../supabase/functions/_shared/ara
 import { defaultAuthoringProcessPreferences } from '../../src/domain/authoringProcessPreferences.js';
 import { normalizeCourseAnchoredAnnotationReadOptions } from '../../src/domain/courseAnchoredAnnotations.js';
 import { courseDesignFixture } from '../helpers/courseDesignFixture.js';
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from '../../src/domain/courseDesignParameters.js';
 const courseId='10000000-0000-4000-8000-000000000001';
 const actorId='20000000-0000-4000-8000-000000000001';
 const principal={actorId,authenticationKind:'oauth',scopes:['authoring:read','authoring:write']};
@@ -356,3 +357,108 @@ test('fragmentos grandes conservam conteúdo e referências estáveis até a lei
   assert.ok(read.explicacoes[0].conteudo.content.every(item=>item.data.text==='Conhecimento e relações. '.repeat(400).trim()));
   assert.deepEqual(read.observations.items[0].referenciaObservacao,reference);
 });
+
+
+
+test('leitura de configuração separa solicitada e aplicada sem duplicar e distingue nulo, vazio e ausente',async()=>{
+  const {adapter}=harness();
+  const variation='required_practice_variation_dimensions';
+  const minimum='minimum_distinct_practice_opportunities_per_evidence_requirement';
+  const ceiling='new_analysis_unit_ceiling_per_expository_study_unit';
+  const distribution='practice_distribution';
+  const absent='required_explanation_forms';
+  const fieldOf=id=>COURSE_DESIGN_PARAMETER_DEFINITIONS.find(item=>item.id===id).humanField;
+  const base=courseDesignFixture({courseId,moduleId:'module',lessonId:'lesson',microsequenceId:'micro',studyUnitId:'unit'});
+  const assignment=(value,extra={})=>({mode:'automatic',value,origin:'automatic',inherited:false,
+    reason:'Condição sintética explicitamente escolhida pelo teste.',sourceScope:{kind:'study_unit',ref:'unit'},...extra});
+  const researchReason='Condição de pesquisa herdada do curso.';
+  adapter.getCourseDesign=async request=>({...base,courseRevision:1,
+    scopeContext:{...base.scopeContext,current:request.scopeKind==='study_unit'
+      ? base.scopeContext.current:{kind:'didactic_microsequence',ref:'micro',label:'microssequência sintética'}},
+    parameters:base.parameters.map(parameter=>{
+      if(parameter.parameterId===variation) return {...parameter,effectiveAssignment:assignment(null,{mode:'automatic',
+        reason:'Intenção efetiva automática ainda nula.'})};
+      if(parameter.parameterId===minimum) return {...parameter,effectiveAssignment:assignment(1,{mode:'fixed',
+        origin:'research_condition',reason:'Condição de pesquisa fixada pela pessoa.'})};
+      if(parameter.parameterId===ceiling) return {...parameter,localAssignment:null,effectiveAssignment:{mode:'fixed',
+        value:2,origin:'research_condition',inherited:true,reason:researchReason,
+        sourceScope:{kind:'course',ref:courseId}}};
+      return parameter;})});
+  adapter.listCourseStudyUnits=async()=>({hasMore:false,nextCursor:null,items:[{ordinal:1,version:4,
+    studyUnit:{id:'unit',title:'Interações'},
+    authorship:{design:{application:{mode:'practice',analysisIdeas:{introduced:[],used:[]}}}},
+    designApplication:{contract:'aralearn.study-unit-design-application.v1',practiceApplications:[]},
+    designSnapshot:{contract:'aralearn.study-unit-design-snapshot.v2',appliedAt:'2026-09-28T15:39:03.693Z',parameters:[
+      {parameterId:variation,value:[],origin:'automatic',reason:'Vazio explicitamente aplicado.',
+        sourceScopeKind:'study_unit',sourceScopeRef:null},
+      {parameterId:minimum,value:null,origin:'automatic',reason:'Aplicado ainda pendente.',
+        sourceScopeKind:'course',sourceScopeRef:null},
+      {parameterId:ceiling,value:2,origin:'research_condition',reason:researchReason,
+        sourceScopeKind:'course',sourceScopeRef:null},
+      {parameterId:distribution,origin:'author',reason:'Aplicado sem registro de valor.',
+        sourceScopeKind:'study_unit',sourceScopeRef:null}
+    ]}}]});
+  const output=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações',unidade:1});
+  const solicitada=output.context.configuracaoSolicitada;
+  const aplicada=output.context.configuracaoAplicadaNaUnidade;
+  assert.equal(Object.hasOwn(output.context,'configuracao'),false);
+  assert.equal(Object.hasOwn(output.context,'configuracaoNaUnidade'),false);
+  assert.equal(solicitada.natureza,'intenção solicitada, não configuração aplicada');
+  assert.equal(typeof solicitada.precisaDeCalibracaoContextual,'boolean');
+  assert.equal(aplicada.disponivel,true);
+  assert.equal(aplicada.escopo,'unidade de estudo');
+  assert.equal(aplicada.aplicadoEm,'2026-09-28T15:39:03.693Z');
+  assert.match(output.result,/podem divergir legitimamente/u);
+  assert.match(output.nextDecision,/podem divergir legitimamente/u);
+  const solicitadaVariation=solicitada.parametros.find(entry=>entry.campo===fieldOf(variation));
+  assert.equal(solicitadaVariation.valorEfetivo,null);
+  const aplicadaVariation=aplicada.parametros.find(entry=>entry.campo===fieldOf(variation));
+  assert.equal(aplicadaVariation.valorPresente,true);
+  assert.deepEqual(aplicadaVariation.valor,[]);
+  assert.match(aplicadaVariation.leitura,/conjunto vazio explicitamente aplicado \(diferente de ausente\)/u);
+  assert.equal(aplicadaVariation.escopoDeOrigem,'unidade de estudo');
+  const aplicadaMinimum=aplicada.parametros.find(entry=>entry.campo===fieldOf(minimum));
+  assert.equal(aplicadaMinimum.valorPresente,true);
+  assert.equal(aplicadaMinimum.valor,null);
+  assert.match(aplicadaMinimum.leitura,/pendente \(sem valor\), diferente de conjunto vazio/u);
+  assert.equal(aplicadaMinimum.escopoDeOrigem,'curso');
+  assert.equal(aplicadaMinimum.motivo,'Aplicado ainda pendente.');
+  const solicitadaCeiling=solicitada.parametros.find(entry=>entry.campo===fieldOf(ceiling));
+  assert.equal(solicitadaCeiling.valorLocal,null);
+  assert.equal(solicitadaCeiling.herdado,true);
+  assert.equal(solicitadaCeiling.modo,'fixed');
+  assert.equal(solicitadaCeiling.origem,'condição de pesquisa');
+  assert.equal(solicitadaCeiling.escopoDeOrigem,'curso');
+  assert.equal(solicitadaCeiling.valorEfetivo,2);
+  const aplicadaCeiling=aplicada.parametros.find(entry=>entry.campo===fieldOf(ceiling));
+  assert.equal(aplicadaCeiling.valorPresente,true);
+  assert.equal(aplicadaCeiling.valor,2);
+  assert.equal(aplicadaCeiling.origem,'condição de pesquisa');
+  assert.equal(aplicadaCeiling.escopoDeOrigem,'curso');
+  assert.equal(aplicadaCeiling.motivo,researchReason);
+  assert.equal(aplicadaCeiling.leitura,'valor efetivamente aplicado na unidade');
+  const aplicadaDistribution=aplicada.parametros.find(entry=>entry.campo===fieldOf(distribution));
+  assert.equal(aplicadaDistribution.valorPresente,false);
+  assert.equal(aplicadaDistribution.valor,null);
+  assert.match(aplicadaDistribution.leitura,/sem registro de valor aplicado nesta unidade/u);
+  assert.equal(aplicada.parametros.length,4);
+  assert.equal(aplicada.parametros.some(entry=>entry.campo===fieldOf(absent)),false);
+  assert.equal(solicitada.parametros.some(entry=>entry.campo===fieldOf(absent)),true);
+  assert.equal(JSON.stringify(aplicada).includes('valorEfetivo'),false);
+  const repeated=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações',unidade:1});
+  assert.deepEqual(repeated.context.configuracaoAplicadaNaUnidade.parametros.find(entry=>entry.campo===fieldOf(ceiling)),aplicadaCeiling);
+  assert.deepEqual(repeated.context.configuracaoSolicitada.parametros.find(entry=>entry.campo===fieldOf(ceiling)),solicitadaCeiling);
+  const withoutUnit=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações'});
+  assert.equal(withoutUnit.context.configuracaoAplicadaNaUnidade.disponivel,false);
+  assert.equal(withoutUnit.context.configuracaoAplicadaNaUnidade.escopo,null);
+  assert.deepEqual(withoutUnit.context.configuracaoAplicadaNaUnidade.parametros,[]);
+  assert.match(withoutUnit.result,/aparece ao indicar uma unidade/u);
+  adapter.listCourseStudyUnits=async()=>({hasMore:false,nextCursor:null,
+    items:[{studyUnit:{id:'unit',title:'Interações'},authorship:{design:{application:null}}}]});
+  const withoutSnapshot=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações',unidade:1});
+  assert.equal(withoutSnapshot.context.configuracaoAplicadaNaUnidade.disponivel,false);
+  assert.equal(withoutSnapshot.context.configuracaoAplicadaNaUnidade.escopo,'unidade de estudo');
+  assert.match(withoutSnapshot.result,/não tem configuração aplicada registrada/u);
+  assert.doesNotMatch(withoutSnapshot.result,/valor efetivamente aplicado/u);
+});
+

@@ -230,3 +230,75 @@ test("trecho idêntico sem alvo não grava e devolve as partes numeradas", async
   assert.equal(missing.details.blockers[0].candidates.length, 2);
   assert.equal(absent.writes.length, 0);
 });
+
+test("schema do seletor exige os campos de cada variante aceita", () => {
+  const schema = COURSE_HUMAN_TASKS.find(({ name }) => name === "manter_fonte").inputSchema;
+  const validate = new Ajv2020({ strict: false }).compile(schema);
+  const withAnchor = (seletor) => ({ curso: "Redes sintéticas", fonte: "Fonte sintética",
+    ancoras: [{ seletor, localizadorHumano: null, trechoDeVerificacao: null }] });
+  const variants = [
+    [{ tipo: "paginas", paginaInicial: 1, paginaFinal: 2 }, { tipo: "paginas", paginaInicial: 1 }, { tipo: "paginas" }],
+    [{ tipo: "tempo", inicioEmMilissegundos: 0, fimEmMilissegundos: 1000 }, { tipo: "tempo", fimEmMilissegundos: 1000 }, { tipo: "tempo" }],
+    [{ tipo: "fragmento", fragmento: "definicao" }, { tipo: "fragmento" }, { tipo: "fragmento", fragmento: null }],
+    [{ tipo: "trecho", trechoExato: "Passagem exata" }, { tipo: "trecho" }, { tipo: "trecho", trechoExato: null }]
+  ];
+  for (const [complete, ...rejected] of variants) {
+    assert.equal(validate(withAnchor(complete)), true,
+      JSON.stringify(complete) + ": " + JSON.stringify(validate.errors));
+    for (const value of rejected) {
+      assert.equal(validate(withAnchor(value)), false,
+        JSON.stringify(value) + " foi aceito sem os campos da variante");
+    }
+  }
+  assert.equal(validate(withAnchor({ tipo: "trecho", trechoExato: "Passagem exata", prefixo: null, sufixo: null })), true);
+  assert.equal(validate(withAnchor({ tipo: "desconhecido" })), false);
+  assert.equal(validate(withAnchor({ paginaInicial: 1, paginaFinal: 2 })), false);
+});
+
+test("leitura de âncora usa o vocabulário da escrita e volta pelo mesmo handler", async () => {
+  const selectors = [
+    { kind: "page_range", startPage: 3, endPage: 4 },
+    { kind: "time_range", startMilliseconds: 15000, endMilliseconds: 22000 },
+    { kind: "uri_fragment", fragment: "definicao" },
+    { kind: "text_quote", exact: "Passagem exata", prefix: "antes:", suffix: "depois." }
+  ];
+  const human = [
+    { tipo: "paginas", paginaInicial: 3, paginaFinal: 4 },
+    { tipo: "tempo", inicioEmMilissegundos: 15000, fimEmMilissegundos: 22000 },
+    { tipo: "fragmento", fragmento: "definicao" },
+    { tipo: "trecho", trechoExato: "Passagem exata", prefixo: "antes:", sufixo: "depois." }
+  ];
+  const source = { sourceId: "source", revision: 1, title: "Fonte sintética", citationText: "Fonte sintética",
+    status: "active", attachments: [], anchors: selectors.map((selector, index) => ({ anchorId: "anchor-" + (index + 1),
+      revision: 1, status: "active", sourceRevision: 1, humanLocator: "Local " + (index + 1),
+      verificationExcerpt: null, contentHash: null, selector })) };
+  const writes = [];
+  const adapter = { publicAppUrl: "https://app.example/",
+    async listCourses() { return { items: [{ courseId: COURSE_ID, title: "Redes sintéticas" }], hasMore: false, nextCursor: null }; },
+    async getCourse() { return { courseId: COURSE_ID, title: "Redes sintéticas", revision: 7 }; },
+    async getCourseInstructionalPlan() { return { courseRevision: 7,
+      plan: { id: "plan", title: "Redes sintéticas", parts: [] } }; },
+    async listCourseStudyUnits() { return { items: [], hasMore: false, nextCursor: null }; },
+    async listCourseSources() { return { items: [{ sourceId: "source", title: "Fonte sintética", revision: 1 }],
+      hasMore: false, nextCursor: null }; },
+    async getCourseSources(input) {
+      if (input.mode === "source") return { mode: "source",
+        query: { sourceId: "source", targetKind: null, targetId: null }, items: [source], nextCursor: null };
+      return { mode: "catalog", query: { sourceId: null, targetKind: null, targetId: null },
+        items: [{ sourceId: "source", title: "Fonte sintética", revision: 1, status: "active" }], nextCursor: null };
+    },
+    async executeCourseSourceCommand(input) { writes.push(structuredClone(input));
+      return { changed: true, courseRevision: 8 }; } };
+  const read = await call(adapter, "consultar_fontes", { fonte: "Fonte sintética" });
+  const anchors = read.context.sources.items[0].anchors;
+  assert.deepEqual(anchors.map(({ seletor }) => seletor), human);
+  assert.equal(anchors.every((anchor) => Object.hasOwn(anchor, "selector") === false), true);
+  assert.doesNotMatch(JSON.stringify(read.context), /text_quote|page_range|time_range|uri_fragment/u);
+  for (const [index, anchor] of anchors.entries()) {
+    await call(adapter, "manter_fonte", { fonte: "Fonte sintética", ancoras: [{ seletor: anchor.seletor }] });
+    assert.equal(writes.at(-1).command.type, "save_anchor");
+    assert.deepEqual(writes.at(-1).command.selector, selectors[index]);
+  }
+  assert.equal(writes.length, selectors.length);
+});
+
