@@ -176,7 +176,7 @@ test("descoberta dos pacotes atuais ferramenta traz um contrato focal por chamad
     assert.equal(contract.referencia, `aralearn.resource.${id}@1.0.0`);
     assert.equal(typeof contract.ferramenta.label, "string");
     assert.equal(contract.modeloDeInstancia.package, id);
-    assert.deepEqual(contract.slots, ["content"]);
+    assert.deepEqual(contract.slots, ["conteudo"]);
     assert.equal(Object.hasOwn(result.context, "components"), false);
     assert.ok(JSON.stringify(result).length < 16000);
   }

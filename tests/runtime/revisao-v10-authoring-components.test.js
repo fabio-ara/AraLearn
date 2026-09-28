@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
 
 import { RESOURCE_CATALOG } from "../../src/resources/catalog/resourceCatalog.js";
@@ -7,6 +8,11 @@ import {
   COURSE_HUMAN_TASKS,
   executeHumanCourseTask
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import {
+  openHumanReadContinuation
+} from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
+import { courseAuthoringGuidanceForCall } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { defaultAuthoringProcessPreferences, resolveAuthoringProcessPreferences } from
   "../../src/domain/authoringProcessPreferences.js";
@@ -198,6 +204,65 @@ test("consultar_componentes expõe continuação sem transportar estado técnico
   assert.equal(Object.hasOwn(task.inputSchema.properties, "cursor"), false);
   assert.equal(Object.hasOwn(task.inputSchema.properties, "catalogVersion"), false);
   assert.match(task.description, /contrato|componente/iu);
+});
+
+test("orientação de descoberta acompanha só o primeiro trecho lógico da busca", async () => {
+  const principal = { actorId: PRINCIPAL.actorId, scopes: ["authoring:read"] };
+  const first = await executeHumanCourseTask({
+    adapter: {}, principal, name: "consultar_componentes", rawArguments: {}
+  });
+  assert.deepEqual(first.context.orientacao.instructions,
+    courseAuthoringGuidanceForCall("consultar_componentes").instructions);
+  assert.equal(first.context.temMais, true);
+
+  const second = await executeHumanCourseTask({
+    adapter: {}, principal, name: "consultar_componentes",
+    rawArguments: { continuacao: first.context.continuacao }
+  });
+  assert.equal(Object.hasOwn(second.context, "orientacao"), false,
+    "a orientação não se repete nas páginas seguintes da busca");
+  assert.ok(second.context.components.candidates.length > 0);
+
+  const inspected = await executeHumanCourseTask({
+    adapter: {}, principal, name: "consultar_componentes",
+    rawArguments: { componente: "aralearn.resource.memory_layout" }
+  });
+  const contract = inspected.context.componentAuthoringContract;
+  assert.equal(Object.hasOwn(inspected.context, "orientacao"), false,
+    "o contrato escolhido traz os dados necessários sem o guia de busca");
+  assert.equal(typeof contract.finalidade, "string");
+  assert.equal(typeof contract.contrato.intent, "string");
+  assert.ok(contract.contrato.rules.length > 0);
+  assert.equal(typeof contract.schema, "object");
+  assert.ok(contract.limitacoes.length > 0, "as limitações integrais ficam no contrato");
+  assert.match(inspected.nextDecision, /instância/u);
+});
+
+test("retomada física no executor conserva o contexto do primeiro trecho lógico", async () => {
+  const course = { id: RESOURCE_CATALOG.catalogVersion, revision: "components-v1" };
+  const principal = { actorId: PRINCIPAL.actorId, scopes: ["authoring:read"] };
+  const first = await executeHumanCourseTask({
+    adapter: {}, principal, name: "consultar_componentes", rawArguments: {}
+  });
+  const context = structuredClone(first.context);
+  delete context.continuacao;
+  delete context.temMais;
+  const literal = JSON.stringify(context);
+  const initial = await openHumanReadContinuation({ args: {}, course, task: "consultar_componentes" });
+  // Simula uma retomada parcial do contexto real sem depender do tamanho do catálogo.
+  const offset = literal.indexOf('"components"');
+  assert.ok(offset > 0);
+  const continuation = Buffer.from(JSON.stringify({ ...initial, o: offset,
+    h: createHash("sha256").update(literal).digest("hex") })).toString("base64url");
+  const resumed = await executeHumanCourseTask({
+    adapter: {}, principal, name: "consultar_componentes",
+    rawArguments: { continuacao: continuation }
+  });
+  assert.equal(resumed.context.fragmento.inicio, offset);
+  assert.equal(resumed.context.fragmento.texto, literal.slice(offset));
+  assert.deepEqual(JSON.parse(literal.slice(0, offset) + resumed.context.fragmento.texto), context);
+  assert.equal(resumed.context.continuacao, first.context.continuacao,
+    "terminar o fragmento preserva a próxima página lógica");
 });
 
 test("executor real percorre o catálogo completo mantendo consulta, curso e revisão", async () => {

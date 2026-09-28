@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { renderCourseDesignPanel } from "../../src/ui/CourseDesignPanel.js";
+import { formatDesignValue, readDesignValue } from "../../src/ui/courseDesignControls.js";
 import { normalizeCourseDesign } from "../../src/ui/courseAuthoringViewModel.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 
 const selection = { courseId: "10000000-0000-4000-8000-000000000001", moduleId: "module-1",
   lessonId: "lesson-1", microsequenceId: "micro-1", studyUnitId: "unit-1" };
@@ -133,4 +135,36 @@ test("cadência restrita ao curso continua inspecionável sem editor local na un
   assert.match(html, /Ajuste disponível em: Curso/u);
   assert.match(html, /configuração e o registro de produção continuam inspecionáveis/u);
   assert.doesNotMatch(html, /data-course-design-parameter data-design-value-owner/u);
+});
+
+test("variação requerida sem dimensão tem rótulo humano e não vira pendência nem vazio", () => {
+  const variationId = "required_practice_variation_dimensions";
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find((item) => item.id === variationId);
+  const input = courseDesignFixture(selection);
+  input.parameters.find((item) => item.parameterId === variationId).effectiveAssignment = {
+    mode: "fixed", value: [], origin: "author",
+    reason: "A etapa não exige dimensão de variação própria.",
+    sourceScope: { kind: "study_unit", ref: selection.studyUnitId }, inherited: false
+  };
+  const design = normalizeCourseDesign(input);
+  const before = structuredClone(design);
+  const html = renderCourseDesignPanel({ courseDesign: design, designCategory: "practice",
+    designParameterId: variationId, designAppliedParameters: [{ parameterId: variationId, value: [],
+      origin: "automatic", reason: "A etapa não exige dimensão de variação própria.",
+      sourceScope: { kind: "study_unit", ref: selection.studyUnitId } }] });
+  assert.match(html, /Configuração atual:<\/strong> Fixo: Nenhuma dimensão exigida\./u);
+  assert.match(html, /Aplicado nesta produção:<\/strong> Nenhuma dimensão exigida\./u);
+  assert.match(html, /Motivo registrado:<\/strong> A etapa não exige dimensão de variação própria\./u);
+  assert.doesNotMatch(html, /Fixo: \./u);
+  assert.doesNotMatch(html, /escolha contextual pendente/u);
+  const editor = renderCourseDesignPanel({ courseDesign: design, designCategory: "practice",
+    designParameterId: variationId });
+  assert.doesNotMatch(editor, /checked/u);
+  assert.deepEqual(readDesignValue({ querySelectorAll: () => [], elements: {} }, definition, "parameterValue"), []);
+  assert.deepEqual(design.parameters.find((item) => item.parameterId === variationId)
+    .effectiveAssignment.value, []);
+  assert.deepEqual(design, before);
+  assert.equal(formatDesignValue(definition, null), "Automático · escolha contextual pendente");
+  assert.equal(formatDesignValue(definition, ["external_representation", "support_level"]),
+    "Representação · Nível de apoio");
 });

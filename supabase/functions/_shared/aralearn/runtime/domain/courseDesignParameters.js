@@ -122,8 +122,8 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     id: "required_practice_variation_dimensions",
     humanField: "dimensoes_de_variacao_da_pratica", group: "practice", groupLabel: "Prática", unitLabel: "dimensões de variação", optionLabels: Object.freeze({case_or_data:"Caso ou dados",context:"Contexto",task_feature:"Característica da tarefa",external_representation:"Representação",support_level:"Nível de apoio"}),
     label: "Variação da prática",
-    construct: "Dimensões semanticamente relevantes que variam entre oportunidades relacionadas ao mesmo requisito de evidência.",
-    operationalization: "Verifica as dimensões declaradas nas oportunidades sem tratar mudança cosmética ou reordenação como variação semântica.",
+    construct: "Dimensões semanticamente relevantes que variam entre oportunidades relacionadas ao mesmo requisito de evidência. O conjunto vazio declara explicitamente que nenhuma dimensão é exigida; ausência ou valor nulo continuam sendo delegação pendente de resolução.",
+    operationalization: "Verifica as dimensões declaradas nas oportunidades sem tratar mudança cosmética ou reordenação como variação semântica; o conjunto vazio dispensa essa cobertura.",
     limitations: "Variação declarada não prova transferência nem aprendizagem e precisa preservar a operação-alvo pertinente ao requisito.",
     defaultStatus: "product_hypothesis",
     evidenceRefs: Object.freeze(["taylor2010interleaved", "ainsworth2006deft"]),
@@ -131,7 +131,7 @@ export const COURSE_DESIGN_PARAMETER_DEFINITIONS = Object.freeze([
     valueSchema: Object.freeze({
       type: "set",
       allowedValues: PRACTICE_VARIATION_DIMENSIONS,
-      minimumItems: 1,
+      minimumItems: 0,
       maximumItems: PRACTICE_VARIATION_DIMENSIONS.length
     }),
     defaultValue: Object.freeze(["case_or_data"])

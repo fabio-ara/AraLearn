@@ -117,6 +117,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   const activePointers = new Map();
   let currentScale = 1;
   let expanded = false;
+  let inlineRestorePending = false;
   let scaleMode = "fit";
   let controlsReady = false;
   let resizeFrame = 0;
@@ -126,7 +127,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   let pinchOrigin = null;
   let dockedPrompt = null;
   let promptMarker = null;
-  // Sem exploração, restaura inline; com exploração, conserva o ponto de conteúdo.
   let inlineViewBeforeExpanded = null;
   let expandedBaseline = null;
 
@@ -172,7 +172,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     );
   };
 
-  // Escala 1:1; evita origem vazia pelo conteúdo, foco ou primeiro nó (D021/O074).
   const initialFramingScroll = () => {
     const current = { left: canvas.scrollLeft, top: canvas.scrollTop };
     const nodes = [...svg.querySelectorAll("g.node")];
@@ -206,7 +205,9 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     toggleExpanded.disabled = !controlsReady;
     toggleIcon.innerHTML = expanded ? DIAGRAM_ICONS.collapse : DIAGRAM_ICONS.expand;
     viewport.dataset.diagramExpanded = expanded ? "true" : "false";
-    canvas.dataset.diagramViewportMode = expanded ? "explore" : "inline";
+    canvas.dataset.diagramViewportMode = expanded
+      ? "explore"
+      : inlineRestorePending ? "inline-settling" : "inline";
     toggleExpanded.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggleExpanded.setAttribute("aria-label", expanded
       ? figure.closest(".study-explanation-body") ? "Voltar à explicação" : "Voltar à Unidade de estudo"
@@ -214,6 +215,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   };
 
   const persistCurrentView = () => {
+    if (!canvas.clientWidth || !canvas.clientHeight) return;
     rememberViewport(stateKey, {
       scaleMode,
       scale: currentScale,
@@ -272,7 +274,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     };
   };
 
-  // A rolagem do usuário prevalece sobre reposições agendadas.
   const markUserScroll = () => {
     userScrollEpoch += 1;
   };
@@ -308,15 +309,20 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
     cancelAnimationFrame(scrollFrame);
     scrollFrame = requestAnimationFrame(() => {
-      if (scrollEpoch !== userScrollEpoch) return;
-      if (restoreScroll) {
-        canvas.scrollLeft = Math.max(0, finiteNumber(restoreScroll.left));
-        canvas.scrollTop = Math.max(0, finiteNumber(restoreScroll.top));
-      } else {
-        canvas.scrollLeft = Math.max(0, content.x * nextScale - anchor.x);
-        canvas.scrollTop = Math.max(0, content.y * nextScale - anchor.y);
+      if (scrollEpoch === userScrollEpoch) {
+        if (restoreScroll) {
+          canvas.scrollLeft = Math.max(0, finiteNumber(restoreScroll.left));
+          canvas.scrollTop = Math.max(0, finiteNumber(restoreScroll.top));
+        } else {
+          canvas.scrollLeft = Math.max(0, content.x * nextScale - anchor.x);
+          canvas.scrollTop = Math.max(0, content.y * nextScale - anchor.y);
+        }
+        if (persist) persistCurrentView();
       }
-      if (persist) persistCurrentView();
+      if (!expanded && inlineRestorePending) {
+        inlineRestorePending = false;
+        canvas.dataset.diagramViewportMode = "inline";
+      }
     });
   };
 
@@ -343,23 +349,22 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
   const moveViewport = async ({ toDialog, anchorContent = null, restoreScroll = null }) => {
     const content = anchorContent || anchorContentPoint();
-    // A transição agenda a reposição da rolagem para quadros seguintes: um
-    // gesto surgido nesse intervalo a invalida.
     const scrollEpoch = userScrollEpoch;
     if (toDialog) {
+      inlineRestorePending = false;
       dialog.append(viewport);
       dockPracticePrompt();
       dialog.showModal();
       expanded = true;
     } else {
+      inlineRestorePending = true;
       home.append(viewport);
       restorePracticePrompt();
       expanded = false;
     }
     rememberViewport(stateKey, { expanded });
     updateControls();
-    // O foco entra já na fase síncrona da abertura, para não roubar um gesto
-    // entregue à superfície rolável no quadro seguinte.
+    // O foco entra na fase síncrona para não roubar um gesto no quadro seguinte.
     toggleExpanded.focus({ preventScroll: true });
     await nextFrame();
     if (scaleMode === "fit") {
@@ -387,8 +392,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
   const restoreInlineViewport = async () => {
     if (!expanded) return;
-    // A âncora é lida antes da remontagem; a gravação da posição restaurada
-    // acontece no quadro que aplica a rolagem.
+    // A âncora é lida antes da remontagem.
     const last = rememberedViewport(stateKey);
     const untouched = expandedBaseline && inlineViewBeforeExpanded && last &&
       Math.abs(finiteNumber(last.scrollLeft) - expandedBaseline.left) <= 1 &&

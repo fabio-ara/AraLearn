@@ -18,6 +18,8 @@ import {
 } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { courseAuthoringGuidanceForCall } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 
 const ORIGIN = "https://chatgpt.com";
 const CHAT_OPENAI_ORIGIN = "https://chat.openai.com";
@@ -820,4 +822,35 @@ test("#305 resultado grande após entrar na escrita exige releitura, sem nova te
     assert.match(payload.nextDecision, /Releia o curso/u);
     assert.doesNotMatch(JSON.stringify(payload), /sentinel-private-result/u);
   }
+});
+
+test("#275 Actions entrega a orientação e a mesma projeção humana de componentes", async () => {
+  const handler = createHandler();
+  const discovered = await handler(request("consultar_componentes", { busca: "pilha de chamadas" }));
+  assert.equal(discovered.status, 200);
+  const found = await discovered.json();
+  assert.deepEqual(found.context.orientacao.instructions,
+    courseAuthoringGuidanceForCall("consultar_componentes").instructions,
+    "o guia de componentes alcança o canal de Actions");
+  assert.equal(found.context.components.candidates[0].referencia,
+    "aralearn.resource.call_stack@1.0.0");
+  assert.equal(Object.hasOwn(found.context.components.candidates[0], "score"), false);
+  assert.equal(typeof found.context.components.candidates[0].finalidade, "string");
+  assert.equal(Object.hasOwn(found.context.components.candidates[0], "limitacoes"), false);
+
+  const inspected = await handler(request("consultar_componentes", {
+    componente: "aralearn.resource.memory_layout"
+  }));
+  assert.equal(inspected.status, 200);
+  const inspectedContext = (await inspected.json()).context;
+  const contract = inspectedContext.componentAuthoringContract;
+  assert.equal(Object.hasOwn(contract.contrato, "example"), false);
+  assert.equal(Object.hasOwn(inspectedContext, "orientacao"), false,
+    "o guia de descoberta não se repete a cada contrato escolhido");
+  assert.ok(contract.modeloDeInstancia.data.segments.length > 0,
+    "o exemplo preenchido continua disponível como modelo de instância");
+  assert.ok(contract.limitacoes.length > 0);
+  assert.equal(typeof contract.contrato.intent, "string");
+  assert.deepEqual(contract.slots, ["conteudo", "feedback"]);
+  assert.deepEqual(contract.compatibilidadeDeResposta, ["Lacuna", "Escolha"]);
 });

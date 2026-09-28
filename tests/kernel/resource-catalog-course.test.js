@@ -410,7 +410,9 @@ test("descoberta progressiva limita busca, inspeção, contrato e bytes", () => 
   });
   assert.equal(substitute.coverage.status, "substitute");
   assert.equal(substitute.candidates[0].fit, "substitute");
-  assert.match(substitute.coverage.chatDisclosure, /como aproximação/u);
+  assert.match(substitute.coverage.chatDisclosure, /avalie as aproximações/u);
+  assert.doesNotMatch(substitute.coverage.chatDisclosure, /Usei /u,
+    "a consulta não escolhe pelo modelo");
   assert.ok(substitute.candidates[0].missing.length > 0);
 });
 

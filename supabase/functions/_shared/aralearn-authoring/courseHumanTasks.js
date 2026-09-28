@@ -1,5 +1,8 @@
 import { AuthoringApiError } from "./errors.js";
-import { COURSE_AUTHORING_ALIGNMENT_GUIDANCE } from "./courseKnowledge.js";
+import {
+  COURSE_AUTHORING_ALIGNMENT_GUIDANCE,
+  courseAuthoringGuidanceForCall
+} from "./courseKnowledge.js";
 import {
   executeTrustedCourseWrite,
   resolveHumanCourseContext
@@ -1124,7 +1127,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:b0fdcd6922a3cca6cd1fa71b48949303ea76f63747a606e43b2e1ae00873b9a1";
+  "sha256:c7c2570cfa46ce86debf3caef5130d91385a12693d4cf3a3c0c8ad647b562707";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3091,15 +3094,52 @@ function componentLookupText(value) {
   return String(value || "").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
 }
 
+const COMPONENT_SLOT_LABEL = Object.freeze({
+  content: "conteudo",
+  response: "resposta",
+  feedback: "feedback"
+});
+// Rótulos resolvidos pelo consumidor da instância: o lugar de resposta aceita
+// nome curto, nome completo ou rótulo do catálogo, sem ambiguidade entre eles.
+const COMPONENT_LABELS_BY_ID = new Map(
+  RESOURCE_PACKAGE_REGISTRY.listCatalog().map(({ id, label }) => [id, label])
+);
+
+function humanComponentSlots(slots) {
+  return (Array.isArray(slots) ? slots : []).map((slot) => COMPONENT_SLOT_LABEL[slot] || slot);
+}
+
+function humanComponentReferences(references) {
+  return (Array.isArray(references) ? references : [])
+    .map((reference) => COMPONENT_LABELS_BY_ID.get(reference) || reference);
+}
+
 function componentSearchProjection(catalog) {
   return {
     coverage: catalog.coverage,
     total: Number.isSafeInteger(catalog.total) ? catalog.total : catalog.candidates.length,
-    candidates: catalog.candidates.map(({ packageId, version, ...candidate }) => ({
-      referencia: `${packageId}@${version}`,
-      ...candidate
-    }))
+    candidates: catalog.candidates.map(({ packageId, version, ...candidate }) => {
+      const profile = RESOURCE_CATALOG.getProfile(packageId, version);
+      return {
+        referencia: `${packageId}@${version}`,
+        label: candidate.label,
+        finalidade: profile?.purpose ?? null,
+        fit: candidate.fit,
+        useWhen: [...(candidate.useWhen || [])],
+        avoidWhen: [...(candidate.avoidWhen || [])],
+        compatibilidadeDeResposta: humanComponentReferences(candidate.responseCompatibility)
+      };
+    })
   };
+}
+
+// A orientação de descoberta acompanha só o primeiro trecho lógico da busca.
+// Ela não vai à descrição compartilhada (o catálogo de tarefas tem orçamento
+// próprio e a operação de Actions limita a descrição a 300 caracteres) nem se
+// repete na resposta de contrato, que já traz finalidade, contrato e decisão.
+function componentConsultationGuidance() {
+  const orientacao = courseAuthoringGuidanceForCall("consultar_componentes");
+  return orientacao ? { orientacao } : {};
 }
 
 function selectedComponentCandidate(reference, candidates) {
@@ -3190,6 +3230,7 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
       : null;
     if (inspected?.status === "ok") {
       const definition = inspected.definition;
+      const { example, ...contrato } = definition.contract;
       return result("Li os detalhes de uso do componente escolhido.", {
         nextDecision: "Este contrato descreve uma instância. Ao produzir a unidade, o conteúdo precisa de título, função didática, recursos, resposta quando aplicável, feedback e tópicos. Uma prática exige resposta avaliável e feedback explicativo local; o retorno das alternativas não substitui esse feedback.",
         context: {
@@ -3197,18 +3238,18 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
             referencia: `${definition.package}@${definition.version}`,
             rotulo: definition.manifest.label,
             finalidade: definition.manifest.purpose,
-            slots: definition.manifest.slots,
+            slots: humanComponentSlots(definition.manifest.slots),
             ...(definition.manifest.tool ? { ferramenta: structuredClone(definition.manifest.tool) } : {}),
-            compatibilidadeDeResposta: definition.manifest.responseCompatibility,
+            compatibilidadeDeResposta: humanComponentReferences(definition.manifest.responseCompatibility),
             limitacoes: definition.manifest.limitations,
-            contrato: definition.contract,
+            contrato,
             schema: definition.schema,
             ...(Object.hasOwn(definition, "practiceTargets")
               ? { practiceTargets: definition.practiceTargets }
               : {}),
             modeloDeInstancia: {
               package: definition.package.replace(/^aralearn\.(resource|response)\./u, ""),
-              data: definition.contract.example
+              data: example
             }
           }
         }
@@ -3216,6 +3257,9 @@ HUMAN_TASK_HANDLERS.consultar_componentes = async ({ args }) => {
     }
   }
   const context = await paginateHumanReadContext(withoutTechnicalState({
+    ...(continuation.p === null
+      ? componentConsultationGuidance()
+      : {}),
     components: componentSearchProjection(catalog)
   }), {
     state: continuation,

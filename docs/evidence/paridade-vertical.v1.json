@@ -183,7 +183,8 @@
           "human-content-review-v1",
           "object-content-review-v1",
           "independent-review-access-v1",
-          "configuration-realization-inspection-v1"
+          "configuration-realization-inspection-v1",
+          "empty-practice-variation-dimensions-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_design_parameter_definitions|private\\.course_design_parameter_assignments|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_assignments|private\\.course_component_policy_assignments)$",

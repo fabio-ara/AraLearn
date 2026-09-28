@@ -18,6 +18,8 @@ import { renderCourseDesignParameterCatalogSql } from "../../scripts/syncCourseD
 import { normalizeCourseDesignCommand as normalizeEdgeCommand } from
   "../../supabase/functions/_shared/aralearn/runtime/domain/courseDesignParameters.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
+import { courseHumanTaskDefinition } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const COURSE = "10000000-0000-4000-8000-000000000001";
 const LESSON = "lesson-a";
@@ -288,4 +290,34 @@ test('SQL é projeção integral e determinística das mesmas definições do ca
     assert.ok(sql.includes(JSON.stringify(definition).replaceAll("'", "''")));
   }
   assert.ok(sql.includes('on conflict(parameter_id) do update'));
+});
+
+test("conjunto vazio de variação requerida é ausência explícita, não pendência", () => {
+  const id = "required_practice_variation_dimensions";
+  const codeOf = (run) => {
+    try { run(); return null; } catch (error) { return error.code ?? error.name; }
+  };
+  assert.deepEqual(normalizeCourseDesignParameterValue(id, []), []);
+  assert.deepEqual(normalizeCourseDesignParameterValue(id, ["support_level", "case_or_data"]),
+    ["case_or_data", "support_level"]);
+  for (const invalid of [null, undefined, ["inventado"], ["case_or_data", "case_or_data"]]) {
+    assert.equal(codeOf(() => normalizeCourseDesignParameterValue(id, invalid)),
+      "invalid_course_design_parameter_value");
+  }
+  assert.equal(codeOf(() => normalizeCourseDesignParameterValue("required_explanation_forms", [])),
+    "invalid_course_design_parameter_value");
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find((item) => item.id === id);
+  assert.equal(definition.valueSchema.minimumItems, 0);
+  assert.equal(COURSE_DESIGN_PARAMETER_DEFINITIONS
+    .filter((item) => item.valueSchema.type === "set" && item.valueSchema.minimumItems === 0).length, 1);
+  assert.match(definition.construct, /conjunto vazio declara explicitamente/u);
+  const sqlRow = renderCourseDesignParameterCatalogSql().split("\n")
+    .find((line) => line.includes("'required_practice_variation_dimensions'"));
+  assert.match(sqlRow, /"minimumItems":0/u);
+  const unidades = courseHumanTaskDefinition("materializar_parte").inputSchema.properties.unidades;
+  const unitSchema = Array.isArray(unidades.items) ? unidades.items[0] : unidades.items;
+  const human = unitSchema.properties.configuracao.properties.parametros
+    .properties.dimensoes_de_variacao_da_pratica;
+  assert.equal(human.minItems, 0);
+  assert.equal(human.maxItems, 5);
 });

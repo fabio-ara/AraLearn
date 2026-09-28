@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20260928110000",
+  "schemaRevision": "20260928120000",
   "contractVersion": 1,
   "requiredFeatures": [
     "object-content-review-v1",
@@ -54,6 +54,7 @@
     "authoring-preference-profiles-v1",
     "shared-microsequence-explanation-v1",
     "human-content-review-v1",
-    "configuration-realization-inspection-v1"
+    "configuration-realization-inspection-v1",
+    "empty-practice-variation-dimensions-v1"
   ]
 }

@@ -3,10 +3,18 @@ export function escapeDesignHtml(value) {
     .replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
 }
 
+// Conjunto vazio é escolha explícita; não é pendência nem valor em branco.
+const EMPTY_SET_LABELS = Object.freeze({
+  required_practice_variation_dimensions: "Nenhuma dimensão exigida"
+});
+
 export function formatDesignValue(definition, value) {
   if (value == null) return "Automático · escolha contextual pendente";
   const label = (item) => definition.optionLabels[item] || String(item);
-  return Array.isArray(value) ? value.map(label).join(" · ") : label(value);
+  if (!Array.isArray(value)) return label(value);
+  return value.length
+    ? value.map(label).join(" · ")
+    : EMPTY_SET_LABELS[definition.id] || "Nenhum item exigido";
 }
 
 export function renderDesignValueInput(definition, value, {

@@ -336,11 +336,12 @@ function coverage(candidates, intent) {
       chatDisclosure: `O conjunto de resources disponível não contém uma representação autorizada para ${desiredResource}. Registre a limitação e aguarde outra decisão antes de materializar.`
     };
   }
+  // Fala do recorte consultado; não declara ausência no repertório instalado.
   return {
     status: best.fit,
     desiredResource,
     chatDisclosure: best.fit === "substitute"
-      ? `Usei ${best.label} como aproximação porque o catálogo instalado não contém uma representação exata para ${desiredResource}.`
+      ? `Nenhum candidato deste recorte cobre exatamente ${desiredResource} com os filtros desta consulta; avalie as aproximações antes de escolher.`
       : null
   };
 }

@@ -109,8 +109,10 @@ ampliar um algoritmo central e oferece à curadoria uma base para confrontar a
 justificativa de cada escolha.
 
 A lista `responseCompatibility`, apresentada como `compatibilidadeDeResposta`
-na consulta humana, é indicativa, não exclusiva. A ausência de uma resposta
-nessa lista não proíbe uma combinação. A validação considera os lugares aceitos
+na consulta humana, é indicativa, não exclusiva; nessa consulta ela nomeia os
+componentes de resposta pelo rótulo do catálogo, que o consumidor da instância
+resolve sem ambiguidade. A ausência de uma resposta nessa lista não proíbe uma
+combinação. A validação considera os lugares aceitos
 (`slots`), os schemas e as regras de composição dos componentes. Por exemplo,
 Texto explicado (`paragraph`) pode acompanhar Escolha (`choice`) na mesma
 unidade, desde que o texto não repita a pergunta da resposta.
