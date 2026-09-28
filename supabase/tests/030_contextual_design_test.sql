@@ -172,5 +172,44 @@ select ok(not has_function_privilege('anon','public.apply_course_design_command_
 select ok(not has_function_privilege('authenticated','public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)','execute'),'Cliente não escolhe ator explícito');
 select ok(has_function_privilege('service_role','public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)','execute'),'Canal do serviço possui a operação tipada');
 select ok(not has_function_privilege('service_role','private.apply_course_design_settings_core_v3(uuid,uuid,bigint,jsonb,text,text,text)','execute'),'Núcleo privado não cria escritor paralelo');
+select is((select design_snapshot#>'{parameters}' from private.course_entities where entity_id='u2' and course_id=pg_temp.design_course())
+  @> '[{"parameterId":"required_practice_variation_dimensions","value":["case_or_data"]}]'::jsonb,
+  true,'Valor não vazio permanece no snapshot aplicado');
+select lives_ok($$select pg_temp.design_write(
+  jsonb_set(pg_temp.design_configure('u1'),'{units,0,automaticParameters}',
+    (select jsonb_agg(case when v->>'parameterId'='required_practice_variation_dimensions'
+      then v||'{"value":[]}'::jsonb else v end order by ord)
+     from jsonb_array_elements(pg_temp.design_configure('u1')#>'{units,0,automaticParameters}') with ordinality as t(v,ord))),
+  'design-empty-variation-after')$$,
+  'Escritor preserva [] como valor aplicado, sem convertê-lo em null');
+select is((select p->'value' from private.course_entities e
+  cross join lateral jsonb_array_elements(e.design_snapshot->'parameters') p
+  where e.course_id=pg_temp.design_course() and e.entity_id='u1'
+    and p->>'parameterId'='required_practice_variation_dimensions'), '[]'::jsonb,
+  'Conjunto vazio permanece distinguível de ausência');
+insert into private.course_design_parameter_assignments
+  (course_id,parameter_id,scope_kind,scope_ref,mode,value,origin,reason)
+values(pg_temp.design_course(),'practice_distribution','course',pg_temp.design_course()::text,
+  'automatic','null','author','Calibração pendente da fixture.');
+select throws_ok($$select pg_temp.design_write(
+  jsonb_set(pg_temp.design_configure('u1'),'{units,0,automaticParameters}','[]'::jsonb),
+  'design-pending-calibration-after')$$,
+  'PD410','Uma escolha automática ainda precisa de calibração contextual.',
+  'Calibração pendente tem erro de domínio próprio');
+create temporary table design_writer_edges_before as
+  select design_snapshot from private.course_entities where course_id=pg_temp.design_course() and entity_id='u1';
+insert into private.course_design_parameter_assignments
+  (course_id,parameter_id,scope_kind,scope_ref,mode,value,origin,reason)
+values(pg_temp.design_course(),'new_analysis_unit_ceiling_per_expository_study_unit','course',pg_temp.design_course()::text,
+  'fixed','2','research_condition','Condição de pesquisa da fixture.'),
+      (pg_temp.design_course(),'new_analysis_unit_ceiling_per_expository_study_unit','study_unit','u1',
+  'fixed','3','author','Exceção incompatível da fixture.');
+select throws_ok($$select pg_temp.design_write(
+  pg_temp.design_configure('u1'),'design-research-conflict-after')$$,
+  'PD409','Resolva o conflito da condição de pesquisa antes de aplicar a configuração.',
+  'Conflito real mantém código e mensagem próprios');
+select is((select design_snapshot from private.course_entities where course_id=pg_temp.design_course() and entity_id='u1'),
+  (select design_snapshot from design_writer_edges_before),
+  'Conflito não altera o snapshot salvo');
 select * from finish();
 rollback;

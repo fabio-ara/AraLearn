@@ -179,16 +179,18 @@ test("perfil divergente recusa CAS e não vaza erro interno", async () => {
   assert.equal(value.stored.revision, 1);
 });
 
-test("ownership, condição de pesquisa e nome ocupado preservam as recusas do banco sem detalhes internos", async () => {
-  for (const [code, status, expectedCode] of [
-    ["42501", 403, "not_authorized"],
-    ["PD409", 409, "course_design_research_conflict"],
-    ["PN409", 409, "authoring_profile_name_unavailable"]
+test("ownership, conflitos e nome ocupado preservam códigos e mensagens públicas seguras", async () => {
+  for (const [code, status, expectedCode, expectedMessage] of [
+    ["42501", 403, "not_authorized", "A operação não foi autorizada."],
+    ["PD409", 409, "course_design_research_conflict", "Resolva o conflito com a condição de pesquisa antes de aplicar a alteração."],
+    ["PD410", 409, "course_design_contextual_calibration_required", "Uma escolha automática ainda precisa de calibração contextual."],
+    ["PN409", 409, "authoring_profile_name_unavailable", "Já existe um perfil com este nome nesta conta."]
   ]) {
     const value = harness({ rpcOverride: () => json({ code, message: "segredo interno do banco" }, 400) });
     await assert.rejects(code === "PN409" ? value.client.mutateAuthoringProfile(save()) :
       value.client.applyCourseAuthoringProfile(apply()), (error) =>
-      error.status === status && error.code === expectedCode && !error.message.includes("interno"));
+      error.status === status && error.code === expectedCode && error.message === expectedMessage &&
+      !error.message.includes("segredo interno do banco"));
     assert.equal(value.calls.length, 1);
   }
 });

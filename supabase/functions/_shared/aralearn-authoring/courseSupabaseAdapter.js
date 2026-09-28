@@ -584,7 +584,10 @@ function databaseError(status, body) {
     return new AuthoringApiError(409, "person_handle_unavailable", "Este identificador público já está em uso.");
   }
   if (code === "PD409") {
-    return new AuthoringApiError(409, "course_design_research_conflict", "Resolva as condições de pesquisa antes de aplicar o perfil.");
+    return new AuthoringApiError(409, "course_design_research_conflict", "Resolva o conflito com a condição de pesquisa antes de aplicar a alteração.");
+  }
+  if (code === "PD410") {
+    return new AuthoringApiError(409, "course_design_contextual_calibration_required", "Uma escolha automática ainda precisa de calibração contextual.");
   }
   if (code === "PN409") {
     return new AuthoringApiError(409, "authoring_profile_name_unavailable", "Já existe um perfil com este nome nesta conta.");

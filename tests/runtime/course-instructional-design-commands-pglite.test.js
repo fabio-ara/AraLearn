@@ -65,10 +65,12 @@ async function fixture({ units = false, currentOrder = false } = {}) {
   await db.exec(functionSql(await load("20260903160000_global_curriculum_authoring_flow.sql"), "private.assert_course_materialization_pedagogy_v1"));
   try { await db.exec(await load("20260909061332_contextual_instructional_design_commands.sql")); }
   catch (error) { await db.close(); throw new Error(`${error.code}: ${error.message}; position ${error.position}`, { cause: error }); }
+  await db.exec(`create function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path = pg_catalog as $$
+    select '{"schemaRevision":"20260909063859","contractVersion":1,"features":["fixture-manifest-v1"]}'::jsonb$$;`);
   if (currentOrder) {
-    await db.exec(`create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$select '{"schemaRevision":"20260909063859","features":{"fixture":true}}'::jsonb$$;`);
     await db.exec(await load("20260909065357_contextual_instructional_snapshot_order.sql"));
   }
+  await db.exec(await load("20260928125507_contextual_design_writer_edges.sql"));
   if (units) {
     for (const [id, position] of [["unit-a", 1], ["unit-b", 2]]) await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content,
       design_snapshot,design_application,applied_explanation_basis,content_review) values($1,'study_unit',$2,'micro',$3,$4,$5,$6,$7,$8)`,
@@ -220,7 +222,7 @@ test("configuração expressa resolve intenção real e calibração, preserva c
     assert.equal(await value(db, "select design_snapshot->>'appliedAt' value from private.course_entities where entity_id='unit-a'"), after.design_snapshot.appliedAt);
     const param = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(item => item.valueSchema.type === "enum");
     await db.query("update private.course_design_parameter_assignments set mode='automatic',value='null',origin='author' where parameter_id=$1", [param.id]);
-    await assert.rejects(write(db, configure("unit-a"), "configuration-uncalibrated"), error => error.code === "PD409");
+    await assert.rejects(write(db, configure("unit-a"), "configuration-uncalibrated"), error => error.code === "PD410");
     const calibration = { automaticParameters: [{ parameterId: param.id, value: param.defaultValue, reason: "Escolha contextual para esta unidade." }] };
     await write(db, configure("unit-a", calibration), "configuration-calibrated");
     assert.equal(await value(db, "select v->'value' value from private.course_entities e cross join lateral jsonb_array_elements(e.design_snapshot->'parameters') v where e.entity_id='unit-a' and v->>'parameterId'=$1", [param.id]), param.defaultValue);
@@ -287,13 +289,13 @@ test("snapshot conserva a ordem position/id exigida pelo reader e materializador
     await write(db, { type: "apply_study_unit_configuration", scope: { kind: "didactic_microsequence", ref: "micro" },
       units: [{ studyUnitId: "unit-a", expectedStudyUnitVersion: 1, automaticParameters: [] }] }, "ordered-current-configuration");
     assert.deepEqual(await value(db, "select design_snapshot->'instructionalAnalysisUnitIds' value from private.course_entities where entity_id='unit-a'"), [analysisId, secondId]);
-    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), { schemaRevision: "20260909065357", features: { fixture: true } });
+    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), { schemaRevision: "20260928125507", contractVersion: 1, features: ["contextual-design-writer-edges-v1", "fixture-manifest-v1"] });
   } finally { await db.close(); }
 });
 
 async function installCurrentFormCoverage(db) {
-  await db.exec(`create function public.get_aralearn_runtime_manifest() returns jsonb language sql as $$
-    select '{"schemaRevision":"20260909072036","features":{"fixture":true}}'::jsonb$$;`);
+  await db.exec(`create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path = pg_catalog as $$
+    select '{"schemaRevision":"20260909072036","contractVersion":1,"features":["fixture-manifest-v1"]}'::jsonb$$;`);
   await db.exec(await load("20260910045104_contextual_explanation_forms_across_units.sql"));
 }
 
@@ -320,7 +322,7 @@ test("formas requeridas se completam em unidades da mesma microssequência sem a
       error => error.code === "23514" && error.message === "Uma forma requerida para ideia nova nao foi tratada.");
     assert.deepEqual((await db.query("select entity_id,content,version,design_snapshot,design_application from private.course_entities where entity_type='study_unit' order by position")).rows, saved);
     assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"),
-      { schemaRevision: "20260910045104", features: { fixture: true } });
+      { schemaRevision: "20260910045104", contractVersion: 1, features: ["fixture-manifest-v1"] });
   } finally { await db.close(); }
 });
 
@@ -417,7 +419,7 @@ test("registro fiel de unidades expositivas conserva requisito futuro, dados e r
     await assert.rejects(write(db, fixed, "recorded-fixed-override"), error => error.code === "22023");
     assert.deepEqual((await entities()).rows, before);
     assert.equal(await value(db, "select count(*)::integer value from private.course_change_receipts where request_id in('recorded-stale-course','recorded-other-owner','recorded-fixed-override')"), 0);
-    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), { schemaRevision: "20260910054749", features: { fixture: true } });
+    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"), { schemaRevision: "20260910054749", contractVersion: 1, features: ["contextual-design-writer-edges-v1", "fixture-manifest-v1"] });
     for (const role of ["anon", "authenticated", "service_role"]) {
       assert.equal(await value(db, "select has_function_privilege($1,'private.assert_course_application_pedagogy_v1(uuid,jsonb,boolean)','execute') value", [role]), false);
     }

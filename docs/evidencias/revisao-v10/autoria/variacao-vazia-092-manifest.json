@@ -2,17 +2,17 @@
   "revisao": "v10",
   "recorte": "variação exigida da prática — conjunto vazio (0.0.92)",
   "origem": "fixture E2E local com renderer e CSS reais e controlador simulado (android-chromium, 390×844 px CSS, DPR 2,625); imagens copiadas sem edição",
-  "manifestSha256": "33332fb9db4a74815a8e8023460993e868249a66a69122bb3ea8a574b9a6ff79",
+  "manifestSha256": "8d4f1be87d4034e3906549a57cd56298ebd67aed3fb007dcf714cff578e2f41f",
   "imagens": [
     {
       "arquivo": "variacao-vazia-092-aplicado.png",
-      "foco": "Painel de Parâmetros: valor aplicado automático com conjunto vazio rotulado “Nenhuma dimensão exigida”",
+      "foco": "Variação da prática: valor aplicado automático com conjunto vazio (Nenhuma dimensão exigida; fixture local, controlador simulado)",
       "sha256": "3ba00f798183e26d8131df41c79172479e3ab9181b8370b3d26ed65099d579cd",
       "bytes": 279104
     },
     {
       "arquivo": "variacao-vazia-092-pendencia.png",
-      "foco": "Painel de Parâmetros: valor aplicado nulo rotulado “Automático · escolha contextual pendente”",
+      "foco": "Formas de explicação: valor aplicado nulo (Automático · escolha contextual pendente), contraste, não variação da prática",
       "sha256": "350760bb9d839e4fa83a3a7d3e42d6840d882926599fcc87280d37a52be634d5",
       "bytes": 215760
     }
