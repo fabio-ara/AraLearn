@@ -126,10 +126,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   let pinchOrigin = null;
   let dockedPrompt = null;
   let promptMarker = null;
-  // Posição inline do estudante no momento da abertura e retrato do quadro
-  // expandido logo depois do enquadramento: se nada mudou nesse intervalo, o
-  // fechamento devolve exatamente a posição anterior; se o estudante explorou,
-  // o retorno conserva o ponto de conteúdo que ele está olhando.
+  // Sem exploração, restaura inline; com exploração, conserva o ponto de conteúdo.
   let inlineViewBeforeExpanded = null;
   let expandedBaseline = null;
 
@@ -175,11 +172,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     );
   };
 
-  // Enquadramento inicial compartilhado por Unidade e Explicação (D021): a escala
-  // natural 1:1 preserva a tipografia do diagrama; a rolagem inicial só é deslocada
-  // quando a origem do SVG abriria numa região sem nenhum objeto (O074). O conteúdo é
-  // a primeira escolha; o objeto focal do pacote e o primeiro nó garantem que a
-  // primeira vista nunca abra em outro vazio.
+  // Escala 1:1; evita origem vazia pelo conteúdo, foco ou primeiro nó (D021/O074).
   const initialFramingScroll = () => {
     const current = { left: canvas.scrollLeft, top: canvas.scrollTop };
     const nodes = [...svg.querySelectorAll("g.node")];
@@ -267,9 +260,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
       Math.max(currentScale, MIN_NUMERIC_DIAGRAM_SCALE)
   });
 
-  // Ao fechar o diálogo, o quadro deixa de ser renderizado antes do evento
-  // "close": a leitura viva vira caixa zerada e perderia pan e enquadramento. A
-  // última posição conhecida do próprio quadro reconstrói o ponto de conteúdo.
+  // "close" já oculta a caixa: a última posição conhecida reconstrói a âncora.
   const anchorContentPoint = () => {
     if (canvas.clientWidth > 0 && canvas.clientHeight > 0) return centeredContentPoint();
     const remembered = rememberedViewport(stateKey);
@@ -281,8 +272,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     };
   };
 
-  // A rolagem pedida pelo usuário define a posição final: ela vence o
-  // reposicionamento que a abertura/fechamento do diálogo agenda para quadros seguintes.
+  // A rolagem do usuário prevalece sobre reposições agendadas.
   const markUserScroll = () => {
     userScrollEpoch += 1;
   };
