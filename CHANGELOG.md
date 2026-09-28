@@ -9,6 +9,16 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.92] - 2026-09-28
+
+### Corrigido
+
+- A consulta humana de componentes didáticos mostra um único exemplo preenchido da instância, em vez de repetir o mesmo exemplo no contrato e no modelo de instância.
+- A descoberta de componentes deixa de expor a contabilidade interna do ranqueamento e passa a listar apenas os sinais que orientam a escolha; as limitações completas continuam no contrato do componente selecionado.
+- A consulta usa vocabulário humano para lugares e compatibilidades de resposta, e o consumidor da instância resolve cada referência pelo rótulo do catálogo.
+- A mensagem de aproximação passa a falar do recorte e dos filtros da consulta, sem afirmar que o repertório instalado não tem representação para o pedido.
+- A orientação de descoberta acompanha apenas o primeiro trecho lógico da busca e não se repete na continuação de página nem na resposta de contrato.
+
 ## [0.0.91] - 2026-09-28
 
 ### Corrigido

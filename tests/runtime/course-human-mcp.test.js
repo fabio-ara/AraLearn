@@ -23,8 +23,11 @@ import {
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
 import {
-  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+  courseAuthoringGuidanceForCall
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
+import { RESOURCE_PACKAGE_REGISTRY } from
+  "../../supabase/functions/_shared/aralearn/runtime/resources/catalog/resourceCatalog.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
@@ -1330,6 +1333,17 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
     "aralearn.resource.plane@1.0.0"
   );
   assert.equal(Object.hasOwn(discovered.context.components.candidates[0], "packageId"), false);
+  for (const internal of ["score", "matched", "missing", "primaryFamilyId", "reason"]) {
+    assert.equal(Object.hasOwn(discovered.context.components.candidates[0], internal), false,
+      `a descoberta humana não devolve ${internal}`);
+  }
+  assert.equal(typeof discovered.context.components.candidates[0].finalidade, "string");
+  assert.equal(Object.hasOwn(discovered.context.components.candidates[0], "limitacoes"), false,
+    `as limitações integrais pertencem ao contrato selecionado`);
+  assert.ok(discovered.context.components.candidates[0].avoidWhen.length > 0);
+  assert.deepEqual(discovered.context.orientacao.instructions,
+    courseAuthoringGuidanceForCall("consultar_componentes").instructions,
+    "a consulta de componentes leva a orientação do próprio canal");
 
   const inspected = await executeHumanCourseTask({
     adapter: adapter(),
@@ -1343,6 +1357,17 @@ test("#275 consultar_componentes separa descoberta do contrato exato", async () 
   assert.equal(contract.modeloDeInstancia.package, "plane");
   assert.equal(Object.hasOwn(contract.modeloDeInstancia, "version"), false);
   assert.equal(Object.hasOwn(contract.modeloDeInstancia, "id"), false);
+  assert.equal(Object.hasOwn(contract.contrato, "example"), false,
+    "o exemplo preenchido aparece uma única vez, em modeloDeInstancia.data");
+  assert.deepEqual(contract.modeloDeInstancia.data,
+    RESOURCE_PACKAGE_REGISTRY
+      .getAuthoringContract("aralearn.resource.plane", "1.0.0").contract.example,
+    "o contrato interno do registro continua completo");
+  assert.deepEqual(contract.slots, ["conteudo", "feedback"]);
+  assert.deepEqual(contract.compatibilidadeDeResposta, ["Escolha"]);
+  assert.equal(Object.hasOwn(inspected.context, "orientacao"), false,
+    "a resposta de contrato não reinjeta o guia de busca");
+  assert.ok(contract.limitacoes.length > 0, "as limitações integrais ficam no contrato");
   assert.equal(contract.schema.properties.groups.items.properties.id.type, "string");
   assert.deepEqual(contract.contrato.required, ["xAxis", "yAxis"]);
   assert.match(contract.contrato.rules.join(" "), /indicativa, não exclusiva/u);

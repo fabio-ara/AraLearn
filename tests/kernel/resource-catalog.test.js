@@ -101,11 +101,29 @@ test("busca distingue uso canônico, versátil e substitutivo sem bloquear", () 
   });
   assert.equal(substitute.coverage.status, "substitute");
   assert.equal(substitute.candidates[0].packageId, "aralearn.resource.tree");
-  assert.match(substitute.coverage.chatDisclosure, /como aproximação/u);
+  assert.match(substitute.coverage.chatDisclosure, /avalie as aproximações/u);
+  assert.doesNotMatch(substitute.coverage.chatDisclosure, /Usei /u,
+    "a busca não escolhe pelo modelo");
   assert.throws(
     () => RESOURCE_CATALOG.search({ structureIds: ["structure.inexistente"] }),
     /identificador desconhecido/u
   );
+});
+
+test("cobertura fala do recorte consultado, não do repertório instalado", () => {
+  const repertoire = RESOURCE_CATALOG.search({ query: "pilha de chamadas" });
+  assert.equal(repertoire.coverage.status, "canonical");
+  assert.equal(repertoire.coverage.chatDisclosure, null);
+  assert.equal(repertoire.candidates[0].packageId, "aralearn.resource.call_stack");
+
+  const filtered = RESOURCE_CATALOG.search({ query: "pilha de chamadas", slot: "response" });
+  assert.equal(filtered.coverage.status, "substitute");
+  assert.equal(filtered.candidates.some(({ packageId }) =>
+    packageId === "aralearn.resource.call_stack"), false);
+  assert.match(filtered.coverage.chatDisclosure, /deste recorte/u);
+  assert.match(filtered.coverage.chatDisclosure, /filtros desta consulta/u);
+  assert.doesNotMatch(filtered.coverage.chatDisclosure, /catálogo instalado|não contém/u,
+    "o recorte não declara ausência no repertório");
 });
 
 test("modalidade prática ausente impede classificação canônica", () => {
