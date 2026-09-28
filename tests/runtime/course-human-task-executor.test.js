@@ -407,3 +407,32 @@ test("#272 erro local sem sinal de transporte não é repetido como falha ambíg
   }), /Falha de programação local/u);
   assert.equal(attempts, 1);
 });
+
+test("posição de microssequência repetida entre pais recusa e pede escopo qualificado", async () => {
+  const adapter = courseAdapter({
+    courses: [{ courseId: COURSE_A, title: "Redes" }],
+    plan: { courseRevision: 8, plan: { version: 4, title: "Redes", parts: [
+      { id: PART_A, position: 0, title: "Fundamentos", version: 2,
+        microsequences: [{ id: "micro-a", productionPosition: 0, title: "Conexões" }] },
+      { id: "30000000-0000-4000-8000-000000000002", position: 1, title: "Aplicações", version: 1,
+        microsequences: [{ id: "micro-b", productionPosition: 0, title: "Serviços" }] }
+    ] } }
+  });
+  await assert.rejects(() => resolveHumanCourseContext({ adapter, principal: PRINCIPAL,
+    course: "Redes", microsequence: 1 }), (error) => {
+    assert.equal(error.status, 409);
+    assert.equal(error.code, "ambiguous_human_reference");
+    assert.match(error.message, /posição/iu);
+    assert.match(error.message, /escopo pai/iu);
+    assert.match(error.message, /título completo e único/iu);
+    assert.doesNotMatch(error.message, /ou a posição/iu);
+    return true;
+  });
+  const qualified = await resolveHumanCourseContext({ adapter, principal: PRINCIPAL,
+    course: "Redes", part: "Aplicações", microsequence: 1 });
+  assert.equal(qualified.microsequence.id, "micro-b");
+  const titled = await resolveHumanCourseContext({ adapter, principal: PRINCIPAL,
+    course: "Redes", microsequence: "Conexões" });
+  assert.equal(titled.microsequence.id, "micro-a");
+});
+

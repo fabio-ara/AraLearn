@@ -40,11 +40,13 @@ function notFound(label) {
   throw new AuthoringApiError(404, "human_reference_not_found", `${label} não foi localizado.`);
 }
 
-function ambiguous(label, count) {
+function ambiguous(label, count, kind = "text") {
   throw new AuthoringApiError(
     409,
     "ambiguous_human_reference",
-    `${label} corresponde a mais de um objeto; use um título mais específico ou a posição.`,
+    kind === "position"
+      ? `${label} repete essa posição em mais de um recorte. Recomece a escolha pelo escopo pai (módulo, lição ou parte) ou informe um título completo e único; repetir a mesma numeração não distingue os objetos.`
+      : `${label} corresponde a mais de um objeto; use um título mais específico ou a posição.`,
     { matchingCount: count }
   );
 }
@@ -75,7 +77,7 @@ function positionedMatch(items, reference, position, texts, label) {
     return Number.isSafeInteger(stored) ? stored + 1 === reference.value : index + 1 === reference.value;
   });
   if (matches.length === 1) return matches[0];
-  if (matches.length > 1) ambiguous(label, matches.length);
+  if (matches.length > 1) ambiguous(label, matches.length, "position");
   return notFound(label);
 }
 
