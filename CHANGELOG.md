@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.90] - 2026-09-28
+
+### Corrigido
+
+- No Android, o cabeçalho e os controles do aplicativo respeitam o espaço das barras do sistema e dos recortes da tela, mantendo o acesso a Configurações.
+
 ## [0.0.88] - 2026-09-27
 
 ### Corrigido

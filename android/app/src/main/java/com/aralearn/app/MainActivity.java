@@ -8,6 +8,7 @@ import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -22,7 +23,11 @@ import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.webkit.WebViewAssetLoader;
 
 import java.io.File;
@@ -110,6 +115,7 @@ public class MainActivity extends ComponentActivity {
         super.onCreate(savedInstanceState);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
+        configureWindowInsets();
 
         webView = findViewById(R.id.main_webview);
         assetLoader = new WebViewAssetLoader.Builder()
@@ -131,6 +137,24 @@ public class MainActivity extends ComponentActivity {
             webView.loadUrl(APP_URL);
         }
 
+    }
+
+    private void configureWindowInsets() {
+        View container = findViewById(R.id.main_container);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), container);
+        // The native frame keeps its dark background in both web themes.
+        controller.setAppearanceLightStatusBars(false);
+        controller.setAppearanceLightNavigationBars(false);
+        ViewCompat.setOnApplyWindowInsetsListener(container, (view, windowInsets) -> {
+            int types = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
+            Insets safeArea = windowInsets.getInsets(types);
+            view.setPadding(safeArea.left, safeArea.top, safeArea.right, safeArea.bottom);
+            // Avoid duplicate CSS safe-area padding; retain IME changes for the WebView.
+            return new WindowInsetsCompat.Builder(windowInsets)
+                .setInsets(types, Insets.NONE)
+                .build();
+        });
+        ViewCompat.requestApplyInsets(container);
     }
 
     @Override
