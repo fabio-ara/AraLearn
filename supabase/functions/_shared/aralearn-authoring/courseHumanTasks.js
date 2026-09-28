@@ -702,7 +702,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Lê configuração.",
+    "Lê a intenção solicitada e, na unidade, o que está aplicado. Intenção nula é delegação; vazio aplicado é escolha resolvida, não ausência.",
     inputSchema({
       curso: COURSE_SCHEMA,
       modulo: HUMAN_REFERENCE_SCHEMA,
@@ -1127,7 +1127,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:c7c2570cfa46ce86debf3caef5130d91385a12693d4cf3a3c0c8ad647b562707";
+  "sha256:942860ab96b4e265424ea5a96b1a1c8794cd15e77d239fd64d1ba04e6eae215b";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2854,6 +2854,81 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   );
 };
 
+function humanIntentionReading(value) {
+  if (value === null || value === undefined) {
+    return "decisão delegada: a unidade resolve esta escolha na calibração; não é conjunto vazio nem ausência de exigência";
+  }
+  if (Array.isArray(value) && value.length === 0) return "conjunto vazio declarado na intenção";
+  return "intenção vigente";
+}
+
+function humanAppliedReading(value) {
+  if (Array.isArray(value) && value.length === 0) {
+    return "escolha resolvida na unidade: nenhuma dimensão exigida (conjunto vazio aplicado, diferente de ausente)";
+  }
+  if (value === null || value === undefined) return "sem valor aplicado na unidade";
+  return "valor efetivamente aplicado na unidade";
+}
+
+function unitAppliedParameters(unit) {
+  const snapshot = unit?.designSnapshot;
+  if (snapshot === null || snapshot === undefined || typeof snapshot !== "object" ||
+      Array.isArray(snapshot) || !Array.isArray(snapshot.parameters)) return null;
+  return new Map(snapshot.parameters
+    .filter((entry) => entry !== null && typeof entry === "object" && !Array.isArray(entry) &&
+      typeof entry.parameterId === "string" && entry.parameterId)
+    .map((entry) => [entry.parameterId, entry]));
+}
+
+// Apresenta, na unidade, a intenção solicitada ao lado do que está efetivamente
+// aplicado. Preserva conjunto vazio, ausência e valor nulo como estados distintos.
+function humanUnitConfiguration(configuration, unit, definitionById) {
+  const applied = unitAppliedParameters(unit);
+  if (applied === null) {
+    return {
+      escopoDaUnidade: unit !== null,
+      aplicadoDisponivel: false,
+      resumo: unit === null
+        ? "Fora da unidade não há valor aplicado para comparar; esta leitura mostra a intenção vigente."
+        : "A unidade indicada não tem configuração aplicada registrada; esta leitura mostra apenas a intenção vigente.",
+      parametros: []
+    };
+  }
+  const parameters = Array.isArray(configuration?.parameters) ? configuration.parameters : [];
+  return {
+    escopoDaUnidade: true,
+    aplicadoDisponivel: true,
+    resumo: "Cada parâmetro traz a intenção solicitada e o valor efetivamente aplicado nesta unidade.",
+    parametros: parameters.map((parameter) => {
+      const parameterId = typeof parameter?.parameterId === "string" ? parameter.parameterId : null;
+      const assignment = parameter?.effectiveAssignment ?? null;
+      const entry = parameterId === null ? null : applied.get(parameterId) ?? null;
+      const solicitado = {
+        valorPresente: assignment !== null && Object.hasOwn(assignment, "value"),
+        valor: assignment !== null && Object.hasOwn(assignment, "value") ? assignment.value : null,
+        modo: assignment?.mode ?? null,
+        origem: humanDesignOrigin(assignment?.origin),
+        motivo: assignment?.reason ?? null,
+        escopoDeOrigem: humanDesignScope(assignment?.sourceScope?.kind)
+      };
+      solicitado.leitura = humanIntentionReading(solicitado.valorPresente ? solicitado.valor : null);
+      return {
+        nome: parameterId === null ? null : humanParameterLabel(parameterId, definitionById),
+        campo: parameterId === null ? null : (definitionById.get(parameterId)?.humanField ?? null),
+        solicitado,
+        aplicadoNaUnidade: entry === null ? null : {
+          valorPresente: Object.hasOwn(entry, "value"),
+          valor: Object.hasOwn(entry, "value") ? entry.value : null,
+          origem: humanDesignOrigin(entry.origin),
+          motivo: entry.reason ?? null,
+          escopoDeOrigem: humanDesignScope(entry.sourceScope?.kind),
+          leitura: humanAppliedReading(Object.hasOwn(entry, "value") ? entry.value : null)
+        }
+      };
+    })
+  };
+}
+
 HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
   adapter, principal, args, deadlineAt
 }) => {
@@ -2874,20 +2949,30 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
     childCursor: null,
     deadlineAt
   });
-  return result("Li a configuração pedagógica e a direção editorial vigentes.", {
-    deepLink: courseDeepLink(adapter, resolved.course, "parameters",
-      scopeKind === "study_unit"
-        ? [["studyUnitId", scopeRef]]
-        : scopeKind === "didactic_microsequence"
-          ? [["didacticMicrosequenceId", scopeRef]]
-          : scopeKind === "lesson" ? [["lessonId", scopeRef]]
-            : scopeKind === "module" ? [["moduleId", scopeRef]] : []),
-    nextDecision: "Quer manter a herança ou fixar alguma condição?",
-    context: {
-      configuracao: projectConfiguration(configuration),
-      aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null
-    }
-  });
+  const definitionById = new Map((configuration?.definitions ?? [])
+    .map((definition) => [definition.id, definition]));
+  return result(
+    unit === null
+      ? "Li a intenção vigente e a direção editorial; o valor aplicado aparece ao indicar uma unidade."
+      : "Li a intenção solicitada e o valor efetivamente aplicado nesta unidade.",
+      {
+        deepLink: courseDeepLink(adapter, resolved.course, "parameters",
+          scopeKind === "study_unit"
+            ? [["studyUnitId", scopeRef]]
+            : scopeKind === "didactic_microsequence"
+              ? [["didacticMicrosequenceId", scopeRef]]
+              : scopeKind === "lesson" ? [["lessonId", scopeRef]]
+                : scopeKind === "module" ? [["moduleId", scopeRef]] : []),
+        nextDecision: unit === null
+          ? "Quer manter a herança ou fixar alguma condição?"
+          : "Quer manter a herança, fixar alguma condição ou reconciliar a intenção com o que está aplicado?",
+        context: {
+          configuracao: projectConfiguration(configuration),
+          aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null,
+          configuracaoNaUnidade: humanUnitConfiguration(configuration, unit, definitionById)
+        }
+      }
+  );
 };
 
 HUMAN_TASK_HANDLERS.consultar_observacoes = async ({

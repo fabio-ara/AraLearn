@@ -356,3 +356,66 @@ test('fragmentos grandes conservam conteúdo e referências estáveis até a lei
   assert.ok(read.explicacoes[0].conteudo.content.every(item=>item.data.text==='Conhecimento e relações. '.repeat(400).trim()));
   assert.deepEqual(read.observations.items[0].referenciaObservacao,reference);
 });
+
+test('leitura de configuração separa a intenção solicitada do valor aplicado na unidade',async()=>{
+  const {adapter}=harness();
+  const variation='required_practice_variation_dimensions';
+  const minimum='minimum_distinct_practice_opportunities_per_evidence_requirement';
+  const ceiling='new_analysis_unit_ceiling_per_expository_study_unit';
+  const base=courseDesignFixture({courseId,moduleId:'module',lessonId:'lesson',microsequenceId:'micro',studyUnitId:'unit'});
+  const assignment=(value,extra={})=>({mode:'automatic',value,origin:'automatic',inherited:false,
+    reason:'Condição sintética explicitamente escolhida pelo teste.',sourceScope:{kind:'study_unit',ref:'unit'},...extra});
+  adapter.getCourseDesign=async request=>({...base,courseRevision:1,
+    scopeContext:{...base.scopeContext,current:request.scopeKind==='study_unit'
+      ? base.scopeContext.current:{kind:'didactic_microsequence',ref:'micro',label:'microssequência sintética'}},
+    parameters:base.parameters.map(parameter=>{
+      if(parameter.parameterId===variation) return {...parameter,effectiveAssignment:assignment(['case_or_data'])};
+      if(parameter.parameterId===minimum) return {...parameter,effectiveAssignment:assignment(1,{mode:'fixed',
+        origin:'research_condition',reason:'Condição de pesquisa fixada pela pessoa.'})};
+      return parameter;})});
+  adapter.listCourseStudyUnits=async()=>({hasMore:false,nextCursor:null,items:[{ordinal:1,version:4,
+    studyUnit:{id:'unit',title:'Interações'},
+    authorship:{design:{application:{mode:'practice',analysisIdeas:{introduced:[],used:[]}}}},
+    designApplication:{contract:'aralearn.study-unit-design-application.v1',practiceApplications:[]},
+    designSnapshot:{contract:'aralearn.study-unit-design-snapshot.v2',parameters:[
+      {parameterId:variation,value:[],origin:'automatic',
+        reason:'Há uma única oportunidade por requisito nesta prática; não se exige nem se declara variação entre oportunidades.',
+        sourceScopeKind:'study_unit',sourceScopeRef:null},
+      {parameterId:minimum,value:1,origin:'research_condition',
+        reason:'Condição de pesquisa fixada pela pessoa.',sourceScopeKind:'course',sourceScopeRef:null}
+    ]}}]});
+  const parameterIds=base.parameters.map(parameter=>parameter.parameterId);
+  const output=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações',unidade:1});
+  const comparison=output.context.configuracaoNaUnidade;
+  assert.equal(comparison.aplicadoDisponivel,true);
+  assert.match(output.result,/aplicado nesta unidade/u);
+  const entryFor=id=>comparison.parametros[parameterIds.indexOf(id)];
+  const variationEntry=entryFor(variation);
+  assert.deepEqual(variationEntry.solicitado.valor,['case_or_data']);
+  assert.match(variationEntry.solicitado.leitura,/intenção vigente/u);
+  assert.equal(variationEntry.aplicadoNaUnidade.valorPresente,true);
+  assert.deepEqual(variationEntry.aplicadoNaUnidade.valor,[]);
+  assert.notEqual(variationEntry.aplicadoNaUnidade.valor,null);
+  assert.match(variationEntry.aplicadoNaUnidade.leitura,/conjunto vazio aplicado, diferente de ausente/u);
+  const minimumEntry=entryFor(minimum);
+  assert.equal(minimumEntry.solicitado.modo,'fixed');
+  assert.equal(minimumEntry.solicitado.origem,'condição de pesquisa');
+  assert.equal(minimumEntry.aplicadoNaUnidade.origem,'condição de pesquisa');
+  assert.equal(minimumEntry.aplicadoNaUnidade.valor,1);
+  const delegatedEntry=entryFor(ceiling);
+  assert.equal(delegatedEntry.solicitado.valor,null);
+  assert.match(delegatedEntry.solicitado.leitura,/decisão delegada/u);
+  assert.equal(delegatedEntry.aplicadoNaUnidade,null);
+  const withoutUnit=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações'});
+  assert.equal(withoutUnit.context.configuracaoNaUnidade.escopoDaUnidade,false);
+  assert.equal(withoutUnit.context.configuracaoNaUnidade.aplicadoDisponivel,false);
+  assert.deepEqual(withoutUnit.context.configuracaoNaUnidade.parametros,[]);
+  assert.match(withoutUnit.result,/intenção vigente/u);
+  adapter.listCourseStudyUnits=async()=>({hasMore:false,nextCursor:null,
+    items:[{studyUnit:{id:'unit',title:'Interações'},authorship:{design:{application:null}}}]});
+  const withoutSnapshot=await execute(adapter,'consultar_configuracao',{curso:'Curso',microssequencia:'Relações',unidade:1});
+  assert.equal(withoutSnapshot.context.configuracaoNaUnidade.escopoDaUnidade,true);
+  assert.equal(withoutSnapshot.context.configuracaoNaUnidade.aplicadoDisponivel,false);
+  assert.deepEqual(withoutSnapshot.context.configuracaoNaUnidade.parametros,[]);
+});
+
