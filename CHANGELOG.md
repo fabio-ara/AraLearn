@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.94] - 2026-09-28 (estabilização local)
+
+### Alterado
+
+- A leitura de configuração da autoria separa a intenção solicitada do que está efetivamente aplicado na unidade, nomeando cada lado e preservando conjunto vazio, valor nulo e ausência como estados distintos.
+- Esta candidata permanece local; não há promoção ou publicação 0.0.94 neste registro.
+
 ## [0.0.93] - 2026-09-28 (estabilização local)
 
 ### Corrigido
