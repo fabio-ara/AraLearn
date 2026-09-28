@@ -2242,9 +2242,11 @@ test("retirada da Fonte só ocorre depois de concluir limpeza física pendente",
 test("MCP anuncia o descritor oficial completo do arquivo PDF", () => {
   const pdfTask = COURSE_HUMAN_TASKS.find(({ name }) => name === "incorporar_pdf_como_fonte");
   assert.deepEqual(pdfTask._meta, { "openai/fileParams": ["pdf"] });
-  assert.deepEqual(pdfTask.inputSchema.oneOf, [
-    { required: ["fonte"] },
-    { required: ["titulo", "papeisSugeridos"] }
+  // Exatamente uma ramificação, expressa por implicações na raiz legível.
+  assert.equal(pdfTask.inputSchema.oneOf, undefined);
+  assert.deepEqual(pdfTask.inputSchema.allOf, [
+    { if: { required: ["fonte"] }, then: { not: { required: ["titulo", "papeisSugeridos"] } } },
+    { if: { not: { required: ["fonte"] } }, then: { required: ["titulo", "papeisSugeridos"] } }
   ]);
   assert.deepEqual(pdfTask.inputSchema.properties.papeisSugeridos.items.enum, [
     "escopo_curricular", "evidencia_de_avaliacao", "tecnica_conceitual", "leitura_complementar"

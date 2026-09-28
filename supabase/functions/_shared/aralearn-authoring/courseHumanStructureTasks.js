@@ -11,7 +11,7 @@ const course = { type: "string", minLength: 1, maxLength: 300, description: "Nom
 const path = { type: "object", additionalProperties: false, minProperties: 1,
   properties: { modulo: ref, licao: ref, microssequencia: ref }, description: "Título ou posição humana; acrescente os pais se houver repetição." };
 const refs = { type: "array", maxItems: 64, uniqueItems: true, items: ref };
-const continuation = { type: "string", minLength: 1, maxLength: 480000, description: "Referência original devolvida para retomar a mesma intenção; não edite seu conteúdo." };
+const continuation = { type: "string", minLength: 1, maxLength: 480000, description: "Referência original; não edite seu conteúdo." };
 const kindByHuman = { modulo: "module", licao: "lesson", microssequencia: "microsequence" };
 const definition = (name, title, description, required, properties, destructive = false) => ({ name, title, description,
   inputSchema: { type: "object", additionalProperties: false, required, properties: { curso: course, ...properties, retomada: continuation } },

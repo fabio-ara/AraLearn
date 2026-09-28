@@ -226,6 +226,15 @@ const CURRICULAR_MAP_MODULE_SCHEMA = Object.freeze({
   })
 });
 
+const ifThen = (when, then) => Object.freeze({ if: Object.freeze(when), then: Object.freeze(then) });
+
+// "Ao menos um destes campos": nega a ausência conjunta, preservando o objeto
+// raiz legível e sem união de asserções no próprio objeto.
+const atLeastOneRequired = fields => Object.freeze({
+  not: Object.freeze({ allOf: Object.freeze(fields.map(field =>
+    Object.freeze({ not: Object.freeze({ required: Object.freeze([field]) }) }))) })
+});
+
 const SOURCE_SELECTOR_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -244,23 +253,13 @@ const SOURCE_SELECTOR_SCHEMA = Object.freeze({
     prefixo: Object.freeze({ type: ["string", "null"], maxLength: 500 }),
     sufixo: Object.freeze({ type: ["string", "null"], maxLength: 500 })
   }),
-  oneOf: Object.freeze([
-    Object.freeze({
-      required: Object.freeze(["paginaInicial", "paginaFinal"]),
-      properties: Object.freeze({ tipo: Object.freeze({ const: "paginas" }) })
-    }),
-    Object.freeze({
-      required: Object.freeze(["inicioEmMilissegundos", "fimEmMilissegundos"]),
-      properties: Object.freeze({ tipo: Object.freeze({ const: "tempo" }) })
-    }),
-    Object.freeze({
-      required: Object.freeze(["fragmento"]),
-      properties: Object.freeze({ tipo: Object.freeze({ const: "fragmento" }) })
-    }),
-    Object.freeze({
-      required: Object.freeze(["trechoExato"]),
-      properties: Object.freeze({ tipo: Object.freeze({ const: "trecho" }) })
-    })
+  // Variantes por implicação: o raiz conserva as propriedades e o tipo exigido,
+  // sem duplicar o objeto em ramos de união.
+  allOf: Object.freeze([
+    ifThen({ properties: { tipo: { const: "paginas" } } }, { required: ["paginaInicial", "paginaFinal"] }),
+    ifThen({ properties: { tipo: { const: "tempo" } } }, { required: ["inicioEmMilissegundos", "fimEmMilissegundos"] }),
+    ifThen({ properties: { tipo: { const: "fragmento" } } }, { required: ["fragmento"] }),
+    ifThen({ properties: { tipo: { const: "trecho" } } }, { required: ["trechoExato"] })
   ])
 });
 
@@ -361,7 +360,7 @@ const COMPONENT_INSTANCE_SCHEMA = Object.freeze({
   required: Object.freeze(["package", "data"]),
   properties: Object.freeze({
     id: Object.freeze({ type: "string", minLength: 1, description: "Gerado se omitido; informe ao referenciar." }),
-    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto ou completo do catálogo." }),
+    package: Object.freeze({ type: "string", minLength: 1, description: "Nome curto ou completo." }),
     version: Object.freeze({ type: "string", minLength: 1, description: "Versão corrente se omitida." }),
     data: Object.freeze({ type: "object" })
   })
@@ -909,11 +908,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         items: { type: "string", enum: PARAMETER_FIELDS } },
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
       }, ["curso", "condicao"]),
-      anyOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["parametros"]) }),
-        Object.freeze({ required: Object.freeze(["automaticos"]) }),
-        Object.freeze({ required: Object.freeze(["direcaoEditorial"]) })
-      ])
+      allOf: Object.freeze([atLeastOneRequired(["parametros", "automaticos", "direcaoEditorial"])])
     }),
     { readOnly: false }
   ),
@@ -932,7 +927,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           null
         ])
       })
-    }, ["curso", "texto"]), anyOf: [{ required: ["unidades"] }, { required: ["microssequencia"] }] },
+    }, ["curso", "texto"]), allOf: Object.freeze([atLeastOneRequired(["unidades", "microssequencia"])]) },
     { readOnly: false }
   ),
   task("registrar_inspecao", "Registrar inspeção da base lida",
@@ -990,7 +985,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       }),
       explicacoes: EXPLANATIONS_SCHEMA,
       observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA
-    }, ["curso"]), anyOf: [{ required: ["correcoes"] }, { required: ["explicacoes"] }] }),
+    }, ["curso"]), allOf: Object.freeze([atLeastOneRequired(["correcoes", "explicacoes"])]) }),
     { readOnly: false }
   ),
   task("retomar_correcao", "Reconciliar uma correção de observações",
@@ -1001,8 +996,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         description: "Objeto recovery devolvido pelo erro da correção. Use-o integralmente para preservar o alvo mesmo após renomeação.",
         properties: { courseId: { type: "string", format: "uuid" }, requestId: { type: "string", minLength: 8, maxLength: 128,
           pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }, operation: { type: "string", const: "course_observation_correction" } } }
-    }), oneOf: [{ required: ["curso", "tentativa"], not: { required: ["recuperacao"] } },
-      { required: ["recuperacao"], not: { anyOf: [{ required: ["curso"] }, { required: ["tentativa"] }] } }] }, { readOnly: false }),
+      }), allOf: Object.freeze([
+        ifThen({ required: ["recuperacao"] },
+          { allOf: [{ not: { required: ["curso"] } }, { not: { required: ["tentativa"] } }] }),
+        ifThen({ not: { required: ["recuperacao"] } }, { required: ["curso", "tentativa"] })
+      ]) }, { readOnly: false }),
   task("declarar_revisao", "Registrar ou retirar revisão expressa",
     "Use somente após a pessoa autora declarar sua inspeção. A referência vem do conteúdo salvo preparado para revisão; não deduza revisão da correção ou do estudo.",
     inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 },
@@ -1052,14 +1050,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           description: "Retire os PDFs ou a fonte inteira."
         })
       }, ["curso"]),
-      anyOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["metadados"]) }),
-        Object.freeze({ required: Object.freeze(["ancoras"]) }),
-        Object.freeze({ required: Object.freeze(["vinculos"]) }),
-        Object.freeze({ required: Object.freeze(["retirar"]) }),
-        Object.freeze({ required: Object.freeze(["estilo"]) })
-      ]),
-      allOf: Object.freeze([Object.freeze({
+      allOf: Object.freeze([
+        atLeastOneRequired(["metadados", "ancoras", "vinculos", "retirar", "estilo"]),
+        Object.freeze({
         if: Object.freeze({ required: Object.freeze(["retirar"]) }),
         then: Object.freeze({
           required: Object.freeze(["fonte"]),
@@ -1112,9 +1105,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           })
         })
       }, ["curso", "intencao", "pdf"]),
-      oneOf: Object.freeze([
-        Object.freeze({ required: Object.freeze(["fonte"]) }),
-        Object.freeze({ required: Object.freeze(["titulo", "papeisSugeridos"]) })
+      allOf: Object.freeze([
+        ifThen({ required: ["fonte"] }, { not: { required: ["titulo", "papeisSugeridos"] } }),
+        ifThen({ not: { required: ["fonte"] } }, { required: ["titulo", "papeisSugeridos"] })
       ])
     }),
     { readOnly: false, file: "pdf" }
@@ -1146,7 +1139,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:23214836efdc01fc6c4cadbea989f542748ceaa438a0f0e171c6fb42e5f87a0a";
+  "sha256:c524ff492dd7b5b39ebcf3dd37c707433916ca567d5f862a72ed8df2f8eeabbe";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
