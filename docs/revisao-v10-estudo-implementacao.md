@@ -428,4 +428,3 @@ O estado pessoal do proprietário do legado foi preservado em backup privado sep
 Site e backend 0.0.92 estão publicados; o APK 238 integra o rascunho da release v0.0.92. A preparação nativa 092 e a conferência dos bytes servidos passaram; IME e rotação não foram observados. A conclusão da intervenção não é atribuída à publicação intermediária; nenhum resultado deste trabalho recebe estatuto de revisão visual ou pedagógica humana.
 
 **Nenhum resultado desta intervenção constitui validação humana pós-correção.**
-
