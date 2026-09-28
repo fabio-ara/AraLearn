@@ -3082,13 +3082,13 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
         ? [["explanationId", reviewMicrosequences[0].id]] : []),
     links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
     // Enquanto houver continuação, a única ação segura é terminar de ler: escrever
-    // entre trechos disputa a mesma página lógica e pode invalidar o parecer.
+    // entre trechos pode invalidar a continuação vinculada à revisão do curso.
     nextDecision: context.temMais
       ? auditoria
         ? "Continue lendo as continuações recebidas até o último trecho do recorte auditado; registre o parecer só depois de ler tudo."
         : "Continue lendo as continuações recebidas até o último trecho do recorte; só depois avalie a inspeção formal com auditoria: true."
       : auditoria
-        ? inspected ? "Registre o parecer das seis dimensões, incluindo configuration, usando as referenciasInspecao já devolvidas para cada alvo; registrar a inspeção não altera a base, então releia apenas se a base mudar." : null
+        ? inspected ? "Registre o parecer das seis dimensões, incluindo configuration, usando a referenciaInspecao já devolvida para cada alvo; registrar a inspeção não altera a base, então releia apenas se a base mudar." : null
         : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
     context
   });

@@ -1681,8 +1681,8 @@ test("continuação da revisão orienta ler até o fim antes de registrar nos do
       if (mode === true) {
         assert.match(decisionFinal, /^Registre o parecer das seis dimensões/u,
           "no fim, a auditoria orienta registrar o parecer");
-        assert.match(decisionFinal, /referenciasInspecao/u,
-          "a orientação final usa as referências de inspeção já devolvidas");
+        assert.match(decisionFinal, /referenciaInspecao/u,
+          "a orientação final usa a referência de inspeção já devolvida por alvo");
         assert.match(decisionFinal, /não altera a base/u,
           "registrar a inspeção não obriga reler a base");
       } else {
