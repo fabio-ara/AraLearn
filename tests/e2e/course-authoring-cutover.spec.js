@@ -335,6 +335,7 @@ async function mountCourseAuthoring(page, {
   planningScenario = "default",
   createMutationScenario = "default",
   designMutationScenario = "default",
+  designEmptySetScenario = false,
   sourceMutationScenario = "default",
   peopleMutationScenario = "default",
   annotationMutationScenario = "default",
@@ -358,6 +359,7 @@ async function mountCourseAuthoring(page, {
     requestedPlanningScenario,
     requestedCreateMutationScenario,
     requestedDesignMutationScenario,
+    requestedDesignEmptySetScenario,
     requestedSourceMutationScenario,
     requestedPeopleMutationScenario,
     requestedAnnotationMutationScenario,
@@ -1354,7 +1356,7 @@ async function mountCourseAuthoring(page, {
             label: "Formas de explicação requeridas",
             valueKind: "string_list",
             effectiveValues: [{
-              value: ["plain_definition", "contrast"],
+              value: requestedDesignEmptySetScenario ? null : ["plain_definition", "contrast"],
               origin: "automatic",
               sourceScopeKind: "didactic_microsequence",
               studyUnitCount
@@ -1374,7 +1376,7 @@ async function mountCourseAuthoring(page, {
             label: "Dimensões de variação requeridas",
             valueKind: "string_list",
             effectiveValues: [{
-              value: ["context", "external_representation"],
+              value: requestedDesignEmptySetScenario ? [] : ["context", "external_representation"],
               origin: "automatic",
               sourceScopeKind: "study_unit",
               studyUnitCount
@@ -2356,6 +2358,7 @@ async function mountCourseAuthoring(page, {
     requestedPlanningScenario: planningScenario,
     requestedCreateMutationScenario: createMutationScenario,
     requestedDesignMutationScenario: designMutationScenario,
+    requestedDesignEmptySetScenario: designEmptySetScenario,
     requestedSourceMutationScenario: sourceMutationScenario,
     requestedPeopleMutationScenario: peopleMutationScenario,
     requestedAnnotationMutationScenario: annotationMutationScenario,
@@ -2856,7 +2859,6 @@ test.describe("Autoria canônica mobile-first", () => {
       globalThis.__courseAuthoringHarness.probe.headerReads)).toBe(readsBefore + 1);
     expect(clientErrors).toEqual([]);
   });
-
 
   for (const width of [360, 390, 430, 1280]) {
     test(`Parâmetros preserva controles progressivos sem overflow em ${width} px`, async ({
@@ -5039,7 +5041,6 @@ test("rascunho e criação ambígua na lista bloqueiam atualização, Back e sa�
   expect(calls[1]).toEqual(calls[0]);
 });
 
-
 test("criação abre Conteúdo e mantém Planejamento consultivo", async ({ page }) => {
   const clientErrors = captureClientErrors(page);
   await page.setViewportSize({ width: 430, height: 860 });
@@ -5364,7 +5365,6 @@ test("deep link de dados de autoria abre o recorte e a revisão indicados", asyn
   );
 });
 
-
 test("#345 Perfil mostra prévia e cancelamento preserva curso, exceções e perfil", async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountCourseAuthoring(page, { hash: `#/authoring/courses/${COURSE_IDS[0]}?section=parameters` });
@@ -5560,4 +5560,59 @@ test("Explicação atravessa Autoria real e Fontes com ocorrência literal e ret
   await expect(card.getByRole('checkbox')).toBeChecked();
   expect(await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.sourceMutations)).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test("Conjunto vazio de dimensões de variação é escolha explícita, distinto de pendência", async ({ page }, info) => {
+  test.setTimeout(90000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mountCourseAuthoring(page, {
+    hash: "#/authoring/courses/" + COURSE_IDS[0] + "?section=parameters&studyUnitId=study-unit-01",
+    designEmptySetScenario: true
+  });
+  const dialog = page.getByRole("dialog", { name: "Parâmetros", exact: true });
+  await expect(dialog).toBeVisible();
+  const chooseGroup = dialog.getByLabel("Escolher grupo de ajustes");
+  const rowFor = (id) => dialog.locator(".course-design-parameter[data-parameter-id=\"" + id + "\"]");
+  const editorFor = (id) => dialog.locator("section.course-design-parameter-editor[data-parameter-id=\"" + id + "\"]");
+
+  await chooseGroup.selectOption({ label: "Prática" });
+  await rowFor("required_practice_variation_dimensions").getByRole("button", { name: /^Ajustar /u }).click();
+  const variationEditor = editorFor("required_practice_variation_dimensions");
+  await expect(variationEditor).toContainText("Aplicado nesta produção: Nenhuma dimensão exigida");
+  await variationEditor.locator("details.course-design-explanation > summary").click();
+  await variationEditor.getByText("Aplicado nesta produção:").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("variacao-vazia-aplicado-390.png") });
+  await dialog.getByRole("button", { name: "Voltar aos ajustes", exact: true }).click();
+
+  await chooseGroup.selectOption({ label: "Explicações" });
+  await rowFor("required_explanation_forms").getByRole("button", { name: /^Ajustar /u }).click();
+  const explanationEditor = editorFor("required_explanation_forms");
+  await expect(explanationEditor).toContainText("Aplicado nesta produção: Automático · escolha contextual pendente");
+  await explanationEditor.locator("details.course-design-explanation > summary").click();
+  await explanationEditor.getByText("Aplicado nesta produção:").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("variacao-pendencia-390.png") });
+  await dialog.getByRole("button", { name: "Voltar aos ajustes", exact: true }).click();
+
+  await chooseGroup.selectOption({ label: "Prática" });
+  await rowFor("required_practice_variation_dimensions").getByRole("button", { name: /^Ajustar /u }).click();
+  const form = variationEditor.locator("[data-course-design-parameter]");
+  await form.locator("select[name=mode]").selectOption("fixed");
+  const dimensionBoxes = form.locator("fieldset.course-design-value-options input[name=parameterValue]");
+  expect(await dimensionBoxes.count()).toBeGreaterThan(0);
+  for (const box of await dimensionBoxes.all()) await expect(box).not.toBeChecked();
+  await form.locator("textarea[name=reason]").fill("Nesta etapa nenhuma dimensão de variação é exigida.");
+  await page.screenshot({ path: info.outputPath("variacao-vazia-editor-390.png") });
+  await form.getByRole("button", { name: "Salvar neste escopo", exact: true }).click();
+  await expect(dialog.getByRole("status")).toContainText("Parâmetro salvo");
+  const mutation = await page.evaluate(() => globalThis.__courseAuthoringHarness.probe.designMutations.at(-1) ?? null);
+  expect(mutation.command).toMatchObject({
+    parameterId: "required_practice_variation_dimensions",
+    value: []
+  });
+  await dialog.getByRole("button", { name: "Voltar aos ajustes", exact: true }).click();
+  await rowFor("required_practice_variation_dimensions").getByRole("button", { name: /^Ajustar /u }).click();
+  await expect(editorFor("required_practice_variation_dimensions")).toContainText("Fixo: Nenhuma dimensão exigida");
+  await editorFor("required_practice_variation_dimensions").locator("details.course-design-explanation > summary").click();
+  await editorFor("required_practice_variation_dimensions").getByText("Fixo: Nenhuma dimensão exigida").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: info.outputPath("variacao-vazia-fixo-390.png") });
 });

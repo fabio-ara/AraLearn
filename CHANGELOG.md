@@ -20,6 +20,9 @@ explica os termos usados na implementação atual.
 - A orientação de descoberta acompanha apenas o primeiro trecho lógico da busca e não se repete na continuação de página nem na resposta de contrato.
 - Ao fechar a tela inteira de um diagrama depois de explorar, o ponto visto é preservado mesmo quando a caixa oculta zera a rolagem e emite um evento durante o fechamento.
 - O estado inline do diagrama só é anunciado depois de a posição restaurada ser aplicada, evitando que um consumidor leia a caixa ainda zerada.
+- A variação exigida da prática aceita o conjunto vazio como escolha explícita de não exigir nenhuma dimensão; ausência ou valor nulo continuam pendência de calibração, e o mínimo de oportunidades segue obrigatório.
+- O painel de Parâmetros rotula o conjunto vazio como “Nenhuma dimensão exigida”, mantém a formulação de pendência para o valor nulo e registra a escolha vazia como lista vazia, não como ausência.
+- Uma migração nova acompanha a mudança do catálogo de parâmetros e aguarda aplicação; nenhuma contagem de migrações hospedadas é afirmada por este lote.
 
 ## [0.0.91] - 2026-09-28
 
