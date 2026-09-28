@@ -29,7 +29,8 @@ function shareUnitObservations(audit, group) {
     }
     return index + 1;
   });
-  const { units, ...local } = audit;
+  const local = { ...audit };
+  delete local.units;
   return { ...local, unidadesParaConfronto: positions };
 }
 
