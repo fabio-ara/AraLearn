@@ -127,7 +127,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   let pinchOrigin = null;
   let dockedPrompt = null;
   let promptMarker = null;
-  // Sem exploração, restaura inline; com exploração, conserva o ponto de conteúdo.
   let inlineViewBeforeExpanded = null;
   let expandedBaseline = null;
 
@@ -173,7 +172,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     );
   };
 
-  // Escala 1:1; evita origem vazia pelo conteúdo, foco ou primeiro nó (D021/O074).
   const initialFramingScroll = () => {
     const current = { left: canvas.scrollLeft, top: canvas.scrollTop };
     const nodes = [...svg.querySelectorAll("g.node")];
@@ -207,8 +205,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     toggleExpanded.disabled = !controlsReady;
     toggleIcon.innerHTML = expanded ? DIAGRAM_ICONS.collapse : DIAGRAM_ICONS.expand;
     viewport.dataset.diagramExpanded = expanded ? "true" : "false";
-    // "inline" é o sinal de estado assentado: só depois de a rolagem restaurada
-    // ser aplicada, para o consumidor não ler a caixa ainda zerada.
     canvas.dataset.diagramViewportMode = expanded
       ? "explore"
       : inlineRestorePending ? "inline-settling" : "inline";
@@ -219,8 +215,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   };
 
   const persistCurrentView = () => {
-    // A caixa em display:none (diálogo fechado) zera geometria e rolagem;
-    // persistir esse estado inválido apagaria o ponto visto na volta ao inline.
     if (!canvas.clientWidth || !canvas.clientHeight) return;
     rememberViewport(stateKey, {
       scaleMode,
@@ -280,7 +274,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     };
   };
 
-  // A rolagem do usuário prevalece sobre reposições agendadas.
   const markUserScroll = () => {
     userScrollEpoch += 1;
   };
@@ -356,8 +349,6 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
   const moveViewport = async ({ toDialog, anchorContent = null, restoreScroll = null }) => {
     const content = anchorContent || anchorContentPoint();
-    // A transição agenda a reposição da rolagem para quadros seguintes: um
-    // gesto surgido nesse intervalo a invalida.
     const scrollEpoch = userScrollEpoch;
     if (toDialog) {
       inlineRestorePending = false;
@@ -373,8 +364,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     }
     rememberViewport(stateKey, { expanded });
     updateControls();
-    // O foco entra já na fase síncrona da abertura, para não roubar um gesto
-    // entregue à superfície rolável no quadro seguinte.
+    // O foco entra na fase síncrona para não roubar um gesto no quadro seguinte.
     toggleExpanded.focus({ preventScroll: true });
     await nextFrame();
     if (scaleMode === "fit") {
@@ -402,8 +392,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
 
   const restoreInlineViewport = async () => {
     if (!expanded) return;
-    // A âncora é lida antes da remontagem; a gravação da posição restaurada
-    // acontece no quadro que aplica a rolagem.
+    // A âncora é lida antes da remontagem.
     const last = rememberedViewport(stateKey);
     const untouched = expandedBaseline && inlineViewBeforeExpanded && last &&
       Math.abs(finiteNumber(last.scrollLeft) - expandedBaseline.left) <= 1 &&
