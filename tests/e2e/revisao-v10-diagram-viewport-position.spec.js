@@ -218,3 +218,62 @@ for (const diagram of ["container", "guarded-machine"]) {
     expect(errors).toEqual([]);
   });
 }
+
+test("evento de scroll com a caixa oculta não apaga o ponto visto na segunda volta (guarded-machine)", async ({ page }) => {
+  const { errors, host } = await mount(page, { diagram: "guarded-machine" });
+  const figure = host.locator(".package-system-diagram");
+  const canvas = host.locator('[data-resource-scroll-frame="diagram"]');
+  const trigger = figure.getByRole("button", { name: "Explorar diagrama em tela inteira", exact: true });
+
+  await panInline(page, host);
+  await trigger.click();
+  await expect(page.locator("dialog[open]")).toBeVisible();
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("explore");
+  await canvas.focus();
+  for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
+  await figure.getByRole("button", { name: "Aumentar zoom", exact: true }).click();
+  await expect.poll(async () => (await readViewport(host)).scale).toBeGreaterThan(1);
+  const explored = await readViewport(host);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("inline");
+  const backInline = await readViewport(host);
+  expect(Math.abs(backInline.center.x - explored.center.x), "primeira volta ao inline").toBeLessThanOrEqual(1);
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator("dialog[open]")).toBeVisible();
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("explore");
+  const reopened = await readViewport(host);
+  expect(Math.abs(reopened.center.x - explored.center.x), "reabertura").toBeLessThanOrEqual(1);
+
+  // Ao fechar, o motor pode zerar a rolagem da caixa oculta e emitir "scroll"
+  // antes da restauração. O caso força esse evento fiel na captura do close e
+  // confirma que o ponto visto e o foco sobrevivem.
+  await page.evaluate(() => {
+    globalThis.__HIDDEN_SCROLL_FORCED__ = false;
+    const canvas = document.querySelector('.card-sheet-content [data-resource-scroll-frame="diagram"]');
+    const dialog = document.querySelector("dialog[data-diagram-modal]");
+    dialog.addEventListener("close", () => {
+      if (canvas.clientWidth === 0 && canvas.clientHeight === 0) {
+        canvas.dispatchEvent(new Event("scroll"));
+        globalThis.__HIDDEN_SCROLL_FORCED__ = true;
+      }
+    }, { capture: true, once: true });
+  });
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("inline");
+  const secondInline = await readViewport(host);
+
+  expect(await page.evaluate(() => globalThis.__HIDDEN_SCROLL_FORCED__), "evento de scroll com caixa oculta forçado").toBe(true);
+  const view = JSON.stringify({ explored, backInline, reopened, secondInline });
+  expect(secondInline.scale, view).toBeCloseTo(explored.scale, 2);
+  expect(Math.abs(secondInline.center.x - explored.center.x), view).toBeLessThanOrEqual(1);
+  expect(Math.abs(secondInline.center.y - explored.center.y), view).toBeLessThanOrEqual(1);
+  expect(errors).toEqual([]);
+});

@@ -1,0 +1,33 @@
+{
+  "revisao": "v10",
+  "recorte": "fechamento fullscreen para inline do diagrama (0.0.92)",
+  "origem": "runtime local preparado pelo Playwright (android-chromium, 390x844 px CSS, DPR 2,625); imagens copiadas sem edição",
+  "manifestSha256": "44f640f70aee078caaee67d2ec5dcc30291d1fe73f264220713945548126bf14",
+  "imagens": [
+    {
+      "arquivo": "viewport-092-unidade-explorado.png",
+      "foco": "Unidade: tela inteira explorada antes de fechar (centro 224; 380,4; escala 1,25)",
+      "sha256": "ca38d2005471813504109e980c7cfaddcf937bb0326567d3eb11f5e426e8825a",
+      "bytes": 133660
+    },
+    {
+      "arquivo": "viewport-092-unidade-inline.png",
+      "foco": "Unidade: inline restaurado na segunda volta (centro 224; 380,8; escala 1,25)",
+      "sha256": "0f6cb53464b3df8733630377aa15adb688ec9715af0b9d2f06fff68af9ccaccb",
+      "bytes": 181839
+    },
+    {
+      "arquivo": "viewport-092-explicacao-explorado.png",
+      "foco": "Explicação: tela inteira explorada antes de fechar (centro 224,8; 380,4; escala 1,25)",
+      "sha256": "4d36859a78e17d9b743fb27eec4bc256c5e15e64541c575ef8bfc99bae305e78",
+      "bytes": 114955
+    },
+    {
+      "arquivo": "viewport-092-explicacao-inline.png",
+      "foco": "Explicação: inline restaurado na segunda volta (centro 224,8; 380,8; escala 1,25)",
+      "sha256": "580c893486f51086240047636cf6b73a99e60cdde17b9362e9c04654529ecea4",
+      "bytes": 209318
+    }
+  ],
+  "manifestHashBasis": "SHA-256 de JSON.stringify(imagens), UTF-8"
+}

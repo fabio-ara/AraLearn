@@ -18,6 +18,8 @@ explica os termos usados na implementação atual.
 - A consulta usa vocabulário humano para lugares e compatibilidades de resposta, e o consumidor da instância resolve cada referência pelo rótulo do catálogo.
 - A mensagem de aproximação passa a falar do recorte e dos filtros da consulta, sem afirmar que o repertório instalado não tem representação para o pedido.
 - A orientação de descoberta acompanha apenas o primeiro trecho lógico da busca e não se repete na continuação de página nem na resposta de contrato.
+- Ao fechar a tela inteira de um diagrama depois de explorar, o ponto visto é preservado mesmo quando a caixa oculta zera a rolagem e emite um evento durante o fechamento.
+- O estado inline do diagrama só é anunciado depois de a posição restaurada ser aplicada, evitando que um consumidor leia a caixa ainda zerada.
 
 ## [0.0.91] - 2026-09-28
 
