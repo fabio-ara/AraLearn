@@ -102,6 +102,8 @@ test("materialização pelo catálogo relê processo pessoal e mantém cadência
     const output = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, name: "materializar_parte",
       rawArguments: { curso: "Curso de Redes", unidades: [unit()], explicacoes: explanationFixtures() } });
     assert.deepEqual(reads, ["preferences"]);
+    assert.equal(Object.hasOwn(output.context, "criteriosDeEntrega"), false,
+      "o recibo de produção não repete os critérios de entrega");
     assert.equal(output.context.processoCorrente.foco, focus);
     assert.equal(output.context.processoCorrente.cadencia, "batch");
     assert.deepEqual(output.context.processoCorrente.pontosDeRevisao, []);

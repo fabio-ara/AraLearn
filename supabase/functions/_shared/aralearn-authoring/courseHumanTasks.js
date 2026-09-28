@@ -1,6 +1,7 @@
 import { AuthoringApiError } from "./errors.js";
 import {
   COURSE_AUTHORING_ALIGNMENT_GUIDANCE,
+  COURSE_AUTHORING_DELIVERY_CORE,
   courseAuthoringGuidanceForCall
 } from "./courseKnowledge.js";
 import {
@@ -2719,6 +2720,7 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
         ? "Continue a produção autorizada no recorte e na cadência vigentes."
         : "Escolha uma parte ou microssequência para continuar a produção autorizada.";
   const context = {
+    criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
     ...compactAuthoringProcessContext(process),
     ...(focusedRequest
       ? focusedReviewPlan(plan, part, [], focalMicrosequences(focal))
@@ -2743,10 +2745,13 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   const mapStatus = map?.approval === "approved" ? "aprovado" : map ? "em rascunho" : "ausente";
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "consultar_planejamento" });
   if (args.resumo !== undefined && typeof args.resumo !== "boolean") fail("invalid_human_task_argument", "resumo precisa ser booleano.");
-  const context = args.resumo === true ? planConfirmationContext(plan)
-    : args.parte !== undefined || args.microssequencia !== undefined
-      ? focusedReviewPlan(plan, part, [], focalMicrosequences({ ...resolved, plan, part }))
-      : projectedPlanContext(plan, part);
+  const context = {
+    criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
+    ...(args.resumo === true ? planConfirmationContext(plan)
+      : args.parte !== undefined || args.microssequencia !== undefined
+        ? focusedReviewPlan(plan, part, [], focalMicrosequences({ ...resolved, plan, part }))
+        : projectedPlanContext(plan, part))
+  };
   return result(args.resumo === true ? `Consultei a situação do mapa curricular; ele está ${mapStatus}.`
     : args.parte !== undefined || args.microssequencia !== undefined ? `Li o planejamento no foco solicitado; o mapa está ${mapStatus}.`
       : `Li o mapa curricular global; ele está ${mapStatus}.`, {
@@ -2861,6 +2866,7 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
       deepLink: null,
       nextDecision: recovery,
       context: withoutTechnicalState({
+        criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
         preflight,
         parte: {
           posicao: Number(part.position) + 1,

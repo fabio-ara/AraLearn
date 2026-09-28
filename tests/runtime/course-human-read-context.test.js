@@ -21,6 +21,10 @@ import {
   ARALEARN_MCP_PROTOCOL_VERSION,
   createAuthoringMcpHandler
 } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import {
+  COURSE_AUTHORING_DELIVERY_CORE,
+  courseAuthoringGuidanceForCall
+} from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 
 const COURSE = { id: "10000000-0000-4000-8000-000000000001", revision: 7 };
 const OTHER_COURSE = "10000000-0000-4000-8000-000000000002";
@@ -1403,3 +1407,88 @@ test("fontes extensas atravessam ambos os transportes em envelopes Actions abaix
   }
   assert.deepEqual(allPages[0], allPages[1]);
 });
+
+test("critérios de entrega chegam uma vez na retomada, no planejamento e no preparo", async () => {
+  const coreBytes = new TextEncoder().encode(JSON.stringify(COURSE_AUTHORING_DELIVERY_CORE)).byteLength;
+  const guideBytes = new TextEncoder().encode(JSON.stringify(
+    courseAuthoringGuidanceForCall("preparar_materializacao").instructions)).byteLength;
+  assert.ok(coreBytes < 1_000, "o núcleo precisa continuar curto");
+  assert.ok(coreBytes * 4 < guideBytes, "o núcleo não substitui o guia inteiro");
+  const core = COURSE_AUTHORING_DELIVERY_CORE.join(" ");
+  assert.match(core, /clareza e progressão/iu);
+  assert.match(core, /bastidor de produção e ressalva sem função/iu);
+  assert.match(core, /negativa didática legítima/iu);
+  assert.match(core, /Explicação é a referência coesa[^.]*função própria[^.]*não copie a base integral/iu);
+  assert.match(core, /reutilize literalmente definição, dado ou passo necessário/iu);
+  assert.match(core, /atividade corresponde ao objetivo[^.]*evidência prevista/iu);
+  assert.match(core, /cálculo é meio para o objetivo[^.]*apoio/iu);
+  for (const task of ["consultar_planejamento", "preparar_materializacao"]) {
+    const guide = courseAuthoringGuidanceForCall(task);
+    for (const line of COURSE_AUTHORING_DELIVERY_CORE) {
+      assert.ok(guide.instructions.includes(line), task + " reutiliza o núcleo de entrega");
+    }
+  }
+
+  for (const channel of ["actions", "mcp"]) {
+    const adapter = fixture();
+    const list = await channelCall(channel, adapter, "retomar_curso", {});
+    assert.equal(list.status, 200, list.envelope);
+    assert.equal(Object.hasOwn(list.value.context, "criteriosDeEntrega"), false,
+      channel + ": a listagem sem alvo não carrega os critérios");
+    assert.match(list.envelope, /cursos para retomar/u);
+
+    const resumed = await channelCall(channel, adapter, "retomar_curso", { titulo: TITLE });
+    assert.equal(resumed.status, 200, resumed.envelope);
+    assert.deepEqual(resumed.value.context.criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE],
+      channel + ": a retomada com curso entrega o critério");
+
+    const { adapter: preparation } = materializationPreparationFixture(1);
+    const prepared = await channelCall(channel, preparation, "preparar_materializacao",
+      { curso: TITLE, unidades: [focalCandidate()] });
+    assert.equal(prepared.status, 200, prepared.envelope);
+    assert.deepEqual(prepared.value.context.criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE],
+      channel + ": o preparo entrega o critério antes de salvar");
+
+    const paged = fixture();
+    paged.getCourseInstructionalPlan = async () => ({ courseRevision: paged.revision, plan: {
+      title: TITLE, version: 1, curriculumMapStatus: "draft", parts: [], audience: "Iniciantes",
+      declaredPrerequisites: [], curriculumScopeItems: [],
+      curriculum: { modules: Array.from({ length: 200 }, (_, moduleIndex) => ({
+        id: "module-" + moduleIndex, position: moduleIndex, title: "Módulo " + (moduleIndex + 1),
+        objective: "Objetivo do módulo. ".repeat(20),
+        lessons: [{ id: "lesson-" + moduleIndex, position: 0, title: "Lição " + (moduleIndex + 1),
+          objective: "Objetivo da lição. ".repeat(20),
+          microsequences: Array.from({ length: 3 }, (_, microIndex) => ({
+            id: "ms-" + moduleIndex + "-" + microIndex, position: microIndex,
+            title: "Microssequência " + (moduleIndex + 1) + "." + (microIndex + 1) + " do percurso de redes",
+            goal: "Relacionar conceitos e procedimentos. ".repeat(12) })) }]
+      })) }
+    } });
+    let continuation = undefined, literal = "", pages = 0, firstFragment = null, secondFragment = null;
+    while (true) {
+      const page = await channelCall(channel, paged, "consultar_planejamento",
+        { curso: TITLE, ...(continuation === undefined ? {} : { continuacao: continuation }) });
+      assert.equal(page.status, 200, page.envelope);
+      const context = page.value.context;
+      if (context.fragmento) {
+        if (pages === 0) firstFragment = context.fragmento.texto;
+        if (pages === 1) secondFragment = context.fragmento.texto;
+        literal += context.fragmento.texto;
+        pages += 1;
+      } else {
+        literal = JSON.stringify(context);
+        pages = 1;
+      }
+      if (context.temMais !== true) break;
+      continuation = context.continuacao;
+    }
+    assert.ok(pages >= 2, channel + ": o mapa grande precisa de mais de uma página");
+    assert.match(firstFragment, /criteriosDeEntrega/u);
+    assert.doesNotMatch(secondFragment, /criteriosDeEntrega/u,
+      channel + ": a continuação não repete os critérios");
+    assert.equal(literal.split("criteriosDeEntrega").length - 1, 1,
+      channel + ": os critérios aparecem uma única vez na leitura paginada");
+    assert.deepEqual(JSON.parse(literal).criteriosDeEntrega, [...COURSE_AUTHORING_DELIVERY_CORE]);
+  }
+});
+
