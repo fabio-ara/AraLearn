@@ -702,7 +702,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Lê a configuração solicitada e, na unidade, o que está aplicado. Nula é delegação; ausente é sem registro; vazio aplicado é escolha resolvida.",
+    "Lê a configuração solicitada e, na unidade, o aplicado. Intenção efetiva automática nula pede calibração; aplicado nulo é pendente; vazio é escolha resolvida.",
     inputSchema({
       curso: COURSE_SCHEMA,
       modulo: HUMAN_REFERENCE_SCHEMA,
@@ -1127,7 +1127,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:66cfb113f2fcbf00457d2391d24d2afa659ffe4bd8a5f0658257fc1d871952b3";
+  "sha256:a0c9648ffe88e03d3b355049d4ec2a8bed8462444afc64e31d24e342339b1b62";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2608,7 +2608,7 @@ function projectConfiguration(read) {
       }))
     : [];
   return {
-    natureza: "intenção solicitada (valor nulo = decisão delegada; ausente = sem registro)",
+    natureza: "intenção solicitada, não configuração aplicada",
     escopo: read?.scopeContext?.current?.label ?? null,
     parametros: parameters,
     precisaDeCalibracaoContextual: Array.isArray(read?.parameters) &&
