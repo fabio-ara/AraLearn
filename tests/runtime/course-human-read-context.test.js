@@ -1537,13 +1537,14 @@ test("critérios de entrega chegam uma vez na retomada, no planejamento e no pre
 });
 
 async function readChannelContext(channel, adapter, name, args) {
-  let continuation, literal = "", pages = 0, single = null, nextDecision = null;
+  let continuation, literal = "", pages = 0, single = null;
+  const decisions = [];
   for (;;) {
     const response = await channelCall(channel, adapter, name, { ...args,
       ...(continuation ? { continuacao: continuation } : {}) });
     assert.equal(response.status, 200, response.envelope);
-    nextDecision ??= response.value.nextDecision ?? null;
     const context = response.value.context;
+    decisions.push({ temMais: context.temMais === true, decision: response.value.nextDecision ?? null });
     assert.ok(JSON.stringify(context).length <= 12_000);
     assert.ok(Buffer.byteLength(JSON.stringify(context)) <= 16 * 1024);
     pages += 1;
@@ -1555,7 +1556,8 @@ async function readChannelContext(channel, adapter, name, args) {
     assert.ok(continuation, "a página lógica continua enquanto faltarem trechos");
     assert.ok(pages < 120);
   }
-  return { context: single ?? JSON.parse(literal), pages, nextDecision };
+  return { context: single ?? JSON.parse(literal), pages,
+    nextDecision: decisions[0].decision, finalDecision: decisions.at(-1).decision, decisions };
 }
 
 test("leitura comum da revisão não busca a inspeção e auditoria: true devolve a base nos dois canais", async () => {
@@ -1565,7 +1567,8 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
     for (const mode of ["comum", false, true]) {
       const { adapter } = focalAuditFixture();
       const args = mode === "comum" ? { curso: TITLE } : { curso: TITLE, auditoria: mode };
-      const { context, pages, nextDecision } = await readChannelContext(channel, adapter, "preparar_revisao", args);
+      const { context, pages, nextDecision, finalDecision, decisions } = await readChannelContext(
+        channel, adapter, "preparar_revisao", args);
       const json = JSON.stringify(context);
       const key = mode === "comum" ? "default" : String(mode);
       sizes[key] = { chars: json.length, bytes: Buffer.byteLength(json),
@@ -1578,7 +1581,9 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
         assert.equal(adapter.calls.inspections.length, 0, "a leitura comum não busca getCourseContentInspection");
         assert.equal(context.auditoriasPedagogicas, undefined);
         assert.match(nextDecision, /auditoria: true/u, "a leitura comum orienta a auditoria explícita");
-        assert.doesNotMatch(nextDecision, /^Registre o parecer/u, "sem base, não instrui registrar o parecer");
+        assert.doesNotMatch(finalDecision, /^Registre o parecer/u, "sem base, não instrui registrar o parecer");
+        assert.ok(decisions.every(({ decision }) => !/^Registre o parecer/u.test(decision ?? "")),
+          "nenhuma página comum instrui registrar o parecer");
         for (const target of targets) {
           assert.equal(Object.hasOwn(target, "auditoriaPedagogica"), false);
           assert.equal(Object.hasOwn(target, "referenciaInspecao"), false);
@@ -1589,11 +1594,14 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
         assert.equal(adapter.calls.inspections.length, targets.length * pages,
           "cada reexecução da página lógica inspeciona seus próprios alvos");
         assert.ok(context.auditoriasPedagogicas.length >= 1);
-        assert.match(nextDecision, /^Registre o parecer das seis dimensões/u,
+        assert.match(finalDecision, /^Registre o parecer das seis dimensões/u,
           "com a base devolvida, a decisão seguinte registra o parecer");
         assert.ok(targets.every(target => target.referenciaInspecao && target.auditoriaPedagogica));
         assert.ok(targets.every(target => target.inspecaoIA && target.inspecaoIA.state === "unregistered"));
       }
+      assert.ok(decisions.filter(({ temMais }) => temMais)
+        .every(({ decision }) => /^Continue lendo as continuações/u.test(decision ?? "")),
+      "toda página aberta orienta terminar a leitura antes de registrar");
       if (mode === false) assert.deepEqual(sizes.false, sizes.default, "omitir auditoria equivale a auditoria: false");
     }
     assert.ok(sizes.true.chars > sizes.default.chars, "a auditoria devolve mais caracteres que a leitura comum");
@@ -1640,6 +1648,52 @@ test("continuação da revisão liga o modo de auditoria aos argumentos", async 
   }), error => error.status === 409 && error.code === "human_read_context_changed");
   const same = await execute(omitting, "preparar_revisao", { continuacao: commonRead.context.continuacao });
   assert.ok(same.context.fragmento, "a mesma consulta continua a leitura comum");
+});
+
+test("continuação da revisão orienta ler até o fim antes de registrar nos dois modos", async () => {
+  for (const channel of ["actions", "mcp"]) {
+    for (const mode of ["comum", true]) {
+      const units = Array.from({ length: 12 }, (_, index) => studyUnit(index + 1,
+        "Conteúdo literal extenso da unidade. ".repeat(60)));
+      const adapter = fixture({ units });
+      const args = mode === true ? { curso: TITLE, auditoria: true } : { curso: TITLE };
+      let continuation, pages = 0, decisionFinal;
+      for (;;) {
+        const response = await channelCall(channel, adapter, "preparar_revisao", { ...args,
+          ...(continuation ? { continuacao: continuation } : {}) });
+        assert.equal(response.status, 200, response.envelope);
+        const page = response.value.context;
+        assert.ok(JSON.stringify(page).length <= 12_000, "cada página respeita 12.000 caracteres");
+        assert.ok(Buffer.byteLength(JSON.stringify(page)) <= 16 * 1024, "cada página respeita 16 KiB");
+        pages += 1;
+        const decision = response.value.nextDecision;
+        if (page.temMais !== true) { decisionFinal = decision; break; }
+        assert.match(decision, /Continue lendo as continuações/u,
+          channel + "/" + mode + ": página aberta orienta terminar a leitura");
+        assert.doesNotMatch(decision, /Registre o parecer/u,
+          channel + "/" + mode + ": não orienta registrar entre trechos");
+        assert.ok(page.fragmento, "página aberta entrega fragmento");
+        continuation = page.continuacao;
+        assert.ok(continuation, "há continuação enquanto a leitura está aberta");
+        assert.ok(pages < 60, "a leitura termina sem repetir fragmentos");
+      }
+      assert.ok(pages > 1, channel + "/" + mode + ": o recorte fraciona");
+      if (mode === true) {
+        assert.match(decisionFinal, /^Registre o parecer das seis dimensões/u,
+          "no fim, a auditoria orienta registrar o parecer");
+        assert.match(decisionFinal, /referenciaInspecao/u,
+          "a orientação final usa a referência de inspeção já devolvida por alvo");
+        assert.match(decisionFinal, /não altera a base/u,
+          "registrar a inspeção não obriga reler a base");
+      } else {
+        assert.match(decisionFinal, /auditoria: true/u, "no fim, a leitura comum indica a auditoria");
+        assert.doesNotMatch(decisionFinal, /^Registre o parecer/u,
+          "a leitura comum não orienta registrar sem base");
+      }
+      assert.ok(adapter.calls.units.every(input => input.cursorStudyUnitId === null),
+        "cada fragmento relê a mesma página lógica, com os mesmos argumentos");
+    }
+  }
 });
 
 function sharedExplanationFixture({ sourceIds = [] } = {}) {

@@ -128,7 +128,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       SOURCE_ANCHOR_INSPECTION_GUIDANCE,
       "Siga o ciclo inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, decidir, aplicar e reinspecionar; considere o percurso, não apenas os alvos anotados.",
       CONTINUATION_READING_GUIDANCE,
-      "A preparação de revisão reúne até 12 unidades e 64 KiB por página, com observações focais e plano imediato. Leia as continuações necessárias ao percurso afetado antes de concluir o diagnóstico; limite de página não autoriza reduzir conteúdo nem ignorar dependências.",
+      "A preparação de revisão reúne até 12 unidades por recorte lógico, com observações focais e plano imediato. O contexto de cada resposta entrega, no máximo, 12.000 caracteres e 16 KiB. Leia as continuações necessárias ao percurso afetado antes de concluir o diagnóstico; o limite do contexto não autoriza reduzir conteúdo nem ignorar dependências.",
       "Verifique se o texto explica em vez de apenas resumir. Procure enumerações extensas, empilhamento de conceitos, atomização sem função, nominalizações obscuras, anglicismos ou decalques, metáforas técnicas inadequadas e terminologia ou sigla sem contexto. Chat lacônico não implica material didático resumido.",
       "Corrija usos artificiais de curto/curta, negativas defensivas, metadiscurso e fórmulas como combina/reúne quando substituírem relações explicadas. Esses critérios não são proibições mecânicas."
     ])

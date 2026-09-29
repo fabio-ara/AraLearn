@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.95] - 2026-09-28 (estabilização local)
+
+### Alterado
+
+- A revisão orienta concluir a leitura das continuações antes de registrar os pareceres e reutilizar as referências dos alvos examinados enquanto a base permanecer válida.
+
 ## [0.0.94] - 2026-09-28 (estabilização local)
 
 ### Alterado
