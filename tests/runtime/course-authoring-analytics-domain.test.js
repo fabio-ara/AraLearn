@@ -1,8 +1,9 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
-import { courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
+import { courseAuthoringAnalyticsFixture, courseAuthoringBasisFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import test from "node:test";
+import { PGlite } from "@electric-sql/pglite";
 
 import * as analyticsDomain from "../../src/domain/courseAuthoringAnalytics.js";
 import { parseCourseAuthoringRoute } from "../../src/ui/courseAuthoringRoute.js";
@@ -554,4 +555,158 @@ test("#273 domínio web e mirror Edge permanecem uma única autoridade", async (
     ), "utf8")
   ]);
   assert.equal(edge, web);
+});
+
+const analyticsRpc = "public.get_owned_course_authoring_analytics_for_actor_v4(uuid,uuid,bigint,jsonb)";
+const analyticsSetMigration = "20260929082030_canonicalize_authoring_analytics_parameter_sets.sql";
+const readSql = async name => (await fs.readFile(new URL("../../supabase/migrations/" + name,
+  import.meta.url), "utf8")).replaceAll("\r\n", "\n");
+function sqlFunction(source, name) {
+  const start = source.search(new RegExp("create (?:or replace )?function " + name.replaceAll(".", "\\.") + "\\(", "iu"));
+  assert.ok(start >= 0, name);
+  const delimiter = /\bas\s+(\$\w*\$)/iu.exec(source.slice(start));
+  const end = source.indexOf(delimiter[1], start + delimiter.index + delimiter[0].length);
+  assert.ok(end > start, name);
+  return source.slice(start, end + delimiter[1].length) + ";";
+}
+async function analyticsSqlFixture(t) {
+  const db = new PGlite();
+  t.after(() => db.close());
+  await db.exec(`create schema private; create role anon; create role authenticated; create role service_role;
+    create table public.courses(id uuid);
+    create table private.course_design_parameter_definitions(parameter_id text primary key,value_kind text,definition jsonb);
+    create function public.get_aralearn_runtime_manifest() returns jsonb language sql stable as $$
+      select '{"schemaRevision":"fixture","contractVersion":1,"features":["fixture-v1"]}'::jsonb $$;`);
+  for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+    await db.query("insert into private.course_design_parameter_definitions values($1,$2,$3::jsonb)",
+      [definition.id, definition.valueSchema.type, JSON.stringify(definition)]);
+  }
+  await db.exec(sqlFunction(await readSql("20260817180000_course_design_parameters.sql"),
+    "private.canonical_course_design_parameter_value_v1"));
+  await db.exec(sqlFunction(await readSql("20260905080544_scoped_authoring_preferences_and_profiles.sql"),
+    "private.valid_course_design_parameter_value_v1"));
+  await db.exec(sqlFunction(await readSql("20260905154944_authoring_comparison_exports.sql"),
+    "public.get_owned_course_authoring_analytics_for_actor_v4"));
+  await db.exec(`revoke all on function ${analyticsRpc} from public,anon,authenticated;
+    grant execute on function ${analyticsRpc} to service_role;`);
+  return db;
+}
+async function analyticsSqlDefinition(db) {
+  return (await db.query("select pg_get_functiondef($1::regprocedure) as source", [analyticsRpc])).rows[0].source;
+}
+// Execute the producer's actual aggregation, with synthetic current_design rows.
+// This is a focal PostgreSQL proof, not a full Supabase RPC integration.
+async function aggregateParameters(db, applications) {
+  const source = await analyticsSqlDefinition(db);
+  const start = source.indexOf("  parameter_value_rows as materialized (");
+  const end = source.indexOf("  editorial_per_unit as materialized (", start);
+  assert.ok(start >= 0 && end > start);
+  const aggregation = source.slice(start, end).trim().replace(/,$/u, "");
+  return (await db.query(`with current_design as (
+    select * from jsonb_to_recordset($1::jsonb) rows(study_unit_id text,snapshot jsonb,application jsonb)
+  ), ${aggregation} select * from parameter_value_rows order by parameter_id,value::text,origin,reason,source_scope_kind`,
+  [JSON.stringify(applications)])).rows;
+}
+function appliedParameter(studyUnit, value, { parameterId = "required_explanation_forms", origin = "automatic",
+  reason = null, sourceScopeKind = "study_unit", mode = "expository" } = {}) {
+  return { study_unit_id: studyUnit, snapshot: { parameters: [{ parameterId, value, origin, reason, sourceScopeKind }] },
+    application: { mode } };
+}
+function pageWithParameterGroups(applications, groups) {
+  const page = courseAuthoringAnalyticsFixture({ studyUnits: [...new Set(applications.map(row => row.study_unit_id))]
+    .map(studyUnitRef => ({ studyUnitRef })) });
+  for (const parameter of page.design.parameters) {
+    parameter.effectiveValues = groups.filter(row => row.parameter_id === parameter.parameterId)
+      .map(row => ({ value: row.value, origin: row.origin, reason: row.reason,
+        sourceScopeKind: row.source_scope_kind, studyUnitCount: row.study_unit_count }));
+  }
+  return page;
+}
+
+test("analytics SQL agrega permutações antes da unicidade e conta unidades distintas", async t => {
+  const db = await analyticsSqlFixture(t);
+  const canonical = ["contrast", "application_condition", "limit_or_exception"];
+  const permuted = ["application_condition", "contrast", "limit_or_exception"];
+  const applications = [1, 2, 3, 4, 5].map(index => appliedParameter(`unit-${index}`, index === 5 ? canonical : permuted));
+  const before = await aggregateParameters(db, applications);
+  assert.deepEqual(before.map(row => row.study_unit_count).sort(), [1, 4]);
+  assert.throws(() => assembleCourseAuthoringAnalyticsPage(pageWithParameterGroups(applications, before)), /repete informações/u);
+  const originalDefinition = await analyticsSqlDefinition(db);
+  const definitionsBefore = (await db.query("select * from private.course_design_parameter_definitions order by parameter_id")).rows;
+  await db.exec(await readSql(analyticsSetMigration));
+  const after = await aggregateParameters(db, applications);
+  assert.deepEqual(after, [{ ...before[0], value: canonical, study_unit_count: 5 }]);
+  assert.equal(assembleCourseAuthoringAnalyticsPage(pageWithParameterGroups(applications, after)).design.parameters
+    .find(row => row.parameterId === "required_explanation_forms").effectiveValues[0].studyUnitCount, 5);
+  assert.deepEqual(await aggregateParameters(db, [...applications, applications[0], appliedParameter("unit-1", canonical)]), after);
+  assert.deepEqual((await db.query("select * from private.course_design_parameter_definitions order by parameter_id")).rows, definitionsBefore);
+  const withoutAggregation = source => source.replace(/ {2}parameter_value_rows as materialized \([\s\S]*? {2}editorial_per_unit as materialized/u, "AGGREGATION");
+  assert.equal(withoutAggregation(await analyticsSqlDefinition(db)), withoutAggregation(originalDefinition));
+  for (const role of ["anon", "authenticated", "service_role"]) {
+    assert.equal((await db.query("select has_function_privilege($1,$2,'EXECUTE') as allowed", [role, analyticsRpc])).rows[0].allowed,
+      role === "service_role");
+  }
+  assert.deepEqual((await db.query("select public.get_aralearn_runtime_manifest() as value")).rows[0].value,
+    { schemaRevision: "20260929082030", contractVersion: 1, features: ["fixture-v1"] });
+});
+
+test("analytics SQL conserva definição, origem, motivo e escopo como grupos distintos", async t => {
+  const db = await analyticsSqlFixture(t);
+  await db.exec(await readSql(analyticsSetMigration));
+  const canonical = ["plain_definition", "mechanism"];
+  const applications = [
+    appliedParameter("unit-1", canonical), appliedParameter("unit-2", [...canonical].reverse()),
+    appliedParameter("unit-3", canonical, { origin: "author" }),
+    appliedParameter("unit-4", canonical, { reason: "Motivo sintético A." }),
+    appliedParameter("unit-5", canonical, { reason: "Motivo sintético A." }),
+    appliedParameter("unit-6", canonical, { reason: "Motivo sintético B." }),
+    appliedParameter("unit-7", canonical, { sourceScopeKind: "course" }),
+    appliedParameter("unit-1", 2, { parameterId: "minimum_distinct_practice_opportunities_per_evidence_requirement" }),
+    appliedParameter("unit-1", 2, { parameterId: "new_analysis_unit_ceiling_per_expository_study_unit" })
+  ];
+  const groups = await aggregateParameters(db, applications);
+  const forms = groups.filter(row => row.parameter_id === "required_explanation_forms");
+  assert.equal(forms.length, 5);
+  assert.deepEqual(forms.map(row => row.study_unit_count).sort(), [1, 1, 1, 2, 2]);
+  assert.equal(forms.filter(row => row.reason === null).length, 3);
+  assert.equal(forms.find(row => row.origin === "author").study_unit_count, 1);
+  assert.equal(forms.find(row => row.source_scope_kind === "course").study_unit_count, 1);
+  assert.equal(new Set(groups.map(row => row.parameter_id)).size, 3);
+  assembleCourseAuthoringAnalyticsPage(pageWithParameterGroups(applications, groups));
+});
+
+test("analytics SQL preserva null, conjunto vazio, valores não set e rejeição de conjuntos inválidos", async t => {
+  const db = await analyticsSqlFixture(t);
+  await db.exec(await readSql(analyticsSetMigration));
+  const variation = "required_practice_variation_dimensions";
+  const applications = [
+    ...[null, [], ["context", "case_or_data"], ["case_or_data", "context"]]
+      .map((value, index) => appliedParameter(`unit-${index}`, value, { parameterId: variation })),
+    ...["after_explanation", "before_and_after"].map((value, index) => appliedParameter(`unit-${index}`, value,
+      { parameterId: "practice_position" })),
+    ...[1, 2].map((value, index) => appliedParameter(`unit-${index}`, value,
+      { parameterId: "new_analysis_unit_ceiling_per_expository_study_unit" })),
+    appliedParameter("practice-only", 2, { parameterId: "new_analysis_unit_ceiling_per_expository_study_unit", mode: "practice" })
+  ];
+  const groups = await aggregateParameters(db, applications);
+  assert.deepEqual(groups.filter(row => row.parameter_id === variation).map(row => [row.value, row.study_unit_count]),
+    [[["case_or_data", "context"], 2], [[], 1], [null, 1]]);
+  assert.deepEqual(groups.filter(row => row.parameter_id === "practice_position").map(row => row.value),
+    ["after_explanation", "before_and_after"]);
+  assert.deepEqual(groups.filter(row => row.parameter_id === "new_analysis_unit_ceiling_per_expository_study_unit")
+    .map(row => [row.value, row.study_unit_count]), [[1, 1], [2, 1]]);
+  assembleCourseAuthoringAnalyticsPage(pageWithParameterGroups(applications, groups));
+  for (const value of [["plain_definition", "unknown_form"], ["mechanism", "mechanism"], "mechanism"]) {
+    const invalid = [appliedParameter("invalid-unit", value)];
+    const invalidGroups = await aggregateParameters(db, invalid);
+    assert.deepEqual(invalidGroups[0].value, value, "A agregação não repara silenciosamente um valor inválido");
+    assert.throws(() => assembleCourseAuthoringAnalyticsPage(pageWithParameterGroups(invalid, invalidGroups)), /diverge do catálogo/u);
+  }
+});
+
+test("migração de analytics recusa produtor precursor divergente", async t => {
+  const db = await analyticsSqlFixture(t);
+  await db.exec((await analyticsSqlDefinition(db)).replace("parameter_value_rows as materialized", "parameter_value_rows AS MATERIALIZED"));
+  const migration = await readSql(analyticsSetMigration);
+  await assert.rejects(() => db.exec(migration), /precursora/u);
 });
