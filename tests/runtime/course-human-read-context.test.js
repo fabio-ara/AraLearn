@@ -1629,6 +1629,173 @@ test("auditoria sem serviço de inspeção mantém o estado unavailable de antes
   const plain = await execute(common, "preparar_revisao", {});
   assert.equal(Object.hasOwn(plain.context.studyUnits[0], "inspecaoIA"), false,
     "a leitura comum omite o estado mesmo sem serviço");
+  assert.equal(Object.hasOwn(plain.context, "alcanceDaAuditoria"), false);
+  assert.equal(read.context.alcanceDaAuditoria.estadosObtidos, 0);
+  assert.equal(read.context.alcanceDaAuditoria.indisponiveis.length, 1);
+  assert.match(read.nextDecision, /indisponível.*antes de concluir/u);
+  assert.doesNotMatch(read.nextDecision, /Registre o parecer/u);
+});
+
+function reviewCoverageFixture({ count = 10, text, legacy = false, currentUnitIds = ["unit-4", "unit-5"] } = {}) {
+  const units = Array.from({ length: count }, (_, index) => ({ ...studyUnit(index + 1, text),
+    curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
+  const adapter = fixture({ units });
+  const plan = sharedExplanationFixture().adapter.getCourseInstructionalPlan;
+  adapter.getCourseInstructionalPlan = plan;
+  const inspect = adapter.getCourseContentInspection;
+  adapter.getCourseContentInspection = async input => {
+    const read = await inspect(input);
+    const current = input.targetKind === "microsequence_explanation" || currentUnitIds.includes(input.targetId);
+    const attention = input.targetId === "unit-5";
+    read.inspection = current ? { state: "current", basisHash: read.basisHash,
+      inspectedAt: "2026-09-05T12:00:00Z", report: {
+        summary: "Parecer sintético vigente.", outcome: attention ? "needs_attention" : "consistent",
+        findings: attention ? ["Rever o exemplo da unidade 5."] : [],
+        checks: ["alignment", "evidence", "representation", "feedback", "sufficiency",
+          ...(!legacy ? ["configuration"] : [])].map(dimension => ({ dimension,
+          result: attention && dimension === "sufficiency" ? "insufficient" : "sufficient",
+          reason: "Julgamento da base sintética.", evidence: ["Conteúdo da base sintética."] }))
+      } } : { state: "pending", basisHash: read.basisHash };
+    return read;
+  };
+  return adapter;
+}
+
+test("alcance da auditoria conta somente alvos lidos e distingue MS inteira de seleção nos dois canais", async () => {
+  const outputs = [];
+  for (const channel of ["mcp", "actions"]) {
+    for (const selected of [false, true]) {
+      const adapter = reviewCoverageFixture();
+      const args = { curso: TITLE, microssequencia: "Um avanço", auditoria: true,
+        ...(selected ? { unidades: [4, 5] } : {}) };
+      const read = await readChannelContext(channel, adapter, "preparar_revisao", args);
+      const summary = read.context.alcanceDaAuditoria;
+      assert.equal(summary.escopo, selected ? "unidades_selecionadas" : "microssequencia");
+      assert.deepEqual(summary.paginaLogica, { temAnterior: false, temProxima: false });
+      assert.equal(summary.alvosLidos, selected ? 3 : 11);
+      assert.equal(summary.estadosObtidos, summary.alvosLidos);
+      assert.deepEqual(summary.estados, { current: 3, pending: selected ? 0 : 8, unregistered: 0, unavailable: 0 });
+      assert.equal(summary.atuaisComSeisDimensoes, 3);
+      assert.equal(summary.atuaisIncompletos, 0);
+      assert.deepEqual(summary.resultadosComSeisDimensoes, { consistent: 2, needs_attention: 1, human_preference_retained: 0 });
+      assert.deepEqual(summary.aInspecionar.map(target => target.titulo), selected ? []
+        : [1, 2, 3, 6, 7, 8, 9, 10].map(index => `Unidade ${index}`));
+      assert.deepEqual(summary.comRessalvas, [{ tipo: "unidade", posicao: selected ? 2 : 5,
+        titulo: "Unidade 5", resultado: "needs_attention" }]);
+      for (const target of summary.aInspecionar) {
+        assert.equal(read.context.studyUnits[target.posicao - 1].studyUnit.title, target.titulo);
+        assert.ok(read.context.studyUnits[target.posicao - 1].referenciaInspecao);
+      }
+      assert.equal(adapter.calls.inspections.length, summary.alvosLidos * read.pages,
+        "o resumo usa as inspeções já lidas, inclusive ao remontar fragmentos");
+      assert.equal(adapter.calls.reviews.length, adapter.calls.inspections.length);
+      assert.ok(read.decisions.filter(value => value.temMais).every(value =>
+        /^Continue lendo as continuações/u.test(value.decision) && !/Registre o parecer/u.test(value.decision)));
+      assert.match(read.finalDecision, /ressalvas.*preserve os pareceres válidos/u);
+      assert.match(read.finalDecision, /não certificam aprendizagem nem revisão humana/u);
+      if (selected) {
+        assert.match(summary.limite, /seleção não certifica a microssequência inteira/u);
+        assert.doesNotMatch(read.finalDecision, /Registre o parecer/u);
+        assert.match(read.finalDecision, /somente a seleção/u);
+      } else {
+        assert.match(read.finalDecision, /somente para os alvos aInspecionar/u);
+        assert.ok(read.pages > 1, "fragmentar não duplica os onze alvos do resumo");
+      }
+      outputs.push(summary);
+    }
+  }
+  assert.deepEqual(outputs.slice(0, 2), outputs.slice(2), "MCP e Actions preservam o mesmo alcance");
+});
+
+test("alcance da auditoria é local a cada página lógica, inclusive a última e seus fragmentos", async () => {
+  for (const [channel, finalPageCurrent] of [["mcp", false], ["actions", false], ["mcp", true], ["actions", true]]) {
+    const adapter = reviewCoverageFixture({ count: 14, text: "Conteúdo literal da página. ".repeat(90),
+      ...(finalPageCurrent ? { currentUnitIds: ["unit-4", "unit-5", "unit-13", "unit-14"] } : {}) });
+    const args = { curso: TITLE, microssequencia: "Um avanço", auditoria: true };
+    let continuation, literal = "", fragmentCount = 0, finalDecision;
+    const summaries = [];
+    do {
+      const response = await channelCall(channel, adapter, "preparar_revisao", { ...args,
+        ...(continuation ? { continuacao: continuation } : {}) });
+      assert.equal(response.status, 200, response.envelope);
+      const page = response.value.context;
+      assert.ok(Buffer.byteLength(JSON.stringify(page)) <= 16 * 1024);
+      assert.ok(JSON.stringify(page).length <= 12_000);
+      if (page.temMais) {
+        assert.match(response.value.nextDecision, /^Continue lendo as continuações/u);
+        assert.doesNotMatch(response.value.nextDecision, /Registre o parecer/u);
+      }
+      if (page.fragmento) {
+        assert.equal(page.fragmento.inicio, literal.length);
+        literal += page.fragmento.texto;
+        fragmentCount += 1;
+        assert.ok(fragmentCount < 90);
+        if (page.fragmento.fim === page.fragmento.total) {
+          summaries.push(JSON.parse(literal).alcanceDaAuditoria); literal = "";
+        }
+      } else summaries.push(page.alcanceDaAuditoria);
+      continuation = page.continuacao;
+      finalDecision = response.value.nextDecision;
+    } while (continuation);
+    assert.equal(summaries.length, 2);
+    assert.ok(fragmentCount > 2);
+    assert.deepEqual(summaries.map(value => value.paginaLogica), [
+      { temAnterior: false, temProxima: true }, { temAnterior: true, temProxima: false }
+    ]);
+    assert.deepEqual(summaries.map(value => value.alvosLidos), [13, 3], "a Explicação é relida em cada página");
+    assert.deepEqual(summaries.map(value => value.estados.pending), [10, finalPageCurrent ? 0 : 2]);
+    assert.match(finalDecision, /última página não resume as anteriores/u);
+    assert.match(finalDecision, /trate as pendências e ressalvas de cada uma/u);
+    if (finalPageCurrent) assert.match(finalDecision, /pareceres desta página estão atuais/u);
+    assert.ok(summaries.every(value => !Object.hasOwn(value, "totalGlobal") && !Object.hasOwn(value, "coberturaCompleta")));
+    assert.match(summaries[1].limite, /não são um total global/u);
+  }
+});
+
+test("parecer current legado exige completar dimensões e current com preferência não vira consistent", async () => {
+  const legacy = await readLogicalPage(reviewCoverageFixture({ legacy: true }), "preparar_revisao",
+    { microssequencia: "Um avanço", unidades: [4, 5], auditoria: true });
+  const summary = legacy.context.alcanceDaAuditoria;
+  assert.equal(summary.estados.current, 3);
+  assert.equal(summary.atuaisComSeisDimensoes, 0);
+  assert.equal(summary.atuaisIncompletos, 3);
+  assert.equal(summary.resultadosComSeisDimensoes.consistent, 0);
+  assert.equal(summary.aInspecionar.length, 3);
+  assert.equal(summary.comRessalvas[0].titulo, "Unidade 5", "o parecer legado também conserva sua ressalva");
+  assert.match(legacy.nextDecision, /Registre o parecer das seis dimensões/u);
+  assert.match(legacy.nextDecision, /Relate as ressalvas/u);
+
+  for (const outcome of ["consistent", "human_preference_retained"]) {
+    const adapter = reviewCoverageFixture();
+    const inspect = adapter.getCourseContentInspection;
+    adapter.getCourseContentInspection = async input => {
+      const read = await inspect(input);
+      read.inspection.report.outcome = outcome;
+      return read;
+    };
+    const read = await readLogicalPage(adapter, "preparar_revisao", { unidades: [4], auditoria: true });
+    assert.equal(read.context.alcanceDaAuditoria.aInspecionar.length, 0);
+    assert.equal(read.context.alcanceDaAuditoria.resultadosComSeisDimensoes[outcome], 2);
+    assert.doesNotMatch(read.nextDecision, /Registre o parecer/u);
+    assert.match(read.nextDecision, outcome === "consistent" ? /atuais nas seis dimensões/u : /Relate as ressalvas/u);
+  }
+});
+
+test("falha ou revisão concorrente da inspeção não se convertem em zero pendências", async () => {
+  for (const channel of ["mcp", "actions"]) {
+    for (const failure of ["access_denied", "request_timeout", "course_revision_conflict"]) {
+      const adapter = reviewCoverageFixture();
+      const inspect = adapter.getCourseContentInspection;
+      adapter.getCourseContentInspection = async input => {
+        if (failure !== "course_revision_conflict") throw Object.assign(new Error("Leitura recusada"),
+          { status: failure === "access_denied" ? 403 : 504, code: failure });
+        const read = await inspect(input); read.courseRevision += 1; return read;
+      };
+      const response = await channelCall(channel, adapter, "preparar_revisao", { curso: TITLE, auditoria: true });
+      assert.equal(response.value?.context?.alcanceDaAuditoria, undefined);
+      assert.ok(response.payload.error || response.payload.result?.isError, response.envelope);
+    }
+  }
 });
 
 test("continuação da revisão liga o modo de auditoria aos argumentos", async () => {

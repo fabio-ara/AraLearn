@@ -133,6 +133,62 @@ test("leitura do apoio registra Fonte ou Âncora ausente sem inventar rótulo", 
   assert.deepEqual(links[1].anchors, [{ localizada: false }]);
 });
 
+// Mesmo com o curso e a fonte em arquivos restritos, a escolha editorial continua
+// própria: a leitura por alvo precisa devolvê-la no vocabulário aceito pela escrita,
+// sem nova consulta e sem confundir a política de arquivos.
+test("leitura do apoio por alvo expõe a visibilidade editorial no Estudo separada da política de arquivos", async () => {
+  const adapter = fixture();
+  adapter.getCourse = async () => ({ courseId: COURSE_ID, title: "Redes sintéticas", revision: 7,
+    visibility: "private", publicFileAccess: "restricted" });
+  const hidden = "70000000-0000-4000-8000-000000000001";
+  const cited = "70000000-0000-4000-8000-000000000002";
+  const linked = "70000000-0000-4000-8000-000000000003";
+  const links = [hidden, cited, linked, hidden].map((sourceId, index) => ({ sourceId,
+    linkId: `80000000-0000-4000-8000-00000000000${index + 1}`, relation: "supported_by",
+    roles: ["technical_conceptual"], anchors: [], occurrences: [] }));
+  const details = [
+    { sourceId: hidden, title: "Uso interno", citationText: "Autoria interna.", status: "active",
+      studyVisibility: "hidden", publicFileAccess: "restricted", anchors: [] },
+    { sourceId: cited, title: "Referência citada", citationText: "Autoria citada.", status: "active",
+      studyVisibility: "citation", publicFileAccess: "restricted", anchors: [] },
+    { sourceId: linked, title: "Referência com link", citationText: "Autoria com link.", status: "active",
+      studyVisibility: "citation_and_link", publicFileAccess: "available",
+      url: "https://example.test/obra", anchors: [] }
+  ];
+  const reads = [];
+  adapter.getCourseSources = async input => {
+    reads.push(input);
+    return input.mode === "target"
+      ? { items: [{ targetKind: input.targetKind, targetId: input.targetId, sourceLinks: links }], nextCursor: null }
+      : { items: details.filter(item => item.sourceId === input.sourceId), nextCursor: null };
+  };
+  const result = await call(adapter, "consultar_fontes", { explicacao: "Quadros" });
+  const actual = result.context.sources.items[0].sourceLinks;
+  assert.deepEqual(actual.map(link => link.fonte.visibilidadeNoEstudo),
+    ["oculta", "citacao", "citacao_e_link", "oculta"]);
+  assert.deepEqual(actual.map(link => link.fonte.citacao),
+    ["Autoria interna.", "Autoria citada.", "Autoria com link.", "Autoria interna."]);
+  for (const link of actual) {
+    assert.equal(Object.hasOwn(link.fonte, "studyVisibility"), false, "a projeção usa o vocabulário humano");
+    assert.equal(Object.hasOwn(link.fonte, "publicFileAccess"), false, "a política de arquivos não substitui a escolha editorial");
+  }
+  assert.equal(reads.filter(input => input.mode === "source").length, 3, "cada Fonte distinta é lida uma vez");
+  assert.doesNotMatch(JSON.stringify(result.context), /"studyVisibility"|"publicFileAccess"|sourceId|linkId/u);
+  assert.equal(adapter.writes.length, 0);
+});
+
+test("escrita da visibilidade no Estudo usa o mesmo vocabulário devolvido pela leitura", async () => {
+  for (const [human, internal] of [["oculta", "hidden"], ["citacao", "citation"],
+    ["citacao_e_link", "citation_and_link"]]) {
+    const adapter = fixture();
+    await call(adapter, "manter_fonte", { fonte: "Fonte sintética",
+      metadados: { citacao: "Referência sintética.", visibilidadeNoEstudo: human } });
+    assert.equal(adapter.writes[0].command.source.studyVisibility, internal, human);
+  }
+  await assert.rejects(() => call(fixture(), "manter_fonte", { fonte: "Fonte sintética",
+    metadados: { visibilidadeNoEstudo: "publica" } }), { code: "invalid_human_task_argument" });
+});
+
 test("leitura do apoio recusa ficha de outra Fonte e não disfarça conflito, recusa ou timeout como ausência", async () => {
   for (const errorCode of [null, "stale_course_state", "access_denied", "request_timeout"]) {
     const adapter = fixture();

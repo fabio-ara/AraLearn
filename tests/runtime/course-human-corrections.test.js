@@ -6,8 +6,20 @@ import { bpmnInstance } from "../helpers/bpmnFixture.js";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
+import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
+
+test("salvar explicações conserva o aviso de base compartilhada na orientação final", async () => {
+  const adapter = adapterFixture();
+  const { title, content } = correctedContent("Explicação revista");
+  const receipt = await executeHumanCourseTask({ adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] },
+    name: "salvar_explicacoes", rawArguments: { curso: "Curso de Redes",
+      explicacoes: [{ microssequencia: "Microssequência A", conteudo: { title, content } }] } });
+  assert.match(receipt.nextDecision, /base compartilhada.*microssequência inteira.*auditoria: true.*pareceres atuais completos/iu);
+  assert.equal(adapter.commits.length, 1);
+});
 
 test("BPMN nas correções mantém legado textual e recusa nova estrutura em Unidade, feedback e Explicação", async () => {
   for (const slot of ["content", "feedback", "explanation"]) {
@@ -260,6 +272,7 @@ test("correção estrutural expõe a invalidação da aplicação e orienta a re
   });
   assert.match(receipt.result, /aplicação instrucional.*reaplicada.*conteúdo atual/iu);
   assert.match(receipt.nextDecision, /conteúdo atual.*reaplique.*inspeção/iu);
+  assert.match(receipt.nextDecision, /outras unidades pela base compartilhada.*microssequência inteira.*sem seleção de unidades/iu);
 });
 
 test("fonte-only e mudança de título não são reportadas como invalidação estrutural", async () => {
@@ -297,6 +310,7 @@ test("fonte-only e mudança de título não são reportadas como invalidação e
   assert.equal(sourceOnly.context.aplicacaoInstrucional.estado, "preservada");
   assert.equal(sourceOnly.context.aplicacaoInstrucional.recorte, "somente vínculos de fontes");
   assert.doesNotMatch(sourceOnly.nextDecision, /reapliqu/iu);
+  assert.match(sourceOnly.nextDecision, /fontes alterados.*base compartilhada.*pareceres atuais completos/iu);
 });
 
 for (const authenticationKind of ["oauth", "action"]) {

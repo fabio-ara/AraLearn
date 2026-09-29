@@ -2,6 +2,8 @@ const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_ALIGNMENT_GUIDANCE = "Relacione objetivo, operação do estudante e evidência da resposta.";
 
+export const COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE = "Conteúdo ou fontes alterados podem deixar pendentes pareceres de outras unidades pela base compartilhada. Ao fechar a correção, confira a microssequência inteira com preparar_revisao e auditoria: true, sem seleção de unidades; conclua as continuações e relate o alcance, as pendências e as ressalvas, preservando pareceres atuais completos.";
+
 // Caminho de saída único para exigência de forma explicativa divergente da
 // declaração: recalibrar a intenção automática e aplicar na mesma chamada, sem
 // criar comando, transação ou fluxo paralelo.
@@ -87,6 +89,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
       "Preencha a referência bibliográfica acadêmica com autoria, título, edição e publicação conferidos, no estilo escolhido pelo curso. O formato do arquivo não substitui a referência; não invente metadados ausentes.",
       "A consulta às fontes integra o material de estudo. Priorize documentos completos acessíveis ao estudante e confira a disponibilidade pelo acesso previsto para ele, não apenas pela sessão do autor. O link deve levar à obra; quando houver âncora textual verificada, conserve o caminho para abrir e destacar a passagem. Não anuncie acesso integral ou destaque a partir de um título, de uma referência geral ou de uma localização não conferida. Se a obra estiver indisponível, procure sustentação consultável adequada ou explicite o limite, preservando os direitos de acesso.",
       "Antes de vincular, use consultar_fontes para reler a fonte e suas âncoras. Em ancoras do vínculo, selecione explicitamente as âncoras pela posição, localizador ou trecho apresentados; cadastrar uma âncora na fonte não a seleciona automaticamente no vínculo. Reutilize essa referência em manter_fonte ou nas fontes de salvar_explicacoes. Salve ocorrencias com lugar, recurso e trecho literal do conteúdo salvo; o servidor deriva a folha textual. Prefixo e sufixo distinguem repetições; se a passagem for ambígua, use o contexto devolvido para identificar o trecho, sem adivinhar campos internos. Isso posiciona a citação no texto. Registre separadamente ancoras verificadas na fonte: text_quote usa o trecho literal da obra para localizar e destacar o PDF correspondente; page_range localiza somente páginas. Uma referência geral pode ficar sem ocorrência, mas não equivale a uma citação localizada. Releia os vínculos após salvar e confira ambos os destinos antes de anunciar que o trecho está acessível.",
+      "Na leitura por alvo, visibilidadeNoEstudo devolve oculta, citacao ou citacao_e_link: é a escolha editorial de presença da Fonte no Estudo, distinta da política de arquivos, que rege o acesso aos documentos.",
       "Para fonte web, use destaque direto somente quando houver mecanismo confiável e passagem verificada. Sem ele, preserve a URL original e registre localizadorHumano preciso na âncora, como seção, subtítulo e parágrafo; não crie snapshot nem cópia persistida da página. Não invente uma localização para satisfazer o contrato.",
       "Se uma fonte relevante exigir PDF indisponível, sugira obras ou alternativas adequadas e peça à pessoa autora um arquivo ao qual tenha acesso. Depois de incorporar o PDF como fonte, reutilize o mesmo arquivo e hashDoPdf com múltiplas âncoras e destaques independentes; não peça novo envio a cada passagem. Fontes encontradas por pesquisa do assistente têm origin external; author_provided identifica material efetivamente fornecido pela pessoa autora, não o simples fato de ser cadastrado no curso.",
       CONTINUATION_READING_GUIDANCE,
@@ -114,6 +117,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       SUBSTANTIVE_EVIDENCE_GUIDANCE,
       SOURCE_ANCHOR_INSPECTION_GUIDANCE,
+      COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE,
       "Leia observações e o contexto afetado, apresente uma proposta breve e aplique as correções cobertas pelo mandato. Debate ou inspeção não autorizam escrita por si sós. Pergunte antes de uma mudança material não autorizada; não peça nova aprovação de correção rotineira já incluída no pedido. Uma alteração persistida confirma a escrita; confira na releitura se o problema concreto foi resolvido.",
       "A análise de impacto é recíproca: ao revisar a explicação, confira as unidades da microssequência e suas dependências; ao revisar unidades, confira a base compartilhada. Discuta no chat quais ajustes substantivos são necessários e aplique o que estiver acordado. Uma mudança num lado não autoriza reescrever automaticamente o outro. Conserve os objetos sem impacto material, as citações úteis e suas marcas de revisão pertinentes.",
       "Releia a sequência corrigida e compare as bases antes/depois e suas fontes. A fila devolve referenciasComparacao por alvo; use a referência inteira em preparar_revisao.comparacao e leia todas as continuações para recuperar o conteúdo literal. Os hashes da lista não substituem a comparação. observacoesTratadas vincula atendimento às versões exatas, mas confirmar persistência ou retomar_correcao não aprova nem elimina observações. Após resposta perdida, recupere a tentativa original sem reaplicar a correção.",
@@ -126,6 +130,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Revisão linguístico-didática focal",
     instructions: Object.freeze([
       SOURCE_ANCHOR_INSPECTION_GUIDANCE,
+      COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE,
       "Siga o ciclo inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, decidir, aplicar e reinspecionar; considere o percurso, não apenas os alvos anotados.",
       CONTINUATION_READING_GUIDANCE,
       "A preparação de revisão reúne até 12 unidades por recorte lógico, com observações focais e plano imediato. O contexto de cada resposta entrega, no máximo, 12.000 caracteres e 16 KiB. Leia as continuações necessárias ao percurso afetado antes de concluir o diagnóstico; o limite do contexto não autoriza reduzir conteúdo nem ignorar dependências.",
