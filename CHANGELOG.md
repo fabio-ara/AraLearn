@@ -14,6 +14,7 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - A leitura, a comparação e a exportação de cursos deixam de retornar erro 503 quando configurações aplicadas contêm as mesmas opções em ordens diferentes. A agregação preserva origens, motivos, escopos e a contagem de unidades distintas.
+- Políticas de componentes salvas em catálogos compatíveis passam a usar a identidade corrente, preservando escolhas, autoria e datas. A reconciliação evita que versões antigas dessas políticas bloqueiem sua leitura e a restauração de backups posteriores à correção.
 
 ## [0.0.96] - 2026-09-29 (estabilização local)
 
