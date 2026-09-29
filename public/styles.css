@@ -3240,6 +3240,11 @@ button.account-settings-back[hidden] {
   line-height: 1.15;
 }
 
+/* Mesmos blocos no probe de medição e no cabeçalho HTML da fronteira C4. */
+.runtime-software-container-block .package-system-diagram-boundary-label > .package-system-diagram-node-content > :is(strong, span) {
+  display: block;
+}
+
 .package-bpmn-task-content small {
   white-space: nowrap;
 }

@@ -72,12 +72,21 @@ function labelTemplate(figure, label) {
   );
 }
 
+function boundaryLabelTypography(wrapper, texts) {
+  const style = getComputedStyle(texts[0]);
+  const lineHeight = texts.length > 1
+    ? Math.abs(Number(texts[1].getAttribute("y")) - Number(texts[0].getAttribute("y")))
+    : texts[0].getBBox().height;
+  Object.assign(wrapper.style, { fontFamily: style.fontFamily, fontSize: style.fontSize,
+    lineHeight: `${lineHeight}px`, display: "block", whiteSpace: "normal", height: "auto" });
+}
+
 // Graphviz mede texto SVG; campos interativos e títulos HTML têm outra altura.
 // Medimos o HTML real antes do layout final e devolvemos somente o tamanho do
 // nó ao motor. A autoria continua responsável apenas pela semântica.
 function reserveInteractiveLabelSpace(figure, svg, labels, source) {
   let next = source;
-  for (const label of labels.filter(item => ["node", "edge"].includes(item.kind))) {
+  for (const label of labels.filter(item => ["node", "edge", "boundary"].includes(item.kind))) {
     const template = labelTemplate(figure, label);
     if (!template?.content.querySelector(INLINE_LABEL_CONTROL_SELECTOR)) continue;
     if (label.kind === "edge" && !template.content.querySelector(GAP_CONTROL_SELECTOR)) continue;
@@ -85,6 +94,28 @@ function reserveInteractiveLabelSpace(figure, svg, labels, source) {
     const group = graphvizGroupById(svg, id);
     const bounds = label.kind === "node" ? nodeBounds(group) : group && unionGraphvizTextBounds([...group.querySelectorAll(":scope > text")]);
     if (!bounds) continue;
+    // A fronteira C4 combina título em negrito e descrição em blocos distintos.
+    // Sua altura HTML não é a soma das linhas de texto simples do Graphviz.
+    if (label.kind === "boundary") {
+      if (!template.content.querySelector(".package-system-diagram-node-content")) continue;
+      const texts = [...group.querySelectorAll(":scope > text")];
+      const probe = document.createElement("div");
+      probe.className = "package-system-diagram-boundary-label";
+      const width = Math.ceil(bounds.width) + 2;
+      Object.assign(probe.style, { position: "absolute", visibility: "hidden", pointerEvents: "none",
+        width: `${width}px`, height: "auto" });
+      probe.append(template.content.cloneNode(true));
+      figure.append(probe);
+      boundaryLabelTypography(probe.firstElementChild, texts);
+      const height = Math.ceil(probe.firstElementChild.getBoundingClientRect().height) + 2;
+      probe.remove();
+      label.measuredSize = { width, height };
+      const lines = texts.map(element => escapeGraphvizHtml(element.textContent)).join('<BR/>');
+      const box = `<TABLE BORDER="0" CELLBORDER="0" CELLPADDING="0" CELLSPACING="0" WIDTH="${width}" HEIGHT="${height}"><TR><TD>${lines}</TD></TR></TABLE>`;
+      next = next.split("\n").map(line => line.includes(`id=${dotQuote(id)}`)
+        ? line.replace(/label="(?:[^"\\]|\\.)*"/u, () => `label=<${box}>`) : line).join("\n");
+      continue;
+    }
     const probe = document.createElement("div");
     probe.className = `package-system-diagram-${label.kind}-label`;
     Object.assign(probe.style, { position: "absolute", visibility: "hidden", pointerEvents: "none",
@@ -143,6 +174,15 @@ function replaceInteractiveLabel(figure, svg, label) {
     width: gapWidth,
     height: gapHeight
   }, labelClass);
+  if (label.kind === "boundary" && label.measuredSize) {
+    const { width, height } = label.measuredSize;
+    boundaryLabelTypography(foreignLabel.firstElementChild, texts);
+    foreignLabel.setAttribute("x", String(bounds.x + bounds.width / 2 - width / 2));
+    foreignLabel.setAttribute("y", String(bounds.y + bounds.height / 2 - height / 2));
+    foreignLabel.setAttribute("width", String(width));
+    foreignLabel.setAttribute("height", String(height));
+    return;
+  }
   // Marcadores autorais não são controles de resposta. O texto HTML equivalente
   // conserva a tipografia e as linhas medidas no SVG, em vez de herdar o corpo
   // da página dentro de uma caixa calculada com outra fonte.
