@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.96] - 2026-09-29 (estabilização local)
+
+### Corrigido
+
+- A consulta de fontes de uma unidade ou explicação informa a visibilidade editorial da referência no Estudo, distinguindo essa escolha das permissões de acesso aos documentos.
+
 ## [0.0.95] - 2026-09-28 (estabilização local)
 
 ### Alterado

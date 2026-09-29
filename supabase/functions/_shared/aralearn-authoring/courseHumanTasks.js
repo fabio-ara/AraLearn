@@ -82,6 +82,18 @@ const MCP_OAUTH_SECURITY_SCHEMES = Object.freeze([
 const SOURCE_ROLES_BY_HUMAN_NAME = HUMAN_SOURCE_ROLES;
 const SOURCE_ROLE_HUMAN_NAMES = new Map(Object.entries(SOURCE_ROLES_BY_HUMAN_NAME)
   .map(([humanName, internalName]) => [internalName, humanName]));
+// Visibilidade editorial da Fonte no Estudo. A leitura por alvo devolve o mesmo
+// campo e vocabulario que a escrita aceita em `visibilidadeNoEstudo`; a escolha
+// permanece distinta de `publicFileAccess`, que rege o acesso aos documentos.
+const SOURCE_STUDY_VISIBILITY_BY_HUMAN_NAME = Object.freeze({
+  oculta: "hidden",
+  citacao: "citation",
+  citacao_e_link: "citation_and_link"
+});
+const SOURCE_STUDY_VISIBILITY_HUMAN_NAMES = new Map(
+  Object.entries(SOURCE_STUDY_VISIBILITY_BY_HUMAN_NAME)
+    .map(([humanName, internalName]) => [internalName, humanName])
+);
 
 const HUMAN_REFERENCE_SCHEMA = Object.freeze({
   type: Object.freeze(["integer", "string"]), minimum: 1, maximum: 1000000,
@@ -3138,7 +3150,10 @@ async function humanTargetSourceReferences({ adapter, principal, course, sources
       const source = await readSource(link.sourceId);
       return { ...link, posicao: index + 1, evidencia: inspectCourseSourceEvidence(link, source, { targets }),
         fonte: source ? { localizada: true, titulo: source.title, citacao: source.citationText,
-          status: source.status, ...(source.url ? { url: source.url } : {}) } : { localizada: false },
+          status: source.status, ...(source.url ? { url: source.url } : {}),
+          ...(SOURCE_STUDY_VISIBILITY_HUMAN_NAMES.has(source.studyVisibility)
+            ? { visibilidadeNoEstudo: SOURCE_STUDY_VISIBILITY_HUMAN_NAMES.get(source.studyVisibility) }
+            : {}) } : { localizada: false },
         anchors: link.anchors.map((reference) => {
           const position = source?.anchors?.findIndex(anchor => anchor.anchorId === reference.anchorId) ?? -1;
           if (position < 0) return { localizada: false };
@@ -4111,11 +4126,6 @@ function sourceDocument(publicValue, previous = null, origin = "external") {
     nao_verificada: "unverified",
     confirmada_explicitamente_pela_autoria: "author_verified"
   });
-  const visibility = Object.freeze({
-    oculta: "hidden",
-    citacao: "citation",
-    citacao_e_link: "citation_and_link"
-  });
   const names = (items) => {
     if (!Array.isArray(items)) fail("invalid_human_task_argument", "Informe os nomes em uma lista.");
     return items.map((item) => {
@@ -4165,7 +4175,8 @@ function sourceDocument(publicValue, previous = null, origin = "external") {
     origin: previous?.origin ?? origin,
     availability: mapped(availability, "disponibilidade", previous?.availability ?? "unknown"),
     verificationStatus: mapped(verification, "verificacao", previous?.verificationStatus ?? "unverified"),
-    studyVisibility: mapped(visibility, "visibilidadeNoEstudo", previous?.studyVisibility ?? "hidden")
+    studyVisibility: mapped(SOURCE_STUDY_VISIBILITY_BY_HUMAN_NAME, "visibilidadeNoEstudo",
+      previous?.studyVisibility ?? "hidden")
   };
 }
 
