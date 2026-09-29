@@ -16,6 +16,7 @@ import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthor
 import { courseObservationTargets, normalizeCourseObservationCorrectionReferences, normalizeCourseObservationCorrection } from
   "../aralearn/runtime/domain/courseAnchoredAnnotations.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
+import { COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE } from "./courseKnowledge.js";
 
 function plainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -355,7 +356,7 @@ export async function resumeHumanCourseObservationCorrection({ adapter, principa
     const links = targets.map(target => createHumanNavigation(adapter, { courseId, relation: "content", target }));
     return { result: `Reconciliada a correção salva. ${pendingObservationCount} observações aguardam decisão humana no recorte.`,
       ...buildHumanNavigationEnvelope(links[0], links.slice(1), {
-        nextDecision: "Leia o conteúdo corrigido e decida sobre as observações pendentes." }),
+        nextDecision: "Leia o conteúdo corrigido e decida sobre as observações pendentes. " + COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE }),
       context: { correctionRequestId: requestId, confirmedObservationCount: confirmed, pendingObservationCount } };
   } catch (error) {
     if (error instanceof AuthoringApiError && [401, 403, 404].includes(error.status)) throw error;
@@ -520,9 +521,9 @@ export async function applyHumanCourseCorrections({
       ? `${baseResult} A aplicação instrucional afetada precisa ser verificada e reaplicada sobre o conteúdo atual antes da inspeção.`
       : baseResult,
     ...buildHumanNavigationEnvelope(links[0], links.slice(1), {
-      nextDecision: applicationImpact.estado === "invalidada_por_conteudo"
+      nextDecision: (applicationImpact.estado === "invalidada_por_conteudo"
         ? "Leia o conteúdo atual, verifique e reaplique as escolhas instrucionais sobre essa base e depois registre a inspeção; decida também sobre as observações pendentes."
-        : "Leia o conteúdo corrigido e decida sobre as observações pendentes." }),
+        : "Leia o conteúdo corrigido e decida sobre as observações pendentes.") + " " + COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE }),
     context: {
       ...(bpmnIssues.length ? { bpmnReview: { state: "needs_review", issues: bpmnIssues } } : {}),
       correctionCount: corrections.length,

@@ -96,6 +96,7 @@ test("respostas perdidas de escrita ou confirmação recuperam pelo recibo sem r
     const resumed = await resumeHumanCourseObservationCorrection({ adapter, principal, courseId: COURSE, requestId: adapter.request.requestId });
     assert.equal(resumed.context.confirmedObservationCount, 1);
     assert.equal(resumed.context.pendingObservationCount, 2);
+    assert.match(resumed.nextDecision, /outras unidades pela base compartilhada.*microssequência inteira.*sem seleção de unidades/iu);
     assert.deepEqual(resumed.links.map(link => link.target), [{ kind: "study_unit", id: "unit" }]);
     assert.equal(adapter.calls.slice(before).includes("commit"), false);
     assert.equal(adapter.calls.slice(before).includes("confirm"), false);

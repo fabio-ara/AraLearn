@@ -2,6 +2,8 @@ const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_ALIGNMENT_GUIDANCE = "Relacione objetivo, operação do estudante e evidência da resposta.";
 
+export const COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE = "Conteúdo ou fontes alterados podem deixar pendentes pareceres de outras unidades pela base compartilhada. Ao fechar a correção, confira a microssequência inteira com preparar_revisao e auditoria: true, sem seleção de unidades; conclua as continuações e relate o alcance, as pendências e as ressalvas, preservando pareceres atuais completos.";
+
 // Caminho de saída único para exigência de forma explicativa divergente da
 // declaração: recalibrar a intenção automática e aplicar na mesma chamada, sem
 // criar comando, transação ou fluxo paralelo.
@@ -115,6 +117,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       SUBSTANTIVE_EVIDENCE_GUIDANCE,
       SOURCE_ANCHOR_INSPECTION_GUIDANCE,
+      COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE,
       "Leia observações e o contexto afetado, apresente uma proposta breve e aplique as correções cobertas pelo mandato. Debate ou inspeção não autorizam escrita por si sós. Pergunte antes de uma mudança material não autorizada; não peça nova aprovação de correção rotineira já incluída no pedido. Uma alteração persistida confirma a escrita; confira na releitura se o problema concreto foi resolvido.",
       "A análise de impacto é recíproca: ao revisar a explicação, confira as unidades da microssequência e suas dependências; ao revisar unidades, confira a base compartilhada. Discuta no chat quais ajustes substantivos são necessários e aplique o que estiver acordado. Uma mudança num lado não autoriza reescrever automaticamente o outro. Conserve os objetos sem impacto material, as citações úteis e suas marcas de revisão pertinentes.",
       "Releia a sequência corrigida e compare as bases antes/depois e suas fontes. A fila devolve referenciasComparacao por alvo; use a referência inteira em preparar_revisao.comparacao e leia todas as continuações para recuperar o conteúdo literal. Os hashes da lista não substituem a comparação. observacoesTratadas vincula atendimento às versões exatas, mas confirmar persistência ou retomar_correcao não aprova nem elimina observações. Após resposta perdida, recupere a tentativa original sem reaplicar a correção.",
@@ -127,6 +130,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     title: "Revisão linguístico-didática focal",
     instructions: Object.freeze([
       SOURCE_ANCHOR_INSPECTION_GUIDANCE,
+      COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE,
       "Siga o ciclo inspecionar, observar, pedir revisão, analisar o contexto afetado, propor reparo, decidir, aplicar e reinspecionar; considere o percurso, não apenas os alvos anotados.",
       CONTINUATION_READING_GUIDANCE,
       "A preparação de revisão reúne até 12 unidades por recorte lógico, com observações focais e plano imediato. O contexto de cada resposta entrega, no máximo, 12.000 caracteres e 16 KiB. Leia as continuações necessárias ao percurso afetado antes de concluir o diagnóstico; o limite do contexto não autoriza reduzir conteúdo nem ignorar dependências.",

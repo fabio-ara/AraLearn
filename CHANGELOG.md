@@ -14,6 +14,8 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - A consulta de fontes de uma unidade ou explicação informa a visibilidade editorial da referência no Estudo, distinguindo essa escolha das permissões de acesso aos documentos.
+- A auditoria da revisão informa o alcance da seleção e de cada página lida, com pendências, pareceres completos, legados e ressalvas, sem apresentar uma consulta parcial como revisão de toda a microssequência.
+- As orientações de revisão preservam pareceres atuais completos e lembram conferir a microssequência inteira após correções que podem afetar a base compartilhada.
 
 ## [0.0.95] - 2026-09-28 (estabilização local)
 

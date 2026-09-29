@@ -2,6 +2,7 @@ import { AuthoringApiError } from "./errors.js";
 import {
   COURSE_AUTHORING_ALIGNMENT_GUIDANCE,
   COURSE_AUTHORING_DELIVERY_CORE,
+  COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE,
   courseAuthoringGuidanceForCall
 } from "./courseKnowledge.js";
 import {
@@ -3019,6 +3020,65 @@ HUMAN_TASK_HANDLERS.consultar_observacoes = async ({
   });
 };
 
+// O resumo pertence à página lógica, antes de sua fragmentação. As posições
+// apontam aos alvos já devolvidos, com suas referências, sem novas consultas.
+function reviewAuditCoverage({ resolved, selected, continuation, unitPage, studyUnits, explanations }) {
+  const targets = [
+    ...studyUnits.map((target, index) => ({ target, tipo: "unidade", posicao: index + 1, titulo: target.studyUnit.title })),
+    ...explanations.map((target, index) => ({ target, tipo: "explicacao", posicao: index + 1, titulo: target.microssequencia }))
+  ];
+  const summary = {
+    escopo: selected ? "unidades_selecionadas" : resolved.microsequence ? "microssequencia"
+      : resolved.part ? "parte" : "curso",
+    paginaLogica: { temAnterior: continuation.p !== null, temProxima: unitPage.hasMore === true },
+    alcance: "Somente os alvos desta página lógica; fragmentos recompõem a mesma página, sem somar alvos. Posições remetem a studyUnits ou explicacoes e às referências já devolvidas.",
+    limite: selected ? "A seleção não certifica a microssequência inteira; alvos fora dela não foram contados."
+      : "As contagens não são um total global; a última página não reúne as anteriores.",
+    alvosLidos: targets.length, estadosObtidos: 0,
+    estados: { current: 0, pending: 0, unregistered: 0, unavailable: 0 },
+    atuaisComSeisDimensoes: 0, atuaisIncompletos: 0,
+    resultadosComSeisDimensoes: { consistent: 0, needs_attention: 0, human_preference_retained: 0 },
+    aInspecionar: [], indisponiveis: [], comRessalvas: []
+  };
+  for (const { target, ...reference } of targets) {
+    const inspection = target.inspecaoIA;
+    const state = inspection?.state ?? "unavailable";
+    summary.estados[state] += 1;
+    if (state === "unavailable") { summary.indisponiveis.push(reference); continue; }
+    summary.estadosObtidos += 1;
+    if (state !== "current") { summary.aInspecionar.push({ ...reference, estado: state }); continue; }
+    if (inspection.report.outcome !== "consistent") {
+      summary.comRessalvas.push({ ...reference, resultado: inspection.report.outcome });
+    }
+    if (!hasCurrentPedagogicalAudit(inspection.report?.checks)) {
+      summary.atuaisIncompletos += 1;
+      summary.aInspecionar.push({ ...reference, estado: "current", dimensoesAtuaisCompletas: false });
+      continue;
+    }
+    summary.atuaisComSeisDimensoes += 1;
+    summary.resultadosComSeisDimensoes[inspection.report.outcome] += 1;
+  }
+  return summary;
+}
+
+function reviewAuditNextDecision(coverage) {
+  const decisions = [];
+  if (coverage.paginaLogica.temAnterior) {
+    decisions.push("Consolide os alcances de todas as páginas lidas e trate as pendências e ressalvas de cada uma; esta última página não resume as anteriores.");
+  }
+  if (coverage.aInspecionar.length) {
+    decisions.push("Registre o parecer das seis dimensões, incluindo configuration, somente para os alvos aInspecionar, usando a referenciaInspecao já devolvida; registrar a inspeção não altera a base, então releia apenas se a base mudar.");
+  }
+  if (coverage.indisponiveis.length) decisions.push("A inspeção ficou indisponível nos alvos indicados; resolva a leitura antes de concluir a cobertura.");
+  if (coverage.comRessalvas.length) decisions.push("Relate as ressalvas dos pareceres atuais e trate-as conforme o mandato; preserve os pareceres válidos enquanto a base não mudar.");
+  if (!coverage.aInspecionar.length && !coverage.indisponiveis.length && !coverage.comRessalvas.length) {
+    decisions.push(coverage.alvosLidos ? "Os pareceres desta página estão atuais nas seis dimensões; preserve-os enquanto a base não mudar." : "Nenhum alvo foi inspecionado nesta página.");
+  }
+  if (coverage.escopo === "unidades_selecionadas") decisions.push("Este resultado cobre somente a seleção e suas explicações, não a microssequência inteira.");
+  decisions.push("Atualidade e resultado do parecer não certificam aprendizagem nem revisão humana.");
+  return decisions.join(" ");
+}
+
 HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   adapter, principal, args, deadlineAt
 }) => {
@@ -3080,10 +3140,10 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit",
       targetId: unit.studyUnit.id, deadlineAt, auditoria })
   })));
-  // A leitura comum não devolve a base de inspeção; só a auditoria traz a
-  // referência que registrar_inspecao exige. A decisão seguinte acompanha isso.
-  const inspected = [...studyUnits, ...explanations].some(target => target.referenciaInspecao);
+  const coverage = auditoria ? reviewAuditCoverage({ resolved, selected: units.length > 0,
+    continuation, unitPage, studyUnits, explanations }) : null;
   const context = await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext({
+    ...(coverage ? { alcanceDaAuditoria: coverage } : {}),
     observations, studyUnits,
     explicacoes: explanations,
     plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
@@ -3100,7 +3160,7 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
         ? "Continue lendo as continuações recebidas até o último trecho do recorte auditado; registre o parecer só depois de ler tudo."
         : "Continue lendo as continuações recebidas até o último trecho do recorte; só depois avalie a inspeção formal com auditoria: true."
       : auditoria
-        ? inspected ? "Registre o parecer das seis dimensões, incluindo configuration, usando a referenciaInspecao já devolvida para cada alvo; registrar a inspeção não altera a base, então releia apenas se a base mudar." : null
+        ? reviewAuditNextDecision(coverage)
         : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
     context
   });
@@ -3449,7 +3509,7 @@ HUMAN_TASK_HANDLERS.salvar_explicacoes = async ({ adapter, principal, args, dead
     observations: normalizeCourseObservationCorrectionReferences(args.observacoesTratadas ?? []), deadlineAt });
   return { ...response,
     result: "Salvei as explicações e suas fontes. As unidades existentes foram preservadas; a revisão autoral é uma declaração separada.",
-    nextDecision: "Convide a ler e marcar a revisão das explicações pelos links retornados. Se a pessoa pedir para avançar, produza o próximo passo autorizado e informe que as bases ainda sem marca permanecem pendentes de revisão." };
+    nextDecision: "Convide a ler e marcar a revisão das explicações pelos links retornados. Se a pessoa pedir para avançar, produza o próximo passo autorizado e informe que as bases ainda sem marca permanecem pendentes de revisão. " + COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE };
 };
 
 HUMAN_TASK_HANDLERS.salvar_mapa_curricular = async ({
