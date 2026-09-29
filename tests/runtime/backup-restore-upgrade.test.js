@@ -88,6 +88,27 @@ test("#307 restauração preserva o checkpoint histórico e continua até o mani
   assert.match(script, /aralearn\.backup-restore-upgrade-proof\.v3/u);
 });
 
+test("convergência exige políticas válidas nos dois escopos após atravessar as migrations", () => {
+  const functionSource = script.slice(script.indexOf("export function verifyApplicationConvergence("),
+    script.indexOf("export async function verifyBackupRestoreUpgrade(")).replace("export function", "function");
+  const restoredPolicies = { total: 2, invalid: 0, scopes: ["course", "didactic_microsequence"] };
+  const context = vm.createContext({ assert, Buffer,
+    applicationSchemaDump: () => "synthetic-identical-schema",
+    componentPolicyIntegritySql: "policy-integrity-query",
+    queryJson: (container, sql) => sql === "policy-integrity-query"
+      ? (container === "clean" ? { total: 0, invalid: 0, scopes: [] } : restoredPolicies)
+      : sql.includes("get_aralearn_runtime_manifest") ? {} : { parameters: [], components: {} },
+    compareRuntimeManifest: () => {}, readAppliedRevisions: () => [],
+    createHash: () => ({ update: () => ({ digest: () => "synthetic-hash" }) }) });
+  vm.runInContext(functionSource, context);
+  assert.doesNotThrow(() => context.verifyApplicationConvergence("clean", "restored", {}));
+  restoredPolicies.invalid = 1;
+  assert.throws(() => context.verifyApplicationConvergence("clean", "restored", {}), /políticas persistidas inválidas/u);
+  restoredPolicies.invalid = 0;
+  restoredPolicies.scopes = ["course"];
+  assert.throws(() => context.verifyApplicationConvergence("clean", "restored", {}), /curso e microssequência preenchidas/u);
+});
+
 test("preparação histórica clona somente schema, mas a restauração do backup permanece integral", async () => {
   const calls = [];
   const context = vm.createContext({

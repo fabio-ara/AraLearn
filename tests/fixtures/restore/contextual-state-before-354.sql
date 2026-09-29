@@ -105,6 +105,20 @@ begin
   end loop;
 end $observations$;
 
+-- Atravessa as mudanças de catálogo com decisões preenchidas nos dois escopos.
+insert into private.course_component_policy_assignments(course_id,scope_kind,scope_ref,policy,origin,reason,updated_at)
+select '74540000-0000-4000-8000-000000000101',scope_kind,scope_ref,
+  policy||jsonb_build_object('catalogVersion',private.course_component_catalog_v1()->>'version'),
+  origin,reason,'2026-09-08T00:00:00Z'::timestamptz
+from (values
+  ('course','74540000-0000-4000-8000-000000000101',
+   '{"availability":"all","allowedRefs":[],"excludedRefs":["aralearn.response.gap@1.0.0"],"preferredRefs":["aralearn.resource.paragraph@1.0.0","aralearn.resource.table@1.0.0"]}'::jsonb,
+   'author','Escolha sintética do curso.'),
+  ('didactic_microsequence','micro-context',
+   '{"availability":"allow_only","allowedRefs":["aralearn.resource.paragraph@1.0.0","aralearn.response.choice@1.0.0"],"excludedRefs":["aralearn.resource.table@1.0.0"],"preferredRefs":["aralearn.response.choice@1.0.0"]}'::jsonb,
+   'research_condition','Condição sintética da microssequência.')
+) fixture(scope_kind,scope_ref,policy,origin,reason);
+
 \if :contextual_current_probe
 -- Verifica os escritores de preparação e os dados com o contrato atual.
 -- Não simula revisão antiga nem substitui a prova de transformação #353→#354.

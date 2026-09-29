@@ -865,6 +865,8 @@ const preservedStateSql = `select jsonb_build_object(
 const contextualStateSql = `select jsonb_build_object(
   'courses',(select jsonb_agg(to_jsonb(v) order by id) from (select id,owner_id,title,goal,revision,visibility,annotation_set_version
     from public.courses where id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')) v),
+  'componentPolicies',(select jsonb_agg(to_jsonb(p)#-'{policy,catalogVersion}' order by course_id,scope_kind,scope_ref)
+    from private.course_component_policy_assignments p where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')),
   'entities',(select jsonb_agg(to_jsonb(v) order by course_id,entity_type,entity_id) from (select course_id,entity_type,entity_id,
     parent_type,parent_id,position,content,version,created_origin,last_revision_origin,design_snapshot,design_application
     from private.course_entities where course_id in('${CONTEXT_PRIVATE}','${CONTEXT_PUBLIC}')) v),
@@ -1065,6 +1067,13 @@ function readAppliedRevisions(container) {
     "from supabase_migrations.schema_migrations");
 }
 
+// O CHECK não revisita linhas antigas quando a função do catálogo muda.
+export const componentPolicyIntegritySql = `select jsonb_build_object(
+  'total',count(*),
+  'invalid',count(*) filter(where private.valid_course_component_policy_v1(policy) is not true),
+  'scopes',coalesce(jsonb_agg(distinct scope_kind),'[]'::jsonb))
+  from private.course_component_policy_assignments`;
+
 export function verifyApplicationConvergence(clean, restored, expectedManifest) {
     const upgradedSchema = applicationSchemaDump(restored);
     const cleanSchema = applicationSchemaDump(clean);
@@ -1081,6 +1090,14 @@ export function verifyApplicationConvergence(clean, restored, expectedManifest) 
       "select public.get_aralearn_runtime_manifest()"));
     assert.deepEqual(readAppliedRevisions(clean), readAppliedRevisions(restored),
       "Instalação limpa e upgrade possuem histórias de migrations diferentes.");
+    for (const container of [clean, restored]) {
+      const policies = queryJson(container, componentPolicyIntegritySql);
+      assert.equal(policies.invalid, 0, "Uma mudança de catálogo deixou políticas persistidas inválidas.");
+      if (container === restored) {
+        assert.ok(policies.total >= 2 && ["course", "didactic_microsequence"].every(scope => policies.scopes.includes(scope)),
+          "O upgrade precisa atravessar o catálogo com políticas de curso e microssequência preenchidas.");
+      }
+    }
 
   return Object.freeze({
     schemaSha256: createHash("sha256").update(cleanSchema).digest("hex"),

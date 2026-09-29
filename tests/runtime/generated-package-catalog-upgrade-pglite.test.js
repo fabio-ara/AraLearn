@@ -4,6 +4,7 @@ import test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { COURSE_COMPONENT_CATALOG } from "../../src/domain/courseDesignParameters.js";
 import { checkResourcePackageCatalog } from "../../scripts/syncResourcePackageCatalog.mjs";
+import { componentPolicyIntegritySql } from "../../scripts/verifyBackupRestoreUpgrade.mjs";
 
 const migration = await fs.readFile(new URL(
   "../../supabase/migrations/20260905091101_generated_resource_package_catalog.sql", import.meta.url), "utf8");
@@ -178,4 +179,189 @@ test("impressão regenerada recusa origem divergente e alteração incidental de
       assert.deepEqual(await fingerprintSnapshot(database), before);
     } finally { await database.close(); }
   }
+});
+
+const reconciliationName = "20260929100247_reconcile_component_policy_catalog_versions.sql";
+const migrationDirectory = new URL("../../supabase/migrations/", import.meta.url);
+const readMigration = name => fs.readFile(new URL(name, migrationDirectory), "utf8");
+const reconciliation = await readMigration(reconciliationName);
+const v7Migration = await readMigration("20260924172159_revisao_v7_component_removal.sql");
+const v7Catalog = catalogFrom(v7Migration);
+const currentPolicyCatalog = catalogFrom(await readMigration("20260928100000_revisao_v10_bpmn_inspection_runtime.sql"));
+const validator = (await readMigration("20260903193000_add_open_response_component.sql"))
+  .match(/create or replace function private\.valid_course_component_policy_v1\(p_policy jsonb\)[\s\S]*?\$function\$;/u)[0];
+const policyTable = (await readMigration("20260902044404_cut_legacy_authoring_runtime.sql"))
+  .match(/create table private\.course_component_policy_assignments\([\s\S]*?\n\);/u)[0]
+  .replace(/constraint course_component_policy_assignments_policy_v1 check\([\s\S]*?\n {2}\)/u,
+    "constraint course_component_policy_assignments_policy_v1 check(private.valid_course_component_policy_v1(policy) and octet_length(policy::text)<=4096)");
+const syntheticCourse = "10000000-0000-4000-8000-000000000001";
+const paragraphRef = "aralearn.resource.paragraph@1.0.0";
+const choiceRef = "aralearn.response.choice@1.0.0";
+const setCatalog = catalog => `create or replace function private.course_component_catalog_v1() returns jsonb
+  language sql immutable security definer set search_path=pg_catalog as $$ select ${quote(catalog)} $$;`;
+
+async function policyDatabase({ versions = [v7Catalog.version, "1-96666628", currentPolicyCatalog.version],
+  unknownRef = false, nullAvailability = false, revision = "20260929082030" } = {}) {
+  const db = new PGlite();
+  await db.exec(`create schema private; create role policy_reader;
+    create function public.get_aralearn_runtime_manifest() returns jsonb
+      language sql stable security definer set search_path=pg_catalog as $$
+      select ${quote({ schemaRevision: revision, contractVersion: 1, features: ["synthetic-feature"] })} $$;
+    ${setCatalog(v7Catalog)}
+    ${validator}
+    create table public.courses(id uuid primary key,revision bigint,updated_at timestamptz);
+    insert into public.courses values('${syntheticCourse}',17,'2026-09-01');
+    ${policyTable}
+    alter table private.course_component_policy_assignments enable row level security;
+    alter table private.course_component_policy_assignments force row level security;
+    grant select on private.course_component_policy_assignments to policy_reader;
+    revoke all on function private.course_component_catalog_v1(),private.valid_course_component_policy_v1(jsonb),
+      public.get_aralearn_runtime_manifest() from public;
+    grant execute on function private.course_component_catalog_v1(),private.valid_course_component_policy_v1(jsonb),
+      public.get_aralearn_runtime_manifest() to policy_reader;
+    create table private.course_entities(entity_id text,content jsonb,design_snapshot jsonb,version bigint);
+    insert into private.course_entities values('synthetic-unit','{"text":"Conteúdo preservado"}',
+      '{"componentPolicy":{"catalogVersion":"historical","reason":"Decisão aplicada preservada"}}',9);
+    create table private.course_change_receipts(request_id text,result jsonb);
+    insert into private.course_change_receipts values('synthetic-receipt','{"courseRevision":17,"applied":true}');`);
+  for (const [index, version] of versions.entries()) {
+    const oldCatalog = { ...v7Catalog, version, options: [...v7Catalog.options] };
+    if (unknownRef) oldCatalog.options.push({ ref: "synthetic.removed@1.0.0" });
+    await db.exec(setCatalog(oldCatalog));
+    const policy = { catalogVersion: version, availability: index === 0 ? "all" : "allow_only",
+      allowedRefs: index === 0 ? [] : [paragraphRef, choiceRef], excludedRefs: ["aralearn.resource.table@1.0.0"],
+      preferredRefs: [unknownRef ? "synthetic.removed@1.0.0" : paragraphRef] };
+    if (nullAvailability) policy.availability = null;
+    if (unknownRef && index !== 0) policy.allowedRefs.push("synthetic.removed@1.0.0");
+    await db.query(`insert into private.course_component_policy_assignments
+      (course_id,scope_kind,scope_ref,policy,origin,reason,updated_at) values($1,$2,$3,$4,$5,$6,'2026-09-01')`,
+    [syntheticCourse, index === 0 ? "course" : "didactic_microsequence", index === 0 ? syntheticCourse : `synthetic-ms-${index}`,
+      policy, index === 0 ? "author" : "research_condition", `Razão sintética ${index}, com 'aspas' e\nlinha preservada.`]);
+  }
+  await db.exec(setCatalog(currentPolicyCatalog));
+  return db;
+}
+
+async function policySnapshot(db) {
+  return (await db.query(`select
+    (select coalesce(jsonb_agg(to_jsonb(p) order by scope_kind,scope_ref),'[]'::jsonb) from private.course_component_policy_assignments p) policies,
+    (select jsonb_agg(to_jsonb(c) order by id) from public.courses c) courses,
+    (select jsonb_agg(to_jsonb(e) order by entity_id) from private.course_entities e) entities,
+    (select jsonb_agg(to_jsonb(r) order by request_id) from private.course_change_receipts r) receipts,
+    (select jsonb_agg(to_jsonb(c) order by conname) from pg_constraint c where conrelid='private.course_component_policy_assignments'::regclass) constraints,
+    (select jsonb_build_object('owner',relowner,'acl',relacl,'rls',relrowsecurity,'forceRls',relforcerowsecurity)
+      from pg_class where oid='private.course_component_policy_assignments'::regclass) relation,
+    (select jsonb_agg(to_jsonb(p)-'prosrc' order by proname) from pg_proc p
+      where oid in ('private.course_component_catalog_v1()'::regprocedure,'private.valid_course_component_policy_v1(jsonb)'::regprocedure,
+        'public.get_aralearn_runtime_manifest()'::regprocedure)) functions,
+    private.course_component_catalog_v1() catalog, public.get_aralearn_runtime_manifest() manifest`)).rows[0];
+}
+
+test("reconciliação preserva todas as escolhas, CHECK/ACL, snapshots e recibos; reaplicação não regrava linhas", async () => {
+  const db = await policyDatabase();
+  try {
+    const before = await policySnapshot(db);
+    assert.equal((await db.query(componentPolicyIntegritySql)).rows[0].jsonb_build_object.invalid, 2);
+    await db.exec(reconciliation);
+    const after = await policySnapshot(db);
+    assert.deepEqual(after, { ...before,
+      policies: before.policies.map(row => ({ ...row, policy: { ...row.policy, catalogVersion: currentPolicyCatalog.version } })),
+      manifest: { ...before.manifest, schemaRevision: "20260929100247" } });
+    const xmins = () => db.query("select xmin::text from private.course_component_policy_assignments order by scope_kind,scope_ref");
+    const rowVersions = (await xmins()).rows;
+    await db.exec(reconciliation);
+    assert.deepEqual(await policySnapshot(db), after);
+    assert.deepEqual((await xmins()).rows, rowVersions);
+    assert.equal((await db.query(componentPolicyIntegritySql)).rows[0].jsonb_build_object.invalid, 0);
+    for (const policy of [
+      { ...after.policies[0].policy, catalogVersion: v7Catalog.version },
+      { ...after.policies[0].policy, preferredRefs: ["synthetic.invalid@1.0.0"] },
+      { ...after.policies[0].policy, preferredRefs: [paragraphRef, paragraphRef] },
+      { ...after.policies[0].policy, excludedRefs: [paragraphRef] },
+      { ...after.policies[0].policy, allowedRefs: null },
+      { ...after.policies[0].policy, availability: "allow_only", allowedRefs: [] }
+    ]) {
+      await assert.rejects(db.query("update private.course_component_policy_assignments set policy=$1 where scope_kind='course'", [policy]), /check constraint/u);
+      assert.deepEqual(await policySnapshot(db), after);
+    }
+  } finally { await db.close(); }
+});
+
+test("reconciliação recusa versão desconhecida/NULL, referência removida ou catálogo/runtime divergente sem reparar dados", async () => {
+  for (const options of [{ versions: ["unknown"] }, { versions: [null] }, { unknownRef: true },
+    { nullAvailability: true, versions: [v7Catalog.version] },
+    { revision: "unexpected" }, { fingerprint: "unexpected" }]) {
+    const db = await policyDatabase(options);
+    try {
+      if (options.fingerprint) await db.exec(setCatalog({ ...currentPolicyCatalog, schemaFingerprint: options.fingerprint }));
+      const before = await policySnapshot(db);
+      if (options.nullAvailability) assert.equal((await db.query(`select private.valid_course_component_policy_v1(
+        jsonb_set(policy,'{catalogVersion}',private.course_component_catalog_v1()->'version',false)) result
+        from private.course_component_policy_assignments`)).rows[0].result, null,
+      "O preflight exige IS TRUE mesmo quando um CHECK aceitaria o resultado SQL NULL.");
+      await assert.rejects(db.exec(reconciliation), /divergiu|reconciliação exclusiva/u);
+      await db.exec("rollback");
+      assert.deepEqual(await policySnapshot(db), before);
+    } finally { await db.close(); }
+  }
+});
+
+test("reconciliação admite instalação sem políticas sem fabricar decisões", async () => {
+  const db = await policyDatabase({ versions: [] });
+  try {
+    const before = await policySnapshot(db);
+    await db.exec(reconciliation);
+    assert.deepEqual(await policySnapshot(db), { ...before, manifest: { ...before.manifest, schemaRevision: "20260929100247" } });
+  } finally { await db.close(); }
+});
+
+test("fixture do upgrade preenche os dois escopos sob o CHECK real e participa da verificação final", async () => {
+  const db = await policyDatabase({ versions: [] });
+  try {
+    const source = await fs.readFile(new URL("../fixtures/restore/contextual-state-before-354.sql", import.meta.url), "utf8");
+    const start = source.indexOf("-- Atravessa as mudanças de catálogo");
+    assert.ok(start >= 0);
+    await db.exec("insert into public.courses values('74540000-0000-4000-8000-000000000101',23,'2026-09-08')");
+    await db.exec(source.slice(start, source.indexOf("\\if", start)));
+    assert.deepEqual((await db.query(componentPolicyIntegritySql)).rows[0].jsonb_build_object,
+      { total: 2, invalid: 0, scopes: ["course", "didactic_microsequence"] });
+    const before = await policySnapshot(db);
+    await db.exec(reconciliation);
+    const after = await policySnapshot(db);
+    assert.deepEqual(after.policies, before.policies);
+    assert.deepEqual(after.courses, before.courses);
+  } finally { await db.close(); }
+});
+
+test("traversal dos catálogos detecta políticas antigas inválidas e exige reconciliação até a última revisão", async () => {
+  const db = await policyDatabase({ versions: [v7Catalog.version, v7Catalog.version] });
+  try {
+    await db.exec(setCatalog(v7Catalog));
+    const before = await policySnapshot(db);
+    const names = (await fs.readdir(migrationDirectory)).filter(name => name.endsWith(".sql") && name > "20260924172159_revisao_v7_component_removal.sql").sort();
+    let catalogChanges = 0;
+    for (const name of names) {
+      const source = await readMigration(name);
+      if (name === reconciliationName) {
+        const broken = (await db.query(componentPolicyIntegritySql)).rows[0].jsonb_build_object;
+        assert.equal(broken.invalid, 2, "Sem reconciliação, as duas políticas precisam expor o defeito histórico.");
+        assert.deepEqual(broken.scopes, ["course", "didactic_microsequence"]);
+      }
+      // Executa a reconciliação inteira. Migrações de catálogo sem reconciliação
+      // contribuem seu bloco real; as demais mudanças de domínio não são simuladas.
+      if (/\b(?:update|lock table)\s+private\.course_component_policy_assignments/iu.test(source)) await db.exec(source);
+      else if (source.includes("-- RESOURCE_PACKAGE_CATALOG_BEGIN")) {
+        await db.exec(source.match(/-- RESOURCE_PACKAGE_CATALOG_BEGIN[\s\S]*?-- RESOURCE_PACKAGE_CATALOG_END/u)[0]);
+        catalogChanges += 1;
+      }
+    }
+    assert.ok(catalogChanges >= 2);
+    assert.equal((await db.query(componentPolicyIntegritySql)).rows[0].jsonb_build_object.invalid, 0,
+      "Toda mudança futura de catálogo precisa terminar com as políticas persistidas válidas.");
+    const after = await policySnapshot(db);
+    assert.deepEqual(after.policies.map(row => ({ ...row, policy: { ...row.policy, catalogVersion: v7Catalog.version } })), before.policies);
+    assert.deepEqual(after.courses, before.courses);
+    assert.deepEqual(after.entities, before.entities);
+    assert.deepEqual(after.receipts, before.receipts);
+  } finally { await db.close(); }
 });
