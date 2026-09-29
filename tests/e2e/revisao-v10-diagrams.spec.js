@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { revisaoV10DiagramCase } from "../support/revisaoV10DiagramCases.js";
 
 // Hidratação real dos diagramas de sistema no Estudo: enquadramento inicial em
 // escala natural (Unidade e Explicação, 320/390/430/1280), vínculo decorado de
@@ -142,6 +143,80 @@ function edgeGeometry(host, edgeId) {
       collisions
     };
   }, edgeId);
+}
+
+// A fronteira com marcação autoral troca os textos SVG por HTML. A prova cobre
+// separação entre título/descrição, glifos dentro da caixa e espaço até os nós.
+for (const size of ["short", "wrapped", "long"]) {
+  for (const hostName of ["unidade", "explicacao"]) {
+    test(`cabeçalho C4 ${size} completo na ${hostName}, inline e tela inteira`, async ({ page }, testInfo) => {
+      const diagram = `container-header-${size}`;
+      const errors = await mount(page, { width: 1920, height: 903, diagram, owned: true });
+      const system = revisaoV10DiagramCase(diagram).data.system;
+      if (hostName === "unidade") {
+        await page.getByRole("button", { name: "Editar", exact: true }).click();
+        await page.locator('[data-action="toggle-study-unit-assistance-resource"][data-resource-target-id="content:representation"]').click();
+      }
+      const host = await openHost(page, hostName);
+      const figure = host.locator(".package-system-diagram");
+      const header = figure.locator("#software-container-boundary foreignObject");
+      for (const mode of ["inline", "fullscreen", "zoom-out"]) {
+        if (mode === "fullscreen") await figure.locator('[data-diagram-action="toggle-expanded"]').click();
+        if (mode === "zoom-out") await figure.locator('[data-diagram-action="zoom-out"]').click();
+        await header.evaluate(element => {
+          const canvas = element.closest('[data-resource-scroll-frame="diagram"]');
+          const box = element.getBoundingClientRect(), frame = canvas.getBoundingClientRect();
+          canvas.scrollLeft += box.left - frame.left - 16;
+          canvas.scrollTop += box.top - frame.top - 16;
+        });
+        await expect(header.locator(":scope > span > strong")).toHaveText(`Sistema · ${system.label}`);
+        await expect(header.locator(":scope > span > span")).toHaveText(system.description);
+        const geometry = await header.evaluate(element => {
+          const box = element.getBoundingClientRect();
+          const [title, description] = element.firstElementChild.children;
+          const titleBox = title.getBoundingClientRect(), descriptionBox = description.getBoundingClientRect();
+          const ranges = [title, description].flatMap(node => {
+            // Um espaço ao fim da linha pode ter um retângulo além da caixa,
+            // sem tinta cortada. Medimos cada caractere visível, inclusive o
+            // último da descrição, sem confundir esse espaço com um glifo.
+            const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+            const rects = []; let text;
+            while ((text = walker.nextNode())) {
+              let offset = 0;
+              for (const character of text.data) {
+                if (!/\s/u.test(character)) {
+                  const range = document.createRange();
+                  range.setStart(text, offset); range.setEnd(text, offset + character.length);
+                  for (const r of range.getClientRects()) rects.push({
+                    left: r.left - box.left, right: box.right - r.right,
+                    top: r.top - box.top, bottom: box.bottom - r.bottom
+                  });
+                }
+                offset += character.length;
+              }
+            }
+            return rects;
+          });
+          const svg = element.ownerSVGElement;
+          const firstNode = svg.querySelector('[id="system-node-web"]');
+          return { ranges, separation: descriptionBox.top - titleBox.bottom,
+            nodeGap: firstNode.getBoundingClientRect().top - box.bottom,
+            scale: Number(svg.dataset.diagramScale), height: box.height,
+            viewport: [innerWidth, innerHeight, devicePixelRatio],
+            mainWidth: document.querySelector("main").getBoundingClientRect().width };
+        });
+        expect(geometry.mainWidth).toBe(410);
+        expect(geometry.ranges.length).toBeGreaterThan(0);
+        expect(geometry.ranges.every(box => Object.values(box).every(gap => gap >= -0.75)), JSON.stringify(geometry)).toBe(true);
+        expect(geometry.separation, JSON.stringify(geometry)).toBeGreaterThanOrEqual(-0.1);
+        expect(geometry.nodeGap, JSON.stringify(geometry)).toBeGreaterThan(0);
+        expect(geometry.scale).toBeCloseTo(mode === "zoom-out" ? 0.8 : 1, 2);
+        await testInfo.attach(`${mode}-geometry`, { body: JSON.stringify(geometry), contentType: "application/json" });
+        await page.screenshot({ path: testInfo.outputPath(`${size}-${hostName}-${mode}.png`) });
+      }
+      expect(errors).toEqual([]);
+    });
+  }
 }
 
 for (const width of WIDTHS) {

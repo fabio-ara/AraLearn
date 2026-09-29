@@ -438,9 +438,9 @@ test("catálogo MCP e recursos Edge respeitam orçamentos locais de regressão",
   const localValidator = path.join("kernel", "courseContract.js");
   assert.ok(source.files.includes(localValidator));
   assert.deepEqual(runtime.files, source.files.filter((file) => file !== localValidator));
-  // O parser TeX e as interações de faixa/viewport acrescentam código executável,
-  // sem ampliar os budgets de contexto MCP/Actions acima.
-  assert.ok(runtime.bytes <= 672 * 1024);
+  // Parser TeX, faixa/viewport e a medição/reserva HTML dos cabeçalhos C4
+  // compõem este orçamento local de fontes; contexto MCP/Actions não muda.
+  assert.ok(runtime.bytes <= 675 * 1024, `Runtime de recursos: ${runtime.bytes} bytes; limite ${675 * 1024}.`);
 });
 
 test("documento registra uma decisão estática para cada pacote sem confundi-la com adequação", async () => {

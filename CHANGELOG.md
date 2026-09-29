@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.98] - 2026-09-29 (estabilização local)
+
+### Corrigido
+
+- Diagramas C4 de contêineres exibem o título e a descrição completos e separados no cabeçalho da fronteira. O espaço acompanha a quebra de linhas também em explicações, unidades com editor assistido e tela inteira.
+
 ## [0.0.97] - 2026-09-29 (estabilização local)
 
 ### Corrigido

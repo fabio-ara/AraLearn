@@ -53,11 +53,24 @@ function longLabelBpmn() {
   return data;
 }
 
-export const REVISAO_V10_DIAGRAM_CASES = Object.freeze(["container", "bpmn-long-label", "dense-bpmn", "guarded-machine"]);
+export const REVISAO_V10_DIAGRAM_CASES = Object.freeze(["container", "container-header-short", "container-header-wrapped", "container-header-long", "bpmn-long-label", "dense-bpmn", "guarded-machine"]);
 
 export function revisaoV10DiagramCase(name) {
   if (name === "container") {
     return caseOf(softwareContainerPackage, structuredClone(softwareContainerPackage.authoringContract.example));
+  }
+  if (name.startsWith("container-header-")) {
+    const data = structuredClone(softwareContainerPackage.authoringContract.example);
+    const headers = {
+      short: ["Portal", "Recebe pedidos."],
+      wrapped: ["Aplicativo de Inscrições", "Permite pesquisar as atividades, reservar vagas e acompanhar inscrições."],
+      long: ["Portal de Inscrições e Acompanhamento de Atividades Comunitárias", "Permite consultar atividades disponíveis, registrar pedidos de inscrição, acompanhar confirmações e consultar o histórico de participação em cada atividade oferecida pela comunidade."]
+    };
+    const header = headers[name.slice("container-header-".length)];
+    if (header) {
+      [data.system.label, data.system.description] = header;
+      return caseOf(softwareContainerPackage, data);
+    }
   }
   if (name === "bpmn-long-label") return caseOf(bpmnProcessPackage, longLabelBpmn());
   if (name === "dense-bpmn") return caseOf(bpmnProcessPackage, denseBpmn());
