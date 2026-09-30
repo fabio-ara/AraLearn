@@ -9,6 +9,13 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.99] - 2026-09-30 (estabilização local)
+
+### Corrigido
+
+- A inspeção pedagógica considera a posição curricular das unidades. Reordenar ensino e prática desatualiza os pareceres relacionados, preservando o registro anterior e o conteúdo salvo.
+- Um parecer com ressalva orienta conferir o diagnóstico e corrigir a insuficiência confirmada. A inspeção da Explicação confronta também as práticas, os retornos e os parâmetros das unidades de sua base.
+
 ## [0.0.98] - 2026-09-29 (estabilização local)
 
 ### Corrigido

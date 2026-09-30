@@ -22,6 +22,9 @@ const androidBuildScript = fs.readFileSync(
 );
 const currentAndroidVersionCode = androidBuildScript.match(/versionCode\s*=\s*(\d+)/u)?.[1];
 const currentAndroidVersionName = androidBuildScript.match(/versionName\s*=\s*"([^"]+)"/u)?.[1];
+// Valor deliberadamente incompatível para casos negativos: deriva da versão
+// corrente, então não colide quando a versão publicável muda.
+const incompatibleAndroidVersionName = currentAndroidVersionName === "0.0.0" ? "9.9.9" : "0.0.0";
 const scripts = {
   androidActivity: path.join(
     repositoryRoot,
@@ -605,7 +608,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20260929100247");
+  assert.equal(manifest.schemaRevision, "20260930010000");
   assert.equal(manifest.requiredFeatures.includes("configuration-realization-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("object-content-review-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("independent-review-access-v1"), true);
@@ -687,8 +690,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20260929100247_reconcile_component_policy_catalog_versions.sql",
-    revision: "20260929100247"
+    fileName: "20260930010000_pedagogical_basis_study_order.sql",
+    revision: "20260930010000"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
@@ -1348,7 +1351,7 @@ test("verificação reprova identidade ou certificado incompatíveis com atualiz
       writeAndroidToolMocks(temporaryRoot, {
         applicationId: "com.example.other",
         versionCode: "145",
-        versionName: "0.0.99",
+        versionName: incompatibleAndroidVersionName,
         certificate: "0".repeat(64)
       })
     );

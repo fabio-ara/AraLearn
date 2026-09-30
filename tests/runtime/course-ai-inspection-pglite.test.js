@@ -35,6 +35,14 @@ const record = async (db, request, { id = "u1", actor = OWNER, hash, value = rep
 const receipt = (db, request, hash, value = legacyReport, actor = OWNER, course = COURSE, id = "u1") => queryValue(db,
   "select public.get_course_ai_inspection_receipt_for_actor_v1($1,$2,'study_unit',$3,$4,$5,$6) value",
   [actor, course, id, hash, value, request]);
+const swapPositions = async (db, first, second) => {
+  const rows = (await db.query("select entity_id,position from private.course_entities where course_id=$1 and entity_id in($2,$3)",
+    [COURSE, first, second])).rows;
+  const byId = new Map(rows.map(row => [row.entity_id, row.position]));
+  for (const [id, position] of [[first, byId.get(second)], [second, byId.get(first)]]) {
+    await db.query("update private.course_entities set position=$3 where course_id=$1 and entity_id=$2", [COURSE, id, position]);
+  }
+};
 
 // Real basis SQL and inspection migrations run in PGlite; authentication and digest
 // are minimal fixture adapters, not proof of hosted access or a semantic review.
@@ -47,7 +55,7 @@ async function fixture({ receiptFix = true, configuration = receiptFix } = {}) {
     create table public.courses(id uuid primary key, owner_id uuid, revision bigint default 1,
       bibliography_style text default 'abnt-2025',updated_at timestamptz);
     create table private.course_entities(course_id uuid,entity_type text,entity_id text,parent_id text,
-      content jsonb,version bigint default 1,design_snapshot jsonb,design_application jsonb,
+      position integer,content_review jsonb,content jsonb,version bigint default 1,design_snapshot jsonb,design_application jsonb,
       primary key(course_id,entity_type,entity_id));
     create table private.course_source_attributions(course_id uuid,id uuid,target_kind text,target_id text);
     create table private.course_source_attribution_sources(course_id uuid,attribution_id uuid,source_id text,relation text,
@@ -99,6 +107,8 @@ async function fixture({ receiptFix = true, configuration = receiptFix } = {}) {
   const materializationBlock = /do \$focal_curricular_dependencies\$[\s\S]*?end \$focal_curricular_dependencies\$;/u;
   assert.match(focalMigration, materializationBlock);
   await db.exec(focalMigration.replace(materializationBlock, ""));
+  await db.exec(functionSql(await migration("20260909025232_contextual_content_review_access.sql"), "private.course_content_review_v1"));
+  await db.exec(await migration("20260930010000_pedagogical_basis_study_order.sql"));
   if (receiptFix) await db.exec(await migration(RECEIPT_MIGRATION));
   if (configuration) await db.exec(await migration(CONFIGURATION_MIGRATION));
   return db;
@@ -412,5 +422,107 @@ test("auditoria reúne ocorrência e âncora selecionada; divergência semântic
     const corrected = { ...report, checks: report.checks.map(check => ({ ...check, evidence: [claim, supported] })) };
     await record(db, "source-corrected-01", { value: corrected });
     assert.equal((await read(db)).inspection.state, "current");
+  } finally { await db.close(); }
+});
+
+// Detector da ordem curricular na base: o conteúdo persistido não guarda
+// 'position' e os IDs ficam fora da ordem curricular. O corpo anterior caía em
+// entity_id; a correção expõe e ordena por course_entities.position.
+test("position das Unidades entra na base/hash de inspeção", async () => {
+  const db = await fixture();
+  try {
+    const content = (id, role) => ({ title: id, role, topics: [],
+      content: [{ id: `p-${id}`, package: "aralearn.resource.paragraph", version: "1.0.0",
+        data: { text: `Corpo sintético de ${id}.` } }],
+      response: role === "practice" ? { id: `r-${id}`, package: "aralearn.response.choice", version: "1.0.0",
+        data: { prompt: "Escolha.", mode: "single", alternatives: [
+          { id: "a", text: "Certa.", correct: true, feedback: "Retoma o critério." },
+          { id: "b", text: "Errada.", correct: false, feedback: "Confunde o critério." }] } } : null,
+      feedback: [] });
+    const design = { mode: "practice", practiceApplications: [] };
+    const snapshot = { appliedAt: "2026-09-30T00:00:00Z",
+      parameters: [{ parameterId: "practicePlacement", value: "after_explanation" }] };
+    // Ordem curricular u1,u2,aa,ab,ac difere da ordem textual aa,ab,ac,u1,u2.
+    for (const [id, position, role] of [["u1", 1, "theory"], ["u2", 2, "theory"],
+      ["aa", 3, "theory"], ["ab", 4, "practice"], ["ac", 5, "practice"]]) {
+      await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content,design_application,design_snapshot)
+        values($1,'study_unit',$2,'ms',$3,$4,$5,$6) on conflict(course_id,entity_type,entity_id) do update
+        set position=excluded.position,content=excluded.content,design_application=excluded.design_application,design_snapshot=excluded.design_snapshot`,
+        [COURSE, id, position, content(id, role), design, snapshot]);
+    }
+    await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content) values
+      ($1,'microsequence','ms-other','lesson',0,$2),($1,'study_unit','w1','ms-other',1,$3),($1,'study_unit','w2','ms-other',2,$4)`,
+      [COURSE, { title: "Fora do foco", dependsOn: [], explanation: { title: "Fora do foco", content: [] } },
+        { title: "w1", content: [] }, { title: "w2", content: [] }]);
+
+    const hashOf = (kind, id) => queryValue(db,
+      "select private.course_ai_inspection_basis_hash_v1($1,$2,$3) value", [COURSE, kind, id]);
+    const orderOf = basis => basis.studyUnits.map(unit => [unit.id, unit.position]);
+    const reviewState = () => queryValue(db,
+      "select private.course_content_review_v1($1,'microsequence_explanation','ms')->>'state' value", [COURSE]);
+    const recordExplanation = (hash, request) => queryValue(db,
+      "select public.record_course_ai_inspection_for_actor_v1($1,$2,'microsequence_explanation','ms',$3,$4,$5) value",
+      [OWNER, COURSE, hash, report, request]);
+
+    // Controle de regressão: com o corpo anterior, trocar posições não mudava o hash.
+    const legacyFunction = functionSql(await migration("20260924175938_revisao_v7_focal_audit_basis.sql"),
+      "private.course_pedagogical_basis_v1").replace("create function", "create or replace function");
+    await db.exec(legacyFunction);
+    const legacyHash = await hashOf("study_unit", "u1");
+    await swapPositions(db, "u1", "ac");
+    assert.equal(await hashOf("study_unit", "u1"), legacyHash,
+      "o corpo anterior precisa reproduzir a falha que o detector cobre");
+    await swapPositions(db, "u1", "ac");
+
+    await db.exec(await migration("20260930010000_pedagogical_basis_study_order.sql"));
+    const basisOid = "'private.course_pedagogical_basis_v1(uuid,text,text)'::regprocedure";
+    assert.equal(await queryValue(db, `select prosecdef value from pg_proc where oid=${basisOid}`), true,
+      "a base mantém security definer");
+    assert.deepEqual(await queryValue(db, `select proconfig value from pg_proc where oid=${basisOid}`),
+      ["search_path=pg_catalog"], "a base mantém o search_path fixo");
+    assert.equal(await queryValue(db,
+      "select has_function_privilege('authenticated','private.course_pedagogical_basis_v1(uuid,text,text)','execute') value"), false,
+      "a base continua revogada de anon/authenticated/service_role");
+    const before = await read(db, "u1");
+    assert.deepEqual(orderOf(before.pedagogicalBasis),
+      [["u1", 1], ["u2", 2], ["aa", 3], ["ab", 4], ["ac", 5]],
+      "a base precisa seguir a coluna position, não a ordem textual dos IDs");
+    assert.ok(before.pedagogicalBasis.studyUnits.every(unit => Number.isInteger(unit.position)));
+    const preservedById = new Map(before.pedagogicalBasis.studyUnits.map(unit => [unit.id,
+      { content: unit.content, application: unit.application, design: unit.design }]));
+    const beforeUnitHash = await hashOf("study_unit", "u1");
+    const beforeExplanationHash = await hashOf("microsequence_explanation", "ms");
+    const beforeOutsideHash = await hashOf("microsequence_explanation", "ms-other");
+    const beforeCitations = JSON.stringify(before.pedagogicalBasis.citations);
+    await db.query("update private.course_entities set content_review=$3::jsonb where course_id=$1 and entity_id=$2",
+      [COURSE, "ms", { basisHash: await queryValue(db,
+        "select private.course_content_basis_hash_v1($1,'microsequence_explanation','ms') value", [COURSE]),
+        reviewedAt: "2026-09-30T00:00:00Z", reviewedBy: OWNER }]);
+    assert.equal(await reviewState(), "current");
+    await record(db, "order-unit-01");
+    await recordExplanation(beforeExplanationHash, "order-explanation-01");
+
+    await swapPositions(db, "u1", "ac");
+    const after = await read(db, "u1");
+    assert.deepEqual(orderOf(after.pedagogicalBasis),
+      [["ac", 1], ["u2", 2], ["aa", 3], ["ab", 4], ["u1", 5]]);
+    assert.notEqual(after.basisHash, before.basisHash, "trocar position precisa mudar o hash da Unidade");
+    assert.equal(after.inspection.state, "pending");
+    assert.notEqual(await hashOf("microsequence_explanation", "ms"), beforeExplanationHash,
+      "trocar position precisa invalidar também a Explicação da microssequência");
+    assert.equal((await read(db, "ms", OWNER, "microsequence_explanation")).inspection.state, "pending");
+    assert.equal(await hashOf("microsequence_explanation", "ms-other"), beforeOutsideHash,
+      "outra microssequência não pode ser invalidada pela ordem deste foco");
+    const stored = (await db.query("select ai_inspection from private.course_entities where course_id=$1 and entity_id='u1'",
+      [COURSE])).rows[0].ai_inspection;
+    assert.equal(stored.basisHash, beforeUnitHash, "o parecer gravado não é reescrito nem promovido a current");
+    await assert.rejects(record(db, "order-stale-01", { hash: beforeUnitHash }), { code: "PT409" });
+    for (const unit of after.pedagogicalBasis.studyUnits) assert.deepEqual(
+      { content: unit.content, application: unit.application, design: unit.design }, preservedById.get(unit.id),
+      "conteúdo, aplicação e design não mudam ao trocar a ordem");
+    assert.equal(JSON.stringify(after.pedagogicalBasis.citations), beforeCitations);
+    assert.equal(await reviewState(), "current", "a revisão humana do conteúdo não depende da ordem das Unidades");
+    await record(db, "order-unit-02", { hash: await hashOf("study_unit", "u1") });
+    assert.equal((await read(db, "u1")).inspection.state, "current");
   } finally { await db.close(); }
 });
