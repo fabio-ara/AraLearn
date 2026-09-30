@@ -3803,7 +3803,7 @@ HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, dead
     saved = current;
   }
   return response(saved, report.outcome === "needs_attention"
-    ? "Registrei as insuficiências. Corrija o conteúdo e inspecione a nova base antes de considerá-lo satisfatório."
+    ? "Registrei os pontos de atenção. Confira o parecer, corrija as insuficiências confirmadas e registre nova inspeção."
     : "Registrei o parecer de IA sobre a base lida.");
 };
 

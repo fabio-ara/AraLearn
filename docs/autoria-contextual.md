@@ -245,6 +245,12 @@ mantêm os seus. Diante de edição pendente, a pessoa salva ou descarta antes d
 marcar revisão. Um registro coletivo conserva o alcance da microssequência; as
 declarações individuais continuam ligadas a cada objeto.
 
+Na inspeção por IA, a base apresenta as unidades na ordem curricular e conserva
+suas posições. Trocar a posição de ensino e prática muda o percurso examinado e
+desatualiza os pareceres relacionados, mesmo quando o texto permanece igual. O
+parecer anterior continua disponível como histórico; a nova ordem exige uma
+inspeção ligada à base atual, sem alterar a declaração humana de revisão.
+
 A leitura combina acesso autorizado com conteúdo completo salvo. A política
 `reviewed_only`, quando expressamente ativada, exige também revisão atual do
 objeto. As [regras de revisão e acesso no banco](../supabase/migrations/20260909025232_contextual_content_review_access.sql)

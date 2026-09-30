@@ -17,6 +17,26 @@ hospedada acrescenta a conferência do ambiente que realmente atende ao
 aplicativo. Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20260930010000 — ordem curricular na base de inspeção
+
+A migração candidata corrige a leitura da ordem das unidades em
+`course_pedagogical_basis_v1`. A posição está na entidade persistida, separada
+do conteúdo. A base passa a expor essa posição e ordenar as unidades por ela,
+em vez de procurar um campo ausente no conteúdo e acabar ordenando pelos
+identificadores.
+
+Como a base integra o hash de inspeção, reordenar unidades desatualiza os
+pareceres de IA pertinentes. A inclusão da posição também muda as bases
+anteriores com unidades, mesmo quando sua ordenação já coincidia com a
+curricular. Os pareceres salvos são preservados; a migração não troca seus
+hashes para declará-los atuais. Conteúdo, configuração, fontes, revisão humana
+e controles de acesso permanecem nos mecanismos existentes.
+
+Esta entrada descreve a candidata local, não uma implantação hospedada. A
+validação deve verificar leitura, invalidação por ordem e preservação de
+microssequências independentes, além da instalação e atualização exigidas
+para a promoção.
+
 ## 20260928110000 — realização da configuração e replay da inspeção
 
 Esta entrada descreve a [migração candidata](../supabase/migrations/20260928110000_configuration_realization_inspection.sql)
