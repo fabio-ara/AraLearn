@@ -22,6 +22,9 @@ const androidBuildScript = fs.readFileSync(
 );
 const currentAndroidVersionCode = androidBuildScript.match(/versionCode\s*=\s*(\d+)/u)?.[1];
 const currentAndroidVersionName = androidBuildScript.match(/versionName\s*=\s*"([^"]+)"/u)?.[1];
+// Valor deliberadamente incompatível para casos negativos: deriva da versão
+// corrente, então não colide quando a versão publicável muda.
+const incompatibleAndroidVersionName = currentAndroidVersionName === "0.0.0" ? "9.9.9" : "0.0.0";
 const scripts = {
   androidActivity: path.join(
     repositoryRoot,
@@ -1348,7 +1351,7 @@ test("verificação reprova identidade ou certificado incompatíveis com atualiz
       writeAndroidToolMocks(temporaryRoot, {
         applicationId: "com.example.other",
         versionCode: "145",
-        versionName: "0.0.99",
+        versionName: incompatibleAndroidVersionName,
         certificate: "0".repeat(64)
       })
     );
