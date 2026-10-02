@@ -926,6 +926,49 @@ test("recusa token OAuth do MCP antes de consultar a identidade do aplicativo", 
   assert.equal(calls, 0);
 });
 
+test("rejeição da credencial administrativa interna vira indisponibilidade, sem exigir nova sessão", async () => {
+  for (const body of [
+    { code: "PGRST303", message: "JWT issued at future" },
+    { code: "28000", message: "invalid_authorization_specification" }
+  ]) {
+    const calls = [];
+    const value = adapter(async (url, init) => {
+      calls.push({ url, init });
+      return json(body, 401);
+    });
+
+    await assert.rejects(
+      () => value.getPersonProfile({ principal: { actorId: USER_ID } }),
+      (error) => error.status === 503 && error.code === "course_service_unavailable" &&
+        !/PGRST|JWT|28000|secret/iu.test(String(error.message))
+    );
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/rest\/v1\/rpc\/get_person_profile_for_actor_v2$/u);
+    assert.equal(calls[0].init.headers.apikey, "sb_secret_test");
+  }
+});
+
+test("rejeição real do JWT do usuário no Auth continua exigindo autenticação", async () => {
+  const value = adapter(async (url) => {
+    assert.match(url, /\/auth\/v1\/user$/u);
+    return json({ code: "PGRST301", message: "JWT expired" }, 401);
+  });
+
+  await assert.rejects(
+    () => value.resolveApplicationPrincipal(APPLICATION_TOKEN),
+    (error) => error.status === 401 && error.code === "authentication_required"
+  );
+});
+
+test("recusa de permissão da chamada administrativa permanece 403", async () => {
+  const value = adapter(async () => json({ code: "42501", message: "Curso não autorizado." }, 403));
+
+  await assert.rejects(
+    () => value.getPersonProfile({ principal: { actorId: USER_ID } }),
+    (error) => error.status === 403 && error.code === "not_authorized"
+  );
+});
+
 test("autentica o MCP pela assinatura e pela autorização viva sem reutilizar o bearer no Auth", async () => {
   const calls = [];
   const verifierCalls = [];

@@ -556,9 +556,20 @@ function retryableStatus(status) {
   return status === 408 || status === 429 || status >= 500;
 }
 
-function databaseError(status, body) {
+function databaseError(status, body, { administrative = false } = {}) {
   const code = String(body?.code || "");
   const databaseMessage = String(body?.message || "");
+  // Uma chamada interna carrega a credencial administrativa do servidor, não a
+  // sessão do usuário. Se o PostgREST rejeita essa credencial (401/PGRST3xx) ou o
+  // papel de conexão (28000), a falha é do serviço, não uma sessão inválida do
+  // usuário: vira indisponibilidade e não dispara logout no cliente.
+  if (administrative && (status === 401 || code === "28000")) {
+    return new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O serviço de Cursos está temporariamente indisponível."
+    );
+  }
   if (status === 401 || code === "28000") {
     return new AuthoringApiError(401, "authentication_required", "Sessão inválida ou expirada.");
   }
@@ -1254,6 +1265,7 @@ export class CourseSupabaseAdapter {
     errorDomain = "course"
   } = {}) {
     const oauthRequest = errorDomain === "oauth_request" || errorDomain === "oauth_grant";
+    const administrative = errorDomain === "course_admin";
     let lastError = null;
     for (let attempt = 1; attempt <= this.attempts; attempt += 1) {
       const remaining = deadlineAt == null ? timeoutMs : deadlineAt - Date.now();
@@ -1282,7 +1294,7 @@ export class CourseSupabaseAdapter {
           ? actionOAuthDatabaseError(response.status, body, "request")
           : errorDomain === "oauth_grant"
             ? actionOAuthDatabaseError(response.status, body, "grant")
-            : databaseError(response.status, body);
+            : databaseError(response.status, body, { administrative });
         lastError = error;
         if (!retry || !retryableStatus(error.status) || attempt === this.attempts) throw error;
       } catch (error) {
@@ -1814,7 +1826,7 @@ export class CourseSupabaseAdapter {
       method: "POST",
       headers: supabaseServerHeaders(this.serverApiKey),
       body: JSON.stringify(payload)
-    }, options);
+    }, { errorDomain: "course_admin", ...options });
   }
 
   async #userForJwt(jwt, { deadlineAt = null } = {}) {
