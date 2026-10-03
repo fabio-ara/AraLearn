@@ -13,6 +13,7 @@ import {
 import {
   COURSE_ACTION_TASK_GROUPS,
   courseActionOperationName,
+  decodeCourseActionTaskRequest,
   encodeCourseActionTaskRequest
 } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
@@ -1053,4 +1054,80 @@ test("#091 autonomia explícita é opcional no preparo e na produção, sem comb
       /posição final não identifica uma unidade existente/u, name);
     }
   }
+});
+
+function decodeBindingError(operation, payload) {
+  try {
+    decodeCourseActionTaskRequest(operation, payload);
+  } catch (error) {
+    return error;
+  }
+  throw new Error("esperava um erro de vínculo para o envelope rejeitado");
+}
+
+test("#v10 envelope de tarefa válida com campo alheio informa os argumentos canônicos", () => {
+  const reference = "eyJvcGFxdWUiOiJyZWZlcmVuY2lhLWRhLWJhc2UifQ";
+  const parecer = { summary: "Base conferida.", outcome: "consistent", findings: [], checks: [] };
+  // Reprodução do cenário real: a união do grupo expõe curso (consultar_observacoes),
+  // mas registrar_inspecao aceita somente referencia e parecer.
+  const envelope = { tarefa: "registrar_inspecao", argumentos: {
+    curso: "C404 — Comparar dois planos — 20261003", referencia: reference, parecer } };
+
+  const error = decodeBindingError("observacoes_autorais", envelope);
+  assert.equal(error.status, 422);
+  assert.equal(error.code, "invalid_action_task_binding");
+  assert.match(error.message, /registrar_inspecao/u, "a mensagem deve nomear a tarefa escolhida");
+  assert.match(error.message, /aceita somente os argumentos: parecer, referencia/u);
+  assert.match(error.message, /Use apenas campos dessa lista/u);
+  assert.match(error.message, /Obrigatórios: parecer, referencia/u);
+  assert.doesNotMatch(error.message, /Escolha uma tarefa deste grupo/u,
+    "tarefa válida não pode receber a mensagem genérica de grupo");
+  assert.doesNotMatch(error.message, /C404/u, "a mensagem não expõe valores do cliente");
+  assert.doesNotMatch(error.message, new RegExp(reference, "u"),
+    "a mensagem não expõe a referência opaca");
+  assert.doesNotMatch(error.message, /curso/u, "campo alheio não é anunciado como argumento aceito");
+
+  // O envelope corrigido passa pelo vínculo sem reparo, remoção silenciosa ou alias.
+  assert.deepEqual(decodeCourseActionTaskRequest("observacoes_autorais",
+    { tarefa: "registrar_inspecao", argumentos: { referencia: reference, parecer } }),
+  { taskName: "registrar_inspecao", arguments: { referencia: reference, parecer } });
+
+  // A rejeição de campo alheio continua valendo para outra tarefa do mesmo grupo.
+  const otherTask = decodeBindingError("observacoes_autorais",
+    { tarefa: "consultar_observacoes", argumentos: { curso: "Redes para iniciantes", referencia: reference } });
+  assert.equal(otherTask.code, "invalid_action_task_binding");
+  assert.match(otherTask.message, /consultar_observacoes/u);
+
+  // Argumento obrigatório ausente mantém diagnóstico próprio, distinto do campo alheio.
+  const missing = decodeBindingError("observacoes_autorais",
+    { tarefa: "registrar_inspecao", argumentos: { referencia: reference } });
+  assert.equal(missing.code, "missing_human_task_argument");
+  assert.match(missing.message, /parecer/u);
+
+  // Membro com campos opcionais: a lista de aceitos não vira exigência.
+  const optional = decodeBindingError("observacoes_autorais",
+    { tarefa: "registrar_observacao",
+      argumentos: { curso: "Redes para iniciantes", texto: "Pendência.", parecer: {} } });
+  assert.equal(optional.code, "invalid_action_task_binding");
+  assert.match(optional.message,
+    /aceita somente os argumentos: categoria, curso, microssequencia, texto, unidades/u);
+  assert.match(optional.message, /Use apenas campos dessa lista, sem copiar campos de outra tarefa/u);
+  assert.match(optional.message, /Obrigatórios: curso, texto/u);
+  assert.doesNotMatch(optional.message, /Obrigatórios:[^.]*(unidades|microssequencia|categoria)/u,
+    "campos opcionais do membro não entram na lista de obrigatórios");
+
+  // Vínculo estrito na API exportada: tarefa herdada do protótipo não vale.
+  const inherited = Object.create({ tarefa: "registrar_inspecao",
+    argumentos: { referencia: reference, parecer } });
+  const inheritedError = decodeBindingError("observacoes_autorais", inherited);
+  assert.equal(inheritedError.code, "invalid_action_task_binding");
+  assert.equal(inheritedError.message,
+    "Escolha uma tarefa deste grupo e envie somente seus argumentos correspondentes.");
+
+  // Tarefa fora do grupo e envelope incompleto continuam rejeitados.
+  assert.equal(decodeBindingError("observacoes_autorais",
+    { tarefa: "consultar_acesso", argumentos: { curso: "Redes para iniciantes" } }).code,
+  "invalid_action_task_binding");
+  assert.equal(decodeBindingError("observacoes_autorais",
+    { tarefa: "registrar_inspecao" }).code, "invalid_action_task_binding");
 });

@@ -155,6 +155,29 @@ test("Actions rejeita tarefa externa ao grupo, cruzamento e campos extras antes 
   assert.equal(authenticated, 0);
 });
 
+test("Actions explica os argumentos canônicos quando a tarefa válida recebe campo de outra", async () => {
+  let authenticated = 0;
+  const handler = createHandler({ async resolveActionPrincipal() {
+    authenticated += 1;
+    throw new Error("Não deve autenticar envelope inválido");
+  } });
+  const reference = "referencia-opaca-da-base-inspecionada";
+  const response = await handler(wireRequest("observacoes_autorais", {
+    tarefa: "registrar_inspecao",
+    argumentos: { curso: "C404 — Comparar dois planos — 20261003", referencia: reference,
+      parecer: { summary: "Base conferida.", outcome: "consistent", findings: [], checks: [] } }
+  }));
+  assert.equal(response.status, 422);
+  const error = (await response.json()).error;
+  assert.equal(error.code, "invalid_action_task_binding");
+  assert.match(error.message, /registrar_inspecao/u);
+  assert.match(error.message, /aceita somente os argumentos: parecer, referencia/u);
+  assert.doesNotMatch(error.message, /Escolha uma tarefa deste grupo/u);
+  assert.doesNotMatch(error.message, /C404/u);
+  assert.doesNotMatch(error.message, new RegExp(reference, "u"));
+  assert.equal(authenticated, 0);
+});
+
 test("Actions lê perfis com objeto vazio e repertório com curso sem reparar envelopes incompletos", async () => {
   let authenticated = 0, profileReads = 0;
   const handler = createHandler({
