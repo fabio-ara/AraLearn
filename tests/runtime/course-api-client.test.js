@@ -794,6 +794,19 @@ test("invalida a sessão somente diante de falha de autenticação", async () =>
   assert.deepEqual(validationFailure.events, []);
 });
 
+test("indisponibilidade interna não apaga a sessão do usuário", async () => {
+  const serviceFailure = clientWithFetch(async () => jsonResponse({
+    error: { code: "course_service_unavailable", message: "O serviço de Cursos está temporariamente indisponível." }
+  }, 503));
+
+  await assert.rejects(
+    () => serviceFailure.client.getPersonProfile(),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+  assert.equal(serviceFailure.cleared, false);
+  assert.deepEqual(serviceFailure.events, []);
+});
+
 test("Autoria usa RPCs owner-only sem mudar a leitura compartilhada do Estudo", async () => {
   const calls = [];
   const { client } = clientWithFetch(async (url, init) => {

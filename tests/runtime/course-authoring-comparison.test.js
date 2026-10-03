@@ -102,6 +102,16 @@ test("exportação rejeita proveniência ausente, repetida ou de outro alvo/revi
     { state: "current", approvedAt: "2026-09-07T12:00:00Z" };
   assert.throws(() => normalizeCourseAuthoringExport(forged));
 });
+
+test("exportação substituída v1 não é aceita pelo contrato corrente", () => {
+  const fixture = sharedExplanationExportFixture();
+  const result = assembleCourseAuthoringExport(fixture);
+  assert.equal(result.contract, "aralearn.course-authoring-export.v2");
+  const superseded = { ...result, contract: "aralearn.course-authoring-export.v1",
+    artifact: { document: result.artifact.document, explanationSources: result.artifact.explanationSources } };
+  assert.throws(() => normalizeCourseAuthoringExport(superseded), /contrato da exportação é inválido/u);
+  assert.deepEqual(normalizeCourseAuthoringExport(result), result);
+});
 test("comparação distingue declaração, observação, ausências e não aplicabilidade com referências", () => {
   const { left, right } = pair();
   const result = normalizeCourseAuthoringComparison(buildCourseAuthoringComparison({ left, right }), { expectedRequest: { left: selection(), right: selection(OTHER_ID) } });

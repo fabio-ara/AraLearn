@@ -4059,6 +4059,10 @@ button.account-settings-back[hidden] {
 }
 
 .package-reaction-state {
+  /* Tokens do MathML herdavam display:block-math e, no host da Explicação, o
+     estado físico era reduzido ao min-content e partia em várias linhas, mesmo
+     com white-space:nowrap. Como token, o estado é inline. */
+  display: inline;
   color: var(--resource-text-secondary);
   font-size: var(--type-sm);
 }

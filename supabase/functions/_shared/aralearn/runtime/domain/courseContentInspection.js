@@ -31,6 +31,10 @@ export function normalizeCourseContentInspectionReport(value) {
   if (value.outcome === "consistent" && value.findings.length) {
     fail("findings registra pendências. consistent exige findings: []; registre observações positivas em summary ou em checks[].reason. Se houver pendências, preserve-as e reveja outcome.");
   }
+  // A five-dimension checks list is historical integrity, not a current judgment:
+  // the database keeps those reports readable while hasCurrentPedagogicalAudit and
+  // isCourseContentInspectionSatisfied still require all six dimensions, and writes
+  // never accept five (requirePedagogicalAuditConsistency demands configuration).
   const checks = value.checks === undefined ? null : normalizePedagogicalAudit(value.checks, null, { allowLegacy: true });
   if (checks?.some(check => check.result === "insufficient") && value.outcome !== "needs_attention") {
     fail("Um check insufficient exige outcome: needs_attention e pendências em findings. Preserve as insuficiências constatadas ao reconciliar o parecer.");
