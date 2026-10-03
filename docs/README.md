@@ -127,7 +127,6 @@ instituição.
 | serviços que guardam os dados e controlam o acesso | [Supabase](supabase.md) |
 | histórico de mudanças na estrutura do banco e procedimentos de recuperação | [Alterações da estrutura do banco](schema-change-log.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
-| implementação, rastreabilidade e experimentos da revisão v7 | [Relatório técnico da revisão v7](revisao-v7-implementacao.md) |
 | Estudo, componentes e autoria por conversa na revisão v10 | [Relatório técnico da revisão v10](revisao-v10-estudo-implementacao.md) |
 
 Para contribuir com código ou documentação, consulte também o

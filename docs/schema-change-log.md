@@ -78,7 +78,7 @@ O manifesto passa a exigir esta revisão depois da correção do recibo de inspe
 
 O comando de inspeção deixa de duplicar a base pedagógica e o parecer no recibo sujeito ao limite compartilhado de 64 KiB. A entidade conserva o parecer completo; as consultas conservam conteúdo, configuração aplicada, dependências e fontes. A resposta de gravação devolve o parecer e seus metadados, sem repetir a base.
 
-A repetição de um pedido verifica autorização, identidade e hash antes de reconstruir o parecer a partir do mesmo pedido, conservando revisão e timestamp originais mesmo após outra inspeção. Recibos antigos e dados de curso não são reescritos. Testes com a constraint literal cobrem bases e pareceres Unicode maiores que o limite, rollback, replay histórico, conflito e acesso; a [prova focal](evidencias/revisao-v10/autoria/ms9-inspecao-088.md) distingue execução local de implantação hospedada.
+A repetição de um pedido verifica autorização, identidade e hash antes de reconstruir o parecer a partir do mesmo pedido, conservando revisão e timestamp originais mesmo após outra inspeção. Recibos antigos e dados de curso não são reescritos. Testes com a constraint literal cobrem bases e pareceres Unicode maiores que o limite, rollback, replay histórico, conflito e acesso; a [prova focal](https://github.com/fabio-ara/AraLearn/blob/3d2de2b4571602388524257a484dc9040078eb7d/docs/evidencias/revisao-v10/autoria/ms9-inspecao-088.md) distingue execução local de implantação hospedada.
 
 ## 20260928093000 — manifesto da produção autônoma focal
 
