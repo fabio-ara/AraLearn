@@ -9,6 +9,15 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.100] - 2026-10-03 (estabilização local)
+
+### Corrigido
+
+- Uma falha interna de credencial ou de arquivos deixa de encerrar a sessão: a pessoa continua conectada, o estado local é preservado e a indisponibilidade é informada como temporária.
+- O estado físico de uma reação — (g), (s) ou (l) — permanece na mesma linha da fórmula na Explicação, sem quebrar em várias linhas.
+- Dados guardados localmente por versões anteriores são migrados para o caminho corrente na primeira abertura: conteúdo, revisões históricas e observações pendentes são preservados. Uma observação que não caiba na fila corrente permanece recuperável e exportável como rascunho.
+- Quando os argumentos não correspondem à tarefa de Autoria escolhida, o retorno explica quais campos essa tarefa aceita e quais são obrigatórios, sem repetir valores, referências ou tokens.
+
 ## [0.0.99] - 2026-09-30 (estabilização local)
 
 ### Corrigido

@@ -208,9 +208,8 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
 }
 export function normalizeCourseAuthoringExport(value, { expectedSelection = null } = {}) {
   exactAuthoringObject(value, ["contract", "course", "scope", "analytics", "artifact"]);
-  const legacy = value.contract === "aralearn.course-authoring-export.v1";
-  exactAuthoringObject(value.artifact, ["document", "explanationSources", ...(legacy ? [] : ["appliedExplanationBases", "contentReviews"])]);
-  if (!legacy && value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT) fail("O contrato da exportação é inválido.");
+  if (value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT) fail("O contrato da exportação é inválido.");
+  exactAuthoringObject(value.artifact, ["document", "explanationSources", "appliedExplanationBases", "contentReviews"]);
   normalizeSide({ course: value.course, scope: value.scope, deepLink: null }, expectedSelection);
   const result = assembleCourseAuthoringExport({ analytics: value.analytics, ...value.artifact });
   if (canonicalAuthoringValue(result.course) !== canonicalAuthoringValue(value.course) || canonicalAuthoringValue(result.scope) !== canonicalAuthoringValue(value.scope)) fail("A exportação mistura cursos, edições ou escopos.");

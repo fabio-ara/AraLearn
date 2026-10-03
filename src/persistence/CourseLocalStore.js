@@ -1,9 +1,10 @@
 import { UUID_PATTERN } from "../domain/identifiers.js";
 import { upgradeStudyDraftRecoveries } from "./studyDraftRecovery.js";
 import { upgradeCachedCourseContentV7 } from "./courseContentUpgradeV7.js";
+import { upgradeCachedCourseCacheV10 } from "./courseCacheUpgradeV10.js";
 
 const DATABASE_PREFIX = "aralearn-course-v1";
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 const CACHE_STORE = "course_cache";
 
 function requestPromise(request) {
@@ -60,12 +61,16 @@ export class CourseLocalStore {
         if (!database.objectStoreNames.contains(CACHE_STORE)) {
           database.createObjectStore(CACHE_STORE, { keyPath: "key" });
         }
-        if (event.oldVersion === 1) {
-          const store = request.transaction.objectStore(CACHE_STORE);
-          upgradeStudyDraftRecoveries(store, () => upgradeCachedCourseContentV7(store));
-        } else if (event.oldVersion === 2) {
-          upgradeCachedCourseContentV7(request.transaction.objectStore(CACHE_STORE));
-        }
+        const oldVersion = Number(event.oldVersion) || 0;
+        if (oldVersion === 0) return;
+        const store = request.transaction.objectStore(CACHE_STORE);
+        const upgradeContentRuntime = () => {
+          if (oldVersion < 3) upgradeCachedCourseContentV7(store);
+        };
+        const upgradeCachedCourseCache = () =>
+          upgradeCachedCourseCacheV10(store, upgradeContentRuntime);
+        if (oldVersion === 1) upgradeStudyDraftRecoveries(store, upgradeCachedCourseCache);
+        else upgradeCachedCourseCache();
       };
       request.onerror = () => reject(new Error(
         "Não foi possível abrir ou atualizar os dados locais. Eles foram preservados; feche as outras abas e tente abrir o aplicativo novamente.",

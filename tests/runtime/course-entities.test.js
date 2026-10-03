@@ -7,21 +7,15 @@ import {
   courseEntityOutline,
   flattenCourseDocument,
   normalizeCourseEntityRows,
-  migrateLegacyCourseEntityReviews,
   validateCourseEntityContent
 } from "../../src/domain/courseEntities.js";
 
-test("cache de revisão agregada conserva conteúdo sem fabricar declaração individual", () => {
+test("revisão agregada substituída não é aceita como declaração por objeto", () => {
   const rows = flattenCourseDocument(documentFixture()).rows;
   const original = rows.find(row => row.entityType === "microsequence");
   original.contentReview = { state: "current", approvedAt: "2026-09-07T12:00:00Z" };
-  const migrated = migrateLegacyCourseEntityReviews(rows);
-  const current = normalizeCourseEntityRows(migrated).find(row => row.entityId === original.entityId);
-  assert.deepEqual(current.content, original.content);
-  assert.deepEqual(current.contentReview, { state: "unregistered" });
-  assert.deepEqual(current.legacyMicrosequenceReview, original.contentReview);
+  assert.throws(() => normalizeCourseEntityRows(rows), { code: "invalid_course_content_review" });
   assert.equal(original.contentReview.state, "current");
-  assert.deepEqual(migrateLegacyCourseEntityReviews(migrated), migrated);
 });
 
 function documentFixture() {

@@ -23,6 +23,18 @@ const GROUP_BY_TASK = new Map(Object.entries(COURSE_ACTION_TASK_GROUPS).flatMap(
 if (GROUP_BY_TASK.size !== Object.values(COURSE_ACTION_TASK_GROUPS).flat().length) throw new TypeError("Uma tarefa foi repetida nos grupos de Actions.");
 const object = value => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const invalidBinding = () => new AuthoringApiError(422, "invalid_action_task_binding", "Escolha uma tarefa deste grupo e envie somente seus argumentos correspondentes.");
+const invalidTaskArguments = taskName => {
+  const schema = courseHumanTaskDefinition(taskName).inputSchema;
+  const accepted = Object.keys(schema.properties ?? {}).sort();
+  const required = [...(schema.required ?? [])].sort();
+  // A união do grupo expõe campos de várias tarefas; quando a tarefa escolhida
+  // é válida, a mensagem nomeia seu contrato canônico para o cliente corrigir o
+  // envelope sem apoio técnico, sem ecoar valores, referências ou tokens.
+  return new AuthoringApiError(422, "invalid_action_task_binding",
+    `A tarefa ${taskName} aceita somente os argumentos: ${accepted.join(", ") || "nenhum"}. ` +
+    "Use apenas campos dessa lista, sem copiar campos de outra tarefa. " +
+    `Obrigatórios: ${required.join(", ") || "nenhum"}.`);
+};
 const unknownOperation = () => new AuthoringApiError(404, "unknown_human_task", "Operação de autoria inexistente.");
 
 export function courseActionOperationName(taskName) {
@@ -45,20 +57,31 @@ export function isCourseActionOperation(operationName) {
 export function decodeCourseActionTaskRequest(operationName, payload) {
   if (!isCourseActionOperation(operationName)) throw unknownOperation();
   if (!Object.hasOwn(COURSE_ACTION_TASK_GROUPS, operationName)) return { taskName: operationName, arguments: payload };
-  if (!object(payload) || Object.keys(payload).length !== 2 || !Object.hasOwn(payload, "tarefa") ||
-      !Object.hasOwn(payload, "argumentos") || !COURSE_ACTION_TASK_GROUPS[operationName].includes(payload.tarefa) ||
-      !object(payload.argumentos)) throw invalidBinding();
+  const members = COURSE_ACTION_TASK_GROUPS[operationName];
+  // A tarefa precisa ser própria do payload: vínculo estrito também na API
+  // exportada, sem aceitar valor herdado do protótipo.
+  const taskName = object(payload) && Object.hasOwn(payload, "tarefa") && members.includes(payload.tarefa)
+    ? payload.tarefa : null;
+  // A task outside the group keeps the generic group message; a valid task with
+  // a malformed envelope or a foreign field gets its canonical contract.
+  if (taskName === null) throw invalidBinding();
+  if (Object.keys(payload).length !== 2 || !Object.hasOwn(payload, "argumentos") || !object(payload.argumentos)) {
+    throw invalidTaskArguments(taskName);
+  }
   // The existing task handler validates the complete canonical argument
-  // contract. Check envelope/pair membership before invoking any handler.
-  const schema = courseHumanTaskDefinition(payload.tarefa).inputSchema;
-  if (Object.keys(payload.argumentos).some(name => !Object.hasOwn(schema.properties, name))) throw invalidBinding();
+  // contract. Check envelope, pair membership and the chosen task's own fields
+  // before invoking any handler; a foreign field is rejected, never stripped.
+  const schema = courseHumanTaskDefinition(taskName).inputSchema;
+  if (Object.keys(payload.argumentos).some(name => !Object.hasOwn(schema.properties, name))) {
+    throw invalidTaskArguments(taskName);
+  }
   for (const required of schema.required || []) {
     if (!Object.hasOwn(payload.argumentos, required)) {
       throw new AuthoringApiError(422, "missing_human_task_argument",
-        `Informe ${required} para a tarefa ${payload.tarefa}.`, { field: required });
+        `Informe ${required} para a tarefa ${taskName}.`, { field: required });
     }
   }
-  return { taskName: payload.tarefa, arguments: payload.argumentos };
+  return { taskName, arguments: payload.argumentos };
 }
 
 function schemaShape(value) {

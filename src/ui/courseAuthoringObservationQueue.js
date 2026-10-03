@@ -84,18 +84,12 @@ export class CourseAuthoringObservationQueue {
     return page;
   }
   async restorePending() {
-    const legacyKey = `course.v1.pending-authoring-observation:${this.courseId}:${this.targetKind}:${this.targetId}`;
-    const current = await this.controller.store?.getCache(this.key);
-    const saved = current || await this.controller.store?.getCache(legacyKey) || null;
+    const saved = await this.controller.store?.getCache(this.key) || null;
     if (saved) {
       const command = normalizeCourseAnchoredAnnotationCommand(saved.command);
       if (saved.courseId !== this.courseId || !["create_anchored_annotation", "revise_anchored_annotation",
         "retarget_anchored_annotation", "decide_anchored_annotation"].includes(command.type)) {
         throw new TypeError("O envio pendente não pertence a esta fila.");
-      }
-      if (!current) {
-        await this.controller.store?.putCache(this.key, saved);
-        await this.controller.store?.putCache(legacyKey, null);
       }
     }
     this.pending = saved;
