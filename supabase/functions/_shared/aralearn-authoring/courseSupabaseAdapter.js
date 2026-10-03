@@ -1689,7 +1689,7 @@ export class CourseSupabaseAdapter {
             sortBy: { column: "name", order: "asc" }
           })
         },
-        { deadlineAt, responseLimitBytes: 128 * 1024 }
+        { errorDomain: "course_admin", deadlineAt, responseLimitBytes: 128 * 1024 }
       );
       if (!Array.isArray(items) || items.length > ACCOUNT_STORAGE_BATCH_SIZE) {
         throw accountDeletionUnavailable();
@@ -1706,7 +1706,7 @@ export class CourseSupabaseAdapter {
           headers: supabaseServerHeaders(this.serverApiKey),
           body: JSON.stringify({ prefixes: objectKeys })
         },
-        { deadlineAt, responseLimitBytes: 128 * 1024 }
+        { errorDomain: "course_admin", deadlineAt, responseLimitBytes: 128 * 1024 }
       );
       if (items.length < ACCOUNT_STORAGE_BATCH_SIZE) return;
     }
@@ -1722,7 +1722,7 @@ export class CourseSupabaseAdapter {
         headers: supabaseServerHeaders(this.serverApiKey),
         body: JSON.stringify({ prefixes: [normalizedPath] })
       },
-      { deadlineAt, responseLimitBytes: 128 * 1024 }
+      { errorDomain: "course_admin", deadlineAt, responseLimitBytes: 128 * 1024 }
     );
   }
 
@@ -2535,7 +2535,7 @@ export class CourseSupabaseAdapter {
     }
     const signed = await this.#request(`${this.supabaseUrl}/storage/v1/object/sign/${COURSE_MEDIA_BUCKET}/${path}`, {
       method: "POST", headers: supabaseServerHeaders(this.serverApiKey), body: JSON.stringify({ expiresIn: 60 })
-    }, { retry: false, deadlineAt, responseLimitBytes: 16384 });
+    }, { errorDomain: "course_admin", retry: false, deadlineAt, responseLimitBytes: 16384 });
     return this.#mediaValue(() => normalizeCourseMediaDownload({ contract: "aralearn.course-media-download.v1", courseId,
       courseRevision: expectedRevision, ...target, media,
       signedUrl: signedStorageUrl(`${this.publicSupabaseUrl}/storage/v1`, signed?.signedURL, {
@@ -2689,7 +2689,7 @@ export class CourseSupabaseAdapter {
         headers: supabaseServerHeaders(this.serverApiKey),
         body: JSON.stringify({ expiresIn: COURSE_SOURCE_DOWNLOAD_EXPIRY_SECONDS })
       },
-      { retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
+      { errorDomain: "course_admin", retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
     );
     const normalized = normalizeCourseSourcesDatabaseValue(() =>
       normalizeCourseSourcePdfDownload({
@@ -2961,7 +2961,7 @@ export class CourseSupabaseAdapter {
           `${this.supabaseUrl}/storage/v1/object/sign/${PERSON_AVATAR_BUCKET}/` + storageObjectPath(person.avatarObjectKey),
           { method: "POST", headers: supabaseServerHeaders(this.serverApiKey),
             body: JSON.stringify({ expiresIn: 60 }) },
-          { retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
+          { errorDomain: "course_admin", retry: false, deadlineAt, responseLimitBytes: 16 * 1024 }
         );
         avatarUrl = signedStorageUrl(`${this.publicSupabaseUrl}/storage/v1`, signed?.signedURL, {
           expectedPath: `/storage/v1/object/sign/${PERSON_AVATAR_BUCKET}/${storageObjectPath(person.avatarObjectKey)}`

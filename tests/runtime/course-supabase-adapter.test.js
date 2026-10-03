@@ -3755,6 +3755,30 @@ test("busca de pessoas assina por 60 segundos somente o avatar do resultado auto
     `https://project.example/storage/v1/object/sign/person-avatars/${avatarObjectKey}?token=sealed`);
 });
 
+test("rejeição da credencial administrativa no Storage vira indisponibilidade, sem exigir nova sessão", async () => {
+  const avatarObjectKey = `${USER_ID}/${AUDIT_RUN_ID}.webp`;
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, init });
+    if (url.endsWith("/search_course_access_people_for_actor_v1")) {
+      return json({ contract: "aralearn.course-people-search.v1", courseId: COURSE_ID,
+        items: [{ userId: USER_ID, handle: "pesquisadora", avatarObjectKey }] });
+    }
+    assert.ok(url.endsWith(`/storage/v1/object/sign/person-avatars/${avatarObjectKey}`));
+    return json({ code: "PGRST303", message: "JWT issued at future" }, 401);
+  });
+
+  await assert.rejects(
+    () => value.searchCourseAccessPeople({
+      principal: { actorId: USER_ID }, courseId: COURSE_ID, query: "pes", limit: 5
+    }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable" &&
+      !/PGRST|JWT|28000|secret/iu.test(String(error.message))
+  );
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].init.headers.apikey, "sb_secret_test");
+});
+
 test("busca recusa resultado divergente antes de assinar qualquer avatar", async (context) => {
   const person = { userId: USER_ID, handle: "pesquisadora", avatarObjectKey: `${USER_ID}/${AUDIT_RUN_ID}.webp` };
   const result = { contract: "aralearn.course-people-search.v1", courseId: COURSE_ID, items: [person] };
