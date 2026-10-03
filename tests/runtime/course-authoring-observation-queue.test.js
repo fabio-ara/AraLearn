@@ -203,14 +203,16 @@ test("lote retoma request e basis exatos depois de falha intermediária sem repe
   assert.equal(writes[0].request.command.annotationId, items[0].annotationId);
 });
 
-test("recupera envio legado sem mudar identidade e não confirma criação com conjunto de alvos diferente", async () => {
+test("não confirma criação com conjunto de alvos diferente e não relê a chave de fila substituída", async () => {
   const f = fixture(); const queue = f.queue();
   f.beforeWrite(() => { throw Object.assign(new Error('Sem resposta'), {status: 503}); });
   await assert.rejects(queue.save({rawText: 'Intenção', targets: [{kind: targetKind, id: targetId}, {kind: 'study_unit', id: 'unit-a'}]}));
-  const pending = f.stored.get(queue.key); f.stored.delete(queue.key);
+  const pending = structuredClone(f.stored.get(queue.key)); f.stored.delete(queue.key);
   const legacyKey = `course.v1.pending-authoring-observation:${courseId}:${targetKind}:${targetId}`;
   f.stored.set(legacyKey, pending);
-  const reopened = f.queue(); await reopened.restorePending(); assert.deepEqual(reopened.pending, pending); assert.equal(f.stored.has(legacyKey), false);
+  const reopened = f.queue(); assert.equal(await reopened.restorePending(), null); assert.equal(reopened.pending, null);
+  assert.deepEqual(f.stored.get(legacyKey), pending, 'a chave substituída conserva os bytes sem ser executada');
+  f.stored.set(reopened.key, pending); await reopened.restorePending();
   f.items.set(pending.command.annotationId, annotation(pending.command));
   assert.equal(await reopened.reconcilePending(), false);
   assert.deepEqual(reopened.pending, pending);

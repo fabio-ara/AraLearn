@@ -1,5 +1,5 @@
 import { normalizeCourseAuthoringPartRequest, normalizeCourseAuthoringPartChange } from "../domain/courseAuthoringParts.js";
-import { composeCourseDocument as composeStoredCourseDocument, migrateLegacyCourseEntityReviews } from "../domain/courseEntities.js";
+import { composeCourseDocument as composeStoredCourseDocument } from "../domain/courseEntities.js";
 import { UUID_PATTERN } from "../domain/identifiers.js";
 import { normalizeCurricularMapRead, normalizeCurricularMapSlice, normalizeCurricularMapChange } from "../domain/courseCurricularMapSlices.js";
 import { normalizeMicrosequenceExplanation } from "../domain/courseExplanation.js";
@@ -410,11 +410,7 @@ function normalizeCourseListPage(value) {
 function cachedPayload(row) {
   const value = row?.value ?? row;
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const result = structuredClone(value);
-  if (result.data?.contract === "aralearn.course-entities.v1" && Array.isArray(result.data.items)) {
-    result.data.items = migrateLegacyCourseEntityReviews(result.data.items);
-  }
-  return result;
+  return structuredClone(value);
 }
 
 function courseIdsFromList(items) {

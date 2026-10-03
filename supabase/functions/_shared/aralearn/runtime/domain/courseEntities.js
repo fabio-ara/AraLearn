@@ -228,14 +228,6 @@ function normalizeRow(rawRow, index) {
   return row;
 }
 
-/** Compatibility for cached aggregate declarations; useful offline content stays intact. */
-export function migrateLegacyCourseEntityReviews(rows) {
-  return rows.map(row => {
-    if (row?.entityType !== "microsequence" || !Object.hasOwn(row?.contentReview ?? {}, "approvedAt")) return row;
-    return { ...row, legacyMicrosequenceReview: structuredClone(row.contentReview), contentReview: { state: "unregistered" } };
-  });
-}
-
 export function normalizeCourseEntityRows(rows = []) {
   if (!Array.isArray(rows)) {
     fail("invalid_course_entities", "As entidades do Curso precisam formar uma lista.");

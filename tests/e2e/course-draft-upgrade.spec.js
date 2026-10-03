@@ -84,7 +84,7 @@ test("#334 IndexedDB real: upgrade de duas intenções, exportação integral e 
   }
   await expect(page.locator(".study-draft-recovery")).toHaveCount(0);
   expect(await page.evaluate(async () => ({ version: globalThis.draftUpgrade334.store.database.version,
-    rows: await globalThis.draftUpgrade334.store.readCachePrefix("course.v1") }))).toEqual({ version: 3,
+    rows: await globalThis.draftUpgrade334.store.readCachePrefix("course.v1") }))).toEqual({ version: 4,
     rows: [{ key: "course.v1.header:preserved", value: { revision: 8, useful: "Cache corrente" } }] });
 });
 
@@ -136,5 +136,66 @@ test("#334 IndexedDB real: interrupção no upgrade reverte versão e ambas as i
   expect(result.errorMessage).toContain("preservados");
   expect(result.before).toHaveLength(3);
   expect(result.after.entries.map(entry => entry.originalSnapshot)).toEqual(snapshots);
-  expect(result.version).toBe(3);
+  expect(result.version).toBe(4);
+});
+
+const OBSERVATION_COURSE = "e3340000-0000-4000-8000-0000000000c1";
+const OBSERVATION_PREFIX = "course.v1.pending-authoring-observation";
+
+function observationPending(courseId, annotationId) {
+  return { requestId: `request-${annotationId}`, courseId, expectedCourseRevision: 7,
+    command: { type: "create_anchored_annotation", annotationId, target: { kind: "study_unit", id: "unit-a" },
+      rawText: `Texto ${annotationId}`, category: null, briefSummary: null, capturedAt: "2026-09-20T00:00:00.000Z" } };
+}
+
+test("#334 IndexedDB real: corrente nula com várias filas antigas gera corrente consumível e rascunho exportável", async ({ page }) => {
+  const courseId = OBSERVATION_COURSE;
+  const suffixes = ["microsequence_explanation:micro-a", "study_unit:unit-a", "study_unit:unit-b"];
+  const legacyKeys = suffixes.map(suffix => `${OBSERVATION_PREFIX}:${courseId}:${suffix}`);
+  const pendings = legacyKeys.map((key, index) => observationPending(courseId,
+    `e3340000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`));
+  const centralKey = `${OBSERVATION_PREFIX}:${courseId}:central`;
+  await page.evaluate(async ({ name, rows }) => {
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.open(name, 3);
+      request.onupgradeneeded = () => {
+        const store = request.result.createObjectStore("course_cache", { keyPath: "key" });
+        for (const [key, value] of rows) store.put({ key, value });
+      };
+      request.onsuccess = () => { request.result.close(); resolve(); };
+      request.onerror = () => reject(request.error);
+    });
+  }, { name: DATABASE, rows: [[centralKey, null], ...legacyKeys.map((key, index) => [key, pendings[index]])] });
+  const result = await page.evaluate(async ({ user, courseId, centralKey, legacyKeys }) => {
+    const { CourseLocalStore } = await import("/src/persistence/CourseLocalStore.js");
+    const { CourseAuthoringObservationQueue } = await import("/src/ui/courseAuthoringObservationQueue.js");
+    const { STUDY_DRAFT_RECOVERY_CACHE_KEY, readStudyDraftRecoveries, serializeStudyDraftSnapshot } =
+      await import("/src/persistence/studyDraftRecovery.js");
+    const store = await CourseLocalStore.open(indexedDB, { userId: user });
+    globalThis.draftUpgrade334 = { store };
+    const central = await store.getCache(centralKey);
+    const legacy = {};
+    for (const key of legacyKeys) legacy[key] = await store.getCache(key);
+    const entries = readStudyDraftRecoveries(await store.getCache(STUDY_DRAFT_RECOVERY_CACHE_KEY))
+      .map(entry => ({ command: entry.command, sourceCourseId: entry.sourceCourseId,
+        snapshot: entry.originalSnapshot, exported: serializeStudyDraftSnapshot(entry.originalSnapshot) }));
+    const queue = new CourseAuthoringObservationQueue({ controller: { store }, courseId,
+      targetKind: "study_unit", targetId: "unit-a", expectedRevision: 7 });
+    const consumed = await queue.restorePending();
+    return { version: store.database.version, central, legacy, entries, consumed };
+  }, { user: USER, courseId, centralKey, legacyKeys });
+  expect(result.version).toBe(4);
+  expect(pendings.some(pending => JSON.stringify(pending) === JSON.stringify(result.central))).toBe(true);
+  expect(Object.values(result.legacy)).toEqual([null, null, null]);
+  expect(result.entries).toHaveLength(2);
+  for (const entry of result.entries) {
+    expect(entry.command).toBeNull();
+    expect(entry.sourceCourseId).toBe(courseId);
+    expect(legacyKeys).toContain(entry.snapshot.key);
+    expect(JSON.parse(entry.exported)).toEqual(entry.snapshot);
+  }
+  const preserved = [result.central, ...result.entries.map(entry => entry.snapshot.value)];
+  expect(preserved.map(value => value.command.annotationId).sort())
+    .toEqual(pendings.map(value => value.command.annotationId).sort());
+  expect(result.consumed).toEqual(result.central);
 });
