@@ -9,7 +9,7 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
-## [0.0.100] - 2026-10-03 (estabilização local)
+## [0.0.100] - 2026-10-03
 
 ### Corrigido
 
