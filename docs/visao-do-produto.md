@@ -2,7 +2,7 @@
 
 O AraLearn é uma plataforma para estudo autodidata e criação de cursos com apoio de inteligência artificial (IA) generativa. A partir de um tema, de uma ementa ou de materiais já reunidos, uma pessoa pode construir um percurso que desenvolve o assunto e propõe oportunidades de prática.
 
-O problema central está no trabalho que existe entre reunir informação e dispor de um percurso de estudo. Alguém precisa decidir o que vem primeiro, tornar as relações compreensíveis e conferir se o material produzido atende ao objetivo. No AraLearn, essas decisões acompanham o curso e podem ser examinadas durante a autoria. Por isso, além de servir ao estudo, o aplicativo constitui um artefato para investigar o desenho do material e a colaboração entre a pessoa autora e a IA.
+O problema central está no trabalho entre reunir informação e dispor de um percurso de estudo. Alguém precisa decidir o que vem primeiro, tornar as relações compreensíveis e conferir se o material produzido atende ao objetivo. No AraLearn, essas decisões acompanham o curso e podem ser examinadas durante a autoria. Além de servir ao estudo, o aplicativo constitui um artefato para investigar o desenho do material e a colaboração entre a pessoa autora e a IA.
 
 ## Problema educacional e problema de interação
 
@@ -14,9 +14,47 @@ O AraLearn organiza o curso em etapas com continuidade entre si. Quando um assun
 
 A teoria da carga cognitiva examina as exigências impostas à capacidade limitada de manter e relacionar informações durante uma tarefa. Ela distingue a dificuldade própria do conteúdo, que depende também do conhecimento prévio, do esforço adicional provocado pela apresentação. Uma explicação que obriga o estudante a procurar informações dispersas, por exemplo, acrescenta trabalho à compreensão do assunto ([Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)). Essa distinção orienta a organização de etapas compreensíveis e relacionadas entre si. O [modelo didático](modelo-didatico.md) desenvolve sua relação com a progressão do curso.
 
+## Unidade de organização do estudo
+
+O conteúdo é dividido em vários níveis, do curso completo às unidades de estudo que aparecem na tela. Cada nível delimita uma parte do trabalho e conserva sua relação com o percurso maior.
+
+Nesse conjunto, a **microssequência didática** reúne unidades que desenvolvem um objetivo delimitado e compartilham o mesmo contexto. Cada unidade contribui para esse avanço e precisa ser compreensível em sua posição no percurso. A relação entre os níveis e os critérios de progressão está no [modelo didático](modelo-didatico.md).
+
+A **explicação** desenvolve o assunto da microssequência e o vincula às fontes que fundamentam o conjunto. Produzida durante a autoria, pode combinar texto, representações visuais e áudio. Pode ser elaborada antes ou depois da produção das unidades; cada unidade conserva as escolhas feitas em sua produção e a referência à base utilizada.
+
+Durante o estudo, a explicação permanece acessível a partir das unidades, inclusive das práticas. Abri-la conserva o ponto do percurso e permite consultar conteúdo já salvo. A explicação oferece desenvolvimento contínuo para consulta; as unidades organizam o ensino e a prática em etapas. Sua autoria, composição, fontes e revisão são tratadas em [Explicação e revisão humana](explicacao-e-revisao-humana.md).
+
+## Teoria construída progressivamente
+
+O conteúdo deve partir do repertório previsto para o público. Quando um conceito é novo, a sequência precisa situar o problema, introduzir o vocabulário e construir as relações necessárias antes de exigir seu uso.
+
+Exemplos resolvidos tornam visíveis decisões intermediárias que um resultado final pode ocultar ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples)). O apoio pode ser retirado gradualmente conforme a tarefa passa a exigir mais trabalho do estudante ([Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). Analogias ajudam na aproximação inicial quando suas correspondências e limites estão claros.
+
+Os [parâmetros de autoria](parametros-de-autoria.md) permitem expressar escolhas sobre o desenvolvimento das ideias, a prática e a apresentação. Ao preparar um assunto novo, por exemplo, a pessoa pode pedir explicações desenvolvidas e exemplos resolvidos. Essa orientação expressa sua **intenção** para a produção. Cada unidade conserva a **configuração aplicada**, isto é, as escolhas efetivamente usadas para produzi-la. Uma nova intenção orienta os trabalhos seguintes; as unidades salvas conservam a configuração de sua produção até que sejam alteradas.
+
+A pessoa pode fixar uma decisão ou deixar que ela seja ajustada ao público, ao conteúdo e à tarefa; esse ajuste é chamado de **calibração contextual**. Uma investigação também pode estabelecer escolhas que devem permanecer fixas para comparar materiais produzidos em condições diferentes. O [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) explica a relação entre intenção, escolhas aplicadas e condições de pesquisa.
+
+<a id="prática-como-parte-da-explicação"></a>
+
+## Prática no percurso de estudo
+
+As atividades devem corresponder ao que o estudante precisa aprender a fazer. Distinguir duas situações, justificar uma relação e calcular um resultado exigem práticas diferentes. O objetivo e a operação esperada orientam a quantidade de oportunidades e a variedade dos casos.
+
+Tentar recordar o que se estudou antes de consultar a resposta é uma **prática de recuperação**. Essa prática pode contribuir para a aprendizagem; sua escolha e suas condições de uso precisam corresponder ao objetivo do curso ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval)).
+
+Depois da tentativa, o **feedback**, ou retorno explicativo, pode indicar a resposta esperada, explicar o raciocínio e tornar um erro compreensível. Seu papel é formativo quando ajuda o estudante a rever o que fez e melhorar sua compreensão ou seu desempenho ([Shute (2008)](referencias.md#ref-shute2008feedback)). No produto, as atividades recolhem escolhas, preenchimentos de lacunas e ordenações. O aplicativo compara a tentativa com as respostas aceitas pela autoria. Essa conferência informa o resultado naquela tarefa; a interpretação pedagógica depende do objetivo, do raciocínio exigido e do retorno preparado.
+
+## Componentes e representações
+
+O conteúdo pode combinar formas de apresentação e atividade conforme a relação que precisa tornar compreensível. Uma tabela permite comparar informações, um fluxograma acompanha etapas e um áudio oferece outra forma de acesso ao conteúdo. As atividades e ferramentas seguem a tarefa que o estudante precisa realizar.
+
+A escolha depende da função de cada representação. Quando duas formas expressam o mesmo assunto, o curso precisa explicar como elas se correspondem. O modelo de [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft) relaciona a forma como as representações são desenhadas, a função que cumprem e as tarefas necessárias para utilizá-las. A [fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md) aprofunda essas escolhas.
+
+Cada forma de apresentação é implementada por um **componente didático**, que define como organizar, exibir e, quando pertinente, manipular o conteúdo. O capítulo [Componentes didáticos](componentes-didaticos.md) explica como essas formas podem evoluir e quais cuidados exigem com legibilidade, interação e validação. [Áudio](audio.md) e [Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md) apresentam seus usos específicos.
+
 ## Autoria com participação humana
 
-A autoria se desenvolve em diálogo: a pessoa define o que pretende ensinar, a IA ajuda a propor e produzir, e a pessoa inspeciona o resultado e orienta as correções. Essa participação ao longo do processo costuma ser chamada de *human-in-the-loop*. No AraLearn, ela se concretiza no controle do escopo, na inspeção do material e de suas fontes e nas decisões humanas de revisão.
+A autoria se desenvolve em diálogo: a pessoa define o que pretende ensinar, a IA ajuda a propor e produzir, e a pessoa inspeciona o resultado e orienta as correções. A supervisão depende das decisões exigidas em cada fluxo. Uma pessoa pode reservar para si a aprovação prévia de uma alteração ou autorizar um trabalho mais amplo, acompanhando seus resultados e intervindo quando necessário. O capítulo de [assistência por IA](assistencia-por-ia.md) distingue essas formas de participação e suas condições de uso.
 
 | Momento | Participação da pessoa autora | Apoio do aplicativo e da IA |
 | --- | --- | --- |
@@ -25,17 +63,9 @@ A autoria se desenvolve em diálogo: a pessoa define o que pretende ensinar, a I
 | Inspecionar | ler a sequência, resolver atividades e conferir fontes | apresentar o conteúdo salvo, seus vínculos e as observações pertinentes |
 | Corrigir e revisar | decidir o que muda e declarar a revisão realizada | aplicar as alterações autorizadas e permitir nova conferência do resultado |
 
-O escopo de atuação e os momentos de conversa podem variar. A pessoa pode acompanhar recortes pequenos ou autorizar um trabalho maior. Em qualquer cadência, a declaração de revisão registra uma decisão humana expressa sobre o conteúdo inspecionado. Produção, validação estrutural e correção pertencem a outros momentos do trabalho. O [guia de autoria pelo chat](criar-cursos-pelo-chat.md) apresenta o percurso, e [Explicação e revisão humana](explicacao-e-revisao-humana.md) explica como a decisão fica vinculada ao material salvo.
+A pessoa pode acompanhar trechos delimitados ou autorizar um trabalho maior. Em qualquer cadência, a declaração de revisão registra uma decisão humana expressa sobre o conteúdo inspecionado. Produzir o material, conferir sua estrutura e declarar sua revisão são atos com efeitos próprios. O [guia de autoria pelo chat](criar-cursos-pelo-chat.md) apresenta o percurso, e [Explicação e revisão humana](explicacao-e-revisao-humana.md) explica como a decisão fica vinculada ao material salvo.
 
 As diretrizes de interação humano–IA de [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai) oferecem fundamento para tornar capacidades e limites compreensíveis, facilitar correções e conservar o controle da pessoa. A orientação da [UNESCO (2023)](referencias.md#ref-unesco2023genai) trata da agência humana — a capacidade de decidir e conduzir o próprio trabalho — e da adequação pedagógica no uso de IA generativa em educação. No AraLearn, essas referências orientam decisões de projeto. A avaliação examina como as pessoas identificam problemas e exercem esse controle durante o uso.
-
-## Integrações e independência de modelos
-
-Para que um assistente consulte um curso ou grave uma alteração autorizada, a aplicação em que ocorre a conversa precisa solicitar essas operações ao AraLearn. O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) conecta aplicações de IA a ferramentas e dados externos. A [OpenAPI](https://spec.openapis.org/oas/latest.html) descreve de forma padronizada as operações oferecidas por um serviço.
-
-Nos dois casos, as operações pertencem ao AraLearn, e a aplicação de conversa atua como interface autorizada. O curso permanece no aplicativo, com estrutura e fontes próprias, e pode ser retomado em outra sessão ou por outra aplicação compatível. Essa separação orienta a independência de modelos e fornecedores. A documentação de [MCP](autoria-mcp.md) e de [OpenAPI e Actions](autoria-actions.md) apresenta a configuração e as condições atuais de cada canal.
-
-O aplicativo também oferece edição manual e [assistência por IA](assistencia-por-ia.md) junto do conteúdo. Nesse percurso, a pessoa discute uma proposta, examina a prévia e decide se a leva ao rascunho. A validação automática confere o formato que o AraLearn consegue guardar e apresentar; a revisão humana examina a correção factual e a adequação didática.
 
 ## Fontes que acompanham o conteúdo
 
@@ -45,41 +75,13 @@ Para que a pessoa possa voltar ao material que sustenta o conteúdo, o AraLearn 
 
 A pessoa autora confronta o texto didático com a obra, avalia se ela sustenta a afirmação e pede uma correção quando necessário. Essa conferência considera tanto o trecho indicado quanto o papel do material. Uma ementa usada para definir o programa, por exemplo, só recebe a atribuição dos fatos que efetivamente sustenta.
 
-## Unidade de organização do estudo
+## Integrações e independência de modelos
 
-O conteúdo é dividido em vários níveis, do curso completo às unidades de estudo que aparecem na tela. À medida que o alcance diminui, torna-se possível tratar um avanço próximo sem perder sua relação com o percurso maior.
+Para que um assistente consulte um curso ou grave uma alteração autorizada, a aplicação em que ocorre a conversa precisa solicitar essas operações ao AraLearn. O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/docs/getting-started/intro) conecta aplicações de IA a ferramentas e dados externos. A [OpenAPI](https://spec.openapis.org/oas/latest.html) descreve de forma padronizada as operações oferecidas por um serviço.
 
-Nesse conjunto, a **microssequência didática** reúne unidades que desenvolvem um objetivo delimitado e compartilham o mesmo contexto. Cada unidade contribui para esse avanço e precisa continuar inteligível em sua posição no percurso. A relação entre os níveis e os critérios de progressão está no [modelo didático](modelo-didatico.md).
+Nos dois casos, as operações pertencem ao AraLearn, e a aplicação de conversa atua como interface autorizada. O curso permanece no aplicativo, com estrutura e fontes próprias, e pode ser retomado em outra sessão ou por outra aplicação compatível. Essa separação permite trabalhar com modelos e fornecedores diferentes, conforme a compatibilidade efetivamente verificada. A documentação de [MCP](autoria-mcp.md) e de [OpenAPI e Actions](autoria-actions.md) apresenta a configuração e as condições atuais de cada canal.
 
-A **explicação** desenvolve o assunto da microssequência e o vincula às fontes que fundamentam o conjunto. Produzida durante a autoria, pode combinar texto, representações visuais e áudio. Pode ser elaborada e revisada antes das unidades. Cada unidade conserva as escolhas feitas na sua produção e a referência à base utilizada.
-
-Durante o estudo, a explicação permanece acessível a partir das unidades, inclusive das práticas. Abri-la conserva o ponto do percurso e consulta conteúdo já salvo. Sua autoria, composição, fontes e revisão são tratadas em [Explicação e revisão humana](explicacao-e-revisao-humana.md); a relação entre decisões e unidades está em [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
-
-## Teoria construída progressivamente
-
-O conteúdo deve partir do repertório previsto para o público. Quando um conceito é novo, a sequência precisa situar o problema, introduzir o vocabulário e construir as relações necessárias antes de exigir seu uso.
-
-Exemplos resolvidos tornam visíveis decisões intermediárias que um resultado final pode ocultar ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples)). O apoio pode ser retirado gradualmente conforme a tarefa passa a exigir mais trabalho do estudante ([Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). Analogias ajudam na aproximação inicial quando suas correspondências e limites estão claros.
-
-Os [parâmetros de autoria](parametros-de-autoria.md) permitem expressar escolhas sobre o desenvolvimento das ideias, a prática e a apresentação. Ao preparar um assunto novo, por exemplo, a pessoa pode pedir explicações desenvolvidas e exemplos resolvidos. Essa orientação expressa sua **intenção** para a produção. Cada unidade conserva a **configuração aplicada**, isto é, as escolhas efetivamente usadas para produzi-la. Uma nova intenção passa a orientar os trabalhos seguintes; as unidades salvas conservam a configuração usada em sua produção até que sejam alteradas.
-
-A pessoa pode fixar uma decisão ou deixar que ela seja ajustada ao público, ao conteúdo e à tarefa; esse ajuste é chamado de **calibração contextual**. Uma investigação também pode estabelecer escolhas que devem permanecer fixas para comparar materiais produzidos em condições diferentes. O [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) explica cada decisão e seus limites.
-
-## Prática como parte da explicação
-
-As atividades devem corresponder ao que o estudante precisa aprender a fazer. Distinguir duas situações, justificar uma relação e calcular um resultado exigem práticas diferentes. O objetivo e a operação esperada orientam a quantidade de oportunidades e a variedade dos casos.
-
-Tentar recordar o que se estudou antes de consultar a resposta é uma **prática de recuperação**. Essa prática pode contribuir para a aprendizagem; sua escolha e suas condições de uso precisam corresponder ao objetivo do curso ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval)).
-
-Depois da tentativa, o retorno pode indicar a resposta esperada, explicar o raciocínio e tornar um erro compreensível. Seu papel é formativo quando ajuda o estudante a rever o que fez e melhorar sua compreensão ou seu desempenho ([Shute (2008)](referencias.md#ref-shute2008feedback)). No produto, as atividades recolhem escolhas, preenchimentos de lacunas e ordenações. O aplicativo compara a tentativa com as respostas aceitas pela autoria. Essa conferência informa o resultado naquela tarefa; a interpretação pedagógica depende do objetivo, do raciocínio exigido e do retorno preparado.
-
-## Componentes e representações
-
-O conteúdo pode combinar formas de apresentação e atividade conforme a relação que precisa tornar compreensível. Uma tabela permite comparar informações, um fluxograma acompanha etapas e um áudio oferece outra forma de acesso ao conteúdo. As atividades e ferramentas seguem a tarefa que o estudante precisa realizar.
-
-A escolha depende da função de cada representação. Quando duas formas expressam o mesmo assunto, o curso precisa explicar como elas se correspondem. O modelo de [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft) relaciona a forma como as representações são desenhadas, a função que cumprem e as tarefas necessárias para utilizá-las. A [fundamentação dos componentes](fundamentacao-pedagogica-dos-resources.md) aprofunda essas escolhas.
-
-Cada forma de apresentação é implementada por um **componente didático**, que define como organizar, exibir e, quando pertinente, manipular o conteúdo. O capítulo [Componentes didáticos](componentes-didaticos.md) explica como essas formas de apresentação podem evoluir e quais cuidados exigem com legibilidade, interação e validação. [Áudio](audio.md) e [Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md) apresentam seus usos específicos.
+O aplicativo também oferece edição manual e [assistência por IA](assistencia-por-ia.md) junto do conteúdo. Nesse percurso, a pessoa discute uma proposta, examina a prévia e decide se a leva ao rascunho. A validação automática confere o formato que o AraLearn consegue guardar e apresentar; a revisão humana examina a correção factual e a adequação didática.
 
 ## Interação que preserva orientação e contexto
 
@@ -103,7 +105,7 @@ O estado pessoal permite responder a perguntas como “onde continuar?” e “q
 
 Todo curso nasce privado e possui uma pessoa proprietária, responsável por sua edição e por definir o acesso. Ela pode compartilhar a leitura com contas identificadas ou tornar o curso público. A permissão para copiar o curso e a disponibilidade de seus arquivos são decisões próprias. O [guia de autoria](guia-professor-autor.md) apresenta essas escolhas.
 
-Cada explicação e unidade pode receber uma marca de revisão humana ligada ao conteúdo salvo. Uma mudança material desatualiza a marca correspondente. Por padrão, quem tem acesso pode estudar o conteúdo completo salvo; a pessoa proprietária pode escolher disponibilizar somente conteúdo revisado. O compromisso de inspecionar o material e a política de disponibilização são, portanto, decisões relacionadas, com efeitos distintos no aplicativo.
+Cada explicação e unidade pode receber uma marca de revisão humana ligada ao conteúdo salvo. Uma mudança material desatualiza a marca correspondente. Por padrão, quem tem acesso pode estudar o conteúdo completo salvo; a pessoa proprietária pode escolher disponibilizar somente conteúdo revisado. Ao declarar a revisão, a pessoa registra sua decisão sobre determinada versão; a política de disponibilização define qual conteúdo as pessoas com acesso podem estudar.
 
 ## Públicos e contextos
 

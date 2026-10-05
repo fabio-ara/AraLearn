@@ -1,6 +1,6 @@
 # Guia do estudante
 
-No AraLearn, você estuda por uma trilha de explicações e atividades. Pode avançar pelo celular, interromper e retomar depois. Os cursos disponíveis podem ser seus, públicos ou compartilhados com você pelo autor.
+No AraLearn, você estuda por um percurso de explicações e atividades. Pode avançar pelo celular, interromper e retomar depois. Os cursos disponíveis podem ser seus, públicos ou compartilhados com você pelo autor.
 
 ## Compreender a tela inicial
 
@@ -10,11 +10,11 @@ Sem conta, o progresso e as marcas para rever ficam neste dispositivo. Com conta
 
 ## Abrir uma sessão
 
-Use **Abrir** e percorra os níveis do curso até chegar às unidades de estudo. Uma **microssequência didática** reúne unidades relacionadas para desenvolver um objetivo específico. Nesse pequeno percurso, uma unidade pode explicar uma relação, apresentar um exemplo ou propor uma atividade. O [modelo didático](modelo-didatico.md) explica a organização completa.
+Use **Abrir** e percorra os níveis do curso até chegar às unidades de estudo. Uma **microssequência didática** reúne unidades relacionadas para desenvolver um objetivo específico. Nessa sequência, uma unidade pode explicar uma relação, apresentar um exemplo ou propor uma atividade. O [modelo didático](modelo-didatico.md) explica a organização completa.
 
 Escolha o caminho que deseja estudar. Na unidade, a barra superior indica onde você está. **Voltar** retorna ao ponto de onde veio; **Home** leva à tela inicial. Se você abriu uma unidade por um link ou por **Rever**, pode voltar por esse mesmo caminho.
 
-Ao avançar, a unidade é registrada como concluída e o aplicativo guarda seu ponto de retomada. Essa conclusão documenta o avanço para que o percurso possa ser retomado; uma nota ou avaliação de domínio exigiria outras informações.
+Ao avançar, a unidade é registrada como concluída e o aplicativo guarda seu ponto de retomada. Essa informação permite continuar o percurso depois de uma interrupção.
 
 ## Responder a uma prática
 
@@ -22,15 +22,15 @@ Leia a situação e a tarefa completa antes de responder. A atividade pode pedir
 
 Use **Continuar** para conferir a tentativa. Se faltar algum preenchimento, o aplicativo indica o que completar. Quando a resposta divergir do gabarito, use **Tentar de novo** ou **Ver resposta** para examinar a solução. O avanço fica disponível depois do acerto ou da consulta à resposta.
 
-Leia o retorno sobre sua tentativa — também chamado de *feedback*. Quando a autoria preparou uma explicação adicional, **Continuar** a apresenta antes do avanço; outro acionamento segue o percurso. O resultado pertence àquela atividade. O progresso registra a passagem pela unidade, inclusive quando você consultou a resposta.
+Leia o retorno sobre sua tentativa, também chamado de **feedback**. Quando a autoria preparou conteúdo adicional para esse retorno, **Continuar** o apresenta antes do avanço; outro acionamento segue o percurso. O resultado se refere àquela atividade. O progresso registra a passagem pela unidade, inclusive quando você consultou a resposta.
 
 Nas lacunas com alternativas, toque em uma lacuna vazia para escolher seu preenchimento. Para mudar uma escolha, toque na lacuna preenchida: somente aquele valor será limpo.
 
 ## Consultar a explicação
 
-Quando precisar desenvolver melhor o assunto, abra **Explicação** na fileira de ações da unidade. Esse conteúdo desenvolve o assunto e o liga às fontes que sustentam o percurso, podendo combinar texto, representações visuais e áudio. Todas as unidades daquela microssequência consultam a mesma explicação, preparada durante a autoria.
+Para retomar um conceito ou acompanhar o desenvolvimento do assunto, abra **Explicação** na fileira de ações da unidade. Essa base pode combinar texto, representações visuais e áudio e apresenta as fontes que a sustentam. Todas as unidades da microssequência consultam a mesma explicação, preparada durante a autoria.
 
-Você pode abri-la durante uma atividade e manter a tentativa em andamento. A consulta apresenta o conteúdo salvo pela autoria. Ao terminar, use **Fechar explicação** ou a tecla Escape para voltar à unidade e continuar a resposta.
+Você pode abri-la durante uma atividade e manter a tentativa em andamento. Ao terminar a consulta ao conteúdo salvo, use **Fechar explicação** ou a tecla Escape para voltar à unidade e continuar a resposta.
 
 A indicação de revisão autoral informa que o autor declarou ter inspecionado aquele conteúdo salvo. Alguns cursos permitem estudar material ainda sem essa declaração; outros exigem conteúdo revisado. Essa escolha pertence ao proprietário. A [revisão humana](explicacao-e-revisao-humana.md#revisão-independente-por-objeto) é diferente da marca pessoal **Rever**.
 
@@ -40,11 +40,11 @@ Se ainda não houver explicação preparada, a tela informa a ausência. As font
 
 Para conferir de onde veio uma afirmação, siga o número sobrescrito junto ao texto. **Fontes da unidade**, junto do contexto da unidade, reúne suas referências específicas. **Explicação** abre o conteúdo explicativo e, ao final dele, as referências dessa base. Cada leitura apresenta as fontes do objeto consultado.
 
-Uma referência pode identificar a obra e o trecho utilizado, como uma página, um capítulo ou um slide. O retorno junto à referência leva ao trecho do curso que a citou. Feche a consulta para retomar a unidade.
+Uma referência identifica a obra e pode localizar o trecho utilizado, como uma página, um capítulo ou uma parte de uma apresentação. O comando de retorno junto à referência leva ao trecho do curso que a citou. Feche a consulta para retomar a unidade.
 
-O autor decide quais referências aparecem no estudo. Algumas mostram apenas a citação; outras oferecem também um link para a página ou para um PDF autorizado. Assim, uma fonte pode estar identificada mesmo quando o arquivo não está disponível para abertura. As regras de acesso estão em [Fontes, citações e referências](fontes-e-citacoes.md#referências-no-estudo).
+O autor decide quais referências aparecem no estudo. Algumas mostram apenas a citação; outras oferecem também um link para a página ou o documento ao qual você tenha acesso. Uma fonte pode, portanto, estar identificada mesmo quando seu arquivo está indisponível. As regras de acesso estão em [Fontes, citações e referências](fontes-e-citacoes.md#referências-no-estudo).
 
-Ao consultar a fonte, compare o trecho indicado com a afirmação do curso. É essa leitura que permite avaliar a interpretação. Se encontrar um problema, registre uma observação na unidade.
+Ao consultar a fonte, compare o trecho indicado com a afirmação do curso. Essa leitura permite avaliar a interpretação. Se encontrar um problema, registre uma observação na unidade.
 
 ## Marcar para rever
 
@@ -58,15 +58,15 @@ Entre numa conta e abra **Observações** na unidade. Escolha a categoria que me
 
 Procure indicar o ponto da dúvida: por exemplo, “Entendi quem envia a mensagem, mas não por que os papéis se invertem na resposta”. Esse registro fica ligado à unidade e ajuda o autor a localizar a questão. É possível criar mais de uma observação, editar uma contribuição sua ou retirá-la.
 
-O proprietário recebe a observação; os outros estudantes não veem seu texto. Você pode acompanhar o estado e uma eventual resposta. **Resolvida** indica que o autor encerrou o tratamento daquela contribuição, o que pode ter ocorrido por uma resposta ou por uma correção. Consulte [Observações](observacoes-pedagogicas.md) para entender esse acompanhamento.
+O texto fica visível para você e para o proprietário, preservado das consultas de outros estudantes. Você pode acompanhar o estado e uma eventual resposta. **Resolvida** indica que o autor encerrou o tratamento daquela contribuição, o que pode ter ocorrido por uma resposta ou por uma correção. Consulte [Observações](observacoes-pedagogicas.md) para entender esse acompanhamento.
 
 ## Preparar o dispositivo para estudar sem conexão
 
-Antes de sair da rede, escolha o curso, use **Abrir** e aguarde o carregamento completo. Confira se consegue abrir o conteúdo que pretende estudar. Ter somente o título na lista não basta: na primeira abertura, o aplicativo precisa obter o curso.
+Antes de sair da rede, escolha o curso, use **Abrir** e aguarde o carregamento completo. Confira se consegue abrir o conteúdo que pretende estudar. A lista identifica os cursos; seu conteúdo é obtido na primeira abertura.
 
 Sem conexão, a prévia mostra **Disponível offline** quando a cópia guardada pode ser aberta. Caso contrário, mostra **Conecte-se para abrir este curso**. O texto e as representações da explicação acompanham o curso carregado. Uma referência já consultada também pode estar na cópia local; quando ainda precisar ser obtida, o aplicativo informa que ela está indisponível sem rede.
 
-PDFs, páginas externas e arquivos de áudio podem continuar exigindo conexão e autorização. Uma voz local do dispositivo pode funcionar sem rede; veja [Áudio](audio.md). Os arquivos relacionados são obtidos separadamente do conteúdo principal do curso.
+Os documentos usados como fontes, as páginas externas e os arquivos de áudio são obtidos separadamente do conteúdo principal e podem continuar exigindo conexão e autorização. Uma voz local do dispositivo pode funcionar sem rede; veja [Áudio](audio.md).
 
 ## Escolher quando sincronizar
 
@@ -76,13 +76,13 @@ No modo automático, o aplicativo procura realizar essa troca quando há conexã
 
 Se duas alterações entrarem em conflito, o aplicativo apresenta a diferença para você decidir. Um texto ainda em edição é preservado: conclua ou descarte o rascunho indicado antes de atualizar. As instruções comuns estão em [Uso do aplicativo](uso-do-app.md#trabalhar-sem-conexão).
 
-Em **Progresso sem conta**, você pode escolher quais cursos acrescentar à conta atual. Entrar não transfere esses dados automaticamente. A incorporação reúne conclusões e marcas sem apagar o progresso existente na conta; no modo manual, aguarda sua próxima sincronização.
+Em **Progresso sem conta**, você pode escolher quais cursos acrescentar à conta atual. Os dados permanecem separados até essa escolha. A incorporação reúne conclusões e marcas sem apagar o progresso existente na conta; no modo manual, aguarda sua próxima sincronização.
 
 ## Interromper com segurança
 
 Você pode voltar pelos níveis ou fechar o aplicativo depois que sua ação aparece confirmada. Sem conexão, o progresso continua no dispositivo até ser sincronizado. Antes de trocar de aparelho, limpar dados ou desinstalar, confira se há algo pendente na nuvem.
 
-Duas abas podem conservar telas diferentes do mesmo curso: navegar em uma não desloca automaticamente a outra. Cada uma apresenta a versão que carregou até consultar uma atualização. Casos de perda de acesso ou falha nessa atualização estão reunidos em [Solução de problemas](solucao-de-problemas.md). As regras de compartilhamento e da cópia local estão em [Uso do aplicativo](uso-do-app.md#conceder-e-revogar-acesso).
+Duas abas podem conservar telas diferentes do mesmo curso. Cada uma mantém sua posição de navegação e a versão que carregou até consultar uma atualização. Casos de perda de acesso ou falha nessa atualização estão reunidos em [Solução de problemas](solucao-de-problemas.md). As regras de compartilhamento e da cópia local estão em [Uso do aplicativo](uso-do-app.md#conceder-e-revogar-acesso).
 
 ## Zerar o progresso de um curso
 
