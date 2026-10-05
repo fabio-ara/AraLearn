@@ -28,11 +28,9 @@ ela.
 Na prosa, a documentação evita antecipar a lista completa de uma classificação
 quando o leitor precisa apenas reconhecer seu alcance. Uma estrutura com muitos
 níveis pode ser apresentada “do curso à unidade de estudo”, com um link para a
-referência exata.
-Quando exemplos bastam, três casos representativos costumam formar melhor o
-modelo mental do que um inventário. Enumerações completas permanecem nos
-lugares em que os itens são o próprio objeto de consulta, como contratos,
-matrizes e checklists.
+referência exata. Os exemplos são selecionados pela relação que ajudam a
+compreender. Enumerações completas permanecem nos lugares em que os itens são
+o próprio objeto de consulta, como contratos, matrizes e listas de verificação.
 
 Depois de apresentado, um termo pode ser usado com consistência, sem uma nova definição em cada parágrafo. Quando a mesma palavra tem sentidos diferentes em áreas próximas, a qualificação ajuda a reconhecer o sentido adotado: revisão de conteúdo, revisão bibliográfica e revisão de software, por exemplo, designam atividades distintas.
 
@@ -67,6 +65,14 @@ informação útil. Um limite fica mais claro quando descreve a condição neces
 próximo passo. Ao revisar, procure também sequências longas de substantivos e
 verbos. Desenvolva a relação central em frases; reserve a relação completa de
 campos ou operações para a seção de consulta correspondente.
+
+O registro de linguagem deve ser adequado à apresentação técnica e acadêmica,
+inclusive nos guias de uso. Na prosa, prefira “documento” a “PDF” como nome do
+material. Use “documento em formato PDF” quando a restrição de formato for
+relevante, por exemplo ao explicar o envio de arquivos. Siglas, extensões,
+identificadores e rótulos reais da interface conservam sua forma exata. A
+mesma distinção vale para outros formatos: o objeto é nomeado por sua função,
+e o formato aparece quando ajuda a compreender seu uso ou suas condições.
 
 O uso de terminologia especializada acrescenta precisão e permite continuar a pesquisa fora da documentação. Quando pertinente, a primeira ocorrência apresenta o termo em português e sua forma consagrada em outra língua. Nomes de instituições, padrões, protocolos, produtos e trabalhos acadêmicos permanecem reconhecíveis.
 
@@ -118,7 +124,7 @@ A documentação relaciona o que o AraLearn implementa com as razões de desenho
 
 Um teste de software pode verificar que a posição de leitura é recuperada após uma interrupção. Investigar se essa retomada ajuda uma pessoa a compreender o assunto exige outro desenho de avaliação. Da mesma forma, uma recomendação institucional oferece orientações para a atuação responsável, enquanto um estudo empírico produz evidências sob condições delimitadas.
 
-A proximidade entre um termo do produto e um conceito da literatura abre uma relação a examinar. Por exemplo, a possibilidade de ajustar o próprio percurso pode ser relevante para investigar autorregulação, mas a existência desse controle não demonstra, por si, que os estudantes regulam melhor sua aprendizagem.
+A proximidade entre um termo do produto e um conceito da literatura abre uma relação a examinar. Por exemplo, os controles para ajustar o percurso oferecem condições para investigar a autorregulação. Avaliar essa relação exige observar como os estudantes conduzem seu estudo e com quais resultados.
 
 ## Fontes que participam do argumento
 
