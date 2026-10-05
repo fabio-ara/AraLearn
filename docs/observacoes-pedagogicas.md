@@ -13,13 +13,13 @@ do curso como estava; a alteração depende do
 
 ## O que o registro contém
 
-Cada observação conserva o texto, a categoria, o alvo e seu caminho curricular.
+Cada observação conserva o texto, a categoria, seus alvos e os caminhos
+curriculares que permitem localizá-los.
 A origem da contribuição registra de onde veio o apontamento; autoria, data,
 versão e estado permitem acompanhar a conversa e sua proveniência. Uma resposta
 do proprietário permanece associada ao mesmo registro.
 
-Os exemplos da abertura bastam para o uso cotidiano. Como referência
-operacional, o modelo admite curso, módulo, lição, tópico, microssequência,
+O [contrato das observações](aralearn-contract.md#observações-e-revisão) admite curso, módulo, lição, tópico, microssequência,
 explicação, unidade de estudo, fonte e âncora de fonte, conforme a operação e a
 interface. A âncora localiza um trecho do material consultado, como desenvolve
 [Fontes, citações e referências](fontes-e-citacoes.md). Editar o registro
@@ -36,17 +36,15 @@ Uma categoria expressa a interpretação de quem registrou a observação.
 **Possível erro** exige conferência do conteúdo e das fontes. A ausência de
 observações tampouco demonstra compreensão.
 
-Esses rótulos são uma convenção operacional do produto, não uma escala validada
-de qualidade ou um método de revisão comprovado. A classificação é opcional;
-o texto e seu alvo bastam para registrar e tratar um apontamento. Usar uma
-categoria não autoriza correção automática nem determina a resposta da IA.
+A classificação é opcional e serve à organização da triagem. O texto e seus
+alvos bastam para tratar o apontamento; a correção depende da leitura e da
+decisão autoral.
 
-A revisão de [Shute (2008)](referencias.md#ref-shute2008feedback) discute a
-importância de feedback claro e específico para a aprendizagem. Esse trabalho
-trata de feedback ao estudante; ele não valida este conjunto de categorias para
-revisar materiais didáticos. Demonstrar que a classificação melhora a revisão
-no AraLearn exigiria uma avaliação própria, comparando resultados e esforço com
-o registro de texto livre.
+A revisão de [Shute (2008)](referencias.md#ref-shute2008feedback) discute feedback
+claro e específico dirigido ao estudante. No AraLearn, essa relação ajuda a
+formular perguntas sobre a utilidade das observações para melhorar o material.
+Avaliar as categorias adotadas pelo produto exige um estudo próprio, que
+compare resultados e esforço com os do registro de texto livre.
 
 ## Registrar durante o Estudo
 
@@ -116,7 +114,14 @@ aprovada e `retomar_correcao` reconcilia uma tentativa cujo resultado ficou
 incerto. A retomada confere o conteúdo e a fila sem reaplicar a correção.
 Editar o texto de uma entrada, por `editar_observacao`, conserva a pendência.
 
-`preparar_revisao` também permite recuperar a comparação literal de um alvo a partir da referência devolvida pela fila. `decidir_observacao` executa a decisão expressa da pessoa sobre as versões apresentadas. Quando uma edição manual pede inspeção por IA, o parecer precisa corresponder ao conteúdo e às fontes vigentes antes da aprovação; `registrar_inspecao` conserva esse parecer. Salvar e continuar trabalhando permanece disponível, e encerrar uma observação de teste não declara que a inspeção foi realizada.
+`preparar_revisao` também recupera a comparação literal de um alvo a partir da
+referência devolvida pela fila. `decidir_observacao` executa a decisão expressa
+da pessoa sobre as versões apresentadas. Quando há exigência de inspeção por
+IA, a aprovação aguarda um parecer atual, com as seis dimensões avaliadas e
+conclusão `consistent`. `registrar_inspecao` conserva esse julgamento, conforme
+o [contrato de inspeção](aralearn-contract.md#inspeção-por-ia). A pessoa pode
+continuar salvando e trabalhando no material enquanto resolve a pendência, ou
+encerrar expressamente uma observação que deixou de exigir mudança.
 
 Tratar uma observação não declara que a pessoa revisou todo o objeto. A
 [revisão autoral](explicacao-e-revisao-humana.md#revisão-independente-por-objeto)

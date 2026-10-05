@@ -5,15 +5,15 @@ mantêm a unidade aberta e permitem voltar ao mesmo ponto do estudo.
 
 As ferramentas pertencem ao [catálogo de componentes didáticos](componentes-didaticos.md),
 conjunto de formatos que o autor pode incluir numa unidade. A calculadora
-opera no dispositivo. Fontes, documentos e referências são consultados pelo
-mecanismo comum de fontes; não há packages separados de consulta neste
-catálogo corrente.
+opera no dispositivo. Obras e documentos são consultados pelo mecanismo comum
+de [fontes e citações](fontes-e-citacoes.md), que relaciona cada uso ao material
+original.
 
 O título e a orientação explicam por que usar a ferramenta naquela tarefa. A
-abertura registra apenas a consulta; respostas e conclusões pertencem à
-atividade que solicita que o estudante faça algo com o resultado. Por isso, um
-exercício usa um componente de resposta próprio em vez de transformar
-automaticamente o rótulo da ferramenta em lacuna.
+abertura dá acesso ao apoio; respostas e conclusões pertencem à atividade que
+solicita algo com o resultado. Um exercício pode, por exemplo, pedir que o
+estudante calcule uma razão e escolha a interpretação correspondente em um
+componente de resposta.
 
 ## Calculadora
 
@@ -68,10 +68,10 @@ envia texto a um serviço externo.
 
 ### Teclado da calculadora
 
-O teclado visível é composto por botões acessíveis e insere somente tokens da
-gramática permitida. Enter calcula pelo formulário; **Limpar** apaga a expressão
+O teclado visível reúne botões com nomes acessíveis e insere números,
+operadores ou funções aceitos pelo interpretador. Enter calcula pelo formulário; **Limpar** apaga a expressão
 e devolve o foco ao campo; apagar remove o caractere ou a seleção atual. A
-entrada por teclado físico e pelo teclado visível preserva o mesmo parser.
+entrada por teclado físico e pelos botões usa o mesmo interpretador de expressões.
 
 <a id="contrato-dos-recursos-de-consulta"></a>
 
@@ -86,7 +86,7 @@ procedimento que desfaz esses vínculos ao fechar. `host` representa os serviço
 oferecidos pelo aplicativo ao componente, como abrir um arquivo autorizado. O
 [contrato comum dos pacotes](componentes-didaticos.md) explica essa separação.
 
-`calculator` usa `title`, `angleUnit`, `prompt` e `initialExpression`. O package
+`calculator` usa `title`, `angleUnit`, `prompt` e `initialExpression`. O pacote
 `audio` tem contrato próprio para faixas, idioma e alternativas textuais; veja
 [Áudio](audio.md). Fontes e anexos seguem seus contratos de origem e acesso.
 

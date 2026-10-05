@@ -17,7 +17,7 @@ controles e regras de persistência.
 | Conceito | Responsabilidade operacional |
 | --- | --- |
 | Microssequência didática | Delimita um objetivo e a sequência necessária para desenvolvê-lo, considerando público, conhecimentos prévios e conteúdos a abordar. |
-| Base explicativa da microssequência — **Explicação** na interface | Desenvolve o texto-base e suas fontes, com as explicações necessárias ao objetivo. Pode ser produzida antes das unidades. No Estudo, também serve de apoio sob demanda. |
+| Base explicativa da microssequência — **Explicação** na interface | Desenvolve o conteúdo e suas fontes, com as explicações necessárias ao objetivo. Pode combinar texto, representações visuais e áudio e ser produzida antes das unidades. No Estudo, também serve de apoio sob demanda. |
 | Desenho instrucional | Reúne escolhas sobre como explicar o conteúdo, propor atividades e organizar o percurso. |
 | Unidade de estudo | Organiza um trecho do percurso que explica, exemplifica ou propõe uma atividade com uma finalidade definida. Sua extensão acompanha essa finalidade. |
 | [Unidade de análise instrucional](desenho-instrucional-parametrizado.md) | Identifica um conhecimento a acompanhar no percurso, como uma relação ou operação. Permite reconhecer onde ele foi introduzido e utilizado. A unidade de estudo organiza a apresentação; a unidade de análise recorta o conhecimento. |
@@ -28,7 +28,7 @@ controles e regras de persistência.
 O curso é organizado em vários níveis, do próprio curso às unidades de estudo.
 O [modelo didático](modelo-didatico.md) apresenta os níveis intermediários e a
 relação entre eles. Partes e lotes servem para organizar o trabalho de produção,
-enquanto a explicação constitui o texto-base de uma microssequência; nenhum
+enquanto a explicação constitui a base de consulta de uma microssequência; nenhum
 deles acrescenta outro nível ao currículo. Uma unidade pode ter uma fonte
 própria, e a apresentação reunida das referências conserva qual objeto cada
 vínculo sustenta.
@@ -164,7 +164,7 @@ e dispositivo são exclusivas da interface.
 | Preferências pessoais de processo | Pessoa; preferências salvas na conta. | **Preferências de autoria**; `consultar_preferencias_autoria` e `salvar_preferencias_autoria`. Separa foco, cadência, revisão e diálogo. |
 | Perfis de autoria | Pessoa; conjunto de escolhas salvo na conta. | **Perfis de autoria** e tarefas de consultar, salvar, excluir, prever e aplicar perfil. A aplicação copia escolhas para um curso; edições posteriores do perfil não se propagam. |
 | Curso e mapa curricular | Proprietário; curso, entidades curriculares e plano. | **Planejamento**; `salvar_mapa_curricular`, `salvar_ramo_curricular` e comandos estruturais. Aprovação se refere ao mapa salvo inspecionado. |
-| Partes e lotes | Proprietário; partes autorais e vínculos com microssequências. | **Lotes de produção** e `salvar_parte`. Dividem, reúnem e ordenam o trabalho, preservando a hierarquia curricular. |
+| Partes e lotes | Proprietário; partes autorais e vínculos com microssequências. | **Planejamento → Organização da produção → Reorganizar lotes** e `salvar_parte`. Dividem, reúnem e ordenam o trabalho, preservando a hierarquia curricular. |
 | Direção editorial | Proprietário; orientações cumulativas de curso, módulo, lição, microssequência e unidade. | **Parâmetros → Leitura e estilo**; `ajustar_orientacao`. Orienta a próxima produção ou revisão solicitada. |
 | Política de componentes | Proprietário; escolhas por objeto, com origem autoral ou de pesquisa. | **Parâmetros → Recursos**; `ajustar_componentes`. Define componentes disponíveis, excluídos ou preferidos; admite módulo. |
 | Plano da explicação | Microssequência; `content.explanationPlan`. | **Explicação prevista** no planejamento e mapa curricular no chat. Registra propósito, pressupostos, relações e fontes previstas. |
@@ -225,7 +225,7 @@ unidade: definição e exemplo; escolha contextual da produção anterior”. Os
 valores são ilustrativos.
 
 Uma mudança de intenção afeta a direção futura. Aplicar ao conteúdo existente é outra operação, com recorte e impacto declarados. Mudar apenas a intenção conserva a configuração aplicada anterior. A proveniência, registro da origem e das intervenções no conteúdo, distingue
-geração, edição manual e aplicação solicitada; texto redigido pelo assistente não recebe autoria humana por causa de um clique posterior.
+geração, edição manual e aplicação solicitada; a aceitação humana de uma proposta conserva o registro da intervenção que a produziu.
 
 | Estado/ação | O que afirma | O que precisa permanecer separado |
 | --- | --- | --- |
@@ -247,9 +247,11 @@ declarações individuais continuam ligadas a cada objeto.
 
 Na inspeção por IA, a base apresenta as unidades na ordem curricular e conserva
 suas posições. Trocar a posição de ensino e prática muda o percurso examinado e
-desatualiza os pareceres relacionados, mesmo quando o texto permanece igual. O
-parecer anterior continua disponível como histórico; a nova ordem exige uma
-inspeção ligada à base atual, sem alterar a declaração humana de revisão.
+desatualiza os pareceres relacionados, mesmo quando o texto permanece igual. A
+leitura corrente passa a indicar inspeção pendente. A nova ordem exige um
+parecer ligado à base atual; a declaração humana de revisão conserva seu
+registro próprio. A [referência de inspeção](aralearn-contract.md#inspeção-por-ia)
+descreve a leitura do parecer vigente e a recuperação temporária por recibos.
 
 A leitura combina acesso autorizado com conteúdo completo salvo. A política
 `reviewed_only`, quando expressamente ativada, exige também revisão atual do

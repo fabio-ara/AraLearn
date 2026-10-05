@@ -18,7 +18,13 @@ O corpus fixo contém 13 unidades válidas:
 - múltipla escolha com duas e oito alternativas;
 - parágrafo com escolha e tabela com prática de ordenação.
 
-Os casos ficam em `tests/fixtures/editorial-footprint.v1.json`. A página de teste `tests/gallery/editorial-footprint.html` usa o mesmo mecanismo de apresentação dos componentes e as dimensões do cartão de estudo. Depois que os componentes terminam de carregar, o Playwright, ferramenta de automação do navegador, mede a página em 390 × 844 e 430 × 932, nos temas claro e escuro. A matriz é finita: 13 casos × 2 tamanhos de tela × 2 temas, totalizando 52 observações.
+Os casos ficam no [corpus versionado](../tests/fixtures/editorial-footprint.v1.json).
+A [página de teste](../tests/gallery/editorial-footprint.html) usa o mesmo
+mecanismo de apresentação dos componentes e as dimensões do cartão de estudo.
+Depois que os componentes terminam de carregar, o Playwright, ferramenta de
+automação do navegador, mede a página em 390 × 844 e 430 × 932 pixels, nos temas
+claro e escuro. A matriz contém 13 casos × 2 tamanhos de tela × 2 temas,
+totalizando 52 observações.
 
 A medida real soma a altura usada pelo conteúdo apresentado e pela área de resposta, quando presente. A fração da área visível, ou *viewport*, divide essa ocupação pelo espaço disponível dentro do cartão. A rolagem horizontal local de uma representação larga é registrada separadamente; conteúdo que ultrapassa a largura da página, erro de execução ou caso inválido interrompe o ensaio.
 
@@ -31,18 +37,28 @@ O ensaio registra quatro perspectivas:
 3. footprint abstrato em linhas, combinando quebra de texto estimada e custo estrutural;
 4. pixels e fração de viewport medidos na apresentação real após o carregamento dos componentes.
 
-Os coeficientes experimentais estão versionados em
-`scripts/editorialFootprintMetrics.mjs`, o que permite auditar o cálculo. Eles
-pertencem ao ensaio: o aplicativo em execução não os exporta nem os grava com o
-curso, e o projeto ainda não definiu um limiar recomendado a partir deles.
+Os coeficientes experimentais estão versionados no
+[cálculo das métricas](../scripts/editorialFootprintMetrics.mjs), o que permite
+conferir os pesos e reproduzir as estimativas. Seu uso está restrito a este
+ensaio. A escolha de um limiar recomendado para o produto permanece uma
+questão de investigação.
 
-Execute:
+Depois de [instalar as dependências do projeto](../CONTRIBUTING.md#antes-de-começar),
+prepare o Chromium usado pelo Playwright e execute a medição:
 
 ```sh
+npx playwright install chromium
 npm run audit:editorial-footprint
 ```
 
-O relatório detalhado é gravado em `test-results/editorial-footprint/measurement.json`. A validade, a cobertura e o determinismo das métricas puras podem ser conferidos com:
+O [script de medição](../scripts/measureEditorialFootprint.mjs) grava o relatório
+detalhado em `test-results/editorial-footprint/measurement.json`. Para conservar
+a execução, guarde também a revisão do Git e as versões do Node.js e do
+Playwright: o relatório registra os casos e os ambientes visuais, enquanto
+esses dados identificam o código que os produziu.
+
+A validade do corpus, a cobertura e o determinismo das métricas podem ser
+conferidos separadamente, sem abrir o navegador:
 
 ```sh
 node --test tests/runtime/editorial-footprint-benchmark.test.js
@@ -50,7 +66,22 @@ node --test tests/runtime/editorial-footprint-benchmark.test.js
 
 ## Resultado histórico do ensaio finito
 
-O registro da execução de referência informa que a correlação de postos com os pixels realmente ocupados foi 0,654 para palavras, 0,719 para caracteres, 0,793 para o equivalente ponderado e 0,896 para a estimativa abstrata em linhas. A correlação de postos compara a ordenação dos casos por cada medida: valores mais próximos de 1 indicam maior correspondência entre as ordens. A geometria não variou entre os temas. O texto extremo ocupou em média 2,739 viewports internas; os demais casos ficaram abaixo de uma viewport, com os maiores entre eles sendo a escolha de oito alternativas, o código longo e a prática de ordenação.
+A execução de referência comparou a ordenação dos casos por cada medida com a
+ordenação pelos pixels efetivamente ocupados. Essa correspondência foi medida
+pela correlação de postos: valores mais próximos de 1 indicam maior concordância
+entre as ordens.
+
+| Medida | Correlação registrada com a ocupação real |
+| --- | ---: |
+| Palavras | 0,654 |
+| Caracteres | 0,719 |
+| Equivalente ponderado | 0,793 |
+| Estimativa abstrata em linhas | 0,896 |
+
+Os dois temas produziram a mesma geometria. O texto extremo ocupou em média
+2,739 áreas visíveis internas do cartão; os demais casos ficaram abaixo de
+uma área. Entre estes, os maiores foram a escolha de oito alternativas, o
+código longo e a prática de ordenação.
 
 Esses valores constituem o resultado histórico registrado no capítulo; o
 relatório bruto daquela execução não está preservado no repositório. Para

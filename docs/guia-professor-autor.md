@@ -2,7 +2,7 @@
 
 O AraLearn permite criar um curso a partir de um tema, de uma ementa, de slides ou de outros materiais. A inteligência artificial ajuda a desenvolver a proposta; você define a finalidade, examina o que foi produzido e decide o que precisa mudar. O aplicativo conserva o mapa do curso, o conteúdo e as fontes para essa inspeção.
 
-Uma parte central desse trabalho é a **explicação**: o texto-base no qual um assunto é desenvolvido e ligado às fontes que o sustentam. A partir dela, o curso pode ser organizado em unidades de estudo que apresentam o conteúdo e propõem atividades. A explicação permanece disponível para consulta durante o estudo, como descreve [Explicação e revisão humana](explicacao-e-revisao-humana.md).
+Uma parte central desse trabalho é a **explicação**: nela, um assunto é desenvolvido e ligado às fontes que o sustentam, com os componentes de conteúdo adequados, como texto, representações visuais e áudio. A partir dela, o curso pode ser organizado em unidades de estudo que apresentam o conteúdo e propõem atividades. A explicação permanece disponível para consulta durante o estudo, como descreve [Explicação e revisão humana](explicacao-e-revisao-humana.md).
 
 A conversa com um assistente externo e a edição no aplicativo são formas de trabalhar sobre o mesmo curso. [Criar e revisar cursos por conversa](criar-cursos-pelo-chat.md) mostra como conduzir a passagem entre esses espaços.
 
@@ -30,7 +30,7 @@ A produção pode ser dividida em **partes**, recortes de microssequências esco
 
 Em **Configurações → Preferências de autoria**, escolha se o trabalho deverá desenvolver apenas o conteúdo ou percorrer o ciclo completo no recorte autorizado. A **cadência** define a escala acompanhada, desde uma microssequência até um lote que reúne várias partes. O tamanho da parte e a frequência das pausas são escolhas separadas. Os pontos de revisão indicam quando você quer conferir o resultado. [Configurações](configuracoes.md#preferências-pessoais) explica os rótulos e a relação entre essas escolhas.
 
-Para cada parte, combine o que será desenvolvido e examine a progressão proposta. Inspecione a explicação e suas fontes; quando o trabalho incluir unidades, confira como elas ensinam e exercitam aquele conteúdo. O assistente avança até o próximo ponto de conferência definido para o trabalho.
+Para cada parte, combine o que será desenvolvido e examine a progressão proposta. Inspecione a explicação e suas fontes; quando o trabalho incluir unidades, confira como elas ensinam e exercitam aquele conteúdo. O assistente segue a autorização e os pontos de conferência combinados. Uma autorização para concluir um recorte permite avançar dentro dele; a declaração de revisão humana depende da inspeção que você efetivamente realizou.
 
 Antes de produzir as unidades, o assistente relaciona os ensinamentos da explicação ao repertório e aos requisitos de prática, distingue prévias e apoios e reúne os impedimentos previsíveis numa preparação conjunta. A produção pode continuar em várias chamadas: as unidades omitidas permanecem, e uma substituição identifica expressamente a unidade existente. A conclusão confere o percurso acumulado, incluindo o que ainda falta ensinar ou exercitar.
 
@@ -64,9 +64,9 @@ Quando uma tarefa tem vários passos, um exemplo resolvido pode mostrar o racioc
 
 Os **componentes didáticos** são as formas que o aplicativo usa para apresentar conteúdo ou receber respostas, como parágrafo, tabela e atividade de lacunas. O [catálogo de componentes](componentes-didaticos.md) explica suas possibilidades.
 
-Escolha a representação pelo que o estudante precisa examinar. Uma tabela ajuda a comparar dados lado a lado; um diagrama pode tornar uma relação espacial visível. Alternativas podem pedir a comparação de decisões e de suas justificativas; lacunas podem recolher cálculos ou relações no próprio objeto. Uma seleção de razões fornecidas não demonstra elaboração espontânea de uma justificativa: descreva a evidência realmente recolhida. O objetivo deve orientar a prática e o feedback, inclusive quando a atividade combina várias decisões.
+Escolha a representação pelo que o estudante precisa examinar. Uma tabela ajuda a comparar dados lado a lado; um diagrama pode tornar uma relação espacial visível. Alternativas podem pedir a comparação de decisões e de suas justificativas; lacunas podem recolher cálculos ou relações no próprio objeto. Uma seleção de razões fornecidas mostra quais justificativas o estudante reconheceu ou comparou. Descreva essa evidência de acordo com a tarefa. As atividades disponíveis usam escolhas, lacunas e ordenação; desenvolver uma justificativa livre exige outro instrumento de avaliação. O objetivo deve orientar a prática e o feedback, inclusive quando a atividade combina várias decisões.
 
-A prática pode preparar uma explicação, testar uma distinção ou mobilizar conhecimentos depois dela. Uma previsão antes do exemplo, seguida de uma comparação com o resultado, cumpre outra função que uma pergunta de aplicação ao final. Uma nova oportunidade de prática muda o caso, a tarefa ou o apoio de maneira pertinente ao objetivo.
+A prática pode preparar uma explicação, testar uma distinção ou mobilizar conhecimentos depois dela. Uma previsão antes do exemplo, seguida de uma comparação com o resultado, cumpre outra função que uma pergunta de aplicação ao final. Conte as oportunidades de cada requisito no conjunto da microssequência, inclusive quando aparecem em unidades diferentes. Com uma única oportunidade, examine sua adequação ao objetivo. Com várias, avalie como mudanças de caso, tarefa ou apoio contribuem para o mesmo aprendizado; comparar a atividade somente com o exemplo ensinado deixa essa relação entre oportunidades por examinar.
 
 ## Ajustar o desenho
 
@@ -86,7 +86,7 @@ Uma ementa pode definir o que ensinar; uma prova pode mostrar como um conhecimen
 
 Em cada explicação ou unidade, compare a afirmação com o trecho da fonte que a sustenta. O vínculo deve permitir encontrar tanto o lugar no curso quanto o lugar na obra. [Fontes, citações e referências](fontes-e-citacoes.md) explica como registrar essas relações e editar seus vínculos.
 
-As referências ligadas à explicação acompanham o texto-base compartilhado por suas unidades. Quando uma unidade usa outra fonte, o vínculo fica nela. Ao mudar uma afirmação, confira se o trecho citado ainda a sustenta. Um PDF enviado por conversa é guardado no curso quando a pessoa autora pede expressamente sua incorporação.
+As referências ligadas à explicação acompanham o conteúdo explicativo compartilhado por suas unidades. Quando uma unidade usa outra fonte, o vínculo fica nela. Ao mudar uma afirmação, confira se o trecho citado ainda a sustenta. Um PDF enviado por conversa é guardado no curso quando a pessoa autora pede expressamente sua incorporação.
 
 ## Revisar como estudante
 
@@ -104,9 +104,9 @@ Você pode voltar a um ponto antigo do curso e registrar o que precisa mudar. Se
 
 Na conversa com o assistente conectado, indique o curso e o ponto que deseja discutir. Peça que ele leia o conteúdo salvo, discuta a mudança e confira o resultado no mesmo curso. O [guia por conversa](criar-cursos-pelo-chat.md#retome-e-revise-depois) apresenta esse percurso.
 
-Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. Uma observação pode abranger a explicação e várias unidades. Depois de conferir o resultado salvo e a comparação com a base anterior, aprove os alvos que examinou; os demais continuam pendentes. Você também pode encerrar explicitamente uma observação sem alterar o conteúdo. Confirmar que a gravação funcionou não substitui essa decisão. Se a resposta de uma gravação se perder, [confira primeiro se aquela alteração já foi salva](solucao-de-problemas.md#não-consigo-aplicar-uma-correção).
+Quando uma correção também afeta uma unidade anterior ou seguinte, a proposta precisa identificar os pontos que mudarão. Uma observação pode abranger a explicação e várias unidades. Depois de conferir o resultado salvo e a comparação com a base anterior, aprove os alvos que examinou; os demais continuam pendentes. Para aprovar, cada alvo precisa de um parecer de IA atual, com os seis critérios completos e conclusão consistente. Você também pode encerrar explicitamente uma observação sem alterar o conteúdo. A decisão se refere ao conteúdo conferido, depois da confirmação de salvamento. Se a resposta de uma gravação se perder, [confira primeiro se aquela alteração já foi salva](solucao-de-problemas.md#não-consigo-aplicar-uma-correção).
 
-Uma edição manual permanece vigente e pode aparecer como **Inspeção por IA pendente**. Na próxima inspeção autorizada, o assistente examina o texto e suas fontes e registra o parecer da versão lida. Você pode manter uma preferência editorial diferente da sugestão. Esse parecer não declara sua revisão humana nem atribui à IA a edição feita por você.
+Uma edição manual permanece vigente e pode aparecer como **Inspeção por IA pendente**. Na próxima inspeção autorizada, o assistente lê a base atual de cada explicação e unidade, confronta o ensino com as atividades e registra um parecer com evidências do texto salvo. A ordem das unidades participa dessa análise: uma mudança na sequência pode exigir outra inspeção mesmo que os textos permaneçam iguais. Você pode manter uma preferência editorial diferente da sugestão. Nesse caso, o parecer registra a preferência mantida, e a aprovação de alvos da observação continua aguardando uma conclusão consistente; [encerrar sem alteração](observacoes-pedagogicas.md#da-observação-à-revisão) é uma decisão distinta. O parecer de IA e sua declaração de revisão humana têm registros próprios, assim como a origem de cada edição.
 
 Durante o estudo, **Assistência por IA** oferece outro caminho para discutir uma mudança, examinar a prévia e só então levá-la ao rascunho. O [guia de edição no conteúdo](uso-do-app.md#editar-uma-unidade-no-próprio-conteúdo) apresenta os controles e o salvamento.
 

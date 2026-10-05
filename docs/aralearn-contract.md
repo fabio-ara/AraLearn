@@ -51,11 +51,12 @@ o que uma atividade pede para tornar observável sua aplicação, conforme o
 estar ausente, em rascunho ou aprovado. Uma parte contém posição, título,
 intenção, progressão local e vínculos com microssequências já existentes.
 
-A [hierarquia didática](modelo-didatico.md) vai do curso às unidades de estudo. Uma
-parte é apenas o lote usado na autoria e não aparece como pai curricular. Salvar ou
-redimensionar uma parte não cria nem reorganiza o currículo.
+A [hierarquia didática](modelo-didatico.md) vai do curso às unidades de estudo.
+Uma parte agrupa microssequências para a produção; um lote pode reunir várias
+partes. Esses agrupamentos organizam o trabalho de autoria. Salvar ou
+redimensionar uma parte preserva a hierarquia curricular.
 
-A microssequência conserva separadamente o plano da explicação e o texto já
+A microssequência conserva separadamente o plano da explicação e o conteúdo já
 desenvolvido. `explanationPlan: {purpose, prerequisites, relations, sourceIds}` registra
 o que a explicação precisa realizar; `explanation: {title, content}` guarda o título e
 o conteúdo. Os componentes vêm do catálogo comum. Como a explicação serve de base às
@@ -64,7 +65,7 @@ unidades, ela não possui resposta nem progresso próprios.
 Esses campos podem estar ausentes no acervo anterior. A materialização corrente exige
 uma proposta no mapa e uma explicação para cada microssequência da parte. Uma base já
 salva pode ser reutilizada; o pedido envia somente as que serão criadas ou alteradas.
-A tarefa `salvar_explicacoes` permite desenvolver o texto-base e suas fontes antes das
+A tarefa `salvar_explicacoes` permite desenvolver a base explicativa e suas fontes antes das
 unidades, inclusive enquanto o mapa ainda é rascunho.
 
 A leitura de revisão `contentReview` é metadado protegido, separado do conteúdo
@@ -280,7 +281,7 @@ O [catálogo de parâmetros](../src/domain/courseDesignParameters.js), na versã
 escopos e rótulos usados pela interface, pelas integrações e pelo banco. Reúne
 conteúdo, prática, conversa e cadência. Direção editorial e política de componentes
 permanecem campos distintos. Alvos de palavras são flexíveis e não autorizam
-compressão. Partes, lotes e pausas não são acoplados entre si.
+compressão. Tamanho de partes, tamanho de lotes e frequência de pausas são escolhas independentes.
 
 Uma atribuição com `mode: automatic` pode ter `value: null`: trata-se de intenção
 local de delegar a escolha, distinta da ausência de atribuição, que restaura
@@ -307,7 +308,7 @@ como ele se realizou no conteúdo:
 - `aralearn.study-unit-design-application.v1`, com ideias introduzidas, ideias
   estabelecidas utilizadas, formas, componentes e prática observada.
 
-Esses objetos são focais. Não reproduzem o curso nem a execução que os criou.
+Esses objetos conservam apenas o recorte aplicado à unidade.
 Retomadas são identificadas quando a explicação mobiliza novamente uma ideia
 estabelecida sem apresentá-la como nova. O plano deriva do estado corrente onde
 cada ideia foi introduzida, usada ou retomada, sem um registro paralelo de eventos.
@@ -316,18 +317,18 @@ Uma escolha delegada em modo `automatic` exige resolução contextual pelo assis
 no escopo da microssequência ou unidade antes da produção. Uma definição
 explícita do pesquisador prevalece sobre essa calibração.
 
-O contrato fixa a ordem de decisões, os limites de aprovação e a fronteira
-pública. Ele não transforma continuidade narrativa, redução de apoio ou outra
-heurística pedagógica em estado obrigatório. Essas dimensões são realizadas
-pela composição e pelos parâmetros existentes quando pertinentes.
+O contrato fixa a ordem de decisões, os limites de aprovação e as operações
+públicas. A continuidade de um exemplo e a redução gradual do apoio, por
+exemplo, dependem da composição do percurso e dos parâmetros pertinentes.
+Sua adequação é examinada no conteúdo e nas atividades.
 
 ### Campos de configuração nos canais
 
 A interface usa rótulos legíveis; os clientes enviam os campos abaixo. São as
 mesmas decisões do [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente),
 com nomes de entrada em português. Os valores de referência são exemplos de
-produto sujeitos à avaliação no contexto; não são escolhas automáticas
-aplicadas a todo curso.
+produto para avaliação no contexto. A escolha automática exige a calibração
+descrita a seguir.
 
 | Campo do catálogo | Decisão representada | Escopos | Valores admitidos e referência |
 | --- | --- | --- | --- |
@@ -355,7 +356,7 @@ do conteúdo determina se a aplicação é expositiva, prática ou mista. A tare
 `aplicar_configuracao_instrucional` pode aplicar a intenção corrente a unidades
 existentes inspecionadas, preservando texto, explicação, fixações e condições de
 pesquisa. Se falta a declaração de aplicação, ela precisa ser fornecida
-expressamente; calibrar parâmetros não fabrica uma descrição do conteúdo.
+expressamente, a partir da leitura do conteúdo salvo.
 A operação conserva a separação entre aplicação instrucional e revisão humana.
 
 Na variação requerida da prática, o conjunto vazio declara ausência explícita de
@@ -420,11 +421,14 @@ sua identidade. Uma ocorrência — o ponto em que a fonte é usada no conteúdo
 também conserva a identidade quando recurso, seletor e trecho coincidem.
 Alterações de papéis ou trechos aplicam os novos valores sem duplicar o vínculo.
 
-Omitir ocorrências conserva as existentes; enviar uma lista explicitamente
-vazia as retira. Vínculos omitidos continuam protegidos pela composição. Se
-mais de um vínculo corresponder à referência, a operação pede inspeção antes
-de escolher o alvo. Alterações de relação ou âncoras que substituam um vínculo
-usam sua posição em `manter_fonte`. O capítulo de
+Nas correções de unidades e no salvamento de explicações, omitir o campo
+`fontes` conserva a seleção de vínculos. Enviá-lo substitui essa seleção:
+inclua todos os vínculos que devem permanecer; `fontes: []` retira todos.
+Dentro de um vínculo correspondente, omitir `ocorrencias` conserva suas
+ocorrências, enquanto `ocorrencias: []` as retira. Se mais de um vínculo
+corresponder à referência, a operação pede inspeção antes de escolher o alvo.
+Alterações de relação ou âncoras que substituam um vínculo usam sua posição em
+`manter_fonte`. O capítulo de
 [fontes e citações](fontes-e-citacoes.md) explica as relações intelectuais que
 esses registros representam.
 
@@ -475,18 +479,77 @@ retirado.
 
 ## Observações e revisão
 
-`aralearn.course-anchored-annotation.v1` representa uma observação com alvo,
-categoria, estado, origem e versão. As projeções de página e mudança usam
-`aralearn.course-anchored-annotation-page.v1` e
-`aralearn.course-anchored-annotation-change.v1`.
+Um mesmo problema pode aparecer em uma explicação e em várias unidades.
+`aralearn.course-anchored-annotation.v1` conserva uma observação com identidade,
+texto, categoria, origem e versão próprios. A lista `targets` reúne suas
+incidências: os objetos aos quais ela se aplica. Cada incidência mantém sua
+base de comparação e seu estado, `pending`, `approved` ou `cancelled`.
+`targetSetVersion` protege a versão do conjunto de alvos.
 
-Cada entrada tem identidade e versão próprias. Selecionar várias unidades de
-estudo cria observações independentes. Editar uma entrada preserva a identidade
-e mantém a pendência. Corrigir conteúdo pode atender a várias entradas, mas
-somente suas versões integralmente atendidas são confirmadas após gravação e
-releitura. `retomar_correcao` reconcilia a tentativa original, sem reescrever o
-conteúdo. O [ciclo de revisão](auditoria-de-conformidade-instrucional.md) distingue
-essa confirmação da declaração humana de revisão.
+As projeções de página e mudança usam
+`aralearn.course-anchored-annotation-page.v1` e
+`aralearn.course-anchored-annotation-change.v1`. A comparação literal de um
+alvo usa `aralearn.course-observation-comparison.v1`. Registros anteriores
+com um único `target` continuam legíveis.
+
+Selecionar várias unidades cria uma observação com vários alvos. Editar seu
+texto mantém a identidade e a pendência. A correção registra quais versões
+procurou atender; a releitura confirma os efeitos salvos. A decisão sobre cada
+alvo é feita separadamente por `decidir_observacao`, com a referência completa
+da fila inspecionada. Aprovar parte dos alvos conserva os demais pendentes.
+`retomar_correcao` recupera a tentativa original e confere a persistência.
+O [ciclo de revisão](auditoria-de-conformidade-instrucional.md) relaciona essa
+conferência, a decisão sobre a observação e a declaração humana de revisão.
+
+### Inspeção por IA
+
+A inspeção por IA permite registrar uma segunda leitura crítica do material
+salvo. Ela usa uma base própria, que reúne o alvo, as unidades da
+microssequência em ordem de estudo, a configuração aplicada e as fontes
+pertinentes. Assim, trocar a ordem entre ensino e prática muda a base
+examinada mesmo quando o texto permanece igual.
+
+`aralearn.course-ai-inspection.v1` fornece essa base e seu estado;
+`aralearn.course-ai-inspection-change.v1` confirma a gravação do parecer.
+`registrar_inspecao` recebe a referência de `preparar_revisao` e o relatório
+`parecer`, com `summary`, `outcome`, `findings` e `checks`. A referência conserva
+a identidade da tentativa, do alvo e da base; o servidor confere acesso e
+correspondência antes de gravar.
+
+| Estado da inspeção | Significado |
+| --- | --- |
+| `unregistered` | Base anterior preservada sem declaração de inspeção por IA. |
+| `pending` | A base atual precisa de inspeção. |
+| `current` | O parecer salvo corresponde à base atual; sua conclusão aparece em `outcome`. |
+
+Novos pareceres avaliam seis dimensões: alinhamento (`alignment`), evidência
+recolhida pela prática (`evidence`), representação (`representation`), retorno
+da resposta (`feedback`), suficiência (`sufficiency`) e realização da configuração
+(`configuration`). Cada item de `checks` contém `dimension`, `result`, `reason`
+e `evidence`. Este último recebe de um a seis trechos da base, com até 500
+caracteres cada. A justificativa comporta até 1.000 caracteres.
+
+O resultado de cada dimensão é `sufficient`, `insufficient` ou
+`not_applicable`. `consistent` exige ausência de pendências em `findings`;
+`needs_attention` exige pelo menos uma. Qualquer dimensão `insufficient`
+exige `needs_attention`. O contrato também admite `human_preference_retained`
+para registrar uma preferência humana preservada, conservando a mesma regra
+para insuficiências. Os [critérios da auditoria](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal)
+explicam como examinar práticas, fontes e configuração.
+
+A leitura corrente apresenta o parecer apenas enquanto ele corresponde à base.
+Um novo parecer substitui o registro protegido do alvo; os recibos, com os
+argumentos originais, recuperam tentativas anteriores durante seu prazo de
+retenção. Pareceres de contratos
+anteriores permanecem legíveis quando presentes, mas uma nova gravação exige
+as seis dimensões. Uma tentativa antiga de cinco dimensões só pode ser
+recuperada pelo recibo exato já salvo.
+
+O estado `current` e a conclusão `consistent` respondem a perguntas diferentes:
+o primeiro verifica a base; a segunda expressa o julgamento registrado. Para
+atender a uma exigência de inspeção, o sistema pede ambos, as seis dimensões e
+ausência de insuficiência. A avaliação humana e a investigação dos efeitos
+educacionais conservam seus próprios procedimentos.
 
 ## Dados de autoria
 
@@ -615,18 +678,19 @@ Uma leitura pode ser maior que a resposta admitida pelo canal. Nesse caso, o
 serviço devolve uma parte do conteúdo e uma referência para obter a seguinte.
 `temMais: true` e `continuacao` não nula indicam que a leitura está incompleta.
 O cliente repete a mesma tarefa e todos os argumentos da consulta inicial,
-acrescentando somente `continuacao` com o valor recebido, sem editá-lo. Isso inclui
-`plano` e `explicacoes`, quando enviados: o cursor não substitui esses argumentos.
+acrescentando somente `continuacao` com o valor recebido, sem editá-lo. Filtros,
+seleções de curso e demais argumentos permanecem os da consulta inicial.
 A ordem das chaves dos objetos é indiferente; a ordem das listas e os valores
 precisam permanecer iguais. Se a revisão do curso mudar entre páginas, a leitura
 reinicia para evitar combinar estados diferentes. A mensagem de erro distingue
 mudança da revisão de mudança dos argumentos.
 
-Consultas extensas, como listas de cursos, fontes ou materiais de revisão, utilizam
-continuação. No preparo de uma parte, as páginas carregam a proposta, a explicação
-literal, as fontes e a revisão das microssequências; o repertório do curso avança com a
-mesma continuação. A paginação limita o volume transferido em cada resposta; a decisão
-pedagógica continua determinando quanto material precisa ser lido.
+As tarefas `retomar_curso`, `consultar_planejamento`, `preparar_revisao`,
+`consultar_fontes`, `consultar_componentes`, `exportar_autoria` e
+`comparar_cursos` aceitam continuação. O conteúdo de cada leitura acompanha sua
+finalidade: a revisão, por exemplo, recupera o material literal, as fontes e o
+percurso pertinente. A paginação limita o volume transferido em cada resposta;
+a decisão pedagógica determina quanto material precisa ser lido.
 
 Resultados extensos podem usar fragmentos de JSON, formato que organiza dados
 em campos. Esses fragmentos são trechos literais de um documento: precisam ser
@@ -647,7 +711,13 @@ pedagógica. Ambas exigem acesso de autoria aos cursos selecionados.
 
 ## Limites de tamanho
 
-`salvar_mapa_curricular` confirma a persistência com situação, revisão do curso e referência para aprovação, sem devolver a árvore curricular. `consultar_planejamento` com `resumo: true` recupera essa referência vigente quando a resposta se perde. A referência não substitui a inspeção nem a aprovação explícita da pessoa. A leitura sem resumo preserva o mapa integral por continuação; `parte` ou `microssequencia` restringem o planejamento ao foco e às dependências pertinentes. A retomada também respeita o foco informado.
+`salvar_mapa_curricular` confirma a persistência com situação, revisão do curso
+e referência para aprovação. `consultar_planejamento` com `resumo: true`
+recupera essa confirmação quando a resposta se perde. Para aprovar o mapa, a
+pessoa inspeciona seu conteúdo e declara a decisão sobre aquela versão. A
+leitura sem resumo recupera o mapa integral por continuação; `parte` ou
+`microssequencia` restringem o planejamento ao foco e às dependências
+pertinentes. A retomada também respeita o foco informado.
 
 O contexto paginado usa até 12 mil unidades UTF-16 e 16 KiB por trecho serializado, reservando espaço para o envelope do canal. Textos maiores permanecem recuperáveis integralmente por fragmentos; o tamanho de uma confirmação de mapa não cresce com a árvore do curso.
 

@@ -58,10 +58,13 @@ primeiro cálculo de mediana.
 A pessoa autora pode corrigir esse rascunho e aprovar as decisões que consegue
 inspecionar. O planejamento pode avançar progressivamente: a explicação de uma
 microssequência já existente pode ser desenvolvida enquanto o mapa ainda está
-em rascunho. A aprovação do mapa completo antecede a organização das partes de
-produção e das unidades que elas entregam. Essa aprovação delimita o percurso.
-Explicações e unidades recebem revisão própria quando seu conteúdo estiver
-disponível para inspeção.
+em rascunho. O processo acordado define os pontos de inspeção: quando inclui a
+revisão do mapa, essa decisão antecede a produção das partes. A pessoa também
+pode autorizar produção autônoma para o curso; nesse caso, o trabalho prossegue
+sobre o mapa em rascunho, com as condições de pesquisa e o escopo preservados.
+Explicações e unidades recebem revisão própria quando a pessoa inspeciona o
+conteúdo salvo e declara essa revisão. A autorização para produzir mantém esses
+registros independentes.
 
 ### Por que a microssequência existe
 
@@ -87,8 +90,8 @@ utilidade precisa ser examinada nos cursos e públicos em que for usada.
 
 ### Parte como coordenação operacional
 
-Depois da aprovação do mapa, a autoria pode reunir microssequências em uma
-**parte**, conjunto de trabalho que será produzido e revisado. Partes sucessivas
+Com as microssequências previstas no mapa e o trabalho autorizado, a autoria
+pode reuni-las em uma **parte**, conjunto de produção e inspeção. Partes sucessivas
 podem formar um **lote**. Essa divisão coordena o trabalho segundo as relações
 que precisam permanecer juntas e a quantidade de material que a pessoa consegue
 inspecionar. Partes e lotes ficam fora da hierarquia curricular. O fluxo está em
@@ -134,8 +137,8 @@ Para interpretar a média, o estudante precisa relacionar o total observado,
 a quantidade de observações e a distribuição desse total. Cada conhecimento
 que exige acompanhamento próprio pode formar uma **unidade de análise
 instrucional**: um recorte planejado de ideia, relação, condição ou procedimento.
-Aprender os nomes “total” e “quantidade” não garante compreender a relação entre
-eles. Essa relação pode exigir desenvolvimento próprio.
+Os nomes “total” e “quantidade” identificam elementos do cálculo. Compreender
+como se relacionam pode exigir desenvolvimento próprio.
 
 O recorte depende do público e da tarefa. Ele não corresponde automaticamente
 a uma palavra nem a uma entidade comprovadamente presente na mente. A distinção
@@ -152,8 +155,9 @@ pertinentes. A existência da atividade registra uma oportunidade oferecida;
 o desempenho depende do que o estudante fizer.
 
 Os parâmetros tornam explícitas escolhas desse desenho. Um teto de novidades
-orienta quantos recortes serão introduzidos numa unidade expositiva, que
-desenvolve conteúdo antes de solicitar uma resposta. Outros parâmetros orientam
+orienta quantos recortes serão introduzidos numa unidade expositiva ou mista.
+A expositiva desenvolve o conteúdo; a mista reúne desenvolvimento e prática na
+mesma unidade. Outros parâmetros orientam
 como explicar e praticar esses recortes. Alvos de palavras cuidam da extensão
 editorial, enquanto as preferências do processo organizam a conversa e os
 conjuntos de produção. O
@@ -173,8 +177,10 @@ produzido, sem constituir um perfil inferido do estudante.
 A **configuração aplicada** conserva as escolhas usadas na produção de uma
 unidade. Mudar a intenção atual não reescreve essa produção. A comparação entre
 intenção e aplicação ajuda a localizar o que precisa ser revisto. O software
-confere referências e contagens; a pessoa examina se a relação foi explicada,
-se a fonte a sustenta e se as práticas apresentam variação substantiva.
+confere referências e contagens. A inspeção por IA confronta o conteúdo salvo
+com o objetivo, as fontes e a configuração aplicada e registra um parecer.
+A pessoa autora examina o material e decide sobre sua revisão. Investigar o que
+o estudante aprendeu exige ainda observar seu desempenho em tarefas pertinentes.
 
 Um recorte pode ser desenvolvido em várias unidades: sua introdução é contada
 uma vez e as continuações o utilizam ou retomam. Uma unidade também pode reunir
@@ -186,7 +192,8 @@ regras dessa conferência estão em
 
 ## Profundidade sem condensação
 
-A **explicação** é o texto-base autorado da microssequência. Ela torna explícitos
+A **explicação** é a base de conteúdo didático autorado da microssequência.
+Pode reunir texto, representações e áudio conforme o assunto. Ela torna explícitos
 os pressupostos necessários, desenvolve conceitos e relações por meio de
 exemplos e delimita o conteúdo com suas fontes. Todas as
 unidades desse conjunto dão acesso ao mesmo conteúdo pelo comando
@@ -204,7 +211,7 @@ relação inteligível ou uma tarefa com os dados necessários para resolvê-la.
 A suficiência para iniciantes é examinada no conjunto do percurso e da
 explicação acessível. Essa base é diferente das **formas de explicação**, como
 definição, mecanismo ou contraste, exigidas pelos parâmetros das unidades.
-Uma forma desenvolvida apenas no texto-base não satisfaz uma exigência de
+Uma forma desenvolvida apenas na base explicativa não satisfaz uma exigência de
 apresentá-la nas unidades. A distinção permite inspecionar o que foi ensinado
 em cada lugar.
 
@@ -276,8 +283,8 @@ solicitam operações diferentes. O gesto de tocar ou digitar é apenas o meio
 pelo qual uma resposta pode ser registrada.
 
 A escolha do formato segue essa demanda. Alternativas permitem discriminar
-opções; uma lacuna pede completar algo no próprio texto, tabela, fórmula ou
-diagrama. Digitação pode solicitar uma resposta localizada. Uma previsão ou a
+opções; uma lacuna pede completar um campo no próprio texto, tabela ou
+diagrama que ofereça esse tipo de interação. Digitação pode solicitar uma resposta localizada. Uma previsão ou a
 comparação entre justificativas pode ser recolhida por alternativas; isso não
 equivale à elaboração espontânea de uma justificativa. Ordenação é pertinente quando reconstruir
 a sequência faz parte do conhecimento. Correspondências simples usam lacunas
@@ -298,7 +305,11 @@ Cada prática declara o que pretende examinar e qual conhecimento anterior a
 torna respondível. A solicitação precede a solução, e a revelação depende de
 ação explícita. Variar apenas palavras ou aparência pode conservar a mesma
 tarefa; uma variação substantiva muda um aspecto relevante do caso, do contexto,
-da representação ou do apoio. Quando **transferência**, isto é, uso em tarefas
+da representação ou do apoio entre oportunidades do mesmo requisito. A
+contagem considera o conjunto da microssequência, inclusive práticas em
+unidades diferentes. Com uma única oportunidade, a configuração automática pode
+registrar que nenhuma dimensão de variação entre oportunidades é exigida.
+Comparar uma prática com o exemplo ensinado examina outra relação. Quando **transferência**, isto é, uso em tarefas
 novas, é um objetivo, precisam existir oportunidades e avaliação compatíveis:
 o efeito não se estende automaticamente a qualquer tarefa
 ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
@@ -493,7 +504,7 @@ com a pergunta. As decisões deste modelo são examináveis por esses meios:
 ## Referências
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
-- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
+- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), artigo 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Bandura (2001)](referencias.md#ref-bandura2001agency): Albert Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26.
@@ -502,7 +513,7 @@ com a pergunta. As decisões deste modelo são examináveis por esses meios:
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing): Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (2008). **Spacing Effects in Learning: A Temporal Ridgeline of Optimal Retention.** *Psychological Science*, 19(11), p. 1095–1102.
-- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
+- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), artigo e13997.
 - [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
@@ -512,9 +523,9 @@ com a pergunta. As decisões deste modelo são examináveis por esses meios:
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
 - [Mayer (2009)](referencias.md#ref-mayer2009multimedia): Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press.
 - [Monk et al. (2008)](referencias.md#ref-monk2008resumption): Christopher A. Monk; J. Gregory Trafton; Deborah A. Boehm-Davis (2008). **The Effect of Interruption Duration and Demand on Resuming Suspended Goals.** *Journal of Experimental Psychology: Applied*, 14(4), p. 299–313.
-- [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.
+- [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), artigo e3292.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
-- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
+- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, artigo 422.
 - [Reisslein et al. (2006)](referencias.md#ref-reisslein2006expertisereversal): Jana Reisslein; Robert K. Atkinson; Patrick Seeling; Martin Reisslein (2006). **Encountering the Expertise Reversal Effect with a Computer-Based Environment on Electrical Circuit Analysis.** *Learning and Instruction*, 16(2), p. 92–103.
 - [Renkl (2002)](referencias.md#ref-renkl2002learning): Alexander Renkl (2002). **Worked-Out Examples: Instructional Explanations Support Learning by Self-Explanations.** *Learning and Instruction*, 12(5), p. 529–556.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.

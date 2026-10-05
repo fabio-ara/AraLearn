@@ -1,5 +1,9 @@
 # Experimentos de autoria da revisão v7
 
+Registro dos ensaios de setembro de 2026. O protocolo, as saídas e as avaliações
+preservam os contratos daquela rodada. A [autoria por MCP](../../autoria-mcp.md)
+descreve o fluxo vigente.
+
 Estes arquivos preservam gerações reais de GPT 5.6 Luna, feitas em sessões
 independentes por ensaio, com esforço alto. O conteúdo é sintético. Não houve
 execução desses cursos em produção nem avaliação com estudantes. Os resultados
@@ -22,9 +26,11 @@ Para repetir a verificação estrutural contra o runtime do checkout:
 node scripts/verifyV7AuthoringExperiments.mjs
 ```
 
-O [resultado registrado](assessment.json) distingue parsing, contrato da
-ferramenta, resolução do foco e validação dos componentes. O script não chama
-um modelo nem aprova qualidade pedagógica. Os pareceres abaixo resultam da
+O [resultado registrado](assessment.json) distingue leitura da sintaxe JSON,
+contrato da ferramenta, resolução do foco e validação dos componentes. O
+script imprime uma nova conferência no terminal, preservando esse resultado
+histórico. Ele usa os contratos experimentais arquivados e os validadores do
+código local. Os pareceres pedagógicos abaixo resultam da
 leitura independente das gerações e da revisão crítica do orquestrador.
 
 | Condição | Sessões | Microssequências produzidas | Resultado estrutural final |

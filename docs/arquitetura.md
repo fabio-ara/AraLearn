@@ -53,14 +53,15 @@ controles próprios. Revisar o conteúdo mantém o mesmo curso, sem criar uma á
 versões.
 
 A microssequência pode receber primeiro uma proposta de explicação,
-`explanationPlan`, e depois o texto-base, `explanation`. Essa
+`explanationPlan`, e depois sua base explicativa, `explanation`, que pode combinar
+texto, representações visuais e áudio. Essa
 [explicação](explicacao-e-revisao-humana.md) desenvolve o assunto antes ou junto das
 unidades; cada unidade registra qual base foi usada na sua produção. Em Estudo, o
-texto abre sobre o conteúdo corrente e utiliza os mesmos componentes, ferramentas e
-referências bibliográficas das unidades.
+conteúdo abre sobre a unidade corrente e utiliza os mesmos mecanismos de componentes,
+ferramentas e citações das unidades, com suas próprias referências bibliográficas.
 
-As fontes ligadas a esse texto usam o alvo `microsequence_explanation`, com ocorrências
-localizadas na própria explicação. O texto integra a cópia local do curso, mas PDFs e
+As fontes ligadas a essa base usam o alvo `microsequence_explanation`, com ocorrências
+localizadas na própria explicação. Seu conteúdo integra a cópia local do curso, mas PDFs e
 áudios continuam dependendo da autorização do servidor e de acesso à rede. A leitura
 local também preserva uma única revisão coerente do curso.
 
@@ -72,6 +73,29 @@ na interface; MCP e Actions podem executar essa decisão somente após sua manif
 expressa. Gerar, corrigir ou importar conteúdo não declara revisão por implicação. Uma
 resposta incerta conserva a identidade do pedido para
 [reconciliação](persistencia-relacional.md#escritas-concorrentes).
+
+## Inspeção pedagógica por IA
+
+Uma atividade pode aceitar dados válidos e ainda exigir algo que a explicação deixou
+de ensinar. Para examinar essa relação, a inspeção por IA lê o alvo dentro de sua
+microssequência: considera o público, o planejamento pertinente, a explicação, as
+unidades na ordem salva, a configuração aplicada e as fontes. A base inclui também
+as explicações das dependências curriculares necessárias ao foco.
+
+O parecer registra seis critérios, com justificativa e passagens da base lida:
+alinhamento, evidência, representação, feedback, suficiência e realização da
+configuração. Na explicação, os critérios sobre prática usam as respostas e os
+retornos das unidades da microssequência. O servidor confere a estrutura do parecer,
+a presença dos trechos citados e contradições que consegue verificar. O julgamento
+pedagógico continua sendo atribuído ao assistente que produziu o parecer.
+
+Cada explicação ou unidade conserva seu próprio registro `ai_inspection`. A impressão
+digital `basisHash` identifica o conjunto examinado. Uma mudança nesse conjunto pode
+deixar pendentes vários pareceres da mesma microssequência, mesmo quando apenas uma
+unidade foi editada. O estado `current` informa que a base continua igual; o resultado
+do parecer informa se há ressalvas. A declaração humana e a política de acesso
+permanecem decisões próprias, como explica [Explicação e revisão
+humana](explicacao-e-revisao-humana.md).
 
 ## Áreas do produto
 
@@ -178,12 +202,14 @@ O [contrato do plano](aralearn-contract.md#curso-e-estrutura) registra os campos
 completos. No mapa, cada item obrigatório do escopo aponta primeiro para os pontos em
 que será ensinado e, depois da produção, para as unidades que o desenvolveram.
 
-O mesmo mapa pode existir como rascunho ou aprovado. A aprovação é uma propriedade do
-artefato completo que estava inspecionável; ela não aprova unidades futuras. Partes só
-podem agrupar microssequências já pertencentes ao mapa aprovado. Elas descrevem lotes
-de planejamento focal, produção e revisão, mas não acrescentam nível curricular.
+O mesmo mapa pode existir como rascunho ou aprovado. A aprovação se refere ao
+artefato completo que a pessoa pôde inspecionar. Partes agrupam microssequências
+já pertencentes a esse mapa e descrevem lotes de planejamento focal, produção e
+revisão, mantendo a hierarquia curricular. Por padrão, a produção aguarda a aprovação
+do mapa. Uma autorização expressa para produção autônoma permite trabalhar com o mapa
+em rascunho e conservar esse estado durante a produção.
 
-Com mapa aprovado e percurso autorizado, a preparação reúne somente o lote, sua
+Com mapa existente e percurso autorizado, a preparação reúne somente o lote, sua
 configuração e o repertório necessário. O tamanho do lote não exige uma nova
 confirmação por si só; uma decisão material ainda aberta continua exigindo
 intervenção. A materialização grava as unidades, as aplicações de desenho e os
@@ -192,8 +218,9 @@ coerente com a base preparada; uma base nova ou alterada precisa ser incluída e
 validada. Também atualiza, por derivação do estado corrente, onde cada ideia foi
 introduzida, usada ou retomada.
 
-Não existe quantidade-alvo de unidades. O teto de novas unidades de análise muda a
-distribuição da novidade, não o inventário nem a profundidade necessária.
+A quantidade de unidades decorre do conteúdo e das condições de desenho. O teto de
+novas unidades de análise orienta a distribuição da novidade, preservando o
+inventário e a profundidade necessária.
 
 ## Desenho aplicado à unidade de estudo
 
@@ -262,8 +289,9 @@ outro curso; consulte [persistência](persistencia-relacional.md#cópia-independ
 
 Uma [fonte](fontes-e-citacoes.md) identifica o material utilizado; uma âncora localiza
 uma página, seção ou trecho desse material. Ambas guardam o estado corrente. A versão
-serve à concorrência e aos links diretos; versões antigas não constituem uma
-biblioteca paralela. Uma atribuição liga fontes e âncoras a um item do plano,
+serve à concorrência e aos links diretos. Observações autorais pendentes podem
+conservar uma base anterior para comparação, incluindo seus vínculos e arquivos;
+essas bases são liberadas conforme as decisões sobre os alvos. Uma atribuição liga fontes e âncoras a um item do plano,
 explicação ou unidade de estudo. Cada vínculo possui identidade, papéis explícitos e
 ocorrências opcionais em folhas textuais do catálogo. Trecho ambíguo conserva o
 vínculo e fica pendente de revisão; o sistema não inventa outra posição. Citação
@@ -298,14 +326,22 @@ referências e reservas antes de remover o arquivo. Detalhes ficam em
 
 ## Observações e revisão
 
-Uma observação pertence a uma pessoa e a um alvo. Selecionar várias unidades de estudo
-cria registros separados; não existe entidade de lote. A caixa autoral pode consultar
-as abertas por escopo.
+Uma observação autoral expressa uma intenção e pode reunir até 64 alvos, entre
+explicações e unidades. Cada alvo conserva sua base anterior e recebe uma decisão
+própria. A caixa de observações apresenta o conjunto e permite trabalhar por recorte.
+Observações de estudantes permanecem vinculadas ao alvo individual.
 
-Preparar revisão amplia o foco para outras unidades relacionadas, por exemplo, pela
-progressão, pelos pré-requisitos ou pela prática. Aplicar correções grava o conjunto aprovado e a
-inspeção seguinte permite conferir o resultado. Reversibilidade cotidiana vem de poder
-reabrir qualquer ponto e revisá-lo outra vez.
+Preparar revisão amplia o foco para unidades relacionadas pela progressão, pelos
+pré-requisitos ou pela prática. Aplicar correções grava o conteúdo; a releitura e a
+inspeção permitem examinar seus efeitos. A decisão humana posterior pode aceitar o
+conteúdo vigente ou encerrar a incidência sem alteração, preservando os demais alvos
+pendentes.
+
+Ao decidir um alvo, o sistema libera sua referência à base anterior. Bases
+compartilhadas e arquivos continuam conservados enquanto outro alvo precisar deles.
+Quando todos os alvos terminam, o texto da observação é removido e o registro terminal
+entra na retenção de 14 dias. Uma nova intenção sobre um alvo já decidido recebe nova
+observação.
 
 ## Dados de autoria
 
@@ -315,12 +351,12 @@ dimensão pode mostrar, por exemplo, como as ideias se distribuem pelas unidades
 como as práticas usam os componentes. Outro grupo descreve intervenções de autoria,
 como observações e a origem registrada da última revisão.
 
-Esse retrato não usa telemetria de atenção, conversa ou rastreamento da execução. A
-exportação JSON combina a leitura autoral com o documento literal do curso. Ela não
-inclui progresso, contas, credenciais ou bytes dos arquivos. A comparação confronta
-inventários completos e recortes selecionados, conserva a distinção entre parâmetros
-solicitados e aplicados e informa ausências. Igualdade de contagens ou declarações não
-comprova equivalência pedagógica.
+Esse retrato descreve os registros de autoria. A exportação JSON combina a análise com
+o documento literal do curso e os metadados de suas fontes. Estado pessoal, contas e
+bytes de arquivos ficam nos serviços responsáveis por eles. A comparação confronta
+inventários completos e recortes selecionados, distingue parâmetros solicitados e
+aplicados e informa ausências. A equivalência pedagógica exige examinar também o
+significado do conteúdo e das atividades.
 
 ## Réplica local e funcionamento sem rede
 
@@ -329,8 +365,8 @@ navegador para guardar dados estruturados, conserva composição validada, progr
 posição, marcas para rever, observações próprias e escritas delimitadas que ainda
 precisam de confirmação. `BroadcastChannel` informa outras abas sobre mudanças. No
 modo automático, foco, visibilidade e retorno da conexão podem provocar releitura. O
-modo manual suspende atualizações de fundo de conteúdo e filas pessoais; a nuvem
-executa a sincronização solicitada. Escrita explícita e verificação de acesso
+modo manual suspende atualizações de fundo de conteúdo e filas pessoais; o controle
+com ícone de nuvem permite solicitar a sincronização. Escrita explícita e verificação de acesso
 continuam sujeitas à rede. Rascunhos e conflitos não são descartados para aplicar uma
 atualização.
 
@@ -358,9 +394,10 @@ instrucional. `paragraph` e `choice` são componentes válidos, não alternativa
 automáticas. Conforme o papel instrucional, uma tabela, um trecho de código ou um
 diagrama podem representar melhor o conteúdo.
 
-A preparação da aplicação, chamada build, sincroniza os módulos compartilhados com as
-Edge Functions, as funções remotas do Supabase. Essa verificação impede que navegador
-e servidor interpretem o mesmo conteúdo com versões incompatíveis.
+Os módulos compartilhados possuem uma cópia de execução nas Edge Functions, as funções
+remotas do Supabase. `resources:sync-edge` atualiza essa cópia a partir das fontes em
+`src/`; os verificadores de preparação conferem a correspondência. Assim, navegador
+e servidor recebem os mesmos contratos de conteúdo.
 
 O registro delega validação das relações da unidade, preparação de conteúdo, interação
 de resposta e reconciliação de edição aos contratos dos pacotes. O editor trabalha com
@@ -392,8 +429,8 @@ administrativo ou que uma leitura pública alcance relações privadas:
 
 Migrações, os arquivos SQL versionados em `supabase/migrations`, reproduzem o esquema
 do banco. O manifesto informa a revisão e as capacidades exigidas pelos clientes e só
-avança depois que a capacidade inteira está instalada. A nova versão do cliente recusa
-um banco incompatível, em vez de assumir silenciosamente um contrato antigo.
+avança depois que a capacidade inteira está instalada. A nova versão do cliente
+confere esse manifesto e interrompe a operação se o banco for incompatível.
 
 Uma exportação de backup, ou dump, do PostgreSQL preserva dados relacionais e
 metadados, mas não os bytes do Storage. Recuperação completa exige também backup dos
@@ -415,7 +452,8 @@ pela API do Storage.
 | resolução confiável | `courseHumanTaskExecutor.js` e casos de uso focais |
 | bordas HTTP | `courseApiServer.js`, `mcpServer.js` e `courseActionServer.js` |
 | persistência remota | `courseSupabaseAdapter.js` e migrations |
-| contratos de componentes | `src/resources/` e mirror da Edge |
+| contratos de componentes | `src/resources/` e cópia compartilhada em `supabase/functions/_shared/aralearn/runtime/` |
+| inspeção pedagógica por IA | `src/domain/courseContentInspection.js`, `coursePedagogicalAudit.js` e base focal nas migrações |
 
 Consulte [Supabase no AraLearn](supabase.md) para operação local, Storage e
 implantação; [Persistência relacional](persistencia-relacional.md) para a réplica e as

@@ -30,10 +30,10 @@ A comparação conserva todos os recortes. Se a leitura A descreve uma relação
 e a leitura B a divide em X1 e X2, o registro mantém os dois inventários e anota
 a proposta X → {X1, X2} com sua justificativa. Quando apenas X1 corresponde
 parcialmente a X, X2 permanece visível como diferença. Inverter A e B descreve a
-mesma divergência como fusão. O registro não elimina identidades para forçar
-pares um a um nem escolhe um denominador depois da leitura. O procedimento serve
-à revisão dos recortes; percentual de concordância, confiabilidade e validade
-cognitiva exigem uma avaliação independente.
+mesma divergência como fusão. O registro conserva os inventários integrais e as relações entre eles, com o
+denominador definido antes da comparação. Assim é possível examinar divergências
+que uma correspondência um a um apagaria. Percentual de concordância,
+confiabilidade e validade cognitiva exigem uma avaliação independente.
 
 ## 1. Redes: rótulo, objeto e relação
 
@@ -59,15 +59,15 @@ Ethernet.
 | N-encaminhamento | I em N1.4; relação condicional entre tabela, destino e porta | Usar apenas os três nomes acima omite o conhecimento relacional. Contar “porta” como novo recorte só é necessário se sua função não ficar compreensível no repertório e em N1.2. |
 
 **Contagem adotada:** quatro introduções nessa unidade expositiva, com quatro
-identidades mobilizadas, sem somar novamente os usos de N1.4. O trecho oferece
-tratamento inicial, mas não comprova suficiência do desenvolvimento. Se o alvo
-for diagnosticar decisões de encaminhamento, exemplos, casos desconhecidos e
-limites exigirão desenvolvimento adicional; não se declara esse escopo coberto.
+identidades mobilizadas; os usos de N1.4 conservam essas identidades. O trecho
+oferece tratamento inicial. Um objetivo que inclua diagnosticar decisões de
+encaminhamento exige desenvolver casos de destino desconhecido e outros limites,
+além de explicar por que cada decisão se aplica.
 
 **Contraste de repertório N2.** Para público que já conhece N-quadro, N-switch e
 N-mac, mas ainda não estudou N-encaminhamento, N1.4 isolado contém uma introdução
 da relação e usos de três pressupostos. Para o público de N1, essa frase isolada
-deixa as três bases sem desenvolvimento: não são três pressupostos implícitos.
+deixa as três bases sem desenvolvimento; o percurso precisa ensiná-las.
 Um inventário de “quatro palavras novas” também falha porque omite a relação e
 confunde rótulos com conhecimento.
 
@@ -157,9 +157,9 @@ de um microconto. Vocabulário cotidiano é pressuposto; a análise da ambiguida
 **Recorte adotado:** L-referência-ambígua é alvo da prática em L2 e recebe
 introdução/desenvolvimento explícito em L3. A atividade pode solicitar a
 descoberta antes da explicação, desde que a demanda esteja planejada e seja
-adequada ao repertório; essa ordem não comprova aprendizagem. A unidade completa
-é mista, com oportunidade antes do desenvolvimento. Nomes próprios e mapa são
-usados no contexto, não novos conceitos pedagógicos por serem substantivos.
+adequada ao repertório. A unidade completa é mista, com oportunidade antes do
+desenvolvimento; a aprendizagem requer avaliação própria. Nomes próprios e
+mapa compõem o contexto familiar da tarefa.
 
 **Alternativa rejeitada:** escolher Lia apenas pela proximidade ou presumir uma
 única correferência transforma hipótese em fato. Exigir o nome técnico “anáfora”
@@ -217,9 +217,9 @@ evidência precisaria especificar apoio, operação e condições antes de usar
 essas oportunidades em sua contagem.
 
 **Contraexemplo de extensão.** D3 com retorno fechado e D3 com retorno aberto
-são estados diferentes. Não foram renderizados neste corpus: altura, área visível da tela
-útil e telas equivalentes permanecem não medidos. É incorreto atribuir-lhes
-pixels ou tempo de estudo a partir do número de palavras, fórmulas ou campos.
+são estados diferentes. Neste corpus, a apresentação em tela ainda precisa ser
+medida. Altura, área útil e telas equivalentes dependem dessa observação em
+condições definidas; tempo de estudo exigiria observar o uso por pessoas.
 
 ## O que esta comparação permite concluir
 

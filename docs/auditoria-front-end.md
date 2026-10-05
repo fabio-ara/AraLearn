@@ -23,9 +23,9 @@ Em **Estudo**, percorra:
 2. percorra módulo, lição e microssequência;
 3. abra uma unidade e retorne pelos mesmos níveis.
 
-Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que **Home**
-oferece a saída global sem consumir o histórico. Acesso ao pai só deve aparecer quando
-houver ação contextual própria. Na unidade, **Visualizar**, **Editar** e **Assistência
+Confirme que **Voltar** restaura a origem real, a rolagem e o foco, e que o controle
+**Home** oferece a saída global preservando o histórico. Examine também as ações
+contextuais de acesso ao nível acima. Na unidade, **Visualizar**, **Editar** e **Assistência
 por IA** devem ser modos irmãos sobre o mesmo alvo, sem deslocar elementos cuja função
 não mudou. Verifique resposta, retorno, fontes, observações, marcação para rever,
 zeragem de progresso e retomada.
@@ -39,7 +39,7 @@ para uma observação em lote e limpe a seleção sem recolher a leitura. Focali
 uma unidade de página posterior por seus próprios comandos. Verifique preservação de
 rascunho e retomada de envio parcial.
 
-Materializar é salvar o conteúdo de um lote de produção aprovado. A
+Materializar é salvar o conteúdo de um lote de produção autorizado. A
 [autoria contextual](autoria-contextual.md) explica a relação entre esse lote e o
 percurso planejado.
 
@@ -48,13 +48,17 @@ nesta ordem:
 
 1. o mapa curricular completo apresenta módulos, lições e microssequências;
 2. a cobertura relaciona todo item obrigatório aos pontos previstos do mapa;
-3. nenhuma unidade de estudo existe antes da aprovação e da materialização;
+3. no fluxo padrão, a produção aguarda a aprovação do mapa;
 4. a aprovação se refere exatamente ao mapa que estava inspecionável;
 5. lotes de produção aparecem depois e separados da hierarquia curricular;
-6. mudar os limites de um lote não reorganiza módulos, lições ou
-   microssequências;
+6. mudar os limites de um lote preserva a organização curricular;
 7. após a produção, a cobertura mostra também as unidades em que o item foi
    desenvolvido.
+
+Exercite também a autorização expressa de produção autônoma: o mapa precisa existir,
+e a produção pode prosseguir mantendo-o em rascunho. Confira separadamente o estado do
+mapa e as declarações de revisão do conteúdo. O teste deve permitir reconhecer quem
+tomou cada decisão.
 
 Materialize ao menos duas partes. Percorra o conteúdo real na ordem e abra os detalhes
 de desenho. Quando existirem, confira os rótulos humanos **Ideias introduzidas aqui**,
@@ -81,16 +85,30 @@ do lote, inspeção do resultado e próximos ajustes. A extensão respeita a pre
 de diálogo e o que for necessário para decidir; um pedido breve na conversa não
 autoriza reduzir a explicação didática produzida.
 
-A Assistência por IA precisa demonstrar conversa, uma proposta concreta em cada
-resposta, revisão multiturmo, aceite explícito, descoberta progressiva de componentes,
-validação na apresentação real dos componentes, aplicação ao rascunho e gravação
-separada. Uma proposta
-recusada deve deixar o conteúdo corrente intacto.
+A Assistência por IA permite conversar antes de preparar uma mudança. Exercite a
+conversa em vários turnos, solicite **Preparar prévia** e confira a proposta concreta
+na apresentação dos componentes. Verifique a descoberta de componentes quando
+necessária e o aceite explícito. **Aplicar ao rascunho** leva a proposta à edição;
+**Salvar proposta** confirma a gravação. Recusar a proposta preserva o conteúdo corrente.
+
+## Pareceres de IA e decisão humana
+
+Abra a revisão da explicação e de uma unidade que tenha prática. Confira se o parecer
+apresenta sua atualidade, o resultado, os critérios e as pendências correspondentes.
+Um parecer `current` com resultado `needs_attention` precisa continuar mostrando a
+ressalva. A marca de revisão humana deve conservar sua própria identidade e seus
+comandos de declaração ou retirada.
+
+Num curso descartável, altere a ordem ou o conteúdo de uma unidade e releia a
+microssequência inteira. Confira quais bases e pareceres mudaram e se a interface
+preserva os demais. Se uma resposta de gravação se perder, retome o mesmo pedido e
+compare o resultado recuperado com a situação atual. A declaração humana exige que
+a pessoa possa inspecionar a base a que sua decisão será vinculada.
 
 ## Revisão do percurso materializado
 
-Não encerre a verificação ao conferir cartões isolados. Leia uma microssequência
-inteira como alguém que possui somente os pré-requisitos declarados. Confirme que
+Leia uma microssequência inteira como alguém que possui somente os pré-requisitos
+declarados. Confirme que
 dependências aparecem antes do uso, relações essenciais são ensinadas e as práticas
 exigem operações já preparadas.
 
@@ -121,11 +139,11 @@ navegação nem um painel paralelo.
 
 ## Dados e autorização
 
-Use somente identidades e sessões de teste autorizadas. A interface deve ocultar
-Manutenção de identidades comuns, mas isso não substitui a recusa do servidor. Do
-mesmo modo, esconder edição de quem não pode editar não substitui a [segurança em
-nível de linha](supabase.md#postgresql-esquemas-e-autorização), a comparação de
-revisões e validação da operação.
+Use somente identidades e sessões de teste autorizadas. Confira se a interface mostra
+Manutenção e edição apenas a quem pode exercê-las. Verifique também a recusa do
+servidor quando uma identidade sem permissão envia esses pedidos diretamente.
+A [segurança em nível de linha](supabase.md#postgresql-esquemas-e-autorização), a
+comparação de revisões e a validação da operação protegem o curso em todas as entradas.
 
 Para ações destrutivas, crie dados descartáveis e confira o alvo no diálogo. As ações
 **Excluir este curso**, **Sair deste curso**, **Remover dados deste dispositivo**,
@@ -159,7 +177,7 @@ menor recorte afetado e então retome o conjunto de verificações exigido para 
 ## Limite da evidência
 
 Uma interface que renderiza, persiste e responde corretamente demonstra uma
-propriedade técnica. Ela não demonstra, sozinha, compreensão, acessibilidade vivida ou
-aprendizagem. Essas perguntas exigem participantes, tarefas, instrumentos e análise
+propriedade técnica. Avaliar a compreensão, a acessibilidade vivida e os efeitos
+sobre a aprendizagem exige participantes, tarefas, instrumentos e análise
 adequados; consulte o [protocolo de avaliação do
 artefato](protocolo-avaliacao-artefato.md).

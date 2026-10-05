@@ -49,7 +49,7 @@ A tabela usa as doze definições do catálogo 1.2.1 e mostra os valores preserv
 nessa produção. O [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente)
 explica cada decisão e seu alcance. As primeiras quatro organizam o desenvolvimento da explicação e a prática:
 
-- teto de ideias novas por unidade expositiva;
+- teto de ideias novas por unidade expositiva ou mista;
 - formas de explicação requeridas;
 - mínimo de oportunidades distintas de prática por requisito;
 - dimensões de variação requeridas para a prática.
@@ -132,12 +132,21 @@ A síntese mostra:
 
 - observações humanas ainda abertas;
 - parâmetros definidos explicitamente e ainda vigentes;
-- unidades cuja última revisão observável foi manual.
+- unidades cuja última edição observável foi humana;
+- intervenções editoriais humanas e de IA, quando o registro está disponível.
 
 A tabela complementar informa observações criadas e resolvidas e agrupa unidades
-pela origem de sua criação e última revisão. As contagens descrevem intervenções
-registradas. Percentual de autoria, qualidade da colaboração e concordância
-exigiriam outros dados e critérios.
+pela origem de sua criação e última edição. A origem da edição identifica quem
+alterou o material; a [declaração de revisão autoral](explicacao-e-revisao-humana.md)
+registra, separadamente, que a pessoa afirma tê-lo inspecionado.
+
+As **intervenções observadas** contam blocos consecutivos de edição pela mesma
+origem em cada unidade. Duas gravações seguidas da IA formam um bloco; se uma
+pessoa editar e a IA voltar a editar, a sequência registra duas intervenções
+de IA e uma humana. O total agrega as unidades do recorte. Quando os registros
+começaram depois da criação do material, a tela informa que o histórico anterior
+é desconhecido. Quantidade de gravações, esforço e proporção de texto produzido
+por cada origem exigem dados próprios.
 
 Quando a origem corrente não pode ser atribuída com segurança, **Dados de
 autoria** registra a ausência. Assim, zero continua reservado a uma contagem
@@ -150,12 +159,16 @@ o planejamento e a configuração ao conteúdo efetivamente produzido e aos seus
 vínculos. Uma intervenção humana entra no cálculo quando o estado corrente
 conserva uma origem explícita com significado estável.
 
-A decisão histórica de desenho e a aplicação semântica corrente são distintas.
+A decisão histórica de desenho e a aplicação corrente ao conteúdo são distintas.
 Editar apenas o título conserva a decisão e sua aplicação, sem atualizar a data.
-Alterar o conteúdo ou a posição na estrutura conserva a decisão histórica, mas
-retira os mapeamentos anteriores da análise corrente até uma nova aplicação
-validada. A ausência informada evita atribuir automaticamente as ideias antigas
-ao conteúdo novo.
+Alterar materialmente os componentes de uma unidade retira seus mapeamentos da
+análise corrente até uma nova aplicação validada; a decisão histórica permanece.
+Assim, a análise volta a relacionar ideias e conteúdo a partir da versão revista.
+
+Alterar somente os vínculos de fontes ou reordenar unidades dentro da mesma
+microssequência preserva a aplicação instrucional. Essas mudanças afetam a base
+usada pela inspeção de IA: a relação com as fontes e a ordem de estudo também
+participam do parecer, que precisa acompanhar o estado atual.
 
 O contrato técnico `aralearn.course-authoring-analytics.v4` contém curso e
 escopo, desenho e autoria quantitativos, dados ausentes, base observada e
@@ -176,8 +189,9 @@ preservando repetições. Identidades diferentes em cópias não bastam para
 caracterizar mudança de conteúdo. Textos iguais tampouco comprovam equivalência
 semântica ou qualidade: a decisão pedagógica continua exigindo inspeção.
 
-A comparação usa os registros do curso; conversas e eventos de navegação não
-integram essa base.
+A comparação usa os registros do curso. O protocolo de uma pesquisa define
+se precisará também de conversas de autoria ou de observação da navegação e
+como obterá esses dados.
 
 ## Exportar
 

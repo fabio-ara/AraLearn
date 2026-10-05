@@ -15,18 +15,27 @@ MCP é o padrão usado para conectar o aplicativo de conversa às ferramentas do
 
 Abra o [AraLearn](https://fabio-ara.github.io/AraLearn/) e o [ChatGPT](https://chatgpt.com/) em duas abas do navegador. Use no AraLearn a conta cujos cursos deseja acessar. As contas dos dois serviços são independentes e não precisam ter o mesmo e-mail.
 
-Confira o caminho disponível na sua conta. Em 17 de setembro de 2026, a documentação oficial informa:
+Confira o caminho disponível na sua conta. As referências oficiais foram
+consultadas em 5 de outubro de 2026:
 
 - **MCP:** o modo desenvolvedor está disponível na web em contas Plus, Pro, Business, Enterprise e Education. Um workspace pode ter controles adicionais. Veja a [disponibilidade e a configuração oficiais](https://developers.openai.com/api/docs/guides/developer-mode).
-- **Actions:** contas pessoais não podem criar ou publicar GPTs novos; GPTs existentes continuam editáveis conforme plano e permissões. A criação em Business, Enterprise e Edu depende das permissões do workspace. Confira as [condições atuais para criar e editar GPTs](https://help.openai.com/en/articles/8554397-creating-and-editing-gpts-with-actions).
+- **Actions:** use este caminho quando sua conta oferecer um GPT com editor de
+  ações acessível. A disponibilidade depende das permissões e das mudanças do
+  serviço. Para workspaces Enterprise, a OpenAI documenta a
+  [transição dos GPTs para plugins](https://learn.chatgpt.com/docs/migrate-custom-gpts);
+  as Actions precisam ser reconfiguradas separadamente nessa transição.
 
-A OpenAI anunciou mudanças no uso de GPTs personalizados. Se a sua conta não oferecer o editor necessário, use o caminho MCP disponível nela. As telas podem variar com o idioma e as atualizações do ChatGPT; os nomes abaixo ajudam a reconhecer a função de cada controle.
+Para uma conexão nova, comece pelo MCP quando ele estiver disponível na sua
+conta. O AraLearn já oferece esse canal para as mesmas tarefas de autoria.
+As capturas deste manual ilustram os controles registrados na preparação do
+guia; idioma, posição e disponibilidade podem mudar no ChatGPT. Use os nomes
+e a finalidade dos campos para reconhecer o caminho na sua interface.
 
 ## MCP na conversa normal
 
 ### 1. Copiar o endereço no AraLearn
 
-No AraLearn, abra **Configurações → Conectar assistente** e escolha **Copiar endereço**. Se o navegador não permitir a cópia automática, selecione o campo **Endereço MCP** e copie manualmente. Esse endereço identifica o serviço e não é uma senha.
+No AraLearn, abra **Configurações → Conectar assistente** e escolha **Copiar endereço**. Se o navegador não permitir a cópia automática, selecione o campo **Endereço MCP** e copie manualmente. Esse endereço identifica o serviço; a autorização da sua conta será feita em outra etapa.
 
 ![Painel Conectar assistente do AraLearn com Endereço MCP e Copiar endereço](screenshots/chatgpt/aralearn-conectar-assistente.png)
 
@@ -89,9 +98,13 @@ Ao concluir, volte ao ChatGPT. Entrar no site e autorizar o ChatGPT são ações
 
 ### 6. Conferir as ferramentas e selecionar o AraLearn
 
-Abra os detalhes do AraLearn nas configurações de plugins ou apps. A conexão deve mostrar as ferramentas disponíveis. Se aparecer uma lista vazia, clique em **Atualizar** e aguarde. Esse controle relê o catálogo de ferramentas; não é um pedido para criar novamente a conexão.
+Abra os detalhes do AraLearn nas configurações de plugins ou apps. A conexão deve mostrar as ferramentas disponíveis. Se aparecer uma lista vazia, clique em **Atualizar** e aguarde. Esse controle relê o catálogo na conexão existente.
 
-Se a página do plugin oferecer **Testar no chat**, esse botão abre o caminho para uma conversa com a conexão. Se abrir no modo **Work**, mude para **Chat** e confira que AraLearn continua selecionado.
+Se a página do plugin oferecer **Testar no chat**, abra a conversa por esse
+botão e confira se AraLearn está selecionado. A
+[documentação de plugins](https://developers.openai.com/plugins/quickstart)
+também apresenta seu uso no ChatGPT Work; a consulta de leitura abaixo permite
+conferir o canal na experiência disponível na sua conta.
 
 ![Página do plugin AraLearn com o botão Testar no chat](screenshots/chatgpt/mcp-testar-chat.png)
 
@@ -103,7 +116,10 @@ Envie o [teste de leitura](#testar-sem-criar-um-curso) ao final deste manual.
 
 Este caminho é para quem pode editar um GPT. Se você recebeu um GPT já configurado, basta abri-lo e autorizar sua própria conta AraLearn quando solicitado; não precisa obter o segredo do criador.
 
-Ao configurar o seu, mantenha separadas as duas abas: no ChatGPT você edita o GPT; no AraLearn você prepara e vincula sua conexão. Use um modelo compatível com Actions, fora do modo **Pro**. Isso se refere ao modo do modelo, não ao nome da assinatura. A OpenAI descreve essa condição nas [instruções de Actions](https://help.openai.com/en/articles/9442513-configuring-actions-in-gpts).
+Ao configurar o seu, mantenha separadas as duas abas: no ChatGPT você edita o GPT; no AraLearn você prepara e vincula sua conexão. Escolha um modelo que o editor disponibilize para esse GPT com Actions e
+confira a chamada no teste de leitura. A [introdução oficial a
+Actions](https://developers.openai.com/api/docs/actions/introduction) explica
+como esse caminho usa as operações descritas no OpenAPI.
 
 ### 1. Abrir a configuração do GPT
 
@@ -216,7 +232,7 @@ Essa consulta não exige um curso de demonstração. Ela confirma leitura pela c
 | O login de Actions não termina | Confira a autenticação salva, o vínculo com o GPT correto e a conta exibida no consentimento do AraLearn. |
 | A configuração some ao reabrir o GPT | Volte ao editor, confira os campos, salve e aguarde a confirmação de atualização. |
 | O contrato das ferramentas foi atualizado | Em MCP, atualize os detalhes da conexão; em Actions, reimporte o OpenAPI e salve o GPT. Depois, abra uma conversa nova. |
-| A autoria retorna `human_read_context_changed` | O conteúdo lido mudou durante a operação. Retome a leitura coerente; esse erro não significa, por si só, falha de instalação. Não materialize sem preparo válido. |
+| A autoria retorna `human_read_context_changed` | O contexto mudou ou os argumentos da continuação diferem dos iniciais. Leia o diagnóstico, recupere o recorte com os mesmos filtros e reinicie a leitura quando a revisão tiver mudado. |
 
 Renove o login quando a autorização tiver expirado, sido revogada ou estiver ligada à conta errada. A atualização das ferramentas e a autorização da conta são etapas diferentes.
 

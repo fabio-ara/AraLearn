@@ -18,27 +18,29 @@ Ao avançar, a unidade é registrada como concluída e o aplicativo guarda seu p
 
 ## Responder a uma prática
 
-Leia a situação e a tarefa completa antes de responder. A atividade pode pedir, por exemplo, que você selecione uma alternativa, preencha lacunas ou escreva uma resposta.
+Leia a situação e a tarefa completa antes de responder. A atividade pode pedir que você selecione uma ou mais alternativas, preencha lacunas ou coloque elementos em ordem.
 
-Use **Continuar** para enviar. Se faltar algum preenchimento, o aplicativo indica o que precisa ser completado. Depois, leia o retorno sobre a resposta — também chamado de *feedback* — e use **Continuar** novamente para avançar. Esse retorno trata da resposta naquela atividade e não se acumula como nota ou classificação entre estudantes.
+Use **Continuar** para conferir a tentativa. Se faltar algum preenchimento, o aplicativo indica o que completar. Quando a resposta divergir do gabarito, use **Tentar de novo** ou **Ver resposta** para examinar a solução. O avanço fica disponível depois do acerto ou da consulta à resposta.
 
-Quando houver uma resposta incorreta, a atividade pode permitir outra tentativa ou mostrar a resposta esperada. O retorno depende do tipo de atividade. Nas respostas abertas, o aplicativo registra o preenchimento e, quando a autoria preparou um retorno, apresenta-o para você comparar com o que escreveu. A conferência do significado cabe a essa leitura humana.
+Leia o retorno sobre sua tentativa — também chamado de *feedback*. Quando a autoria preparou uma explicação adicional, **Continuar** a apresenta antes do avanço; outro acionamento segue o percurso. O resultado pertence àquela atividade. O progresso registra a passagem pela unidade, inclusive quando você consultou a resposta.
 
 Nas lacunas com alternativas, toque em uma lacuna vazia para escolher seu preenchimento. Para mudar uma escolha, toque na lacuna preenchida: somente aquele valor será limpo.
 
 ## Consultar a explicação
 
-Quando precisar desenvolver melhor o assunto, abra **Explicação** na fileira de ações da unidade. A explicação é o texto-base da microssequência: desenvolve o assunto e o liga às fontes que sustentam o percurso. Todas as unidades daquela microssequência consultam o mesmo texto, preparado durante a autoria.
+Quando precisar desenvolver melhor o assunto, abra **Explicação** na fileira de ações da unidade. Esse conteúdo desenvolve o assunto e o liga às fontes que sustentam o percurso, podendo combinar texto, representações visuais e áudio. Todas as unidades daquela microssequência consultam a mesma explicação, preparada durante a autoria.
 
-Você pode abri-la durante uma atividade; a resposta que começou a escrever permanece guardada. Essa ação consulta o texto já salvo pela autoria: não gera uma nova resposta de IA nem envia ou conclui a atividade. Ao terminar, use **Fechar explicação** ou a tecla Escape para voltar à unidade.
+Você pode abri-la durante uma atividade e manter a tentativa em andamento. A consulta apresenta o conteúdo salvo pela autoria. Ao terminar, use **Fechar explicação** ou a tecla Escape para voltar à unidade e continuar a resposta.
 
 A indicação de revisão autoral informa que o autor declarou ter inspecionado aquele conteúdo salvo. Alguns cursos permitem estudar material ainda sem essa declaração; outros exigem conteúdo revisado. Essa escolha pertence ao proprietário. A [revisão humana](explicacao-e-revisao-humana.md#revisão-independente-por-objeto) é diferente da marca pessoal **Rever**.
 
-Se ainda não houver explicação preparada, a tela informa isso e mantém o acesso às referências disponíveis.
+Se ainda não houver explicação preparada, a tela informa a ausência. As fontes próprias da unidade continuam disponíveis pelo controle **Fontes da unidade**, quando houver referências visíveis.
 
 ## Consultar as fontes de uma unidade
 
-Para conferir de onde veio uma afirmação, siga o número sobrescrito junto ao texto ou abra **Explicação**. No fim da leitura, as referências da explicação e da unidade aparecem em grupos separados. Cada referência pode identificar a obra e o trecho utilizado, como uma página, um capítulo ou um slide. O retorno junto à referência leva ao trecho do curso que a citou.
+Para conferir de onde veio uma afirmação, siga o número sobrescrito junto ao texto. **Fontes da unidade**, junto do contexto da unidade, reúne suas referências específicas. **Explicação** abre o conteúdo explicativo e, ao final dele, as referências dessa base. Cada leitura apresenta as fontes do objeto consultado.
+
+Uma referência pode identificar a obra e o trecho utilizado, como uma página, um capítulo ou um slide. O retorno junto à referência leva ao trecho do curso que a citou. Feche a consulta para retomar a unidade.
 
 O autor decide quais referências aparecem no estudo. Algumas mostram apenas a citação; outras oferecem também um link para a página ou para um PDF autorizado. Assim, uma fonte pode estar identificada mesmo quando o arquivo não está disponível para abertura. As regras de acesso estão em [Fontes, citações e referências](fontes-e-citacoes.md#referências-no-estudo).
 

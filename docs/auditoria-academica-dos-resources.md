@@ -124,7 +124,7 @@ fundir ou retirar permanecem revisáveis.
 
 | Pacote | Objeto preservado | Use quando | Não use quando | Convenção e exigência de prática |
 | --- | --- | --- | --- | --- |
-| `formula` | árvore de expressão matemática | representar frações, limites, integrais, derivadas, somatórios, produtos, funções e tensores | texto com símbolos soltos ou sintaxe LaTeX livre | MathML mantém agrupamento, operadores e delimitadores proporcionais; lacuna ocupa um campo autorizado da expressão sem destruir a árvore |
+| `formula` | expressão matemática ou química com estrutura e leitura acessível | apresentar notação no subconjunto de TeX admitido pelo contrato | comandos fora do subconjunto aceito ou tarefa que exija preencher um termo dentro da fórmula | a autoria fornece TeX e leitura textual; o componente deriva MathML, preservando agrupamentos e operadores; o pacote atual oferece apresentação e pode acompanhar resposta por escolha |
 | `matrix` | entradas organizadas por linhas e colunas com delimitadores matemáticos | álgebra linear e operações matriciais | registros possuem cabeçalhos de atributos | delimitadores finos acompanham exatamente a altura das linhas; índice e símbolo conservam peso tipográfico matemático |
 | `plane` | pontos, vetores aplicados, trajetórias e regiões em duas dimensões | geometria analítica, transformações e relações em eixos | série estatística ou figura sem coordenadas | eixos, domínios, unidades, origem e extremidade são explícitos; ponta do vetor termina na coordenada declarada |
 | `graph` | grafo ou dígrafo matemático | vértices, arestas, direção, peso, multiplicidade, laço, caminho e conectividade | mapa conceitual, arquitetura de software ou rede física | topologia é completa e a disposição não altera incidência; cruzamento é reduzido, mas grafos não planares continuam possíveis |
@@ -174,7 +174,7 @@ para relações já preservadas usa o pacote existente.
 
 ### 4.7 Áudio e ferramentas de apoio
 
-Esses cinco pacotes são componentes de conteúdo apresentados como ferramentas
+Áudio e calculadora são componentes de conteúdo apresentados como ferramentas
 da unidade. Eles oferecem apoio à tarefa, sem receber alvos de lacuna próprios.
 As condições de reprodução e uso estão em [Áudio](audio.md) e
 [Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
@@ -226,7 +226,7 @@ verificações dos demais pacotes.
 | `code` | `manter` | sintaxe, indentação e posição de token participam da tarefa | 859 |
 | `flow` | `manter` | representa controle algorítmico com decisão ou repetição; processos organizacionais usam outra gramática | 214 |
 | `tree` | `manter` | preserva hierarquia enraizada, ancestralidade e caminho até a raiz | 52 |
-| `formula` | `manter` | conserva a árvore da expressão matemática em MathML | 0 |
+| `formula` | `manter` | recebe notação TeX validada e conserva sua estrutura em MathML, com leitura textual equivalente | 0 |
 | `matrix` | `manter` | a posição algébrica das entradas é distinta de registros tabulares | 46 |
 | `plane` | `restringir` | admite somente duas dimensões, com pontos, vetores, trajetórias e regiões declaradas | 8 |
 | `graph` | `manter` | preserva topologia matemática abstrata, inclusive direção, peso e multiplicidade | 183 |
@@ -255,7 +255,10 @@ verificações dos demais pacotes.
 | `gap` | `manter` | completa um alvo semântico no componente de conteúdo, com estado independente por lacuna | 604 |
 | `ordering` | `restringir` | atua somente em alvos textuais de `paragraph` e `table`, sem representar ordem espacial | 0 |
 
-A revisão v7 retirou Dicionário, Gramática, Leitura e resposta aberta do catálogo e do runtime. A conversão de conteúdo está na [migration de remoção](../supabase/migrations/20260924172159_revisao_v7_component_removal.sql); não há renderer de compatibilidade.
+O catálogo corrente reúne os 34 pacotes da tabela. Conteúdos antigos que usavam
+Dicionário, Gramática, Leitura ou resposta aberta seguem a conversão definida
+na [migração de remoção desses componentes](../supabase/migrations/20260924172159_revisao_v7_component_removal.sql).
+O leitor atual apresenta os pacotes do catálogo corrente.
 
 O inventário sustenta a conservação atual dos pacotes restantes, com as restrições
 indicadas na tabela. Problemas de contrato, apresentação ou interação continuam
@@ -299,11 +302,11 @@ um pacote no produto nem altera as identidades do corpus.
 
 ### Legendas, instruções e prova por pacote
 
-“Necessário” abaixo significa necessário para interpretar o caso, não uma
-exigência de preencher todo campo opcional do contrato. Uma orientação é útil
-quando situa o objeto ou a operação; repetir “observe a figura” ou explicar o
-motor de desenho não acrescenta essa função. A mesma regra preserva termos
-técnicos quando eles são o objeto estudado.
+As legendas e instruções abaixo são escolhidas conforme a necessidade de
+interpretar o caso. Uma orientação útil situa o objeto ou a operação: num
+gráfico, por exemplo, pode explicar o período observado. Campos opcionais
+permanecem disponíveis para essa finalidade. Termos técnicos entram quando
+participam do conteúdo estudado.
 
 Todos os pacotes passam pela prova de contrato, exemplo, descrição acessível e
 alvos editáveis no [teste do núcleo de pacotes](../tests/kernel/resource-package-kernel.test.js)
@@ -498,9 +501,9 @@ Evidência técnica, julgamento especializado e resultados com estudantes, quand
 houver, permanecem separados. A decisão de manter, restringir, fundir, redesenhar
 ou retirar deve apontar suas razões e as limitações remanescentes.
 
-“Nenhum defeito encontrado” significa apenas que os casos executados não
-revelaram o defeito procurado. Não autoriza inferência de universalidade nem de
-eficácia.
+O relatório identifica os casos executados e os defeitos procurados, inclusive
+quando todos os casos passam. Esse alcance permite reutilizar a evidência em
+outra revisão e reconhecer quais situações ainda precisam ser examinadas.
 
 ## 10. Referências normativas e técnicas
 

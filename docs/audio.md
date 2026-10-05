@@ -6,9 +6,12 @@ da tarefa: ouvir um exemplo, reconhecer um som ou acompanhar uma explicação.
 Abra o ícone da ferramenta para escolher uma faixa, controlar sua reprodução e
 consultar a alternativa textual disponível.
 
-Há duas formas de escutar: pedir ao dispositivo que leia um texto ou reproduzir
-um arquivo já guardado no curso. Uma gravação produzida externamente só entra
-no curso depois de ser ouvida, conferida e guardada como arquivo.
+O estudo utiliza gravações guardadas no curso. Durante a preparação, a autoria
+também pode ensaiar a leitura de um texto com a voz do dispositivo. Para entregar
+esse conteúdo por publicação, compartilhamento ou materialização, cada faixa
+precisa de um arquivo incorporado. A escuta pela autoria verifica pronúncia,
+ritmo e adequação à tarefa; o sistema confere o formato e a integridade do
+arquivo.
 
 | Escolha | Quando é útil | O que considerar |
 | --- | --- | --- |
@@ -24,11 +27,13 @@ Uma voz local realiza a síntese no dispositivo. Uma voz remota envia o texto a 
 
 A velocidade aceita de 0,25 a 2 vezes o ritmo normal. O mecanismo de voz pode impor seus próprios limites. Fechar a ferramenta ou iniciar outra faixa encerra a reprodução anterior. A fala local pode funcionar sem rede quando a voz e a configuração necessárias já estão disponíveis.
 
-A voz nativa continua um ensaio de reprodução. O navegador pode anunciar
-eventos de início, pausa e fim, mas não oferece ao AraLearn uma duração de
-arquivo ou seek confiáveis para essa fala; a linha de progresso não é habilitada
-com duração determinável. Voz nativa não satisfaz a exigência de arquivo para
-materialização, compartilhamento ou publicação.
+Na voz nativa, o tempo decorrido depende dos eventos informados pelo navegador.
+A duração permanece desconhecida durante a fala; um evento de término com tempo
+válido pode informar a duração dessa execução. O controle para escolher um
+ponto da faixa, chamado de busca ou *seek*, fica disponível apenas para arquivos
+com duração conhecida. Uma nova fala pode usar outra voz ou velocidade e começa
+com duração novamente desconhecida. Esse ensaio prepara a gravação exigida para
+entrega.
 
 ## Arquivos e alternativas
 
@@ -71,10 +76,9 @@ Revogar acesso impede novas autorizações, mas não recolhe os dados já recebi
 Na Autoria, **Gerar voz** utiliza o serviço Gemini configurado no aplicativo. Informe o texto, escolha uma voz, forneça a credencial temporária e autorize o envio e o consumo da sua cota. A credencial não fica guardada no curso nem no perfil. Abrir uma unidade ou reproduzir uma faixa existente não gera outra gravação.
 
 Ouça o resultado antes de guardar. Pronúncia, sotaque e ritmo podem precisar de
-ajuste, sobretudo em conteúdo especializado. O serviço declara suporte a
-português, inglês, japonês e outros idiomas. Cada gravação ainda precisa ser
-conferida pela autoria. Consulte
-[Vozes e geração de fala](https://ai.google.dev/gemini-api/docs/generate-content/speech-generation).
+ajuste, sobretudo em conteúdo especializado. Confira as condições do idioma e
+da voz na [documentação de geração de fala](https://ai.google.dev/gemini-api/docs/speech-generation)
+e examine a gravação da tarefa concreta.
 
 A interface gera a gravação em ritmo normal; a velocidade configurada no curso é aplicada ao reproduzi-la. Para textos longos, divida a gravação por partes que façam sentido na aprendizagem. O aplicativo aceita até 16 mil caracteres por fala e não corta o texto automaticamente; o serviço também tem seus próprios limites.
 
@@ -82,21 +86,32 @@ Se a resposta da geração se perder, outro pedido pode produzir outra cobrança
 
 ## Custo, privacidade e disponibilidade
 
-A referência de preços conferida em 11 de setembro de 2026 informa um nível
-gratuito e outro pago para a geração de fala a partir de texto (*text-to-speech*,
-TTS). No Gemini 2.5 Flash Preview TTS, o nível pago indicava US$ 0,50 por milhão
-de tokens de texto de entrada e US$ 10 por milhão de tokens de áudio de saída.
+A geração de fala a partir de texto, chamada de *text-to-speech* (TTS), usa a
+cota da conta informada na autoria. Antes de gerar, confira a disponibilidade
+do modelo `gemini-2.5-flash-preview-tts`, os
+[preços](https://ai.google.dev/gemini-api/docs/pricing) e os
+[limites do projeto](https://ai.google.dev/gemini-api/docs/rate-limits).
+Esse é o identificador fixado na implementação do AraLearn. A oferta atual do
+fornecedor pode apresentar outros modelos; utilizá-los exige atualizar e
+verificar a integração.
 
-Tokens são unidades usadas pelo serviço para processar texto ou áudio; não
-correspondem a um número fixo de caracteres ou segundos. A cota e a cobrança
-dependem do projeto e da conta. Confira os
-[preços](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-preview-tts)
-e os [limites por projeto](https://ai.google.dev/gemini-api/docs/rate-limits)
-antes de gerar.
+Tokens são as unidades de processamento usadas pelo serviço. A relação entre
+tokens, caracteres e duração varia com o conteúdo, por isso uma estimativa de
+custo precisa considerar o modelo e os dados efetivamente processados.
 
-Nos serviços gratuitos, os termos do Google admitem uso do conteúdo para melhoria de produtos e revisão humana e orientam a não enviar dados pessoais, confidenciais ou sensíveis. Os serviços pagos têm condições diferentes, além de retenções ligadas a segurança e abuso. A autorização na interface não substitui a conferência das condições da conta. [Termos da Gemini API](https://ai.google.dev/gemini-api/terms).
+Os [termos da Gemini API](https://ai.google.dev/gemini-api/terms) distinguem o
+tratamento de dados conforme o serviço e a região. Nas condições gerais de uso
+gratuito, admitem melhoria de produtos e análise por revisores humanos; por
+isso, reservam esse uso a conteúdo sem dados pessoais, confidenciais ou
+sensíveis. Para serviços pagos, estabelecem tratamento próprio e retenção
+limitada ligada à segurança. Há condições específicas para o Espaço Econômico
+Europeu, a Suíça e o Reino Unido. Confira as regras da conta e da região antes
+de autorizar o envio na interface.
 
-O modelo implementado é uma versão de prévia e sua oferta pode mudar. O AraLearn não troca automaticamente de modelo ou fornecedor quando ela fica indisponível. Consulte a [política de descontinuação](https://ai.google.dev/gemini-api/docs/deprecations).
+O identificador implementado pertence à linha de prévia do fornecedor. Se a
+oferta mudar ou o modelo ficar indisponível, o pedido pode falhar até que a
+integração seja atualizada. Consulte a
+[política de descontinuação](https://ai.google.dev/gemini-api/docs/deprecations).
 
 ## Arquivo exigido para entrega
 
@@ -137,10 +152,19 @@ Um envio interrompido é recuperado com o mesmo pedido e os mesmos bytes. Prepar
 
 O adaptador converte o pedido do AraLearn para o serviço externo e recebe a gravação. A implementação usa `gemini-2.5-flash-preview-tts` e uma das 30 vozes cadastradas; a existência de outros modelos do fornecedor não altera essa escolha. [Documentação de geração de fala](https://ai.google.dev/gemini-api/docs/generate-content/speech-generation).
 
-O serviço retorna um canal de som com 24 mil amostras por segundo e 16 bits por amostra: PCM mono de 16 bits a 24 kHz. O adaptador organiza essas amostras como WAV, verifica a estrutura e calcula o hash antes de oferecer o arquivo para ser guardado. [Formato de saída](https://ai.google.dev/gemini-api/docs/generate-content/speech-generation).
+O [adaptador implementado](../src/generation/providers/geminiSpeechProvider.js)
+aceita PCM mono de 16 bits a 24 kHz: um canal de som com 24 mil amostras por
+segundo e 16 bits por amostra. Ele organiza essas amostras como WAV, verifica a
+estrutura e calcula o hash antes de oferecer o arquivo para ser guardado. Uma
+resposta com formato incompatível produz erro e exige conferir a integração com
+a [API de fala](https://ai.google.dev/gemini-api/docs/speech-generation).
 
 O adaptador aceita uma instrução de ritmo para consumidores que a solicitem explicitamente. Ela orienta o modelo, sem garantir duração exata. A interface usa apenas a velocidade de reprodução para não aplicar o mesmo ajuste duas vezes.
 
-Além do limite local de caracteres, o modelo documenta 8.192 tokens de entrada e 16.384 de saída. Como caracteres e tokens não têm uma correspondência fixa, um texto aceito localmente ainda pode exceder o limite remoto. [Limites do modelo](https://ai.google.dev/gemini-api/docs/models/gemini-2.5-flash-preview-tts).
+O limite local de 16 mil caracteres convive com os limites remotos do modelo e
+da conta. Como o serviço mede entrada e saída segundo suas próprias unidades,
+um texto aceito pelo aplicativo ainda pode exceder a capacidade remota. A
+[documentação de modelos](https://ai.google.dev/gemini-api/docs/models) permite
+conferir a oferta vigente antes de planejar gravações extensas.
 
 Testes com respostas sintéticas verificam formato, integridade e recuperação sem consumir um serviço real. A qualidade da voz, a cota da conta e a integração paga dependem de uma execução real autorizada e da escuta do resultado.

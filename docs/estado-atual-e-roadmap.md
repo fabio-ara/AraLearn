@@ -6,7 +6,7 @@ inspecionar o material junto de suas fontes, orientar alterações e declarar a
 revisão do que examinou. Depois do primeiro carregamento, o estudo pode
 continuar sem conexão.
 
-Referência atualizada em **2026-09-16**. A seção de
+Referência de implementação: **0.0.100**, conferida em **2026-10-05**. A seção de
 [verificação técnica](#verificação-técnica) indica onde consultar as condições
 em que o funcionamento foi examinado.
 
@@ -27,7 +27,7 @@ OpenAPI descreve as operações web oferecidas a outras aplicações compatívei
 | Capacidade | Quem pode usar | Conexão e condições | Limites e aprofundamento |
 | --- | --- | --- | --- |
 | Estudar, responder e rever | visitante em curso público ou pessoa com acesso | internet no primeiro carregamento e na sincronização; depois, o conteúdo guardado permite continuar sem conexão | [guia do estudante](guia-estudante.md) |
-| Consultar a explicação | visitante em curso público ou pessoa com acesso | texto já guardado dispensa internet; arquivos têm regras próprias | o texto-base pode ser salvo antes ou depois das unidades; [explicação e revisão humana](explicacao-e-revisao-humana.md) |
+| Consultar a explicação | visitante em curso público ou pessoa com acesso | conteúdo já guardado dispensa internet; arquivos têm regras próprias | a base explicativa pode ser salva antes ou depois das unidades; [explicação e revisão humana](explicacao-e-revisao-humana.md) |
 | Editar e declarar revisão autoral | proprietário, na interface ou por canal autorizado | internet para gravar e conferir a versão atual | editar o material e registrar sua revisão são ações separadas; [guia da pessoa autora](guia-professor-autor.md) |
 | Registrar observação | pessoa autenticada com acesso | internet para enviar; uma observação pendente de envio pode aguardar no dispositivo | a contribuição segue para o proprietário; [observações](observacoes-pedagogicas.md) |
 | Compartilhar e tornar público | proprietário define o acesso; destinatário ou visitante estuda | internet para alterar o acesso e abrir o curso pela primeira vez | o conteúdo e seus arquivos seguem regras de acesso próprias; [acesso](uso-do-app.md#conceder-e-revogar-acesso) |
@@ -54,8 +54,10 @@ níveis, do percurso completo às unidades que aparecem na tela. As
 objetivo próximo. O [modelo didático](modelo-didatico.md) desenvolve essa
 organização.
 
-Nas unidades, a pessoa lê, responde às atividades, consulta a explicação e suas
-referências e pode marcar conteúdo para **Rever**. Fechar um apoio devolve o
+Nas unidades, a pessoa lê, responde a escolhas, lacunas ou ordenações e pode
+marcar conteúdo para **Rever**. **Explicação** abre a base da microssequência
+com suas referências; **Fontes da unidade** permite consultar as referências
+ligadas especificamente à unidade. Fechar um apoio devolve o
 ponto de leitura e preserva uma resposta ainda não enviada. **Voltar** retorna
 à origem da navegação; **Home** abre a tela inicial.
 
@@ -85,6 +87,12 @@ nasce quando a pessoa registra expressamente sua decisão sobre uma explicação
 ou unidade salva. Produção e correção conservam registros próprios. Uma mudança
 relevante pode deixar a marca de revisão anterior desatualizada.
 
+A inspeção por IA também se vincula à base examinada. Ela confronta o objetivo
+com o conteúdo, a prática, as fontes e a configuração aplicada. O parecer
+registra seu resultado e as evidências usadas. Reordenar unidades pode exigir
+nova inspeção porque altera a sequência em que um conhecimento é ensinado e
+mobilizado. A decisão humana de revisão permanece em registro próprio.
+
 Os [parâmetros de desenho](desenho-instrucional-parametrizado.md) registram como
 apresentar o conteúdo e distribuir a prática. A intenção atual orienta o próximo
 trabalho; a configuração aplicada conserva as escolhas usadas na produção. A
@@ -96,14 +104,16 @@ As [fontes](fontes-e-citacoes.md) podem ser vinculadas à explicação ou a uma
 unidade específica, com localização no material e relação com o texto.
 A [fila de observações](observacoes-pedagogicas.md) conserva os apontamentos
 sobre cada objeto. Quando uma contribuição é editada, sua nova versão volta a
-representar o pedido atual. Uma correção confirmada encerra as versões que
-atendeu e mantém as demais na fila.
+representar o pedido atual. Uma observação autoral pode alcançar várias explicações ou unidades. Depois
+da correção, a pessoa aprova os alvos que conferiu ou encerra explicitamente
+um alvo sem alteração; os demais permanecem pendentes.
 
 **Dados de autoria** permite examinar as escolhas usadas na produção, ver em
 quais unidades elas aparecem e comparar cursos próprios. **Exportar curso e
-análise** reúne o conteúdo integral salvo e seus registros de autoria. Arquivos
-anexos, como PDFs e áudios, assim como dados pessoais, credenciais e conversas,
-seguem seus próprios fluxos e ficam fora desse artefato. O
+análise** reúne o conteúdo integral salvo e seus registros de autoria. O arquivo
+omite os bytes dos anexos, o perfil e as identidades da conta, o estado pessoal de
+estudo, as credenciais e as conversas. Textos e metadados do curso podem conter
+informações pessoais e precisam ser conferidos antes do compartilhamento. O
 [capítulo de dados de autoria](analytics-instrucionais.md) detalha seu alcance.
 
 ## Assistência por IA
@@ -111,7 +121,7 @@ seguem seus próprios fluxos e ficam fora desse artefato. O
 No estudo de um curso próprio, **Assistência por IA** abre uma conversa sobre
 uma lição, microssequência ou unidade. A pessoa pode discutir a proposta e
 pedir uma prévia antes de decidir. **Aplicar ao rascunho** confirma a escolha
-para edição; **Salvar** grava o resultado no curso.
+para edição; **Salvar proposta** grava o resultado no curso.
 
 A interface oferece atualmente três serviços: OpenAI, Gemini e DeepSeek. A
 chave de acesso fica somente durante a sessão, e a disponibilidade depende do
@@ -186,8 +196,8 @@ aos ambientes e às operações efetivamente exercitados.
 
 O [procedimento de verificação dos canais de autoria](prova-local-canais-autoria.md)
 permite reproduzir chamadas de MCP e OpenAPI e conferir seus efeitos no banco.
-O [catálogo conversacional 4.0.0](autoria-mcp.md#tarefas-disponíveis) reúne
-56 tarefas. Os testes locais do protocolo verificam a comunicação com o
+O [catálogo conversacional](autoria-mcp.md#tarefas-disponíveis), na versão
+11.1.0, reúne 56 tarefas. Os testes locais do protocolo verificam a comunicação com o
 AraLearn; o funcionamento numa aplicação externa depende também da conexão,
 da autorização e das capacidades dessa aplicação. As verificações dos serviços
 de IA possuem igualmente o alcance registrado na

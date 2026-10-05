@@ -16,6 +16,9 @@ procedimentos de consentimento, avaliação ética, autorização institucional 
 registro prévio. No Brasil, a Resolução CNS nº 510/2016 estabelece normas para
 as pesquisas em Ciências Humanas e Sociais abrangidas por seu escopo
 ([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+O enquadramento atual considera também a [Lei nº 14.874/2024](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2024/lei/l14874.htm)
+e o [Decreto nº 12.651/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12651.htm).
+A instância de ética responsável orienta os procedimentos do estudo concreto.
 
 O tipo de evidência acompanha a pergunta. Testes demonstram propriedades do
 software; satisfação informa uma dimensão da experiência de uso; compreensão,
@@ -162,7 +165,8 @@ identificar:
 
 Cada condição continua sendo um curso mutável. O protocolo precisa exportar o
 artefato efetivamente apresentado, registrar desvios, efeitos adversos e
-explicações rivais; o AraLearn não congela exposição nem atribui participantes.
+explicações rivais. A atribuição de participantes e o controle do material a que
+cada pessoa teve acesso são responsabilidades do estudo.
 Veja [Comparar condições de desenho](experimentos-instrucionais-parametrizados.md).
 
 ## Progressão de episódios de avaliação
@@ -189,7 +193,7 @@ selecionados conforme o estudo.
 | E5: avaliação de resultado | somativa, naturalística ou comparativa | a versão atende ao resultado delimitado? | análise predefinida, incerteza e limites | conclusão condicionada à versão e contexto |
 | E6: acompanhamento | somativa, naturalística | resultado, custo e governança se sustentam no tempo? | retenção, transferência, incidentes e custo | decisão longitudinal de manter, alterar ou remover |
 
-Não se avança por calendário. Perda de dados, alteração de escopo pela IA,
+O avanço depende dos critérios de cada episódio. Perda de dados, alteração de escopo pela IA,
 inacessibilidade ou conteúdo oculto devolvem o artefato à verificação técnica,
 mesmo que outras medidas sejam favoráveis.
 
@@ -202,9 +206,9 @@ A amostra considera sua experiência digital, área de conhecimento e condiçõe
 de acesso, inclusive dispositivo e conectividade. Outros participantes, como
 especialistas ou pessoas que produzem cursos, respondem a perguntas distintas.
 
-Uma pessoa especialista não substitui uma novata quando a pergunta trata de
-pressupostos ocultos; uma pessoa novata não substitui especialista na avaliação
-de convenção acadêmica.
+Pessoas novatas ajudam a localizar pressupostos que o material trata como
+conhecidos; especialistas examinam a fidelidade às convenções acadêmicas.
+Cada grupo contribui com evidência pertinente à sua experiência.
 
 ### Decisões de amostragem
 
@@ -267,6 +271,12 @@ conteúdo e formatos de resposta, em vez de repetir apenas variações do mesmo 
    de bloqueio ou aproximação;
 7. testar uma solicitação de alteração fora do escopo;
 8. registrar modelo, provedor, parâmetros, contexto e custo.
+
+Quando a tarefa usar o parecer de inspeção de IA, conserve o conteúdo examinado,
+a ordem de estudo, o resultado e suas evidências textuais. Confronte o parecer
+com uma análise independente, inclusive nos casos em que a ferramenta o aceita.
+As [regras da inspeção](auditoria-de-conformidade-instrucional.md) distinguem a
+atualidade da base, a completude do parecer e as insuficiências apontadas.
 
 ### Propriedade, acesso e autoria
 

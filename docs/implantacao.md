@@ -16,8 +16,10 @@ confere a máquina e o plano mostra o que será executado. Só a etapa de aplica
 o destino autorizado; depois, a verificação compara o que foi publicado com a candidata
 aprovada.
 
-Os comandos abaixo usam PowerShell. Execute-os na raiz de uma cópia atualizada do
-repositório. O fluxo completo pressupõe acesso administrativo à hospedagem; essas
+Os comandos abaixo usam PowerShell no Windows. Execute-os na raiz de uma cópia atualizada
+do repositório. Alguns scripts, como `deploySupabase.ps1` e os de geração Android,
+chamam executáveis `*.cmd` ou `*.bat`; a presença de PowerShell em outro sistema
+operacional, sozinha, não os torna portáveis. O fluxo completo pressupõe acesso administrativo à hospedagem; essas
 credenciais são usadas apenas na operação do servidor, nunca incorporadas ao site ou ao
 Android.
 
@@ -42,8 +44,9 @@ pwsh -NoProfile -File .\scripts\planDeployment.ps1 `
   -IncludeAndroid
 ```
 
-O perfil de hospedagem estática exige HTTPS. HTTP é aceito somente em `localhost` no
-perfil local.
+Use HTTPS nos endereços publicados. O planejador aceita HTTP para endereços locais da
+aplicação; para o projeto Supabase, essa exceção pertence ao perfil `LocalDevelopment`.
+O perfil seleciona o roteiro, enquanto os endereços identificam os serviços usados.
 
 ## Diagnosticar a máquina
 
@@ -79,7 +82,8 @@ ARALEARN_SUPABASE_PUBLISHABLE_KEY
 
 Se `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` ou `SUPABASE_DB_PASSWORD` estiver
 presente no processo de geração dos artefatos, o diagnóstico bloqueia a continuação.
-Segredo administrativo não pertence ao site, ao APK, ao Git nem a log público.
+Mantenha esses segredos somente no ambiente que administra o servidor, separado da
+geração dos artefatos públicos.
 
 ## Preparar o projeto Supabase hospedado
 
@@ -134,8 +138,8 @@ npm.cmd run test:authoring:contract
 
 Quando um formato ou operação compartilhada muda, teste também os componentes que o
 produzem e consomem. Segurança, migrações, sincronização e banco exigem também a
-integração pertinente; um teste isolado não substitui a validação necessária à
-publicação. Documentação reconhecida recebe auditorias documentais. Contratos de
+integração pertinente. A publicação exige o conjunto de verificações selecionado
+para a candidata. Documentação reconhecida recebe auditorias documentais. Contratos de
 autoria, documentos gerados para clientes, caminhos desconhecidos, dependências e CI
 ampliam o alcance.
 
@@ -146,9 +150,26 @@ ampliam o alcance.
 | Candidata estável | `candidate:ready` libera a solicitação após provas locais; CI protegida executa somente os gates aplicáveis; acionamento manual somente na `main` para recuperação | certificado e artefatos aplicáveis | nenhuma |
 | Promoção | fases de `pages.yml` na `main`, com execução e tentativa exatas | Pages e/ou APK somente quando declarados pelo certificado | preparação imutável; promoção das superfícies aplicáveis; finalização após provas reais |
 
-Na candidata estabilizada, `validate:candidate` prepara os gates locais por impacto. Banco e integração com o Supabase não entram nessa etapa local: a classificação seleciona o job da CI, em runner descartável, que executa a stack e certifica a prova. Uma mudança web não seleciona automaticamente todos os E2E comuns: a preparação executa as specs comuns alteradas, enquanto o desenvolvimento cobre os E2E focais afetados. A CI protegida usa a mesma classificação para decidir web, Android e Supabase. Metadados puros de versão em npm, OpenAPI e Android são comparados semanticamente; outras alterações de dependências, configuração, orquestração, caminhos desconhecidos ou classificação inconclusiva mantêm impacto conservador e exigem todos os gates.
+Na candidata estabilizada, `validate:candidate` prepara as verificações locais conforme
+o impacto. Banco e integração com Supabase ficam no job próprio da CI, em ambiente
+descartável. Para web, a preparação executa as specs comuns alteradas; os testes
+focais afetados indiretamente são escolhidos durante o desenvolvimento. A CI usa a
+mesma classificação para decidir quais trabalhos de web, Android e Supabase executar.
 
-`candidate:ready` consome a preparação verde já gravada, sem executar gates. Exige árvore limpa e idêntica, HEAD local igual ao remoto, base e merge-base concretas preservadas, configuração e dependências instaladas idênticas, além de PR ainda em rascunho contra `main`. Relatório ausente ou obsoleto exige nova preparação explícita. Gates estáveis usam recibos indexados por inputs; o runtime conserva helpers, fixtures e specs potencialmente lidas pelos testes selecionados. O job da CI executa banco e integração com prova fresca em runner descartável; a transição para pronta reutiliza somente aquela preparação exata e não substitui esse gate.
+O classificador compara semanticamente alterações que tratam apenas da versão em npm,
+OpenAPI e Android. Alterações de dependências, configuração ou orquestração conservam
+um alcance amplo, assim como caminhos desconhecidos e classificações inconclusivas.
+“Documentação pura” designa os caminhos reconhecidos por esse classificador:
+documentos de contratos, arquivos em `.github/` e o README Android, por exemplo,
+recebem o tratamento da área à qual pertencem. Consulte o plano antes de estimar a
+validação de uma mudança textual.
+
+`candidate:ready` consome a preparação aprovada. Ele confere que o conjunto permanece
+igual ao verificado: arquivos, configuração, dependências e base da comparação. O
+HEAD local deve coincidir com o remoto, a árvore precisa estar limpa e o PR ainda em
+rascunho contra `main`. Um relatório ausente ou desatualizado exige nova preparação.
+Os recibos locais permitem reutilizar provas com entradas idênticas; banco e
+integração recebem uma execução nova no ambiente descartável da CI.
 
 O GitHub reúne os resultados na única verificação obrigatória **Testar e validar**. O
 classificador vincula a matriz de aplicabilidade aos SHAs de base e cabeça da PR. Cada
@@ -244,7 +265,19 @@ seed ou reset, repete a lista, roda o analisador do banco, configura origens e p
 
 As origens mínimas da aplicação são o servidor local, GitHub Pages e
 `https://appassets.androidplatform.net`. Uma instalação alternativa acrescenta somente
-suas origens HTTPS exatas. Actions admite também apenas `https://chatgpt.com` e
+suas origens HTTPS exatas pelo parâmetro `-AllowedOrigin`, por exemplo:
+
+```powershell
+pwsh -NoProfile -File .\scripts\deploySupabase.ps1 `
+  -ProjectUrl https://<project-ref>.supabase.co `
+  -Mode Apply -DeployAuthoringFunctions `
+  -PublicAppUrl https://app.exemplo.org/ `
+  -AllowedOrigin https://app.exemplo.org
+```
+
+`PublicAppUrl` define o endereço de retorno e navegação; `AllowedOrigin` acrescenta
+a origem à política CORS, que permite ao navegador ler as respostas. Actions admite
+também apenas `https://chatgpt.com` e
 `https://chat.openai.com`. O script verifica o preflight da API e de cada origem oficial
 de Actions, além do OAuth, da inicialização e da descoberta de ferramentas do MCP
 hospedado. A jornada autenticada de PDF pertence à prova de integração do corte; esse
@@ -444,19 +477,18 @@ Para GitHub Pages com Supabase hospedado, a sequência é:
 10. executar `finalizar_release`: revalidar os artefatos e publicar a Release/APK correspondente.
 
 O corte precisa definir o comportamento dos clientes instalados enquanto o backend e o
-site são atualizados. Essa ordem não garante compatibilidade do cliente anterior nem
-atualização simultânea entre fornecedores: interrupções exigem saber qual parte foi
-confirmada antes de retomar. Preparar os arquivos antes da atualização retira a
+site são atualizados, inclusive o tratamento dos clientes incompatíveis. Cada serviço
+confirma sua própria atualização; uma interrupção exige conferir essas confirmações
+antes de retomar. Preparar os arquivos antes da atualização retira a
 compilação e o emulador dessa janela, mas os serviços ainda podem terminar em momentos
 diferentes. Clientes instalados também precisam receber a nova versão.
 
-A introdução das explicações e de sua revisão humana é um exemplo de alteração que exige
-coordenação: clientes anteriores à mudança recusam os novos metadados, catálogo e
-exportação, enquanto a operação de materialização no banco passa a exigir as
-explicações. Consulte os contratos da candidata e o [histórico de
-migrações](schema-change-log.md) para decidir como atender clientes ainda instalados. A
-verificação do manifesto pelo publicador não adapta os formatos recebidos por uma sessão
-antiga do aplicativo.
+Mudanças de contrato exigem atenção às sessões e instalações existentes. A
+introdução de explicações e de revisão por objeto, por exemplo, alterou os metadados
+aceitos por leitores e exportações anteriores. Consulte os contratos da candidata e o
+[histórico de migrações](schema-change-log.md) para definir quais clientes precisam
+ser atualizados. A conferência do manifesto identifica a compatibilidade exigida; a
+atualização do cliente leva essa capacidade à sessão da pessoa.
 
 O backend é aplicado pelo procedimento autorizado de `deploySupabase.ps1`, sem
 introduzir credencial administrativa nos trabalhos de geração dos artefatos. A promoção
@@ -488,8 +520,8 @@ backup quando a perda exigir retorno do banco.
 Backup do PostgreSQL não inclui automaticamente objetos do Storage. A política
 operacional precisa conservar e verificar os dois conjuntos. Código, site e APK são
 recuperados pelo Git e por uma release anterior; dados são recuperados por cópia de
-segurança do ambiente. Trocar a chave de assinatura Android impede atualização direta e,
-portanto, não é um mecanismo comum de reversão.
+segurança do ambiente. A recuperação do aplicativo Android conserva a chave de
+assinatura para permitir a atualização das instalações existentes.
 
 Antes do upgrade de um backup restaurado, confira os proprietários do banco, esquemas e
 objetos, as permissões e associações de papéis, a codificação e o provedor, localidade e
@@ -512,7 +544,8 @@ O helper `orderCourseBackupRestoreList` de
 mesma ordenação no ensaio automatizado. Ela preserva todos os itens e restrições; após
 restaurar, confira dados, permissões, manifesto e arquivos do Storage antes do upgrade.
 
-Se o site foi publicado antes do backend compatível, interrompa a promoção e republique
-o cliente anterior pelo Git. Se o backend novo já foi aplicado, investigue
-compatibilidade e dados antes de qualquer restauração. Não mantenha dois caminhos ativos
-apenas como plano de retorno.
+Se o site foi publicado antes do backend compatível, interrompa a promoção e recupere
+o artefato anterior compatível pelo fluxo de publicação. Se o backend novo já foi
+aplicado, investigue os contratos e os dados antes de escolher entre uma correção
+progressiva e a restauração. O plano de recuperação precisa identificar o par de
+versões que voltará a operar em conjunto.

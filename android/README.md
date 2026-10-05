@@ -48,9 +48,14 @@ O aplicativo solicita somente a permissão Android `INTERNET`. A camada nativa:
 - desabilita o backup Android, evitando exportar sessão e réplica local.
 
 A [configuração de segurança de rede do
-Android](https://developer.android.com/privacy-and-security/security-config) restringe
-conexões HTTP sem criptografia à versão de depuração e aos destinos locais previstos. A
-ponte de exportação aceita somente texto CSV ou JSON, com nome de arquivo restrito e até
+Android](https://developer.android.com/privacy-and-security/security-config) permite
+HTTP sem criptografia apenas para `10.0.2.2`, `127.0.0.1` e `localhost`. Esse arquivo
+XML é compartilhado pelos dois tipos de compilação. Na publicação, a WebView bloqueia
+[conteúdo misto](https://developer.android.com/reference/android/webkit/WebSettings#MIXED_CONTENT_NEVER_ALLOW)
+e o empacotamento exige uma URL Supabase HTTPS; na depuração, a WebView permite a
+conexão com o serviço local.
+
+A ponte de exportação aceita somente texto CSV ou JSON, com nome de arquivo restrito e até
 32 MiB em UTF-8, o mesmo limite do artefato de curso exportado pela API e pelo
 navegador. O destino é escolhido no seletor de documentos do Android, sem conceder ao
 aplicativo acesso geral ao armazenamento. Enquanto o seletor está aberto, o texto
@@ -67,13 +72,22 @@ processo de montagem rejeita uma chave com aparência de segredo administrativo.
 Para gerar um APK, são necessárias as ferramentas JavaScript e os conjuntos de
 desenvolvimento Java (JDK) e Android (SDK). Instale:
 
-- [Node.js 22](https://nodejs.org/en/download) ou mais recente;
+- [Node.js 22](https://nodejs.org/en/download), versão usada na integração contínua;
 - [JDK 17](https://developer.android.com/build/jdks);
 - [Android SDK com API 36](https://developer.android.com/studio/intro/update#sdk-manager);
 - dependências JavaScript, por meio de `npm ci` na raiz do repositório.
 
 O Gradle coordena a compilação e o empacotamento. Seu inicializador, Gradle Wrapper, já
-está versionado. Não é necessário instalar uma versão global do Gradle.
+está versionado e determina a versão usada pelo projeto. O aplicativo é compatível
+com Android a partir da API 24; compilação e alvo da plataforma usam a API 36,
+conforme `app/build.gradle.kts`.
+
+Os comandos npm deste guia chamam scripts PowerShell que usam `gradlew.bat`, portanto
+pressupõem Windows. Em Linux ou macOS, configure as mesmas variáveis, entre em
+`android/` e execute `./gradlew :app:assembleDebug --no-daemon` ou
+`./gradlew :app:assembleRelease --no-daemon`. Nessa chamada direta, o Gradle prepara
+os arquivos web e exige a configuração do ambiente; a recuperação automática da
+configuração publicada pertence ao script PowerShell de release.
 
 ## Configurar o serviço remoto
 
@@ -160,11 +174,9 @@ atualização direta de instalações anteriores.
 
 ### Pré-condição
 
-Escolha uma destas formas de assinatura:
-
-- informar um arquivo de assinatura próprio pelas quatro variáveis abaixo; ou
-- reutilizar o arquivo histórico `~/.android/debug.keystore`, quando ele já
-  existir e nenhuma das quatro variáveis explícitas tiver sido fornecida.
+Informe um arquivo de assinatura próprio pelas quatro variáveis abaixo. Para manter
+a capacidade de atualizar uma instalação existente, use a chave que assinou aquela
+instalação.
 
 Para um arquivo de assinatura próprio:
 
@@ -175,8 +187,13 @@ $env:ARALEARN_ANDROID_KEY_ALIAS = "<alias>"
 $env:ARALEARN_ANDROID_KEY_PASSWORD = "<senha-da-chave>"
 ```
 
-As quatro informações formam uma única configuração; não deixe apenas parte delas
-preenchida.
+As quatro informações formam uma única configuração e precisam estar completas.
+O script local possui uma alternativa histórica: se a configuração informada estiver
+incompleta ou o arquivo estiver indisponível, ele pode usar
+`%USERPROFILE%\.android\debug.keystore`, quando esse arquivo existir. Nesse caso,
+descarta as variáveis de assinatura da chamada antes de invocar o Gradle. Confirme o
+certificado do APK produzido para saber qual chave foi usada. A promoção automatizada
+exige configuração explícita e recusa essa alternativa.
 
 ### Passos
 
@@ -184,10 +201,12 @@ preenchida.
 npm run android:release
 ```
 
-Quando a URL e a chave pública não estiverem completas no ambiente, o script tenta
-recuperá-las da configuração publicada em
+Quando faltar a URL ou a chave pública no ambiente, o script tenta completar os
+valores ausentes com a configuração publicada em
 `https://fabio-ara.github.io/AraLearn/runtime-config.js`. Uma configuração explícita
-válida sempre prevalece.
+completa sempre prevalece. Ao usar outro projeto, informe os dois valores para
+preservar a correspondência entre URL e chave. A promoção automatizada exige ambos
+explicitamente, vinculados à candidata validada.
 
 ### Resultado esperado
 
@@ -204,11 +223,12 @@ administrativa.
 
 ## Autenticação móvel
 
-O retorno `aralearn://auth/callback` transporta somente um código temporário. O fluxo
+O login usa `aralearn://auth/callback` para devolver um código temporário. O fluxo
 [PKCE](../docs/supabase.md) vincula esse código ao dispositivo que iniciou o login por
 meio de um verificador guardado no IndexedDB. A tela nativa que recebe o retorno — uma
-*Activity* Android — encaminha a consulta ao aplicativo interno. Retornos que tragam
-tokens de acesso ou renovação diretamente são rejeitados.
+*Activity* Android — encaminha a consulta e o fragmento ao aplicativo interno. A
+validação no cliente web aceita o fluxo com código e rejeita credenciais de acesso
+ou renovação entregues diretamente pelo retorno.
 
 O esquema personalizado é adequado ao ambiente atual, mas outro aplicativo pode
 registrar o mesmo esquema e interromper o retorno. Uma distribuição em larga escala deve

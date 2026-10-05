@@ -6,14 +6,14 @@ No AraLearn, a **fonte** é o cadastro da obra ou material. A **referência bibl
 
 Esses registros ajudam a voltar ao material durante a revisão. Conferir a interpretação exige ler a fonte e compará-la com a afirmação. Formatar uma referência ou anexar um PDF realiza outra parte do trabalho: torna o material identificável e, quando autorizado, acessível.
 
-Toda afirmação substantiva factual, conceitual, histórica, científica ou técnica
-precisa de evidência. Afirmações contíguas sustentadas pela mesma passagem podem
-compartilhar uma citação. Exemplos construídos, transições pedagógicas e
-instruções não exigem citação artificial. Um vínculo geral, sem ocorrência no
-texto ou sem âncora na obra, não comprova sustentação; uma fonte exclusivamente
-curricular também não conta como evidência técnica. A autoria precisa conferir
-a cobertura e a correspondência entre afirmação e passagem: a validação dos
-registros não substitui essa leitura.
+Afirmações substantivas sobre o assunto estudado precisam de evidência
+localizável. Afirmações próximas sustentadas pela mesma passagem podem
+compartilhar uma citação. Exemplos construídos são identificados como tais;
+transições e instruções cumprem sua função didática. A revisão compara cada
+afirmação com a passagem indicada na obra e confere o papel da fonte: uma
+ementa delimita a cobertura curricular, enquanto a explicação técnica precisa
+de fundamentação pertinente. Vínculos gerais ajudam a localizar obras no
+acervo; a sustentação de um trecho requer essa correspondência mais precisa.
 
 ## Registrar a obra e seu papel
 
@@ -24,7 +24,7 @@ no estilo ABNT ou APA escolhido para o curso. Abrir uma referência leva à fich
 ícone de endereço abre sua página ou PDF remoto; o sinal de adição inicia uma
 citação no texto em edição.
 
-Use **Nova fonte: PDF ou link** para informar o que já conhece sobre o material.
+Use **Nova fonte: documento ou link** para informar o que já conhece sobre o material.
 É possível selecionar um PDF do dispositivo, colar o endereço de uma página ou
 PDF, ou informar ambos. O arquivo escolhido é enviado depois de salvar a ficha;
 um endereço conserva o acesso remoto à obra, sem copiar seu arquivo para o curso.
@@ -89,7 +89,7 @@ uma obra, a seleção de **Trecho citado neste texto** abre no próprio painel.
 Escolha a parte do texto e selecione a passagem literal que a referência sustenta.
 Confirme em **Vincular trecho selecionado** e depois em **Salvar fontes**. O
 número é gerado conforme a posição da referência e aparece junto ao trecho na
-leitura; não é necessário digitar o marcador no conteúdo.
+leitura, com o marcador criado automaticamente pelo aplicativo.
 
 Novos vínculos de uma unidade ou explicação precisam de um trecho localizado no
 texto salvo e de uma passagem vigente na obra, ligada ao PDF correspondente ou
@@ -137,9 +137,13 @@ editorial humana; o mesmo parecer continua disponível enquanto essa base não
 mudar. Uma nova alteração material exige reinspeção. Conteúdo antigo sem
 parecer permanece identificado como não inspecionado, sem validação inventada.
 
-O parecer é julgamento do produtor e não certificação automática de verdade.
-Uma lacuna deve aparecer como ponto a conferir. A aprovação humana é outra
-decisão e pode ocorrer na mesma conversa quando explicitamente solicitada.
+O parecer registra o julgamento da IA sobre a base inspecionada, com trechos
+observados e pontos que ainda exigem trabalho. A
+[auditoria pedagógica](auditoria-de-conformidade-instrucional.md#inspeção-por-ia-sobre-o-conteúdo-salvo)
+examina também a relação entre as citações do curso e as âncoras selecionadas.
+Uma passagem indicada somente por página exige consulta ao documento ou registro
+de verificação pendente. A revisão humana conserva seu registro próprio e
+depende da declaração expressa da pessoa sobre o material examinado.
 
 ## Anexar e consultar PDFs
 
@@ -163,7 +167,12 @@ Um arquivo já recebido não pode ser recolhido do dispositivo de outra pessoa. 
 
 ## Referências no Estudo
 
-Abra **Explicação** ou siga uma citação sobrescrita. As referências da explicação e da unidade aparecem em grupos distintos no fim da leitura. Cada retorno leva ao trecho que usou a fonte: se ele pertence à unidade, o painel fecha e volta a ela; se pertence à base, a explicação permanece aberta. O estudante conserva a resposta ainda não enviada.
+Abra **Fontes da unidade** ou siga uma citação sobrescrita para consultar as
+obras usadas naquela unidade. **Explicação** tem uma leitura própria, com o
+conteúdo explicativo e suas referências. Cada painel apresenta apenas as fontes do seu
+conteúdo. O retorno da referência leva à ocorrência correspondente: fecha o
+painel quando o trecho pertence à unidade e permanece na explicação quando a
+citação está na base. A resposta ainda não enviada é preservada.
 
 A fonte pode ter uma das seguintes opções:
 
@@ -173,7 +182,10 @@ A fonte pode ter uma das seguintes opções:
 | **Mostrar citação** | Identificação e localização, sem endereço externo. |
 | **Mostrar citação e link** | A identificação pode oferecer também o endereço do material. |
 
-Tornar o curso público disponibiliza seus PDFs por padrão, salvo restrição explícita no curso, na fonte ou no arquivo. As regras podem ser definidas no curso, na fonte e no arquivo; a mais específica prevalece. O catálogo privado e os trechos de verificação da autoria não acompanham automaticamente a leitura estudantil.
+Tornar o curso público disponibiliza seus PDFs por padrão. A permissão efetiva
+é resolvida do curso à fonte e ao arquivo: a definição mais específica
+prevalece, e `inherit` conserva a escolha do nível anterior. Confira esse valor
+antes de disponibilizar uma obra com restrições de uso. O catálogo privado e os trechos de verificação da autoria não acompanham automaticamente a leitura estudantil.
 
 Confira o acesso da pessoa que vai estudar: abrir um PDF como proprietário não
 prova que um estudante possa consultá-lo. Em curso privado compartilhado, a fonte
@@ -193,14 +205,14 @@ arquivo exato acrescenta um fragmento de texto à abertura: leitores compatívei
 como o Chrome verificado, localizam e destacam o trecho. O suporte a esses
 fragmentos é documentado no [leitor de PDF do Chromium](https://github.com/chromium/chromium/blob/main/chrome/browser/resources/pdf/open_pdf_params_parser.ts).
 Outros leitores podem abrir apenas o documento. Uma referência sem localização
-na fonte permite consultar a obra completa; ela não recebe um destaque inventado.
-Uma falha de rede ou acesso é informada como tal. O endereço temporário de acesso
-não é a identidade da obra nem deve ser guardado como referência bibliográfica.
+na fonte permite consultar a obra completa. Uma falha de rede ou acesso aparece
+no painel. A referência bibliográfica conserva a identificação da obra; o
+endereço temporário serve apenas à abertura autorizada daquele arquivo.
 
 O localizador textual usa o menor fragmento literal que distingue a passagem;
 prefixo e sufixo só são necessários para desfazer ambiguidades. O PDF continua
-armazenado uma única vez por conteúdo: localizar uma citação não exige guardar
-outra cópia do documento ou transcrever uma página inteira.
+armazenado uma única vez por conteúdo, com localizações independentes para as
+passagens citadas.
 
 Para páginas web, use destaque direto quando houver um mecanismo confiável e
 a passagem tiver sido conferida. Quando isso não for possível, a referência
@@ -229,7 +241,12 @@ Para implementar um cliente, os campos e operações têm as seguintes relaçõe
 | Ocorrência | Informa lugar, posição do componente e trecho literal no curso. O servidor deriva o campo textual; uma ambiguidade devolve opções para identificar a passagem. A âncora guarda separadamente a localização na obra. |
 | `apa7` e `abnt-2025` | Selecionam o estilo do curso sem reescrever o conteúdo ou apagar referências manuais. |
 
-A posição do vínculo pertence à consulta atual; não é o número da fonte no catálogo. Fichas e âncoras são relidas na mesma revisão do curso, com continuações quando necessário. O estado de localização de uma ocorrência é calculado na leitura, não aceito como uma confirmação fornecida pelo cliente. Os contratos dos canais estão em [Autoria por MCP](autoria-mcp.md) e [Autoria por Actions](autoria-actions.md).
+A posição do vínculo identifica seu lugar na consulta atual. Para escolher a
+obra, use a referência da fonte devolvida pelo catálogo. Fichas e âncoras são
+relidas na mesma revisão do curso, com continuações quando necessário. O
+servidor calcula na leitura se a ocorrência continua localizada no texto.
+Os contratos dos canais estão em [Autoria por MCP](autoria-mcp.md) e
+[Autoria por Actions](autoria-actions.md).
 
 O fluxo é o mesmo em Actions e MCP: consultar a fonte e suas âncoras, selecionar
 as passagens no vínculo e registrar as ocorrências no conteúdo. Essa seleção
@@ -249,9 +266,10 @@ O processamento precisa apresentar a mesma referência no aplicativo e nos servi
 O AraLearn usa uma projeção limitada dos metadados para
 [CSL-JSON](https://docs.citationstyles.org/en/v1.0.2/specification.html), mantendo a
 fonte canônica como único cadastro. CSL (*Citation Style Language*) descreve como apresentar citações e referências;
-CSL-JSON organiza os dados bibliográficos em campos. JSON é um formato de dados estruturados: cada campo tem um nome e um valor que o programa consegue consultar. O CSL distingue os dados do
-item, o contexto da citação e as regras de apresentação. Não é necessário adotar
-um gerenciador bibliográfico completo para usar essa separação.
+CSL-JSON organiza os dados bibliográficos em campos. JSON é um formato de dados
+estruturados: cada campo tem um nome e um valor que o programa consegue
+consultar. Essa separação permite aplicar estilos diferentes aos mesmos dados
+e conservar o contexto de cada uso da fonte.
 
 O motor selecionado é **citeproc-js, pacote `citeproc` 2.4.63**, que aplica os estilos aos
 dados fornecidos. Seu código é carregado apenas quando necessário, a partir
@@ -261,15 +279,16 @@ não busca código, estilos, metadados ou arquivos em serviços externos.
 
 O componente `renderCslReference(item, {style})` recebe um item CSL limitado e
 devolve texto e segmentos com formatos permitidos explicitamente. Os segmentos contêm somente texto, itálico,
-negrito e alinhamento sobrescrito/subscrito. O HTML genérico do processador — marcação que descreve o conteúdo de páginas — não é repassado à interface. URLs são tratadas pelo mecanismo próprio de links do
+negrito e alinhamento sobrescrito/subscrito. A interface recebe somente esses
+segmentos permitidos. URLs são tratadas pelo mecanismo próprio de links do
 produto, separado da formatação bibliográfica. A mesma entrada produz os mesmos
-segmentos no navegador e no servidor, onde o código é executado pelo ambiente
-Deno, que executa JavaScript e TypeScript fora do navegador.
+segmentos no navegador e no servidor. No servidor, o motor é executado em Deno,
+um ambiente para JavaScript e TypeScript.
 
 Um cache — armazenamento temporário para evitar refazer a mesma formatação —
 limitado a 32 resultados usa o conteúdo normalizado completo e o estilo
 como chave. Cada consumidor recebe uma cópia; alterar o retorno não muda outra
-referência. O estado interno de um processador não é reutilizado entre obras.
+referência. Cada obra é processada com estado próprio.
 
 ### Estilos fixados e adaptação ABNT
 
@@ -278,19 +297,20 @@ e o estilo institucional
 [UFRGS — ABNT com autoria abreviada](https://raw.githubusercontent.com/citation-style-language/styles/1a16445a22e1ca8aff67cab74fb6077513d67cc0/associacao-brasileira-de-normas-tecnicas-ufrgs-initials.csl)
 são preservados no repositório com os seus autores, colaboradores, avisos e
 resumos criptográficos, chamados de hashes, que permitem conferir a integridade dos arquivos. O segundo declara NBR 6023:2025 e NBR 10520:2023. É uma implementação
-institucional, não um software emitido ou certificado pela ABNT.
+institucional, cuja adequação precisa ser conferida à luz da norma e das
+orientações de quem receberá o trabalho.
 
 A variante distribuída aplica uma correção pequena e reproduzível ao estilo
 UFRGS: quando um artigo não tem intervalo de páginas e possui localização
-eletrônica, essa localização aparece na referência. Por exemplo, `e12345` não é
-convertido em `p. e12345`. Quando páginas estão informadas, sua apresentação
-permanece própria. A distinção acompanha os exemplos da atualização de 2025
+eletrônica, essa localização aparece na referência. Por exemplo, `e12345`
+permanece como identificador eletrônico. Quando páginas estão informadas,
+recebem a apresentação própria de um intervalo de páginas. A distinção acompanha os exemplos da atualização de 2025
 apresentados pela [ECA/USP](https://www.eca.usp.br/sites/default/files/2025-06/NBR%206023_2025.pdf).
 
 O arquivo XML original, que descreve as regras do estilo, permanece intacto. A alteração
 `aralearn-abnt-elocation-v1` é aplicada pelo gerador e identificada nos avisos. O
 campo bibliográfico canônico de localização eletrônica é projetado para `number`
-no CSL; ele não é armazenado como intervalo de páginas.
+no CSL, preservando a distinção entre identificador eletrônico e páginas.
 
 A adaptação `aralearn-abnt-access-punctuation-v1` também retira o segundo ponto
 acrescentado pelas regras de página web e relatório depois da macro de acesso, trecho reutilizável

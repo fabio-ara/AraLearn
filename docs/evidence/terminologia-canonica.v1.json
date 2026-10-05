@@ -60,7 +60,7 @@
       "interfaceTerm": "Estudo",
       "domainTerm": "Estudo",
       "englishEquivalent": "study surface",
-      "araLearnExample": "Ao abrir um curso para praticar, a pessoa entra em Estudo e percorre as unidades sem que a tela afirme que houve aprendizagem.",
+      "araLearnExample": "Depois de uma pausa, a pessoa volta ao curso, consulta a explicação da microssequência e retoma a atividade na posição salva.",
       "ambiguityRisk": "Sem esta delimitação, “Estudo” pode ser confundido com aprendizagem, domínio, resultado de aprendizagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -76,7 +76,7 @@
       ],
       "productTerm": "Autoria",
       "technicalSymbol": "authoring_surface",
-      "definition": "Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, corrigir e investigar um curso e seus componentes.",
+      "definition": "Área de trabalho em que a pessoa desenvolve um curso, desde o planejamento até a inspeção do conteúdo salvo. Reúne os controles para produzir o material e acompanhar sua revisão.",
       "decision": "manter",
       "layers": [
         "interface",
@@ -218,7 +218,7 @@
       "interfaceTerm": "Módulo",
       "domainTerm": "Módulo",
       "englishEquivalent": "module",
-      "araLearnExample": "O módulo “Escrita em hiragana” reúne lições relacionadas, mas não corresponde a uma parte de autoria.",
+      "araLearnExample": "O módulo “Escrita em hiragana” reúne lições relacionadas. A organização das tarefas de produção dessas lições cabe às partes de autoria.",
       "ambiguityRisk": "Sem esta delimitação, “módulo” pode ser confundido com parte de autoria, unidade de estudo, package, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -274,7 +274,7 @@
       ],
       "productTerm": "Microssequência didática",
       "technicalSymbol": "didactic_microsequence",
-      "definition": "Termo operacional do AraLearn para um objetivo instrucional delimitado, sua posição e dependências no curso, sua base explicativa e suas unidades de estudo ordenadas. O planejamento e a base podem existir antes da produção das unidades; não há quantidade fixa de unidades.",
+      "definition": "Recorte do curso organizado em torno de um objetivo instrucional, com base explicativa e unidades de estudo ordenadas. É uma definição operacional do AraLearn. Seu planejamento pode anteceder a produção das unidades, cuja quantidade acompanha o desenvolvimento necessário ao objetivo.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -302,7 +302,7 @@
       "interfaceTerm": "Microssequência didática",
       "domainTerm": "Microssequência didática",
       "englishEquivalent": "didactic microsequence",
-      "araLearnExample": "Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.",
+      "araLearnExample": "Uma microssequência sobre a partícula japonesa は pode apresentar sua função, desenvolver exemplos e propor práticas de identificação do tópico da frase.",
       "ambiguityRisk": "Sem esta delimitação, “microssequência didática” pode ser confundido com parágrafo, subtópico automático, Parte, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -319,7 +319,7 @@
       ],
       "productTerm": "Parte de autoria",
       "technicalSymbol": "authoring_part",
-      "definition": "Agrupamento operacional de microssequências já previstas no mapa do curso para organizar produção e revisão. Seu tamanho é ajustável e não acrescenta nível à hierarquia didática.",
+      "definition": "Agrupamento operacional de microssequências já previstas no mapa do curso. Organiza a produção e a revisão em recortes ajustáveis; a posição didática de cada microssequência continua definida no currículo.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -342,7 +342,7 @@
       "interfaceTerm": "Parte de autoria",
       "domainTerm": "Parte de autoria",
       "englishEquivalent": "authoring part",
-      "araLearnExample": "O assistente pode planejar, produzir e auditar em uma mesma parte de autoria várias microssequências que caibam no contexto disponível.",
+      "araLearnExample": "Uma parte pode reunir duas microssequências. O assistente produz cada recorte autorizado e a pessoa acompanha o resultado dentro da mesma organização de trabalho.",
       "ambiguityRisk": "Sem esta delimitação, “parte de autoria” pode ser confundido com módulo, lição, lote de materialização, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -388,7 +388,7 @@
       "interfaceTerm": "Unidade de estudo",
       "domainTerm": "Unidade de estudo",
       "englishEquivalent": "study unit",
-      "araLearnExample": "Na rolagem móvel, cada unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.",
+      "araLearnExample": "No percurso móvel, cada unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.",
       "ambiguityRisk": "Sem esta delimitação, “unidade de estudo” pode ser confundido com flashcard, tela, objeto de aprendizagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -406,7 +406,7 @@
       ],
       "productTerm": "Base explicativa",
       "technicalSymbol": "explanation",
-      "definition": "Conteúdo previamente autorado por microssequência para desenvolver conceitos, pressupostos, exemplos, relações e limites necessários ao objetivo. Suas unidades dão acesso à mesma base pelo comando Explicação; abrir o apoio lê o conteúdo salvo, sem nova geração ou progresso automático.",
+      "definition": "Conteúdo explicativo salvo de uma microssequência, desenvolvido para explicar o conteúdo necessário ao seu objetivo. As unidades dão acesso a esse apoio pelo comando Explicação. A consulta recupera o material já produzido; a resposta à atividade e a conclusão da unidade têm ações próprias.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -434,7 +434,7 @@
       "interfaceTerm": "Explicação",
       "domainTerm": "Base explicativa da microssequência",
       "englishEquivalent": "shared authored explanation (termo operacional do AraLearn)",
-      "araLearnExample": "Durante uma prática, o estudante abre Explicação e consulta um exemplo resolvido da mesma microssequência. A base tem fontes e revisão próprias; sua leitura não responde à atividade nem conclui a unidade.",
+      "araLearnExample": "Durante uma prática, o estudante abre Explicação e consulta um exemplo resolvido. A base tem fontes e revisão próprias; depois da leitura, ele volta à atividade para responder.",
       "ambiguityRisk": "Confundir a base compartilhada com uma forma explicativa declarada numa unidade permitiria atribuir desenvolvimento ao lugar errado. Confundi-la com resposta gerada sob demanda apagaria sua autoria, suas fontes e sua revisão.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -451,7 +451,7 @@
       ],
       "productTerm": "Item de prática de recuperação",
       "technicalSymbol": "retrieval_practice_item",
-      "definition": "Unidade específica organizada em torno de pista e resposta para praticar recuperação da memória; não designa qualquer unidade de estudo.",
+      "definition": "Atividade organizada em torno de uma pista e de uma resposta a recordar. Essa organização permite praticar a recuperação da memória e identifica uma função específica entre as possíveis funções das unidades de estudo.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -491,7 +491,7 @@
       ],
       "productTerm": "Representação externa",
       "technicalSymbol": "external_representation",
-      "definition": "Forma perceptível pela qual conteúdo ou relações são apresentados, como texto, fórmula, tabela, gráfico, diagrama, código ou áudio.",
+      "definition": "Forma perceptível pela qual o conteúdo é apresentado. Texto, diagrama e áudio, por exemplo, tornam diferentes aspectos do assunto disponíveis à leitura ou à escuta.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -515,7 +515,7 @@
       "interfaceTerm": "Representação externa",
       "domainTerm": "Representação externa",
       "englishEquivalent": "external representation",
-      "araLearnExample": "Uma ideia pode ser apresentada como texto, diagrama ou áudio. A escolha da representação externa depende das relações que precisam ser percebidas e da tarefa do estudante.",
+      "araLearnExample": "Uma tabela ajuda a comparar características de dois protocolos; um diagrama de sequência mostra a ordem das mensagens entre dois equipamentos. A tarefa orienta a escolha das relações que precisam ficar visíveis.",
       "ambiguityRisk": "Sem esta delimitação, “representação externa” pode ser confundido com MCP Resource, ativo de mídia, formato de resposta, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -535,7 +535,7 @@
       "domainTerm": "Componente didático",
       "englishEquivalent": "instructional component",
       "technicalSymbol": "instructional_component",
-      "definition": "Capacidade modular instalada que produz uma representação externa, um formato de resposta ou ambos para uma unidade de estudo, sem se confundir com a instância renderizada nem com seu pacote técnico.",
+      "definition": "Capacidade instalada que apresenta conteúdo ou recebe respostas nas unidades de estudo. Cada uso do componente produz uma representação concreta a partir dos dados do curso; seu contrato e sua implementação são distribuídos num pacote técnico.",
       "araLearnExample": "O componente de escolha apresenta alternativas em um formato de resposta selecionável; cada uso gera uma instância dentro de uma unidade de estudo.",
       "ambiguityRisk": "Sem esta delimitação, componente didático pode ser confundido com representação renderizada, pacote distribuível ou componente genérico de interface e esconder responsabilidades diferentes.",
       "alternativesAssessment": "compared",
@@ -600,7 +600,7 @@
       "interfaceTerm": "Formato de resposta",
       "domainTerm": "Formato de resposta",
       "englishEquivalent": "response format",
-      "araLearnExample": "Uma atividade pode aceitar escolha, texto digitado ou ordenação; o formato de resposta declara essa estrutura sem definir o conteúdo.",
+      "araLearnExample": "Uma atividade pode pedir a seleção de alternativas, o preenchimento de lacunas ou a ordenação de itens. O formato determina como responder; o conteúdo da atividade determina o que será perguntado.",
       "ambiguityRisk": "Sem esta delimitação, “formato de resposta” pode ser confundido com representação externa, resposta do estudante ou retorno, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -676,7 +676,7 @@
       "interfaceTerm": "Pacote de componente",
       "domainTerm": "Pacote de componente",
       "englishEquivalent": "component package",
-      "araLearnExample": "Um pacote de componente agrupa o contrato e o código distribuível de um componente, sem incorporar o conteúdo de cada curso.",
+      "araLearnExample": "O pacote de tabela reúne as regras e o código usados para apresentá-la. Cada curso fornece seus próprios dados ao usar esse pacote.",
       "ambiguityRisk": "Sem esta delimitação, “pacote de componente” pode ser confundido com representação externa, MCP Resource, módulo curricular, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -784,7 +784,7 @@
       ],
       "productTerm": "Plano instrucional vivo",
       "technicalSymbol": "instructional_plan",
-      "definition": "Estado revisável que explicita objetivos, organização, cobertura, progressão, prática, representações previstas, fontes e critérios de conclusão da materialização.",
+      "definition": "Planejamento revisável que relaciona o objetivo do curso ao percurso de ensino e à prática prevista. Registra o conteúdo a desenvolver, as fontes e as condições para acompanhar a produção.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -806,7 +806,7 @@
       "interfaceTerm": "Plano instrucional vivo",
       "domainTerm": "Plano instrucional vivo",
       "englishEquivalent": "living instructional plan",
-      "araLearnExample": "O plano de um curso registra objetivos e organização prevista, mas pode ser ampliado quando a autoria revela que um tópico exige mais desenvolvimento.",
+      "araLearnExample": "O plano de um curso registra seus objetivos e a organização prevista. Quando um tópico exige mais desenvolvimento, a pessoa pode ampliar o planejamento e produzir o recorte correspondente.",
       "ambiguityRisk": "Sem esta delimitação, “plano instrucional vivo” pode ser confundido com prompt, blueprint imutável, curso materializado, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -845,7 +845,7 @@
       "interfaceTerm": "Produção",
       "domainTerm": "Materialização",
       "englishEquivalent": "materialization",
-      "araLearnExample": "Depois da autorização do recorte, o assistente produz suas unidades e fornece acesso ao conteúdo salvo. A pessoa pode inspecioná-lo; a produção não declara revisão humana.",
+      "araLearnExample": "Depois da autorização do recorte, o assistente produz suas unidades e fornece acesso ao conteúdo salvo. A declaração de revisão humana depende da inspeção e da decisão expressa da pessoa.",
       "ambiguityRisk": "Sem separar o rótulo concreto da interface do termo de domínio, produção pode ser confundida com geração de texto e Materialização com publicação ou release.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -941,7 +941,7 @@
       ],
       "productTerm": "Revisão autoral",
       "technicalSymbol": "content_review",
-      "definition": "Inspeção humana de uma base explicativa ou unidade de estudo salva, com declaração expressa vinculada ao conteúdo examinado. A declaração pode ser registrada ou retirada por objeto; geração, edição e correção assistidas não a produzem automaticamente.",
+      "definition": "Inspeção humana de uma explicação ou unidade de estudo salva, seguida de declaração expressa sobre a base examinada. Cada objeto conserva seu próprio registro, que a pessoa pode declarar ou retirar. Mudanças materiais exigem uma nova inspeção para manter a declaração atual.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -978,6 +978,48 @@
       "status": "vigente"
     },
     {
+      "id": "ai-content-inspection",
+      "family": "authoring-process",
+      "currentTerms": [
+        "inspeção por IA"
+      ],
+      "productTerm": "Inspeção por IA",
+      "interfaceTerm": "Inspeção por IA",
+      "domainTerm": "Inspeção pedagógica por IA",
+      "englishEquivalent": "AI-assisted pedagogical inspection",
+      "technicalSymbol": "course_ai_inspection",
+      "definition": "Leitura crítica do conteúdo salvo, realizada por um assistente e registrada em um parecer com evidências da base examinada. O sistema acompanha se essa base continua atual; a revisão humana depende de uma declaração própria da pessoa.",
+      "araLearnExample": "O assistente examina uma atividade e identifica um retorno que apenas informa o erro. Registra a passagem e a insuficiência no parecer. Depois da correção, uma nova inspeção avalia o conteúdo salvo.",
+      "ambiguityRisk": "Tratar o parecer como aprovação humana ou resultado de aprendizagem atribuiria ao registro uma conclusão que depende de outro procedimento de avaliação.",
+      "alternativesAssessment": "compared",
+      "alternativesConsidered": [
+        "“Aprovação automática”: atribuiria ao sistema a decisão humana de revisão e esconderia que o parecer é um julgamento do assistente sobre uma base delimitada."
+      ],
+      "decision": "manter",
+      "status": "vigente",
+      "layers": [
+        "interface",
+        "domain",
+        "mcp",
+        "documentation"
+      ],
+      "sources": [
+        {
+          "status": "observacao-tecnica",
+          "ref": "https://github.com/fabio-ara/AraLearn/blob/main/src/domain/courseContentInspection.js"
+        },
+        {
+          "status": "observacao-tecnica",
+          "ref": "https://github.com/fabio-ara/AraLearn/blob/main/src/domain/coursePedagogicalAudit.js"
+        }
+      ],
+      "notSynonyms": [
+        "revisão humana",
+        "validação estrutural",
+        "avaliação de aprendizagem"
+      ]
+    },
+    {
       "id": "state-revision",
       "family": "authoring-process",
       "currentTerms": [
@@ -986,7 +1028,7 @@
       ],
       "productTerm": "Versão de estado",
       "technicalSymbol": "state_version",
-      "definition": "Contador monotônico usado para detectar concorrência e ordenar mutações; não é uma revisão editorial nem uma cópia integral do curso.",
+      "definition": "Número que identifica uma revisão do estado de um objeto e avança quando esse estado é alterado. Permite reconhecer a base de uma operação e detectar se outra gravação ocorreu enquanto ela era preparada. O curso e seu conjunto de observações têm controles de versão próprios.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -1066,7 +1108,7 @@
       ],
       "productTerm": "Âncora de fonte",
       "technicalSymbol": "source_anchor",
-      "definition": "Localizador preciso de um trecho ou região dentro de uma fonte, como página, intervalo, seletor, fragmento ou timestamp.",
+      "definition": "Localizador de uma passagem dentro de uma fonte. Pode indicar, por exemplo, a página de um documento, um trecho selecionado ou um intervalo de tempo numa gravação.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1132,7 +1174,7 @@
       "interfaceTerm": "Proveniência",
       "domainTerm": "Proveniência",
       "englishEquivalent": "provenance",
-      "araLearnExample": "Ao corrigir uma unidade, o AraLearn registra que uma pessoa ou ferramenta realizou a atividade usando determinadas fontes e produzindo novo estado.",
+      "araLearnExample": "Para investigar a origem de uma unidade, a pessoa consulta os vínculos com fontes e os registros de autoria disponíveis. O alcance dessa reconstrução acompanha os dados efetivamente conservados.",
       "ambiguityRisk": "Sem esta delimitação, “proveniência” pode ser confundido com histórico de chat, citação, log, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1149,7 +1191,7 @@
       ],
       "productTerm": "Anotação ancorada",
       "technicalSymbol": "anchored_annotation",
-      "definition": "Anotação com corpo e alvo endereçável, autoria, motivação e estado; na interface, o rótulo simples “Observação” é mapeado explicitamente para este conceito de domínio.",
+      "definition": "Anotação ligada a um conteúdo identificável, com texto, autoria e estado de acompanhamento. No AraLearn, Observação é o nome apresentado na interface; uma observação pode reunir vários alvos relacionados.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1176,7 +1218,7 @@
       "interfaceTerm": "Observação",
       "domainTerm": "Anotação ancorada",
       "englishEquivalent": "anchored annotation",
-      "araLearnExample": "Na interface aparece “Observação”; ao enviá-la sobre uma unidade específica, o domínio registra uma anotação ancorada com corpo, alvo, autoria e motivação.",
+      "araLearnExample": "A pessoa registra uma dificuldade numa unidade. Quando o mesmo problema afeta outras unidades, a observação pode reuni-las e acompanhar a decisão sobre cada alvo.",
       "ambiguityRisk": "Sem esta delimitação, observação pode ser confundida com achado de revisão, mensagem de chat ou nota privada sem alvo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1268,7 +1310,7 @@
       ],
       "productTerm": "Parâmetro de desenho instrucional",
       "technicalSymbol": "design_parameter",
-      "definition": "Propriedade controlável do desenho com definição versionada, esquema, escopos admitidos, origem, valor efetivo e limitações explícitas.",
+      "definition": "Escolha controlável do desenho instrucional, com significado e valores admitidos definidos pelo contrato. Seu escopo indica onde vale; a origem do valor explica se foi fixado naquele ponto ou obtido de uma configuração mais ampla.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1291,7 +1333,7 @@
       "interfaceTerm": "Parâmetro de desenho instrucional",
       "domainTerm": "Parâmetro de desenho instrucional",
       "englishEquivalent": "instructional design parameter",
-      "araLearnExample": "O teto de novas unidades de análise por Unidade expositiva é um parâmetro de desenho instrucional com inteiro positivo, escopos e origem declarados.",
+      "araLearnExample": "A pessoa pode fixar em duas ideias o teto de novidades de uma unidade expositiva. Esse parâmetro orienta o recorte do conteúdo a produzir naquele escopo.",
       "ambiguityRisk": "Sem esta delimitação, “parâmetro de desenho instrucional” pode ser confundido com configuração técnica, métrica, restrição editorial, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1307,7 +1349,7 @@
       ],
       "productTerm": "Configuração técnica",
       "technicalSymbol": "technical_configuration",
-      "definition": "Valor que altera operação ou integração do software sem representar, por si, uma propriedade pedagógica pesquisada.",
+      "definition": "Valor que regula a operação ou a integração do software. Seu efeito deve ser descrito no mecanismo correspondente, como armazenamento, comunicação ou validação de arquivos.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -1328,7 +1370,7 @@
       "interfaceTerm": "Configuração técnica",
       "domainTerm": "Configuração técnica",
       "englishEquivalent": "technical configuration",
-      "araLearnExample": "Um limite de bytes aceito pelo Storage é uma configuração técnica e não deve aparecer como escolha pedagógica.",
+      "araLearnExample": "O limite de bytes aceito para um arquivo regula seu envio ao armazenamento. A escolha de como ensinar o conteúdo pertence ao desenho instrucional.",
       "ambiguityRisk": "Sem esta delimitação, “configuração técnica” pode ser confundido com parâmetro de desenho instrucional, política, condição experimental, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1383,7 +1425,7 @@
       ],
       "productTerm": "Valor de fallback do catálogo",
       "technicalSymbol": "default_value",
-      "definition": "Valor de referência versionado conservado no catálogo como recurso técnico quando necessário. Não substitui a escolha contextual exigida nos parâmetros delegados ao assistente nem constitui recomendação universal.",
+      "definition": "Valor de referência conservado no catálogo para uso técnico quando necessário. Nos parâmetros delegados ao assistente, a escolha aplicada depende de calibração contextual; uma recomendação pedagógica requer justificativa própria.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1423,7 +1465,7 @@
       ],
       "productTerm": "Herança calculada",
       "technicalSymbol": "resolved_inheritance",
-      "definition": "Resultado do resolvedor que aplica um valor de escopo ancestral quando não existe atribuição de maior autoridade no alvo; não é uma atribuição gravada.",
+      "definition": "Valor efetivo obtido de um escopo mais amplo quando o alvo segue aquela configuração. O cálculo informa a origem do valor; uma atribuição explícita no alvo é uma operação separada.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1484,7 +1526,7 @@
       "interfaceTerm": "Parâmetro definido",
       "domainTerm": "Definição explícita de parâmetro",
       "englishEquivalent": "explicit override",
-      "araLearnExample": "A pessoa define para uma microssequência um valor diferente do curso; Analytics conta esse parâmetro definido no estado corrente.",
+      "araLearnExample": "A pessoa define para uma microssequência um valor diferente do curso. Dados de autoria contabiliza a definição no estado corrente e permite consultar seu escopo.",
       "ambiguityRisk": "Sem esta delimitação, parâmetro definido pode ser confundido com edição do padrão, herança ou bloqueio de pesquisa.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1501,7 +1543,7 @@
       ],
       "productTerm": "Direção editorial",
       "technicalSymbol": "course_authoring_guidance",
-      "definition": "Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.2.1 de doze decisões de conteúdo, prática, extensão, conversa e produção e incapaz de eliminar conteúdo necessário.",
+      "definition": "Orientação qualitativa sobre a escrita e a apresentação do conteúdo, como usar parágrafos curtos ou títulos diretos. Complementa os parâmetros de desenho instrucional, preservando o desenvolvimento necessário à compreensão.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1660,7 +1702,7 @@
       ],
       "productTerm": "Experimento",
       "technicalSymbol": "research_experiment",
-      "definition": "Protocolo de pesquisa que compara condições mediante fatores, atribuição, medidas e análise previamente declarados; a estrutura técnica não garante validade causal.",
+      "definition": "Investigação que compara condições segundo um protocolo de atribuição, coleta e análise. A força de uma conclusão causal depende desse desenho e das evidências produzidas durante sua execução.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1676,7 +1718,7 @@
         },
         {
           "status": "evidencia-academica",
-          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/",
+          "ref": "https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish/9780395615560/",
           "supports": "Fundamenta desenho experimental, quase-experimental e validade causal; não implica que o esquema técnico do AraLearn garanta um experimento válido."
         }
       ],
@@ -1688,7 +1730,7 @@
       "interfaceTerm": "Experimento",
       "domainTerm": "Experimento",
       "englishEquivalent": "experiment",
-      "araLearnExample": "Um experimento, se vier a ser implementado, compara condições previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.",
+      "araLearnExample": "Um protocolo pode comparar dois níveis de apoio ao estudante, definindo previamente os participantes, a atribuição às condições, as medidas e a análise. Os cursos configurados fornecem os materiais dessa investigação.",
       "ambiguityRisk": "Sem esta delimitação, experimento pode ser confundido com condição autoral em curso independente, teste A/B informal ou Analytics.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "O AraLearn reserva Experimento ao protocolo com fatores, condições, atribuição, medidas e análise declarados, à luz da literatura de desenho e validade causal; estudo, comparação e teste A/B nomeiam escopos diferentes, e nenhum esquema garante validade por si.",
@@ -1703,7 +1745,7 @@
       ],
       "productTerm": "Condição experimental",
       "technicalSymbol": "experimental_condition",
-      "definition": "Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada apenas por configurar um curso.",
+      "definition": "Combinação de valores dos fatores que uma pesquisa pretende comparar. O protocolo determina como cada condição será atribuída aos participantes ou a outra unidade da investigação.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -1863,7 +1905,7 @@
       ],
       "productTerm": "Resultado avaliado",
       "technicalSymbol": "outcome_variable",
-      "definition": "Variável escolhida como resultado de interesse de um estudo e definida conforme o protocolo da pesquisa. Desempenho numa avaliação posterior é um exemplo; o termo não afirma a existência de coleta ou painel de resultados de aprendizagem no aplicativo.",
+      "definition": "Variável escolhida como resultado de interesse de uma pesquisa. O protocolo define como e quando medi-la. No estudo de aprendizagem, pode ser o desempenho numa tarefa posterior, obtido por um instrumento específico.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1885,7 +1927,7 @@
       "interfaceTerm": "Resultado avaliado",
       "domainTerm": "Variável de resultado",
       "englishEquivalent": "outcome variable",
-      "araLearnExample": "Uma pesquisa pode escolher o desempenho numa tarefa posterior como resultado avaliado, declarando instrumento, momento e procedimento. A quantidade de unidades concluídas no aplicativo não substitui essa medida.",
+      "araLearnExample": "Uma pesquisa escolhe o desempenho numa tarefa posterior e declara instrumento, momento e procedimento. A conclusão de unidades no aplicativo permanece um registro de uso, com finalidade própria.",
       "ambiguityRisk": "Sem separar termo de domínio e rótulo de interface, resultado pode ser confundido com saída técnica, métrica intermediária ou conclusão causal não sustentada.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1903,7 +1945,7 @@
       ],
       "productTerm": "Curso em autoria",
       "technicalSymbol": "authoring_course",
-      "definition": "O próprio curso vivo enquanto está sendo planejado e materializado; a pessoa não precisa compreender um recipiente abstrato separado.",
+      "definition": "Nome histórico para o curso em processo de planejamento e produção. Na organização corrente, o próprio curso reúne esse estado e mantém sua identidade durante o trabalho.",
       "decision": "substituir",
       "layers": [
         "interface",
@@ -1927,7 +1969,7 @@
       "interfaceTerm": "Curso em autoria",
       "domainTerm": "Curso em autoria",
       "englishEquivalent": "course under authoring",
-      "araLearnExample": "O que antes aparecia como Workspace passa a ser tratado como o próprio curso em autoria, sem uma estrutura organizacional opaca adicional.",
+      "araLearnExample": "A pessoa retoma um curso em Autoria para continuar o planejamento ou examinar as unidades produzidas. Esses dados pertencem ao curso selecionado.",
       "ambiguityRisk": "Sem esta delimitação, “curso em autoria” pode ser confundido com organização, tenant, projeto, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -1998,7 +2040,7 @@
       ],
       "productTerm": "Catálogo público de cursos",
       "technicalSymbol": "list_courses_v1",
-      "definition": "Índice de cursos tornados públicos por decisão explícita; organização de catálogo não concede nem substitui acesso privado direto.",
+      "definition": "Índice dos cursos disponibilizados ao público por decisão de seus proprietários. O acesso privado é concedido diretamente às pessoas e segue controles próprios.",
       "decision": "substituir",
       "layers": [
         "interface",
@@ -2042,7 +2084,7 @@
       ],
       "productTerm": "Disponibilização pública",
       "technicalSymbol": "courses.visibility",
-      "definition": "Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. Os arquivos ficam disponíveis por padrão, preservando restrições explícitas; tornar o curso público não concede edição nem cria uma versão imutável.",
+      "definition": "Decisão do proprietário que abre o curso a visitantes para estudo. O conteúdo continua editável pelo proprietário; os visitantes acessam o estado disponibilizado. A política oferece os arquivos por padrão e respeita restrições explícitas.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2100,7 +2142,7 @@
       "interfaceTerm": "Registro de versão publicada retirado",
       "domainTerm": "Registro de versão publicada retirado",
       "englishEquivalent": "retired course release record",
-      "araLearnExample": "Tornar um curso público altera sua política de acesso sem criar public_course_release ou congelar uma versão.",
+      "araLearnExample": "O acesso público atual é alterado nas permissões do curso. O registro public_course_release pertence à estrutura histórica retirada.",
       "ambiguityRisk": "Confundir o registro retirado com a disponibilidade pública corrente reintroduziria uma segunda identidade de curso e uma etapa editorial que não controla a autorização atual.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2119,7 +2161,7 @@
       ],
       "productTerm": "Artefato de conteúdo",
       "technicalSymbol": "content_artifact",
-      "definition": "Representação serializada e identificável por conteúdo usada para armazenamento ou distribuição; não é o curso vivo completo.",
+      "definition": "Arquivo ou outra representação serializada de conteúdo, identificável para armazenamento ou distribuição. Seu escopo depende da exportação ou transformação que o produziu.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -2141,7 +2183,7 @@
       "interfaceTerm": "Artefato de conteúdo",
       "domainTerm": "Artefato de conteúdo",
       "englishEquivalent": "content artifact",
-      "araLearnExample": "Um arquivo exportado ou uma representação produzida é um artefato de conteúdo; não é automaticamente o curso vivo completo.",
+      "araLearnExample": "Um arquivo exportado pode conter o curso e sua análise de autoria. O contrato da exportação informa o que foi incluído e como interpretar esses dados.",
       "ambiguityRisk": "Sem esta delimitação, “artefato de conteúdo” pode ser confundido com curso, versão de estado, proveniência, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2157,7 +2199,7 @@
       ],
       "productTerm": "Ponto de recuperação",
       "technicalSymbol": "recovery_checkpoint",
-      "definition": "Marco operacional criado para permitir retomada ou restauração controlada de trabalho técnico; não é revisão de conteúdo nem versão pública.",
+      "definition": "Estado de referência conservado para retomar ou restaurar um trabalho técnico. Sua utilidade depende de registrar o conteúdo preservado e o procedimento de recuperação.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -2178,7 +2220,7 @@
       "interfaceTerm": "Ponto de recuperação",
       "domainTerm": "Ponto de recuperação",
       "englishEquivalent": "recovery checkpoint",
-      "araLearnExample": "Numa operação de manutenção, a equipe pode conservar o estado anterior e o recibo necessário à recuperação. Esse marco técnico não declara revisão do conteúdo nem disponibiliza o curso ao público.",
+      "araLearnExample": "Antes de uma operação de manutenção, a equipe conserva o estado anterior e os dados necessários à restauração. As decisões de revisão do conteúdo continuam em seus registros próprios.",
       "ambiguityRisk": "Sem esta delimitação, “ponto de recuperação” pode ser confundido com versão de estado, release, revisão autoral, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2194,7 +2236,7 @@
       ],
       "productTerm": "Pessoa usuária",
       "technicalSymbol": "user_account",
-      "definition": "Pessoa identificada no produto por uma conta; o registro de autenticação não resume sua identidade humana.",
+      "definition": "Registro pelo qual uma pessoa se identifica no aplicativo e recebe acesso aos seus dados. Reúne as informações de perfil e as relações de autorização usadas pelo sistema.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2216,7 +2258,7 @@
       "interfaceTerm": "Pessoa usuária",
       "domainTerm": "Pessoa usuária",
       "englishEquivalent": "user",
-      "araLearnExample": "O perfil mínimo exibe nome e avatar da pessoa usuária sem transformar a plataforma em rede social.",
+      "araLearnExample": "A pessoa entra na conta, consulta os cursos a que tem acesso e mantém seu perfil com identificador público e foto opcional.",
       "ambiguityRisk": "Sem esta delimitação, “pessoa usuária” pode ser confundido com perfil, ator técnico, proprietário, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2232,7 +2274,7 @@
       ],
       "productTerm": "Pessoa autora",
       "technicalSymbol": "course_author",
-      "definition": "Pessoa que participa intencionalmente do planejamento, produção, revisão ou correção de um curso; autoria não decorre apenas de executar uma mutação técnica.",
+      "definition": "Pessoa que participa intencionalmente do desenvolvimento de um curso, tomando decisões sobre seu planejamento ou conteúdo. A autoria intelectual e a propriedade técnica do curso têm funções distintas.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2270,7 +2312,7 @@
       ],
       "productTerm": "Pessoa pesquisadora",
       "technicalSymbol": "researcher",
-      "definition": "Pessoa responsável por decisões, instrumentos ou análises de uma pesquisa; não recebe automaticamente propriedade ou acesso a todo curso.",
+      "definition": "Pessoa responsável pelas decisões ou análises de uma pesquisa. O acesso aos cursos depende das mesmas permissões aplicáveis às demais contas; o papel na investigação é estabelecido pelo protocolo.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2368,7 +2410,7 @@
       "interfaceTerm": "Pessoa proprietária do curso",
       "domainTerm": "Pessoa proprietária do curso",
       "englishEquivalent": "course owner",
-      "araLearnExample": "A Pessoa proprietária controla o acesso ao curso e pode compartilhá-lo diretamente com outras pessoas.",
+      "araLearnExample": "A pessoa proprietária controla o acesso ao curso e pode compartilhá-lo diretamente com outras pessoas.",
       "ambiguityRisk": "Sem esta delimitação, “pessoa proprietária do curso” pode ser confundido com autor, administrador, criador original, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2384,7 +2426,7 @@
       ],
       "productTerm": "Pessoa com acesso",
       "technicalSymbol": "course_access_grantee",
-      "definition": "Pessoa à qual foi concedido acesso explícito a um curso, com permissões delimitadas; não pressupõe organização institucional.",
+      "definition": "Pessoa que recebeu acesso explícito a um curso. A concessão identifica a conta e delimita o que ela pode fazer, como estudar o material ou copiá-lo quando permitido.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2422,7 +2464,7 @@
       ],
       "productTerm": "Papel de acesso",
       "technicalSymbol": "access_role",
-      "definition": "Rótulo técnico que agrupa responsabilidades ou permissões de acesso; não deve ser exposto como governança necessária para compartilhar um curso.",
+      "definition": "Rótulo técnico que agrupa permissões ou responsabilidades no sistema. Seu significado acompanha as operações autorizadas; o compartilhamento de cursos usa concessões diretas às contas.",
       "decision": "substituir",
       "layers": [
         "domain",
@@ -2444,7 +2486,7 @@
       "interfaceTerm": "Papel de acesso",
       "domainTerm": "Papel de acesso",
       "englishEquivalent": "access role",
-      "araLearnExample": "Um papel de acesso agrupa permissões estritamente necessárias, sem representar cargo ou hierarquia institucional.",
+      "araLearnExample": "O papel de administrador permite operações de gestão definidas no sistema. A permissão de uma pessoa sobre um curso específico continua sujeita às regras desse curso.",
       "ambiguityRisk": "Sem esta delimitação, “papel de acesso” pode ser confundido com permissão efetiva, identidade, cargo institucional, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2507,7 +2549,7 @@
       ],
       "productTerm": "Núcleo de execução de componentes",
       "technicalSymbol": "component_runtime_core",
-      "definition": "Núcleo técnico pequeno que valida envelopes, resolve pacotes e coordena protocolos comuns sem conhecer tipos concretos de representação.",
+      "definition": "Parte compartilhada que valida a estrutura dos componentes e coordena os protocolos de execução. Os pacotes fornecem as regras e a apresentação específicas de cada representação.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -2527,7 +2569,7 @@
       "interfaceTerm": "Núcleo de execução de componentes",
       "domainTerm": "Núcleo de execução de componentes",
       "englishEquivalent": "component runtime core",
-      "araLearnExample": "O Núcleo de execução valida o manifesto e coordena a renderização de componentes, sem incorporar conteúdo ou regras pedagógicas específicas.",
+      "araLearnExample": "O núcleo localiza o pacote de gráfico e encaminha os dados para ele. O pacote interpreta a representação e produz sua apresentação.",
       "ambiguityRisk": "Sem esta delimitação, “núcleo de execução de componentes” pode ser confundido com sistema operacional, catálogo, engine de layout, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2543,7 +2585,7 @@
       ],
       "productTerm": "Ambiente de execução",
       "technicalSymbol": "runtime_environment",
-      "definition": "Código e dependências necessários para executar um contrato em determinada plataforma; não inclui automaticamente autoria, persistência e catálogo.",
+      "definition": "Código e dependências que executam um contrato numa plataforma. O termo deve vir acompanhado do escopo, como execução dos componentes no navegador ou validação do conteúdo no servidor.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -2564,7 +2606,7 @@
       "interfaceTerm": "Ambiente de execução",
       "domainTerm": "Ambiente de execução",
       "englishEquivalent": "runtime",
-      "araLearnExample": "O ambiente de execução carrega e renderiza componentes no cliente sem ser confundido com o motor que transforma dados.",
+      "araLearnExample": "O ambiente de execução de componentes carrega os pacotes usados para apresentar a unidade no navegador.",
       "ambiguityRisk": "Sem esta delimitação, “ambiente de execução” pode ser confundido com engine, aplicativo, núcleo, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2580,7 +2622,7 @@
       ],
       "productTerm": "Motor",
       "technicalSymbol": "processing_engine",
-      "definition": "Componente que executa um algoritmo ou transformação substantiva bem delimitada; não é nome genérico para qualquer serviço.",
+      "definition": "Componente responsável por um algoritmo ou transformação bem delimitada. O nome ganha precisão quando indica a operação realizada, como organizar um diagrama ou calcular uma expressão.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -2600,7 +2642,7 @@
       "interfaceTerm": "Motor",
       "domainTerm": "Motor",
       "englishEquivalent": "engine",
-      "araLearnExample": "O motor aplica uma transformação definida, como validar uma resposta, mas não representa toda a aplicação.",
+      "araLearnExample": "O motor de disposição de um diagrama calcula a posição dos elementos a partir das relações declaradas pelo conteúdo.",
       "ambiguityRisk": "Sem esta delimitação, “motor” pode ser confundido com runtime, adapter, serviço, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2652,7 +2694,7 @@
       ],
       "productTerm": "Repositório de estado",
       "technicalSymbol": "state_repository",
-      "definition": "Componente que lê e grava estado em uma fronteira de persistência declarada; não é o estado em si nem necessariamente a fonte canônica.",
+      "definition": "Componente responsável por ler e gravar estado num mecanismo de persistência. Seu contrato determina quais dados conserva e qual é a autoridade desses dados no sistema.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -2673,7 +2715,7 @@
       "interfaceTerm": "Repositório de estado",
       "domainTerm": "Repositório de estado",
       "englishEquivalent": "store",
-      "araLearnExample": "O repositório de estado lê e grava dados de autoria; ele não é sinônimo do serviço Supabase Storage.",
+      "araLearnExample": "O repositório local grava o estado usado pelo navegador. Supabase Storage, por sua vez, é o serviço que guarda arquivos no servidor.",
       "ambiguityRisk": "Sem esta delimitação, “repositório de estado” pode ser confundido com banco de dados, estado, cache, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2689,7 +2731,7 @@
       ],
       "productTerm": "Catálogo",
       "technicalSymbol": "queryable_catalog",
-      "definition": "Projeção consultável de itens disponíveis e de seus metadados; não é o registro de execução nem a coleção de dados completos.",
+      "definition": "Índice consultável de itens disponíveis e de seus metadados. Ajuda a localizar um curso ou componente antes de recuperar o conteúdo ou contrato completo.",
       "decision": "restringir",
       "layers": [
         "code",
@@ -2727,7 +2769,7 @@
       ],
       "productTerm": "Abrir",
       "technicalSymbol": "study_entry_action",
-      "definition": "Ação de entrada que abre o curso selecionado pela lista de módulos; posições salvas não mudam o nome nem pulam silenciosamente a hierarquia.",
+      "definition": "Ação que abre o curso selecionado pela lista de módulos. O rótulo Abrir e o ponto de entrada permanecem os mesmos quando há progresso salvo.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2748,7 +2790,7 @@
       "interfaceTerm": "Abrir",
       "domainTerm": "Ação de entrada no Estudo",
       "englishEquivalent": "study entry action",
-      "araLearnExample": "O botão inicial mostra Abrir em qualquer estado de progresso e entra no curso pela lista de módulos.",
+      "araLearnExample": "Uma pessoa que já percorreu o curso pode usar Abrir e escolher, na lista de módulos, o assunto que deseja rever.",
       "ambiguityRisk": "Rótulos dependentes do progresso podem sugerir um destino diferente e fazer a entrada pular níveis sem que a pessoa tenha escolhido o alvo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2766,7 +2808,7 @@
       ],
       "productTerm": "Rolagem vertical",
       "technicalSymbol": "vertical_scroll",
-      "definition": "Deslocamento contínuo da viewport no eixo vertical, distinto do gesto físico que o iniciou e da mudança curricular entre unidades.",
+      "definition": "Deslocamento vertical da área visível de uma página. Pode ser iniciado por toque, roda do mouse ou teclado; a navegação entre posições do currículo é tratada separadamente.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2787,7 +2829,7 @@
       "interfaceTerm": "Rolagem vertical",
       "domainTerm": "Rolagem vertical",
       "englishEquivalent": "vertical scrolling",
-      "araLearnExample": "No celular, a pessoa desliza a página para cima e percorre rapidamente as unidades de estudo em rolagem vertical.",
+      "araLearnExample": "Em Autoria, a opção Mostrar várias unidades permite percorrer o conteúdo por rolagem vertical. Durante o estudo, a rolagem acompanha o interior da unidade aberta; o avanço para a seguinte usa um controle próprio.",
       "ambiguityRisk": "Sem esta delimitação, “rolagem vertical” pode ser confundido com deslize, avançar, feed, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "Rolagem vertical nomeia precisamente a mudança contínua da viewport; deslize é gesto de entrada e avanço é navegação curricular, portanto nenhum deles disputa o mesmo conceito técnico.",
@@ -2824,7 +2866,7 @@
       "interfaceTerm": "Gesto de deslize",
       "domainTerm": "Gesto de deslize",
       "englishEquivalent": "swipe gesture",
-      "araLearnExample": "Um movimento de dedo reconhecido como gesto de deslize pode avançar a interface, mas não prova uma operação cognitiva.",
+      "araLearnExample": "A pessoa desliza o dedo sobre a tela para percorrer conteúdo. A interpretação do que ela compreendeu exige evidências da tarefa, além do gesto observado.",
       "ambiguityRisk": "Sem esta delimitação, “gesto de deslize” pode ser confundido com rolagem, avanço, ação epistêmica, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2865,7 +2907,7 @@
       "interfaceTerm": "Navegação do curso",
       "domainTerm": "Navegação curricular",
       "englishEquivalent": "curricular navigation",
-      "araLearnExample": "Na interface, a pessoa usa a navegação do curso para saltar à próxima microssequência; o evento de domínio registra uma navegação curricular com origem e destino.",
+      "araLearnExample": "A pessoa seleciona outra microssequência na navegação do curso. O aplicativo muda a posição selecionada para apresentar o conteúdo correspondente.",
       "ambiguityRisk": "Sem distinguir interface e domínio, navegação do curso pode ser confundida com rolagem ou busca local, e navegação curricular pode ser tomada por evidência de aprendizagem.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -2886,7 +2928,7 @@
         "taskOperationIds",
         "task_operation.*"
       ],
-      "definition": "Definição terminológica própria do AraLearn para a transformação que a tarefa exige da pessoa sobre o conteúdo; o contrato e a resposta são observáveis, mas o rótulo não afirma observação direta de uma operação mental.",
+      "definition": "Transformação que uma tarefa exige da pessoa sobre o conteúdo, segundo a definição operacional do AraLearn. A operação esperada é declarada na autoria; sua realização é examinada a partir da resposta e do contexto da atividade.",
       "decision": "substituir",
       "layers": [
         "interface",
@@ -2946,7 +2988,7 @@
       ],
       "productTerm": "Atenção",
       "technicalSymbol": "attention_construct",
-      "definition": "Família de processos seletivos internos e externos que exige operacionalização e instrumento próprios; não é evento de visibilidade ou duração.",
+      "definition": "Conjunto de processos de seleção de informação, internos ou externos. Uma pesquisa precisa definir a dimensão de atenção que pretende investigar e escolher instrumentos adequados para observá-la.",
       "decision": "restringir",
       "layers": [
         "research",
@@ -2967,7 +3009,7 @@
       "interfaceTerm": "Atenção",
       "domainTerm": "Atenção",
       "englishEquivalent": "attention construct",
-      "araLearnExample": "Uma pesquisa pode definir atenção como construto e escolher múltiplas medidas; um scroll isolado não recebe esse rótulo.",
+      "araLearnExample": "Uma pesquisa formula uma hipótese sobre atenção durante a leitura e escolhe medidas compatíveis com essa hipótese. Os eventos de rolagem podem compor o contexto de uso registrado.",
       "ambiguityRisk": "Sem esta delimitação, “atenção” pode ser confundido com tempo de tela, foco de teclado, rolagem, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "Atenção é o construto estabelecido nas fontes reunidas; tempo de tela, foco do controle, rolagem e engajamento são eventos, estados ou construtos distintos, não nomes alternativos.",
@@ -3003,7 +3045,7 @@
       "interfaceTerm": "Engajamento",
       "domainTerm": "Engajamento",
       "englishEquivalent": "engagement construct",
-      "araLearnExample": "A pesquisa declara como engajamento será inferido de diferentes evidências, sem renomear mera abertura de tela como engajamento.",
+      "araLearnExample": "A pesquisa escolhe a dimensão do engajamento que pretende investigar e explicita como a reconhecerá nas evidências coletadas.",
       "ambiguityRisk": "Sem esta delimitação, “engajamento” pode ser confundido com clique, tempo, atenção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "Engajamento é o construto multidimensional estabelecido, sempre qualificado por dimensão; participação, persistência, cliques e duração podem ser medidas, mas não candidatos equivalentes.",
@@ -3018,7 +3060,7 @@
       ],
       "productTerm": "Foco do controle",
       "technicalSymbol": "focus_state",
-      "definition": "Estado técnico, conforme o modelo de foco do HTML, que determina qual controle recebe entrada de teclado ou tecnologia assistiva; não mede atenção psicológica.",
+      "definition": "Estado da interface que indica qual controle recebe a entrada de teclado ou de uma tecnologia assistiva, conforme o modelo de foco do HTML.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -3039,7 +3081,7 @@
       "interfaceTerm": "Foco do controle",
       "domainTerm": "Foco do controle",
       "englishEquivalent": "focus state",
-      "araLearnExample": "Quando a caixa de observação se torna o elemento ativo para teclado, ela recebe foco do controle; isso não demonstra atenção da pessoa.",
+      "araLearnExample": "Quando a caixa de observação se torna o elemento ativo, as teclas digitadas chegam a ela. Esse é o sentido técnico de foco usado na interface.",
       "ambiguityRisk": "Sem o complemento do controle, foco pode ser interpretado como atenção, ênfase visual ou seleção, contaminando métricas de interação e acessibilidade.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3057,7 +3099,7 @@
       ],
       "productTerm": "Instruções de sistema",
       "technicalSymbol": "system_instructions",
-      "definition": "Camada estável reservada a invariantes, segurança, limites de autoridade e protocolo de uso das ferramentas; não contém estado corrente do curso nem manual científico mutável.",
+      "definition": "Orientações estáveis sobre segurança, autoridade e uso das ferramentas de um assistente. O estado mutável de cada curso é recuperado separadamente para a tarefa em andamento.",
       "decision": "restringir",
       "layers": [
         "mcp",
@@ -3078,7 +3120,7 @@
       "interfaceTerm": "Instruções de sistema",
       "domainTerm": "Instruções de sistema",
       "englishEquivalent": "system instructions",
-      "araLearnExample": "As instruções de sistema mantêm regras invariantes de segurança e de uso das ferramentas; o plano mutável do curso fica fora delas.",
+      "araLearnExample": "As instruções de sistema definem como respeitar permissões. Ao retomar o trabalho, o assistente consulta o planejamento salvo do curso.",
       "ambiguityRisk": "Sem esta delimitação, “instruções de sistema” pode ser confundido com prompt de tarefa, knowledge base, estado de autoria do curso, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3094,7 +3136,7 @@
       ],
       "productTerm": "Prompt de tarefa",
       "technicalSymbol": "task_prompt",
-      "definition": "Instrução contextual de uma execução ou turno; pode referenciar estado persistido, mas não se torna o registro autorizado desse estado.",
+      "definition": "Pedido que delimita a tarefa de uma execução ou turno. Pode indicar o conteúdo a consultar e as alterações autorizadas; o resultado persistido é confirmado pelo sistema responsável pelo curso.",
       "decision": "restringir",
       "layers": [
         "assistant",
@@ -3132,7 +3174,7 @@
       ],
       "productTerm": "Base de referência estável",
       "technicalSymbol": "knowledge_base",
-      "definition": "Conteúdo relativamente estável de referência recuperável sob demanda, como critérios, ciência, exemplos e limitações; não contém planejamento ou observações correntes do curso.",
+      "definition": "Acervo de referência relativamente estável que pode ser consultado durante uma tarefa. Reúne explicações e critérios de trabalho; os dados correntes do curso são consultados no estado de autoria.",
       "decision": "restringir",
       "layers": [
         "assistant",
@@ -3154,7 +3196,7 @@
       "interfaceTerm": "Base de referência estável",
       "domainTerm": "Base de referência estável",
       "englishEquivalent": "knowledge base",
-      "araLearnExample": "A base de referência estável contém documentação durável sobre ferramentas e métodos, não o planejamento mutável de um curso.",
+      "araLearnExample": "O assistente consulta a documentação para entender um componente e lê o curso para saber qual conteúdo deve revisar.",
       "ambiguityRisk": "Sem esta delimitação, “base de referência estável” pode ser confundido com RAG, estado de autoria do curso, instruções de sistema, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3170,7 +3212,7 @@
       ],
       "productTerm": "Estado de autoria do curso",
       "technicalSymbol": "course_authoring_state",
-      "definition": "Estado salvo do curso que reúne planejamento, conteúdo, configuração, fontes, observações e registros de produção e revisão. Interface, MCP e Actions consultam e alteram esse estado pelas operações autorizadas; dados de aprendizagem não são inferidos dessas operações.",
+      "definition": "Conjunto dos dados salvos que descrevem o curso e seu processo de autoria. Inclui o planejamento e o conteúdo, com as fontes e os registros necessários à continuidade do trabalho. Interface, MCP e Actions operam sobre esse estado segundo as permissões da conta.",
       "decision": "manter",
       "layers": [
         "interface",
@@ -3195,7 +3237,7 @@
       "interfaceTerm": "Estado de autoria do curso",
       "domainTerm": "Estado de autoria do curso",
       "englishEquivalent": "course authoring state",
-      "araLearnExample": "O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface, pelas ferramentas MCP e pelas operações de Actions.",
+      "araLearnExample": "Ao retomar um curso, o assistente lê o planejamento e o material já produzido. Uma alteração autorizada passa a integrar o mesmo estado que a pessoa consulta no aplicativo.",
       "ambiguityRisk": "Sem esta delimitação, “estado de autoria do curso” pode ser confundido com workspace, histórico de chat, knowledge base, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3311,7 +3353,7 @@
       "interfaceTerm": "Resource MCP",
       "domainTerm": "Resource MCP",
       "englishEquivalent": "mcp resource",
-      "araLearnExample": "Uma ferramenta cliente lê um Resource MCP exposto pelo servidor; ele não é um componente visual armazenado dentro de uma unidade.",
+      "araLearnExample": "Um cliente MCP pode ler um documento que o servidor disponibilize por URI. A especificação chama essa forma de fornecer contexto de Resource.",
       "ambiguityRisk": "Sem esta delimitação, “Resource MCP” pode ser confundido com representação externa, knowledge base, tool, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3368,7 +3410,7 @@
       ],
       "productTerm": "Assistência por IA",
       "technicalSymbol": "course_provider_assistance",
-      "definition": "Sessão contextual em que um sistema de inteligência artificial ajuda a discutir, planejar, preparar, validar e pré-visualizar uma alteração tipada antes de a pessoa decidir aplicá-la ao rascunho do objeto corrente.",
+      "definition": "Sessão em que a pessoa discute uma alteração com um assistente e examina a proposta no contexto do conteúdo atual. A aplicação da proposta ao rascunho depende da decisão da pessoa.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -3444,7 +3486,7 @@
       "interfaceTerm": "Gênero discursivo",
       "domainTerm": "Gênero discursivo",
       "englishEquivalent": "discourse genre",
-      "araLearnExample": "Uma investigação de gênero examina a finalidade, a interlocução e os usos recorrentes do material. Chamar uma unidade de “explicação” ou apresentá-la num cartão não basta para identificar um gênero discursivo.",
+      "araLearnExample": "Uma investigação de gênero examina para quem o material é escrito, o que pretende realizar e como é usado numa situação social. O formato visual da unidade é uma informação adicional dessa análise.",
       "ambiguityRisk": "Sem declarar a linhagem socioretórica, gênero discursivo pode ser misturado a gênero comunicativo, gênero textual, classe de produto ou mídia, produzindo categorias de pesquisa incomparáveis.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3462,7 +3504,7 @@
       ],
       "productTerm": "Segmento discursivo",
       "technicalSymbol": "discourse_segment",
-      "definition": "Trecho delimitado segundo critério declarado, como intenção discursiva, relação retórica, subtópico, proposição ou função informacional; não existe fronteira universal independente do método.",
+      "definition": "Trecho delimitado por um critério de análise do discurso, como intenção comunicativa ou relação entre ideias. O método escolhido determina onde situar suas fronteiras.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -3505,7 +3547,7 @@
       ],
       "productTerm": "Parágrafo",
       "technicalSymbol": "text_paragraph",
-      "definition": "Unidade gráfica e textual que contribui para a organização do texto, mas cuja fronteira não garante unidade conceitual, retórica ou instrucional.",
+      "definition": "Unidade gráfica e textual que organiza o desenvolvimento de uma passagem. A relação entre parágrafos e conceitos depende da escrita e do critério adotado na análise.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -3567,7 +3609,7 @@
       "interfaceTerm": "Medida de densidade conceitual",
       "domainTerm": "Medida de densidade conceitual",
       "englishEquivalent": "conceptual density measure",
-      "araLearnExample": "Uma investigação define o construto, anota unidades semânticas, fixa o denominador e aplica a métrica versionada; o valor calculado é uma medida, não o construto.",
+      "araLearnExample": "Uma investigação conta unidades semânticas anotadas por trecho e declara o denominador empregado. A interpretação desse valor depende do conceito de densidade adotado e da validação do procedimento.",
       "ambiguityRisk": "Sem esta delimitação, “medida de densidade conceitual” pode ser confundida com o próprio construto, quantidade de caracteres, complexidade textual ou carga cognitiva, produzindo interpretações incompatíveis.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
@@ -3584,7 +3626,7 @@
       ],
       "productTerm": "Extensão editorial",
       "technicalSymbol": "editorial_extent",
-      "definition": "Contagem observável de caracteres, palavras, linhas, altura, duração ou volume de dados usada para ergonomia, edição ou limites técnicos, sem inferência pedagógica automática.",
+      "definition": "Dimensão observável da extensão de um conteúdo, como número de palavras, altura apresentada ou duração. Cada medida tem procedimento e unidade próprios e pode orientar decisões editoriais ou de ergonomia.",
       "decision": "restringir",
       "layers": [
         "domain",
@@ -3751,7 +3793,7 @@
       ],
       "productTerm": "Feed social",
       "technicalSymbol": "social_content_feed",
-      "definition": "Fluxo digital continuamente abastecido, usado aqui apenas como antecedente comparativo; não descreve a sequência curricular finita do AraLearn.",
+      "definition": "Fluxo digital continuamente abastecido por novas publicações. Na documentação do AraLearn, aparece como antecedente histórico para comparar formas de rolagem e segmentação.",
       "decision": "restringir",
       "layers": [
         "research",
@@ -3775,7 +3817,7 @@
       "interfaceTerm": "Feed social",
       "domainTerm": "Feed social",
       "englishEquivalent": "social feed",
-      "araLearnExample": "O feed do X serve como comparação histórica de rolagem e segmentação, mas não como modelo pedagógico ou evidência de eficácia.",
+      "araLearnExample": "Uma comparação pode examinar a rolagem de publicações no X e o acesso a trechos de um curso. O percurso curricular do AraLearn tem organização e critérios didáticos próprios.",
       "ambiguityRisk": "Sem esta delimitação, “feed social” pode ser confundido com sequência vertical de inspeção, curso, navegação curricular, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
       "alternativesAssessment": "no-plausible-candidate",
       "alternativesRationale": "Feed social é mantido apenas como antecedente comparativo reconhecível e não vira entidade do produto; curso, navegação e sequência de inspeção designam objetos funcionalmente diferentes.",

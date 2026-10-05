@@ -42,10 +42,11 @@ utilidade e dos efeitos que ainda precisam ser avaliados.
 | eficácia de aprendizagem | a intervenção melhora compreensão, retenção ou transferência? | desenho empírico com comparação, medidas válidas e incerteza |
 | originalidade científica | o trabalho acrescenta conhecimento defensável além da instância? | síntese da literatura, avaliação e abstração dos resultados |
 
-Uma implementação pode ser nova e pouco útil. Uma interface pode ser usável e
-não melhorar aprendizagem. Um curso pode ser coerente segundo especialistas e
-ainda produzir dificuldades imprevistas. Essas distinções impedem que testes de
-software sejam apresentados como resultados educacionais.
+Essas dimensões podem levar a resultados diferentes sobre o mesmo artefato.
+Um curso pode ser fácil de navegar e ainda deixar dúvidas conceituais; uma
+representação julgada coerente por especialistas pode exigir mais apoio para
+iniciantes. Cada conclusão precisa, portanto, identificar a dimensão examinada
+e a evidência que a sustenta.
 
 ## 3. Decisão sobre a unidade de contribuição
 
@@ -148,8 +149,8 @@ Casos em que a segmentação quebra relações ajudam a delimitar o modelo.
 
 ### C4: prática incorporada a representações disciplinares
 
-Uma tarefa pode pedir que o estudante complete uma célula da matriz, um termo
-da fórmula ou uma etapa do diagrama. A resposta ocupa o lugar em que a relação
+Uma tarefa pode pedir que o estudante complete uma célula da matriz, um trecho
+de código ou uma etapa do diagrama. A resposta ocupa o lugar em que a relação
 é lida. Os [componentes didáticos](componentes-didaticos.md) coordenam a notação,
 os locais de resposta e o retorno; uma correspondência, por exemplo, pode ser
 respondida por lacunas independentes dentro de um texto ou tabela.
@@ -237,9 +238,8 @@ escolha ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 ## 5. Relação com classes de sistemas existentes
 
 Para alegar vantagem, é preciso definir quais soluções serão comparadas e por
-quais critérios. A tabela organiza classes funcionais que ajudam a formular
-essa comparação; ela não funciona como inventário de todos os produtos nem como
-afirmação de exclusividade.
+quais critérios. A tabela organiza classes funcionais como ponto de partida
+para selecionar sistemas e critérios de comparação.
 
 | Classe | Capacidade frequentemente central | Questão comparativa para o AraLearn |
 | --- | --- | --- |
@@ -251,9 +251,9 @@ afirmação de exclusividade.
 | assistência por modelo de linguagem | geração e transformação de conteúdo | escopo explícito, validação e revisão contextual reduzem mudanças indevidas sem criar controle apenas simbólico? |
 | análise de dados educacionais | descrição, previsão e intervenção | que perguntas úteis podem ser respondidas com dados mínimos, definições explícitas e participação adequada? |
 
-Uma revisão comparativa deve definir corpus, critérios de inclusão, data de
-busca e unidade de comparação. “Não foi encontrado” é diferente de “não
-existe”.
+Uma revisão comparativa define o conjunto de sistemas examinados, os critérios
+de inclusão, a data da busca e a unidade de comparação. Seus resultados dizem
+respeito ao que foi localizado por esse procedimento.
 
 ## 6. Níveis de alegação
 
@@ -297,7 +297,7 @@ Uma afirmação de novidade situa a solução entre antecedentes encontrados por
 uma busca documentada. Uma afirmação de vantagem compara alternativas segundo
 critérios relevantes, como esforço de autoria, qualidade do conteúdo ou custo
 de manutenção. O resultado conserva as versões, tarefas, pessoas e condições
-examinadas; não estabelece superioridade universal.
+examinadas, permitindo reconhecer onde a comparação é aplicável.
 
 Cada critério limita a conclusão alcançada. Um esquema de dados válido sustenta
 a estrutura da gravação; correção factual e fidelidade às fontes exigem inspeção
@@ -347,7 +347,7 @@ cadeia documental. As referências completas estão em
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.
 - [Choi et al. (2024)](referencias.md#ref-choi2024vivid): Seulgi Choi; Hyewon Lee; Yoonjoo Lee; Juho Kim (2024). **VIVID: Human–AI Collaborative Authoring of Vicarious Dialogues from Lecture Videos.** In: *Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems*, Association for Computing Machinery, p. 1–26.
-- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
+- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), artigo e13997.
 - [Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha): Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.

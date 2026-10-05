@@ -8,7 +8,7 @@ padroniza essa comunicação: o serviço apresenta ferramentas, seus argumentos 
 seus resultados; o cliente as chama conforme o trabalho autorizado.
 
 No AraLearn, essas ferramentas permitem planejar o curso, desenvolver a
-explicação — o texto-base com fontes de uma microssequência —, produzir unidades
+explicação — a base de conteúdo e fontes de uma microssequência —, produzir unidades
 e corrigir conteúdo. A pessoa orienta o trabalho e inspeciona o resultado no
 aplicativo. A [autoria por conversa](criar-cursos-pelo-chat.md) apresenta esse
 percurso; os [fluxos e contratos](fluxos-prompts-e-contratos.md) explicam como o
@@ -26,11 +26,10 @@ O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
 estruturados de entrada, ou schemas, são gerados dessa fonte.
 
-Na versão 8.0.0, a descoberta foi ampliada sem quebra: `consultar_componentes`
-aceita `{}` para descobrir o catálogo completo em páginas de oito, e os campos de
-continuação e `processo` são opcionais. Clientes que já usam os campos anteriores
-continuam compatíveis; quando a lista completa for necessária, o cliente deve
-seguir `temMais` e `continuacao` até a última página.
+`consultar_componentes` aceita `{}` para descobrir o catálogo em páginas de
+oito. A primeira consulta dispensa `continuacao`. Quando a decisão exige
+conhecer a lista completa, o cliente segue `temMais` e `continuacao` até a
+última página, repetindo os filtros da consulta inicial.
 
 No contrato corrente, citações e reconciliação pedagógica identificam o recurso e
 o trecho por referências de autoria; o servidor deriva os localizadores internos.
@@ -100,7 +99,7 @@ conteúdo efetivamente produzido.
 | `definir_acesso_arquivos` | escolher herança, restrição ou disponibilidade dos arquivos da fonte inspecionada |
 | `definir_politica_revisao` | escolher entre conteúdo completo salvo e somente revisado sem alterar visibilidade ou direitos |
 
-Desde o catálogo 11.1.0, `preparar_materializacao`, `salvar_parte` e
+`preparar_materializacao`, `salvar_parte` e
 `materializar_parte` aceitam `autonomo: true`, a mesma intenção humana explícita
 de `retomar_curso`. Por pedido expresso da pessoa para aquele curso, a produção
 segue com o mapa em rascunho sem registrar aprovação humana e sem alterar as
@@ -141,7 +140,11 @@ WAV são recusados. Permanecem as verificações de origem, tamanho e
 redirecionamento aplicáveis à operação.
 
 As ferramentas do estudo, como áudio e calculadora, são componentes do catálogo
-comum, incluídos no campo `content` da unidade ou da explicação. A consulta focal de componentes fornece um trecho de até oito representações, com `total`, `temMais` e `continuacao`; quando houver continuação, repita os mesmos filtros antes de concluir a descoberta. A leitura de contrato continua focal e fornece um contrato por vez; a de
+comum, incluídos no campo `content` da unidade ou da explicação. A descoberta
+de componentes fornece páginas de até oito representações, com
+`total`, `temMais` e `continuacao`. Para recuperar a página seguinte, repita
+os filtros e acrescente a continuação recebida. Depois da escolha, consulte
+o contrato do componente, um por vez. A leitura de
 fontes fornece alvos lógicos de PDF; a biblioteca fornece referências de áudio
 sem endereços internos de armazenamento. Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-de-autoria).
 
@@ -169,8 +172,9 @@ inspeção. **Reorganizar lotes** apresenta essa prévia no aplicativo.
 ## Repertório e materialização
 
 `preparar_materializacao` permite consultar antecipadamente a prontidão: recebe
-o `plano` compacto e confronta a Explicação reconciliada com repertório, vínculos,
-requisitos, formas, componentes, fontes, prática e cobertura. A chamada separada
+em `unidades` as mesmas propostas de conteúdo usadas na escrita e confronta a
+explicação reconciliada com repertório, vínculos, requisitos, formas, componentes,
+fontes, prática e cobertura. A chamada separada
 é opcional. Ao omitir `referenciaPreparo`, a materialização executa a verificação
 com o conteúdo solicitado antes de gravar. `blocked` agrega as causas que precisam
 de correção. A Explicação se reconcilia declarando a função do recurso inteiro
@@ -185,8 +189,8 @@ conhecimento a introduzir, usar ou retomar, conforme o
 [fluxo de produção](fluxos-prompts-e-contratos.md#repertório-acumulado).
 `materializar_parte` recebe o foco de uma única microssequência e as unidades
 novas ou explicitamente alteradas desse foco. A parte é resolvida no servidor.
-IDs, versões correntes de packages e posições finais podem ser omitidos e são
-derivados pela materialização. `unidade` identifica a existente a substituir;
+Identidades, versões correntes dos pacotes e posições finais podem ser omitidas
+e são derivadas pela materialização. `unidade` identifica a existente a substituir;
 sem ela, cria uma nova. Unidades omitidas permanecem. `concluir: false` mantém
 produção parcial; a conclusão verifica o acumulado. Práticas novas exigem
 resposta avaliável e feedback offline.
@@ -232,27 +236,33 @@ conteúdo revisado é explicada nas [regras de revisão e acesso](aralearn-contr
 
 ### Inspeção pedagógica
 
-Quando uma correção altera a estrutura de uma unidade, `aplicar_correcoes` informa a invalidação da aplicação instrucional e orienta a releitura, a reaplicação contextual das escolhas e a nova inspeção. A tarefa existente `aplicar_configuracao_instrucional` retoma esse fluxo, preservando as condições fixadas e exigindo uma declaração sobre o conteúdo atual. Alterar somente título ou vínculos de fontes não é apresentado como invalidação estrutural. O recibo não copia declarações antigas para conteúdo novo.
+Quando uma correção altera a estrutura de uma unidade, `aplicar_correcoes`
+informa a invalidação da aplicação instrucional. Releia o conteúdo, confira
+as escolhas e registre a aplicação atual por
+`aplicar_configuracao_instrucional` antes da nova inspeção. As condições fixadas
+permanecem protegidas. Uma alteração somente do título ou dos vínculos de
+fontes preserva a aplicação registrada; a inspeção considera a base atualizada.
 
 `registrar_inspecao` usa a referência da base focal efetivamente lida. O
 parecer novo deve trazer seis dimensões — `alignment`, `evidence`,
-`representation`, `feedback`, `sufficiency` e `configuration` — e *quotes* que existam no
-conteúdo salvo. O servidor vincula o parecer à versão e ao `basisHash`, detecta
+`representation`, `feedback`, `sufficiency` e `configuration` — e trechos da
+base no campo `evidence`. O servidor vincula o parecer à versão e ao `basisHash`, detecta
 quando a base precisa de nova inspeção e recusa evidência que não esteja no
 recorte.
 
 `configuration` confronta os parâmetros aplicados com a realização observável
 no alvo e no percurso pertinente, respeitando preferências contextuais e fixações.
-Pareceres históricos continuam legíveis; cinco dimensões só são aceitas na
-recuperação da tentativa exata já salva. A referência opaca contém essa identidade.
+Pareceres de formatos anteriores continuam legíveis quando presentes. Cinco
+dimensões só permitem recuperar a tentativa exata já salva, identificada pela
+referência opaca; uma nova avaliação exige seis.
 Consulte a [compatibilidade e os critérios comuns](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
 
 Um parecer `consistent` é recusado quando falta a aplicação instrucional de uma unidade relevante da base focal. `needs_attention` permanece disponível para registrar a insuficiência. Isso verifica a existência da base; o auditor ainda precisa confrontar as escolhas aplicadas com a experiência realmente proposta.
 
-O relatório semântico é julgamento do auditor. Hash, quotes, validade
-estrutural e estado `consistent` não são garantia de qualidade pedagógica nem
-de aprendizagem. Experimentos de prompt, contrato e materialização continuam
-em revisão e não têm conclusão geral.
+O relatório registra o julgamento do auditor sobre o material examinado. O
+servidor verifica sua ligação com a base e contradições que consegue observar;
+a leitura crítica avalia a suficiência pedagógica. A investigação dos efeitos
+sobre a aprendizagem segue o [protocolo de avaliação](protocolo-avaliacao-artefato.md).
 
 ## Respostas e erros
 
@@ -264,15 +274,21 @@ pessoa autora.
 
 `links` identifica cada destino por `relation`, `target`, `label`, `url` e, quando disponível, `revision`. O primeiro destino corresponde a `deepLink`. A relação distingue conteúdo, observações, fontes, planejamento e parâmetros; conserve o endereço e a identidade retornados ao oferecer a próxima etapa.
 
-`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem devolver a árvore curricular. Se a resposta se perder, `consultar_planejamento` com `curso` e `resumo: true` recupera a situação e a referência vigente sem carregar o mapa. Essa referência identifica a versão salva; quando o mandato tem ponto de revisão curricular, não substitui a inspeção do conteúdo nem a aprovação explícita da pessoa. Um mandato automático sem esse ponto pode seguir com o mapa em rascunho e materializar lotes operacionais, sem marcar aprovação humana. A mesma autonomia explícita é aceita em `preparar_materializacao`, `salvar_parte` e `materializar_parte`.
+`salvar_mapa_curricular` confirma a escrita com `revisaoDoCurso`, `situacao` e
+`referenciaParaAprovar`. Se a resposta se perder, `consultar_planejamento` com
+`curso` e `resumo: true` recupera essa confirmação. A referência identifica a
+versão salva. Quando o acordo prevê revisão curricular, a pessoa inspeciona o
+mapa completo e declara sua aprovação. Com autonomia expressa para aquele
+curso, a produção pode seguir sobre o rascunho; o registro de aprovação humana
+permanece como estava. Essa autonomia é aceita em `preparar_materializacao`,
+`salvar_parte` e `materializar_parte`.
 
 Em `retomar_curso` e `consultar_planejamento`, indicar `parte` ou `microssequencia` limita o contexto ao ramo selecionado e às dependências pertinentes. O planejamento integral continua disponível sem esse foco, com continuação quando necessário. Essas regras são compartilhadas com Actions.
 
 `temMais: true` e `continuacao` não nula indicam uma resposta parcial. O cliente
 recupera o restante do mesmo recorte antes de avaliar seu conteúdo. A
 [continuação e reconstrução](aralearn-contract.md#continuação-e-reconstrução-do-conteúdo)
-especifica os fragmentos literais e seus limites; a configuração do canal não
-transforma uma leitura parcial em completa.
+especifica os fragmentos literais e seus limites.
 
 Erros devolvem `code`, mensagem, diagnóstico limitado e `recovery`, que informa
 como retomar a operação e preservar a tentativa. Os dados técnicos necessários
@@ -284,8 +300,8 @@ diferentes, descritas no [fluxo de recuperação](fluxos-prompts-e-contratos.md#
 
 A exclusão de um curso exige confirmação e um resultado verificável do serviço.
 Se o cliente não apresentar o retorno da ferramenta, a ação permanece incerta.
-Uma descrição produzida pelo assistente não substitui o recibo nem identifica,
-por si só, a causa da falta de resposta.
+Conferir o recibo e o estado salvo permite distinguir a exclusão concluída de
+uma tentativa interrompida.
 
 A conferência do curso e da limpeza de arquivos usa o acesso do proprietário
 e conserva a confirmação original. Uma resposta ausente

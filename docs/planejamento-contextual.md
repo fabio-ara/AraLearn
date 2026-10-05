@@ -17,8 +17,9 @@ consulta mesmo quando determinado parâmetro só pode ser definido em outro nív
 [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md)
 apresenta essas regras.
 
-A explicação é o texto-base da microssequência, com suas fontes. Ela pode ser
-aberta pelo mapa antes da produção das unidades. A análise instrucional
+A explicação é a base da microssequência: pode combinar texto, representações
+visuais e áudio, com suas fontes. Ela pode ser aberta pelo mapa antes da
+produção das unidades. A análise instrucional
 identifica as ideias e operações que serão trabalhadas. Esses registros permitem
 examinar a base intelectual do material antes de decidir como distribuí-lo nas
 unidades, conforme a [autoria contextual](autoria-contextual.md).
@@ -38,8 +39,8 @@ painel mais recente.
 
 A aprovação se refere ao mapa salvo que a pessoa examinou. Ramos recolhidos e
 resultados ocultos por um filtro também pertencem a esse mapa. A interface
-habilita a aprovação quando a estrutura está completa e a pessoa declara que
-inspecionou o conjunto. Aprovar o planejamento registra essa decisão; a revisão
+habilita **Aprovar mapa inspecionado** quando a estrutura está completa e a
+pessoa marca **Revisei o mapa completo**. Aprovar o planejamento registra essa decisão; a revisão
 da explicação e das unidades acontece sobre os conteúdos efetivamente salvos.
 
 Para evitar que a aprovação se aplique a outro mapa, a leitura do servidor
@@ -53,8 +54,9 @@ própria do proprietário.
 
 ## Base, intenção e aplicação
 
-O grupo **Base, análise e evidência** reúne a explicação salva, a revisão humana
-declarada e as ideias e operações previstas para a microssequência. Quando a
+Em **Parâmetros**, o grupo **Explicação e aprendizagem** reúne a explicação
+salva, a revisão humana declarada e as ideias e operações previstas para a
+microssequência. Quando a
 leitura falha, o painel informa que esses dados não foram confirmados.
 
 Planejar uma ideia e utilizá-la numa unidade são registros diferentes. Uma

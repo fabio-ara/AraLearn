@@ -19,21 +19,25 @@ Os comandos abaixo são executados na raiz de uma cópia local do repositório e
 PowerShell no Windows. `npm.cmd` e `npx.cmd` correspondem a `npm` e `npx` em outros
 sistemas. Instale [Node.js 22](https://nodejs.org/en/download), que executa as
 ferramentas JavaScript do projeto. O npm instala os pacotes de que o projeto depende;
-`npm ci` usa as versões registradas em `package-lock.json`. Depois da instalação,
-`dev` inicia o servidor que apresenta a aplicação local:
+`npm ci` usa as versões registradas em `package-lock.json`:
 
 ```powershell
 npm.cmd ci
-npm.cmd run dev
 ```
 
-O servidor local abre `http://127.0.0.1:4182`. A aplicação usa somente a URL e a chave
-publicável do Supabase no navegador:
+Antes de abrir a aplicação, escolha qual serviço ela consultará. O navegador recebe
+a URL e a chave pública por estas variáveis:
 
 ```text
 ARALEARN_SUPABASE_URL
 ARALEARN_SUPABASE_PUBLISHABLE_KEY
 ```
+
+`npm.cmd run dev` abre `http://127.0.0.1:4182`. Se o par de variáveis estiver
+incompleto, `scripts/servePublic.js` tenta obter a configuração publicada do AraLearn
+e preencher os valores ausentes. Nesse caso, a página é local, mas os pedidos podem
+alcançar o serviço hospedado. Para desenvolver contra outro projeto, informe sempre
+as duas variáveis correspondentes.
 
 Para testar banco, autenticação e arquivos sem usar o serviço hospedado, o
 [Docker](https://docs.docker.com/desktop/) executa os serviços em ambientes isolados,
@@ -48,9 +52,21 @@ npx.cmd --yes supabase@2.115.0 db reset
 pwsh -NoProfile -File .\scripts\validateLocalSupabase.ps1
 ```
 
-A preparação da candidata não inicia esse conjunto. Escolha a stack local quando a
-propriedade depender de banco, autenticação ou arquivos, e reserve a certificação
-correspondente ao job da CI.
+Para abrir o aplicativo contra esse ambiente, use a URL e a chave de cliente locais.
+O comando abaixo lê a configuração em memória e seleciona somente esses dois campos:
+
+```powershell
+$aralearnLocal = npx.cmd --yes supabase@2.115.0 status --output json | ConvertFrom-Json
+$env:ARALEARN_SUPABASE_URL = $aralearnLocal.API_URL
+$env:ARALEARN_SUPABASE_PUBLISHABLE_KEY = $aralearnLocal.ANON_KEY
+npm.cmd run dev
+```
+
+O nome `ANON_KEY` pertence à configuração do conjunto local e é aceito pelo modo de
+desenvolvimento. A implantação hospedada adota as chaves publicáveis atuais. A
+preparação automática da candidata seleciona a prova necessária; o job de integração
+contínua reproduz o Supabase em ambiente descartável. Iniciar os serviços localmente
+é uma escolha adicional para investigar banco, autenticação ou arquivos.
 
 ## Percurso de dados
 
@@ -101,7 +117,10 @@ Use o mapa para localizar a parte que decide o comportamento antes de editar:
 | `tests/runtime/` | domínio, contratos e integração sem navegador completo |
 | `tests/e2e/` | jornadas reais no Chromium |
 
-O núcleo de entrega (`COURSE_AUTHORING_DELIVERY_CORE`) reúne seis critérios curtos derivados dos guias, em cerca de 930 bytes, e é entregue uma única vez na retomada com curso selecionado, no planejamento e no preparo focal; os guias extensos continuam nos recursos de conhecimento, sem repetição em continuações ou recibos de produção.
+`courseKnowledge.js` também reúne os critérios comuns de entrega em
+`COURSE_AUTHORING_DELIVERY_CORE`. Eles acompanham a retomada com curso selecionado,
+o planejamento e o preparo focal. A continuação conserva o contexto já apresentado,
+enquanto os recursos de conhecimento oferecem os guias completos quando necessários.
 
 Arquivos em `supabase/functions/_shared/aralearn/runtime/` espelham módulos comuns.
 Altere a fonte em `src/` e sincronize:
@@ -113,9 +132,11 @@ npm.cmd run resources:sync-edge
 ## Hierarquia e análise instrucional
 
 A composição organiza o percurso em vários níveis, do curso às unidades de estudo. O
-mapa curricular completo existe antes da produção. Uma parte apenas agrupa, para
-produção, microssequências que já estão nesse mapa; ela não acrescenta outro nível ao
-percurso.
+mapa curricular completo existe antes da produção. Uma parte agrupa microssequências
+desse mapa em lotes de trabalho e conserva a hierarquia curricular. Por padrão, a
+produção exige mapa aprovado; uma autorização expressa de autonomia permite produzir
+com o mapa em rascunho. Essa autorização preserva as condições do curso e a distinção
+entre produção e revisão humana.
 
 Uma unidade de análise identifica algo que precisa ser acompanhado ao longo do
 percurso, como uma ideia ou um procedimento. No código, ela se chama
@@ -143,7 +164,7 @@ o navegador e o servidor aceitem e recusem os mesmos casos.
 O percurso depende do que a mudança altera:
 
 1. ajuste a regra de domínio, independente de tela ou rede, quando mudar a validade do conteúdo;
-2. altere a migração quando a persistência ou a autorização mudarem;
+2. crie uma nova migração quando a persistência ou a autorização mudarem;
 3. exponha o caso de uso pelo roteador comum;
 4. se a tarefa for conversacional, ajuste o catálogo humano canônico;
 5. regenere a projeção Actions e o OpenAPI;
@@ -310,166 +331,147 @@ segurança em nível de linha.
 
 ## Testes e integração
 
-Uma solicitação de integração de mudanças, ou pull request (PR), reúne o diff e as
-verificações da candidata. Mantenha o PR em rascunho durante o desenvolvimento.
-Durante uma correção, reproduza a falha e execute os testes do comportamento alterado
-e dos consumidores pertinentes com `npm.cmd run test:focal -- caminho/do/teste.test.js`
-(arquivos de `tests/runtime` ou `tests/kernel`) ou a spec de navegador correspondente.
-Inspecione também o cliente real quando a falha depender dele. A seleção automática
-por área pode abranger muitos arquivos; ela não substitui esse diagnóstico focal.
-Execute a preparação ampla quando a candidata estiver estabilizada. Após uma falha,
-corrija e confirme primeiro o recorte afetado; então retome a preparação usando os
-recibos ainda válidos, sem `--force` por padrão.
+A validação começa pelo comportamento alterado. Reproduza a falha, execute o teste
+que a observa e confira os consumidores da regra. Uma mudança de autorização, por
+exemplo, precisa ser exercitada no servidor e com pessoas de permissões diferentes;
+uma mudança de foco ou rolagem precisa chegar ao navegador.
 
-Consulte o impacto e execute a preparação local antes de liberar a candidata para a
-validação protegida, que executa os testes e verificadores aplicáveis à integração:
+### Selecionar a prova durante o desenvolvimento
+
+O executor focal aceita arquivos de `tests/kernel` e `tests/runtime`. Seleção vazia
+ou caminho desconhecido interrompe a chamada, e o código de saída conserva o resultado
+dos testes:
+
+```powershell
+npm.cmd run test:focal -- tests/runtime/course-design-parameters.test.js
+npm.cmd run test:focal -- tests/runtime/ci-path-classification.test.js tests/runtime/test-runner.test.js
+npm.cmd run test:e2e -- tests/e2e/study-explanation.spec.js --retries=0
+```
+
+O terceiro comando entrega a seleção ao Playwright, que controla o navegador. O
+runner prepara o artefato web e restaura sua configuração temporária ao terminar.
+Inspecione também o cliente real quando o problema depender da hospedagem, da conta ou
+do dispositivo.
+
+| Camada | O que a prova consegue observar | Quando ampliar |
+| --- | --- | --- |
+| Domínio e componentes | Validade de dados, cálculos, contratos e estados de erro. | Quando o efeito depende de gravação, rede ou interação. |
+| PGlite | Funções e transformações SQL num PostgreSQL incorporado ao teste. | Para conferir Auth, RLS, Storage e concorrência nos serviços reais. |
+| Navegador com dados sintéticos | Interação, disposição, foco e resposta em condições controladas. | Quando identidade, permissões ou bytes hospedados fazem parte do risco. |
+| Supabase local e navegador | Pedidos HTTP, contas, banco e arquivos num ambiente descartável. | Para confirmar a configuração e a versão efetivamente hospedadas. |
+| Cliente publicado | Resultado na instalação ou serviço que chegará às pessoas. | Para perguntas sobre aprendizagem ou experiência, aplicar o protocolo com participantes. |
+
+### Preparar a candidata
+
+A candidata é o conjunto de alterações que será integrado. Mantenha a solicitação
+(*pull request*, PR) em rascunho enquanto desenvolve. Quando o conjunto estiver estável,
+consulte e execute sua preparação:
 
 ```powershell
 npm.cmd run validate:candidate -- --base origin/main --plan
 npm.cmd run validate:candidate -- --base origin/main
 ```
 
-A candidata é o conjunto de alterações que será integrado; cada verificação
-obrigatória é chamada de *gate*. O classificador examina os caminhos alterados e
-escolhe as provas da área correspondente. Ele distingue documentação e web; contratos,
-serviços remotos e banco; Android e orquestração. Uma mudança apenas nas folhas de
-estilo (CSS), por exemplo, seleciona provas de interface; contratos e banco exigem
-a integração da CI; caminhos desconhecidos ampliam a verificação. Como essa classificação
-não reconstrói todas as dependências do código, acrescente o teste focal do comportamento
-alterado quando ele ainda não estiver representado. Mudanças Android recebem suas provas
-locais e o gate Android obrigatório na validação protegida final.
+O primeiro comando mostra as verificações selecionadas; o segundo as executa. Cada
+verificação obrigatória é chamada de *gate*. O classificador em
+[`validationImpact.mjs`](../scripts/validationImpact.mjs) examina os caminhos e
+escolhe o alcance pertinente. CSS seleciona provas de interface; contratos e banco
+selecionam também integração; caminhos desconhecidos e mudanças na própria
+orquestração exigem o conjunto completo. Como a seleção por arquivo tem alcance
+limitado, mantenha os testes focais do comportamento no trabalho de desenvolvimento.
 
-Verificadores de publicação com consumidores conhecidos (`verifyPublishedSite`,
-`verifyDeploymentArtifacts` e `androidNativeGate`) selecionam seus testes focais na
-preparação local, sem exigir banco ou compilação Android apenas por estarem em
-`scripts/`. A CI conserva o job web, que também executa os testes de runtime.
-Mudanças nos mecanismos de seleção/certificação, scripts sem papel conhecido e
-deltas mistos com impacto transversal continuam amplos.
+A preparação começa pelos verificadores de arquivos e pela análise estática (*lint*)
+e avança para os testes selecionados. Para web, entram as specs comuns de navegador
+alteradas; os E2E afetados indiretamente continuam sendo escolhidos durante o
+desenvolvimento. Os verificadores de publicação conhecidos — `verifyPublishedSite`,
+`verifyDeploymentArtifacts` e `androidNativeGate` — têm consumidores focais definidos.
+Scripts sem papel conhecido conservam a seleção ampla.
 
-A preparação começa por verificações rápidas de arquivos e análise estática do código
-(*lint*) e avança para testes de execução, jornadas de ponta a ponta no navegador
-(E2E) e Android, conforme o impacto. Ela não inicia contêineres, CLI do Supabase,
-PostgreSQL nem Edge Functions locais: a prova de banco e de integração pertence ao job
-próprio da CI, em runner descartável, e a preparação aprovada não afirma que esse gate
-passou. A primeira falha interrompe o percurso. O resumo em
-`.validation/candidate.json` identifica a árvore e a configuração da candidata, os
-gates selecionados, o resultado e as falhas, com referências aos logs. Como o diretório
-é ignorado pelo Git, leia esse resumo local antes de abrir o log necessário ao
-diagnóstico.
+O resumo `.validation/candidate.json` identifica a árvore de arquivos, a configuração,
+os gates e seus resultados, com links para os logs locais. A primeira falha interrompe
+a preparação. Corrija-a, confirme o recorte afetado e retome o comando. Resultados cujos
+arquivos, dependências e configurações relevantes continuam iguais podem ser
+reutilizados; `--force` pede sua execução novamente.
 
-Resultados locais podem ser reutilizados quando arquivos, dependências e
-configuração relevantes permanecem iguais. `--force` repete as verificações.
-Quando a stack local for escolhida de forma explícita, a integração com banco é
-executada de novo, pois a igualdade do código não comprova o estado dos dados.
-Nos recibos de runtime focal e E2E,
-documentos e testes não selecionados podem ser excluídos quando não são alcançados
-pela prova. Imports, leituras literais e registros de evidência consumidos conservam
-as referências pertinentes; um comentário com `e2e` não é leitura. Carregamento
-dinâmico, inventário inconclusivo ou fonte indisponível mantêm os inputs amplos.
-Fontes, helpers, dependências, comando e configuração continuam protegidos; gates
-não especializados conservam seus inputs anteriores.
-Os critérios de seleção estão no
-[orquestrador da candidata](../scripts/validateCandidate.mjs); o resultado local
-prepara o PR, enquanto o check protegido agrega a matriz de gates aplicáveis e autoriza
-sua promoção. Orquestração, caminhos desconhecidos e classificação inconclusiva mantêm
-o conjunto integral por segurança.
+Os recibos de runtime focal e E2E acompanham as fontes e os testes realmente alcançados,
+incluindo imports, leituras de arquivos e registros de evidência consumidos. Um
+carregamento dinâmico ou uma origem indisponível torna essa identificação inconclusiva
+e conserva o conjunto amplo de entradas. A implementação desses critérios está em
+[`validateCandidate.mjs`](../scripts/validateCandidate.mjs).
 
-Depois de resolver falhas, revisar, fazer commit, enviar a branch e abrir o PR em
-rascunho, libere a candidata pelo mesmo caminho:
+A preparação local seleciona a necessidade de integração com Supabase, mas sua
+certificação pertence ao job da CI, executado em ambiente descartável. Para investigar
+essa fronteira localmente, use o procedimento da seção seguinte.
+
+Depois de revisar, fazer commit e enviar a branch, libere o PR em rascunho:
 
 ```powershell
 npm.cmd run candidate:ready -- --base origin/main
 ```
 
-Esse comando só marca o PR como pronto após os gates verdes, com árvore limpa, HEAD
-remoto idêntico e destino `main`. A seleção cobre o delta completo contra a base real
-do PR; `--base` não pode recortar somente o último commit. `ready_for_review` dispara
-a integral. Para corrigir uma candidata que falhou, retorne o PR a rascunho antes de
-enviar novas mudanças. Não inicie outra integral enquanto houver gate local pendente.
-O comando não faz commit, push, merge ou publicação.
+Esse comando consome a preparação aprovada, sem executar novamente os gates. Confere
+árvore limpa e idêntica, dependências e configuração, HEAD local igual ao remoto e PR
+contra `main`. A comparação cobre todo o delta da solicitação, a partir da base e do
+ancestral comum registrados. Relatório ausente ou desatualizado exige nova preparação.
+Commit, push e integração são ações anteriores ou posteriores a esse comando.
 
-Durante um ajuste, também é possível escolher explicitamente os arquivos que exercitam
-a mudança. O programa que executa os testes, ou *runner*, aceita arquivos de
-`tests/kernel` e `tests/runtime`, recusa
-seleção vazia ou inválida e preserva o código de saída:
+A passagem para pronto emite `ready_for_review` e inicia os jobs aplicáveis da CI. O
+check protegido **Testar e validar** reúne seus resultados. Web executa a suíte de
+runtime e as jornadas comuns; Android compila e inspeciona o aplicativo; Supabase
+recria os serviços e exerce sua integração. O certificado vincula resultados e
+artefatos à mesma candidata. Se for necessário corrigir uma falha, volte o PR a
+rascunho antes de enviar as mudanças. O [procedimento de
+implantação](implantacao.md#validar-antes-da-publicação) descreve a certificação e a
+promoção dos artefatos.
 
-```powershell
-npm.cmd run test:focal -- tests/runtime/course-design-parameters.test.js
-npm.cmd run test:focal -- tests/runtime/ci-path-classification.test.js tests/runtime/test-runner.test.js
-```
+### Exercitar banco, autenticação e arquivos
 
-O modo focal não executa as auditorias e integrações completas de `npm test` nem
-produz aprovação da candidata. Sem argumentos, `scripts/runTests.mjs` continua
-executando todos os arquivos das duas suítes; `npm test` conserva também seus
-verificadores anteriores. PGlite, uma versão incorporada de PostgreSQL, verifica
-transformações SQL e contratos do banco; Auth, RLS, Storage e concorrência real
-precisam do Supabase local. As jornadas opt-in de acesso em
-`course-access-local.spec.js` criam contas e cursos próprios na stack local. Quando
-exercitam leitores ou visitantes, suas fixtures incluem explicação e uma declaração de
-revisão de teste por uma chamada remota de procedimento (RPC) protegida quando o
-cenário usa a política `reviewed_only`;
-essa preparação não constitui revisão humana de um curso real. As revisões usadas após
-a aprovação são relidas, sem fixar o número anterior à mudança. Falhas HTTP
-inesperadas continuam reprovando a jornada. Os testes conservam o registro das contas e
-dos arquivos criados para confirmar
-sua limpeza. Uma falha de limpeza precisa ser resolvida antes de encerrar a
-validação.
+`validateLocalSupabase.ps1` usa um conjunto local já preparado. Ele executa testes
+Deno das funções, testes SQL pgTAP, inventário de paridade, análise do banco e
+concorrência real. Os avisos do analisador permanecem visíveis; erros bloqueiam a
+prova. Por padrão, o script prossegue para a integração HTTP e o navegador. Com
+`-DatabaseOnly`, conclui após as verificações de banco.
 
-Para o navegador, use:
+`npm run test:integration:local` também pode ser chamado diretamente sobre os serviços
+já preparados. Ele verifica a autoria corrente, produz dois lotes por canal HTTP,
+percorre as jornadas reais selecionadas em `tests/e2e/` e exercita a cópia de PDF e WAV.
+O script mantém o banco existente e inicia apenas o processo de funções de que precisa.
+Uma cópia privada dos arquivos e da configuração estabiliza esse processo durante a
+prova; hashes anteriores e posteriores detectam mudanças na origem ou na cópia.
 
-```powershell
-npm.cmd run test:e2e
-npm.cmd run test:e2e -- tests/e2e/study-explanation.spec.js --retries=0
-```
+Um processo persistente pode ser reutilizado com `--functions-existing` quando o
+script confirma origem, montagem somente para leitura, serviços prontos e ausência de
+alterações pertinentes em funções, configuração e migrações. Na CI, o processo já
+supervisionado é fornecido por `--functions-external --ci`. Cada forma preserva a
+responsabilidade por encerrar somente os processos iniciados pela própria execução.
 
-O runner encaminha a seleção ao Playwright e restaura a configuração temporária do
-ambiente intermediário (*staging*). E2E obrigatório com zero testes, *skip* ou falha
-não aprova a preparação;
-`--forbid-only` impede que um `test.only` reduza a prova da candidata. Testes contra
-adaptadores sintéticos continuam separados das jornadas com Auth, HTTP, PostgreSQL e
-Storage reais locais.
+As jornadas criam contas, cursos e arquivos sintéticos e registram sua limpeza. Quando
+um caso exige `reviewed_only`, a fixture inclui explicação e declaração de revisão de
+teste pela operação protegida apropriada. As revisões são relidas após cada mudança.
+Esse preparo permite exercer a política de acesso; a revisão de cursos reais continua
+sendo uma decisão do proprietário.
 
-O job de banco da CI executa Deno, o ambiente das funções remotas; pgTAP, a suíte de
-testes SQL; inventário de paridade; lint; e concorrência antes
-das jornadas, sempre no conjunto descartável do runner. A execução registra avisos do
-lint e bloqueia erros explicitamente. Uma migração candidata precisa estar aplicada
-nesse conjunto; alterar silenciosamente uma migração já aplicada é recusado.
-Instalação nova, atualização e restauração continuam obrigatórios
-conforme o impacto da mudança e o corte.
+A disponibilidade dos serviços é conferida antes de cada etapa. Uma prova obrigatória
+precisa executar seus casos, sem seleção vazia, testes pulados ou `test.only`;
+`--forbid-only` protege a seleção. Falhas HTTP inesperadas e limpeza incompleta impedem
+concluir a integração. O resumo distingue falha funcional de resíduos de teste, e os
+logs omitem credenciais.
 
-`npm run test:integration:local` reaproveita uma stack local já preparada e executa
-Autoria corrente, dois lotes por canal HTTP, as dez jornadas reais no Chromium e cópia
-PDF/WAV. O runner não inicia, reseta nem encerra o banco. Ele serve funções próprias,
-confere se os serviços estão prontos (*readiness*) e encerra somente o processo que
-iniciou. As funções próprias são servidas de uma cópia privada da configuração e
-dos arquivos, conferida por hash antes e depois da execução. Isso evita que eventos
-do checkout reiniciem o servidor durante a prova; mudanças na origem ou na cópia
-invalidam o resultado. A cópia não substitui a verificação de frescor dos serviços.
-A CI pode compartilhar seu
-processo já supervisionado. Um runtime persistente local pode ser usado com
-`--functions-existing` apenas após conferir que os arquivos estão montados somente para leitura, a origem, a
-prontidão dos serviços e
-ausência de alteração de funções/configuração/migrations contra a base. Isso conserva
-o processo existente quando seu código não foi alterado. Falha de limpeza bloqueia a
-prova. Contas e arquivos são sintéticos; esses testes não aprovam cursos reais nem
-substituem ChatGPT, MCP ou Actions hospedados.
+Alterações de banco exigem também instalação nova, atualização de dados existentes e
+restauração, conforme a seção de [migrações](#migrações-instalação-nova-e-atualização).
+A identidade de uma migração aplicada é preservada; uma correção posterior recebe novo
+arquivo.
 
-A integração confere a disponibilidade dos serviços antes de cada etapa e registra
-falhas com o teste e o ponto em que ocorreram. O resumo separa falha funcional de
-limpeza incompleta; os detalhes ficam nos logs locais, sem credenciais.
+### Inspecionar a interface e executar o conjunto completo
 
-A explicação possui uma jornada própria em
-[study-explanation.spec.js](../tests/e2e/study-explanation.spec.js) e uma
-[galeria local](../tests/gallery/study-explanation.html). Elas permitem examinar
-texto extenso, componentes, ferramentas, referências e retorno de foco em
-larguras e temas diferentes. Os dados são sintéticos; a autorização e os arquivos
-hospedados são verificados nas jornadas de integração.
+A explicação possui uma [jornada de navegador](../tests/e2e/study-explanation.spec.js)
+e uma [galeria local](../tests/gallery/study-explanation.html). Elas permitem examinar
+texto extenso, componentes, ferramentas, referências e retorno de foco em larguras e
+temas diferentes. Autorização e arquivos remotos são exercitados nas jornadas de
+integração. Use o [sistema visual](sistema-visual.md) e o
+[roteiro de verificação](auditoria-front-end.md) para interpretar o resultado.
 
-Os testes de ferramentas e navegação complementam essa leitura, conferindo
-controles, cálculo, áudio, foco e rolagem. A inspeção segue o
-[sistema visual](sistema-visual.md) e o [roteiro de verificação da interface](auditoria-front-end.md).
-
-Quando for necessário executar todos os testes e verificadores localmente, use:
+Quando o impacto exigir todos os testes e verificadores locais, use:
 
 ```powershell
 npm.cmd test
@@ -479,14 +481,33 @@ npm.cmd run test:e2e
 npm.cmd run validate:example
 ```
 
-Uma entrega web passa ainda por `validateDeployment.ps1 -Scope Web`; Android usa
-`-Scope Full`. Mudança de banco exige instalação nova, atualização, restauração e verificação
-hospedada
-antes da publicação. A validação completa exigida pelas regras de integração da
-candidata final pode fornecer a prova de referência; não repita o mesmo conjunto local
-e remotamente sem uma alteração que
-invalide a evidência. `test:preflight` contém os verificadores e auditorias;
-`test:runtime` contém o conjunto Node. `npm test` continua executando ambos.
+`npm test` combina `test:preflight`, que confere gerados e auditorias, com
+`test:runtime`, que executa as suítes Node. O modo `test:focal` seleciona somente os
+testes informados. Uma entrega web pode ser conferida por
+`validateDeployment.ps1 -Scope Web`; Android acrescenta `-Scope Full`. A integração
+Supabase e a conferência hospedada têm procedimentos próprios. Reutilize resultados
+válidos para a mesma candidata e repita as provas cuja base tenha mudado.
+
+## Inspeção pedagógica por IA
+
+Uma mudança no percurso pode alterar o sentido de uma atividade preservada. Por isso,
+a inspeção usa a [base pedagógica focal](persistencia-relacional.md#pareceres-de-inspeção-e-suas-bases),
+construída no banco com o mesmo hash usado para validar a gravação do parecer.
+`coursePedagogicalAudit.js` projeta essa base para leitura e verifica contradições
+observáveis; `courseContentInspection.js` valida estados, resultados e completude.
+
+Ao alterar essa capacidade, confira a unidade, a explicação e o efeito sobre os demais
+alvos da microssequência. Os testes `course-ai-inspection-pglite.test.js` exercitam
+persistência, ordem, mudança de base e repetição do pedido. Os testes
+`course-pedagogical-audit.test.js` e `course-content-inspection.test.js` exercitam os
+seis critérios e a coerência dos resultados.
+
+Na leitura conversacional, `courseHumanAuditContext.js` reúne bases idênticas da mesma
+página para evitar repeti-las em cada alvo. As referências individuais e os dados
+específicos continuam associados ao objeto correto. Preserve essa relação ao alterar
+a projeção; `course-human-audit-context.test.js` verifica a correspondência entre
+contexto compartilhado, parâmetros e alvo. A escrita relê a base canônica antes de
+aceitar evidências, mesmo quando a resposta ao cliente a apresentou de forma agrupada.
 
 ## Revisão humana do conteúdo
 

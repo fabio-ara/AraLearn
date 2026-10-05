@@ -11,8 +11,9 @@ corrigir são atividades distintas.
 
 O [roteiro de jornadas](roteiro-aceitacao-humana-autoria.md) organiza a verificação da
 experiência. A [matriz técnica](matriz-conformidade-tecnica.md) relaciona cada
-capacidade à implementação e aos testes; resultados visuais pertencem à versão e ao
-ambiente em que foram observados.
+capacidade à implementação e aos testes. Este capítulo reúne as escolhas de desenho
+e os critérios usados para verificá-las. A leitura do código permite localizar os
+mecanismos; a avaliação visual examina cada tela na versão e no ambiente em uso.
 
 ## Fundamentos
 
@@ -43,12 +44,12 @@ Os princípios vigentes são:
 [Material Design](https://developer.android.com/codelabs/m3-design-theming),
 [Fluent](https://fluent2.microsoft.design/design-tokens) e [Wikimedia
 Codex](https://doc.wikimedia.org/codex/latest/design-tokens/definition-and-structure.html)
-são referências para temas e variáveis de estilo. O AraLearn não importa deles uma
-biblioteca visual ou um modelo de navegação completo.
+orientam a organização de temas e variáveis de estilo. O AraLearn implementa sua
+própria composição de componentes e navegação.
 
 ## Variáveis de estilo e modos de cor
 
-Uma mudança de tema não deve exigir a edição de cada componente. Para separar os
+O tema centraliza os valores usados pelos componentes. Para separar esses
 valores básicos de suas funções na interface, as variáveis de
 `public/styles-tokens.css` se distribuem em três níveis:
 
@@ -56,11 +57,10 @@ valores básicos de suas funções na interface, as variáveis de
 - papéis semânticos de superfície, texto, borda, ação, estado, estudo e dados;
 - ajustes de componentes derivados desses papéis.
 
-Cores literais pertencem à fundação. Componentes, ícones, imagens vetoriais em SVG
-e mecanismos de
-renderização usam variáveis semânticas. Cada combinação efetivamente exibida ainda
-precisa de verificação de contraste, pois a presença de uma variável não garante
-legibilidade por si só.
+Cores literais pertencem à fundação. Componentes, ícones, imagens vetoriais em SVG e
+mecanismos de renderização usam variáveis semânticas. A verificação de contraste examina
+cada combinação efetivamente exibida, considerando o texto e a superfície em que
+aparece.
 
 O seletor oferece **Sistema**, **Claro** e **Escuro**. A opção Sistema acompanha
 `prefers-color-scheme`, a preferência de cor informada pelo sistema operacional; uma
@@ -72,15 +72,14 @@ O modo escuro usa superfícies cinza-escuras e níveis de texto distintos. Preto
 branco absolutos são reservados às situações em que o contraste medido os exige. A
 mesma relação semântica deve permanecer reconhecível nos dois modos.
 
-Nenhuma polaridade é tratada como superior em todas as situações. Numa tarefa
+A escolha do modo de cor depende da tarefa e das condições de uso. Numa tarefa
 específica de revisão de texto, a polaridade positiva, com texto escuro sobre fundo
-claro, apresentou desempenho melhor e pupilas menores ([Piepenbrock et al. (2014)](referencias.md#ref-piepenbrock2014polarity)). Em outro experimento, realizado
-à noite com baixa iluminação da tela e do ambiente, o modo escuro apresentou menores
+claro, apresentou desempenho melhor e pupilas menores ([Piepenbrock et al. (2014)](referencias.md#ref-piepenbrock2014polarity)). Em outro experimento, realizado à
+noite com baixa iluminação da tela e do ambiente, o modo escuro apresentou menores
 marcadores objetivos de fadiga, enquanto o claro recebeu maior preferência subjetiva;
 contraste mais alto foi preferido nos dois casos ([Xie et al. (2021)](referencias.md#ref-xie2021colormode)). Tarefa, luminância, iluminação e medida
-mudam a interpretação. Por isso, o produto oferece escolha, preserva contraste e
-verifica ambos os modos, sem converter preferência ou um resultado situado em regra
-universal.
+mudam a interpretação. Por isso, o produto oferece escolha de tema, e a verificação
+examina contraste e legibilidade nos dois modos.
 
 ## Estrutura do produto
 
@@ -91,8 +90,7 @@ e ao ponto de navegação anterior.
 
 O curso próprio abre diretamente em **Conteúdo**. A barra mantém atalhos por ícone
 para Conteúdo e Planejamento. **Parâmetros**, **Fontes**, **Áudio**, **Revisão**,
-**Dados de autoria** e **Pessoas e acesso** ficam no menu compacto. Esses nomes expressam tarefas humanas e
-não expõem módulos internos.
+**Dados de autoria** e **Pessoas e acesso** ficam no menu compacto. Esses nomes identificam as tarefas disponíveis no curso.
 
 A barra superior permanece compacta, com voltar, título do objeto, indicador de
 sincronização e menu de tarefas. O indicador compartilha a linguagem de Estudo,
@@ -101,9 +99,9 @@ acessível. Uma ação situada pode levar diretamente à tarefa e ao objeto nece
 sem criar uma segunda navegação ou uma barra lateral.
 
 Celular e computador usam a mesma composição de até 430 px, centralizada em telas
-maiores. A largura extra não acrescenta uma segunda coluna principal nem uma barra
-lateral de navegação. A Autoria possui uma única área principal de rolagem vertical; tabelas e
-comparações largas usam rolagem horizontal local.
+maiores. A largura extra mantém o curso centralizado. A Autoria possui uma única área
+principal de rolagem vertical; tabelas e comparações largas usam rolagem horizontal
+local.
 
 As ações das superfícies principais usam somente ícones, com nome acessível, estado e
 dica também alcançável por toque. Menus e ajustes revelados usam texto necessário à
@@ -113,19 +111,20 @@ objeto a que se referem. Detalhes de organização são abertos quando necessár
 preservando espaço para o mapa e o conteúdo.
 
 Em **Conteúdo**, observações e mudanças de parâmetros permanecem ligadas ao alvo
-inspecionado e aparecem como estado do próprio curso. A pessoa pode percorrer os
-cards, registrar decisões e verificar resultados sem abrir uma superfície paralela. Um
-assistente conectado por MCP ou Actions lê esse mesmo estado e apresenta propostas
-para discussão. A pessoa orienta a produção, inspeciona o resultado e decide o que
-aplicar; a execução respeita o alcance da autorização já dada. As alterações salvas
-pelo assistente são consultadas no próprio curso.
+inspecionado e aparecem como estado do próprio curso. A pessoa percorre as unidades e
+registra decisões junto do conteúdo que está inspecionando. Um assistente conectado por
+MCP ou Actions lê esse mesmo estado e apresenta propostas para discussão. A pessoa
+orienta a produção, inspeciona o resultado e decide o que aplicar; a execução respeita o
+alcance da autorização já dada. As alterações salvas pelo assistente são consultadas no
+próprio curso.
 
 Na unidade, **Visualizar**, **Editar** e **Assistência por IA** usam o mesmo mecanismo
 de apresentação e o mesmo alvo. A edição realça apenas os textos que o componente
-autoriza. A assistência abre uma sobreposição de até 430 px, mantém a conversa em
-primeiro plano e associa uma proposta concreta a cada resposta. Configuração do
-serviço e detalhes aparecem progressivamente. Aceitar gera, valida e aplica somente ao
-rascunho; salvar continua sendo uma decisão separada da pessoa.
+autoriza. A assistência abre uma sobreposição de até 430 px e mantém a conversa em
+primeiro plano. A pessoa pode discutir o conteúdo ou pedir **Preparar prévia**
+para examinar uma alteração. A configuração do serviço e os detalhes aparecem
+progressivamente. **Aplicar ao rascunho** leva a prévia à edição; **Salvar proposta**
+grava o resultado no curso.
 
 Somente o proprietário edita, inclusive em Estudo. O estudante com acesso pode estudar
 e observar; uma tentativa de edição informa a necessidade de propriedade sem criar
@@ -154,7 +153,7 @@ adiamento normal não cria mensagem persistente. Preservar o trabalho em curso t
 precedência sobre substituir a área por uma revisão recém-lida.
 
 Recomposições internas seguem a mesma regra. Parâmetros, **Fontes**, observações,
-Conteúdo e Analytics conservam valores, detalhes progressivos e foco após validação
+Conteúdo e Dados de autoria conservam valores, detalhes progressivos e foco após validação
 local, atualização assíncrona ou falha de rede ambígua. Uma nova tentativa sem edição
 parte do formulário novamente apresentado e conserva o mesmo pedido, para evitar
 duplicação do efeito;
@@ -171,9 +170,9 @@ visual entre cartões de navegação não comunica permissão.
 Na entrada, um único seletor pesquisável, tecnicamente um *combobox*, escolhe o curso
 mostrado numa prévia detalhada. Nela, objetivo e relação de acesso identificam o curso;
 progresso e disponibilidade local mostram como retomá-lo. A ação estável **Abrir**
-inicia a navegação pela lista de módulos; uma posição salva aparece como informação para a retomada. UUID,
-hash e revisão técnica permanecem no diagnóstico. A composição usa uma coluna
-centralizada de até 430 px, inclusive numa tela de 1280 px.
+inicia a navegação pela lista de módulos; uma posição salva aparece como informação para
+a retomada. UUID, hash e revisão técnica permanecem no diagnóstico. A composição usa uma
+coluna centralizada de até 430 px, inclusive numa tela de 1280 px.
 
 ## Sequência curricular em Conteúdo
 
@@ -183,17 +182,21 @@ posição, hierarquia e limites do recorte. O autor pode restringir a sequência
 qualquer trecho da hierarquia curricular, do curso à microssequência, ou por uma parte
 de autoria.
 
-A [explicação](explicacao-e-revisao-humana.md), texto-base da microssequência, abre
-em uma sobreposição para consulta e inspeção junto às fontes. Ela conserva sua
+A [explicação](explicacao-e-revisao-humana.md), conteúdo que desenvolve o assunto da microssequência, abre
+em uma sobreposição para consulta e inspeção junto às suas fontes. Ela conserva sua
 própria declaração de revisão, separada das unidades. Fechar a leitura devolve o
 foco ao ponto de origem. A sobreposição reutiliza o tratamento de texto, componentes
-e referências presente nas unidades de estudo.
+e referências presente nas unidades de estudo. Em Estudo, **Fontes da unidade**
+abre as referências específicas do item atual; **Explicação** apresenta as
+referências do conteúdo explicativo. Os dois controles conservam o contexto da unidade.
 
-As páginas usam doze unidades por padrão, e a janela mantém no máximo trinta e seis no
-documento. O carregamento acontece nas duas direções. Ao atualizar uma unidade, mudar
-de recorte, perder a conexão ou abrir o mesmo curso em outra aba, a interface preserva
-a identidade da unidade e sua distância em relação ao topo fixo. Um endereço direto
-inclui a unidade inicial sem transformar o cursor de paginação em posição curricular.
+A leitura abre uma unidade por vez. **Mostrar várias unidades** permite compará-las numa
+sequência vertical; a seleção para observação em lote tem controles próprios. Os dados
+chegam em páginas de doze unidades por padrão, e a janela mantém no máximo trinta e seis
+no documento. O carregamento acontece nas duas direções. Ao atualizar uma unidade, mudar
+de recorte, perder a conexão ou abrir o mesmo curso em outra aba, a interface preserva a
+identidade da unidade e sua distância em relação ao topo fixo. Um endereço direto inclui
+a unidade inicial sem transformar o cursor de paginação em posição curricular.
 
 O seletor hierárquico fecha por clique externo e pela tecla Esc. O retorno restaura o
 ponto exato conhecido. Estados vazio, parcial, carregando, sem conexão e erro ocupam o
@@ -203,7 +206,7 @@ espaço do conteúdo e oferecem uma ação compatível, sem cobrir a navegação
 
 Revisão parte das observações abertas e da unidade de estudo focal. Seleção em lote
 aparece somente quando a ação exige vários alvos. Detalhes e decisões ficam próximos
-do conteúdo; não existe uma tela de execuções ou console de auditoria.
+do conteúdo. A pessoa inspeciona cada alvo e decide quais observações foram atendidas.
 
 Fontes apresentam primeiro os dados que ajudam a reconhecer o documento. O detalhe
 revela disponibilidade, papel e âncoras. O envio de PDF mostra progresso, repetição
@@ -225,38 +228,37 @@ conservar métricas adequadas a cada plataforma. A prosa principal parte de
 1,5. Cartões e explicação usam o mesmo papel `--resource-text`: cinza `gray-700` no
 claro e `gray-300` no escuro. O apoio usa `--resource-text-secondary`, distinto de
 indisponibilidade. Títulos distinguem somente os níveis necessários, sem competir com
-o conteúdo. Texto corrido não usa alinhamento justificado.
+o conteúdo. O texto corrido usa alinhamento à esquerda.
 
 A escala existente preserva 1 rem para alternativas e valores principais, 0,9375 rem
-para código e tabelas, 0,875 rem para legendas e 0,8125 rem para metadados. Reduzir o
-corpo não é um mecanismo de ajuste automático de conteúdo. Títulos de unidade
-conservam maiúsculas, minúsculas e símbolos do autor; nenhuma transformação visual
-converte `TCP`, `pH` ou `NaCl` em outras grafias. Código, terminal e alternativas de
-código usam a variável `--font-mono`, mantendo espaços, linhas e literais. A
-família de interface não substitui fontes matemáticas nem altera a notação
+para código e tabelas, 0,875 rem para legendas e 0,8125 rem para metadados. Conteúdo
+extenso usa o espaço de leitura e a rolagem disponíveis, conservando esses tamanhos.
+Títulos de unidade conservam maiúsculas, minúsculas e símbolos do autor; nenhuma
+transformação visual converte `TCP`, `pH` ou `NaCl` em outras grafias. Código, terminal
+e alternativas de código usam a variável `--font-mono`, mantendo espaços, linhas e
+literais. A família de interface não substitui fontes matemáticas nem altera a notação
 especializada: glosas e transcrição fonética (IPA), anotações de leitura ruby,
-caracteres chineses, japoneses e coreanos (CJK) e escrita da direita para a
-esquerda (RTL).
+caracteres chineses, japoneses e coreanos (CJK) e escrita da direita para a esquerda
+(RTL).
 
 O [inventário de papéis do
-catálogo](componentes-didaticos.md#inventário-tipográfico-do-catálogo) relaciona os 38
+catálogo](componentes-didaticos.md#inventário-tipográfico-do-catálogo) relaciona os 34
 pacotes, os módulos que os apresentam na tela — seus *renderers* — e os casos extremos
 pertinentes. Os testes
 [tipográficos](../tests/runtime/resource-typography.test.js) conferem tokens,
-contraste das combinações declaradas e preservação textual. Eles não medem métricas de
-fontes instaladas, reorganização do texto (*reflow*) ou legibilidade dos pixels: 320
-CSS px, ampliação de 200%,
-larguras móveis, temas e interação exigem a inspeção real coordenada no Chrome. SVGs
+contraste das combinações declaradas e preservação textual. A inspeção no navegador complementa esses testes com métricas de
+fontes instaladas, reorganização do texto (*reflow*) e legibilidade dos pixels.
+Ela inclui a largura de 320 CSS px, ampliação de 200%, temas e interação. SVGs
 com geometria calculada mantêm a família e o tamanho usados pelo motor; CSS não troca
 sua métrica depois do cálculo.
 
 A interface usa títulos de 16 px, com peso entre 550 e 600, controles textuais de 14
-px e apoio de 13 px. Cinzas legíveis e pesos moderados organizam as tarefas; negrito
-não é o padrão de todo rótulo. Esses valores não uniformizam a prosa, as fórmulas ou
-os elementos internos dos componentes didáticos.
+px e apoio de 13 px. Cinzas legíveis e pesos moderados organizam as tarefas; negrito destaca
+rótulos que precisam de ênfase. A prosa, as fórmulas e os elementos internos dos
+componentes conservam seus papéis tipográficos próprios.
 
-A largura e a altura do quadro de cada papel são determinadas pela janela e pelo
-layout, não pelo comprimento do título ou da descrição. Texto integral permanece
+A largura e a altura do quadro de cada papel acompanham a janela e a disposição
+da tela. Texto integral permanece
 disponível por rolagem local e teclado. Abrir detalhes não desloca o card vizinho. Nas
 listas de navegação, as ações ocupam um rodapé interno estável, separado da descrição;
 parágrafos e tabelas dentro do leitor continuam com a altura necessária ao conteúdo.
@@ -291,11 +293,10 @@ Espaços derivam de uma escala previsível; cantos e sombras indicam agrupamento
 sobreposição funcional. Metadados podem ser menores que a prosa, mas continuam
 legíveis com ampliação de texto. Controles principais preservam área interativa de
 pelo menos 44 por 44 px. Controles repetidos dentro de uma prática podem usar 28 por
-28 px quando a densidade do objeto exige. Esse tamanho supera o mínimo de 24 por 24 px
-do nível AA das
-[diretrizes WCAG 2.2](https://www.w3.org/TR/WCAG22/#target-size-minimum); teclado, foco
-e separação
-continuam necessários.
+28 px quando a densidade do objeto exige. O critério 2.5.8 das
+[diretrizes WCAG 2.2](https://www.w3.org/TR/WCAG22/#target-size-minimum), de nível AA,
+estabelece alvos de pelo menos 24 por 24 CSS px, com exceções definidas na própria
+norma. A avaliação considera também a separação entre alvos, o teclado e o foco.
 
 Fórmulas, diagramas e notações podem exigir métricas próprias. O tamanho óptico deve
 acompanhar o texto ao redor, e a ampliação precisa preservar em conjunto o rótulo e a
@@ -303,18 +304,19 @@ geometria calculada.
 
 ## Ícones, rótulos e foco
 
-Ícones funcionais são imagens vetoriais SVG monocromáticas numa grade comum. O valor
-CSS `currentColor` faz com que herdem a cor do controle em que aparecem. Um ícone sem
-texto visível recebe nome acessível. O estado é comunicado por rótulo, forma e cor; a
-troca do desenho isolado não basta.
+Ícones funcionais são imagens vetoriais SVG monocromáticas numa grade comum. O valor CSS
+`currentColor` faz com que herdem a cor do controle em que aparecem. Um ícone sem texto
+visível recebe nome acessível. O estado combina rótulo, forma e cor para permitir seu
+reconhecimento.
 
 Nas superfícies principais, os controles usam ícones com nomes acessíveis. Menus e
 ajustes revelados admitem rótulos. Títulos não recebem sufixos como `· Seu Curso` para
 expressar propriedade; iconografia e estado acessível fazem essa distinção, com cor
 apenas como reforço.
 
-Rótulos descrevem a tarefa. Termos como JSON, versão de estado ou identificador de
-pacote aparecem apenas em diagnóstico técnico. A interface comum usa palavras do
+Rótulos descrevem a tarefa. Identificadores de pacote e versões técnicas pertencem
+às consultas especializadas e ao diagnóstico. Um formato como JSON aparece quando
+ajuda a reconhecer o arquivo que será exportado. A interface comum usa palavras do
 trabalho, como curso, unidade de estudo e fonte. O
 [vocabulário controlado](vocabulario-controlado.md) reúne os nomes canônicos.
 
@@ -336,8 +338,8 @@ permanecem explícitos. Código, lacunas, respostas e foco não dependem apenas 
 [Graphviz](https://graphviz.org/documentation/) calcula posições e conexões de
 diagramas; [MathML](https://developer.mozilla.org/pt-BR/docs/Web/MathML) representa
 notação matemática no navegador. Esses recursos seguem os mesmos papéis visuais quando
-suas convenções permitem. Uma paleta acessível não corrige escala estatística
-inadequada, e um diagrama sem sobreposição ainda precisa de pertinência didática.
+suas convenções permitem. A avaliação reúne legibilidade e pertinência didática: confere, por exemplo,
+a escala de um gráfico e as relações representadas num diagrama.
 
 Diagramas extensos conservam tamanho legível numa área própria. Toque e arrasto dentro
 dela movem a representação; a pinça altera a ampliação; gestos fora dela navegam na
@@ -353,12 +355,18 @@ dos segmentos.
 
 Seleção, resposta correta, resposta incorreta, foco e indisponibilidade são
 comunicados por texto, forma e cor. A resposta esperada só aparece depois de uma ação
-explícita. A pessoa pode tentar novamente sem transformar erros, ajuda ou tempo em
-nota ou classificação.
+explícita. A pessoa pode tentar novamente e consultar o retorno para compreender a solução.
+O estado pessoal registra o avanço e as marcas de retomada.
 
-O controle principal confirma a resposta e, no acionamento seguinte, avança. A
-transição ocorre localmente; a persistência remota segue pela fila apropriada. Mudança
-de tema, instabilidade de rede ou gravação remota não bloqueiam esse controle.
+O controle principal confere a tentativa. Se houver erro, os controles
+**Tentar de novo** e **Ver resposta** permitem continuar o trabalho. Depois do acerto
+ou da consulta à resposta, **Continuar** apresenta o retorno adicional preparado
+pela autoria, quando existente, e segue para a próxima unidade.
+
+O aplicativo guarda a conclusão no dispositivo antes de avançar. Se essa gravação
+local falhar, informa o problema e permite tentar novamente. O envio ao servidor
+segue pela fila de sincronização e pode acontecer depois, inclusive após o retorno
+da conexão.
 
 A unidade usa a altura útil disponível sem criar rolagem vertical no documento.
 Conteúdo curto e longo conservam a mesma moldura e a mesma área inferior de ações;
@@ -374,8 +382,7 @@ Navegar, voltar, confirmar e cancelar não aguardam uma animação.
 
 A interface respeita a área segura do dispositivo nas quatro bordas. Cabeçalhos
 reservam altura estável, e ações globais mantêm o mesmo alinhamento entre telas.
-Nenhum botão depende da presença ou ausência da barra de rolagem para ocupar sua
-posição.
+O espaço da barra de rolagem é reservado para manter a posição dos controles.
 
 Menus, seletores e diálogos fecham por ação explícita, clique externo e Esc quando a
 operação permite. Sobreposições mantêm foco contido e o devolvem ao controle de
@@ -401,16 +408,20 @@ duplicada quando o AraLearn relê o estado remoto.
 ## Acessibilidade e verificação
 
 As diretrizes de acessibilidade para conteúdo web,
-[WCAG 2.2](https://www.w3.org/TR/WCAG22/), são a referência técnica. A validação
+[WCAG 2.2](https://www.w3.org/TR/WCAG22/), são a referência técnica. A recomendação
+corrente consultada para a implementação é a de 12 de dezembro de 2024; a bibliografia
+também conserva a edição de 2023 originalmente citada. O roteiro de verificação
 abrange contraste textual e não textual, ampliação de 200%, reorganização do conteúdo,
-teclado, toque, nome, papel e estado acessíveis, alternativa a gestos e preferência de
-movimento reduzido.
+teclado e toque. Também confere nome, papel e estado acessíveis, alternativas a gestos
+e preferência de movimento reduzido.
 
 As larguras de referência são 360, 390 e 430 px no celular e 1280 px no computador,
-nos modos claro e escuro. Em cada combinação, a interface mantém a coluna
-centralizada de até 430 px, uma área principal de rolagem vertical e nenhum
-transbordamento horizontal da página. A verificação alcança o último conteúdo,
-nomes acessíveis e áreas de toque, incluindo textos extensos e estados intermediários.
+nos modos claro e escuro. Em cada combinação, confira a coluna centralizada
+de até 430 px e o acesso ao último conteúdo. Na Autoria, a rolagem vertical fica na
+área principal. No Estudo, a leitura rola no interior da unidade e mantém seus
+controles disponíveis. Tabelas e diagramas podem usar rolagem ou enquadramento locais.
+A avaliação procura conteúdo recortado, controles inacessíveis e deslocamentos
+inesperados, incluindo textos extensos e estados intermediários.
 
 As jornadas cobrem também duas abas, perda e retorno da conexão, endereços diretos,
 área segura, clique externo, Esc e retorno do foco. **Rever** é aberto e fechado
@@ -428,7 +439,9 @@ conservam dimensões,
 posição e foco; a assistência tem nome acessível contextual e dica de uso. Depois
 da publicação, uma rodada no Chrome confere a versão efetivamente disponível.
 
-A entrada de Estudo possui a seguinte série persistente:
+As capturas versionadas abaixo documentam composições anteriores da entrada de
+Estudo. Servem à comparação histórica; a verificação da versão corrente deve
+produzir novas evidências nas mesmas condições:
 
 | Largura | Tema claro | Tema escuro |
 |---:|---|---|
@@ -448,9 +461,11 @@ A lista de cursos registra a superfície mínima de Autoria na mesma largura:
 ![Lista de cursos da Autoria em tela móvel clara, com busca, criação e três
 cursos.](screenshots/authoring/authoring-courses-390-light.png)
 
-Uma captura comprova apenas o conjunto de dados, o modo e o tamanho usados. A
-aprovação visual exige também interação real, console e rede sem erros, foco, rolagem,
-textos extensos e estados intermediários.
+Cada captura registra o conjunto de dados, o modo e o tamanho usados naquele
+momento. A avaliação visual reúne essas imagens e a interação exercitada, com
+atenção a foco, rolagem, textos extensos e estados intermediários. Os registros
+técnicos de console e rede ajudam a investigar falhas. A decisão humana fica
+associada à versão e ao alcance efetivamente examinados.
 
 ## Critério de conclusão visual
 

@@ -45,10 +45,10 @@ justificativas naquele contexto. Evidência externa pode justificar a investiga�
 de uma dimensão; o melhor valor para cada situação continua sendo uma hipótese
 a avaliar. Uma definição fixada pelo pesquisador prevalece no escopo pertinente.
 
-Limites de caracteres, bytes, elementos de página e tamanho de lote continuam
-relevantes para ergonomia e segurança. A quantidade de partes organiza a
-produção, mas não é meta pedagógica. As preferências de parte, lote e pausa têm
-escopo de curso e não viram atribuições locais de uma unidade de estudo.
+Os limites de transporte e de tamanho dos dados protegem a operação do
+aplicativo. Já a quantidade de partes organiza a produção. As preferências de
+parte, lote e pausa são definidas para o curso inteiro; cada unidade conserva
+as escolhas aplicadas no contexto em que foi produzida.
 
 ## Catálogo corrente
 
@@ -61,7 +61,7 @@ essas mesmas decisões nos dados trocados pelos canais de autoria.
 
 | Parâmetro | Forma e exemplos de valores | Escopos | Decisão representada |
 | --- | --- | --- | --- |
-| Teto de novidades na unidade expositiva | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | teto de unidades de análise apresentadas pela primeira vez numa unidade expositiva |
+| Teto de novidades na unidade expositiva | inteiro de `1` a `64` | curso, lição, microssequência e unidade de estudo | teto de unidades de análise introduzidas numa unidade expositiva ou mista |
 | Formas de explicação | conjunto; por exemplo, definição, exemplo, mecanismo ou contraste | curso, lição, microssequência e unidade de estudo | formas de explicação que precisam ser desenvolvidas quando aplicáveis |
 | Mínimo de oportunidades de prática | inteiro; por exemplo, `1` ou `2` | curso, lição, microssequência e unidade de estudo | quantidade mínima de oportunidades distintas por requisito de evidência |
 | Variação da prática | conjunto; por exemplo, caso, contexto, representação ou apoio; conjunto vazio declara que nenhuma dimensão é exigida | curso, lição, microssequência e unidade de estudo | dimensões que precisam variar entre oportunidades dirigidas ao mesmo requisito |
@@ -98,21 +98,23 @@ registros disponíveis das anotações que ainda exigem exame próprio.
 
 ### Formas de explicação
 
-O conjunto fechado admite:
+O catálogo permite consultar oito formas de desenvolvimento:
 
-- definição simples;
-- exemplo concreto;
-- mecanismo;
-- contraste;
-- condição de aplicação;
-- limite ou exceção;
-- exemplo resolvido;
-- ligação entre representações.
+| Forma | Trabalho realizado no texto |
+| --- | --- |
+| Definição simples | Explicitar o significado usado naquele contexto. |
+| Exemplo concreto | Mostrar um caso da ideia apresentada. |
+| Mecanismo | Explicar como uma relação ou resultado se produz. |
+| Contraste | Tornar visível uma diferença relevante entre casos. |
+| Condição de aplicação | Explicar quando uma regra ou procedimento pode ser usado. |
+| Limite ou exceção | Delimitar o alcance de uma afirmação ou regra. |
+| Exemplo resolvido | Desenvolver uma resolução e justificar seus passos. |
+| Ligação entre representações | Relacionar elementos de duas formas de apresentar o mesmo objeto. |
 
 Definição, exemplo, mecanismo e contraste podem ser escolhidos conforme o objeto
 tratado. Quando uma forma deliberadamente exigida não se aplica, a
-produção registra a forma e uma justificativa breve. A lista completa não é um
-roteiro obrigatório para toda unidade.
+produção registra a forma e uma justificativa breve. A seleção das formas
+pertinentes compõe o desenho de cada recorte.
 
 Uma definição esclarece o significado; um exemplo mostra um caso; um mecanismo
 explica como o resultado se produz. Um contraste torna uma diferença relevante
@@ -139,8 +141,17 @@ relevante. As dimensões disponíveis são:
 Trocar palavras, ordem visual ou componente pode preservar a mesma tarefa. A
 distinção entre oportunidades depende do requisito de evidência e da estrutura
 semântica, não de diferença cosmética. Nova tentativa do mesmo item é repetição
-da oportunidade. Repetição pode ter finalidade pedagógica, mas não satisfaz por
-si um mínimo de oportunidades distintas.
+da oportunidade. Repetição pode ajudar a retomar o conteúdo; o mínimo de oportunidades distintas
+exige novos casos pertinentes à operação.
+
+A conferência reúne as oportunidades do mesmo requisito em toda a
+microssequência, inclusive quando estão em unidades diferentes. A variação é
+uma relação entre essas oportunidades. Um exemplo resolvido anterior fornece
+base de ensino, mas fica fora dessa contagem de prática. Quando há uma única
+oportunidade no conjunto, a calibração automática pode usar `[]` para declarar
+que nenhuma dimensão é exigida. O valor `null` conserva a decisão em aberto.
+Uma condição fixada pela autoria ou pela pesquisa precisa ser atendida ou
+reconsiderada expressamente por quem a definiu.
 
 ## Protocolo de unidade de análise
 
@@ -151,12 +162,11 @@ Pode ser conceito, definição, relação, regra, condição ou distinção. Ess
 descrições ajudam a justificar o recorte; não formam uma classificação universal
 do conhecimento nem exigem uma taxonomia específica de cada disciplina.
 
-O recorte pertence ao desenho do curso. Ele não é identificado pela quantidade
-de palavras ou frases, pelo formato visual ou pelas unidades numéricas usadas
-internamente por um modelo de linguagem; depende do conhecimento necessário
-à tarefa. A unidade de
-estudo organiza a apresentação e a experiência: pode desenvolver vários
-recortes, e um recorte pode ser desenvolvido ao longo de várias unidades.
+O recorte depende do conhecimento necessário à tarefa. Uma relação pode exigir
+desenvolvimento próprio mesmo quando aparece numa frase curta com palavras
+conhecidas. A unidade de estudo organiza a apresentação e a experiência: pode
+desenvolver vários recortes, e um recorte pode se estender por várias unidades.
+Contagens de texto descrevem outra propriedade, a extensão do material.
 
 ### Como recortar e quando parar
 
@@ -196,14 +206,14 @@ objetivo, idioma, fonte ou tarefa pode reabrir essa decisão.
 
 | Distinção | Regra operacional e exemplo | Contraexemplo ou limite |
 | --- | --- | --- |
-| conceito e expressão | Uma identidade representa o conteúdo delimitado; rótulos equivalentes no contexto apontam para ela. “Comutador” e “switch” podem nomear o mesmo objeto no trecho de redes. | Duas palavras não provam dois conceitos; a mesma palavra em dois sentidos não prova um só. Se aprender a correspondência lexical for o objetivo, essa correspondência pode constituir outro recorte. |
+| conceito e expressão | Uma identidade representa o conteúdo delimitado; rótulos equivalentes no contexto apontam para ela. “Comutador” e “switch” podem nomear o mesmo objeto no trecho de redes. | Contar rótulos separadamente duplicaria esse objeto. Inversamente, uma palavra com sentidos diferentes pode designar recortes distintos. Aprender a correspondência lexical constitui outro objetivo possível. |
 | conceito e relação | “Quadro” e “endereço MAC” não explicam, por si, a relação usada no encaminhamento. A relação ganha identidade se precisa ser ensinada ou aplicada separadamente. | Não contar cada verbo, seta ou par de termos como relação nova. Uma relação já delimitada não recebe outra identidade por mudar de frase. |
 | regra e condição | Uma regra declara o que vale ou como proceder, com suas condições. Separar a condição quando discriminá-la é uma necessidade instrucional própria. | Dividir ambos os lados de uma igualdade pelo mesmo número não ensina que o divisor deve ser diferente de zero apenas por exibir símbolos. Tampouco cada símbolo exige identidade para quem domina a notação. |
-| pressuposto | Conhecimento que o planejamento declara necessário e disponível ao público antes do curso; registrar escopo e justificativa. | “É básico” ou “não está na ementa” não bastam. Pressuposição de desenho não comprova conhecimento real do estudante. |
-| introdução | Primeiro tratamento didático de um recorte não pressuposto na ordem corrente do curso, com conteúdo que permita reconhecer o significado pretendido. Conta uma vez por identidade. | Nomear um assunto em índice ou usá-lo sem explicação não o introduz suficientemente. Uma introdução não comprova desenvolvimento completo ou aprendizagem. |
-| uso | Mobilização de conhecimento pressuposto ou já introduzido para compreender, explicar ou executar outra operação. | Repetir termo num título não demonstra uso; exigir conhecimento sem base registra lacuna, não uso válido artificial. |
-| retomada | Reativação intencional de conhecimento pressuposto ou anterior: reexplicar, comparar com o caso anterior ou solicitar recuperação. É uma forma identificada de uso, sem nova introdução. | Ocorrência posterior de palavra não demonstra retomada. Continuar uma explicação na unidade seguinte pode ser desenvolvimento por uso, sem atividade de reativação. |
-| menção e desenvolvimento | Menção apenas aponta para um conteúdo. Desenvolvimento explicita significado, relações, exemplos, mecanismo, condições ou outra forma pertinente, com trecho verificável. | Lista de palavras, ligação bibliográfica e selo “explicado” não demonstram desenvolvimento. Mais palavras ou todas as formas selecionadas também não comprovam suficiência. |
+| pressuposto | Conhecimento que o planejamento declara necessário e disponível ao público antes do curso; registrar escopo e justificativa. | A justificativa precisa relacionar o repertório esperado à tarefa. Verificar se estudantes concretos possuem esse conhecimento exige diagnóstico próprio. |
+| introdução | Primeiro tratamento didático de um recorte não pressuposto na ordem corrente do curso, com conteúdo que permita reconhecer o significado pretendido. Conta uma vez por identidade. | Um título apenas anuncia o assunto. A introdução precisa ensinar seu significado; o desenvolvimento completo pode continuar em outras unidades. A aprendizagem requer avaliação do estudante. |
+| uso | Mobilização de conhecimento pressuposto ou já introduzido para compreender, explicar ou executar outra operação. | É preciso localizar o que a tarefa faz com esse conhecimento. Se ela o exige antes de ele estar disponível, registra-se uma lacuna de ensino. |
+| retomada | Reativação intencional de conhecimento pressuposto ou anterior: reexplicar, comparar com o caso anterior ou solicitar recuperação. É uma forma identificada de uso, sem nova introdução. | Uma palavra pode reaparecer enquanto a explicação simplesmente continua. Classificar como retomada exige localizar a reativação pretendida. |
+| menção e desenvolvimento | Menção apenas aponta para um conteúdo. Desenvolvimento explicita significado, relações, exemplos, mecanismo, condições ou outra forma pertinente, com trecho verificável. | O revisor localiza a relação efetivamente ensinada. Sua suficiência depende do objetivo, do público e da tarefa, inclusive quando todas as formas selecionadas foram registradas. |
 
 Pressuposto é origem no repertório, não evento textual equivalente aos demais.
 Introdução, uso e retomada descrevem ocorrências; desenvolvimento qualifica o
@@ -230,13 +240,15 @@ contagens. A pessoa autora examina o significado dos recortes e decide as
 ambiguidades que afetem o escopo, o repertório ou uma condição fixada. A
 fluência do texto, por si só, não informa o conhecimento efetivo do estudante.
 
-Resultados de modelos de linguagem em classificação de textos delimitam a possibilidade de
-assistência, mas não validam este recorte de conhecimento pedagógico
-([Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation);
-[Pangakis et al. (2023)](referencias.md#ref-pangakis2023validation)). Tokenização
-em subpalavras é uma técnica de representação computacional
-([Sennrich et al. (2016)](referencias.md#ref-sennrich2016subwords)); contar essas
-unidades ou dimensões internas não identifica conceitos humanos.
+Estudos sobre classificação de textos com modelos de linguagem mostram
+possibilidades de assistência e a necessidade de validação específica para a
+tarefa ([Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation);
+[Pangakis et al. (2023)](referencias.md#ref-pangakis2023validation)). O protocolo
+do AraLearn precisa dessa avaliação própria. A tokenização em subpalavras,
+por sua vez, representa texto computacionalmente
+([Sennrich et al. (2016)](referencias.md#ref-sennrich2016subwords)); suas unidades
+servem ao processamento do modelo, enquanto os recortes aqui definidos
+acompanham o conhecimento exigido pela tarefa.
 
 Para investigar estabilidade, é preciso manter constante a entrada completa —
 material, contexto e instrução —, além do protocolo e da configuração do modelo.
@@ -256,9 +268,10 @@ próprio, codificação humana independente e regras de comparação definidas a
 da análise. Esse estudo e a validação cognitiva do protocolo ainda precisam ser
 realizados.
 
-O [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md) torna
-refutáveis as decisões do protocolo. É material sintético de inspeção, não
-amostra de estudantes, benchmark de modelos ou padrão-ouro validado.
+O [corpus de recortes e contraexemplos](corpus-unidades-de-analise.md) permite
+contestar decisões do protocolo em casos sintéticos. Seu uso como referência
+de avaliação exigiria curadoria independente e critérios de amostragem
+adequados à pergunta de pesquisa.
 
 ## Explicação, prática e posição na sequência
 
@@ -286,17 +299,23 @@ isso não produz automaticamente evidência observada de desempenho.
 Prática de consolidação pode apontar a unidades de análise sem requisito formal
 de evidência. Quando se vincula a esse requisito, precisa conservar a operação
 exigida e as condições de produção relevantes. Quantidade de oportunidades
-oferecidas não equivale a respostas corretas, domínio ou proficiência.
+oferecidas descreve o desenho da prática. Respostas corretas, domínio ou
+proficiência precisam de dados de desempenho e critérios de interpretação.
 
 A distribuição é uma decisão ajustável. Uma preferência como “aproximadamente
 duas unidades expositivas antes de praticar” orienta a posição das oportunidades,
-admite unidade mista e exige leitura da coerência resultante; não é intervalo
-cientificamente ótimo. Valor deliberadamente fixado exige respeito ou decisão
+admite unidade mista e exige leitura da coerência resultante. A adequação do
+intervalo precisa ser examinada no contexto da tarefa. Valor deliberadamente fixado exige respeito ou decisão
 explícita sobre o conflito. Mistas interrompem uma sequência sem prática somente
 quando há oportunidade real; a exposição anterior e posterior continua visível
 pela ordem dos eventos.
 
-Prática anterior à explicação pode investigar um alvo ainda não ensinado. O conhecimento necessário para compreender a solicitação continua sendo pré-requisito; o alvo da tentativa não precisa ser declarado como conhecimento estabelecido. No contrato de autoria, o requisito de evidência identifica o que a resposta investiga, enquanto `ideiasUtilizadas` registra apenas ideias já estabelecidas. A tentativa não é uma introdução; o desenvolvimento posterior continua necessário. Essa distinção permite variar a posição sem fabricar ensino anterior ou apagar a aplicação pedagógica.
+Uma prática anterior à explicação pode investigar um alvo que será ensinado
+depois. Para tentar respondê-la, o estudante já precisa compreender a solicitação
+e seus dados. No contrato, o requisito de evidência identifica o que a resposta
+investiga; `ideiasUtilizadas` registra os conhecimentos estabelecidos que
+permitem compreender a tarefa. A introdução do alvo ocorre no desenvolvimento
+posterior. A sequência conserva, assim, o lugar da tentativa e o do ensino.
 
 Há estudos experimentais sobre tentativas malsucedidas anteriores à apresentação do conteúdo, como [Kornell, Hays e Bjork (2009)](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Kornell_Hays_Bjork_2009_JEP-LMC.pdf). Isso fundamenta tratar a antecipação como possibilidade de investigação, sem presumir benefício em qualquer conteúdo ou público. O parâmetro registrado expressa a condição pretendida; sua realização exige conferir a sequência, os alvos e o conteúdo efetivamente salvo.
 
@@ -320,10 +339,10 @@ anotações do corpus não devem ser apresentadas como campos já observados pel
 
 | Medida | Numerador, denominador e escopo | Limite de interpretação |
 | --- | --- | --- |
-| introduções por unidade | Identidades introduzidas / uma unidade de estudo, inclusive mista ou prática com novidade no retorno. | Novidade declarada, não carga cognitiva. O teto corrente de expositivas não dispensa examinar os outros casos. |
+| introduções por unidade | Identidades introduzidas / uma unidade de estudo. Novidade ensinada no retorno também entra na análise e exige classificar a unidade como mista. | O teto é conferido em unidades expositivas e mistas. A medida descreve novidade declarada; carga cognitiva exige outro método. |
 | mobilização e retomadas | Identidades distintas mobilizadas ou retomadas / uma unidade; cada identidade conta no máximo uma vez em cada conjunto. Retomadas são subconjunto da mobilização, não soma adicional. | Não estima elementos simultâneos na memória. Mostrar também as relações que precisam ser coordenadas. |
 | cobertura do desenho | Identidades com introdução localizada / identidades planejadas para desenvolvimento; pressupostos ficam em conjunto separado. | Nome citado não cobre desenvolvimento. O inventário pode estar incompleto; relatar lacunas necessárias fora dele. |
-| ocorrência de prática | unidades de prática ou mistas / unidades didáticas classificadas da sequência. Mostrar as três categorias separadamente. | Uma mista conta uma vez no denominador; proporção de unidades não equivale a tempo ou extensão de prática. |
+| ocorrência de prática | unidades de prática ou mistas / unidades didáticas classificadas da sequência. Mostrar as três categorias separadamente. | Uma mista conta uma vez no denominador. Tempo e extensão de prática exigem medidas próprias, pois unidades podem ter durações e tamanhos diferentes. |
 | intervalos sem oportunidade | Número de unidades expositivas completas entre oportunidades consecutivas, mais os trechos inicial e final; cada intervalo é delimitado por esse par de posições ou borda. | Duas oportunidades na mesma unidade têm intervalo zero nessa escala, mas podem ter exposição entre si. Informar posições internas; não inferir espaçamento temporal. |
 | oportunidades por alvo | Solicitações distintas dirigidas a uma unidade de análise ou requisito / um alvo identificado; relatar também repetições e alvos sem oportunidade. | Uma solicitação com dois alvos conta uma vez no total e uma vez em cada alvo; não somar colunas por alvo como total global. |
 | extensão textual | Palavras segundo algoritmo e idioma declarados, ou caracteres segundo unidade Unicode declarada / conteúdo textual delimitado no estado observado. | Não comparar idiomas como se palavra fosse unidade universal. Notação, imagens e retorno oculto exigem descrição própria. |
@@ -364,11 +383,12 @@ repertório. Fusão ou divisão de recortes muda a condição e deve ser declara
 
 ## Dimensões mantidas fora do catálogo
 
-O planejamento do mapa antes dos lotes, a aprovação limitada ao material
-inspecionável e a comunicação compreensível das decisões são compromissos do
-fluxo de autoria. Eles não são parâmetros ajustáveis de uma condição. Distribuição editorial, explicações e prática
-podem variar pela configuração existente. Uma heurística pedagógica não se torna
-automaticamente entidade ou controle novo.
+O planejamento do mapa antes dos lotes, a revisão sobre material inspecionável
+e a comunicação compreensível das decisões orientam o fluxo de autoria. O
+processo acordado define os pontos de inspeção e admite produção autônoma
+expressamente autorizada, mantendo o mapa em rascunho. Essas escolhas de
+processo convivem com os parâmetros de distribuição editorial, explicação e
+prática, descritos neste catálogo.
 
 Rótulos abrangentes, como densidade, carga cognitiva ou qualidade, reúnem
 fenômenos diferentes. Cobertura, progressão e a relação entre teoria e prática
@@ -429,9 +449,8 @@ ancestrais até o local. Uma direção local não apaga as demais. Instruções
 incompatíveis exigem resolução explícita, sem presumir que a mais próxima
 substitua silenciosamente uma condição de pesquisa.
 
-Esse texto não é um catálogo de parâmetros e não recebe uma camada permanente
-de interpretações. Ele complementa os dois alvos quantitativos com orientação
-qualitativa. O assistente aplica a direção na fase editorial pertinente sem alterar o
+Esse texto complementa os dois alvos quantitativos com orientação qualitativa.
+Sua redação é conservada para consulta e aplicação no recorte pertinente. O assistente aplica a direção na fase editorial pertinente sem alterar o
 repertório semântico. Se o conteúdo necessário ultrapassar o alvo de palavras,
 o assistente examina se convém manter uma unidade mais extensa ou distribuir o
 desenvolvimento. A escolha depende da relação a ensinar e da progressão; o alvo
@@ -462,8 +481,9 @@ Ao preparar a produção de uma parte, o servidor reúne para cada microssequên
 as decisões didáticas e editoriais, os componentes disponíveis e o repertório
 que relaciona conhecimentos, práticas e fontes.
 
-A **aplicação instrucional corrente** descreve como essas decisões foram
-realizadas no conteúdo que está salvo. A gravação conserva:
+A **aplicação instrucional corrente** declara como essas decisões foram
+realizadas no conteúdo que está salvo. A inspeção pedagógica confronta essa
+declaração com o próprio material. A gravação conserva:
 
 | Aspecto | Registro conservado |
 | --- | --- |
@@ -472,12 +492,18 @@ realizadas no conteúdo que está salvo. A gravação conserva:
 | prática | oportunidades ligadas aos requisitos de evidência, operação mantida e dimensões variadas |
 | edição | alvos aplicados e extensão observada |
 
-Uma edição apenas do título, sem mudar conteúdo ou posição na estrutura,
-conserva a decisão e os mapeamentos registrados, incluindo sua data original.
-Uma mudança de prosa, resposta, referências ou hierarquia conserva a decisão
-histórica, mas invalida a aplicação semântica corrente. As mesmas referências de
-componentes não provam que a análise continua pertinente ao conteúdo alterado.
-Uma nova aplicação precisa ser registrada e validada para o conteúdo corrente.
+Uma edição apenas do título conserva a decisão e os mapeamentos registrados,
+incluindo sua data original. Alterar a prosa, as respostas ou a composição da
+unidade conserva a decisão histórica, mas invalida a aplicação semântica
+corrente. Mesmo com as identidades dos componentes preservadas, a declaração
+precisa ser conferida e reaplicada ao conteúdo alterado.
+
+Alterar somente os vínculos de fontes ou reordenar unidades preserva a
+configuração e a aplicação registradas. Essas mudanças alcançam outra camada
+de controle: como fontes e ordem de estudo participam da base da inspeção por
+IA, os pareceres afetados precisam de nova leitura. Mover um ramo curricular
+também conserva os registros dos objetos que o acompanham. A [estrutura
+curricular](estrutura-curricular-por-referencia.md) descreve essas operações.
 
 Uma introdução marca somente a primeira apresentação de cada unidade de análise. O
 desenvolvimento pode continuar em duas ou mais unidades de estudo sem repetir a
@@ -501,9 +527,9 @@ componentes. O banco de dados também confere se as unidades, suas relações
 curriculares e os componentes correspondem ao conteúdo gravado; essa
 verificação integra a [persistência relacional](persistencia-relacional.md).
 
-Essa verificação preserva rastreabilidade. Ela não substitui a leitura
-disciplinar do conteúdo para decidir se uma explicação realmente desenvolve o
-mecanismo ou se duas práticas são substantivamente distintas.
+Essa verificação mantém os registros relacionados ao conteúdo. A leitura
+disciplinar examina o que eles declaram: onde a explicação desenvolve o
+mecanismo, por exemplo, e o que distingue semanticamente duas práticas.
 
 Ao revisar uma unidade já produzida, a leitura recupera as três escolhas de
 organização da produção — tamanho da parte, tamanho do lote e frequência de
@@ -615,7 +641,8 @@ têm finalidade exclusivamente operacional.
 As ligações seguintes registram o argumento usado para esta definição operacional.
 São inferências de desenho do AraLearn, não medidas prescritas pelas fontes.
 A consulta focal em 5 de setembro de 2026 foi suficiente para delimitar o
-protocolo e suas incertezas; não constituiu revisão sistemática da literatura.
+protocolo e suas incertezas. O quadro registra o alcance de cada leitura; uma
+revisão sistemática exigiria protocolo de busca e seleção mais amplo.
 
 | Fonte e localização consultada | Argumento delimitado | Decisão no AraLearn | Medida e limite |
 | --- | --- | --- | --- |
@@ -629,12 +656,12 @@ protocolo e suas incertezas; não constituiu revisão sistemática da literatura
 | [Sennrich et al. (2016)](referencias.md#ref-sennrich2016subwords), [resumo e método de subpalavras](https://aclanthology.org/P16-1162/) | Segmentação computacional permite representar palavras raras ou desconhecidas com unidades menores. | Tokens são observáveis do instrumento, não unidades semânticas aprovadas do curso. | Contagem de tokens somente para transporte/custo computacional, nunca denominador cognitivo. |
 
 No contrato atual, a unidade de estudo é um **formato de apresentação e uma parte
-de sequência didática** que pode abrigar explicação, exemplo resolvido, problema,
-comentário ou combinação. “Card” designa o suporte visual. Uma futura alegação
-de gênero próprio exigiria estudar finalidades compartilhadas, interlocução,
-convenções e usos recorrentes por uma comunidade. Não há essa evidência aqui.
-Concisão da conversa de autoria e profundidade do material de estudo respondem
-a situações comunicativas diferentes e são decisões independentes.
+de sequência didática**. Pode desenvolver uma explicação, propor um problema
+ou reunir ensino e prática. “Card” designa o suporte visual. Investigar se
+esse formato constitui um gênero próprio exigiria examinar suas finalidades,
+interlocução e convenções em usos recorrentes de uma comunidade. Na autoria,
+conversa e material de estudo respondem a situações comunicativas diferentes;
+por isso, concisão do diálogo e profundidade didática têm decisões próprias.
 
 Explicações podem apoiar elaboração e relações com princípios, mas dependem
 do conteúdo e do modo de uso
@@ -655,9 +682,9 @@ instruções e contratos](fluxos-prompts-e-contratos.md).
 
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing): Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (2008). **Spacing Effects in Learning: A Temporal Ridgeline of Optimal Retention.** *Psychological Science*, 19(11), p. 1095–1102.
-- [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63.
+- [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, artigo 63.
 - [Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations): Michelene T. H. Chi; Miriam Bassok; Matthew W. Lewis; Peter Reimann; Robert Glaser (1989). **Self-Explanations: How Students Study and Use Examples in Learning to Solve Problems.** *Cognitive Science*, 13(2), p. 145–182.
-- [Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation): Fabrizio Gilardi; Meysam Alizadeh; Maël Kubli (2023). **ChatGPT Outperforms Crowd Workers for Text-Annotation Tasks.** *Proceedings of the National Academy of Sciences*, 120(30), p. e2305016120.
+- [Gilardi et al. (2023)](referencias.md#ref-gilardi2023annotation): Fabrizio Gilardi; Meysam Alizadeh; Maël Kubli (2023). **ChatGPT Outperforms Crowd Workers for Text-Annotation Tasks.** *Proceedings of the National Academy of Sciences*, 120(30), artigo e2305016120.
 - [Greimas (1966)](referencias.md#ref-greimas1966recit): Algirdas Julien Greimas (1966). **Éléments pour une théorie de l'interprétation du récit mythique.** *Communications*, 8(1), p. 28–59.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.

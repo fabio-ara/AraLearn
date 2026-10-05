@@ -51,7 +51,7 @@ O conteúdo é dividido em vários níveis, do curso completo às unidades de es
 
 Nesse conjunto, a **microssequência didática** reúne unidades que desenvolvem um objetivo delimitado e compartilham o mesmo contexto. Cada unidade contribui para esse avanço e precisa continuar inteligível em sua posição no percurso. A relação entre os níveis e os critérios de progressão está no [modelo didático](modelo-didatico.md).
 
-A **explicação** é o texto-base da microssequência. Produzida durante a autoria, ela desenvolve o assunto e o vincula às fontes que fundamentam o conjunto. Pode ser elaborada e revisada antes das unidades. Cada unidade conserva as escolhas feitas na sua produção e a referência à base utilizada.
+A **explicação** desenvolve o assunto da microssequência e o vincula às fontes que fundamentam o conjunto. Produzida durante a autoria, pode combinar texto, representações visuais e áudio. Pode ser elaborada e revisada antes das unidades. Cada unidade conserva as escolhas feitas na sua produção e a referência à base utilizada.
 
 Durante o estudo, a explicação permanece acessível a partir das unidades, inclusive das práticas. Abri-la conserva o ponto do percurso e consulta conteúdo já salvo. Sua autoria, composição, fontes e revisão são tratadas em [Explicação e revisão humana](explicacao-e-revisao-humana.md); a relação entre decisões e unidades está em [Desenho instrucional parametrizado](desenho-instrucional-parametrizado.md).
 
@@ -71,7 +71,7 @@ As atividades devem corresponder ao que o estudante precisa aprender a fazer. Di
 
 Tentar recordar o que se estudou antes de consultar a resposta é uma **prática de recuperação**. Essa prática pode contribuir para a aprendizagem; sua escolha e suas condições de uso precisam corresponder ao objetivo do curso ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval)).
 
-Depois da tentativa, o retorno pode indicar a resposta esperada, explicar o raciocínio e tornar um erro compreensível. Seu papel é formativo quando ajuda o estudante a rever o que fez e melhorar sua compreensão ou seu desempenho ([Shute (2008)](referencias.md#ref-shute2008feedback)). No produto, o modo de resposta determina que conferências podem ser feitas automaticamente. Nas respostas abertas, a pessoa compara o que escreveu com a orientação disponível e examina seu significado.
+Depois da tentativa, o retorno pode indicar a resposta esperada, explicar o raciocínio e tornar um erro compreensível. Seu papel é formativo quando ajuda o estudante a rever o que fez e melhorar sua compreensão ou seu desempenho ([Shute (2008)](referencias.md#ref-shute2008feedback)). No produto, as atividades recolhem escolhas, preenchimentos de lacunas e ordenações. O aplicativo compara a tentativa com as respostas aceitas pela autoria. Essa conferência informa o resultado naquela tarefa; a interpretação pedagógica depende do objetivo, do raciocínio exigido e do retorno preparado.
 
 ## Componentes e representações
 
@@ -97,7 +97,7 @@ O aplicativo funciona no navegador e pode ser instalado no celular. O conteúdo 
 
 Há duas responsabilidades complementares. O servidor conserva os dados compartilhados e verifica quem pode acessá-los ou alterá-los. O dispositivo conserva uma cópia para estudo e o estado pessoal necessário à continuidade. Quando a rede retorna, os dados pertinentes podem ser sincronizados. [Persistência relacional](persistencia-relacional.md) explica armazenamento, filas, atualização e conflitos; [Arquitetura](arquitetura.md) situa esses mecanismos no sistema.
 
-O estado pessoal permite responder a perguntas como “onde continuar?” e “quais unidades marquei para rever?”. Os registros de navegação, conclusão e resposta são usados para essa continuidade. Inferir atenção ou domínio exigiria outros dados e critérios. A opção de limitar a coleta à finalidade funcional é desenvolvida em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md), em diálogo com a discussão sobre responsabilidade e interpretação de dados educacionais ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical)).
+O estado pessoal permite responder a perguntas como “onde continuar?” e “quais unidades marquei para rever?”. A posição de navegação, as conclusões e as marcas para rever são usadas para essa continuidade. As respostas da atividade permanecem na interação atual; o estado sincronizado guarda o avanço pelo percurso. Inferir atenção ou domínio exigiria outros dados e critérios. A opção de limitar a coleta à finalidade funcional é desenvolvida em [Estado de estudo não punitivo](estado-de-estudo-nao-punitivo.md), em diálogo com a discussão sobre responsabilidade e interpretação de dados educacionais ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical)).
 
 ## Propriedade, acesso e revisão
 
@@ -115,7 +115,7 @@ Educadores e pesquisadores podem examinar a relação entre a intenção da auto
 
 ## Avaliar o uso
 
-A investigação pode estudar três pontos complementares: o trabalho de autoria, a compreensão do percurso e os efeitos sobre a aprendizagem. A confiança na IA precisa corresponder à sua capacidade na tarefa. Para examinar a qualidade da supervisão, a avaliação deve observar o processo de inspeção, e não apenas se a pessoa aceitou uma sugestão ([Lee e See (2004)](referencias.md#ref-lee2004trust); [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation)). A [revisão de literatura](revisao-de-literatura.md) reúne esses fundamentos e suas controvérsias.
+A investigação pode estudar três pontos complementares: o trabalho de autoria, a compreensão do percurso e os efeitos sobre a aprendizagem. A confiança na IA precisa corresponder à sua capacidade na tarefa. Para examinar a qualidade da supervisão, a avaliação acompanha como a pessoa inspeciona a proposta, identifica problemas e decide sobre a sugestão ([Lee e See (2004)](referencias.md#ref-lee2004trust); [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation)). A [revisão de literatura](revisao-de-literatura.md) reúne esses fundamentos e suas controvérsias.
 
 O [guia de investigação](guia-pesquisador.md) e o [protocolo de avaliação](protocolo-avaliacao-artefato.md) orientam perguntas, instrumentos e critérios de análise. O funcionamento pode ser demonstrado por testes de software; usabilidade e resultados educacionais requerem avaliação com pessoas em condições definidas.
 

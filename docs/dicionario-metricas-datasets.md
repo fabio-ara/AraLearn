@@ -42,8 +42,8 @@ descrição e referência. `sources` contém metadados bibliográficos, âncoras
 identificadores lógicos dos anexos, sem caminhos internos ou links temporários.
 
 Cada entrada de `basis.studyUnits` separa a intenção corrente da configuração
-que produziu a unidade. Também conserva a declaração de quem a produziu e as
-propriedades observáveis do conteúdo. Os campos correspondentes são
+que produziu a unidade. Também conserva a declaração sobre a composição
+instrucional e as propriedades observáveis do conteúdo. Os campos correspondentes são
 `requestedParameters`, `appliedParameters`, `declaration`, `components`,
 `wordCount` e `sourceLinks`. Valores ou motivos históricos ausentes permanecem
 nulos, em vez de receber a configuração atual.
@@ -152,11 +152,26 @@ as linhas podem se sobrepor; sua soma não precisa coincidir com
 | --- | --- |
 | `observations` | observações criadas, abertas e resolvidas no estado consultável |
 | `explicitParameterOverrideCount` | parâmetros definidos explicitamente e ainda vigentes |
-| `manuallyRevisedStudyUnitCount` | unidades de estudo cuja última revisão observável foi humana |
-| `studyUnitsByOrigin` | unidades de estudo agrupadas pela origem da criação e da última revisão |
+| `manuallyRevisedStudyUnitCount` | unidades de estudo cuja última edição observável foi humana |
+| `studyUnitsByOrigin` | unidades de estudo agrupadas pela origem da criação e da última edição |
+| `interventions` | contagens de intervenções editoriais humanas e de IA e indicação da completude do histórico, quando disponíveis |
 
 Esses campos contam estados explícitos. Percentual de autoria, pontuação de
 colaboração e aceitação exigiriam definições e dados diferentes.
+
+`interventions.human` e `interventions.ai` somam, nas unidades do escopo, os
+blocos consecutivos de edição de cada origem. A primeira edição de origem
+conhecida inicia um bloco; a troca de origem inicia outro. Assim, a sequência
+IA → IA → humana → IA produz duas intervenções de IA e uma humana. Alterações
+de fontes vinculadas também podem registrar intervenção no alvo afetado.
+`historyComplete` informa se o histórico é completo em todas as unidades
+incluídas. Um valor falso conserva a lacuna anterior ao início desses registros.
+As explicações possuem registros próprios de intervenção, mas esta soma abrange
+as unidades de estudo do recorte.
+
+Os campos de última edição descrevem a origem de uma alteração. A declaração
+formal de revisão humana possui [estado próprio](explicacao-e-revisao-humana.md)
+e aparece em `artifact.contentReviews` na exportação.
 
 ## Dados ausentes
 
@@ -192,8 +207,8 @@ separados do conteúdo importável:
 | `appliedExplanationBases` | base explicativa aplicada a cada unidade, quando registrada, com sua origem |
 | `contentReviews` | estado da declaração de revisão de cada explicação ou unidade e data, quando existente |
 
-O código que valida e organiza a leitura aceita o formato anterior `v1`;
-metadados que ele não continha permanecem ausentes. A serialização atual limita
+O validador aceita o contrato `v2` e exige os quatro campos de `artifact`
+descritos acima. A serialização limita
 o arquivo a 32 MiB (33.554.432 bytes) e falha se o total exceder esse limite.
 O leitor percorre entidades com a mesma revisão e confere novamente a revisão
 ao terminar. Uma falha ou mudança interrompe a exportação inteira, de modo que

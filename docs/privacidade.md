@@ -56,8 +56,8 @@ caixa de entrada necessária à triagem.
 conexão. Uma alteração ainda não sincronizada pode existir somente nessa cópia, que não
 substitui uma cópia de segurança.
 
-A propriedade é conferida pelo servidor. Ter uma réplica no dispositivo não concede
-permissão para editar o curso. A relação entre réplica, filas e servidor está descrita
+O servidor confere a propriedade antes de autorizar uma edição. A réplica no
+dispositivo permite ler o conteúdo já obtido, dentro das condições de uso local. A relação entre réplica, filas e servidor está descrita
 em [persistência e sincronização](persistencia-relacional.md).
 
 ## Legislação e responsabilidades no Brasil e em Portugal
@@ -69,13 +69,13 @@ a identificação de uma hipótese legal adequada, isto é, uma condição previ
 lei que permita aquele tratamento. Dados especialmente protegidos, como informações
 de saúde ou convicção religiosa, exigem avaliação específica.
 
-O [RGPD](https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=pt) também define seu âmbito
-territorial no art. 3º. Em Portugal, a [Lei n.º
-58/2019](https://diariodarepublica.pt/dr/detalhe/lei/58-2019-123815982) assegura sua execução
-na ordem jurídica nacional. A investigação está sujeita a salvaguardas, incluindo
-minimização e, quando a finalidade permitir, anonimização ou pseudonimização (RGPD,
-art. 89º; Lei n.º 58/2019, art. 31º). A finalidade científica não suspende por si só os
-direitos das pessoas.
+O [RGPD](https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=pt) também define seu
+âmbito territorial no art. 3º. Em Portugal, a [Lei n.º
+58/2019](https://diariodarepublica.pt/dr/detalhe/lei/58-2019-123815982) assegura sua
+execução na ordem jurídica nacional. A investigação está sujeita a salvaguardas,
+incluindo minimização e, quando a finalidade permitir, anonimização ou pseudonimização
+(RGPD, art. 89º; Lei n.º 58/2019, art. 31º). O protocolo precisa considerar os direitos
+aplicáveis e as condições legais de eventuais limitações.
 
 As duas leis atribuem responsabilidades conforme a atuação de cada parte, embora usem
 nomes diferentes para funções próximas:
@@ -85,16 +85,17 @@ nomes diferentes para funções próximas:
 | decidir a finalidade e como tratar os dados | controlador | responsável pelo tratamento |
 | tratar dados por conta de quem decide | operador | subcontratante |
 
-Esses papéis dependem da atuação real de cada organização. Ser proprietário de um curso
-na interface não torna automaticamente a pessoa responsável por todos os tratamentos da
-implantação. A instituição, a equipe de pesquisa e os fornecedores precisam ter suas
-responsabilidades identificadas. O encarregado de proteção de dados atua segundo o regime
-aplicável; o aplicativo não designa uma pessoa para essa função.
+Esses papéis dependem da atuação real de cada organização. A propriedade de um curso
+delimita permissões dentro do AraLearn; as responsabilidades pelo tratamento de dados
+abrangem também a instituição, a equipe de pesquisa e os fornecedores. A implantação
+precisa identificar essas responsabilidades e, conforme o regime aplicável, designar
+um encarregado de proteção de dados.
 
 A base jurídica precisa corresponder a cada finalidade. Manter uma conta, produzir
 conteúdo com um serviço de IA e investigar a experiência de participantes são usos
-distintos. Consentimento não é uma base universal, e a confirmação de uma operação na
-tela não substitui as condições jurídicas para tratar os dados envolvidos.
+distintos. A instituição identifica a hipótese aplicável a cada um e, quando adota
+consentimento, verifica suas condições legais. A confirmação na interface registra
+a autorização da operação solicitada.
 
 ## Dados e finalidades
 
@@ -132,18 +133,18 @@ segurança.
 | Classe | Exemplos e finalidade | Pessoal ou sensível? | Local e acesso | Retenção e gatilho | Exportação e pesquisa |
 | --- | --- | --- | --- | --- | --- |
 | conta e sessão | UUID, e-mail, credenciais e tokens para autenticar e recuperar a conta | pessoal; tokens são segredos | Supabase Auth e projeção mínima no dispositivo; somente a própria sessão e a operação administrativa necessária | vida da conta e da sessão; revogar sessões antes da exclusão | não integra exportação comum nem conjunto de dados de pesquisa |
-| perfil | identificador público único e avatar opcional para apresentação | pessoal; não é sensível por padrão | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | identificadores aparecem nas tarefas autorizadas de acesso; avatar e edição de perfil permanecem na aplicação |
-| curso e autoria | conteúdo, plano, configuração corrente e recibos temporários | pode conter dado pessoal em texto livre; UUIDs ligados à conta continuam pessoais ou pseudonimizados | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos expiram pelo prazo técnico | exportações operacionais não são automaticamente anônimas nem autorizam pesquisa |
+| perfil | identificador público único e avatar opcional para apresentação | pessoal; a imagem escolhida pode exigir avaliação específica | PostgreSQL e bucket privado; própria pessoa e relações autorizadas | até alteração ou exclusão; política de cópias de segurança ainda institucional | identificadores aparecem nas tarefas autorizadas de acesso; avatar e edição de perfil permanecem na aplicação |
+| curso e autoria | conteúdo, plano, configuração corrente e recibos temporários | pode conter dado pessoal em texto livre; UUIDs ligados à conta continuam pessoais ou pseudonimizados | PostgreSQL; proprietário e projeções permitidas | artefato enquanto necessário; recibos expiram pelo prazo técnico | exportações exigem avaliação dos dados pessoais e das condições de pesquisa |
 | acesso direto | curso, ator, pessoa favorecida, concessão e revogação | pessoal/pseudonimizado | PostgreSQL; proprietário e favorecido conforme a relação | até revogação, exclusão ou política institucional; contadores de tentativa, 30 dias | e-mail não entra em recibo, contador, MCP ou Actions |
 | estado pessoal | posição, progresso e marcas **Rever** para continuar o estudo | pessoal/pseudonimizado | PostgreSQL e IndexedDB segregado por conta; somente a pessoa | estado funcional até exclusão; recibos expiram em 7 dias | fora de exportações comuns e de pesquisa por padrão |
-| observações | texto, alvo, revisão, resposta, estado e horários para manifestação e triagem | pessoal/pseudonimizado; texto livre pode conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | ativas não expiram só pela idade; retirada remove o texto de imediato e linha/recibo são removíveis após 14 dias | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
+| observações | texto, alvos, respostas, decisões e bases de comparação para manifestação e triagem | pessoal/pseudonimizado; texto livre e bases podem conter categorias sensíveis | PostgreSQL e IndexedDB; autor e proprietário nos limites do contrato | retirada remove o texto de imediato; encerramento de todos os alvos autorais também limpa o texto e inicia a janela de 14 dias; bases duram enquanto tiverem alvos vinculados | exportação v2 é privada, pessoal ou pseudonimizada; uso em pesquisa exige protocolo |
 | análise de autoria | escopo, configuração aplicada e contagens de desenho e intervenção corrente | pode permanecer pessoal ou pseudonimizado por estar ligado a um curso próprio | derivado do PostgreSQL; proprietário do curso | acompanha o estado corrente; não cria retenção própria | retrato do estado salvo em JSON não mede aprendizagem nem constitui conjunto de dados anônimo |
-| PDFs, áudios e avatares | documentos de fonte, gravações e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo e política da classe; órfãos são inventariados, não apagados automaticamente | exportações descrevem vínculos e metadados sem incluir os bytes; esses arquivos não são enviados ao provedor pela edição textual |
-| assistência por provedor | pedido, alvo selecionado, contexto curricular, configuração aplicada e até oito mensagens anteriores para preparar uma proposta | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provedor escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provedor | não é um conjunto de dados de pesquisa; cada envio parte da ação da pessoa |
+| PDFs, áudios e avatares | documentos de fonte, gravações e imagens de perfil | podem conter dados pessoais, confidenciais ou sensíveis | Storage privado e vínculos no PostgreSQL | vínculo ativo ou retenção por base de comparação; arquivos sem referência seguem remoção autorizada e inventário administrativo | exportações descrevem vínculos e metadados sem incluir os bytes; a edição textual envia o recorte descrito na seção de integrações |
+| assistência por provedor | pedido, alvo selecionado, contexto curricular, configuração aplicada e até oito mensagens anteriores para preparar uma proposta | texto pode conter dado pessoal mesmo sem identificador dedicado | memória local e provedor escolhido pela pessoa; não integra banco nem IndexedDB | memória até fechar/recarregar/sair; retenção externa depende do provedor | cada envio parte da ação da pessoa; reutilização em pesquisa exige protocolo |
 | pesquisa | protocolo, pseudônimo específico, medidas e eventual tabela de reidentificação | pessoal pseudonimizado enquanto reidentificável; pode tornar-se sensível conforme a pergunta | plano de dados segregado e acesso definido pelo protocolo, ainda não implantado como infraestrutura genérica | conforme protocolo, retirada e obrigação institucional | exportação somente nos termos do protocolo; resultados publicados exigem avaliação de reidentificação |
 | registros e limpeza | contagens de tentativas, datas de expiração e contagens de remoção para segurança e ciclo de vida | ator é identificador pessoal da conta; horários e contagens permanecem correlacionáveis; nenhuma coluna de e-mail integra o contador de concessões | tabelas privadas e rotina administrativa | janela de concessão, 30 dias; demais prazos por classe | contagens operacionais não integram exportação comum nem autorizam pesquisa |
 
-O produto não exige categoria sensível para funcionar. Uma pesquisa que trate, por
+Conta e estudo usam dados funcionais de identificação e continuidade. Uma pesquisa que trate, por
 exemplo, saúde, religião ou biometria precisa concluir a avaliação jurídica e ética
 antes da coleta. A mesma avaliação específica se aplica a pesquisas com crianças e
 adolescentes.
@@ -185,12 +186,11 @@ fonte ou arquivo. Visitantes recebem somente estrutura e conteúdo de
 estudo permitidos; não recebem plano privado, notas de verificação, observações,
 identidades de edição ou metadados de recuperação.
 
-Sem conta, progresso e Rever ficam num banco local separado. Entrar numa conta não
-transfere esses dados silenciosamente e não concede propriedade. A pessoa pode examinar
-e selecionar cursos em **Progresso sem conta**, identificando a conta destinatária antes
-de confirmar. A incorporação acrescenta conclusões e Rever, mantém o estado anterior da
+Sem conta, progresso e Rever ficam num banco local separado. Para acrescentá-los a
+uma conta, a pessoa examina e seleciona os cursos em **Progresso sem conta**,
+identifica a conta destinatária e confirma a incorporação. A incorporação acrescenta conclusões e Rever, mantém o estado anterior da
 conta e conserva o banco de visitante. Um recibo local evita aplicar novamente a mesma
-seleção; não é registro de percurso humano–IA. Uma conta com acesso pode registrar
+seleção. Uma conta com acesso pode registrar
 observações; somente o proprietário edita. As mesmas fronteiras valem para chamadas
 diretas, MCP e Actions.
 
@@ -221,9 +221,9 @@ e mudança de visibilidade não recolhem retroativamente esses bytes.
 A [proveniência](fontes-e-citacoes.md) registra de onde vem o conteúdo e como ele se
 relaciona a uma fonte. A âncora localiza o trecho ou ponto usado nessa relação. Somente
 o proprietário acessa o catálogo autoral, fontes ocultas, referências pendentes de
-comprovação, trecho privado de verificação e controles de edição. O estudo solicita a
-proveniência de uma unidade quando a pessoa abre **Fontes** e recebe apenas a projeção
-autorizada:
+comprovação, trecho privado de verificação e controles de edição. O estudo consulta as referências próprias de uma unidade pelo controle
+**Fontes da unidade**; as referências do conteúdo explicativo ficam em **Explicação**.
+Cada consulta recebe a seleção autorizada de dados:
 
 - **Não mostrar no Estudo** omite a fonte;
 - **Mostrar citação** apresenta identificação e localização sem endereço;
@@ -265,15 +265,15 @@ ancoradas. Quando a autoria responde com uma reformulação, o PDF e seu conteú
 copiados para a anotação. A exportação dessas observações conserva texto, alvo, versões,
 vínculos, identificadores operacionais e horários necessários ao uso privado. Ela remove
 `contributor.ref`, o rótulo protegido da pessoa, os caminhos observado e corrente, links
-profundos e capacidades da interface. O próprio arquivo e a interface informam que o
-conteúdo continua pessoal ou pseudonimizado e não é um conjunto anônimo de pesquisa.
+profundos e capacidades da interface. O arquivo e a interface identificam o conteúdo como pessoal ou pseudonimizado,
+orientando sua avaliação antes de qualquer uso em pesquisa.
 
 ### Áudio e envio de texto para síntese de voz
 
 Áudios WAV PCM e MP3 ficam no bucket privado `course-media`, com até 20 MiB por arquivo
 e dentro da cota conjunta de 64 MiB de PDFs e áudios por curso. O serviço confere o
 formato e os bytes antes de registrar o vínculo. A abertura exige nova autorização;
-metadados locais não tornam os bytes disponíveis sem conexão.
+a reprodução depende também de obter os bytes da gravação.
 
 O painel **Áudio** também permite gerar voz pelo Gemini. A pessoa fornece o texto e a
 chave da sessão e confirma o envio e o uso da cota ou cobrança. O resultado ainda
@@ -291,9 +291,9 @@ A fila **Rever** é montada no servidor a partir das marcas da própria pessoa e
 dispositivo em páginas. Atividade de outros estudantes não altera a versão privada desse
 estado nem aparece como conflito entre abas.
 
-Esses registros não equivalem a atenção, esforço, compreensão ou aprendizagem. O [Estado
-de estudo não punitivo](estado-de-estudo-nao-punitivo.md) desenvolve os limites de
-interpretação.
+Esses registros descrevem a continuidade do percurso. Investigar atenção ou
+aprendizagem exige medidas e critérios próprios. O [Estado de estudo não
+punitivo](estado-de-estudo-nao-punitivo.md) desenvolve essa distinção.
 
 ## Observações e identidade protegida
 
@@ -302,10 +302,23 @@ para triagem. A interface autoral identifica a contribuição estudantil por um 
 protegido, como “Estudante 7A3F”, sem apresentar o identificador interno da conta ou o
 e-mail.
 
-Enquanto uma anotação está aberta, considerada ou resolvida, o servidor conserva o texto
-corrente, a síntese e a resposta necessários à função. Eventos de revisão guardam
-resumos criptográficos e metadados limitados, em vez de versões anteriores do texto
-integral.
+O servidor conserva o texto corrente, a síntese e a resposta necessários ao
+tratamento da observação. Nas contribuições de estudantes, uma resposta ou resolução
+pode permanecer disponível para acompanhamento. Os eventos de alteração conservam
+resumos criptográficos e metadados.
+
+Uma observação autoral sobre explicações ou unidades pode reunir vários alvos. Para
+comparar o pedido com a correção, o servidor guarda uma base com o conteúdo e as
+fontes de cada alvo na abertura da observação. Alvos na mesma versão compartilham
+essa base. Ela conserva também referências aos arquivos existentes e os mantém
+protegidos de remoção enquanto forem necessários à comparação.
+
+Ao aprovar uma correção ou encerrar um alvo sem alteração, a decisão libera seu
+vínculo com a base. A base é removida quando deixa de ter alvos vinculados; os
+arquivos liberados seguem a remoção apropriada se nenhuma outra referência os
+utilizar. Quando todos os alvos autorais são decididos, o texto, a síntese e a
+resposta da observação são apagados, e o registro residual entra na janela de
+limpeza de 14 dias.
 
 Retirar uma observação apaga imediatamente seu texto, síntese e resposta, mantendo um
 registro de exclusão. Esse registro e o recibo que evita repetir a mesma operação
@@ -315,21 +328,27 @@ está descrita no [guia de Supabase](supabase.md).
 
 Os prazos correntes são 14 dias para a linha com o texto removido e para recibos de
 anotação e de mudança de curso, sete dias para recibos de estado pessoal, dez minutos
-para intenção de upload e 30 dias para a janela agregada de concessão. Esses prazos
-técnicos não decidem a retenção institucional de logs, backups, conteúdo, autoria ou
-pesquisa.
+para intenção de upload e 30 dias para a janela agregada de concessão. A retenção
+institucional de conteúdo, registros de operação e cópias de segurança tem critérios
+próprios, assim como os dados reunidos numa pesquisa.
 
-Anotações ativas ou resolvidas não expiram apenas pela idade. A instituição responsável
-precisa definir a retenção operacional. O AraLearn não cria uma cópia de pesquisa por
-padrão; qualquer reutilização exige finalidade, minimização, governança e autorização
-adequadas.
+Observações abertas e contribuições de estudantes resolvidas com texto conservado
+permanecem disponíveis até sua retirada ou outra operação prevista. A instituição
+responsável define a retenção operacional desses registros. Sua reutilização em
+pesquisa exige finalidade e regras próprias de acesso, conservação e autorização.
 
 ## Revisão e análise de autoria
 
 Somente o proprietário consulta a caixa autoral e aplica correções ao curso. A
 preparação da revisão lê observações abertas e o conteúdo corrente das explicações e
-unidades de estudo afetadas. Não persiste cópia anterior e proposta apenas para formar
-uma história de auditoria.
+unidades afetadas. Para observações autorais, a base conservada permite comparar o
+conteúdo observado com o resultado salvo. A retenção acompanha os alvos ainda
+pendentes, conforme a seção anterior.
+
+A inspeção por IA guarda um parecer sobre a base examinada: resultado, síntese,
+pendências e evidências textuais. Essas evidências podem repetir trechos do conteúdo
+e conter dados pessoais presentes nele. O parecer acompanha a autoria e tem um
+registro separado da declaração de revisão humana.
 
 A [análise de autoria](analytics-instrucionais.md) deriva indicadores da configuração,
 do desenho aplicado e das intervenções que o estado corrente permite atribuir. Em
@@ -341,8 +360,8 @@ ficam fora desse arquivo.
 O conteúdo e os metadados escritos livremente podem conter dados pessoais, mesmo sem
 e-mail ou nome em um campo de conta. Curso e combinação de valores também podem permitir
 associação à pessoa autora. A exportação é um retrato autoral que precisa ser examinado
-antes de compartilhamento; não é automaticamente anônima nem constitui autorização para
-uso em pesquisa.
+antes do compartilhamento. O uso em pesquisa depende da avaliação desses riscos e
+das condições definidas no protocolo.
 
 ## Integrações conversacionais
 
@@ -443,9 +462,9 @@ O IndexedDB pode conservar rascunhos de edições antigas, com conteúdo e refer
 necessários à recuperação. Eles permanecem até o descarte explícito e não incluem a
 conversa ou a credencial do provedor.
 
-Conteúdo, fontes, observações e configuração do curso permanecem no servidor. Limpar os
-dados do aplicativo pode apagar mudanças ainda não sincronizadas. Sair encerra a sessão,
-mas não equivale a excluir todos os dados do dispositivo ou do servidor.
+Conteúdo, fontes, observações e configuração do curso permanecem no servidor.
+Limpar os dados do aplicativo pode apagar mudanças ainda não sincronizadas. A saída
+encerra a sessão; a limpeza do dispositivo e a exclusão da conta têm controles próprios.
 
 O logout comum respeita o modo de sincronização e preserva, por decisão de produto,
 cursos offline, estado pessoal e rascunhos já gravados no IndexedDB daquela conta. Uma
@@ -487,8 +506,8 @@ autorização e preserva o estado pessoal para uma eventual nova concessão.
 
 ### Excluir a própria conta
 
-A exclusão exige conexão, confirmação humana e a frase exata `EXCLUIR MINHA CONTA`. Ela
-não é oferecida às ferramentas conversacionais.
+A exclusão fica disponível no aplicativo autenticado e exige conexão, confirmação
+humana e a frase exata `EXCLUIR MINHA CONTA`.
 
 O aplicativo envia uma única solicitação confirmada à API. A API, interface pela qual o
 aplicativo solicita operações ao servidor, autentica a pessoa, identifica seus cursos e
@@ -531,23 +550,21 @@ e informar quem responde por ele. O inventário deste documento ajuda a distingu
 autoria, estudo e observações; a implantação o complementa com os serviços contratados,
 os prazos de conservação e o canal de atendimento.
 
-Uma pesquisa define sua pergunta, população e conjunto de dados antes da coleta. Os
-indicadores de autoria existentes podem ajudar a analisar o artefato, mas não fornecem
-por si só um plano de investigação de participantes. No Brasil, a hipótese de estudos
-por órgão de pesquisa depende também do enquadramento dessa entidade na LGPD; não se
-estende automaticamente a qualquer pessoa que desenvolva um estudo.
+Uma pesquisa define sua pergunta, população e conjunto de dados antes da coleta.
+Os indicadores de autoria ajudam a analisar o artefato; investigar participantes
+exige medidas e procedimentos adequados à pergunta. No Brasil, o uso da hipótese
+legal de estudos por órgão de pesquisa exige também que a entidade atenda à
+definição prevista na LGPD.
 
-Se o protocolo precisar relacionar registros à identidade de participantes, essa relação
-deve ter acesso e retenção próprios, separados dos arquivos de análise. Substituir o
-nome por um código não elimina a possibilidade de identificar a pessoa. A decisão de
-reutilizar dados exportados considera também texto livre, metadados, cruzamentos e cópias
-mantidas fora do AraLearn.
+Se o protocolo precisar relacionar registros à identidade de participantes, essa
+relação deve ter acesso e retenção próprios, separados dos arquivos de análise.
+Mesmo com nomes substituídos por códigos, o texto livre, os metadados e o cruzamento
+com outras fontes podem permitir reidentificação. A decisão de reutilizar dados
+exportados considera também as cópias mantidas fora do AraLearn.
 
-Os prazos técnicos de sete, 14 ou 30 dias descritos acima dizem respeito a classes
-específicas de registros. Não são prazos gerais para cursos, participantes, arquivos ou
-cópias de segurança. Para cada um desses conjuntos, a instituição precisa estabelecer
-quando a finalidade termina, como ocorre a eliminação e quais retenções permanecem
-justificadas.
+Os prazos técnicos de sete, 14 ou 30 dias descritos acima têm o alcance indicado no
+inventário. Para os demais conjuntos de dados, a instituição estabelece quando a
+finalidade termina, como ocorre a eliminação e quais retenções permanecem justificadas.
 
 ### Direitos e atendimento
 
@@ -556,11 +573,11 @@ A implantação precisa oferecer um canal para receber e responder a pedidos, co
 correção ou eliminação, identificando a pessoa sem solicitar dados excessivos.
 
 Os controles do aplicativo permitem corrigir o perfil, retirar observações, limpar o
-dispositivo e excluir a conta. Eles não abrangem automaticamente todas as cópias de
-segurança, arquivos já exportados ou dados recebidos por fornecedores. Uma resposta
-institucional precisa considerar esses destinos e explicar eventuais condições ou
-limites da medida solicitada. Exportar um curso também não equivale a reunir todos os
-dados pessoais tratados sobre uma pessoa.
+dispositivo e excluir a conta. A resposta institucional a um pedido considera também
+as cópias de segurança, os arquivos exportados e os dados recebidos por fornecedores,
+explicando as condições da medida em cada destino. A exportação de curso tem alcance
+autoral; um pedido de acesso aos dados pessoais deve abranger as demais classes
+pertinentes à pessoa.
 
 ### Serviços externos e transferências internacionais
 
@@ -572,9 +589,9 @@ recebido.
 
 Quando aplicáveis, os requisitos para subcontratação e transferências internacionais
 precisam ser considerados na contratação e na configuração: RGPD, arts. 28º e 44º e
-seguintes; LGPD, art. 33 e seguintes. Escolher uma região de hospedagem não resolve
-sozinho os demais envios. O papel de cada fornecedor depende de suas atividades e dos
-compromissos assumidos, e não apenas de aparecer como opção no aplicativo.
+seguintes; LGPD, art. 33 e seguintes. A análise acompanha tanto a região de
+hospedagem quanto os demais destinos dos dados. O papel de cada fornecedor depende
+de suas atividades e dos compromissos assumidos.
 
 ### Segurança e avaliação da pesquisa
 
@@ -587,8 +604,8 @@ O protocolo de pesquisa precisa examinar os riscos da população, das categoria
 e das formas de análise, com atenção a menores, dados sensíveis e monitoramento. Essa
 avaliação orienta a consulta às instâncias de ética e proteção de dados e a verificação
 da necessidade de relatório de impacto à proteção de dados (RIPD, no Brasil) ou avaliação
-de impacto sobre a proteção de dados (AIPD, em Portugal). Uma aprovação ética e os
-controles do software não substituem as demais decisões jurídicas da implantação.
+de impacto sobre a proteção de dados (AIPD, em Portugal). A implantação reúne essa
+apreciação ética, os controles do software e as decisões jurídicas aplicáveis.
 
 ## Comunicar um problema de privacidade
 
@@ -597,8 +614,8 @@ nomes, e-mails, credenciais e conteúdo privado por exemplos fictícios. Use o c
 instituição responsável pela instalação; para defeitos no código público, use o
 rastreador do repositório.
 
-Se uma credencial tiver sido exposta, revogue-a ou substitua-a. Editar uma mensagem ou
-um arquivo não elimina necessariamente as cópias já produzidas.
+Se uma credencial tiver sido exposta, revogue-a ou substitua-a. Considere também as
+cópias da mensagem ou do arquivo que já possam ter sido produzidas.
 
 ## Fontes oficiais
 
@@ -606,8 +623,8 @@ As referências legais são a [LGPD
 compilada](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm),
 o [RGPD no EUR-Lex](https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=pt) e a [Lei
 portuguesa n.º 58/2019](https://diariodarepublica.pt/dr/detalhe/lei/58-2019-123815982).
-Para aprofundar a aplicação a pesquisa e desenho do serviço, consulte
-as orientações da ANPD sobre [direitos dos
+Para aprofundar a aplicação a pesquisa e desenho do serviço, consulte as orientações da
+ANPD sobre [direitos dos
 titulares](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares)
 e [tratamento acadêmico e
 pesquisa](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-tratamento-de-dados-pessoais-para-fins-academicos-e-para-a-realizacao-de-estudos-e-pesquisas),

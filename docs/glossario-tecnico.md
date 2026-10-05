@@ -30,8 +30,9 @@ interpretar da mesma forma.
 **Contrato fechado.** Estrutura que recusa campos e valores não declarados. Evita
 interpretações diferentes entre navegador, Edge Function e banco.
 
-**Manifesto da execução.** Contrato que informa a revisão mínima do esquema e as
-capacidades exigidas pelo site e pelas funções publicadas.
+**Manifesto da execução.** Contrato que identifica a revisão do esquema e as
+capacidades exigidas pelo site e pelas funções publicadas. O cliente confere esses
+valores antes de usar o serviço.
 
 ## Formatos e identidades
 
@@ -107,6 +108,11 @@ produção do conteúdo.
 já existentes no mapa para planejar e produzir seu conteúdo. Partes podem ser
 reunidas em um lote de produção. Esses agrupamentos podem ser redimensionados sem
 mudar a hierarquia do currículo.
+
+**Produção autônoma.** Trabalho autorizado expressamente pela pessoa para produzir
+conteúdo sem aguardar a aprovação do mapa. Exige um mapa existente e conserva seu
+estado de rascunho. As decisões de revisão humana continuam associadas aos objetos
+que a pessoa efetivamente inspecionou.
 
 **Unidade de análise (`instructional_analysis_unit`).** Recorte de conhecimento ou de
 ação que vale acompanhar no repertório do percurso. Pode ser introduzido, usado depois
@@ -210,8 +216,14 @@ Uma transação confirma todas as suas alterações juntas ou as desfaz em caso 
 Pode ser reconstruída a partir de sua origem. Rascunhos e alterações ainda não
 enviadas exigem outro cuidado, pois podem existir somente no dispositivo.
 
-**Réplica local.** Cópia suficiente para leitura sem conexão. Uma candidata só
+**Réplica local.** Cópia suficiente para leitura sem conexão. Uma nova composição só
 substitui a revisão local válida depois de ser recomposta e validada.
+
+**Migração local.** Transformação dos dados salvos no dispositivo durante a abertura
+de uma versão nova do banco IndexedDB. A transação confirma a transformação inteira
+ou conserva o estado anterior. Pendências de formatos antigos podem ser preservadas
+como rascunhos recuperáveis, conforme o [procedimento de
+atualização](persistencia-relacional.md#atualização-dos-dados-no-dispositivo).
 
 **Fila de saída.** Intenções ainda não confirmadas pelo servidor. Estado pessoal e
 observações usam filas próprias; rascunhos de conteúdo possuem recuperação própria.
@@ -225,8 +237,8 @@ O cursor pertence ao recorte e não representa posição curricular.
 **Deep link.** Endereço que abre curso, área e objeto reconhecível. O endereço pode conter identificadores técnicos, mas a interface apresenta
 o nome do objeto.
 
-**Posição local de Conteúdo.** Registro por dispositivo usado para retomar unidade,
-deslocamento e revisão. Não vira fato pedagógico compartilhado.
+**Posição local de Conteúdo.** Registro por dispositivo usado para retomar a unidade,
+o deslocamento na tela e a revisão que estavam abertos.
 
 ## Concorrência e repetição segura
 
@@ -240,8 +252,9 @@ sobrescreva uma mudança concorrente.
 
 **Idempotência.** Repetir a mesma intenção produz o mesmo efeito sem duplicação.
 
-**Recibo temporário.** Registro de curta duração que permite recuperar o resultado de
-uma escrita cuja resposta se perdeu. Não é histórico autoral.
+**Recibo temporário.** Registro com prazo de retenção que permite recuperar o resultado
+de uma escrita cuja resposta se perdeu. Liga a identidade do pedido ao seu conteúdo e
+ao resultado original.
 
 **Bloqueio consultivo transacional (`advisory lock`).** Recurso do PostgreSQL usado
 pela aplicação para coordenar operações que precisam aguardar umas às outras.
@@ -271,8 +284,9 @@ política determina quais registros ela pode ler ou alterar.
 **Papel de serviço (`service_role`).** Autoridade administrativa restrita às Edge
 Functions e testes locais; nunca pertence ao navegador ou ao modelo.
 
-**Bucket privado.** Conjunto de objetos que exige autorização antes de emitir um
-endereço temporário. PDFs de fonte e avatares usam buckets separados.
+**Bucket privado.** Área de armazenamento que exige autorização para abrir seus
+arquivos. PDFs, áudios de curso e avatares usam buckets separados. O banco mantém os
+vínculos que autorizam a leitura de cada objeto.
 
 ## API, banco e funções remotas
 
@@ -336,14 +350,21 @@ autorização. O cliente guarda um valor ao iniciar o acesso e precisa apresent�
 na troca; obter apenas o código de retorno não basta. O MCP usa o método S256,
 que anuncia uma impressão digital desse valor no pedido inicial.
 
-**Resposta de coordenação.** Resultado curto, link direto e uma próxima decisão quando
-necessária. O contexto estruturado pode permanecer completo sem ser despejado na
-conversa.
+**Resposta de coordenação.** Retorno de uma tarefa que informa o resultado, oferece
+link direto e apresenta a próxima decisão quando ela for necessária. Dados
+estruturados acompanham a resposta para permitir a continuação do trabalho.
 
 ## Observações e revisão
 
-**Observação.** Apontamento ancorado num objeto do curso. Uma seleção de várias
-unidades de estudo cria registros separados, não um lote permanente.
+**Observação.** Apontamento ligado ao conteúdo do curso. Uma observação autoral pode
+expressar a mesma intenção para vários alvos, com uma decisão própria para cada um.
+Observações de estudantes permanecem individuais. Consulte
+[Observações e revisão](arquitetura.md#observações-e-revisão).
+
+**Base de comparação da observação.** Registro anterior do conteúdo, fontes e arquivos
+conservado enquanto há alvos pendentes que precisam dele. Uma decisão libera o vínculo
+daquele alvo; a coleta remove a base quando ela deixa de ser usada e verifica se seus
+arquivos ainda precisam ser conservados por outro vínculo.
 
 **Caixa de observações.** Consulta filtrável das manifestações correntes. Estado
 aberto ou resolvido descreve triagem e não altera o conteúdo por implicação.
@@ -353,8 +374,8 @@ curricular e por elementos didáticos afetados, como exemplos e práticas, antes
 propor mudanças.
 
 **Achado de revisão.** Problema concreto identificado durante a análise, com evidência
-e proposta de correção. Pode motivar uma observação; não constitui um registro
-separado de histórico de execução.
+e proposta de correção. Pode ser registrado em uma observação para orientar o
+trabalho e acompanhar a decisão sobre os alvos pertinentes.
 
 **Declaração de revisão (`contentReview`).** Manifestação da pessoa autora de que
 inspecionou a explicação ou unidade salva. A marca pode ser retirada e fica
@@ -362,8 +383,25 @@ desatualizada quando sua base muda. Correção, leitura e geração não a conce
 implicação. A política de acesso determina separadamente se o estudo exige revisão
 atual. Consulte [Explicação e revisão humana](explicacao-e-revisao-humana.md).
 
-**Correção autoral.** Conjunto aprovado de mudanças em uma ou mais unidades ou
-explicações. Aplicação não prova resolução; o conjunto precisa ser reinspecionado.
+**Inspeção pedagógica por IA (`ai_inspection`).** Parecer sobre uma explicação ou
+unidade, confrontada com seu percurso, configuração e fontes. Registra seis critérios
+com justificativa e evidências textuais: alinhamento, evidência, representação,
+feedback, suficiência e realização da configuração. Sua validade depende da base
+inspecionada; a [arquitetura](arquitetura.md#inspeção-pedagógica-por-ia) explica o alcance.
+
+**Base de inspeção (`pedagogicalBasis`).** Conjunto de dados correntes que permite
+examinar o alvo em contexto. Inclui a microssequência, suas unidades em ordem, o
+planejamento pertinente, as dependências e as fontes. `basisHash` é a impressão
+digital usada para detectar se esse conjunto mudou depois da leitura.
+
+**Atualidade do parecer.** Correspondência entre a base examinada e a base corrente.
+`current` indica correspondência; `pending` pede nova inspeção; `unregistered`
+indica ausência de registro. O resultado do parecer é informado separadamente por
+`outcome`, permitindo reconhecer um parecer atual que ainda aponta problemas.
+
+**Correção autoral.** Conjunto autorizado de mudanças em uma ou mais unidades ou
+explicações. Depois da gravação, a reinspeção verifica os efeitos e o atendimento das
+observações que motivaram a correção.
 
 ## Fontes, âncoras e PDFs
 

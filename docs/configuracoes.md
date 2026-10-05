@@ -16,13 +16,13 @@ Em **Conectar assistente**, o endereço MCP pode ser copiado antes do login. A o
 
 ## Preferências pessoais
 
-As preferências pessoais orientam como um novo trabalho com o assistente começa. Elas respondem a três perguntas: o que será desenvolvido, como o trabalho será agrupado e quando você deseja conferir o resultado.
+As preferências pessoais orientam o início de um trabalho com o assistente. Você escolhe o alcance da produção, o agrupamento das etapas e os momentos em que deseja conferir o resultado.
 
 O **foco** responde à primeira pergunta. **Conteúdo** trabalha a explicação e suas fontes. **Ciclo completo** coordena também o desenho e a produção das unidades no recorte autorizado. Assim, você pode desenvolver primeiro a base de um assunto ou conduzir no mesmo trabalho sua passagem para a sequência de estudo. Os pontos em que você deseja inspecionar o resultado são escolhidos separadamente.
 
 A **cadência** responde à segunda. Ela define a escala acompanhada, da microssequência — pequeno percurso com objetivo próprio — ao lote que reúne várias partes de produção. Esses recortes organizam a quantidade de trabalho conduzida em conjunto; o [planejamento de autoria](planejamento-contextual.md) explica como se relacionam com o curso. O tamanho de uma parte e a frequência das pausas têm escolhas próprias.
 
-Os **pontos de revisão** respondem à terceira pergunta: indicam se você quer inspecionar o mapa, a explicação ou as unidades durante o processo. Essa inspeção é um momento de conferência; a declaração de revisão do conteúdo é registrada depois, por uma ação própria. Os parâmetros de **diálogo** ajustam a forma da conversa, como a extensão da resposta e a preferência por concisão, debate ou explicação desenvolvida.
+Os **pontos de revisão** respondem à terceira pergunta: indicam se você quer inspecionar o mapa, a explicação ou as unidades durante o processo. Essa inspeção é um momento de conferência. Depois de examinar o material salvo, você pode registrar sua declaração de revisão por uma ação própria. A autorização dada na conversa define até onde o assistente pode trabalhar naquele pedido. Os parâmetros de **diálogo** ajustam a forma da conversa, como a extensão da resposta e a preferência por concisão, debate ou explicação desenvolvida.
 
 O painel identifica se o valor veio do padrão inicial ou de uma preferência que você salvou. Uma escolha feita para determinado curso vale naquele contexto; uma condição de pesquisa fixa o que precisa permanecer constante numa comparação. Um trabalho já iniciado conserva o que foi combinado até uma mudança expressa. [Parâmetros de autoria](parametros-de-autoria.md) explica como esses alcances se relacionam.
 

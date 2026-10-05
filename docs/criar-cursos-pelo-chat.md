@@ -40,7 +40,8 @@ A explicação desenvolve o conteúdo de uma microssequência e suas fontes. Pod
 
 ## Produza em partes e lotes manejáveis
 
-Quando o trabalho inclui unidades, a produção é organizada em **partes**. Cada parte reúne microssequências para uma etapa de autoria, enquanto o mapa continua responsável pela estrutura do curso. Um **lote** reúne várias partes que serão preparadas no mesmo intervalo autorizado, sem eliminar a confirmação própria de cada parte.
+Quando o trabalho inclui unidades, a produção é organizada em **partes**. Cada parte reúne microssequências para uma etapa de autoria, enquanto o mapa continua responsável pela estrutura do curso. Um **lote** reúne as partes a preparar no mesmo intervalo autorizado. Cada
+parte conserva seu resultado de produção e pode ser conferida separadamente.
 
 Combine um recorte que consiga inspecionar. No exemplo anterior, a primeira parte poderia cobrir apenas a comunicação entre dois dispositivos e a inversão dos papéis na resposta. Antes da produção, peça uma progressão curta:
 
@@ -70,7 +71,11 @@ Explique o que deseja tornar visível: comparar estados, seguir um percurso ou j
 
 O assistente pode escolher entre os [componentes didáticos](componentes-didaticos.md) disponíveis. Ao pedir uma atividade, informe também o que a pessoa deverá fazer com o conhecimento. Identificar a origem de uma mensagem, prever o destinatário e explicar por que os papéis mudam são tarefas diferentes.
 
-Uma consulta ampla pode retornar apenas um trecho do catálogo. Quando o retorno indicar `temMais`, continue com os mesmos filtros e `continuacao` antes de concluir a escolha; compare as alternativas pela função didática e preserve a diversidade que ajuda a tornar o raciocínio visível.
+Peça ao assistente que consulte as opções adequadas à função pretendida e
+complete a leitura do catálogo quando houver mais de uma página. Compare as
+alternativas pelo raciocínio que ajudam a mostrar. Os
+[detalhes da consulta](autoria-mcp.md#tarefas-disponíveis) orientam o cliente
+conectado.
 
 Confira na prévia se a representação cumpre sua função, se o texto ensina a lê-la e se a atividade pode ser resolvida com o que o percurso já ensinou. Peça que o retorno da resposta desenvolva o raciocínio necessário. O [guia autoral](guia-professor-autor.md#escolher-componentes-e-prática) relaciona essas escolhas ao desenho do curso.
 

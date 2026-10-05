@@ -38,7 +38,7 @@ Em **Aparência**, escolha o tema do sistema, claro ou escuro. Essa preferência
 
 ## Alternar entre Estudo e Autoria
 
-Use o seletor **Estudo / Autoria** na tela inicial. Um curso compartilhado pode aparecer em Estudo e não aparecer em Autoria: o acesso permite estudá-lo, enquanto a edição do original permanece com o proprietário.
+Use o seletor **Estudo / Autoria** na tela inicial. Os cursos compartilhados ficam em Estudo. Autoria reúne os cursos próprios, cuja edição você controla.
 
 Autoria abre em **Conteúdo**. **Planejamento** fica disponível para examinar a organização do curso, e o menu leva das fontes e da revisão à gestão do acesso.
 
@@ -50,7 +50,7 @@ A primeira abertura precisa de conexão para carregar o curso. Depois, o conteú
 
 ## Responder, avançar e rever
 
-Responda à atividade e use **Continuar**. Complete os campos indicados, leia o retorno sobre sua resposta e avance. O progresso registra o ponto alcançado para permitir a retomada.
+Responda à atividade e use **Continuar** para conferir a tentativa. Complete os campos indicados e leia o retorno. Se houver erro, use **Tentar de novo** ou **Ver resposta**; o avanço fica disponível depois do acerto ou da consulta à solução. O progresso registra o ponto alcançado para permitir a retomada. O [guia do estudante](guia-estudante.md#responder-a-uma-prática) explica as etapas do retorno.
 
 **Marcar para rever** acrescenta a unidade à seção **Rever** da tela inicial. O mesmo controle retira a marca. Também é possível remover um item diretamente nessa lista e usar **Desfazer**. Veja o [percurso de estudo](guia-estudante.md#marcar-para-rever).
 
@@ -82,7 +82,7 @@ As ferramentas ficam junto aos controles da unidade. **Mais ferramentas** revela
 
 Na Autoria, abra **Áudio**. **Configuração** permite escolher idioma, velocidade e voz preferida. Em **Arquivos**, selecione WAV PCM ou MP3, confira a prévia e use **Guardar áudio**. O limite é de 20 MiB por arquivo e 64 MiB para PDFs e áudios do curso; um MiB equivale a 1.048.576 bytes, a unidade usada nesses limites.
 
-Guardar áudio não o inclui automaticamente numa unidade. Escolha a faixa ao compor o conteúdo e prepare sua alternativa textual. **Gerar voz** envia o texto ao serviço configurado mediante autorização e uso da sua cota. Confira a gravação antes de guardá-la. [Áudio](audio.md) explica as escolhas, a conexão necessária, os formatos e a privacidade.
+Depois de guardar o áudio, escolha a faixa ao compor a unidade e prepare sua alternativa textual. **Gerar voz** envia o texto ao serviço configurado mediante autorização e uso da sua cota. Confira a gravação antes de guardá-la. [Áudio](audio.md) explica as escolhas, a conexão necessária, os formatos e a privacidade.
 
 ## Configurar o desenho do curso
 
@@ -100,11 +100,11 @@ O [guia autoral](guia-professor-autor.md#ajustar-o-desenho) explica a diferença
 
 O registro do material e de seu uso permite conferir a origem do conteúdo — sua **proveniência**. A página [Fontes, citações e referências](fontes-e-citacoes.md) explica como relacionar uma afirmação ao trecho da obra, anexar PDF, ajustar a visibilidade e preservar vínculos ao editar.
 
-No estudo, abra **Explicação** ou siga uma citação sobrescrita para consultar as referências autorizadas. Um PDF só fica acessível conforme os direitos do arquivo.
+No estudo, siga uma citação sobrescrita ou abra **Fontes da unidade** para consultar as referências ligadas à unidade. **Explicação** apresenta o conteúdo explicativo e suas próprias referências. Um PDF fica acessível conforme os direitos do arquivo.
 
 ## Editar uma unidade no próprio conteúdo
 
-O proprietário pode usar **Editar** em Estudo ou Conteúdo. Escolha o título ou um trecho editável, altere o texto e use **Salvar**. **Desfazer** e **Refazer** atuam no rascunho; **Cancelar** abandona esse rascunho. A edição direta atua nos campos textuais e conserva a unidade e seus vínculos; uma mudança estrutural segue o fluxo de autoria. Alterar uma afirmação também pode exigir nova conferência das fontes.
+O proprietário pode usar **Editar** em Estudo ou Conteúdo. Escolha o título ou um trecho editável, altere o texto e use **Salvar edição**. **Desfazer** e **Refazer** atuam no rascunho; **Cancelar** abandona esse rascunho. A edição direta atua nos campos textuais e conserva a unidade e seus vínculos; uma mudança estrutural segue o fluxo de autoria. Alterar uma afirmação também pode exigir nova conferência das fontes.
 
 Quem recebeu acesso usa o curso para estudar e, com conta, enviar observações. O controle **Editar** pertence ao proprietário. Quando a pessoa cria uma cópia com a permissão correspondente, ela passa a ter outro curso, independente do original.
 
@@ -114,7 +114,7 @@ Em Estudo, **Assistência por IA** abre uma conversa sobre a unidade, microssequ
 2. descreva o que deseja compreender ou alterar e discuta a proposta;
 3. use **Preparar prévia** quando quiser examinar uma mudança;
 4. compare **Original** e **Prévia** e escolha **Aplicar ao rascunho** se estiver adequada;
-5. salve o rascunho ou descarte-o.
+5. use **Salvar proposta** para gravar a mudança ou **Descartar rascunho** para abandoná-la.
 
 A chave fica apenas durante a sessão. O provedor recebe sua mensagem e o conteúdo necessário ao recorte, conforme descrito em [Assistência por modelo de linguagem](assistencia-por-ia.md#contexto-enviado). Confira os dados enviados e os termos do serviço. Uma conversa pode explicar o assunto sem propor qualquer alteração.
 
@@ -161,7 +161,7 @@ Depois de ler uma explicação ou unidade salva, você pode declarar sua **Revis
 
 **Dados de autoria** ajuda a responder quais escolhas orientaram a produção e onde elas aparecem no curso. **Escolher dimensão e escopo** define o aspecto e o trecho que você quer examinar; um grupo da distribuição abre as unidades correspondentes. **Abrir dados e definições** explica o que foi solicitado, o que foi aplicado e quais informações estavam disponíveis.
 
-Em **Comparar cursos**, escolha outro curso próprio e use **Comparar estas edições**. **Exportar curso e análise** prepara o conteúdo integral e seus registros de autoria em JSON, um formato de dados estruturados. Confira a edição e use **Baixar arquivo JSON**. A exportação reúne dados do curso e da autoria; arquivos anexos, como PDFs e áudios, assim como informações pessoais e conversas, ficam fora dela.
+Em **Comparar cursos**, escolha outro curso próprio e use **Comparar estas edições**. **Exportar curso e análise** prepara o conteúdo integral e seus registros de autoria em JSON, um formato de dados estruturados. Confira a edição e use **Baixar arquivo JSON**. O arquivo omite os bytes dos anexos, o perfil e as identidades da conta, o estado pessoal de estudo, as credenciais e as conversas. Textos e metadados do curso podem conter informações pessoais; confira-os antes de compartilhar o arquivo.
 
 A [análise de autoria](analytics-instrucionais.md) explica o conteúdo exportado e como interpretar uma comparação à luz dos objetivos, do material e das condições de produção.
 
@@ -185,7 +185,7 @@ A nuvem indica pendência, andamento ou falha. Sem rede, ela mostra o estado da 
 
 Na Autoria, algumas páginas já consultadas podem permanecer disponíveis como leitura anterior. Operações que dependem do estado atual do servidor, como alterar parâmetros, aplicar correções ou gerir o acesso, exigem conexão. PDFs e áudios são obtidos separadamente e podem depender da rede durante o estudo.
 
-Se uma edição foi salva e a atualização da tela falhou, o aplicativo pode mostrar o conteúdo confirmado com sincronização pendente. Essa situação pede outra leitura, não outra edição do mesmo texto. A [persistência e sincronização](persistencia-relacional.md) explica como a cópia é atualizada e as diferenças entre conteúdo confirmado, anterior e indisponível.
+Se uma edição foi salva e a atualização da tela falhou, o aplicativo pode mostrar o conteúdo confirmado com sincronização pendente. Use a atualização para conferir o conteúdo já gravado antes de iniciar uma nova edição. A [persistência e sincronização](persistencia-relacional.md) explica como a cópia é atualizada e as diferenças entre conteúdo confirmado, anterior e indisponível.
 
 Em **Progresso sem conta**, confira os cursos e escolha quais acrescentar à conta identificada na tela. A operação reúne conclusões e marcas sem substituir sua posição de leitura ou apagar o progresso existente na conta. Os dados de visitante continuam separados e disponíveis ao sair; no modo manual, o estado incorporado aguarda a sincronização solicitada.
 

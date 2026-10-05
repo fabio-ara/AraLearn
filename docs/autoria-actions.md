@@ -75,7 +75,7 @@ movimentação, cópia e remoção de ramos sem perda de suas relações.
 ## Planejamento e produção
 
 O planejamento define a organização curricular. A explicação desenvolve o
-texto-base com fontes de cada microssequência e pode ser produzida antes das
+conteúdo com fontes de cada microssequência e pode ser produzida antes das
 unidades, mesmo com mapa em rascunho. `salvar_explicacoes` conserva as unidades
 existentes. Na produção de unidades, `materializar_parte` reutiliza as bases
 salvas e recebe somente aquelas que também serão criadas ou alteradas.
@@ -94,8 +94,9 @@ só altera o conteúdo mediante uma operação autorizada.
 
 ## Materialização e parâmetros
 
-`preparar_materializacao` permite uma consulta antecipada opcional: recebe o
-plano compacto e verifica a base reconciliada, repertório, vínculos, requisitos,
+`preparar_materializacao` permite uma consulta antecipada opcional: recebe em
+`unidades` as mesmas propostas de conteúdo usadas na escrita e verifica a base
+reconciliada, repertório, vínculos, requisitos,
 formas, componentes, fontes, prática e cobertura. Sem `referenciaPreparo`, a
 materialização executa essa verificação internamente antes de gravar e devolve
 os bloqueios para correção. Uma referência explícita precisa continuar válida
@@ -123,33 +124,45 @@ pessoal e acordo de um trabalho em andamento.
 
 ## Observações, revisão e acesso
 
-Uma observação única pode ter vários alvos, com bases e estados próprios. Correção salva altera o vigente, mas confirmação de persistência não aprova nem elimina a observação. `registrar_inspecao` registra o parecer sobre a base lida e `decidir_observacao` executa aprovação ou encerramento explícitos nos alvos apresentados. Decisão parcial mantém os demais; cancelar não exige uma alteração artificial. A declaração humana de revisão registra uma decisão expressa sobre
-a explicação ou unidade salva. O [fluxo de revisão](fluxos-prompts-e-contratos.md#observações-revisão-e-privacidade)
+Uma observação pode reunir vários alvos, cada um com sua base e seu estado.
+Salvar uma correção torna o conteúdo novo vigente. A observação permanece
+pendente até `decidir_observacao` registrar a decisão humana sobre os alvos
+apresentados: aceitar o resultado ou encerrar a questão sem alteração. Uma
+decisão parcial conserva os demais alvos.
+
+`registrar_inspecao` guarda o parecer da IA sobre a base lida. Já a declaração
+humana de revisão registra a inspeção expressa da pessoa sobre a explicação
+ou unidade salva. O [fluxo de revisão](fluxos-prompts-e-contratos.md#observações-revisão-e-privacidade)
 e as [regras de acesso](aralearn-contract.md#revisão-do-conteúdo) distinguem
 essas operações de tornar um curso acessível e disponibilizar seus arquivos.
 
 A fila fornece `referenciasComparacao` por alvo. Envie a referência inteira em `preparar_revisao.comparacao` e recupere suas continuações antes de examinar o conteúdo e as fontes anteriores e vigentes. A lista compacta conserva hashes e versões; a comparação recupera o conteúdo literal sem reduzi-lo.
 
-O núcleo compartilhado com MCP informa quando uma correção invalida a aplicação instrucional. Nesse caso, releia o conteúdo, verifique e reaplique as escolhas com `aplicar_configuracao_instrucional` e faça nova inspeção. As condições fixadas permanecem; declarações antigas não são copiadas para texto novo. Parecer `consistent` é recusado enquanto faltar aplicação instrucional na base focal; `needs_attention` pode registrar a insuficiência.
+O núcleo compartilhado com MCP informa quando uma correção invalida a aplicação
+instrucional. Nesse caso, releia o conteúdo, verifique e reaplique as escolhas
+com `aplicar_configuracao_instrucional` e faça nova inspeção, preservando as
+condições fixadas. Parecer `consistent` exige aplicação instrucional nas
+unidades pertinentes da base focal; `needs_attention` permite registrar essa
+insuficiência enquanto ela existir.
 
 `registrar_inspecao` recebe a referência da base focal e exige seis dimensões em novos pareceres (`alignment`,
-`evidence`, `representation`, `feedback`, `sufficiency` e `configuration`) com justificativas e
-*quotes* existentes no recorte. O servidor confere versão e `basisHash` e
+`evidence`, `representation`, `feedback`, `sufficiency` e `configuration`) com
+justificativas e trechos da base no campo `evidence`. O servidor confere versão e `basisHash` e
 marca a inspeção para atualização quando a base muda. O relatório semântico é
-julgamento do auditor; não é garantia de qualidade pedagógica nem de
-aprendizagem. Experimentos de prompts, contratos e materialização continuam em
-revisão, sem conclusão geral.
+julgamento do auditor sobre esse recorte. Sua validade pedagógica depende da
+leitura crítica do material; resultados de aprendizagem exigem investigação
+com estudantes, conforme o [protocolo de avaliação](protocolo-avaliacao-artefato.md).
 
 `configuration` confronta os parâmetros aplicados com conteúdo e percurso,
-preservando preferências contextuais e fixações. Históricos continuam legíveis;
-cinco dimensões só recuperam a tentativa exata já salva, sem reavaliar a base
-atual. Consulte os [critérios comuns e a compatibilidade](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
+preservando preferências contextuais e fixações. Pareceres de formatos anteriores continuam legíveis quando presentes.
+Cinco dimensões só permitem recuperar a tentativa exata já salva; uma nova
+avaliação da base exige seis. Consulte os [critérios comuns e a compatibilidade](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
 
 Para um pedido explícito de curso público, execute `definir_visibilidade` no grupo
-`acesso_do_curso` e confirme o estado persistido com `consultar_acesso` antes de
-anunciar sucesso. Não é necessário pedir uma decisão separada sobre arquivos:
-a publicação os disponibiliza por padrão, preservando restrições explícitas.
-Envie `confirmado: true` para representar esse pedido expresso; não omita o campo.
+`acesso_do_curso`, com `confirmado: true`, e confira o estado persistido usando
+`consultar_acesso`. A publicação disponibiliza os arquivos por padrão e conserva
+as restrições explícitas da fonte ou do arquivo. Uma escolha diferente pode
+ser informada no próprio pedido de publicação.
 Se faltar um argumento obrigatório, a resposta identifica o campo a completar.
 
 ## Resultado comum
@@ -218,13 +231,13 @@ aplicada no servidor antes da escrita ou da entrega.
 
 A documentação oficial permite até dez referências de arquivos recebidos, com
 links válidos por cinco minutos; o AraLearn limita cada uma dessas tarefas a um
-arquivo. O limite oficial de 10 MB por arquivo devolvido por uma Action trata da
-direção de retorno, não substitui o limite de ingestão do produto.
+arquivo. Para arquivos devolvidos por uma Action, a documentação oficial fixa
+10 MB por arquivo. A entrada no AraLearn segue os 20 MiB definidos acima.
 [OpenAI: arquivos em Actions](https://developers.openai.com/api/docs/actions/sending-files).
 
 ## Limites verificados e orçamentos locais
 
-Consulta às fontes oficiais reconferida em 11 de setembro de 2026:
+Fontes oficiais consultadas em 5 de outubro de 2026:
 
 | Item | Regra publicada |
 | --- | --- |
@@ -247,9 +260,11 @@ operações apresentado ao editor. A aceitação do arquivo pelo editor, a
 publicação do assistente e a execução contra o serviço são verificações
 distintas.
 
-O gerador mede o artefato que será importado em unidades UTF-16 e bytes UTF-8.
-Os orçamentos locais são 90.000 unidades UTF-16 para o JSON compacto e 180.000
-para sua apresentação formatada. Definições compartilhadas evitam repetir
+O gerador confere o tamanho em unidades UTF-16, a contagem usada por
+`String.length` em JavaScript. O arquivo compacto, incluindo a quebra de linha
+final, precisa ter menos de 100.000 unidades; sua apresentação formatada
+precisa ter menos de 210.000. Esses são os orçamentos locais definidos em
+[buildChatGptActionOpenApi.mjs](../scripts/buildChatGptActionOpenApi.mjs). Definições compartilhadas evitam repetir
 schemas, preservando as restrições e os exemplos de cada tarefa. Esses
 orçamentos ajudam a controlar o tamanho do contrato; a aceitação pelo cliente
 é verificada pela importação do próprio arquivo. As chamadas ao serviço têm
@@ -261,14 +276,19 @@ O servidor aplica uma proteção conservadora de 99.999 unidades UTF-16 ao JSON
 completo recebido ou convertido em texto, pois a fonte não define a unidade Unicode de
 “caractere”. A decodificação exige UTF-8 válido. A proteção de 512 KiB limita
 memória local e o prazo interno é de 40 segundos; ambos são escolhas do
-AraLearn. Os orçamentos locais do schema também não são limites oficiais.
-Essas proteções recusam o excesso em vez de truncar ou resumir conteúdo: uma
-leitura grande usa recorte ou paginação, e uma escrita possivelmente concluída
-é relida antes da recuperação. Medidas e aceitação do cliente seguem o
+AraLearn. O serviço informa o limite atingido. Uma leitura grande usa recorte
+ou paginação. Se o tempo se esgotar depois de uma escrita, a gravação pode ter
+terminado; o cliente relê o resultado antes da recuperação. Medidas e aceitação do cliente seguem o
 [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
 
-Respostas extensas de preparo e inspeção usam a continuação comum aos canais.
-Para recuperar uma confirmação perdida de `salvar_mapa_curricular`, use `consultar_planejamento` com `resumo: true`: a situação, revisão e referência vigente cabem numa resposta pequena. Inspecione o mapa antes de aprovar; recuperar a referência não constitui aprovação. Quando a produção for recusada por mapa não aprovado, a recuperação distingue mapa ausente de rascunho: no rascunho, apresente a versão salva para a pessoa aprovar ou retome a produção com `autonomo: true` se o pedido já autorizar produzir sem essa revisão.
+Leituras extensas de planejamento e revisão usam a continuação comum aos canais.
+Para recuperar uma confirmação perdida de `salvar_mapa_curricular`, use
+`consultar_planejamento` com `resumo: true`: situação, revisão e referência
+vigente cabem numa resposta pequena. A aprovação exige a inspeção do mapa e a
+decisão expressa da pessoa. Se a produção encontrar um mapa ainda em rascunho,
+apresente a versão salva para aprovação ou use `autonomo: true` quando o pedido
+já autorizar produzir sem essa revisão. Se faltar o mapa, complete primeiro
+esse planejamento.
 Cada página conserva uma parte literal do conteúdo e a referência necessária
 para obter a seguinte. A reunião das páginas recupera o documento completo;
 o assistente precisa concluí-la antes de avaliar ou alterar o recorte. O
@@ -315,9 +335,8 @@ Referências de arquivos permanecem nas duas operações diretas de ingestão.
 
 A reimportação é necessária quando o documento OpenAPI muda. Uma correção
 interna que preserve esse contrato, como um ajuste no retorno de autenticação
-OAuth, não exige importar o arquivo novamente. Publicar um novo arquivo no
-repositório não substitui o que já foi importado no cliente; a atualização
-substitui integralmente a versão anterior.
+OAuth, conserva o arquivo já importado. Quando o contrato mudar no
+repositório, reimporte a versão completa no cliente.
 
 ## Referências técnicas
 

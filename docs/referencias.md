@@ -19,55 +19,55 @@ Como a chave permanece no destino de cada link, um processamento futuro pode rec
 
 ## Percursos temáticos de leitura
 
-Os percursos abaixo oferecem entradas possíveis no corpus. A ordem é uma orientação de estudo, não uma classificação de qualidade. Função e limite são curadoria editorial; autoria, título, veículo e identificadores continuam derivados exclusivamente de `referencias.bib`.
+Os percursos abaixo sugerem uma ordem de estudo. Cada indicação explica a contribuição da leitura e as condições para aplicar seu argumento. Os dados completos de publicação aparecem na lista de referências.
 
 ### Aprendizagem e desenho instrucional
 
 Comece pelos mecanismos que organizam planejamento, carga, prática e representação. A ordem vai do quadro geral às decisões mais específicas do AraLearn.
 
-1. [Panadero (2017)](#ref-panadero2017selfregulated). **Função da leitura:** situa os ciclos de planejamento, monitoramento e reflexão em seis modelos de aprendizagem autorregulada. **Limite principal:** é uma revisão de modelos; não demonstra que controles de interface produzam autorregulação.
-2. [Sweller et al. (1998)](#ref-sweller1998architecture). **Função da leitura:** introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional. **Limite principal:** a teoria não fornece um limite universal de tamanho para unidades de estudo.
-3. [Ainsworth (2006)](#ref-ainsworth2006deft). **Função da leitura:** oferece um quadro para analisar desenho, função e tarefa em múltiplas representações. **Limite principal:** não estabelece que variedade visual ou um componente especializado seja sempre superior.
+1. [Panadero (2017)](#ref-panadero2017selfregulated). **Função da leitura:** situa os ciclos de planejamento, monitoramento e reflexão em seis modelos de aprendizagem autorregulada. **Limite principal:** o trabalho compara modelos; o efeito dos controles de uma interface exige investigação própria.
+2. [Sweller et al. (1998)](#ref-sweller1998architecture). **Função da leitura:** introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional. **Limite principal:** a extensão adequada de uma unidade depende do conteúdo, da tarefa e do conhecimento prévio.
+3. [Ainsworth (2006)](#ref-ainsworth2006deft). **Função da leitura:** oferece um quadro para analisar desenho, função e tarefa em múltiplas representações. **Limite principal:** a escolha de representações depende da função que exercem na tarefa e das condições de aprendizagem.
 4. [Carpenter et al. (2022)](#ref-carpenter2022spacing). **Função da leitura:** sintetiza prática de recuperação e espaçamento e ajuda a distinguir os dois mecanismos. **Limite principal:** intervalo, conteúdo, população e medida moderam a transferência para outro contexto.
 
 ### Pesquisa, avaliação e validade
 
 Este percurso separa construção do artefato, investigação educacional, desenho causal e validade das interpretações.
 
-1. [Messick (1995)](#ref-messick1995validity). **Função da leitura:** explica validade como sustentação das interpretações e dos usos de uma medida. **Limite principal:** não valida por si nenhum instrumento ou indicador do AraLearn.
-2. [Shadish et al. (2002)](#ref-shadish2002experimental). **Função da leitura:** fundamenta desenhos experimentais e quase experimentais e suas ameaças à inferência causal. **Limite principal:** um esquema de variantes ou uma origem comum não satisfaz automaticamente esses desenhos.
-3. [Design-Based Research Collective (2003)](#ref-dbrc2003designbased). **Função da leitura:** introduz a pesquisa baseada em design em contextos educacionais autênticos. **Limite principal:** iteração de produto sem pergunta, dados e explicação não constitui DBR.
-4. [Hevner et al. (2004)](#ref-hevner2004designscience). **Função da leitura:** situa a construção e a avaliação de artefatos em Design Science Research. **Limite principal:** evidência técnica do artefato não substitui avaliação de aprendizagem ou usabilidade.
-5. [Conselho Nacional de Saúde (2016)](#ref-cns2016resolucao510). **Função da leitura:** delimita direitos e requisitos éticos para pesquisas brasileiras em Ciências Humanas e Sociais abrangidas por seu escopo. **Limite principal:** a norma não valida desenho, medida ou análise e não demonstra efeito educacional.
+1. [Messick (1995)](#ref-messick1995validity). **Função da leitura:** explica validade como sustentação das interpretações e dos usos de uma medida. **Limite principal:** cada instrumento ou indicador do AraLearn requer evidências que sustentem sua interpretação e uso.
+2. [Shadish et al. (2002)](#ref-shadish2002experimental). **Função da leitura:** fundamenta desenhos experimentais e quase experimentais e suas ameaças à inferência causal. **Limite principal:** a atribuição às condições, as medidas e o controle de explicações alternativas precisam ser definidos no estudo.
+3. [Design-Based Research Collective (2003)](#ref-dbrc2003designbased). **Função da leitura:** introduz a pesquisa baseada em design em contextos educacionais autênticos. **Limite principal:** sua aplicação exige articular as iterações a perguntas, dados e explicações sobre a aprendizagem no contexto estudado.
+4. [Hevner et al. (2004)](#ref-hevner2004designscience). **Função da leitura:** situa a construção e a avaliação de artefatos em Design Science Research. **Limite principal:** avaliar aprendizagem e usabilidade requer métodos e dados adequados a essas perguntas.
+5. [Conselho Nacional de Saúde (2016)](#ref-cns2016resolucao510). **Função da leitura:** delimita direitos e requisitos éticos para pesquisas brasileiras em Ciências Humanas e Sociais abrangidas por seu escopo. **Limite principal:** seu alcance é ético e regulatório; a avaliação do desenho e dos efeitos educacionais cabe à investigação.
 
 ### IA generativa e colaboração entre pessoas e IA
 
 As leituras avançam de princípios de interação e dependência apropriada para erro de geração, heterogeneidade de desempenho e trabalho docente de revisão.
 
-1. [Amershi et al. (2019)](#ref-amershi2019humanai). **Função da leitura:** organiza diretrizes de comunicação, correção e controle na interação entre pessoas e IA. **Limite principal:** diretriz de desenho não demonstra que uma pessoa compreendeu ou exerceu o controle.
-2. [Lee e See (2004)](#ref-lee2004trust). **Função da leitura:** relaciona confiança, contexto e dependência apropriada de automação imperfeita. **Limite principal:** confiança declarada não equivale a dependência calibrada numa tarefa concreta.
-3. [Ji et al. (2023)](#ref-ji2023hallucination). **Função da leitura:** sintetiza tipos, causas, avaliação e mitigação de alucinações na geração de linguagem. **Limite principal:** os resultados variam por tarefa e não demonstram que recuperação ou validação elimine erro.
-4. [Vaccaro et al. (2024)](#ref-vaccaro2024humanai). **Função da leitura:** quantifica heterogeneidade e moderadores de desempenho em combinações pessoa–IA. **Limite principal:** as tarefas e medidas da meta-análise não predizem a qualidade da autoria no AraLearn.
+1. [Amershi et al. (2019)](#ref-amershi2019humanai). **Função da leitura:** organiza diretrizes de comunicação, correção e controle na interação entre pessoas e IA. **Limite principal:** compreensão e exercício do controle pela pessoa precisam ser observados nas tarefas de uso.
+2. [Lee e See (2004)](#ref-lee2004trust). **Função da leitura:** relaciona confiança, contexto e dependência apropriada de automação imperfeita. **Limite principal:** o relato de confiança e o comportamento de dependência exigem medidas e análises próprias.
+3. [Ji et al. (2023)](#ref-ji2023hallucination). **Função da leitura:** sintetiza tipos, causas, avaliação e mitigação de alucinações na geração de linguagem. **Limite principal:** o alcance das estratégias de mitigação varia por tarefa e deve ser avaliado nas condições de uso.
+4. [Vaccaro et al. (2024)](#ref-vaccaro2024humanai). **Função da leitura:** quantifica heterogeneidade e moderadores de desempenho em combinações pessoa–IA. **Limite principal:** a qualidade da autoria no AraLearn precisa ser examinada em tarefas e medidas específicas desse contexto.
 5. [Selwyn et al. (2025)](#ref-selwyn2025prompting). **Função da leitura:** mostra o trabalho de conferir, reparar, reescrever e rejeitar saídas de IA relatado por docentes. **Limite principal:** o estudo qualitativo cobre 57 docentes de oito escolas na Austrália e na Suécia.
-6. [Han et al. (2025)](#ref-han2025genaimeta). **Função da leitura:** sintetiza resultados educacionais experimentais e seus moderadores. **Limite principal:** a heterogeneidade substancial impede transportar o efeito agregado para o AraLearn.
+6. [Han et al. (2025)](#ref-han2025genaimeta). **Função da leitura:** sintetiza resultados educacionais experimentais e seus moderadores. **Limite principal:** a heterogeneidade substancial exige considerar as condições dos estudos antes de formular hipóteses para o AraLearn.
 
 ### Aprendizagem no trabalho e circulação de conhecimento
 
 Estas fontes ajudam a distinguir aprendizagem individual, formação profissional e processos organizacionais de conhecimento.
 
-1. [Tynjälä (2008)](#ref-tynjala2008workplace). **Função da leitura:** diferencia formas, níveis e condições de aprendizagem no trabalho. **Limite principal:** a revisão não demonstra adequação de uma plataforma específica a toda organização.
-2. [Alavi e Leidner (2001)](#ref-alavi2001knowledge). **Função da leitura:** situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento. **Limite principal:** armazenar e distribuir cursos não constitui por si gestão do conhecimento.
-3. [UNESCO (2015)](#ref-unesco2015tvet). **Função da leitura:** delimita educação e formação técnica e profissional numa perspectiva de aprendizagem ao longo da vida. **Limite principal:** é uma norma orientadora, não evidência de eficácia educacional do AraLearn.
+1. [Tynjälä (2008)](#ref-tynjala2008workplace). **Função da leitura:** diferencia formas, níveis e condições de aprendizagem no trabalho. **Limite principal:** a adequação de uma plataforma depende das atividades, dos participantes e das condições da organização.
+2. [Alavi e Leidner (2001)](#ref-alavi2001knowledge). **Função da leitura:** situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento. **Limite principal:** o papel dos cursos deve ser examinado dentro dos processos organizacionais de produção e uso do conhecimento.
+3. [UNESCO (2015)](#ref-unesco2015tvet). **Função da leitura:** delimita educação e formação técnica e profissional numa perspectiva de aprendizagem ao longo da vida. **Limite principal:** a recomendação orienta políticas e práticas; a eficácia de um uso do AraLearn exige evidências próprias.
 
 ### Interface móvel, interrupção e modos de cor
 
 O percurso liga diversidade de interfaces móveis, retomada de tarefas, polaridade de tela e acessibilidade normativa.
 
-1. [Ahmad Faudzi et al. (2023)](#ref-faudzi2023mobileui). **Função da leitura:** mapeia quadros usados no desenho de interfaces de aprendizagem móvel. **Limite principal:** a diversidade encontrada não identifica um layout universalmente superior.
-2. [Monk et al. (2008)](#ref-monk2008resumption). **Função da leitura:** examina como duração e demanda da interrupção afetam a retomada de objetivos. **Limite principal:** a tarefa experimental não avalia aprendizagem nem armazenamento local.
-3. [Piepenbrock et al. (2014)](#ref-piepenbrock2014polarity). **Função da leitura:** examina polaridade de tela numa tarefa delimitada de revisão de texto. **Limite principal:** desempenho nessa tarefa não estabelece superioridade universal do modo claro.
+1. [Ahmad Faudzi et al. (2023)](#ref-faudzi2023mobileui). **Função da leitura:** mapeia quadros usados no desenho de interfaces de aprendizagem móvel. **Limite principal:** a diversidade encontrada exige relacionar o desenho às tarefas e aos públicos de cada aplicação.
+2. [Monk et al. (2008)](#ref-monk2008resumption). **Função da leitura:** examina como duração e demanda da interrupção afetam a retomada de objetivos. **Limite principal:** o experimento examina retomada de objetivos; aprendizagem e persistência de dados são questões adicionais.
+3. [Piepenbrock et al. (2014)](#ref-piepenbrock2014polarity). **Função da leitura:** examina polaridade de tela numa tarefa delimitada de revisão de texto. **Limite principal:** a conclusão se refere à tarefa e às condições visuais examinadas.
 4. [Xie et al. (2021)](#ref-xie2021colormode). **Função da leitura:** contrasta fadiga objetiva e preferência subjetiva em baixa iluminação. **Limite principal:** a condição noturna e os níveis de luminância restringem a generalização.
-5. [World Wide Web Consortium (2023)](#ref-w3c2023wcag22). **Função da leitura:** fornece critérios normativos de acessibilidade para conteúdo web. **Limite principal:** conformidade técnica não demonstra compreensão, conforto ou aprendizagem.
+5. [World Wide Web Consortium (2023)](#ref-w3c2023wcag22). **Função da leitura:** fornece critérios normativos de acessibilidade para conteúdo web. **Limite principal:** compreensão, conforto e aprendizagem requerem avaliações com métodos adequados a cada resultado.
 
 ## Lista de referências
 
@@ -83,7 +83,7 @@ Chave bibliográfica: `agarwal2021retrieval`.
 
 ### Ahmad Faudzi et al. (2023)
 
-Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94. [DOI 10.3390/educsci13010094](https://doi.org/10.3390/educsci13010094).
+Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), artigo 94. [DOI 10.3390/educsci13010094](https://doi.org/10.3390/educsci13010094).
 
 Chave bibliográfica: `faudzi2023mobileui`.
 
@@ -283,7 +283,7 @@ Chave bibliográfica: `cepeda2008spacing`.
 
 ### Chen e Cheung (2025)
 
-Shuzhen Chen; Alan C. K. Cheung (2025). **Effect of Generative Artificial Intelligence on University Students Learning Outcomes: A Systematic Review and Meta-Analysis.** *Educational Research Review*, 49, p. 100737. [DOI 10.1016/j.edurev.2025.100737](https://doi.org/10.1016/j.edurev.2025.100737).
+Shuzhen Chen; Alan C. K. Cheung (2025). **Effect of Generative Artificial Intelligence on University Students Learning Outcomes: A Systematic Review and Meta-Analysis.** *Educational Research Review*, 49, artigo 100737. [DOI 10.1016/j.edurev.2025.100737](https://doi.org/10.1016/j.edurev.2025.100737).
 
 Chave bibliográfica: `chen2025genaimeta`.
 
@@ -291,7 +291,7 @@ Chave bibliográfica: `chen2025genaimeta`.
 
 ### Chen et al. (2023)
 
-Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63. [DOI 10.1007/s10648-023-09782-w](https://doi.org/10.1007/s10648-023-09782-w).
+Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, artigo 63. [DOI 10.1007/s10648-023-09782-w](https://doi.org/10.1007/s10648-023-09782-w).
 
 Chave bibliográfica: `chen2023elementinteractivity`.
 
@@ -347,7 +347,7 @@ Chave bibliográfica: `cns2016resolucao510`.
 
 ### De Gagne et al. (2019)
 
-Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997. [DOI 10.2196/13997](https://doi.org/10.2196/13997).
+Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), artigo e13997. [DOI 10.2196/13997](https://doi.org/10.2196/13997).
 
 Chave bibliográfica: `degagne2019microlearning`.
 
@@ -419,7 +419,7 @@ Chave bibliográfica: `gazzola2022textcomplexity`.
 
 ### Gilardi et al. (2023)
 
-Fabrizio Gilardi; Meysam Alizadeh; Maël Kubli (2023). **ChatGPT Outperforms Crowd Workers for Text-Annotation Tasks.** *Proceedings of the National Academy of Sciences*, 120(30), p. e2305016120. [DOI 10.1073/pnas.2305016120](https://doi.org/10.1073/pnas.2305016120) · [acesso ao documento](https://pmc.ncbi.nlm.nih.gov/articles/PMC10372638/).
+Fabrizio Gilardi; Meysam Alizadeh; Maël Kubli (2023). **ChatGPT Outperforms Crowd Workers for Text-Annotation Tasks.** *Proceedings of the National Academy of Sciences*, 120(30), artigo e2305016120. [DOI 10.1073/pnas.2305016120](https://doi.org/10.1073/pnas.2305016120) · [acesso ao documento](https://pmc.ncbi.nlm.nih.gov/articles/PMC10372638/).
 
 Chave bibliográfica: `gilardi2023annotation`.
 
@@ -459,7 +459,7 @@ Chave bibliográfica: `greimas1966recit`.
 
 ### Han et al. (2025)
 
-Xiaoli Han; Hongchao Peng; Mingzhuo Liu (2025). **The Impact of GenAI on Learning Outcomes: A Systematic Review and Meta-Analysis of Experimental Studies.** *Educational Research Review*, 48, p. 100714. [DOI 10.1016/j.edurev.2025.100714](https://doi.org/10.1016/j.edurev.2025.100714).
+Xiaoli Han; Hongchao Peng; Mingzhuo Liu (2025). **The Impact of GenAI on Learning Outcomes: A Systematic Review and Meta-Analysis of Experimental Studies.** *Educational Research Review*, 48, artigo 100714. [DOI 10.1016/j.edurev.2025.100714](https://doi.org/10.1016/j.edurev.2025.100714).
 
 Chave bibliográfica: `han2025genaimeta`.
 
@@ -643,7 +643,7 @@ Chave bibliográfica: `lewis2020rag`.
 
 ### Li et al. (2021)
 
-Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, p. 103189. [DOI 10.1016/j.ergon.2021.103189](https://doi.org/10.1016/j.ergon.2021.103189).
+Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, artigo 103189. [DOI 10.1016/j.ergon.2021.103189](https://doi.org/10.1016/j.ergon.2021.103189).
 
 Chave bibliográfica: `li2021interaction`.
 
@@ -731,7 +731,7 @@ Chave bibliográfica: `monk2008resumption`.
 
 ### Morris et al. (2021)
 
-Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292. [DOI 10.1002/rev3.3292](https://doi.org/10.1002/rev3.3292).
+Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), artigo e3292. [DOI 10.1002/rev3.3292](https://doi.org/10.1002/rev3.3292).
 
 Chave bibliográfica: `morris2021formative`.
 
@@ -763,7 +763,7 @@ Chave bibliográfica: `pan2018transfer`.
 
 ### Panadero (2017)
 
-Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422. [DOI 10.3389/fpsyg.2017.00422](https://doi.org/10.3389/fpsyg.2017.00422).
+Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, artigo 422. [DOI 10.3389/fpsyg.2017.00422](https://doi.org/10.3389/fpsyg.2017.00422).
 
 Chave bibliográfica: `panadero2017selfregulated`.
 
@@ -891,7 +891,7 @@ Chave bibliográfica: `richter2016signaling`.
 
 ### Ryan e Deci (2020)
 
-Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860. [DOI 10.1016/j.cedpsych.2020.101860](https://doi.org/10.1016/j.cedpsych.2020.101860).
+Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, artigo 101860. [DOI 10.1016/j.cedpsych.2020.101860](https://doi.org/10.1016/j.cedpsych.2020.101860).
 
 Chave bibliográfica: `ryan2020motivation`.
 
@@ -947,7 +947,7 @@ Chave bibliográfica: `sennrich2016subwords`.
 
 ### Shadish et al. (2002)
 
-William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin. [acesso ao documento](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish-cook-campbell/9780395615560/) · ISBN 9780395615560.
+William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin. [acesso ao documento](https://www.cengage.com/c/experimental-and-quasi-experimental-designs-for-generalized-causal-inference-2e-shadish/9780395615560/) · ISBN 9780395615560.
 
 Chave bibliográfica: `shadish2002experimental`.
 
@@ -1123,7 +1123,7 @@ Chave bibliográfica: `wood1976tutoring`.
 
 ### World Wide Web Consortium (2023)
 
-World Wide Web Consortium (2023). **Web Content Accessibility Guidelines (WCAG) 2.2.** [acesso ao documento](https://www.w3.org/TR/WCAG22/).
+World Wide Web Consortium (2023). **Web Content Accessibility Guidelines (WCAG) 2.2.** [acesso ao documento](https://www.w3.org/TR/2023/REC-WCAG22-20231005/).
 
 Chave bibliográfica: `w3c2023wcag22`.
 

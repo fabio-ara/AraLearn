@@ -60,6 +60,14 @@ O [mapa da documentação](README.md) organiza percursos por intenção de leitu
 
 A prosa privilegia frases que desenvolvem uma relação reconhecível: quem realiza uma ação, sobre qual objeto, com qual finalidade e sob quais condições. Exemplos tornam essas relações concretas. Listas atendem a sequências ou conjuntos comparáveis; tabelas ajudam quando as correspondências entre elementos são o centro da explicação.
 
+Cada parágrafo deve fazer a explicação avançar. Fórmulas repetidas de ressalva,
+adjetivos de aprovação e comentários sobre a própria redação ocupam o lugar de
+informação útil. Um limite fica mais claro quando descreve a condição necessária:
+“avaliar a aprendizagem exige uma tarefa e um instrumento próprios” explica o
+próximo passo. Ao revisar, procure também sequências longas de substantivos e
+verbos. Desenvolva a relação central em frases; reserve a relação completa de
+campos ou operações para a seção de consulta correspondente.
+
 O uso de terminologia especializada acrescenta precisão e permite continuar a pesquisa fora da documentação. Quando pertinente, a primeira ocorrência apresenta o termo em português e sua forma consagrada em outra língua. Nomes de instituições, padrões, protocolos, produtos e trabalhos acadêmicos permanecem reconhecíveis.
 
 Os nomes comuns do domínio aparecem em minúsculas no corpo do texto, do curso

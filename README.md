@@ -2,7 +2,7 @@
 
 O AraLearn é uma plataforma para estudo autodidata e criação de cursos com apoio de inteligência artificial (IA) generativa. A partir de um tema, de uma ementa ou de materiais já reunidos, uma pessoa pode montar um curso e estudá-lo no próprio aplicativo. A IA ajuda a planejar o percurso, redigir o conteúdo e propor atividades; a pessoa autora inspeciona o resultado e orienta as mudanças.
 
-O conteúdo é desenvolvido em etapas relacionadas, com explicações, fontes e práticas. Essa organização permite estudar em períodos breves, retomar o ponto em que se parou e continuar pelo celular. O aplicativo funciona no navegador e pode ser instalado; a cópia já carregada do curso permite continuar o estudo sem conexão.
+O conteúdo é desenvolvido em etapas relacionadas, com explicações, fontes e práticas. Essa organização permite estudar em períodos breves, retomar o ponto em que se parou e continuar pelo celular. O aplicativo funciona no navegador e pode ser instalado. O conteúdo já carregado permite continuar o estudo sem conexão; PDFs, áudios e consultas externas têm condições próprias de acesso.
 
 [Abrir o AraLearn](https://fabio-ara.github.io/AraLearn/) · [Conhecer a origem do projeto](docs/origens-do-aralearn.md)
 
@@ -14,7 +14,7 @@ O conteúdo é dividido em vários níveis, do curso completo às unidades de es
 
 Cada forma de apresentação tem uma função. Uma explicação escrita pode se relacionar a uma representação visual ou a um áudio, enquanto uma atividade permite trabalhar sobre o conteúdo apresentado. Uma tabela ajuda a comparar informações; um fluxograma, a acompanhar um processo. O curso pode, assim, escolher a combinação adequada para cada relação.
 
-Durante a autoria, a **explicação** constitui o texto-base da microssequência. Nela, o assunto é desenvolvido e ligado às fontes antes ou depois da produção das unidades. A explicação permanece acessível durante o estudo, enquanto cada unidade conserva as escolhas feitas para apresentar o conteúdo e propor a prática.
+Durante a autoria, a **explicação** desenvolve o assunto da microssequência e o liga às fontes. Ela pode combinar texto, representações visuais e áudio, sendo preparada antes ou depois da produção das unidades. A explicação permanece acessível durante o estudo, enquanto cada unidade conserva as escolhas feitas para apresentar o conteúdo e propor a prática.
 
 O [modelo didático](docs/modelo-didatico.md) apresenta os fundamentos e as decisões que orientam essa estrutura.
 
@@ -22,7 +22,7 @@ O [modelo didático](docs/modelo-didatico.md) apresenta os fundamentos e as deci
 
 No estudo, a pessoa percorre o curso, responde às práticas e recebe retorno. Também pode marcar uma unidade para rever, registrar uma observação e retomar o ponto em que interrompeu a leitura.
 
-Na autoria, a pessoa define para quem é o curso e o que ele deverá ensinar. Em seguida, decide como desenvolver o assunto e inspeciona o material produzido junto de suas fontes. Pode pedir correções, editar o conteúdo e registrar sua revisão. A marca de revisão identifica uma decisão humana sobre o conteúdo salvo; sua relação com a disponibilização do curso está descrita em [Explicação e revisão humana](docs/explicacao-e-revisao-humana.md).
+Na autoria, a pessoa define para quem é o curso e o que ele deverá ensinar. Em seguida, decide como desenvolver o assunto e inspeciona o material produzido junto de suas fontes. Pode pedir correções, editar o conteúdo e registrar sua revisão. A marca de revisão identifica uma decisão humana sobre o conteúdo salvo. A inspeção por IA mantém um parecer próprio, com evidências e pendências, que ajuda a examinar a coerência do material. [Explicação e revisão humana](docs/explicacao-e-revisao-humana.md) explica esses registros e sua relação com a disponibilização do curso.
 
 O [guia do estudante](docs/guia-estudante.md) apresenta o percurso de estudo. O [guia do professor e autor](docs/guia-professor-autor.md) apresenta o percurso completo, da criação à revisão do curso.
 
@@ -32,7 +32,7 @@ O trabalho se desenvolve em um ciclo de proposta, inspeção e correção: a IA 
 
 Uma aplicação de conversa conectada pode consultar o curso e executar as alterações que a pessoa autorizar. Essas tarefas pertencem ao AraLearn e permanecem separadas de um modelo ou fornecedor específico. Por isso, o curso continua no aplicativo e pode ser trabalhado em outra conversa compatível; cada canal e aplicação externa tem sua compatibilidade verificada separadamente. O [guia de autoria pelo chat](docs/criar-cursos-pelo-chat.md) apresenta esse percurso, e a [documentação das integrações](docs/assistencia-por-ia.md) explica os canais e suas condições de uso. Dentro do próprio aplicativo, a pessoa também pode editar o texto ou discutir uma prévia com IA antes de salvá-la.
 
-Para usar o ChatGPT, siga o [manual ilustrado de configuração de MCP e Actions/OpenAPI](docs/chatgpt.md). Ele apresenta duas formas de conectar esse aplicativo ao AraLearn, com telas, autorização da conta e uma consulta de teste. Essa é uma das integrações possíveis; o AraLearn não exige um modelo ou fornecedor específico.
+Para usar o ChatGPT, siga o [manual ilustrado de configuração de MCP e Actions/OpenAPI](docs/chatgpt.md). Ele apresenta duas formas de conectar esse aplicativo ao AraLearn, com telas, autorização da conta e uma consulta de teste. Outras aplicações compatíveis podem usar os mesmos canais, conforme as condições descritas nos respectivos guias.
 
 ## Pesquisa em design instrucional
 

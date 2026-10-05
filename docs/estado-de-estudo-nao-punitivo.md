@@ -8,9 +8,9 @@ o que a pessoa marcou para rever. O AraLearn chama esse conjunto mínimo de
 **estado de estudo**.
 
 Esse estado sustenta a continuidade: guarda o ponto alcançado e escolhas
-pessoais de retomada. Notas, histórico de navegação e estimativas de
-proficiência exigiriam outros dados e outra finalidade; eles ficam fora desse
-registro.
+pessoais de retomada. Seu contrato contém apenas os dados necessários para
+essas funções. Uma investigação de desempenho ou de proficiência precisaria
+definir outra coleta, com finalidade e método próprios.
 
 ## Estado funcional e telemetria
 
@@ -19,8 +19,8 @@ como reabrir uma lição no ponto alcançado. A **telemetria comportamental**
 registra eventos para analisar uso, como abertura, duração, repetição ou
 sequência temporal de ações.
 
-O AraLearn conserva o estado funcional necessário ao estudo. A plataforma não
-coleta uma trilha completa de interação para uso futuro indefinido. Dados
+O AraLearn conserva o estado funcional necessário ao estudo. Sua finalidade
+delimita os dados guardados e o que se pode interpretar a partir deles. Dados
 educacionais exigem pergunta explícita, limites de inferência e governança
 proporcionais ao risco
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
@@ -52,9 +52,10 @@ unidade apenas expositiva, o mesmo controle avança diretamente. O
 responder. Aqui, a diferença relevante para a continuidade é entre uma
 resposta em elaboração e uma unidade já avançada.
 
-O aplicativo registra a identidade da unidade concluída e o novo ponto de
-retomada. A resposta momentânea do componente não é guardada como avaliação.
-Sem conexão, a mudança entra na cópia local e aguarda sincronização.
+O aplicativo registra a identidade da unidade avançada e usa essa informação
+para calcular o ponto de retomada na lição. A resposta em elaboração permanece
+na interação aberta; o registro de continuidade conserva o avanço. Sem conexão,
+a mudança entra na cópia local e aguarda sincronização.
 
 Conservar os dados do aplicativo permite recuperar a continuidade local. Limpar
 esses dados pode remover mudanças ainda não sincronizadas. No modo automático, o retorno da
@@ -149,9 +150,9 @@ Antes de criar um indicador educacional, é preciso documentar:
 7. o método de avaliação;
 8. acesso, retenção, exclusão e custo de armazenamento.
 
-Sem essas respostas, a conveniência técnica não justifica a coleta. Autonomia e
-autorregulação são fenômenos mais amplos do que cliques observáveis; um
-indicador simplificado não equivale ao construto
+Essas definições permitem julgar a pertinência da coleta antes de implementá-la.
+Autonomia e autorregulação envolvem planejamento, acompanhamento e reflexão;
+sua investigação precisa relacionar as observações a essas dimensões
 ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
 [Broadbent e Poon (2015)](referencias.md#ref-broadbent2015selfregulated)).
 

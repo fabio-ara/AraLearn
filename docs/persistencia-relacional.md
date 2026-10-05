@@ -48,7 +48,8 @@ validada pelo banco; uma unidade de estudo não pode pertencer a duas posições
 pai.
 
 A microssequência pode guardar uma [explicação](explicacao-e-revisao-humana.md),
-o texto-base com fontes que desenvolve o assunto. Ela é salva separadamente das
+uma base com fontes que desenvolve o assunto e pode combinar texto, representações
+visuais e áudio. Ela é salva separadamente das
 unidades produzidas a partir dela. Cada unidade registra a base que utilizou;
 alterar a explicação posteriormente não reescreve essas unidades. As marcas de
 revisão humana também são separadas: registram a inspeção de cada explicação ou
@@ -86,6 +87,35 @@ Se mudar o conteúdo ou a hierarquia que sustentava a aplicação, ela deixa de 
 o estado corrente; uma alteração apenas no título mantém a relação. Por isso, os
 [dados de autoria](analytics-instrucionais.md) não atribuem um mapeamento instrucional
 corrente a uma unidade cuja aplicação foi invalidada.
+
+## Pareceres de inspeção e suas bases
+
+O parecer de IA é salvo em `private.course_entities.ai_inspection`, no registro da
+unidade ou da microssequência que contém a explicação. Ele guarda o julgamento, o
+instante da inspeção e a impressão digital da base examinada. A base pedagógica é
+reconstruída a partir do estado corrente: reúne o conteúdo do foco, suas unidades na
+ordem salva, o planejamento pertinente, as dependências, a configuração aplicada e os
+vínculos bibliográficos. A composição desse conjunto está em
+`private.course_pedagogical_basis_v1`.
+
+Por isso, o alcance da invalidação pode superar o objeto editado. Reordenar duas
+unidades muda o percurso disponível à inspeção da explicação e das unidades da mesma
+microssequência. O banco calcula novamente `basisHash` para determinar quais pareceres
+continuam atuais. O resultado `consistent` descreve o julgamento; o estado `current`
+descreve sua correspondência com a base. Um parecer atual com ressalvas continua
+exigindo atenção.
+
+Novos registros exigem os seis critérios do contrato. Pareceres antigos continuam
+legíveis, mas um registro com apenas cinco critérios fica incompleto para a inspeção
+atual. O servidor confere se as evidências textuais constam da base salva. A
+correspondência textual fundamenta a referência usada pelo parecer; a qualidade do
+juízo depende da análise do conteúdo.
+
+Gravar um parecer novo ou alterado incrementa a revisão técnica do curso. A base
+exclui o próprio parecer, permitindo registrar os demais alvos sem invalidá-los
+apenas por essa gravação. O recibo conserva os metadados do resultado e o hash do pedido;
+numa repetição exata, o serviço recompõe o parecer a partir do pedido vinculado ao
+recibo. Conteúdo e declaração humana de revisão permanecem em operações separadas.
 
 ## Escritas concorrentes
 
@@ -181,8 +211,9 @@ Fontes e âncoras são registros correntes: a fonte identifica um material, e a 
 localiza uma passagem verificável nele. Os [vínculos de
 proveniência](fontes-e-citacoes.md) registram como esses materiais foram usados no
 curso. `sourceRevision` e `anchorRevision` nos contratos públicos funcionam como
-versões de concorrência. Atualizar metadados ou localizador incrementa a versão; a
-leitura cotidiana não percorre revisões anteriores.
+versões de concorrência. Atualizar metadados ou localizador incrementa a versão. A
+leitura cotidiana usa esses registros correntes; uma observação autoral pendente pode
+preservar o estado anterior pertinente à comparação, conforme a seção de observações.
 
 Uma atribuição corrente liga um item do plano, explicação ou unidade de estudo a
 fontes e âncoras. Vínculos possuem identidade estável, papéis múltiplos explícitos e
@@ -213,9 +244,9 @@ preservar esse caminho fora do seu próprio prefixo; o descritor autorizado, e n
 nome da pasta, determina a leitura.
 
 Remover o PDF desativa o vínculo. Uma intenção de exclusão atravessa a fronteira entre
-transação e Storage; o objeto só é apagado depois que nenhum vínculo ativo o utiliza.
-Concluir a exclusão remove a intenção. Reanexar o mesmo conteúdo reativa o vínculo
-após nova conferência.
+transação e Storage; o objeto é apagado depois de conferir os vínculos ativos, as
+reservas e as bases de observação que ainda o conservam. Concluir a exclusão remove a
+intenção. Reanexar o mesmo conteúdo reativa o vínculo após nova conferência.
 
 Um objeto sem vínculo aparece no inventário de manutenção. A autorização de remoção
 volta a conferir classe e caminho; a deleção acontece pela Storage API, nunca por
@@ -223,15 +254,25 @@ escrita direta em `storage.objects`.
 
 ## Observações e revisão
 
-Observações conservam alvo, texto, categoria, origem, estado e versão. Uma ação em
-várias unidades cria registros separados; explicações também recebem observações
-próprias. Editar, tratar, retirar ou reabrir uma observação mantém sua identidade.
+Observações conservam texto, categoria, origem, estado e versão. Uma observação autoral
+pode reunir até 64 alvos em `private.course_observation_targets`. Cada incidência
+registra o objeto, a base anterior e seu estado de decisão. As bases idênticas são
+compartilhadas em `private.course_observation_bases`; nelas permanecem o conteúdo
+anterior, as fontes pertinentes e o inventário de arquivos necessário à comparação.
+Observações de estudantes conservam o alvo individual.
 
-A revisão contextual lê a fila completa e o percurso afetado. A correção grava o
-conteúdo e identifica as versões das observações que pretende atender. A releitura
-confirma os efeitos antes de consumir somente essas versões; entradas editadas ou não
-atendidas permanecem pendentes. Uma resposta perdida exige reconciliar a mesma
-tentativa, sem reaplicar a correção.
+A revisão contextual lê a fila e o percurso afetado. A correção grava o conteúdo, e a
+releitura confirma seus efeitos. Aceitar o conteúdo vigente ou encerrar uma incidência
+sem alterar depende de uma decisão humana expressa. A operação confere as versões da
+observação e de seus alvos e a base apresentada; aceitar exige também inspeção de IA
+concluída. Alvos omitidos ou alterados continuam pendentes.
+
+Cada decisão libera a referência daquele alvo à base anterior. A coleta conserva bases
+que ainda são compartilhadas e agenda a remoção de arquivos que perderam a última
+referência. Os bytes existentes são reutilizados durante a comparação. Quando todos
+os alvos terminam, o sistema limpa o texto da observação e mantém seu registro terminal
+por 14 dias, até a coleta. Uma nova intenção sobre um alvo já decidido recebe outra
+observação. Pedidos com resposta perdida conservam sua identidade para reconciliação.
 
 Essa triagem é distinta da [declaração humana de
 revisão](explicacao-e-revisao-humana.md). A explicação e cada unidade possuem marca
@@ -239,9 +280,9 @@ própria, vinculada ao conteúdo e às fontes inspecionados. A política `saved`
 leitura do conteúdo salvo; `reviewed_only` exige revisão atual, preservadas as demais
 permissões do curso.
 
-## Analytics corrente
+## Análise de autoria corrente
 
-O painel de Analytics é derivado sob demanda apenas do estado salvo. Sua fonte reúne a
+O painel **Dados de autoria** é derivado sob demanda do estado salvo. Sua fonte reúne a
 estrutura, o desenho aplicado, as fontes, as observações, os parâmetros definidos e a
 origem corrente da criação ou da última revisão das unidades. Dados de interação ficam
 fora dessa fonte.
@@ -280,6 +321,30 @@ automaticamente. O serviço prepara a retirada dos vínculos de cada curso, reiv
 intenções de arquivo, confirma os objetos pela Storage API e só então conclui a
 exclusão relacional. Um PDF ou áudio utilizado por outra cópia não é apagado por
 semelhança de prefixo. Avatares continuam limitados à pasta da conta.
+
+## Atualização dos dados no dispositivo
+
+Ao abrir um banco local de uma versão anterior, o IndexedDB executa uma transação de
+atualização antes de entregar os dados ao aplicativo. A versão corrente do banco de
+cursos é 4, definida em `CourseLocalStore.js`. Sessão e dados de curso usam bancos
+separados; cada conta e o visitante têm seu próprio compartimento de cursos.
+
+A atualização preserva os pedidos ainda não confirmados. Na fila de observações
+autorais, uma pendência antiga utilizável ocupa a chave central do curso quando ela
+está livre. Pendências adicionais conservam o registro original entre os rascunhos
+recuperáveis, disponíveis para exportação e análise. Somente a pendência central pode
+ser retomada como pedido; os registros preservados exigem decisão posterior.
+
+Marcas antigas de revisão agregada da microssequência também têm destino explícito:
+a atualização guarda o original em `legacyMicrosequenceReview` e apresenta a revisão
+por objeto como `unregistered`. Uma declaração sobre o conjunto antigo precisa,
+assim, de nova inspeção para os objetos atuais.
+
+Se a atualização falhar, a transação desfaz suas alterações e mantém o banco original.
+Outra aba aberta na versão anterior pode bloquear a passagem; feche essa aba e abra o
+aplicativo novamente. Os módulos `courseCacheUpgradeV10.js`,
+`courseContentUpgradeV7.js` e `studyDraftRecovery.js` implementam essas passagens, com
+testes de conservação dos dados em `tests/runtime/`.
 
 ## Evolução, backup e restauração
 

@@ -45,7 +45,7 @@ duas relações distintas:
 | o conteúdo está disponível sem rede | inspeção e teste da propriedade técnica |
 | a disponibilidade sem rede altera continuidade ou abandono | população, comparação e medida definidas num estudo |
 
-O teste de rede pode sustentar a primeira; não pode sustentar a segunda.
+O teste de rede sustenta a disponibilidade técnica nas condições executadas.
 A conclusão sobre continuidade precisa identificar as pessoas, as condições
 comparadas e o resultado observado. Até essa avaliação, a relação permanece
 uma hipótese do projeto.
@@ -76,8 +76,8 @@ O contexto prioritário inclui pessoas adultas que conciliam trabalho e estudo,
 usam o celular em períodos breves e podem sofrer interrupções ou perder a
 conexão.
 
-Essa prioridade é uma **delimitação de design**, não uma descrição empírica de
-todos os usuários. Cada avaliação precisa caracterizar sua própria população,
+Essa prioridade constitui a **delimitação de design** do projeto. Cada avaliação
+precisa caracterizar sua própria população,
 incluindo experiência com tecnologia, domínio de conhecimento, dispositivo,
 condições de rede e contexto de uso.
 
@@ -278,6 +278,13 @@ salvar altera o conteúdo; registrar uma observação preserva um comentário
 situado; marcar a revisão registra a declaração. A avaliação do uso precisa
 examinar se a inspeção realmente ocorreu e com que qualidade.
 
+O [parecer de inspeção de IA](auditoria-de-conformidade-instrucional.md) acrescenta
+um julgamento registrado sobre a base pedagógica do alvo. Sua atualidade depende
+do conteúdo e do contexto considerados, inclusive da ordem das unidades. O
+resultado informa se o parecer encontrou insuficiências; a marca de revisão
+autoral continua sendo uma declaração humana própria. Uma pesquisa conserva
+esses registros separadamente e examina a qualidade de cada julgamento.
+
 Revisão e acesso são decisões independentes. Quem possui acesso pode estudar
 conteúdo completo salvo, mesmo quando ainda não há declaração de revisão. Uma
 política opcional pode restringir o estudo ao material revisado. Propriedade,
@@ -321,12 +328,16 @@ escopo da Resolução CNS nº 510/2016, informação, consentimento ou assentime
 privacidade, confidencialidade, retirada e proteção diante de riscos seguem a
 norma aplicável
 ([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
-Essa autoridade é normativa; não demonstra que uma medida seja válida nem que
-uma intervenção produza aprendizagem.
+O enquadramento também considera a [Lei nº 14.874/2024](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2024/lei/l14874.htm)
+e o [Decreto nº 12.651/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12651.htm),
+que regulamenta o sistema nacional de ética em pesquisa com seres humanos.
+A instância responsável orienta os procedimentos pertinentes ao estudo concreto.
+Essas normas definem obrigações de proteção e condução da pesquisa; a validade
+das medidas e os resultados educacionais são examinados pelo método do estudo.
 
-Disponibilidade técnica, portanto, não é critério de coleta. Registros como
-cliques, tempo e conclusão precisam passar pelo mesmo exame de finalidade e
-risco. A ética integra o desenho da análise desde esse primeiro momento
+Registros como cliques, tempo e conclusão passam pelo exame de finalidade e
+risco antes da decisão de coletá-los. A ética integra o desenho da análise desde
+esse primeiro momento
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical); [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics); [Tsai e Martinez-Maldonado (2022)](referencias.md#ref-tsai2022humancentered)). Dados de pesquisa devem permanecer separados do banco
 operacional sempre que o desenho e o risco assim exigirem.
 
@@ -339,12 +350,12 @@ apoiadas em [Lyotard (1984)](referencias.md#ref-lyotard1984postmodern) e
 do projeto: que conhecimento é valorizado, quem define uma norma e quais
 consequências seguem de tornar uma atividade visível?
 
-Na análise do AraLearn, essas perguntas alcançam usos bastante concretos. A
-quantidade de unidades descreve um material, e não a produtividade de quem o
-criou. A conclusão de um percurso registra um estado do curso, e não o esforço
-da pessoa. A disponibilidade no celular tampouco transforma todo intervalo
-livre em tempo devido ao estudo. Esses limites precisam acompanhar qualquer
-proposta de adoção institucional.
+Na análise do AraLearn, essas perguntas alcançam usos concretos. A quantidade
+de unidades caracteriza o material produzido; o progresso conserva um estado
+do percurso. Interpretar esses registros como produtividade ou esforço exige
+uma justificativa e evidências próprias. A proposta de acesso pelo celular
+também precisa preservar a escolha de quando estudar e quando descansar.
+Essas condições acompanham a avaliação de uma adoção institucional.
 
 Um estudo sobre reutilização institucional precisa examinar as decisões
 efetivas da organização e ouvir as pessoas afetadas. Condições de recusa e
@@ -374,8 +385,8 @@ todo o material exposto: sua explicação, fontes, unidades e formas de consulta
 apoio. Modelo e configuração são registrados quando conhecidos; lacunas
 permanecem indicadas como dados ausentes.
 
-No produto, essas condições continuam sendo cursos editáveis independentes, e
-não variantes experimentais bloqueadas. A separação reduz misturas acidentais;
+No produto, essas condições continuam sendo cursos editáveis independentes.
+A separação reduz misturas acidentais;
 equivalência semântica, fidelidade da exposição e validade causal dependem do
 protocolo. Consulte [Comparar condições de
 desenho](experimentos-instrucionais-parametrizados.md).
@@ -402,12 +413,12 @@ apenas por seus casos bem-sucedidos.
 | Função | Documento | Limite principal |
 | --- | --- | --- |
 | síntese do conhecimento externo | [Revisão de literatura](revisao-de-literatura.md) | revisão narrativa, não exaustiva |
-| modelo conceitual e hipóteses | [Quadro teórico](quadro-teorico.md) | proposições ainda não são resultados |
+| modelo conceitual e hipóteses | [Quadro teórico](quadro-teorico.md) | as proposições orientam avaliações a realizar |
 | definições operacionais | [Glossário de construtos](glossario-construtos.md) | nomes do produto não se tornam construtos universais |
-| teoria, decisão, código e avaliação | [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) | teste técnico não demonstra aprendizagem |
+| teoria, decisão, código e avaliação | [Matriz de rastreabilidade](matriz-rastreabilidade-pedagogica.md) | a evidência técnica caracteriza o software; a aprendizagem requer avaliação própria |
 | desenho de episódios | [Protocolo de avaliação](protocolo-avaliacao-artefato.md) | precisa ser particularizado e aprovado quando houver participantes |
 | justificativa dos componentes | [Fundamentação pedagógica das representações](fundamentacao-pedagogica-dos-resources.md) | representação correta ainda exige avaliação de compreensão |
-| contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | originalidade e superioridade não são presumidas |
+| contribuição possível | [Contribuição e originalidade](contribuicao-originalidade.md) | alegações de originalidade e vantagem dependem de comparação |
 | bibliografia canônica | [`referencias.bib`](referencias.bib) | presença na lista não determina força da evidência |
 
 ## Governança dos dados de autoria
@@ -453,13 +464,13 @@ integral. As [referências completas](referencias.md) permitem localizar as obra
 | --- | --- | --- | --- |
 | [Biggs (1996)](referencias.md#ref-biggs1996alignment) | Resumo e metadados na página da Springer; texto integral não consultado | Articular objetivos, atividades e avaliação ao delimitar o desenho | Não prescreve a interface, a extensão da base ou um número de unidades |
 | [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli) | Resumo e seções 1.2, sobre níveis de análise, e 2.1, sobre eventos, no HTML da Wiley | Distinguir recorte de conhecimento, episódio instrucional e aprendizagem inferida | Não valida a unidade de análise instrucional do AraLearn como componente cognitivo nem como medida |
-| [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner) | Resumo e metadados da editora e do depósito UCL; não leitura integral | Precedente de ferramenta que representa escolhas de desenho e apoia professores como designers | Resultados do Learning Designer pertencem à ferramenta e aos contextos estudados; não são resultados deste produto |
+| [Laurillard et al. (2018)](referencias.md#ref-laurillard2018learningdesigner) | Resumo e metadados da editora e do depósito UCL; não leitura integral | Precedente de ferramenta que representa escolhas de desenho e apoia professores como designers | Resultados do Learning Designer pertencem à ferramenta e aos contextos estudados; o AraLearn requer avaliação própria |
 | [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture) | Resumo e metadados editoriais retornados pela busca; artigo integral não consultado | Separar conjectura sobre o funcionamento do desenho da relação teórica com resultados | O resumo sustenta a distinção geral; não basta para alegar aplicação integral do método |
 | [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai) e [Microsoft (s.d.)](referencias.md#ref-microsofthaxcorrection) | Página da publicação dos autores e orientação oficial HAX G9 para correção; sem leitura integral do artigo ou estudo dos exemplos de produtos | Tornar intervenções de IA compreensíveis e permitir editar, corrigir e recuperar | Diretrizes de interação não comprovam inspeção crítica ou eficácia das decisões humanas no AraLearn |
-| [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel) | Página oficial, descrição dos quatro componentes | Comparação parcial entre tarefas e informações de suporte | A base explicativa é definição própria; não é equivalência canônica com *supportive information* nem adoção integral do 4C/ID |
-| [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22) | WCAG 2.2, critério 1.4.10; texto dos critérios e intenção nas páginas oficiais Understanding de 1.4.3, 1.4.11, 2.5.8 e 4.1.2, listadas abaixo | Restrições verificáveis de apresentação e operação dos controles | WCAG é referência normativa; Understanding é explicação informativa. Esta consulta não é auditoria integral de conformidade |
+| [Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel) | Página oficial, descrição dos quatro componentes | Comparação parcial entre tarefas e informações de suporte | A base explicativa é definição própria; a comparação com *supportive information* alcança somente os aspectos de apoio discutidos |
+| [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22) | WCAG 2.2, critério 1.4.10; texto dos critérios e intenção nas páginas oficiais Understanding de 1.4.3, 1.4.11, 2.5.8 e 4.1.2, listadas abaixo | Restrições verificáveis de apresentação e operação dos controles | WCAG é referência normativa; Understanding é explicação informativa. A consulta cobre os critérios especificados nesta linha |
 | [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgtoolbar), padrão Toolbar | Agrupamento, interação por teclado, foco, papéis e nomes no APG | Orientar grupos que de fato adotem o padrão de barra de ferramentas | Fileira visual de ícones não recebe automaticamente esse papel; o padrão não comprova reconhecimento do símbolo |
-| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog), padrão Dialog (Modal) | Interação por teclado, foco inicial, fechamento, retorno do foco e semântica no APG | Orientar detalhes modais que preservem a continuidade do contexto | O padrão não é componente pronto nem certificação da implementação |
+| [World Wide Web Consortium (s.d.)](referencias.md#ref-w3capgdialog), padrão Dialog (Modal) | Interação por teclado, foco inicial, fechamento, retorno do foco e semântica no APG | Orientar detalhes modais que preservem a continuidade do contexto | O padrão orienta a implementação, cuja conformidade precisa ser verificada no aplicativo |
 
 As páginas informativas consultadas foram
 [Contraste mínimo](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html),

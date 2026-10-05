@@ -1,15 +1,11 @@
 # Matriz histórica de cobertura da rodada de UX
 
-> Registro histórico da rodada de UX indicada neste arquivo. As afirmações de
-> vigência abaixo pertencem àquela rodada. Para a experiência atual, consulte o
-> [sistema visual](../docs/sistema-visual.md) e os guias de
-> [estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md).
-
-
-Esta matriz registra os requisitos examinados na rodada encerrada. Seus nomes,
-agrupamentos e instruções pertencem àquele período. Para o produto vigente,
-prevalecem os contratos executáveis e o
-[mapa da documentação atual](../docs/README.md).
+Esta matriz registra os requisitos examinados na rodada do
+[contrato histórico de experiência](FINAL-UX-CONTRACT.md). Seus nomes,
+agrupamentos e instruções pertencem àquele período. O
+[sistema visual](../docs/sistema-visual.md) e os guias de
+[estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md)
+descrevem a experiência vigente.
 
 Naquela rodada, a matriz cobria as capacidades que precisavam aparecer no
 produto final. A regra adotada era que uma capacidade não se considerava

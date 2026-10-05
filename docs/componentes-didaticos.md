@@ -18,10 +18,10 @@ exceções pelo aplicativo.
 
 ## 1. Quando um pacote é justificável
 
-Uma caixa visual não se torna um componente didático apenas por ter estilo
-próprio. Um pacote especializado se justifica quando texto, tabela genérica ou
-outro componente instalado perderia uma relação relevante, uma notação
-convencional ou uma operação que o estudante precisa realizar. Essa escolha segue a
+Um pacote especializado se justifica quando preserva uma relação, uma notação
+ou uma operação que se perderia nos formatos já disponíveis. Uma matriz, por
+exemplo, precisa conservar o significado da posição de cada elemento; mudar
+apenas a aparência de uma tabela teria outra finalidade. Essa escolha segue a
 [operação-alvo da tarefa](modelo-didatico.md#prática-orientada-pela-operação-alvo-da-tarefa).
 
 ### Critério de decisão
@@ -36,7 +36,7 @@ Antes de criar um pacote, responda:
 6. quais situações tornam o componente inadequado.
 
 O pacote de matriz, `matrix`, é distinto do de tabela, `table`, porque posição algébrica, delimitadores e
-operações matriciais têm significado. O pacote de pilha de chamadas, `call-stack`, é distinto de tabela quando
+operações matriciais têm significado. O pacote de pilha de chamadas, `call_stack`, é distinto de tabela quando
 precisa mostrar topo, ordem de quadros, ativação e retorno. Se um suposto
 “rastreamento de algoritmo” apenas listar linhas e valores, `table` é
 suficiente. A especialização se sustenta quando materializa o estado do
@@ -95,7 +95,8 @@ enquanto a estrutura permanece protegida.
 O registro instalado reúne 34 pacotes: 31 de conteúdo e três de resposta.
 O inventário e a decisão de manter ou restringir cada gramática estão na
 [auditoria dos componentes](auditoria-academica-dos-resources.md#6-decisão-corrente-e-uso-observado).
-Diretórios auxiliares, como `system-diagrams`, não são pacotes adicionais.
+Diretórios auxiliares, como `system-diagrams`, fornecem código compartilhado
+pelos pacotes instalados.
 
 Para encontrar um componente pelo que ele precisa fazer, o catálogo descreve
 cada pacote por categorias de consulta, chamadas **facetas**. Elas situam o
@@ -117,11 +118,17 @@ combinação. A validação considera os lugares aceitos
 Texto explicado (`paragraph`) pode acompanhar Escolha (`choice`) na mesma
 unidade, desde que o texto não repita a pergunta da resposta.
 
-O contrato de um componente descreve uma instância, não a unidade completa.
-Na materialização, `conteudo` exige `title`, `role`, `content`, `response`,
-`feedback` e `topics`. Uma prática contém resposta avaliável e um recurso
-explicativo em `feedback`; comentários nas alternativas de Escolha não
-substituem esse recurso.
+O contrato de um componente descreve uma instância. A unidade completa possui
+título, papel didático, conteúdo, resposta, retorno e tópicos, nos campos
+`title`, `role`, `content`, `response`, `feedback` e `topics`. Nas tarefas humanas
+de materialização, o normalizador preenche listas vazias e resposta nula quando
+omitidas e deriva o papel da unidade pela presença de resposta. Também pode
+atribuir identidade e versão às instâncias dos componentes. Esses valores
+completam a estrutura; a materialização de uma prática exige resposta avaliável e um recurso
+explicativo em `feedback`. Comentários específicos das alternativas podem
+complementar esse retorno. A inspeção de conteúdo já salvo considera os dois
+lugares ao avaliar a suficiência do feedback, inclusive acervos anteriores com
+comentários completos nas alternativas.
 
 O catálogo interno usa o contrato `aralearn.resource-library.v1` e oferece
 consultas progressivas:
@@ -225,10 +232,9 @@ Cada lacuna possui índice e estado próprios. Suas alternativas pertencem apena
 novamente a esvazia sem alterar as demais. Digitação segue a mesma identidade,
 mas usa entrada textual e normalização declarada.
 
-Identidade não é deduzida pelo valor da resposta. Duas transições que apontam
-para o mesmo estado, por exemplo, continuam sendo lacunas distintas porque usam
-caminhos e índices distintos; preencher ou abrir as opções de uma não altera a
-outra. Reutilizar o mesmo caminho ou chave para várias lacunas produziria
+Caminho e índice identificam cada lacuna, inclusive quando duas respostas têm
+o mesmo valor. Duas transições que apontam para o mesmo estado, por exemplo,
+conservam controles independentes. Reutilizar o mesmo caminho ou chave para várias lacunas produziria
 seleção simultânea, portanto o núcleo e os testes verificam unicidade e
 materialização de cada alvo. O preenchimento real também é medido no navegador:
 o controle precisa caber na reserva calculada antes da interação, sem ser
@@ -256,9 +262,11 @@ vez de receber uma posição inferida.
 
 ## 7. Autoria e campos protegidos
 
-Cada pacote declara em `editableTargets()` quais textos podem ser alterados sem
-expor a estrutura. Coordenadas, identidades relacionais, tipos de nó, índices e
-textos destinados apenas à acessibilidade ficam fora desse conjunto.
+Cada pacote declara em `editableTargets()` os campos textuais disponíveis para
+correção. Coordenadas, identidades relacionais e tipos de nó pertencem à
+composição estrutural. Uma descrição acessível pode ser editável quando o
+pacote a oferece expressamente, como a leitura equivalente de `formula`. A
+lista de alvos do pacote determina o alcance de cada edição.
 
 Essa declaração delimita as correções textuais permitidas na inspeção do
 conteúdo, conforme o [contrato de conteúdo](aralearn-contract.md). A interface visual mostra a unidade com respostas
@@ -280,7 +288,9 @@ O pacote escolhe a tecnologia conforme a classe do problema:
 | texto, código e tabelas | [HTML semântico](https://developer.mozilla.org/en-US/docs/Glossary/Semantics#semantics_in_html) | seleção, reorganização responsiva, acessibilidade e edição textual nativas |
 
 A geometria da representação é calculada a partir dos dados e das convenções
-do pacote; a autoria não precisa fornecer coordenadas de desenho. Motores externos também têm limites: Graphviz não decide o valor pedagógico de um grafo, Vega não escolhe a escala cientificamente correta e MathML não valida uma equação.
+do pacote. A autoria decide as relações, a escala e o significado da notação;
+o motor organiza sua apresentação. A inspeção do conteúdo precisa conferir
+essas decisões disciplinares junto da legibilidade do resultado.
 
 O [inventário tipográfico](#inventário-tipográfico-do-catálogo) reúne os papéis
 textuais e casos extremos de cada pacote. As decisões gerais pertencem ao
@@ -301,14 +311,14 @@ Essas três linhas são exemplos, não o inventário do catálogo. A consulta
 `contracts`, apresentada em [Catálogo como vocabulário
 controlado](#3-catálogo-como-vocabulário-controlado), entrega o contrato
 versionado completo do pacote escolhido. É ali que permanecem, por exemplo,
-domínio, contradomínio e pares ordenados para `relation-map`, além dos campos
+domínio, contradomínio e pares ordenados para `relation_map`, além dos campos
 próprios dos demais pacotes.
 
-O contrato usa conceitos da área em vez de pedir SVG, LaTeX livre, uma tabela
-improvisada ou frases concatenadas. Isso reduz ambiguidades e permite que o
-pacote preserve convenções. Quando duas áreas usam diagramas superficialmente
-parecidos com semânticas distintas, pacotes separados são preferíveis a um
-contrato genérico repleto de exceções.
+O contrato recebe os conceitos da área e deixa o desenho a cargo do pacote.
+Essa separação permite preservar convenções e validar relações. A autoria de
+fórmulas usa um subconjunto explícito de TeX, descrito a seguir. Quando duas
+áreas atribuem significados diferentes a diagramas parecidos, contratos
+próprios tornam essas diferenças verificáveis.
 
 Em `aralearn.resource.table`, o contrato autoral usa `columns` e `rows`, com
 `title` para identificar a comparação, `legend` para decodificar símbolos ou
@@ -318,14 +328,20 @@ local; a semântica não depende de instruções de posicionamento.
 
 Os campos de prosa, células, rótulos e feedback que usam a apresentação textual
 compartilhada aceitam TeX delimitado por `\(...\)` ou `\[...\]`. Essa capacidade
-atravessa os componentes; não exige transformar uma tabela ou um diagrama em
-parágrafo. Código e sessões de terminal preservam o texto literal. O subconjunto
+atravessa os componentes e preserva o lugar do texto na tabela ou no diagrama. Código e sessões de terminal preservam o texto literal. O subconjunto
 documentado é convertido para a árvore semântica interna; comandos desconhecidos
 produzem erro localizado, e o autor não fornece HTML ou MathML livre.
 
 Em `aralearn.resource.paragraph`, blocos matemáticos enriquecidos usam a mesma
-entrada. Uma árvore válida já persistida pode ser conservada; ela permanece
-detalhe interno, sem obrigar a pessoa autora ou o GPT a administrá-la.
+entrada. Uma árvore matemática válida já persistida pode ser conservada pelo
+aplicativo. Para uma expressão autônoma, `aralearn.resource.formula` recebe
+`tex` e `accessibleText`, a leitura equivalente em palavras, e apresenta a
+expressão em MathML. Esse pacote oferece exposição e retorno, com edição da
+orientação e da leitura acessível. Sua implementação corrente tem
+`practiceTargets()` vazio: uma tarefa sobre a expressão precisa recolher a
+resposta por outro componente compatível, como escolha. A compatibilidade
+anunciada no catálogo ajuda a buscar candidatos; os alvos efetivamente
+oferecidos pelo pacote determinam onde uma lacuna pode ser composta.
 
 Sentenças citadas, leitura, tradução e comentário ocupam parágrafos distintos.
 Em escrita anotada, `ruby` associa `base` a `reading`; o trecho base pode conter
@@ -372,24 +388,23 @@ As operações previstas são rastrear interação, interpretar saída, identifi
 erro, relacionar ação e consequência, comparar estado, diagnosticar situação,
 prever resultado e reconhecer comando.
 
-Esse objeto não é `code`, que preserva código-fonte ou configuração estática;
-não é `table`, que compara registros por atributos; e não é `paragraph`, que
-expõe uma explicação em prosa. O pacote apresenta um registro fornecido pela
-autoria: não executa nem interpreta comandos, não abre terminal ou banco e não
-acessa rede ou ambiente externo. O mesmo texto pode produzir outro resultado em
-outro estado, sistema ou momento.
+A sequência temporal é o que distingue uma sessão de outros formatos. Use
+`code` para código-fonte ou configuração estática; `table` para comparar
+registros por atributos; e `paragraph` para desenvolver uma explicação. O pacote
+de sessão apresenta o registro fornecido pela autoria. Para executar comandos,
+a tarefa precisa de um ambiente externo cuja configuração esteja explícita,
+pois o resultado depende do sistema e do estado em que a execução ocorre.
 
-Quando houver prática, somente `interactions[i].input` pode receber lacuna de
-escolha com alternativas exatas e inequívocas. O pacote não avalia digitação,
-expressões regulares, equivalência semântica nem resposta livre por modelo. Sua
-lista cronológica, os rótulos dos fluxos de saída e o texto monoespaçado selecionável
+Quando houver prática, `interactions[i].input` é o campo disponível para lacuna
+de escolha, com alternativas exatas e inequívocas. A avaliação se limita a essa
+escolha; executar ou escrever comandos em um ambiente real exige outra tarefa.
+Sua lista cronológica, os rótulos dos fluxos de saída e o texto monoespaçado selecionável
 fornecem uma ordem de leitura acessível; no celular, conteúdo largo usa rolagem
 local sem alterar espaços ou quebrar o fluxo da unidade.
 
-Observar e interpretar uma sessão pode preparar reconhecimento, previsão ou
-diagnóstico, mas não substitui operar um ambiente real quando executar a ação é
-o objetivo de aprendizagem. Nessa situação, a autoria precisa oferecer prática
-externa adequada ou declarar explicitamente a limitação.
+Observar e interpretar uma sessão permite propor reconhecimento, previsão ou
+diagnóstico. Quando o objetivo inclui executar a ação, a autoria precisa
+oferecer prática num ambiente real e definir como observar seu resultado.
 
 ## 10. Leitura sem gramática adicional
 
@@ -408,10 +423,10 @@ Legendas e instruções são decididas pelo papel que cumprem naquele exemplo:
 | repetição sem função adicional | retirar a cópia e conservar a ocorrência que ancora o significado | repetir abaixo da reação a mesma condição já apresentada sobre a seta |
 | informação de implementação | manter fora do material de estudo | identidade interna do pacote, nome de um campo de JSON ou estado do motor de desenho |
 
-Essa decisão não é uma lista de palavras proibidas. `stdout`, `stderr` e código
-de saída, por exemplo, são objetos pertinentes de uma sessão de terminal.
-Rótulos acessíveis também podem repetir uma informação visual para oferecer
-outra forma de acesso; essa repetição não cria um segundo alvo interativo.
+A função do termo no conteúdo orienta essa decisão. `stdout`, `stderr` e código
+de saída, por exemplo, são objetos de estudo numa sessão de terminal. Rótulos
+acessíveis podem retomar uma informação visual para oferecer outra forma de
+acesso à mesma ocorrência interativa.
 A [matriz de legendas](auditoria-academica-dos-resources.md#legendas-instruções-e-prova-por-pacote)
 registra as escolhas por pacote, sem retirar eixos, unidades ou relações para
 reduzir o tamanho do cartão.
@@ -436,17 +451,16 @@ torno do ponto
 tocado; quando o conteúdo ampliado ultrapassa o quadro, o arraste percorre os
 dois eixos sem redimensionar a unidade.
 
-Quando houver prática, o controle real da lacuna permanece no ponto semântico
-do diagrama. Ele não é duplicado em painel, legenda ou projeção paralela. A
-mesma ocorrência continua ativa depois da ampliação e quando o desenho é levado para
-tela cheia.
+Quando houver prática, a lacuna permanece no ponto do diagrama em que a relação
+é interpretada. Essa mesma ocorrência continua ativa depois da ampliação e
+quando o desenho é levado para tela cheia.
 
-Uma faixa superior reservada no quadro apresenta, no canto direito e somente
-por ícones e nomes acessíveis, os comandos de diminuir, aumentar e expandir. Ela
-não é sobreposta ao desenho. A expansão move a mesma área visível para um diálogo cuja
-largura não excede a largura móvel do aplicativo; ali, diminuir e aumentar ficam
-à esquerda e o retorno à unidade fica à direita. Não há botão visível de ajuste:
-reduzir até o limite retoma automaticamente o enquadramento global e responsivo.
+Uma faixa superior reservada no quadro mantém os controles separados do
+desenho. No canto direito, ícones com nomes acessíveis permitem diminuir,
+aumentar e expandir. A expansão move a mesma área visível para um diálogo com
+a largura móvel do aplicativo; ali, diminuir e aumentar ficam à esquerda e o
+retorno à unidade fica à direita. Reduzir até o limite retoma automaticamente
+o enquadramento global e responsivo.
 Pinça e arraste continuam disponíveis. Escala e posição são estado efêmero do
 componente: auxiliam a navegação, mas não integram curso, progresso ou
 sincronização.
@@ -529,8 +543,10 @@ Cada pasta em `src/resources/packages` exporta a definição descrita na seção
 `generateResourcePackageIndex.mjs` encontra essas pastas e forma o índice. A
 ordem anterior permanece estável porque dela derivaram identificadores de
 exemplos publicados. O catálogo, a consulta de contratos e os canais de autoria
-usam esse registro. Cada instância leva apenas a identidade do pacote, a versão
-e os dados, nos campos `package`, `version` e `data`.
+usam esse registro. Cada instância salva contém sua própria identidade (`id`),
+a identidade do pacote (`package`), a versão (`version`) e os dados (`data`).
+A identidade da instância permite localizar alvos de prática e edição dentro
+da unidade.
 
 Respostas declaram `responseInteraction` com `createState`, `submit` e `bind`,
 além de `evaluate`. O pacote controla seus campos, validação de preenchimento e
@@ -539,8 +555,8 @@ e submissão. A ligação de eventos suporta nova hidratação sem duplicar vín
 Quando uma resposta depende de um trecho do conteúdo, o próprio pacote declara
 `prepareContentInstance`, a validação da relação e, quando necessário,
 `reconcileContentEdit`. Uma ambiguidade na edição textual impede a gravação.
-Assim, acrescentar uma resposta compatível não exige um desvio por identidade
-no controlador de estudo.
+O controlador de estudo usa essa interface comum também ao receber um novo
+pacote de resposta.
 
 `version` identifica a compatibilidade do formato e do significado dos dados.
 Uma ampliação explícita que conserva as entradas anteriores e sua normalização
@@ -572,8 +588,8 @@ conjunto de referências permanece igual. A materialização seguinte registra a
 configuração corrente. A edição conserva o registro histórico literalmente.
 Somente uma mudança de título, com conteúdo e hierarquia idênticos, conserva
 também a aplicação semântica atual. Alterar prosa, resposta ou estrutura
-invalida essa aplicação: referências de componentes iguais não demonstram que
-o conteúdo continua realizando a mesma análise instrucional.
+invalida essa aplicação e exige conferir novamente a relação entre a análise
+instrucional e o conteúdo alterado.
 
 A prova de extensão em `tests/kernel/resource-package-extension.test.js`
 acrescenta um pacote a uma cópia temporária. Ela percorre sua descoberta, seu
@@ -581,8 +597,9 @@ contrato e sua normalização; testa a ida e volta relacional, a apresentação 
 interação; e confere que o núcleo permaneceu igual. O pacote temporário fica
 fora do produto.
 
-Áudio e ferramentas de cálculo ou consulta também são pacotes de conteúdo do
-mesmo registro, com identidade `aralearn.resource.*`. Uma ferramenta declara
+Áudio e calculadora também são pacotes de conteúdo do mesmo registro, com
+identidade `aralearn.resource.*`. A consulta de obras e PDFs usa o mecanismo
+comum de [fontes e citações](fontes-e-citacoes.md). Uma ferramenta declara
 `manifest.tool` com rótulo e ícone e implementa
 `toolInteraction.bind(root, data, host)`, que devolve sua função de limpeza.
 Essas instâncias continuam em `content[]`; estudo as apresenta na barra da
@@ -591,13 +608,12 @@ unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
 sua interação. Cada canal reconhece as ferramentas pelo catálogo, sem manter
 outra lista fixa de tipos.
 
-Os textos instrucionais dessas ferramentas usam os mesmos contratos de edição
-e acessibilidade.
-Esses cinco pacotes não oferecem campos de prática. Gramática, dicionário e
-leitura comportam várias consultas, com URL validada ou referência lógica a um
-PDF de fonte. O papel de consulta não cria atribuição bibliográfica. Áudio
-comporta várias faixas nativas ou arquivos incorporados ao curso e alternativas
-textuais com momento de exibição explícito. Consulte [Áudio](audio.md) e
+Os textos instrucionais dessas duas ferramentas seguem os mesmos contratos de
+edição e acessibilidade. Seus controles servem à consulta e à reprodução;
+atividades que recolhem respostas usam os componentes de resposta pertinentes.
+O áudio reúne faixas e alternativas textuais com momento de exibição definido.
+A voz do dispositivo permite ensaio; a entrega de conteúdo exige arquivos
+incorporados e verificados. Consulte [Áudio](audio.md) e
 [Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
 
 ## Referência de apresentação por pacote
@@ -612,8 +628,8 @@ O registro em `src/resources/packages/generated.js` contém os 34 pacotes abaixo
 lista deriva das identidades instaladas, enquanto diretórios de apoio cumprem
 outra função. `public/styles-tokens.css` fornece os
 papéis, `public/styles.css` os aplica aos componentes de apresentação e `public/study-references.css`
-liga a explicação à mesma prosa. Os 34 pacotes de conteúdo podem ocupar os
-papéis admitidos em seus manifestos; feedback substantivo usa a representação
+liga a explicação à mesma prosa. Os 31 pacotes de conteúdo podem ocupar os
+lugares admitidos em seus manifestos; feedback substantivo usa a representação
 do próprio pacote, enquanto acerto, erro e ausência de resposta são estados.
 
 | Pacote | Papéis textuais e mecanismo | Extremo a conservar na inspeção |
@@ -698,7 +714,7 @@ e pela natureza física do repetidor descrita na
 O componente usa retângulo para hub, elipse para repetidor e caixa tridimensional
 para switch. Essas são convenções locais de apresentação, não símbolos universais
 de normalização técnica; o rótulo do tipo acompanha cada equipamento. A descrição
-textual equivalente explicita a função dos dois novos tipos. Não se depende da
+textual equivalente explicita a função desses tipos. Não se depende da
 cor ou apenas da forma para identificá-los.
 
 O exemplo completo do
@@ -716,8 +732,8 @@ campo autoral conservam a fonte e a entrelinha medidas no SVG. A caixa HTML
 recebe a altura de todas as linhas e tolerância para arredondamento; isso evita
 cortar o fim de uma palavra ou a segunda linha ao substituir texto por marcação
 inspecionável. Na topologia, a medição já reserva Arial 16 para fronteiras e
-Arial 14 para enlaces. O texto não é abreviado e não se reduz a fonte para fazê-lo
-caber. Controles de resposta continuam no tratamento próprio das lacunas.
+Arial 14 para enlaces. A medição acomoda o texto integral no tamanho previsto.
+Controles de resposta continuam no tratamento próprio das lacunas.
 
 Hub e repetidor reutilizam os mesmos alvos de edição e lacuna dos demais
 equipamentos. Uma prática pode operar sobre o rótulo autoral de cada nó, com o

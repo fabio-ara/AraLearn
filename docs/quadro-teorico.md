@@ -88,8 +88,9 @@ O mesmo dado não responde a perguntas de todos os níveis:
 | governança do curso | propriedade, acesso e mudanças | responsabilidade e acesso são compreensíveis e seguros? | tarefas de compartilhamento e revogação, análise qualitativa e auditoria de acesso |
 | infraestrutura | núcleo comum, pacotes de componente, armazenamento e sincronização | o artefato é correto, resiliente e proporcional? | testes, medições técnicas, custos e incidentes |
 
-Um clique pertence ao nível de interação. Ele não mede compreensão, percurso,
-autorregulação ou colaboração sem uma cadeia de operacionalização validada.
+Um clique descreve uma interação. Relacioná-lo a compreensão, autorregulação
+ou colaboração exige definir o processo investigado e validar a interpretação
+na tarefa correspondente.
 
 ## Camada de análise instrucional
 
@@ -212,8 +213,8 @@ Representações têm funções e restrições próprias e podem exigir coordena
 com texto ou outras formas de apresentação
 ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft);
 [Mayer (2009)](referencias.md#ref-mayer2009multimedia);
-[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A literatura orienta a escolha;
-não decide qual componente funcionará em todo conteúdo.
+[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A literatura orienta a
+escolha, que precisa ser examinada para o conteúdo e o público do curso.
 
 A avaliação mantém a operação e o conteúdo comparáveis, identifica a versão do
 [componente](componentes-didaticos.md) e observa como participantes interpretam
@@ -255,9 +256,10 @@ A prática de recuperação pode favorecer a aprendizagem, embora o efeito varie
 e a transferência tenha limites
 ([Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval);
 [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)). Por isso, cada atividade identifica
-o conhecimento mobilizado, a operação solicitada e a evidência pretendida. Uma
-nova oportunidade de prática requer variação substantiva do caso, não mera
-troca de texto ou componente.
+o conhecimento mobilizado, a operação solicitada e a evidência pretendida.
+Quando várias oportunidades atendem ao mesmo requisito, a variação relevante
+precisa aparecer nos casos e nas condições que o estudante compara ou resolve.
+Uma mudança de aparência pode conservar exatamente a mesma tarefa.
 
 A avaliação observa a resposta imediata e tarefas posteriores de retenção ou
 transferência. Dificuldade, tempo e pistas do formato são explicações
@@ -392,12 +394,11 @@ capítulos 1 e 12, problematiza a transformação do saber em informação
 processável e a legitimação da educação pela performatividade. Nesse debate,
 **performatividade** designa a valorização pela eficiência e contribuição ao
 funcionamento do sistema. O autor também distingue transmissão de informação
-e capacidade de relacionar conhecimentos. É uma análise filosófica situada,
-não uma previsão comprovada dos usos atuais de IA.
+e capacidade de relacionar conhecimentos. Essa análise filosófica situada
+oferece perguntas para examinar os usos atuais de IA.
 
-A expressão **sociedade hiperinformacional** é usada aqui para problematizar
-um contexto de abundância e circulação acelerada de informação; não designa
-um diagnóstico medido pelo aplicativo nem um termo atribuído a Lyotard. Para o
+A expressão **sociedade hiperinformacional** é uma escolha deste projeto para
+problematizar a abundância e a circulação acelerada de informação. Para o
 AraLearn, a questão concreta é se a facilidade de gerar e percorrer unidades
 favorece compreensão e julgamento ou apenas aumenta a produção e o consumo
 de materiais. Palavras produzidas, unidades concluídas e velocidade de autoria
@@ -484,8 +485,8 @@ registrados.
 - [Bandura (2001)](referencias.md#ref-bandura2001agency): Albert Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26.
 - [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative): E. N. Bridwell-Mitchell (2016). **Collaborative Institutional Agency: How Peer Learning in Communities of Practice Enables and Inhibits Micro-Institutional Change.** *Organization Studies*, 37(2), p. 161–192.
 - [Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy): David Carless; David Boud (2018). **The Development of Student Feedback Literacy: Enabling Uptake of Feedback.** *Assessment & Evaluation in Higher Education*, 43(8), p. 1315–1325.
-- [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63.
-- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
+- [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, artigo 63.
+- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), artigo e13997.
 - [Foroughi et al. (2016)](referencias.md#ref-foroughi2016resumption): Cyrus K. Foroughi; Nicole E. Werner; Elizabeth T. Nelson; Deborah A. Boehm-Davis (2016). **Individual Differences in Working-Memory Capacity and Task Resumption Following Interruptions.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 42(9), p. 1480–1488.
 - [Foucault (1995)](referencias.md#ref-foucault1995discipline): Michel Foucault (1995). **Discipline and Punish: The Birth of the Prison.** New York, Vintage Books.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
@@ -498,7 +499,7 @@ registrados.
 - [Nicol e Kushwah (2024)](referencias.md#ref-nicol2024feedbackagency): David Nicol; Lovleen Kushwah (2024). **Shifting Feedback Agency to Students by Having Them Write Their Own Feedback Comments.** *Assessment & Evaluation in Higher Education*, 49(3), p. 419–439.
 - [Nicol e Macfarlane-Dick (2006)](referencias.md#ref-nicol2006formative): David J. Nicol; Debra Macfarlane-Dick (2006). **Formative Assessment and Self-Regulated Learning: A Model and Seven Principles of Good Feedback Practice.** *Studies in Higher Education*, 31(2), p. 199–218.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
-- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
+- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, artigo 422.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Prinsloo e Slade (2017)](referencias.md#ref-prinsloo2017ethics): Paul Prinsloo; Sharon Slade (2017). **Ethics and Learning Analytics: Charting the (Un)Charted.** In: *Handbook of Learning Analytics*, Society for Learning Analytics Research, p. 49–57.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.

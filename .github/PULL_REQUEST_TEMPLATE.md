@@ -7,7 +7,7 @@ Descreva o problema, a mudança e seu efeito para quem usa ou mantém o AraLearn
 - [ ] altera comportamento do app
 - [ ] altera formato de dados, conteúdo inicial ou fluxo de geração
 - [ ] altera README, `docs/` ou material público
-- [ ] não altera comportamento visível
+- [ ] trata somente de documentação ou manutenção interna
 
 ## Validação
 
@@ -23,7 +23,7 @@ Informe qualquer validação exigida que não pôde ser concluída e o motivo.
 - [ ] a branch é temática e trata um assunto coeso
 - [ ] os commits estão curtos, claros e em português
 - [ ] a branch foi reorganizada antes da abertura do PR, quando necessário
-- [ ] não há merge commit desnecessário nem mensagem de bastidor
+- [ ] o histórico explica as mudanças e conserva apenas os commits pertinentes
 
 ## Observações
 

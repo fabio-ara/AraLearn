@@ -21,11 +21,11 @@ níveis.
 | `mover_ramo_curricular` | Move ou reordena um ramo completo, conservando identidades e registros. A nova ordem precisa preservar as dependências: o conteúdo pressuposto continua anterior ao que o utiliza. |
 | `duplicar_ramo_curricular` | Cria uma cópia do ramo no mesmo curso, com novas identidades para seus itens e descendentes. Conserva conteúdo, fontes e configuração úteis. |
 | `remover_ramo_curricular` | Remove o ramo e seus descendentes. Se outros itens ainda dependerem deles, essas relações precisam ser ajustadas expressamente antes da remoção. |
-| `reordenar_unidades` | Salva a ordem completa das unidades da microssequência. Uma lista com omissões ou repetições é recusada; texto, fontes, revisão e configuração aplicada permanecem. |
+| `reordenar_unidades` | Salva a ordem completa das unidades da microssequência, com cada unidade presente uma vez. Conserva texto, fontes e configuração aplicada. A nova ordem altera a base da inspeção por IA da microssequência e de suas unidades. |
 
-Um ramo preenchido não desaparece simplesmente por ter sido omitido de um
-mapa enviado. A remoção e a movimentação têm operações próprias, para que a
-intenção fique explícita. A [gravação por recortes](autoria-contextual.md#mapa-curricular-salvo-por-recortes)
+O mapa enviado preserva ramos preenchidos que estejam fora do recorte da
+alteração. Remoção e movimentação têm operações próprias, que identificam o
+ramo e a intenção antes da escrita. A [gravação por recortes](autoria-contextual.md#mapa-curricular-salvo-por-recortes)
 permite alterar o planejamento sem reenviar todo o conteúdo.
 
 ## Alterar relações em conjunto
@@ -48,7 +48,10 @@ do banco exigem o papel de serviço autorizado; a identidade da pessoa é
 verificada no mesmo percurso. Uma alteração estrutural avança uma vez as
 versões do curso e do planejamento e devolve o mapa a rascunho. Reordenar
 unidades avança a revisão do curso e as versões das unidades deslocadas,
-preservando o mapa curricular.
+preservando o mapa curricular. A base pedagógica de cada alvo inclui as unidades
+na ordem de estudo e suas posições. Por isso, reordená-las exige nova inspeção
+por IA, mesmo que seus textos sejam idênticos. A declaração humana tem base e
+estado próprios; consulte [Explicação e revisão humana](explicacao-e-revisao-humana.md).
 
 ## O que uma cópia conserva
 

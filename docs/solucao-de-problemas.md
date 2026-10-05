@@ -62,6 +62,12 @@ A observação chega à caixa de entrada do proprietário e pode ser considerada
 
 Para corrigir, o autor examina a questão, decide a mudança e confere o resultado salvo. O [fluxo de observações](observacoes-pedagogicas.md#da-observação-à-revisão) distingue esse trabalho da declaração de revisão humana.
 
+### A inspeção por IA voltou a ficar pendente
+
+Um parecer corresponde à base lida pelo assistente, incluindo o conteúdo, suas fontes, a configuração e a sequência de estudo pertinente. Uma mudança nessa base pode pedir nova inspeção. Solicite a leitura atual de cada alvo pendente e o registro de um novo parecer com evidências do material salvo.
+
+Leia também o resultado do parecer. Ele pode estar atualizado e ainda apontar problemas que precisam de atenção. Aprovar um alvo de observação exige parecer atual, com os seis critérios completos e conclusão consistente. Se você mantiver uma preferência editorial diferente, a aprovação continua pendente; encerrar sem alteração permanece uma decisão própria. O [guia da pessoa autora](guia-professor-autor.md#observar-e-corrigir) explica como tratar essas pendências e registrar separadamente a revisão humana.
+
 ### A revisão ou correção não funciona sem conexão
 
 A autoria precisa consultar o estado atual e a autorização do curso antes de alterar ou marcar revisão. Reconecte, abra novamente o alvo e confira o conteúdo e as observações antes de continuar. A cópia anterior é útil para leitura, mas pode não conter as mudanças mais recentes.
@@ -76,7 +82,7 @@ Se o conteúdo ou as fontes mudaram desde a preparação, a proposta pode estar 
 
 ### O apoio factual parece insuficiente
 
-Abra **Explicação** e siga a referência da afirmação. Na Autoria, use os controles de fontes para examinar a obra e o trecho indicado. A localização na fonte é chamada âncora; o [guia de fontes](fontes-e-citacoes.md) explica como conferi-la.
+Siga a citação da afirmação ou abra **Fontes da unidade**. Se a afirmação estiver no conteúdo explicativo, abra **Explicação** e consulte suas referências. Na Autoria, use os controles de fontes para examinar a obra e o trecho indicado. A localização na fonte é chamada âncora; o [guia de fontes](fontes-e-citacoes.md) explica como conferi-la.
 
 Verifique se o material realmente sustenta a afirmação. **Sustenta** indica esse uso; **Citado de** identifica a origem das palavras, sem certificar que a afirmação citada seja verdadeira. Se o apoio for insuficiente, registre o problema e reveja a fonte, a interpretação ou o vínculo antes da nova revisão.
 
@@ -88,7 +94,7 @@ Retirar uma observação remove-a da consulta corrente. Se a questão continuar 
 
 Confira os campos obrigatórios e as mensagens próximas à atividade. Nas lacunas, verifique cada preenchimento. Se tudo parecer completo e o bloqueio continuar, registre a unidade, a atividade e a mensagem.
 
-Cada atividade tem seus próprios controles e decide o avanço segundo seus critérios de preenchimento. Nas respostas abertas, o texto fica disponível para interpretação humana. O [guia do estudante](guia-estudante.md#responder-a-uma-prática) explica o fluxo geral da resposta e do retorno; a [documentação dos componentes](componentes-didaticos.md) apresenta as formas disponíveis e seus contratos.
+As atividades de escolhas, lacunas e ordenação conferem a tentativa com o gabarito da autoria. Se a tentativa estiver incorreta, use **Tentar de novo** ou **Ver resposta**. O avanço se torna disponível depois do acerto ou da consulta à solução. Se o gabarito parecer inadequado, registre uma observação na unidade. O [guia do estudante](guia-estudante.md#responder-a-uma-prática) explica o fluxo geral da resposta e do retorno; a [documentação dos componentes](componentes-didaticos.md) apresenta as formas disponíveis e seus contratos.
 
 ### Uma edição de autoria entrou em conflito
 
@@ -128,7 +134,7 @@ Para abrir um PDF já guardado, volte à referência e solicite a abertura outra
 
 ### O estudo não mostra uma fonte ou um link
 
-Abra **Explicação** na unidade ou siga a citação sobrescrita. As referências da unidade e da base ficam no fim da leitura. **Mostrar citação** exibe a identificação e a localização; **Mostrar citação e link** também permite apresentar o endereço externo.
+Siga a citação sobrescrita ou abra **Fontes da unidade** para consultar suas referências específicas. As referências do conteúdo explicativo ficam ao final de **Explicação**. Cada consulta mostra as fontes do conteúdo ao qual pertence. **Mostrar citação** exibe a identificação e a localização; **Mostrar citação e link** também permite apresentar o endereço externo.
 
 A autoria pode manter uma fonte oculta no estudo. O link de um arquivo também depende de sua autorização. Sem rede, uma referência ainda não consultada pode não estar guardada, mesmo que exista no curso. [Fontes](fontes-e-citacoes.md#referências-no-estudo) distingue essas situações.
 

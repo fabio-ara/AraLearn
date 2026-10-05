@@ -16,7 +16,7 @@ unidades de estudo. Sua escolha depende da relação investigada:
 | como distribuir o conhecimento novo? | quantidade de unidades de análise introduzidas em cada etapa, conservando o inventário total quando essa for a comparação |
 | que explicação torna uma relação compreensível? | formas de explicação e representações apropriadas à tarefa |
 | quanta prática solicitar e para quê? | quantidade de oportunidades por requisito de evidência, isto é, pelo desempenho que se pretende observar |
-| como variar a prática? | operações, dados ou contextos do problema, em vez de apenas sua aparência |
+| como variar a prática para o mesmo requisito? | dados, contexto ou representação do problema, preservando a operação-alvo |
 | onde situar explicação e prática? | distribuição e posição das atividades ao longo do percurso |
 
 A **unidade de análise instrucional** identifica um conhecimento a desenvolver;
@@ -41,7 +41,9 @@ mais específica, numa parte do curso, altera o valor esperado.
 
 A intenção registrada orienta a produção seguinte. A **configuração aplicada**
 conserva as decisões usadas em cada unidade produzida, e o conteúdo precisa
-ser inspecionado para verificar como as realizou. A base explicativa possui
+ser inspecionado para verificar como as realizou. Uma preferência automática
+pode conservar sua intenção enquanto a aplicação registra um valor ajustado ao
+contexto; na condição de pesquisa, o valor fixado deve ser preservado. A base explicativa possui
 sua própria versão e fontes. Uma nova geração pode mudar exemplos, linguagem
 e dificuldade junto com o parâmetro escolhido; a inspeção identifica essas
 outras diferenças antes de atribuir um resultado à condição pretendida.
@@ -68,6 +70,12 @@ apenas para aplicar as preferências ao curso.
    configuração aplicada e revisão.
 7. Preserve os PDFs, áudios e demais arquivos usados: a exportação contém suas
    referências, sem incorporar os arquivos externos.
+
+Ao comparar variação de prática, conte as oportunidades do mesmo requisito em
+toda a microssequência, inclusive em unidades diferentes. Uma oportunidade
+única permite examinar a tarefa produzida; variação entre oportunidades requer
+ao menos duas. O exemplo usado no ensino tem outro papel e deve ser identificado
+separadamente no protocolo.
 
 Cada curso continua editável. Os arquivos conservados pelo estudo identificam
 qual material foi apresentado em cada condição e momento. Separar cursos ajuda

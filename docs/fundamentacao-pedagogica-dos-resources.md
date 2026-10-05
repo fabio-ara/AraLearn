@@ -122,10 +122,10 @@ substitui esse ensino.
 
 O curso apresenta o referente, nomeia os elementos e desenvolve suas relações.
 Depois introduz a notação e uma leitura justificada. A
-[explicação compartilhada](explicacao-e-revisao-humana.md), texto-base da
-microssequência com fontes, pode desenvolver pressupostos e exemplos para
-consulta. As unidades continuam ensinando relações e propondo práticas
-substantivas na sequência.
+[explicação compartilhada](explicacao-e-revisao-humana.md) é a base de conteúdo
+didático da microssequência, com suas fontes. Ela pode desenvolver pressupostos
+e exemplos por meio de texto, representações visuais ou áudio. As unidades
+continuam ensinando relações e propondo práticas substantivas na sequência.
 
 A memória de trabalho mantém e manipula informação durante a tarefa. Atividades
 de busca e integração desnecessárias podem disputar recursos com a construção
@@ -155,6 +155,12 @@ Ao produzir uma rede, a autoria informa quais elementos estão conectados e o
 significado de cada ligação. A posição das caixas e o caminho das linhas são
 calculados pelo software. Essa separação permite conservar o conteúdo quando
 um rótulo fica mais longo ou a largura da tela muda.
+
+Na fórmula, a autoria fornece a notação em TeX, uma forma textual de escrever
+símbolos e suas relações, além de uma leitura acessível. O componente valida
+o subconjunto aceito e o converte em estrutura matemática para apresentação.
+Assim, a pessoa declara a expressão; o software organiza frações, índices e
+delimitadores.
 
 O **contrato de dados** define quais elementos e relações a autoria pode
 fornecer. O pacote confere esses dados e produz a representação. A **geometria
@@ -257,7 +263,10 @@ aceitas; o componente oferece uma descrição acessível desse alvo. O
 [contrato de prática interna](componentes-didaticos.md#6-lacunas-digitação-e-ordenação-internas)
 especifica como preservar a estrutura durante o preenchimento.
 
-Lacunas e digitação atuam em campos autorizados. Correspondências simples
+Lacunas e digitação atuam nos campos que cada pacote disponibiliza para prática.
+Na versão atual, a fórmula é apresentada sem alvos internos de preenchimento;
+uma tarefa de escolha pode acompanhá-la quando essa resposta corresponde ao
+objetivo. Correspondências simples
 podem usar lacunas independentes; ordenação move pelo menos dois trechos nos
 próprios parágrafos ou células de tabela. A ordem precisa ser inequívoca, e cada
 trecho recebe controles para deslocá-lo uma posição. Essa modalidade não se
@@ -270,8 +279,8 @@ Tocar numa lacuna preenchida pode limpá-la sem alterar as demais. Reconheciment
 produção e aplicação solicitam operações diferentes, ainda que todas usem o
 mesmo desenho de tela. A literatura sobre recuperação e transferência ajuda a
 examinar essa diferença ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval);
-[Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)); ela não torna
-qualquer lacuna uma prática adequada.
+[Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)). A adequação de cada
+lacuna depende do conhecimento que sua resolução exige mobilizar.
 
 ## 7. Inspeção humana e edição delimitada
 
@@ -382,7 +391,7 @@ permanecem separados.
 ## Referências
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
-- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
+- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), artigo 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.

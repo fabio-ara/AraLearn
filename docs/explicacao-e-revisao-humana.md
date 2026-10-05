@@ -6,8 +6,9 @@
 
 Uma atividade pode exigir conceitos e relações que precisam de desenvolvimento maior do que cabe em sua tela. Em um exercício sobre comunicação, por exemplo, identificar quem envia e quem recebe uma mensagem depende de compreender primeiro esses papéis. A tarefa perde sentido se o curso apenas apresentar os nomes e esperar que o estudante deduza a relação.
 
-No AraLearn, a **explicação** é o texto-base de uma microssequência: desenvolve
-o assunto e a base necessária para compreendê-lo, com exemplos e fontes. Uma
+No AraLearn, a **explicação** é a base de conteúdo didático de uma
+microssequência: desenvolve o assunto e os conhecimentos necessários para
+compreendê-lo, com exemplos e fontes. Pode reunir texto, representações e áudio. Uma
 **microssequência didática** reúne um percurso com objetivo próprio dentro de
 uma lição. Suas unidades de estudo ensinam e exercitam esse conteúdo, conforme
 o [modelo didático](modelo-didatico.md).
@@ -17,16 +18,15 @@ A mesma explicação pode ser consultada a partir de todas as unidades daquela m
 Há uma única instância salva por microssequência. Ela funciona como material de
 referência extensa: desenvolve integralmente o contexto e o conteúdo da
 microssequência, passo a passo, com exemplos e sustentação auditável nas fontes.
-A escrita é simples, clara e concisa, com explicações suficientes para consulta
-autônoma, sem pedantismo ou complexidade gratuita. O comentário que
-acompanha uma resposta pertence àquela prática; ele não é outra instância da
-explicação. As unidades compõem o percurso em episódios menores de ensino e
-prática, sem dividir a base por uma quantidade mecânica de palavras.
+A escrita desenvolve o raciocínio em linguagem acessível para permitir consulta
+autônoma. Já o comentário que acompanha uma resposta ajuda a compreender aquela
+prática. As unidades distribuem ensino e prática em episódios menores, cuja
+extensão acompanha as relações que precisam permanecer juntas.
 
 Essa cobertura é autossuficiente: com o conteúdo salvo no dispositivo, o aluno
 deve conseguir compreender o essencial mesmo sem conexão para abrir as fontes.
-As referências sustentam e aprofundam a explicação; não substituem o contexto,
-as relações ou o desenvolvimento necessário. As unidades menores também situam
+As referências sustentam e aprofundam uma explicação que já apresenta o
+contexto e as relações necessários à compreensão. As unidades menores também situam
 a tarefa no assunto e dão sentido ao que se aprende e pratica.
 
 Clareza, cobertura, contexto, progressão e fontes auditáveis são critérios de
@@ -47,11 +47,12 @@ A explicação e as unidades realizam trabalhos relacionados. A explicação des
 
 Revisar um lado exige examinar possíveis efeitos no outro. Uma correção na base
 pode mudar enunciados, exemplos ou práticas; uma alteração nas unidades pode
-revelar uma lacuna na base. Autor e GPT discutem os ajustes substantivos na
-conversa e aplicam o que estiver acordado. Conteúdo sem impacto material é
-preservado, em vez de ser reescrito apenas para acompanhar a revisão.
+revelar uma lacuna na base. A pessoa autora define o alcance do trabalho, e o
+assistente aplica as correções autorizadas. Decisões substantivas ainda abertas
+voltam à pessoa. O restante do conteúdo conserva seu estado.
 
-Uma unidade precisa conter ensino ou uma tarefa inteligível. Escrever apenas “leia a explicação” não substitui a relação que o percurso precisa desenvolver. Se a atividade pede identificar a origem de uma mensagem e depois explicar a inversão dos papéis na resposta, essa relação deve ser ensinada, e a explicação pode desenvolvê-la com maior profundidade.
+Uma unidade precisa conter ensino ou uma tarefa inteligível. O encaminhamento
+à explicação oferece aprofundamento para uma relação já situada no percurso. Se a atividade pede identificar a origem de uma mensagem e depois explicar a inversão dos papéis na resposta, essa relação deve ser ensinada, e a explicação pode desenvolvê-la com maior profundidade.
 
 Quem já conhece o assunto pode seguir sem abrir a explicação. Quem precisa
 recuperar um pressuposto deve conseguir encontrar ali uma definição, um exemplo
@@ -74,7 +75,7 @@ uma maneira de desenvolver uma ideia, como defini-la, mostrar um exemplo ou
 contrastar casos. A primeira oferece uma base comum à microssequência. A segunda
 descreve o trabalho realizado num trecho determinado. Assim, se o registro de
 uma unidade declara que ela desenvolve um exemplo, o exemplo precisa estar
-naquela unidade; sua presença no texto-base responde a outra função.
+naquela unidade; sua presença na base explicativa responde a outra função.
 
 Uma ideia pode ser desenvolvida em várias unidades. A primeira apresentação é
 registrada como introdução; uma unidade posterior pode usar a ideia ou retomá-la
@@ -82,14 +83,19 @@ para aprofundar uma relação. Por exemplo, depois de introduzir origem e destin
 o percurso pode retomar esses conceitos na resposta do servidor. A retomada
 preserva a identidade dos conceitos já introduzidos.
 
-O alvo editorial de palavras por unidade é uma orientação para distribuir o conteúdo. Ele não determina a extensão da explicação. Se o desenvolvimento da base revelar uma lacuna no percurso, a pessoa autora precisa decidir como tratá-la no mapa e nas unidades, em vez de considerar a lacuna resolvida só porque o texto-base ficou mais longo.
+O alvo editorial de palavras por unidade orienta a distribuição do conteúdo.
+A explicação recebe a extensão necessária ao desenvolvimento de seu objetivo.
+Se esse desenvolvimento revelar uma lacuna no percurso, a pessoa autora decide
+como tratá-la também no mapa e nas unidades que ensinam ou solicitam o
+conhecimento afetado.
 
 ### Composição e fontes
 
 A explicação utiliza os
 [componentes didáticos](componentes-didaticos.md) disponíveis para apresentar
 texto e representações. Uma tabela pode comparar casos; um diagrama, mostrar
-uma relação; a prosa explica o significado e como ler essas representações.
+uma relação; uma faixa de áudio pode apresentar a escuta que o assunto exige.
+A prosa explica o significado e como ler essas representações.
 Definição, exemplo e contraste ilustram formas de composição escolhidas conforme
 o objetivo.
 
@@ -115,14 +121,13 @@ Cada explicação e cada unidade tem sua própria marca de revisão. A pessoa au
 
 Depois de inspecionar o texto salvo, as fontes e as atividades pertinentes, use **Marcar como revisado** no objeto correspondente. **Retirar marca de revisão** desfaz essa declaração sem apagar o conteúdo. Se houver uma edição aberta, salve ou descarte o rascunho antes de marcar: a declaração se refere ao conteúdo salvo que foi examinado.
 
-A marca registrada no app já informa a revisão ao GPT na leitura seguinte; não é
-necessário repeti-la no chat. Uma aprovação expressa na conversa também permite
-registrar a revisão dos objetos e versões identificados. Ao entregar conteúdo,
-o GPT convida brevemente à leitura e à marcação. Se a pessoa pedir para avançar,
-ele continua a produção autorizada e informa que o conteúdo anterior sem marca
-permanece pendente de revisão. Essa pendência não bloqueia a próxima produção
-nem o estudo sob a política padrão de acesso. Uma pausa expressamente pedida
-pela pessoa continua sendo respeitada.
+A marca registrada no aplicativo aparece na leitura seguinte do assistente.
+Uma aprovação expressa na conversa também permite registrar a revisão dos
+objetos e versões identificados. A produção segue o processo acordado: pode
+parar nos pontos de inspeção escolhidos ou prosseguir autonomamente dentro do
+escopo autorizado. Conteúdo salvo sem marca permanece pendente de revisão e
+continua estudável sob a política padrão de acesso. A pessoa pode interromper
+esse trabalho e pedir uma inspeção a qualquer momento.
 
 Os estados aparecem por ícones distintos, com nomes acessíveis e ajuda: pendente,
 revisado e alterado após a revisão. Salvar uma edição não marca revisão. Retirar
@@ -146,7 +151,11 @@ Uma resposta de rede pode se perder depois de uma gravação. Nessa situação, 
 
 Uma mudança no conteúdo ou em uma fonte usada pode pedir nova revisão. O alcance depende das relações registradas: alterar uma unidade não desatualiza automaticamente suas irmãs; alterar a explicação pode afetar as unidades e dependências que a utilizam. A mesma fonte pode sustentar vários trechos, e sua alteração precisa ser considerada nesses usos.
 
-Esse acompanhamento usa os vínculos explícitos do curso. Cabe à pessoa autora perceber relações que ainda não foram registradas e ampliar a inspeção quando necessário. Mudar a aparência do aplicativo, o progresso pessoal ou uma preferência para produção futura não equivale a alterar o conteúdo aplicado.
+Esse acompanhamento usa os vínculos explícitos do curso. Cabe à pessoa autora
+perceber relações ainda ausentes do registro e ampliar a inspeção quando
+necessário. Aparência do aplicativo, progresso pessoal e preferências para
+produção futura têm registros próprios; suas mudanças preservam o conteúdo
+aplicado.
 
 Quando duas sessões editam o curso, a conferência da versão evita gravar uma declaração sobre conteúdo que mudou durante a inspeção. O texto em edição permanece disponível para comparação. A mecânica de concorrência e os estados de revisão estão no [contrato de conteúdo](aralearn-contract.md).
 
@@ -158,23 +167,21 @@ demonstrar. Vincular esses itens à microssequência prepara a produção das
 unidades. Esses vínculos, seus enunciados e as fontes ligadas somente a eles
 conservam a revisão da explicação já salva e das explicações que dependem dela.
 Assim, desenvolver o desenho das unidades não exige outra inspeção do mesmo
-texto-base apenas para registrar a análise e os requisitos de prática.
+conteúdo da base apenas para registrar a análise e os requisitos de prática.
 
 As unidades mantêm seu próprio alcance de revisão, incluindo análise,
 requisitos, suas fontes e aplicação instrucional. Alterar esses dados continua
-podendo desatualizar a revisão da unidade. O texto-base, o objetivo, as
+podendo desatualizar a revisão da unidade. A base explicativa, o objetivo, as
 dependências e os itens de escopo curricular permanecem no alcance da revisão
 da explicação, assim como suas fontes e âncoras pertinentes. Uma fonte ligada
 também à explicação continua material para a base mesmo quando sustenta um
 item de análise ou requisito de prática.
 
-A atualização desse comportamento conserva as declarações que já estavam
-atuais, com a mesma pessoa, data e versão inspecionada. Rascunhos e conteúdos
-sem declaração permanecem assim. Uma marca que ficou desatualizada somente
-pela inclusão de vínculos de análise ou requisitos de prática pode voltar a
-aparecer atual quando a base relevante ainda coincide com a declaração
-original. Mudanças materiais restantes continuam pendentes de revisão; a
-atualização não registra uma nova inspeção humana.
+A validade da declaração é calculada sobre essa base relevante. Quando somente
+os vínculos de análise ou de requisitos mudam, a declaração original da
+explicação pode continuar atual, conservando pessoa, data e versão inspecionada.
+Conteúdo sem declaração permanece pendente. Mudanças materiais na base explicativa ou
+nos demais elementos que a sustentam exigem nova inspeção.
 
 ### Acesso, migração e cópia
 
@@ -186,9 +193,17 @@ Uma cópia independente conserva conteúdo, fontes e configuração, mas começa
 
 ## Consultar a explicação durante o estudo
 
-O controle **Explicação** aparece tanto na leitura quanto na prática. Abrir consulta o texto salvo; não chama um modelo de linguagem. Abrir conserva o ponto do percurso e a resposta ainda não enviada. Revelar a resposta de uma atividade é uma ação separada.
+O controle **Explicação** aparece tanto na leitura quanto na prática. A abertura
+consulta o conteúdo salvo e conserva o ponto do percurso e a resposta ainda não
+enviada. A revelação da resposta tem seu próprio controle.
 
-O painel conserva a unidade de origem. Você pode ler, seguir uma referência e voltar ao trecho que a acionou. **Fechar explicação** ou Escape retorna à unidade com posição, foco e resposta preservados. As referências da base e da unidade permanecem em grupos distintos. Se ainda não houver base salva, o painel informa a ausência e mantém as referências disponíveis.
+O painel conserva a unidade de origem. Você pode ler, seguir uma referência e
+voltar ao trecho que a acionou. **Fechar explicação** ou Escape retorna à
+unidade com posição, foco e resposta preservados. **Explicação** apresenta o
+conteúdo explicativo e somente suas próprias referências. **Fontes da unidade** abre
+separadamente as referências usadas na unidade, também acessíveis pelos
+marcadores de citação. Se ainda não houver base salva, o painel informa a
+ausência; as fontes da unidade continuam disponíveis pelo seu controle.
 
 Depois de carregar o curso, o texto da explicação acompanha sua cópia local. Referências já consultadas podem ser lidas na revisão guardada; arquivos e páginas externas podem continuar exigindo conexão. Falta de rede, falta de acesso e ausência de conteúdo são situações distintas, como explica o [guia do estudante](guia-estudante.md#preparar-o-dispositivo-para-estudar-sem-conexão).
 
