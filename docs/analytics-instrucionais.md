@@ -9,8 +9,8 @@ localiza o trecho; a leitura permite avaliar a decisão.
 Os dados descrevem o curso salvo. Quando o software usa uma declaração da
 autoria, como “esta unidade introduz uma ideia”, ele conserva essa origem.
 Quando conta palavras ou componentes, mede propriedades do conteúdo. Essa
-diferença é necessária para interpretar os resultados sem atribuir ao estudante
-um conhecimento ou comportamento que não foi observado.
+distinção identifica a base de cada resultado: uma escolha registrada ou uma
+característica que o sistema consegue contar.
 
 ## Como consultar
 
@@ -23,9 +23,11 @@ um conhecimento ou comportamento que não foi observado.
 6. **Abrir dados e definições** revela a configuração solicitada, os dados
    aplicados e as intervenções explícitas.
 
-O seletor identifica cada recorte pelo nome. Uma parte agrupa trabalho de
-produção; um lote pode reunir partes sucessivas. Esses recortes de autoria não
-acrescentam níveis ao [mapa curricular](modelo-didatico.md).
+O seletor identifica cada recorte pelo nome. Uma **microssequência** reúne
+unidades que desenvolvem um objetivo delimitado no percurso. Uma **parte**
+agrupa microssequências para produção, e um **lote** pode reunir partes
+sucessivas. Partes e lotes coordenam o trabalho de autoria, preservando os
+níveis do [mapa curricular](modelo-didatico.md).
 
 ## Desenho
 
@@ -44,44 +46,37 @@ explica como esses recortes são identificados.
 
 ### Configuração aplicada
 
-A configuração aplicada registra as escolhas usadas na produção de uma unidade.
-A tabela usa as doze definições do catálogo 1.2.1 e mostra os valores preservados
-nessa produção. O [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente)
-explica cada decisão e seu alcance. As primeiras quatro organizam o desenvolvimento da explicação e a prática:
+A **configuração aplicada** registra as escolhas usadas na produção de uma
+unidade. A tabela usa as doze definições do catálogo 1.2.1 e mostra os valores
+preservados nessa produção. O [catálogo de parâmetros](desenho-instrucional-parametrizado.md#catálogo-corrente)
+explica cada decisão e seu alcance.
 
-- teto de ideias novas por unidade expositiva ou mista;
-- formas de explicação requeridas;
-- mínimo de oportunidades distintas de prática por requisito;
-- dimensões de variação requeridas para a prática.
+As escolhas sobre novidade e formas de explicação orientam o desenvolvimento
+do conteúdo. As de prática registram quantas oportunidades distintas são
+exigidas por requisito e em quais dimensões devem variar. Alvos de palavras
+orientam a extensão da unidade e da resposta do assistente, dois objetos
+diferentes. As demais escolhas tratam da posição e distribuição da prática
+e da organização da produção, inclusive partes, lotes e pausas.
 
-Duas definições são alvos editoriais quantitativos flexíveis:
-
-- palavras por resposta de autoria;
-- palavras por unidade de estudo.
-
-As demais orientam a distribuição da prática e o processo de produção, inclusive
-partes, lotes e pausas. O catálogo canônico conserva os grupos e o alcance exato
-de cada definição. Enquanto uma intenção automática ainda não recebeu valor, ela
-fica fora da configuração aplicada.
+No modo automático, o assistente escolhe e justifica um valor diante do
+conteúdo e da tarefa. Esse ajuste é chamado de **calibração contextual**.
+Enquanto a intenção automática ainda não recebeu um valor, ela fica fora da
+configuração aplicada. Uma condição fixada para pesquisa permanece explícita
+e tem prioridade. O registro de origem distingue essas escolhas; as regras
+completas estão em [Preferências e configuração aplicada](parametros-de-autoria.md).
 
 Quando unidades do mesmo escopo usam valores diferentes, a distribuição informa
-quantas receberam cada valor, sua origem — calibração contextual, decisão da
-pessoa autora ou condição de pesquisa —, o escopo e as unidades em que foram
-aplicados. Direção editorial permanece separada. Para o conteúdo, a extensão
-observada informa total, mínimo, mediana, média e máximo de palavras por
-unidade, o que permite comparar alvo e resultado sem tratar a diferença como
-erro automático.
+quantas receberam cada valor, sua origem e as unidades em que foram aplicados.
+Para a extensão observada, apresenta total, mínimo, mediana — o valor central
+da distribuição —, média e máximo de palavras por unidade. Esses dados ajudam
+a comparar o alvo de extensão com o conteúdo produzido.
 
 A **direção editorial** é uma orientação de escrita, como desenvolver exemplos
-antes da notação. Orientações de níveis diferentes podem se acumular. Uma mesma
-unidade pode receber, por exemplo, uma direção do curso e outra da
-microssequência. Portanto, suas contagens podem se sobrepor e não formam uma
-partição das unidades do recorte.
-
-No modo automático, a autoria escolhe e justifica um valor diante da tarefa.
-Uma condição fixada para pesquisa permanece explícita e tem prioridade. O
-registro de origem permite distinguir essas escolhas; as regras completas
-estão em [Preferências e configuração aplicada](parametros-de-autoria.md).
+antes da notação. Ela permanece separada dos parâmetros. Orientações de níveis
+diferentes podem se acumular: uma unidade pode receber uma direção do curso e
+outra da microssequência. Suas contagens podem, portanto, se sobrepor; cada
+linha indica o alcance de uma orientação, e a soma pode exceder o número de
+unidades do recorte.
 
 Os alvos de palavras são referências flexíveis de extensão. A diferença entre
 alvo e contagem observada indica onde inspecionar a organização do material;
@@ -106,25 +101,27 @@ fora. A função didática depende, portanto, da inspeção do trecho e da sequ�
 O [protocolo de análise](desenho-instrucional-parametrizado.md) oferece a
 codificação mais detalhada.
 
-Comparar tetos diferentes não autoriza agrupar ideias independentes numa unidade
-de análise maior. O repertório pode permanecer igual enquanto sua distribuição
-entre unidades muda.
+Para comparar tetos diferentes de novidade, conserve os critérios de recorte
+dos conhecimentos. O mesmo repertório pode ser distribuído por mais ou menos
+unidades de estudo; reunir ideias independentes numa única unidade de análise
+mudaria o inventário que serve de base à comparação.
 
 ### Prática e fontes
 
 Um **requisito de evidência** declara o que uma prática precisa solicitar para
-examinar um objetivo, como calcular um valor e justificar sua interpretação.
-A **âncora** de uma fonte localiza o trecho usado, por exemplo por página ou
-seção. As tabelas relacionam esses registros ao conteúdo:
+examinar um objetivo, como calcular um valor e interpretar seu significado.
+Uma **âncora** localiza o trecho usado numa fonte, por exemplo por página ou
+seção. O [guia de fontes](fontes-e-citacoes.md) explica essa localização e sua
+relação com o conteúdo. As tabelas relacionam esses registros:
 
 - oportunidades por requisito de evidência;
 - oportunidades que exercitam cada dimensão de variação;
 - fontes, âncoras e unidades relacionadas, agrupadas pelo papel de cada vínculo.
 
-O número descreve as oportunidades que o artefato oferece. Evidência de
-aprendizagem vem do desempenho de participantes em tarefas adequadas.
-Uma solicitação ligada a dois requisitos entra na contagem de cada um; somar
-essas linhas não produz o número de solicitações únicas do curso.
+O número descreve as oportunidades oferecidas pelo curso. Uma solicitação
+ligada a dois requisitos entra na contagem de cada um; somar essas linhas
+produz o total de relações requisito–oportunidade, e não o número de
+solicitações únicas.
 
 ## Autoria
 
@@ -149,8 +146,7 @@ começaram depois da criação do material, a tela informa que o histórico ante
 por cada origem exigem dados próprios.
 
 Quando a origem corrente não pode ser atribuída com segurança, **Dados de
-autoria** registra a ausência. Assim, zero continua reservado a uma contagem
-conhecida, e a história não é completada por inferência.
+autoria** registra a ausência. Zero fica reservado a uma contagem conhecida.
 
 ## De onde vêm os números
 
@@ -173,8 +169,8 @@ participam do parecer, que precisa acompanhar o estado atual.
 O contrato técnico `aralearn.course-authoring-analytics.v4` contém curso e
 escopo, desenho e autoria quantitativos, dados ausentes, base observada e
 distribuições. O inventário planejado abrange o curso inteiro e inclui itens
-ainda não aplicados. Enunciados e descrições permanecem literais; a leitura não
-reinterpreta uma ideia para fazê-la caber em um limite numérico.
+ainda não aplicados. Enunciados e descrições permanecem literais, conservando
+o recorte de cada conhecimento registrado pela autoria.
 
 ## Comparar
 
@@ -185,9 +181,10 @@ planejado, a configuração solicitada e a aplicada podem ser consultados
 separadamente na folha de comparação.
 
 Enunciados, descrições e metadados de fontes são confrontados literalmente,
-preservando repetições. Identidades diferentes em cópias não bastam para
-caracterizar mudança de conteúdo. Textos iguais tampouco comprovam equivalência
-semântica ou qualidade: a decisão pedagógica continua exigindo inspeção.
+preservando repetições. Identificadores diferentes em cópias são tratados como
+identidades locais; o confronto usa os textos e seus valores. Avaliar a
+equivalência pedagógica dos materiais exige também examinar suas relações,
+tarefas e condições de uso.
 
 A comparação usa os registros do curso. O protocolo de uma pesquisa define
 se precisará também de conversas de autoria ou de observação da navegação e
@@ -199,23 +196,22 @@ como obterá esses dados.
 em campos e listas, com o conteúdo integral do curso e a leitura quantitativa
 do escopo selecionado. Sob uma revisão identificada, o arquivo relaciona o
 planejamento e a configuração ao conteúdo, às fontes e às declarações de revisão
-disponíveis. A [referência
-técnica](dicionario-metricas-datasets.md#comparação-e-exportação) detalha os
-campos. Se a revisão mudar enquanto as entidades são lidas, a exportação falha
-inteira.
+disponíveis. A [referência técnica](dicionario-metricas-datasets.md#comparação-e-exportação)
+detalha os campos. Se a revisão mudar enquanto as entidades são lidas, a
+exportação falha inteira.
 
-Para manter o arquivo transportável, PDFs e áudios aparecem por suas referências
-lógicas. Dados de pessoas e de uso, como progresso ou conversas, ficam fora da
-exportação, assim como credenciais. O curso continua editável depois que o
-arquivo é criado; uma investigação deve conservar separadamente os materiais e
-as condições necessários à reprodução de seu protocolo.
+Documentos anexados e arquivos de áudio aparecem por suas referências lógicas,
+sem os bytes dos arquivos. Dados da conta, estado pessoal de estudo, conversas
+e credenciais ficam fora da exportação. Textos e metadados do curso, entretanto,
+podem conter informações pessoais e precisam ser conferidos antes de
+compartilhar o arquivo. O curso continua editável depois que a exportação é
+criada; a pesquisa conserva separadamente os materiais e as condições necessários
+à reprodução de seu protocolo.
 
 ## Limites de interpretação
 
 **Dados de autoria** caracteriza o desenho instrucional e as intervenções
 observáveis. Resultados sobre pessoas — como compreensão, retenção ou esforço —
 exigem participantes, instrumentos e análise definidos no protocolo da
-pesquisa.
-
-Consulte o [Guia do pesquisador](guia-pesquisador.md) para formular perguntas e
-registrar limites de inferência.
+pesquisa. O [guia do pesquisador](guia-pesquisador.md) ajuda a relacionar cada
+pergunta às evidências necessárias para respondê-la.
