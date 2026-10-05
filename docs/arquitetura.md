@@ -3,21 +3,21 @@
 O AraLearn mantém no servidor o curso que a pessoa planeja, inspeciona e revisa com
 assistência de inteligência artificial (IA). O aplicativo apresenta esse conteúdo para
 estudo e conserva no dispositivo a cópia necessária para continuar mesmo quando a rede
-falha. A conversa pode mudar de cliente; o curso e suas relações permanecem no
-AraLearn.
+falha. A aplicação em que ocorre a conversa pode mudar; o curso e suas relações
+permanecem no AraLearn.
 
 No servidor, o [PostgreSQL](https://www.postgresql.org/docs/current/tutorial.html),
 sistema de banco de dados relacional, guarda o conteúdo e as relações entre os objetos.
-O [Storage do Supabase](https://supabase.com/docs/guides/storage) conserva os arquivos
-em áreas privadas, enquanto o banco registra a que curso eles pertencem e quem pode
-abri-los. No dispositivo, o navegador apresenta **Estudo** e **Autoria** e mantém os
-dados locais.
+O [Storage do Supabase](https://supabase.com/docs/guides/storage), serviço de armazenamento
+de arquivos, conserva os documentos e as gravações de áudio em áreas privadas. O banco
+registra a que curso pertencem e quem pode abri-los. No dispositivo, o navegador
+apresenta **Estudo** e **Autoria** e mantém os dados locais.
 
-Clientes externos de IA chegam ao mesmo servidor por dois canais. O
-[MCP](autoria-mcp.md) permite descobrir e chamar ferramentas; o canal
-[Actions](autoria-actions.md) usa operações descritas em OpenAPI, um formato para
-documentar pedidos e respostas de uma interface de programação. Nos dois casos, as
-regras de conteúdo e autorização são as mesmas aplicadas à interface do AraLearn.
+Aplicações externas de IA chegam ao mesmo servidor por dois canais. O
+[Model Context Protocol (MCP)](autoria-mcp.md) permite descobrir e chamar ferramentas;
+o canal [Actions](autoria-actions.md) usa operações descritas em OpenAPI, um formato
+para documentar pedidos e respostas de uma interface de programação. Nos dois casos,
+as regras de conteúdo e autorização são as mesmas aplicadas à interface do AraLearn.
 
 A [matriz técnica](matriz-conformidade-tecnica.md) relaciona capacidades e
 verificações. A [história do esquema](schema-change-log.md) registra sua evolução.
@@ -25,32 +25,38 @@ verificações. A [história do esquema](schema-change-log.md) registra sua evol
 ## O curso como raiz
 
 O curso é o ponto de ligação dos dados. Seu percurso possui vários níveis, do curso às
-unidades de estudo (`StudyUnit` no código), conforme a
-[hierarquia didática](modelo-didatico.md). O mapa curricular antecipa o percurso
-completo; as partes de autoria agrupam trechos já previstos para que sejam produzidos
-em lotes, sem acrescentar outro nível ao currículo.
+unidades de estudo (`StudyUnit` no código). Nesse conjunto, uma **microssequência**
+reúne unidades que desenvolvem um objetivo delimitado. O
+[modelo didático](modelo-didatico.md) explica a função de cada nível.
+O mapa curricular antecipa o percurso completo. As **partes de autoria** agrupam
+microssequências já previstas para produção e inspeção em conjunto; partes sucessivas
+podem formar um lote. Esses agrupamentos coordenam o trabalho e permanecem separados
+da hierarquia curricular, conforme [Autoria contextual](autoria-contextual.md).
 
-O plano também acompanha as ideias que precisam aparecer ao longo do curso. Cada uma
-recebe uma identidade no repertório `instructionalAnalysisUnits`, o que permite registrar
-onde ela é introduzida e onde volta a ser usada. Requisitos de evidência ligam a
-prática ao que a atividade deve tornar observável.
+O plano também acompanha os conhecimentos que precisam ser desenvolvidos no curso.
+Cada recorte recebe uma identidade no repertório `instructionalAnalysisUnits`, o que
+permite registrar onde é introduzido, utilizado ou retomado. Um **requisito de
+evidência** descreve a operação que a prática deverá solicitar para examinar um
+objetivo. O [desenho instrucional](desenho-instrucional-parametrizado.md) relaciona
+esses registros ao planejamento do ensino e das atividades.
 
-Os [parâmetros](parametros-de-autoria.md) orientam conteúdo, prática, conversa e ritmo
-de produção. As orientações editoriais qualitativas complementam essas escolhas.
-[Fontes e seus vínculos](fontes-e-citacoes.md) registram os materiais utilizados e
-as passagens que sustentam o conteúdo; PDFs e áudios podem acompanhar esses registros.
-Observações ligadas aos objetos permitem solicitar e acompanhar revisões.
+Os [parâmetros](parametros-de-autoria.md) registram escolhas para a produção, enquanto
+as orientações editoriais descrevem como desenvolver o texto. As
+[fontes e seus vínculos](fontes-e-citacoes.md) identificam os materiais utilizados e
+as passagens que sustentam o conteúdo. Documentos e arquivos de áudio podem acompanhar
+esses registros. Observações ligadas aos objetos permitem solicitar e acompanhar
+correções.
 
 Título e objetivo identificam o curso. Propriedade, visibilidade e concessões de
 acesso determinam quem pode lê-lo ou alterá-lo. O estado de estudo de cada pessoa
-fica separado: avançar numa atividade não altera o curso dos demais leitores.
+fica separado: avançar numa atividade conserva o curso dos demais leitores.
 
 O proprietário inspeciona e revisa o conteúdo salvo. O acesso ao curso e a declaração
 humana de revisão são decisões independentes: a política padrão permite estudar o
 conteúdo salvo; a opção `reviewed_only` restringe a leitura ao conteúdo com revisão
 atual. Visibilidade pública, concessões individuais e acesso aos arquivos possuem
-controles próprios. Revisar o conteúdo mantém o mesmo curso, sem criar uma árvore de
-versões.
+controles próprios. A revisão modifica o curso existente, em vez de criar uma árvore
+de versões.
 
 A microssequência pode receber primeiro uma proposta de explicação,
 `explanationPlan`, e depois sua base explicativa, `explanation`, que pode combinar
@@ -61,33 +67,38 @@ conteúdo abre sobre a unidade corrente e utiliza os mesmos mecanismos de compon
 ferramentas e citações das unidades, com suas próprias referências bibliográficas.
 
 As fontes ligadas a essa base usam o alvo `microsequence_explanation`, com ocorrências
-localizadas na própria explicação. Seu conteúdo integra a cópia local do curso, mas PDFs e
-áudios continuam dependendo da autorização do servidor e de acesso à rede. A leitura
-local também preserva uma única revisão coerente do curso.
+localizadas na própria explicação. Seu conteúdo integra a cópia local do curso.
+Documentos anexados e arquivos de áudio são obtidos separadamente, mediante
+autorização do servidor e acesso à rede. A leitura local preserva uma única versão
+coerente do curso.
 
 Cada explicação e unidade tem seu próprio `contentReview`, separado do conteúdo
 editável. A declaração de revisão compara uma impressão digital do conteúdo e das
 fontes inspecionados com o estado corrente. Uma mudança material torna a marca
-anterior desatualizada. A pessoa proprietária pode registrar ou retirar sua declaração
-na interface; MCP e Actions podem executar essa decisão somente após sua manifestação
-expressa. Gerar, corrigir ou importar conteúdo não declara revisão por implicação. Uma
-resposta incerta conserva a identidade do pedido para
-[reconciliação](persistencia-relacional.md#escritas-concorrentes).
+anterior desatualizada. O proprietário pode registrar ou retirar sua declaração na
+interface; MCP e Actions executam essa decisão após sua manifestação expressa.
+A declaração é uma operação própria, distinta de gerar, corrigir ou importar o
+conteúdo. Se o resultado da gravação ficar incerto, o pedido conserva sua identidade
+para [recuperação e conferência](persistencia-relacional.md#escritas-concorrentes).
 
 ## Inspeção pedagógica por IA
 
 Uma atividade pode aceitar dados válidos e ainda exigir algo que a explicação deixou
 de ensinar. Para examinar essa relação, a inspeção por IA lê o alvo dentro de sua
-microssequência: considera o público, o planejamento pertinente, a explicação, as
-unidades na ordem salva, a configuração aplicada e as fontes. A base inclui também
-as explicações das dependências curriculares necessárias ao foco.
+microssequência. Ela considera o público e o planejamento, confronta a explicação
+com as unidades na ordem salva e consulta a configuração aplicada e as fontes.
+A base inclui também as explicações das dependências curriculares necessárias ao foco.
 
-O parecer registra seis critérios, com justificativa e passagens da base lida:
-alinhamento, evidência, representação, feedback, suficiência e realização da
-configuração. Na explicação, os critérios sobre prática usam as respostas e os
-retornos das unidades da microssequência. O servidor confere a estrutura do parecer,
-a presença dos trechos citados e contradições que consegue verificar. O julgamento
-pedagógico continua sendo atribuído ao assistente que produziu o parecer.
+O parecer examina a correspondência entre o objetivo e a operação solicitada, assim
+como o que a resposta permite observar. Também avalia a representação, o retorno
+oferecido ao estudante e a suficiência do desenvolvimento. Por fim, confronta as
+escolhas aplicadas com sua realização no conteúdo. A
+[referência dos seis critérios](auditoria-de-conformidade-instrucional.md#inspeção-por-ia-sobre-o-conteúdo-salvo)
+explica os julgamentos e as evidências exigidos. Na inspeção da explicação, os
+critérios sobre prática usam as respostas e os retornos das unidades da
+microssequência. O servidor confere a estrutura do parecer, a presença dos trechos
+citados e as contradições que consegue verificar. O julgamento pedagógico é
+atribuído ao assistente que produziu o parecer.
 
 Cada explicação ou unidade conserva seu próprio registro `ai_inspection`. A impressão
 digital `basisHash` identifica o conjunto examinado. Uma mudança nesse conjunto pode
@@ -99,14 +110,15 @@ humana](explicacao-e-revisao-humana.md).
 
 ## Áreas do produto
 
-**Estudo** apresenta os cursos acessíveis, a hierarquia curricular, uma unidade de
-estudo por vez, prática, progresso pessoal, marcas para rever e observações. Um curso
+**Estudo** apresenta os cursos acessíveis e permite percorrer o conteúdo e responder
+às práticas. O progresso pessoal e as marcas para rever organizam a retomada;
+as observações registram dúvidas ou problemas junto do conteúdo. Um curso
 compartilhado pode ser estudado sem conceder autoria no original.
 
 Somente o proprietário edita, inclusive quando está em Estudo. Estudantes podem enviar
 suas próprias observações; visitantes estudam cursos públicos e conservam progresso e
-marcas no dispositivo. O catálogo compacto também inclui cursos públicos, sem criar
-uma autoridade de conteúdo separada.
+marcas no dispositivo. O catálogo compacto inclui cursos públicos e consulta os
+mesmos registros que determinam o conteúdo e o acesso.
 
 Uma ação explícita pode copiar um curso próprio ou um curso cujo proprietário concedeu
 permissão de cópia. O resultado tem nova identidade, pertence à pessoa solicitante e
@@ -118,43 +130,51 @@ A [persistência das cópias](persistencia-relacional.md#cópia-independente) ta
 preserva os cursos criados por versões anteriores e permite recuperar tentativas
 cujo resultado ainda não foi confirmado.
 
-**Autoria** apresenta apenas cursos próprios. O curso abre diretamente em Conteúdo;
-Conteúdo e Planejamento permanecem no cabeçalho; o menu reúne **Parâmetros**,
-**Fontes**, **Áudio**, **Revisão**, **Dados de autoria** e **Pessoas e acesso**. A composição prioriza o
-celular, mantém a coluna estreita e usa uma única área principal de rolagem vertical.
+**Autoria** apresenta apenas cursos próprios. O curso abre diretamente em **Conteúdo**;
+**Conteúdo** e **Planejamento** permanecem no cabeçalho. O menu reúne **Parâmetros**,
+**Fontes**, **Áudio**, **Revisão**, **Dados de autoria** e **Pessoas e acesso**.
+A composição prioriza o celular, mantém a coluna estreita e usa uma única área
+principal de rolagem vertical.
 
-Na inspeção, visão múltipla e seleção para observações em lote são estados distintos.
-O comando de uma unidade pode focalizá-la sem retornar a uma unidade de referência
-fixa. A edição dessa superfície é manual; o estado e a prévia de Assistência por IA
-pertencem à aplicação de Estudo. Consultas contextuais preservam foco, rascunho e
-escopo, e a simples abertura de uma folha não marca um formulário como alterado.
+A visão múltipla permite comparar unidades; a seleção escolhe os alvos de uma
+observação em lote. São estados independentes. O comando de uma unidade pode
+concentrar a leitura nela, em vez de retornar a uma unidade de referência fixa.
+A edição em Conteúdo é manual; a conversa e a prévia de **Assistência por IA**
+pertencem a Estudo. Os painéis de consulta preservam o ponto de leitura, o rascunho e
+o trecho em trabalho. Abrir um painel conserva o estado do formulário, sem registrar
+uma alteração apenas pela consulta.
 
-A autoria por conversa complementa essas superfícies. O assistente pode planejar,
-produzir, consultar fontes, tratar observações e aplicar mudanças; a interface permite
+A autoria por conversa complementa esses espaços. O assistente pode planejar e
+produzir o material, consultar suas fontes e tratar observações. A interface permite
 localizar, ler e revisar o resultado no contexto.
 
-## Um catálogo humano para MCP e Actions
+<a id="um-catálogo-humano-para-mcp-e-actions"></a>
+
+## Um catálogo de tarefas para MCP e Actions
 
 MCP e Actions são formas distintas de comunicar pedidos ao mesmo catálogo de tarefas
 de autoria. O arquivo `courseHumanTasks.js` define, para cada tarefa, seu nome, seus
 argumentos e o efeito esperado. O MCP publica essa definição diretamente. Para
-Actions, um gerador a converte em OpenAPI, formato que descreve operações HTTP, sem
-manter uma segunda lista manual.
+Actions, um gerador a converte em OpenAPI, formato que descreve operações HTTP,
+usadas na comunicação entre o cliente e o serviço. Os dois canais derivam, assim,
+da mesma definição.
 
-O catálogo acompanha o percurso inteiro de autoria. Retomar um curso, materializar uma
-parte e tratar uma observação são exemplos de tarefas que chegam aos mesmos casos de
-uso da aplicação. Ele também cobre preferências reutilizáveis e operações sobre o
-curso completo, como copiar, comparar e exportar, sempre com a autorização própria da
-operação.
+O catálogo acompanha o percurso inteiro de autoria. Retomar um curso, gravar as
+unidades de uma parte e tratar uma observação são exemplos de tarefas que chegam aos
+mesmos casos de uso da aplicação. Ele também cobre preferências reutilizáveis e
+operações sobre o curso completo, como copiar, comparar e exportar, sempre com a
+autorização própria da operação.
 
-Argumentos públicos usam título, posição e referência humana. A camada confiável em
-`courseHumanTaskExecutor.js` resolve identidades e versões, produz a identidade de
-repetição e relê o estado quando há concorrência. Ambiguidade gera uma pergunta focal;
-ela não autoriza escolher um objeto por acaso.
+Os argumentos públicos permitem identificar o objeto por título, posição ou
+referência devolvida pelo serviço. A camada de execução em
+`courseHumanTaskExecutor.js` resolve essas indicações para as identidades e versões
+internas. Também identifica o pedido para permitir sua repetição segura e relê o
+estado quando encontra uma alteração concorrente. Uma indicação ambígua exige
+esclarecimento antes de escolher o objeto.
 
 Uma resposta comum contém resultado, link direto ao objeto e uma próxima decisão,
-quando necessária. Contexto estruturado pode acompanhar uma leitura sem ser repetido
-como texto longo.
+quando necessária. O contexto estruturado pode acompanhar a leitura como dados de
+apoio; a resposta em linguagem natural apresenta o que a pessoa precisa examinar.
 
 ## Fluxo entre navegador e Supabase
 
@@ -171,28 +191,29 @@ são confirmadas juntas ou desfeitas em caso de falha. Esse desenho evita conced
 acesso direto às tabelas privadas e mantém a decisão de autorização junto do dado.
 
 Visitantes alcançam somente chamadas remotas de procedimento (RPCs) de leitura, que
-selecionam os dados permitidos e verificam o acesso. A escrita exige uma pessoa autorizada para o
-curso e a operação. O perfil usa um identificador público escolhido pela pessoa e
-avatar opcional; busca e concessão de acesso privado são delimitadas pelo curso do
-proprietário, sem diretório geral de contas. O Storage permanece privado, inclusive
-para cursos públicos.
+selecionam os dados permitidos e verificam o acesso. A escrita exige uma pessoa
+autorizada para o curso e a operação. O perfil usa um identificador público escolhido
+pela pessoa e uma imagem opcional, o avatar. A busca de pessoas e a concessão de
+acesso privado ocorrem no contexto do curso do proprietário; o aplicativo não oferece
+um diretório geral de contas. O Storage permanece privado, inclusive para cursos públicos.
 
-OAuth permite que a pessoa conecte um cliente à sua conta sem entregar a senha da
-conta a esse cliente. O MCP usa `aralearn-authoring-mcp` e OAuth 2.1. Actions usa
-`aralearn-authoring-action` e uma autorização própria para o cliente externo de
-Actions. Credenciais de um canal são
-recusadas no outro.
+OAuth permite que a pessoa conecte uma aplicação à sua conta sem entregar a senha da
+conta a essa aplicação. O MCP usa `aralearn-authoring-mcp` e OAuth 2.1. Actions usa
+`aralearn-authoring-action` e uma autorização própria para a aplicação externa.
+Cada canal aceita somente as credenciais emitidas para ele.
 
 ## Estrutura e leitura paginada
 
-A composição curricular usa linhas de entidade ligadas ao curso. Leituras de Estudo e
-Conteúdo são paginadas e validam que todas as páginas pertencem à mesma revisão. Um
-link direto pode indicar a unidade inicial sem incluir o cursor, referência temporária
-que indica de onde continuar a consulta paginada.
+A composição curricular usa registros ligados ao curso. Para obter um curso extenso,
+o cliente recebe o conteúdo em páginas sucessivas. As leituras de Estudo e Conteúdo
+validam que todas pertencem à mesma revisão técnica. Um link direto pode indicar a
+unidade inicial sem incluir o **cursor**, referência temporária que indica de onde
+continuar essa consulta paginada.
 
-Conteúdo mantém somente uma janela de unidades na estrutura da página, o DOM. Pesquisa
-e índice permitem chegar a qualquer unidade, inclusive anterior. A apresentação usa o
-mesmo mecanismo de Estudo, mas as respostas ficam inertes durante a inspeção autoral.
+Conteúdo mantém somente uma janela de unidades no **DOM**, a estrutura da página
+mantida pelo navegador. A pesquisa e o índice permitem chegar a qualquer unidade,
+inclusive anterior. A apresentação usa o mesmo mecanismo de Estudo, mas as respostas
+ficam inativas durante a inspeção autoral.
 
 ## Mapa global e produção incremental
 
@@ -202,21 +223,20 @@ O [contrato do plano](aralearn-contract.md#curso-e-estrutura) registra os campos
 completos. No mapa, cada item obrigatório do escopo aponta primeiro para os pontos em
 que será ensinado e, depois da produção, para as unidades que o desenvolveram.
 
-O mesmo mapa pode existir como rascunho ou aprovado. A aprovação se refere ao
-artefato completo que a pessoa pôde inspecionar. Partes agrupam microssequências
-já pertencentes a esse mapa e descrevem lotes de planejamento focal, produção e
-revisão, mantendo a hierarquia curricular. Por padrão, a produção aguarda a aprovação
-do mapa. Uma autorização expressa para produção autônoma permite trabalhar com o mapa
-em rascunho e conservar esse estado durante a produção.
+O mesmo mapa pode existir como rascunho ou aprovado. A aprovação se refere ao mapa
+completo que a pessoa pôde inspecionar. As partes agrupam microssequências já
+pertencentes a ele para planejamento focal, produção e revisão. Por padrão, a
+produção aguarda a aprovação do mapa. Uma autorização expressa para produção
+autônoma permite trabalhar com o mapa em rascunho e conservar esse estado.
 
-Com mapa existente e percurso autorizado, a preparação reúne somente o lote, sua
-configuração e o repertório necessário. O tamanho do lote não exige uma nova
-confirmação por si só; uma decisão material ainda aberta continua exigindo
-intervenção. A materialização grava as unidades, as aplicações de desenho e os
-vínculos com as fontes numa transação. Ela pode usar uma explicação já salva e
-coerente com a base preparada; uma base nova ou alterada precisa ser incluída e
-validada. Também atualiza, por derivação do estado corrente, onde cada ideia foi
-introduzida, usada ou retomada.
+Com mapa existente e percurso autorizado, a preparação reúne o lote, sua configuração
+e o repertório necessário. As pausas decorrem das decisões ainda abertas e dos
+pontos de inspeção acordados, em vez de serem exigidas apenas pelo tamanho do lote.
+A gravação coordenada das unidades, das aplicações de desenho e dos vínculos com as
+fontes é chamada de **materialização** e ocorre numa transação. Ela pode usar uma
+explicação já salva e coerente com a base preparada; uma base nova ou alterada precisa
+ser incluída e validada. Também atualiza, a partir do estado corrente, onde cada
+conhecimento foi introduzido, utilizado ou retomado.
 
 A quantidade de unidades decorre do conteúdo e das condições de desenho. O teto de
 novas unidades de análise orienta a distribuição da novidade, preservando o
@@ -224,104 +244,115 @@ inventário e a profundidade necessária.
 
 ## Desenho aplicado à unidade de estudo
 
-O catálogo único define os valores aceitos, os locais em que se aplicam e os rótulos
-usados pela interface, integrações e banco. Parâmetros e direção editorial possuem
-atribuição corrente por escopo. Limpar uma definição restaura herança e remove a
-atribuição local; não cria uma linha histórica de “limpeza”.
+O catálogo único de parâmetros define os valores aceitos, os locais em que se aplicam
+e os rótulos usados pela interface, integrações e banco. Parâmetros e direção
+editorial possuem uma atribuição corrente por escopo, isto é, pelo trecho do curso
+que a escolha orienta. Limpar uma definição remove a atribuição local e restaura a
+herança do nível mais amplo. O banco passa a representar esse estado corrente.
 
-Quando uma unidade de estudo é materializada, ela guarda o recorte de desenho
-efetivamente aplicado. Esse registro focal, chamado *snapshot* no código, reúne as
-ideias e requisitos pertinentes, a configuração adotada, os componentes e a prática
-prevista para aquela unidade. Com ele, é possível inspecionar as decisões aplicadas e calcular os
-[dados de autoria](analytics-instrucionais.md) sem conservar o contexto de execução da
-parte inteira.
+Quando uma unidade de estudo é materializada, ela guarda as escolhas efetivamente
+usadas na produção. Esse registro focal, chamado *snapshot* no código, reúne os
+conhecimentos e requisitos pertinentes, a configuração adotada, os componentes e a
+prática prevista para a unidade. Os [dados de autoria](analytics-instrucionais.md)
+usam esses registros para apresentar as decisões aplicadas, sem precisar conservar
+o contexto de execução da parte inteira.
 
-Uma edição focal preserva literalmente o snapshot histórico. A descrição de como o
-desenho se realiza no conteúdo só continua corrente enquanto o conteúdo e a hierarquia
-que a sustentavam permanecem iguais, descontada uma mudança de título. Uma alteração
-substantiva invalida essa relação, sem atribuir uma nova data de análise que não
-ocorreu.
+Uma edição focal preserva literalmente o snapshot histórico. Já a descrição de como
+o desenho se realiza no conteúdo só continua corrente enquanto o conteúdo e a
+hierarquia que a sustentavam permanecem iguais, descontada uma mudança de título.
+Uma alteração substantiva invalida essa relação. A data registrada continua sendo a
+da análise realizada; uma nova análise exige seu próprio registro.
 
-Ideias introduzidas são persistidas separadamente das ideias estabelecidas que a
-unidade apenas utiliza. Retomadas são derivadas das explicações de ideias já
-estabelecidas. Identidade, nome, descrição curta e referências às unidades permitem
-consultar o repertório a partir dos dados do próprio curso.
+Conhecimentos introduzidos são guardados separadamente dos conhecimentos já
+estabelecidos que a unidade utiliza. Retomadas são derivadas das explicações de
+conhecimentos estabelecidos. Sua identidade, nome, descrição curta e referências às
+unidades permitem acompanhar o repertório ao longo do curso.
 
-O modo automático delega ao assistente a escolha contextual, antes da produção, para a
-microssequência ou unidade conforme conteúdo, função e repertório acumulado. A
-intenção pode ter valor nulo; o snapshot aplicado exige valor e justificativa.
-Ausência local significa herança. Fixações de autoria e pesquisa prevalecem sobre
-calibração automática; exceções incompatíveis com pesquisa não podem aplicar-se
-silenciosamente. Alvos de palavras não autorizam omissão ou compressão.
+No modo automático, o assistente escolhe os valores antes da produção, considerando
+o conteúdo, a função da unidade e o repertório acumulado. A intenção pode manter um
+valor em aberto, representado por `null`; o snapshot aplicado exige um valor e sua
+justificativa. A ausência de atribuição local significa herança. Fixações de autoria
+e pesquisa prevalecem sobre o ajuste automático, e escolhas incompatíveis com uma
+condição de pesquisa exigem resolução antes da aplicação. Os alvos de palavras
+orientam a distribuição do texto, preservado o desenvolvimento necessário.
 
-Perfis de autoria guardam somente preferências tipadas por conta. Aplicar copia as
-preferências ao curso numa transação com comparação das revisões do perfil e do curso;
-exceções são preservadas ou removidas por seleção explícita. Condições de pesquisa
-ficam protegidas. Editar ou excluir um perfil não altera as cópias, e a aplicação não
-reescreve conteúdo nem snapshots existentes.
+Perfis de autoria guardam preferências da conta em campos com tipos definidos.
+Aplicar um perfil copia essas preferências para o curso numa transação que confere
+as revisões de ambos. As exceções existentes são preservadas ou retiradas por
+seleção explícita, com proteção das condições de pesquisa. Cada curso conserva uma
+cópia independente: editar ou excluir o perfil mantém as cópias já aplicadas. A
+aplicação orienta trabalhos posteriores e preserva o conteúdo e os snapshots existentes.
 
-O mapa global vem antes dos lotes, e cada aprovação se refere ao artefato que a pessoa
-pôde inspecionar. Na conversa, essas decisões aparecem em linguagem humana. A
-distribuição do conteúdo, as formas explicativas e a prática continuam ajustáveis à
-luz dos princípios pedagógicos e da avaliação do curso.
+O mapa global antecede os lotes, e cada aprovação se refere ao material que a pessoa
+pôde inspecionar. A distribuição do conteúdo, as formas explicativas e a prática
+continuam ajustáveis à luz dos princípios pedagógicos e da avaliação do curso.
 
 ## Concorrência e repetição segura
 
-Cada curso possui revisão crescente; objetos editáveis também possuem uma versão
-corrente quando necessário. Uma escrita informa o estado que leu. Se o objeto mudou, o
-consumidor trata o conflito sem promover silenciosamente a revisão de um rascunho. Uma
-reconstrução automática só cabe quando conserva a intenção verificável; caso
-contrário, a edição permanece disponível para revisão.
+Duas sessões podem editar o mesmo curso. Para detectar uma alteração feita desde a
+última leitura, cada curso possui um número crescente de **revisão técnica**.
+Objetos editáveis também possuem uma versão corrente quando necessário. Essa
+numeração acompanha mudanças nos dados e se distingue da declaração humana de revisão.
 
-Por exemplo, a pessoa pode salvar uma explicação numa aba enquanto outra ainda
-mostra o texto anterior. A segunda aba precisa reler a mudança antes de gravar uma
-edição incompatível. Essa comparação de revisões protege o trabalho concorrente.
+Uma escrita informa o estado que leu. Se o objeto mudou, o cliente precisa tratar o
+conflito antes de gravar o rascunho. Por exemplo, uma pessoa pode salvar uma explicação
+numa aba enquanto outra ainda mostra o texto anterior. A segunda aba precisa reler
+a mudança antes de gravar uma edição incompatível. Uma reconstrução automática só
+cabe quando conserva a intenção verificável; nos demais casos, a edição permanece
+disponível para comparação e decisão.
 
 Outro problema ocorre quando o banco salva a edição, mas a resposta não chega ao
-dispositivo. Um recibo temporário por pedido permite recuperar resposta perdida sem duplicar
-efeito. Recibos expirados são removidos pela retenção. Eles não formam um histórico
-universal de mudanças. A cópia independente também grava no alvo sua origem e
-identidade de pedido. Essa prova permite recuperar a mesma cópia após expirar o recibo
-ou perder acesso à origem. Sem prova e fora da janela admitida, o pedido não cria
-outro curso; consulte [persistência](persistencia-relacional.md#cópia-independente).
+dispositivo. Um recibo temporário identifica o pedido e permite recuperar seu
+resultado sem duplicar o efeito. Os recibos servem à recuperação durante seu prazo
+de retenção e são removidos quando expiram. A cópia independente conserva ainda, no
+curso de destino, sua origem e a identidade do pedido. Esse registro permite
+reconhecer a mesma cópia após a expiração do recibo ou a perda de acesso à origem.
+Sem essa comprovação e fora da janela admitida, o pedido é recusado para impedir a
+criação de outro curso; consulte [persistência](persistencia-relacional.md#cópia-independente).
 
 ## Fontes, âncoras e arquivos
 
 Uma [fonte](fontes-e-citacoes.md) identifica o material utilizado; uma âncora localiza
-uma página, seção ou trecho desse material. Ambas guardam o estado corrente. A versão
-serve à concorrência e aos links diretos. Observações autorais pendentes podem
-conservar uma base anterior para comparação, incluindo seus vínculos e arquivos;
-essas bases são liberadas conforme as decisões sobre os alvos. Uma atribuição liga fontes e âncoras a um item do plano,
-explicação ou unidade de estudo. Cada vínculo possui identidade, papéis explícitos e
-ocorrências opcionais em folhas textuais do catálogo. Trecho ambíguo conserva o
-vínculo e fica pendente de revisão; o sistema não inventa outra posição. Citação
-manual preserva seu texto; a citação gerada usa metadados estruturados e o estilo
-escolhido no curso.
+uma página, seção ou trecho desse material. Ambas guardam o estado corrente, e suas
+versões permitem conferir alterações concorrentes e resolver links diretos. Uma
+atribuição liga a fonte e suas âncoras a um item do plano, a uma explicação ou a uma
+unidade de estudo. Cada vínculo possui identidade e papéis explícitos.
 
-Na autoria por MCP e Actions, a ocorrência nova é declarada pelo recurso e pelo
-trecho literal. O servidor encontra a folha textual no registro do componente;
-o modelo não precisa conhecer o nome do campo interno. Ausência ou ambiguidade
-impede gravar essa ocorrência e devolve o contexto necessário para corrigi-la.
-Os vínculos já salvos continuam preservados quando uma edição posterior torna
-seu trecho não localizável.
+O vínculo pode indicar ocorrências em campos de texto declarados pelos componentes,
+chamados de **folhas textuais** no contrato. Se uma edição tornar ambíguo o trecho
+citado, o sistema conserva o vínculo como pendência de revisão. A citação manual
+preserva seu texto; a citação gerada usa os metadados e o estilo escolhido no curso.
+Observações autorais pendentes podem conservar uma base anterior para comparação,
+incluindo vínculos e arquivos. Essas bases são liberadas conforme as decisões sobre
+os alvos.
 
-A área privada de arquivos, ou bucket, `course-source-pdfs` contém os bytes. O banco
-conserva o descritor e o vínculo ativo ou removido. A ingestão calcula e verifica
-SHA-256, uma impressão digital usada para conferir os bytes recebidos, usa uma
-intenção curta para cota e concorrência, envia pela Storage API, relê o objeto e só
-então ativa o vínculo.
+Na autoria por MCP e Actions, uma ocorrência nova é declarada pelo recurso e pelo
+trecho literal. O servidor encontra a folha textual no registro do componente.
+Assim, o assistente identifica a passagem por seu conteúdo, e o servidor resolve o
+campo interno. Ausência ou ambiguidade impede gravar essa ocorrência e devolve o
+contexto necessário para corrigi-la. Os vínculos já salvos continuam preservados
+quando uma edição posterior torna seu trecho não localizável.
 
-A remoção conserva uma marca relacional de retirada, chamada *tombstone*, e uma intenção
-temporária de limpeza. Depois da transação, o adaptador reivindica a intenção,
-revalida que nenhum vínculo ativo usa o objeto, remove-o pela interface do Storage e
-confirma a conclusão. Essa interface de programação (API) é o único caminho usado para
-alterar os bytes. Reanexar o mesmo conteúdo reativa o vínculo após nova verificação.
+Os documentos anexados utilizam o formato PDF. Seus dados binários, ou bytes, ficam
+na área privada de arquivos `course-source-pdfs`; esse tipo de área recebe o nome
+*bucket* no Storage. O banco conserva o descritor e o vínculo ativo ou removido.
+Antes de ativar o vínculo, o serviço confere se recebeu o arquivo esperado. Para
+isso, calcula e verifica SHA-256, uma impressão digital dos bytes, registra uma
+intenção temporária para controlar a cota e as operações concorrentes, envia o
+arquivo pela Storage API e relê o objeto recebido.
+
+A remoção conserva uma marca relacional de retirada, chamada *tombstone*, e uma
+intenção temporária de limpeza. Depois da transação, o adaptador assume essa tarefa,
+revalida que nenhum vínculo ativo usa o objeto, remove-o pela interface do Storage
+e confirma a conclusão. Essa interface de programação (API) é o único caminho usado
+para alterar os bytes. Reanexar o mesmo conteúdo reativa o vínculo após nova verificação.
 
 Áudio usa `course-media`, com WAV PCM ou MP3, descritor lógico e referência na unidade
-ou explicação. PDFs e áudios compartilham a cota do curso. A cópia independente pode
-referenciar os mesmos bytes imutáveis: autorização depende do curso consultado, não do
-prefixo físico do objeto. Exclusão de curso, conta e órfão confere todas as
-referências e reservas antes de remover o arquivo. Detalhes ficam em
+ou explicação. Documentos e arquivos de áudio compartilham a cota do curso. Uma
+cópia independente pode referenciar os mesmos bytes imutáveis: a autorização depende
+do curso consultado, e não do prefixo físico do objeto. A exclusão de um curso ou de
+uma conta e a limpeza de arquivos sem vínculo conferem todas as referências e
+reservas antes de remover o arquivo. Os detalhes estão em
 [Supabase](supabase.md#storage-bytes-privados-e-vínculo-relacional).
 
 ## Observações e revisão
@@ -331,14 +362,15 @@ explicações e unidades. Cada alvo conserva sua base anterior e recebe uma deci
 própria. A caixa de observações apresenta o conjunto e permite trabalhar por recorte.
 Observações de estudantes permanecem vinculadas ao alvo individual.
 
-Preparar revisão amplia o foco para unidades relacionadas pela progressão, pelos
-pré-requisitos ou pela prática. Aplicar correções grava o conteúdo; a releitura e a
-inspeção permitem examinar seus efeitos. A decisão humana posterior pode aceitar o
-conteúdo vigente ou encerrar a incidência sem alteração, preservando os demais alvos
-pendentes.
+A preparação da revisão inclui unidades relacionadas pela progressão, pelos
+pré-requisitos ou pela prática. A aplicação grava as correções; a releitura e a
+inspeção examinam seus efeitos. A decisão humana posterior pode aceitar o conteúdo
+vigente ou encerrar o apontamento naquele alvo sem alteração, preservando os demais
+alvos pendentes. Essa relação entre a observação e cada alvo é chamada de
+**incidência**, conforme [Observações](observacoes-pedagogicas.md).
 
 Ao decidir um alvo, o sistema libera sua referência à base anterior. Bases
-compartilhadas e arquivos continuam conservados enquanto outro alvo precisar deles.
+compartilhadas e arquivos são conservados enquanto outro alvo precisar deles.
 Quando todos os alvos terminam, o texto da observação é removido e o registro terminal
 entra na retenção de 14 dias. Uma nova intenção sobre um alvo já decidido recebe nova
 observação.
@@ -347,70 +379,76 @@ observação.
 
 O painel **Dados de autoria** apresenta contagens derivadas do estado salvo, chamadas
 de *analytics* no código. A pessoa escolhe uma dimensão e um recorte do curso. Uma
-dimensão pode mostrar, por exemplo, como as ideias se distribuem pelas unidades ou
-como as práticas usam os componentes. Outro grupo descreve intervenções de autoria,
+dimensão pode mostrar, por exemplo, como os conhecimentos se distribuem pelas unidades
+ou como as práticas usam os componentes. Outro grupo descreve intervenções de autoria,
 como observações e a origem registrada da última revisão.
 
-Esse retrato descreve os registros de autoria. A exportação JSON combina a análise com
-o documento literal do curso e os metadados de suas fontes. Estado pessoal, contas e
-bytes de arquivos ficam nos serviços responsáveis por eles. A comparação confronta
-inventários completos e recortes selecionados, distingue parâmetros solicitados e
-aplicados e informa ausências. A equivalência pedagógica exige examinar também o
-significado do conteúdo e das atividades.
+A exportação em JSON, formato de dados estruturados, reúne a análise, o documento
+literal do curso e os metadados de suas fontes. Estado pessoal, contas e bytes de
+arquivos ficam nos serviços responsáveis por eles. A comparação confronta os
+inventários completos e os recortes selecionados, distingue parâmetros solicitados
+e aplicados e informa ausências. Para avaliar equivalência pedagógica, é preciso
+examinar também o significado do conteúdo e das atividades.
 
 ## Réplica local e funcionamento sem rede
 
 [IndexedDB](https://developer.mozilla.org/pt-BR/docs/Web/API/IndexedDB_API), a API do
-navegador para guardar dados estruturados, conserva composição validada, progresso,
-posição, marcas para rever, observações próprias e escritas delimitadas que ainda
-precisam de confirmação. `BroadcastChannel` informa outras abas sobre mudanças. No
-modo automático, foco, visibilidade e retorno da conexão podem provocar releitura. O
-modo manual suspende atualizações de fundo de conteúdo e filas pessoais; o controle
-com ícone de nuvem permite solicitar a sincronização. Escrita explícita e verificação de acesso
-continuam sujeitas à rede. Rascunhos e conflitos não são descartados para aplicar uma
-atualização.
+navegador para guardar dados estruturados, conserva a composição validada do curso.
+Também mantém o progresso, a posição e as marcas para rever, além das observações
+próprias e das escritas delimitadas que aguardam confirmação. `BroadcastChannel`
+informa outras abas sobre mudanças locais. A
+[persistência relacional](persistencia-relacional.md#continuidade-entre-abas)
+explica essa coordenação.
 
-As leituras de curso têm prazos para a obtenção de sessão e para a comunicação,
-incluindo o consumo do corpo da resposta. Falhas recuperáveis admitem repetição
-limitada e respeitam `Retry-After` dentro do orçamento de espera; uma solicitação
-explícita funciona sem depender de um novo evento `online`. Uma revisão que muda
-durante a leitura exige uma releitura coerente, e respostas obsoletas não substituem o
-alvo atual ou um cabeçalho mais recente. Recusa de autenticação ou acesso não autoriza
-expor cache privado.
+No modo automático, recuperar o foco, voltar a uma aba ou restabelecer a conexão
+pode provocar uma releitura. O modo manual suspende as atualizações automáticas de
+conteúdo e o envio das filas pessoais; o controle com ícone de nuvem permite
+solicitar a sincronização. Escritas explícitas e verificações de acesso continuam
+sujeitas à rede. Uma atualização preserva rascunhos e conflitos ainda em tratamento.
 
-A interface distingue leitura em curso, resultado vazio confirmado, cópia local, falha
-do serviço e sinal de ausência de rede. Manter conteúdo local após erro não permite
-concluir, por si só, que o dispositivo perdeu a Internet.
+As leituras de curso têm prazos para obter a sessão e para concluir a comunicação,
+incluindo a leitura do corpo da resposta. Falhas recuperáveis admitem repetição
+limitada. O cabeçalho `Retry-After`, quando recebido, indica quanto aguardar antes
+de tentar novamente, respeitado o tempo máximo de espera da operação. A pessoa pode
+solicitar uma nova leitura sem depender de outro evento `online` do navegador.
 
-O servidor continua sendo a autoridade de propriedade e acesso. Um curso revogado
-deixa de abrir depois da validação conectada, mesmo que uma cópia local antiga ainda
-exista.
+Uma revisão que muda durante a leitura exige obter novamente uma composição
+coerente. Respostas anteriores não substituem o alvo atual ou um cabeçalho mais
+recente. Uma recusa de autenticação ou acesso impede expor a cópia privada.
+A interface distingue leitura em curso, resultado vazio confirmado, cópia local,
+falha do serviço e sinal de ausência de rede. Um erro no serviço pode ocorrer mesmo
+com conexão à Internet; por isso, esses estados são apresentados separadamente.
+
+O servidor determina a propriedade e o acesso. Um curso revogado deixa de abrir
+depois da validação conectada, mesmo que exista uma cópia local anterior.
 
 ## Componentes didáticos
 
 [Pacotes versionados](componentes-didaticos.md) implementam representações e formatos
-de resposta. O catálogo informa função e contrato; o autor escolhe pelo papel
-instrucional. `paragraph` e `choice` são componentes válidos, não alternativas
-automáticas. Conforme o papel instrucional, uma tabela, um trecho de código ou um
-diagrama podem representar melhor o conteúdo.
+de resposta. O catálogo informa a função e o contrato de cada componente. A escolha
+segue o papel instrucional: um parágrafo, uma tabela ou um diagrama podem atender a
+relações diferentes. `paragraph` e `choice` integram esse catálogo e são escolhidos
+pelos mesmos critérios, em vez de substituir automaticamente outros formatos.
 
 Os módulos compartilhados possuem uma cópia de execução nas Edge Functions, as funções
 remotas do Supabase. `resources:sync-edge` atualiza essa cópia a partir das fontes em
 `src/`; os verificadores de preparação conferem a correspondência. Assim, navegador
 e servidor recebem os mesmos contratos de conteúdo.
 
-O registro delega validação das relações da unidade, preparação de conteúdo, interação
-de resposta e reconciliação de edição aos contratos dos pacotes. O editor trabalha com
-folhas textuais declaradas; não escolhe regras pelo nome do pacote. A composição e as
-posições disponíveis para conteúdo, resposta e retorno continuam comuns. Uma extensão
-compatível acrescenta seu registro e seus arquivos; uma nova capacidade da aplicação
-exige contrato e código que a utilize. O curso não fornece código livre para execução.
+O registro delega aos contratos dos pacotes a validação das relações da unidade,
+a preparação do conteúdo, a interação de resposta e a conferência das edições.
+O editor trabalha com as folhas textuais declaradas por cada pacote; as regras de
+edição vêm desse contrato, em vez de serem escolhidas pelo nome do pacote.
+A composição e as posições disponíveis para conteúdo, resposta e retorno continuam
+comuns. Uma extensão compatível acrescenta seu registro e seus arquivos; uma nova
+capacidade da aplicação exige contrato e código que a utilize. O curso não fornece
+código livre para execução.
 
 ## Segurança por fronteira
 
 Cada parte recebe somente a autoridade necessária para cumprir sua função. As
-fronteiras abaixo impedem que uma chave destinada ao cliente se torne acesso
-administrativo ou que uma leitura pública alcance relações privadas:
+fronteiras abaixo separam chaves de cliente de acesso administrativo e limitam
+quais dados podem ser obtidos por uma leitura pública:
 
 - o esquema `public`, agrupamento de tabelas e funções do banco, expõe apenas relações
   deliberadas e combina privilégios explícitos com
@@ -423,7 +461,8 @@ administrativo ou que uma leitura pública alcance relações privadas:
 - Storage usa buckets privados e políticas por vínculo;
 - site e pacote Android (APK) recebem apenas URL e chave publicável;
 - segredos administrativos permanecem nas Edge Functions;
-- exclusão de conta e remoção de órfão revalidam objetos antes de apagar bytes.
+- exclusão de conta e remoção de arquivos sem vínculo revalidam os objetos antes de
+  apagar seus bytes.
 
 ## Backup e evolução
 
@@ -433,12 +472,12 @@ avança depois que a capacidade inteira está instalada. A nova versão do clien
 confere esse manifesto e interrompe a operação se o banco for incompatível.
 
 Uma exportação de backup, ou dump, do PostgreSQL preserva dados relacionais e
-metadados, mas não os bytes do Storage. Recuperação completa exige também backup dos
-objetos. O ensaio `test:backup-restore:local` restaura um conjunto sintético integrado
-de dados numa instância descartável sem rede, confere o corte histórico e aplica a
-cadeia posterior até o manifesto corrente, verificando estado útil e leitores atuais.
-O teste `test:storage:lifecycle:local` exerce gravação, leitura e remoção dos bytes
-pela API do Storage.
+metadados. A recuperação completa exige também uma cópia dos bytes do Storage.
+O ensaio `test:backup-restore:local` restaura um conjunto sintético integrado de dados
+numa instância descartável sem rede, confere a versão histórica de referência e aplica
+as migrações posteriores até o manifesto corrente. Ao final, verifica os dados úteis
+e sua leitura pelos clientes atuais. O teste `test:storage:lifecycle:local` exercita
+a gravação, a leitura e a remoção dos bytes pela API do Storage.
 
 ## Mapa do código
 
