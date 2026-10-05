@@ -567,7 +567,17 @@ export function buildReadableReferences({ root = defaultRoot, check = false, con
         continue;
       }
       if (source !== expected) {
-        citationErrors.push(`${relative}: a seção Referências diverge das citações da página.`);
+        const sourceLines = source.split("\n");
+        const expectedLines = expected.split("\n");
+        let line = 0;
+        while (line < Math.max(sourceLines.length, expectedLines.length) && sourceLines[line] === expectedLines[line]) line += 1;
+        const describeLine = (value) => value === undefined ? "<fim do arquivo>" : JSON.stringify(value);
+        citationErrors.push([
+          `${relative}: a seção Referências diverge das citações da página.`,
+          `Primeira diferença na linha ${line + 1}:`,
+          `  Esperado: ${describeLine(expectedLines[line])}`,
+          `  Encontrado: ${describeLine(sourceLines[line])}`
+        ].join("\n"));
       }
     }
     if (citationErrors.length) throw new Error(citationErrors.join("\n"));
