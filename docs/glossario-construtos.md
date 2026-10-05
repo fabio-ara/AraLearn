@@ -2,12 +2,11 @@
 
 ## Finalidade
 
-Este glossário reúne palavras que parecem semelhantes na interface, no desenho
-do curso e na pesquisa, mas cumprem funções diferentes. Agência e carga
-cognitiva, por exemplo, são conceitos teóricos que precisam ser investigados;
-microssequência e unidade de estudo são convenções usadas para organizar o
-AraLearn. Essa distinção evita transformar um nome ou uma contagem do aplicativo
-em medida educacional.
+Este glossário reúne termos usados na interface, no desenho do curso e na
+pesquisa. Agência e carga cognitiva são conceitos teóricos empregados para
+investigar fenômenos humanos; microssequência e unidade de estudo são
+convenções que organizam o AraLearn. As definições distinguem esses papéis e
+indicam que evidências permitem interpretar cada um.
 
 As entradas relacionam significado, manifestações possíveis e evidência
 necessária. O [glossário técnico](glossario-tecnico.md) complementa a consulta
@@ -15,15 +14,14 @@ quando a pergunta envolve implementação, como armazenamento e sincronização.
 
 ## Como usar as definições
 
-As entradas seguem o mesmo percurso. O **tipo** informa se o termo vem da
-teoria, nomeia um resultado ou organiza o produto. A **definição** estabelece o
-sentido adotado; a **manifestação possível** mostra como o conceito poderia
-aparecer num estudo. O campo **Distinção** relaciona
-conceitos próximos; **Evidência necessária** explica como sustentar a
-interpretação numa avaliação.
+O **tipo** informa se o termo vem da teoria, nomeia um resultado ou organiza o
+produto. A **definição** estabelece o sentido adotado; a **manifestação
+possível** mostra como o conceito poderia aparecer num estudo. O campo
+**Distinção** relaciona conceitos próximos; **Evidência necessária** explica
+como sustentar a interpretação numa avaliação.
 
-Uma manifestação só ganha valor como evidência quando está ligada a uma tarefa
-e a uma interpretação. A pessoa que rejeita uma sugestão pode estar exercendo
+Uma manifestação ganha valor como evidência quando está ligada a uma tarefa e
+a uma interpretação. A pessoa que rejeita uma sugestão pode estar exercendo
 agência; para sustentar essa conclusão, é preciso examinar se ela compreendeu a
 alternativa e agiu intencionalmente, além de registrar o clique.
 
@@ -47,7 +45,7 @@ alternativa e agiu intencionalmente, além de registrar o clique.
   ([Bandura (2001)](referencias.md#ref-bandura2001agency)).
 - **Manifestação possível:** escolher entre alternativas compreendidas,
   justificar uma decisão, rejeitar uma sugestão, revisar e reverter.
-- **Distinção:** Botões e personalizações oferecem meios de ação; a agência
+- **Distinção:** botões e personalizações oferecem meios de ação; a agência
   diz respeito ao que a pessoa compreende, escolhe e consegue realizar nessas
   condições.
 - **Evidência necessária:** tarefa que exija escolha real, explicação da
@@ -63,7 +61,7 @@ alternativa e agiu intencionalmente, além de registrar o clique.
   [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
 - **Manifestação possível:** formular meta, escolher estratégia, acompanhar sua
   adequação e ajustá-la diante de resultado ou retorno.
-- **Distinção:** Progresso, frequência e marcas de revisão descrevem estados
+- **Distinção:** progresso, frequência e marcas de revisão descrevem estados
   do percurso. A autorregulação envolve as metas e as razões pelas quais a
   pessoa usa ou modifica esse percurso.
 - **Evidência necessária:** combinação de tarefa, relato situado, produto e
@@ -77,11 +75,11 @@ alternativa e agiu intencionalmente, além de registrar o clique.
   ([Knowles (1975)](referencias.md#ref-knowles1975selfdirected)).
 - **Manifestação possível:** definir e revisar objetivos, buscar recursos e
   justificar alterações do percurso.
-- **Distinção:** A iniciativa pode coexistir com orientação e apoio
+- **Distinção:** a iniciativa pode coexistir com orientação e apoio
   institucional. Estudar sozinho informa com quem a atividade ocorre;
   autodireção informa quem participa das decisões sobre o processo.
-- **Evidência necessária:** observar decisões sobre o processo em contexto, e
-  não apenas navegação livre.
+- **Evidência necessária:** observação das decisões sobre o processo em seu
+  contexto, incluindo as razões para escolher ou modificar o percurso.
 
 ### Metacognição
 
@@ -91,14 +89,14 @@ alternativa e agiu intencionalmente, além de registrar o clique.
   acompanhado de monitoramento e regulação desse processo. No estudo, pode
   envolver julgar compreensão, reconhecer incerteza, escolher estratégia e
   verificar se ela funcionou. Esses processos integram modelos de
-  autorregulação, mas não abrangem sozinhos suas dimensões motivacionais,
+  autorregulação, que abrangem também dimensões motivacionais,
   comportamentais e contextuais
   ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
   [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
 - **Manifestação possível:** explicitar o que não foi compreendido, justificar
   mudança de estratégia e revisar o próprio julgamento depois de nova
   evidência.
-- **Distinção:** Confiança declarada é um julgamento; resposta correta é um
+- **Distinção:** confiança declarada é um julgamento; resposta correta é um
   desempenho. Sua relação com o monitoramento e a regulação precisa ser
   examinada na tarefa e ao longo das decisões.
 - **Evidência necessária:** tarefa, julgamento e comportamento regulatório
@@ -112,11 +110,11 @@ alternativa e agiu intencionalmente, além de registrar o clique.
   ([Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation)).
 - **Manifestação possível:** compreender por que uma orientação existe, poder
   recusá-la legitimamente e dispor de suporte para decidir.
-- **Distinção:** Regras e orientações podem oferecer estrutura para uma
+- **Distinção:** regras e orientações podem oferecer estrutura para uma
   escolha informada. O interesse está na possibilidade de compreender,
   discutir e exercer a escolha.
 - **Evidência necessária:** avaliação da qualidade da escolha e da percepção de
-  suporte, não contagem de controles.
+  suporte oferecido pelos controles e pelas orientações.
 
 ### Literacia em inteligência artificial
 
@@ -129,14 +127,16 @@ alternativa e agiu intencionalmente, além de registrar o clique.
 - **Manifestação possível:** explicar limitações relevantes, avaliar uma
   resposta e sua fonte, justificar o uso ou o não uso de uma ferramenta e
   considerar as consequências da decisão.
-- **Distinção:** Familiaridade com uma ferramenta e habilidade de formular
+- **Distinção:** familiaridade com uma ferramenta e habilidade de formular
   comandos descrevem experiência de uso. A literacia inclui avaliar
   fundamentos, limites e consequências desse uso.
 - **Evidência necessária:** tarefas que examinem compreensão técnica, julgamento
-  crítico e ação no contexto definido; a recomendação orienta a formação, mas
-  não fornece uma medida validada para o AraLearn.
+  crítico e ação no contexto definido. A recomendação orienta a formação;
+  construir uma medida para o AraLearn exige selecionar e validar instrumentos.
 
-### Supervisão humana da IA (*human-in-the-loop*)
+<a id="supervisão-humana-da-ia-human-in-the-loop"></a>
+
+### Supervisão humana da IA
 
 Neste glossário, **inteligência artificial (IA)** designa modelos ou serviços
 computacionais que propõem, transformam ou analisam conteúdo durante a autoria.
@@ -144,22 +144,21 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Tipo:** política de desenho.
 - **Definição:** no desenho do AraLearn, participação humana com autoridade para
   delimitar a tarefa, inspecionar propostas e fontes, decidir sobre mudanças e
-  conferir o resultado salvo. A expressão *human-in-the-loop* identifica essa
-  participação no processo; o que a pessoa efetivamente consegue compreender e
-  corrigir precisa ser avaliado separadamente. O referencial do Ministério da
-  Educação distingue supervisão com decisão humana necessária antes de efeitos
-  relevantes (*human-in-the-loop*) de acompanhamento com possibilidade de
-  intervenção (*human-on-the-loop*, pp. 69–70;
-  [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao)). Cada fluxo
-  do produto precisa ser caracterizado pelo controle que efetivamente oferece.
+  conferir o resultado salvo. A forma dessa participação depende do fluxo. O
+  referencial do Ministério da Educação distingue a decisão humana necessária
+  antes de efeitos relevantes (*human-in-the-loop*) do acompanhamento com
+  possibilidade de intervenção (*human-on-the-loop*, pp. 69–70;
+  [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao)).
+  A [assistência por IA](assistencia-por-ia.md) relaciona essas formas aos
+  controles e às autorizações do produto.
 - **Manifestação possível:** alvo e fontes inspecionáveis, proposta com alcance
   compreensível, possibilidade real de rejeitar ou corrigir e registro da
   decisão humana pertinente ao conteúdo salvo.
-- **Distinção:** O desenho oferece autoridade e meios de intervenção.
+- **Distinção:** o desenho oferece autoridade e meios de intervenção.
   Compreensão, agência e controle efetivo descrevem resultados humanos a
   examinar durante o uso.
 - **Evidência necessária:** inspeção do fluxo, contratos, estados e testes que
-  demonstrem a propriedade implementada. Diretrizes de interação humano-IA
+  demonstrem a propriedade implementada. Diretrizes de interação humano–IA
   fundamentam a necessidade de comunicar capacidades e permitir correção
   ([Amershi et al. (2019)](referencias.md#ref-amershi2019humanai)).
 
@@ -171,27 +170,28 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   depois da mudança.
 - **Manifestação possível:** detectar sugestão inadequada, rejeitar ou corrigir,
   explicar a decisão final e restaurar o estado anterior quando necessário.
-- **Distinção:** Uma confirmação registra uma ação. Controle efetivo exige
+- **Distinção:** uma confirmação registra uma ação. Controle efetivo exige
   verificar se a pessoa entendeu a proposta e conseguiu rejeitá-la, corrigi-la
   ou reverter seus efeitos quando necessário.
 - **Evidência necessária:** tarefas com erro factual, erro de escopo e
   recomendação plausível porém inadequada, acompanhadas de observação e
   explicação da pessoa. Funções que impõem reflexão podem reduzir dependência
-  excessiva em alguns cenários, mas também acrescentam custo e não têm efeito
-  universal ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
+  excessiva em alguns cenários, mas também acrescentam custo; seus efeitos
+  dependem das condições de uso
+  ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)).
 
 ## Construtos relacionados ao processamento da tarefa
 
 ### Componente de conhecimento
 
-- **Tipo:** unidade teórica latente.
+- **Tipo:** unidade teórica latente, isto é, inferida a partir de observações.
 - **Definição:** componente inferido que relaciona condições, respostas e
   mudanças de desempenho em uma análise de aprendizagem; sua granularidade
   depende da população e das tarefas
   ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
 - **Manifestação possível:** padrão de sucesso, erro, explicação ou aplicação
   em conjunto apropriado de tarefas.
-- **Distinção:** Tópicos e unidades de estudo organizam o material. O
+- **Distinção:** tópicos e unidades de estudo organizam o material. O
   componente de conhecimento pertence ao modelo que explica o desempenho e
   precisa ser inferido por esse modelo.
 - **Evidência necessária:** modelo explícito, tarefas alinhadas, inferência e
@@ -199,14 +199,14 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 
 ### Interatividade de elementos
 
-- **Tipo:** propriedade teórica da relação pessoa-tarefa.
+- **Tipo:** propriedade teórica da relação pessoa–tarefa.
 - **Definição:** necessidade de processar simultaneamente elementos que
   interagem para compreender ou realizar uma tarefa; depende da estrutura da
   informação e do conhecimento prévio
   ([Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity)).
-- **Manifestação possível:** relações que não podem ser aprendidas ou
-  executadas isolando seus componentes sem perder a operação.
-- **Distinção:** A contagem de objetos descreve a apresentação; a
+- **Manifestação possível:** relações cuja separação impede compreender ou
+  executar a operação que as mobiliza conjuntamente.
+- **Distinção:** a contagem de objetos descreve a apresentação; a
   interatividade considera quais relações uma pessoa, com certo conhecimento
   prévio, precisa coordenar para realizar a tarefa.
 - **Evidência necessária:** definição do elemento, público, tarefa e relações
@@ -217,13 +217,14 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 
 - **Tipo:** construto teórico.
 - **Definição:** demanda de memória de trabalho introduzida pela apresentação ou
-  pelo procedimento e dispensável à operação que se pretende aprender
+  pelo procedimento e dispensável à operação que se pretende aprender. A
+  memória de trabalho mantém e manipula informações durante a tarefa
   ([Sweller (1988)](referencias.md#ref-sweller1988cognitiveload);
   [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture)).
 - **Manifestação possível:** busca visual desnecessária, alternância entre
   fontes que precisam ser integradas, passos operacionais, atenção dividida e
   erros de leitura.
-- **Distinção:** A complexidade do conteúdo e o esforço produtivo também podem
+- **Distinção:** a complexidade do conteúdo e o esforço produtivo também podem
   exigir recursos mentais. A carga extrínseca focaliza a demanda dispensável
   criada pelo modo de apresentar ou operar a tarefa.
 - **Evidência necessária:** comparação entre apresentações ou procedimentos,
@@ -237,11 +238,11 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   ([Bjork e Bjork (2011)](referencias.md#ref-bjork2011desirable)).
 - **Manifestação possível:** recuperação espaçada ou discriminação entre
   categorias quando o estudante possui base para realizar a operação.
-- **Distinção:** Ambiguidade, pré-requisitos ausentes e falhas de interface
+- **Distinção:** ambiguidade, pré-requisitos ausentes e falhas de interface
   criam obstáculos. A qualificação como desejável depende de demonstrar
   benefício posterior da dificuldade introduzida nas condições estudadas.
-- **Evidência necessária:** resultado posterior compatível e comparação; maior
-  esforço imediato não basta.
+- **Evidência necessária:** comparação que relacione a dificuldade introduzida
+  a um resultado posterior compatível com o objetivo de aprendizagem.
 
 ### Prática de recuperação
 
@@ -252,7 +253,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)).
 - **Manifestação possível:** recordar, discriminar, explicar, completar,
   ordenar ou aplicar sem resposta já exposta.
-- **Distinção:** Reler mantém a informação disponível; recuperar solicita que
+- **Distinção:** reler mantém a informação disponível; recuperar solicita que
   a pessoa a traga à memória. Uma seleção entre alternativas pode envolver
   recuperação, conforme as pistas e o caminho de resolução.
 - **Evidência necessária:** especificar o que deveria ser recuperado, que apoio
@@ -265,11 +266,12 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   arrasto ou pinça.
 - **Manifestação possível:** evento de ponteiro ou toque com alvo e instante
   identificados.
-- **Distinção:** O gesto inicia uma interação; a mudança de estado mostra se a
+- **Distinção:** o gesto inicia uma interação; a mudança de estado mostra se a
   ação ocorreu. Operação intelectual e aprendizagem pertencem a outros níveis
   de análise.
 - **Evidência necessária:** instrumentação técnica validada e contexto da
-  interface; o gesto isolado não sustenta interpretação psicológica.
+  interface. Uma interpretação psicológica exige relacionar esses registros à
+  tarefa e ao fenômeno investigado.
 
 ### Ação de interface
 
@@ -277,7 +279,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Definição:** mudança de estado solicitada por um controle, como abrir,
   avançar, voltar, confirmar ou anotar.
 - **Manifestação possível:** transição de estado aceita, recusada ou interrompida.
-- **Distinção:** O gesto descreve a entrada física; a ação descreve o efeito
+- **Distinção:** o gesto descreve a entrada física; a ação descreve o efeito
   solicitado no aplicativo. A tarefa determina o trabalho intelectual
   envolvido nessa interação.
 - **Evidência necessária:** estado anterior, ação, alvo e resultado técnico.
@@ -288,7 +290,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 - **Definição:** operação que a tarefa solicita sobre o conteúdo, como localizar,
   comparar, relacionar, ordenar, calcular, transformar, explicar ou provar.
 - **Manifestação possível:** resposta e justificativa coerentes com o objetivo.
-- **Distinção:** Um mesmo toque pode confirmar um cálculo ou uma comparação. A
+- **Distinção:** um mesmo toque pode confirmar um cálculo ou uma comparação. A
   operação-alvo descreve o trabalho solicitado, enquanto o gesto e o controle
   descrevem como a resposta é enviada.
 - **Evidência necessária:** correspondência explícita entre objetivo, tarefa,
@@ -303,7 +305,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   [Kirsh (2010)](referencias.md#ref-kirsh2010external)).
 - **Manifestação possível:** reorganizar uma representação para tornar uma
   relação perceptível antes de decidir.
-- **Distinção:** Mover ou rolar um objeto pode ter finalidade apenas
+- **Distinção:** mover ou rolar um objeto pode ter finalidade apenas
   operacional. A análise precisa mostrar quando a ação revelou informação ou
   facilitou uma inferência.
 - **Evidência necessária:** tarefa e análise que demonstrem a função da ação,
@@ -317,12 +319,13 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   ([Chun et al. (2011)](referencias.md#ref-chun2011attention)).
 - **Manifestação possível:** desempenho em tarefa e medidas validadas para o
   mecanismo atencional investigado.
-- **Distinção:** Foco de teclado e posição visível pertencem à interface.
+- **Distinção:** foco de teclado e posição visível pertencem à interface.
   Tempo e cliques registram uso; investigar atenção requer relacionar esses
   eventos ao mecanismo cognitivo definido.
 - **Evidência necessária:** definição do mecanismo, desenho e instrumento
-  compatíveis; explicações neurocientíficas exigem cautela de tradução entre
-  níveis ([Howard-Jones (2014)](referencias.md#ref-howardjones2014neuroscience)).
+  compatíveis; explicações neurocientíficas exigem justificar a relação entre
+  os níveis de análise
+  ([Howard-Jones (2014)](referencias.md#ref-howardjones2014neuroscience)).
 
 ### Engajamento
 
@@ -332,7 +335,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   ([Henrie et al. (2015)](referencias.md#ref-henrie2015engagement)).
 - **Manifestação possível:** combinação de participação observável,
   autorrelato, produto e desempenho conforme a dimensão investigada.
-- **Distinção:** Tempo, frequência e navegação descrevem aspectos do uso. A
+- **Distinção:** tempo, frequência e navegação descrevem aspectos do uso. A
   interpretação como engajamento depende da dimensão escolhida e de evidências
   que a relacionem à atividade.
 - **Evidência necessária:** definição da dimensão, instrumento e triangulação
@@ -349,7 +352,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   discriminação, relação ou aplicação coerente.
 - **Manifestação possível:** explicar por que uma resposta se aplica,
   distinguir casos próximos ou aplicar o conceito a exemplo apropriado.
-- **Distinção:** Conclusão do percurso e confiança declarada informam outras
+- **Distinção:** conclusão do percurso e confiança declarada informam outras
   dimensões do estudo. Compreensão é examinada pelo significado que a pessoa
   consegue explicar ou aplicar.
 - **Evidência necessária:** tarefa e rubrica alinhadas ao conceito, com controle
@@ -362,11 +365,11 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   aprendido.
 - **Manifestação possível:** realizar tarefa equivalente depois de intervalo
   justificado.
-- **Distinção:** Uma resposta imediata mostra desempenho naquele momento. A
+- **Distinção:** uma resposta imediata mostra desempenho naquele momento. A
   retenção requer nova observação após um intervalo, com o apoio disponível e
   a equivalência da tarefa identificados.
-- **Evidência necessária:** medida adiada e descrição do intervalo; o resultado
-  imediato não pode substituí-la.
+- **Evidência necessária:** medida adiada e descrição do intervalo, relacionadas
+  às condições da aprendizagem e da avaliação.
 
 ### Transferência
 
@@ -375,12 +378,13 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   suficientemente nova, preservando a estrutura relevante.
 - **Manifestação possível:** resolver problema novo e explicar a relação com o
   princípio aprendido.
-- **Distinção:** Trocar nomes ou valores pode preservar uma tarefa já
+- **Distinção:** trocar nomes ou valores pode preservar uma tarefa já
   reconhecível. A investigação explicita o que mudou estruturalmente e que
   relação o estudante precisou levar à nova situação.
 - **Evidência necessária:** justificar a distância entre tarefa de aprendizagem
-  e tarefa de transferência; a literatura mostra que transferência de prática
-  por teste é possível, mas moderada ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
+  e tarefa de transferência. Os efeitos da prática por teste dependem dessa
+  relação e de outras condições estudadas
+  ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
 ## Resultados de interação e continuidade
 
@@ -392,8 +396,8 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   9241-11:2018
   ([International Organization for Standardization (2018)](referencias.md#ref-iso2018usability)).
 - **Manifestação possível:** sucesso, erro, necessidade de ajuda, tempo
-  interpretado com cautela e percepção numa jornada.
-- **Distinção:** Preferência visual e frequência de acesso acrescentam
+  interpretado em relação à tarefa e percepção durante um percurso de uso.
+- **Distinção:** preferência visual e frequência de acesso acrescentam
   informações sobre a experiência. Usabilidade relaciona o uso aos objetivos e
   às condições de pessoas determinadas.
 - **Evidência necessária:** público, objetivo, contexto e critérios declarados.
@@ -405,7 +409,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   para continuar uma atividade suspensa.
 - **Manifestação possível:** localizar o ponto correto, explicar o que estava em
   andamento e continuar sem erro relevante.
-- **Distinção:** Reabrir a aplicação restabelece o acesso. A retomada inclui
+- **Distinção:** reabrir a aplicação restabelece o acesso. A retomada inclui
   reconstruir o ponto e o objetivo necessários para prosseguir na tarefa.
 - **Evidência necessária:** interrupção controlada ou naturalística, intervalo,
   tarefa de continuação e explicações alternativas
@@ -414,12 +418,12 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 
 ### Aprendizagem móvel situada
 
-- **Tipo:** lente de contexto.
+- **Tipo:** perspectiva de análise do contexto.
 - **Definição:** atividade de aprendizagem mediada por dispositivo móvel em
   condições cotidianas que podem variar em tempo, ambiente, movimento e rede.
 - **Manifestação possível:** estudo em diferentes contextos e retomada entre
   sessões.
-- **Distinção:** A extensão do conteúdo é uma escolha de desenho. A análise
+- **Distinção:** a extensão do conteúdo é uma escolha de desenho. A análise
   situada considera também os lugares, interrupções, recursos e relações que
   participam do estudo.
 - **Evidência necessária:** caracterização real do contexto e do dispositivo; a
@@ -437,7 +441,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   [Shute (2008)](referencias.md#ref-shute2008feedback)).
 - **Manifestação possível:** identificar distinção, compreender causa, escolher
   revisão e aplicar em nova tarefa.
-- **Distinção:** Uma nota ou rótulo de acerto informa um resultado. O retorno
+- **Distinção:** uma nota ou rótulo de acerto informa um resultado. O retorno
   formativo oferece informação que pode orientar a revisão e a ação posterior.
 - **Evidência necessária:** examinar conteúdo, foco, momento e ação posterior.
 
@@ -449,7 +453,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   ([Carless e Boud (2018)](referencias.md#ref-carless2018feedbackliteracy)).
 - **Manifestação possível:** explicar a mensagem, compará-la com o próprio
   trabalho e revisar de modo fundamentado.
-- **Distinção:** Receber e abrir a mensagem tornam o retorno disponível. O
+- **Distinção:** receber e abrir a mensagem tornam o retorno disponível. O
   letramento envolve julgá-lo, lidar com suas implicações e decidir como usá-lo.
 - **Evidência necessária:** tarefa de interpretação e uso, preferencialmente
   acompanhada de entrevista ou produto revisado.
@@ -462,7 +466,7 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
   [Bridwell-Mitchell (2016)](referencias.md#ref-bridwellmitchell2016collaborative)).
 - **Manifestação possível:** negociação, contribuição, revisão, divisão de
   responsabilidade e transformação do produto comum.
-- **Distinção:** Convites e permissões oferecem condições para participar. A
+- **Distinção:** convites e permissões oferecem condições para participar. A
   colaboração é examinada na negociação e na transformação do trabalho comum.
 - **Evidência necessária:** análise do processo, das relações e do produto
   coletivo, incluindo conflitos e casos negativos.
@@ -482,16 +486,18 @@ outras dimensões.
   estado. Pode registrar uma dúvida, um possível erro ou uma sugestão em
   qualquer nível endereçável do curso, da estrutura geral a uma unidade, fonte
   ou âncora. Várias observações podem coexistir no mesmo alvo
-  ([W3C (2017)](https://www.w3.org/TR/annotation-model/)).
+  ([W3C (2017)](https://www.w3.org/TR/annotation-model/)). O capítulo de
+  [observações](observacoes-pedagogicas.md) descreve os alvos e os percursos
+  disponíveis no AraLearn.
 - **Manifestação possível:** texto registrado, alvo reencontrável, revisão,
   canal e estado preservados.
-- **Distinção:** Quantidade, categoria e tempo de resolução descrevem o
+- **Distinção:** quantidade, categoria e tempo de resolução descrevem o
   registro e seu tratamento. Compreensão e dificuldade requerem examinar o
   conteúdo da observação junto da tarefa e de outras evidências.
-- **Evidência necessária:** corpo, alvo e contexto; ausência de observação não
-  significa compreensão. Classificação automática só identifica o próprio
-  tópico quando ele é o alvo exato; outros assuntos exigem seleção humana
-  explícita, não inferência pela prosa.
+- **Evidência necessária:** corpo, alvo e contexto. A compreensão também exige
+  evidências de quem não registrou observações. A classificação automática
+  identifica o próprio tópico quando ele é o alvo exato; outros assuntos
+  exigem seleção humana explícita.
 
 ## Resultados compostos de qualidade
 
@@ -502,7 +508,7 @@ outras dimensões.
   progressão, explicação, representação, prática e retorno.
 - **Manifestação possível:** a explicação prepara a prática, os exemplos são
   pertinentes e as tarefas correspondem ao objetivo.
-- **Distinção:** Validação estrutural e extensão descrevem propriedades do
+- **Distinção:** validação estrutural e extensão descrevem propriedades do
   material. A avaliação pedagógica examina suas relações com o objetivo, o
   público e a aprendizagem pretendida.
 - **Evidência necessária:** rubrica explícita, revisão de conteúdo e tarefas com
@@ -515,7 +521,7 @@ outras dimensões.
   operação-alvo da tarefa sem ambiguidade evitável.
 - **Manifestação possível:** especialista reconhece a notação e novato consegue
   interpretar a relação depois da base necessária.
-- **Distinção:** Geometria legível e bibliotecas gráficas sustentam a
+- **Distinção:** geometria legível e bibliotecas gráficas sustentam a
   apresentação. A avaliação representacional considera também a notação, seu
   significado e a interpretação na tarefa.
 - **Evidência necessária:** auditoria disciplinar, caso complexo e tarefa de
@@ -528,7 +534,7 @@ outras dimensões.
   rastreabilidade e responsabilidade editorial.
 - **Manifestação possível:** conteúdo correto, justificável, revisável e
   alinhado ao planejamento.
-- **Distinção:** A origem humana ou automatizada identifica a produção. A
+- **Distinção:** a origem humana ou automatizada identifica a produção. A
   qualidade depende da precisão, da pertinência e das condições de revisão do
   material resultante.
 - **Evidência necessária:** rubrica, revisão independente, casos adversos e
@@ -541,73 +547,77 @@ outras dimensões.
   conteúdo materializado numa revisão identificada.
 - **Manifestação possível:** referências, ordem, componentes, requisitos e
   evidência pública permanecem coerentes segundo critérios e revisão semântica.
-- **Distinção:** A conformidade responde às regras declaradas para uma versão.
+- **Distinção:** a conformidade responde às regras declaradas para uma versão.
   Qualidade global, aprendizagem e validade dos parâmetros exigem avaliações
   com outros critérios.
-- **Evidência necessária:** revisão contextual reproduzível, unidades de estudo reais, regras
-  declaradas, julgamento humano nos itens semânticos e reinspeção após reparo.
+- **Evidência necessária:** revisão contextual reproduzível, unidades de estudo
+  reais, regras declaradas, julgamento humano nos itens semânticos e nova
+  inspeção após a correção.
 
 ## Termos operacionais de curso e autoria
 
-As definições desta seção e do modelo didático constituem o contrato conceitual
-da autoria contextual. Uma definição estabelece significado e comportamento
-exigido; a disponibilidade de cada operação depende da implementação e de sua
-verificação. O [fundamento e o alcance da leitura
+As definições desta seção e do [modelo didático](modelo-didatico.md) orientam a
+autoria contextual. Elas estabelecem o significado dos objetos e as relações
+que as operações devem preservar. O [contrato de autoria
+contextual](autoria-contextual.md) especifica os controles, sua disponibilidade
+e seus efeitos na interface e nos canais. O [fundamento e o alcance da leitura
 bibliográfica](fundamentos-pesquisa-e-governanca.md#revisão-focal-da-autoria-contextual)
-distinguem essas decisões de resultados educacionais. O [contrato de autoria
-contextual](autoria-contextual.md) especifica onde cada controle aparece e seu
-efeito na interface e nos canais.
+situam a literatura usada para formular essas decisões.
 
 ### Curso
 
 Objeto instrucional identificável que organiza um percurso de estudo e conserva
 o conteúdo, as fontes e as decisões de autoria relacionadas. Quem possui acesso
-pode estudar o que já foi salvo enquanto a produção continua. No produto, o
-curso também é a unidade à qual se vinculam propriedade e autorização. Ele pode
-representar uma disciplina ou integrar uma intervenção, mas esses contextos
-precisam ser definidos fora do termo operacional.
+pode estudar o conteúdo disponibilizado pela política do curso enquanto a
+produção continua. No produto, o curso também é a unidade à qual se vinculam
+propriedade e autorização. Ele pode representar uma disciplina ou integrar uma
+intervenção; esses contextos são definidos pelo projeto educacional que o usa.
 
 ### Materialização
 
-Operação que realiza um desenho autorizado como unidades de estudo salvas. O
+Operação que transforma um desenho autorizado em unidades de estudo salvas. O
 resultado registra quais decisões foram aplicadas e de onde vieram seus
 elementos. A base explicativa possui produção própria e pode ser concluída antes
 dessas unidades. Rascunhos recuperáveis e substituições parciais permanecem
 marcados como incompletos. Concluir a materialização confirma a persistência da
-operação; publicação, qualidade autoral e aprendizagem pertencem a outras
-etapas de verificação.
+operação; a disponibilização segue a política do curso. Qualidade autoral e
+aprendizagem são examinadas por avaliações específicas. O
+[fluxo de produção](fluxos-prompts-e-contratos.md) descreve essas etapas.
 
 ### Fonte
 
-Objeto de proveniência que identifica o estado corrente de um material usado na
-autoria. Uma fonte pode ser documento, página da Web, vídeo, PDF ou outro
-material aceito pelo produto. Sua presença permite localizar a origem. Verdade,
-qualidade, pertinência e fidelidade da interpretação precisam ser examinadas no
-material e no uso que dele foi feito.
+Registro que identifica um material usado na autoria, como um documento, uma
+página da Web ou um vídeo. Esse registro conserva os dados necessários para
+reconhecer a obra e relacioná-la ao conteúdo que utiliza. O arquivo associado,
+quando houver, tem condições próprias de armazenamento e acesso.
+[Fontes, citações e referências](fontes-e-citacoes.md) distingue o registro
+bibliográfico, o anexo e seus vínculos. A inspeção do material e de seu uso
+examina a correção, a pertinência e a fidelidade da interpretação.
 
 ### Âncora
 
-Localização delimitada dentro da fonte corrente, como página,
-instante de mídia, fragmento de endereço ou trecho textual. Ela torna a
-atribuição reencontrável. A interpretação ainda precisa considerar o conteúdo e
-o contexto ao redor dessa localização.
+Localização delimitada dentro da fonte corrente, como página, instante de
+mídia, fragmento de endereço ou trecho textual. Ela permite reencontrar a
+localização atribuída à fonte. A interpretação considera também o conteúdo ao
+redor desse ponto. O [registro de fontes](fontes-e-citacoes.md) explica como
+âncoras e citações se relacionam.
 
 ### Observação
 
 Nome de interface da anotação ancorada registrada por uma pessoa sobre o curso.
 Pode expressar uma dúvida, apontar um possível erro ou propor uma revisão.
 Uma observação pode incidir sobre várias explicações e unidades; cada alvo
-conserva sua pendência e a decisão correspondente. O conteúdo só muda quando
-uma correção é aplicada. Compreensão, dificuldade e aprendizagem pertencem a
-avaliações próprias.
+conserva sua pendência e a decisão correspondente. A correção é a operação que
+altera o conteúdo. O [acompanhamento das observações](observacoes-pedagogicas.md)
+distingue o registro da questão, seu tratamento e a revisão do material.
 
 ### Achado
 
 Problema identificado numa revisão contextual, com regra pertinente, alvo e
 evidência. Pode orientar uma proposta de correção. Observação humana, aplicação
-do reparo e declaração de revisão autoral permanecem registros separados.
+da correção e declaração de revisão autoral permanecem registros separados.
 O [fluxo de revisão](auditoria-de-conformidade-instrucional.md) descreve como
-reler o contexto, propor o reparo e conferir seus efeitos.
+reler o contexto, propor a mudança e conferir seus efeitos.
 
 ### Parâmetro de desenho
 
@@ -648,24 +658,25 @@ precisa ser conferida no conteúdo produzido.
 Edição é a alteração de campos de conteúdo autorizados. Enquanto não salva,
 permanece rascunho local; salvar registra a intervenção realizada pela pessoa
 proprietária. A autoria do texto e a origem da intervenção permanecem
-distinguíveis: aceitar uma proposta redigida por IA não transforma sua geração
-em redação humana. Salvar, abrir, comentar e encerrar uma edição não declaram
-revisão autoral.
+distinguíveis: uma proposta redigida por IA conserva essa origem mesmo quando
+a pessoa decide aplicá-la. A declaração de revisão autoral é uma ação própria,
+realizada sobre o conteúdo salvo que foi inspecionado.
 
 ### Revisão autoral
 
 Declaração reversível da pessoa de que inspecionou o conteúdo salvo identificado
 de uma base explicativa ou unidade de estudo. O estado distingue ausência de
 declaração, declaração pertinente ao conteúdo corrente e declaração
-desatualizada após mudança material. Marcar com edição pendente requer resolver
-salvar ou descartar; retirar a marca não desfaz a edição.
+desatualizada após mudança material. Antes de marcar um objeto com edição
+pendente, é preciso salvar ou descartar o rascunho. Retirar a marca conserva a
+edição.
 
-A declaração corresponde ao objeto salvo que foi inspecionado: revisar a base
-explicativa não revisa automaticamente suas unidades. Mudanças na base, nas
-fontes ou nos requisitos podem exigir nova inspeção dos objetos relacionados.
-A marca registra a declaração humana; qualidade e eficácia requerem avaliação
-própria. Ela também é distinta de **Rever**, a marca pessoal usada pelo
-estudante para retomar uma unidade.
+A declaração corresponde ao objeto salvo que foi inspecionado. Cada unidade e
+a base explicativa recebem marcas próprias. Mudanças no conteúdo ou nos dados
+que compõem a base relevante da revisão podem exigir nova inspeção dos objetos
+relacionados. [Explicação e revisão humana](explicacao-e-revisao-humana.md)
+especifica o alcance de cada marca. **Rever** tem outra finalidade: é a marca
+pessoal usada pelo estudante para retomar uma unidade.
 
 ### Inspeção de IA
 
@@ -686,11 +697,11 @@ identifica, em registro próprio, a inspeção afirmada pela pessoa.
 
 Visibilidade expressa a decisão autorizada sobre quem pode encontrar ou estudar
 o curso; acesso é a permissão efetiva de consultar o objeto e seus arquivos.
-Quem possui acesso pode estudar o conteúdo completo salvo, inclusive como
-visitante anônimo de um curso público. Uma política opcional pode restringir a
-consulta ao material com revisão autoral. Rascunhos locais, gravações parciais
-e arquivos sem autorização permanecem protegidos. Migrações preservam os
-estados de revisão e visibilidade já conhecidos.
+Pela política padrão, quem possui acesso pode estudar o conteúdo completo
+salvo, inclusive como visitante anônimo de um curso público. Uma política
+opcional restringe o estudo ao material com revisão autoral atual. Rascunhos
+locais, gravações parciais e arquivos sem autorização permanecem protegidos.
+Migrações preservam os estados de revisão e visibilidade já conhecidos.
 
 ### Preferências do processo de autoria
 
@@ -698,8 +709,9 @@ Padrões pessoais que organizam o modo de trabalhar, como o foco da autoria, a
 cadência e os momentos de revisão. Eles podem iniciar ou orientar a continuidade
 de um **mandato**, isto é, o pedido autoral com alcance e condições acordados.
 Exceções de curso ou pesquisa ficam registradas. Uma mudança posterior de
-preferência precisa ser conciliada com o mandato em curso; um perfil salvo
-conserva uma cópia dos valores, e não uma ligação que atualiza todos os cursos.
+preferência precisa ser conciliada com o mandato em curso. Um perfil salvo
+oferece valores reutilizáveis, copiados para o curso quando aplicado; sua
+alteração posterior exige nova aplicação para modificar o curso.
 
 ### Foco Conteúdo e Ciclo completo
 
@@ -708,33 +720,34 @@ microssequência por microssequência, com objetivo, público, escopo e dependê
 suficientes para delimitar cada produção. Permite produzir e revisar bases
 antes de desenhar suas unidades.
 
-**Ciclo completo** articula planejamento focal, base explicativa, desenho,
+**Ciclo completo** reúne planejamento focal, base explicativa, desenho,
 materialização e revisão no recorte acordado. O foco define quais
-responsabilidades entram no trabalho; não determina quanto produzir por vez,
-quando pausar ou quão longa será a conversa.
+responsabilidades entram no trabalho. A quantidade produzida por vez, os
+momentos de pausa e a extensão da conversa são escolhas próprias.
 
 ### Cadência de autoria
 
 Organização do avanço por microssequência, parte ou lote. Parte agrupa trabalho
 coerente; lote coordena partes sucessivas. A cadência define o recorte de
-coordenação e continuidade, sem fixar quantidade pedagógica, extensão da base
-ou unidade de análise pela capacidade de uma chamada técnica.
+coordenação e continuidade. A extensão da base, a unidade de análise e as
+quantidades pedagógicas seguem as necessidades do conteúdo; os limites de uma
+chamada técnica organizam sua transmissão.
 
 ### Ponto de revisão
 
 Momento ou objeto em que o processo solicita inspeção autoral, por exemplo após
-a base, a unidade, a parte ou o lote. A preferência de quando revisar não
-registra a revisão: a declaração precisa corresponder ao objeto salvo. Quando
-se exige revisão por unidade, a inspeção é confirmada em cada objeto; abrir um
-lote, enviar comentário ou fazer uma pausa não confirma todas as unidades.
+a base, a unidade, a parte ou o lote. A preferência define quando se pretende
+revisar; a declaração registra a inspeção de um objeto salvo. Quando o processo
+exige revisão por unidade, cada objeto recebe sua própria confirmação.
 
 ### Estilo de diálogo e preset
 
 Estilo de diálogo orienta concisão, explicitação de decisões e interação durante
-a autoria. Um alvo de palavras da conversa não reduz o conteúdo intelectual
-necessário à base ou às unidades. **Preset** é um atalho que configura valores
-visíveis de foco, cadência, revisão e diálogo; esses eixos continuam
-independentes e podem ser ajustados separadamente.
+a autoria. Um alvo de palavras da conversa organiza a comunicação, enquanto a
+base e as unidades recebem o desenvolvimento necessário ao conteúdo.
+**Preset** é um atalho que configura valores visíveis de foco, cadência,
+revisão e diálogo; esses eixos continuam independentes e podem ser ajustados
+separadamente.
 
 ### Política de componentes
 
@@ -763,7 +776,7 @@ Medida observável do tamanho ou da apresentação de um conteúdo, como número
 palavras, altura ou duração. Pode orientar ergonomia, renderização e limites
 técnicos. Densidade conceitual e dificuldade exigem analisar também o que o
 texto desenvolve e para qual público. Quando usada como alvo editorial, a
-extensão continua flexível e não autoriza compressão do conteúdo necessário.
+extensão permanece flexível para acomodar esse desenvolvimento.
 
 ### Complexidade textual
 
@@ -820,7 +833,9 @@ interface e unidades estatísticas seguem outros critérios de recorte. O quadro
 KLI ajuda a distinguir atividade observável e aprendizagem inferida
 ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)); cada
 correspondência entre o recorte editorial e um componente de conhecimento
-permanece uma hipótese a investigar.
+permanece uma hipótese a investigar. O
+[protocolo de análise instrucional](desenho-instrucional-parametrizado.md#protocolo-de-unidade-de-análise)
+explica como delimitar e registrar o recorte no AraLearn.
 
 ### Conjunto de coordenação
 
@@ -836,12 +851,12 @@ Necessidade de desenvolver determinado aspecto do conhecimento. Se uma
 regra vale apenas sob certa condição, explicar essa condição pode ser um
 requisito do plano. Outros casos podem pedir uma definição, um contraste ou
 a justificativa de um procedimento. A escolha acompanha objetivo, público e
-conteúdo; não existe uma lista que toda explicação precise preencher.
+conteúdo, que determinam quais formas precisam ser desenvolvidas.
 
 ### Forma de explicação
 
 Realização observável pela qual uma ideia ou relação é desenvolvida, como um
-exemplo concreto, um contraste ou a explicação de um mecanismo. A forma só é
+exemplo concreto, um contraste ou a explicação de um mecanismo. A forma é
 exigida quando corresponde à necessidade do conteúdo. A inspeção verifica como
 o texto desenvolve esse aspecto: uma condição de aplicação, por exemplo, deve
 permitir distinguir casos em que a regra vale e casos em que deixa de valer.
@@ -857,8 +872,9 @@ aprendizagem exige um argumento e um instrumento próprios.
 ### Oportunidade distinta de prática
 
 Ocorrência em que alvo, operação e estrutura semântica permitem produzir a
-evidência pretendida sob um caso ou condição declarado. Troca cosmética de
-texto, ordem visual ou componente não cria necessariamente outra oportunidade.
+evidência pretendida sob um caso ou condição declarado. Sua identificação
+considera a tarefa oferecida; mudanças apenas na aparência ou na redação podem
+preservar a mesma oportunidade.
 
 ### Dimensão de variação da prática
 
@@ -879,8 +895,8 @@ fora condições importantes para outro.
 Síntese de planejamento feita antes da materialização. Ela relaciona as
 condições do público às exigências do conteúdo, formula dificuldades previstas
 e registra como o desenho responderá a elas. O adjetivo **pedagógico** delimita
-seu alcance: trata-se do planejamento do curso, e não de avaliação clínica,
-perfil individual ou medição de domínio.
+seu alcance ao planejamento do curso. Avaliação clínica, perfil individual e
+medição de domínio requerem procedimentos próprios.
 
 ### Condição de aprendizagem
 
@@ -913,60 +929,62 @@ no conteúdo produzido e no uso pertinente.
 Recorte didático orientado a um objetivo delimitado e a uma progressão, com
 público, repertório presumido, escopo e dependências pertinentes. Reúne base
 explicativa, desenho e unidades de estudo, que podem estar em estágios distintos
-de produção. Sua identidade não depende de já possuir unidades materializadas.
-Na estrutura do curso, ocupa o nível entre a lição e as unidades de estudo. É
-um termo operacional do AraLearn, sem duração ou quantidade fixa; uma pesquisa
-que o use como unidade de análise precisa justificar esse recorte.
+de produção. Pode existir antes da materialização das unidades. Na estrutura
+do curso, ocupa o nível entre a lição e as unidades de estudo. É um termo
+operacional do AraLearn, com duração e quantidade de unidades variáveis; uma
+pesquisa que o use como unidade de análise precisa justificar esse recorte.
 
 ### Base explicativa da microssequência — explicação
 
-Exposição intelectual e documental desenvolvida para o objetivo da
-microssequência. Ela torna explícito o repertório presumido, desenvolve as
-relações necessárias e registra as fontes pertinentes. Conceitos, exemplos e
-limites entram conforme o objetivo. Essa base pode combinar texto,
-representações visuais e áudio; a interface a apresenta como **explicação**.
-Pode ser produzida e revisada antes das unidades e, no estudo, funciona também
-como apoio sob demanda. O contrato prevê uma instância salva por
-microssequência, consultada sem geração por IA ao abrir.
+Conteúdo desenvolvido para o objetivo da microssequência. A base torna
+explícito o repertório presumido, desenvolve as relações necessárias e registra
+as fontes pertinentes. Conceitos, exemplos e limites entram conforme o
+objetivo. Pode combinar texto, representações visuais e áudio; a interface
+oferece o controle **Explicação**. Pode ser produzida e revisada antes das
+unidades e, no estudo, funciona também como apoio sob demanda. O contrato
+prevê uma instância salva por microssequência; abri-la consulta esse conteúdo.
+[Explicação e revisão humana](explicacao-e-revisao-humana.md) desenvolve suas
+funções e condições de acesso.
 
 A base distingue elaboração autoral, resultado documentado, interpretação e
-hipótese. Sua suficiência depende do objetivo e do público; um alvo editorial
-da unidade não limita sua extensão. Casos, dados e figuras próprios de uma
+hipótese. Sua suficiência depende do objetivo e do público, que determinam a
+extensão necessária ao desenvolvimento. Casos, dados e figuras próprios de uma
 atividade podem possuir fontes na unidade que os usa. Referências reunidas na
 apresentação conservam esses vínculos de proveniência.
 
-O termo é uma decisão de produto. A distinção entre tarefas e informação de
-suporte no 4C/ID oferece comparação parcial
-([Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel)),
-sem tornar a base tradução canônica de *supportive information* nem adoção
-integral do modelo. Consultar a base não comprova domínio ou altera
-automaticamente o repertório atribuído ao estudante.
+O termo é uma decisão de produto. O modelo 4C/ID distingue tarefas de
+aprendizagem e informação de suporte, oferecendo uma comparação parcial
+([Four-Component Instructional Design (s.d.)](referencias.md#ref-fourcidmodel)).
+A base do AraLearn tem contrato e função próprios; essa aproximação conceitual
+não representa uma adoção integral do modelo. Sua consulta e o domínio do
+conteúdo são observados por meios diferentes: avaliar o domínio exige tarefas
+e instrumentos adequados.
 
 ### Desenho instrucional da microssequência
 
-Intenção articulada sobre como apresentar e mobilizar o conteúdo para o público
-e o objetivo. Relaciona o conhecimento necessário à evidência pretendida e
-organiza a sequência de explicação, representação e prática. Assim, orienta os
-episódios instrucionais, e não apenas contagens ou o preenchimento de uma tela. A relação
-entre objetivo, atividade e avaliação fundamenta o cuidado com alinhamento
-([Biggs (1996)](referencias.md#ref-biggs1996alignment)); esse fundamento não
-determina uma taxonomia única, forma obrigatória ou teto universal de ideias.
+Intenção sobre como apresentar e mobilizar o conteúdo para o público e o
+objetivo. Relaciona o conhecimento necessário à evidência pretendida e
+organiza a sequência de explicação, representação e prática. A relação entre
+objetivo, atividade e avaliação fundamenta o cuidado com alinhamento
+([Biggs (1996)](referencias.md#ref-biggs1996alignment)). As formas, quantidades e
+recortes adotados no AraLearn são definidos pelo seu
+[modelo de desenho instrucional](desenho-instrucional-parametrizado.md).
 
 ### Parte de autoria
 
 Unidade operacional que agrupa trabalho autoral manejável segundo coesão,
-dependências e volume de revisão. Coordena a produção de explicações e unidades,
-mas não acrescenta um nível à estrutura curricular. Seus alvos configuráveis
-organizam o trabalho sem impor uma quantidade pedagógica; uma parte pode
-abranger várias microssequências.
+dependências e volume de revisão. Coordena a produção de explicações e unidades
+sem acrescentar um nível à estrutura curricular. Seus alvos configuráveis
+organizam o trabalho; as quantidades pedagógicas seguem o objetivo e o
+conteúdo. Uma parte pode abranger várias microssequências.
 
 ### Microteoria
 
 Termo de documentos anteriores para o conjunto de unidades teóricas que
-fundamentava práticas locais. Para nomear o conteúdo intelectual/documental
-salvo da microssequência, o termo atual é **base explicativa**; sua realização
-em etapas do percurso ocorre nas **unidades de estudo**. Essa distinção permite
-reconhecer o vocabulário anterior sem criar outro objeto curricular.
+fundamentava práticas locais. O conteúdo explicativo salvo da microssequência é
+nomeado atualmente **explicação** ou **base explicativa**; sua realização em
+etapas do percurso ocorre nas **unidades de estudo**. Essa distinção permite
+reconhecer o vocabulário anterior e relacioná-lo aos objetos atuais.
 
 ### Baixa consequência
 
@@ -978,9 +996,12 @@ penalização acumulada, conservando desafio, resposta e retorno.
 
 ### Estado de estudo não punitivo
 
-Política segundo a qual erro, ajuda, tempo e resposta revelada não se
-transformam em punição, classificação ou diagnóstico automático. É decisão normativa,
-não resultado demonstrado sobre ansiedade.
+Política que destina os registros pessoais à continuidade do estudo e mantém
+as tentativas, a ajuda e a consulta à resposta fora de notas, classificações
+ou diagnósticos automáticos. O
+[estado de estudo](estado-de-estudo-nao-punitivo.md) conserva, por exemplo, o
+ponto de retomada e as marcas para rever. Investigar efeitos dessa escolha
+sobre ansiedade exige avaliação com pessoas em condições definidas.
 
 ### Frugalidade
 
@@ -1006,7 +1027,7 @@ decisões de finalidade e participação.
 - **Tipo:** operação de pesquisa sobre o artefato.
 - **Definição:** confronto entre cursos privados independentes cujas condições,
   invariantes e diferenças foram registradas pelo protocolo de pesquisa.
-- **Distinção:** A comparação caracteriza diferenças entre materiais. Atribuir
+- **Distinção:** a comparação caracteriza diferenças entre materiais. Atribuir
   participantes e investigar efeitos sobre aprendizagem são procedimentos
   adicionais do estudo.
 - **Evidência necessária:** inventário comum verificável, valores efetivos,
@@ -1018,8 +1039,8 @@ decisões de finalidade e participação.
 - **Definição:** curso independente no qual parâmetros pedagógicos, alvos
   editoriais e direção editorial foram explicitamente definidos para uma
   comparação deliberada.
-- **Distinção:** Fixar parâmetros identifica a intenção de desenho. A inspeção
-  do material revela se exemplos, linguagem ou dificuldade mudaram junto com a
+- **Distinção:** fixar parâmetros identifica a intenção de desenho. A inspeção
+  do material verifica se exemplos, linguagem ou dificuldade mudaram junto com a
   condição pretendida.
 - **Evidência necessária:** identidade própria, revisão exposta, configuração,
   inventário semântico e diferenças declaradas.
@@ -1029,9 +1050,9 @@ decisões de finalidade e participação.
 - **Tipo:** registro externo delimitado pelo protocolo de pesquisa.
 - **Definição:** exportação explícita do estado e da configuração efetivamente
   usados numa condição.
-- **Distinção:** O curso cotidiano permanece editável. A cópia conservada pelo
-  estudo reúne conteúdo e metadados; PDFs e áudios usados na condição
-  apresentada precisam ser guardados separadamente.
+- **Distinção:** o curso cotidiano permanece editável. A cópia conservada pelo
+  estudo reúne conteúdo e metadados; documentos e arquivos de áudio usados na
+  condição apresentada precisam ser guardados separadamente.
 - **Evidência necessária:** conteúdo, configuração, data, revisão e vínculo
   inequívoco com a condição exposta.
 
@@ -1040,7 +1061,7 @@ decisões de finalidade e participação.
 - **Tipo:** registro observável.
 - **Definição:** propriedade derivável do curso corrente, como configuração,
   composição, fonte ou estado de observação.
-- **Distinção:** O curso conserva conteúdo e registros de produção. A conversa
+- **Distinção:** o curso conserva conteúdo e registros de produção. A conversa
   de autoria e as ações de estudo precisam de coleta própria quando forem
   necessárias à pergunta de pesquisa.
 - **Evidência necessária:** regra de derivação, escopo, revisão e indicação de
@@ -1053,20 +1074,20 @@ decisões de finalidade e participação.
 - **Tipo:** recorte operacional.
 - **Definição:** nível escolhido para agregar o estado corrente, do curso a uma
   unidade de estudo.
-- **Distinção:** O escopo seleciona material do curso. População e unidade de
+- **Distinção:** o escopo seleciona material do curso. População e unidade de
   análise da pesquisa são definidas pelo protocolo conforme a conclusão
   pretendida.
 - **Evidência necessária:** definição do recorte, regras de inclusão e
-  correspondência entre tela e arquivo exportado em JSON, um formato estruturado de dados.
+  correspondência entre tela e arquivo exportado em JSON, um formato estruturado
+  de dados.
 
 ### Intervenção explicitamente observável
 
 - **Tipo:** estado autoral atribuível.
 - **Definição:** definição de parâmetro, revisão manual ou observação que o
-  estado corrente permite contar sem interpretar intenção psicológica.
-- **Distinção:** Uma contagem de intervenções descreve sua ocorrência segundo
-  uma regra. Esforço, atenção e contribuição ao texto exigem interpretações e
-  dados próprios.
+  estado corrente permite contar segundo uma regra declarada.
+- **Distinção:** uma contagem de intervenções descreve sua ocorrência. Esforço,
+  atenção e contribuição ao texto exigem interpretações e dados próprios.
 - **Evidência necessária:** regra de atribuição, escopo, cobertura conhecida e
   tratamento dos casos ausentes.
 
@@ -1083,11 +1104,12 @@ dados.
 
 ### Denominador
 
-- **Tipo:** definição do conjunto de oportunidades.
-- **Definição:** conjunto ao qual um numerador se refere. Duas correções podem
-  representar duas de duas, duas de vinte ou duas de duzentas unidades
-  elegíveis; são medidas diferentes.
-- **Distinção:** O total retornado por uma consulta só serve como denominador
+- **Tipo:** termo matemático aplicado à definição de uma medida.
+- **Definição:** valor pelo qual se divide o numerador numa razão. Numa
+  proporção de unidades corrigidas, corresponde à quantidade de unidades
+  elegíveis: duas correções em duas unidades e duas em duzentas produzem
+  proporções diferentes.
+- **Distinção:** a contagem retornada por uma consulta serve como denominador
   quando corresponde ao conjunto elegível para a pergunta. Filtros e ausências
   precisam participar dessa definição.
 - **Evidência necessária:** regra de inclusão e exclusão, filtros, instante de
@@ -1098,7 +1120,7 @@ dados.
 - **Tipo:** regra de cálculo operacional.
 - **Definição:** transformação versionada de dados declarados, com fórmula,
   unidade, denominador, filtros e tratamento de ausências reproduzíveis.
-- **Distinção:** A regra de cálculo produz uma medida. Sua interpretação para
+- **Distinção:** a regra de cálculo produz uma medida. Sua interpretação para
   uma finalidade constitui um indicador, e seu uso como resultado de pesquisa
   depende do protocolo.
 - **Evidência necessária:** dados de entrada preservados, versão e teste do
@@ -1110,7 +1132,7 @@ dados.
 - **Tipo:** valor observado ou derivado.
 - **Definição:** resultado da observação ou da aplicação de uma métrica sob
   instrumento, população, momento e condições identificados.
-- **Distinção:** A medida é o valor obtido. Relacioná-la a um construto ou
+- **Distinção:** a medida é o valor obtido. Relacioná-la a um construto ou
   usá-la numa decisão requer justificar o significado desse valor nas
   condições da observação.
 - **Evidência necessária:** qualidade e validade proporcionais à interpretação e
@@ -1123,7 +1145,7 @@ dados.
 - **Tipo:** propriedade de uma medição.
 - **Definição:** consistência de escores, classificações ou observações diante
   das fontes de variação pertinentes, como itens, ocasiões e avaliadores.
-- **Distinção:** Consistência e validade respondem a perguntas diferentes. Uma
+- **Distinção:** consistência e validade respondem a perguntas diferentes. Uma
   classificação pode se repetir entre avaliadores e ainda representar
   inadequadamente o fenômeno pretendido.
 - **Evidência necessária:** fonte de variação definida, procedimento de
@@ -1135,7 +1157,7 @@ dados.
 - **Tipo:** relação estatística observada.
 - **Definição:** variação conjunta entre duas variáveis nas condições e no
   recorte analisados.
-- **Distinção:** A variação conjunta descreve uma relação nos dados. Direção
+- **Distinção:** a variação conjunta descreve uma relação nos dados. Direção
   causal e mecanismo exigem enfrentar explicações alternativas por meio do
   desenho e da análise.
 - **Evidência necessária:** variáveis e medidas definidas, população, desenho,
@@ -1146,7 +1168,7 @@ dados.
 - **Tipo:** ameaça à inferência causal.
 - **Definição:** situação em que uma causa alternativa se relaciona tanto à
   condição quanto ao desfecho e pode explicar a associação observada.
-- **Distinção:** O confundimento envolve uma causa comum da condição e do
+- **Distinção:** o confundimento envolve uma causa comum da condição e do
   resultado. Diferenças entre grupos e erros de medição também merecem exame,
   conforme a relação que mantêm com a conclusão.
 - **Evidência necessária:** modelo causal e desenho capazes de identificar as
@@ -1159,7 +1181,7 @@ dados.
 - **Definição:** estudo em que a atribuição aleatória forma condições
   comparáveis em expectativa e a intervenção, a exposição e os desfechos são
   definidos pelo protocolo.
-- **Distinção:** Cursos com configurações distintas fornecem materiais para a
+- **Distinção:** cursos com configurações distintas fornecem materiais para a
   comparação. O experimento organiza sua exposição aos participantes e a
   avaliação dos resultados segundo um protocolo.
 - **Evidência necessária:** participantes, atribuição, intervenção,
@@ -1172,7 +1194,7 @@ dados.
 - **Definição:** estudo que recorre a comparação, temporalidade, modelagem e
   pressupostos adicionais para enfrentar explicações rivais quando a
   atribuição aleatória não ocorre.
-- **Distinção:** É uma estratégia própria para investigar efeitos sob regras
+- **Distinção:** é uma estratégia própria para investigar efeitos sob regras
   de atribuição diferentes do sorteio. A sustentação causal depende de como o
   estudo enfrenta seleção e outras explicações rivais.
 - **Evidência necessária:** regra de formação das condições, comparabilidade,
@@ -1185,7 +1207,7 @@ dados.
 - **Tipo:** argumento sobre transporte de uma conclusão.
 - **Definição:** sustentação para aplicar uma conclusão além das pessoas,
   tarefas, contextos, versões e momentos diretamente estudados.
-- **Distinção:** Tamanho da amostra, repetição técnica e validade interna
+- **Distinção:** tamanho da amostra, repetição técnica e validade interna
   informam aspectos do estudo. Transportar a conclusão requer examinar as
   diferenças entre o contexto estudado e aquele ao qual será aplicada.
 - **Evidência necessária:** dimensões que mudam entre o estudo e o destino,
@@ -1196,7 +1218,7 @@ dados.
 - **Tipo:** inferência para casos além dos observados.
 - **Definição:** extensão justificada de um resultado a população, tarefa,
   contexto ou período delimitado.
-- **Distinção:** O alcance da inferência acompanha a população ou classe de
+- **Distinção:** o alcance da inferência acompanha a população ou classe de
   situações definida. Semelhanças aparentes precisam ser confrontadas com
   diferenças relevantes ao resultado.
 - **Evidência necessária:** população-alvo, regra de amostragem ou transporte,
@@ -1208,7 +1230,7 @@ dados.
 - **Tipo:** interpretação operacional orientada a uma finalidade.
 - **Definição:** medida ou combinação de medidas interpretada por regra
   explícita para apoiar acompanhamento ou decisão delimitada.
-- **Distinção:** O painel apresenta valores; o indicador atribui significado a
+- **Distinção:** o painel apresenta valores; o indicador atribui significado a
   eles para uma finalidade. Essa interpretação precisa explicitar suas
   condições e consequências.
 - **Evidência necessária:** finalidade, interpretação permitida e proibida,
@@ -1219,7 +1241,7 @@ dados.
 - **Tipo:** resultado selecionado num protocolo.
 - **Definição:** variável de resultado definida antes da interpretação, com
   unidade, instrumento, momento, versão e cálculo identificáveis.
-- **Distinção:** Um evento ou achado torna-se desfecho quando o protocolo
+- **Distinção:** um evento ou achado torna-se desfecho quando o protocolo
   justifica seu significado como resultado. A seleção acompanha a pergunta e a
   qualidade da medida disponível.
 - **Evidência necessária:** validade e confiabilidade proporcionais ao uso,
@@ -1232,7 +1254,7 @@ dados.
 - **Definição:** valor ou fato esperado que está indisponível ou deixou de ser
   observado segundo a regra declarada. O registro informa o motivo conhecido.
   Casos em que a medida é inaplicável recebem classificação separada.
-- **Distinção:** Zero expressa uma quantidade conhecida. Ausência informa a
+- **Distinção:** zero expressa uma quantidade conhecida. Ausência informa a
   indisponibilidade do dado; inaplicabilidade identifica uma situação fora do
   cálculo e deve receber classificação própria.
 - **Evidência necessária:** código ou motivo de ausência, denominador e regra de
@@ -1243,7 +1265,7 @@ dados.
 - **Tipo:** interpretação metodológica.
 - **Definição:** conclusão de que uma diferença de condição contribuiu para uma
   diferença de desfecho sob desenho, pressupostos e análise explicitados.
-- **Distinção:** Diferenças entre cursos e associações entre variáveis
+- **Distinção:** diferenças entre cursos e associações entre variáveis
   descrevem o que foi comparado. A conclusão causal acrescenta uma explicação
   sustentada sobre a contribuição da condição ao resultado.
 - **Evidência necessária:** comparabilidade, aderência, mensuração adequada,
@@ -1323,7 +1345,7 @@ definição teórica e validação próprias.
 - [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), artigo 94.
 - [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards): American Educational Research Association; American Psychological Association; National Council on Measurement in Education (2014). **Standards for Educational and Psychological Testing.** Washington, DC, American Educational Research Association.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
-- [Bandura (2001)](referencias.md#ref-bandura2001agency): Albert Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26.
+- [Bandura (2001)](referencias.md#ref-bandura2001agency): Albert R. Bandura (2001). **Social Cognitive Theory: An Agentic Perspective.** *Annual Review of Psychology*, 52, p. 1–26.
 - [Barrison et al. (2025)](referencias.md#ref-barrison2025flashcards): Philip D. Barrison; Emily A. Balczewski; Emily Capellari; Zach Landis-Lewis; Alexandra H. Vinson (2025). **Electronic Flashcards in Health Professions Education: A Scoping Review.** *Academic Medicine*, 100(4), p. 497–506.
 - [Biggs (1996)](referencias.md#ref-biggs1996alignment): John Biggs (1996). **Enhancing Teaching through Constructive Alignment.** *Higher Education*, 32, p. 347–364.
 - [Bjork e Bjork (2011)](referencias.md#ref-bjork2011desirable): Elizabeth L. Bjork; Robert A. Bjork (2011). **Making Things Hard on Yourself, but in a Good Way: Creating Desirable Difficulties to Enhance Learning.** In: *Psychology and the Real World: Essays Illustrating Fundamental Contributions to Society*, Worth Publishers, p. 56–64.
@@ -1359,7 +1381,7 @@ definição teórica e validação próprias.
 - [Parry et al. (2021)](referencias.md#ref-parry2021digitalmedia): Douglas A. Parry; Brittany I. Davidson; Craig J. R. Sewall; Jacob T. Fisher; Hannah Mieczkowski; Daniel S. Quintana (2021). **A Systematic Review and Meta-analysis of Discrepancies between Logged and Self-reported Digital Media Use.** *Nature Human Behaviour*, 5(11), p. 1535–1547.
 - [Passonneau e Litman (1997)](referencias.md#ref-passonneau1997segmentation): Rebecca J. Passonneau; Diane J. Litman (1997). **Discourse Segmentation by Human and Automated Means.** *Computational Linguistics*, 23(1), p. 103–139.
 - [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm): Ken Peffers; Tuure Tuunanen; Marcus A. Rothenberger; Samir Chatterjee (2007). **A Design Science Research Methodology for Information Systems Research.** *Journal of Management Information Systems*, 24(3), p. 45–77.
-- [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades): Salvador Pons Bordería; Margarita Borreguero Zuloaga (2024). **Unidades discursivas del texto escrito: revisión crítica del estado de la cuestión y directrices para una nueva propuesta.** *Círculo de Lingüística Aplicada a la Comunicación*, 99, p. 7–21.
+- [Pons Bordería e Borreguero Zuloaga (2024)](referencias.md#ref-ponsborderia2024unidades): Salvador Pons Bordería; Margarita Borreguero Zuloaga (2024). **Unidades discursivas del texto escrito: revisión crítica del estado de la cuestión y directrices para una nueva propuesta.** *Círculo de Lingüística Aplicada a la Comunicação*, 99, p. 7–21.
 - [Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation): Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, artigo 101860.
 - [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): William R. Shadish; Thomas D. Cook; Donald T. Campbell (2002). **Experimental and Quasi-Experimental Designs for Generalized Causal Inference.** 2. ed., Houghton Mifflin.
 - [Shute (2008)](referencias.md#ref-shute2008feedback): Valerie J. Shute (2008). **Focus on Formative Feedback.** *Review of Educational Research*, 78(1), p. 153–189.
