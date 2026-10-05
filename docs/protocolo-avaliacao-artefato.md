@@ -33,6 +33,12 @@ ponto em que parou ou esquecimento do raciocínio em curso. Um teste do software
 uma observação da navegação e uma tarefa de compreensão examinam aspectos
 diferentes desse episódio.
 
+No curso, as **unidades de estudo** desenvolvem o ensino e a prática em etapas.
+Uma **microssequência** reúne unidades relacionadas a um objetivo delimitado;
+sua **explicação** oferece a base compartilhada de conteúdo e fontes. O
+[modelo didático](modelo-didatico.md) explica essas relações. A avaliação pode
+examinar tanto a tarefa de uma unidade quanto a progressão do conjunto.
+
 | Objeto | Pergunta delimitada | Evidência pertinente |
 | --- | --- | --- |
 | Software | O curso já sincronizado abre e conserva o ponto sem conexão? | Teste de perda e retorno de rede, com verificação do estado salvo. |
@@ -50,8 +56,7 @@ desenvolve o funcionamento da cópia local.
 
 A estratégia depende do conhecimento pretendido. Compreender uma prática em
 seu contexto, refinar uma intervenção e estimar o efeito de uma mudança são
-propósitos distintos. As alternativas a seguir mostram como essa diferença
-muda o desenho da investigação.
+propósitos distintos. Essas diferenças orientam o desenho da investigação.
 
 ### Compreender uma situação por estudo de caso
 
@@ -90,9 +95,9 @@ situada em relação ao que já se conhece sobre o problema e suas soluções
 
 Uma investigação pode comparar formas de reunir texto, fonte e decisão de
 revisão. Além do funcionamento dos controles, interessa avaliar se eles ajudam
-as pessoas a realizar a tarefa. DSR admite avaliação em uso e aspectos humanos;
-sua distinção em relação à DBR está na tradição, na pergunta e na contribuição
-pretendida, sem reservar toda pergunta educacional à DBR.
+as pessoas a realizar a tarefa. DSR inclui avaliação em uso e aspectos humanos.
+Sua distinção em relação à DBR está na tradição, na pergunta e na contribuição
+pretendida; ambas podem investigar problemas educacionais por suas perspectivas.
 
 ### Comparar efeitos
 
@@ -107,10 +112,10 @@ observacional. A escolha requer pressupostos e análise compatíveis
 ### Relacionar estratégias
 
 Uma observação de uso pode revelar um requisito técnico; uma falha técnica
-pode explicar por que a intervenção prevista não ocorreu. Dados podem, portanto,
-servir a momentos diferentes da pesquisa, desde que sua função permaneça
-clara. Estudo de caso, DBR, DSR e comparação de efeitos são estratégias que a
-pergunta pode aproximar ou manter separadas.
+pode explicar por que a intervenção prevista não ocorreu. Dados podem servir
+a momentos diferentes da pesquisa, desde que sua função permaneça clara.
+Estudo de caso, DBR, DSR e comparação de efeitos são estratégias que a pergunta
+pode aproximar ou manter separadas.
 
 ## Formulação de uma avaliação
 
@@ -130,17 +135,19 @@ Antes da coleta, preencher:
 | versão | quais são as revisões do Git, do artefato executável, dos contratos, dos pacotes de componente, do conteúdo e do modelo de IA? |
 | risco | que dano, exposição, custo ou consequência precisa ser controlado? |
 
-### Exemplo de formulação responsável
+<a id="exemplo-de-formulação-responsável"></a>
 
-Pergunta vaga:
+### Delimitar a pergunta
+
+Uma pergunta ampla ainda deixa indefinidos o resultado e a comparação:
 
 > O funcionamento sem conexão melhora a aprendizagem?
 
-Pergunta delimitada:
+Uma pergunta delimitada identifica o episódio e o resultado a observar:
 
 > Entre estudantes adultos que interrompem uma microssequência de redes por
-> vinte e quatro horas, um cursor local com conteúdo sincronizado, comparado à
-> reabertura no início da lição, altera o sucesso e os erros de retomada?
+> vinte e quatro horas, conservar o ponto de retomada e o conteúdo no dispositivo,
+> em comparação com reabrir a lição no início, altera o sucesso e os erros de retomada?
 
 A segunda pergunta investiga retomada. Para estudar aprendizagem, seria
 necessário acrescentar uma tarefa de compreensão ou retenção e definir como
@@ -157,10 +164,10 @@ identificar:
 - o planejamento comum e sua revisão;
 - as revisões de cada curso na produção e na exposição;
 - cada diferença pretendida como definição e valor interpretáveis;
-- os invariantes e os desvios não declarados que afetam a comparação;
+- o que deve permanecer constante e os desvios não declarados que afetam a comparação;
 - a população e a regra de atribuição, quando houver;
 - a política de consentimento;
-- os instrumentos, desfechos, momentos e procedimentos de análise;
+- os instrumentos, resultados avaliados, momentos e procedimentos de análise;
 - as perdas, os dados ausentes e os critérios de correção ou invalidação.
 
 Cada condição continua sendo um curso mutável. O protocolo precisa exportar o
@@ -178,10 +185,9 @@ O ambiente pode ser **artificial**, preparado para examinar certas condições,
 ou **naturalístico**, próximo do uso cotidiano
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
 
-A progressão abaixo organiza tipos de avaliação que podem ser combinados
-conforme a pergunta e o risco. A inspeção técnica vem primeiro para evitar que
-falhas conhecidas cheguem aos participantes; os episódios seguintes são
-selecionados conforme o estudo.
+Os episódios abaixo podem ser combinados conforme a pergunta e o risco. A
+inspeção técnica vem primeiro para evitar que falhas conhecidas cheguem aos
+participantes; os episódios seguintes são selecionados conforme o estudo.
 
 | Episódio | Finalidade e ambiente | Pergunta principal | Evidência mínima | Critério para avançar |
 | --- | --- | --- | --- | --- |
@@ -193,9 +199,9 @@ selecionados conforme o estudo.
 | E5: avaliação de resultado | somativa, naturalística ou comparativa | a versão atende ao resultado delimitado? | análise predefinida, incerteza e limites | conclusão condicionada à versão e contexto |
 | E6: acompanhamento | somativa, naturalística | resultado, custo e governança se sustentam no tempo? | retenção, transferência, incidentes e custo | decisão longitudinal de manter, alterar ou remover |
 
-O avanço depende dos critérios de cada episódio. Perda de dados, alteração de escopo pela IA,
-inacessibilidade ou conteúdo oculto devolvem o artefato à verificação técnica,
-mesmo que outras medidas sejam favoráveis.
+O avanço depende dos critérios de cada episódio. Perda de dados, alteração de
+escopo pela IA, inacessibilidade ou conteúdo oculto devolvem o artefato à
+verificação técnica, mesmo que outras medidas sejam favoráveis.
 
 ## Participantes e amostragem
 
@@ -212,16 +218,18 @@ Cada grupo contribui com evidência pertinente à sua experiência.
 
 ### Decisões de amostragem
 
-- estudos formativos podem usar amostragem intencional para localizar
-  mecanismos e falhas, sem alegar generalização estatística;
-- estudos quantitativos comparativos exigem tamanho amostral coerente com
-  efeito esperado, desenho, dependência e perdas;
-- estudos qualitativos justificam suficiência pela pergunta, diversidade do
-  corpus e qualidade analítica, não por número universal;
-- variação relevante deve ser descrita: conhecimento prévio, domínio,
-  dispositivo, acessibilidade, rede e contexto de uso;
-- exclusões e desistências precisam ser registradas e interpretadas como dados
-  potencialmente informativos, não apagadas.
+Em estudos formativos, a amostragem intencional seleciona participantes pelas
+condições que ajudam a examinar, como uma dificuldade de uso ou uma experiência
+prévia relevante. Sua justificativa explica essa seleção e delimita a
+transferência dos achados. Estudos quantitativos comparativos precisam de um
+tamanho amostral coerente com o efeito esperado, o desenho, a dependência
+entre observações e as perdas previstas.
+
+Na investigação qualitativa, a suficiência do material depende da pergunta,
+da diversidade do corpus e da qualidade analítica. O estudo descreve a variação
+relevante entre participantes e contextos: conhecimento prévio, domínio,
+dispositivo, acessibilidade, rede e condições de uso. Exclusões e desistências
+são registradas e interpretadas como informações potencialmente relevantes.
 
 ## Cenários de avaliação
 
@@ -237,12 +245,19 @@ Cada grupo contribui com evidência pertinente à sua experiência.
 
 ### Progressão pedagógica
 
-1. verificar se a primeira explicação situa uma pessoa leiga;
+1. verificar se a primeira explicação situa o público iniciante previsto;
 2. localizar termos, símbolos ou pré-requisitos introduzidos cedo demais;
-3. relacionar cada prática à teoria que a torna respondível;
+3. relacionar cada prática aos conhecimentos que a tornam respondível;
 4. examinar exemplo resolvido, apoio e retirada;
 5. identificar condensação, fragmentação, redundância e salto;
-6. comparar explicação simples e profunda com resumo superficial.
+6. comparar uma explicação desenvolvida em linguagem clara com um resumo que
+   apenas nomeia as relações.
+
+Uma tentativa exploratória anterior ao ensino tem função diferente de uma
+atividade de aplicação. A primeira precisa de um enunciado compreensível e
+de desenvolvimento posterior do assunto; a segunda pressupõe o conhecimento
+ensinado ou assumido explicitamente. O [modelo didático](modelo-didatico.md)
+orienta essa leitura da sequência.
 
 ### Representações e componentes
 
@@ -254,19 +269,24 @@ conteúdo e formatos de resposta, em vez de repetir apenas variações do mesmo 
 2. comparar representação especializada, componente geral e texto para a mesma
    operação;
 3. preencher lacunas independentes e digitar dentro do objeto;
-4. ordenar ou associar somente quando essa é a operação pretendida;
+4. ordenar elementos ou estabelecer correspondências por lacunas quando essa
+   for a operação pretendida;
 5. testar temas, larguras móveis, teclado, toque e tecnologia assistiva;
 6. propor uma correção focal sem alterar a hierarquia da unidade;
-7. articular componentes sem atenção dividida ou ambiguidade.
+7. relacionar componentes cuja leitura conjunta conserve clareza e proximidade.
 
 ### Autoria assistida por IA
+
+Uma **parte de produção** agrupa microssequências para um trabalho de autoria
+e inspeção, conforme [Autoria contextual](autoria-contextual.md). Os cenários
+podem examinar essa escala ou uma correção focal:
 
 1. localizar componente por intenção antes de consultar contrato;
 2. produzir uma parte, auditar e revisar a escolha;
 3. carregar o contexto focal antes de registrar uma auditoria;
-4. propor uma correção, rejeitar ou aplicar, verificar e reverter quando
-   necessário;
-5. introduzir deliberadamente esquema de dados válido com erro factual;
+4. propor uma correção, rejeitar ou aplicar, verificar e restabelecer o conteúdo
+   anterior quando necessário e disponível;
+5. introduzir deliberadamente dados com formato válido e erro factual;
 6. registrar a ausência de componente adequado e aplicar a política explícita
    de bloqueio ou aproximação;
 7. testar uma solicitação de alteração fora do escopo;
@@ -280,34 +300,46 @@ atualidade da base, a completude do parecer e as insuficiências apontadas.
 
 ### Propriedade, acesso e autoria
 
-1. compartilhar um curso para estudo, confirmar que o acesso não concede
-   autoria e depois revogá-lo;
+1. compartilhar um curso para estudo, conferir as permissões concedidas e
+   depois revogar o acesso;
 2. identificar autoria, origem e revisão de uma mudança;
 3. registrar uma observação, reencontrar a resposta e compreender a correção
    vinculada;
 4. distinguir conteúdo do curso, estado pessoal, fontes e dados da autoria;
-5. anexar e reabrir um PDF na revisão correta da fonte, sob acesso autorizado;
+5. anexar e reabrir um documento em formato PDF na revisão correta da fonte,
+   sob acesso autorizado;
 6. explicar quais dados existem, para que servem e quem pode acessá-los.
+
+A concessão de estudo preserva a edição do original como atribuição do proprietário.
+Essa diferença precisa ser compreendida pelos participantes, além de funcionar
+tecnicamente, conforme [Privacidade](privacidade.md#propriedade-acesso-público-e-recuperação).
 
 ## Resultados e instrumentos candidatos
 
-| Resultado | Manifestação | Instrumento candidato | Momento | Não interpretar como |
-| --- | --- | --- | --- | --- |
-| usabilidade | sucesso, erro, ajuda e compreensão de estado | roteiro, observação e entrevista | durante e imediato | aprendizagem ou beleza |
-| retomada | localização e reconstrução do objetivo | cenário interrompido e explicação | depois de intervalo | abertura ou atenção |
-| carga extrínseca | busca, atenção dividida e demanda percebida | comparação e escala validada apropriada | durante e imediato | dificuldade inerente |
-| compreensão | explicação, discriminação e aplicação | item aberto, rubrica e entrevista | imediato | confiança ou conclusão |
-| retenção | desempenho posterior equivalente | tarefa adiada | intervalo justificado | repetição imediata |
-| transferência | aplicação a problema estruturalmente novo | problema de generalização e rubrica | imediato ou adiado | troca de valores |
-| competência para interpretar e usar feedback | interpretação, julgamento e ação | cenário e tarefa subsequente | durante e adiado | recebimento da mensagem |
-| agência e controle | escolha justificada, rejeição e reversão | tarefa, entrevista e instrumento apropriado | durante e imediato | número de opções |
-| qualidade pedagógica | cobertura, progressão e prática pertinente | rubrica e análise independente | por versão | fluência ou volume |
-| qualidade representacional | fidelidade, legibilidade e adequação | especialista + tarefa com público | por representação e caso | captura de tela isolada |
-| frugalidade | bytes, volume transferido, latência, falha e custo | instrumentação técnica agregada | por versão e longitudinalmente | comportamento pessoal |
+Um **construto** é o conceito usado para formular e investigar um fenômeno, como
+compreensão ou agência. Uma medida precisa sustentar a interpretação pretendida
+para esse conceito. O [glossário de construtos](glossario-construtos.md) distingue
+as definições da literatura das categorias operacionais adotadas no projeto.
 
-Instrumentos padronizados só devem ser adotados depois de verificar construto,
-licença, idioma, população e evidências psicométricas. Traduzir uma escala não
-equivale a validá-la.
+| Resultado | Manifestação | Instrumento candidato | Momento | Distinção necessária |
+| --- | --- | --- | --- | --- |
+| usabilidade | sucesso, erro, ajuda e compreensão de estado | roteiro, observação e entrevista | durante e imediato | aprendizagem e apreciação estética exigem evidências próprias |
+| retomada | localização e reconstrução do objetivo | cenário interrompido e explicação | depois de intervalo | abrir o curso e manter a atenção são aspectos distintos |
+| carga extrínseca | busca, atenção dividida e demanda percebida | comparação e escala validada apropriada | durante e imediato | a dificuldade inerente também depende do conhecimento prévio |
+| compreensão | explicação, discriminação e aplicação | item aberto, rubrica e entrevista | imediato | confiança e conclusão do percurso são outros registros |
+| retenção | desempenho posterior equivalente | tarefa adiada | intervalo justificado | uma repetição imediata examina outro momento |
+| transferência | aplicação do conhecimento a uma tarefa nova, com a novidade definida no estudo | problema de generalização e rubrica | imediato ou adiado | uma simples troca de valores pode manter a mesma tarefa |
+| competência para interpretar e usar feedback | interpretação, julgamento e ação | cenário e tarefa subsequente | durante e adiado | receber a mensagem antecede interpretá-la e utilizá-la |
+| agência e controle | escolha justificada, rejeição e reversão | tarefa, entrevista e instrumento apropriado | durante e imediato | a quantidade de opções descreve apenas a oferta de controles |
+| qualidade pedagógica | cobertura, progressão e prática pertinente | rubrica e análise independente | por versão | fluência e volume caracterizam outras propriedades do texto |
+| qualidade representacional | fidelidade, legibilidade e adequação | especialista e tarefa com público | por representação e caso | uma captura isolada permite examinar somente a apresentação registrada |
+| frugalidade | bytes, volume transferido, latência, falha e custo | instrumentação técnica agregada | por versão e longitudinalmente | as medidas caracterizam recursos técnicos, não comportamento pessoal |
+
+Uma **rubrica** explicita os critérios e os níveis usados para julgar uma
+resposta ou material. Instrumentos padronizados exigem ainda a conferência de
+construto, licença, idioma, população e evidências psicométricas, isto é,
+evidências sobre suas propriedades de medida. Uma tradução precisa passar pela
+avaliação necessária à interpretação dos resultados no novo contexto.
 
 ## Procedimento de um ciclo DBR
 
@@ -341,7 +373,7 @@ Na análise da revisão humana, pode interessar como a pessoa justifica a
 aceitação de uma afirmação. Um trecho da entrevista pode ser marcado como
 “conferência da fonte” e relacionado à ação observada. Marcar trechos com
 categorias de significado é **codificar**. A escolha da categoria precisa ser
-explicada e o trecho deve conservar seu contexto.
+explicada, e o trecho deve conservar seu contexto.
 
 O plano identifica o material analisado, o modo de construir categorias, a
 participação de quem pesquisa e o tratamento de divergências. Se a pessoa
@@ -377,8 +409,8 @@ comparações ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimenta
 - coletar somente o necessário à pergunta;
 - separar dados de pesquisa dos dados operacionais quando apropriado;
 - informar serviços externos, modelos de IA e conteúdo transmitido;
-- nunca registrar credenciais nem solicitar sua revelação;
-- evitar telemetria contínua por conveniência;
+- manter credenciais fora dos registros e das solicitações aos participantes;
+- justificar qualquer registro contínuo de interações pela pergunta de pesquisa;
 - pseudonimizar ou anonimizar conforme desenho e risco;
 - definir acesso, retenção, exclusão, descarte e resposta a incidente;
 - garantir retirada a qualquer momento, sem prejuízo, e explicitar no protocolo
@@ -387,9 +419,15 @@ comparações ([Shadish et al. (2002)](referencias.md#ref-shadish2002experimenta
   exposição de dados ou consequência não prevista;
 - oferecer canal de esclarecimento e informação compreensível.
 
+A **pseudonimização** substitui identificações diretas e conserva a possibilidade
+de relacionar os dados à pessoa. A **anonimização** exige que ela deixe de ser
+identificável pelos meios considerados na legislação aplicável. [Privacidade](privacidade.md#conceitos-essenciais)
+explica essa diferença e as condições de acesso, retenção e envio a fornecedores.
+
 Os direitos de participantes no escopo brasileiro são normatizados pela
 Resolução CNS nº 510/2016
-([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)).
+([Conselho Nacional de Saúde (2016)](referencias.md#ref-cns2016resolucao510)),
+considerado o enquadramento jurídico e institucional indicado no início.
 Princípios de transparência, controle e responsabilidade na análise de dados
 educacionais e na IA complementam essa obrigação no desenho do estudo
 ([Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical);
@@ -399,7 +437,12 @@ educacionais e na IA complementam essa obrigação no desenho do estudo
 
 ## Versionamento e reprodutibilidade
 
-Cada episódio registra:
+Para relacionar um resultado às condições que o produziram, cada episódio
+registra as versões e os materiais efetivamente utilizados. A **revisão do Git**
+identifica o estado do código no repositório. O **APK** é o pacote instalável da
+versão Android. No banco, as revisões do curso e de suas fontes identificam os
+estados dos dados. O [guia de desenvolvimento](guia-desenvolvedor.md) explica as
+versões técnicas; o protocolo conserva também os materiais de investigação:
 
 - revisão do Git, versão web ou APK, esquemas de dados, catálogo e pacotes de componente;
 - revisão do curso e do conteúdo usado;
@@ -412,9 +455,28 @@ Cada episódio registra:
 - achados, incertezas, casos negativos e decisão;
 - custo técnico e armazenamento introduzido.
 
-Um resultado pertence à versão avaliada. Mudança substancial de modelo,
-instrução enviada ao modelo, pacote de componente, fluxo ou conteúdo exige
-análise de comparabilidade ou novo episódio.
+Uma **âncora** localiza a passagem de uma fonte; sua **atribuição** registra o
+vínculo com o conteúdo do curso. O [contrato de fontes](fontes-e-citacoes.md)
+descreve o que precisa ser preservado para conferir essa relação. Mudança
+substancial de modelo, instrução enviada ao modelo, pacote de componente, fluxo
+ou conteúdo exige análise de comparabilidade ou novo episódio.
+
+<a id="evidência-exportada-por-analytics"></a>
+
+## Evidência exportada por Dados de autoria
+
+Ao usar a [exportação de curso e análise](analytics-instrucionais.md#exportar),
+registre o contrato, o curso, sua revisão, o escopo escolhido e a data. Preserve
+também as definições das distribuições, as bases de contagem e os denominadores
+das proporções utilizadas, inclusive seus dados ausentes. O arquivo reúne o
+conteúdo salvo e os metadados disponíveis para interpretar sua produção.
+Documentos e arquivos de áudio precisam ser conservados separadamente quando
+integrarem a condição apresentada.
+
+As contagens descrevem o desenho e as intervenções observáveis no estado
+corrente. A história completa da autoria e a exposição dos participantes exigem
+outros registros. Testes inferenciais e alegações causais dependem do plano do
+estudo, de seus instrumentos e de suas premissas.
 
 ## Ameaças à validade
 
@@ -431,10 +493,11 @@ essas explicações alternativas e conserva o que limita a conclusão.
 | participação de quem pesquisa | a presença do pesquisador e sua autoria do material podem influenciar conduta e julgamento; o procedimento explicita esses papéis e examina interpretações divergentes |
 | seleção e comunicação dos resultados | procurar apenas confirmações e publicar só sucessos oculta falhas; critérios anteriores à análise, casos contrários e desvios preservados permitem avaliar a conclusão |
 
-Uma avaliação formativa modifica o artefato para aperfeiçoá-lo; uma somativa
-julga uma versão segundo critérios definidos. Se o conteúdo muda durante o
-estudo, é preciso identificar quem encontrou cada versão e como a mudança
-participa da análise. O [glossário metodológico](glossario-construtos.md#distinções-metodológicas)
+Se o conteúdo muda durante o estudo, é preciso identificar quem encontrou cada
+versão e como a mudança participa da análise. Numa avaliação formativa, essa
+alteração pode integrar o próprio processo de aperfeiçoamento. Numa avaliação
+somativa, afeta as condições sob as quais a versão é julgada. O
+[glossário metodológico](glossario-construtos.md#distinções-metodológicas)
 explica essas finalidades; o [guia de investigação](guia-pesquisador.md#da-pergunta-ao-método)
 relaciona a escolha do método à pergunta.
 
@@ -463,22 +526,6 @@ As fontes metodológicas incluem estudo de caso ([Baxter e Jack (2008)](referenc
 ([Hevner et al. (2004)](referencias.md#ref-hevner2004designscience); [Peffers et al. (2007)](referencias.md#ref-peffers2007dsrm)), posicionamento da contribuição
 ([Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning)) e estratégias de avaliação
 ([Venable et al. (2016)](referencias.md#ref-venable2016feds)).
-
-<a id="evidência-exportada-por-analytics"></a>
-
-## Evidência exportada por Dados de autoria
-
-Ao usar a [exportação de curso e análise](analytics-instrucionais.md#exportar),
-registre o contrato, o curso, sua revisão, o escopo escolhido e a data. Preserve
-também as definições e os denominadores das distribuições usadas na comparação,
-inclusive seus dados ausentes. O arquivo reúne o conteúdo salvo e os metadados
-disponíveis para interpretar sua produção. PDFs e áudios precisam ser
-conservados separadamente quando integrarem a condição apresentada.
-
-As contagens descrevem o desenho e as intervenções observáveis no estado
-corrente. A história completa da autoria e a exposição dos participantes exigem
-outros registros. Testes inferenciais e alegações causais dependem do plano do
-estudo, de seus instrumentos e de suas premissas.
 
 <!-- referências locais: início -->
 
