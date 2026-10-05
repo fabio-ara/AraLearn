@@ -1,22 +1,29 @@
 # Referência da leitura de autoria
 
 [Dados de autoria](analytics-instrucionais.md) descreve o estado corrente de um
-curso.
-Os dados são transportados em JSON, formato que organiza informações em campos,
-listas e objetos. O contrato define quais campos são admitidos e como devem ser
-interpretados; os nomes entre crases correspondem aos identificadores presentes
-no arquivo. A versão `aralearn.course-authoring-analytics.v4` conserva **Desenho** e **Autoria** e
-acrescenta uma base explícita para comparar configurações, declarações e
-contagens. Seu objeto é o estado salvo; eventos e percurso histórico exigem
-outra fonte de dados.
+curso. Os dados são transportados em JSON, formato que organiza informações em
+campos, listas e objetos. O contrato define quais campos são admitidos e como
+devem ser interpretados; os nomes entre crases correspondem aos identificadores
+presentes no arquivo.
+
+O contrato `aralearn.course-authoring-analytics.v4` organiza os resultados em
+**Desenho** e **Autoria**, com uma base explícita para comparar configurações,
+declarações e contagens. Seu objeto é o estado salvo; eventos e percurso
+histórico exigem outra fonte de dados.
 
 ## Escopo
+
+O **escopo** delimita o recorte observado, do curso inteiro a uma unidade de
+estudo. Uma **microssequência** reúne unidades que desenvolvem um objetivo
+delimitado; uma **parte** agrupa microssequências para produção. O
+[modelo didático](modelo-didatico.md) distingue a organização curricular dos
+agrupamentos usados no trabalho de autoria.
 
 | Campo | Significado |
 | --- | --- |
 | `course` | identidade, título e revisão corrente do curso |
 | `scope.selected` | curso, parte, microssequência ou unidade de estudo consultada |
-| `scope.options` | opções humanas disponíveis para mudar o recorte |
+| `scope.options` | opções disponíveis para mudar o recorte |
 | `missingData` | ausências que não podem ser convertidas em zero |
 | `deepLink` | endereço da área, quando a interface ou integração pode fornecê-lo |
 | `basis` | inventário planejado integral do curso e observações por unidade do escopo |
@@ -39,12 +46,14 @@ aplicados ao conteúdo.
 inclusive quando a observação está limitada a uma unidade. `analysisUnits` e
 `evidenceRequirements` incluem itens ainda não aplicados, com enunciado,
 descrição e referência. `sources` contém metadados bibliográficos, âncoras e
-identificadores lógicos dos anexos, sem caminhos internos ou links temporários.
+identificadores lógicos dos anexos. A âncora localiza uma passagem na obra,
+conforme o [contrato de fontes](fontes-e-citacoes.md). Caminhos internos e links
+temporários de arquivos ficam fora desse conjunto.
 
 Cada entrada de `basis.studyUnits` separa a intenção corrente da configuração
 que produziu a unidade. Também conserva a declaração sobre a composição
-instrucional e as propriedades observáveis do conteúdo. Os campos correspondentes são
-`requestedParameters`, `appliedParameters`, `declaration`, `components`,
+instrucional e as propriedades observáveis do conteúdo. Os campos correspondentes
+são `requestedParameters`, `appliedParameters`, `declaration`, `components`,
 `wordCount` e `sourceLinks`. Valores ou motivos históricos ausentes permanecem
 nulos, em vez de receber a configuração atual.
 
@@ -70,26 +79,26 @@ posição da prática é categórica e não recebe total ou diferença numérica
 
 `revisits` deriva da declaração disponível. O indicador pode incluir o
 desenvolvimento continuado de uma ideia e deixar de fora uma reativação feita
-somente durante a prática. A intenção do trecho é distinguida por leitura
-contextual no protocolo editorial, e não por esse cálculo.
+somente durante a prática. A intenção do trecho exige leitura contextual,
+conforme o protocolo editorial.
 
 Em `practice`, a identidade contada é o par requisito–oportunidade, dentro de
 cada unidade. Uma solicitação que atende a dois requisitos contribui com dois
 pares; repetir a mesma oportunidade em outra unidade também contribui para a
-soma. O total representa esses pares, e não solicitações globais deduplicadas
-ou diferenças semânticas verificadas. A rotina calcula apenas a prática que
-possui essa declaração.
+soma. O total representa esses pares, e não solicitações únicas em todo o curso
+ou diferenças de significado verificadas. A rotina calcula apenas a prática
+que possui essa declaração.
 
 `wordCount` e `extent` usam o contador
-`private.count_course_component_authorial_words_v1`: ele percorre strings dos
-dados dos componentes, exclui campos por nome e conta sequências alfanuméricas
-com apóstrofos ou hífens internos. Essa aproximação operacional trabalha sobre
-os dados, antes da apresentação, e usa a mesma segmentação para todos os
-idiomas. Por isso, uma sequência contínua de caracteres chineses pode formar um
-único grupo, em vez de palavras linguisticamente segmentadas. Novos campos
-textuais também podem alterar o resultado. Comparações devem conservar algoritmo,
-idioma e convenções do conteúdo. Extensão visual, tempo de leitura e complexidade
-requerem outras medidas.
+`private.count_course_component_authorial_words_v1`: ele percorre cadeias de
+texto nos dados dos componentes, exclui campos por nome e conta sequências
+alfanuméricas com apóstrofos ou hífens internos. Essa aproximação operacional
+trabalha sobre os dados, antes da apresentação, e usa a mesma segmentação para
+todos os idiomas. Por isso, uma sequência contínua de caracteres chineses pode
+formar um único grupo, em vez de palavras linguisticamente segmentadas. Novos
+campos textuais também podem alterar o resultado. Comparações devem conservar
+algoritmo, idioma e convenções do conteúdo. Extensão visual, tempo de leitura
+e complexidade requerem outras medidas.
 
 ## Desenho
 
@@ -112,15 +121,15 @@ requerem outras medidas.
 `parameters` acompanha o [catálogo canônico de parâmetros](../src/domain/courseDesignParameters.js).
 Cada entrada exporta sua `definition` e os valores efetivamente aplicados, com
 origem, motivo (`reason`, nulo quando não registrado) e escopo de origem. Os
-alvos de palavras por resposta de autoria e por unidade de estudo são flexíveis:
-são referências, e não limites de tamanho. O primeiro descreve a configuração,
+alvos de palavras por resposta de autoria e por unidade de estudo são
+referências flexíveis de extensão. O primeiro descreve a configuração,
 pois **Dados de autoria** trabalha com o curso salvo e não com transcrições de
 conversa. A direção editorial permanece em campo separado.
 
 `practiceSequence` contém `studyUnitRef`, `position` e `mode`: `expository`,
 `practice`, `mixed` ou nulo quando a função não foi declarada. A ordem segue a
-hierarquia curricular do escopo. O cálculo não deduz função a partir de
-componentes, respostas ou tamanho do conteúdo.
+hierarquia curricular do escopo. O cálculo utiliza a declaração de função,
+sem inferi-la dos componentes, das respostas ou do tamanho do conteúdo.
 
 `practiceDistribution` é derivada dessa sequência pela
 [rotina de cálculo da distribuição](../src/domain/coursePracticeDistribution.js).
@@ -139,7 +148,8 @@ igual à primeira ou à última explicação não entra nessas três contagens.
 Sem explicação declarada, os campos numéricos são zero, mas a relação de ordem
 não está definida. A interface explicita essa ausência, numera as posições
 humanas a partir de 1 e conserva os dados originais na exportação. As contagens
-não classificam alternância, qualidade ou atendimento à preferência configurada.
+localizam a prática no percurso. Avaliar a alternância, a qualidade ou o
+atendimento à preferência configurada exige examinar a sequência.
 
 Cada linha de `editorialDirections` conta as unidades alcançadas por aquela
 direção. Como direções herdadas de escopos diferentes são aplicadas em camadas,
@@ -178,22 +188,26 @@ e aparece em `artifact.contentReviews` na exportação.
 Se a autoria declarou que uma unidade expositiva não introduz recortes novos,
 a novidade conhecida pode ser zero. Se não há declaração sobre a unidade,
 a informação está ausente. Se ela foi declarada somente prática, essa dimensão
-não se aplica segundo o cálculo corrente. Misturar essas três situações
-produziria uma comparação enganosa.
+não se aplica segundo o cálculo corrente. Essas três situações são preservadas
+para que a comparação distinga o que foi declarado, o que permanece desconhecido
+e o que fica fora da medida.
 
 Uma contagem conhecida pode ser zero. Uma origem que o estado corrente não
-permite atribuir aparece em `missingData`. Interface e exportação preservam essa
-diferença, sem criar uma categoria para preencher o desconhecido.
+permite atribuir aparece em `missingData`. Interface e exportação conservam
+essa diferença.
 
 ## Comparação e exportação
 
 `aralearn.course-authoring-comparison.v1` compara duas seleções explícitas de
 curso, revisão e escopo. Distribuições, configuração solicitada e aplicada
 permanecem separadas. A diferença numérica é o total da direita menos o da
-esquerda, somente quando ambos estão disponíveis. A comparação de inventários
-usa os campos semânticos literais e a multiplicidade; ignora identidades locais
-e não certifica equivalência semântica. `onlyLeft` e `onlyRight` conservam os
-valores, as quantidades e as referências das diferenças.
+esquerda, somente quando ambos estão disponíveis.
+
+A comparação dos inventários confronta os campos de conteúdo literalmente e
+preserva o número de ocorrências de cada valor, ignorando identidades locais.
+`onlyLeft` e `onlyRight` conservam os valores, as quantidades e as referências
+das diferenças. A equivalência de significado entre os materiais exige leitura;
+o cálculo identifica correspondências e diferenças nos dados registrados.
 
 **Exportar curso e análise** produz `aralearn.course-authoring-export.v2`, com
 `course`, `scope`, `analytics` e `artifact`. O conteúdo integral do curso fica em
@@ -208,15 +222,18 @@ separados do conteúdo importável:
 | `contentReviews` | estado da declaração de revisão de cada explicação ou unidade e data, quando existente |
 
 O validador aceita o contrato `v2` e exige os quatro campos de `artifact`
-descritos acima. A serialização limita
-o arquivo a 32 MiB (33.554.432 bytes) e falha se o total exceder esse limite.
-O leitor percorre entidades com a mesma revisão e confere novamente a revisão
-ao terminar. Uma falha ou mudança interrompe a exportação inteira, de modo que
-o arquivo represente uma revisão consistente. PDFs e áudios aparecem por
-referência; dados de pessoas, uso, credenciais e transcrições ficam fora do
-contrato.
+descritos acima. A serialização, conversão desses dados para o texto do arquivo,
+limita a exportação a 32 MiB (33.554.432 bytes) e falha se o total exceder esse
+limite. O leitor percorre entidades com a mesma revisão e confere novamente a
+revisão ao terminar. Uma falha ou mudança interrompe a exportação inteira, de
+modo que o arquivo represente uma revisão consistente.
 
-Os contratos são compartilhados pela interface, pelos canais humanos e pela
+Documentos anexados e arquivos de áudio aparecem por referência. Dados da conta,
+estado pessoal de estudo, credenciais e transcrições ficam fora do contrato.
+Textos e metadados do próprio curso podem conter informações pessoais; sua
+conferência antes do compartilhamento é explicada em [Dados de autoria](analytics-instrucionais.md#exportar).
+
+Os contratos são compartilhados pela interface, pelos canais de autoria e pela
 exportação em [courseAuthoringComparison.js](../src/domain/courseAuthoringComparison.js).
 As dimensões são calculadas em
 [courseAuthoringBasis.js](../src/domain/courseAuthoringBasis.js).
