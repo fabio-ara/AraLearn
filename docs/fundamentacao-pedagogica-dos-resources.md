@@ -7,11 +7,12 @@ conhecimentos próprios. A escolha faz parte do ensino: muda o que o estudante
 precisa perceber, relacionar e fazer.
 
 No AraLearn, um **componente didático** organiza uma representação, uma forma
-de resposta ou ambas dentro da unidade de estudo. A fundamentação de sua escolha
-considera a tarefa, a convenção da área e as condições de leitura. Na
-implementação, cada componente corresponde a um **pacote**, módulo que reúne
-os dados e as regras necessárias para apresentá-los e receber respostas. O
-[contrato de componentes](componentes-didaticos.md) descreve essa organização.
+de resposta ou ambas dentro da unidade de estudo, etapa do percurso apresentada
+na tela. A fundamentação de sua escolha considera a tarefa, a convenção da área
+e as condições de leitura. Na implementação, cada componente corresponde a um
+**pacote**, módulo que reúne os dados e as regras necessárias para apresentá-los
+e receber respostas. O [contrato de componentes](componentes-didaticos.md)
+descreve essa organização.
 
 As decisões identificadas como R1 a R9 são escolhas do projeto apoiadas pelas
 relações discutidas a seguir. A literatura ajuda a justificá-las e formular
@@ -29,8 +30,8 @@ passa a ser acompanhar caminhos entre cidades, a conexão entre elas precisa
 ficar visível. Uma representação de rede pode então preservar uma relação que
 a tabela, usada da mesma forma, não mostra.
 
-Um pacote especializado se justifica quando prosa, tabela ou outro componente
-instalado não conserva adequadamente a relação necessária à tarefa. A
+Um pacote especializado se justifica quando os componentes instalados precisam
+de complementação para representar uma relação necessária à tarefa. A
 especialização também precisa corresponder a uma convenção reconhecível na
 área. Ela tem custo: o estudante precisa aprender a ler a representação, e o
 projeto precisa manter e testar suas regras.
@@ -46,9 +47,9 @@ integrar ambas.
 A **coerência** orienta retirar elementos sem função na tarefa; a
 **contiguidade**, aproximar informações que precisam ser integradas
 ([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
-[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Acrescentar figuras apenas
-para variar a aparência pode exigir trabalho de interpretação sem acrescentar
-uma relação útil.
+[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Figuras acrescentadas
+apenas para variar a aparência podem exigir trabalho de interpretação que
+pouco contribui para a relação estudada.
 
 A admissão de um pacote registra por que aquela representação é necessária,
 qual operação atende e quais convenções preserva. Também a distingue dos
@@ -82,8 +83,8 @@ Essa ordem relaciona a escolha à função da representação, conforme DeFT
 recuperação**, tentativa de lembrar conhecimento estudado, pode favorecer
 aprendizagem posterior ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval);
 [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval)). Para projetá-la,
-é preciso verificar o que a tarefa solicita recuperar; o formato visual não
-resolve essa decisão sozinho.
+é preciso verificar o que a tarefa solicita recuperar e como o formato
+escolhido participa dessa solicitação.
 
 ### Disponibilidade, seleção e materialização
 
@@ -100,8 +101,9 @@ conserva três registros diferentes:
 A **política de componentes** pode permitir o catálogo inteiro ou uma lista
 restrita e registrar exclusões e preferências. Exclusão prevalece sobre
 permissão; preferência orienta a escolha entre candidatos permitidos e
-adequados. O [contrato da política](desenho-instrucional-parametrizado.md#política-de-componentes-didáticos)
-detalha a revisão do catálogo e a aplicação por escopo.
+adequados. O **escopo** indica a que trecho do curso a política se aplica.
+O [contrato da política](desenho-instrucional-parametrizado.md#política-de-componentes-didáticos)
+detalha esse alcance e a revisão do catálogo utilizada.
 
 A busca identifica candidatos específicos, versáteis ou substitutivos —
 `canonical`, `versatile` e `substitute` no contrato. Esses estados qualificam o
@@ -117,15 +119,18 @@ examinar escolhas inadequadas, adaptações artificiais e facilidade de revisão
 Uma matriz pode estar corretamente desenhada e ainda ser incompreensível para
 quem nunca precisou distinguir linha e coluna. Antes de solicitar uma entrada
 pela posição, o percurso precisa mostrar o que as posições significam e como
-localizá-las. Uma legenda genérica sobre o funcionamento da interface não
-substitui esse ensino.
+localizá-las. Esse ensino desenvolve a leitura da matriz; uma legenda sobre
+os controles da interface atende a outra necessidade.
 
 O curso apresenta o referente, nomeia os elementos e desenvolve suas relações.
-Depois introduz a notação e uma leitura justificada. A
+Depois introduz a notação e uma leitura justificada. Uma **microssequência**
+reúne unidades que desenvolvem um objetivo delimitado. Sua
 [explicação compartilhada](explicacao-e-revisao-humana.md) é a base de conteúdo
-didático da microssequência, com suas fontes. Ela pode desenvolver pressupostos
-e exemplos por meio de texto, representações visuais ou áudio. As unidades
-continuam ensinando relações e propondo práticas substantivas na sequência.
+didático e fontes desse conjunto. Ela pode desenvolver pressupostos e exemplos
+por meio de texto, representações visuais ou áudio. As unidades continuam
+ensinando relações e propondo práticas substantivas na sequência. O
+[modelo didático](modelo-didatico.md#estrutura-do-percurso) situa essa organização
+no curso.
 
 A memória de trabalho mantém e manipula informação durante a tarefa. Atividades
 de busca e integração desnecessárias podem disputar recursos com a construção
@@ -140,11 +145,10 @@ específicas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexam
 Ao revisar o percurso, importa examinar se o estudante consegue reconhecer o
 problema, interpretar os símbolos e acompanhar a direção de leitura. Um exemplo
 de inferência válida ajuda a mostrar como posições e rótulos participam do que
-se pode concluir.
-Em prática, o contexto pode ser mais rico porque os elementos já ensinados
-precisam permanecer disponíveis para a operação. A dificuldade depende também
-das relações e do conhecimento prévio, e não apenas da quantidade de elementos.
-A avaliação pode pedir ao estudante que leia, explique e aplique a
+se pode concluir. Em prática, o contexto pode ser mais rico porque os elementos
+já ensinados precisam permanecer disponíveis para a operação. A dificuldade
+depende também das relações e do conhecimento prévio, além da quantidade de
+elementos. A avaliação pode pedir ao estudante que leia, explique e aplique a
 representação.
 
 ## 4. Conteúdo autorado e disposição visual
@@ -171,20 +175,23 @@ Web. Suas funções e referências estão no
 [capítulo técnico dos componentes](componentes-didaticos.md#8-mecanismos-de-apresentação).
 
 A escolha busca consistência e manutenção mais simples. Os princípios de
-coerência e contiguidade ajudam a examinar a apresentação, mas não determinam
-uma biblioteca de software ([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
-[Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
+coerência e contiguidade orientam a avaliação da apresentação
+([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
+[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A seleção da biblioteca
+que realiza essa apresentação considera também os requisitos técnicos do objeto.
 
 O dimensionamento considera os textos completos e as respostas interativas.
 Se uma lacuna preenchida precisar de mais espaço, esse espaço deve estar
-previsto antes da resposta. Rótulos não podem desaparecer nem ser comprimidos
-até ficar ilegíveis. Casos grandes podem conservar a escala de leitura e usar
-rolagem local. Os testes verificam recortes, sobreposições e estabilidade; a
-inspeção disciplinar examina se a estrutura conserva o significado.
+previsto antes da resposta. Rótulos precisam permanecer completos e legíveis.
+Casos grandes podem conservar a escala de leitura e usar rolagem local. Os
+testes verificam recortes, sobreposições e estabilidade; a inspeção disciplinar
+examina se a estrutura conserva o significado.
 
 ## 5. Convenções das áreas de conhecimento
 
-### Decisão R5: preservar a gramática do domínio
+<a id="decisão-r5-preservar-a-gramática-do-domínio"></a>
+
+### Decisão R5: preservar as convenções do domínio
 
 Uma tabela de registros e uma matriz usam linhas e colunas, mas a posição numa
 matriz participa das operações algébricas. Um fluxograma e um processo de
@@ -266,13 +273,12 @@ especifica como preservar a estrutura durante o preenchimento.
 Lacunas e digitação atuam nos campos que cada pacote disponibiliza para prática.
 Na versão atual, a fórmula é apresentada sem alvos internos de preenchimento;
 uma tarefa de escolha pode acompanhá-la quando essa resposta corresponde ao
-objetivo. Correspondências simples
-podem usar lacunas independentes; ordenação move pelo menos dois trechos nos
-próprios parágrafos ou células de tabela. A ordem precisa ser inequívoca, e cada
-trecho recebe controles para deslocá-lo uma posição. Essa modalidade não se
-aplica a diagramas espaciais. Na sessão textual, somente a entrada admite
-lacuna de escolha com alternativas exatas; saídas e efeitos permanecem como
-contexto.
+objetivo. Correspondências simples podem usar lacunas independentes; ordenação
+move pelo menos dois trechos nos próprios parágrafos ou células de tabela.
+A ordem precisa ser inequívoca, e cada trecho recebe controles para deslocá-lo
+uma posição. Essa modalidade não se aplica a diagramas espaciais. Na sessão
+textual, somente a entrada admite lacuna de escolha com alternativas exatas;
+saídas e efeitos permanecem como contexto.
 
 Selecionar uma resposta, confirmar e revelar a solução são ações distintas.
 Tocar numa lacuna preenchida pode limpá-la sem alterar as demais. Reconhecimento,
@@ -287,10 +293,10 @@ lacuna depende do conhecimento que sua resolução exige mobilizar.
 ### Decisão R7: separar texto editável de estrutura protegida
 
 Uma pessoa que deseja corrigir o nome de uma etapa deve conseguir reconhecer
-esse nome e avaliar a alteração. Ela não precisa, para isso, reescrever todas
-as relações do diagrama. Cada pacote indica os textos que podem ser corrigidos
-separadamente. Identificadores, tipos e relações estruturais permanecem
-protegidos nessa operação; mudar a composição usa uma tarefa própria.
+esse nome e avaliar a alteração. Os textos que cada pacote declara editáveis
+permitem realizar essa correção separadamente, preservando as relações do
+diagrama. Identificadores, tipos e relações estruturais permanecem protegidos
+nessa operação; mudar a composição usa uma tarefa própria.
 
 Na inspeção de conteúdo, as respostas ficam desativadas e os campos editáveis
 recebem rótulos compreensíveis. A pessoa examina a proposta; a gravação confere
@@ -304,9 +310,8 @@ limites, permitir correção e manter controle humano
 decisão assistida, intervenções que exigiam reflexão reduziram dependência
 excessiva da IA e acrescentaram custo de uso
 ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Essa tensão
-é pertinente à autoria: uma confirmação pode exigir trabalho sem assegurar
-que a pessoa compreendeu o conteúdo. A avaliação precisa examinar a inspeção
-e a decisão efetivas.
+é pertinente à autoria: a confirmação acrescenta uma etapa ao processo, e sua
+utilidade depende da inspeção e da decisão que a pessoa consegue realizar.
 
 Conferir o escopo de uma alteração protege a estrutura; avaliar a precisão da
 explicação e o apoio das fontes exige leitura humana. Atender a uma observação
@@ -317,11 +322,11 @@ e declarar revisão do conteúdo são decisões distintas, descritas em
 
 ### Decisão R8: preservar legibilidade antes de exigir enquadramento total
 
-Uma matriz larga não pode perder colunas para caber na tela. Reduzir toda a
-figura também pode tornar os números ilegíveis. O aplicativo conserva a
-estrutura e admite rolagem local quando a reorganização mudaria o objeto.
-Representações com progressão natural podem usar orientação vertical; o
-restante da unidade continua rolável fora do quadro.
+Uma matriz larga precisa conservar suas colunas. Reduzir toda a figura para
+caber na tela pode tornar os números ilegíveis. O aplicativo mantém a estrutura
+e admite rolagem local quando a reorganização mudaria o objeto. Representações
+com progressão natural podem usar orientação vertical; o restante da unidade
+continua rolável fora do quadro.
 
 Essa escolha tem uma contrapartida: deslocar a figura pode separar elementos
 que precisam ser comparados. A revisão considera se uma divisão didática
@@ -340,8 +345,8 @@ sem depender só de cor ou posição.
 
 Testes automatizados conseguem localizar parte dos defeitos. Uso com leitores
 de tela, diferentes capacidades motoras e dispositivos reais acrescenta
-questões que esses testes não resolvem. O [sistema visual](sistema-visual.md)
-e a [auditoria dos componentes](auditoria-academica-dos-resources.md#7-processo-de-auditoria)
+questões que precisam ser examinadas durante a interação. O
+[sistema visual](sistema-visual.md) e a [auditoria dos componentes](auditoria-academica-dos-resources.md#7-processo-de-auditoria)
 organizam essas verificações.
 
 ## 9. Combinação de representações
@@ -354,28 +359,30 @@ relacionar os dois, a autoria explica como cada posição e cada valor se
 correspondem. Se a tabela serve apenas para consulta independente, essa
 integração pode não ser o objetivo.
 
-DeFT distingue funções complementares, restritivas e construtivas. Usar duas
-representações não exige sempre ensinar uma relação entre elas, mas exige
-justificar o papel de cada uma ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)).
-Rótulos, unidades e variáveis compartilhados precisam permanecer consistentes.
-Uma composição pode fornecer contexto, restringir ambiguidade, permitir
-comparação ou desenvolver uma relação nova.
+DeFT distingue funções complementares, restritivas e construtivas. Cada
+representação precisa ter um papel justificado; a tarefa determina se é
+necessário ensinar também a relação entre elas
+([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Rótulos, unidades e
+variáveis compartilhados precisam permanecer consistentes. Uma composição
+pode fornecer contexto, restringir ambiguidade, permitir comparação ou
+desenvolver uma relação nova.
 
 Quando duas representações exigem explicações independentes, sua distribuição
 em unidades sucessivas pode favorecer a progressão. Quando a operação depende
 de consultar ambas, o contexto necessário permanece disponível. A evidência
-sobre segmentação apresenta condições e moderadores, sem prescrever uma cota
-de conteúdo por tela ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
-A avaliação pode comparar a composição com uma apresentação segmentada e
-examinar erros de leitura e explicações dos estudantes.
+sobre segmentação apresenta condições e moderadores, isto é, fatores associados
+à variação dos resultados entre situações
+([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A quantidade de
+conteúdo por tela precisa ser definida para o público e a tarefa. A avaliação
+pode comparar a composição com uma apresentação segmentada e examinar erros
+de leitura e explicações dos estudantes.
 
 ## 10. Da fundamentação à avaliação
 
 A [auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md)
 reúne os critérios completos por pacote, desde sua justificativa e convenção até
-os testes de uso e seus limites. Ela permite examinar uma proposta ou revisar um
-componente instalado sem repetir o contrato inteiro nesta fundamentação. A
-[matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+os testes de uso e seus limites. Ela orienta a avaliação de propostas e a revisão
+de componentes instalados. A [matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
 relaciona essas decisões a formas de avaliação.
 
 Cada pergunta exige uma evidência apropriada. Testes verificam se a mesma
@@ -398,12 +405,12 @@ permanecem separados.
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal): Slava Kalyuga (2007). **Expertise Reversal Effect and Its Implications for Learner-Tailored Instruction.** *Educational Psychology Review*, 19(4), p. 509–539.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
-- [Mayer (2009)](referencias.md#ref-mayer2009multimedia): Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press.
+- [Mayer (2009)](referencias.md#ref-mayer2009multimedia): Richard M. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
 - [Reisslein et al. (2006)](referencias.md#ref-reisslein2006expertisereversal): Jana Reisslein; Robert K. Atkinson; Patrick Seeling; Martin Reisslein (2006). **Encountering the Expertise Reversal Effect with a Computer-Based Environment on Electrical Circuit Analysis.** *Learning and Instruction*, 16(2), p. 92–103.
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
-- [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving: Effects on Learning.** *Cognitive Science*, 12(2), p. 257–285.
+- [Sweller (1988)](referencias.md#ref-sweller1988cognitiveload): John Sweller (1988). **Cognitive Load During Problem Solving in Learning.** *Cognitive Science*, 12(2), p. 257–285.
 - [Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples): John Sweller; Graham A. Cooper (1985). **The Use of Worked Examples as a Substitute for Problem Solving in Learning Algebra.** *Cognition and Instruction*, 2(1), p. 59–89.
 - [Sweller et al. (1998)](referencias.md#ref-sweller1998architecture): John Sweller; Jeroen J. G. van Merriënboer; Fred G. W. C. Paas (1998). **Cognitive Architecture and Instructional Design.** *Educational Psychology Review*, 10, p. 251–296.
 - [World Wide Web Consortium (2023)](referencias.md#ref-w3c2023wcag22): World Wide Web Consortium (2023). **Web Content Accessibility Guidelines (WCAG) 2.2.**
