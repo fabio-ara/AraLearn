@@ -44,7 +44,7 @@ Para gerar um APK, são necessárias as ferramentas JavaScript e os conjuntos de
 
 O Gradle coordena a compilação e o empacotamento. Seu inicializador, Gradle Wrapper, já está versionado e determina a versão usada pelo projeto. O aplicativo é compatível com Android a partir da API 24; compilação e alvo da plataforma usam a API 36, conforme `app/build.gradle.kts`.
 
-Os comandos npm deste guia chamam scripts PowerShell que usam `gradlew.bat`, portanto pressupõem Windows. Em Linux ou macOS, configure as mesmas variáveis, entre em `android/` e execute `./gradlew :app:assembleDebug --no-daemon` ou `./gradlew :app:assembleRelease --no-daemon`. Nessa chamada direta, o Gradle prepara os arquivos web e exige a configuração do ambiente. A recuperação automática da configuração publicada pertence ao script PowerShell de publicação.
+Os comandos npm deste guia chamam scripts PowerShell que usam `gradlew.bat`, portanto pressupõem Windows. Em Linux ou macOS, configure as mesmas variáveis, entre em `android/` e execute `./gradlew :app:assembleDebug --no-daemon` ou `./gradlew :app:assembleRelease --no-daemon`. Nessa chamada direta, o Gradle prepara os arquivos web. A compilação de publicação exige URL e chave publicável; a de depuração pode gerar somente a interface empacotada sem essa configuração. A recuperação automática da configuração publicada pertence ao script PowerShell de publicação.
 
 ## Configurar o serviço remoto
 
