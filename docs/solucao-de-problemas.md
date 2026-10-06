@@ -26,15 +26,15 @@ Se o curso foi compartilhado, peça ao proprietário que confira **Pessoas e ace
 
 ### Um curso aparece, mas não abre
 
-Ter o título na lista não significa que o conteúdo já foi guardado. A primeira abertura precisa de conexão. Sem rede, a prévia distingue **Disponível offline** de **Conecte-se para abrir este curso**.
+A lista apresenta o título do curso; seu conteúdo é obtido na primeira abertura, que precisa de conexão. Sem rede, a prévia distingue **Disponível offline** de **Conecte-se para abrir este curso**.
 
-Tente abrir com conexão estável e aguarde a conclusão. Se continuar falhando, anote a mensagem e se algum conteúdo chegou a aparecer. O aplicativo precisa carregar uma versão completa do curso, sem misturar dados de momentos diferentes; a [persistência](persistencia-relacional.md) explica o que acontece quando o curso muda durante essa leitura.
+Tente abrir com conexão estável e aguarde a conclusão. Se continuar falhando, anote a mensagem e se algum conteúdo chegou a aparecer. O aplicativo precisa carregar uma versão completa e coerente do curso; a [persistência](persistencia-relacional.md) explica o que acontece quando o curso muda durante essa leitura.
 
 ### O aplicativo mostra o último estado conhecido
 
-O aplicativo está usando a cópia que conseguiu guardar anteriormente. Use a nuvem para consultar atualizações. No modo manual, essa ação não ativa o modo automático. Preserve rascunhos enquanto confere o resultado.
+O aplicativo está usando a cópia que conseguiu guardar anteriormente. Use a nuvem para consultar atualizações. No modo manual, essa ação mantém o modo escolhido. Preserve rascunhos enquanto confere o resultado.
 
-O serviço pode estar indisponível mesmo quando outros sites abrem. Durante **Lendo conteúdo**, aguarde antes de concluir que o curso está vazio. Se houver falha, solicite outra leitura sem apagar os dados locais.
+O serviço pode estar indisponível mesmo quando outros sites abrem. Durante **Lendo conteúdo**, aguarde o resultado da consulta antes de interpretar a ausência de itens como curso vazio. Se houver falha, solicite outra leitura e preserve os dados locais.
 
 ## Sincronização, conteúdo e arquivos
 
@@ -62,6 +62,12 @@ A observação chega à caixa de entrada do proprietário e pode ser considerada
 
 Para corrigir, o autor examina a questão, decide a mudança e confere o resultado salvo. O [fluxo de observações](observacoes-pedagogicas.md#da-observação-à-revisão) distingue esse trabalho da declaração de revisão humana.
 
+### A inspeção por IA voltou a ficar pendente
+
+Um parecer corresponde à base lida pelo assistente, incluindo o conteúdo, suas fontes, a configuração e a sequência de estudo pertinente. Uma mudança nessa base pode exigir nova inspeção. Solicite a leitura atual de cada alvo pendente e o registro de um novo parecer com evidências do material salvo.
+
+Leia também o resultado do parecer. Ele pode estar atualizado e ainda apontar problemas que precisam de atenção. Aprovar um alvo de observação exige parecer atual, com os [seis critérios de inspeção](auditoria-de-conformidade-instrucional.md#inspeção-por-ia-sobre-o-conteúdo-salvo) completos e conclusão consistente. Se você mantiver uma preferência editorial diferente, a aprovação continua pendente; encerrar sem alteração permanece uma decisão própria. O [guia da pessoa autora](guia-professor-autor.md#observar-e-corrigir) explica como tratar essas pendências e registrar separadamente a revisão humana.
+
 ### A revisão ou correção não funciona sem conexão
 
 A autoria precisa consultar o estado atual e a autorização do curso antes de alterar ou marcar revisão. Reconecte, abra novamente o alvo e confira o conteúdo e as observações antes de continuar. A cópia anterior é útil para leitura, mas pode não conter as mudanças mais recentes.
@@ -76,9 +82,9 @@ Se o conteúdo ou as fontes mudaram desde a preparação, a proposta pode estar 
 
 ### O apoio factual parece insuficiente
 
-Abra **Explicação** e siga a referência da afirmação. Na Autoria, use os controles de fontes para examinar a obra e o trecho indicado. A localização na fonte é chamada âncora; o [guia de fontes](fontes-e-citacoes.md) explica como conferi-la.
+Siga a citação da afirmação ou abra **Fontes da unidade**. Se a afirmação estiver no conteúdo explicativo, abra **Explicação** e consulte suas referências. Na Autoria, use os controles de fontes para examinar a obra e o trecho indicado. A localização na fonte é chamada âncora; o [guia de fontes](fontes-e-citacoes.md) explica como conferi-la.
 
-Verifique se o material realmente sustenta a afirmação. **Sustenta** indica esse uso; **Citado de** identifica a origem das palavras, sem certificar que a afirmação citada seja verdadeira. Se o apoio for insuficiente, registre o problema e reveja a fonte, a interpretação ou o vínculo antes da nova revisão.
+Verifique se o material sustenta a afirmação. **Sustenta** indica esse uso; **Citado de** identifica a origem das palavras reproduzidas. A conferência factual precisa examinar também o conteúdo dessas palavras e seu contexto. Se o apoio for insuficiente, registre o problema e reveja a fonte, a interpretação ou o vínculo antes da nova revisão.
 
 ### Uma observação retirada não aparece mais
 
@@ -88,7 +94,7 @@ Retirar uma observação remove-a da consulta corrente. Se a questão continuar 
 
 Confira os campos obrigatórios e as mensagens próximas à atividade. Nas lacunas, verifique cada preenchimento. Se tudo parecer completo e o bloqueio continuar, registre a unidade, a atividade e a mensagem.
 
-Cada atividade tem seus próprios controles e decide o avanço segundo seus critérios de preenchimento. Nas respostas abertas, o texto fica disponível para interpretação humana. O [guia do estudante](guia-estudante.md#responder-a-uma-prática) explica o fluxo geral da resposta e do retorno; a [documentação dos componentes](componentes-didaticos.md) apresenta as formas disponíveis e seus contratos.
+As atividades de escolhas, lacunas e ordenação conferem a tentativa com o gabarito da autoria. Se a tentativa estiver incorreta, use **Tentar de novo** ou **Ver resposta**. O avanço se torna disponível depois do acerto ou da consulta à solução. Se o gabarito parecer inadequado, registre uma observação na unidade. O [guia do estudante](guia-estudante.md#responder-a-uma-prática) explica o fluxo geral da resposta e do retorno; a [documentação dos componentes](componentes-didaticos.md) apresenta as formas disponíveis e seus contratos.
 
 ### Uma edição de autoria entrou em conflito
 
@@ -96,13 +102,13 @@ Outra aba, outro aparelho ou uma conversa conectada pode ter alterado o curso de
 
 ### Há um rascunho antigo de cópia guardado
 
-Esse rascunho indica que a confirmação de uma cópia se perdeu numa versão anterior. Use a recuperação oferecida: ela procura primeiro a cópia que já possa ter sido criada. Se o resultado continuar incerto, o rascunho permanece disponível para conferência antes do descarte. Hoje, estudar ou comentar atua no curso compartilhado; uma cópia própria surge somente pela ação explícita de copiar. O [contrato de conteúdo](aralearn-contract.md) conserva os detalhes técnicos dessa recuperação.
+Esse rascunho indica que a confirmação de uma cópia se perdeu numa versão anterior. Use a recuperação oferecida: ela procura primeiro a cópia que já possa ter sido criada. Se o resultado continuar incerto, o rascunho permanece disponível para conferência antes do descarte. No fluxo atual, estudar ou comentar atua no curso compartilhado; uma cópia própria surge somente pela ação explícita de copiar. O [contrato de conteúdo](aralearn-contract.md) conserva os detalhes técnicos dessa recuperação.
 
 ### O formulário reapareceu depois de salvar
 
 Leia a mensagem: a resposta pode ter se perdido depois de o servidor guardar a alteração. Confira os valores preservados e use a recuperação no mesmo controle. Ela verifica o envio anterior antes de gravar qualquer outra mudança.
 
-Se escolher **Cancelar** ou **Descartar**, você abandona o rascunho local; isso não desfaz uma gravação que já possa ter ocorrido. Evite fechar ou recarregar enquanto houver trabalho apenas no formulário. Quando a recuperação concluir, confira o resultado antes de iniciar outra alteração.
+**Cancelar** ou **Descartar** abandona o rascunho local. Se o servidor já concluiu a gravação, ela permanece salva no curso. Evite fechar ou recarregar enquanto houver trabalho apenas no formulário. Quando a recuperação concluir, confira o resultado antes de iniciar outra alteração.
 
 ### A assistência por IA não responde
 
@@ -110,7 +116,7 @@ Confira primeiro o provedor e o modelo de IA escolhidos, além do estado da cone
 
 Enquanto a prévia não for aplicada e salva, o curso conserva o conteúdo anterior. Você pode continuar a edição manual ou usar uma conversa externa conectada para uma tarefa mais ampla. O [guia de assistência](assistencia-por-ia.md) distingue esses percursos e os dados enviados.
 
-Se já usou **Aplicar ao rascunho**, confira esse rascunho e use **Salvar** quando estiver adequado. Aplicar a prévia e gravar no curso são decisões separadas.
+Se já usou **Aplicar ao rascunho**, confira esse rascunho e use **Salvar proposta** quando estiver adequado. Aplicar a prévia e gravar no curso são decisões separadas.
 
 ### Não consigo salvar uma atribuição de fontes
 
@@ -118,17 +124,19 @@ Uma atribuição liga um trecho do curso às fontes que o sustentam. Antes de sa
 
 **Legado não resolvido** identifica uma referência antiga que ainda precisa ser conferida. Complete o cadastro correspondente em vez de criar outra fonte parecida. Se o resultado de um envio estiver incerto, use o controle de recuperação para verificar a gravação anterior. [Fontes, citações e referências](fontes-e-citacoes.md#localizar-o-uso-no-curso-e-na-fonte) explica a edição dos vínculos.
 
-### Um PDF de fonte não foi enviado ou não abre
+<a id="um-pdf-de-fonte-não-foi-enviado-ou-não-abre"></a>
 
-Confira se o arquivo é um PDF válido de até 20 MiB, aproximadamente 21 megabytes. A cota conjunta de PDFs e áudios é de 64 MiB por curso, e uma fonte aceita até oito anexos. Em conversa, envie um único PDF na mensagem em que pede sua incorporação como fonte.
+### Um documento de fonte não foi enviado ou não abre
 
-Se o acesso temporário ao anexo expirou, anexe novamente o mesmo arquivo. Se a gravação ficou sem confirmação, consulte a fonte antes de repetir o envio: o PDF pode já estar guardado. O nome do arquivo ou um caminho digitado não substitui o anexo recebido pela aplicação de conversa.
+Confira se o documento está em formato PDF válido e tem até 20 MiB, aproximadamente 21 megabytes. A cota conjunta de documentos e arquivos de áudio é de 64 MiB por curso, e uma fonte aceita até oito anexos. Em conversa, envie um único documento na mensagem em que pede sua incorporação como fonte.
 
-Para abrir um PDF já guardado, volte à referência e solicite a abertura outra vez. O endereço de download dura 60 segundos; reabrir permite obter uma autorização atual. Os detalhes do transporte estão nos guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md).
+Se o acesso temporário ao anexo expirou, anexe novamente o mesmo arquivo. Se a gravação ficou sem confirmação, consulte a fonte antes de repetir o envio: o documento pode já estar guardado. A aplicação de conversa precisa receber o arquivo; seu nome ou caminho local apenas o identifica no dispositivo de origem.
+
+Para abrir um documento já guardado, volte à referência e solicite a abertura outra vez. O endereço de download dura 60 segundos; reabrir permite obter uma autorização atual. Os detalhes do transporte estão nos guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md).
 
 ### O estudo não mostra uma fonte ou um link
 
-Abra **Explicação** na unidade ou siga a citação sobrescrita. As referências da unidade e da base ficam no fim da leitura. **Mostrar citação** exibe a identificação e a localização; **Mostrar citação e link** também permite apresentar o endereço externo.
+Siga a citação sobrescrita ou abra **Fontes da unidade** para consultar suas referências específicas. As referências do conteúdo explicativo ficam ao final de **Explicação**. Cada consulta mostra as fontes do conteúdo ao qual pertence. **Mostrar citação** exibe a identificação e a localização; **Mostrar citação e link** também permite apresentar o endereço externo.
 
 A autoria pode manter uma fonte oculta no estudo. O link de um arquivo também depende de sua autorização. Sem rede, uma referência ainda não consultada pode não estar guardada, mesmo que exista no curso. [Fontes](fontes-e-citacoes.md#referências-no-estudo) distingue essas situações.
 
@@ -136,13 +144,13 @@ A autoria pode manter uma fonte oculta no estudo. O link de um arquivo também d
 
 ### MCP ou Actions não encontra ou não altera o curso
 
-Confira se a conexão está autorizada na conta correta e se o curso pertence a você. A autoria remota usa a permissão do proprietário; uma concessão de estudo oferece outro tipo de acesso. Peça ao assistente que localize o curso e leia o conteúdo salvo antes de alterar.
+Os canais [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md) conectam uma aplicação de conversa às operações do AraLearn. Confira se a conexão está autorizada na conta correta e se o curso pertence a você. A autoria remota usa a permissão do proprietário; uma concessão de estudo oferece outro tipo de acesso. Peça ao assistente que localize o curso e leia o conteúdo salvo antes de alterar.
 
 O catálogo é a lista de tarefas do AraLearn que a aplicação de conversa consegue usar. Se ela ainda mostrar uma versão antiga, atualize essa lista. Na aplicação ChatGPT, **Refresh** consulta novamente as ferramentas e **Reconnect** refaz a conexão autorizada; uma conversa nova pode ser necessária para receber o catálogo atual.
 
 Em Actions, o documento OpenAPI descreve as operações oferecidas. Quando ele muda, importe a versão atual e salve novamente a configuração da aplicação. Para renovar uma autorização ou trocar de conta, refaça a conexão.
 
-A configuração técnica, a renovação de acesso e o tratamento de anexos estão nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
+A configuração técnica, a renovação de acesso e o tratamento de anexos estão nos guias dos dois canais.
 
 Se aparecer **Sem resposta de ferramenta**, releia o curso para verificar se o servidor chegou a gravar a mudança. Os registros daquele envio ajudam a localizar se a interrupção ocorreu na aplicação de conversa, no transporte ou no servidor. Ao compartilhá-los para diagnóstico, proteja as credenciais e o conteúdo privado.
 
@@ -160,7 +168,7 @@ Uma meta de extensão é flexível: o texto pode precisar de outra distribuiçã
 
 ### Um número da análise de autoria parece incorreto
 
-Em **Dados de autoria**, confira a dimensão e o escopo selecionados e use **Abrir dados e definições**. Uma informação que não pode ser atribuída ao recorte aparece como indisponível, não como zero.
+Em **Dados de autoria**, confira o aspecto que está examinando, chamado de dimensão, e o trecho do curso selecionado, que define o escopo. Use **Abrir dados e definições** para conferir a origem da medida. Uma informação que não pode ser atribuída ao recorte aparece como indisponível, distinta de uma contagem igual a zero.
 
 Use **Exportar curso e análise** para comparar os registros do estado salvo com os números apresentados. Esses indicadores descrevem o processo de autoria; aprendizagem e um percentual geral de autoria humana exigem definições e instrumentos próprios. A [análise de autoria](analytics-instrucionais.md) explica de onde vem cada campo e que pergunta ele pode responder.
 
@@ -198,6 +206,6 @@ Um relato inicial precisa permitir que outra pessoa refaça a situação:
 - compare o resultado esperado com o observado e copie a mensagem apresentada;
 - informe o tipo de dispositivo, a condição da conexão e o que ocorreu depois de tentar outra leitura.
 
-Quando necessário, uma pessoa desenvolvedora pode examinar o **console**, que reúne mensagens de execução do navegador, e a área de **rede**, que mostra pedidos e respostas aos serviços. Esses registros podem conter dados sensíveis. Antes de compartilhá-los, retire credenciais, como senhas, chaves e tokens; endereços temporários de arquivos; e informações pessoais ou conteúdo privado dos cursos.
+Quando necessário, uma pessoa desenvolvedora pode examinar o **console**, que reúne mensagens de execução do navegador, e a área de **rede**, que mostra pedidos e respostas aos serviços. Esses registros podem conter dados sensíveis. Antes de compartilhá-los, retire senhas, chaves e códigos de acesso, também chamados de tokens. Remova ainda endereços temporários de arquivos, informações pessoais e conteúdo privado dos cursos.
 
 O [guia de desenvolvimento](guia-desenvolvedor.md) e os guias de [MCP](autoria-mcp.md) e [Actions](autoria-actions.md) orientam a investigação técnica conforme o local da falha.

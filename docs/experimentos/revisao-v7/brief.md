@@ -1,5 +1,9 @@
 # Experimento de autoria v7
 
+> Instrução preservada do ensaio de setembro de 2026. As referências a aprovação,
+> catálogo e arquivos de trabalho pertencem ao cenário sintético preparado para
+> aquela execução. O [protocolo e os resultados](README.md) situam sua leitura.
+
 Materialize os focos indicados na atribuição. Público: estudantes iniciantes de computação que conhecem funções, números inteiros/hexadecimais e leitura de tabelas. Curso sintético “Modelos computacionais em ação”. O planejamento abaixo já foi aprovado e persistido. Fontes não são exigidas para estes exemplos construídos; não invente bibliografia.
 
 Entregue uma lista JSON de argumentos reais de `materializar_parte`, um objeto por microssequência, conforme tool.json. Cada objeto deve incluir explicacao em `explicacoes` e as unidades necessárias. `concluir:false` é apenas o estado operacional, não uma instrução para reduzir a cobertura. Não execute ferramentas remotas nem escreva no banco. Catálogo corrente em catalog.json; consulte somente os contratos necessários nos arquivos src/resources/packages. Não leia resultados de outros ensaios.

@@ -1,12 +1,12 @@
 # Uso do aplicativo
 
-O AraLearn pode ser usado no navegador, instalado a partir dele ou aberto no aplicativo Android. Este guia apresenta as operações comuns ao estudo e à autoria, como entrar na conta, abrir um curso e sincronizar os dados do dispositivo. O [Guia do estudante](guia-estudante.md) acompanha o percurso de estudo; o [Guia da pessoa autora](guia-professor-autor.md), a criação e a revisão do material.
+O AraLearn pode ser usado no navegador, instalado a partir dele ou aberto no aplicativo Android. Este guia apresenta as operações comuns ao estudo e à autoria, como entrar na conta, abrir um curso e sincronizar os dados do dispositivo. O [guia do estudante](guia-estudante.md) acompanha o percurso de estudo; o [guia da pessoa autora](guia-professor-autor.md), a criação e a revisão do material.
 
 ## Conceitos para começar
 
 Uma conta vincula a você seus cursos e seu progresso. O perfil tem um identificador escolhido, como `@nome`, e uma foto opcional para facilitar o reconhecimento ao compartilhar cursos.
 
-**Estudo** reúne os cursos que você pode abrir. **Autoria** apresenta os cursos que pertencem a você e que pode editar. Os dois espaços mostram o mesmo conteúdo salvo, assim como as conversas conectadas.
+**Estudo** reúne os cursos que você pode abrir. **Autoria** apresenta os cursos que pertencem a você e que pode editar. Os dois espaços consultam o conteúdo salvo, assim como as conversas conectadas, respeitadas as permissões e a política de disponibilização para estudo.
 
 O aplicativo guarda no dispositivo uma cópia do conteúdo carregado e do seu estado de estudo. Essa cópia permite continuar sem conexão. **Sincronizar** é enviar alterações locais e consultar atualizações disponíveis no servidor, conforme as condições descritas em [Trabalhar sem conexão](#trabalhar-sem-conexão).
 
@@ -34,31 +34,31 @@ Em **Conta**, o identificador aceita de 3 a 30 caracteres: letras sem acentos, n
 
 Em **Foto do perfil**, escolha uma imagem JPEG, PNG ou WebP de até 512 KiB, aproximadamente meio megabyte. Use **Remover foto** para retirar uma imagem existente. Volte a Conta e salve o perfil. Se uma gravação ficar sem confirmação, siga a recuperação indicada antes de escolher outro arquivo; a [solução de problemas](solucao-de-problemas.md#a-foto-de-perfil-não-é-aceita) explica como continuar.
 
-Em **Aparência**, escolha o tema do sistema, claro ou escuro. Essa preferência fica no dispositivo. Em **Preferências de autoria**, ajuste como deseja conduzir a produção com o assistente; essas escolhas não alteram retroativamente cursos já produzidos.
+Em **Aparência**, escolha o tema do sistema, claro ou escuro. Essa preferência fica no dispositivo. Em **Preferências de autoria**, ajuste como deseja conduzir a produção com o assistente. As escolhas salvas orientam trabalhos posteriores; o material já produzido conserva sua configuração aplicada.
 
 ## Alternar entre Estudo e Autoria
 
-Use o seletor **Estudo / Autoria** na tela inicial. Um curso compartilhado pode aparecer em Estudo e não aparecer em Autoria: o acesso permite estudá-lo, enquanto a edição do original permanece com o proprietário.
+Use o seletor **Estudo / Autoria** na tela inicial. Os cursos compartilhados ficam em Estudo. Autoria reúne os cursos próprios, cuja edição você controla.
 
-Autoria abre em **Conteúdo**. **Planejamento** fica disponível para examinar a organização do curso, e o menu leva das fontes e da revisão à gestão do acesso.
+Autoria abre em **Conteúdo**. **Planejamento** fica disponível para examinar a organização do curso, e o menu leva às fontes, à revisão e à gestão do acesso.
 
 ## Abrir e percorrer um curso
 
-Em Estudo, escolha o curso no seletor, confira a prévia e use **Abrir**. O conteúdo é dividido em vários níveis, do curso completo às unidades que aparecem na tela. Navegue por esses níveis até a **microssequência**, um pequeno percurso com objetivo próprio. O [guia do estudante](guia-estudante.md#abrir-uma-sessão) acompanha essa navegação.
+Em Estudo, escolha o curso no seletor, confira a prévia e use **Abrir**. O conteúdo é dividido em vários níveis, do curso completo às unidades que aparecem na tela. Navegue por esses níveis até a **microssequência**, um percurso com objetivo delimitado dentro de uma lição. O [guia do estudante](guia-estudante.md#abrir-uma-sessão) acompanha essa navegação.
 
-A primeira abertura precisa de conexão para carregar o curso. Depois, o conteúdo obtido pode ser guardado para retomada. O título na lista, sozinho, não confirma que a cópia já esteja disponível.
+A primeira abertura precisa de conexão para carregar o curso. Depois, o conteúdo obtido pode ser guardado para retomada. A lista identifica os cursos; a indicação de disponibilidade informa se a cópia já pode ser aberta sem rede.
 
 ## Responder, avançar e rever
 
-Responda à atividade e use **Continuar**. Complete os campos indicados, leia o retorno sobre sua resposta e avance. O progresso registra o ponto alcançado para permitir a retomada.
+Responda à atividade e use **Continuar** para conferir a tentativa. Complete os campos indicados e leia o retorno. Se houver erro, use **Tentar de novo** ou **Ver resposta**; o avanço fica disponível depois do acerto ou da consulta à solução. O progresso registra o ponto alcançado para permitir a retomada. O [guia do estudante](guia-estudante.md#responder-a-uma-prática) explica as etapas do retorno.
 
 **Marcar para rever** acrescenta a unidade à seção **Rever** da tela inicial. O mesmo controle retira a marca. Também é possível remover um item diretamente nessa lista e usar **Desfazer**. Veja o [percurso de estudo](guia-estudante.md#marcar-para-rever).
 
 ## Registrar uma observação
 
-Entre numa conta, abra **Observações** na unidade, escolha uma categoria, escreva até 2.000 caracteres e use **Enviar observação**. Você pode manter várias contribuições na mesma unidade, abrir uma para editar ou retirá-la.
+Entre numa conta, abra **Observações** na unidade, escreva até 2.000 caracteres e use **Enviar observação**. A categoria é opcional: **Sem categoria** permite enviar o texto sem classificá-lo. Você pode manter várias contribuições na mesma unidade, abrir uma para editar ou retirá-la.
 
-O proprietário recebe o texto com seu contexto; os outros estudantes não recebem sua contribuição. Ao fechar e reabrir o painel no mesmo contexto, o texto em edição é conservado. Se outra ação exigir concluir esse rascunho, siga o atalho de retomada indicado. [Observações](observacoes-pedagogicas.md) explica resposta, triagem e correção.
+O texto fica disponível para você e para o proprietário, junto do contexto da contribuição. Ao fechar e reabrir o painel no mesmo contexto, o texto em edição é conservado. Se outra ação exigir concluir esse rascunho, siga o atalho de retomada indicado. [Observações](observacoes-pedagogicas.md) explica resposta, triagem e correção.
 
 ## Zerar o progresso
 
@@ -70,19 +70,19 @@ Dentro do percurso, a confirmação indica o ponto da estrutura a partir do qual
 
 Em Autoria, use **Criar curso**, informe título e objetivo e salve. O curso começa privado. A área **Planejamento** apresenta o mapa curricular; **Lotes de produção** organiza os recortes que serão produzidos em cada etapa de trabalho.
 
-No mapa, a seta abre ou recolhe cada ramo; **Objetivo** mostra seu texto completo. Os vínculos de pré-requisitos e de **Cobertura do escopo** levam aos pontos correspondentes. Cada parte de produção agrupa microssequências sem mudar a estrutura estudada.
+No mapa, a seta abre ou recolhe cada ramo; **Objetivo** mostra seu texto completo. Os vínculos de pré-requisitos e de **Cobertura do escopo** levam aos pontos correspondentes. Cada parte de produção agrupa microssequências e conserva a estrutura estudada.
 
 Use **Reorganizar lotes** para dividir, reunir ou mudar a ordem desses recortes. Antes de **Salvar reorganização**, confira o título, a intenção e a progressão junto das microssequências reunidas; **Descartar reorganização** abandona a proposta. Reunir lotes conserva os textos existentes para revisão. Conflitos com outra sessão e envios sem confirmação são tratados em [Solução de problemas](solucao-de-problemas.md). O [guia autoral](guia-professor-autor.md#aprovar-o-mapa-curricular) desenvolve as decisões sobre cobertura e produção.
 
 ## Usar as ferramentas da unidade
 
-As ferramentas ficam junto aos controles da unidade. **Mais ferramentas** revela as que não estão na fileira principal. Ao fechar, você retorna ao ponto de leitura. Cada unidade oferece os apoios pertinentes, como calculadora, dicionário ou uma leitura de consulta. Esses apoios cumprem outra função que as referências bibliográficas do curso; algumas consultas dependem de um serviço externo. Veja [Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
+As ferramentas ficam junto aos controles da unidade. **Mais ferramentas** revela as que estão fora da fileira principal. Ao fechar, você retorna ao ponto de leitura. Cada unidade oferece os apoios pertinentes, como calculadora, dicionário ou uma leitura de consulta. Esses apoios ajudam a realizar a tarefa; as referências bibliográficas identificam os materiais que sustentam o conteúdo. Algumas consultas dependem de um serviço externo. Veja [Ferramentas de cálculo e consulta](ferramentas-calculo-e-consulta.md).
 
 ## Gerir áudio na Autoria
 
-Na Autoria, abra **Áudio**. **Configuração** permite escolher idioma, velocidade e voz preferida. Em **Arquivos**, selecione WAV PCM ou MP3, confira a prévia e use **Guardar áudio**. O limite é de 20 MiB por arquivo e 64 MiB para PDFs e áudios do curso; um MiB equivale a 1.048.576 bytes, a unidade usada nesses limites.
+Na Autoria, abra **Áudio**. **Configuração** permite escolher idioma, velocidade e voz preferida. Em **Arquivos**, selecione WAV PCM ou MP3, confira a prévia e use **Guardar áudio**. O limite é de 20 MiB por arquivo e de 64 MiB para o conjunto de documentos em formato PDF e arquivos de áudio do curso. Um MiB equivale a 1.048.576 bytes, a unidade usada nesses limites.
 
-Guardar áudio não o inclui automaticamente numa unidade. Escolha a faixa ao compor o conteúdo e prepare sua alternativa textual. **Gerar voz** envia o texto ao serviço configurado mediante autorização e uso da sua cota. Confira a gravação antes de guardá-la. [Áudio](audio.md) explica as escolhas, a conexão necessária, os formatos e a privacidade.
+Depois de guardar o áudio, escolha a faixa ao compor a unidade e prepare sua alternativa textual. **Gerar voz** envia o texto ao serviço configurado mediante autorização e uso da sua cota. Confira a gravação antes de guardá-la. [Áudio](audio.md) explica as escolhas, a conexão necessária, os formatos e a privacidade.
 
 ## Configurar o desenho do curso
 
@@ -94,27 +94,29 @@ Em **Perfis de autoria**, guarde um conjunto de preferências e confira a prévi
 
 O [guia autoral](guia-professor-autor.md#ajustar-o-desenho) explica a diferença entre intenção atual e configuração usada na produção; [Parâmetros de autoria](parametros-de-autoria.md) desenvolve herança e preferências.
 
-## Manter fontes, PDFs e proveniência
+<a id="manter-fontes-pdfs-e-proveniência"></a>
+
+## Manter fontes, documentos e proveniência
 
 **Fontes** reúne as obras e os materiais usados no curso. **Nova fonte** abre o cadastro; **Dados da referência** oferece os campos adicionais conhecidos, e **Conferir referência** mostra sua apresentação antes de salvar. Você pode escrever a referência ou gerar sua formatação a partir dos dados informados.
 
-O registro do material e de seu uso permite conferir a origem do conteúdo — sua **proveniência**. A página [Fontes, citações e referências](fontes-e-citacoes.md) explica como relacionar uma afirmação ao trecho da obra, anexar PDF, ajustar a visibilidade e preservar vínculos ao editar.
+O registro do material e de seu uso permite conferir a origem do conteúdo — sua **proveniência**. A página [Fontes, citações e referências](fontes-e-citacoes.md) explica como relacionar uma afirmação ao trecho da obra, anexar um documento em formato PDF, ajustar a visibilidade e preservar vínculos ao editar.
 
-No estudo, abra **Explicação** ou siga uma citação sobrescrita para consultar as referências autorizadas. Um PDF só fica acessível conforme os direitos do arquivo.
+No estudo, siga uma citação sobrescrita ou abra **Fontes da unidade** para consultar as referências ligadas à unidade. **Explicação** apresenta o conteúdo explicativo e suas próprias referências. Os documentos ficam acessíveis conforme as permissões dos arquivos correspondentes.
 
 ## Editar uma unidade no próprio conteúdo
 
-O proprietário pode usar **Editar** em Estudo ou Conteúdo. Escolha o título ou um trecho editável, altere o texto e use **Salvar**. **Desfazer** e **Refazer** atuam no rascunho; **Cancelar** abandona esse rascunho. A edição direta atua nos campos textuais e conserva a unidade e seus vínculos; uma mudança estrutural segue o fluxo de autoria. Alterar uma afirmação também pode exigir nova conferência das fontes.
+O proprietário pode usar **Editar** em Estudo ou Conteúdo. Escolha o título ou um trecho editável, altere o texto e use **Salvar edição**. **Desfazer** e **Refazer** atuam no rascunho; **Cancelar** abandona esse rascunho. A edição direta atua nos campos textuais e conserva a unidade e seus vínculos; uma mudança estrutural segue o fluxo de autoria. Alterar uma afirmação também pode exigir nova conferência das fontes.
 
 Quem recebeu acesso usa o curso para estudar e, com conta, enviar observações. O controle **Editar** pertence ao proprietário. Quando a pessoa cria uma cópia com a permissão correspondente, ela passa a ter outro curso, independente do original.
 
 Em Estudo, **Assistência por IA** abre uma conversa sobre a unidade, microssequência ou lição:
 
-1. escolha o provedor disponível e o modelo, quando solicitado, e informe sua chave de acesso;
-2. descreva o que deseja compreender ou alterar e discuta a proposta;
-3. use **Preparar prévia** quando quiser examinar uma mudança;
-4. compare **Original** e **Prévia** e escolha **Aplicar ao rascunho** se estiver adequada;
-5. salve o rascunho ou descarte-o.
+1. Escolha o provedor disponível e o modelo, quando solicitado, e informe sua chave de acesso.
+2. Descreva o que deseja compreender ou alterar e discuta a proposta.
+3. Use **Preparar prévia** quando quiser examinar uma mudança.
+4. Compare **Original** e **Prévia** e escolha **Aplicar ao rascunho** se estiver adequada.
+5. Use **Salvar proposta** para gravar a mudança ou **Descartar rascunho** para abandoná-la.
 
 A chave fica apenas durante a sessão. O provedor recebe sua mensagem e o conteúdo necessário ao recorte, conforme descrito em [Assistência por modelo de linguagem](assistencia-por-ia.md#contexto-enviado). Confira os dados enviados e os termos do serviço. Uma conversa pode explicar o assunto sem propor qualquer alteração.
 
@@ -130,28 +132,23 @@ Ao voltar para o AraLearn, aguarde a atualização. Se necessário, use **Atuali
 
 ## Navegar e editar Conteúdo
 
-**Conteúdo** é o espaço de inspeção do material produzido. As práticas ficam
-inativas e suas respostas esperadas aparecem para conferência.
+**Conteúdo** é o espaço de inspeção do material produzido. As práticas ficam inativas e suas respostas esperadas aparecem para conferência.
 
 | Tarefa | Controles e efeito |
 | --- | --- |
 | Percorrer o curso | A tela apresenta normalmente uma unidade por vez. **Anterior** e **Próxima** seguem a ordem curricular; o localizador leva a outro ponto. |
 | Encontrar uma mudança | **Ir à atualização mais recente** abre a última unidade modificada no trecho consultado. **Atualizado em** informa a data dessa mudança. |
 | Comparar unidades | **Mostrar várias unidades** abre a leitura vertical. **Carregar unidades anteriores** e **Carregar unidades posteriores** continuam o percurso. |
-| Registrar a mesma observação em vários pontos | Selecione as unidades e use **Registrar observação nas unidades selecionadas**. Se parte dos envios falhar, a recuperação confere somente os que ficaram sem confirmação. |
-| Voltar a uma unidade | **Limpar seleção** mantém a leitura múltipla; **Mostrar somente esta unidade** concentra a tela sem transformar a seleção em parte de produção. |
+| Registrar a mesma observação em vários pontos | Selecione as unidades e use **Registrar observação nas unidades selecionadas**. Um único registro reúne os alvos escolhidos. Se o envio ficar sem confirmação, a recuperação confere esse mesmo registro antes de iniciar outro. |
+| Voltar a uma unidade | **Limpar seleção** mantém a leitura múltipla; **Mostrar somente esta unidade** concentra a tela. A seleção para inspeção permanece independente das partes de produção. |
 
-Mesmo antes de produzir unidades, uma microssequência pode ter uma explicação
-salva. Nesse caso, você ainda pode consultar o texto, suas fontes e seus
-parâmetros; **Abrir mapa curricular** mostra a posição desse conteúdo no curso.
-As ferramentas abrem sobre o item em exame e devolvem o foco ao fechar. Durante
-uma edição, algumas ficam indisponíveis para preservar o rascunho.
+Mesmo antes de produzir unidades, uma microssequência pode ter uma explicação salva. Nesse caso, você ainda pode consultar o texto, suas fontes e seus parâmetros; **Abrir mapa curricular** mostra a posição desse conteúdo no curso. As ferramentas abrem sobre o item em exame e devolvem o foco ao fechar. Durante uma edição, algumas ficam indisponíveis para preservar o rascunho.
 
 ## Usar Revisão
 
-Observação, correção e revisão cumprem funções diferentes. A observação registra uma questão sobre o conteúdo. Em **Revisão → Observações**, filtre os registros, abra o detalhe e leia a contribuição junto do ponto a que se refere. Os controles disponíveis permitem responder e mudar seu estado conforme a permissão; o [capítulo de observações](observacoes-pedagogicas.md) explica cada possibilidade.
+A observação registra uma questão sobre o conteúdo. Em **Revisão → Observações**, filtre os registros, abra o detalhe e leia a contribuição junto do ponto a que se refere. Os controles disponíveis permitem responder e registrar a decisão conforme a permissão e o tipo de observação. O [capítulo de observações](observacoes-pedagogicas.md) explica a triagem das contribuições e as decisões por alvo nas observações autorais.
 
-Uma correção modifica a explicação ou a unidade em que o problema ocorre. Siga o [percurso de observação e correção](observacoes-pedagogicas.md#da-observação-à-revisão) para preparar a mudança e conferir o conteúdo salvo. Uma dúvida respondida pode ser encerrada pela própria resposta, enquanto um problema no material pede alteração.
+Uma correção modifica a explicação ou a unidade em que o problema ocorre. Siga o [percurso de observação e correção](observacoes-pedagogicas.md#da-observação-à-revisão) para preparar a mudança e conferir o conteúdo salvo. A pessoa pode encerrar uma dúvida depois da resposta, aprovar uma correção nos alvos examinados ou encerrar expressamente um apontamento sem alteração. Cada decisão registra como a questão foi tratada.
 
 Depois de ler uma explicação ou unidade salva, você pode declarar sua **Revisão autoral** sobre aquela versão. A marca registra a inspeção humana e permanece separada do tratamento das observações. Revisão e correção exigem conexão para conferir o estado atual do curso.
 
@@ -161,19 +158,19 @@ Depois de ler uma explicação ou unidade salva, você pode declarar sua **Revis
 
 **Dados de autoria** ajuda a responder quais escolhas orientaram a produção e onde elas aparecem no curso. **Escolher dimensão e escopo** define o aspecto e o trecho que você quer examinar; um grupo da distribuição abre as unidades correspondentes. **Abrir dados e definições** explica o que foi solicitado, o que foi aplicado e quais informações estavam disponíveis.
 
-Em **Comparar cursos**, escolha outro curso próprio e use **Comparar estas edições**. **Exportar curso e análise** prepara o conteúdo integral e seus registros de autoria em JSON, um formato de dados estruturados. Confira a edição e use **Baixar arquivo JSON**. A exportação reúne dados do curso e da autoria; arquivos anexos, como PDFs e áudios, assim como informações pessoais e conversas, ficam fora dela.
+Em **Comparar cursos**, escolha outro curso próprio e use **Comparar estas edições**. **Exportar curso e análise** prepara o conteúdo integral e seus registros de autoria em JSON, um formato de dados estruturados. Confira a edição e use **Baixar arquivo JSON**. O arquivo omite os bytes dos anexos, o perfil e as identidades da conta, o estado pessoal de estudo, as credenciais e as conversas. Textos e metadados do curso podem conter informações pessoais; confira-os antes de compartilhar o arquivo.
 
 A [análise de autoria](analytics-instrucionais.md) explica o conteúdo exportado e como interpretar uma comparação à luz dos objetivos, do material e das condições de produção.
 
 ## Conceder e revogar acesso
 
-Em **Pessoas e acesso**, use **Conceder acesso**, digite ao menos dois caracteres do identificador e selecione a pessoa apresentada. Confira o identificador e a foto opcional antes de confirmar. A busca mostra até dez pessoas e não expõe e-mail. Se o identificador mudar durante a escolha, refaça a busca.
+Em **Pessoas e acesso**, use **Conceder acesso**, digite ao menos dois caracteres do identificador e selecione a pessoa apresentada. Confira o identificador e a foto opcional antes de confirmar. A busca mostra até dez pessoas; o e-mail permanece privado. Se o identificador mudar durante a escolha, refaça a busca.
 
 O acesso permite estudar e enviar observações; a edição do original continua com o proprietário. A permissão de criar uma cópia é separada. Para revogar, use a ação junto ao identificador e confirme. O aplicativo remove a cópia compartilhada quando a próxima conferência pela rede constatar que a pessoa perdeu acesso. Uma cópia independente já criada continua sendo outro curso.
 
-O proprietário também pode tornar o curso público, permitindo leitura e prática sem conta. Ao escolher **Público**, a opção inicial dos arquivos é **Disponíveis para estudo**. Para restringi-los, altere essa opção antes de confirmar. Exceções por fonte e PDF ficam em **Fontes**: a regra do arquivo prevalece sobre a da fonte, que prevalece sobre a do curso.
+O proprietário também pode tornar o curso público, permitindo leitura e prática sem conta. Ao escolher **Público**, a opção inicial dos arquivos é **Disponíveis para estudo**. Para restringi-los, altere essa opção antes de confirmar. Exceções por fonte e arquivo ficam em **Fontes**: a regra do arquivo prevalece sobre a da fonte, que prevalece sobre a do curso.
 
-Retirar uma concessão individual não impede a leitura pública. Voltar o curso a privado encerra novos acessos públicos e conserva as concessões individuais. Arquivos já recebidos por alguém não podem ser recolhidos pelo aplicativo. [Privacidade](privacidade.md) desenvolve acesso e conservação dos dados.
+Retirar uma concessão individual conserva a possibilidade de leitura pública. Voltar o curso a privado encerra novos acessos públicos e conserva as concessões individuais. Os arquivos já recebidos permanecem nas cópias de quem os obteve; a revogação controla os próximos acessos pelo serviço. [Privacidade](privacidade.md) desenvolve acesso e conservação dos dados.
 
 ## Trabalhar sem conexão
 
@@ -181,13 +178,13 @@ Abra o curso com conexão e aguarde o carregamento antes de depender da cópia l
 
 Progresso e marcas **Rever** são guardados localmente. Observações têm sua própria fila de envio. Em **Configurações → Sincronização e dados deste dispositivo**, o modo **Automática** procura enviar essas mudanças e consultar atualizações quando houver conexão. **Manual** aguarda a ação da nuvem; salvar uma edição ou enviar uma observação continua sendo uma ação explícita.
 
-A nuvem indica pendência, andamento ou falha. Sem rede, ela mostra o estado da cópia disponível. O serviço também pode estar temporariamente indisponível mesmo quando outros sites abrem; nesse caso, preserve a cópia e solicite uma nova leitura quando puder. Um rascunho aberto pode adiar a atualização para não perder o texto em edição.
+A nuvem indica pendência, andamento ou falha. Sem rede, ela mostra o estado da cópia disponível. O serviço também pode estar temporariamente indisponível mesmo quando outros sites abrem; nesse caso, preserve a cópia e solicite uma nova leitura quando puder. Um rascunho aberto pode adiar a atualização para conservar o texto em edição.
 
-Na Autoria, algumas páginas já consultadas podem permanecer disponíveis como leitura anterior. Operações que dependem do estado atual do servidor, como alterar parâmetros, aplicar correções ou gerir o acesso, exigem conexão. PDFs e áudios são obtidos separadamente e podem depender da rede durante o estudo.
+Na Autoria, algumas páginas já consultadas podem permanecer disponíveis como leitura anterior. Operações que dependem do estado atual do servidor, como alterar parâmetros, aplicar correções ou gerir o acesso, exigem conexão. Documentos e arquivos de áudio são obtidos separadamente e podem depender da rede durante o estudo.
 
-Se uma edição foi salva e a atualização da tela falhou, o aplicativo pode mostrar o conteúdo confirmado com sincronização pendente. Essa situação pede outra leitura, não outra edição do mesmo texto. A [persistência e sincronização](persistencia-relacional.md) explica como a cópia é atualizada e as diferenças entre conteúdo confirmado, anterior e indisponível.
+Se uma edição foi salva e a atualização da tela falhou, o aplicativo pode mostrar o conteúdo confirmado com sincronização pendente. Use a atualização para conferir o conteúdo já gravado antes de iniciar uma nova edição. A [persistência e sincronização](persistencia-relacional.md) explica como a cópia é atualizada e as diferenças entre conteúdo confirmado, anterior e indisponível.
 
-Em **Progresso sem conta**, confira os cursos e escolha quais acrescentar à conta identificada na tela. A operação reúne conclusões e marcas sem substituir sua posição de leitura ou apagar o progresso existente na conta. Os dados de visitante continuam separados e disponíveis ao sair; no modo manual, o estado incorporado aguarda a sincronização solicitada.
+Em **Progresso sem conta**, confira os cursos e escolha quais acrescentar à conta identificada na tela. A operação reúne conclusões e marcas, conservando sua posição de leitura e o progresso existente na conta. Os dados de visitante continuam separados e disponíveis ao sair; no modo manual, o estado incorporado aguarda a sincronização solicitada.
 
 ## Sair
 

@@ -20,8 +20,8 @@ autoriza uma alteração delimitada. A distinção entre discutir e aplicar depe
 do pedido e das decisões anteriores da pessoa.
 
 O assistente associa a intenção aos objetos do [modelo didático](modelo-didatico.md):
-mapa curricular, explicação ou unidades de estudo. A explicação é o texto-base
-da microssequência, com suas fontes; as unidades organizam a apresentação e a
+mapa curricular, explicação ou unidades de estudo. A explicação desenvolve a
+base da microssequência, com suas fontes; as unidades organizam a apresentação e a
 prática. Corrigir a explicação pode exigir examinar também unidades que dependem
 dela, mas essa análise não autoriza alterações fora do trabalho acordado.
 
@@ -117,7 +117,12 @@ a declaração de revisão se refere a cada objeto salvo e à sua base pertinent
 
 Cada chamada conserva o conteúdo integral do objeto. Campos independentes podem ser acrescentados em chamadas posteriores, pois a edição de ramo preserva os campos omitidos. Dividir o trabalho dessa forma evita exigir a árvore inteira numa única chamada; não autoriza resumir objetivos, explicações ou relações para satisfazer o transporte. `salvar_mapa_curricular` com módulos preenchidos continua sendo uma substituição completa, não uma forma de acrescentar somente o próximo ramo. Ao terminar, o assistente consulta todas as páginas do planejamento completo e apresenta a versão salva para inspeção. Um rascunho ainda sem ramos ou com cobertura pendente não está pronto para aprovação.
 
-A resposta de `salvar_mapa_curricular` confirma a persistência com `revisaoDoCurso`, `situacao` e `referenciaParaAprovar`, sem repetir a árvore do curso. Se essa resposta se perder, o assistente usa `consultar_planejamento` com `curso` e `resumo: true` para recuperar a situação e a referência vigentes antes de decidir se falta alguma escrita. A referência recuperada não substitui a inspeção do mapa nem autoriza aprová-lo sem a decisão explícita da pessoa. MCP e Actions usam o mesmo comportamento.
+A resposta de `salvar_mapa_curricular` confirma a persistência com
+`revisaoDoCurso`, `situacao` e `referenciaParaAprovar`. Se ela se perder, o
+assistente usa `consultar_planejamento` com `curso` e `resumo: true` para
+recuperar a situação e a referência vigentes antes de decidir se falta alguma
+escrita. A aprovação ocorre depois da inspeção do mapa, mediante decisão
+explícita da pessoa sobre aquela versão. MCP e Actions usam o mesmo comportamento.
 
 A explicação pode ser desenvolvida numa microssequência existente enquanto o
 mapa ainda está em rascunho e antes de haver unidades. No foco **Conteúdo**, a
@@ -126,7 +131,11 @@ explicação e suas fontes podem constituir o resultado completo do trabalho. No
 unidades. O [guia de autoria por conversa](criar-cursos-pelo-chat.md) apresenta
 as decisões que a pessoa toma nesse percurso.
 
-Depois de salvar explicações, o retorno identifica cada base em `context.explicacoes`, com seu título e link de inspeção. O `deepLink` principal abre a primeira microssequência afetada na seção Conteúdo, onde a explicação pode ser lida mesmo antes das unidades. O assistente usa os endereços retornados; a seção `review` reúne observações e não substitui a leitura das bases.
+Depois de salvar explicações, o retorno identifica cada base em
+`context.explicacoes`, com título e link de inspeção. O `deepLink` principal
+abre a primeira microssequência afetada na seção Conteúdo, onde a explicação
+pode ser lida mesmo antes das unidades. Use esses endereços para examinar as
+bases; a seção `review` reúne os apontamentos sobre elas.
 
 A aprovação do mapa, a autorização para produzir e a revisão do conteúdo têm
 objetos diferentes. A primeira confirma a organização examinada; a segunda
@@ -154,13 +163,27 @@ não decididas voltam à pessoa. Sem continuidade autorizada, a produção termi
 ao entregar o primeiro lote. Confirmações de segurança próprias do cliente
 continuam aplicáveis.
 
-Antes da escrita, a Explicação salva é reconciliada por passagens com o repertório persistido. Cada ensinamento é identificado como introdução, conhecimento estabelecido, retomada, exemplo, apoio ou dependência adiada com destino. O inventário inclui as relações necessárias: seis ensinamentos sob teto dois precisam aparecer no percurso completo, sem desaparecer em um tópico agregado.
+Antes de produzir unidades, o assistente relaciona o que a explicação ensina
+com o repertório registrado. Essa **reconciliação** identifica a função de cada
+passagem: introduzir uma ideia, retomar um conhecimento ou oferecer um exemplo,
+por exemplo. Uma dependência que será ensinada depois precisa indicar seu
+destino. A classificação pode abranger um recurso inteiro ou um trecho literal;
+o servidor localiza as partes correspondentes no conteúdo salvo.
 
-A Explicação é a base consultável da microssequência; a sequência das unidades apresenta o ensino e os exemplos pertinentes e as práticas conforme a condição escolhida. Salvar a base orienta o percurso sem substituí-lo. Quando o percurso ainda não apresenta um ensino, o preparo é recusado nomeando a ideia, a unidade em uso e a microssequência e devolvendo o passo de recuperação.
+O inventário precisa conservar as relações que serão ensinadas. Se há seis
+relações novas e o limite aplicado é de duas por unidade, o percurso deve
+distribuir as seis. Reuni-las sob o nome de um assunto amplo apagaria a
+distinção necessária para planejar esse ensino.
 
-`preparar_materializacao` é uma consulta antecipada opcional. Recebe `plano`,
-uma declaração compacta das unidades, e confere conjuntamente repertório,
-vínculos, requisitos, formas, componentes, fontes, práticas e cobertura.
+A explicação oferece uma base consultável, e as unidades desenvolvem o percurso
+de estudo com ensino, exemplos e a prática prevista. Quando falta o ensino de
+uma ideia nesse percurso, o preparo identifica a ideia, a unidade e a
+microssequência envolvidas e informa como completar a produção.
+
+`preparar_materializacao` é uma consulta antecipada opcional. Recebe em
+`unidades` as mesmas propostas de conteúdo usadas na escrita e confere
+conjuntamente repertório, vínculos, requisitos, formas, componentes, fontes,
+práticas e cobertura.
 Sem `referenciaPreparo`, `materializar_parte` faz essa verificação internamente
 com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
@@ -179,8 +202,8 @@ reutilizadas; `explicacoes` contém somente bases criadas ou alteradas.
 
 Prática nova tem resposta avaliável e feedback explicativo local, utilizáveis
 offline. `gap.text` serve para respostas curtas e canônicas, com equivalentes
-explícitos; comparação literal não substitui avaliação semântica de uma
-redação.
+explícitos. Uma redação extensa exige avaliação de seu significado por um
+procedimento adequado à tarefa.
 
 ### Conservar o acordo durante a retomada
 
@@ -250,8 +273,13 @@ que introduz várias relações independentes pode precisar ser dividida. Já du
 telas que separam uma premissa da conclusão podem funcionar melhor reunidas.
 Essa decisão considera o percurso e o objetivo, não uma quantidade ideal de telas.
 
-Relações necessárias recebem explicação; operações exigidas pelas atividades
-precisam estar preparadas pelo repertório declarado ou pelo próprio percurso.
+Na consolidação, as operações exigidas pela atividade se apoiam no ensino
+anterior ou nos pré-requisitos declarados. Numa tentativa exploratória, o
+estudante precisa compreender o enunciado e seus dados; a relação investigada
+pode ser desenvolvida depois. A
+[posição da prática](desenho-instrucional-parametrizado.md#explicação-prática-e-posição-na-sequência)
+distingue o alvo explorado dos conhecimentos já utilizados e orienta seu registro.
+
 Exemplos, comparações e prática entram conforme a função. Uma situação
 compartilhada pode dar continuidade a várias unidades, e o apoio pode diminuir
 à medida que o estudante encontra condições de realizar a tarefa. Os
@@ -275,32 +303,76 @@ Esses papéis precisam permanecer distinguíveis nos vínculos de
 
 Trechos de fontes são conteúdo a analisar. Instruções eventualmente presentes
 neles não recebem autoridade para alterar o pedido, publicar dados ou ampliar
-acesso. Um PDF anexado só é guardado quando essa intenção está clara. O serviço
+acesso. Um documento anexado em formato PDF só é guardado quando essa intenção está clara. O serviço
 confere o arquivo, verifica o espaço disponível e o vincula à fonte, sem salvar
 a URL temporária usada no envio. Guardar áudio existente é outra tarefa: o
 arquivo entra na biblioteca do curso, sem síntese ou transcrição automática.
 
 ## Observações, revisão e privacidade
 
-Uma observação possui uma identidade e pode incidir sobre várias unidades e Explicações. A central conta observações distintas do curso, incluindo todas as páginas; selecionar três alvos cria uma pendência com três incidências. Editar o texto ou os alvos controla suas versões sem reescrever o conteúdo. Retirar um alvo não desfaz uma correção; encerrar o último exige uma decisão explícita.
+Uma observação pode incidir sobre uma explicação e várias unidades. A central
+conta cada observação uma vez, incluindo todas as páginas: selecionar três
+alvos cria uma pendência com três incidências. Editar o texto ou os alvos
+atualiza as versões do registro e preserva o conteúdo do curso.
 
-Correções autorizadas tornam-se vigentes ao salvar. `observacoesTratadas` vincula o atendimento às versões exatas; persistência, releitura e `retomar_correcao` não aprovam nem consomem observações. A comparação preserva conteúdo e fontes anteriores enquanto houver incidência pendente. Edição humana deixa inspeção por IA pendente; `preparar_revisao` fornece a referência da base lida e `registrar_inspecao` registra o parecer sem editar nem contar intervenção. Não há IA executando automaticamente em segundo plano.
+Correções autorizadas tornam-se vigentes ao salvar. `observacoesTratadas`
+associa a correção às versões que ela procurou atender. A gravação, a releitura
+e `retomar_correcao` conferem o resultado, enquanto a observação aguarda uma
+decisão humana. Até essa decisão, a comparação conserva o conteúdo e as fontes
+anteriores necessários à inspeção.
 
-A fila entrega `referenciasComparacao` por alvo, sem repetir todos os documentos na lista. `preparar_revisao.comparacao` recebe a referência com as versões da observação e do conjunto de alvos; sua continuação recupera literalmente as bases anteriores e vigentes, seus vínculos e fontes. Conclua essa leitura antes da decisão. Uma versão alterada exige reler a fila e inspecionar a base atual.
+A fila entrega `referenciasComparacao` por alvo. O assistente devolve essa
+referência em `preparar_revisao.comparacao` e recupera suas continuações para
+ler as bases anteriores e vigentes, com vínculos e fontes. Uma observação ou
+base alterada exige nova leitura. Se o alvo foi removido, a incidência permanece
+com `expectedBasisHash: null` e pode ser encerrada expressamente com as versões
+recebidas. Um alvo ausente só admite encerramento, pois falta conteúdo vigente
+para aprovar.
 
-Se o alvo foi removido, a fila conserva a incidência e informa sua ausência com `expectedBasisHash: null`. A decisão explícita pode cancelá-la usando as versões recebidas; a ausência nunca representa conteúdo aprovado. Se o alvo reaparecer ou a observação mudar, releia antes de decidir.
+`decidir_observacao` registra a aceitação do conteúdo vigente ou o encerramento
+sem alteração. A decisão identifica a observação, suas versões e a base de
+cada alvo examinado. Uma decisão parcial conserva as demais incidências.
+“Todas” se refere ao conjunto completamente lido e apresentado à pessoa;
+novas entradas ou versões precisam de outra inspeção. Retirar um alvo conserva
+qualquer correção já salva nele.
 
-`decidir_observacao` executa a aprovação expressa do vigente ou o encerramento sem alteração. A decisão identifica observação, versão, conjunto de alvos e base examinada. Aprovação parcial conserva as demais incidências; “todas” exige leitura completa e um conjunto fixado, sem alcançar novas entradas ou versões posteriores. Cancelar uma observação de teste ou engano dispensa correção artificial e não declara aprovação. Após a última decisão, o conteúdo operacional e as bases dispensáveis são liberados; arquivos ainda usados pelo vigente ou por outra pendência permanecem. A [declaração humana de revisão](explicacao-e-revisao-humana.md) continua distinta dessas decisões.
+Após a decisão do último alvo, o conteúdo operacional e as bases dispensáveis
+são liberados. Arquivos ainda usados pelo conteúdo vigente ou por outra
+pendência permanecem. A [declaração humana de revisão](explicacao-e-revisao-humana.md)
+registra a inspeção do objeto e tem operação própria.
 
 ### Auditoria pedagógica focal
 
-`registrar_inspecao` recebe a referência opaca da base focal lida e
-um relatório semântico; a referência já contém a identidade da tentativa e da base.
-Novos pareceres precisam examinar seis dimensões, cada uma
-com justificativa e *quotes* que existam na base salva: `alignment`,
-`evidence`, `representation`, `feedback`, `sufficiency` e `configuration`. A implementação
-confere identidade, versão, hash, correspondência dos trechos e a necessidade
-de atualizar o parecer quando a base muda.
+A inspeção por IA é uma segunda leitura crítica do material salvo, executada
+quando solicitada. Uma edição material pode deixá-la pendente.
+`preparar_revisao` fornece a base e sua referência; `registrar_inspecao` recebe
+essa referência intacta e um parecer. O registro conserva conteúdo e revisão
+humana como estavam.
+
+Novos pareceres examinam seis dimensões. Cada uma recebe um julgamento, uma
+justificativa e trechos copiados da base, no campo `evidence`.
+
+| Dimensão | Pergunta que orienta a leitura |
+| --- | --- |
+| `alignment` | O objetivo, o ensino e a operação pedida ao estudante correspondem entre si? |
+| `evidence` | A resposta recolhida permite observar a operação que se pretende avaliar? |
+| `representation` | A representação conserva as relações do assunto e pode ser lida como a tarefa exige? |
+| `feedback` | O retorno ajuda a compreender a resposta e os erros plausíveis? |
+| `sufficiency` | O percurso oferece os conhecimentos, exemplos e oportunidades necessários ao objetivo? |
+| `configuration` | As escolhas pedagógicas aplicadas se realizam no conteúdo e na ordem do percurso? |
+
+Na inspeção da explicação, evidência, feedback e configuração consideram também
+as práticas das unidades da microssequência presentes na base. O caráter
+expositivo da explicação, isoladamente, é insuficiente para declarar esses
+critérios inaplicáveis. Nas fontes, a leitura confronta cada ocorrência do
+conteúdo com as passagens da fonte que o vínculo declara usar. Uma página
+indicada ainda precisa ser consultada; quando isso for impossível, o parecer
+registra a verificação que falta.
+
+O servidor confere identidade, versão, impressão digital da base (`basisHash`)
+e correspondência dos trechos. Mudanças materiais e alterações na ordem das
+unidades exigem inspeção da base atual. A [referência dos contratos](aralearn-contract.md#inspeção-por-ia)
+detalha os campos, estados e limites do relatório.
 
 `findings` registra pendências, não observações positivas: `consistent` exige
 `findings: []`. Registre os aspectos positivos em `summary` ou no `reason` de
@@ -322,27 +394,29 @@ realização relevante não demonstrada exige `insufficient` e `needs_attention`
 `not_applicable` exige ausência de parâmetro pedagógico observável aplicável,
 nunca apenas falta de evidência. Detalhes em [Parâmetros de autoria](parametros-de-autoria.md#realização-da-configuração-na-inspeção).
 
-Pareceres históricos sem `checks` ou com as cinco dimensões anteriores continuam
-legíveis. `current` informa que a base continua atual, não que o parecer cobre
-o contrato atual. A interface informa quando a realização da configuração ainda
-não foi avaliada, sem atribuir defeito ao conteúdo. Não há sexta dimensão
-fabricada, alteração de hash ou backfill. O transporte aceita cinco dimensões
-somente para recuperar a tentativa exata já salva: recibo, acesso, curso e hash
-do comando são conferidos antes da base atual. Sem recibo, a gravação exige seis.
-Isso funciona mesmo após outro parecer ou mudança da base, sem substituir o
-parecer posterior. O produtor não calcula hashes nem reenvia a base pedagógica.
+Pareceres de formatos anteriores, sem `checks` ou com cinco dimensões,
+continuam legíveis quando presentes. `current` informa a correspondência com
+a base; a interface sinaliza separadamente quando a realização da configuração
+ainda precisa de avaliação. Os registros antigos conservam seu alcance.
 
-Essa verificação estrutural do relatório não é garantia de qualidade
-pedagógica, suficiência ou aprendizagem. A auditoria é uma segunda leitura
-semântica; contagem de componentes, schema válido, hash ou relatório
-`consistent` não substituem julgamento. Os experimentos com prompts, contratos
-e novas materializações continuam em revisão e não têm conclusão geral.
+O transporte aceita cinco dimensões somente para recuperar uma tentativa exata
+já salva. Primeiro confere recibo, acesso, curso e hash do comando. Essa
+recuperação devolve o resultado anterior mesmo se houver outro parecer ou uma
+base nova; o parecer posterior permanece vigente. Uma gravação nova exige as
+seis dimensões e usa a base calculada pelo servidor.
 
-O curso conserva os dados necessários à autoria e ao estudo. Os dados de autoria
-derivam desses registros salvos; a conversa permanece na sessão, e o painel não
-se baseia em cliques ou tempo de tela. O capítulo de
-[privacidade](privacidade.md) distingue as informações do aplicativo das
-enviadas aos serviços externos de IA.
+As verificações técnicas ligam o relatório ao material e detectam
+contradições observáveis. O julgamento pedagógico exige examinar o significado
+desse material; seus efeitos sobre a aprendizagem exigem investigação com
+pessoas. O [protocolo de avaliação](protocolo-avaliacao-artefato.md) desenvolve
+essa etapa.
+
+O curso conserva os dados necessários à autoria e ao estudo, dos quais derivam
+os dados de autoria. O painel não se baseia em cliques ou tempo de tela. A
+conversa da assistência interna permanece em memória durante a sessão; nos
+clientes externos, sua retenção segue as condições do serviço utilizado. O
+capítulo de [privacidade](privacidade.md#integrações-conversacionais) distingue
+esses percursos e os dados enviados aos serviços de IA.
 
 Quando a pessoa pede “crie um curso público”, o curso ainda nasce privado. O assistente
 conclui o pedido com `definir_visibilidade` e confirma por `consultar_acesso` que o

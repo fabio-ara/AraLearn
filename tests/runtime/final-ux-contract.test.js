@@ -6,9 +6,13 @@ const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8
 
 test("o contrato histórico conserva as decisões da rodada e aponta para a experiência atual", async () => {
   const contract = await read("ux-atlas/FINAL-UX-CONTRACT.md");
-  assert.match(contract, /Registro histórico da rodada de UX/iu);
-  assert.match(contract, /experiência atual[\s\S]*docs\/sistema-visual\.md/iu);
-  assert.match(contract, /contratos executáveis correntes/iu);
+  assert.match(contract, /^# Contrato histórico de experiência/iu);
+  assert.match(contract, /issues\/151[\s\S]*issues\/153/iu);
+  assert.match(contract, /“final” e “corrente” se referem àquela etapa/iu);
+  assert.match(contract, /decisões posteriores[\s\S]*docs\/sistema-visual\.md/iu);
+  for (const guide of ["guia-estudante.md", "guia-professor-autor.md"]) {
+    assert.ok(contract.includes(`../docs/${guide}`), `guia corrente ausente: ${guide}`);
+  }
   for (const fragment of [
     "A pesquisa respondeu às seis perguntas",
     "Assistência por IA",
@@ -53,6 +57,9 @@ test("o Atlas delimita seus registros históricos e encaminha a documentação v
   }
   for (const target of ["FINAL-UX-CONTRACT.md", "MATRIZ-COBERTURA.md", "STUDY-VISUAL-BASELINE.md"]) {
     assert.ok(index.includes(`](${target})`), `registro histórico não indexado: ${target}`);
-    assert.match(await read(`ux-atlas/${target}`), /Registro histórico da rodada de UX/iu);
+    const introduction = (await read(`ux-atlas/${target}`)).split("\n## ")[0];
+    assert.match(introduction, /^# .*históric[oa]/iu);
+    assert.match(introduction, /àquel[ae] (?:período|etapa)/iu);
+    assert.ok(introduction.includes("../docs/sistema-visual.md"), `referência vigente ausente: ${target}`);
   }
 });

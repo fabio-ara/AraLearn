@@ -26,12 +26,13 @@ os parâmetros e as relações instrucionais aplicados a ela. Conteúdo e estado
 pessoal de estudo são registros separados, pois a prática de um estudante não
 altera o material dos demais. A [persistência relacional](persistencia-relacional.md)
 detalha a organização do mapa, das partes de produção e do conteúdo.
-[Analytics](analytics-instrucionais.md) calcula contagens a partir desses registros,
-sem manter uma história da execução.
+A [análise de autoria](analytics-instrucionais.md) calcula contagens a partir desses
+registros e as apresenta no painel **Dados de autoria**.
 
 As [fontes](fontes-e-citacoes.md) identificam os materiais, as âncoras localizam
 passagens e as atribuições registram o uso no conteúdo. Cada objeto possui uma única
-linha corrente. O número público chamado de revisão identifica o estado usado na
+linha corrente. Bases de comparação de observações autorais podem preservar o estado
+anterior pertinente enquanto houver alvos pendentes. O número público chamado de revisão identifica o estado usado na
 leitura e protege alterações concorrentes; não implica uma coleção consultável de
 versões anteriores.
 
@@ -106,6 +107,34 @@ A diferença conhecida acompanha a cópia após reiniciar o aplicativo. Uma
 projeção posterior elegível permite a substituição íntegra; no modo manual, a
 atualização aguarda solicitação. O aplicativo distingue essa retenção de uma
 perda de Internet. A autorização de arquivos continua sendo conferida no servidor.
+
+### Inspeção de IA e revisão humana
+
+O parecer de IA examina uma base mais ampla que o texto isolado: relaciona o alvo ao
+percurso de sua microssequência, ao desenho aplicado e às fontes. O PostgreSQL
+reconstrói essa base por `private.course_pedagogical_basis_v1`; seu hash permite
+detectar alterações desde a leitura. A consulta do proprietário usa
+`get_course_ai_inspection_v1`, e os canais externos usam a variante
+`get_course_ai_inspection_for_actor_v1`.
+
+O registro passa por `record_course_ai_inspection_for_actor_v1`, restrita ao serviço.
+A Edge identifica a pessoa, relê a base e valida o parecer antes da chamada; o banco
+volta a conferir propriedade, hash e evidências textuais na transação. Os seis
+critérios são alinhamento, evidência, representação, feedback, suficiência e realização
+da configuração. Uma insuficiência exige `needs_attention` e a descrição da pendência.
+
+| Campo | O que permite concluir |
+| --- | --- |
+| `inspection.state: current` | A base do parecer corresponde à base atual. |
+| `inspection.state: pending` | A base mudou e exige nova inspeção. |
+| `inspection.state: unregistered` | Falta um parecer registrado para a base. |
+| `report.outcome` | Guarda o julgamento: `consistent`, `needs_attention` ou `human_preference_retained`. |
+
+A conclusão da inspeção exige base atual, resultado `consistent` e os seis critérios
+completos. Um registro histórico com cinco critérios permanece legível e incompleto
+para esse fim. O [capítulo de persistência](persistencia-relacional.md#pareceres-de-inspeção-e-suas-bases)
+explica o alcance da invalidação e a recuperação do mesmo pedido. A declaração humana
+continua vinculada à manifestação da pessoa sobre o conteúdo que inspecionou.
 
 ### Citações e arquivos na cópia local
 
@@ -257,9 +286,9 @@ visitante. Configuração de voz não contém credenciais.
 
 Remover um PDF primeiro desativa o vínculo e cria uma intenção de exclusão. O serviço
 reivindica essa intenção, remove o objeto pela Storage API e confirma a conclusão. Se
-outro vínculo ativo usar os mesmos bytes, a remoção física não é autorizada. Reanexar
-o conteúdo reativa o vínculo e volta a verificar os bytes. Essa proteção considera
-também outras cópias e reservas de envio. Um caminho cujo curso de origem deixou de
+outro vínculo ativo ou base de comparação de observação usar os mesmos bytes, o arquivo
+continua conservado. Reanexar o conteúdo reativa o vínculo e volta a verificar os
+bytes. Essa proteção considera também outras cópias e reservas de envio. Um caminho cujo curso de origem deixou de
 existir continua válido se outra cópia o utiliza; não é classificado como órfão apenas
 pelo prefixo. O áudio usa as mesmas fronteiras de revisão, intenção, objeto imutável e
 confirmação da limpeza.
@@ -284,12 +313,11 @@ a confirmação da cópia volta a validar a autorização.
 | `aralearn-authoring-mcp` | catálogo corrente de tarefas humanas pelo MCP | JWT OAuth minimizado do MCP |
 | `aralearn-authoring-action` | o mesmo catálogo projetado em OpenAPI | access token opaco do OAuth de Actions |
 
-As três funções usam `verify_jwt = false` na configuração. Isso não as torna anônimas.
-Cada handler precisa receber formatos que o verificador genérico da plataforma não
-trata da mesma maneira e, por isso, valida explicitamente o transporte antes de chamar
-o executor compartilhado. A API resolve a sessão Supabase; o MCP verifica o token JWT
-e a identidade autorizada; Actions resolve o hash do token opaco. Uma credencial de um
-canal é recusada nos outros.
+As três funções usam `verify_jwt = false` para delegar a autenticação ao próprio
+handler. Essa escolha permite receber os formatos distintos dos três canais. Antes de
+chamar o executor compartilhado, a API resolve a sessão Supabase; o MCP verifica o
+token JWT e a identidade autorizada; Actions resolve o hash do token opaco. Cada
+credencial é aceita somente no canal ao qual pertence.
 
 CORS é o mecanismo pelo qual um servidor informa ao navegador quais páginas podem
 ler suas respostas. Uma origem reúne protocolo, domínio e porta da página. As origens
@@ -349,9 +377,9 @@ histórico.
 ## Retenção e manutenção
 
 Recibos e intenções temporárias permitem recuperar operações durante uma janela
-definida. Depois dela, a rotina de retenção remove em lotes as observações já retiradas,
-os recibos expirados, as intenções de PDF vencidas e as janelas antigas de limitação de
-acesso. O
+definida. A rotina de retenção remove em lotes os registros cujo prazo venceu:
+observações retiradas ou encerradas sem texto, recibos, intenções de PDF e janelas
+antigas de limitação de concessões de acesso. O
 [pg_cron](https://supabase.com/docs/guides/database/extensions/pg_cron) a executa
 diariamente às 03:17, no fuso do banco, com limite de 512 itens por classe. Leituras e
 escritas também podem limpar dados vencidos nos caminhos previstos. Uma identidade

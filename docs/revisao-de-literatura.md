@@ -14,10 +14,10 @@ as decisões educacionais e sociotécnicas do AraLearn. Sua pergunta orientadora
 O texto é uma **revisão narrativa orientada ao desenho do artefato**: as fontes
 foram reunidas em torno dos problemas que o AraLearn procura enfrentar e dos
 mecanismos que poderiam explicá-los. Esse método permite relacionar campos
-diferentes, mas não oferece a cobertura reprodutível de uma revisão sistemática
-ou de escopo. Para esse tipo de síntese, seria necessário registrar a busca e o
-percurso completo de seleção e avaliação das fontes; JBI e PRISMA-ScR oferecem
-orientações específicas
+diferentes a partir das perguntas do projeto. Uma revisão sistemática ou de
+escopo tem outra exigência de cobertura: registra a busca e o percurso completo
+de seleção e avaliação das fontes. JBI e PRISMA-ScR oferecem orientações
+específicas para essas sínteses
 ([Peters et al. (2024)](referencias.md#ref-peters2024scoping); [Tricco et al. (2018)](referencias.md#ref-tricco2018prismascr)).
 
 As fontes descrevem teorias, orientações e resultados produzidos fora do
@@ -46,11 +46,11 @@ A força de uma fonte depende da pergunta e do alcance de seu método:
 | Tipo de fonte | Contribuição possível | Limite principal |
 | --- | --- | --- |
 | revisão sistemática ou meta-análise | sintetizar consistência, heterogeneidade e moderadores | depende da qualidade e comparabilidade dos estudos incluídos |
-| estudo experimental ou quase experimental | examinar relações causais sob condições delimitadas | generalização para outro público, conteúdo ou dispositivo não é automática |
+| estudo experimental ou quase experimental | examinar relações causais sob condições delimitadas | aplicação a outro público, conteúdo ou dispositivo exige justificativa |
 | estudo qualitativo ou de campo | explicar processos, interpretações, contexto e casos negativos | não estima efeito populacional sem desenho complementar |
-| teoria ou quadro conceitual | definir construtos e mecanismos plausíveis | coerência conceitual não constitui confirmação empírica |
-| norma ou orientação institucional | estabelecer critérios de acessibilidade, ética ou governança | conformidade não demonstra aprendizagem |
-| documentação e testes do artefato | demonstrar estrutura ou comportamento implementado | correção técnica não valida construtos pedagógicos |
+| teoria ou quadro conceitual | definir construtos e mecanismos plausíveis | a confirmação dos mecanismos exige investigação empírica |
+| norma ou orientação institucional | estabelecer critérios de acessibilidade, ética ou governança | o resultado educacional requer avaliação própria |
+| documentação e testes do artefato | demonstrar estrutura ou comportamento implementado | a interpretação pedagógica requer fundamentação e evidências para o uso pretendido |
 
 O tipo da fonte é apenas o início da avaliação. Seu alcance depende também de
 quem participou, do que as pessoas fizeram, das condições comparadas e do
@@ -113,11 +113,10 @@ modo intencional e produzir efeitos, sempre em condições sociais e materiais
 **Metacognição**, no uso adotado neste corpus, é o conhecimento que a pessoa
 tem sobre o próprio processo de pensar e aprender, acompanhado da capacidade
 de monitorá-lo e regulá-lo. Julgar que compreendeu, perceber incerteza, escolher
-outra estratégia e conferir se ela funcionou são manifestações possíveis; uma
-declaração de confiança ou um clique isolado não mede esse processo. A
-metacognição participa dos ciclos de autorregulação, mas não é sinônimo de toda
-autorregulação, que também envolve motivação, comportamento e condições do
-ambiente ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
+outra estratégia e conferir se ela funcionou são manifestações possíveis.
+Para investigá-las, é preciso relacionar os julgamentos às ações e ao contexto
+da tarefa. A metacognição participa da autorregulação, que também envolve
+motivação, comportamento e condições do ambiente ([Zimmerman (2002)](referencias.md#ref-zimmerman2002selfregulated);
 [Panadero (2017)](referencias.md#ref-panadero2017selfregulated)).
 
 Esses conceitos deslocam a análise da quantidade de opções para a qualidade das
@@ -229,8 +228,8 @@ Planejar uma atividade exige perguntar que conhecimento a pessoa precisará
 mobilizar. O quadro KLI (*Knowledge–Learning–Instruction*, conhecimento,
 aprendizagem e instrução) chama de **componentes de conhecimento** as unidades
 inferidas a partir do desempenho em tarefas. Esses componentes ajudam a explicar
-a aprendizagem, mas não são objetos que o sistema observe diretamente. O recorte
-adequado muda conforme o público e o desempenho investigado
+a aprendizagem a partir das respostas observáveis. O recorte adequado muda
+conforme o público e o desempenho investigado
 ([Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli)).
 
 Para planejar conteúdo de modo rastreável, o AraLearn adota uma
@@ -373,8 +372,8 @@ objetivos, materiais, atividades e condições de acesso formam um percurso
 compreensível, usando cursos efetivamente produzidos. Essa adaptação é proposta
 por este projeto. O estudo original tratou MOOCs para formação contínua de
 professores; autoria com IA e estudo autodidata no celular precisam de
-investigação própria, e os requisitos daquele contexto não são transferidos
-automaticamente ao aplicativo.
+investigação própria. A adaptação dos requisitos daquele contexto depende de
+sua pertinência ao público e aos objetivos do novo estudo.
 
 ## 5. Exemplos resolvidos e retirada de apoio
 
@@ -443,13 +442,11 @@ outras dimensões
 interface em blocos retangulares não estabelece por si um gênero discursivo, e
 uma unidade curta não se torna flashcard apenas pela aparência.
 
-O AraLearn é um **ambiente de aprendizagem, autoria
-e pesquisa com unidades de estudo estruturadas**. A fórmula
-explica funções do artefato; não reivindica a descoberta de um gênero
-discursivo estabelecido. Dentro dele podem coexistir gêneros e atividades
-diversos, como uma explicação, um exemplo resolvido ou uma pergunta de
-recuperação. Eles precisam ser identificados por sua função comunicativa e
-instrucional, não apenas pelo mecanismo que os apresenta na tela.
+O AraLearn organiza autoria e estudo por **unidades de estudo estruturadas**
+e oferece registros que podem apoiar pesquisas. Dentro dele coexistem gêneros
+e atividades com funções próprias, como uma explicação, um exemplo resolvido
+ou uma pergunta de recuperação. A análise identifica essas funções e examina
+como são realizadas no conteúdo.
 
 Essas distinções permitem descrever o conteúdo por sua função comunicativa e
 o produto por suas operações. Uma explicação e uma pergunta podem compartilhar
@@ -464,8 +461,8 @@ Layout, tamanho de tela e movimento do texto podem afetar leitura e esforço, ma
 os resultados dependem da tarefa, do material e do modo de interação
 ([Dyson (2004)](referencias.md#ref-dyson2004layout);
 [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens);
-[Li et al. (2021)](referencias.md#ref-li2021interaction)). Isso não estabelece
-que rolagem, paginação ou encaixe automático seja universalmente superior. A autoria móvel
+[Li et al. (2021)](referencias.md#ref-li2021interaction)). A comparação entre
+rolagem, paginação e encaixe automático precisa conservar essas condições. A autoria móvel
 adota como hipótese de interface uma **sequência vertical de inspeção**: fluxo finito,
 curricularmente ordenado, com posição, hierarquia, retomada e marcos explícitos.
 Ela deve ser avaliada pela capacidade de localizar, revisar e anotar unidades,
@@ -503,9 +500,9 @@ adicional ([Howard-Jones (2014)](referencias.md#ref-howardjones2014neuroscience)
 
 Engajamento também é multidimensional, e revisões da aprendizagem mediada por
 tecnologia mostram diversidade de definições e instrumentos
-([Henrie et al. (2015)](referencias.md#ref-henrie2015engagement)). Nem relato nem
-log deve ser promovido sozinho a verdade psicológica; divergências sistemáticas
-entre uso digital registrado e autorrelatado reforçam a necessidade de declarar
+([Henrie et al. (2015)](referencias.md#ref-henrie2015engagement)). Relatos e
+registros de uso oferecem perspectivas distintas. As divergências sistemáticas
+entre uso digital registrado e autorrelatado reforçam a necessidade de explicar
 o que cada fonte observa
 ([Parry et al. (2021)](referencias.md#ref-parry2021digitalmedia)).
 
@@ -515,8 +512,9 @@ o que cada fonte observa
 estudado, em vez de apenas relê-lo. Recordar pode integrar uma explicação ou
 uma decisão sobre um novo caso. Estudos experimentais e revisões
 encontraram benefícios em diferentes condições escolares, com variação por
-tarefa, conteúdo e medida ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Transferência para estruturas novas é possível, mas
-moderada ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
+tarefa, conteúdo e medida ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). A prática por teste também pode favorecer a transferência para outras
+tarefas e contextos, com efeitos que variam conforme a relação entre a prática
+e a avaliação ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
 Reconhecer uma alternativa, escrever uma explicação e ordenar etapas solicitam
 operações diferentes. A dificuldade maior de um formato, por si só, não o torna
@@ -623,8 +621,9 @@ no trabalho, formação continuada e desenvolvimento profissional dentro de uma
 perspectiva de aprendizagem ao longo da vida. Ela também reconhece contextos
 institucionais, laborais, domésticos e informais, inclusive aprendizagem
 autodirigida e entre pares ([UNESCO (2015)](referencias.md#ref-unesco2015tvet)).
-A recomendação é uma fonte normativa: delimita finalidades e orientações, mas
-não demonstra que uma plataforma específica forme competências profissionais.
+A recomendação delimita finalidades e orientações para a formação profissional.
+Investigar a contribuição de uma plataforma para essas competências exige
+observar a formação e o desempenho nas condições correspondentes.
 
 ### Relação possível com o AraLearn
 
@@ -716,8 +715,9 @@ uma recomendação errada ou a deixar de agir porque o sistema não apontou um
 problema. [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation)
 revisam estudos e propõem um modelo que relaciona parte desses erros à atenção,
 à situação e às características do sistema. Experiência e instruções de
-conferência não garantem sua prevenção. O modelo não explica todas as formas
-de viés e foi construído em outros contextos de automação.
+conferência fazem parte das condições a examinar, pois os estudos ainda
+identificam erros sob essas condições. O modelo focaliza parte dos vieses
+observados nos contextos de automação investigados.
 
 No AraLearn, texto fluente, referências aparentes e uma resposta tecnicamente
 aceita podem parecer mais confiáveis do que são. A hipótese de transferência
@@ -767,12 +767,11 @@ fontes, verificar os resultados, declarar como a IA foi empregada e preservar
 a responsabilidade científica e os dados da investigação (pp. 69–70 e
 175–179; [Brasil. Ministério da Educação (2026)](referencias.md#ref-mec2026iaeducacao)).
 
-Essas fontes oferecem orientações institucionais, não resultados de eficácia
-do AraLearn. Para o projeto, fundamentam investigar se autores compreendem as
-propostas, conferem conteúdo e fontes e conservam condições reais de decisão.
-Também sustentam distinguir competência crítica no uso da IA de habilidade
-para executar comandos. Uma avaliação deve examinar essas capacidades; a
-presença de controles ou citações não comprova que foram desenvolvidas.
+Essas orientações institucionais fundamentam a investigação de como autores
+compreendem propostas, conferem fontes e decidem sobre o conteúdo. Também
+ajudam a distinguir competência crítica no uso da IA de habilidade para
+executar comandos. A avaliação examina essas capacidades em tarefas nas quais
+a pessoa precisa justificar sua decisão.
 
 ## 15. Análise de dados educacionais, privacidade e interpretação
 
@@ -788,8 +787,8 @@ interrupção, uma estratégia do estudante ou uma falha técnica. Relacioná-lo
 atenção, esforço, domínio ou qualidade docente exige um modelo e validação.
 
 A área **Dados de autoria** descreve conteúdo e intervenções observáveis no
-curso corrente. Suas contagens ajudam a inspecionar o desenho produzido;
-comportamento de estudo não é coletado por essa área. A pessoa proprietária
+estado salvo do curso. Suas contagens ajudam a inspecionar o desenho produzido.
+A pessoa proprietária
 pode exportar a análise e o conteúdo salvo para uma investigação com finalidade
 própria. O [dicionário dos dados](dicionario-metricas-datasets.md) explica o que
 os números representam, e os [fundamentos de governança](fundamentos-pesquisa-e-governanca.md)
@@ -797,10 +796,9 @@ tratam das responsabilidades em seu uso.
 
 ## 16. Métrica, indicador, desfecho e validade
 
-Guardar um evento com precisão não valida a interpretação construída sobre ele.
-Validade diz respeito à sustentação das interpretações e dos usos de uma medida
-em determinada população, tarefa e decisão; não é um selo permanente do campo
-de banco, do instrumento ou do algoritmo
+A precisão de um registro permite conferir o evento observado. A validade
+concerne à sustentação da interpretação e do uso de uma medida para determinada
+população, tarefa e decisão. Cada aplicação precisa conservar essas condições
 ([Messick (1995)](referencias.md#ref-messick1995validity);
 [American Educational Research Association et al. (2014)](referencias.md#ref-aera2014standards)).
 
@@ -815,16 +813,18 @@ distintas:
 | desfecho de pesquisa | define no protocolo qual variável será tratada como resultado |
 
 Uma contagem de anotações, por exemplo, pode ser dado e medida de frequência.
-Ela só se torna indicador de carga de revisão sob uma justificativa explícita e
-não mede automaticamente dificuldade, qualidade, engajamento ou atenção. O
-mesmo vale para a proporção entre teoria e prática, o uso dos componentes e a
-taxa de correção.
+Interpretá-la como indicador de carga de revisão exige relacionar a frequência
+ao trabalho observado. Dificuldade, qualidade e engajamento requerem argumentos
+e evidências próprios. A mesma exigência acompanha o uso da proporção entre
+teoria e prática ou da taxa de correção.
 
-Como decisão de produto, o AraLearn conserva os fatos de autoria e planejamento
-necessários para recalcular métricas. Definição, fórmula, denominador e filtros
-recebem versão, acompanhados tanto das interpretações admitidas quanto das
-interpretações vedadas. A hipótese é que ligar esses registros à versão do
-conteúdo permita análises reprodutíveis do processo de autoria.
+O AraLearn conserva uma base do estado corrente de autoria e planejamento
+para recalcular as dimensões disponíveis. O contrato identifica a versão dessas
+regras, e o [dicionário dos dados](dicionario-metricas-datasets.md) explica
+definições, denominadores e ausências. A exportação liga a base à revisão do
+curso. Essa escolha permite reproduzir a leitura daquele estado; investigar
+o processo de autoria ao longo do tempo exige conservar estados sucessivos ou
+obter os registros de processo previstos pelo estudo.
 
 Essa reprodutibilidade é técnica. Validade educacional e causalidade dependem
 do instrumento, da população, do momento, dos dados ausentes e das comparações
@@ -917,19 +917,18 @@ ficaram fora do fundamento de eficácia. O mesmo ocorreu com inferências que
 tratavam satisfação ou conclusão como aprendizagem e com afirmações cujo
 mecanismo não podia ser separado do restante da intervenção.
 
-Essa estratégia oferece rastreabilidade, mas não garante exaustividade. Novas
-fontes devem entrar na bibliografia somente depois de conferência e devem
+A rastreabilidade dessa estratégia acompanha o corpus reunido e os registros
+conservados. Novas fontes entram na bibliografia depois de conferência e devem
 alterar a síntese quando contradizem, limitam ou refinam o argumento vigente.
 
-O corpus inicial não conserva um diário completo das consultas que o
-originaram. Portanto, não é possível reconstruir retrospectivamente, com
-precisão, todas as bases, expressões, datas e contagens usadas. Essa limitação
-é declarada em vez de preencher lacunas com buscas presumidas.
+O diário de consultas do corpus inicial está incompleto. A reconstrução de
+sua origem fica limitada às bases, expressões, datas e contagens efetivamente
+preservadas. As consultas posteriores seguem o registro descrito a seguir.
 
 ### Protocolo prospectivo de busca e atualização
 
-A partir desta versão, toda busca destinada a ampliar ou revisar o corpus segue
-o protocolo **ARA-LIT-1**. O registro aumenta a rastreabilidade desta revisão
+As buscas destinadas a ampliar ou revisar o corpus seguem o protocolo
+**ARA-LIT-1**. O registro aumenta a rastreabilidade desta revisão
 narrativa. Uma revisão sistemática ou de escopo requer protocolo e etapas
 próprios, compatíveis com a pergunta e o método escolhido.
 
@@ -965,11 +964,10 @@ justificativa registrada.
 
 São excluídos como fundamento científico materiais promocionais, fontes sem
 proveniência verificável e textos cuja relação com a pergunta dependa apenas de
-analogia. Uma fonte não é excluída por contradizer a decisão atual; resultados
-nulos, adversos e explicações rivais são necessários para avaliar o argumento.
-Idioma, acesso ao texto integral e tipo de publicação não devem ser usados como
-filtros ocultos: quando afetarem a seleção, aparecem no campo `filtros` ou nas
-observações.
+analogia. Resultados nulos, adversos e explicações rivais integram a avaliação
+do argumento, inclusive quando contrariam a decisão vigente do projeto.
+Restrições de idioma, acesso ao texto integral ou tipo de publicação aparecem
+no campo `filtros` ou nas observações sempre que afetam a seleção.
 
 ### Registro reprodutível
 
@@ -1010,7 +1008,7 @@ documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restante
 ## Referências
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
-- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
+- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), artigo 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Alavi e Leidner (2001)](referencias.md#ref-alavi2001knowledge): Maryam Alavi; Dorothy E. Leidner (2001). **Review: Knowledge Management and Knowledge Management Systems: Conceptual Foundations and Research Issues.** *MIS Quarterly*, 25(1), p. 107–136.
 - [Amado et al. (2022)](referencias.md#ref-amado2022moocsdesign): Carolina Amado; Nuno Dorotea; Ana Pedro; João Piedade (2022). **MOOCs Design: A Conceptual Framework for Continuous Teacher Training in Portugal.** *Education Sciences*, 12(5), artigo 308.
@@ -1029,14 +1027,14 @@ documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restante
 - [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing): Shana K. Carpenter; Steven C. Pan; Andrew C. Butler (2022). **The Science of Effective Learning with Spacing and Retrieval Practice.** *Nature Reviews Psychology*, 1, p. 496–511.
 - [Cepeda et al. (2006)](referencias.md#ref-cepeda2006distributed): Nicholas J. Cepeda; Harold Pashler; Edward Vul; John T. Wixted; Doug Rohrer (2006). **Distributed Practice in Verbal Recall Tasks: A Review and Quantitative Synthesis.** *Psychological Bulletin*, 132(3), p. 354–380.
 - [Cepeda et al. (2008)](referencias.md#ref-cepeda2008spacing): Nicholas J. Cepeda; Edward Vul; Doug Rohrer; John T. Wixted; Harold Pashler (2008). **Spacing Effects in Learning: A Temporal Ridgeline of Optimal Retention.** *Psychological Science*, 19(11), p. 1095–1102.
-- [Chen e Cheung (2025)](referencias.md#ref-chen2025genaimeta): Shuzhen Chen; Alan C. K. Cheung (2025). **Effect of Generative Artificial Intelligence on University Students Learning Outcomes: A Systematic Review and Meta-Analysis.** *Educational Research Review*, 49, p. 100737.
-- [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, p. 63.
+- [Chen e Cheung (2025)](referencias.md#ref-chen2025genaimeta): Shuzhen Chen; Alan C. K. Cheung (2025). **Effect of Generative Artificial Intelligence on University Students Learning Outcomes: A Systematic Review and Meta-Analysis.** *Educational Research Review*, 49, artigo 100737.
+- [Chen et al. (2023)](referencias.md#ref-chen2023elementinteractivity): Ouhao Chen; Fred Paas; John Sweller (2023). **A Cognitive Load Theory Approach to Defining and Measuring Task Complexity Through Element Interactivity.** *Educational Psychology Review*, 35, artigo 63.
 - [Chi et al. (1989)](referencias.md#ref-chi1989selfexplanations): Michelene T. H. Chi; Miriam Bassok; Matthew W. Lewis; Peter Reimann; Robert Glaser (1989). **Self-Explanations: How Students Study and Use Examples in Learning to Solve Problems.** *Cognitive Science*, 13(2), p. 145–182.
 - [Chi et al. (1994)](referencias.md#ref-chi1994eliciting): Michelene T. H. Chi; Nicholas de Leeuw; Mei-Hung Chiu; Christian LaVancher (1994). **Eliciting Self-Explanations Improves Understanding.** *Cognitive Science*, 18(3), p. 439–477.
 - [Choi et al. (2024)](referencias.md#ref-choi2024vivid): Seulgi Choi; Hyewon Lee; Yoonjoo Lee; Juho Kim (2024). **VIVID: Human–AI Collaborative Authoring of Vicarious Dialogues from Lecture Videos.** In: *Proceedings of the 2024 CHI Conference on Human Factors in Computing Systems*, Association for Computing Machinery, p. 1–26.
 - [Chun et al. (2011)](referencias.md#ref-chun2011attention): Marvin M. Chun; Julie D. Golomb; Nicholas B. Turk-Browne (2011). **A Taxonomy of External and Internal Attention.** *Annual Review of Psychology*, 62(1), p. 73–101.
 - [Conselho da Europa (2026)](referencias.md#ref-coe2026ailiteracy): Conselho da Europa (2026). **Recommendation CM/Rec(2026)12 of the Committee of Ministers to Member States on Artificial Intelligence Literacy.** Council of Europe.
-- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), p. e13997.
+- [De Gagne et al. (2019)](referencias.md#ref-degagne2019microlearning): Jennie Chang De Gagne; Hyeyoung Kate Park; Katherine Hall; Amanda Woodward; Sandra Yamane; Sang Suk Kim (2019). **Microlearning in Health Professions Education: Scoping Review.** *JMIR Medical Education*, 5(2), artigo e13997.
 - [Dennison et al. (2026)](referencias.md#ref-dennison2026shiksha): Deepak Varuvel Dennison; Bakhtawar Ahtisham; Kavyansh Chourasia; Nirmit Arora; Rahul Singh; René F. Kizilcec; Akshay Nambi; Tanuja Ganu; Aditya Vashistha (2026). **Shiksha Copilot: Teacher–AI Collaboration for Curating and Customizing Lesson Plans in Low-Resource Schools.** *Proceedings of the ACM on Human-Computer Interaction*, 10(2), p. 1–47.
 - [Design-Based Research Collective (2003)](referencias.md#ref-dbrc2003designbased): Design-Based Research Collective (2003). **Design-Based Research: An Emerging Paradigm for Educational Inquiry.** *Educational Researcher*, 32(1), p. 5–8.
 - [Dyson (2004)](referencias.md#ref-dyson2004layout): Mary C. Dyson (2004). **How Physical Text Layout Affects Reading from Screen.** *Behaviour & Information Technology*, 23(6), p. 377–393.
@@ -1046,7 +1044,7 @@ documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restante
 - [Ginns (2006)](referencias.md#ref-ginns2006contiguity): Paul Ginns (2006). **Integrating Information: A Meta-Analysis of the Spatial Contiguity and Temporal Contiguity Effects.** *Learning and Instruction*, 16(6), p. 511–525.
 - [Graesser et al. (2004)](referencias.md#ref-graesser2004cohmetrix): Arthur C. Graesser; Danielle S. McNamara; Max M. Louwerse; Zhiqiang Cai (2004). **Coh-Metrix: Analysis of Text on Cohesion and Language.** *Behavior Research Methods, Instruments, & Computers*, 36(2), p. 193–202.
 - [Gregor e Hevner (2013)](referencias.md#ref-gregor2013positioning): Shirley Gregor; Alan R. Hevner (2013). **Positioning and Presenting Design Science Research for Maximum Impact.** *MIS Quarterly*, 37(2), p. 337–355.
-- [Han et al. (2025)](referencias.md#ref-han2025genaimeta): Xiaoli Han; Hongchao Peng; Mingzhuo Liu (2025). **The Impact of GenAI on Learning Outcomes: A Systematic Review and Meta-Analysis of Experimental Studies.** *Educational Research Review*, 48, p. 100714.
+- [Han et al. (2025)](referencias.md#ref-han2025genaimeta): Xiaoli Han; Hongchao Peng; Mingzhuo Liu (2025). **The Impact of GenAI on Learning Outcomes: A Systematic Review and Meta-Analysis of Experimental Studies.** *Educational Research Review*, 48, artigo 100714.
 - [Hattie e Timperley (2007)](referencias.md#ref-hattie2007feedback): John Hattie; Helen Timperley (2007). **The Power of Feedback.** *Review of Educational Research*, 77(1), p. 81–112.
 - [Haverkamp et al. (2023)](referencias.md#ref-haverkamp2023screens): Ymkje E. Haverkamp; Ivar Bråten; Natalia Latini; Ladislao Salmerón (2023). **Is It the Size, the Movement, or Both? Investigating Effects of Screen Size and Text Movement on Processing, Understanding, and Motivation When Students Read Informational Text.** *Reading and Writing*, 36(7), p. 1589–1608.
 - [Hearst (1997)](referencias.md#ref-hearst1997texttiling): Marti A. Hearst (1997). **TextTiling: Segmenting Text into Multi-paragraph Subtopic Passages.** *Computational Linguistics*, 23(1), p. 33–64.
@@ -1065,7 +1063,7 @@ documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restante
 - [Leal et al. (2024)](referencias.md#ref-leal2024nilcmetrix): Sidney Evaldo Leal; Magali Sanches Duran; Carolina Evaristo Scarton; Nathan Siegle Hartmann; Sandra Maria Aluísio (2024). **NILC-Metrix: Assessing the Complexity of Written and Spoken Language in Brazilian Portuguese.** *Language Resources and Evaluation*, 58(1), p. 73–110.
 - [Lee e See (2004)](referencias.md#ref-lee2004trust): John D. Lee; Katrina A. See (2004). **Trust in Automation: Designing for Appropriate Reliance.** *Human Factors*, 46(1), p. 50–80.
 - [Lewis et al. (2020)](referencias.md#ref-lewis2020rag): Patrick Lewis; Ethan Perez; Aleksandra Piktus; Fabio Petroni; Vladimir Karpukhin; Naman Goyal; Heinrich Küttler; Mike Lewis; Wen-tau Yih; Tim Rocktäschel; Sebastian Riedel; Douwe Kiela (2020). **Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.** In: *Advances in Neural Information Processing Systems*, vol. 33, p. 9459–9474.
-- [Li et al. (2021)](referencias.md#ref-li2021interaction): Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, p. 103189.
+- [Li et al. (2021)](referencias.md#ref-li2021interaction): Jutao Li; Jiutai Song; Yanqun Huang; Yuzhen Wang; Jie Zhang (2021). **Effects of Different Interaction Modes on Fatigue and Reading Effectiveness with Mobile Phones.** *International Journal of Industrial Ergonomics*, 85, artigo 103189.
 - [Mann e Thompson (1988)](referencias.md#ref-mann1988rst): William C. Mann; Sandra A. Thompson (1988). **Rhetorical Structure Theory: Toward a Functional Theory of Text Organization.** *Text*, 8(3), p. 243–281.
 - [Martinec e Salway (2005)](referencias.md#ref-martinec2005imagetext): Radan Martinec; Andrew Salway (2005). **A System for Image–Text Relations in New (and Old) Media.** *Visual Communication*, 4(3), p. 337–371.
 - [Mayer (2009)](referencias.md#ref-mayer2009multimedia): Richard E. Mayer (2009). **Multimedia Learning.** 2. ed., Cambridge University Press.
@@ -1073,9 +1071,9 @@ documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restante
 - [Miller (1984)](referencias.md#ref-miller1984genre): Carolyn R. Miller (1984). **Genre as Social Action.** *Quarterly Journal of Speech*, 70(2), p. 151–167.
 - [Mislevy et al. (2003)](referencias.md#ref-mislevy2003ecd): Robert J. Mislevy; Russell G. Almond; Janice F. Lukas (2003). **A Brief Introduction to Evidence-Centered Design.** Educational Testing Service, RR-03-16.
 - [Monk et al. (2008)](referencias.md#ref-monk2008resumption): Christopher A. Monk; J. Gregory Trafton; Deborah A. Boehm-Davis (2008). **The Effect of Interruption Duration and Demand on Resuming Suspended Goals.** *Journal of Experimental Psychology: Applied*, 14(4), p. 299–313.
-- [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), p. e3292.
+- [Morris et al. (2021)](referencias.md#ref-morris2021formative): Rebecca Morris; Thomas Perry; Lindsey Wardle (2021). **Formative Assessment and Feedback for Learning in Higher Education: A Systematic Review.** *Review of Education*, 9(3), artigo e3292.
 - [Pan e Rickard (2018)](referencias.md#ref-pan2018transfer): Steven C. Pan; Timothy C. Rickard (2018). **Transfer of Test-Enhanced Learning: Meta-Analytic Review and Synthesis.** *Psychological Bulletin*, 144(7), p. 710–756.
-- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, p. 422.
+- [Panadero (2017)](referencias.md#ref-panadero2017selfregulated): Ernesto Panadero (2017). **A Review of Self-Regulated Learning: Six Models and Four Directions for Research.** *Frontiers in Psychology*, 8, artigo 422.
 - [Parasuraman e Manzey (2010)](referencias.md#ref-parasuraman2010automation): Raja Parasuraman; Dietrich H. Manzey (2010). **Complacency and Bias in Human Use of Automation: An Attentional Integration.** *Human Factors*, 52(3), p. 381–410.
 - [Pardo e Siemens (2014)](referencias.md#ref-pardo2014ethical): Abelardo Pardo; George Siemens (2014). **Ethical and Privacy Principles for Learning Analytics.** *British Journal of Educational Technology*, 45(3), p. 438–450.
 - [Parry et al. (2021)](referencias.md#ref-parry2021digitalmedia): Douglas A. Parry; Brittany I. Davidson; Craig J. R. Sewall; Jacob T. Fisher; Hannah Mieczkowski; Daniel S. Quintana (2021). **A Systematic Review and Meta-analysis of Discrepancies between Logged and Self-reported Digital Media Use.** *Nature Human Behaviour*, 5(11), p. 1535–1547.
@@ -1088,7 +1086,7 @@ documentação](README.md#avaliar-o-artefato) reúne os aprofundamentos restante
 - [Renkl et al. (2004)](referencias.md#ref-renkl2004fading): Alexander Renkl; Robert K. Atkinson; Cornelia S. Große (2004). **How Fading Worked Solution Steps Works: A Cognitive Load Perspective.** *Instructional Science*, 32, p. 59–82.
 - [Rey et al. (2019)](referencias.md#ref-rey2019segmenting): Günter Daniel Rey; Maik Beege; Steve Nebel; Maria Wirzberger; Tobias H. Schmitt; Sascha Schneider (2019). **A Meta-Analysis of the Segmenting Effect.** *Educational Psychology Review*, 31, p. 389–419.
 - [Richter et al. (2016)](referencias.md#ref-richter2016signaling): Juliane Richter; Katharina Scheiter; Alexander Eitel (2016). **Signaling Text–Picture Relations in Multimedia Learning: A Comprehensive Meta-analysis.** *Educational Research Review*, 17, p. 19–36.
-- [Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation): Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, p. 101860.
+- [Ryan e Deci (2020)](referencias.md#ref-ryan2020motivation): Richard M. Ryan; Edward L. Deci (2020). **Intrinsic and Extrinsic Motivation from a Self-Determination Theory Perspective: Definitions, Theory, Practices, and Future Directions.** *Contemporary Educational Psychology*, 61, artigo 101860.
 - [Schneider et al. (2018)](referencias.md#ref-schneider2018signaling): Sascha Schneider; Maik Beege; Steve Nebel; Günter Daniel Rey (2018). **A Meta-analysis of How Signaling Affects Learning with Media.** *Educational Research Review*, 23, p. 1–24.
 - [Schnotz e Bannert (2003)](referencias.md#ref-schnotz2003representations): Wolfgang Schnotz; Maria Bannert (2003). **Construction and Interference in Learning from Multiple Representation.** *Learning and Instruction*, 13(2), p. 141–156.
 - [Selwyn et al. (2025)](referencias.md#ref-selwyn2025prompting): Neil Selwyn; Marita Ljungqvist; Anders Sonesson (2025). **When the Prompting Stops: Exploring Teachers' Work Around the Educational Frailties of Generative AI Tools.** *Learning, Media and Technology*, 50(3), p. 310–323.

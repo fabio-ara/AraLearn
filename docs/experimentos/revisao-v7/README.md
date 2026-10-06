@@ -1,5 +1,9 @@
 # Experimentos de autoria da revisão v7
 
+Registro dos ensaios de setembro de 2026. O protocolo, as saídas e as avaliações
+preservam os contratos daquela rodada. A [autoria por MCP](../../autoria-mcp.md)
+descreve o fluxo vigente.
+
 Estes arquivos preservam gerações reais de GPT 5.6 Luna, feitas em sessões
 independentes por ensaio, com esforço alto. O conteúdo é sintético. Não houve
 execução desses cursos em produção nem avaliação com estudantes. Os resultados
@@ -11,8 +15,8 @@ O [brief](brief.md) fixa público, conhecimentos, três objetivos e requisitos d
 evidência. O [catálogo](catalog.json) e os contratos
 [inicial](tool.json) e [assistido](tool-assisted-v2.json) foram congelados antes
 dos respectivos ensaios. Cada pasta conserva `first.json`, anterior à validação,
-e `final.json`, após as correções do autor. Uma saída inicial contém JSON inválido;
-ela foi preservada deliberadamente. O script aceita um objeto único como argumento
+e `final.json`, após as correções do autor. Quatro saídas iniciais contêm JSON inválido;
+elas foram preservadas deliberadamente. O script aceita um objeto único como argumento
 da ferramenta e registra separadamente a divergência do formato de lista pedido
 pelo ensaio.
 
@@ -22,9 +26,11 @@ Para repetir a verificação estrutural contra o runtime do checkout:
 node scripts/verifyV7AuthoringExperiments.mjs
 ```
 
-O [resultado registrado](assessment.json) distingue parsing, contrato da
-ferramenta, resolução do foco e validação dos componentes. O script não chama
-um modelo nem aprova qualidade pedagógica. Os pareceres abaixo resultam da
+O [resultado registrado](assessment.json) distingue leitura da sintaxe JSON,
+contrato da ferramenta, resolução do foco e validação dos componentes. O
+script imprime uma nova conferência no terminal, preservando esse resultado
+histórico. Ele usa os contratos experimentais arquivados e os validadores do
+código local. Os pareceres pedagógicos abaixo resultam da
 leitura independente das gerações e da revisão crítica do orquestrador.
 
 | Condição | Sessões | Microssequências produzidas | Resultado estrutural final |

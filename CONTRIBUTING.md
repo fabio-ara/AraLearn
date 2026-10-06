@@ -10,7 +10,8 @@ os contratos, testes e documentos afetados.
 Leia o [README](README.md) para conhecer o produto e a [documentação](docs/README.md)
 para localizar a área afetada. Depois, verifique os comandos do `package.json` e os
 testes já existentes. Para executar as ferramentas JavaScript do projeto, use
-[Node.js 22](https://nodejs.org/en/download) ou mais recente. Para gerar o aplicativo
+[Node.js 22](https://nodejs.org/en/download), a versão usada na integração contínua.
+Para gerar o aplicativo
 Android, são necessários também o [JDK 17](https://developer.android.com/build/jdks),
 conjunto de ferramentas de desenvolvimento Java, e o [Android SDK
 36](https://developer.android.com/studio/intro/update#sdk-manager), que fornece as
@@ -26,9 +27,13 @@ trabalhem com o mesmo conjunto de bibliotecas:
 npm ci
 ```
 
-Não coloque credenciais reais em arquivos versionados. URL pública e chave publicável do
-Supabase são configurações do aplicativo; senha, `service_role` e segredos de assinatura
-pertencem ao ambiente seguro de execução.
+URL pública e chave publicável do Supabase são configurações do aplicativo. Senhas,
+chaves administrativas e segredos de assinatura ficam no ambiente seguro de execução.
+O [guia do desenvolvedor](docs/guia-desenvolvedor.md#preparação) explica como escolher
+entre o serviço hospedado e um ambiente local descartável antes de iniciar o aplicativo.
+Os scripts de geração Android fornecidos pelo npm usam PowerShell e o Gradle Wrapper
+do Windows; o [guia Android](android/README.md#pré-requisitos) apresenta a alternativa
+para outros sistemas.
 
 ## Conceitos que orientam a mudança
 
@@ -62,7 +67,10 @@ edição manual do banco remoto não cumpre essa função.
 Os esquemas de dados especificam campos, tipos e limites aceitos e rejeitam campos
 desconhecidos. Assim, o conteúdo pode ser validado antes de ser apresentado ou salvo.
 Quando um contrato muda, atualize produtor, consumidor, dados de teste e testes no mesmo
-lote. Não mantenha leitura silenciosa de formatos removidos.
+lote. Dados locais de formatos anteriores recebem uma migração explícita de abertura
+do IndexedDB, quando necessária. Essa passagem preserva trabalho pendente e entrega aos
+leitores apenas o formato corrente, conforme o capítulo de
+[persistência](docs/persistencia-relacional.md#atualização-dos-dados-no-dispositivo).
 
 ## Preparar uma contribuição
 
@@ -123,10 +131,12 @@ Acrescente verificações conforme a área:
 | Banco e funções executadas no servidor | [Testes locais](docs/supabase.md): Deno executa os testes das funções, e pgTAP verifica o banco |
 | Documentação | `npm run audit:docs` e verificação de links locais |
 
-A automação classifica o delta e mantém um único check protegido, **Testar e validar**.
+A automação classifica o conjunto de arquivos alterados e mantém uma única verificação
+protegida, **Testar e validar**.
 Web, Android e Supabase executam somente quando aplicáveis; caminhos desconhecidos,
 orquestração e classificação inconclusiva exigem o conjunto completo. O certificado
-liga essas decisões ao SHA e não aceita falha, cancelamento ou ausência como dispensa.
+liga essas decisões ao identificador do commit (SHA). Uma dispensa só vale quando o
+classificador a determinou e o trabalho correspondente foi pulado.
 
 ## Alterar ou criar um componente didático
 
@@ -158,13 +168,13 @@ de interação.
 
 ## Alterar o banco de dados
 
-Crie uma nova migração no diretório adotado pelo projeto. Ela deve poder ser aplicada a
+Crie uma nova migração em `supabase/migrations` com `supabase migration new <nome>`.
+Confira `supabase migration new --help` na versão de CLI adotada pelo projeto. Ela deve poder ser aplicada a
 partir do estado anterior e produzir o mesmo esquema em outro ambiente. Atualize
-políticas de segurança por linha, funções, tipos gerados e testes correspondentes.
+políticas de segurança por linha, funções, contratos de dados e testes correspondentes.
 
-Não reescreva uma migração já aplicada como forma de consertar produção. Uma nova
-migração torna a sequência auditável e permite que ambientes existentes alcancem o mesmo
-resultado.
+Correções de migrações já aplicadas recebem uma nova migração. Assim, a sequência
+continua reproduzível e ambientes existentes conseguem alcançar o mesmo resultado.
 
 ## Alterar a documentação
 

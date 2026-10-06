@@ -17,17 +17,17 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "panadero2017selfregulated",
         purpose: "situa os ciclos de planejamento, monitoramento e reflexão em seis modelos de aprendizagem autorregulada",
-        limit: "é uma revisão de modelos; não demonstra que controles de interface produzam autorregulação"
+        limit: "o trabalho compara modelos; o efeito dos controles de uma interface exige investigação própria"
       },
       {
         key: "sweller1998architecture",
         purpose: "introduz a arquitetura cognitiva usada para discutir demanda do desenho instrucional",
-        limit: "a teoria não fornece um limite universal de tamanho para unidades de estudo"
+        limit: "a extensão adequada de uma unidade depende do conteúdo, da tarefa e do conhecimento prévio"
       },
       {
         key: "ainsworth2006deft",
         purpose: "oferece um quadro para analisar desenho, função e tarefa em múltiplas representações",
-        limit: "não estabelece que variedade visual ou um componente especializado seja sempre superior"
+        limit: "a escolha de representações depende da função que exercem na tarefa e das condições de aprendizagem"
       },
       {
         key: "carpenter2022spacing",
@@ -43,27 +43,27 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "messick1995validity",
         purpose: "explica validade como sustentação das interpretações e dos usos de uma medida",
-        limit: "não valida por si nenhum instrumento ou indicador do AraLearn"
+        limit: "cada instrumento ou indicador do AraLearn requer evidências que sustentem sua interpretação e uso"
       },
       {
         key: "shadish2002experimental",
         purpose: "fundamenta desenhos experimentais e quase experimentais e suas ameaças à inferência causal",
-        limit: "um esquema de variantes ou uma origem comum não satisfaz automaticamente esses desenhos"
+        limit: "a atribuição às condições, as medidas e o controle de explicações alternativas precisam ser definidos no estudo"
       },
       {
         key: "dbrc2003designbased",
         purpose: "introduz a pesquisa baseada em design em contextos educacionais autênticos",
-        limit: "iteração de produto sem pergunta, dados e explicação não constitui DBR"
+        limit: "sua aplicação exige articular as iterações a perguntas, dados e explicações sobre a aprendizagem no contexto estudado"
       },
       {
         key: "hevner2004designscience",
         purpose: "situa a construção e a avaliação de artefatos em Design Science Research",
-        limit: "evidência técnica do artefato não substitui avaliação de aprendizagem ou usabilidade"
+        limit: "avaliar aprendizagem e usabilidade requer métodos e dados adequados a essas perguntas"
       },
       {
         key: "cns2016resolucao510",
         purpose: "delimita direitos e requisitos éticos para pesquisas brasileiras em Ciências Humanas e Sociais abrangidas por seu escopo",
-        limit: "a norma não valida desenho, medida ou análise e não demonstra efeito educacional"
+        limit: "seu alcance é ético e regulatório; a avaliação do desenho e dos efeitos educacionais cabe à investigação"
       }
     ]
   },
@@ -74,22 +74,22 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "amershi2019humanai",
         purpose: "organiza diretrizes de comunicação, correção e controle na interação entre pessoas e IA",
-        limit: "diretriz de desenho não demonstra que uma pessoa compreendeu ou exerceu o controle"
+        limit: "compreensão e exercício do controle pela pessoa precisam ser observados nas tarefas de uso"
       },
       {
         key: "lee2004trust",
         purpose: "relaciona confiança, contexto e dependência apropriada de automação imperfeita",
-        limit: "confiança declarada não equivale a dependência calibrada numa tarefa concreta"
+        limit: "o relato de confiança e o comportamento de dependência exigem medidas e análises próprias"
       },
       {
         key: "ji2023hallucination",
         purpose: "sintetiza tipos, causas, avaliação e mitigação de alucinações na geração de linguagem",
-        limit: "os resultados variam por tarefa e não demonstram que recuperação ou validação elimine erro"
+        limit: "o alcance das estratégias de mitigação varia por tarefa e deve ser avaliado nas condições de uso"
       },
       {
         key: "vaccaro2024humanai",
         purpose: "quantifica heterogeneidade e moderadores de desempenho em combinações pessoa–IA",
-        limit: "as tarefas e medidas da meta-análise não predizem a qualidade da autoria no AraLearn"
+        limit: "a qualidade da autoria no AraLearn precisa ser examinada em tarefas e medidas específicas desse contexto"
       },
       {
         key: "selwyn2025prompting",
@@ -99,7 +99,7 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "han2025genaimeta",
         purpose: "sintetiza resultados educacionais experimentais e seus moderadores",
-        limit: "a heterogeneidade substancial impede transportar o efeito agregado para o AraLearn"
+        limit: "a heterogeneidade substancial exige considerar as condições dos estudos antes de formular hipóteses para o AraLearn"
       }
     ]
   },
@@ -110,17 +110,17 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "tynjala2008workplace",
         purpose: "diferencia formas, níveis e condições de aprendizagem no trabalho",
-        limit: "a revisão não demonstra adequação de uma plataforma específica a toda organização"
+        limit: "a adequação de uma plataforma depende das atividades, dos participantes e das condições da organização"
       },
       {
         key: "alavi2001knowledge",
         purpose: "situa sistemas de informação dentro de processos de criação, transferência e aplicação de conhecimento",
-        limit: "armazenar e distribuir cursos não constitui por si gestão do conhecimento"
+        limit: "o papel dos cursos deve ser examinado dentro dos processos organizacionais de produção e uso do conhecimento"
       },
       {
         key: "unesco2015tvet",
         purpose: "delimita educação e formação técnica e profissional numa perspectiva de aprendizagem ao longo da vida",
-        limit: "é uma norma orientadora, não evidência de eficácia educacional do AraLearn"
+        limit: "a recomendação orienta políticas e práticas; a eficácia de um uso do AraLearn exige evidências próprias"
       }
     ]
   },
@@ -131,17 +131,17 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "faudzi2023mobileui",
         purpose: "mapeia quadros usados no desenho de interfaces de aprendizagem móvel",
-        limit: "a diversidade encontrada não identifica um layout universalmente superior"
+        limit: "a diversidade encontrada exige relacionar o desenho às tarefas e aos públicos de cada aplicação"
       },
       {
         key: "monk2008resumption",
         purpose: "examina como duração e demanda da interrupção afetam a retomada de objetivos",
-        limit: "a tarefa experimental não avalia aprendizagem nem armazenamento local"
+        limit: "o experimento examina retomada de objetivos; aprendizagem e persistência de dados são questões adicionais"
       },
       {
         key: "piepenbrock2014polarity",
         purpose: "examina polaridade de tela numa tarefa delimitada de revisão de texto",
-        limit: "desempenho nessa tarefa não estabelece superioridade universal do modo claro"
+        limit: "a conclusão se refere à tarefa e às condições visuais examinadas"
       },
       {
         key: "xie2021colormode",
@@ -151,7 +151,7 @@ const REFERENCE_READING_GUIDES = Object.freeze([
       {
         key: "w3c2023wcag22",
         purpose: "fornece critérios normativos de acessibilidade para conteúdo web",
-        limit: "conformidade técnica não demonstra compreensão, conforto ou aprendizagem"
+        limit: "compreensão, conforto e aprendizagem requerem avaliações com métodos adequados a cada resultado"
       }
     ]
   }
@@ -450,7 +450,7 @@ export function renderReadingGuides(entries, guides = REFERENCE_READING_GUIDES) 
   return [
     "## Percursos temáticos de leitura",
     "",
-    "Os percursos abaixo oferecem entradas possíveis no corpus. A ordem é uma orientação de estudo, não uma classificação de qualidade. Função e limite são curadoria editorial; autoria, título, veículo e identificadores continuam derivados exclusivamente de `referencias.bib`.",
+    "Os percursos abaixo sugerem uma ordem de estudo. Cada indicação explica a contribuição da leitura e as condições para aplicar seu argumento. Os dados completos de publicação aparecem na lista de referências.",
     "",
     ...sections
   ];
@@ -567,7 +567,17 @@ export function buildReadableReferences({ root = defaultRoot, check = false, con
         continue;
       }
       if (source !== expected) {
-        citationErrors.push(`${relative}: a seção Referências diverge das citações da página.`);
+        const sourceLines = source.split("\n");
+        const expectedLines = expected.split("\n");
+        let line = 0;
+        while (line < Math.max(sourceLines.length, expectedLines.length) && sourceLines[line] === expectedLines[line]) line += 1;
+        const describeLine = (value) => value === undefined ? "<fim do arquivo>" : JSON.stringify(value);
+        citationErrors.push([
+          `${relative}: a seção Referências diverge das citações da página.`,
+          `Primeira diferença na linha ${line + 1}:`,
+          `  Esperado: ${describeLine(expectedLines[line])}`,
+          `  Encontrado: ${describeLine(sourceLines[line])}`
+        ].join("\n"));
       }
     }
     if (citationErrors.length) throw new Error(citationErrors.join("\n"));

@@ -1,80 +1,108 @@
 # Prova local de Actions e MCP
 
-`npm run test:authoring:channels:local` verifica se o mesmo conteúdo de teste é
-produzido e recuperado pelos dois canais de autoria. Ele envia pedidos aos
-serviços de [Actions](autoria-actions.md) e [MCP](autoria-mcp.md) executados no
-[ambiente Supabase local](supabase.md), sem acessar cursos reais.
+A prova local confere se pedidos enviados pelos dois canais de autoria chegam aos
+serviços e se o conteúdo salvo pode ser recuperado por inteiro. O programa usa
+[Node.js](https://nodejs.org/en/about), que executa JavaScript fora do navegador,
+para enviar o mesmo caso de teste a [Actions](autoria-actions.md) e
+[MCP](autoria-mcp.md). Actions descreve operações no formato OpenAPI; MCP permite
+que uma aplicação descubra e chame ferramentas. Os serviços são executados no
+[Supabase local](supabase.md), com conta e cursos de teste descartáveis.
 
-O programa de teste usa [Node.js](https://nodejs.org/en/about), ambiente que
-executa JavaScript fora do navegador. Essa prova verifica transporte e persistência;
-a importação do OpenAPI, a escolha de ferramentas por um assistente e a jornada
-humana nos clientes reais são verificações separadas.
+O teste cobre a comunicação e a gravação dos dados, chamadas de transporte e
+persistência. A importação do OpenAPI em um cliente real, a escolha de ferramentas
+pelo assistente e a realização das tarefas por uma pessoa pertencem ao
+[roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
 
-## Preparar o ambiente
+<a id="preparar-o-ambiente"></a>
 
-O conjunto de serviços locais deve estar iniciado, com as migrações atuais
-aplicadas e as Edge Functions — os serviços que recebem os pedidos — executando
-a versão candidata. Configure `ARALEARN_SUPABASE_URL`,
-`ARALEARN_SUPABASE_PUBLISHABLE_KEY` e `SUPABASE_SECRET_KEY` a partir da saída
-local de `supabase status -o json`, sem publicar seus valores. O programa aceita
-somente endereços HTTP de loopback, que apontam para a própria máquina.
+## Preparar e executar
 
-A chave administrativa é usada para criar e remover a pessoa sintética e fazer
-uma leitura independente do resultado. As tarefas de autoria usam tokens OAuth
-próprios dessa pessoa. OAuth é o mecanismo de autorização do cliente; assim, a
-prova percorre os controles dos canais durante a produção, em vez de gravar o
-conteúdo com a chave administrativa.
+Inicie os serviços locais conforme o [guia do desenvolvedor](guia-desenvolvedor.md#preparação).
+As migrações, que atualizam a estrutura e as funções do banco, devem estar
+aplicadas. As Edge Functions — os serviços que recebem os pedidos — precisam
+executar a versão candidata.
+
+Configure `ARALEARN_SUPABASE_URL`, `ARALEARN_SUPABASE_PUBLISHABLE_KEY` e
+`SUPABASE_SECRET_KEY` a partir da saída local de `supabase status -o json`, sem
+publicar seus valores. O programa aceita somente endereços HTTP com
+`127.0.0.1` ou `localhost` e porta explícita. Esses endereços de loopback apontam
+para a própria máquina e impedem que a prova seja dirigida ao serviço hospedado.
+
+A chave administrativa cria e remove a conta sintética e permite uma leitura
+independente do resultado. Durante a autoria, os canais usam tokens OAuth dessa
+conta: credenciais emitidas pelo processo de autorização do cliente. Assim, a
+produção percorre os controles de acesso dos canais. A chave administrativa fica
+restrita à preparação, à conferência independente e à limpeza do caso.
 
 O consentimento de Actions espera o aplicativo local em
 `http://127.0.0.1:4182`. Se o ambiente usar outra porta, defina
 `ARALEARN_LOCAL_APPLICATION_ORIGIN` com a origem exata configurada na função.
-Esse valor também mantém a leitura independente coerente com os links do
-aplicativo. O auxiliar de teste continua aceitando apenas HTTP local e
-conferindo o destino do consentimento.
+Esse valor mantém a leitura independente coerente com os links do aplicativo.
+O auxiliar de teste confere o destino do consentimento e aceita apenas HTTP local.
+
+Na raiz do repositório, execute:
+
+```sh
+npm run test:authoring:channels:local
+```
+
+O comando executa [o caso local dos canais](../supabase/tests/course-authoring-channels-local-smoke.mjs),
+sem disparar a suíte integral. Ao terminar com sucesso, escreve no terminal um
+relatório em JSON, formato estruturado de dados.
 
 ## Produzir e reler
 
-Cada canal cria um curso privado descartável, uma fonte sintética com âncora e
-um mapa de seis microssequências. Produz dois lotes sucessivos, cada um com três
-microssequências, seis unidades e três explicações fornecidas no pedido de
-materialização. A aprovação do mapa pertence ao caso de teste; o fluxo não declara revisão humana
-do conteúdo.
+No [modelo didático](modelo-didatico.md), cada microssequência reúne uma
+explicação de apoio e unidades de estudo voltadas a um objetivo. Cada canal cria
+um curso privado descartável com um mapa de seis microssequências. Registra
+também uma fonte sintética com âncora: o registro identifica o material, e a
+âncora localiza um trecho, conforme o [modelo de fontes](fontes-e-citacoes.md).
 
-Depois de cada lote, o programa lê a exportação pelo próprio canal até terminar
-a continuação. Reconstitui o JSON literal, formato estruturado que conserva os
-campos e textos, e o compara com a exportação da mesma revisão obtida por uma
-leitura independente do banco. Essa segunda leitura usa o adaptador do produto
-sobre PostgREST, serviço que expõe operações do PostgreSQL pela Web.
+Duas partes de autoria agrupam três microssequências cada. Cada parte é produzida
+em três chamadas sucessivas, com uma microssequência, duas unidades e uma
+explicação por chamada. As duas primeiras mantêm a produção parcial; a terceira
+conclui a parte. A aprovação do mapa é uma decisão simulada do caso de teste;
+a revisão humana do conteúdo permanece sem declaração.
+
+Depois de concluir cada parte, o programa lê todas as páginas da exportação pelo
+próprio canal. Reconstitui o JSON literal, preservando campos e textos, e o compara
+com a exportação da mesma revisão obtida por uma leitura independente do banco.
+Essa segunda leitura usa o adaptador do produto sobre PostgREST, serviço que
+expõe operações do PostgreSQL pela Web.
 
 A comparação confere contagens, texto integral de cada explicação e preservação
-das unidades, bases e vínculos com fontes do primeiro lote depois do segundo.
-A atribuição das fontes é comparada pela identidade da microssequência, pois a
-ordem do catálogo de fontes não é a ordem curricular.
+das unidades, bases e vínculos com fontes da primeira parte depois da segunda.
+A atribuição das fontes é comparada pela identidade da microssequência,
+conservando a correspondência mesmo quando as listas têm ordens diferentes.
 
-## Medir e encerrar
+<a id="medir-e-encerrar"></a>
 
-O recibo JSON mede separadamente os argumentos da tarefa, o corpo do pedido
-HTTP e o corpo da resposta. Para cada um, registra bytes UTF-8, unidades de
-código UTF-16 e pontos de código Unicode. Essas medidas distinguem tamanho em
-bytes, representação usada pelo JavaScript e caracteres codificados, evitando
-comparar limites de unidades diferentes. Por exemplo, `𝑥` ocupa quatro bytes em
-UTF-8 e duas unidades de código UTF-16, mas representa um único ponto de código
-Unicode. Contar essas três medidas como se fossem caracteres equivalentes alteraria
-o resultado. Cabeçalhos e credenciais ficam fora
-dessa medição. A identificação do contrato observado acompanha cada operação,
-sem um hash fixado no programa de teste.
+## Interpretar as medidas
 
-O tempo medido começa no envio da tarefa e termina ao concluir a leitura da
-resposta. Ele não inclui a autorização OAuth nem representa o tempo de geração
-do assistente ou o trabalho da pessoa autora.
+O relatório mede separadamente os argumentos da tarefa, o corpo do pedido HTTP
+e o corpo da resposta. Para cada um, registra bytes UTF-8, unidades de código
+UTF-16 e pontos de código Unicode. São medidas diferentes do mesmo texto:
+tamanho em bytes, unidades usadas pela representação do JavaScript e quantidade
+de pontos de código. Por exemplo, `𝑥` ocupa quatro bytes em UTF-8 e duas unidades
+de código UTF-16, mas representa um único ponto de código Unicode. A comparação
+com um limite precisa usar a unidade de medida em que esse limite foi definido.
+
+Cabeçalhos e credenciais ficam fora dessa medição. A identificação do contrato
+é lida da resposta e acompanha cada operação, em vez de usar um hash fixado no
+programa de teste. O tempo medido começa no envio da tarefa e termina ao concluir
+a leitura da resposta. A autorização OAuth, a geração pelo assistente e o trabalho
+da pessoa autora ficam fora desse intervalo.
+
+## Conferir a limpeza e o resultado
 
 A limpeza remove somente os cursos criados pela execução, revoga e remove o
-cliente MCP sintético e exclui a pessoa de teste. O cliente de Actions é removido
-pela relação `ON DELETE CASCADE`, que apaga o registro dependente quando a pessoa
-sintética é excluída. Uma falha de limpeza impede o resultado de sucesso. Esse
-comando não dispara a suíte integral.
+cliente MCP sintético e exclui a conta de teste. O cliente de Actions é removido
+pela relação `ON DELETE CASCADE`, que apaga o registro dependente quando a conta
+sintética é excluída. Uma falha de limpeza impede o resultado de sucesso e
+preserva as identidades pendentes para investigação.
 
-A carga delimita um caso reproduzível. O volume máximo dos canais e a
-suficiência pedagógica do conteúdo exigem avaliações próprias. A matriz do
-catálogo inteiro e as conversas novas nos clientes efetivos continuam etapas do
-[roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
+A execução bem-sucedida confirma a produção, a recuperação e a preservação do
+conteúdo nesse caso reproduzível. Determinar o volume máximo dos canais exige
+outras cargas de teste. Avaliar a suficiência pedagógica exige examinar conteúdo,
+público e objetivos. A cobertura de todas as ferramentas e as conversas novas nos
+clientes reais seguem o [roteiro de aceitação](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
