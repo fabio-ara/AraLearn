@@ -45,6 +45,19 @@ function fixture({ content = explanation } = {}) {
 const call = (adapter, name, args) => executeHumanCourseTask({ adapter, principal: PRINCIPAL, name,
   rawArguments: { curso: "Redes sintéticas", ...args } });
 
+// A escrita de Fontes é um único `apply_source_bundle`; estes acessores leem o
+// comando efetivo dentro do pacote sem mudar a expectativa semântica do teste.
+function sourceBundleCommands(record) {
+  const command = record?.command ?? record;
+  return command?.type === "apply_source_bundle" ? command.commands : [command];
+}
+
+function sourceBundleCommand(record, type) {
+  const found = sourceBundleCommands(record).find((entry) => entry?.type === type);
+  assert.ok(found, `o pacote precisa conter ${type}`);
+  return found;
+}
+
 test("schema de vínculo escolhe uma única superfície e não expõe aprovação", () => {
   const schema = COURSE_HUMAN_TASKS.find(({ name }) => name === "manter_fonte").inputSchema;
   const validate = new Ajv2020({ strict: false }).compile(schema);
@@ -183,7 +196,8 @@ test("escrita da visibilidade no Estudo usa o mesmo vocabulário devolvido pela 
     const adapter = fixture();
     await call(adapter, "manter_fonte", { fonte: "Fonte sintética",
       metadados: { citacao: "Referência sintética.", visibilidadeNoEstudo: human } });
-    assert.equal(adapter.writes[0].command.source.studyVisibility, internal, human);
+    assert.equal(sourceBundleCommand(adapter.writes[0], "save_source").source.studyVisibility,
+      internal, human);
   }
   await assert.rejects(() => call(fixture(), "manter_fonte", { fonte: "Fonte sintética",
     metadados: { visibilidadeNoEstudo: "publica" } }), { code: "invalid_human_task_argument" });
@@ -206,7 +220,7 @@ test("vínculo do apoio relê versão da entidade, preserva outras fontes e loca
   const adapter = fixture();
   await call(adapter, "manter_fonte", { fonte: "Fonte sintética", vinculos: [binding] });
   assert.equal(adapter.writes.length, 1);
-  const command = adapter.writes[0].command;
+  const command = sourceBundleCommand(adapter.writes[0], "set_target_sources");
   assert.equal(command.targetKind, "microsequence_explanation");
   assert.equal(command.targetId, "ms");
   assert.equal(command.expectedTargetVersion, 9);
@@ -244,7 +258,7 @@ test("dois rótulos idênticos escolhem a folha pelo alvo e a releitura confirma
   for (const alvo of [1, 2]) {
     const adapter = fixture({ content: identicalTreeExplanation });
     await call(adapter, "manter_fonte", { fonte: "Fonte sintética", vinculos: [identicalBinding(alvo)] });
-    const link = adapter.writes[0].command.sourceLinks.at(-1);
+    const link = sourceBundleCommand(adapter.writes[0], "set_target_sources").sourceLinks.at(-1);
     const [occurrence] = link.occurrences;
     assert.deepEqual(Object.keys(occurrence).sort(),
       ["occurrenceId", "path", "prefix", "quote", "resourceId", "slot", "suffix"],
@@ -352,8 +366,7 @@ test("leitura de âncora usa o vocabulário da escrita e volta pelo mesmo handle
   assert.doesNotMatch(JSON.stringify(read.context), /text_quote|page_range|time_range|uri_fragment/u);
   for (const [index, anchor] of anchors.entries()) {
     await call(adapter, "manter_fonte", { fonte: "Fonte sintética", ancoras: [{ seletor: anchor.seletor }] });
-    assert.equal(writes.at(-1).command.type, "save_anchor");
-    assert.deepEqual(writes.at(-1).command.selector, selectors[index]);
+    assert.deepEqual(sourceBundleCommand(writes.at(-1), "save_anchor").selector, selectors[index]);
   }
   assert.equal(writes.length, selectors.length);
 });

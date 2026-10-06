@@ -39,6 +39,7 @@ import {
   normalizeCourseSourcePdfDownload,
   normalizeCourseSourceAttachment,
   normalizeCourseSourceChange,
+  normalizeCourseSourceBundleChange,
   normalizeCourseSourceCommand,
   normalizeCourseSourcePdfIngestion,
   normalizeCourseSourcePdfIngestionPreparation,
@@ -3526,6 +3527,38 @@ export class CourseSupabaseAdapter {
     const normalizedCommand = normalizeCourseSourcesInputValue(() =>
       normalizeCourseSourceCommand(command)
     );
+    if (normalizedCommand.type === "apply_source_bundle") {
+      const bundleResult = first(await this.rpc(
+        "execute_course_source_bundle_for_actor_v1",
+        {
+          p_actor_id: principal.actorId,
+          p_course_id: courseId,
+          p_expected_revision: expectedCourseRevision,
+          p_commands: normalizedCommand.commands,
+          p_channel: authoringChannel(principal),
+          p_request_id: requestId
+        },
+        {
+          deadlineAt,
+          retry: false,
+          timeoutMs: 40_000,
+          responseLimitBytes: COURSE_SOURCES_RESPONSE_LIMIT_BYTES
+        }
+      ));
+      const normalized = normalizeCourseSourcesDatabaseValue(() =>
+        normalizeCourseSourceBundleChange(bundleResult)
+      );
+      if (normalized.courseId !== courseId || normalized.requestId !== requestId ||
+          normalized.courseRevision < expectedCourseRevision ||
+          normalized.changed !== (normalized.courseRevision > expectedCourseRevision)) {
+        throw new AuthoringApiError(
+          503,
+          "course_service_unavailable",
+          "A confirmação do pacote de Fontes não corresponde ao comando solicitado."
+        );
+      }
+      return normalized;
+    }
     const execute = () => this.rpc(
       normalizedCommand.type === "remove_pdf"
         ? "remove_course_source_pdf_for_actor_v1"

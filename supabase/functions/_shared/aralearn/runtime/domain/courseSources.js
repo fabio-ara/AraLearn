@@ -68,7 +68,7 @@ export const COURSE_SOURCE_RELATIONS = Object.freeze([
 ]);
 export const COURSE_SOURCE_COMMAND_TYPES = Object.freeze([
   "save_source", "retire_source", "save_anchor", "retire_anchor",
-  "remove_pdf", "set_target_sources", "set_bibliography_style"
+  "remove_pdf", "set_target_sources", "set_bibliography_style", "apply_source_bundle"
 ]);
 const COURSE_SOURCE_CHANGE_TYPES = Object.freeze([
   ...COURSE_SOURCE_COMMAND_TYPES,
@@ -855,10 +855,29 @@ export function normalizeCourseSourcePdfIngestion(value) {
   };
 }
 
-export function normalizeCourseSourceCommand(value) {
+export function normalizeCourseSourceCommand(value, { bundle = false } = {}) {
   const command = clone(value);
   if (!isObject(command) || !COURSE_SOURCE_COMMAND_TYPES.includes(command.type)) {
     fail("invalid_course_source_command", "O comando de Fonte é inválido.");
+  }
+  if (command.type === "apply_source_bundle") {
+    exact(command, ["type", "commands"], "invalid_course_source_command", "O pacote de comandos de Fonte");
+    // O teto deriva do maior pedido humano possível: estilo + metadados +
+    // 8 âncoras + 64 vínculos. Os limites individuais de cada sub-comando
+    // permanecem os vigentes.
+    if (!Array.isArray(command.commands) || command.commands.length < 1 || command.commands.length > 74) {
+      fail("invalid_course_source_command", "O pacote de Fonte aceita de um a 74 comandos.");
+    }
+    const commands = command.commands.map((entry) => {
+      if (isObject(entry) && entry.type === "apply_source_bundle") {
+        fail("invalid_course_source_command", "O pacote de Fonte não aceita pacote aninhado.");
+      }
+      return normalizeCourseSourceCommand(entry, { bundle: true });
+    });
+    // Soma dos limites individuais (74 × o maior comando) e vínculos correntes
+    // releituras cabem em 16 MiB; os limites individuais não são afrouxados.
+    byteBound({ type: command.type, commands }, 16777216, "course_source_command_too_large", "O pacote de Fonte");
+    return { type: command.type, commands };
   }
   if (command.type === "set_bibliography_style") {
     exact(command, ["type", "style"], "invalid_course_source_command", "O estilo bibliográfico");
@@ -888,11 +907,16 @@ export function normalizeCourseSourceCommand(value) {
   }
   if (command.type === "save_anchor") {
     exact(command, ["type", "anchorId", "sourceId", "sourceRevision", "expectedAnchorRevision", "selector", "contentHash", "humanLocator", "verificationExcerpt"], "invalid_course_source_command", "O comando save_anchor");
+    // No pacote a revisão da Fonte é resolvida na transação: o cliente não
+    // precisa adivinhar a revisão resultante do save_source no mesmo pacote.
+    const sourceRevision = bundle && command.sourceRevision === null
+      ? null
+      : integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte");
     const normalized = {
       type: command.type,
       anchorId: anchorId(command.anchorId),
       sourceId: sourceId(command.sourceId),
-      sourceRevision: integer(command.sourceRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão da Fonte"),
+      sourceRevision,
       expectedAnchorRevision: integer(command.expectedAnchorRevision, 0, Number.MAX_SAFE_INTEGER, "invalid_course_source_command", "A revisão esperada da Âncora"),
       selector: normalizeCourseSourceSelector(command.selector),
       contentHash: command.contentHash === null ? null : contentHash(command.contentHash, "invalid_course_source_command"),
@@ -1132,6 +1156,29 @@ export function normalizeCourseSourcesRead(value) {
   return read;
 }
 
+function normalizeCourseSourceChangeFact(fact) {
+  if (!COURSE_SOURCE_CHANGE_TYPES.includes(fact.type)) fail("invalid_course_source_change", "O tipo da mudança é inválido.");
+  const isTargetChange = fact.type === "set_target_sources";
+  exact(
+    fact,
+    isTargetChange ? ["type", "subjectId", "targetVersion"] : ["type", "subjectId", "revision"],
+    "invalid_course_source_change",
+    "O fato da mudança"
+  );
+  if (["save_source", "retire_source", "remove_pdf", "ingest_pdf"].includes(fact.type)) {
+    sourceId(fact.subjectId);
+  } else {
+    opaqueId(fact.subjectId, 240, "invalid_course_source_change", "A identidade alterada");
+  }
+  integer(
+    isTargetChange ? fact.targetVersion : fact.revision,
+    1,
+    Number.MAX_SAFE_INTEGER,
+    "invalid_course_source_change",
+    isTargetChange ? "A versão do alvo" : "A revisão da mudança"
+  );
+}
+
 export function normalizeCourseSourceChange(value) {
   const change = clone(value);
   exact(change, ["contract", "courseId", "courseRevision", "requestId", "idempotent", "changed", "change"], "invalid_course_source_change", "O resultado da mudança de Fonte");
@@ -1143,28 +1190,26 @@ export function normalizeCourseSourceChange(value) {
   }
   uuid(change.courseId, "invalid_course_source_change", "A identidade do Curso");
   integer(change.courseRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_change", "A revisão do Curso");
-  if (change.change !== null) {
-    if (!COURSE_SOURCE_CHANGE_TYPES.includes(change.change.type)) fail("invalid_course_source_change", "O tipo da mudança é inválido.");
-    const isTargetChange = change.change.type === "set_target_sources";
-    exact(
-      change.change,
-      isTargetChange ? ["type", "subjectId", "targetVersion"] : ["type", "subjectId", "revision"],
-      "invalid_course_source_change",
-      "O fato da mudança"
-    );
-    if (["save_source", "retire_source", "remove_pdf", "ingest_pdf"].includes(change.change.type)) {
-      sourceId(change.change.subjectId);
-    } else {
-      opaqueId(change.change.subjectId, 240, "invalid_course_source_change", "A identidade alterada");
-    }
-    integer(
-      isTargetChange ? change.change.targetVersion : change.change.revision,
-      1,
-      Number.MAX_SAFE_INTEGER,
-      "invalid_course_source_change",
-      isTargetChange ? "A versão do alvo" : "A revisão da mudança"
-    );
+  if (change.change !== null) normalizeCourseSourceChangeFact(change.change);
+  return change;
+}
+
+// Resultado do pacote transacional de Fonte: uma revisão de Curso e a lista dos
+// fatos aplicados (vazia quando nada mudou). Reutiliza a validação de cada fato.
+export function normalizeCourseSourceBundleChange(value) {
+  const change = clone(value);
+  exact(change, ["contract", "courseId", "courseRevision", "requestId", "idempotent", "changed", "changes"],
+    "invalid_course_source_change", "O resultado do pacote de Fonte");
+  if (change.contract !== COURSE_SOURCE_CHANGE_CONTRACT ||
+      typeof change.requestId !== "string" || !REQUEST_ID_PATTERN.test(change.requestId) ||
+      typeof change.idempotent !== "boolean" || typeof change.changed !== "boolean" ||
+      !Array.isArray(change.changes) || change.changes.length > 74 ||
+      change.changed !== (change.changes.length > 0)) {
+    fail("invalid_course_source_change", "O resultado do pacote de Fonte é inválido.");
   }
+  uuid(change.courseId, "invalid_course_source_change", "A identidade do Curso");
+  integer(change.courseRevision, 1, Number.MAX_SAFE_INTEGER, "invalid_course_source_change", "A revisão do Curso");
+  change.changes.forEach(normalizeCourseSourceChangeFact);
   return change;
 }
 

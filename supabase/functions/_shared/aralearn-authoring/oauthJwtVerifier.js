@@ -4,8 +4,27 @@ const JWT_MAX_BYTES = 32 * 1024;
 const JWKS_MAX_BYTES = 64 * 1024;
 const JWKS_CACHE_MS = 5 * 60 * 1000;
 const JWKS_UNKNOWN_KEY_COOLDOWN_MS = 30 * 1000;
+const JWKS_RETRY_ATTEMPTS = 3;
+const JWKS_RETRY_BACKOFF_MS = 150;
 const JOSE_SEGMENT_PATTERN = /^[A-Za-z0-9_-]+$/u;
 const SUPPORTED_ALGORITHMS = new Set(["ES256"]);
+
+// Marcador interno de falha transitória do JWKS (rede, aborto, 429 ou 5xx).
+// Nunca escapou do verificador: na saída vira sempre `oauth_verification_unavailable`.
+class JwksTransientFailure extends Error {}
+
+function jwksStatusIsTransient(status) {
+  return status === 429 || status >= 500;
+}
+
+function decodeJwksText(bytes) {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    // Corpo malformado não é transitório: repetir a busca não o torna válido.
+    throw verificationUnavailable();
+  }
+}
 
 function invalidOAuthToken() {
   return new AuthoringApiError(
@@ -109,7 +128,7 @@ async function responseTextWithin(response, maximumBytes) {
   if (!reader) {
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength > maximumBytes) throw verificationUnavailable();
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return decodeJwksText(bytes);
   }
   const chunks = [];
   let total = 0;
@@ -129,7 +148,7 @@ async function responseTextWithin(response, maximumBytes) {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  return decodeJwksText(bytes);
 }
 
 function jwksDocument(value) {
@@ -146,24 +165,33 @@ export class SupabaseOAuthJwtVerifier {
     issuer,
     fetchImpl = globalThis.fetch,
     now = () => Date.now(),
+    sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
     requestTimeoutMs = 8_000,
     cacheTtlMs = JWKS_CACHE_MS,
-    unknownKeyCooldownMs = JWKS_UNKNOWN_KEY_COOLDOWN_MS
+    unknownKeyCooldownMs = JWKS_UNKNOWN_KEY_COOLDOWN_MS,
+    maxAttempts = JWKS_RETRY_ATTEMPTS,
+    retryBackoffMs = JWKS_RETRY_BACKOFF_MS
   } = {}) {
     this.issuer = String(issuer || "").trim().replace(/\/+$/u, "");
     this.fetchImpl = fetchImpl;
     this.now = now;
+    this.sleep = sleep;
     this.requestTimeoutMs = requestTimeoutMs;
     this.cacheTtlMs = cacheTtlMs;
     this.unknownKeyCooldownMs = unknownKeyCooldownMs;
+    this.maxAttempts = maxAttempts;
+    this.retryBackoffMs = retryBackoffMs;
     this.cachedKeys = null;
     this.cachedUntil = 0;
     this.pendingKeys = null;
     this.unknownKeyBlockedUntil = 0;
     if (!this.issuer || typeof this.fetchImpl !== "function" ||
+        typeof this.now !== "function" || typeof this.sleep !== "function" ||
         !Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 1 ||
         !Number.isSafeInteger(cacheTtlMs) || cacheTtlMs < 0 ||
-        !Number.isSafeInteger(unknownKeyCooldownMs) || unknownKeyCooldownMs < 0) {
+        !Number.isSafeInteger(unknownKeyCooldownMs) || unknownKeyCooldownMs < 0 ||
+        !Number.isSafeInteger(maxAttempts) || maxAttempts < 1 ||
+        !Number.isSafeInteger(retryBackoffMs) || retryBackoffMs < 0) {
       throw new TypeError("A configuração do verificador OAuth é inválida.");
     }
   }
@@ -171,36 +199,91 @@ export class SupabaseOAuthJwtVerifier {
   async #loadKeys({ force = false, deadlineAt = null } = {}) {
     if (!force && this.cachedKeys && this.cachedUntil > this.now()) return this.cachedKeys;
     if (this.pendingKeys) return this.pendingKeys;
-    const remaining = deadlineAt == null
-      ? this.requestTimeoutMs
-      : Math.min(this.requestTimeoutMs, deadlineAt - this.now());
-    if (remaining <= 0) throw verificationUnavailable();
-    this.pendingKeys = (async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), remaining);
-      try {
-      const response = await this.fetchImpl(`${this.issuer}/.well-known/jwks.json`, {
-        headers: { Accept: "application/json" },
-        redirect: "error",
-        signal: controller.signal
-      });
-      if (!response.ok) throw verificationUnavailable();
-      const source = await responseTextWithin(response, JWKS_MAX_BYTES);
-      const keys = jwksDocument(JSON.parse(source));
-      this.cachedKeys = keys;
-      this.cachedUntil = this.now() + this.cacheTtlMs;
-      return keys;
-      } catch (error) {
-        if (error instanceof AuthoringApiError) throw error;
-        throw verificationUnavailable();
-      } finally {
-        clearTimeout(timer);
-      }
-    })();
+    this.pendingKeys = this.#loadKeysWithinDeadline({ deadlineAt });
     try {
       return await this.pendingKeys;
     } finally {
       this.pendingKeys = null;
+    }
+  }
+
+  // Uma única busca do JWKS com repetição limitada. O orçamento total continua
+  // sendo `requestTimeoutMs`, ou o prazo recebido quando menor: a repetição nunca
+  // estende o deadline existente. Só falha transitória é repetida; documento
+  // malformado, corpo grande demais e resposta 4xx falham de imediato.
+  async #loadKeysWithinDeadline({ deadlineAt }) {
+    const budgetDeadlineAt = Math.min(
+      deadlineAt == null ? Number.POSITIVE_INFINITY : deadlineAt,
+      this.now() + this.requestTimeoutMs
+    );
+    let attempt = 0;
+    for (;;) {
+      attempt += 1;
+      const remaining = budgetDeadlineAt - this.now();
+      if (remaining <= 0) throw verificationUnavailable();
+      try {
+        const keys = await this.#requestJwks({
+          timeoutMs: Math.max(1, Math.min(this.requestTimeoutMs, remaining))
+        });
+        this.cachedKeys = keys;
+        this.cachedUntil = this.now() + this.cacheTtlMs;
+        return keys;
+      } catch (error) {
+        if (!(error instanceof JwksTransientFailure)) {
+          throw error instanceof AuthoringApiError ? error : verificationUnavailable();
+        }
+        if (attempt >= this.maxAttempts) throw verificationUnavailable();
+        const remainingAfterFailure = budgetDeadlineAt - this.now();
+        if (remainingAfterFailure <= 0) throw verificationUnavailable();
+        // Espera limitada pelo prazo restante; `retryBackoffMs: 0` repete sem esperar.
+        await this.sleep(Math.min(this.retryBackoffMs * attempt, remainingAfterFailure));
+      }
+    }
+  }
+
+  async #requestJwks({ timeoutMs }) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      let response;
+      try {
+        response = await this.fetchImpl(`${this.issuer}/.well-known/jwks.json`, {
+          headers: { Accept: "application/json" },
+          redirect: "manual",
+          signal: controller.signal
+        });
+      } catch (error) {
+        // Aborto local ou falha de rede (TypeError de fetch) são transitórios.
+        if (controller.signal.aborted || error instanceof TypeError) {
+          throw new JwksTransientFailure();
+        }
+        throw verificationUnavailable();
+      }
+      if (response.status >= 300 && response.status < 400) {
+        // Redirecionamento não é transitório: seguir o Location trocaria a origem
+        // confiável e repetir não torna a resposta válida.
+        await response.body?.cancel?.().catch(() => undefined);
+        throw verificationUnavailable();
+      }
+      if (!response.ok) {
+        await response.body?.cancel?.().catch(() => undefined);
+        if (jwksStatusIsTransient(response.status)) throw new JwksTransientFailure();
+        throw verificationUnavailable();
+      }
+      try {
+        const source = await responseTextWithin(response, JWKS_MAX_BYTES);
+        return jwksDocument(JSON.parse(source));
+      } catch (error) {
+        // Corpo ilegível, JSON inválido e documento JWKS inválido nunca são
+        // repetidos; aborto ou queda durante a leitura do corpo são transitórios.
+        if (error instanceof AuthoringApiError) throw error;
+        if (controller.signal.aborted || error instanceof TypeError) {
+          throw new JwksTransientFailure();
+        }
+        throw verificationUnavailable();
+      }
+    } finally {
+      clearTimeout(timer);
     }
   }
 

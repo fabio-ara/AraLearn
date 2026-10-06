@@ -202,6 +202,19 @@ function visit(value, callback, path = "$") {
   }
 }
 
+// A escrita de Fontes passou a ser um único `apply_source_bundle`; estes acessores
+// leem o comando efetivo dentro do pacote sem mudar a expectativa semântica.
+function sourceBundleCommands(record) {
+  const command = record?.command ?? record;
+  return command?.type === "apply_source_bundle" ? command.commands : [command];
+}
+
+function sourceBundleCommand(record, type) {
+  const found = sourceBundleCommands(record).find((entry) => entry?.type === type);
+  assert.ok(found, `o pacote precisa conter ${type}`);
+  return found;
+}
+
 function globalCourseIdentity(revision = 7) {
   const currentRevision = () => typeof revision === "function" ? revision() : revision;
   return {
@@ -412,8 +425,15 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
   assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.0");
-  // Orçamento local das 56 tarefas contextuais; payload de chamada mantém seu gate próprio.
-  assert.ok(new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength <= 145_000);
+  // Orçamento local de regressão; o servidor aceita 2 MiB por resposta MCP e o
+  // payload de chamada mantém o gate próprio. Baseline medida com o contrato de
+  // saída só de sucesso: 144.996 B. A união tipada (sucesso + erro) exigida pelo
+  // protocolo custa 16.240 B repetidos nas 56 tarefas (161.236 B); a forma compacta
+  // equivalente (properties comuns + oneOf de required) mede 157.148 B. O teto de
+  // 160 KiB (163.840 B) acomoda a forma compacta com margem; não é a folga de 165k
+  // para a forma repetida.
+  const catalogBytes = new TextEncoder().encode(JSON.stringify(COURSE_HUMAN_TASKS)).byteLength;
+  assert.ok(catalogBytes <= 163_840, `Catálogo: ${catalogBytes} bytes UTF-8.`);
 });
 
 test("MCP orienta o chat a reproduzir o link retornado", async () => {
@@ -1563,6 +1583,39 @@ test("#272 tools/list expõe catálogo focal sem alias e respeita o escopo OAuth
   assert.equal(Object.hasOwn(denied.result.structuredContent.error, "recovery"), false);
 });
 
+test("#272 outputSchema tem raiz objeto e o envelope tools/list segue o protocolo MCP", async () => {
+  const response = await mcpHandler()(request("tools/list"));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.jsonrpc, "2.0");
+  assert.equal(payload.id, 1, "o envelope ecoa o id JSON-RPC");
+  assert.equal(Object.hasOwn(payload, "error"), false);
+  assert.ok(Array.isArray(payload.result.tools) && payload.result.tools.length > 0);
+  assert.equal(Object.hasOwn(payload.result, "nextCursor"), false,
+    "a lista de ferramentas não usa paginação");
+  assert.equal(response.headers.get("MCP-Protocol-Version"), ARALEARN_MCP_PROTOCOL_VERSION);
+  const discoveryBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
+  assert.equal(payload.result.tools.length, 56, "contagem de tarefas na descoberta");
+  assert.ok(discoveryBytes < 2 * 1024 * 1024,
+    `tools/list: ${discoveryBytes} bytes, abaixo do limite de 2 MiB por resposta MCP`);
+  assert.doesNotMatch(JSON.stringify(payload.result.tools),
+    /rawSnapshot|PRIVATE_SENTINEL|storagePath|contentHash|actorId|Bearer|access_token|signedUrl/iu,
+    "a descoberta não publica corpo privado nem credencial");
+
+  // Spec MCP 2025-11-25: o outputSchema anunciado precisa ter raiz `type: "object"`.
+  for (const tool of payload.result.tools) {
+    assert.equal(tool.outputSchema?.type, "object",
+      `${tool.name}: outputSchema sem type object na raiz`);
+  }
+  // O gerador de Actions exige o mesmo contrato de saída compartilhado pelas tarefas.
+  assert.equal(
+    new Set(payload.result.tools.map((tool) => JSON.stringify(tool.outputSchema))).size,
+    1,
+    "as tarefas compartilham o mesmo contrato de saída"
+  );
+});
+
 test("MCP não manda repetir incorporação de PDF com escrita incerta", async () => {
   const handler = createAuthoringMcpHandler({
     adapter: {
@@ -1744,8 +1797,19 @@ test("MCP reduz falha transitória de leitura a impacto e retomada sem expor tra
   assert.match(publicText, /Refaça a mesma etapa em silêncio, sem mudar a intenção/iu);
   assert.doesNotMatch(
     completeProjection,
-    /network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
+    /network_error|conexão|escrita|confirmação|servidor|ferramenta|schema|contrato/iu
   );
+  // A correlação pública é deliberada e limitada: só identificador, fase e status.
+  assert.deepEqual(
+    Object.keys(payload.result.structuredContent.error.diagnostico).sort(),
+    ["fase", "requestId", "status"]
+  );
+  assert.match(
+    payload.result.structuredContent.error.diagnostico.requestId,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u
+  );
+  assert.equal(payload.result.structuredContent.error.diagnostico.fase, "execucao");
+  assert.equal(payload.result.structuredContent.error.diagnostico.status, 503);
 });
 
 test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", async () => {
@@ -1780,7 +1844,364 @@ test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", a
   );
   assert.doesNotMatch(
     JSON.stringify(payload),
-    /rate_limit_transport|network_error|conexão|escrita|confirmação|servidor|ferramenta|request|schema|contrato/iu
+    /rate_limit_transport|network_error|conexão|escrita|confirmação|servidor|ferramenta|schema|contrato/iu
+  );
+  assert.deepEqual(
+    Object.keys(payload.error.data).sort(),
+    ["code", "fase", "nextDecision", "requestId", "retryable", "status"],
+    "o envelope de transporte expõe só a correlação pública"
+  );
+  assert.equal(payload.id, 1, "o id JSON-RPC é preservado na falha de transporte");
+  assert.equal(payload.error.data.retryable, true, "429 é repetível");
+});
+
+test("falha de auth antes do dispatch preserva id JSON-RPC e correlação pública", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async resolvePrincipal() {
+        throw new AuthoringApiError(
+          503,
+          "oauth_verification_unavailable",
+          "Não foi possível verificar o access token OAuth."
+        );
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 503);
+  assert.equal(payload.jsonrpc, "2.0");
+  assert.equal(payload.id, 1, "o id JSON-RPC sobrevive à falha de autenticação");
+  assert.equal(payload.error.code, -32000, "indisponibilidade usa o código do servidor, não o genérico");
+  assert.equal(payload.error.message, "Não consegui concluir esta etapa.");
+  assert.equal(payload.error.data.code, "temporarily_unavailable");
+  assert.deepEqual(
+    Object.keys(payload.error.data).sort(),
+    ["code", "fase", "nextDecision", "requestId", "retryable", "status"]
+  );
+  assert.equal(payload.error.data.retryable, true, "503 transitório é repetível");
+  assert.equal(payload.error.data.fase, "autenticacao");
+  assert.equal(payload.error.data.status, 503);
+  assert.equal(
+    response.headers.get("X-AraLearn-Request-Id"),
+    payload.error.data.requestId,
+    "o cabeçalho ecoa a correlação devolvida no corpo"
+  );
+  assert.doesNotMatch(JSON.stringify(payload), /Bearer|token OAuth|\.well-known/iu);
+});
+
+test("transporte MCP distingue parse, requisição inválida, autorização e indisponibilidade", async () => {
+  const base = {
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  };
+  const post = (body, headers = {}) => new Request(RESOURCE_URL, {
+    method: "POST",
+    headers: {
+      Origin: ORIGIN, Authorization: "Bearer token",
+      Accept: "application/json, text/event-stream",
+      "Content-Type": "application/json",
+      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
+      ...headers
+    },
+    body
+  });
+
+  const parseResponse = await mcpHandler()(post("{não é json"));
+  const parsePayload = await parseResponse.json();
+  assert.equal(parseResponse.status, 400);
+  assert.equal(parsePayload.error.code, -32700, "parse inválido é -32700");
+  assert.equal(parsePayload.error.data.code, "parse_error");
+  assert.equal(parsePayload.error.data.retryable, false, "parse inválido não é repetível");
+  assert.equal(Object.hasOwn(parsePayload.error.data, "nextDecision"), false);
+
+  const invalidResponse = await mcpHandler()(post(JSON.stringify({
+    jsonrpc: "1.0", id: 1, method: "tools/list"
+  })));
+  const invalidPayload = await invalidResponse.json();
+  assert.equal(invalidResponse.status, 400);
+  assert.equal(invalidPayload.error.code, -32600, "requisição inválida é -32600");
+  assert.equal(invalidPayload.error.data.code, "invalid_json_rpc");
+  assert.equal(invalidPayload.error.data.retryable, false, "entrada inválida não é repetível");
+  assert.equal(Object.hasOwn(invalidPayload.error.data, "nextDecision"), false,
+    "requisição inválida não recebe orientação de repetição");
+
+  const protocolResponse = await mcpHandler()(post(JSON.stringify({
+    jsonrpc: "2.0", id: 2, method: "tools/list", params: {}
+  }), { "MCP-Protocol-Version": "1999-01-01" }));
+  const protocolPayload = await protocolResponse.json();
+  assert.equal(protocolResponse.status, 400);
+  assert.equal(protocolPayload.error.code, -32600, "protocolo inválido é -32600");
+  assert.equal(protocolPayload.error.data.code, "unsupported_protocol_version");
+  assert.equal(protocolPayload.error.data.retryable, false, "protocolo inválido não é repetível");
+
+  const denied = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async resolvePrincipal() {
+        throw new AuthoringApiError(401, "invalid_oauth_token", "O access token OAuth é inválido.");
+      }
+    },
+    ...base
+  });
+  const deniedResponse = await denied(post(JSON.stringify({
+    jsonrpc: "2.0", id: 3, method: "tools/list", params: {}
+  })));
+  const deniedPayload = await deniedResponse.json();
+  assert.equal(deniedResponse.status, 401);
+  assert.equal(deniedPayload.error.code, -32001, "recusa de autorização tem código próprio");
+  assert.equal(deniedPayload.error.data.code, "invalid_oauth_token");
+  assert.equal(deniedPayload.error.data.retryable, false, "recusa de autorização não é repetível");
+  assert.match(deniedResponse.headers.get("WWW-Authenticate") ?? "", /^Bearer /u);
+  assert.equal(Object.hasOwn(deniedPayload.error.data, "nextDecision"), false);
+
+  const unavailable = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async resolvePrincipal() {
+        throw new AuthoringApiError(503, "oauth_verification_unavailable", "JWKS indisponível.");
+      }
+    },
+    ...base
+  });
+  const unavailableResponse = await unavailable(post(JSON.stringify({
+    jsonrpc: "2.0", id: 4, method: "tools/list", params: {}
+  })));
+  const unavailablePayload = await unavailableResponse.json();
+  assert.equal(unavailableResponse.status, 503);
+  assert.equal(unavailablePayload.error.code, -32000, "indisponibilidade é -32000, não -32603");
+  assert.equal(unavailablePayload.error.data.code, "temporarily_unavailable");
+  assert.equal(unavailablePayload.error.data.retryable, true, "indisponibilidade transitória é repetível");
+  assert.equal(unavailablePayload.error.data.status, 503);
+  assert.match(unavailablePayload.error.data.nextDecision ?? "", /Refaça a mesma etapa/iu);
+});
+
+test("log interno não expõe o id JSON-RPC nem credenciais", async () => {
+  const secretId = "id-secreto-8f2c1a4e-nao-logar";
+  const logs = [];
+  const original = console.error;
+  console.error = (line) => { logs.push(String(line)); };
+  try {
+    const handler = createAuthoringMcpHandler({
+      adapter: {
+        ...adapter(),
+        async resolvePrincipal() {
+          throw new AuthoringApiError(503, "oauth_verification_unavailable", "JWKS indisponível.");
+        }
+      },
+      allowedOrigins: new Set([ORIGIN]),
+      resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const response = await handler(new Request(RESOURCE_URL, {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN, Authorization: "Bearer token-sintetico",
+        Accept: "application/json, text/event-stream",
+        "Content-Type": "application/json",
+        "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0", id: secretId, method: "tools/call",
+        params: { name: "retomar_curso", arguments: { titulo: "Redes para iniciantes" } }
+      })
+    }));
+    const payload = await response.json();
+
+    assert.equal(payload.id, secretId, "a resposta ecoa o id recebido");
+    assert.equal(payload.error.code, -32000);
+    assert.ok(logs.length > 0, "a falha transitória precisa aparecer no log");
+    const joined = logs.join("\n");
+    assert.match(joined, /aralearn\.authoring\.error/u);
+    assert.match(joined, /oauth_verification_unavailable/u, "o log carrega o código interno específico");
+    assert.doesNotMatch(joined, /id-secreto-8f2c1a4e|nao-logar/u, "o id bruto não vai ao log");
+    assert.doesNotMatch(joined, /token-sintetico|Bearer/u, "a credencial não vai ao log");
+  } finally {
+    console.error = original;
+  }
+});
+
+test("log interno aceita somente valores do vocabulário fechado", async () => {
+  const logs = [];
+  const original = console.error;
+  console.error = (line) => { logs.push(String(line)); };
+  try {
+    const handler = createAuthoringMcpHandler({
+      adapter: {
+        ...adapter(),
+        async listCourses() {
+          throw new AuthoringApiError(503, "SEGREDO-CODIGO-999", "Falha sintética.");
+        }
+      },
+      allowedOrigins: new Set([ORIGIN]),
+      resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const response = await handler(request("tools/call", {
+      name: "retomar_curso",
+      arguments: { titulo: "Redes para iniciantes" }
+    }));
+    const payload = await response.json();
+
+    assert.equal(payload.result.isError, true);
+    assert.equal(payload.result.structuredContent.error.retryable, true);
+    assert.equal(logs.length, 1, "uma falha transitória gera um único evento");
+    const record = JSON.parse(logs[0]);
+    assert.deepEqual(Object.keys(record).sort(), [
+      "classe", "code", "duracaoMs", "event", "fase", "requestId", "status", "tool"
+    ], "o evento expõe somente os campos fechados");
+    assert.equal(record.event, "aralearn.authoring.error");
+    assert.equal(record.code, "unclassified", "código fora do vocabulário vira literal fixo");
+    assert.equal(record.classe, "transitorio");
+    assert.equal(record.fase, "execucao");
+    assert.equal(record.status, 503);
+    assert.equal(record.tool, "retomar_curso", "a ferramenta é o nome do catálogo");
+    assert.match(record.requestId,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u);
+    assert.doesNotMatch(logs[0], /SEGREDO|Falha sintética|Redes para iniciantes|Bearer/iu,
+      "entrada do cliente e mensagem não são refletidas");
+
+    logs.length = 0;
+    const unknown = await mcpHandler()(request("tools/call", {
+      name: "retomar_curso-SEGREDO", arguments: { titulo: "Redes para iniciantes" }
+    }));
+    const unknownPayload = await unknown.json();
+    assert.equal(unknownPayload.error.code, -32602);
+    assert.equal(logs.length, 0, "nome fora do catálogo não chega ao sink");
+  } finally {
+    console.error = original;
+  }
+});
+
+test("falha interna inesperada não vira indisponibilidade temporária", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async listCourses() {
+        throw new Error("defeito sintético interno");
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, true);
+  assert.equal(payload.result.structuredContent.error.code, "internal_error");
+  assert.equal(payload.result.structuredContent.error.retryable, false);
+  assert.equal(payload.result.structuredContent.nextDecision, null);
+  assert.doesNotMatch(JSON.stringify(payload), /defeito sintético|temporarily_unavailable/iu);
+});
+
+test("falha interna antes do dispatch mantém 500 e não se apresenta como temporária", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async resolvePrincipal() {
+        throw new Error("defeito sintético de vínculo");
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const response = await handler(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 500);
+  assert.equal(payload.id, 1);
+  assert.equal(payload.error.data.code, "internal_error");
+  assert.equal(Object.hasOwn(payload.error.data, "nextDecision"), false);
+  assert.equal(payload.error.data.retryable, false, "falha interna não é automaticamente temporária");
+  assert.equal(payload.error.data.fase, "resolucao_principal");
+  assert.equal(payload.error.data.status, 500);
+  assert.doesNotMatch(JSON.stringify(payload), /defeito sintético/iu);
+});
+
+test("chamada MCP bem-sucedida ecoa o identificador de correlação no cabeçalho", async () => {
+  const response = await mcpHandler()(request("tools/call", {
+    name: "retomar_curso",
+    arguments: { titulo: "Redes para iniciantes" }
+  }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.result.isError, false);
+  assert.match(
+    response.headers.get("X-AraLearn-Request-Id"),
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u
+  );
+  assert.equal(Object.hasOwn(payload.result.structuredContent, "diagnostico"), false,
+    "o envelope de sucesso não ganha diagnóstico");
+});
+
+test("#272 structuredContent de sucesso e de erro conforma o outputSchema anunciado", async () => {
+  const toolName = "retomar_curso";
+  const listed = await (await mcpHandler()(request("tools/list"))).json();
+  const announced = listed.result.tools.find(({ name }) => name === toolName);
+  assert.ok(announced?.outputSchema, "tools/list precisa anunciar outputSchema");
+  assert.deepEqual(
+    announced.outputSchema,
+    COURSE_HUMAN_TASKS.find(({ name }) => name === toolName).outputSchema,
+    "o schema anunciado é o mesmo do catálogo humano"
+  );
+  const validate = new Ajv2020({ allErrors: true, strict: false })
+    .compile(announced.outputSchema);
+
+  const cases = [
+    ["sucesso", null],
+    ["entrada", new AuthoringApiError(422, "invalid_human_task_arguments", "Argumento inválido.")],
+    ["transitorio", new AuthoringApiError(503, "network_error", "Falha transitória de conexão.")],
+    ["conflito", new AuthoringApiError(409, "human_read_context_changed", "A base mudou.")],
+    ["interno", new Error("defeito sintético")]
+  ];
+  for (const [label, thrown] of cases) {
+    const handler = thrown == null
+      ? mcpHandler()
+      : createAuthoringMcpHandler({
+        adapter: { ...adapter(), async listCourses() { throw thrown; } },
+        allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+        authorizationServer: "https://project.example/auth/v1"
+      });
+    const response = await handler(request("tools/call", {
+      name: toolName, arguments: { titulo: "Redes para iniciantes" }
+    }));
+    const payload = await response.json();
+    assert.equal(payload.result.isError, thrown != null, label);
+    assert.equal(
+      validate(payload.result.structuredContent),
+      true,
+      `${label}: structuredContent fora do outputSchema: ${JSON.stringify(validate.errors)}`
+    );
+  }
+  assert.equal(
+    validate({ error: { code: "sem_nextDecision" } }),
+    false,
+    "o validador precisa recusar um envelope de erro incompleto (controle negativo)"
+  );
+  assert.equal(
+    validate({ result: "ok", deepLink: null, nextDecision: null,
+      error: { code: "x", message: "y", retryable: true } }),
+    false,
+    "o contrato recusa um envelope que satisfaz sucesso e erro ao mesmo tempo"
   );
 });
 
@@ -1924,15 +2345,19 @@ test("#272 manter_fonte relê criação por identidade interna e preserva outros
       return { items: sources, nextCursor: null };
     },
     async executeCourseSourceCommand(value) {
-      sourceCommands.push(structuredClone(value.command));
-      if (value.command.type === "save_source" &&
-          !sources.some(({ sourceId }) => sourceId === value.command.sourceId)) {
-        sources.push({
-          sourceId: value.command.sourceId,
-          revision: 1,
-          ...structuredClone(value.command.source),
-          anchors: []
-        });
+      const batch = structuredClone(value.command.type === "apply_source_bundle"
+        ? value.command.commands : [value.command]);
+      sourceCommands.push(...batch);
+      for (const entry of batch) {
+        if (entry.type === "save_source" &&
+            !sources.some(({ sourceId }) => sourceId === entry.sourceId)) {
+          sources.push({
+            sourceId: entry.sourceId,
+            revision: 1,
+            ...structuredClone(entry.source),
+            anchors: []
+          });
+        }
       }
       return { changed: true };
     }
@@ -2974,7 +3399,10 @@ test("Actions e MCP recusam sustentação vazia e expõem âncoras reutilizávei
     await call("manter_fonte", { ...args, vinculos: [{ unidade: 1, relacao: "supported_by",
       papeis: ["tecnica_conceitual"], ancoras: [source.context.sources.items[0].anchors[0].posicao],
       ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "literal" }] }] });
-    assert.deepEqual(value.commands[0].command.sourceLinks.at(-1).anchors, [{ anchorId: "anchor-context" }]);
+    assert.deepEqual(
+      sourceBundleCommand(value.commands[0], "set_target_sources").sourceLinks.at(-1).anchors,
+      [{ anchorId: "anchor-context" }]
+    );
   }
 });
 
@@ -2983,7 +3411,7 @@ test('#302 fonte permite metadados estruturados e estilo sem reinterpretar refer
   await sourceTask(value,{fonte:1,metadados:{titulo:null,modoCitacao:'gerada',papeisSugeridos:['leitura_complementar'],
     autores:[{sobrenome:'Silva',nomes:'Ana'},{literal:'Organização informada'}],
     bibliografia:{editora:'Editora fornecida',localizacaoEletronica:'e12345',editores:[{literal:'Equipe editora'}]}}});
-  const stored=value.commands[0].command.source;
+  const stored=sourceBundleCommand(value.commands[0],'save_source').source;
   assert.equal(stored.title,null);
   assert.equal(stored.citationMode,'generated');
   assert.equal(stored.citationText,value.source.citationText);
@@ -2993,9 +3421,9 @@ test('#302 fonte permite metadados estruturados e estilo sem reinterpretar refer
   assert.equal(stored.bibliographic.articleNumber,'e12345');
   assert.deepEqual(stored.bibliographic.editors,[{literal:'Equipe editora'}]);
   assert.equal(value.commands[0].expectedCourseRevision,7);
-  assert.equal(value.commands[0].command.expectedSourceRevision,3);
+  assert.equal(sourceBundleCommand(value.commands[0],'save_source').expectedSourceRevision,3);
   const result=await sourceTask(value,{estilo:'apa7'});
-  assert.deepEqual(value.commands.at(-1).command,{type:'set_bibliography_style',style:'apa7'});
+  assert.deepEqual(sourceBundleCommands(value.commands.at(-1)),[{type:'set_bibliography_style',style:'apa7'}]);
   assert.match(result.result,/estilo das referências/u);
   for(const metadados of [{autoria:'Não decompor automaticamente'},{autores:[{literal:'Nome',sobrenome:'Mistura'}]},
     {bibliografia:{campoInventado:'Não aceitar'}},{modoCitacao:'silencioso'}]) {
@@ -3009,14 +3437,14 @@ test('#302 fonte conserva vínculos distintos e ocorrências; novo vínculo rece
   const value=contextualSourceAdapter();
   const original=structuredClone(value.links);
   await sourceTask(value,{fonte:1,vinculos:[{unidade:1,vinculo:1,relacao:'supported_by',papeis:['leitura_complementar'],ancoras:[1]}]});
-  const edited=value.commands.at(-1).command.sourceLinks;
+  const edited=sourceBundleCommand(value.commands.at(-1),'set_target_sources').sourceLinks;
   assert.equal(edited.length,2);
   assert.deepEqual(edited[1],original[1]);
   assert.equal(edited[0].linkId,original[0].linkId);
   assert.deepEqual(edited[0].occurrences,original[0].occurrences);
   await sourceTask(value,{fonte:1,vinculos:[{unidade:1,relacao:'informed_by',papeis:['evidencia_de_avaliacao'],
     ocorrencias:[{lugar:'conteudo',recurso:1,trecho:'literal',prefixo:'Texto ',sufixo:' do curso.'}]}]});
-  const appended=value.commands.at(-1).command.sourceLinks;
+  const appended=sourceBundleCommand(value.commands.at(-1),'set_target_sources').sourceLinks;
   assert.deepEqual(appended.slice(0,2),original);
   assert.equal(appended.length,3);
   assert(!original.some(link=>link.linkId===appended[2].linkId));
@@ -3024,7 +3452,7 @@ test('#302 fonte conserva vínculos distintos e ocorrências; novo vínculo rece
   assert.equal(appended[2].occurrences[0].resourceId,'paragraph-context');
   assert.equal(appended[2].occurrences[0].quote,'literal');
   assert.equal(Object.hasOwn(appended[2].occurrences[0],'status'),false);
-  assert.equal(value.commands.at(-1).command.expectedTargetVersion,4);
+  assert.equal(sourceBundleCommand(value.commands.at(-1),'set_target_sources').expectedTargetVersion,4);
   for(const invalid of [
     {unidade:1,relacao:'informed_by'},
     {unidade:1,vinculo:3,relacao:'informed_by',papeis:['tecnica_conceitual']},
@@ -3056,13 +3484,13 @@ test('#302 âncora associa PDF apenas por hash explícito e preserva associaçã
   const value=contextualSourceAdapter();
   const contentHash='a'.repeat(64);
   await sourceTask(value,{fonte:1,ancoras:[{seletor:{tipo:'paginas',paginaInicial:2,paginaFinal:3},hashDoPdf:contentHash}]});
-  assert.equal(value.commands.at(-1).command.contentHash,contentHash);
+  assert.equal(sourceBundleCommand(value.commands.at(-1),'save_anchor').contentHash,contentHash);
   value.source.anchors[0].contentHash=contentHash;
   await sourceTask(value,{fonte:1,ancoras:[{ancora:1,seletor:{tipo:'paginas',paginaInicial:3,paginaFinal:3}}]});
-  assert.equal(value.commands.at(-1).command.contentHash,contentHash);
-  assert.equal(value.commands.at(-1).command.expectedAnchorRevision,2);
+  assert.equal(sourceBundleCommand(value.commands.at(-1),'save_anchor').contentHash,contentHash);
+  assert.equal(sourceBundleCommand(value.commands.at(-1),'save_anchor').expectedAnchorRevision,2);
   await sourceTask(value,{fonte:1,ancoras:[{ancora:1,seletor:{tipo:'paginas',paginaInicial:3,paginaFinal:3},hashDoPdf:null}]});
-  assert.equal(value.commands.at(-1).command.contentHash,null);
+  assert.equal(sourceBundleCommand(value.commands.at(-1),'save_anchor').contentHash,null);
   const before=value.commands.length;
   await assert.rejects(()=>sourceTask(value,{fonte:1,ancoras:[{ancora:2,seletor:{tipo:'paginas',paginaInicial:1,paginaFinal:1}}]}),
     error=>error.code==='human_reference_not_found');

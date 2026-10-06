@@ -559,7 +559,12 @@ const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({
   description: "As mesmas unidades candidatas usadas na escrita; o preparo deriva componentes, resposta, feedback, fontes e configuração aplicada do próprio candidato."
 });
 
-const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
+// O `outputSchema` MCP exige raiz `type: "object"` (spec 2025-11-25). A raiz
+// reúne as propriedades comuns e o `oneOf` fica só com o discriminador exigido:
+// sucesso (`result`/`deepLink`/`nextDecision`) ou falha tipada (`error` com
+// code/message/retryable, mais `nextDecision`). Sem a união, o structuredContent
+// de erro não conformava ao schema anunciado.
+export const HUMAN_TASK_RESULT_SCHEMA = Object.freeze({
   type: "object",
   required: Object.freeze(["result", "deepLink", "nextDecision"]),
   properties: Object.freeze({
@@ -570,6 +575,31 @@ const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
         target: { type: ["object", "null"] }, label: { type: "string" }, url: { type: "string" }, revision: { type: "integer" } } } },
     nextDecision: Object.freeze({ type: ["string", "null"] })
   })
+});
+
+const HUMAN_TASK_ERROR_SCHEMA = Object.freeze({
+  type: "object",
+  required: Object.freeze(["error", "nextDecision"]),
+  properties: Object.freeze({
+    error: Object.freeze({
+      type: "object",
+      required: Object.freeze(["code", "message", "retryable"]),
+      properties: Object.freeze({
+        code: Object.freeze({ type: "string" }),
+        message: Object.freeze({ type: "string" }),
+        retryable: Object.freeze({ type: "boolean" })
+      })
+    }),
+    nextDecision: Object.freeze({ type: ["string", "null"] })
+  })
+});
+const HUMAN_TASK_OUTPUT_SCHEMA = Object.freeze({
+  type: "object",
+  properties: Object.freeze({ ...HUMAN_TASK_RESULT_SCHEMA.properties, ...HUMAN_TASK_ERROR_SCHEMA.properties }),
+  oneOf: Object.freeze([
+    Object.freeze({ required: HUMAN_TASK_RESULT_SCHEMA.required }),
+    Object.freeze({ required: HUMAN_TASK_ERROR_SCHEMA.required })
+  ])
 });
 
 function inputSchema(properties, required = []) {
@@ -1154,7 +1184,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:e1576a62c20f0df3fd47f6d4b6f6c10816b7ffb41c79c2de5fb15033d6fa8707";
+  "sha256:8718881bbddd3b2bff35dbf2a438e77a95fb4805db86d0d38e2732a0b9e7b962";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -2662,6 +2692,15 @@ function projectConfiguration(read) {
   };
 }
 
+// H2: a retomada sem foco é um resumo do curso, não um inventário. Declarar o
+// alcance evita que a ausência na amostra seja lida como ausência no curso e
+// dispare recriação de conteúdo já salvo, inclusive rascunhos.
+const COURSE_RESUME_SCOPE = Object.freeze({
+  resumo: "Identificação do curso, processo de autoria e mapa curricular.",
+  naoInclui: "Unidades e explicações materializadas, inclusive em rascunho; a ausência neste resumo não indica ausência no curso.",
+  comoLerConteudo: "Leia a parte ou a microssequência (retomar_curso com parte/microssequencia ou preparar_revisao) antes de produzir ou recriar conteúdo."
+});
+
 HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineAt }) => {
   if (args.titulo === undefined) {
     exactFields(args, new Set(["titulo", "continuacao"]));
@@ -2732,7 +2771,8 @@ HUMAN_TASK_HANDLERS.retomar_curso = async ({ adapter, principal, args, deadlineA
     ...compactAuthoringProcessContext(process),
     ...(focusedRequest
       ? focusedReviewPlan(plan, part, [], focalMicrosequences(focal))
-      : { titulo: confirmation.titulo, mapaCurricular: confirmation.mapaCurricular }),
+      : { titulo: confirmation.titulo, mapaCurricular: confirmation.mapaCurricular,
+          alcanceDoResumo: COURSE_RESUME_SCOPE }),
     ...(focusedRequest ? { observations, explicacoes: explanations } : {})
   };
   return result(`Retomei o curso “${resolved.course.title}”.`, {
@@ -3277,12 +3317,22 @@ HUMAN_TASK_HANDLERS.consultar_fontes = async ({
   }
   const readContext = await paginateHumanReadContext(withoutTechnicalState({ sources: context }),
     { state: continuation, nextPage: sources?.nextCursor ?? null });
-  return result(args.busca !== undefined && context.items?.length === 0
-    ? 'Nenhuma fonte corresponde à busca neste trecho.' : "Li as fontes e âncoras deste trecho.", {
+  // H3: uma página vazia com continuação não conclui a busca. A orientação precisa
+  // mandar seguir a paginação, sem deixar «Confira as fontes indicadas.» sugerir
+  // que a lista terminou quando ela ainda tem trechos por ler.
+  const buscaSemItens = args.busca !== undefined && context.items?.length === 0;
+  const buscaContinua = buscaSemItens && readContext.temMais === true;
+  return result(buscaSemItens
+    ? buscaContinua
+      ? 'Nenhuma fonte corresponde à busca neste trecho; a busca ainda não terminou.'
+      : 'Nenhuma fonte corresponde à busca neste trecho.'
+    : "Li as fontes e âncoras deste trecho.", {
     deepLink: target ? courseDeepLink(adapter, resolved.course, "content",
       [[target.kind === "study_unit" ? "studyUnitId" : "explanationId", target.id]])
       : courseDeepLink(adapter, resolved.course, "sources", resolved.source ? [["sourceId", resolved.source.sourceId]] : []),
-    nextDecision: null,
+    nextDecision: buscaContinua
+      ? 'Continue a mesma busca com a continuação recebida; uma página sem itens não conclui a consulta.'
+      : null,
     context: readContext
   });
 };
@@ -4240,6 +4290,15 @@ function sourceDocument(publicValue, previous = null, origin = "external") {
   };
 }
 
+// Os limites coincidem com o normalizador do comando de Âncora: uma âncora fora
+// de faixa é recusada na validação prévia, sem chegar a gravar a Fonte.
+function sourceSelectorInteger(value, field, minimum, maximum) {
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    fail("invalid_human_task_argument", `${field} é inválido.`, { field });
+  }
+  return value;
+}
+
 function sourceSelector(publicValue) {
   const value = plainObject(publicValue, "seletor");
   exactFields(value, new Set([
@@ -4248,17 +4307,22 @@ function sourceSelector(publicValue) {
   ]));
   const type = text(value.tipo, "seletor.tipo", 40);
   if (type === "paginas") {
+    const startPage = sourceSelectorInteger(value.paginaInicial, "seletor.paginaInicial", 1, 1000000);
     return {
       kind: "page_range",
-      startPage: Number(value.paginaInicial),
-      endPage: Number(value.paginaFinal)
+      startPage,
+      endPage: sourceSelectorInteger(value.paginaFinal, "seletor.paginaFinal", startPage, 1000000)
     };
   }
   if (type === "tempo") {
+    const startMilliseconds = sourceSelectorInteger(
+      value.inicioEmMilissegundos, "seletor.inicioEmMilissegundos", 0, 2147483647
+    );
     return {
       kind: "time_range",
-      startMilliseconds: Number(value.inicioEmMilissegundos),
-      endMilliseconds: Number(value.fimEmMilissegundos)
+      startMilliseconds,
+      endMilliseconds: sourceSelectorInteger(value.fimEmMilissegundos, "seletor.fimEmMilissegundos",
+        startMilliseconds + 1, 2147483647)
     };
   }
   if (type === "fragmento") {
@@ -4273,6 +4337,55 @@ function sourceSelector(publicValue) {
     prefix: value.prefixo ?? null,
     suffix: value.sufixo ?? null
   };
+}
+
+// H1: confere o pedido humano de manter_fonte antes de qualquer mutação. Fecha o
+// formato inválido (o histórico relatou uma Fonte criada antes de a Âncora
+// inválida ser recusada), mas os passos seguem sendo comandos separados: a
+// validade semântica que depende do estado (referência de âncora, trecho literal,
+// alvo inexistente, evidência) ainda é apurada na escrita. Numa fonte nova, uma
+// falha posterior deixa a Fonte criada; o cliente relê o estado antes de repetir e
+// a tentativa incerta é reconciliada pela mesma identidade, sem duplicar.
+function validateHumanSourceRequest({ metadata, anchors, bindings, hasAnchors, hasBindings, creatingSource }) {
+  if (metadata !== undefined) sourceDocument(metadata, null);
+  if (!Array.isArray(anchors) || anchors.length > 8 || hasAnchors && anchors.length === 0) {
+    fail("invalid_human_task_argument", "Informe de uma a oito âncoras.");
+  }
+  anchors.forEach((raw, index) => {
+    const anchor = plainObject(raw, `ancoras[${index}]`);
+    exactFields(anchor, new Set(["ancora", "seletor", "localizadorHumano", "trechoDeVerificacao", "hashDoPdf"]));
+    sourceSelector(anchor.seletor);
+    if (anchor.ancora === undefined) return;
+    // Uma fonte nova ainda não tem âncoras: a referência nunca resolveria e só
+    // falharia depois da criação. Recusar aqui evita a gravação parcial.
+    if (creatingSource) {
+      fail("invalid_human_task_argument",
+        "Uma fonte nova ainda não tem âncoras; descreva cada âncora pelo seletor.", { field: `ancoras[${index}].ancora` });
+    }
+    humanReference(anchor.ancora, `ancoras[${index}].ancora`);
+  });
+  if (!Array.isArray(bindings) || bindings.length > 64 || hasBindings && bindings.length === 0) {
+    fail("invalid_human_task_argument", "Informe de um a 64 vínculos por chamada.");
+  }
+  bindings.forEach((raw, index) => {
+    const binding = plainObject(raw, `vinculos[${index}]`);
+    exactFields(binding, new Set(["unidade", "explicacao", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
+    if ((binding.unidade === undefined) === (binding.explicacao === undefined)) {
+      fail("invalid_human_task_argument", "Cada vínculo deve escolher uma unidade ou a explicação de uma microssequência.");
+    }
+    if (binding.explicacao !== undefined && Array.isArray(binding.ocorrencias) &&
+        binding.ocorrencias.some((item) => item?.lugar !== "conteudo")) {
+      fail("invalid_human_source_occurrence", "As ocorrências da explicação usam somente o conteúdo.");
+    }
+    if (binding.ancoras !== undefined && (!Array.isArray(binding.ancoras) || binding.ancoras.length > 8)) {
+      fail("invalid_human_task_argument", "Informe até oito âncoras do vínculo.");
+    }
+    if (binding.vinculo !== undefined && (!Number.isSafeInteger(binding.vinculo) || binding.vinculo < 1)) {
+      fail("invalid_human_reference", "Informe a posição do vínculo a partir de 1.");
+    }
+    text(binding.relacao, "vinculos.relacao", 80);
+    resolveHumanSourceRoles(binding.papeis);
+  });
 }
 
 // Devolve a Âncora no mesmo vocabulário aceito pela escrita, para que a leitura
@@ -4361,11 +4474,197 @@ function matchAnchor(anchors, reference) {
   return matches[0] ?? null;
 }
 
+// H1: monta o pacote transacional de manter_fonte. Toda a resolução semântica
+// (referência de âncora, alvo, ocorrências e evidência) acontece antes do commit,
+// de modo que uma falha não deixe metadados, âncoras, vínculos ou estilo parciais.
+const SOURCE_DOCUMENT_FIELDS = Object.freeze(["kind", "defaultRoles", "title", "authors", "publicationDate",
+  "identifier", "language", "citationMode", "bibliographic", "citationText", "url", "editionOrVersion",
+  "origin", "availability", "verificationStatus", "studyVisibility"]);
+
+function sourceDocumentKey(value) {
+  return JSON.stringify(SOURCE_DOCUMENT_FIELDS.map((field) => value?.[field] ?? null));
+}
+
+function humanAnchorKey(value) {
+  return JSON.stringify([value?.selector ?? null, value?.contentHash ?? null,
+    value?.humanLocator ?? null, value?.verificationExcerpt ?? null]);
+}
+
+function humanLinkKey(value) {
+  return JSON.stringify([value?.sourceId ?? null, value?.relation ?? null,
+    [...(value?.roles ?? [])].sort(),
+    (value?.anchors ?? []).map((anchor) => anchor?.anchorId ?? null).sort(),
+    (value?.occurrences ?? []).map((occurrence) => [occurrence?.slot ?? null, occurrence?.resourceId ?? null,
+      occurrence?.path ?? null, occurrence?.quote ?? null, occurrence?.prefix ?? null, occurrence?.suffix ?? null])
+      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))]);
+}
+
+// Reúne o catálogo inteiro para reconciliar identidades equivalentes antes de
+// criar. O catálogo é paginado; o mesmo ponto de continuação nunca se repete.
+async function readHumanSourceCatalog({ adapter, principal, course, deadlineAt }) {
+  const items = [];
+  const seen = new Set();
+  let cursor = null;
+  for (let page = 0; page < 100; page += 1) {
+    const key = cursor ?? "null";
+    if (seen.has(key)) fail("course_service_unavailable", "A paginação de Fontes repetiu o mesmo ponto.", null, 503);
+    seen.add(key);
+    const read = await adapter.getCourseSources({ principal, courseId: course.id,
+      expectedRevision: course.revision, mode: "catalog", sourceId: null, targetKind: null,
+      targetId: null, cursor, limit: 24, deadlineAt });
+    if (!Array.isArray(read?.items)) fail("course_service_unavailable", "O catálogo de Fontes é inválido.", null, 503);
+    items.push(...read.items);
+    if (read.nextCursor == null) return items;
+    cursor = read.nextCursor;
+  }
+  // Atingir o limite com continuação pendente é catálogo PARCIAL: recusa
+  // recuperável sem devolver um recorte incompleto como se fosse completo.
+  fail("course_service_unavailable", "O catálogo de Fontes excedeu o limite seguro de leitura.", null, 503);
+}
+
+function singleEquivalent(items, matches, message) {
+  const found = items.filter(matches);
+  if (found.length > 1) throw new AuthoringApiError(409, "ambiguous_human_reference", message);
+  return found[0] ?? null;
+}
+
+// H1: monta o pacote transacional de manter_fonte. Toda a resolução semântica
+// (referência de âncora, alvo, ocorrências e evidência) acontece antes do commit.
+// A identidade de uma nova Fonte é reconciliada com a ficha normalizada
+// equivalente antes de qualquer escrita: repetir a mesma manutenção externa reusa
+// Fonte/âncora/vínculo existentes em vez de duplicar, e mais de uma equivalente
+// recusa (409) sem gravar. Homônimos com URL/DOI distintos permanecem possíveis.
+async function buildHumanSourceBundle({ adapter, principal, args, course, metadata, anchors, bindings,
+  sourceReference, state, newId, deadlineAt }) {
+  const resolvedCourse = state.resolved.course;
+  const commands = [];
+  if (args.estilo !== undefined) commands.push({ type: "set_bibliography_style", style: args.estilo });
+  const creating = metadata !== undefined && sourceReference === undefined;
+  let existingDetail = state.sourceDetail;
+  let sourceId = state.resolved.source?.sourceId ?? null;
+  let expectedSourceRevision = Number(existingDetail?.revision ?? state.resolved.source?.revision ?? 0);
+  if (creating) {
+    const requested = sourceDocument(metadata, null);
+    const catalog = await readHumanSourceCatalog({ adapter, principal, course: resolvedCourse, deadlineAt });
+    const equivalent = singleEquivalent(catalog.filter((source) => source.status === "active"),
+      (source) => sourceDocumentKey(source) === sourceDocumentKey(requested),
+      "Mais de uma Fonte equivalente já existe; escolha a Fonte existente antes de repetir.");
+    if (equivalent) {
+      sourceId = equivalent.sourceId;
+      expectedSourceRevision = Number(equivalent.revision ?? 1);
+      existingDetail = await detailedSource(adapter, principal,
+        { course: resolvedCourse, source: equivalent }, deadlineAt) ?? equivalent;
+    }
+  }
+  sourceId = sourceId ?? await newId("source");
+  if (metadata !== undefined) {
+    commands.push({ type: "save_source", sourceId, expectedSourceRevision,
+      source: sourceDocument(metadata, existingDetail) });
+  }
+  const workingAnchors = (existingDetail?.anchors ?? []).map((anchor) => ({ ...anchor }));
+  for (let index = 0; index < anchors.length; index += 1) {
+    const anchor = plainObject(anchors[index], `ancoras[${index}]`);
+    const selector = sourceSelector(anchor.seletor);
+    const contentHash = anchor.hashDoPdf === undefined ? null : anchor.hashDoPdf;
+    const humanLocator = anchor.localizadorHumano ?? null;
+    const verificationExcerpt = anchor.trechoDeVerificacao ?? null;
+    let existing;
+    if (anchor.ancora !== undefined) {
+      existing = matchAnchor(existingDetail?.anchors ?? [], humanReference(anchor.ancora, `ancoras[${index}].ancora`));
+      if (!existing) throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
+    } else {
+      existing = singleEquivalent((existingDetail?.anchors ?? []).filter((value) => value.status !== "retired"),
+        (value) => humanAnchorKey(value) === humanAnchorKey({ selector, contentHash, humanLocator, verificationExcerpt }),
+        "Mais de uma âncora equivalente já existe nesta Fonte; releia antes de repetir.");
+    }
+    const anchorId = existing?.anchorId ?? await newId(`anchor:${index}`);
+    const resolvedHash = anchor.hashDoPdf === undefined ? existing?.contentHash ?? null : contentHash;
+    commands.push({ type: "save_anchor", anchorId, sourceId, sourceRevision: null,
+      expectedAnchorRevision: Number(existing?.revision ?? 0), selector, contentHash: resolvedHash,
+      humanLocator, verificationExcerpt });
+    const projected = { anchorId, revision: Number(existing?.revision ?? 0) + 1, sourceId,
+      status: "active", selector, contentHash: resolvedHash, humanLocator, verificationExcerpt };
+    const at = workingAnchors.findIndex((value) => value.anchorId === anchorId);
+    if (at >= 0) workingAnchors[at] = projected; else workingAnchors.push(projected);
+  }
+  // Vínculos de um mesmo alvo são acumulados e emitidos num único
+  // set_target_sources: a última iteração não pode sobrescrever o vínculo da
+  // primeira nem reaproveitar o snapshot original lido em cada passo.
+  const stagedTargets = new Map();
+  for (let index = 0; index < bindings.length; index += 1) {
+    const binding = plainObject(bindings[index], `vinculos[${index}]`);
+    const isExplanation = binding.explicacao !== undefined;
+    const targetReference = humanReference(isExplanation ? binding.explicacao : binding.unidade, `vinculos[${index}].alvo`);
+    const targetResolved = await resolveHumanCourseContext({ adapter, principal, course,
+      microsequence: isExplanation ? targetReference : null,
+      studyUnits: isExplanation ? [] : [targetReference], deadlineAt });
+    const target = await resolveHumanSourceContentTarget({ adapter, principal, resolved: targetResolved,
+      deadlineAt, requireExplanation: isExplanation });
+    const targetKey = `${target.kind}\0${target.id}`;
+    let staged = stagedTargets.get(targetKey);
+    if (!staged) {
+      const targetRead = await adapter.getCourseSources({ principal, courseId: resolvedCourse.id,
+        expectedRevision: resolvedCourse.revision, mode: "target", sourceId: null, targetKind: target.kind,
+        targetId: target.id, cursor: null, limit: 1, deadlineAt });
+      const currentAttribution = Array.isArray(targetRead?.items) && targetRead.items.length === 1
+        ? targetRead.items[0] : null;
+      const currentLinks = currentAttribution?.sourceLinks ?? [];
+      staged = { target, expectedTargetVersion: target.version, currentLinks, links: [...currentLinks] };
+      stagedTargets.set(targetKey, staged);
+    }
+    const selectedAnchors = (binding.ancoras ?? []).map((reference) => {
+      const matched = matchAnchor(workingAnchors, reference);
+      if (!matched) throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
+      return { anchorId: matched.anchorId };
+    });
+    const occurrences = binding.ocorrencias === undefined ? null :
+      await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: target.content,
+        options: { targetKind: target.kind }, newId, identityPrefix: `source-link:${index}` });
+    const candidate = {
+      linkId: await newId(`source-link:${index}`),
+      sourceId,
+      relation: text(binding.relacao, "vinculos.relacao", 80),
+      roles: resolveHumanSourceRoles(binding.papeis),
+      anchors: binding.ancoras === undefined ? [] : selectedAnchors,
+      occurrences: occurrences ?? []
+    };
+    let existing;
+    let reconcile = false;
+    if (binding.vinculo !== undefined) {
+      existing = staged.currentLinks[binding.vinculo - 1];
+      if (!existing || existing.sourceId !== sourceId) {
+        throw new AuthoringApiError(404, "human_reference_not_found", "O vínculo desta fonte não foi localizado.");
+      }
+    } else {
+      existing = singleEquivalent(staged.links.filter((link) => link.sourceId === sourceId),
+        (link) => humanLinkKey(link) === humanLinkKey(candidate),
+        "Mais de um vínculo equivalente já existe neste alvo; releia antes de repetir.");
+      reconcile = existing !== null;
+    }
+    const requestedLink = reconcile
+      ? { ...existing }
+      : { linkId: existing?.linkId ?? candidate.linkId, sourceId, relation: candidate.relation,
+          roles: candidate.roles,
+          anchors: binding.ancoras === undefined ? existing?.anchors ?? [] : candidate.anchors,
+          occurrences: binding.ocorrencias === undefined ? existing?.occurrences ?? [] : candidate.occurrences };
+    requireCourseSourceEvidence(requestedLink, { status: existingDetail?.status ?? "active",
+      anchors: workingAnchors, attachments: existingDetail?.attachments ?? [] });
+    // Reconciliar substitui o vínculo existente; criar acrescenta. Nunca
+    // duplicar o mesmo linkId.
+    staged.links = existing
+      ? staged.links.map((link) => link.linkId === existing.linkId ? requestedLink : link)
+      : [...staged.links, requestedLink];
+  }
+  for (const staged of stagedTargets.values()) {
+    commands.push({ type: "set_target_sources", targetKind: staged.target.kind, targetId: staged.target.id,
+      expectedTargetVersion: staged.expectedTargetVersion, sourceLinks: staged.links });
+  }
+  return { type: "apply_source_bundle", commands };
+}
+
 HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt }) => {
   const course = humanCourseTitle(args);
-  let sourceReference = optionalReference(args.fonte, "fonte");
-  let internalSourceId = null;
-  let savedSourceId = null;
+  const sourceReference = optionalReference(args.fonte, "fonte");
   const withdrawal = args.retirar === undefined ? null : text(args.retirar, "retirar", 16);
   if (withdrawal !== null && !new Set(["pdfs", "fonte"]).has(withdrawal)) {
     fail("invalid_human_task_argument", "retirar precisa ser pdfs ou fonte.", { field: "retirar" });
@@ -4445,179 +4744,53 @@ HUMAN_TASK_HANDLERS.manter_fonte = async ({ adapter, principal, args, deadlineAt
   if (args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined && args.estilo === undefined) {
     fail("missing_human_task_argument", "Informe metadados, ancoras, vinculos, estilo ou retirar.");
   }
-  if (args.estilo !== undefined) {
-    await executeSourceWrite({ adapter, principal, course, deadlineAt,
-      build: () => ({ type: "set_bibliography_style", style: args.estilo }) });
-  }
-  if (args.metadados !== undefined) {
-    const metadata = safeClone(args.metadados, "metadados", 32 * 1024);
-    await executeSourceWrite({
-      adapter,
-      principal,
-      course,
-      source: sourceReference ?? null,
-      deadlineAt,
-      build: async (state, { newId }) => {
-        savedSourceId = state.source?.sourceId ?? await newId("source");
-        return {
-          type: "save_source",
-          sourceId: savedSourceId,
-          expectedSourceRevision: Number(state.sourceDetail?.revision ?? state.source?.revision ?? 0),
-          source: sourceDocument(metadata, state.sourceDetail)
-        };
-      }
-    });
-    internalSourceId = savedSourceId;
-    sourceReference = undefined;
-  }
+  const metadata = args.metadados === undefined ? undefined : safeClone(args.metadados, "metadados", 32 * 1024);
   const anchors = args.ancoras === undefined ? [] : safeClone(args.ancoras, "ancoras", 64 * 1024);
-  if (!Array.isArray(anchors) || anchors.length > 8 || args.ancoras !== undefined && anchors.length === 0) {
-    fail("invalid_human_task_argument", "Informe de uma a oito âncoras.");
-  }
-  for (let index = 0; index < anchors.length; index += 1) {
-    if (sourceReference === undefined && internalSourceId === null) {
-      fail("missing_human_task_argument", "Informe fonte para manter âncoras.");
-    }
-    const anchor = plainObject(anchors[index], `ancoras[${index}]`);
-    exactFields(anchor, new Set(["ancora", "seletor", "localizadorHumano", "trechoDeVerificacao", "hashDoPdf"]));
-    await executeSourceWrite({
-      adapter,
-      principal,
-      course,
-      source: sourceReference ?? null,
-      internalSourceId,
-      deadlineAt,
-      build: async (state, { newId }) => {
-        const existing = anchor.ancora === undefined
-          ? null
-          : matchAnchor(state.sourceDetail?.anchors ?? [], humanReference(
-              anchor.ancora, `ancoras[${index}].ancora`
-            ));
-        if (anchor.ancora !== undefined && !existing) {
-          throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
-        }
-        return {
-          type: "save_anchor",
-          anchorId: existing?.anchorId ?? await newId(`anchor:${index}`),
-          sourceId: state.source.sourceId,
-          sourceRevision: Number(state.sourceDetail?.revision ?? state.source.revision),
-          expectedAnchorRevision: Number(existing?.revision ?? 0),
-          selector: sourceSelector(anchor.seletor),
-          contentHash: anchor.hashDoPdf === undefined ? existing?.contentHash ?? null : anchor.hashDoPdf,
-          humanLocator: anchor.localizadorHumano ?? null,
-          verificationExcerpt: anchor.trechoDeVerificacao ?? null
-        };
-      }
-    });
-  }
   const bindings = args.vinculos === undefined ? [] : safeClone(args.vinculos, "vinculos", 128 * 1024);
-  if (!Array.isArray(bindings) || bindings.length > 64 || args.vinculos !== undefined && bindings.length === 0) {
-    fail("invalid_human_task_argument", "Informe de um a 64 vínculos por chamada.");
+  // Valida o pedido antes de qualquer escrita: formato inválido de âncora, vínculo
+  // ou metadado não chega a montar o pacote.
+  validateHumanSourceRequest({ metadata, anchors, bindings,
+    hasAnchors: args.ancoras !== undefined, hasBindings: args.vinculos !== undefined,
+    creatingSource: metadata !== undefined && args.fonte === undefined });
+  if (anchors.length && sourceReference === undefined && metadata === undefined) {
+    fail("missing_human_task_argument", "Informe fonte para manter âncoras.");
   }
-  for (let index = 0; index < bindings.length; index += 1) {
-    if (sourceReference === undefined && internalSourceId === null) {
-      fail("missing_human_task_argument", "Informe fonte para vincular proveniência.");
-    }
-    const binding = plainObject(bindings[index], `vinculos[${index}]`);
-    exactFields(binding, new Set(["unidade", "explicacao", "vinculo", "relacao", "papeis", "ancoras", "ocorrencias"]));
-    if ((binding.unidade === undefined) === (binding.explicacao === undefined)) {
-      fail("invalid_human_task_argument", "Cada vínculo deve escolher uma unidade ou a explicação de uma microssequência.");
-    }
-    const isExplanation = binding.explicacao !== undefined;
-    if (isExplanation && Array.isArray(binding.ocorrencias) && binding.ocorrencias.some(item => item?.lugar !== "conteudo")) {
-      fail("invalid_human_source_occurrence", "As ocorrências da explicação usam somente o conteúdo.");
-    }
-    const targetReference = humanReference(isExplanation ? binding.explicacao : binding.unidade, `vinculos[${index}].alvo`);
-    await executeTrustedCourseWrite({
-      load: async () => {
-        const resolved = await resolveHumanCourseContext({
-          adapter,
-          principal,
-          course,
-          source: internalSourceId === null ? sourceReference : null,
-          internalSourceId,
-          microsequence: isExplanation ? targetReference : null,
-          studyUnits: isExplanation ? [] : [targetReference],
-          deadlineAt
-        });
-        return { ...resolved, sourceDetail: await detailedSource(
-          adapter, principal, resolved, deadlineAt
-        ) };
-      },
-      build: async (state, { newId }) => {
-        const target = await resolveHumanSourceContentTarget({ adapter, principal,
-          resolved: state, deadlineAt, requireExplanation: isExplanation });
-        if (binding.ancoras !== undefined && (!Array.isArray(binding.ancoras) || binding.ancoras.length > 8)) {
-          fail("invalid_human_task_argument", "Informe até oito âncoras do vínculo.");
-        }
-        const selectedAnchors = (binding.ancoras ?? []).map((reference) => {
-          const matched = matchAnchor(state.sourceDetail?.anchors ?? [], reference);
-          if (!matched) {
-            throw new AuthoringApiError(404, "human_reference_not_found", "A âncora não foi localizada.");
-          }
-          return { anchorId: matched.anchorId };
-        });
-        const targetRead = await adapter.getCourseSources({
-          principal,
-          courseId: state.course.id,
-          expectedRevision: state.course.revision,
-          mode: "target",
-          sourceId: null,
-          targetKind: target.kind,
-          targetId: target.id,
-          cursor: null,
-          limit: 1,
-          deadlineAt
-        });
-        const currentAttribution = Array.isArray(targetRead?.items) &&
-          targetRead.items.length === 1 ? targetRead.items[0] : null;
-        const currentLinks = currentAttribution?.sourceLinks ?? [];
-        let existing = null;
-        if (binding.vinculo !== undefined) {
-          if (!Number.isSafeInteger(binding.vinculo) || binding.vinculo < 1) {
-            fail("invalid_human_reference", "Informe a posição do vínculo a partir de 1.");
-          }
-          existing = currentLinks[binding.vinculo - 1];
-          if (!existing || existing.sourceId !== state.source.sourceId) {
-            throw new AuthoringApiError(404, "human_reference_not_found", "O vínculo desta fonte não foi localizado.");
-          }
-        }
-        const requestedLink = {
-          linkId: existing?.linkId ?? await newId(`source-link:${index}`),
-          sourceId: state.source.sourceId,
-          relation: text(binding.relacao, "vinculos.relacao", 80),
-          roles: resolveHumanSourceRoles(binding.papeis),
-          anchors: binding.ancoras === undefined ? existing?.anchors ?? [] : selectedAnchors,
-          occurrences: binding.ocorrencias === undefined ? existing?.occurrences ?? [] :
-            await resolveHumanSourceOccurrences({ requested: binding.ocorrencias, content: target.content,
-              options: { targetKind: target.kind }, newId, identityPrefix: `source-link:${index}` })
-        };
-        requireCourseSourceEvidence(requestedLink, state.sourceDetail);
-        return {
-          courseId: state.course.id,
-          expectedCourseRevision: state.course.revision,
-          command: normalizeCourseSourceCommand({
-            type: "set_target_sources",
-            targetKind: target.kind,
-            targetId: target.id,
-            expectedTargetVersion: target.version,
-            sourceLinks: existing
-              ? currentLinks.map((link) => link.linkId === existing.linkId ? requestedLink : link)
-              : [...currentLinks, requestedLink]
-          })
-        };
-      },
-      commit: async ({ requestId, courseId, ...value }) => await adapter.executeCourseSourceCommand({
-        principal, courseId, ...value, requestId, deadlineAt
-      })
-    });
+  if (bindings.length && sourceReference === undefined && metadata === undefined) {
+    fail("missing_human_task_argument", "Informe fonte para vincular proveniência.");
   }
+  // H1: estilo, metadados, âncoras e vínculos aplicados num único pacote
+  // transacional. Toda a resolução semântica acontece antes do commit, então uma
+  // falha não deixa gravação parcial; a resposta perdida repete a mesma tentativa.
+  let savedSourceId = null;
+  await executeTrustedCourseWrite({
+    operation: "execute_course_source_bundle",
+    load: async () => {
+      const resolved = await resolveHumanCourseContext({ adapter, principal, course,
+        source: sourceReference ?? null, deadlineAt });
+      return { resolved, sourceDetail: await detailedSource(adapter, principal, resolved, deadlineAt) };
+    },
+    build: async (state, { newId }) => {
+      const bundle = await buildHumanSourceBundle({
+        adapter, principal, args, course, metadata, anchors, bindings, sourceReference, state, newId, deadlineAt
+      });
+      savedSourceId = bundle.commands.find((command) => command.type === "save_source")?.sourceId
+        ?? state.resolved.source?.sourceId ?? null;
+      return {
+        courseId: state.resolved.course.id,
+        expectedCourseRevision: state.resolved.course.revision,
+        command: normalizeCourseSourceCommand(bundle)
+      };
+    },
+    commit: async ({ requestId, courseId, ...value }) => await adapter.executeCourseSourceCommand({
+      principal, courseId, ...value, requestId, deadlineAt
+    })
+  });
   const resolved = await resolveHumanCourseContext({
     adapter,
     principal,
     course,
-    source: internalSourceId === null ? sourceReference ?? null : null,
-    internalSourceId,
+    source: savedSourceId === null ? sourceReference ?? null : null,
+    internalSourceId: savedSourceId,
     deadlineAt
   });
   const styleOnly = args.metadados === undefined && args.ancoras === undefined && args.vinculos === undefined;

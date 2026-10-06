@@ -1,4 +1,9 @@
-import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
+import {
+  asAuthoringApiError,
+  authoringErrorClass,
+  authoringErrorIsRetryable,
+  AuthoringApiError
+} from "./errors.js";
 import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
   listCourseAuthoringKnowledgeResources,
@@ -29,6 +34,37 @@ const WRITE_TOOLS = new Set(COURSE_HUMAN_TASKS
   .filter(({ annotations }) => annotations.readOnlyHint !== true)
   .map(({ name }) => name));
 const MCP_OAUTH_SCOPES = Object.freeze(["offline_access"]);
+const REQUEST_ID_HEADER = "X-AraLearn-Request-Id";
+// Falhas rotineiras de validação (entrada) e de conflito de base não poluem o log
+// de erro do serviço; indisponibilidade, escrita incerta e falha interna, sim.
+const LOGGED_ERROR_CLASSES = new Set(["transitorio", "interno", "incerto"]);
+// Vocabulário fechado do único evento de diagnóstico. Qualquer valor fora destes
+// conjuntos vira `null` (ou o literal `unclassified` para código desconhecido), de
+// modo que entrada do cliente, token, cursor, id JSON-RPC, corpo, ator ou curso
+// nunca são refletidos no log.
+const LOG_EVENT = "aralearn.authoring.error";
+const LOG_PHASES = new Set([
+  "transporte", "autenticacao", "resolucao_principal", "protocolo", "execucao"
+]);
+const LOG_CLASSES = new Set([
+  "transitorio", "interno", "incerto", "conflito", "autorizacao", "entrada", "definitivo"
+]);
+const LOG_CODES = new Set([
+  "temporarily_unavailable", "service_timeout", "request_timeout", "network_error",
+  "course_service_unavailable", "oauth_verification_unavailable", "internal_error",
+  "course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"
+]);
+const LOG_UNCLASSIFIED_CODE = "unclassified";
+const LOG_TOOL_NAMES = new Set(COURSE_HUMAN_TASKS.map(({ name }) => name));
+const LOG_REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
+const LOG_MAX_DURATION_MS = 600_000;
+const AUTHENTICATION_ERROR_CODES = new Set([
+  "oauth_verification_unavailable", "invalid_oauth_token", "oauth_required",
+  "invalid_client", "authentication_required"
+]);
+const PRINCIPAL_RESOLUTION_ERROR_CODES = new Set([
+  "service_timeout", "course_service_unavailable"
+]);
 const BASE_HEADERS = Object.freeze({
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -64,6 +100,70 @@ function jsonRpcError(id, code, message, data = undefined) {
       ...(data === undefined ? {} : { data })
     }
   };
+}
+
+function newRequestId() {
+  try {
+    return globalThis.crypto.randomUUID();
+  } catch {
+    return null;
+  }
+}
+
+// Correlação pública: somente identificador da requisição, fase, status e o id
+// JSON-RPC. Nunca token, cursor, ator ou conteúdo do curso.
+function publicDiagnostico({ requestId, fase, status }) {
+  const fields = {};
+  if (requestId) fields.requestId = requestId;
+  if (fase) fields.fase = fase;
+  if (Number.isFinite(status)) fields.status = status;
+  return Object.keys(fields).length ? fields : null;
+}
+
+function transportPhase(fase, error) {
+  const code = String(error?.code || "");
+  if (AUTHENTICATION_ERROR_CODES.has(code)) return "autenticacao";
+  if (PRINCIPAL_RESOLUTION_ERROR_CODES.has(code)) return "resolucao_principal";
+  return fase || "transporte";
+}
+
+// Códigos JSON-RPC do transporte: -32700 só para parse; -32600 só para requisição
+// ou protocolo inválidos; -32001 para recusa de autorização; e -32000 (faixa
+// definida pelo servidor) para indisponibilidade transitória e falha interna, para
+// não confundir a causa com o -32603 genérico sugerido por clientes.
+function transportRpcCode(error) {
+  if (error.code === "parse_error") return -32700;
+  const status = Number(error.status);
+  if (status === 401 || status === 403) return -32001;
+  if (status === 408 || status === 429 || status >= 500) return -32000;
+  if (status === 400 || status === 404 || status === 405 || status === 406 ||
+      status === 413 || status === 415 || status === 422) return -32600;
+  return -32000;
+}
+
+function closedLogValue(value, allowed) {
+  return typeof value === "string" && allowed.has(value) ? value : null;
+}
+
+function logAuthoringError({ requestId, fase, status, code, classe, tool, duracaoMs } = {}) {
+  if (!LOGGED_ERROR_CLASSES.has(classe)) return;
+  const record = {
+    event: LOG_EVENT,
+    requestId: typeof requestId === "string" && LOG_REQUEST_ID.test(requestId) ? requestId : null,
+    fase: closedLogValue(fase, LOG_PHASES),
+    status: Number.isSafeInteger(status) && status >= 400 && status <= 599 ? status : null,
+    code: closedLogValue(code, LOG_CODES) ?? LOG_UNCLASSIFIED_CODE,
+    classe: closedLogValue(classe, LOG_CLASSES),
+    tool: closedLogValue(tool, LOG_TOOL_NAMES),
+    duracaoMs: Number.isSafeInteger(duracaoMs) && duracaoMs >= 0 && duracaoMs <= LOG_MAX_DURATION_MS
+      ? duracaoMs
+      : null
+  };
+  try {
+    console.error(JSON.stringify(record));
+  } catch {
+    // O log de diagnóstico nunca pode derrubar a resposta da ferramenta.
+  }
 }
 
 function mcpPath(pathname) {
@@ -259,21 +359,14 @@ function toolSuccess(value) {
   };
 }
 
-function retryableError(error) {
-  if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
-  if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
-  return new Set([
-    "course_service_unavailable", "request_timeout", "network_error"
-  ]).has(error.code);
-}
-
 function toolFailure(
   error,
   challenge = null,
-  failure = {}
+  failure = {},
+  diagnostico = null
 ) {
   const normalized = asAuthoringApiError(error);
-  const retryable = retryableError(normalized);
+  const retryable = authoringErrorIsRetryable(normalized);
   const recovery = projectHumanWriteRecovery(normalized);
   const preflight = projectHumanMaterializationPreflight(normalized);
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
@@ -318,6 +411,23 @@ function toolFailure(
     publicError.message = "A escrita pode ter sido concluída, mas a resposta excedeu o limite.";
     publicError.retryable = false;
     nextDecision = "Releia o curso antes de decidir se ainda falta alguma mudança.";
+  }
+  if (diagnostico) {
+    const fields = publicDiagnostico({
+      requestId: diagnostico.requestId,
+      fase: diagnostico.fase,
+      status: normalized.status
+    });
+    if (fields) publicError.diagnostico = fields;
+    logAuthoringError({
+      requestId: diagnostico.requestId,
+      fase: diagnostico.fase,
+      status: normalized.status,
+      code: normalized.code,
+      classe: authoringErrorClass(normalized),
+      tool: diagnostico.tool,
+      duracaoMs: Number.isFinite(diagnostico.startedAt) ? Date.now() - diagnostico.startedAt : null
+    });
   }
   const structuredContent = { error: publicError, nextDecision };
   return {
@@ -470,7 +580,9 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(denied, context.oauthChallenge)
+        result: toolFailure(denied, context.oauthChallenge, {}, {
+          ...context.diagnostico, fase: "execucao", tool: params.name
+        })
       };
     }
     try {
@@ -496,7 +608,8 @@ async function dispatchMcpRequest(envelope, context) {
         result: toolFailure(
           tooLarge,
           null,
-          completedWrite ? { writeState: "complete" } : {}
+          completedWrite ? { writeState: "complete" } : {},
+          { ...context.diagnostico, fase: "execucao", tool: params.name }
         )
       };
     } catch (error) {
@@ -509,18 +622,23 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(normalized, challenge)
+        result: toolFailure(normalized, challenge, {}, {
+          ...context.diagnostico, fase: "execucao", tool: params.name
+        })
       };
     }
   }
   return jsonRpcError(id, -32601, "Método JSON-RPC inexistente.");
 }
 
-function transportErrorResponse(error, cors = {}, resourceUrl = "") {
+function transportErrorResponse(error, cors = {}, resourceUrl = "", diagnostico = {}) {
   const normalized = asAuthoringApiError(error);
-  const retryable = retryableError(normalized);
-  const rpcCode = normalized.code === "parse_error" ? -32700 : -32600;
+  const retryable = authoringErrorIsRetryable(normalized);
+  const classe = authoringErrorClass(normalized);
+  const fase = transportPhase(diagnostico.fase, normalized);
+  const rpcCode = transportRpcCode(normalized);
   const headers = { ...cors };
+  if (diagnostico.requestId) headers[REQUEST_ID_HEADER] = diagnostico.requestId;
   if (normalized.status === 401) {
     headers["WWW-Authenticate"] = oauthChallenge(resourceUrl, {
       error: normalized.code === "authentication_required" ? null : "invalid_token",
@@ -534,13 +652,27 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "") {
   const publicCode = retryable
     ? "temporarily_unavailable"
     : normalized.code;
+  logAuthoringError({
+    requestId: diagnostico.requestId,
+    fase,
+    status: normalized.status,
+    code: normalized.code,
+    classe,
+    duracaoMs: Number.isFinite(diagnostico.startedAt) ? Date.now() - diagnostico.startedAt : null
+  });
   return jsonRpcResponse(
     normalized.status,
-    jsonRpcError(null, rpcCode, publicMessage, {
+    jsonRpcError(diagnostico.jsonRpcId ?? null, rpcCode, publicMessage, {
       code: publicCode,
+      retryable,
       ...(retryable
         ? { nextDecision: "Refaça a mesma etapa em silêncio, sem mudar a intenção." }
-        : {})
+        : {}),
+      ...(publicDiagnostico({
+        requestId: diagnostico.requestId,
+        fase,
+        status: normalized.status
+      }) || {})
     }),
     headers
   );
@@ -562,8 +694,16 @@ export function createAuthoringMcpHandler({
     throw new TypeError("O gateway MCP exige o issuer OAuth do servidor de autorização.");
   }
   return async function handleAuthoringMcpRequest(request) {
+    const startedAt = Date.now();
+    const requestId = newRequestId();
     let cors = {};
     let canonicalResource = normalizeEndpoint(resourceUrl);
+    let fase = "transporte";
+    let jsonRpcId = null;
+    const withRequestId = (extra = {}) => ({
+      ...extra,
+      ...(requestId ? { [REQUEST_ID_HEADER]: requestId } : {})
+    });
     try {
       const url = new URL(request.url);
       canonicalResource ||= `${url.origin}${url.pathname
@@ -577,7 +717,7 @@ export function createAuthoringMcpHandler({
           return jsonRpcResponse(
             405,
             jsonRpcError(null, -32600, "A metadata OAuth aceita somente GET."),
-            { Allow: "GET, OPTIONS" }
+            withRequestId({ Allow: "GET, OPTIONS" })
           );
         }
         return metadataResponse(canonicalResource, authorizationServer);
@@ -591,42 +731,56 @@ export function createAuthoringMcpHandler({
         return jsonRpcResponse(
           405,
           jsonRpcError(null, -32600, "O transporte MCP aceita somente POST."),
-          { ...cors, Allow: "POST, OPTIONS" }
+          withRequestId({ ...cors, Allow: "POST, OPTIONS" })
         );
       }
       assertTransportHeaders(request);
+      // O envelope limitado é lido antes da autenticação para preservar o id
+      // JSON-RPC em falhas de auth; limite, protocolo e autorização continuam
+      // sendo verificados antes de qualquer despacho.
+      const envelope = await readMcpEnvelope(request);
+      if (Object.hasOwn(envelope, "id")) jsonRpcId = envelope.id;
+      fase = "autenticacao";
       const authentication = {
         ...readAuthoringOAuthAuthorization(request),
         resource: canonicalResource
       };
+      fase = "resolucao_principal";
       const principal = await adapter.resolvePrincipal(authentication, { deadlineAt: Date.now() + 40_000 });
       if (principal?.authenticationKind !== "oauth" || !principal?.actorId) {
         throw new AuthoringApiError(401, "invalid_client", "Vínculo OAuth inválido ou revogado.");
       }
-      const envelope = await readMcpEnvelope(request);
+      fase = "protocolo";
       assertProtocolHeader(request, envelope.method);
+      fase = "execucao";
       const payload = await dispatchMcpRequest(envelope, {
         adapter,
         principal,
         oauthChallenge: oauthChallenge(canonicalResource, {
           error: "insufficient_scope",
           description: "Reconecte a conta para atualizar a autorização."
-        })
+        }),
+        diagnostico: { requestId, startedAt }
       });
       if (payload == null) {
         return new Response(null, {
           status: 202,
-          headers: {
+          headers: withRequestId({
             ...cors,
             "X-AraLearn-Authoring-Contract": ARALEARN_AUTHORING_CONTRACT_HEADER,
             "X-AraLearn-Authoring-Mcp-Catalog": COURSE_HUMAN_TASK_CATALOG_HEADER,
             Vary: "Origin"
-          }
+          })
         });
       }
-      return jsonRpcResponse(200, payload, cors);
+      return jsonRpcResponse(200, payload, withRequestId(cors));
     } catch (error) {
-      return transportErrorResponse(error, cors, canonicalResource);
+      return transportErrorResponse(error, cors, canonicalResource, {
+        requestId,
+        jsonRpcId,
+        fase,
+        startedAt
+      });
     }
   };
 }

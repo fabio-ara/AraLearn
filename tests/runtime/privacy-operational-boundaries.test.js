@@ -13,18 +13,33 @@ function filesBelow(relativeRoot, extensions) {
     .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
+const SANITIZED_LOG_FILE = path.join("supabase", "functions", "_shared", "aralearn-authoring", "mcpServer.js");
+const SANITIZED_LOG_SINK = /console\.error\(JSON\.stringify\(record\)\);/u;
+const CONSOLE_CALL = /console\.(?:log|info|warn|error|debug|trace)\s*\(/gu;
+const RAW_LOG_ALTERNATIVE = /console\s*\[|process\.(?:stdout|stderr)|Deno\.(?:stdout|stderr)/u;
+
 test("Edge não registra corpo, cabeçalhos ou exceções de requisição no console", () => {
   const sources = filesBelow("supabase/functions", new Set([".js", ".ts"]))
     .filter((file) => !file.includes(`${path.sep}tests${path.sep}`));
   assert.ok(sources.length > 0);
+  let sanitizedSinks = 0;
   for (const file of sources) {
     const source = readFileSync(file, "utf8");
-    assert.doesNotMatch(
-      source,
-      /console\.(?:log|info|warn|error|debug|trace)\s*\(/u,
-      path.relative(repositoryRoot, file)
-    );
+    const label = path.relative(repositoryRoot, file);
+    assert.doesNotMatch(source, RAW_LOG_ALTERNATIVE, label);
+    const calls = [...source.matchAll(CONSOLE_CALL)];
+    if (label === SANITIZED_LOG_FILE) {
+      // Exceção estrita: exatamente um sink, com a forma literal do evento
+      // sanitizado. Não isenta o arquivo nem aceita alias para o console.
+      assert.equal(calls.length, 1, `${label}: só o sink sanitizado é aceito`);
+      assert.equal(calls[0][0], "console.error(", label);
+      assert.match(source, SANITIZED_LOG_SINK, label);
+      sanitizedSinks += 1;
+      continue;
+    }
+    assert.equal(calls.length, 0, label);
   }
+  assert.equal(sanitizedSinks, 1, "há exatamente um sink de diagnóstico autorizado");
 });
 
 test("workflows não habilitam rastreamento nem imprimem credenciais ou exceções brutas", () => {

@@ -232,6 +232,19 @@ test("erros do transporte de PDF distinguem correção, reanexo, retry e recibo"
   }
 });
 
+test("falha interna não se transforma em repetição automática", () => {
+  const projected = toolErrorData(new AuthoringApiError(
+    500,
+    "internal_error",
+    "A operação de autoria não pôde ser concluída."
+  ), { requestId: "request-internal-error-0001" });
+
+  assert.equal(projected.code, "internal_error");
+  assert.equal(projected.recovery.strategy, "stop");
+  assert.equal(projected.recovery.retryable, false);
+  assert.equal(projected.recovery.requestIdMode, "none");
+});
+
 test("confirmação incerta de PDF exige releitura sem nova incorporação", () => {
   const projected = toolErrorData(new AuthoringApiError(
     409,

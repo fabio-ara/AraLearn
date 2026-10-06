@@ -84,6 +84,7 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 | --- | --- |
 | [`docs/implantacao.md`](implantacao.md) | guia de implantação, operação e recuperação |
 | [`docs/prova-local-canais-autoria.md`](prova-local-canais-autoria.md) | como reproduzir uma operação por MCP e Actions e confirmar que o resultado foi salvo |
+| [`docs/incidente-integracao-2026-10.md`](incidente-integracao-2026-10.md) | o que se apurou sobre o incidente de leitura e inspeção por MCP e o que ainda depende de ambiente hospedado |
 | [`android/README.md`](../android/README.md) | guia do aplicativo Android que integra a experiência web |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | guia de contribuição para desenvolvimento |
 | [`LICENSE.md`](../LICENSE.md) | licença jurídica do repositório |

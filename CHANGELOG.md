@@ -9,6 +9,16 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+## [0.0.101] - 2026-10-05
+
+### Corrigido
+
+- Leituras e auditoria do curso voltam a concluir quando a verificação da conexão oscila: a conferência da credencial repete a consulta dentro do mesmo prazo, em vez de encerrar a etapa.
+- Quando uma etapa falha, o retorno informa se vale repetir e traz uma identificação para localizar a ocorrência, sem expor credenciais nem conteúdo do curso.
+- Uma falha inesperada deixa de ser apresentada como indisponibilidade temporária: repetir sem mudança não é sugerido quando a causa não é conhecida.
+- A escrita de fontes é aplicada como um único pacote: metadados, âncoras, vínculos e estilo são gravados juntos ou não são gravados, sem estado parcial.
+- O catálogo de tarefas de autoria declara o formato de erro que realmente devolve, para os clientes que validam a resposta.
+
 ## [0.0.100] - 2026-10-03
 
 ### Corrigido

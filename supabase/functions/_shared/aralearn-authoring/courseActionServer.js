@@ -1,4 +1,8 @@
-import { asAuthoringApiError, AuthoringApiError } from "./errors.js";
+import {
+  asAuthoringApiError,
+  authoringErrorIsRetryable,
+  AuthoringApiError
+} from "./errors.js";
 import { normalizeHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 import { createAuthoringActionOAuthHandler } from "./actionOAuthServer.js";
 import {
@@ -124,14 +128,6 @@ function normalizedResult(value) {
   catch { throw new AuthoringApiError(502, "invalid_human_task_result", "A tarefa devolveu destinos incompatíveis com o conteúdo indicado."); }
 }
 
-function retryableError(error) {
-  if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) return false;
-  if (error.status === 408 || error.status === 429 || error.status >= 500) return true;
-  return new Set([
-    "course_service_unavailable", "request_timeout", "network_error"
-  ]).has(error.code);
-}
-
 function nextDecisionForError(error, retryable) {
   if (projectHumanMaterializationPreflight(error) ||
       error.code === "human_materialization_contextual_calibration_required") return "Resolva autonomamente tudo que já estiver determinado pelo curso e repita a verificação. Se restar uma escolha que altere o percurso de aprendizagem, consolide as pendências relacionadas, explique ao autor o que precisa ser decidido e por que isso importa, faça uma única pergunta e, após a resposta, retome a produção original.";
@@ -183,7 +179,7 @@ function publicError(error, { writeTaskStarted = false } = {}) {
       nextDecision: "Releia o curso antes de decidir se ainda falta alguma mudança."
     };
   }
-  const retryable = retryableError(error);
+  const retryable = authoringErrorIsRetryable(error);
   const preflight = projectHumanMaterializationPreflight(error);
   const derivableMaterialization = error.code === "human_materialization_contextual_calibration_required";
   return {
