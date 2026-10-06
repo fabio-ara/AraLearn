@@ -138,7 +138,7 @@ e sua utilidade na autoria permanecem questões de investigação.
 | retomada | reconstrução do objetivo e do estado após interrupção | localizar, explicar e continuar corretamente | apenas reabrir a tela |
 | compreensão | construção de significado demonstrada em explicação, discriminação ou aplicação | resposta justificada e uso coerente | confiança ou conclusão da unidade |
 | retenção | disponibilidade posterior do conhecimento | desempenho adiado em tarefa equivalente | repetição imediata |
-| transferência | aplicação a situação estruturalmente nova | solução e justificativa em problema novo | troca superficial de valores |
+| transferência | aplicação do conhecimento a uma tarefa nova, com a novidade definida no estudo | solução e justificativa em problema novo | troca superficial de valores |
 | qualidade pedagógica | alinhamento entre objetivo, pré-requisitos, explicação, prática e retorno | rubrica, ausência de saltos e prática pertinente | quantidade de unidades ou fluência textual |
 | qualidade representacional | fidelidade disciplinar e apoio à operação sem ambiguidade evitável | julgamento de especialista e interpretação em tarefa | ausência de conteúdo excedente fora do contêiner ou uso de biblioteca gráfica |
 | controle humano da IA | autoridade efetiva sobre intenção, escopo, revisão e consequência | rejeitar, iterar, reabrir, corrigir e justificar | botão de confirmação isolado |
