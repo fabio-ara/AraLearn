@@ -21,18 +21,19 @@ const MAX_PAGE_ITEMS = 12;
 const MAX_PAGE_BYTES = 65536;
 const encoder = new TextEncoder();
 
-const unitText = (index, size) => {
+const unitText = (index, size, multibyte = false) => {
+  if (multibyte) return "中".repeat(size);
   const base = `Unidade ${index}: α 中 😀 — `;
   const pad = "protocolo serviço porta host ".repeat(Math.ceil(size / 27));
   return (base + pad).slice(0, size);
 };
 
-function studyUnit(index, size) {
+function studyUnit(index, size, multibyte) {
   return { ordinal: index, version: 5,
     curriculumPath: { didacticMicrosequence: { id: MS, title: MS_TITLE } },
     studyUnit: { id: `unit-${index}`, version: 5, title: `Unidade ${index}`, kind: "theory",
       content: [{ id: `paragraph-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0",
-        data: { text: unitText(index, size) } }],
+        data: { text: unitText(index, size, multibyte) } }],
       response: null, feedback: [] },
     authorship: {} };
 }
@@ -49,8 +50,8 @@ function microsequence() {
     explanation: explanation(), contentReview: { state: "draft" } };
 }
 
-function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500 } = {}) {
-  const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize));
+function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false } = {}) {
+  const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize, multibyte));
   const calls = { units: [], reviews: [], inspections: [], annotations: [], sources: [] };
   const adapter = {
     calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
@@ -211,15 +212,20 @@ test("um alvo acima de 64 KiB ainda devolve a página com um alvo e fragmentos",
   assert.equal(pageUnitIds(pages)[0], "unit-1");
 });
 
-test("o cap de bytes conta UTF-8 e não fica vazio com hasMore", async () => {
-  const { adapter } = createAdapter({ unitCount: 6, unitSize: 20_000 });
-  const { pages, perCallReviews } = await readAll(adapter, { unidades: [1, 2, 3, 4, 5, 6] });
-  const ids = pageUnitIds(pages);
-  assert.deepEqual(ids, ["unit-1", "unit-2", "unit-3", "unit-4", "unit-5", "unit-6"]);
+test("o cap de bytes conta UTF-8 e separa identidades exatas", async () => {
+  // Cada alvo tem 12000 caracteres UTF-16 (中) mas ~36000 bytes UTF-8. Dois alvos
+  // caberiam no cap por caracteres, mas estouram o cap de bytes: um cap por
+  // caracteres encaixaria os dois e seria falso positivo.
+  const { adapter } = createAdapter({ unitCount: 4, unitSize: 12_000, multibyte: true });
+  const { pages, perCallReviews } = await readAll(adapter, { unidades: [1, 2, 3, 4] });
+  assert.deepEqual(pageUnitIds(pages), ["unit-1", "unit-2", "unit-3", "unit-4"]);
   for (const count of perCallReviews) assert.ok(count >= 1 && count <= MAX_PAGE_ITEMS);
-  for (const page of pages) {
-    // Unidades grandes: o cap de 65536 bytes limita a página a menos de 12 alvos.
-    assert.ok(page.studyUnits.length >= 1 && page.studyUnits.length < MAX_PAGE_ITEMS,
-      `o cap de bytes limita a página a menos de 12 alvos, veio ${page.studyUnits.length}`);
-  }
+  const rawItem = item => ({ ordinal: item.ordinal, version: item.version,
+    curriculumPath: item.curriculumPath, studyUnit: item.studyUnit, authorship: item.authorship });
+  const pair = [rawItem(pages[0].studyUnits[0]), rawItem(pages[1].studyUnits[0])];
+  assert.ok(JSON.stringify(pair).length <= MAX_PAGE_BYTES, "a soma em caracteres caberia no cap");
+  assert.ok(encoder.encode(JSON.stringify(pair)).byteLength > MAX_PAGE_BYTES,
+    "a soma em bytes UTF-8 excede o cap");
+  for (const page of pages) assert.ok(page.studyUnits.length < 2,
+    `o cap de bytes separa os alvos, veio ${page.studyUnits.length}`);
 });
