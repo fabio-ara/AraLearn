@@ -2811,9 +2811,16 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
   });
 };
 
+// Escopo de leitura de Fontes por requisição (somente leitura): a mesma chave
+// (curso, revisão, modo, fonte, alvo) atende o consumidor de fontes previstas e o de
+// vínculos, sem atravessar continuações nem chegar aos fluxos de escrita.
+function sourceReadScopeKey({ courseId, revision, mode, sourceId, targetKind, targetId }) {
+  return [courseId, revision, mode, sourceId ?? "", targetKind ?? "", targetId ?? ""].join("|");
+}
+
 async function explanationReadContext({ adapter, principal, resolved, microsequences, deadlineAt,
-  auditoria = false, focal = false }) {
-  const sourceCache = new Map();
+  auditoria = false, focal = false, sourceScope = null }) {
+  const sourceCache = sourceScope ?? new Map();
   return await Promise.all(microsequences.map(async (microsequence) => {
     const proposal = microsequence.explanationPlan;
     const review = await readReviewContext({ adapter, principal, resolved,
@@ -2823,11 +2830,13 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
     // entregues — nenhuma leitura descartada pode bloquear o alvo selecionado.
     if (!auditoria && focal) return { microssequencia: microsequence.title, ...review };
     const plannedSources = await Promise.all((proposal?.sourceIds ?? []).map(async (sourceId) => {
-      if (!sourceCache.has(sourceId)) sourceCache.set(sourceId, adapter.getCourseSources({
+      const key = sourceReadScopeKey({ courseId: resolved.course.id, revision: resolved.course.revision,
+        mode: "source", sourceId, targetKind: null, targetId: null });
+      if (!sourceCache.has(key)) sourceCache.set(key, adapter.getCourseSources({
         principal, courseId: resolved.course.id, expectedRevision: resolved.course.revision,
         mode: "source", sourceId, targetKind: null, targetId: null, cursor: null, limit: 1, deadlineAt
       }));
-      const read = await sourceCache.get(sourceId);
+      const read = await sourceCache.get(key);
       if (!Array.isArray(read?.items) || read.items.length !== 1) fail("course_service_unavailable", "Uma fonte prevista não pôde ser inspecionada.", null, 503);
       return withoutTechnicalState(read.items[0]);
     }));
@@ -2842,7 +2851,8 @@ async function explanationReadContext({ adapter, principal, resolved, microseque
       ...review,
       fontes: citations ? withoutTechnicalState(await humanTargetSourceReferences({
         adapter, principal, course: resolved.course, sources: citations, deadlineAt,
-        target: { kind: "microsequence_explanation", content: microsequence.explanation }
+        target: { kind: "microsequence_explanation", content: microsequence.explanation },
+        sourceScope
       })) : null
     };
   }));
@@ -3204,8 +3214,11 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     scopeMicrosequences: reviewMicrosequences
   });
   const auditoria = args.auditoria === true;
+  // Uma única leitura de Fontes por requisição: o mesmo escopo atende as fontes previstas
+  // e os vínculos da Explicação; cada continuação abre um escopo novo.
+  const sourceScope = new Map();
   const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences,
-    deadlineAt, auditoria, focal: units.length > 0 });
+    deadlineAt, auditoria, focal: units.length > 0, sourceScope });
   const studyUnits = await Promise.all(unitPage.items.map(async unit => ({ ...unit,
     ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit",
       targetId: unit.studyUnit.id, deadlineAt, auditoria })
@@ -3258,26 +3271,31 @@ async function resolveHumanSourceContentTarget({ adapter, principal, resolved, d
 
 // O auditor recebe o registro de folhas do alvo lido: sem ele, a evidência é apenas
 // estrutural; com ele, uma ocorrência que não localiza impede alegar `located`.
-async function humanTargetSourceReferences({ adapter, principal, course, sources, deadlineAt, target = null }) {
-  const details = new Map();
+async function humanTargetSourceReferences({ adapter, principal, course, sources, deadlineAt,
+  target = null, sourceScope = null }) {
+  const details = sourceScope ?? new Map();
   const targets = target
     ? listCourseSourceOccurrenceTargets(target.content, { targetKind: target.kind }) : null;
   const readSource = (sourceId) => {
-    if (!details.has(sourceId)) details.set(sourceId, (async () => {
-      const read = await adapter.getCourseSources({ principal, courseId: course.id,
-        expectedRevision: course.revision, mode: "source", sourceId,
-        targetKind: null, targetId: null, cursor: null, limit: 1, deadlineAt });
-      if (!Array.isArray(read?.items) || read.items.length > 1 || read.nextCursor != null ||
-          read.items.length === 1 && read.items[0].sourceId !== sourceId) {
-        fail("course_service_unavailable", "A Fonte do vínculo não pôde ser identificada.", null, 503);
-      }
-      return read.items[0] ?? null;
-    })());
-    return details.get(sourceId);
+    const key = sourceReadScopeKey({ courseId: course.id, revision: course.revision,
+      mode: "source", sourceId, targetKind: null, targetId: null });
+    // O escopo guarda sempre Promise<VIEW>, igual ao consumidor de fontes previstas; a
+    // descompactação valida depois do await, para o mesmo item atender os dois caminhos.
+    if (!details.has(key)) details.set(key, adapter.getCourseSources({ principal, courseId: course.id,
+      expectedRevision: course.revision, mode: "source", sourceId,
+      targetKind: null, targetId: null, cursor: null, limit: 1, deadlineAt }));
+    return details.get(key);
+  };
+  const unwrapSource = (view, sourceId) => {
+    if (!Array.isArray(view?.items) || view.items.length > 1 || view.nextCursor != null ||
+        view.items.length === 1 && view.items[0].sourceId !== sourceId) {
+      fail("course_service_unavailable", "A Fonte do vínculo não pôde ser identificada.", null, 503);
+    }
+    return view.items[0] ?? null;
   };
   return { ...sources, items: await Promise.all(sources.items.map(async (item) => ({
     ...item, sourceLinks: await Promise.all(item.sourceLinks.map(async (link, index) => {
-      const source = await readSource(link.sourceId);
+      const source = unwrapSource(await readSource(link.sourceId), link.sourceId);
       return { ...link, posicao: index + 1, evidencia: inspectCourseSourceEvidence(link, source, { targets }),
         fonte: source ? { localizada: true, titulo: source.title, citacao: source.citationText,
           status: source.status, ...(source.url ? { url: source.url } : {}),
@@ -4512,11 +4530,15 @@ const SOURCE_DOCUMENT_FIELDS = Object.freeze(["kind", "defaultRoles", "title", "
   "origin", "availability", "verificationStatus", "studyVisibility"]);
 
 function sourceDocumentKey(value) {
-  return JSON.stringify(SOURCE_DOCUMENT_FIELDS.map((field) => value?.[field] ?? null));
+  // Comparação canônica: a ordem das chaves de objetos aninhados (JSONB) não muda o
+  // significado, mas a ordem de arrays permanece significativa.
+  return canonicalAuthoringValue(SOURCE_DOCUMENT_FIELDS.map((field) => value?.[field] ?? null));
 }
 
 function humanAnchorKey(value) {
-  return JSON.stringify([value?.selector ?? null, value?.contentHash ?? null,
+  // O seletor é objeto aninhado; a leitura preserva a ordem do JSONB e a comparação
+  // precisa ser invariante a ela sem reordenar arrays.
+  return canonicalAuthoringValue([value?.selector ?? null, value?.contentHash ?? null,
     value?.humanLocator ?? null, value?.verificationExcerpt ?? null]);
 }
 

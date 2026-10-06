@@ -581,6 +581,82 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   assert.equal(adapter.calls.inspections.length, (first.calls + second.calls) * 12);
 });
 
+// Escopo de leitura de Fontes por requisição: 1 MS, 6 unidades e 1 Explicação com as
+// mesmas duas fontes previstas E vinculadas devem custar 2 leituras de fonte + 1 de alvo
+// por chamada — não 4. A continuação é outra requisição: relê o escopo do zero.
+test("leitura pura compartilha o escopo de Fontes dentro da requisição e não entre continuações", async () => {
+  const titles = { s1: "Fonte s1", s2: "Fonte s2" };
+  const build = () => {
+    const units = Array.from({ length: 6 }, (_, index) => ({ ...studyUnit(index + 1),
+      curriculumPath: { didacticMicrosequence: { id: "ms", title: "MS" } } }));
+    const adapter = fixture({ units, totalUnits: 6 });
+    adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision,
+      plan: { title: TITLE, parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{
+        id: "ms", title: "MS", position: 0,
+        explanationPlan: { purpose: "Explicitar", prerequisites: [], relations: [], sourceIds: ["s1", "s2"] },
+        explanation: { title: "Exp", content: [{ id: "p-0", package: "aralearn.resource.paragraph",
+          version: "1.0.0", data: { text: "Texto único" } }] },
+        contentReview: { state: "draft" } }] }] } });
+    const reads = [];
+    adapter.getCourseSources = async (input) => {
+      reads.push(`${input.mode}:${input.sourceId ?? input.targetId}`);
+      if (input.mode === "source") return { items: [{ sourceId: input.sourceId, revision: 1,
+        title: titles[input.sourceId], citationText: `Autoria ${input.sourceId}`, status: "active",
+        studyVisibility: "citation",
+        anchors: [{ anchorId: `anchor-${input.sourceId}`, revision: 1, status: "active",
+          humanLocator: `Local ${input.sourceId}`, verificationExcerpt: null, selector: null }] }],
+        nextCursor: null };
+      return { items: [{ targetKind: input.targetKind, targetId: input.targetId,
+        sourceLinks: [
+          { sourceId: "s1", relation: "supported_by", roles: ["technical_conceptual"],
+            anchors: [{ anchorId: "anchor-s1" }], occurrences: [] },
+          { sourceId: "s2", relation: "informed_by", roles: ["technical_conceptual"],
+            anchors: [{ anchorId: "anchor-s2" }], occurrences: [] }
+        ] }], nextCursor: null };
+    };
+    return { adapter, units, reads };
+  };
+
+  const first = build();
+  const page = await execute(first.adapter, "preparar_revisao", { auditoria: true });
+  assert.deepEqual(first.reads.slice().sort(), ["source:s1", "source:s2", "target:ms"],
+    "2 fontes previstas/vinculadas = 2 leituras; o alvo, 1");
+  assert.ok(page.context.continuacao, "o recorte real tem continuação para exercitar a releitura");
+
+  first.reads.length = 0;
+  await execute(first.adapter, "preparar_revisao", { auditoria: true,
+    continuacao: page.context.continuacao });
+  assert.deepEqual(first.reads.slice().sort(), ["source:s1", "source:s2", "target:ms"],
+    "a continuação é outra requisição: relê o escopo, sem cache entre chamadas");
+
+  // A Fonte vinculada precisa chegar como ITEM projetado, não como VIEW crua: título,
+  // citação, âncoras e relação visíveis e corretos (flag do defeito de tipo no Map).
+  const projection = build();
+  const logical = await readLogicalPage(projection.adapter, "preparar_revisao", { auditoria: true });
+  const links = logical.context.explicacoes[0].fontes.items[0].sourceLinks;
+  assert.deepEqual(links.map(link => link.fonte.titulo), ["Fonte s1", "Fonte s2"]);
+  assert.deepEqual(links.map(link => link.fonte.citacao), ["Autoria s1", "Autoria s2"]);
+  assert.deepEqual(links.map(link => link.relacao ?? link.relation), ["supported_by", "informed_by"]);
+  assert.equal(links.every(link => link.fonte.localizada === true), true);
+  assert.deepEqual(links.map(link => link.anchors.map(anchor => anchor.posicao)), [[1], [1]]);
+
+  // Cache morto entre requisições: título novo aparece na leitura seguinte.
+  const freshness = build();
+  await execute(freshness.adapter, "preparar_revisao", { auditoria: true });
+  titles.s1 = "Fonte s1 atualizada";
+  const after = await readLogicalPage(freshness.adapter, "preparar_revisao", { auditoria: true });
+  assert.deepEqual(after.context.explicacoes[0].fontes.items[0].sourceLinks
+    .map(link => link.fonte.titulo), ["Fonte s1 atualizada", "Fonte s2"]);
+  titles.s1 = "Fonte s1";
+
+  // Continuação antiga com literal alterado é recusada (T08/T09), sem aceitar mistura.
+  const stale = build();
+  const staleFirst = await execute(stale.adapter, "preparar_revisao", { auditoria: true });
+  stale.units[0].studyUnit.content[0].data.steps[0].text = "Texto alterado depois da leitura.";
+  await assert.rejects(() => execute(stale.adapter, "preparar_revisao", { auditoria: true,
+    continuacao: staleFirst.context.continuacao }), { code: "human_read_context_changed" });
+});
+
 test("revisão inclui um apoio literal por microssequência, com proposta e situação separadas", async () => {
   const units = [studyUnit(1), studyUnit(2)].map(unit => ({ ...unit,
     curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
