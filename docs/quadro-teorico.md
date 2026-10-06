@@ -62,8 +62,12 @@ as três relações que depois são detalhadas como proposições.
 
 Cada relação permanece uma hipótese até ser avaliada. A disponibilidade local,
 por exemplo, pode manter o conteúdo acessível sem ajudar a pessoa a reconstruir
-o raciocínio interrompido. Do mesmo modo, muitas atividades pouco ajudam quando
-exigem operações que o percurso ainda não ensinou. O uso de inteligência
+o raciocínio interrompido. Na prática de consolidação, exigir operações ainda
+não desenvolvidas nem assumidas como pré-requisitos pode produzir um salto
+conceitual. Uma tentativa exploratória tem outra função: investigar uma relação
+que será ensinada depois, conforme o
+[modelo didático](modelo-didatico.md#suficiência-teórica-no-percurso).
+O uso de inteligência
 artificial (IA), as formas de acesso e os [dados de
 autoria](analytics-instrucionais.md) também precisam ser estudados por meio de
 perguntas próprias.
