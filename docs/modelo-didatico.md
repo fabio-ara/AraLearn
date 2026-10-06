@@ -64,7 +64,7 @@ pode autorizar produção autônoma para o curso; nesse caso, o trabalho prosseg
 sobre o mapa em rascunho, com as condições de pesquisa e o escopo preservados.
 Explicações e unidades recebem revisão própria quando a pessoa inspeciona o
 conteúdo salvo e declara essa revisão. A autorização para produzir mantém esses
-registros independentes.
+[registros independentes](explicacao-e-revisao-humana.md#revisão-independente-por-objeto).
 
 ### Por que a microssequência existe
 
@@ -94,8 +94,9 @@ Com as microssequências previstas no mapa e o trabalho autorizado, a autoria
 pode reuni-las em uma **parte**, conjunto de produção e inspeção. Partes sucessivas
 podem formar um **lote**. Essa divisão coordena o trabalho segundo as relações
 que precisam permanecer juntas e a quantidade de material que a pessoa consegue
-inspecionar. Partes e lotes ficam fora da hierarquia curricular. O fluxo está em
-[Autoria contextual](autoria-contextual.md).
+inspecionar. Partes e lotes ficam fora da hierarquia curricular. O
+[fluxo de produção](fluxos-prompts-e-contratos.md#produção-incremental-por-partes)
+descreve sua coordenação.
 
 ## Diagnóstico contextual antes da construção
 
@@ -177,22 +178,23 @@ produzido, sem constituir um perfil inferido do estudante.
 A **configuração aplicada** conserva as escolhas usadas na produção de uma
 unidade. Mudar a intenção atual não reescreve essa produção. A comparação entre
 intenção e aplicação ajuda a localizar o que precisa ser revisto. O software
-confere referências e contagens. A inspeção por IA confronta o conteúdo salvo
-com o objetivo, as fontes e a configuração aplicada e registra um parecer.
-A pessoa autora examina o material e decide sobre sua revisão. Investigar o que
-o estudante aprendeu exige ainda observar seu desempenho em tarefas pertinentes.
+confere referências e contagens. A [inspeção por IA](auditoria-de-conformidade-instrucional.md)
+confronta o conteúdo salvo com o objetivo, as fontes e a configuração aplicada
+e registra um parecer. A pessoa autora examina o material e decide sobre sua
+revisão. Investigar o que o estudante aprendeu exige ainda observar seu
+desempenho em tarefas pertinentes.
 
 Um recorte pode ser desenvolvido em várias unidades: sua introdução é contada
 uma vez e as continuações o utilizam ou retomam. Uma unidade também pode reunir
 recortes cuja relação justifique a composição, respeitado o teto de novidades.
 Durante a produção parcial, práticas previstas podem continuar ausentes; ao
-concluir o lote, é exigida a cobertura estabelecida para ele. Os registros e as
+concluir a parte, é exigida a cobertura estabelecida para ela. Os registros e as
 regras dessa conferência estão em
 [Contexto efetivo e aplicação corrente](desenho-instrucional-parametrizado.md#contexto-efetivo-e-aplicação-corrente).
 
 ## Profundidade sem condensação
 
-A **explicação** é a base de conteúdo didático autorado da microssequência.
+A **explicação** é a base de conteúdo didático da microssequência.
 Pode reunir texto, representações e áudio conforme o assunto. Ela torna explícitos
 os pressupostos necessários, desenvolve conceitos e relações por meio de
 exemplos e delimita o conteúdo com suas fontes. Todas as
@@ -242,15 +244,26 @@ sem uma cota universal apoiada pela literatura de segmentação
 
 ### Suficiência teórica no percurso
 
-A prática deve encontrar base no que foi ensinado ou explicitamente assumido
-como pré-requisito. No exemplo, pedir que o estudante julgue a influência de
-um valor extremo exige antes desenvolver a relação entre esse valor, o total
-e a média. Saber executar a divisão não basta.
+Na prática pós-ensino, a tarefa mobiliza o que foi desenvolvido ou explicitamente
+assumido como pré-requisito. No exemplo, consolidar o julgamento da influência
+de um valor extremo exige desenvolver a relação entre esse valor, o total e a
+média. Saber executar a divisão não basta.
+
+Uma tentativa exploratória tem outra função: permite formular uma resposta
+inicial sobre uma relação que será ensinada depois. O estudante pode, por
+exemplo, prever o que acontecerá com a média quando um dos tempos de espera
+aumentar. Ele precisa compreender a situação, os dados e a pergunta, mas a
+relação que será desenvolvida é o alvo da tentativa, não um conhecimento já
+exigido para acertar. O ensino posterior retoma esse alvo. O
+[desenho da posição da prática](desenho-instrucional-parametrizado.md#explicação-prática-e-posição-na-sequência)
+distingue essa exploração da consolidação e especifica como registrar cada uma.
 
 A revisão examina se o estudante encontra o significado dos conceitos e das
-notações, as relações necessárias e um exemplo que torne claros os limites
-relevantes à tarefa. Uma lacuna nessa base exige desenvolvimento; alterar o
-tamanho das unidades sem tratar a relação ausente apenas redistribui a lacuna.
+notações e se a relação entre tentativa, explicação e prática corresponde ao
+objetivo. Na consolidação, confere a base já oferecida e os exemplos necessários;
+na exploração inicial, a compreensão do enunciado e o desenvolvimento posterior
+do alvo. Uma lacuna exige desenvolvimento; alterar o tamanho das unidades sem
+tratar a relação ausente apenas redistribui a lacuna.
 
 ## Apoio inicial e retirada gradual
 
@@ -301,9 +314,10 @@ variação entre tarefas e resultados ([Karpicke e Roediger (2008)](referencias.
 resposta visível não produz a mesma demanda; selecionar uma opção tampouco
 certifica, por si só, que houve recuperação.
 
-Cada prática declara o que pretende examinar e qual conhecimento anterior a
-torna respondível. A solicitação precede a solução, e a revelação depende de
-ação explícita. Variar apenas palavras ou aparência pode conservar a mesma
+Cada prática declara o que pretende examinar e quais conhecimentos seu enunciado
+mobiliza. Seu lugar na sequência determina se consolida o ensino anterior ou
+prepara uma explicação posterior. A solicitação precede a solução, e a revelação
+depende de ação explícita. Variar apenas palavras ou aparência pode conservar a mesma
 tarefa; uma variação substantiva muda um aspecto relevante do caso, do contexto,
 da representação ou do apoio entre oportunidades do mesmo requisito. A
 contagem considera o conjunto da microssequência, inclusive práticas em
@@ -454,7 +468,7 @@ Quatro perguntas organizam esse trabalho:
 
 | Pergunta de revisão | O que examinar |
 | --- | --- |
-| A pessoa encontra base para compreender? | problema inicial, pré-requisitos, termos apresentados no momento necessário e teoria suficiente para as práticas |
+| A pessoa encontra base para compreender? | problema inicial, pré-requisitos, termos apresentados no momento necessário e relação entre ensino e função de cada prática |
 | A sequência conserva as relações? | ordem, transições, exemplos, quantidade de novidades e conhecimentos usados conjuntamente; ausência de compressão ou divisão artificial |
 | A prática solicita o que se pretende ensinar? | operação, dados particulares disponíveis, variação substantiva, apoio, retorno e retomadas pertinentes |
 | O conteúdo pode ser inspecionado e corrigido? | fontes, convenções das representações, componentes permitidos, limites assumidos e alcance da revisão humana |
