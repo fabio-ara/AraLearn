@@ -1,4 +1,9 @@
-# H005 — comparação de curso grande
+# Comparação de curso grande — ensaio histórico H005
+
+H005 identifica a investigação de um erro de tamanho de resposta na revisão v7.
+Este registro conserva as medições daquela execução. A
+[análise de autoria](../../analytics-instrucionais.md) apresenta o uso corrente de
+comparações e exportações.
 
 Verificação local em 24/09/2026, Node 24.14.0. O limite explícito de resposta de **2 MiB (2.097.152 bytes)** foi mantido. A causa do 413 histórico permanece aberta: faltam corpo da resposta, tamanho do payload e versão hospedada daquele episódio.
 

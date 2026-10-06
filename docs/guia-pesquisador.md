@@ -127,9 +127,17 @@ pessoa afirma ter inspecionado o conteúdo salvo. Um estudo pode examinar se ela
 entende essa distinção e como faz a inspeção. A marca registrada, a correção
 salva e o julgamento observado respondem a perguntas diferentes.
 
-A **explicação** é o texto-base com fontes que desenvolve o conteúdo de uma
-microssequência, isto é, uma etapa curricular com objetivo delimitado. As
-unidades de estudo realizam a progressão de explicação e prática. Ao investigar
+A [inspeção de IA](auditoria-de-conformidade-instrucional.md) oferece outra
+fonte de análise: um parecer sobre uma base de conteúdo identificada. A pesquisa
+pode confrontar suas justificativas e os trechos citados com uma revisão
+independente. Convém registrar tanto a atualidade da base quanto o resultado do
+parecer: uma inspeção pode estar atual e apontar insuficiências que ainda
+precisam de correção.
+
+A **explicação** é a base de conteúdo didático de uma microssequência, isto é,
+uma etapa curricular com objetivo delimitado. Ela pode combinar texto,
+representações visuais e áudio, com suas fontes. As unidades de estudo realizam
+a progressão de explicação e prática. Ao investigar
 o uso da ajuda, é necessário conservar a explicação disponível, as unidades e
 as regras da tarefa: resolver com apoio e resolver sem consultá-lo são condições
 diferentes. O [modelo didático](modelo-didatico.md) desenvolve essa relação.
@@ -171,7 +179,7 @@ de exposição, como data, acesso à ajuda e materiais externos disponíveis.
 Em **Dados de autoria**, **Exportar curso e análise** reúne o conteúdo integral
 salvo e a leitura quantitativa do escopo escolhido. O arquivo conserva, sob a
 mesma revisão do curso, o material e os registros necessários para interpretar
-seu desenho. PDFs e áudios permanecem referenciados e precisam ser guardados
+seu desenho. Documentos e arquivos de áudio permanecem referenciados e precisam ser guardados
 separadamente quando integram o estudo. A [referência de
 exportação](dicionario-metricas-datasets.md#comparação-e-exportação) descreve
 os campos disponíveis.
@@ -185,8 +193,9 @@ explica essas consultas.
 As contagens descrevem o material salvo e as intervenções cuja origem pode ser
 identificada. Elas ajudam a caracterizar o curso usado na pesquisa. Processos
 como compreensão, atenção e julgamento humano exigem as evidências escolhidas
-pelo estudo. Transcrições da conversa de autoria e comportamento de estudo não
-são coletados por essa área.
+pelo estudo. Quando a pergunta envolve a conversa de autoria ou o comportamento
+durante o estudo, o protocolo define uma coleta própria, pois a área usa o estado
+salvo dos cursos.
 
 ## Proteger participantes e materiais
 

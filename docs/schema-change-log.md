@@ -14,7 +14,11 @@ identificador informa a ordem exata das alterações. O **manifesto da execuçã
 declara qual revisão do esquema o site e as funções remotas esperam encontrar. Testes
 locais verificam regras e transformações com dados controlados; a implantação
 hospedada acrescenta a conferência do ambiente que realmente atende ao
-aplicativo. Outros termos recorrentes estão no
+aplicativo. Os verbos no presente descrevem o efeito de cada mudança naquela
+etapa; contratos posteriores podem substituí-lo. A sequência executável completa
+está em [migrações](../supabase/migrations/), e o [relatório de encerramento da
+v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.100.
+Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
 ## 20261005120000 — pacote transacional de Fontes
@@ -42,7 +46,8 @@ repetição cega, além da instalação e atualização exigidas para a promoç�
 
 ## 20260930010000 — ordem curricular na base de inspeção
 
-A migração candidata corrige a leitura da ordem das unidades em
+A [migração](../supabase/migrations/20260930010000_pedagogical_basis_study_order.sql)
+corrige a leitura da ordem das unidades em
 `course_pedagogical_basis_v1`. A posição está na entidade persistida, separada
 do conteúdo. A base passa a expor essa posição e ordenar as unidades por ela,
 em vez de procurar um campo ausente no conteúdo e acabar ordenando pelos
@@ -55,15 +60,64 @@ curricular. Os pareceres salvos são preservados; a migração não troca seus
 hashes para declará-los atuais. Conteúdo, configuração, fontes, revisão humana
 e controles de acesso permanecem nos mecanismos existentes.
 
-Esta entrada descreve a candidata local, não uma implantação hospedada. A
-validação deve verificar leitura, invalidação por ordem e preservação de
-microssequências independentes, além da instalação e atualização exigidas
-para a promoção.
+As provas previstas para esta mudança abrangem leitura, invalidação por ordem
+e preservação de microssequências independentes, além da instalação e atualização
+do esquema. O [encerramento da v10](revisao-v10-estudo-implementacao.md) registra
+sua inclusão na entrega publicada.
+
+## 20260929100247 — identidade do catálogo nas políticas de componentes
+
+Uma política de componentes pode conservar escolhas válidas e ainda apontar
+para uma versão anterior do catálogo. A
+[reconciliação](../supabase/migrations/20260929100247_reconcile_component_policy_catalog_versions.sql)
+atualiza essa identidade nas políticas compatíveis com `1-fca7730b`, preservando
+escolhas, autoria, escopos e datas. Ela confere o catálogo e suas regras antes de
+alterar os registros e verifica a preservação dentro da mesma transação.
+
+Políticas incompatíveis interrompem a atualização para investigação. O manifesto
+passa a identificar a revisão `20260929100247`.
+
+## 20260929082030 — conjuntos equivalentes na análise de autoria
+
+As mesmas opções de um parâmetro podem ser gravadas em ordens diferentes. A
+[migração](../supabase/migrations/20260929082030_canonicalize_authoring_analytics_parameter_sets.sql)
+ordena os conjuntos válidos segundo o catálogo antes de agrupá-los na leitura de
+análise de autoria. Assim, opções equivalentes participam do mesmo grupo, com
+contagem de unidades distintas.
+
+A leitura conserva origem, motivo e escopo da escolha. Os registros aplicados
+permanecem intactos; a normalização ocorre na consulta usada também pela
+comparação e pela exportação. O manifesto avança para `20260929082030`.
+
+## 20260928125507 — gravação de conjuntos vazios e calibração pendente
+
+O [escritor instrucional](../supabase/migrations/20260928125507_contextual_design_writer_edges.sql)
+passa a conservar `[]` ao ordenar um conjunto sem elementos. Isso mantém a
+escolha explícita de dispensar dimensões de variação, admitida pela migração
+anterior.
+
+A falta de calibração contextual recebe o código próprio `PD410`, permitindo
+distingui-la do conflito com uma condição de pesquisa. A mudança atualiza a
+função de gravação e o manifesto, preservando as configurações já armazenadas.
+
+## 20260928120000 — variação da prática com conjunto vazio
+
+Quando a prática planejada dispensa variação entre oportunidades, a autoria
+precisa registrar essa decisão. O
+[catálogo de parâmetros](../supabase/migrations/20260928120000_allow_empty_practice_variation_dimensions.sql)
+passa a admitir o conjunto vazio em `required_practice_variation_dimensions`.
+Ausência e valor nulo continuam indicando calibração pendente.
+
+A atualização conserva os doze parâmetros, seus valores padrão, escopos e
+versão `1.2.1`. Altera apenas a definição e a quantidade mínima de elementos
+desse conjunto. O manifesto acrescenta a capacidade
+`empty-practice-variation-dimensions-v1` e identifica a revisão `20260928120000`.
 
 ## 20260928110000 — realização da configuração e replay da inspeção
 
-Esta entrada descreve a [migração candidata](../supabase/migrations/20260928110000_configuration_realization_inspection.sql)
-e suas provas locais; não registra implantação hospedada. O manifesto passa a
+A [migração](../supabase/migrations/20260928110000_configuration_realization_inspection.sql)
+e suas provas de origem tratam da realização da configuração e da recuperação
+de pedidos já confirmados. O manifesto passa a
 identificar esta revisão e a capacidade `configuration-realization-inspection-v1`,
 totalizando 53 capacidades. O catálogo de componentes permanece igual.
 
@@ -675,11 +729,15 @@ O teste focal `supabase/tests/013_atomic_course_metadata_test.sql` passou 28 ver
 
 Estas correções são incrementais. Antes de aplicá-las, mantenha o backup e o ensaio de restauração exigidos acima, confira a lista exata de migrations pendentes e valide o manifesto final `20260905071622`. Não execute reset nem seed de upgrade sobre um ambiente que já recebeu estas migrations. As provas SQL locais e as jornadas com clientes reais complementam-se; nenhuma delas declara a implantação hospedada concluída.
 
-## Estado final explícito da revisão v7 — 2026-09-24
+## Fechamento histórico da revisão v7 — 2026-09-24
 
-Esta seção é o estado corrente para leitura da documentação. As entradas acima
-permanecem históricas: descrevem contratos e contagens válidos na época de cada
-mudança e não substituem os arquivos de código atuais.
+Esta seção preserva o estado ao término da revisão v7. Seus contratos e
+contagens pertencem àquela etapa, encerrada pela migração
+[`20260924185630`](../supabase/migrations/20260924185630_revisao_v7_runtime_contract.sql).
+As mudanças posteriores aparecem no início deste registro; a sexta dimensão
+de inspeção, por exemplo, foi acrescentada em `20260928110000`. Para o uso
+vigente, consulte [autoria por MCP](autoria-mcp.md) e
+[componentes didáticos](componentes-didaticos.md).
 
 ### Catálogo e migrações de conteúdo
 

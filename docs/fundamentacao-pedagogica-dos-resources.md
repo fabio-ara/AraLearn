@@ -7,11 +7,12 @@ conhecimentos próprios. A escolha faz parte do ensino: muda o que o estudante
 precisa perceber, relacionar e fazer.
 
 No AraLearn, um **componente didático** organiza uma representação, uma forma
-de resposta ou ambas dentro da unidade de estudo. A fundamentação de sua escolha
-considera a tarefa, a convenção da área e as condições de leitura. Na
-implementação, cada componente corresponde a um **pacote**, módulo que reúne
-os dados e as regras necessárias para apresentá-los e receber respostas. O
-[contrato de componentes](componentes-didaticos.md) descreve essa organização.
+de resposta ou ambas dentro da unidade de estudo, etapa do percurso apresentada
+na tela. A fundamentação de sua escolha considera a tarefa, a convenção da área
+e as condições de leitura. Na implementação, cada componente corresponde a um
+**pacote**, módulo que reúne os dados e as regras necessárias para apresentá-los
+e receber respostas. O [contrato de componentes](componentes-didaticos.md)
+descreve essa organização.
 
 As decisões identificadas como R1 a R9 são escolhas do projeto apoiadas pelas
 relações discutidas a seguir. A literatura ajuda a justificá-las e formular
@@ -46,9 +47,9 @@ integrar ambas.
 A **coerência** orienta retirar elementos sem função na tarefa; a
 **contiguidade**, aproximar informações que precisam ser integradas
 ([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
-[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Acrescentar figuras apenas
-para variar a aparência pode exigir trabalho de interpretação sem acrescentar
-uma relação útil.
+[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). Figuras acrescentadas
+apenas para variar a aparência podem exigir trabalho de interpretação que
+pouco contribui para a relação estudada.
 
 A admissão de um pacote registra por que aquela representação é necessária,
 qual operação atende e quais convenções preserva. Também a distingue dos
@@ -82,8 +83,8 @@ Essa ordem relaciona a escolha à função da representação, conforme DeFT
 recuperação**, tentativa de lembrar conhecimento estudado, pode favorecer
 aprendizagem posterior ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval);
 [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval)). Para projetá-la,
-é preciso verificar o que a tarefa solicita recuperar; o formato visual não
-resolve essa decisão sozinho.
+é preciso verificar o que a tarefa solicita recuperar e como o formato
+escolhido participa dessa solicitação.
 
 ### Disponibilidade, seleção e materialização
 
@@ -100,8 +101,9 @@ conserva três registros diferentes:
 A **política de componentes** pode permitir o catálogo inteiro ou uma lista
 restrita e registrar exclusões e preferências. Exclusão prevalece sobre
 permissão; preferência orienta a escolha entre candidatos permitidos e
-adequados. O [contrato da política](desenho-instrucional-parametrizado.md#política-de-componentes-didáticos)
-detalha a revisão do catálogo e a aplicação por escopo.
+adequados. O **escopo** indica a que trecho do curso a política se aplica.
+O [contrato da política](desenho-instrucional-parametrizado.md#política-de-componentes-didáticos)
+detalha esse alcance e a revisão do catálogo utilizada.
 
 A busca identifica candidatos específicos, versáteis ou substitutivos —
 `canonical`, `versatile` e `substitute` no contrato. Esses estados qualificam o
@@ -117,15 +119,18 @@ examinar escolhas inadequadas, adaptações artificiais e facilidade de revisão
 Uma matriz pode estar corretamente desenhada e ainda ser incompreensível para
 quem nunca precisou distinguir linha e coluna. Antes de solicitar uma entrada
 pela posição, o percurso precisa mostrar o que as posições significam e como
-localizá-las. Uma legenda genérica sobre o funcionamento da interface não
-substitui esse ensino.
+localizá-las. Esse ensino desenvolve a leitura da matriz; uma legenda sobre
+os controles da interface atende a outra necessidade.
 
 O curso apresenta o referente, nomeia os elementos e desenvolve suas relações.
-Depois introduz a notação e uma leitura justificada. A
-[explicação compartilhada](explicacao-e-revisao-humana.md), texto-base da
-microssequência com fontes, pode desenvolver pressupostos e exemplos para
-consulta. As unidades continuam ensinando relações e propondo práticas
-substantivas na sequência.
+Depois introduz a notação e uma leitura justificada. Uma **microssequência**
+reúne unidades que desenvolvem um objetivo delimitado. Sua
+[explicação compartilhada](explicacao-e-revisao-humana.md) é a base de conteúdo
+didático e fontes desse conjunto. Ela pode desenvolver pressupostos e exemplos
+por meio de texto, representações visuais ou áudio. As unidades continuam
+ensinando relações e propondo práticas substantivas na sequência. O
+[modelo didático](modelo-didatico.md#estrutura-do-percurso) situa essa organização
+no curso.
 
 A memória de trabalho mantém e manipula informação durante a tarefa. Atividades
 de busca e integração desnecessárias podem disputar recursos com a construção
@@ -140,11 +145,10 @@ específicas ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexam
 Ao revisar o percurso, importa examinar se o estudante consegue reconhecer o
 problema, interpretar os símbolos e acompanhar a direção de leitura. Um exemplo
 de inferência válida ajuda a mostrar como posições e rótulos participam do que
-se pode concluir.
-Em prática, o contexto pode ser mais rico porque os elementos já ensinados
-precisam permanecer disponíveis para a operação. A dificuldade depende também
-das relações e do conhecimento prévio, e não apenas da quantidade de elementos.
-A avaliação pode pedir ao estudante que leia, explique e aplique a
+se pode concluir. Em prática, o contexto pode ser mais rico porque os elementos
+já ensinados precisam permanecer disponíveis para a operação. A dificuldade
+depende também das relações e do conhecimento prévio, além da quantidade de
+elementos. A avaliação pode pedir ao estudante que leia, explique e aplique a
 representação.
 
 ## 4. Conteúdo autorado e disposição visual
@@ -156,6 +160,12 @@ significado de cada ligação. A posição das caixas e o caminho das linhas sã
 calculados pelo software. Essa separação permite conservar o conteúdo quando
 um rótulo fica mais longo ou a largura da tela muda.
 
+Na fórmula, a autoria fornece a notação em TeX, uma forma textual de escrever
+símbolos e suas relações, além de uma leitura acessível. O componente valida
+o subconjunto aceito e o converte em estrutura matemática para apresentação.
+Assim, a pessoa declara a expressão; o software organiza frações, índices e
+delimitadores.
+
 O **contrato de dados** define quais elementos e relações a autoria pode
 fornecer. O pacote confere esses dados e produz a representação. A **geometria
 visual** determina onde e com que dimensões cada elemento aparece. Ela usa
@@ -165,20 +175,23 @@ Web. Suas funções e referências estão no
 [capítulo técnico dos componentes](componentes-didaticos.md#8-mecanismos-de-apresentação).
 
 A escolha busca consistência e manutenção mais simples. Os princípios de
-coerência e contiguidade ajudam a examinar a apresentação, mas não determinam
-uma biblioteca de software ([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
-[Ginns (2006)](referencias.md#ref-ginns2006contiguity)).
+coerência e contiguidade orientam a avaliação da apresentação
+([Mayer (2009)](referencias.md#ref-mayer2009multimedia);
+[Ginns (2006)](referencias.md#ref-ginns2006contiguity)). A seleção da biblioteca
+que realiza essa apresentação considera também os requisitos técnicos do objeto.
 
 O dimensionamento considera os textos completos e as respostas interativas.
 Se uma lacuna preenchida precisar de mais espaço, esse espaço deve estar
-previsto antes da resposta. Rótulos não podem desaparecer nem ser comprimidos
-até ficar ilegíveis. Casos grandes podem conservar a escala de leitura e usar
-rolagem local. Os testes verificam recortes, sobreposições e estabilidade; a
-inspeção disciplinar examina se a estrutura conserva o significado.
+previsto antes da resposta. Rótulos precisam permanecer completos e legíveis.
+Casos grandes podem conservar a escala de leitura e usar rolagem local. Os
+testes verificam recortes, sobreposições e estabilidade; a inspeção disciplinar
+examina se a estrutura conserva o significado.
 
 ## 5. Convenções das áreas de conhecimento
 
-### Decisão R5: preservar a gramática do domínio
+<a id="decisão-r5-preservar-a-gramática-do-domínio"></a>
+
+### Decisão R5: preservar as convenções do domínio
 
 Uma tabela de registros e uma matriz usam linhas e colunas, mas a posição numa
 matriz participa das operações algébricas. Um fluxograma e um processo de
@@ -257,31 +270,33 @@ aceitas; o componente oferece uma descrição acessível desse alvo. O
 [contrato de prática interna](componentes-didaticos.md#6-lacunas-digitação-e-ordenação-internas)
 especifica como preservar a estrutura durante o preenchimento.
 
-Lacunas e digitação atuam em campos autorizados. Correspondências simples
-podem usar lacunas independentes; ordenação move pelo menos dois trechos nos
-próprios parágrafos ou células de tabela. A ordem precisa ser inequívoca, e cada
-trecho recebe controles para deslocá-lo uma posição. Essa modalidade não se
-aplica a diagramas espaciais. Na sessão textual, somente a entrada admite
-lacuna de escolha com alternativas exatas; saídas e efeitos permanecem como
-contexto.
+Lacunas e digitação atuam nos campos que cada pacote disponibiliza para prática.
+Na versão atual, a fórmula é apresentada sem alvos internos de preenchimento;
+uma tarefa de escolha pode acompanhá-la quando essa resposta corresponde ao
+objetivo. Correspondências simples podem usar lacunas independentes; ordenação
+move pelo menos dois trechos nos próprios parágrafos ou células de tabela.
+A ordem precisa ser inequívoca, e cada trecho recebe controles para deslocá-lo
+uma posição. Essa modalidade não se aplica a diagramas espaciais. Na sessão
+textual, somente a entrada admite lacuna de escolha com alternativas exatas;
+saídas e efeitos permanecem como contexto.
 
 Selecionar uma resposta, confirmar e revelar a solução são ações distintas.
 Tocar numa lacuna preenchida pode limpá-la sem alterar as demais. Reconhecimento,
 produção e aplicação solicitam operações diferentes, ainda que todas usem o
 mesmo desenho de tela. A literatura sobre recuperação e transferência ajuda a
 examinar essa diferença ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval);
-[Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)); ela não torna
-qualquer lacuna uma prática adequada.
+[Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)). A adequação de cada
+lacuna depende do conhecimento que sua resolução exige mobilizar.
 
 ## 7. Inspeção humana e edição delimitada
 
 ### Decisão R7: separar texto editável de estrutura protegida
 
 Uma pessoa que deseja corrigir o nome de uma etapa deve conseguir reconhecer
-esse nome e avaliar a alteração. Ela não precisa, para isso, reescrever todas
-as relações do diagrama. Cada pacote indica os textos que podem ser corrigidos
-separadamente. Identificadores, tipos e relações estruturais permanecem
-protegidos nessa operação; mudar a composição usa uma tarefa própria.
+esse nome e avaliar a alteração. Os textos que cada pacote declara editáveis
+permitem realizar essa correção separadamente, preservando as relações do
+diagrama. Identificadores, tipos e relações estruturais permanecem protegidos
+nessa operação; mudar a composição usa uma tarefa própria.
 
 Na inspeção de conteúdo, as respostas ficam desativadas e os campos editáveis
 recebem rótulos compreensíveis. A pessoa examina a proposta; a gravação confere
@@ -295,9 +310,8 @@ limites, permitir correção e manter controle humano
 decisão assistida, intervenções que exigiam reflexão reduziram dependência
 excessiva da IA e acrescentaram custo de uso
 ([Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance)). Essa tensão
-é pertinente à autoria: uma confirmação pode exigir trabalho sem assegurar
-que a pessoa compreendeu o conteúdo. A avaliação precisa examinar a inspeção
-e a decisão efetivas.
+é pertinente à autoria: a confirmação acrescenta uma etapa ao processo, e sua
+utilidade depende da inspeção e da decisão que a pessoa consegue realizar.
 
 Conferir o escopo de uma alteração protege a estrutura; avaliar a precisão da
 explicação e o apoio das fontes exige leitura humana. Atender a uma observação
@@ -308,11 +322,11 @@ e declarar revisão do conteúdo são decisões distintas, descritas em
 
 ### Decisão R8: preservar legibilidade antes de exigir enquadramento total
 
-Uma matriz larga não pode perder colunas para caber na tela. Reduzir toda a
-figura também pode tornar os números ilegíveis. O aplicativo conserva a
-estrutura e admite rolagem local quando a reorganização mudaria o objeto.
-Representações com progressão natural podem usar orientação vertical; o
-restante da unidade continua rolável fora do quadro.
+Uma matriz larga precisa conservar suas colunas. Reduzir toda a figura para
+caber na tela pode tornar os números ilegíveis. O aplicativo mantém a estrutura
+e admite rolagem local quando a reorganização mudaria o objeto. Representações
+com progressão natural podem usar orientação vertical; o restante da unidade
+continua rolável fora do quadro.
 
 Essa escolha tem uma contrapartida: deslocar a figura pode separar elementos
 que precisam ser comparados. A revisão considera se uma divisão didática
@@ -331,8 +345,8 @@ sem depender só de cor ou posição.
 
 Testes automatizados conseguem localizar parte dos defeitos. Uso com leitores
 de tela, diferentes capacidades motoras e dispositivos reais acrescenta
-questões que esses testes não resolvem. O [sistema visual](sistema-visual.md)
-e a [auditoria dos componentes](auditoria-academica-dos-resources.md#7-processo-de-auditoria)
+questões que precisam ser examinadas durante a interação. O
+[sistema visual](sistema-visual.md) e a [auditoria dos componentes](auditoria-academica-dos-resources.md#7-processo-de-auditoria)
 organizam essas verificações.
 
 ## 9. Combinação de representações
@@ -345,28 +359,30 @@ relacionar os dois, a autoria explica como cada posição e cada valor se
 correspondem. Se a tabela serve apenas para consulta independente, essa
 integração pode não ser o objetivo.
 
-DeFT distingue funções complementares, restritivas e construtivas. Usar duas
-representações não exige sempre ensinar uma relação entre elas, mas exige
-justificar o papel de cada uma ([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)).
-Rótulos, unidades e variáveis compartilhados precisam permanecer consistentes.
-Uma composição pode fornecer contexto, restringir ambiguidade, permitir
-comparação ou desenvolver uma relação nova.
+DeFT distingue funções complementares, restritivas e construtivas. Cada
+representação precisa ter um papel justificado; a tarefa determina se é
+necessário ensinar também a relação entre elas
+([Ainsworth (2006)](referencias.md#ref-ainsworth2006deft)). Rótulos, unidades e
+variáveis compartilhados precisam permanecer consistentes. Uma composição
+pode fornecer contexto, restringir ambiguidade, permitir comparação ou
+desenvolver uma relação nova.
 
 Quando duas representações exigem explicações independentes, sua distribuição
 em unidades sucessivas pode favorecer a progressão. Quando a operação depende
 de consultar ambas, o contexto necessário permanece disponível. A evidência
-sobre segmentação apresenta condições e moderadores, sem prescrever uma cota
-de conteúdo por tela ([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)).
-A avaliação pode comparar a composição com uma apresentação segmentada e
-examinar erros de leitura e explicações dos estudantes.
+sobre segmentação apresenta condições e moderadores, isto é, fatores associados
+à variação dos resultados entre situações
+([Rey et al. (2019)](referencias.md#ref-rey2019segmenting)). A quantidade de
+conteúdo por tela precisa ser definida para o público e a tarefa. A avaliação
+pode comparar a composição com uma apresentação segmentada e examinar erros
+de leitura e explicações dos estudantes.
 
 ## 10. Da fundamentação à avaliação
 
 A [auditoria acadêmica dos componentes](auditoria-academica-dos-resources.md)
 reúne os critérios completos por pacote, desde sua justificativa e convenção até
-os testes de uso e seus limites. Ela permite examinar uma proposta ou revisar um
-componente instalado sem repetir o contrato inteiro nesta fundamentação. A
-[matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
+os testes de uso e seus limites. Ela orienta a avaliação de propostas e a revisão
+de componentes instalados. A [matriz de rastreabilidade pedagógica](matriz-rastreabilidade-pedagogica.md)
 relaciona essas decisões a formas de avaliação.
 
 Cada pergunta exige uma evidência apropriada. Testes verificam se a mesma
@@ -382,7 +398,7 @@ permanecem separados.
 ## Referências
 
 - [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval): Pooja K. Agarwal; Ludmila D. Nunes; Janell R. Blunt (2021). **Retrieval Practice Consistently Benefits Student Learning: A Systematic Review of Applied Research in Schools and Classrooms.** *Educational Psychology Review*, 33(4), p. 1409–1453.
-- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), p. 94.
+- [Ahmad Faudzi et al. (2023)](referencias.md#ref-faudzi2023mobileui): Masyura Ahmad Faudzi; Zaihisma Che Cob; Ridha Omar; Sharul Azim Sharudin; Masitah Ghazali (2023). **Investigating the User Interface Design Frameworks of Current Mobile Learning Applications: A Systematic Review.** *Education Sciences*, 13(1), artigo 94.
 - [Ainsworth (2006)](referencias.md#ref-ainsworth2006deft): Shaaron Ainsworth (2006). **DeFT: A Conceptual Framework for Considering Learning with Multiple Representations.** *Learning and Instruction*, 16(3), p. 183–198.
 - [Amershi et al. (2019)](referencias.md#ref-amershi2019humanai): Saleema Amershi; Dan Weld; Mihaela Vorvoreanu; Adam Fourney; Besmira Nushi; Penny Collisson; Jina Suh; Shamsi Iqbal; Paul N. Bennett; Kori Inkpen; Jaime Teevan; Ruth Kikin-Gil; Eric Horvitz (2019). **Guidelines for Human-AI Interaction.** In: *Proceedings of the 2019 CHI Conference on Human Factors in Computing Systems*, p. 1–13.
 - [Buçinca et al. (2021)](referencias.md#ref-bucinca2021overreliance): Zana Buçinca; Maja Barbara Malaya; Krzysztof Z. Gajos (2021). **To Trust or to Think: Cognitive Forcing Functions Can Reduce Overreliance on AI in AI-Assisted Decision-Making.** *Proceedings of the ACM on Human-Computer Interaction*, 5(CSCW1), p. 1–21.

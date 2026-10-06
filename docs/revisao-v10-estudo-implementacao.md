@@ -1,11 +1,22 @@
-# Revisão v10 — relatório de estado final (0.0.100)
+# Revisão v10 — encerramento da versão 0.0.100
 
-A revisão v10 encerrou a entrega em 03/10/2026 com a release [v0.0.100](https://github.com/fabio-ara/AraLearn/releases/tag/v0.0.100) publicada: site, backend e APK promovidos pela mesma cadeia de gates. Commit de produto [`2d19918`](https://github.com/fabio-ara/AraLearn/commit/2d19918e9010bbcbbdddf419cd8745cccad2b28b); `main` no fechamento [`3d2de2b4`](https://github.com/fabio-ara/AraLearn/commit/3d2de2b4571602388524257a484dc9040078eb7d). Site: <https://fabio-ara.github.io/AraLearn/>. APK: `sha256:06acea1a354568d442b32597781567fbf167842dc0820e4f7c07dd7113d78346`.
+Este relatório conserva o resultado da entrega encerrada em 03/10/2026, com a
+[versão 0.0.100](https://github.com/fabio-ara/AraLearn/releases/tag/v0.0.100)
+publicada. Site, backend e aplicativo Android passaram pela mesma cadeia de
+verificações para publicação. A descrição corrente do produto está no
+[mapa da documentação](README.md).
+
+| Artefato no encerramento | Identificação |
+| --- | --- |
+| Código do produto | Commit [`2d19918`](https://github.com/fabio-ara/AraLearn/commit/2d19918e9010bbcbbdddf419cd8745cccad2b28b) |
+| `main` no fechamento documental | Commit [`3d2de2b4`](https://github.com/fabio-ara/AraLearn/commit/3d2de2b4571602388524257a484dc9040078eb7d) |
+| Site | [AraLearn](https://fabio-ara.github.io/AraLearn/) |
+| Arquivo instalável Android (APK) | SHA-256 `06acea1a354568d442b32597781567fbf167842dc0820e4f7c07dd7113d78346` |
 
 ## Cobertura e limite de evidência
 
 - Cobertura por cortes comprovados: **16/17 itens** aceitos (10/11 produções e 6/6 bibliografias), **24/25 microssequências** e **33/34 famílias**, sem redução de denominador.
-- A entrega encerrou com limite de evidência na **MS22**, família `audio`: não houve produção nem escuta real verificável registradas. A ausência dessa prova não significa áudio quebrado no produto.
+- A entrega encerrou com limite de evidência na **MS22**, família `audio`: a produção e a escuta real verificável permaneceram sem registro, deixando essa capacidade pendente de demonstração na revisão.
 
 ## Mudanças úteis publicadas pela revisão
 
@@ -17,7 +28,7 @@ A revisão v10 encerrou a entrega em 03/10/2026 com a release [v0.0.100](https:/
 
 ## Legado, encerramento e histórico
 
-- O curso legado passou por preservação com backup, restore real e frescor aprovados antes da exclusão; o Storage foi recuperado por cópia de sistema de arquivos, não pela API de Storage — limite mantido.
-- Os rascunhos 0.0.84 a 0.0.99 foram removidos após revalidação de assets, metadados e manifesto; a 0.0.83 permanece publicada e as tags Git das versões publicadas seguem intactas.
+- O curso legado passou por cópia de segurança, restauração real e conferência de atualização antes da exclusão. Os arquivos do Storage foram recuperados por cópia do sistema de arquivos; o ensaio ficou limitado a esse caminho de restauração.
+- Os rascunhos 0.0.84 a 0.0.99 foram removidos após nova conferência dos arquivos, metadados e manifesto. No encerramento, a 0.0.83 permanecia publicada e as tags Git das versões publicadas estavam intactas.
 - A [#404](https://github.com/fabio-ara/AraLearn/issues/404) foi encerrada: jornada residual de autoria por Actions aceita, Actions suportada no catálogo 11.1.0 (30 operações) e fixture descartável excluída pelo fluxo público de preparar/confirmar. O diagnóstico de terminal foi encerrado como falso positivo, sem defeito do produto a corrigir.
 - A [PR425](https://github.com/fabio-ara/AraLearn/pull/425) corrigiu a autenticação interna do perfil e a [PR426](https://github.com/fabio-ara/AraLearn/pull/426) integrou o relatório final desta revisão. As revisões intermediárias 0.0.85 a 0.0.99 ficam no histórico do Git e no [registro de mudanças](../CHANGELOG.md).

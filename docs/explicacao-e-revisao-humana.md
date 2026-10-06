@@ -4,209 +4,129 @@
 
 ## Por que a explicação acompanha as unidades
 
-Uma atividade pode exigir conceitos e relações que precisam de desenvolvimento maior do que cabe em sua tela. Em um exercício sobre comunicação, por exemplo, identificar quem envia e quem recebe uma mensagem depende de compreender primeiro esses papéis. A tarefa perde sentido se o curso apenas apresentar os nomes e esperar que o estudante deduza a relação.
+Para identificar quem envia e quem recebe uma mensagem, o estudante precisa compreender esses papéis e a relação entre eles. Apresentar apenas os nomes deixa essa relação por construir. Durante uma atividade, também pode ser necessário retomar um conceito ou acompanhar novamente o exemplo que o desenvolveu.
 
-No AraLearn, a **explicação** é o texto-base de uma microssequência: desenvolve
-o assunto e a base necessária para compreendê-lo, com exemplos e fontes. Uma
-**microssequência didática** reúne um percurso com objetivo próprio dentro de
-uma lição. Suas unidades de estudo ensinam e exercitam esse conteúdo, conforme
-o [modelo didático](modelo-didatico.md).
+No AraLearn, uma **microssequência didática** organiza, dentro de uma lição, um percurso com objetivo próprio. Suas **unidades de estudo** desenvolvem o ensino e a prática em etapas relacionadas. A **explicação** oferece a base de conteúdo compartilhada por essas unidades: desenvolve o assunto, os conhecimentos necessários para compreendê-lo e suas relações, com exemplos e fontes. Pode combinar texto, representações visuais e áudio. O [modelo didático](modelo-didatico.md) situa esses objetos na organização completa do curso.
 
-A mesma explicação pode ser consultada a partir de todas as unidades daquela microssequência. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante a leitura e a prática. Na interface, o controle recebe o nome **Explicação**.
+Cada microssequência possui uma única explicação salva, consultável a partir de todas as suas unidades. Ela pode ser produzida e revisada antes das unidades e permanece acessível durante a leitura e a prática. Na interface, o controle recebe o nome **Explicação**.
 
-Há uma única instância salva por microssequência. Ela funciona como material de
-referência extensa: desenvolve integralmente o contexto e o conteúdo da
-microssequência, passo a passo, com exemplos e sustentação auditável nas fontes.
-A escrita é simples, clara e concisa, com explicações suficientes para consulta
-autônoma, sem pedantismo ou complexidade gratuita. O comentário que
-acompanha uma resposta pertence àquela prática; ele não é outra instância da
-explicação. As unidades compõem o percurso em episódios menores de ensino e
-prática, sem dividir a base por uma quantidade mecânica de palavras.
+A explicação deve oferecer desenvolvimento suficiente para consulta autônoma: apresentar o contexto, construir o raciocínio e permitir recuperar o significado de uma relação. Com esse conteúdo salvo no dispositivo, o estudante deve conseguir compreender o essencial mesmo quando estiver sem conexão para abrir as fontes. As referências permitem conferir a sustentação do texto e aprofundar a leitura.
 
-Essa cobertura é autossuficiente: com o conteúdo salvo no dispositivo, o aluno
-deve conseguir compreender o essencial mesmo sem conexão para abrir as fontes.
-As referências sustentam e aprofundam a explicação; não substituem o contexto,
-as relações ou o desenvolvimento necessário. As unidades menores também situam
-a tarefa no assunto e dão sentido ao que se aprende e pratica.
+As unidades, por sua vez, distribuem ensino e prática ao longo do percurso. Cada uma situa seu conteúdo ou sua tarefa e conserva juntas as relações necessárias à compreensão. O retorno que acompanha uma resposta explica aquela prática; a base compartilhada desenvolve o assunto da microssequência. Essas funções complementares orientam o que apresentar em cada lugar.
 
-Clareza, cobertura, contexto, progressão e fontes auditáveis são critérios de
-qualidade. A organização didática se adapta ao assunto e ao aluno, sem uma
-sequência obrigatória de seções ou fórmulas repetidas. As restrições de
-persistência, identidade e acesso pertencem à engenharia do produto e não
-ditam a redação didática.
-
-Na autoria, a explicação conserva a largura da coluna de celular também no
-computador. Os controles por ícone ficam junto ao conteúdo; editar permite
-alterar o título e os campos textuais no próprio formato de leitura. Salvar e
-cancelar conservam o contexto. O percurso, a proposta, as configurações e a
-declaração de revisão ficam em painéis autorais visualmente separados do texto.
+A inspeção autoral examina clareza, cobertura, contexto, progressão e sustentação nas fontes. A organização do texto depende do assunto e do público. Já os contratos técnicos definem como salvar, identificar e autorizar o acesso ao conteúdo; suas restrições de transmissão e persistência são tratadas nas seções de engenharia.
 
 ## Responsabilidades pedagógicas
 
-A explicação e as unidades realizam trabalhos relacionados. A explicação desenvolve o assunto de modo que o estudante possa recuperar uma definição, acompanhar um exemplo ou conferir uma fonte. As unidades organizam a progressão: apresentam relações, propõem atividades e permitem aplicar o que foi ensinado.
+A explicação permite recuperar uma definição, acompanhar um exemplo desenvolvido e conferir uma fonte. As unidades organizam os momentos em que o estudante encontra uma relação e trabalha sobre ela. A autoria precisa examinar a continuidade entre essas duas formas de acesso ao conteúdo.
 
-Revisar um lado exige examinar possíveis efeitos no outro. Uma correção na base
-pode mudar enunciados, exemplos ou práticas; uma alteração nas unidades pode
-revelar uma lacuna na base. Autor e GPT discutem os ajustes substantivos na
-conversa e aplicam o que estiver acordado. Conteúdo sem impacto material é
-preservado, em vez de ser reescrito apenas para acompanhar a revisão.
+Uma correção na base pode exigir ajustes nos enunciados, nos exemplos ou nas atividades; uma dificuldade encontrada nas unidades pode revelar uma lacuna na explicação. A pessoa autora define o alcance do trabalho, e o assistente aplica as correções autorizadas. Decisões substantivas ainda abertas voltam à pessoa. Os objetos fora desse alcance conservam seu estado.
 
-Uma unidade precisa conter ensino ou uma tarefa inteligível. Escrever apenas “leia a explicação” não substitui a relação que o percurso precisa desenvolver. Se a atividade pede identificar a origem de uma mensagem e depois explicar a inversão dos papéis na resposta, essa relação deve ser ensinada, e a explicação pode desenvolvê-la com maior profundidade.
+Cada unidade precisa oferecer ensino ou uma tarefa inteligível. Encaminhar à explicação permite aprofundar uma relação já situada no percurso. Numa atividade de aplicação sobre a inversão de quem envia e quem recebe na resposta de um serviço, por exemplo, a sequência precisa ter desenvolvido essa relação. Uma tentativa exploratória anterior ao ensino tem outra função: apresenta uma questão compreensível ao estudante e prepara o desenvolvimento posterior do conteúdo. O [desenho instrucional](desenho-instrucional-parametrizado.md#explicação-prática-e-posição-na-sequência) distingue essas posições da prática e os conhecimentos exigidos em cada caso.
 
-Quem já conhece o assunto pode seguir sem abrir a explicação. Quem precisa
-recuperar um pressuposto deve conseguir encontrar ali uma definição, um exemplo
-e sua relação com a tarefa. A inspeção autoral procura uma distribuição em que
-a unidade continue inteligível e a explicação ofereça o aprofundamento que pode
-ser consultado durante o percurso.
+Quem já conhece o assunto pode seguir o percurso diretamente. Quem precisa retomar um pressuposto deve encontrar na base o desenvolvimento necessário e sua relação com a tarefa. A leitura conjunta verifica tanto a inteligibilidade das unidades quanto a suficiência da explicação para essa consulta.
 
-O texto dos cards ensina o assunto ou propõe a atividade, sem comentar os
-materiais e as instruções usados na produção do curso. As citações pertinentes
-mantêm a sustentação consultável. A explicação pode apresentar o papel de um
-livro, da ementa ou das escolhas do percurso quando esse contexto orientar o
-aluno. Esse conteúdo didático continua distinto dos controles autorais da tela.
+O texto apresentado ao estudante ensina o assunto ou propõe a atividade. As citações pertinentes conservam sua sustentação consultável. A explicação também pode apresentar o papel de uma obra, da ementa ou de uma escolha do percurso quando isso orientar o estudo. Instruções de produção e controles autorais permanecem nos espaços destinados à autoria.
 
 ### Parâmetros e declarações de aplicação
 
-Os [parâmetros de desenho](desenho-instrucional-parametrizado.md) orientam escolhas como quantas ideias novas apresentar juntas e quais formas de explicação desenvolver. A **intenção corrente** registra as escolhas para o próximo trabalho. A **configuração aplicada** conserva as usadas na produção de uma unidade. Alterar uma preferência agora não reescreve o conteúdo já produzido.
+Os [parâmetros de desenho](desenho-instrucional-parametrizado.md) orientam decisões como quantas ideias novas apresentar juntas e quais formas de explicação desenvolver. A **intenção corrente** registra as escolhas para o próximo trabalho. A **configuração aplicada** conserva as usadas na produção de uma unidade. Uma mudança de preferência orienta trabalhos posteriores; alterar o conteúdo existente exige uma operação própria.
 
-A explicação compartilhada é um objeto do curso; uma **forma de explicação** é
-uma maneira de desenvolver uma ideia, como defini-la, mostrar um exemplo ou
-contrastar casos. A primeira oferece uma base comum à microssequência. A segunda
-descreve o trabalho realizado num trecho determinado. Assim, se o registro de
-uma unidade declara que ela desenvolve um exemplo, o exemplo precisa estar
-naquela unidade; sua presença no texto-base responde a outra função.
+A explicação compartilhada é um objeto do curso. Uma **forma de explicação** descreve o trabalho realizado num trecho: definir uma ideia, mostrar um exemplo ou contrastar casos, por exemplo. Assim, quando a aplicação de uma unidade declara o desenvolvimento de um exemplo, esse exemplo precisa estar naquela unidade. Sua presença na base compartilhada atende à função de consulta da explicação.
 
-Uma ideia pode ser desenvolvida em várias unidades. A primeira apresentação é
-registrada como introdução; uma unidade posterior pode usar a ideia ou retomá-la
-para aprofundar uma relação. Por exemplo, depois de introduzir origem e destino,
-o percurso pode retomar esses conceitos na resposta do servidor. A retomada
-preserva a identidade dos conceitos já introduzidos.
+Uma ideia pode ser desenvolvida em várias unidades. A primeira apresentação é registrada como introdução; uma unidade posterior pode usá-la ou retomá-la para aprofundar uma relação. Depois de introduzir origem e destino, por exemplo, o percurso pode retomar esses conceitos na resposta do servidor. A retomada conserva a identidade dos conceitos já introduzidos.
 
-O alvo editorial de palavras por unidade é uma orientação para distribuir o conteúdo. Ele não determina a extensão da explicação. Se o desenvolvimento da base revelar uma lacuna no percurso, a pessoa autora precisa decidir como tratá-la no mapa e nas unidades, em vez de considerar a lacuna resolvida só porque o texto-base ficou mais longo.
+O alvo editorial de palavras por unidade orienta a distribuição do conteúdo. A explicação recebe a extensão necessária ao desenvolvimento de seu objetivo. Se esse desenvolvimento revelar uma lacuna no percurso, a pessoa autora decide como tratá-la também no mapa e nas unidades que ensinam ou solicitam o conhecimento afetado.
+
+Cada unidade pode conservar ainda a **base explicativa aplicada**, registro da versão da explicação e de suas fontes usada naquela produção. Esse registro permite distinguir a base usada anteriormente da explicação disponível hoje. [Parâmetros de autoria](parametros-de-autoria.md#base-explicativa-aplicada-às-unidades) explica sua captura, preservação em edições e atualização numa nova produção.
 
 ### Composição e fontes
 
-A explicação utiliza os
-[componentes didáticos](componentes-didaticos.md) disponíveis para apresentar
-texto e representações. Uma tabela pode comparar casos; um diagrama, mostrar
-uma relação; a prosa explica o significado e como ler essas representações.
-Definição, exemplo e contraste ilustram formas de composição escolhidas conforme
-o objetivo.
+A explicação utiliza os [componentes didáticos](componentes-didaticos.md) disponíveis para apresentar texto e representações. Uma tabela pode comparar casos; um diagrama, mostrar uma relação; uma faixa de áudio pode oferecer a escuta necessária ao assunto. A prosa explica o significado e como ler ou utilizar essas representações. Definições, exemplos e contrastes são escolhidos conforme o objetivo e a relação que precisam desenvolver.
 
-As citações ligam afirmações à obra e ao trecho pertinente. A mesma fonte pode ser usada na explicação e em uma unidade, com vínculos próprios. Por exemplo, a base pode desenvolver um conceito com um livro, enquanto uma unidade usa outro documento para discutir um caso. [Fontes, citações e referências](fontes-e-citacoes.md) explica a distinção entre obra, localização na fonte e ocorrência no curso.
+As citações ligam afirmações à obra e ao trecho pertinente. A mesma fonte pode sustentar a explicação e uma unidade, com vínculos próprios em cada objeto. A base também pode desenvolver um conceito com um livro, enquanto uma unidade utiliza outro documento para discutir um caso. [Fontes, citações e referências](fontes-e-citacoes.md) distingue a obra, a localização na fonte e a ocorrência da citação no curso.
 
-A pessoa autora confere o papel da fonte e o apoio que ela oferece ao texto. Uma referência completa não torna automaticamente correta a interpretação. Quando o material original é fechado ou indisponível, o curso precisa desenvolver o conteúdo necessário à tarefa e informar o limite de acesso, preservando os direitos sobre a obra.
+A pessoa autora confronta a afirmação com o material consultado e avalia o papel atribuído à fonte. O cadastro bibliográfico identifica a obra; a inspeção examina se o trecho utilizado sustenta a interpretação. Quando o material original é fechado ou indisponível, o curso precisa desenvolver o conteúdo necessário à tarefa e informar o limite de acesso. O uso e a disponibilização da obra também dependem dos direitos pertinentes.
 
 ## Dados, produção e revisão
 
-O mapa pode guardar uma proposta da explicação antes de existir o texto
-desenvolvido. Essa proposta indica a finalidade e as relações a desenvolver,
-com os pressupostos e as fontes previstas. Produzir a explicação transforma a
-proposta em conteúdo salvo, que pode ser inspecionado e ajustado antes de
-organizar as unidades.
+O mapa pode guardar uma proposta da explicação antes de existir o texto desenvolvido. Essa proposta indica a finalidade e as relações a desenvolver, com os pressupostos e as fontes previstas. Produzir a explicação transforma a proposta em conteúdo salvo, que pode ser inspecionado e ajustado antes de organizar as unidades.
 
 No foco **Conteúdo**, a autoria trabalha explicações e fontes. **Ciclo completo** inclui também o desenho e a produção das unidades. A [configuração do processo de autoria](configuracoes.md#preferências-pessoais) permite escolher como agrupar esse trabalho e em quais pontos inspecioná-lo.
 
-Salvar, revisar e disponibilizar são decisões diferentes. Salvar conserva o material. A revisão registra uma declaração da pessoa que o inspecionou. A política de acesso determina quem pode estudá-lo e se o curso exige uma revisão atual. O [contrato de conteúdo](aralearn-contract.md) documenta como esses registros são representados no sistema.
+Salvar conserva o material. Declarar revisão registra a decisão da pessoa que o inspecionou. As permissões determinam quem pode estudar o curso, e a política de disponibilização define se o estudo exige revisão atual. O [contrato de conteúdo](aralearn-contract.md) documenta como esses registros são representados no sistema.
 
 ### Revisão independente por objeto
 
-Cada explicação e cada unidade tem sua própria marca de revisão. A pessoa autora pode revisar a explicação antes de haver unidades. Pode também revisar uma unidade enquanto a base ainda precisa de inspeção. Uma marca não se estende automaticamente aos outros conteúdos.
+Cada explicação e cada unidade possui sua própria marca de revisão. A pessoa autora pode revisar a explicação antes de haver unidades. Pode também revisar uma unidade enquanto a base ainda precisa de inspeção. Cada marca corresponde ao objeto sobre o qual a decisão foi declarada.
 
-Depois de inspecionar o texto salvo, as fontes e as atividades pertinentes, use **Marcar como revisado** no objeto correspondente. **Retirar marca de revisão** desfaz essa declaração sem apagar o conteúdo. Se houver uma edição aberta, salve ou descarte o rascunho antes de marcar: a declaração se refere ao conteúdo salvo que foi examinado.
+Depois de inspecionar o texto salvo, as fontes e as atividades pertinentes, use **Marcar como revisado** no objeto correspondente. **Retirar marca de revisão** desfaz essa declaração e conserva o conteúdo. Se houver uma edição aberta, salve ou descarte o rascunho antes de marcar: a declaração se refere ao conteúdo salvo que foi examinado.
 
-A marca registrada no app já informa a revisão ao GPT na leitura seguinte; não é
-necessário repeti-la no chat. Uma aprovação expressa na conversa também permite
-registrar a revisão dos objetos e versões identificados. Ao entregar conteúdo,
-o GPT convida brevemente à leitura e à marcação. Se a pessoa pedir para avançar,
-ele continua a produção autorizada e informa que o conteúdo anterior sem marca
-permanece pendente de revisão. Essa pendência não bloqueia a próxima produção
-nem o estudo sob a política padrão de acesso. Uma pausa expressamente pedida
-pela pessoa continua sendo respeitada.
+A marca registrada no aplicativo aparece na leitura seguinte do assistente. Uma aprovação expressa na conversa também permite registrar a revisão dos objetos e versões identificados. A produção segue o processo acordado: pode parar nos pontos de inspeção escolhidos ou prosseguir dentro do escopo autorizado. Conteúdo salvo sem marca permanece pendente de revisão e continua estudável sob a política padrão. A pessoa pode interromper a produção e pedir uma inspeção a qualquer momento.
 
-Os estados aparecem por ícones distintos, com nomes acessíveis e ajuda: pendente,
-revisado e alterado após a revisão. Salvar uma edição não marca revisão. Retirar
-a marca mantém o texto, as fontes e as observações disponíveis.
+Os estados aparecem por ícones distintos, com nomes acessíveis e ajuda: pendente, revisado e alterado após a revisão. A edição conserva o novo conteúdo; a marca registra a declaração humana. Retirar a marca mantém disponíveis texto, fontes e observações.
 
-A marca registra uma declaração humana sobre o conteúdo inspecionado. A
-qualidade dessa inspeção depende do trabalho realizado pela pessoa autora.
-Salvar uma edição, resolver uma observação e receber uma resposta tecnicamente
-válida do assistente são ações separadas. Nos canais conectados, a marca depende
-de uma decisão humana expressa sobre o conteúdo identificado.
+A qualidade da inspeção depende do trabalho realizado pela pessoa autora. A declaração de revisão documenta sua decisão sobre o material identificado. Resolver uma observação registra o tratamento de um apontamento, e a validação técnica confere os dados enviados pelo assistente. Esses registros têm alcances próprios.
 
-A marca **Rever** tem outra finalidade: é uma escolha pessoal do estudante para voltar a uma unidade. Ela não altera a revisão autoral.
+A marca **Rever** pertence ao estudante e tem outra finalidade: selecionar unidades às quais deseja voltar. Seu estado é independente da revisão autoral.
 
 ### Contrato de leitura e escrita
 
-O sistema precisa garantir que a declaração corresponda ao conteúdo examinado. Para isso, compara uma impressão digital dos dados, chamada **hash**, com a versão atual. Se o conteúdo relevante mudou, uma decisão preparada sobre a versão anterior não pode ser interpretada como revisão do texto novo.
+O sistema precisa relacionar a declaração ao conteúdo examinado. Para isso, calcula uma impressão digital dos dados, chamada **hash**, e a compara com a base atual. Quando o conteúdo relevante muda, uma decisão preparada sobre a versão anterior exige nova conferência antes de ser registrada para a versão atual.
 
-Uma resposta de rede pode se perder depois de uma gravação. Nessa situação, a interface conserva a tentativa e oferece **Confirmar resultado**. A recuperação procura a decisão original antes de iniciar outra. O [contrato técnico](aralearn-contract.md) descreve os campos, as operações e a recuperação; o [guia autoral](guia-professor-autor.md#revisar-como-estudante) apresenta a inspeção pelo aplicativo.
+Uma resposta de rede pode se perder depois de uma gravação. Nessa situação, a interface conserva a tentativa e oferece **Confirmar resultado**. A recuperação procura o resultado da decisão original antes de iniciar outra. O [contrato técnico](aralearn-contract.md) descreve os campos, as operações e a recuperação; o [guia autoral](guia-professor-autor.md#revisar-como-estudante) apresenta a inspeção pelo aplicativo.
 
 ### Mudança material e concorrência
 
-Uma mudança no conteúdo ou em uma fonte usada pode pedir nova revisão. O alcance depende das relações registradas: alterar uma unidade não desatualiza automaticamente suas irmãs; alterar a explicação pode afetar as unidades e dependências que a utilizam. A mesma fonte pode sustentar vários trechos, e sua alteração precisa ser considerada nesses usos.
+Uma mudança no conteúdo ou em uma fonte utilizada pode desatualizar a revisão. Seu alcance depende das relações registradas. Alterar uma unidade afeta a revisão dessa unidade; as demais unidades conservam suas marcas, salvo quando outra relação material também foi alterada. Uma mudança na explicação pode alcançar as unidades e dependências que utilizam essa base. A alteração de uma fonte precisa ser considerada nos objetos que ela sustenta.
 
-Esse acompanhamento usa os vínculos explícitos do curso. Cabe à pessoa autora perceber relações que ainda não foram registradas e ampliar a inspeção quando necessário. Mudar a aparência do aplicativo, o progresso pessoal ou uma preferência para produção futura não equivale a alterar o conteúdo aplicado.
+Esse acompanhamento utiliza os vínculos explícitos do curso. A pessoa autora examina também relações ainda ausentes do registro e amplia a inspeção quando necessário. Aparência do aplicativo, progresso pessoal e preferências para produção futura têm registros próprios; suas mudanças conservam o conteúdo aplicado.
 
-Quando duas sessões editam o curso, a conferência da versão evita gravar uma declaração sobre conteúdo que mudou durante a inspeção. O texto em edição permanece disponível para comparação. A mecânica de concorrência e os estados de revisão estão no [contrato de conteúdo](aralearn-contract.md).
+Quando duas sessões editam o curso, a conferência da base impede que uma decisão preparada para um estado seja gravada sobre conteúdo que mudou durante a inspeção. O texto em edição permanece disponível para comparação. A mecânica de concorrência e os estados de revisão estão no [contrato de conteúdo](aralearn-contract.md).
 
 ### Alcance da revisão durante o desenho das unidades
 
-Uma unidade de análise instrucional registra um recorte usado para planejar o
-ensino; um requisito formativo registra o que uma atividade deve permitir
-demonstrar. Vincular esses itens à microssequência prepara a produção das
-unidades. Esses vínculos, seus enunciados e as fontes ligadas somente a eles
-conservam a revisão da explicação já salva e das explicações que dependem dela.
-Assim, desenvolver o desenho das unidades não exige outra inspeção do mesmo
-texto-base apenas para registrar a análise e os requisitos de prática.
+Uma **unidade de análise instrucional** identifica um conhecimento acompanhado no planejamento do ensino. Um **requisito de evidência** descreve a operação e as condições de uma tarefa destinada a examinar um objetivo. Vincular esses itens à microssequência prepara a produção das unidades. Seus vínculos, enunciados e fontes exclusivas pertencem a essa análise do desenho; alterá-los conserva a revisão da explicação já salva e das explicações que dependem dela, desde que a base material dessas explicações permaneça igual.
 
-As unidades mantêm seu próprio alcance de revisão, incluindo análise,
-requisitos, suas fontes e aplicação instrucional. Alterar esses dados continua
-podendo desatualizar a revisão da unidade. O texto-base, o objetivo, as
-dependências e os itens de escopo curricular permanecem no alcance da revisão
-da explicação, assim como suas fontes e âncoras pertinentes. Uma fonte ligada
-também à explicação continua material para a base mesmo quando sustenta um
-item de análise ou requisito de prática.
+A revisão das unidades tem alcance próprio: inclui a análise instrucional, os requisitos, suas fontes e a aplicação do desenho. Uma mudança nesses dados pode desatualizar a marca da unidade. A revisão da explicação considera seu conteúdo, objetivo, dependências e itens de escopo curricular, além das fontes e âncoras pertinentes. Uma fonte ligada também à explicação continua material para essa base, mesmo quando sustenta um item de análise ou um requisito de prática.
 
-A atualização desse comportamento conserva as declarações que já estavam
-atuais, com a mesma pessoa, data e versão inspecionada. Rascunhos e conteúdos
-sem declaração permanecem assim. Uma marca que ficou desatualizada somente
-pela inclusão de vínculos de análise ou requisitos de prática pode voltar a
-aparecer atual quando a base relevante ainda coincide com a declaração
-original. Mudanças materiais restantes continuam pendentes de revisão; a
-atualização não registra uma nova inspeção humana.
+A validade da declaração é calculada sobre essa base relevante. Quando mudam apenas os vínculos de análise ou de requisitos, a declaração original da explicação pode continuar atual, conservando pessoa, data e versão inspecionada. Conteúdo sem declaração permanece pendente. Mudanças materiais na base explicativa ou nos demais elementos que a sustentam exigem nova inspeção para uma nova declaração de revisão.
 
 ### Acesso, migração e cópia
 
-O padrão permite estudar conteúdo completo salvo a quem tem acesso ao curso. O proprietário pode escolher exigir revisão atual. Nessa política, retirar uma marca ou alterar conteúdo relevante pode torná-lo temporariamente indisponível para estudo até a nova inspeção. O proprietário conserva o acesso autoral necessário à correção.
+O padrão disponibiliza o conteúdo completo salvo a quem tem acesso ao curso. O proprietário pode escolher exigir revisão atual. Nessa política, retirar uma marca ou alterar conteúdo relevante pode deixar o objeto temporariamente indisponível no estudo. Para voltar a disponibilizá-lo nessa condição, a pessoa precisa inspecionar o conteúdo atual e declarar sua revisão. O proprietário conserva o acesso autoral necessário à correção.
 
-Essa política não torna público um curso privado nem libera seus arquivos. Referências e mídias continuam obedecendo aos respectivos direitos de acesso.
+A visibilidade do curso e os direitos sobre os arquivos são verificados separadamente. Um curso privado conserva suas permissões; referências e mídias seguem as respectivas condições de acesso.
 
-Uma cópia independente conserva conteúdo, fontes e configuração, mas começa sem atribuir ao novo proprietário as declarações de revisão feitas na origem. Registros antigos também conservam seu alcance: uma aprovação histórica de um conjunto não passa a significar revisão individual de cada explicação e unidade. A [referência técnica](aralearn-contract.md) explica a conservação desses registros na migração e na cópia.
+Uma cópia independente conserva conteúdo, fontes e configuração, mas começa com registros de revisão vazios. O novo proprietário declara sua própria revisão depois de examinar a cópia. Registros antigos conservam seu alcance: uma aprovação histórica do conjunto permanece uma aprovação do conjunto, distinta da revisão individual de cada explicação e unidade. A [referência técnica](aralearn-contract.md) explica a preservação desses registros na migração e na cópia.
 
 ## Consultar a explicação durante o estudo
 
-O controle **Explicação** aparece tanto na leitura quanto na prática. Abrir consulta o texto salvo; não chama um modelo de linguagem. Abrir conserva o ponto do percurso e a resposta ainda não enviada. Revelar a resposta de uma atividade é uma ação separada.
+O controle **Explicação** aparece tanto na leitura quanto na prática. A abertura consulta o conteúdo salvo e conserva o ponto do percurso e a resposta ainda não enviada. A revelação da resposta tem seu próprio controle.
 
-O painel conserva a unidade de origem. Você pode ler, seguir uma referência e voltar ao trecho que a acionou. **Fechar explicação** ou Escape retorna à unidade com posição, foco e resposta preservados. As referências da base e da unidade permanecem em grupos distintos. Se ainda não houver base salva, o painel informa a ausência e mantém as referências disponíveis.
+O painel conserva a unidade de origem. Você pode ler, seguir uma referência e voltar ao trecho que a acionou. **Fechar explicação** ou Escape retorna à unidade com posição, foco e resposta preservados. **Explicação** apresenta o conteúdo explicativo e suas próprias referências. **Fontes da unidade** abre separadamente as referências utilizadas na unidade, também acessíveis pelos marcadores de citação. Se ainda não houver base salva, o painel informa a ausência; as fontes da unidade continuam disponíveis pelo seu controle.
 
-Depois de carregar o curso, o texto da explicação acompanha sua cópia local. Referências já consultadas podem ser lidas na revisão guardada; arquivos e páginas externas podem continuar exigindo conexão. Falta de rede, falta de acesso e ausência de conteúdo são situações distintas, como explica o [guia do estudante](guia-estudante.md#preparar-o-dispositivo-para-estudar-sem-conexão).
+Depois de carregar o curso, o texto da explicação acompanha sua cópia local. Referências já consultadas podem ser lidas na versão guardada; documentos e páginas externas podem continuar exigindo conexão. Falta de rede, falta de acesso e ausência de conteúdo são situações distintas, como explica o [guia do estudante](guia-estudante.md#preparar-o-dispositivo-para-estudar-sem-conexão).
+
+### Editar a explicação na autoria
+
+Na autoria, a explicação conserva a largura da coluna de celular também no computador. Os controles por ícone ficam junto do conteúdo. A edição permite alterar o título e os campos textuais no próprio formato de leitura; salvar e cancelar conservam o contexto. O percurso, a proposta, as configurações e a declaração de revisão ficam em painéis autorais separados do texto didático.
 
 ### Limites de carga e verificação
 
-Uma explicação pode ser mais extensa do que o conteúdo transmitido em uma única chamada ao serviço. Os canais oferecem continuações para obter o restante; uma exportação completa precisa percorrê-las. Dividir a transmissão não exige truncar o desenvolvimento pedagógico. Os limites e a recuperação são descritos nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
+Uma explicação pode ser mais extensa do que o conteúdo transmitido em uma única chamada ao serviço. Os canais oferecem continuações para obter o restante; uma leitura ou exportação completa precisa percorrê-las. A divisão da transmissão conserva o desenvolvimento pedagógico integral. Os limites e a recuperação são descritos nos guias de [MCP](autoria-mcp.md) e [Actions/OpenAPI](autoria-actions.md).
 
 ## Fundamentos e conjectura
 
-A explicação compartilhada é uma decisão de desenho do AraLearn. A literatura ajuda a examinar suas possibilidades e seus riscos, mas não determina o botão, o tamanho das unidades ou a política de revisão.
+A explicação compartilhada é uma decisão de desenho do AraLearn. A literatura permite examinar suas possibilidades e seus riscos. A forma de disponibilizá-la, a extensão das unidades e a política de revisão são escolhas do produto que precisam de avaliação própria.
 
-Oferecer uma explicação pode apoiar o estudo, mas sua utilidade depende do que o estudante faz com ela. [Renkl (2002)](referencias.md#ref-renkl2002learning) distingue a explicação fornecida da elaboração realizada pelo aprendiz em exemplos resolvidos. O dilema entre oferecer apoio e dar espaço à resolução, discutido por [Koedinger e Aleven (2007)](referencias.md#ref-koedinger2007assistance), ajuda a formular uma pergunta para o AraLearn: quando a consulta esclarece uma relação e quando apenas permite seguir sem compreendê-la?
+A utilidade de uma explicação depende do que o estudante faz com ela. [Renkl (2002)](referencias.md#ref-renkl2002learning) distingue a explicação fornecida da elaboração realizada pelo aprendiz em exemplos resolvidos. O dilema entre oferecer apoio e dar espaço à resolução, discutido por [Koedinger e Aleven (2007)](referencias.md#ref-koedinger2007assistance), ajuda a formular uma pergunta para o AraLearn: em que condições a consulta esclarece uma relação e em quais permite apenas prosseguir na tarefa?
 
-O conhecimento prévio também pode alterar o valor do apoio. [Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal) discute a variação dos efeitos de técnicas conforme a experiência do aprendiz. A explicação acessível por escolha procura acomodar necessidades diferentes, mas isso pressupõe que a pessoa reconheça quando precisa de ajuda. [Aleven et al. (2006)](referencias.md#ref-aleven2006helpseeking) mostram por que a busca e o uso de ajuda exigem análise contextual; o número de aberturas de um painel não basta para inferir aprendizagem.
+O conhecimento prévio também pode alterar o valor do apoio. [Kalyuga (2007)](referencias.md#ref-kalyuga2007expertisereversal) discute a variação dos efeitos de técnicas conforme a experiência do aprendiz. A explicação acessível por escolha procura acomodar necessidades diferentes. Essa escolha pressupõe, porém, que a pessoa reconheça quando precisa de ajuda. [Aleven et al. (2006)](referencias.md#ref-aleven2006helpseeking) mostram por que a busca e o uso de ajuda exigem análise contextual. Para interpretar uma abertura do painel, a investigação precisa examinar a dúvida, o conteúdo consultado e a tarefa realizada.
 
-Dividir a apresentação em etapas também exige examinar o conteúdo e o público. A síntese sobre segmentação de [Rey et al. (2019)](referencias.md#ref-rey2019segmenting) identifica resultados condicionais, não um tamanho ideal de unidade. No AraLearn, a segmentação precisa preservar relações e transições; uma tela curta pode continuar difícil se omitir o raciocínio necessário.
+Dividir a apresentação em etapas também exige considerar conteúdo e público. A síntese sobre segmentação de [Rey et al. (2019)](referencias.md#ref-rey2019segmenting) identifica resultados condicionais. No AraLearn, a segmentação precisa conservar relações e transições; a inteligibilidade depende do raciocínio desenvolvido e das condições do estudante, além da extensão de cada tela.
 
-Para investigar essas decisões, o mapeamento de conjecturas de [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture) relaciona recursos do desenho, processos esperados e resultados a examinar. O quadro abaixo aplica essa orientação como proposta de pesquisa do AraLearn.
+Para investigar essas decisões, o **mapeamento de conjecturas** de [Sandoval (2014)](referencias.md#ref-sandoval2014conjecture) relaciona características do desenho, processos esperados e resultados a examinar. O quadro aplica essa orientação como proposta de pesquisa do AraLearn.
 
 | Decisão do AraLearn | Processo esperado | Questão a investigar |
 | --- | --- | --- |
@@ -215,20 +135,17 @@ Para investigar essas decisões, o mapeamento de conjecturas de [Sandoval (2014)
 | Retorno preservando a resposta | Retomar o raciocínio após a consulta | A pessoa continua a tarefa sem reconstruir seu contexto? |
 | Fontes localizadas e revisão humana | Conferir sustentação e corrigir interpretações | A inspeção encontra problemas materiais ou se limita à presença da referência? |
 
-Essas relações ainda são hipóteses. Uma avaliação com pessoas precisa definir a
-pergunta e os instrumentos, a lógica de comparação e o tratamento dos dados. O
-[guia de pesquisa](guia-pesquisador.md) desenvolve esses caminhos. O
-[registro bibliográfico](evidence/registro-buscas-bibliograficas.csv) conserva
-as consultas e os limites de leitura que fundamentaram esta seleção; ela não
-constitui uma revisão sistemática.
+Essas relações são hipóteses a investigar. Uma avaliação com pessoas precisa definir a pergunta e os instrumentos, a lógica de comparação e o tratamento dos dados. O [guia de pesquisa](guia-pesquisador.md) desenvolve esses caminhos. O [registro bibliográfico](evidence/registro-buscas-bibliograficas.csv) conserva as consultas e os limites de leitura desta seleção focal de fontes.
 
-## Critérios discriminantes de aceitação
+<a id="critérios-discriminantes-de-aceitação"></a>
 
-Os [exemplos de redes](examples/explicacao-redes.md) permitem inspecionar como uma explicação, suas unidades, práticas e fontes se relacionam. São rascunhos sintéticos para análise, sem declarar eficácia educacional ou revisão humana já realizada.
+## Critérios de verificação do funcionamento
 
-Na verificação do aplicativo, importa conferir que o conteúdo pode ser recuperado integralmente, que a consulta preserva a atividade e que as marcas de revisão acompanham o objeto efetivamente inspecionado. Também são relevantes os casos de mudança de fonte, duas sessões, acervo sem explicação e uso sem conexão.
+Os [exemplos de redes](examples/explicacao-redes.md) permitem inspecionar como uma explicação, suas unidades, atividades e fontes se relacionam. São rascunhos sintéticos destinados à análise. A declaração de revisão humana e a avaliação de resultados educacionais exigem procedimentos próprios.
 
-O [roteiro de produção e inspeção](roteiro-aceitacao-humana-autoria.md) e o [contrato de conteúdo](aralearn-contract.md) detalham essas verificações. Elas examinam funcionamento e coerência do artefato; os resultados educacionais exigem o método próprio descrito acima.
+Na verificação do aplicativo, importa conferir que o conteúdo pode ser recuperado integralmente, que a consulta conserva a atividade e que as marcas de revisão acompanham o objeto efetivamente inspecionado. A verificação também abrange mudanças de fontes, edições em duas sessões, acervos sem explicação e uso sem conexão.
+
+O [roteiro de produção e inspeção](roteiro-aceitacao-humana-autoria.md) e o [contrato de conteúdo](aralearn-contract.md) detalham essas verificações. Elas examinam funcionamento e coerência do artefato. Os resultados educacionais são investigados pelo método apresentado na seção anterior.
 
 <!-- referências locais: início -->
 

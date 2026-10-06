@@ -3,10 +3,10 @@
 O AraLearn permite criar cursos com assistência de inteligência artificial (IA)
 e estudar o conteúdo resultante pelo celular. Durante a autoria, a pessoa pode
 inspecionar o material junto de suas fontes, orientar alterações e declarar a
-revisão do que examinou. Depois do primeiro carregamento, o estudo pode
-continuar sem conexão.
+revisão do que examinou. Depois do primeiro carregamento, o conteúdo guardado
+permite continuar o estudo sem conexão.
 
-Referência atualizada em **2026-09-16**. A seção de
+Referência de implementação: **0.0.100**, conferida em **2026-10-05**. A seção de
 [verificação técnica](#verificação-técnica) indica onde consultar as condições
 em que o funcionamento foi examinado.
 
@@ -16,18 +16,19 @@ As funções disponíveis têm condições diferentes de acesso e conexão. A re
 humana do conteúdo e a autorização para estudá-lo também são decisões distintas.
 
 Um **visitante** abre cursos públicos sem entrar numa conta. Uma **pessoa com
-acesso** entra para estudar um curso privado ou compartilhado. O
+acesso** entra numa conta e pode estudar os cursos permitidos a ela. O
 **proprietário** criou ou copiou o curso e responde por sua autoria e acesso. O
 papel de **administrador** é reservado à manutenção do serviço.
 
-Um assistente externo usa uma ponte autorizada para trabalhar sobre o curso. O
-MCP permite que uma aplicação compatível descubra as tarefas do AraLearn; a
-OpenAPI descreve as operações web oferecidas a outras aplicações compatíveis.
+Um assistente externo usa uma conexão autorizada para trabalhar sobre o curso.
+O [Model Context Protocol (MCP)](autoria-mcp.md) permite que uma aplicação
+compatível descubra as tarefas do AraLearn; a [OpenAPI](autoria-actions.md)
+descreve as operações web oferecidas a outras aplicações compatíveis.
 
 | Capacidade | Quem pode usar | Conexão e condições | Limites e aprofundamento |
 | --- | --- | --- | --- |
 | Estudar, responder e rever | visitante em curso público ou pessoa com acesso | internet no primeiro carregamento e na sincronização; depois, o conteúdo guardado permite continuar sem conexão | [guia do estudante](guia-estudante.md) |
-| Consultar a explicação | visitante em curso público ou pessoa com acesso | texto já guardado dispensa internet; arquivos têm regras próprias | o texto-base pode ser salvo antes ou depois das unidades; [explicação e revisão humana](explicacao-e-revisao-humana.md) |
+| Consultar a explicação | visitante em curso público ou pessoa com acesso | conteúdo já guardado dispensa internet; arquivos têm regras próprias | a base explicativa pode ser salva antes ou depois das unidades; [explicação e revisão humana](explicacao-e-revisao-humana.md) |
 | Editar e declarar revisão autoral | proprietário, na interface ou por canal autorizado | internet para gravar e conferir a versão atual | editar o material e registrar sua revisão são ações separadas; [guia da pessoa autora](guia-professor-autor.md) |
 | Registrar observação | pessoa autenticada com acesso | internet para enviar; uma observação pendente de envio pode aguardar no dispositivo | a contribuição segue para o proprietário; [observações](observacoes-pedagogicas.md) |
 | Compartilhar e tornar público | proprietário define o acesso; destinatário ou visitante estuda | internet para alterar o acesso e abrir o curso pela primeira vez | o conteúdo e seus arquivos seguem regras de acesso próprias; [acesso](uso-do-app.md#conceder-e-revogar-acesso) |
@@ -51,18 +52,20 @@ compartilhados ou públicos. A prévia apresenta o objetivo, o progresso e a
 disponibilidade para abertura. Dentro do curso, o conteúdo é dividido em vários
 níveis, do percurso completo às unidades que aparecem na tela. As
 **microssequências didáticas** reúnem unidades relacionadas para desenvolver um
-objetivo próximo. O [modelo didático](modelo-didatico.md) desenvolve essa
+objetivo delimitado. O [modelo didático](modelo-didatico.md) desenvolve essa
 organização.
 
-Nas unidades, a pessoa lê, responde às atividades, consulta a explicação e suas
-referências e pode marcar conteúdo para **Rever**. Fechar um apoio devolve o
+Nas unidades, a pessoa lê, responde a escolhas, lacunas ou ordenações e pode
+marcar conteúdo para **Rever**. **Explicação** abre a base da microssequência
+com suas referências; **Fontes da unidade** permite consultar as referências
+ligadas especificamente à unidade. Fechar um apoio devolve o
 ponto de leitura e preserva uma resposta ainda não enviada. **Voltar** retorna
 à origem da navegação; **Home** abre a tela inicial.
 
 O [estado pessoal](estado-de-estudo-nao-punitivo.md) guarda posição, conclusões
-e marcas para a continuidade. Esses registros acompanham o percurso em vez de
-formar um boletim. Visitantes mantêm o estado no dispositivo; com conta, ele
-pode ser sincronizado. Observações exigem conta e ficam separadas do progresso.
+e marcas que orientam a retomada do percurso. Visitantes mantêm o estado no
+dispositivo; com conta, ele pode ser sincronizado. Observações exigem conta e
+ficam separadas do progresso.
 
 Editar o conteúdo durante o estudo é permitido somente ao proprietário.
 Quem recebeu acesso pode estudar e enviar observações. Criar uma cópia
@@ -75,8 +78,9 @@ mapa curricular define o percurso; a explicação desenvolve o assunto e suas
 fontes; as unidades levam esse conteúdo à sequência de estudo. O mapa pode ser
 salvo por ramos e aprovado depois da inspeção de sua versão completa. Uma
 explicação pode ser produzida antes das unidades, mesmo com o mapa em rascunho,
-ou revista depois delas. **Partes** e **lotes** apenas agrupam etapas de
-produção: a estrutura estudada continua sendo a do curso.
+ou revista depois delas. As **partes** agrupam microssequências para produção
+e inspeção; um **lote** pode reunir várias partes. Esses agrupamentos coordenam
+o trabalho e preservam a estrutura curricular que organiza o estudo.
 
 O [guia da pessoa autora](guia-professor-autor.md) descreve o ciclo de autoria,
 da proposta à releitura. A
@@ -84,6 +88,12 @@ da proposta à releitura. A
 nasce quando a pessoa registra expressamente sua decisão sobre uma explicação
 ou unidade salva. Produção e correção conservam registros próprios. Uma mudança
 relevante pode deixar a marca de revisão anterior desatualizada.
+
+A inspeção por IA também se vincula à base examinada. Ela confronta o objetivo
+com o conteúdo, a prática, as fontes e a configuração aplicada. O parecer
+registra seu resultado e as evidências usadas. Reordenar unidades pode exigir
+nova inspeção porque altera a sequência em que um conhecimento é ensinado e
+mobilizado. A decisão humana de revisão permanece em registro próprio.
 
 Os [parâmetros de desenho](desenho-instrucional-parametrizado.md) registram como
 apresentar o conteúdo e distribuir a prática. A intenção atual orienta o próximo
@@ -96,22 +106,26 @@ As [fontes](fontes-e-citacoes.md) podem ser vinculadas à explicação ou a uma
 unidade específica, com localização no material e relação com o texto.
 A [fila de observações](observacoes-pedagogicas.md) conserva os apontamentos
 sobre cada objeto. Quando uma contribuição é editada, sua nova versão volta a
-representar o pedido atual. Uma correção confirmada encerra as versões que
-atendeu e mantém as demais na fila.
+representar o pedido atual. Uma observação autoral pode alcançar várias
+explicações ou unidades. Depois da correção, a pessoa aprova os alvos que
+conferiu ou encerra explicitamente um alvo sem alteração; os demais permanecem
+pendentes.
 
 **Dados de autoria** permite examinar as escolhas usadas na produção, ver em
 quais unidades elas aparecem e comparar cursos próprios. **Exportar curso e
-análise** reúne o conteúdo integral salvo e seus registros de autoria. Arquivos
-anexos, como PDFs e áudios, assim como dados pessoais, credenciais e conversas,
-seguem seus próprios fluxos e ficam fora desse artefato. O
-[capítulo de dados de autoria](analytics-instrucionais.md) detalha seu alcance.
+análise** reúne o conteúdo integral salvo e seus registros de autoria. O arquivo
+omite o conteúdo dos anexos, o perfil e as identidades da conta, o estado
+pessoal de estudo, as credenciais e as conversas. Textos e metadados do curso
+podem conter informações pessoais e precisam ser conferidos antes do
+compartilhamento. O [capítulo de dados de autoria](analytics-instrucionais.md)
+detalha seu alcance.
 
 ## Assistência por IA
 
 No estudo de um curso próprio, **Assistência por IA** abre uma conversa sobre
 uma lição, microssequência ou unidade. A pessoa pode discutir a proposta e
 pedir uma prévia antes de decidir. **Aplicar ao rascunho** confirma a escolha
-para edição; **Salvar** grava o resultado no curso.
+para edição; **Salvar proposta** grava o resultado no curso.
 
 A interface oferece atualmente três serviços: OpenAI, Gemini e DeepSeek. A
 chave de acesso fica somente durante a sessão, e a disponibilidade depende do
@@ -123,11 +137,11 @@ Veja o contexto enviado e as condições em
 ## Autoria conversacional
 
 A conexão entre a conversa e o curso permite que um assistente consulte o
-estado salvo e execute as operações autorizadas. O [MCP](autoria-mcp.md) é um
-protocolo para aplicações compatíveis descobrirem e chamarem essas ferramentas.
-A descrição [OpenAPI](autoria-actions.md) apresenta as operações para aplicações
-que usam chamadas web autorizadas. O capítulo técnico explica sua utilização
-pelo recurso Actions de uma aplicação externa e as condições de cada canal.
+estado salvo e execute as operações autorizadas. O [MCP](autoria-mcp.md) permite
+às aplicações compatíveis descobrir e chamar essas ferramentas. A descrição
+[OpenAPI](autoria-actions.md) apresenta as operações para aplicações que usam
+chamadas web autorizadas. O capítulo técnico explica sua utilização pelo
+recurso Actions de uma aplicação externa e as condições de cada canal.
 
 Nos dois canais, a pessoa inspeciona o curso, discute propostas e determina as
 mudanças. O assistente consulta as preferências e o contexto pertinentes. Ao
@@ -149,7 +163,7 @@ sua exclusão e a manutenção administrativa permanecem no aplicativo.
 Conteúdo completo salvo pode ser estudado por quem tem acesso. O proprietário
 pode ativar a política de disponibilizar somente conteúdo com revisão atual.
 Essa escolha é independente de tornar o curso público e das permissões de
-arquivos: um PDF pode continuar restrito num curso público.
+arquivos: um documento anexado pode continuar restrito num curso público.
 
 Os controles atuam sobre objetos diferentes. **Sair** encerra a sessão;
 **Remover dados deste dispositivo** apaga a cópia local da conta ativa;
@@ -168,8 +182,8 @@ A [política de privacidade](privacidade.md) descreve acesso, retenção e exclu
 O AraLearn pode ser usado no navegador, instalado a partir dele ou aberto no
 aplicativo Android. O curso previamente carregado fica disponível para estudo
 sem conexão. Sincronização automática e manual determinam quando o dispositivo
-envia progresso e consulta atualizações; arquivos de áudio, PDFs e serviços
-externos têm requisitos próprios de acesso e conexão.
+envia progresso e consulta atualizações; arquivos de áudio, documentos e
+serviços externos têm requisitos próprios de acesso e conexão.
 
 A [arquitetura](arquitetura.md) explica a relação entre aplicativo e servidor.
 A [persistência](persistencia-relacional.md) detalha quais dados permanecem no
@@ -186,11 +200,11 @@ aos ambientes e às operações efetivamente exercitados.
 
 O [procedimento de verificação dos canais de autoria](prova-local-canais-autoria.md)
 permite reproduzir chamadas de MCP e OpenAPI e conferir seus efeitos no banco.
-O [catálogo conversacional 4.0.0](autoria-mcp.md#tarefas-disponíveis) reúne
-56 tarefas. Os testes locais do protocolo verificam a comunicação com o
-AraLearn; o funcionamento numa aplicação externa depende também da conexão,
-da autorização e das capacidades dessa aplicação. As verificações dos serviços
-de IA possuem igualmente o alcance registrado na
+O [catálogo conversacional](autoria-mcp.md#tarefas-disponíveis), na versão
+11.1.0, reúne 56 tarefas. Os testes locais do protocolo verificam a comunicação
+com o AraLearn; o funcionamento numa aplicação externa depende também da
+conexão, da autorização e das capacidades dessa aplicação. As verificações dos
+serviços de IA possuem igualmente o alcance registrado na
 [documentação da assistência](assistencia-por-ia.md).
 
 ## Avaliação e desenvolvimento

@@ -33,7 +33,7 @@ e [fontes](fontes-e-citacoes.md), são desenvolvidos em guias próprios.
    os conceitos usados para formular as perguntas de pesquisa.
 
 Alguns aspectos recebem desenvolvimento próprio. [Explicação e revisão humana](explicacao-e-revisao-humana.md)
-trata do texto-base da microssequência e de sua inspeção pela pessoa autora;
+trata da base explicativa da microssequência e de sua inspeção pela pessoa autora;
 [Observações pedagógicas](observacoes-pedagogicas.md), do caminho entre uma
 dificuldade registrada e uma correção; e [Estado de estudo](estado-de-estudo-nao-punitivo.md),
 dos dados guardados para retomar o percurso.
@@ -127,7 +127,6 @@ instituição.
 | serviços que guardam os dados e controlam o acesso | [Supabase](supabase.md) |
 | histórico de mudanças na estrutura do banco e procedimentos de recuperação | [Alterações da estrutura do banco](schema-change-log.md) |
 | estrutura, testes e contribuições | [Guia do desenvolvedor](guia-desenvolvedor.md) |
-| Estudo, componentes e autoria por conversa na revisão v10 | [Relatório técnico da revisão v10](revisao-v10-estudo-implementacao.md) |
 
 Para contribuir com código ou documentação, consulte também o
 [`CONTRIBUTING.md`](../CONTRIBUTING.md). A integração Android tem instruções
@@ -140,6 +139,11 @@ distribuídas dentro do aplicativo são identificadas em
 O [`CHANGELOG.md`](../CHANGELOG.md) registra mudanças por versão e conserva a
 terminologia do período correspondente. O histórico detalhado permanece no
 Git. A licença de uso e redistribuição está em [`LICENSE.md`](../LICENSE.md).
+
+O [relatório da revisão v10](revisao-v10-estudo-implementacao.md) registra aquela
+etapa de implementação. Os [ensaios da revisão v7](experimentos/revisao-v7/README.md)
+preservam condições e resultados de comparações anteriores. Para configurar ou
+usar o produto hoje, siga os guias dos percursos acima.
 
 ## Encontrar outros documentos
 

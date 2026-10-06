@@ -23,7 +23,7 @@ Os contextos de uso distinguem, por exemplo, a interface, a documentação e o c
 
 #### Estudo
 
-Área do aplicativo em que a pessoa percorre o curso, lê explicações, consulta fontes e realiza atividades. O progresso registra a continuidade do percurso; verificar aprendizagem exige evidência própria. Ao abrir um curso para praticar, a pessoa entra em Estudo e percorre as unidades sem que a tela afirme que houve aprendizagem.
+Área do aplicativo em que a pessoa percorre o curso, lê explicações, consulta fontes e realiza atividades. O progresso registra a continuidade do percurso; verificar aprendizagem exige evidência própria. Depois de uma pausa, a pessoa volta ao curso, consulta a explicação da microssequência e retoma a atividade na posição salva.
 
 **Domínio e implementação.** Estudo; equivalente internacional: study surface; símbolo: `study_surface`.
 
@@ -33,7 +33,7 @@ Os contextos de uso distinguem, por exemplo, a interface, a documentação e o c
 
 #### Autoria
 
-Atividade e superfície usadas para planejar, produzir, inspecionar, anotar, corrigir e investigar um curso e seus componentes. Na Autoria, a pessoa autora percorre o curso, abre uma unidade, consulta suas fontes e registra uma observação para correção.
+Área de trabalho em que a pessoa desenvolve um curso, desde o planejamento até a inspeção do conteúdo salvo. Reúne os controles para produzir o material e acompanhar sua revisão. Na Autoria, a pessoa autora percorre o curso, abre uma unidade, consulta suas fontes e registra uma observação para correção.
 
 **Domínio e implementação.** Autoria; equivalente internacional: authoring; símbolo: `authoring_surface`.
 
@@ -65,13 +65,13 @@ Objeto identificado que reúne o percurso curricular, o conteúdo, as fontes e o
 
 #### Módulo
 
-Agrupamento curricular de lições dentro de um curso, usado quando há uma organização didática justificável nesse nível. O módulo “Escrita em hiragana” reúne lições relacionadas, mas não corresponde a uma parte de autoria.
+Agrupamento curricular de lições dentro de um curso, usado quando há uma organização didática justificável nesse nível. O módulo “Escrita em hiragana” reúne lições relacionadas. A organização das tarefas de produção dessas lições cabe às partes de autoria.
 
 **Domínio e implementação.** Módulo; equivalente internacional: module; símbolo: `course_module`.
 
 **Uso.** `manter`. Distinguir de `Parte de autoria`, `unidade de estudo`, `package`.
 
-**Base.** [definição própria](vocabulario-controlado.md).
+**Base.** [definição própria](modelo-didatico.md).
 
 #### Lição
 
@@ -81,11 +81,11 @@ Unidade curricular de um módulo que organiza uma progressão didática coerente
 
 **Uso.** `manter`. Distinguir de `Parte`, `microssequência`, `sessão`.
 
-**Base.** [definição própria](vocabulario-controlado.md).
+**Base.** [definição própria](modelo-didatico.md).
 
 #### Microssequência didática
 
-Termo operacional do AraLearn para um objetivo instrucional delimitado, sua posição e dependências no curso, sua base explicativa e suas unidades de estudo ordenadas. O planejamento e a base podem existir antes da produção das unidades; não há quantidade fixa de unidades. Uma microssequência didática pode articular explicação, exemplo e prática sobre は, sem impor um número fixo de unidades.
+Recorte do curso organizado em torno de um objetivo instrucional, com base explicativa e unidades de estudo ordenadas. É uma definição operacional do AraLearn. Seu planejamento pode anteceder a produção das unidades, cuja quantidade acompanha o desenvolvimento necessário ao objetivo. Uma microssequência sobre a partícula japonesa は pode apresentar sua função, desenvolver exemplos e propor práticas de identificação do tópico da frase.
 
 **Domínio e implementação.** Microssequência didática; equivalente internacional: didactic microsequence; símbolo: `didactic_microsequence`.
 
@@ -95,7 +95,7 @@ Termo operacional do AraLearn para um objetivo instrucional delimitado, sua posi
 
 #### Unidade de estudo
 
-Etapa ordenada de um percurso de estudo, salva com identidade própria e acessível para estudo e inspeção autoral. Pode desenvolver conteúdo, solicitar uma resposta, oferecer retorno ou reunir essas funções numa composição coerente. Na rolagem móvel, cada unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.
+Etapa ordenada de um percurso de estudo, salva com identidade própria e acessível para estudo e inspeção autoral. Pode desenvolver conteúdo, solicitar uma resposta, oferecer retorno ou reunir essas funções numa composição coerente. No percurso móvel, cada unidade de estudo ocupa um passo da sequência; uma pode só explicar e outra pode pedir resposta e oferecer retorno.
 
 **Domínio e implementação.** Unidade de estudo; equivalente internacional: study unit; símbolo: `study_unit`.
 
@@ -105,7 +105,7 @@ Etapa ordenada de um percurso de estudo, salva com identidade própria e acessí
 
 #### Explicação
 
-Conteúdo previamente autorado por microssequência para desenvolver conceitos, pressupostos, exemplos, relações e limites necessários ao objetivo. Suas unidades dão acesso à mesma base pelo comando Explicação; abrir o apoio lê o conteúdo salvo, sem nova geração ou progresso automático. Durante uma prática, o estudante abre Explicação e consulta um exemplo resolvido da mesma microssequência. A base tem fontes e revisão próprias; sua leitura não responde à atividade nem conclui a unidade.
+Conteúdo explicativo salvo de uma microssequência, desenvolvido para explicar o conteúdo necessário ao seu objetivo. As unidades dão acesso a esse apoio pelo comando Explicação. A consulta recupera o material já produzido; a resposta à atividade e a conclusão da unidade têm ações próprias. Durante uma prática, o estudante abre Explicação e consulta um exemplo resolvido. A base tem fontes e revisão próprias; depois da leitura, ele volta à atividade para responder.
 
 **Domínio e implementação.** Base explicativa da microssequência; equivalente internacional: shared authored explanation (termo operacional do AraLearn); símbolo: `explanation`.
 
@@ -115,7 +115,7 @@ Conteúdo previamente autorado por microssequência para desenvolver conceitos, 
 
 #### Item de prática de recuperação
 
-Unidade específica organizada em torno de pista e resposta para praticar recuperação da memória; não designa qualquer unidade de estudo. Uma unidade de estudo pede a tradução de uma expressão antes de mostrar a resposta e o retorno, constituindo um item de prática de recuperação.
+Atividade organizada em torno de uma pista e de uma resposta a recordar. Essa organização permite praticar a recuperação da memória e identifica uma função específica entre as possíveis funções das unidades de estudo. Uma unidade de estudo pede a tradução de uma expressão antes de mostrar a resposta e o retorno, constituindo um item de prática de recuperação.
 
 **Domínio e implementação.** Item de prática de recuperação; equivalente internacional: retrieval practice item; símbolo: `retrieval_practice_item`.
 
@@ -127,7 +127,7 @@ Unidade específica organizada em torno de pista e resposta para praticar recupe
 
 #### Gênero discursivo
 
-Forma recorrente de ação social reconhecida em uma situação comunicativa, adotada aqui na linhagem socioretórica de Miller; gênero comunicativo ou textual exige qualificação teórica própria. Uma investigação de gênero examina a finalidade, a interlocução e os usos recorrentes do material. Chamar uma unidade de “explicação” ou apresentá-la num cartão não basta para identificar um gênero discursivo.
+Forma recorrente de ação social reconhecida em uma situação comunicativa, adotada aqui na linhagem socioretórica de Miller; gênero comunicativo ou textual exige qualificação teórica própria. Uma investigação de gênero examina para quem o material é escrito, o que pretende realizar e como é usado numa situação social. O formato visual da unidade é uma informação adicional dessa análise.
 
 **Domínio e implementação.** Gênero discursivo; equivalente internacional: discourse genre; símbolo: `discourse_genre`.
 
@@ -137,7 +137,7 @@ Forma recorrente de ação social reconhecida em uma situação comunicativa, ad
 
 #### Segmento discursivo
 
-Trecho delimitado segundo critério declarado, como intenção discursiva, relação retórica, subtópico, proposição ou função informacional; não existe fronteira universal independente do método. Uma explicação longa pode ser dividida em segmentos discursivos coerentes sem presumir que cada segmento seja um parágrafo ou conceito.
+Trecho delimitado por um critério de análise do discurso, como intenção comunicativa ou relação entre ideias. O método escolhido determina onde situar suas fronteiras. Uma explicação longa pode ser dividida em segmentos discursivos coerentes sem presumir que cada segmento seja um parágrafo ou conceito.
 
 **Domínio e implementação.** Segmento discursivo; equivalente internacional: discourse segment; símbolo: `discourse_segment`.
 
@@ -147,7 +147,7 @@ Trecho delimitado segundo critério declarado, como intenção discursiva, rela�
 
 #### Parágrafo
 
-Unidade gráfica e textual que contribui para a organização do texto, mas cuja fronteira não garante unidade conceitual, retórica ou instrucional. Uma representação textual pode conter dois parágrafos dentro da mesma unidade de estudo quando a organização discursiva o exigir.
+Unidade gráfica e textual que organiza o desenvolvimento de uma passagem. A relação entre parágrafos e conceitos depende da escrita e do critério adotado na análise. Uma representação textual pode conter dois parágrafos dentro da mesma unidade de estudo quando a organização discursiva o exigir.
 
 **Domínio e implementação.** Parágrafo; equivalente internacional: paragraph unit; símbolo: `text_paragraph`.
 
@@ -159,7 +159,7 @@ Unidade gráfica e textual que contribui para a organização do texto, mas cuja
 
 #### Representação externa
 
-Forma perceptível pela qual conteúdo ou relações são apresentados, como texto, fórmula, tabela, gráfico, diagrama, código ou áudio. Uma ideia pode ser apresentada como texto, diagrama ou áudio. A escolha da representação externa depende das relações que precisam ser percebidas e da tarefa do estudante.
+Forma perceptível pela qual o conteúdo é apresentado. Texto, diagrama e áudio, por exemplo, tornam diferentes aspectos do assunto disponíveis à leitura ou à escuta. Uma tabela ajuda a comparar características de dois protocolos; um diagrama de sequência mostra a ordem das mensagens entre dois equipamentos. A tarefa orienta a escolha das relações que precisam ficar visíveis.
 
 **Domínio e implementação.** Representação externa; equivalente internacional: external representation; símbolo: `external_representation`.
 
@@ -169,7 +169,7 @@ Forma perceptível pela qual conteúdo ou relações são apresentados, como tex
 
 #### Componente didático
 
-Capacidade modular instalada que produz uma representação externa, um formato de resposta ou ambos para uma unidade de estudo, sem se confundir com a instância renderizada nem com seu pacote técnico. O componente de escolha apresenta alternativas em um formato de resposta selecionável; cada uso gera uma instância dentro de uma unidade de estudo.
+Capacidade instalada que apresenta conteúdo ou recebe respostas nas unidades de estudo. Cada uso do componente produz uma representação concreta a partir dos dados do curso; seu contrato e sua implementação são distribuídos num pacote técnico. O componente de escolha apresenta alternativas em um formato de resposta selecionável; cada uso gera uma instância dentro de uma unidade de estudo.
 
 **Domínio e implementação.** Componente didático; equivalente internacional: instructional component; símbolo: `instructional_component`.
 
@@ -179,7 +179,7 @@ Capacidade modular instalada que produz uma representação externa, um formato 
 
 #### Formato de resposta
 
-Estrutura pela qual a pessoa responde a uma atividade e pela qual a resposta pode ser interpretada ou receber retorno. Uma atividade pode aceitar escolha, texto digitado ou ordenação; o formato de resposta declara essa estrutura sem definir o conteúdo.
+Estrutura pela qual a pessoa responde a uma atividade e pela qual a resposta pode ser interpretada ou receber retorno. Uma atividade pode pedir a seleção de alternativas, o preenchimento de lacunas ou a ordenação de itens. O formato determina como responder; o conteúdo da atividade determina o que será perguntado.
 
 **Domínio e implementação.** Formato de resposta; equivalente internacional: response format; símbolo: `response_format`.
 
@@ -195,11 +195,11 @@ Arquivo binário ou documento armazenado e referenciado por uma representação,
 
 **Uso.** `restringir`; formas técnicas ou históricas: `arquivo de mídia`, `media asset`. Distinguir de `representação externa`, `fonte`, `artefato de curso`.
 
-**Base.** [padrão externo](https://www.rfc-editor.org/rfc/rfc3986.html).
+**Base.** [definição própria](fontes-e-citacoes.md); [observação técnica](audio.md).
 
 #### Pacote de componente
 
-Unidade técnica versionada que reúne contrato, esquema, validação e implementação de uma representação ou formato de resposta. Um pacote de componente agrupa o contrato e o código distribuível de um componente, sem incorporar o conteúdo de cada curso.
+Unidade técnica versionada que reúne contrato, esquema, validação e implementação de uma representação ou formato de resposta. O pacote de tabela reúne as regras e o código usados para apresentá-la. Cada curso fornece seus próprios dados ao usar esse pacote.
 
 **Domínio e implementação.** Pacote de componente; equivalente internacional: component package; símbolo: `component_package`.
 
@@ -251,7 +251,7 @@ Mapeamento documentado entre representação de origem e destino com registro do
 
 #### Parte de autoria
 
-Agrupamento operacional de microssequências já previstas no mapa do curso para organizar produção e revisão. Seu tamanho é ajustável e não acrescenta nível à hierarquia didática. O assistente pode planejar, produzir e auditar em uma mesma parte de autoria várias microssequências que caibam no contexto disponível.
+Agrupamento operacional de microssequências já previstas no mapa do curso. Organiza a produção e a revisão em recortes ajustáveis; a posição didática de cada microssequência continua definida no currículo. Uma parte pode reunir duas microssequências. O assistente produz cada recorte autorizado e a pessoa acompanha o resultado dentro da mesma organização de trabalho.
 
 **Domínio e implementação.** Parte de autoria; equivalente internacional: authoring part; símbolo: `authoring_part`.
 
@@ -261,7 +261,7 @@ Agrupamento operacional de microssequências já previstas no mapa do curso para
 
 #### Plano instrucional vivo
 
-Estado revisável que explicita objetivos, organização, cobertura, progressão, prática, representações previstas, fontes e critérios de conclusão da materialização. O plano de um curso registra objetivos e organização prevista, mas pode ser ampliado quando a autoria revela que um tópico exige mais desenvolvimento.
+Planejamento revisável que relaciona o objetivo do curso ao percurso de ensino e à prática prevista. Registra o conteúdo a desenvolver, as fontes e as condições para acompanhar a produção. O plano de um curso registra seus objetivos e a organização prevista. Quando um tópico exige mais desenvolvimento, a pessoa pode ampliar o planejamento e produzir o recorte correspondente.
 
 **Domínio e implementação.** Plano instrucional vivo; equivalente internacional: living instructional plan; símbolo: `instructional_plan`.
 
@@ -271,7 +271,7 @@ Estado revisável que explicita objetivos, organização, cobertura, progressão
 
 #### Produção
 
-Produção e gravação das unidades de estudo de um recorte autorizado, com configuração aplicada e conteúdo disponível para inspeção. Reutiliza as bases explicativas salvas e mantém a revisão humana de cada objeto independente. Depois da autorização do recorte, o assistente produz suas unidades e fornece acesso ao conteúdo salvo. A pessoa pode inspecioná-lo; a produção não declara revisão humana.
+Produção e gravação das unidades de estudo de um recorte autorizado, com configuração aplicada e conteúdo disponível para inspeção. Reutiliza as bases explicativas salvas e mantém a revisão humana de cada objeto independente. Depois da autorização do recorte, o assistente produz suas unidades e fornece acesso ao conteúdo salvo. A declaração de revisão humana depende da inspeção e da decisão expressa da pessoa.
 
 **Domínio e implementação.** Materialização; equivalente internacional: materialization; símbolo: `course_materialization`.
 
@@ -285,7 +285,7 @@ Releitura de observações, conteúdo e contexto pedagogicamente afetado que pro
 
 **Domínio e implementação.** Revisão contextual; equivalente internacional: contextual authoring review; símbolo: `contextual_authoring_review`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `revisão contextual`, `revisão autoral`. Distinguir de `correção aplicada`, `teste automatizado`, `aprovação automática`.
+**Uso.** `restringir`; formas técnicas ou históricas: `revisão contextual`. Distinguir de `revisão autoral`, `correção aplicada`, `teste automatizado`, `aprovação automática`.
 
 **Base.** [decisão de produto](auditoria-de-conformidade-instrucional.md).
 
@@ -301,7 +301,7 @@ Conjunto autorizado de alterações em resposta a uma revisão ou observação, 
 
 #### Revisão autoral
 
-Inspeção humana de uma base explicativa ou unidade de estudo salva, com declaração expressa vinculada ao conteúdo examinado. A declaração pode ser registrada ou retirada por objeto; geração, edição e correção assistidas não a produzem automaticamente. A pessoa autora inspeciona uma explicação e suas fontes e declara sua revisão. As unidades daquela microssequência mantêm registros próprios; uma alteração material deixa desatualizada a declaração do objeto afetado.
+Inspeção humana de uma explicação ou unidade de estudo salva, seguida de declaração expressa sobre a base examinada. Cada objeto conserva seu próprio registro, que a pessoa pode declarar ou retirar. Mudanças materiais exigem uma nova inspeção para manter a declaração atual. A pessoa autora inspeciona uma explicação e suas fontes e declara sua revisão. As unidades daquela microssequência mantêm registros próprios; uma alteração material deixa desatualizada a declaração do objeto afetado.
 
 **Domínio e implementação.** Revisão autoral; equivalente internacional: authoring review; símbolo: `content_review`.
 
@@ -309,9 +309,19 @@ Inspeção humana de uma base explicativa ou unidade de estudo salva, com declar
 
 **Base.** [decisão de produto](explicacao-e-revisao-humana.md); [observação técnica](https://github.com/fabio-ara/AraLearn/blob/main/src/domain/courseContentReview.js).
 
+#### Inspeção por IA
+
+Leitura crítica do conteúdo salvo, realizada por um assistente e registrada em um parecer com evidências da base examinada. O sistema acompanha se essa base continua atual; a revisão humana depende de uma declaração própria da pessoa. O assistente examina uma atividade e identifica um retorno que apenas informa o erro. Registra a passagem e a insuficiência no parecer. Depois da correção, uma nova inspeção avalia o conteúdo salvo.
+
+**Domínio e implementação.** Inspeção pedagógica por IA; equivalente internacional: AI-assisted pedagogical inspection; símbolo: `course_ai_inspection`.
+
+**Uso.** `manter`. Distinguir de `revisão humana`, `validação estrutural`, `avaliação de aprendizagem`.
+
+**Base.** [observação técnica](https://github.com/fabio-ara/AraLearn/blob/main/src/domain/courseContentInspection.js); [observação técnica](https://github.com/fabio-ara/AraLearn/blob/main/src/domain/coursePedagogicalAudit.js).
+
 #### Versão de estado
 
-Contador monotônico usado para detectar concorrência e ordenar mutações; não é uma revisão editorial nem uma cópia integral do curso. Antes de uma alteração composta, uma versão de estado permite identificar exatamente qual estado do curso foi analisado e qual resultou da mudança.
+Número que identifica uma revisão do estado de um objeto e avança quando esse estado é alterado. Permite reconhecer a base de uma operação e detectar se outra gravação ocorreu enquanto ela era preparada. O curso e seu conjunto de observações têm controles de versão próprios. Antes de uma alteração composta, uma versão de estado permite identificar exatamente qual estado do curso foi analisado e qual resultou da mudança.
 
 **Domínio e implementação.** Versão de estado; equivalente internacional: state version; símbolo: `state_version`.
 
@@ -333,7 +343,7 @@ Entidade identificável da qual uma afirmação, representação ou transformaç
 
 #### Âncora de fonte
 
-Localizador preciso de um trecho ou região dentro de uma fonte, como página, intervalo, seletor, fragmento ou timestamp. Uma afirmação da unidade aponta para a página 42 e o trecho correspondente de uma fonte por meio de uma âncora de fonte.
+Localizador de uma passagem dentro de uma fonte. Pode indicar, por exemplo, a página de um documento, um trecho selecionado ou um intervalo de tempo numa gravação. Uma afirmação da unidade aponta para a página 42 e o trecho correspondente de uma fonte por meio de uma âncora de fonte.
 
 **Domínio e implementação.** Âncora de fonte; equivalente internacional: source anchor; símbolo: `source_anchor`.
 
@@ -343,7 +353,7 @@ Localizador preciso de um trecho ou região dentro de uma fonte, como página, i
 
 #### Proveniência
 
-Registro das entidades, atividades, agentes, derivações e versões envolvidos na produção ou transformação de conteúdo e dados. Ao corrigir uma unidade, o AraLearn registra que uma pessoa ou ferramenta realizou a atividade usando determinadas fontes e produzindo novo estado.
+Registro das entidades, atividades, agentes, derivações e versões envolvidos na produção ou transformação de conteúdo e dados. Para investigar a origem de uma unidade, a pessoa consulta os vínculos com fontes e os registros de autoria disponíveis. O alcance dessa reconstrução acompanha os dados efetivamente conservados.
 
 **Domínio e implementação.** Proveniência; equivalente internacional: provenance; símbolo: `provenance_record`.
 
@@ -353,7 +363,7 @@ Registro das entidades, atividades, agentes, derivações e versões envolvidos 
 
 #### Observação
 
-Anotação com corpo e alvo endereçável, autoria, motivação e estado; na interface, o rótulo simples “Observação” é mapeado explicitamente para este conceito de domínio. Na interface aparece “Observação”; ao enviá-la sobre uma unidade específica, o domínio registra uma anotação ancorada com corpo, alvo, autoria e motivação.
+Anotação ligada a um conteúdo identificável, com texto, autoria e estado de acompanhamento. No AraLearn, Observação é o nome apresentado na interface; uma observação pode reunir vários alvos relacionados. A pessoa registra uma dificuldade numa unidade. Quando o mesmo problema afeta outras unidades, a observação pode reuni-las e acompanhar a decisão sobre cada alvo.
 
 **Domínio e implementação.** Anotação ancorada; equivalente internacional: anchored annotation; símbolo: `anchored_annotation`.
 
@@ -385,7 +395,7 @@ Representação bibliográfica usada para identificar e apresentar uma fonte seg
 
 #### Parâmetro de desenho instrucional
 
-Propriedade controlável do desenho com definição versionada, esquema, escopos admitidos, origem, valor efetivo e limitações explícitas. O teto de novas unidades de análise por Unidade expositiva é um parâmetro de desenho instrucional com inteiro positivo, escopos e origem declarados.
+Escolha controlável do desenho instrucional, com significado e valores admitidos definidos pelo contrato. Seu escopo indica onde vale; a origem do valor explica se foi fixado naquele ponto ou obtido de uma configuração mais ampla. A pessoa pode fixar em duas ideias o teto de novidades de uma unidade expositiva. Esse parâmetro orienta o recorte do conteúdo a produzir naquele escopo.
 
 **Domínio e implementação.** Parâmetro de desenho instrucional; equivalente internacional: instructional design parameter; símbolo: `design_parameter`.
 
@@ -395,7 +405,7 @@ Propriedade controlável do desenho com definição versionada, esquema, escopos
 
 #### Configuração técnica
 
-Valor que altera operação ou integração do software sem representar, por si, uma propriedade pedagógica pesquisada. Um limite de bytes aceito pelo Storage é uma configuração técnica e não deve aparecer como escolha pedagógica.
+Valor que regula a operação ou a integração do software. Seu efeito deve ser descrito no mecanismo correspondente, como armazenamento, comunicação ou validação de arquivos. O limite de bytes aceito para um arquivo regula seu envio ao armazenamento. A escolha de como ensinar o conteúdo pertence ao desenho instrucional.
 
 **Domínio e implementação.** Configuração técnica; equivalente internacional: technical configuration; símbolo: `technical_configuration`.
 
@@ -415,7 +425,7 @@ Regra versionada que permite, restringe ou exige comportamento e que é efetivam
 
 #### Valor de fallback do catálogo
 
-Valor de referência versionado conservado no catálogo como recurso técnico quando necessário. Não substitui a escolha contextual exigida nos parâmetros delegados ao assistente nem constitui recomendação universal. O catálogo conserva 2 como valor de referência do teto. No modo automático, o assistente ainda escolhe e justifica o valor conforme a microssequência ou unidade antes de produzir.
+Valor de referência conservado no catálogo para uso técnico quando necessário. Nos parâmetros delegados ao assistente, a escolha aplicada depende de calibração contextual; uma recomendação pedagógica requer justificativa própria. O catálogo conserva 2 como valor de referência do teto. No modo automático, o assistente ainda escolhe e justifica o valor conforme a microssequência ou unidade antes de produzir.
 
 **Domínio e implementação.** Valor de fallback do catálogo; equivalente internacional: catalog fallback value; símbolo: `default_value`.
 
@@ -425,7 +435,7 @@ Valor de referência versionado conservado no catálogo como recurso técnico qu
 
 #### Herança calculada
 
-Resultado do resolvedor que aplica um valor de escopo ancestral quando não existe atribuição de maior autoridade no alvo; não é uma atribuição gravada. Uma microssequência mostra o valor efetivo herdado do curso e informa o escopo fonte sem copiar a definição.
+Valor efetivo obtido de um escopo mais amplo quando o alvo segue aquela configuração. O cálculo informa a origem do valor; uma atribuição explícita no alvo é uma operação separada. Uma microssequência mostra o valor efetivo herdado do curso e informa o escopo fonte sem copiar a definição.
 
 **Domínio e implementação.** Herança calculada; equivalente internacional: resolved inheritance; símbolo: `resolved_inheritance`.
 
@@ -435,7 +445,7 @@ Resultado do resolvedor que aplica um valor de escopo ancestral quando não exis
 
 #### Parâmetro definido
 
-Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada. A pessoa define para uma microssequência um valor diferente do curso; Analytics conta esse parâmetro definido no estado corrente.
+Atribuição intencional em um escopo que substitui integralmente o valor herdado segundo a regra de autoridade declarada. A pessoa define para uma microssequência um valor diferente do curso. Dados de autoria contabiliza a definição no estado corrente e permite consultar seu escopo.
 
 **Domínio e implementação.** Definição explícita de parâmetro; equivalente internacional: explicit override; símbolo: `explicit_override`.
 
@@ -445,7 +455,7 @@ Atribuição intencional em um escopo que substitui integralmente o valor herdad
 
 #### Direção editorial
 
-Orientação qualitativa corrente de extensão, estilo, títulos ou organização, separada do catálogo 1.2.1 de doze decisões de conteúdo, prática, extensão, conversa e produção e incapaz de eliminar conteúdo necessário. Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.
+Orientação qualitativa sobre a escrita e a apresentação do conteúdo, como usar parágrafos curtos ou títulos diretos. Complementa os parâmetros de desenho instrucional, preservando o desenvolvimento necessário à compreensão. A orientação pede parágrafos curtos. Uma unidade pode ultrapassar o alvo de palavras para desenvolver uma relação necessária; a divisão em outras unidades depende da progressão e da função de cada etapa.
 
 **Domínio e implementação.** Direção editorial; equivalente internacional: editorial direction; símbolo: `course_authoring_guidance`.
 
@@ -475,7 +485,7 @@ Política corrente por escopo que fixa catálogo, disponibilidade, referências 
 
 #### Medida de densidade conceitual
 
-Medida obtida pela aplicação de uma métrica versionada a unidades semânticas anotadas e a um denominador explícito; a interpretação exige definição e validação próprias do construto pretendido. Uma investigação define o construto, anota unidades semânticas, fixa o denominador e aplica a métrica versionada; o valor calculado é uma medida, não o construto.
+Medida obtida pela aplicação de uma métrica versionada a unidades semânticas anotadas e a um denominador explícito; a interpretação exige definição e validação próprias do construto pretendido. Uma investigação conta unidades semânticas anotadas por trecho e declara o denominador empregado. A interpretação desse valor depende do conceito de densidade adotado e da validação do procedimento.
 
 **Domínio e implementação.** Medida de densidade conceitual; equivalente internacional: conceptual density measure; símbolo: `conceptual_density_measure`.
 
@@ -485,7 +495,7 @@ Medida obtida pela aplicação de uma métrica versionada a unidades semânticas
 
 #### Extensão editorial
 
-Contagem observável de caracteres, palavras, linhas, altura, duração ou volume de dados usada para ergonomia, edição ou limites técnicos, sem inferência pedagógica automática. Contagem de palavras e altura apresentada são medidas diferentes de extensão editorial. Uma comparação registra como cada uma foi obtida; uma dimensão visual não medida permanece ausente.
+Dimensão observável da extensão de um conteúdo, como número de palavras, altura apresentada ou duração. Cada medida tem procedimento e unidade próprios e pode orientar decisões editoriais ou de ergonomia. Contagem de palavras e altura apresentada são medidas diferentes de extensão editorial. Uma comparação registra como cada uma foi obtida; uma dimensão visual não medida permanece ausente.
 
 **Domínio e implementação.** Extensão editorial; equivalente internacional: editorial extent; símbolo: `editorial_extent`.
 
@@ -507,7 +517,7 @@ Curso privado independente cuja configuração e invariantes foram explicitament
 
 #### Experimento
 
-Protocolo de pesquisa que compara condições mediante fatores, atribuição, medidas e análise previamente declarados; a estrutura técnica não garante validade causal. Um experimento, se vier a ser implementado, compara condições previamente definidas, participantes elegíveis, medidas e um plano de análise documentado.
+Investigação que compara condições segundo um protocolo de atribuição, coleta e análise. A força de uma conclusão causal depende desse desenho e das evidências produzidas durante sua execução. Um protocolo pode comparar dois níveis de apoio ao estudante, definindo previamente os participantes, a atribuição às condições, as medidas e a análise. Os cursos configurados fornecem os materiais dessa investigação.
 
 **Domínio e implementação.** Experimento; equivalente internacional: experiment; símbolo: `research_experiment`.
 
@@ -517,13 +527,13 @@ Protocolo de pesquisa que compara condições mediante fatores, atribuição, me
 
 #### Condição experimental
 
-Combinação declarada de níveis de fatores atribuída, segundo o protocolo, a uma pessoa, grupo ou outra unidade definida pelo experimento. Não é criada apenas por configurar um curso. Em um futuro experimento, a condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.
+Combinação de valores dos fatores que uma pesquisa pretende comparar. O protocolo determina como cada condição será atribuída aos participantes ou a outra unidade da investigação. Em um futuro experimento, a condição experimental A poderia usar um nível de apoio e a B outro, mantendo os demais fatores definidos.
 
 **Domínio e implementação.** Condição experimental; equivalente internacional: experimental condition; símbolo: `experimental_condition`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `condição`. Distinguir de `condição autoral`, `parâmetro isolado`, `grupo de acesso`.
 
-**Base.** [definição própria](experimentos-instrucionais-parametrizados.md): Cursos independentes com configurações declaradas não criam uma condição experimental governada.
+**Base.** [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): Fundamenta a definição das condições, sua atribuição e a análise das diferenças em desenhos de investigação causal; [decisão de produto](experimentos-instrucionais-parametrizados.md): Os cursos independentes fornecem materiais para comparação; o protocolo da pesquisa organiza participantes, atribuição, medidas e análise.
 
 #### Medida observada
 
@@ -537,13 +547,13 @@ Valor obtido por instrumento ou procedimento declarado, antes de qualquer interp
 
 #### Métrica calculada
 
-Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados. A soma de oportunidades de prática num escopo é uma métrica calculada a partir do estado corrente das unidades de estudo e dos requisitos de evidência.
+Resultado obtido ao aplicar uma regra de cálculo versionada — a métrica — a fatos ou medidas. A regra declara a unidade, os filtros e, quando necessário, o denominador. O resultado é uma medida derivada; interpretá-lo como indicador de um construto exige fundamentação e evidências de validade. A regra soma pares distintos de requisito de evidência e oportunidade de prática em cada unidade do escopo. O total obtido é a medida derivada dessa regra e descreve os registros do material salvo.
 
 **Domínio e implementação.** Métrica calculada; equivalente internacional: computed metric; símbolo: `computed_metric`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `métrica`. Distinguir de `medida observada`, `indicador`, `atenção`, `aprendizagem`.
 
-**Base.** [Messick (1995)](referencias.md#ref-messick1995validity); [decisão de produto](analytics-instrucionais.md).
+**Base.** [definição própria](glossario-construtos.md); [Messick (1995)](referencias.md#ref-messick1995validity); [decisão de produto](dicionario-metricas-datasets.md).
 
 #### Indicador de pesquisa
 
@@ -557,7 +567,7 @@ Interpretação declarada de uma ou mais medidas para uma finalidade analítica 
 
 #### Resultado avaliado
 
-Variável escolhida como resultado de interesse de um estudo e definida conforme o protocolo da pesquisa. Desempenho numa avaliação posterior é um exemplo; o termo não afirma a existência de coleta ou painel de resultados de aprendizagem no aplicativo. Uma pesquisa pode escolher o desempenho numa tarefa posterior como resultado avaliado, declarando instrumento, momento e procedimento. A quantidade de unidades concluídas no aplicativo não substitui essa medida.
+Variável escolhida como resultado de interesse de uma pesquisa. O protocolo define como e quando medi-la. No estudo de aprendizagem, pode ser o desempenho numa tarefa posterior, obtido por um instrumento específico. Uma pesquisa escolhe o desempenho numa tarefa posterior e declara instrumento, momento e procedimento. A conclusão de unidades no aplicativo permanece um registro de uso, com finalidade própria.
 
 **Domínio e implementação.** Variável de resultado; equivalente internacional: outcome variable; símbolo: `outcome_variable`.
 
@@ -569,7 +579,7 @@ Variável escolhida como resultado de interesse de um estudo e definida conforme
 
 #### Curso em autoria
 
-O próprio curso vivo enquanto está sendo planejado e materializado; a pessoa não precisa compreender um recipiente abstrato separado. O que antes aparecia como Workspace passa a ser tratado como o próprio curso em autoria, sem uma estrutura organizacional opaca adicional.
+Nome histórico para o curso em processo de planejamento e produção. Na organização corrente, o próprio curso reúne esse estado e mantém sua identidade durante o trabalho. A pessoa retoma um curso em Autoria para continuar o planejamento ou examinar as unidades produzidas. Esses dados pertencem ao curso selecionado.
 
 **Domínio e implementação.** Curso em autoria; equivalente internacional: course under authoring; símbolo: `authoring_course`.
 
@@ -589,7 +599,7 @@ Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhame
 
 #### Catálogo público de cursos
 
-Índice de cursos tornados públicos por decisão explícita; organização de catálogo não concede nem substitui acesso privado direto. O catálogo público de cursos lista somente cursos disponibilizados explicitamente ao público, sem controlar propriedade ou acesso privado.
+Índice dos cursos disponibilizados ao público por decisão de seus proprietários. O acesso privado é concedido diretamente às pessoas e segue controles próprios. O catálogo público de cursos lista somente cursos disponibilizados explicitamente ao público, sem controlar propriedade ou acesso privado.
 
 **Domínio e implementação.** Catálogo público de cursos; equivalente internacional: public course catalog; símbolo: `list_courses_v1`.
 
@@ -599,7 +609,7 @@ Conjunto de cursos acessíveis à pessoa, separado de propriedade, compartilhame
 
 #### Disponibilização pública
 
-Decisão explícita do proprietário que permite a visitantes estudar o mesmo curso mutável sem concessão privada direta. Os arquivos ficam disponíveis por padrão, preservando restrições explícitas; tornar o curso público não concede edição nem cria uma versão imutável. O proprietário confirma o acesso público, com arquivos disponíveis por padrão ou restrição explícita; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.
+Decisão do proprietário que abre o curso a visitantes para estudo. O conteúdo continua editável pelo proprietário; os visitantes acessam o estado disponibilizado. A política oferece os arquivos por padrão e respeita restrições explícitas. O proprietário confirma o acesso público, com arquivos disponíveis por padrão ou restrição explícita; visitantes podem estudar o curso, enquanto a edição continua exclusiva do proprietário.
 
 **Domínio e implementação.** Disponibilização pública; equivalente internacional: public course availability; símbolo: `courses.visibility`.
 
@@ -609,7 +619,7 @@ Decisão explícita do proprietário que permite a visitantes estudar o mesmo cu
 
 #### Registro de versão publicada retirado
 
-Registro separado de uma versão publicada de curso, retirado do runtime. O acesso público corrente é uma política do próprio curso mutável e não depende desse registro. Tornar um curso público altera sua política de acesso sem criar public_course_release ou congelar uma versão.
+Registro separado de uma versão publicada de curso, retirado do runtime. O acesso público corrente é uma política do próprio curso mutável e não depende desse registro. O acesso público atual é alterado nas permissões do curso. O registro public_course_release pertence à estrutura histórica retirada.
 
 **Domínio e implementação.** Registro de versão publicada retirado; equivalente internacional: retired course release record; símbolo: `public_course_release`.
 
@@ -619,7 +629,7 @@ Registro separado de uma versão publicada de curso, retirado do runtime. O aces
 
 #### Artefato de conteúdo
 
-Representação serializada e identificável por conteúdo usada para armazenamento ou distribuição; não é o curso vivo completo. Um arquivo exportado ou uma representação produzida é um artefato de conteúdo; não é automaticamente o curso vivo completo.
+Arquivo ou outra representação serializada de conteúdo, identificável para armazenamento ou distribuição. Seu escopo depende da exportação ou transformação que o produziu. Um arquivo exportado pode conter o curso e sua análise de autoria. O contrato da exportação informa o que foi incluído e como interpretar esses dados.
 
 **Domínio e implementação.** Artefato de conteúdo; equivalente internacional: content artifact; símbolo: `content_artifact`.
 
@@ -629,7 +639,7 @@ Representação serializada e identificável por conteúdo usada para armazename
 
 #### Ponto de recuperação
 
-Marco operacional criado para permitir retomada ou restauração controlada de trabalho técnico; não é revisão de conteúdo nem versão pública. Numa operação de manutenção, a equipe pode conservar o estado anterior e o recibo necessário à recuperação. Esse marco técnico não declara revisão do conteúdo nem disponibiliza o curso ao público.
+Estado de referência conservado para retomar ou restaurar um trabalho técnico. Sua utilidade depende de registrar o conteúdo preservado e o procedimento de recuperação. Antes de uma operação de manutenção, a equipe conserva o estado anterior e os dados necessários à restauração. As decisões de revisão do conteúdo continuam em seus registros próprios.
 
 **Domínio e implementação.** Ponto de recuperação; equivalente internacional: recovery checkpoint; símbolo: `recovery_checkpoint`.
 
@@ -641,7 +651,7 @@ Marco operacional criado para permitir retomada ou restauração controlada de t
 
 #### Pessoa usuária
 
-Pessoa identificada no produto por uma conta; o registro de autenticação não resume sua identidade humana. O perfil mínimo exibe nome e avatar da pessoa usuária sem transformar a plataforma em rede social.
+Pessoa que utiliza o aplicativo, com ou sem conta. A conta é o registro técnico usado para autenticar essa pessoa, relacionar seu perfil e controlar o acesso aos dados; o visitante acessa o conteúdo público permitido sem se autenticar. A pessoa entra na conta, consulta os cursos a que tem acesso e mantém seu perfil com identificador público e foto opcional.
 
 **Domínio e implementação.** Pessoa usuária; equivalente internacional: user; símbolo: `user_account`.
 
@@ -651,7 +661,7 @@ Pessoa identificada no produto por uma conta; o registro de autenticação não 
 
 #### Pessoa autora
 
-Pessoa que participa intencionalmente do planejamento, produção, revisão ou correção de um curso; autoria não decorre apenas de executar uma mutação técnica. A pessoa autora planeja, comenta e revisa o curso; ela pode ou não ser sua proprietária.
+Pessoa que participa intencionalmente do desenvolvimento de um curso, tomando decisões sobre seu planejamento ou conteúdo. A autoria intelectual e a propriedade técnica do curso têm funções distintas. A pessoa autora planeja, comenta e revisa o curso; ela pode ou não ser sua proprietária.
 
 **Domínio e implementação.** Pessoa autora; equivalente internacional: course author; símbolo: `course_author`.
 
@@ -661,7 +671,7 @@ Pessoa que participa intencionalmente do planejamento, produção, revisão ou c
 
 #### Pessoa pesquisadora
 
-Pessoa responsável por decisões, instrumentos ou análises de uma pesquisa; não recebe automaticamente propriedade ou acesso a todo curso. A pessoa pesquisadora define condições e analisa dados, função que pode coexistir com autoria na mesma conta.
+Pessoa responsável pelas decisões ou análises de uma pesquisa. O acesso aos cursos depende das mesmas permissões aplicáveis às demais contas; o papel na investigação é estabelecido pelo protocolo. A pessoa pesquisadora define condições e analisa dados, função que pode coexistir com autoria na mesma conta.
 
 **Domínio e implementação.** Pessoa pesquisadora; equivalente internacional: researcher; símbolo: `researcher`.
 
@@ -681,7 +691,7 @@ Pessoa que acessa o curso para estudar ou participar de uma investigação, com 
 
 #### Pessoa proprietária do curso
 
-Pessoa com autoridade primária sobre o curso e sobre a concessão de acesso, sem implicar autoria exclusiva de todo conteúdo. A Pessoa proprietária controla o acesso ao curso e pode compartilhá-lo diretamente com outras pessoas.
+Pessoa com autoridade primária sobre o curso e sobre a concessão de acesso, sem implicar autoria exclusiva de todo conteúdo. A pessoa proprietária controla o acesso ao curso e pode compartilhá-lo diretamente com outras pessoas.
 
 **Domínio e implementação.** Pessoa proprietária do curso; equivalente internacional: course owner; símbolo: `course_owner`.
 
@@ -691,7 +701,7 @@ Pessoa com autoridade primária sobre o curso e sobre a concessão de acesso, se
 
 #### Pessoa com acesso
 
-Pessoa à qual foi concedido acesso explícito a um curso, com permissões delimitadas; não pressupõe organização institucional. Ao compartilhar um curso com outra pessoa, o registro de acesso identifica diretamente a pessoa com acesso e suas permissões.
+Pessoa que recebeu acesso explícito a um curso. A concessão identifica a conta e delimita o que ela pode fazer, como estudar o material ou copiá-lo quando permitido. Ao compartilhar um curso com outra pessoa, o registro de acesso identifica diretamente a pessoa com acesso e suas permissões.
 
 **Domínio e implementação.** Pessoa com acesso; equivalente internacional: course access grantee; símbolo: `course_access_grantee`.
 
@@ -701,7 +711,7 @@ Pessoa à qual foi concedido acesso explícito a um curso, com permissões delim
 
 #### Papel de acesso
 
-Rótulo técnico que agrupa responsabilidades ou permissões de acesso; não deve ser exposto como governança necessária para compartilhar um curso. Um papel de acesso agrupa permissões estritamente necessárias, sem representar cargo ou hierarquia institucional.
+Rótulo técnico que agrupa permissões ou responsabilidades no sistema. Seu significado acompanha as operações autorizadas; o compartilhamento de cursos usa concessões diretas às contas. O papel de administrador permite operações de gestão definidas no sistema. A permissão de uma pessoa sobre um curso específico continua sujeita às regras desse curso.
 
 **Domínio e implementação.** Papel de acesso; equivalente internacional: access role; símbolo: `access_role`.
 
@@ -723,7 +733,7 @@ Autorização concreta para executar uma operação sobre um alvo e estado espec
 
 #### Núcleo de execução de componentes
 
-Núcleo técnico pequeno que valida envelopes, resolve pacotes e coordena protocolos comuns sem conhecer tipos concretos de representação. O Núcleo de execução valida o manifesto e coordena a renderização de componentes, sem incorporar conteúdo ou regras pedagógicas específicas.
+Parte compartilhada que valida a estrutura dos componentes e coordena os protocolos de execução. Os pacotes fornecem as regras e a apresentação específicas de cada representação. O núcleo localiza o pacote de gráfico e encaminha os dados para ele. O pacote interpreta a representação e produz sua apresentação.
 
 **Domínio e implementação.** Núcleo de execução de componentes; equivalente internacional: component runtime core; símbolo: `component_runtime_core`.
 
@@ -733,7 +743,7 @@ Núcleo técnico pequeno que valida envelopes, resolve pacotes e coordena protoc
 
 #### Ambiente de execução
 
-Código e dependências necessários para executar um contrato em determinada plataforma; não inclui automaticamente autoria, persistência e catálogo. O ambiente de execução carrega e renderiza componentes no cliente sem ser confundido com o motor que transforma dados.
+Código e dependências que executam um contrato numa plataforma. O termo deve vir acompanhado do escopo, como execução dos componentes no navegador ou validação do conteúdo no servidor. O ambiente de execução de componentes carrega os pacotes usados para apresentar a unidade no navegador.
 
 **Domínio e implementação.** Ambiente de execução; equivalente internacional: runtime; símbolo: `runtime_environment`.
 
@@ -743,7 +753,7 @@ Código e dependências necessários para executar um contrato em determinada pl
 
 #### Motor
 
-Componente que executa um algoritmo ou transformação substantiva bem delimitada; não é nome genérico para qualquer serviço. O motor aplica uma transformação definida, como validar uma resposta, mas não representa toda a aplicação.
+Componente responsável por um algoritmo ou transformação bem delimitada. O nome ganha precisão quando indica a operação realizada, como organizar um diagrama ou calcular uma expressão. O motor de disposição de um diagrama calcula a posição dos elementos a partir das relações declaradas pelo conteúdo.
 
 **Domínio e implementação.** Motor; equivalente internacional: engine; símbolo: `processing_engine`.
 
@@ -763,7 +773,7 @@ Componente de fronteira que traduz entre contratos sem assumir a regra de negóc
 
 #### Repositório de estado
 
-Componente que lê e grava estado em uma fronteira de persistência declarada; não é o estado em si nem necessariamente a fonte canônica. O repositório de estado lê e grava dados de autoria; ele não é sinônimo do serviço Supabase Storage.
+Componente responsável por ler e gravar estado num mecanismo de persistência. Seu contrato determina quais dados conserva e qual é a autoridade desses dados no sistema. O repositório local grava o estado usado pelo navegador. Supabase Storage, por sua vez, é o serviço que guarda arquivos no servidor.
 
 **Domínio e implementação.** Repositório de estado; equivalente internacional: store; símbolo: `state_repository`.
 
@@ -773,7 +783,7 @@ Componente que lê e grava estado em uma fronteira de persistência declarada; n
 
 #### Catálogo
 
-Projeção consultável de itens disponíveis e de seus metadados; não é o registro de execução nem a coleção de dados completos. Um catálogo permite consultar metadados e localizar componentes ou cursos sem assumir propriedade nem sequência.
+Índice consultável de itens disponíveis e de seus metadados. Ajuda a localizar um curso ou componente antes de recuperar o conteúdo ou contrato completo. Um catálogo permite consultar metadados e localizar componentes ou cursos sem assumir propriedade nem sequência.
 
 **Domínio e implementação.** Catálogo; equivalente internacional: catalog; símbolo: `queryable_catalog`.
 
@@ -785,7 +795,7 @@ Projeção consultável de itens disponíveis e de seus metadados; não é o reg
 
 #### Abrir
 
-Ação de entrada que abre o curso selecionado pela lista de módulos; posições salvas não mudam o nome nem pulam silenciosamente a hierarquia. O botão inicial mostra Abrir em qualquer estado de progresso e entra no curso pela lista de módulos.
+Ação que abre o curso selecionado pela lista de módulos. O rótulo Abrir e o ponto de entrada permanecem os mesmos quando há progresso salvo. Uma pessoa que já percorreu o curso pode usar Abrir e escolher, na lista de módulos, o assunto que deseja rever.
 
 **Domínio e implementação.** Ação de entrada no Estudo; equivalente internacional: study entry action; símbolo: `study_entry_action`.
 
@@ -795,7 +805,7 @@ Ação de entrada que abre o curso selecionado pela lista de módulos; posiçõe
 
 #### Rolagem vertical
 
-Deslocamento contínuo da viewport no eixo vertical, distinto do gesto físico que o iniciou e da mudança curricular entre unidades. No celular, a pessoa desliza a página para cima e percorre rapidamente as unidades de estudo em rolagem vertical.
+Deslocamento vertical da área visível de uma página. Pode ser iniciado por toque, roda do mouse ou teclado; a navegação entre posições do currículo é tratada separadamente. Em Autoria, a opção Mostrar várias unidades permite percorrer o conteúdo por rolagem vertical. Durante o estudo, a rolagem acompanha o interior da unidade aberta; o avanço para a seguinte usa um controle próprio.
 
 **Domínio e implementação.** Rolagem vertical; equivalente internacional: vertical scrolling; símbolo: `vertical_scroll`.
 
@@ -805,7 +815,7 @@ Deslocamento contínuo da viewport no eixo vertical, distinto do gesto físico q
 
 #### Gesto de deslize
 
-Gesto de entrada observável executado sobre uma superfície, sem inferência automática sobre intenção ou processo cognitivo. Um movimento de dedo reconhecido como gesto de deslize pode avançar a interface, mas não prova uma operação cognitiva.
+Gesto de entrada observável executado sobre uma superfície, sem inferência automática sobre intenção ou processo cognitivo. A pessoa desliza o dedo sobre a tela para percorrer conteúdo. A interpretação do que ela compreendeu exige evidências da tarefa, além do gesto observado.
 
 **Domínio e implementação.** Gesto de deslize; equivalente internacional: swipe gesture; símbolo: `swipe_input_gesture`.
 
@@ -815,7 +825,7 @@ Gesto de entrada observável executado sobre uma superfície, sem inferência au
 
 #### Navegação do curso
 
-Mudança de posição ou escopo dentro da estrutura do curso, com destino e estado explícitos, independentemente do gesto usado. Na interface, a pessoa usa a navegação do curso para saltar à próxima microssequência; o evento de domínio registra uma navegação curricular com origem e destino.
+Mudança de posição ou escopo dentro da estrutura do curso, com destino e estado explícitos, independentemente do gesto usado. A pessoa seleciona outra microssequência na navegação do curso. O aplicativo muda a posição selecionada para apresentar o conteúdo correspondente.
 
 **Domínio e implementação.** Navegação curricular; equivalente internacional: curricular navigation; símbolo: `curricular_navigation`.
 
@@ -825,7 +835,7 @@ Mudança de posição ou escopo dentro da estrutura do curso, com destino e esta
 
 #### Operação-alvo da tarefa
 
-Definição terminológica própria do AraLearn para a transformação que a tarefa exige da pessoa sobre o conteúdo; o contrato e a resposta são observáveis, mas o rótulo não afirma observação direta de uma operação mental. Uma atividade pode solicitar comparar duas representações; “comparar” é a operação-alvo da tarefa, independentemente do toque usado para responder.
+Transformação que uma tarefa exige da pessoa sobre o conteúdo, segundo a definição operacional do AraLearn. A operação esperada é declarada na autoria; sua realização é examinada a partir da resposta e do contexto da atividade. Uma atividade pode solicitar comparar duas representações; “comparar” é a operação-alvo da tarefa, independentemente do toque usado para responder.
 
 **Domínio e implementação.** Operação-alvo da tarefa; equivalente internacional: target task operation; símbolo: `taskOperations`, `taskOperationIds`, `task_operation.*`.
 
@@ -835,7 +845,7 @@ Definição terminológica própria do AraLearn para a transformação que a tar
 
 #### Atenção
 
-Família de processos seletivos internos e externos que exige operacionalização e instrumento próprios; não é evento de visibilidade ou duração. Uma pesquisa pode definir atenção como construto e escolher múltiplas medidas; um scroll isolado não recebe esse rótulo.
+Conjunto de processos de seleção de informação, internos ou externos. Uma pesquisa precisa definir a dimensão de atenção que pretende investigar e escolher instrumentos adequados para observá-la. Uma pesquisa formula uma hipótese sobre atenção durante a leitura e escolhe medidas compatíveis com essa hipótese. Os eventos de rolagem podem compor o contexto de uso registrado.
 
 **Domínio e implementação.** Atenção; equivalente internacional: attention construct; símbolo: `attention_construct`.
 
@@ -845,7 +855,7 @@ Família de processos seletivos internos e externos que exige operacionalizaçã
 
 #### Engajamento
 
-Construto multidimensional cuja dimensão comportamental, cognitiva ou afetiva deve ser declarada e medida com evidência de validade. A pesquisa declara como engajamento será inferido de diferentes evidências, sem renomear mera abertura de tela como engajamento.
+Construto multidimensional cuja dimensão comportamental, cognitiva ou afetiva deve ser declarada e medida com evidência de validade. A pesquisa escolhe a dimensão do engajamento que pretende investigar e explicita como a reconhecerá nas evidências coletadas.
 
 **Domínio e implementação.** Engajamento; equivalente internacional: engagement construct; símbolo: `engagement_construct`.
 
@@ -855,7 +865,7 @@ Construto multidimensional cuja dimensão comportamental, cognitiva ou afetiva d
 
 #### Foco do controle
 
-Estado técnico, conforme o modelo de foco do HTML, que determina qual controle recebe entrada de teclado ou tecnologia assistiva; não mede atenção psicológica. Quando a caixa de observação se torna o elemento ativo para teclado, ela recebe foco do controle; isso não demonstra atenção da pessoa.
+Estado da interface que indica qual controle recebe a entrada de teclado ou de uma tecnologia assistiva, conforme o modelo de foco do HTML. Quando a caixa de observação se torna o elemento ativo, as teclas digitadas chegam a ela. Esse é o sentido técnico de foco usado na interface.
 
 **Domínio e implementação.** Foco do controle; equivalente internacional: focus state; símbolo: `focus_state`.
 
@@ -875,7 +885,7 @@ Fluxo finito e curricularmente ordenado para percorrer unidades de estudo na Aut
 
 #### Feed social
 
-Fluxo digital continuamente abastecido, usado aqui apenas como antecedente comparativo; não descreve a sequência curricular finita do AraLearn. O feed do X serve como comparação histórica de rolagem e segmentação, mas não como modelo pedagógico ou evidência de eficácia.
+Fluxo digital continuamente abastecido por novas publicações. Na documentação do AraLearn, aparece como antecedente histórico para comparar formas de rolagem e segmentação. Uma comparação pode examinar a rolagem de publicações no X e o acesso a trechos de um curso. O percurso curricular do AraLearn tem organização e critérios didáticos próprios.
 
 **Domínio e implementação.** Feed social; equivalente internacional: social feed; símbolo: `social_content_feed`.
 
@@ -897,7 +907,7 @@ Ação externa realizada para revelar informação ou simplificar o trabalho cog
 
 #### Instruções de sistema
 
-Camada estável reservada a invariantes, segurança, limites de autoridade e protocolo de uso das ferramentas; não contém estado corrente do curso nem manual científico mutável. As instruções de sistema mantêm regras invariantes de segurança e de uso das ferramentas; o plano mutável do curso fica fora delas.
+Orientações estáveis sobre segurança, autoridade e uso das ferramentas de um assistente. O estado mutável de cada curso é recuperado separadamente para a tarefa em andamento. As instruções de sistema definem como respeitar permissões. Ao retomar o trabalho, o assistente consulta o planejamento salvo do curso.
 
 **Domínio e implementação.** Instruções de sistema; equivalente internacional: system instructions; símbolo: `system_instructions`.
 
@@ -907,7 +917,7 @@ Camada estável reservada a invariantes, segurança, limites de autoridade e pro
 
 #### Prompt de tarefa
 
-Instrução contextual de uma execução ou turno; pode referenciar estado persistido, mas não se torna o registro autorizado desse estado. Ao pedir auditoria de uma parte, a solicitação e seus limites formam o prompt de tarefa daquela execução.
+Pedido que delimita a tarefa de uma execução ou turno. Pode indicar o conteúdo a consultar e as alterações autorizadas; o resultado persistido é confirmado pelo sistema responsável pelo curso. Ao pedir auditoria de uma parte, a solicitação e seus limites formam o prompt de tarefa daquela execução.
 
 **Domínio e implementação.** Prompt de tarefa; equivalente internacional: task prompt; símbolo: `task_prompt`.
 
@@ -917,7 +927,7 @@ Instrução contextual de uma execução ou turno; pode referenciar estado persi
 
 #### Base de referência estável
 
-Conteúdo relativamente estável de referência recuperável sob demanda, como critérios, ciência, exemplos e limitações; não contém planejamento ou observações correntes do curso. A base de referência estável contém documentação durável sobre ferramentas e métodos, não o planejamento mutável de um curso.
+Acervo de referência relativamente estável que pode ser consultado durante uma tarefa. Reúne explicações e critérios de trabalho; os dados correntes do curso são consultados no estado de autoria. O assistente consulta a documentação para entender um componente e lê o curso para saber qual conteúdo deve revisar.
 
 **Domínio e implementação.** Base de referência estável; equivalente internacional: knowledge base; símbolo: `knowledge_base`.
 
@@ -927,7 +937,7 @@ Conteúdo relativamente estável de referência recuperável sob demanda, como c
 
 #### Estado de autoria do curso
 
-Estado salvo do curso que reúne planejamento, conteúdo, configuração, fontes, observações e registros de produção e revisão. Interface, MCP e Actions consultam e alteram esse estado pelas operações autorizadas; dados de aprendizagem não são inferidos dessas operações. O planejamento, os parâmetros, as fontes e as observações de um curso compõem seu Estado de autoria, lido pela interface, pelas ferramentas MCP e pelas operações de Actions.
+Conjunto dos dados salvos que descrevem o curso e seu processo de autoria. Inclui o planejamento e o conteúdo, com as fontes e os registros necessários à continuidade do trabalho. Interface, MCP e Actions operam sobre esse estado segundo as permissões da conta. Ao retomar um curso, o assistente lê o planejamento e o material já produzido. Uma alteração autorizada passa a integrar o mesmo estado que a pessoa consulta no aplicativo.
 
 **Domínio e implementação.** Estado de autoria do curso; equivalente internacional: course authoring state; símbolo: `course_authoring_state`.
 
@@ -957,7 +967,7 @@ Conjunto versionado de modelo, instruções, ferramentas, políticas de recupera
 
 #### Resource MCP
 
-Primitiva do protocolo pela qual um servidor expõe dados ou contexto identificados por URI para leitura orientada pela aplicação. Uma ferramenta cliente lê um Resource MCP exposto pelo servidor; ele não é um componente visual armazenado dentro de uma unidade.
+Primitiva do protocolo pela qual um servidor expõe dados ou contexto identificados por URI para leitura orientada pela aplicação. Um cliente MCP pode ler um documento que o servidor disponibilize por URI. A especificação chama essa forma de fornecer contexto de Resource.
 
 **Domínio e implementação.** Resource MCP; equivalente internacional: mcp resource; símbolo: `mcp_resource`.
 
@@ -977,7 +987,7 @@ Operação tipada exposta pelo servidor para o modelo solicitar uma ação ou co
 
 #### Assistência por IA
 
-Sessão contextual em que um sistema de inteligência artificial ajuda a discutir, planejar, preparar, validar e pré-visualizar uma alteração tipada antes de a pessoa decidir aplicá-la ao rascunho do objeto corrente. Na unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia na apresentação real do aplicativo.
+Sessão em que a pessoa discute uma alteração com um assistente e examina a proposta no contexto do conteúdo atual. A aplicação da proposta ao rascunho depende da decisão da pessoa. Na unidade de estudo, a pessoa abre Assistência por IA, discute o pedido, confirma um plano e só aplica a proposta depois de conferir a prévia na apresentação real do aplicativo.
 
 **Domínio e implementação.** Assistência contextual por modelo de linguagem; equivalente internacional: contextual AI assistance for authoring (descrição técnica própria); símbolo: `course_provider_assistance`.
 

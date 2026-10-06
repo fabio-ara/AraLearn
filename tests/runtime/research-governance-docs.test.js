@@ -40,11 +40,13 @@ test("revisão e contribuição distinguem hipótese de eficácia comprovada", (
   const review = read("docs/revisao-de-literatura.md");
   const contribution = read("docs/contribuicao-originalidade.md");
   assert.match(review, /revisão narrativa orientada ao desenho do artefato/u);
-  assert.match(review, /não oferece a cobertura reprodutível de uma revisão sistemática/u);
+  assert.match(review, /revisão sistemática ou de\s+escopo tem outra exigência de cobertura/u);
+  assert.match(review, /registra a busca e o percurso completo\s+de seleção e avaliação das fontes/u);
   assert.match(review, /## Lacunas de conhecimento/u);
   assert.match(contribution, /novidade[\s\S]*busca documentada/u);
   assert.match(contribution, /vantagem[\s\S]*compara alternativas/u);
-  assert.match(contribution, /não estabelece superioridade universal/u);
+  assert.match(contribution, /resultado conserva as versões, tarefas, pessoas e condições\s+examinadas/u);
+  assert.match(contribution, /onde a comparação é aplicável/u);
   assert.match(contribution, /### 6\.4 Alegações que exigem comparação definida com alternativas pertinentes/u);
 });
 
@@ -56,8 +58,12 @@ test("quadro e protocolo proíbem proxies comportamentais ambíguos", () => {
     assert.match(source, /atenção|aprendizagem|domínio/u);
   }
   assert.match(framework, /abertura ou tempo como atenção/u);
-  assert.match(protocol, /\| retomada .* \| abertura ou atenção \|/u);
-  assert.match(glossary, /Não equivale a/u);
+  const resumptionRow = protocol.split(/\r?\n/u).find((line) => /^\| retomada \|/u.test(line));
+  assert.ok(resumptionRow, "o protocolo deve distinguir retomada de abertura e atenção");
+  assert.match(resumptionRow, /\| localização e reconstrução do objetivo \|/u);
+  assert.match(resumptionRow, /\| abrir o curso e manter a atenção são aspectos distintos \|/u);
+  assert.match(glossary, /\*\*Distinção:\*\* tempo, frequência e navegação descrevem aspectos do uso/iu);
+  assert.match(glossary, /interpretação como engajamento depende da dimensão escolhida e de evidências/u);
 });
 
 test("bibliografia canônica cobre método, público, feedback, IA e analytics", () => {
@@ -97,10 +103,10 @@ test("revisão registra método prospectivo sem inventar buscas retrospectivas",
   const review = read("docs/revisao-de-literatura.md");
   const log = read("docs/evidence/registro-buscas-bibliograficas.csv").trimEnd();
   const lines = log.split(/\r?\n/gu);
-  assert.match(review, /protocolo \*\*ARA-LIT-1\*\*/u);
-  assert.match(review, /não conserva um diário completo/u);
-  assert.match(review, /não é possível reconstruir retrospectivamente/u);
-  assert.match(review, /limitação[\s\S]*buscas presumidas/u);
+  assert.match(review, /protocolo\s+\*\*ARA-LIT-1\*\*/u);
+  assert.match(review, /diário de consultas do corpus inicial está incompleto/u);
+  assert.match(review, /reconstrução de\s+sua origem fica limitada/u);
+  assert.match(review, /bases, expressões, datas e contagens efetivamente\s+preservadas/u);
   assert.equal(
     lines[0],
     "registro_id,data_hora_utc,eixo,base_ou_indice,consulta_exata,filtros,registros_informados,duplicatas_removidas,titulos_resumos_avaliados,textos_em_integra_avaliados,incluidos,motivos_exclusao_texto_integral,versao_criterios,responsavel,observacoes"
@@ -148,7 +154,8 @@ test("revisão linguístico-semiótica separa unidade, gesto e inferência", () 
     assert.match(bibliography, new RegExp(`\\{${key},`, "u"));
   }
 
-  assert.match(review, /ambiente de aprendizagem, autoria\s+e pesquisa com unidades de estudo estruturadas/u);
+  assert.match(review, /organiza autoria e estudo por\s+\*\*unidades de estudo estruturadas\*\*/u);
+  assert.match(review, /registros que podem apoiar pesquisas/u);
   assert.match(glossary, /### Unidade de estudo/u);
   assert.match(glossary, /### Anotação ancorada/u);
   assert.match(glossary, /### Cartão de memorização/u);

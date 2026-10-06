@@ -1,10 +1,11 @@
 # Corpus de recortes e contraexemplos
 
-Contar palavras novas não basta para identificar o conhecimento que uma tarefa
-solicita. “Switch” e “comutador” podem nomear o mesmo objeto; uma regra de
+“Switch” e “comutador” podem nomear o mesmo objeto; uma regra de
 encaminhamento acrescenta uma relação mesmo usando palavras já apresentadas.
-O primeiro caso abaixo mostra essa diferença. Os demais examinam matemática,
-organização do trabalho, leitura literária e vocabulário.
+Identificar o conhecimento que uma tarefa solicita exige examinar essas
+relações, além do vocabulário. O primeiro caso abaixo mostra essa diferença.
+Os demais examinam matemática, organização do trabalho, leitura literária e
+vocabulário.
 
 Uma **unidade de análise instrucional** recorta o conhecimento necessário a uma
 tarefa para um público definido. O corpus acompanha o [protocolo de unidade de
@@ -15,25 +16,30 @@ identificar esses recortes e marcar como aparecem nos trechos.
 
 Os casos são sintéticos, construídos para discutir as decisões de análise.
 Suas leituras concorrentes foram elaboradas conjuntamente como exercício inicial
-do procedimento.
-“Adotado” indica a escolha justificada pelo contexto do exemplo. As traduções
-servem para verificar se essa escolha permanece reconhecível em outra língua;
-uma avaliação com especialistas precisaria examinar sua equivalência disciplinar
-e linguística.
+do procedimento. “Adotado” indica a escolha justificada pelo contexto do
+exemplo. As traduções servem para verificar se essa escolha permanece
+reconhecível em outra língua; uma avaliação com especialistas precisaria
+examinar sua equivalência disciplinar e linguística.
 
 As identidades abaixo são locais a cada caso. `I` significa introdução, `U` uso,
-`R` retomada e `M` menção. `P` identifica pressuposto no repertório, não ocorrência
-textual. Desenvolvimento é informado por trecho; não se deduz dessas letras.
-Uma mesma identidade introduzida e aplicada na unidade conta uma introdução.
+`R` retomada e `M` menção. `P` identifica um pressuposto no repertório. Essas
+letras classificam a relação com o conhecimento; o desenvolvimento é informado
+por trecho. Uma mesma identidade introduzida e aplicada na unidade conta uma
+introdução.
 
 A comparação conserva todos os recortes. Se a leitura A descreve uma relação X
 e a leitura B a divide em X1 e X2, o registro mantém os dois inventários e anota
 a proposta X → {X1, X2} com sua justificativa. Quando apenas X1 corresponde
-parcialmente a X, X2 permanece visível como diferença. Inverter A e B descreve a
-mesma divergência como fusão. O registro não elimina identidades para forçar
-pares um a um nem escolhe um denominador depois da leitura. O procedimento serve
-à revisão dos recortes; percentual de concordância, confiabilidade e validade
-cognitiva exigem uma avaliação independente.
+parcialmente a X, X2 permanece visível como diferença. Inverter A e B descreve
+a mesma divergência como fusão. Os inventários integrais e suas relações
+permitem examinar divergências que uma correspondência um a um apagaria.
+
+Para calcular uma proporção de concordância, seria necessário definir quais
+recortes podem ser comparados e qual quantidade será usada como
+**denominador**, o valor pelo qual se divide o número de concordâncias. Essa
+regra precisa anteceder a comparação. Uma avaliação independente examinaria a
+concordância, a confiabilidade do procedimento e a validade da interpretação
+dos recortes como conhecimento.
 
 ## 1. Redes: rótulo, objeto e relação
 
@@ -59,15 +65,15 @@ Ethernet.
 | N-encaminhamento | I em N1.4; relação condicional entre tabela, destino e porta | Usar apenas os três nomes acima omite o conhecimento relacional. Contar “porta” como novo recorte só é necessário se sua função não ficar compreensível no repertório e em N1.2. |
 
 **Contagem adotada:** quatro introduções nessa unidade expositiva, com quatro
-identidades mobilizadas, sem somar novamente os usos de N1.4. O trecho oferece
-tratamento inicial, mas não comprova suficiência do desenvolvimento. Se o alvo
-for diagnosticar decisões de encaminhamento, exemplos, casos desconhecidos e
-limites exigirão desenvolvimento adicional; não se declara esse escopo coberto.
+identidades mobilizadas; os usos de N1.4 conservam essas identidades. O trecho
+oferece tratamento inicial. Um objetivo que inclua diagnosticar decisões de
+encaminhamento exige desenvolver casos de destino desconhecido e outros limites,
+além de explicar por que cada decisão se aplica.
 
 **Contraste de repertório N2.** Para público que já conhece N-quadro, N-switch e
 N-mac, mas ainda não estudou N-encaminhamento, N1.4 isolado contém uma introdução
 da relação e usos de três pressupostos. Para o público de N1, essa frase isolada
-deixa as três bases sem desenvolvimento: não são três pressupostos implícitos.
+deixa as três bases sem desenvolvimento; o percurso precisa ensiná-las.
 Um inventário de “quatro palavras novas” também falha porque omite a relação e
 confunde rótulos com conhecimento.
 
@@ -85,8 +91,9 @@ confunde rótulos com conhecimento.
   asociado a la dirección MAC de destino.”
 
 Com repertório e finalidade preservados, a leitura adotada conserva as quatro
-identidades: quadro/frame/trama é um alinhamento contextual, não três recortes
-novos. Se a tarefa for aprender terminologia entre idiomas, reabrir o inventário.
+identidades: quadro/frame/trama nomeiam o mesmo recorte nesse contexto. Se a
+tarefa for aprender terminologia entre idiomas, o inventário precisa ser
+reexaminado para incluir esse objetivo.
 
 ## 2. Matemática: regra, condição e notação
 
@@ -110,19 +117,20 @@ justificação for alvo, o material precisa desenvolvê-la.
 **Repertório B.** O estudante ainda precisa distinguir quando a divisão é
 admissível, e o objetivo inclui comparar `0 × x = 0` e `0 × x = 5`. Agora separar
 A-condição é pertinente: A1 apenas a enuncia, sem desenvolver os casos de
-coeficiente zero. O plano tem uma lacuna a resolver; não se marca a condição
-como dominada nem se apaga o recorte para conservar “uma novidade”.
+coeficiente zero. O plano registra essa lacuna para orientar o desenvolvimento
+da condição e de seus casos, mantendo o recorte necessário à tarefa.
 
-As três expressões de A1 mostram por que palavras separadas por espaços ou
-fragmentos contados por um programa não constituem unidades de conhecimento.
-Uma contagem por padrão textual de grupos de letras/números no chinês é uma observação desse
-algoritmo, não segmentação linguística validada nem medida de conhecimento.
+As três expressões de A1 conservam a relação matemática, embora sua divisão em
+palavras e símbolos varie. Uma contagem automática de grupos de letras e
+números descreve o resultado do algoritmo aplicado ao texto. Para interpretar
+essa contagem como segmentação linguística ou conhecimento, seria necessário
+validar a correspondência pretendida, inclusive no chinês.
 
 ## 3. Organização do trabalho: pré-requisito fora da ementa
 
 **Situação fictícia.** Ensinar a regra local de distribuição de pedidos da equipe
 Alfa. O curso inclui distribuição, mas seu planejamento inicial omitiu comparar
-quantidades. Não se trata de norma jurídica ou procedimento de organização real.
+quantidades.
 
 | Localizador | Trecho |
 | --- | --- |
@@ -138,15 +146,15 @@ requisito formal de evidência.
 
 **Alternativa rejeitada:** classificar “até 3” como acessório dispensável porque
 a ementa só menciona distribuição altera a tarefa: confunde o caso exatamente
-igual ao limite. A correspondência fila/cola não introduz novo conhecimento
-se o público entende a língua. Já ensinar o contraste entre limites inclusivos
-e exclusivos muda o inventário, mesmo quando os textos permanecem curtos.
+igual ao limite. A correspondência fila/cola conserva o conhecimento quando o
+público entende a língua. Já ensinar o contraste entre limites inclusivos e
+exclusivos muda o inventário, mesmo quando os textos permanecem curtos.
 
 ## 4. Leitura literária: continuidade e referência ambígua
 
 **Finalidade.** Examinar como a escolha de palavras sustenta uma interpretação
 de um microconto. Vocabulário cotidiano é pressuposto; a análise da ambiguidade
-é nova. Não inferir fatos biográficos ou psicológicos sobre pessoas reais.
+é nova.
 
 | Localizador | Microconto e tarefa construídos |
 | --- | --- |
@@ -157,11 +165,11 @@ de um microconto. Vocabulário cotidiano é pressuposto; a análise da ambiguida
 **Recorte adotado:** L-referência-ambígua é alvo da prática em L2 e recebe
 introdução/desenvolvimento explícito em L3. A atividade pode solicitar a
 descoberta antes da explicação, desde que a demanda esteja planejada e seja
-adequada ao repertório; essa ordem não comprova aprendizagem. A unidade completa
-é mista, com oportunidade antes do desenvolvimento. Nomes próprios e mapa são
-usados no contexto, não novos conceitos pedagógicos por serem substantivos.
+adequada ao repertório. A unidade completa é mista, com oportunidade antes do
+desenvolvimento; a aprendizagem requer avaliação própria. Nomes próprios e
+mapa compõem o contexto familiar da tarefa.
 
-**Alternativa rejeitada:** escolher Lia apenas pela proximidade ou presumir uma
+**Alternativa rejeitada:** escolher Bia apenas pela proximidade ou presumir uma
 única correferência transforma hipótese em fato. Exigir o nome técnico “anáfora”
 quando o objetivo só pede reconhecer e discutir a ambiguidade acrescenta
 vocabulário sem necessidade. Se o curso ensinar análise gramatical formal,
@@ -179,8 +187,8 @@ correspondência entre esses sentidos e o inglês.
 | V2 | Corte a manga madura. |
 | V3 | Neste par de exemplos, “manga” corresponde a “sleeve” na camisa e a “mango” na fruta. |
 
-Na finalidade A, V1–V2 usam conhecimento pressuposto e não introduzem recorte
-apenas porque uma palavra se repete. Na finalidade B, V3 introduz duas
+Na finalidade A, V1–V2 usam conhecimento pressuposto; a repetição de uma palavra
+conserva o recorte já conhecido. Na finalidade B, V3 introduz duas
 correspondências lexicais distinguíveis, V-manga-roupa e V-manga-fruta, com
 contraste contextual. **Alternativa rejeitada:** fundir ambas pela grafia produz
 equivalência incorreta; contar cada ocorrência de “manga” como nova introdução
@@ -190,8 +198,8 @@ produz duplicação. O recorte depende da operação pretendida.
 
 Este exemplo usa A-regra do caso 2, com o repertório A fixado. O alvo das
 oportunidades é aplicar a regra e justificar a transformação. Os enunciados
-esquemáticos abaixo descrevem a composição; não substituem as explicações
-integrais de um material de estudo.
+esquemáticos abaixo descrevem a composição; um material destinado ao estudo
+precisa desenvolver integralmente as explicações indicadas.
 
 | Posição | Conteúdo e ordem interna | Classe e codificação |
 | --- | --- | --- |
@@ -199,7 +207,7 @@ integrais de um material de estudo.
 | D2 | Exemplo resolvido: `3x = 9`; resolução e justificação já visíveis. | Expositiva; U e desenvolvimento de A-regra; zero oportunidades. |
 | D3 | Comparação comentada com o exemplo anterior; depois, solicitar resolver `4x = 20` e justificar antes de abrir a solução. | Mista; R e desenvolvimento; oportunidade O-a de consolidação. |
 | D4 | Solicitar resolver `-2x = 8` e justificar; solução disponível após a tentativa. | Prática; R; O-b varia o sinal do coeficiente, aspecto relevante a revisar semanticamente. |
-| D5 | explicação de erro recorrente na divisão de ambos os membros, sem nova solicitação. | Expositiva; R e desenvolvimento; zero oportunidades. |
+| D5 | Explicação de erro recorrente na divisão de ambos os membros, sem nova solicitação. | Expositiva; R e desenvolvimento; zero oportunidades. |
 
 **Contagens declaradas:** cinco unidades classificadas, três expositivas, uma
 mista e uma de prática; presença de prática em 2/5 unidades. Uma introdução de
@@ -209,25 +217,27 @@ completas sem oportunidade: duas antes de O-a, zero entre O-a e O-b, uma após
 O-b. A exposição inicial de D3 continua registrada pela posição interna, embora
 não componha as duas unidades completas do primeiro intervalo.
 
-Mudar a ordem das alternativas de O-a ou permitir nova tentativa não cria O-c
-distinta. Dois campos “resultado” e “justificação” são uma oportunidade de
-operação composta. Se O-a também visasse reconhecer a condição não nula, teria
-dois alvos; o total global continuaria uma solicitação. Uma exigência formal de
-evidência precisaria especificar apoio, operação e condições antes de usar
-essas oportunidades em sua contagem.
+Mudar a ordem das alternativas de O-a ou permitir nova tentativa conserva a
+mesma oportunidade. Dois campos “resultado” e “justificação” compõem uma
+solicitação de operação composta. Se O-a também visasse reconhecer a condição
+não nula, teria dois alvos; o total global continuaria uma solicitação. Uma
+exigência formal de evidência precisaria especificar apoio, operação e
+condições antes de usar essas oportunidades em sua contagem.
 
 **Contraexemplo de extensão.** D3 com retorno fechado e D3 com retorno aberto
-são estados diferentes. Não foram renderizados neste corpus: altura, área visível da tela
-útil e telas equivalentes permanecem não medidos. É incorreto atribuir-lhes
-pixels ou tempo de estudo a partir do número de palavras, fórmulas ou campos.
+são estados diferentes. Neste corpus, a apresentação em tela ainda precisa ser
+medida. Altura, área útil e telas equivalentes dependem dessa observação em
+condições definidas; tempo de estudo exigiria observar o uso por pessoas.
 
-## O que esta comparação permite concluir
+<a id="o-que-esta-comparação-permite-concluir"></a>
 
-As alternativas tornam os critérios refutáveis. Entre os erros observáveis
+## Comparação e alcance dos casos
+
+As alternativas tornam os critérios contestáveis. Entre os erros examináveis
 estão duplicar um sinônimo, apagar uma relação e presumir um pré-requisito
 omitido. Os casos também mostram mudanças legítimas de recorte quando público
-ou objetivo mudam. Como o corpus é sintético, ele identifica possibilidades de
-erro, e não sua frequência em modelos ou pessoas.
+ou objetivo mudam. O corpus sintético identifica possibilidades de erro; medir
+sua frequência em modelos ou pessoas exigiria outra investigação.
 
 Uma aplicação posterior do protocolo deve conservar o caso e seu contexto,
 além do inventário com localizadores e divergências. Os totais vêm depois dessa

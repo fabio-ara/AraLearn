@@ -123,9 +123,7 @@ Na continuação, a resolução compara três informações: o acordo preservado
 preferências que resultariam dos dados atuais e as condições do curso. Uma
 mudança pessoal é informada para que possa ser incorporada expressamente.
 Uma mudança nas condições do curso ou um conflito exige conciliação antes de
-continuar; o acordo anterior permanece disponível para inspeção. Uma simples
-edição de texto em outro campo do curso não equivale a mudar suas condições
-de processo.
+continuar; o acordo anterior permanece disponível para inspeção. Uma edição de texto em outro campo conserva as condições de processo.
 
 Nos canais conversacionais, `referenciaProcesso` permite retomar esse acordo
 nas tarefas que aceitam o campo `processo`. É uma referência emitida pelo
@@ -136,10 +134,11 @@ continuam sendo decisões com seus próprios alcances.
 
 A outra forma reconhecida é a autonomia explícita `autonomo: true`, pedida pela
 pessoa para aquele curso. Ela vale na retomada, no preparo e na produção: o
-mapa pode permanecer em rascunho, sem registrar aprovação humana e sem trocar as
-preferências da conta. Não combine os dois campos na mesma chamada; no caso
-comum autorizado, a autonomia dispensa transportar a referência, que continua
-útil para conservar um acordo mais completo.
+mapa permanece em rascunho, e as preferências da conta e as declarações humanas
+conservam seus registros. Cada chamada usa uma das formas: autonomia explícita
+ou referência do processo. A autonomia atende ao caso em que o curso já tem
+escopo autorizado; a referência preserva um acordo mais completo. Conflitos
+entre condições do recorte ainda precisam de conciliação.
 
 Para quem integra um cliente, o contrato
 `aralearn.authoring-process-resolution.v1` apresenta `preferences` para o
@@ -227,35 +226,36 @@ limitam sua gravação à produção e à cópia autorizada.
 
 ## Realização da configuração na inspeção
 
-A dimensão `configuration` do parecer de IA distingue configuração aplicada e
-realização observável. Na leitura focal compartilhada por MCP e Actions,
-`design.parameters` e snapshots apresentam nome e campo humano, preservando
-valor, origem e motivo aplicados. Construto, operacionalização e limites do
-catálogo canônico aparecem uma vez em `definicoesDosParametros` no mesmo foco
-de `auditoriasPedagogicas`; o campo associa cada parâmetro à definição já
-entregue, sem consulta adicional. Cada página lógica contém suas definições;
-sem foco identificável, elas permanecem junto ao parâmetro. Um parâmetro
-histórico desconhecido mantém seu nome semântico, sem definição inventada;
-identidades operacionais continuam fora da projeção humana. As definições
-orientam a leitura; as evidências do parecer citam o conteúdo e os valores da
-base salva, sem inventar passagens.
+Uma escolha aplicada precisa ser comparada com o material que ela orientou.
+Se a configuração pede contraste, por exemplo, a inspeção localiza os casos e
+a diferença que o texto permite compreender. Se pede variação, reúne as
+práticas do mesmo requisito na microssequência e examina o que muda entre
+elas. Esse trabalho forma a dimensão **realização da configuração**,
+`configuration`, do parecer de IA.
 
-O auditor confronta formas de explicação, oportunidades, variação e posição
-da prática com o alvo e o percurso pertinente, explicitando limites do recorte.
-Um valor automático é preferência contextual: justificar sua realização não
-exige alternância ou prática adicional por regra. Fixações autorais e condições
-de pesquisa não são relaxadas para aprovar o parecer. Divergência ou realização
-relevante não demonstrada pede `insufficient`: corrigir o conteúdo, reconciliar
-a declaração ou calibrar o automático com justificativa, conforme o caso.
-`not_applicable` cabe apenas sem parâmetro pedagógico observável aplicável,
-não por falta de evidência. Parâmetros de conversa e cadência fora do alvo não
-são critérios sobre seu conteúdo.
+A leitura focal dos canais oferece os valores, motivos e origens aplicados,
+junto das definições do catálogo. Nos dados, `design.parameters` contém as
+escolhas e `definicoesDosParametros` reúne o significado, a forma de observação
+e os limites de cada parâmetro. As definições acompanham a página lida; o
+parecer usa como evidência trechos e valores presentes na base salva. Um
+parâmetro histórico desconhecido conserva seu nome e a ausência de definição.
 
-Novos pareceres registram seis dimensões; isso não certifica qualidade ou
-aprendizagem. Históricos sem dimensões ou com as cinco anteriores mantêm sua
-base e seu parecer. A realização da configuração fica explicitamente ainda não
-avaliada, sem converter essa ausência em defeito pedagógico. Consulte a
-[compatibilidade de leitura e recuperação](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal).
+A inspeção distingue uma preferência automática contextual de uma condição
+fixada. A primeira pode ser calibrada com justificativa após examinar o
+conteúdo; a segunda exige preservar a decisão de quem a fixou. Quando a
+realização está insuficiente ou carece de evidência relevante, o parecer
+registra `insufficient` e indica se cabe corrigir o material, reconciliar a
+declaração ou calibrar a escolha automática. `not_applicable` corresponde à
+ausência de parâmetro pedagógico observável aplicável àquele alvo. Conversa e
+cadência são examinadas em seu próprio âmbito de processo.
+
+Novos pareceres registram seis dimensões, conforme o
+[ciclo de inspeção por IA](auditoria-de-conformidade-instrucional.md#inspeção-por-ia-sobre-o-conteúdo-salvo).
+Pareceres históricos com cinco dimensões ou sem esse detalhamento conservam a
+base e o julgamento originais; a realização da configuração aparece como ainda
+não avaliada. A [leitura focal dos canais](fluxos-prompts-e-contratos.md#auditoria-pedagógica-focal)
+descreve essa compatibilidade. A declaração humana e a avaliação de aprendizagem
+permanecem atos com evidências próprias.
 
 ## Como verificar as preferências e a base aplicada
 

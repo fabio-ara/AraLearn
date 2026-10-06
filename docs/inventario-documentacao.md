@@ -34,7 +34,7 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 | [`docs/audio.md`](audio.md) | referência de vozes, arquivos de áudio e geração por serviço |
 | [`docs/ferramentas-calculo-e-consulta.md`](ferramentas-calculo-e-consulta.md) | referência de calculadora, dicionários, gramática e leituras de apoio |
 | [`docs/fontes-e-citacoes.md`](fontes-e-citacoes.md) | dados bibliográficos, localizações e vínculos entre fontes e conteúdo |
-| [`docs/explicacao-e-revisao-humana.md`](explicacao-e-revisao-humana.md) | papel da explicação como texto-base e revisão humana de cada conteúdo salvo |
+| [`docs/explicacao-e-revisao-humana.md`](explicacao-e-revisao-humana.md) | papel da base explicativa e revisão humana de cada conteúdo salvo |
 | [`docs/examples/explicacao-redes.md`](examples/explicacao-redes.md) | exemplos completos de relação entre explicações, unidades, prática e fontes |
 | [`docs/fundamentacao-pedagogica-dos-resources.md`](fundamentacao-pedagogica-dos-resources.md) | critérios e literatura para escolher uma representação didática |
 | [`docs/estado-de-estudo-nao-punitivo.md`](estado-de-estudo-nao-punitivo.md) | dados pessoais usados para retomar o estudo e limites de sua interpretação |
@@ -90,6 +90,7 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 | [`LICENSE.md`](../LICENSE.md) | licença jurídica do repositório |
 | [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) | formulário de revisão de contribuições |
 | [`public/vendor/README.md`](../public/vendor/README.md) | referência das bibliotecas empacotadas |
+| [`tests/fixtures/audio/README.md`](../tests/fixtures/audio/README.md) | origem e finalidade do arquivo de áudio usado nos testes |
 
 ### Convenções, glossários e bibliografia
 
@@ -109,6 +110,10 @@ Para escolher um percurso de leitura por tarefa ou interesse, consulte o
 | --- | --- |
 | [`CHANGELOG.md`](../CHANGELOG.md) | história das versões públicas |
 | [`docs/schema-change-log.md`](schema-change-log.md) | histórico das alterações de estrutura e contratos do banco de dados |
+| [`docs/revisao-v10-estudo-implementacao.md`](revisao-v10-estudo-implementacao.md) | alcance técnico da revisão v10 e verificações daquela etapa |
+| [`docs/experimentos/revisao-v7/README.md`](experimentos/revisao-v7/README.md) | condições e resultados dos ensaios da revisão v7 |
+| [`docs/experimentos/revisao-v7/brief.md`](experimentos/revisao-v7/brief.md) | planejamento dos ensaios e critérios de comparação |
+| [`docs/experimentos/revisao-v7/comparacao-grande.md`](experimentos/revisao-v7/comparacao-grande.md) | registro da comparação com o curso de maior extensão |
 | [`ux-atlas/README.md`](../ux-atlas/README.md) | índice do histórico de experiência de uso |
 | [`ux-atlas/FINAL-UX-CONTRACT.md`](../ux-atlas/FINAL-UX-CONTRACT.md) | contrato da rodada de experiência de uso documentada no atlas |
 | [`ux-atlas/MATRIZ-COBERTURA.md`](../ux-atlas/MATRIZ-COBERTURA.md) | matriz histórica de requisitos de experiência de uso |
@@ -121,6 +126,16 @@ forma, o vocabulário controlado parte dos dados de
 `docs/evidence/terminologia-canonica.v1.json`. Esses arquivos de origem conservam
 as entradas a partir das quais as páginas são produzidas. Outros registros
 estruturados documentam formatos e verificações usados pelo sistema.
+
+| Conjunto | Função e manutenção |
+| --- | --- |
+| [`downloads/aralearn-chatgpt-action-openapi.yaml`](downloads/aralearn-chatgpt-action-openapi.yaml) | Contrato de Actions produzido por `npm run actions:openapi`; a conferência usa `npm run actions:openapi:check`. |
+| [`paridade-vertical.v1.json`](evidence/paridade-vertical.v1.json) e [`paridade-vertical-banco.v1.json`](evidence/paridade-vertical-banco.v1.json) | Relações entre capacidades, implementação e testes, conferidas por `npm run audit:parity`. |
+| [`baseline-infraestrutura-2026-08-17.json`](evidence/baseline-infraestrutura-2026-08-17.json) | Medição histórica de 17 de agosto de 2026; seus números descrevem o ambiente observado naquela data. |
+| [`revisao-documental-2026-10-05.json`](evidence/revisao-documental-2026-10-05.json) | Cobertura da revisão de 5 de outubro de 2026, com a versão da implementação examinada, os documentos conferidos e o alcance da auditoria independente. |
+| [`experimentos/revisao-v7`](experimentos/revisao-v7) | Entradas e resultados dos ensaios documentados, preservados com suas condições de execução. |
+| [`screenshots/chatgpt`](screenshots/chatgpt) | Capturas de referência para os guias de conexão; rótulos e disponibilidade dependem da interface do serviço. |
+| [`public/vendor/bibliography`](../public/vendor/bibliography) e [`citeproc-LICENSE.txt`](../src/bibliography/upstream/citeproc-LICENSE.txt) | Avisos e licenças de terceiros, mantidos com a distribuição correspondente. |
 
 Os [princípios editoriais](principios-editoriais.md) reúnem escolhas compartilhadas
 para quem escreve, revisa e contribui com a documentação. As páginas de uso e

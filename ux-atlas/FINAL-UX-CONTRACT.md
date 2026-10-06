@@ -1,16 +1,16 @@
 # Contrato histórico de experiência
 
-> Registro histórico da rodada de UX indicada neste arquivo. As afirmações de
-> vigência abaixo pertencem àquela rodada. Para a experiência atual, consulte o
-> [sistema visual](../docs/sistema-visual.md) e os guias de
-> [estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md).
+Este contrato conserva as decisões da rodada ligada às issues
+[#151](https://github.com/fabio-ara/AraLearn/issues/151) a
+[#153](https://github.com/fabio-ara/AraLearn/issues/153). Nele, expressões como
+“final” e “corrente” se referem àquela etapa. As decisões posteriores sobre
+ícones, navegação e autoria estão no [sistema visual](../docs/sistema-visual.md)
+e nos guias de [estudo](../docs/guia-estudante.md) e
+[autoria](../docs/guia-professor-autor.md).
 
-
-Na rodada registrada, este documento serviu como referência normativa compacta
-da experiência do AraLearn. Ele reconciliou o contrato anterior com a auditoria
-humana posterior e resolveu divergências entre os registros produzidos naquele
-trabalho. Para compreender o produto atual, comece pelo
-[mapa da documentação](../docs/README.md) e pelos contratos executáveis correntes.
+Na rodada registrada, o documento reconciliou o contrato anterior com a
+auditoria humana posterior e resolveu divergências entre os registros daquele
+trabalho. Seu texto permanece como referência histórica dessas escolhas.
 
 ## Decisões encerradas pela pesquisa finita
 

@@ -1,0 +1,2132 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-05",
+  "kind": "registro histórico de revisão documental",
+  "implementation": {
+    "commit": "97923a6390e082e0fa8292c93c78f680cc665cee",
+    "version": "0.0.100",
+    "humanTaskCatalogVersion": "11.1.0",
+    "authoringParametersVersion": "1.2.1"
+  },
+  "scope": {
+    "markdownDocuments": 80,
+    "bibliographicEntries": 138,
+    "controlledVocabularyEntries": 95
+  },
+  "method": [
+    "Leitura integral da documentação pública, com confronto das afirmações operacionais com código, contratos, migrações e testes.",
+    "Revisão da progressão das explicações, definição local de termos, precisão dos exemplos e repetição de ressalvas.",
+    "Segunda revisão por agente diferente do responsável pelas alterações de cada área; os achados foram corrigidos e reconferidos.",
+    "Registros históricos preservados com seu período de referência; as páginas de orientação corrente acompanham a implementação examinada."
+  ],
+  "documents": [
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        ".github/workflows/validacao.yml",
+        "CONTRIBUTING.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "35829732c76ed2016da15f96f5ca80ec51e051d6779dd0740690de3a45de5fc9"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "package.json",
+        "docs/revisao-v10-estudo-implementacao.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "abertura, títulos, entradas recentes, diferenças e preservação literal do histórico",
+      "changed": true,
+      "sha256": "4fabb22f2b4033994d4561f7a161958b0a6e023b74fde7d2b1c447f87c827eca"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "package.json",
+        ".github/workflows/validacao.yml",
+        "scripts/validationImpact.mjs",
+        "src/persistence/CourseLocalStore.js",
+        "src/persistence/courseCacheUpgradeV10.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "baaf94932f5b40e68a5080daf81a37ff6d81915bd7246a9dd71413a979d60481"
+    },
+    {
+      "path": "LICENSE.md",
+      "area": "índices, convenções e fontes documentais",
+      "implementationEvidence": [],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": false,
+      "sha256": "4d217feb7806a60e404c87aec7f3e7c6fb070e5d5624c2e4a62e5f7b14bb61a9"
+    },
+    {
+      "path": "README.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/study/CourseStudyRepository.js",
+        "src/domain/courseContentInspection.js",
+        "src/ui/AssistantConnectionSettings.js",
+        "package.json",
+        "src/domain/courseExplanation.js",
+        "src/study/studyExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "d99ee37a0748e48d08fc888a0786cd7e318d8f23a21d0266f7fa47c9e6e44c68"
+    },
+    {
+      "path": "android/README.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "android/app/build.gradle.kts",
+        "android/app/src/main/AndroidManifest.xml",
+        "android/app/src/main/java/com/aralearn/app/MainActivity.java",
+        "android/app/src/main/res/xml/network_security_config.xml",
+        "scripts/buildAndroidDebug.ps1",
+        "scripts/buildAndroidRelease.ps1",
+        "scripts/androidNativeGate.py",
+        "src/supabase/SupabaseAuthClient.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "1da7121f200a68194523697f294ba633a74a38b3f42b08ca2f2de871797b910b"
+    },
+    {
+      "path": "docs/README.md",
+      "area": "índices, convenções e fontes documentais",
+      "implementationEvidence": [],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "dd7ba008c1c0e8abab947b92e5acb487c15c1aa49dea23ccd34b13ec3f8435fc"
+    },
+    {
+      "path": "docs/analytics-instrucionais.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/courseAuthoringAnalytics.js",
+        "src/domain/courseEditorialProvenance.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql",
+        "supabase/migrations/20260909061327_contextual_explicit_course_structure.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "81b1bc571c0d90d383798a03d93bf4433dafb33217ee7e206966eb54c3011447"
+    },
+    {
+      "path": "docs/aralearn-contract.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "src/domain/courseAnchoredAnnotations.js",
+        "src/domain/courseContentInspection.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "6386fd253e8f454d0c914181f4bfc053423e9df2969e0cadf6d217b33331afc4"
+    },
+    {
+      "path": "docs/arquitetura.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "src/domain/courseContentInspection.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/migrations/20260924175938_revisao_v7_focal_audit_basis.sql",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql",
+        "supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql",
+        "scripts/runPreflight.mjs",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "e6d31382412707e09bf7714d0475df697b60371fc96daf95950038e17bee31c5"
+    },
+    {
+      "path": "docs/assistencia-por-ia.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "src/assist/courseContextualAssistance.js",
+        "src/ui/CourseProviderAssistance.js",
+        "src/generation/providers/studyUnitAssistanceProviders.js",
+        "src/study/CourseStudyApplication.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "45a98d138661641463863d7cb9cb3b4bd44dd883e6af0b5e18df74778e045502"
+    },
+    {
+      "path": "docs/audio.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/courseMedia.js",
+        "src/resources/packages/audio/interaction.js",
+        "src/resources/packages/audio/nativeTimeline.js",
+        "src/generation/providers/geminiSpeechProvider.js",
+        "src/ui/CourseAudioPanel.js",
+        "tests/runtime/resource-audio.test.js",
+        "tests/runtime/revisao-v7-audio-readiness.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "03ba4c83ae1785929565c7c6343ddac25c266e56b5b3b9fd0de31cba6fbd6143"
+    },
+    {
+      "path": "docs/auditoria-academica-dos-resources.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/resources/packages/formula/index.js",
+        "src/resources/packages/index.js",
+        "tests/kernel/resource-catalog-course.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "8577282b34a69d641bfd8dca0e7a307b40e5b4db85457f5ca0af94bd6ca059ab"
+    },
+    {
+      "path": "docs/auditoria-de-conformidade-instrucional.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseContentInspection.js",
+        "tests/runtime/course-pedagogical-audit.test.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "6e260f938844e07db581826547d14f06405451ac46ef17cfe795b57dfb5ea152"
+    },
+    {
+      "path": "docs/auditoria-front-end.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "src/ui/CourseMicrosequenceReview.js",
+        "src/ui/CourseAuthoringSurface.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "scripts/validateCandidate.mjs",
+        "tests/runtime/course-ai-inspection-pglite.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "e59f7af6f4992a191ea625d76440942da6128357c7f334e1fbb729502bab60ac"
+    },
+    {
+      "path": "docs/autoria-actions.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseActionBindings.js",
+        "supabase/functions/_shared/aralearn-authoring/courseActionPayload.js",
+        "supabase/functions/_shared/aralearn-authoring/courseActionServer.js",
+        "scripts/buildChatGptActionOpenApi.mjs",
+        "supabase/functions/_shared/aralearn-authoring/courseFocalMaterialization.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "4ded762f7031d8e1697932abcc0b42f83456552c7f3a9130f6b06f2ae32c083f"
+    },
+    {
+      "path": "docs/autoria-contextual.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "src/ui/CourseAuthoringSurface.js",
+        "src/domain/courseContentInspection.js",
+        "supabase/migrations/20260916025342_contextual_ai_inspection.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "0e60732011e6c7b0946826eb922f0e00d2a4a744dfbee75337429a7eeca1a6a3"
+    },
+    {
+      "path": "docs/autoria-mcp.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "supabase/functions/_shared/aralearn-authoring/courseFocalMaterialization.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "075ec72d638721f5a207ea09bf44c41f556ccd06f85b88bd477c09db683f34c7"
+    },
+    {
+      "path": "docs/benchmark-footprint-editorial.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "scripts/measureEditorialFootprint.mjs",
+        "scripts/editorialFootprintMetrics.mjs",
+        "tests/gallery/editorial-footprint.html",
+        "tests/fixtures/editorial-footprint.v1.json",
+        "tests/runtime/editorial-footprint-benchmark.test.js",
+        "package.json"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "b83fbc456c5a46cb9f6c992a48c517b1b47333c79df490fe6d523c8c432735f0"
+    },
+    {
+      "path": "docs/chatgpt.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "8c0812096c33c2a053856ce76ecc3520249211e700d77a3f0fefba3187465097"
+    },
+    {
+      "path": "docs/componentes-didaticos.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/resources/packages/generated.js",
+        "src/resources/packages/formula/index.js",
+        "src/resources/packages/terminal-session/index.js",
+        "src/resources/packages/tree/index.js",
+        "src/resources/kernel/studyUnitEnvelope.js",
+        "src/domain/coursePracticeAuthoring.js",
+        "src/domain/coursePedagogicalAudit.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "72181040bc7e497172bbf2e680f7cf422bcfc62b1ae7ab92946e5b8830ccc6d6"
+    },
+    {
+      "path": "docs/conectar-assistente.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "ee52919bfe4600f5db70d72d8f82424fa3a0ff256513149005dff939d4b10aa4"
+    },
+    {
+      "path": "docs/configuracoes.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/ui/AuthoringProcessPreferencesSettings.js",
+        "src/ui/AssistantConnectionSettings.js",
+        "src/ui/StudyDeviceSettings.js",
+        "src/ui/VisitorSettings.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "0ae8470685c3afc0083a64b9b19b100cbe1c54416e7931f92a63d2f840c3623f"
+    },
+    {
+      "path": "docs/contribuicao-originalidade.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/resources/packages/formula/index.js",
+        "src/resources/packages/code/index.js",
+        "tests/kernel/resource-catalog-course.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "ba85ead056a414f37a3ace7e258fd9e375cd3dcc8df7d849a331f30af189e66d"
+    },
+    {
+      "path": "docs/corpus-unidades-de-analise.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "tests/fixtures/instructional-analysis-granularity.v1.json",
+        "tests/runtime/instructional-analysis-granularity-eval.test.js",
+        "src/domain/courseAuthoringBasis.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "2de295f4cae6fdf819d7462be866fa441632dca0146463be707029c365c38863"
+    },
+    {
+      "path": "docs/criar-cursos-pelo-chat.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js",
+        "supabase/functions/_shared/aralearn-authoring/courseKnowledge.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "3b05ebf9f8c80e5153792d61357ed47ea9d950653595067dbb2a685f823fba02"
+    },
+    {
+      "path": "docs/desenho-instrucional-parametrizado.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/courseDesignParameters.js",
+        "src/domain/courseAuthoringBasis.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "tests/runtime/course-design-parameters.test.js",
+        "tests/runtime/instructional-analysis-granularity-eval.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "428ecf47a4f9c39a5a6ee4f31bb6fbd60d32e8160ffba82e6a73ab4df36a5bb6"
+    },
+    {
+      "path": "docs/dicionario-metricas-datasets.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/courseAuthoringBasis.js",
+        "src/domain/courseAuthoringAnalytics.js",
+        "src/domain/courseAuthoringComparison.js",
+        "src/domain/courseEditorialProvenance.js",
+        "supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "0a8988a75996518169cbf1bbf02426e6b5a00f021501d7835937a7e75461a81b"
+    },
+    {
+      "path": "docs/estado-atual-e-roadmap.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "package.json",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "src/study/studyExplanation.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "2d0ef09814181e0f0adc61e8c57fc81aeadf47bc368e72662ec063aae9bafc49"
+    },
+    {
+      "path": "docs/estado-de-estudo-nao-punitivo.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/storage/progressStore.js",
+        "src/study/CourseStudyRepository.js",
+        "src/study/CourseStudyApplication.js",
+        "tests/runtime/progress-store.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "3e0cc57256b0e1c627111e83127e912f25de98af9f3d8f5b7cd43ed9ee55733f"
+    },
+    {
+      "path": "docs/estrutura-curricular-por-referencia.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "tests/runtime/course-human-structure-tasks.test.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "f5e075ea4a8aaad7929d8759dd07ac595b74c2cbc9c1c929ceee16fb157faef1"
+    },
+    {
+      "path": "docs/examples/explicacao-redes.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/resources/packages/tree/index.js",
+        "src/resources/packages/choice-response/index.js",
+        "src/domain/courseDesignParameters.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "cf3da9371b7803dca0d39444e5175b9667b003a37e09f07f0c5d6ad5a48491b9"
+    },
+    {
+      "path": "docs/experimentos-instrucionais-parametrizados.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "src/domain/courseAuthoringBasis.js",
+        "src/domain/coursePedagogicalAudit.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "3e0207d2e8c7a16209d681fc3e17cee5bae1dfbf71de7285fe80d9fa575ca692"
+    },
+    {
+      "path": "docs/experimentos/revisao-v7/README.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "scripts/verifyV7AuthoringExperiments.mjs",
+        "docs/experimentos/revisao-v7/assessment.json",
+        "docs/experimentos/revisao-v7/tool.json",
+        "docs/experimentos/revisao-v7/tool-assisted-v2.json"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "7124d3011d7ce8cd4a3f5ce31afe94f5f5823007a4483e47dd8e23e5368eec4d"
+    },
+    {
+      "path": "docs/experimentos/revisao-v7/brief.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "docs/experimentos/revisao-v7/README.md",
+        "docs/experimentos/revisao-v7/catalog.json",
+        "docs/experimentos/revisao-v7/tool.json"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "915717c261d94a439784b1840d2f48d88cf995c695b1eea2577b535f6ca82357"
+    },
+    {
+      "path": "docs/experimentos/revisao-v7/comparacao-grande.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "tests/runtime/revisao-v7-large-comparison.test.js",
+        "tests/e2e/revisao-v7-large-comparison.spec.js",
+        "docs/analytics-instrucionais.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "48e61056895b15b6774b7c48eb90b54fec5b9d84c81956e7b7bdaca7adcb82d5"
+    },
+    {
+      "path": "docs/explicacao-e-revisao-humana.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/courseExplanation.js",
+        "src/domain/courseContentReview.js",
+        "src/study/studyExplanation.js",
+        "src/domain/appliedExplanationBasis.js",
+        "tests/runtime/course-content-review-access-pglite.test.js",
+        "tests/runtime/course-explanation.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "789b63bac613a61c881407e74b5a5ec281a1f91600a285e82c3b6db870578a60"
+    },
+    {
+      "path": "docs/ferramentas-calculo-e-consulta.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/resources/packages/calculator/expression.js",
+        "src/resources/packages/calculator/index.js",
+        "src/resources/packages/audio/index.js",
+        "tests/runtime/study-tool-packages.test.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "44f8e7b9d1b9c58c9deea8a5b219b1198fb93494633a1c1a4617698dd1e7fbf8"
+    },
+    {
+      "path": "docs/fluxos-prompts-e-contratos.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql",
+        "supabase/functions/_shared/aralearn-authoring/courseFocalMaterialization.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "bdc72cd77ed9d4804090370caa4044281c0e0351f1e8e1ae3c3b7c6930297b88"
+    },
+    {
+      "path": "docs/fontes-e-citacoes.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/courseSources.js",
+        "src/domain/courseSourceOccurrences.js",
+        "src/study/studyExplanation.js",
+        "src/ui/CourseSourcesPanel.js",
+        "src/ui/sourceOccurrenceForm.js",
+        "src/bibliography/renderCslReference.js",
+        "scripts/buildBibliographyVendor.mjs",
+        "supabase/migrations/20260905071622_separate_public_file_policy_from_citation_display.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "5b5e07ab74e2ddce732909291b32e7109c5e47b340aaa1255a4100c7d4cd2b27"
+    },
+    {
+      "path": "docs/fundamentacao-pedagogica-dos-resources.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/resources/packages/formula/index.js",
+        "src/resources/packages/ordering-response/index.js",
+        "tests/kernel/resource-catalog-course.test.js",
+        "src/domain/courseExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "e78e77a7bd4d431cb7d6416fa906b294c52733e7748a226b2e67c7858d90d8bf"
+    },
+    {
+      "path": "docs/fundamentos-pesquisa-e-governanca.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseContentReview.js",
+        "src/domain/courseAuthoringAnalytics.js",
+        "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12651.htm"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "3bbf84f4797e1f33e9e248dade104f2037e152182ebe31c0e9ba6e900278d783"
+    },
+    {
+      "path": "docs/glossario-construtos.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/courseAuthoringBasis.js",
+        "src/domain/courseAuthoringAnalytics.js",
+        "src/domain/courseEditorialProvenance.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseContentReview.js",
+        "tests/runtime/research-governance-docs.test.js",
+        "src/domain/courseExplanation.js",
+        "src/domain/courseAnchoredAnnotations.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "7f0393d7db9a2a5fc64acd63bcf3afcd1259dba37b1b950b40fcdb7fc438d6d3"
+    },
+    {
+      "path": "docs/glossario-tecnico.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "src/domain/courseContentInspection.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "src/persistence/CourseLocalStore.js",
+        "src/persistence/courseCacheUpgradeV10.js",
+        "scripts/verifyHostedBackend.mjs",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql",
+        "supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "03265893c2189176689304d0d465d1368f2f27f73220537308c11dc7639d73ca"
+    },
+    {
+      "path": "docs/guia-desenvolvedor.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "scripts/servePublic.js",
+        "supabase/config.toml",
+        "scripts/validateLocalSupabase.ps1",
+        "scripts/runLocalIntegration.mjs",
+        "scripts/validateCandidate.mjs",
+        "scripts/validationImpact.mjs",
+        ".github/workflows/validacao.yml",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseActionBindings.js",
+        "supabase/functions/_shared/aralearn-authoring/courseKnowledge.js",
+        "src/domain/courseContentInspection.js",
+        "src/domain/coursePedagogicalAudit.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "a8020139e5c04dca6ca6bb4f7a78496c6b54f87848d711c52e3950b5c18a37ae"
+    },
+    {
+      "path": "docs/guia-estudante.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/study/CourseStudyApplication.js",
+        "src/study/CourseStudyScreen.js",
+        "src/study/studyExplanation.js",
+        "src/resources/packages/choice-response/interaction.js",
+        "src/resources/packages/gap-response/interaction.js",
+        "src/resources/packages/ordering-response/interaction.js",
+        "src/domain/courseExplanation.js",
+        "src/study/studyExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "3c95c38bd614ad9ffd4ef81bd2be40d4c9ddd50c9563005b21ad908c8e2fd850"
+    },
+    {
+      "path": "docs/guia-pesquisador.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseAuthoringBasis.js",
+        "src/domain/courseExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "df395235bab7cc1690f093337bb84a26cecf0bf22da49ff7fbf914cb43041894"
+    },
+    {
+      "path": "docs/guia-professor-autor.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseContentInspection.js",
+        "src/ui/CourseMicrosequenceReview.js",
+        "src/ui/CourseInspectionSequence.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql",
+        "src/domain/courseExplanation.js",
+        "src/study/studyExplanation.js",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "76328c6fcae2b1e7ea3f8e5440f1b09e538b3692b18b6fad5a1da5c2cbb703ef"
+    },
+    {
+      "path": "docs/implantacao.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "scripts/planDeployment.ps1",
+        "scripts/diagnoseDeployment.ps1",
+        "scripts/deploySupabase.ps1",
+        "scripts/validateCandidate.mjs",
+        "scripts/validationImpact.mjs",
+        "scripts/candidateApplicability.mjs",
+        "scripts/releaseCandidate.mjs",
+        ".github/workflows/validacao.yml",
+        ".github/workflows/pages.yml",
+        ".github/workflows/android-release.yml",
+        "scripts/androidNativeGate.py",
+        "scripts/verifyHostedBackend.mjs",
+        "supabase/runtime-manifest.json"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "1dcdab939c5707348ddce39c1d9fd5be363a0625a17d7894aea602de49d8f093"
+    },
+    {
+      "path": "docs/inventario-documentacao.md",
+      "area": "índices, convenções e fontes documentais",
+      "implementationEvidence": [],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "ca01145836b746886404e35c6810db2a7c531f0bea3500fb8193145532437add"
+    },
+    {
+      "path": "docs/matriz-conformidade-tecnica.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "src/domain/courseContentInspection.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js",
+        "src/persistence/courseCacheUpgradeV10.js",
+        "tests/runtime/course-content-inspection.test.js",
+        "tests/runtime/course-pedagogical-audit.test.js",
+        "tests/runtime/course-ai-inspection-pglite.test.js",
+        "tests/runtime/course-human-audit-context.test.js",
+        "tests/runtime/course-cache-upgrade-v10.test.js",
+        "tests/runtime/revisao-v7-cache-upgrade.test.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "23a8ee0930dc290601afc7049b18306954accddc90de8bd976ef4621f09b8002"
+    },
+    {
+      "path": "docs/matriz-rastreabilidade-pedagogica.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseAuthoringAnalytics.js",
+        "src/domain/courseExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "d093dd2aedff09bc329e5a670cea5738766ee282526c84b3f1133ec7284f457f"
+    },
+    {
+      "path": "docs/modelo-didatico.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/courseDesignParameters.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js",
+        "tests/runtime/course-human-materialization.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "41f0057247a63b5bf57ad795569861e6d9c21b2080e2957c37347b5a984a4b93"
+    },
+    {
+      "path": "docs/observacoes-pedagogicas.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "src/domain/courseAnchoredAnnotations.js",
+        "src/domain/courseContentInspection.js",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "a72acbaaa7b6e83c0a09a103f64ba0517554eae5528d3a8877d05d6e81f2a557"
+    },
+    {
+      "path": "docs/origens-do-aralearn.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "docs/principios-editoriais.md",
+        "src/domain/courseEntities.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": false,
+      "sha256": "70bd3a83dc77eca6b08a8fc9349713fd07752fb4a0bda26864edad65f3bd5028"
+    },
+    {
+      "path": "docs/parametros-de-autoria.md",
+      "area": "pedagogia e componentes",
+      "implementationEvidence": [
+        "src/domain/authoringProcessPreferences.js",
+        "src/domain/courseDesignParameters.js",
+        "src/domain/appliedExplanationBasis.js",
+        "src/domain/coursePedagogicalAudit.js",
+        "tests/runtime/authoring-process-preferences.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "46f6b96c7c56a81bf750f99f0c5dfac4eee0fe0a5b2e2e7d5b38c1d21136dfcf"
+    },
+    {
+      "path": "docs/persistencia-relacional.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "src/persistence/CourseLocalStore.js",
+        "src/persistence/courseCacheUpgradeV10.js",
+        "src/persistence/courseContentUpgradeV7.js",
+        "src/persistence/studyDraftRecovery.js",
+        "src/persistence/AuthSessionStore.js",
+        "supabase/migrations/20260924175938_revisao_v7_focal_audit_basis.sql",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql",
+        "supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql",
+        "tests/runtime/course-ai-inspection-pglite.test.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "bf08ba4deb4356a71c37d0d236ffdaabd9ba1b5f46329d9ebf493ff5f4de8196"
+    },
+    {
+      "path": "docs/planejamento-contextual.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "src/ui/CourseDesignPanel.js",
+        "src/ui/CourseCurriculumMap.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "72f556f986d6d2fc4e98c67437f2ee12b9e7f42663316f4780599e2b98ec6508"
+    },
+    {
+      "path": "docs/principios-editoriais.md",
+      "area": "índices, convenções e fontes documentais",
+      "implementationEvidence": [],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "ae94f37a6371ca43266a7444df4666d1a61a02a0762ffa387a2c98be719b2356"
+    },
+    {
+      "path": "docs/privacidade.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/persistence/AuthSessionStore.js",
+        "src/supabase/SupabaseAuthClient.js",
+        "src/assist/courseContextualAssistance.js",
+        "src/domain/courseContentInspection.js",
+        "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql",
+        "supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql",
+        "supabase/migrations/20260905145236_independent_course_copies.sql",
+        "supabase/migrations/20260817140000_course_identity_cutover.sql",
+        "supabase/migrations/20260910210609_course_people_rate_window_atomic.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "0e95a386eae4a330a5e38273637e62f0e23a24e403c5ea9cc0ac260689ddf11c"
+    },
+    {
+      "path": "docs/protocolo-avaliacao-artefato.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/coursePedagogicalAudit.js",
+        "src/domain/courseContentReview.js",
+        "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/decreto/d12651.htm"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "5212de80147a4efe1d81a21e750aa5fe48d6e0ae7caf94b2781c25d78b501896"
+    },
+    {
+      "path": "docs/prova-local-canais-autoria.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "supabase/tests/course-authoring-channels-local-smoke.mjs",
+        "tests/support/localSupabaseE2e.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "a997b5f8fa5f36c9c560d188188f9a0a88e8031d8621542f540049d01e166b96"
+    },
+    {
+      "path": "docs/quadro-teorico.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/courseAuthoringBasis.js",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "774502c720a77515bca0b8d34da5c1d3255f4cb299fb74900d248ec473f65883"
+    },
+    {
+      "path": "docs/referencias.md",
+      "area": "índices, convenções e fontes documentais",
+      "implementationEvidence": [
+        "docs/referencias.bib",
+        "scripts/buildReadableReferences.mjs"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "a7f850e2099595f73cc24e0b9b368e59b195de8077d32568511053ca657b8af8"
+    },
+    {
+      "path": "docs/revisao-de-literatura.md",
+      "area": "pesquisa e métricas",
+      "implementationEvidence": [
+        "src/domain/courseAuthoringBasis.js",
+        "src/domain/courseAuthoringAnalytics.js",
+        "src/domain/courseAuthoringComparison.js",
+        "tests/runtime/research-governance-docs.test.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "5e08be45a791650592e02c25982f2edd450898feb0f457e4c6bb769e31896e7b"
+    },
+    {
+      "path": "docs/revisao-v10-estudo-implementacao.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "package.json",
+        "CHANGELOG.md",
+        "supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "bdad39f4feaa3015993ecbeaf56aa877a54ee8e8a01d606dde3a161fd47820d2"
+    },
+    {
+      "path": "docs/roteiro-aceitacao-humana-autoria.md",
+      "area": "autoria e contratos",
+      "implementationEvidence": [
+        "scripts/measureAuthoringToolLoad.mjs",
+        "src/domain/courseContentInspection.js",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "d023ab352b0f38f19d2744847b336761e5fad53198e4f35b22ae901a6ce5a8ca"
+    },
+    {
+      "path": "docs/schema-change-log.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql",
+        "supabase/migrations/20260929100247_reconcile_component_policy_catalog_versions.sql",
+        "supabase/migrations/20260929082030_canonicalize_authoring_analytics_parameter_sets.sql",
+        "supabase/migrations/20260928125507_contextual_design_writer_edges.sql",
+        "supabase/migrations/20260928120000_allow_empty_practice_variation_dimensions.sql",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql",
+        "supabase/migrations/20260924185630_revisao_v7_runtime_contract.sql",
+        "docs/revisao-v10-estudo-implementacao.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "abertura, títulos, entradas recentes, diferenças e preservação literal do histórico",
+      "changed": true,
+      "sha256": "88640fd148fea37a0c10ea3cabd74bd347f70c0d6c60525aa47af2f997628046"
+    },
+    {
+      "path": "docs/sistema-visual.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "public/styles-tokens.css",
+        "public/styles-shell-baseline.css",
+        "src/ui/CourseAuthoringSurface.js",
+        "src/ui/CourseInspectionSequence.js",
+        "src/ui/CourseAnalyticsPanel.js",
+        "src/study/studyExplanation.js",
+        "src/study/CourseStudyApplication.js",
+        "src/resources/packages/generated.js",
+        "src/domain/courseExplanation.js",
+        "src/study/studyExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "717afdae0ce8d33307d953afeb9a15adff2e2b95800c5889b9296e4789e2ee70"
+    },
+    {
+      "path": "docs/solucao-de-problemas.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/study/CourseStudyApplication.js",
+        "src/study/studyExplanation.js",
+        "src/domain/courseContentInspection.js",
+        "src/resources/packages/choice-response/index.js",
+        "src/resources/packages/gap-response/index.js",
+        "src/resources/packages/ordering-response/index.js",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "5a967f27c7353ebb84125b47bc934a660d5f6e0f88209866bb6a7f66170f2259"
+    },
+    {
+      "path": "docs/supabase.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "supabase/config.toml",
+        "supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js",
+        "supabase/functions/_shared/aralearn-authoring/supabaseEnvironment.js",
+        "src/domain/courseMedia.js",
+        "src/domain/courseContentInspection.js",
+        "supabase/migrations/20260924175938_revisao_v7_focal_audit_basis.sql",
+        "supabase/migrations/20260928110000_configuration_realization_inspection.sql",
+        "supabase/migrations/20260902044404_cut_legacy_authoring_runtime.sql",
+        "supabase/migrations/20260916025032_author_observation_decisions.sql",
+        "supabase/migrations/20260916030333_editorial_interventions_and_observation_files.sql",
+        "supabase/migrations/20260930010000_pedagogical_basis_study_order.sql"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "2d3bd35a76e390c3bcccd40ef5d81e329033e5e9c633738a8562ed38308c5e59"
+    },
+    {
+      "path": "docs/uso-do-app.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/ui/AuthGate.js",
+        "src/ui/AuthoringProcessPreferencesSettings.js",
+        "src/ui/CourseAuthoringSurface.js",
+        "src/study/CourseStudyScreen.js",
+        "src/study/studyExplanation.js",
+        "src/study/CourseStudyApplication.js",
+        "src/domain/courseMedia.js",
+        "src/domain/courseSources.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "a02901c73864d47d09129bead8a9667aca477414f1c81537bbb3eb2b25646a02"
+    },
+    {
+      "path": "docs/visao-do-produto.md",
+      "area": "uso e design",
+      "implementationEvidence": [
+        "src/resources/packages/generated.js",
+        "src/study/CourseStudyApplication.js",
+        "src/resources/packages/choice-response/interaction.js",
+        "src/resources/packages/gap-response/interaction.js",
+        "src/resources/packages/ordering-response/interaction.js",
+        "src/domain/courseExplanation.js",
+        "src/study/studyExplanation.js"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "f136a35ec7a37742c03f5f9e33ca7d116a851382038a4d9e693bcc74add0d324"
+    },
+    {
+      "path": "docs/vocabulario-controlado.md",
+      "area": "índices, convenções e fontes documentais",
+      "implementationEvidence": [
+        "docs/evidence/terminologia-canonica.v1.json",
+        "scripts/auditTerminology.mjs"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "08976076a40da76644bc6a490a96cdc3107ac63aef7b69c0d95e46cef826fc65"
+    },
+    {
+      "path": "public/vendor/README.md",
+      "area": "infraestrutura e engenharia",
+      "implementationEvidence": [
+        "package.json",
+        "package-lock.json",
+        "public/vendor/viz-global.js",
+        "scripts/buildVegaInterpreterVendor.mjs",
+        "scripts/buildBibliographyVendor.mjs",
+        "public/vendor/bibliography/NOTICE.txt"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "9e9c1a8bb1f89338301316cb7f2ac7e040db5cadc38b292ad3846267af1b924f"
+    },
+    {
+      "path": "tests/fixtures/audio/README.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "tests/runtime/resource-audio.test.js",
+        "src/resources/packages/audio/index.js",
+        "tests/fixtures/audio/aralearn-greeting.wav"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "60a75f634768b952b3395e580d0b023c2c82700b1f2f5b36debd206e036bf62f"
+    },
+    {
+      "path": "ux-atlas/FINAL-UX-CONTRACT.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "docs/sistema-visual.md",
+        "docs/guia-estudante.md",
+        "docs/guia-professor-autor.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "798b10458b4a2ed9bd4d44ca1e90878896a9a079efbe3ffb2ad95cf427a00824"
+    },
+    {
+      "path": "ux-atlas/MATRIZ-COBERTURA.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "ux-atlas/FINAL-UX-CONTRACT.md",
+        "docs/sistema-visual.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "8df38058856235e758743d66f6992f28b07c2716d696e453ec6705fb3d6759e4"
+    },
+    {
+      "path": "ux-atlas/README.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "ux-atlas/FINAL-UX-CONTRACT.md",
+        "docs/sistema-visual.md",
+        "docs/guia-estudante.md",
+        "docs/guia-professor-autor.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": false,
+      "sha256": "b7b24fc8898f358ed6c5ac67bbd4d8879f3afc39c413f517cfa63ea854feb7dc"
+    },
+    {
+      "path": "ux-atlas/STUDY-VISUAL-BASELINE.md",
+      "area": "história e ensaios",
+      "implementationEvidence": [
+        "github:fabio-ara/AraLearn@9e7ddc013d8efcf2918bf2b5b03f506217098e15:src/ui/renderHomeScreen.js",
+        "github:fabio-ara/AraLearn@9e7ddc013d8efcf2918bf2b5b03f506217098e15:src/ui/renderLessonScreen.js",
+        "docs/sistema-visual.md"
+      ],
+      "readInFull": true,
+      "independentAudit": "leitura integral e conferência de conteúdo",
+      "changed": true,
+      "sha256": "4863b46e295f1b475b90c3c0fe72194af5333f37a2656f430fd210ba79c82003"
+    }
+  ],
+  "relatedArtifacts": [
+    {
+      "paths": [
+        "docs/evidence/terminologia-canonica.v1.json",
+        "docs/referencias.bib"
+      ],
+      "review": "Fontes canônicas revistas; páginas derivadas regeneradas e conferidas."
+    },
+    {
+      "paths": [
+        "docs/downloads/aralearn-chatgpt-action-openapi.yaml"
+      ],
+      "review": "Conferência de correspondência com o gerador e o catálogo atual; contrato preservado."
+    },
+    {
+      "paths": [
+        "docs/evidence/paridade-vertical.v1.json",
+        "docs/evidence/paridade-vertical-banco.v1.json"
+      ],
+      "review": "Inventários confrontados pelo audit:parity; a comparação com banco executável pertence à validação Supabase."
+    },
+    {
+      "paths": [
+        "docs/experimentos/revisao-v7"
+      ],
+      "review": "Entradas e resultados históricos preservados. A reprodução estrutural conferiu 37 registros; três contagens de bytes diferiram em 1–2 bytes do registro histórico."
+    },
+    {
+      "paths": [
+        "docs/evidence/baseline-infraestrutura-2026-08-17.json"
+      ],
+      "review": "Registro histórico identificado no inventário com sua data de medição."
+    },
+    {
+      "paths": [
+        "docs/screenshots/chatgpt"
+      ],
+      "review": "Capturas identificadas como referências dos percursos documentados; instruções atuais conferidas nas fontes oficiais."
+    },
+    {
+      "paths": [
+        "public/vendor/bibliography",
+        "src/bibliography/upstream/citeproc-LICENSE.txt"
+      ],
+      "review": "Avisos jurídicos preservados; versões e distribuições confrontadas na revisão do guia de dependências."
+    }
+  ],
+  "bibliography": {
+    "scope": "Conferência de identidade e metadados das 138 referências e revisão das relações documentadas com o projeto. O alcance de leitura acadêmica de cada relação permanece indicado nas páginas pertinentes.",
+    "crossrefQueries": [
+      {
+        "key": "greimas1966recit",
+        "doi": "10.3406/comm.1966.1114",
+        "source": "https://api.crossref.org/works/10.3406%2Fcomm.1966.1114",
+        "checkedAt": "2026-10-05T16:22:45Z",
+        "status": "read"
+      },
+      {
+        "key": "gilardi2023annotation",
+        "doi": "10.1073/pnas.2305016120",
+        "source": "https://api.crossref.org/works/10.1073%2Fpnas.2305016120",
+        "checkedAt": "2026-10-05T16:22:45Z",
+        "status": "read"
+      },
+      {
+        "key": "pangakis2023validation",
+        "doi": "10.48550/arXiv.2306.00176",
+        "source": "https://api.crossref.org/works/10.48550%2FarXiv.2306.00176",
+        "checkedAt": "2026-10-05T16:22:45Z",
+        "status": "unavailable"
+      },
+      {
+        "key": "sennrich2016subwords",
+        "doi": "10.18653/v1/P16-1162",
+        "source": "https://api.crossref.org/works/10.18653%2Fv1%2FP16-1162",
+        "checkedAt": "2026-10-05T16:22:45Z",
+        "status": "read"
+      },
+      {
+        "key": "faudzi2023mobileui",
+        "doi": "10.3390/educsci13010094",
+        "source": "https://api.crossref.org/works/10.3390%2Feducsci13010094",
+        "checkedAt": "2026-10-05T16:22:45Z",
+        "status": "read"
+      },
+      {
+        "key": "piepenbrock2014polarity",
+        "doi": "10.1080/00140139.2014.948496",
+        "source": "https://api.crossref.org/works/10.1080%2F00140139.2014.948496",
+        "checkedAt": "2026-10-05T16:22:45Z",
+        "status": "read"
+      },
+      {
+        "key": "xie2021colormode",
+        "doi": "10.1109/ACCESS.2021.3061770",
+        "source": "https://api.crossref.org/works/10.1109%2FACCESS.2021.3061770",
+        "checkedAt": "2026-10-05T16:22:51Z",
+        "status": "read"
+      },
+      {
+        "key": "nicol2006formative",
+        "doi": "10.1080/03075070600572090",
+        "source": "https://api.crossref.org/works/10.1080%2F03075070600572090",
+        "checkedAt": "2026-10-05T16:22:51Z",
+        "status": "read"
+      },
+      {
+        "key": "carless2018feedbackliteracy",
+        "doi": "10.1080/02602938.2018.1463354",
+        "source": "https://api.crossref.org/works/10.1080%2F02602938.2018.1463354",
+        "checkedAt": "2026-10-05T16:22:51Z",
+        "status": "read"
+      },
+      {
+        "key": "nicol2024feedbackagency",
+        "doi": "10.1080/02602938.2023.2265080",
+        "source": "https://api.crossref.org/works/10.1080%2F02602938.2023.2265080",
+        "checkedAt": "2026-10-05T16:22:51Z",
+        "status": "read"
+      },
+      {
+        "key": "wenger1998communities",
+        "doi": "10.1017/CBO9780511803932",
+        "source": "https://api.crossref.org/works/10.1017%2FCBO9780511803932",
+        "checkedAt": "2026-10-05T16:22:52Z",
+        "status": "read"
+      },
+      {
+        "key": "bridwellmitchell2016collaborative",
+        "doi": "10.1177/0170840615593589",
+        "source": "https://api.crossref.org/works/10.1177%2F0170840615593589",
+        "checkedAt": "2026-10-05T16:22:52Z",
+        "status": "read"
+      },
+      {
+        "key": "dbrc2003designbased",
+        "doi": "10.3102/0013189X032001005",
+        "source": "https://api.crossref.org/works/10.3102%2F0013189X032001005",
+        "checkedAt": "2026-10-05T16:22:58Z",
+        "status": "read"
+      },
+      {
+        "key": "hevner2004designscience",
+        "doi": "10.2307/25148625",
+        "source": "https://api.crossref.org/works/10.2307%2F25148625",
+        "checkedAt": "2026-10-05T16:22:58Z",
+        "status": "read"
+      },
+      {
+        "key": "degagne2019microlearning",
+        "doi": "10.2196/13997",
+        "source": "https://api.crossref.org/works/10.2196%2F13997",
+        "checkedAt": "2026-10-05T16:22:58Z",
+        "status": "read"
+      },
+      {
+        "key": "lai2022mobile",
+        "doi": "10.1007/s10639-022-10945-5",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10639-022-10945-5",
+        "checkedAt": "2026-10-05T16:22:58Z",
+        "status": "read"
+      },
+      {
+        "key": "sweller1988cognitiveload",
+        "doi": "10.1207/s15516709cog1202_4",
+        "source": "https://api.crossref.org/works/10.1207%2Fs15516709cog1202_4",
+        "checkedAt": "2026-10-05T16:22:58Z",
+        "status": "read"
+      },
+      {
+        "key": "karpicke2008retrieval",
+        "doi": "10.1126/science.1152408",
+        "source": "https://api.crossref.org/works/10.1126%2Fscience.1152408",
+        "checkedAt": "2026-10-05T16:22:58Z",
+        "status": "read"
+      },
+      {
+        "key": "shute2008feedback",
+        "doi": "10.3102/0034654307313795",
+        "source": "https://api.crossref.org/works/10.3102%2F0034654307313795",
+        "checkedAt": "2026-10-05T16:23:04Z",
+        "status": "read"
+      },
+      {
+        "key": "wood2021dialogic",
+        "doi": "10.1080/02602938.2020.1852174",
+        "source": "https://api.crossref.org/works/10.1080%2F02602938.2020.1852174",
+        "checkedAt": "2026-10-05T16:23:04Z",
+        "status": "read"
+      },
+      {
+        "key": "tsai2022humancentered",
+        "doi": "10.18608/hla22.021",
+        "source": "https://api.crossref.org/works/10.18608%2Fhla22.021",
+        "checkedAt": "2026-10-05T16:23:04Z",
+        "status": "read"
+      },
+      {
+        "key": "unesco2023genai",
+        "doi": "10.54675/EWZM9535",
+        "source": "https://api.crossref.org/works/10.54675%2FEWZM9535",
+        "checkedAt": "2026-10-05T16:23:04Z",
+        "status": "read"
+      },
+      {
+        "key": "allea2023integrity",
+        "doi": "10.26356/ECOC",
+        "source": "https://api.crossref.org/works/10.26356%2FECOC",
+        "checkedAt": "2026-10-05T16:23:04Z",
+        "status": "unavailable"
+      },
+      {
+        "key": "zimmerman2002selfregulated",
+        "doi": "10.1207/s15430421tip4102_2",
+        "source": "https://api.crossref.org/works/10.1207%2Fs15430421tip4102_2",
+        "checkedAt": "2026-10-05T16:23:04Z",
+        "status": "read"
+      },
+      {
+        "key": "peters2024scoping",
+        "doi": "10.46658/JBIMES-24-09",
+        "source": "https://api.crossref.org/works/10.46658%2FJBIMES-24-09",
+        "checkedAt": "2026-10-05T16:23:17Z",
+        "status": "read"
+      },
+      {
+        "key": "tricco2018prismascr",
+        "doi": "10.7326/M18-0850",
+        "source": "https://api.crossref.org/works/10.7326%2FM18-0850",
+        "checkedAt": "2026-10-05T16:23:17Z",
+        "status": "read"
+      },
+      {
+        "key": "wang2005designbased",
+        "doi": "10.1007/BF02504682",
+        "source": "https://api.crossref.org/works/10.1007%2FBF02504682",
+        "checkedAt": "2026-10-05T16:23:17Z",
+        "status": "read"
+      },
+      {
+        "key": "peffers2007dsrm",
+        "doi": "10.2753/MIS0742-1222240302",
+        "source": "https://api.crossref.org/works/10.2753%2FMIS0742-1222240302",
+        "checkedAt": "2026-10-05T16:23:17Z",
+        "status": "read"
+      },
+      {
+        "key": "gregor2013positioning",
+        "doi": "10.25300/MISQ/2013/37.2.01",
+        "source": "https://api.crossref.org/works/10.25300%2FMISQ%2F2013%2F37.2.01",
+        "checkedAt": "2026-10-05T16:23:17Z",
+        "status": "read"
+      },
+      {
+        "key": "venable2016feds",
+        "doi": "10.1057/ejis.2014.36",
+        "source": "https://api.crossref.org/works/10.1057%2Fejis.2014.36",
+        "checkedAt": "2026-10-05T16:23:17Z",
+        "status": "read"
+      },
+      {
+        "key": "sweller1998architecture",
+        "doi": "10.1023/A:1022193728205",
+        "source": "https://api.crossref.org/works/10.1023%2FA%3A1022193728205",
+        "checkedAt": "2026-10-05T16:23:23Z",
+        "status": "read"
+      },
+      {
+        "key": "koedinger2012kli",
+        "doi": "10.1111/j.1551-6709.2012.01245.x",
+        "source": "https://api.crossref.org/works/10.1111%2Fj.1551-6709.2012.01245.x",
+        "checkedAt": "2026-10-05T16:23:23Z",
+        "status": "read"
+      },
+      {
+        "key": "chen2023elementinteractivity",
+        "doi": "10.1007/s10648-023-09782-w",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10648-023-09782-w",
+        "checkedAt": "2026-10-05T16:23:23Z",
+        "status": "read"
+      },
+      {
+        "key": "mislevy2003ecd",
+        "doi": "10.1002/j.2333-8504.2003.tb01908.x",
+        "source": "https://api.crossref.org/works/10.1002%2Fj.2333-8504.2003.tb01908.x",
+        "checkedAt": "2026-10-05T16:23:23Z",
+        "status": "read"
+      },
+      {
+        "key": "chi1989selfexplanations",
+        "doi": "10.1207/s15516709cog1302_1",
+        "source": "https://api.crossref.org/works/10.1207%2Fs15516709cog1302_1",
+        "checkedAt": "2026-10-05T16:23:23Z",
+        "status": "read"
+      },
+      {
+        "key": "chi1994eliciting",
+        "doi": "10.1207/s15516709cog1803_3",
+        "source": "https://api.crossref.org/works/10.1207%2Fs15516709cog1803_3",
+        "checkedAt": "2026-10-05T16:23:23Z",
+        "status": "read"
+      },
+      {
+        "key": "renkl2002learning",
+        "doi": "10.1016/S0959-4752(01)00030-5",
+        "source": "https://api.crossref.org/works/10.1016%2FS0959-4752%2801%2900030-5",
+        "checkedAt": "2026-10-05T16:23:30Z",
+        "status": "read"
+      },
+      {
+        "key": "biggs1996alignment",
+        "doi": "10.1007/BF00138871",
+        "source": "https://api.crossref.org/works/10.1007%2FBF00138871",
+        "checkedAt": "2026-10-05T16:23:30Z",
+        "status": "read"
+      },
+      {
+        "key": "laurillard2018learningdesigner",
+        "doi": "10.1111/bjet.12697",
+        "source": "https://api.crossref.org/works/10.1111%2Fbjet.12697",
+        "checkedAt": "2026-10-05T16:23:30Z",
+        "status": "read"
+      },
+      {
+        "key": "koedinger2007assistance",
+        "doi": "10.1007/s10648-007-9049-0",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10648-007-9049-0",
+        "checkedAt": "2026-10-05T16:23:30Z",
+        "status": "read"
+      },
+      {
+        "key": "aleven2006helpseeking",
+        "doi": "10.3233/IRG-2006-16(2)02",
+        "source": "https://api.crossref.org/works/10.3233%2FIRG-2006-16%282%2902",
+        "checkedAt": "2026-10-05T16:23:30Z",
+        "status": "read"
+      },
+      {
+        "key": "sandoval2014conjecture",
+        "doi": "10.1080/10508406.2013.778204",
+        "source": "https://api.crossref.org/works/10.1080%2F10508406.2013.778204",
+        "checkedAt": "2026-10-05T16:23:30Z",
+        "status": "read"
+      },
+      {
+        "key": "wittwer2008explanations",
+        "doi": "10.1080/00461520701756420",
+        "source": "https://api.crossref.org/works/10.1080%2F00461520701756420",
+        "checkedAt": "2026-10-05T16:23:43Z",
+        "status": "read"
+      },
+      {
+        "key": "mayer2009multimedia",
+        "doi": "10.1017/CBO9780511811678",
+        "source": "https://api.crossref.org/works/10.1017%2FCBO9780511811678",
+        "checkedAt": "2026-10-05T16:23:43Z",
+        "status": "read"
+      },
+      {
+        "key": "ainsworth2006deft",
+        "doi": "10.1016/j.learninstruc.2006.03.001",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.learninstruc.2006.03.001",
+        "checkedAt": "2026-10-05T16:23:43Z",
+        "status": "read"
+      },
+      {
+        "key": "ginns2006contiguity",
+        "doi": "10.1016/j.learninstruc.2006.10.001",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.learninstruc.2006.10.001",
+        "checkedAt": "2026-10-05T16:23:43Z",
+        "status": "read"
+      },
+      {
+        "key": "rey2019segmenting",
+        "doi": "10.1007/s10648-018-9456-4",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10648-018-9456-4",
+        "checkedAt": "2026-10-05T16:23:43Z",
+        "status": "read"
+      },
+      {
+        "key": "sweller1985workedexamples",
+        "doi": "10.1207/s1532690xci0201_3",
+        "source": "https://api.crossref.org/works/10.1207%2Fs1532690xci0201_3",
+        "checkedAt": "2026-10-05T16:23:43Z",
+        "status": "read"
+      },
+      {
+        "key": "renkl2004fading",
+        "doi": "10.1023/B:TRUC.0000021815.74806.F6",
+        "source": "https://api.crossref.org/works/10.1023%2FB%3ATRUC.0000021815.74806.F6",
+        "checkedAt": "2026-10-05T16:23:49Z",
+        "status": "read"
+      },
+      {
+        "key": "agarwal2021retrieval",
+        "doi": "10.1007/s10648-021-09595-9",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10648-021-09595-9",
+        "checkedAt": "2026-10-05T16:23:49Z",
+        "status": "read"
+      },
+      {
+        "key": "cepeda2006distributed",
+        "doi": "10.1037/0033-2909.132.3.354",
+        "source": "https://api.crossref.org/works/10.1037%2F0033-2909.132.3.354",
+        "checkedAt": "2026-10-05T16:23:49Z",
+        "status": "read"
+      },
+      {
+        "key": "cepeda2008spacing",
+        "doi": "10.1111/j.1467-9280.2008.02209.x",
+        "source": "https://api.crossref.org/works/10.1111%2Fj.1467-9280.2008.02209.x",
+        "checkedAt": "2026-10-05T16:23:49Z",
+        "status": "read"
+      },
+      {
+        "key": "carpenter2022spacing",
+        "doi": "10.1038/s44159-022-00089-1",
+        "source": "https://api.crossref.org/works/10.1038%2Fs44159-022-00089-1",
+        "checkedAt": "2026-10-05T16:23:49Z",
+        "status": "read"
+      },
+      {
+        "key": "brunmair2019interleaving",
+        "doi": "10.1037/bul0000209",
+        "source": "https://api.crossref.org/works/10.1037%2Fbul0000209",
+        "checkedAt": "2026-10-05T16:23:49Z",
+        "status": "read"
+      },
+      {
+        "key": "hattie2007feedback",
+        "doi": "10.3102/003465430298487",
+        "source": "https://api.crossref.org/works/10.3102%2F003465430298487",
+        "checkedAt": "2026-10-05T16:23:55Z",
+        "status": "read"
+      },
+      {
+        "key": "morris2021formative",
+        "doi": "10.1002/rev3.3292",
+        "source": "https://api.crossref.org/works/10.1002%2Frev3.3292",
+        "checkedAt": "2026-10-05T16:23:55Z",
+        "status": "read"
+      },
+      {
+        "key": "butler2008confidence",
+        "doi": "10.1037/0278-7393.34.4.918",
+        "source": "https://api.crossref.org/works/10.1037%2F0278-7393.34.4.918",
+        "checkedAt": "2026-10-05T16:23:55Z",
+        "status": "read"
+      },
+      {
+        "key": "pan2018transfer",
+        "doi": "10.1037/bul0000151",
+        "source": "https://api.crossref.org/works/10.1037%2Fbul0000151",
+        "checkedAt": "2026-10-05T16:23:55Z",
+        "status": "read"
+      },
+      {
+        "key": "sotola2021quizzes",
+        "doi": "10.1007/s10648-020-09563-9",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10648-020-09563-9",
+        "checkedAt": "2026-10-05T16:23:55Z",
+        "status": "read"
+      },
+      {
+        "key": "karich2014learnercontrol",
+        "doi": "10.3102/0034654314526064",
+        "source": "https://api.crossref.org/works/10.3102%2F0034654314526064",
+        "checkedAt": "2026-10-05T16:23:55Z",
+        "status": "read"
+      },
+      {
+        "key": "monk2008resumption",
+        "doi": "10.1037/a0014402",
+        "source": "https://api.crossref.org/works/10.1037%2Fa0014402",
+        "checkedAt": "2026-10-05T16:24:01Z",
+        "status": "read"
+      },
+      {
+        "key": "foroughi2016resumption",
+        "doi": "10.1037/xlm0000251",
+        "source": "https://api.crossref.org/works/10.1037%2Fxlm0000251",
+        "checkedAt": "2026-10-05T16:24:01Z",
+        "status": "read"
+      },
+      {
+        "key": "broadbent2015selfregulated",
+        "doi": "10.1016/j.iheduc.2015.04.007",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.iheduc.2015.04.007",
+        "checkedAt": "2026-10-05T16:24:01Z",
+        "status": "read"
+      },
+      {
+        "key": "panadero2017selfregulated",
+        "doi": "10.3389/fpsyg.2017.00422",
+        "source": "https://api.crossref.org/works/10.3389%2Ffpsyg.2017.00422",
+        "checkedAt": "2026-10-05T16:24:01Z",
+        "status": "read"
+      },
+      {
+        "key": "prinsloo2017ethics",
+        "doi": "10.18608/hla17.004",
+        "source": "https://api.crossref.org/works/10.18608%2Fhla17.004",
+        "checkedAt": "2026-10-05T16:24:01Z",
+        "status": "read"
+      },
+      {
+        "key": "pardo2014ethical",
+        "doi": "10.1111/bjet.12152",
+        "source": "https://api.crossref.org/works/10.1111%2Fbjet.12152",
+        "checkedAt": "2026-10-05T16:24:01Z",
+        "status": "read"
+      },
+      {
+        "key": "nist2024genai",
+        "doi": "10.6028/NIST.AI.600-1",
+        "source": "https://api.crossref.org/works/10.6028%2FNIST.AI.600-1",
+        "checkedAt": "2026-10-05T16:24:08Z",
+        "status": "read"
+      },
+      {
+        "key": "amershi2019humanai",
+        "doi": "10.1145/3290605.3300233",
+        "source": "https://api.crossref.org/works/10.1145%2F3290605.3300233",
+        "checkedAt": "2026-10-05T16:24:08Z",
+        "status": "read"
+      },
+      {
+        "key": "bucinca2021overreliance",
+        "doi": "10.1145/3449287",
+        "source": "https://api.crossref.org/works/10.1145%2F3449287",
+        "checkedAt": "2026-10-05T16:24:08Z",
+        "status": "read"
+      },
+      {
+        "key": "baxter2008casestudy",
+        "doi": "10.46743/2160-3715/2008.1573",
+        "source": "https://api.crossref.org/works/10.46743%2F2160-3715%2F2008.1573",
+        "checkedAt": "2026-10-05T16:24:08Z",
+        "status": "read"
+      },
+      {
+        "key": "amado2022moocsdesign",
+        "doi": "10.3390/educsci12050308",
+        "source": "https://api.crossref.org/works/10.3390%2Feducsci12050308",
+        "checkedAt": "2026-10-05T16:24:08Z",
+        "status": "read"
+      },
+      {
+        "key": "ferreira2024iaautorregulacao",
+        "doi": "10.34630/pel.v7i2.5823",
+        "source": "https://api.crossref.org/works/10.34630%2Fpel.v7i2.5823",
+        "checkedAt": "2026-10-05T16:24:08Z",
+        "status": "unavailable"
+      },
+      {
+        "key": "lee2004trust",
+        "doi": "10.1518/hfes.46.1.50_30392",
+        "source": "https://api.crossref.org/works/10.1518%2Fhfes.46.1.50_30392",
+        "checkedAt": "2026-10-05T16:24:14Z",
+        "status": "read"
+      },
+      {
+        "key": "parasuraman2010automation",
+        "doi": "10.1177/0018720810376055",
+        "source": "https://api.crossref.org/works/10.1177%2F0018720810376055",
+        "checkedAt": "2026-10-05T16:24:14Z",
+        "status": "read"
+      },
+      {
+        "key": "wood1976tutoring",
+        "doi": "10.1111/j.1469-7610.1976.tb00381.x",
+        "source": "https://api.crossref.org/works/10.1111%2Fj.1469-7610.1976.tb00381.x",
+        "checkedAt": "2026-10-05T16:24:14Z",
+        "status": "read"
+      },
+      {
+        "key": "taylor2010interleaved",
+        "doi": "10.1002/acp.1598",
+        "source": "https://api.crossref.org/works/10.1002%2Facp.1598",
+        "checkedAt": "2026-10-05T16:24:14Z",
+        "status": "read"
+      },
+      {
+        "key": "bandura2001agency",
+        "doi": "10.1146/annurev.psych.52.1.1",
+        "source": "https://api.crossref.org/works/10.1146%2Fannurev.psych.52.1.1",
+        "checkedAt": "2026-10-05T16:24:14Z",
+        "status": "read"
+      },
+      {
+        "key": "ryan2020motivation",
+        "doi": "10.1016/j.cedpsych.2020.101860",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.cedpsych.2020.101860",
+        "checkedAt": "2026-10-05T16:24:14Z",
+        "status": "read"
+      },
+      {
+        "key": "kalyuga2007expertisereversal",
+        "doi": "10.1007/s10648-007-9054-3",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10648-007-9054-3",
+        "checkedAt": "2026-10-05T16:24:21Z",
+        "status": "read"
+      },
+      {
+        "key": "reisslein2006expertisereversal",
+        "doi": "10.1016/j.learninstruc.2006.02.008",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.learninstruc.2006.02.008",
+        "checkedAt": "2026-10-05T16:24:21Z",
+        "status": "read"
+      },
+      {
+        "key": "miller1984genre",
+        "doi": "10.1080/00335638409383686",
+        "source": "https://api.crossref.org/works/10.1080%2F00335638409383686",
+        "checkedAt": "2026-10-05T16:24:21Z",
+        "status": "read"
+      },
+      {
+        "key": "yates1992genres",
+        "doi": "10.5465/amr.1992.4279545",
+        "source": "https://api.crossref.org/works/10.5465%2Famr.1992.4279545",
+        "checkedAt": "2026-10-05T16:24:21Z",
+        "status": "read"
+      },
+      {
+        "key": "zappavigna2011ambient",
+        "doi": "10.1177/1461444810385097",
+        "source": "https://api.crossref.org/works/10.1177%2F1461444810385097",
+        "checkedAt": "2026-10-05T16:24:21Z",
+        "status": "read"
+      },
+      {
+        "key": "kintsch1978model",
+        "doi": "10.1037/0033-295X.85.5.363",
+        "source": "https://api.crossref.org/works/10.1037%2F0033-295X.85.5.363",
+        "checkedAt": "2026-10-05T16:24:21Z",
+        "status": "read"
+      },
+      {
+        "key": "mann1988rst",
+        "doi": "10.1515/text.1.1988.8.3.243",
+        "source": "https://api.crossref.org/works/10.1515%2Ftext.1.1988.8.3.243",
+        "checkedAt": "2026-10-05T16:24:27Z",
+        "status": "read"
+      },
+      {
+        "key": "ponsborderia2024unidades",
+        "doi": "10.5209/clac.96949",
+        "source": "https://api.crossref.org/works/10.5209%2Fclac.96949",
+        "checkedAt": "2026-10-05T16:24:27Z",
+        "status": "read"
+      },
+      {
+        "key": "graesser2004cohmetrix",
+        "doi": "10.3758/BF03195564",
+        "source": "https://api.crossref.org/works/10.3758%2FBF03195564",
+        "checkedAt": "2026-10-05T16:24:27Z",
+        "status": "read"
+      },
+      {
+        "key": "leal2024nilcmetrix",
+        "doi": "10.1007/s10579-023-09693-w",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10579-023-09693-w",
+        "checkedAt": "2026-10-05T16:24:27Z",
+        "status": "read"
+      },
+      {
+        "key": "gazzola2022textcomplexity",
+        "doi": "10.1007/s10579-021-09571-3",
+        "source": "https://api.crossref.org/works/10.1007%2Fs10579-021-09571-3",
+        "checkedAt": "2026-10-05T16:24:27Z",
+        "status": "read"
+      },
+      {
+        "key": "schnotz2003representations",
+        "doi": "10.1016/S0959-4752(02)00017-8",
+        "source": "https://api.crossref.org/works/10.1016%2FS0959-4752%2802%2900017-8",
+        "checkedAt": "2026-10-05T16:24:33Z",
+        "status": "read"
+      },
+      {
+        "key": "martinec2005imagetext",
+        "doi": "10.1177/1470357205055928",
+        "source": "https://api.crossref.org/works/10.1177%2F1470357205055928",
+        "checkedAt": "2026-10-05T16:24:33Z",
+        "status": "read"
+      },
+      {
+        "key": "richter2016signaling",
+        "doi": "10.1016/j.edurev.2015.12.003",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.edurev.2015.12.003",
+        "checkedAt": "2026-10-05T16:24:33Z",
+        "status": "read"
+      },
+      {
+        "key": "schneider2018signaling",
+        "doi": "10.1016/j.edurev.2017.11.001",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.edurev.2017.11.001",
+        "checkedAt": "2026-10-05T16:24:33Z",
+        "status": "read"
+      },
+      {
+        "key": "dyson2004layout",
+        "doi": "10.1080/01449290410001715714",
+        "source": "https://api.crossref.org/works/10.1080%2F01449290410001715714",
+        "checkedAt": "2026-10-05T16:24:33Z",
+        "status": "read"
+      },
+      {
+        "key": "haverkamp2023screens",
+        "doi": "10.1007/s11145-022-10328-9",
+        "source": "https://api.crossref.org/works/10.1007%2Fs11145-022-10328-9",
+        "checkedAt": "2026-10-05T16:24:33Z",
+        "status": "read"
+      },
+      {
+        "key": "li2021interaction",
+        "doi": "10.1016/j.ergon.2021.103189",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.ergon.2021.103189",
+        "checkedAt": "2026-10-05T16:24:39Z",
+        "status": "read"
+      },
+      {
+        "key": "baughan2022dissociation",
+        "doi": "10.1145/3491102.3501899",
+        "source": "https://api.crossref.org/works/10.1145%2F3491102.3501899",
+        "checkedAt": "2026-10-05T16:24:39Z",
+        "status": "read"
+      },
+      {
+        "key": "tang2017twitter",
+        "doi": "10.1016/j.compedu.2016.12.004",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.compedu.2016.12.004",
+        "checkedAt": "2026-10-05T16:24:39Z",
+        "status": "read"
+      },
+      {
+        "key": "chun2011attention",
+        "doi": "10.1146/annurev.psych.093008.100427",
+        "source": "https://api.crossref.org/works/10.1146%2Fannurev.psych.093008.100427",
+        "checkedAt": "2026-10-05T16:24:39Z",
+        "status": "read"
+      },
+      {
+        "key": "howardjones2014neuroscience",
+        "doi": "10.1038/nrn3817",
+        "source": "https://api.crossref.org/works/10.1038%2Fnrn3817",
+        "checkedAt": "2026-10-05T16:24:39Z",
+        "status": "read"
+      },
+      {
+        "key": "kirshmaglio1994epistemic",
+        "doi": "10.1207/s15516709cog1804_1",
+        "source": "https://api.crossref.org/works/10.1207%2Fs15516709cog1804_1",
+        "checkedAt": "2026-10-05T16:24:39Z",
+        "status": "read"
+      },
+      {
+        "key": "kirsh2010external",
+        "doi": "10.1007/s00146-010-0272-8",
+        "source": "https://api.crossref.org/works/10.1007%2Fs00146-010-0272-8",
+        "checkedAt": "2026-10-05T16:24:45Z",
+        "status": "read"
+      },
+      {
+        "key": "henrie2015engagement",
+        "doi": "10.1016/j.compedu.2015.09.005",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.compedu.2015.09.005",
+        "checkedAt": "2026-10-05T16:24:45Z",
+        "status": "read"
+      },
+      {
+        "key": "parry2021digitalmedia",
+        "doi": "10.1038/s41562-021-01117-5",
+        "source": "https://api.crossref.org/works/10.1038%2Fs41562-021-01117-5",
+        "checkedAt": "2026-10-05T16:24:45Z",
+        "status": "read"
+      },
+      {
+        "key": "messick1995validity",
+        "doi": "10.1037/0003-066X.50.9.741",
+        "source": "https://api.crossref.org/works/10.1037%2F0003-066X.50.9.741",
+        "checkedAt": "2026-10-05T16:24:45Z",
+        "status": "read"
+      },
+      {
+        "key": "barrison2025flashcards",
+        "doi": "10.1097/ACM.0000000000005968",
+        "source": "https://api.crossref.org/works/10.1097%2FACM.0000000000005968",
+        "checkedAt": "2026-10-05T16:24:45Z",
+        "status": "read"
+      },
+      {
+        "key": "choi2024vivid",
+        "doi": "10.1145/3613904.3642867",
+        "source": "https://api.crossref.org/works/10.1145%2F3613904.3642867",
+        "checkedAt": "2026-10-05T16:24:45Z",
+        "status": "read"
+      },
+      {
+        "key": "dennison2026shiksha",
+        "doi": "10.1145/3788074",
+        "source": "https://api.crossref.org/works/10.1145%2F3788074",
+        "checkedAt": "2026-10-05T16:24:51Z",
+        "status": "read"
+      },
+      {
+        "key": "han2025genaimeta",
+        "doi": "10.1016/j.edurev.2025.100714",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.edurev.2025.100714",
+        "checkedAt": "2026-10-05T16:24:51Z",
+        "status": "read"
+      },
+      {
+        "key": "chen2025genaimeta",
+        "doi": "10.1016/j.edurev.2025.100737",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.edurev.2025.100737",
+        "checkedAt": "2026-10-05T16:24:51Z",
+        "status": "read"
+      },
+      {
+        "key": "vaccaro2024humanai",
+        "doi": "10.1038/s41562-024-02024-1",
+        "source": "https://api.crossref.org/works/10.1038%2Fs41562-024-02024-1",
+        "checkedAt": "2026-10-05T16:24:51Z",
+        "status": "read"
+      },
+      {
+        "key": "selwyn2025prompting",
+        "doi": "10.1080/17439884.2025.2537959",
+        "source": "https://api.crossref.org/works/10.1080%2F17439884.2025.2537959",
+        "checkedAt": "2026-10-05T16:24:51Z",
+        "status": "read"
+      },
+      {
+        "key": "ji2023hallucination",
+        "doi": "10.1145/3571730",
+        "source": "https://api.crossref.org/works/10.1145%2F3571730",
+        "checkedAt": "2026-10-05T16:24:51Z",
+        "status": "read"
+      },
+      {
+        "key": "mcnamara1996coherence",
+        "doi": "10.1080/01638539609544975",
+        "source": "https://api.crossref.org/works/10.1080%2F01638539609544975",
+        "checkedAt": "2026-10-05T16:24:57Z",
+        "status": "read"
+      },
+      {
+        "key": "tynjala2008workplace",
+        "doi": "10.1016/j.edurev.2007.12.001",
+        "source": "https://api.crossref.org/works/10.1016%2Fj.edurev.2007.12.001",
+        "checkedAt": "2026-10-05T16:24:57Z",
+        "status": "read"
+      },
+      {
+        "key": "alavi2001knowledge",
+        "doi": "10.2307/3250961",
+        "source": "https://api.crossref.org/works/10.2307%2F3250961",
+        "checkedAt": "2026-10-05T16:24:57Z",
+        "status": "read"
+      }
+    ],
+    "primaryVerificationOutsideCrossref": [
+      {
+        "key": "pangakis2023validation",
+        "url": "https://arxiv.org/abs/2306.00176"
+      },
+      {
+        "key": "allea2023integrity",
+        "url": "https://allea.org/code-of-conduct/"
+      },
+      {
+        "key": "ferreira2024iaautorregulacao",
+        "url": "https://doi.org/10.34630/pel.v7i2.5823"
+      }
+    ],
+    "metadataCorrections": {
+      "electronicArticleIdentifiers": [
+        "gilardi2023annotation",
+        "chen2023elementinteractivity",
+        "morris2021formative",
+        "panadero2017selfregulated",
+        "ryan2020motivation",
+        "li2021interaction",
+        "han2025genaimeta",
+        "chen2025genaimeta",
+        "faudzi2023mobileui",
+        "degagne2019microlearning"
+      ],
+      "publisherURL": "shadish2002experimental",
+      "datedRecommendationURL": "w3c2023wcag22"
+    },
+    "fullTextScope": "A verificação de metadados usa registros bibliográficos e páginas primárias. Leituras integrais ou focais de fontes acadêmicas estão declaradas nos capítulos que as utilizam."
+  },
+  "validation": [
+    {
+      "command": "npm run test:preflight",
+      "result": "aprovado"
+    },
+    {
+      "command": "npm run lint",
+      "result": "aprovado"
+    },
+    {
+      "command": "npm run test:runtime",
+      "result": "2693 testes contabilizados: 2662 aprovados, 29 ignorados pelas condições declaradas na suíte e 2 falhas em asserções literais da introdução histórica; as duas asserções foram atualizadas e reconferidas no conjunto documental abaixo."
+    },
+    {
+      "command": "node --test tests/runtime/final-ux-contract.test.js tests/runtime/research-governance-docs.test.js tests/runtime/readable-references.test.js tests/runtime/terminology-audit.test.js",
+      "result": "44 testes aprovados após as correções"
+    },
+    {
+      "command": "git diff --check",
+      "result": "aprovado"
+    }
+  ],
+  "scopeOfEvidence": [
+    "A revisão confronta documentação e implementação versionada. A validação da integração é registrada pelos checks do pull request correspondente.",
+    "Declarações históricas de avaliação humana e implantação conservam seu alcance original. Esta revisão documental registra leitura e conferências técnicas.",
+    "Evidências sobre aprendizagem, experiência de participantes e adequação pedagógica exigem os estudos descritos nos protocolos de pesquisa."
+  ]
+}

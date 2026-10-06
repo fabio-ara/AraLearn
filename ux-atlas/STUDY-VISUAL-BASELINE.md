@@ -1,16 +1,10 @@
 # Identidade visual de Estudo — referência histórica
 
-> Registro histórico da rodada de UX indicada neste arquivo. As afirmações de
-> vigência abaixo pertencem àquela rodada. Para a experiência atual, consulte o
-> [sistema visual](../docs/sistema-visual.md) e os guias de
-> [estudo](../docs/guia-estudante.md) e [autoria](../docs/guia-professor-autor.md).
-
-
-Este documento preserva a baseline visual usada na rodada de UX encerrada.
-Termos, caminhos e instruções abaixo se aplicam àquele período. Para o estado
-atual, consulte o
-[sistema visual](../docs/sistema-visual.md), o
-[guia do estudante](../docs/guia-estudante.md) e os contratos executáveis.
+Este documento preserva a referência visual usada na rodada do
+[contrato histórico de experiência](FINAL-UX-CONTRACT.md). Termos, caminhos e
+instruções abaixo se aplicam àquele período. O
+[sistema visual](../docs/sistema-visual.md) e o
+[guia do estudante](../docs/guia-estudante.md) descrevem o estado atual.
 
 Naquela rodada, esta referência complementava o Atlas para que a implementação
 preservasse também a linguagem visual e interacional que tornava Estudo
@@ -29,7 +23,8 @@ Não restaurar Workspace, Trilhas, rotas, schemas, APIs ou persistência antigos
 
 ### Área principal
 
-No baseline, `src/ui/renderHomeScreen.js` usa `home-product-switch` com dois controles irmãos:
+Na [versão de referência](https://github.com/fabio-ara/AraLearn/blob/9e7ddc013d8efcf2918bf2b5b03f506217098e15/src/ui/renderHomeScreen.js),
+`src/ui/renderHomeScreen.js` usa `home-product-switch` com dois controles irmãos:
 
 - **Estudo**;
 - **Autoria**.
@@ -38,7 +33,8 @@ Esse padrão deve permanecer como seletor compacto de área principal. A entrada
 
 ### Modos de conteúdo
 
-No baseline, `src/ui/renderLessonScreen.js` define um único `renderEntityModeSwitcher` com:
+Na [mesma versão](https://github.com/fabio-ara/AraLearn/blob/9e7ddc013d8efcf2918bf2b5b03f506217098e15/src/ui/renderLessonScreen.js),
+`src/ui/renderLessonScreen.js` define um único `renderEntityModeSwitcher` com:
 
 - **Visualizar** (`preview`);
 - **Editar** (`edit`);

@@ -49,8 +49,9 @@ Esse alvo é fixado ao iniciar a sessão, que progride assim:
 7. **Aplicar ao rascunho** aceita o resultado conferido; **Descartar prévia** o remove;
 8. **Salvar proposta** grava o rascunho com a revisão original; **Descartar rascunho** restaura o original.
 
-Fechar a sessão apaga as mensagens e as propostas ainda não aplicadas. Um
-resultado já aceito permanece no rascunho. A conversa existe somente durante a
+Fechar a conversa apaga as mensagens e as propostas ainda não aplicadas. Um
+resultado já aceito permanece no rascunho em memória enquanto a tela de estudo
+continua aberta; **Salvar proposta** o grava no curso. A conversa existe somente durante a
 sessão e fica fora do [conteúdo e dos dados persistidos pelo AraLearn](persistencia-relacional.md).
 Os comprovantes de cada gravação, chamados de recibos, registram a operação salva.
 
@@ -75,7 +76,9 @@ existentes continuam cursos independentes sob a autoridade de seu proprietário.
 ## Contexto enviado
 
 O conjunto enviado ao modelo reúne a instrução da pessoa e até oito mensagens
-recentes da sessão. Para situar o pedido, inclui também a proposta corrente e o
+recentes da sessão, cada uma limitada a 1.400 unidades de código UTF-16, medida
+de texto usada pelo JavaScript. O pedido corrente admite até 4.000. Para situar
+o pedido, inclui também a proposta corrente e o
 trecho do percurso didático necessário para compreender o alvo.
 Para a unidade, inclui os componentes e campos editáveis. Para a
 microssequência, inclui sua ordem e suas unidades. Para a lição, inclui as
@@ -108,9 +111,10 @@ relações internas e de sua apresentação no estudo.
 
 Reparos são limitados a duas tentativas e recebem os erros estruturados da
 validação anterior. Se a proposta continuar inválida, a sessão preserva o
-conteúdo corrente e explica a falha. O JSON, formato estruturado usado para descrever os componentes, pode ser
-válido sem que a proposta seja apresentável. A aplicação depende também da
-prévia e da decisão da pessoa.
+conteúdo corrente e explica a falha. A validade do JSON, formato usado para
+descrever os componentes, é uma das verificações. A aplicação depende também
+de apresentar a prévia corretamente
+e da decisão da pessoa.
 
 ## Aplicação ao rascunho e concorrência
 
@@ -122,8 +126,8 @@ uma operação separada.
 
 Cada escrita informa a revisão esperada do curso e as versões focais
 necessárias. Se outra sessão alterar o alvo entre leitura e gravação, o servidor
-recusa a proposta. A candidata continua no rascunho para conferência ou descarte;
-a revisão mais nova não substitui a revisão original do pedido. Atualizações de
+recusa a proposta. A candidata continua no rascunho para conferência ou descarte,
+com a revisão original do pedido preservada. Atualizações de
 fundo ficam suspensas durante a conversa e enquanto houver rascunho, evitando
 substituir o trabalho local por conteúdo externo.
 
@@ -142,10 +146,11 @@ e fornece a própria chave. A chave permanece apenas em memória durante a sess�
 e segue somente no cabeçalho da chamada ao provedor escolhido. O AraLearn não a
 grava.
 
-Sair, recarregar ou fechar a interface cancela a chamada pendente e apaga a
-conversa, sua configuração transitória e qualquer candidata ainda não aplicada. Uma
-alteração já aceita permanece no rascunho. Uma resposta tardia não pode reabrir
-a sessão nem aplicar conteúdo. Os endereços dos serviços são definidos pelos
+Fechar a conversa cancela a espera pela chamada pendente e apaga mensagens,
+configuração transitória e candidatas ainda não aplicadas. O rascunho aceito
+continua disponível na tela de estudo. Recarregar ou encerrar a aplicação perde
+a edição ainda não salva, pois ela permanece somente em memória. Respostas
+tardias são ignoradas. Os endereços dos serviços são definidos pelos
 adaptadores; a interface pede apenas as escolhas necessárias ao uso.
 
 A pessoa precisa revisar o recorte e os termos do provedor. A permanência da
@@ -176,13 +181,17 @@ planejamento à produção, incluindo as bases explicativas e suas fontes. O
 [guia por conversa](criar-cursos-pelo-chat.md) mostra como pedir, inspecionar e
 ajustar o trabalho com um assistente externo.
 
-Aprovar o mapa confirma a organização salva que foi inspecionada. Autorizar produção delimita o que o assistente pode fazer. Declarar revisão registra uma decisão humana sobre conteúdo já salvo. Essas decisões têm efeitos próprios: uma autorização de continuidade permite avançar até o limite combinado, mas não fabrica uma declaração de inspeção.
+Aprovar o mapa confirma a organização salva que foi inspecionada. Autorizar
+produção delimita o que o assistente pode fazer. Declarar revisão registra uma
+decisão humana sobre conteúdo já salvo. Uma autorização de continuidade vale
+até o limite combinado; a declaração de inspeção depende de a pessoa examinar
+o resultado e expressar essa decisão.
 
 A configuração também distingue o que se deseja do que foi realizado. A **intenção corrente** orienta o próximo trabalho; a **configuração aplicada** registra as escolhas usadas na produção de uma unidade. No automático, o assistente escolhe valores conforme conteúdo e público e registra o motivo. Fixações da autoria e condições de pesquisa prevalecem. O [desenho instrucional parametrizado](desenho-instrucional-parametrizado.md) explica a relação entre essas escolhas.
 
 Na assistência interna, o aplicativo lê a configuração do recorte na mesma versão do conteúdo original. Ele não preenche valores pendentes nem resolve por conta própria a herança, isto é, a escolha vinda de um nível mais amplo do curso. Se a versão mudou, pede sincronização e reabertura para que conteúdo e configuração sejam examinados juntos. Um conflito de configuração precisa ser resolvido antes da proposta de edição.
 
-Fontes e âncoras — localizações dos trechos utilizados — ficam no curso com os [vínculos que registram seu uso](fontes-e-citacoes.md). Um arquivo anexado à conversa só se torna uma fonte persistente quando essa intenção estiver clara. Em outra sessão, o assistente pode reler a fonte cadastrada; a memória da conversa não substitui esse registro.
+Fontes e âncoras — localizações dos trechos utilizados — ficam no curso com os [vínculos que registram seu uso](fontes-e-citacoes.md). Um arquivo anexado à conversa só se torna uma fonte persistente quando essa intenção estiver clara. Em outra sessão, o assistente retoma o trabalho pela leitura da fonte cadastrada e de seus vínculos.
 
 Uma correção começa pela leitura do alvo, das observações e dos pontos do curso afetados. Depois da alteração autorizada, a releitura confere o conteúdo salvo e quais observações foram efetivamente atendidas. A [recuperação da mesma tentativa](auditoria-de-conformidade-instrucional.md#aplicação-e-reinspeção) permite conferir uma resposta perdida antes de outra gravação. A declaração humana de revisão permanece uma decisão separada.
 

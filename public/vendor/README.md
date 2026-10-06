@@ -5,9 +5,9 @@ bibliotecas deste diretório fazem esse trabalho no navegador. Manter uma cópia
 repositório garante que site e Android usem os mesmos arquivos e que uma representação
 já carregada continue disponível sem conexão.
 
-Arquivos versionados aqui não devem ser alterados manualmente para corrigir um caso
-visual. A correção pertence ao pacote do componente, ao contrato semântico ou ao
-processo documentado de atualização da biblioteca.
+Uma correção visual é feita no pacote do componente ou em seu contrato de dados.
+Atualizações das bibliotecas seguem o procedimento deste capítulo, preservando o
+artefato publicado pelo projeto de origem ou sua transformação reproduzível.
 
 Os pacotes transformam dados do curso em representações visuais. A divisão entre dados,
 pacote e biblioteca está descrita em [componentes
@@ -24,8 +24,8 @@ didáticos](../../docs/componentes-didaticos.md).
 | `venn.esm.js` | `@upsetjs/venn.js` 2.0.0 | Calcula regiões e contornos de diagramas de Venn e Euler. |
 
 Vega-Lite descreve um gráfico por seus dados e relações visuais; DOT descreve os nós e
-as ligações de um diagrama. O curso não é escrito nesses formatos. A autoria fornece ao
-pacote os elementos e relações que precisam aparecer, e o pacote produz a especificação
+as ligações de um diagrama. A autoria fornece ao pacote os elementos e relações que
+precisam aparecer, e o pacote produz a especificação
 técnica esperada pela biblioteca. Assim, uma mudança na biblioteca de desenho não exige
 reescrever o conteúdo do curso.
 
@@ -68,9 +68,9 @@ versionado corresponde à versão instalada.
 
 ### Recuperação
 
-Se o gerador rejeitar a estrutura do pacote, a versão do projeto de origem mudou de
-forma incompatível. Não remova a verificação: revise a transformação e os testes antes
-de atualizar o arquivo versionado.
+Se o gerador rejeitar a estrutura do pacote, a distribuição instalada difere do
+formato que a transformação espera. Confira sua versão, revise a transformação e os
+testes e só então atualize o arquivo versionado.
 
 ## Atualizar as demais bibliotecas
 
@@ -87,8 +87,8 @@ atualização:
 5. executar a suíte de componentes e a auditoria do APK;
 6. atualizar este inventário.
 
-Não misture atualização de biblioteca com ajustes manuais em código minificado. Se o
-projeto de origem não fornecer um artefato adequado, adicione um gerador verificável
+Mantenha a atualização da biblioteca reproduzível a partir da origem registrada. Se o
+projeto de origem exigir adaptação para o navegador, acrescente um gerador verificável
 antes de versionar o resultado.
 
 ## Validação específica
@@ -98,12 +98,14 @@ verificações gerais do código:
 
 ```powershell
 npm run resources:vendor -- --check
+npm run bibliography:vendor -- --check
 npm run lint
 npm test
 ```
 
-O primeiro comando confere o artefato do interpretador. Os testes de galeria e do curso
-de componentes exercitam os renderizadores dentro do aplicativo real.
+Os dois primeiros comandos conferem, respectivamente, o interpretador e os módulos
+bibliográficos gerados. Os testes de galeria e do curso de componentes exercitam os
+renderizadores dentro do aplicativo.
 
 ## Diagnóstico
 

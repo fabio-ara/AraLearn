@@ -9,6 +9,12 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+### Documentação
+
+- Documentação revisada conforme a implementação 0.0.100, com explicações
+  progressivas, contratos e procedimentos conferidos e registros históricos
+  identificados. Esta atualização documental acompanha a versão existente.
+
 ## [0.0.101] - 2026-10-05
 
 ### Corrigido
