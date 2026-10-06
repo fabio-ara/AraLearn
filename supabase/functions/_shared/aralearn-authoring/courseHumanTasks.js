@@ -3119,6 +3119,36 @@ function reviewAuditNextDecision(coverage) {
   return decisions.join(" ");
 }
 
+// A seleção explícita também respeita o cap da página lógica. A ordem vigente de
+// resolved.studyUnits é preservada; nunca ordenamos por identificador. O cursor p
+// é o último identificador da seção anterior e precisa pertencer à seleção.
+const MAX_SELECTED_PAGE_ITEMS = 12;
+const MAX_SELECTED_PAGE_BYTES = 65536;
+function paginateSelectedStudyUnits(selected, cursorStudyUnitId) {
+  const encoder = new TextEncoder();
+  let start = 0;
+  if (cursorStudyUnitId !== null && cursorStudyUnitId !== undefined) {
+    const index = selected.findIndex((item) => item?.studyUnit?.id === cursorStudyUnitId);
+    if (index < 0) fail("human_read_context_changed",
+      "A seleção mudou desde a página anterior; repita a consulta inicial.", null, 409);
+    start = index + 1;
+  }
+  const items = [];
+  let bytes = 0;
+  for (let index = start; index < selected.length; index += 1) {
+    const size = encoder.encode(JSON.stringify(selected[index])).byteLength;
+    // O primeiro item entra sempre, mesmo acima de 64 KiB: a página nunca fica
+    // vazia com hasMore, e o volume é recuperado por fragmentos literais.
+    if (items.length && (items.length >= MAX_SELECTED_PAGE_ITEMS ||
+        bytes + size > MAX_SELECTED_PAGE_BYTES)) break;
+    items.push(selected[index]);
+    bytes += size;
+  }
+  const hasMore = start + items.length < selected.length;
+  return { items, hasMore,
+    nextCursor: hasMore ? { studyUnitId: items.at(-1).studyUnit.id } : null };
+}
+
 HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   adapter, principal, args, deadlineAt
 }) => {
@@ -3151,7 +3181,7 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
   }
   const unitPage = units.length
-    ? { items: resolved.studyUnits, hasMore: false, nextCursor: null }
+    ? paginateSelectedStudyUnits(resolved.studyUnits, continuation.p)
     : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
       expectedRevision: resolved.course.revision,
       scopeKind: resolved.microsequence ? 'didactic_microsequence' : resolved.part ? 'authoring_part' : 'course',
