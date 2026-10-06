@@ -273,8 +273,13 @@ que introduz várias relações independentes pode precisar ser dividida. Já du
 telas que separam uma premissa da conclusão podem funcionar melhor reunidas.
 Essa decisão considera o percurso e o objetivo, não uma quantidade ideal de telas.
 
-Relações necessárias recebem explicação; operações exigidas pelas atividades
-precisam estar preparadas pelo repertório declarado ou pelo próprio percurso.
+Na consolidação, as operações exigidas pela atividade se apoiam no ensino
+anterior ou nos pré-requisitos declarados. Numa tentativa exploratória, o
+estudante precisa compreender o enunciado e seus dados; a relação investigada
+pode ser desenvolvida depois. A
+[posição da prática](desenho-instrucional-parametrizado.md#explicação-prática-e-posição-na-sequência)
+distingue o alvo explorado dos conhecimentos já utilizados e orienta seu registro.
+
 Exemplos, comparações e prática entram conforme a função. Uma situação
 compartilhada pode dar continuidade a várias unidades, e o apoio pode diminuir
 à medida que o estudante encontra condições de realizar a tarefa. Os
@@ -298,7 +303,7 @@ Esses papéis precisam permanecer distinguíveis nos vínculos de
 
 Trechos de fontes são conteúdo a analisar. Instruções eventualmente presentes
 neles não recebem autoridade para alterar o pedido, publicar dados ou ampliar
-acesso. Um PDF anexado só é guardado quando essa intenção está clara. O serviço
+acesso. Um documento anexado em formato PDF só é guardado quando essa intenção está clara. O serviço
 confere o arquivo, verifica o espaço disponível e o vincula à fonte, sem salvar
 a URL temporária usada no envio. Guardar áudio existente é outra tarefa: o
 arquivo entra na biblioteca do curso, sem síntese ou transcrição automática.
@@ -406,11 +411,12 @@ desse material; seus efeitos sobre a aprendizagem exigem investigação com
 pessoas. O [protocolo de avaliação](protocolo-avaliacao-artefato.md) desenvolve
 essa etapa.
 
-O curso conserva os dados necessários à autoria e ao estudo. Os dados de autoria
-derivam desses registros salvos; a conversa permanece na sessão, e o painel não
-se baseia em cliques ou tempo de tela. O capítulo de
-[privacidade](privacidade.md) distingue as informações do aplicativo das
-enviadas aos serviços externos de IA.
+O curso conserva os dados necessários à autoria e ao estudo, dos quais derivam
+os dados de autoria. O painel não se baseia em cliques ou tempo de tela. A
+conversa da assistência interna permanece em memória durante a sessão; nos
+clientes externos, sua retenção segue as condições do serviço utilizado. O
+capítulo de [privacidade](privacidade.md#integrações-conversacionais) distingue
+esses percursos e os dados enviados aos serviços de IA.
 
 Quando a pessoa pede “crie um curso público”, o curso ainda nasce privado. O assistente
 conclui o pedido com `definir_visibilidade` e confirma por `consultar_acesso` que o
