@@ -15,8 +15,8 @@ O [brief](brief.md) fixa público, conhecimentos, três objetivos e requisitos d
 evidência. O [catálogo](catalog.json) e os contratos
 [inicial](tool.json) e [assistido](tool-assisted-v2.json) foram congelados antes
 dos respectivos ensaios. Cada pasta conserva `first.json`, anterior à validação,
-e `final.json`, após as correções do autor. Uma saída inicial contém JSON inválido;
-ela foi preservada deliberadamente. O script aceita um objeto único como argumento
+e `final.json`, após as correções do autor. Quatro saídas iniciais contêm JSON inválido;
+elas foram preservadas deliberadamente. O script aceita um objeto único como argumento
 da ferramenta e registra separadamente a divergência do formato de lista pedido
 pelo ensaio.
 
