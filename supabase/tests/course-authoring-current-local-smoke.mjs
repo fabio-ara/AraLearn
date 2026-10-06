@@ -744,6 +744,39 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     assert.equal(correctedExplanation.reconciliation.entries[0].quote, correctedSupport.reconciliacao[0].trecho);
     assert.deepEqual(correctedMicrosequences[0].explanation, exportedMicrosequences[0].explanation);
 
+    // A prova de volume exige dois alvos VIVOS: units.items[0] foi excluída acima
+    // e o cache ainda a lista. Relê a unidade viva CORRENTE, clona seu conteúdo
+    // real como segunda unidade legítima e usa dois alvos vivos.
+    const volumeRevision = (await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision;
+    const volumeLive = await adapter.listCourseStudyUnits({ principal, courseId,
+      expectedRevision: volumeRevision, scopeKind: "course", limit: 24 });
+    assert.equal(volumeLive.items.length, 1, "a exclusão deixou uma única unidade viva");
+    const volumeSeed = volumeLive.items[0];
+    const volumeContent = structuredClone(volumeSeed.studyUnit);
+    delete volumeContent.id;
+    delete volumeContent.position;
+    volumeContent.title = `${volumeContent.title} (volume)`;
+    const occupiedPositions = new Set(volumeLive.items.map((item) => Number(item.studyUnit.position)));
+    let volumePosition = 1;
+    while (occupiedPositions.has(volumePosition)) volumePosition += 1;
+    const volumeCloneId = randomUUID();
+    const volumeClone = await adapter.commitCourseComposition({ principal, courseId,
+      requestId: randomUUID(), expectedRevision: volumeRevision,
+      upserts: [{ entityType: "study_unit", entityId: volumeCloneId, parentType: "microsequence",
+        parentId: volumeSeed.curriculumPath.didacticMicrosequence.id,
+        position: volumePosition, content: volumeContent }],
+      // A composição exige proveniência explícita por Unidade. O alvo novo declara
+      // um vínculo COMPLETO (linkId novo, papéis, ocorrências e âncoras) com a Fonte
+      // ativa já conhecida como needs_verification: não reutiliza a âncora retirada
+      // nem reivindica atualidade verificada.
+      deletes: [], sourceAttributionApplications: [{ studyUnitId: volumeCloneId,
+        sourceLinks: [{ linkId: randomUUID(), sourceId: sourceContext.source.sourceId,
+          relation: "needs_verification", roles: ["curricular_scope"],
+          anchors: [], occurrences: [] }] }] });
+    const liveUnits = await adapter.listCourseStudyUnits({ principal, courseId,
+      expectedRevision: volumeClone.revision, scopeKind: "course", limit: 24 });
+    assert.equal(liveUnits.items.length, 2, "a prova de volume precisa de dois alvos vivos");
+
     // Volume real: um pacote com vários fatos legítimos devolve todos no recibo.
     const bulkRevision = (await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision;
     const bulkSourceId = randomUUID();
@@ -770,7 +803,7 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     const longExcerpt = "Trecho de prova do conteúdo da fixture sobre sockets e transporte. "
       .repeat(70).slice(0, 4000);
     const heavyCommands = [];
-    for (const item of units.items) {
+    for (const item of liveUnits.items) {
       const targetRead = await adapter.getCourseSources({ principal, courseId, expectedRevision: heavyRevision,
         mode: "target", sourceId: null, targetKind: "study_unit", targetId: item.studyUnit.id,
         cursor: null, limit: 1 });
@@ -790,19 +823,25 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
     assert.equal(heavyReceipt.changed, true, "o backend local aceita o pacote acima de 196608 bytes");
     const heavyReadback = await adapter.getCourseSources({ principal, courseId,
       expectedRevision: heavyReceipt.courseRevision, mode: "target", sourceId: null,
-      targetKind: "study_unit", targetId: units.items[0].studyUnit.id, cursor: null, limit: 1 });
+      targetKind: "study_unit", targetId: liveUnits.items[0].studyUnit.id, cursor: null, limit: 1 });
     assert.equal(heavyReadback.items[0].sourceLinks.length, 28, "a releitura preserva os vínculos");
+    // O guard real alcançável pelo adapter é o limite individual de vínculos:
+    // 32 vínculos legais (quote 4000) passam de 131.072 bytes e são recusados
+    // pelo código exato, com a versão CORRENTE do alvo (sem CAS defasado).
     const oversizedPerCommand = { type: "set_target_sources", targetKind: "study_unit",
-      targetId: units.items[0].studyUnit.id, expectedTargetVersion: 1,
+      targetId: liveUnits.items[0].studyUnit.id,
+      expectedTargetVersion: heavyReadback.items[0].targetVersion,
       sourceLinks: Array.from({ length: 32 }, () => ({ linkId: randomUUID(),
         sourceId: sourceContext.source.sourceId, relation: "informed_by", roles: ["curricular_scope"],
         anchors: [],
         occurrences: [{ occurrenceId: randomUUID(), slot: "content", resourceId: "resource-heavy",
           path: "text", quote: longExcerpt, prefix: null, suffix: null }] })) };
+    assert.ok(new TextEncoder().encode(JSON.stringify(oversizedPerCommand.sourceLinks)).byteLength > 131072,
+      "os vínculos precisam passar do limite individual real de 131072 bytes");
     await assert.rejects(() => adapter.executeCourseSourceCommand({ principal, courseId,
       requestId: randomUUID(), expectedCourseRevision: heavyReceipt.courseRevision,
       command: oversizedPerCommand }),
-    "o limite individual de cada comando permanece");
+    error => error.code === "course_source_links_too_large");
 
     return Object.freeze({
       contract: "aralearn.course-authoring-current-proof.v1",
