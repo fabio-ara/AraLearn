@@ -60,7 +60,7 @@ O [guia da pessoa autora](guia-professor-autor.md#produzir-unidades-coerentes) d
 
 Peça que a sequência considere o que já foi ensinado. “Explique isso para iniciantes” é um pedido amplo. Identificar a lacuna dá uma direção verificável: “A unidade usa a palavra interface antes de mostrar o ponto de conexão do dispositivo; desenvolva essa relação antes da atividade”.
 
-O **repertório** do curso permite acompanhar quando uma ideia foi introduzida, quando é utilizada e quando recebe uma retomada deliberada. Compare esse registro com o texto. Se o resultado ficou denso, indique qual relação exige desenvolvimento. Se ficou fragmentado, identifique os trechos que só fazem sentido juntos. Um pedido pode conservar o conteúdo e mudar sua distribuição:
+O **[repertório](modelo-didatico.md#análise-instrucional-e-parâmetros-locais)** do curso permite acompanhar quando uma ideia foi introduzida, quando é utilizada e quando recebe uma retomada deliberada. Compare esse registro com o texto. Se o resultado ficou denso, indique qual relação exige desenvolvimento. Se ficou fragmentado, identifique os trechos que só fazem sentido juntos. Um pedido pode conservar o conteúdo e mudar sua distribuição:
 
 > As duas primeiras unidades apresentam partes do mesmo exemplo. Reúna o desenvolvimento desse exemplo numa única unidade e mantenha uma atividade depois dela. Preserve as fontes e o objetivo.
 
