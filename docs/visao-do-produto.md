@@ -26,7 +26,7 @@ Durante o estudo, a explicação permanece acessível a partir das unidades, inc
 
 ## Teoria construída progressivamente
 
-O conteúdo deve partir do repertório previsto para o público. Quando um conceito é novo, a sequência precisa situar o problema, introduzir o vocabulário e construir as relações necessárias antes de exigir seu uso.
+O conteúdo deve partir do repertório previsto para o público. Quando um conceito é novo, a sequência precisa situar o problema, introduzir o vocabulário e construir as relações necessárias à prática de consolidação. Uma tentativa exploratória pode anteceder esse ensino, desde que a pessoa compreenda a tarefa e o percurso desenvolva depois a relação investigada. O [modelo didático](modelo-didatico.md#suficiência-teórica-no-percurso) distingue essas funções da prática.
 
 Exemplos resolvidos tornam visíveis decisões intermediárias que um resultado final pode ocultar ([Sweller e Cooper (1985)](referencias.md#ref-sweller1985workedexamples)). O apoio pode ser retirado gradualmente conforme a tarefa passa a exigir mais trabalho do estudante ([Renkl et al. (2004)](referencias.md#ref-renkl2004fading)). Analogias ajudam na aproximação inicial quando suas correspondências e limites estão claros.
 
