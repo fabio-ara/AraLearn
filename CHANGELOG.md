@@ -22,6 +22,10 @@ explica os termos usados na implementação atual.
 
 ## [Não publicado]
 
+### Corrigido
+
+- Um cliente que lê apenas o texto do retorno passa a receber a mesma classificação pública do erro, com a indicação de retomada, em vez de uma mensagem genérica. Quando o volume excederia o limite da resposta, o texto traz um resumo com código, repetibilidade e correlação e um aviso claro, preservando os detalhes de bloqueios e recuperação na resposta estruturada.
+
 ### Documentação
 
 - Documentação revisada conforme a implementação 0.0.100, com explicações

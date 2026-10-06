@@ -1672,22 +1672,23 @@ test("MCP apresenta falha de calibração sem narrar a maquinaria", async () => 
     arguments: { titulo: "Redes para iniciantes" }
   }));
   const payload = await response.json();
-  const publicText = [
-    payload.result.content[0].text,
-    payload.result.structuredContent.nextDecision
-  ].join(" ");
-
   assert.equal(payload.result.isError, true);
-  assert.equal(
-    payload.result.content[0].text,
-    "Ainda há uma dependência a resolver antes desta produção."
-  );
+  // Cliente que lê apenas o bloco textual recebe a mesma projeção pública analisável.
+  assert.deepEqual(JSON.parse(payload.result.content[0].text), payload.result.structuredContent);
+  assert.equal(payload.result.structuredContent.error.message,
+    "Ainda há uma dependência a resolver antes desta produção.");
   assert.match(
     payload.result.structuredContent.nextDecision,
     /Resolva autonomamente.*percurso de aprendizagem/iu
   );
+  // A prosa pública não narra a maquinaria; apenas o `code` público a identifica.
+  const prose = [
+    payload.result.structuredContent.error.message,
+    ...(payload.result.structuredContent.error.recovery?.steps ?? []),
+    payload.result.structuredContent.nextDecision
+  ].join(" ");
   assert.doesNotMatch(
-    publicText,
+    prose,
     /human_materialization|calibra[cç][aã]o|ferramenta|campo|schema|contrato|servidor|aprovad/iu
   );
 });
@@ -1731,6 +1732,178 @@ test("MCP preserva requisito e microssequência no blocker de prática insuficie
     requirement: "Classificar casos de rede."
   });
   assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL/u);
+});
+
+test("MCP espelha a projeção pública no content.text para o cliente que só lê o texto", async () => {
+  const scenarios = [
+    { label: "transitório 503 com correlação", name: "retomar_curso", args: { titulo: "Redes para iniciantes" },
+      makeError: () => new AuthoringApiError(503, "network_error", "Falha transitória de conexão ao ler o curso no servidor."),
+      check: projection => {
+        assert.equal(projection.error.code, "temporarily_unavailable");
+        assert.equal(projection.error.retryable, true);
+        assert.equal(projection.error.diagnostico?.status, 503);
+        assert.equal(projection.error.diagnostico?.fase, "execucao");
+        assert.ok(projection.error.diagnostico?.requestId);
+      } },
+    { label: "preflight bloqueado com blocker real e orientação", name: "retomar_curso", args: { titulo: "Redes para iniciantes" },
+      makeError: () => new AuthoringApiError(422, "human_materialization_preflight_blocked",
+        "Resolva os bloqueios antes de produzir.", { preflight: { state: "blocked", referencia: null, completion: "complete",
+          blockers: [{ code: "human_materialization_insufficient_practice",
+            message: "A prática não cumpre o mínimo para o requisito “Classificar casos de rede.”: 1 oportunidade distinta declarada; mínimo efetivo 2.",
+            microsequence: "DNS", requirement: "Classificar casos de rede.", rawSnapshot: "PRIVATE_SENTINEL" }] } }),
+      check: projection => {
+        assert.equal(projection.error.code, "human_materialization_preflight_blocked");
+        assert.deepEqual(projection.error.details.preflight.blockers[0], {
+          code: "human_materialization_insufficient_practice",
+          message: "A prática não cumpre o mínimo para o requisito “Classificar casos de rede.”: 1 oportunidade distinta declarada; mínimo efetivo 2.",
+          microsequence: "DNS", requirement: "Classificar casos de rede." });
+        assert.match(projection.error.details.preflight.orientacao ?? "", /pendências de percurso/iu);
+      } },
+    { label: "escrita incerta não reaplica", name: "retomar_curso", args: { titulo: "Redes para iniciantes" },
+      makeError: () => new AuthoringApiError(503, "course_write_uncertain", "A escrita pode ter ficado incerta."),
+      check: projection => {
+        assert.equal(projection.error.code, "course_write_uncertain");
+        assert.equal(projection.error.retryable, false);
+        assert.doesNotMatch(projection.nextDecision ?? "", /refaça|tente novamente/iu);
+      } },
+    { label: "desafio de auth preservado", name: "retomar_curso", args: { titulo: "Redes para iniciantes" },
+      makeError: () => new AuthoringApiError(403, "insufficient_scope", "Escopo insuficiente."),
+      challenged: true,
+      check: projection => assert.equal(projection.error.code, "insufficient_scope") }
+  ];
+  for (const scenario of scenarios) {
+    const handler = createAuthoringMcpHandler({
+      adapter: { ...adapter(), async listCourses() { throw scenario.makeError(); } },
+      allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const payload = await (await handler(request("tools/call", { name: scenario.name, arguments: scenario.args }))).json();
+    const projection = payload.result.structuredContent;
+    assert.deepEqual(JSON.parse(payload.result.content[0].text), projection, scenario.label);
+    scenario.check(projection);
+    assert.equal(Boolean(payload.result._meta?.["mcp/www_authenticate"]), Boolean(scenario.challenged), scenario.label);
+    assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL|rawSnapshot|network_error|conexão ao servidor/iu, scenario.label);
+  }
+});
+
+test("MCP compacta o texto quando o espelho excederia o limite, sem truncar o structuredContent", async () => {
+  const makeBlockers = count => Array.from({ length: count }, (_, index) => ({
+    code: "invalid_human_materialization",
+    message: "Pendência sintética de limite.",
+    microsequence: `MS-${index}`,
+    passages: Array.from({ length: 12 }, () => "x".repeat(4000))
+  }));
+  const runWith = async count => {
+    const handler = createAuthoringMcpHandler({
+      adapter: { ...adapter(), async listCourses() {
+        throw new AuthoringApiError(422, "human_materialization_preflight_blocked",
+          "Resolva os bloqueios antes de produzir.", { preflight: {
+            state: "blocked", referencia: null, completion: "complete", blockers: makeBlockers(count) } });
+      } },
+      allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const response = await handler(request("tools/call", { name: "retomar_curso", arguments: { titulo: "Redes para iniciantes" } }));
+    const raw = await response.text();
+    return { status: response.status, raw, body: JSON.parse(raw), bytes: new TextEncoder().encode(raw).byteLength };
+  };
+
+  // Espaço insuficiente para o espelho, mas ainda suficiente para o compacto.
+  const delivered = await runWith(30);
+  assert.equal(delivered.status, 200);
+  const projection = delivered.body.result.structuredContent;
+  const text = JSON.parse(delivered.body.result.content[0].text);
+  assert.equal(delivered.body.result.isError, true);
+  assert.deepEqual(Object.keys(text).sort(), ["aviso", "error", "nextDecision"]);
+  assert.equal(text.error.code, projection.error.code);
+  assert.equal(text.error.message, projection.error.message);
+  assert.equal(text.error.retryable, projection.error.retryable);
+  assert.deepEqual(text.error.diagnostico, projection.error.diagnostico);
+  assert.equal(text.nextDecision, projection.nextDecision);
+  assert.match(text.aviso, /limite/iu);
+  assert.doesNotMatch(delivered.body.result.content[0].text, /PRIVATE_SENTINEL|rawSnapshot/u);
+  // StructuredContent permanece íntegro: nenhum bloqueador truncado em silêncio.
+  assert.equal(projection.error.details.preflight.blockers.length, 30);
+  assert.equal(projection.error.details.preflight.blockers[0].passages.length, 12);
+  assert.equal(projection.error.details.preflight.blockers[0].passages[0].length, 4000);
+  // Bytes realmente entregues, com o envelope JSON-RPC, abaixo do limite do handler.
+  assert.ok(delivered.bytes <= 2 * 1024 * 1024);
+
+  // Nem o compacto cabe: o limite fica explícito, sem promessa de recuperação textual.
+  const oversized = await runWith(46);
+  assert.equal(oversized.status, 413);
+  assert.equal(oversized.body.error.data.code, "mcp_response_too_large");
+  assert.equal(oversized.body.error.data.retryable, false);
+  assert.equal(Object.hasOwn(oversized.body, "result"), false);
+  assert.doesNotMatch(oversized.raw, /aviso|projeção completa/iu);
+  assert.ok(oversized.bytes <= 2 * 1024 * 1024);
+});
+
+test("MCP mede o envelope JSON-RPC: id longo ainda recebe o texto compacto", async () => {
+  const LIMIT = 2 * 1024 * 1024;
+  const ENVELOPE_PREFIX = '{"jsonrpc":"2.0","id":';
+  const id = "req-" + "x".repeat(5000);
+  const idJson = JSON.stringify(id);
+  const fullBlockers = count => Array.from({ length: count }, (_, index) => ({
+    code: "invalid_human_materialization", message: "Pendência sintética de limite.",
+    microsequence: `MS-${index}`, passages: Array.from({ length: 12 }, () => "x".repeat(4000))
+  }));
+  const run = async tunerLen => {
+    const blockers = fullBlockers(21);
+    if (tunerLen > 0) {
+      const passages = Array.from({ length: Math.floor(tunerLen / 4000) }, () => "x".repeat(4000));
+      const rest = tunerLen % 4000;
+      if (rest > 0) passages.push("x".repeat(rest));
+      blockers.push({ code: "invalid_human_materialization", message: "Ajuste de limite.",
+        microsequence: "MS-tuner", passages });
+    }
+    const handler = createAuthoringMcpHandler({
+      adapter: { ...adapter(), async listCourses() {
+        throw new AuthoringApiError(422, "human_materialization_preflight_blocked",
+          "Resolva os bloqueios antes de produzir.", { preflight: {
+            state: "blocked", referencia: null, completion: "complete", blockers } });
+      } },
+      allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const body = JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call",
+      params: { name: "retomar_curso", arguments: { titulo: "Redes para iniciantes" } } });
+    const response = await handler(new Request(RESOURCE_URL, { method: "POST", headers: {
+      Origin: ORIGIN, Authorization: "Bearer token", Accept: "application/json, text/event-stream",
+      "Content-Type": "application/json", "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION }, body }));
+    const raw = await response.text();
+    return { status: response.status, raw, payload: JSON.parse(raw) };
+  };
+  // Tamanhos exatamente como o produto os serializa, a partir do structuredContent íntegro.
+  const projectedSize = sc => {
+    const mirror = JSON.stringify({ content: [{ type: "text", text: JSON.stringify(sc) }],
+      structuredContent: sc, isError: true });
+    const envelope = ENVELOPE_PREFIX + idJson + ',"result":' + mirror + "}";
+    return { resultBytes: new TextEncoder().encode(mirror).byteLength,
+      envelopeBytes: new TextEncoder().encode(envelope).byteLength };
+  };
+
+  const probe = await run(1);
+  assert.equal(probe.status, 200);
+  const base = projectedSize(probe.payload.result.structuredContent);
+  const delta = Math.max(0, Math.ceil((LIMIT + 200 - base.envelopeBytes) / 2));
+  const tuned = await run(1 + delta);
+  const sc = tuned.payload.result.structuredContent;
+  const sizes = projectedSize(sc);
+  assert.ok(sizes.resultBytes <= LIMIT, "o espelho sozinho caberia no limite");
+  assert.ok(sizes.envelopeBytes > LIMIT, "apenas o envelope JSON-RPC excede o limite");
+  assert.equal(tuned.status, 200, "a guarda mede o envelope e compacta em vez de recusar");
+  assert.equal(tuned.payload.id, id, "o id longo é preservado");
+  assert.equal(tuned.payload.error, undefined, "não houve falha de transporte");
+  const text = JSON.parse(tuned.payload.result.content[0].text);
+  assert.deepEqual(Object.keys(text).sort(), ["aviso", "error", "nextDecision"]);
+  assert.equal(text.error.code, sc.error.code);
+  assert.equal(text.error.retryable, sc.error.retryable);
+  assert.deepEqual(text.error.diagnostico, sc.error.diagnostico);
+  assert.equal(text.nextDecision, sc.nextDecision);
+  assert.match(text.aviso, /limite/iu);
+  assert.equal(sc.error.details.preflight.blockers.length, 22);
+  assert.ok(new TextEncoder().encode(tuned.raw).byteLength <= LIMIT, "bytes entregues sob o limite");
 });
 
 test("MCP distingue recusa de acesso da autenticação e do escopo OAuth", async () => {
@@ -1790,10 +1963,7 @@ test("MCP reduz falha transitória de leitura a impacto e retomada sem expor tra
   assert.equal(payload.result.structuredContent.error.retryable, true);
   assert.equal(payload.result.structuredContent.error.code, "temporarily_unavailable");
   assert.equal(payload.result.structuredContent.error.message, "Não consegui concluir esta etapa.");
-  assert.equal(
-    payload.result.content[0].text,
-    payload.result.structuredContent.error.message
-  );
+  assert.deepEqual(JSON.parse(payload.result.content[0].text), payload.result.structuredContent);
   assert.match(publicText, /Refaça a mesma etapa em silêncio, sem mudar a intenção/iu);
   assert.doesNotMatch(
     completeProjection,
