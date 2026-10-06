@@ -116,7 +116,7 @@ Confira primeiro o provedor e o modelo de IA escolhidos, além do estado da cone
 
 Enquanto a prévia não for aplicada e salva, o curso conserva o conteúdo anterior. Você pode continuar a edição manual ou usar uma conversa externa conectada para uma tarefa mais ampla. O [guia de assistência](assistencia-por-ia.md) distingue esses percursos e os dados enviados.
 
-Se já usou **Aplicar ao rascunho**, confira esse rascunho e use **Salvar** quando estiver adequado. Aplicar a prévia e gravar no curso são decisões separadas.
+Se já usou **Aplicar ao rascunho**, confira esse rascunho e use **Salvar proposta** quando estiver adequado. Aplicar a prévia e gravar no curso são decisões separadas.
 
 ### Não consigo salvar uma atribuição de fontes
 
