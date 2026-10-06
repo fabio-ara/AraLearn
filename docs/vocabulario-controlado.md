@@ -71,7 +71,7 @@ Agrupamento curricular de lições dentro de um curso, usado quando há uma orga
 
 **Uso.** `manter`. Distinguir de `Parte de autoria`, `unidade de estudo`, `package`.
 
-**Base.** [definição própria](vocabulario-controlado.md).
+**Base.** [definição própria](modelo-didatico.md).
 
 #### Lição
 
@@ -81,7 +81,7 @@ Unidade curricular de um módulo que organiza uma progressão didática coerente
 
 **Uso.** `manter`. Distinguir de `Parte`, `microssequência`, `sessão`.
 
-**Base.** [definição própria](vocabulario-controlado.md).
+**Base.** [definição própria](modelo-didatico.md).
 
 #### Microssequência didática
 
@@ -195,7 +195,7 @@ Arquivo binário ou documento armazenado e referenciado por uma representação,
 
 **Uso.** `restringir`; formas técnicas ou históricas: `arquivo de mídia`, `media asset`. Distinguir de `representação externa`, `fonte`, `artefato de curso`.
 
-**Base.** [padrão externo](https://www.rfc-editor.org/rfc/rfc3986.html).
+**Base.** [definição própria](fontes-e-citacoes.md); [observação técnica](audio.md).
 
 #### Pacote de componente
 
@@ -285,7 +285,7 @@ Releitura de observações, conteúdo e contexto pedagogicamente afetado que pro
 
 **Domínio e implementação.** Revisão contextual; equivalente internacional: contextual authoring review; símbolo: `contextual_authoring_review`.
 
-**Uso.** `restringir`; formas técnicas ou históricas: `revisão contextual`, `revisão autoral`. Distinguir de `correção aplicada`, `teste automatizado`, `aprovação automática`.
+**Uso.** `restringir`; formas técnicas ou históricas: `revisão contextual`. Distinguir de `revisão autoral`, `correção aplicada`, `teste automatizado`, `aprovação automática`.
 
 **Base.** [decisão de produto](auditoria-de-conformidade-instrucional.md).
 
@@ -455,7 +455,7 @@ Atribuição intencional em um escopo que substitui integralmente o valor herdad
 
 #### Direção editorial
 
-Orientação qualitativa sobre a escrita e a apresentação do conteúdo, como usar parágrafos curtos ou títulos diretos. Complementa os parâmetros de desenho instrucional, preservando o desenvolvimento necessário à compreensão. Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.
+Orientação qualitativa sobre a escrita e a apresentação do conteúdo, como usar parágrafos curtos ou títulos diretos. Complementa os parâmetros de desenho instrucional, preservando o desenvolvimento necessário à compreensão. A orientação pede parágrafos curtos. Uma unidade pode ultrapassar o alvo de palavras para desenvolver uma relação necessária; a divisão em outras unidades depende da progressão e da função de cada etapa.
 
 **Domínio e implementação.** Direção editorial; equivalente internacional: editorial direction; símbolo: `course_authoring_guidance`.
 
@@ -533,7 +533,7 @@ Combinação de valores dos fatores que uma pesquisa pretende comparar. O protoc
 
 **Uso.** `restringir`; formas técnicas ou históricas: `condição`. Distinguir de `condição autoral`, `parâmetro isolado`, `grupo de acesso`.
 
-**Base.** [definição própria](experimentos-instrucionais-parametrizados.md): Cursos independentes com configurações declaradas não criam uma condição experimental governada.
+**Base.** [Shadish et al. (2002)](referencias.md#ref-shadish2002experimental): Fundamenta a definição das condições, sua atribuição e a análise das diferenças em desenhos de investigação causal; [decisão de produto](experimentos-instrucionais-parametrizados.md): Os cursos independentes fornecem materiais para comparação; o protocolo da pesquisa organiza participantes, atribuição, medidas e análise.
 
 #### Medida observada
 
@@ -547,13 +547,13 @@ Valor obtido por instrumento ou procedimento declarado, antes de qualquer interp
 
 #### Métrica calculada
 
-Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados. A soma de oportunidades de prática num escopo é uma métrica calculada a partir do estado corrente das unidades de estudo e dos requisitos de evidência.
+Resultado obtido ao aplicar uma regra de cálculo versionada — a métrica — a fatos ou medidas. A regra declara a unidade, os filtros e, quando necessário, o denominador. O resultado é uma medida derivada; interpretá-lo como indicador de um construto exige fundamentação e evidências de validade. A regra soma pares distintos de requisito de evidência e oportunidade de prática em cada unidade do escopo. O total obtido é a medida derivada dessa regra e descreve os registros do material salvo.
 
 **Domínio e implementação.** Métrica calculada; equivalente internacional: computed metric; símbolo: `computed_metric`.
 
 **Uso.** `restringir`; formas técnicas ou históricas: `métrica`. Distinguir de `medida observada`, `indicador`, `atenção`, `aprendizagem`.
 
-**Base.** [Messick (1995)](referencias.md#ref-messick1995validity); [decisão de produto](analytics-instrucionais.md).
+**Base.** [definição própria](glossario-construtos.md); [Messick (1995)](referencias.md#ref-messick1995validity); [decisão de produto](dicionario-metricas-datasets.md).
 
 #### Indicador de pesquisa
 
@@ -651,7 +651,7 @@ Estado de referência conservado para retomar ou restaurar um trabalho técnico.
 
 #### Pessoa usuária
 
-Registro pelo qual uma pessoa se identifica no aplicativo e recebe acesso aos seus dados. Reúne as informações de perfil e as relações de autorização usadas pelo sistema. A pessoa entra na conta, consulta os cursos a que tem acesso e mantém seu perfil com identificador público e foto opcional.
+Pessoa que utiliza o aplicativo, com ou sem conta. A conta é o registro técnico usado para autenticar essa pessoa, relacionar seu perfil e controlar o acesso aos dados; o visitante acessa o conteúdo público permitido sem se autenticar. A pessoa entra na conta, consulta os cursos a que tem acesso e mantém seu perfil com identificador público e foto opcional.
 
 **Domínio e implementação.** Pessoa usuária; equivalente internacional: user; símbolo: `user_account`.
 

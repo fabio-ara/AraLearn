@@ -207,7 +207,7 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "docs/vocabulario-controlado.md"
+          "ref": "docs/modelo-didatico.md"
         }
       ],
       "notSynonyms": [
@@ -246,7 +246,7 @@
       "sources": [
         {
           "status": "definicao-propria",
-          "ref": "docs/vocabulario-controlado.md"
+          "ref": "docs/modelo-didatico.md"
         }
       ],
       "notSynonyms": [
@@ -626,8 +626,12 @@
       ],
       "sources": [
         {
-          "status": "padrao-externo",
-          "ref": "https://www.rfc-editor.org/rfc/rfc3986.html"
+          "status": "definicao-propria",
+          "ref": "docs/fontes-e-citacoes.md"
+        },
+        {
+          "status": "observacao-tecnica",
+          "ref": "docs/audio.md"
         }
       ],
       "notSynonyms": [
@@ -858,8 +862,7 @@
       "id": "contextual-review",
       "family": "authoring-process",
       "currentTerms": [
-        "revisão contextual",
-        "revisão autoral"
+        "revisão contextual"
       ],
       "productTerm": "Revisão contextual",
       "technicalSymbol": "contextual_authoring_review",
@@ -878,6 +881,7 @@
         }
       ],
       "notSynonyms": [
+        "revisão autoral",
         "correção aplicada",
         "teste automatizado",
         "aprovação automática"
@@ -886,7 +890,7 @@
       "domainTerm": "Revisão contextual",
       "englishEquivalent": "contextual authoring review",
       "araLearnExample": "Ao receber uma observação sobre uma unidade, o assistente relê também os pré-requisitos, exemplos e práticas afetados antes de propor correções.",
-      "ambiguityRisk": "Sem esta delimitação, Revisão pode ser confundida com correção já aplicada, teste automatizado ou nova versão imutável do curso.",
+      "ambiguityRisk": "Confundir a revisão contextual com a declaração de revisão autoral atribuiria inspeção humana a uma proposta do assistente. Preparar a proposta, aplicar a correção e declarar revisão são atos distintos.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Auditoria instrucional”: foi retirada da interface porque sugeria uma maquinaria persistente de rodadas e achados que não é necessária ao ciclo corrente.",
@@ -937,6 +941,7 @@
       "id": "authoring-review",
       "family": "authoring-process",
       "currentTerms": [
+        "revisão autoral",
         "revisão de conteúdo"
       ],
       "productTerm": "Revisão autoral",
@@ -1566,12 +1571,12 @@
       "interfaceTerm": "Direção editorial",
       "domainTerm": "Direção editorial",
       "englishEquivalent": "editorial direction",
-      "araLearnExample": "Uma microssequência pede parágrafos curtos; quando o conteúdo necessário cresce, a produção cria mais unidades de estudo em vez de o comprimir para caber no alvo de palavras.",
+      "araLearnExample": "A orientação pede parágrafos curtos. Uma unidade pode ultrapassar o alvo de palavras para desenvolver uma relação necessária; a divisão em outras unidades depende da progressão e da função de cada etapa.",
       "ambiguityRisk": "Sem esta delimitação, direção editorial pode ser confundida com parâmetro pedagógico, alvo quantitativo, prompt persistido ou autorização para retirar conteúdo.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Orientação de autoria”: é ampla demais e mistura decisões pedagógicas com escolhas de apresentação.",
-        "“Limite editorial”: sugere compressão obrigatória mesmo quando mais unidades de estudo são pedagogicamente necessárias."
+        "“Limite editorial”: sugere compressão obrigatória, embora o desenvolvimento necessário possa exigir mais espaço na mesma unidade ou uma divisão didaticamente justificada."
       ],
       "status": "vigente"
     },
@@ -1754,9 +1759,14 @@
       ],
       "sources": [
         {
-          "status": "definicao-propria",
+          "status": "evidencia-academica",
+          "ref": "docs/referencias.md#ref-shadish2002experimental",
+          "supports": "Fundamenta a definição das condições, sua atribuição e a análise das diferenças em desenhos de investigação causal."
+        },
+        {
+          "status": "decisao-produto",
           "ref": "docs/experimentos-instrucionais-parametrizados.md",
-          "supports": "Cursos independentes com configurações declaradas não criam uma condição experimental governada."
+          "supports": "Os cursos independentes fornecem materiais para comparação; o protocolo da pesquisa organiza participantes, atribuição, medidas e análise."
         }
       ],
       "notSynonyms": [
@@ -1822,7 +1832,7 @@
       ],
       "productTerm": "Métrica calculada",
       "technicalSymbol": "computed_metric",
-      "definition": "Resultado operacional regenerável de fórmula versionada aplicada a fatos ou medidas, como contagem, razão ou agregação, com unidade e denominador explícitos; só constitui medida de construto quando houver modelo e validade declarados.",
+      "definition": "Resultado obtido ao aplicar uma regra de cálculo versionada — a métrica — a fatos ou medidas. A regra declara a unidade, os filtros e, quando necessário, o denominador. O resultado é uma medida derivada; interpretá-lo como indicador de um construto exige fundamentação e evidências de validade.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -1832,12 +1842,16 @@
       ],
       "sources": [
         {
+          "status": "definicao-propria",
+          "ref": "docs/glossario-construtos.md"
+        },
+        {
           "status": "evidencia-academica",
           "ref": "https://doi.org/10.1037/0003-066X.50.9.741"
         },
         {
           "status": "decisao-produto",
-          "ref": "docs/analytics-instrucionais.md"
+          "ref": "docs/dicionario-metricas-datasets.md"
         }
       ],
       "notSynonyms": [
@@ -1849,11 +1863,11 @@
       "interfaceTerm": "Métrica calculada",
       "domainTerm": "Métrica calculada",
       "englishEquivalent": "computed metric",
-      "araLearnExample": "A soma de oportunidades de prática num escopo é uma métrica calculada a partir do estado corrente das unidades de estudo e dos requisitos de evidência.",
-      "ambiguityRisk": "Sem esta delimitação, “métrica calculada” pode ser confundido com medida observada, indicador, atenção, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "araLearnExample": "A regra soma pares distintos de requisito de evidência e oportunidade de prática em cada unidade do escopo. O total obtido é a medida derivada dessa regra e descreve os registros do material salvo.",
+      "ambiguityRisk": "Confundir a regra de cálculo, o valor obtido e sua interpretação impediria reproduzir a medida e atribuiria significado educacional a uma contagem do material.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
-        "“Medida derivada”: foi reservada para casos com modelo de mensuração; contagens, razões e agregações operacionais continuam métricas calculadas.",
+        "“Medida derivada”: explicita que o valor resulta de um cálculo. A expressão operacional métrica calculada nomeia esse resultado no registro terminológico; a regra de cálculo e o valor obtido precisam permanecer distinguíveis.",
         "“Estatística”: é um subconjunto matemático e não cobre toda fórmula versionada aplicada a fatos operacionais."
       ],
       "status": "vigente"
@@ -2236,7 +2250,7 @@
       ],
       "productTerm": "Pessoa usuária",
       "technicalSymbol": "user_account",
-      "definition": "Registro pelo qual uma pessoa se identifica no aplicativo e recebe acesso aos seus dados. Reúne as informações de perfil e as relações de autorização usadas pelo sistema.",
+      "definition": "Pessoa que utiliza o aplicativo, com ou sem conta. A conta é o registro técnico usado para autenticar essa pessoa, relacionar seu perfil e controlar o acesso aos dados; o visitante acessa o conteúdo público permitido sem se autenticar.",
       "decision": "restringir",
       "layers": [
         "interface",
@@ -2259,7 +2273,7 @@
       "domainTerm": "Pessoa usuária",
       "englishEquivalent": "user",
       "araLearnExample": "A pessoa entra na conta, consulta os cursos a que tem acesso e mantém seu perfil com identificador público e foto opcional.",
-      "ambiguityRisk": "Sem esta delimitação, “pessoa usuária” pode ser confundido com perfil, ator técnico, proprietário, produzindo decisões de interface, dados ou pesquisa sobre conceitos diferentes.",
+      "ambiguityRisk": "Confundir a pessoa com sua conta apagaria a distinção entre o papel humano, o registro de autenticação e o uso permitido a visitantes sem conta.",
       "alternativesAssessment": "compared",
       "alternativesConsidered": [
         "“Usuário”: é conciso, mas pode reduzir a pessoa ao ator técnico; pessoa usuária é o rótulo de produto, deixando conta de autenticação como implementação."
