@@ -3014,3 +3014,31 @@ test("conflito em unidade existente expõe solicitado, intenção efetiva e snap
   "configuração omitida na unidade existente reutiliza o estado corrente");
 });
 
+test("preflight aceita 32 vínculos de Fonte e recusa 33 antes de qualquer gravação", async () => {
+  const sourceLink = () => ({ fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"],
+    ancoras: ["Seção 2 — Introdução"],
+    ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "O DNS associa nomes a endereços." }] });
+
+  const accepted = adapterFixture();
+  await materializeCompletePart({ adapter: accepted, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [unit()], explanations: [{ ...explanationFixtures()[0], fontes: Array.from({ length: 32 }, sourceLink) }] });
+  assert.equal(accepted.calls.length, 1, "32 vínculos atravessam o preflight e a escrita");
+  const links = accepted.calls[0].explanations[0].sourceLinks;
+  assert.equal(links.length, 32, "o limite documentado preserva todos os vínculos enviados");
+  assert.equal(new Set(links.map(entry => entry.linkId)).size, 32, "cada vínculo conserva identidade própria");
+  assert.deepEqual([...new Set(links.map(entry => entry.sourceId))], ["source-rfc-1035"],
+    "a Fonte resolvida permanece a mesma");
+  assert.deepEqual(links[0].anchors, [{ anchorId: "anchor-rfc-1035-section-2" }], "a Âncora humana é preservada");
+  assert.equal(new Set(links.map(entry => JSON.stringify(entry.roles))).size, 1,
+    "os papéis declarados são preservados em todos os vínculos");
+  assert.ok(links[0].roles.length > 0);
+
+  const rejected = adapterFixture();
+  await assert.rejects(() => materializeCompletePart({ adapter: rejected, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [unit()],
+    explanations: [{ ...explanationFixtures()[0], fontes: Array.from({ length: 33 }, sourceLink) }] }),
+  error => { const blocker = preflightBlocker(error, "invalid_human_materialization");
+    assert.match(blocker.message, /32 vínculos de fontes/u); return true; });
+  assert.equal(rejected.calls.length, 0, "33 vínculos não gravam nada");
+});
+

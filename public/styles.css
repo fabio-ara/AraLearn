@@ -3054,6 +3054,13 @@ button.account-settings-back[hidden] {
   touch-action: none;
 }
 
+.package-math-graph-canvas[data-diagram-viewport-mode="explore-settling"],
+.package-system-diagram-canvas[data-diagram-viewport-mode="explore-settling"] {
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
 .package-diagram-modal {
   position: fixed;
   inset: 0;

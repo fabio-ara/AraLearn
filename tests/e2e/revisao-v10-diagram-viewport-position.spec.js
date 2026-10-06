@@ -277,3 +277,54 @@ test("evento de scroll com a caixa oculta não apaga o ponto visto na segunda vo
   expect(Math.abs(secondInline.center.y - explored.center.y), view).toBeLessThanOrEqual(1);
   expect(errors).toEqual([]);
 });
+
+test("prontidão de explore coincide com a âncora assentada (guarded-machine)", async ({ page }) => {
+  const { errors, host } = await mount(page, { diagram: "guarded-machine" });
+  const figure = host.locator(".package-system-diagram");
+  const canvas = host.locator('[data-resource-scroll-frame="diagram"]');
+  const trigger = figure.getByRole("button", { name: "Explorar diagrama em tela inteira", exact: true });
+
+  await panInline(page, host);
+  await trigger.click();
+  await expect(page.locator("dialog[open]")).toBeVisible();
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("explore");
+  await canvas.focus();
+  for (let step = 0; step < 4; step++) await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowDown");
+  await figure.getByRole("button", { name: "Aumentar zoom", exact: true }).click();
+  await expect.poll(async () => (await readViewport(host)).scale).toBeGreaterThan(1);
+  await page.evaluate(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  });
+  const explored = await readViewport(host);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("inline");
+
+  await page.evaluate(() => {
+    const canvas = document.querySelector('[data-resource-scroll-frame="diagram"]');
+    globalThis.__exploreAtPublication = null;
+    const observer = new MutationObserver(() => {
+      if (canvas.dataset.diagramViewportMode === "explore" && !globalThis.__exploreAtPublication) {
+        const svg = canvas.querySelector("svg");
+        const scale = Number(svg.getAttribute("data-diagram-scale") || 1);
+        globalThis.__exploreAtPublication = {
+          x: Number(((canvas.scrollLeft + canvas.clientWidth / 2) / scale).toFixed(1)),
+          y: Number(((canvas.scrollTop + canvas.clientHeight / 2) / scale).toFixed(1))
+        };
+      }
+    });
+    observer.observe(canvas, { attributes: true, attributeFilter: ["data-diagram-viewport-mode"] });
+  });
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator("dialog[open]")).toBeVisible();
+  await expect.poll(async () => (await readViewport(host)).mode).toBe("explore");
+  const atPublication = await page.evaluate(() => globalThis.__exploreAtPublication);
+  expect(atPublication, "leitura no instante da publicação").not.toBeNull();
+  expect(Math.abs(atPublication.x - explored.center.x), "prontidão x").toBeLessThanOrEqual(1);
+  expect(Math.abs(atPublication.y - explored.center.y), "prontidão y").toBeLessThanOrEqual(1);
+  expect(errors).toEqual([]);
+});

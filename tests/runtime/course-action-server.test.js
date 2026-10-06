@@ -571,6 +571,21 @@ test("Actions reduz falha transitória de leitura a impacto e retomada sem expor
   );
 });
 
+test("Actions não apresenta falha interna como indisponibilidade temporária", async () => {
+  const response = await createHandler({
+    async listCourses() {
+      throw new Error("defeito sintético interno");
+    }
+  })(request("retomar_curso", { titulo: "Redes para iniciantes" }));
+  const payload = await response.json();
+
+  assert.equal(response.status, 500);
+  assert.equal(payload.error.code, "internal_error");
+  assert.equal(payload.error.retryable, false);
+  assert.equal(payload.nextDecision, null);
+  assert.doesNotMatch(JSON.stringify(payload), /defeito sintético|temporarily_unavailable/iu);
+});
+
 test("Actions conserva a tentativa de criação incerta e não recomenda outra escrita", async () => {
   const writes = [];
   const response = await createHandler({ async createCourse(input) {

@@ -77,6 +77,28 @@ select is((select bibliography_style from public.courses where id='a3350000-0000
   'abnt-2025','erro interno não confirma configuração');
 select is((select count(*) from private.course_change_receipts where course_id='a3350000-0000-4000-8000-000000000101'),
   0::bigint,'erros não persistem recibos de sucesso');
+-- O pacote transacional de Fonte segue o mesmo conflito de negócio PT409 e o
+-- mesmo envelope PGRST/40001/409, sem gravação parcial.
+create temporary table bundle_stale as select pg_temp.capture_conflict($q$
+  select public.execute_course_source_bundle_for_actor_v1(
+    'a3350000-0000-4000-8000-000000000001','a3350000-0000-4000-8000-000000000101',2,
+    '[{"type":"set_bibliography_style","style":"apa7"}]'::jsonb,'application','conflict-bundle-0001')
+$q$) error;
+select is((select error->>'sqlstate' from bundle_stale),'PGRST','pacote usa conflito de negócio');
+select is((select error#>>'{message,code}' from bundle_stale),'40001','envelope do pacote mantém 40001');
+select is((select error#>>'{detail,status}' from bundle_stale),'409','envelope do pacote mantém HTTP409');
+create temporary table bundle_native as select pg_temp.capture_conflict($q$
+  select public.execute_course_source_bundle_for_actor_v1(
+    'a3350000-0000-4000-8000-000000000001','a3350000-0000-4000-8000-000000000101',1,
+    '[{"type":"set_bibliography_style","style":"apa7"}]'::jsonb,'application','conflict-bundle-0002')
+$q$) error;
+select is((select error->>'sqlstate' from bundle_native),'PGRST','captura nativa do pacote permanece');
+select is((select error#>>'{message,code}' from bundle_native),'40001','40001 nativo do pacote mantém envelope');
+select is((select revision from public.courses where id='a3350000-0000-4000-8000-000000000101'),
+  1::bigint,'conflitos do pacote fazem rollback da revisão');
+select is((select count(*) from private.course_change_receipts where course_id='a3350000-0000-4000-8000-000000000101'),
+  0::bigint,'conflitos do pacote não persistem recibos');
+
 drop trigger conflict_native_fixture on public.courses;
 
 select is(public.execute_course_source_command_for_actor_v1(
@@ -110,7 +132,7 @@ select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]
   where n.nspname in('public','private') and p.prokind='f'),0::bigint,'contratos atuais não levantam serialização para conflito de negócio');
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),95::bigint,'95 guardas de negócio usam PT409, incluindo decisões multialvo, inspeção por IA e retirada de áudio ainda usado pelo estudo');
+  where n.nspname in('public','private') and p.prokind='f'),96::bigint,'96 guardas de negócio usam PT409, incluindo decisões multialvo, inspeção por IA, pacote de Fonte e retirada de áudio ainda usado pelo estudo');
 select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i') from pg_proc
   where oid='public.get_course_observation_comparison_for_actor_v1(uuid,uuid,uuid,text,text,bigint,bigint)'::regprocedure),
   1,'comparação usa conflito de negócio para a versão apresentada');
@@ -123,10 +145,10 @@ select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT4
 select is((select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname in('public','private') and p.prokind='f'
     and p.prosrc~$rx$exception when serialization_failure or sqlstate 'PT409' then$rx$),
-  7::bigint,'sete capturas incluem conflito de negócio sem retirar o caso nativo');
+  8::bigint,'oito capturas incluem conflito de negócio sem retirar o caso nativo');
 select is((select sum(regexp_count(p.prosrc,$rx$'code'[[:space:]]*,[[:space:]]*'40001'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),8::bigint,'oito códigos JSON nos envelopes PGRST permanecem');
+  where n.nspname in('public','private') and p.prokind='f'),9::bigint,'nove códigos JSON nos envelopes PGRST permanecem');
 
 select * from finish();
 rollback;

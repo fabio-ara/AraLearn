@@ -250,3 +250,43 @@ test("rótulos de ramo reservam a métrica real do texto", async ({ page }, test
     }
   }
 });
+
+test("re-render imediato após sair do zoom preserva o enquadramento", async ({ page }) => {
+  await mountFlow(page);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.evaluate(() => globalThis.__flowRender(false));
+  await expect(page.locator(".package-flow-svg")).toHaveAttribute("data-diagram-scale", "1.000");
+  await page.evaluate(async () => {
+    const canvas = document.querySelector(".package-flow-canvas");
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    canvas.focus();
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "+", bubbles: true, cancelable: true }));
+    await frame(); await frame();
+    canvas.dispatchEvent(new KeyboardEvent("keydown", { key: "-", bubbles: true, cancelable: true }));
+    await globalThis.__flowRender(false);
+  });
+  await expect(page.locator(".package-flow-svg")).toHaveAttribute("data-diagram-scale", "1.000");
+});
+
+test("rerender imediato após zoom preserva escala e centro com pan", async ({ page }) => {
+  await mountFlow(page);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.evaluate(() => globalThis.__flowRender(false));
+  const result = await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    const snap = () => {
+      const canvas = document.querySelector(".package-flow-canvas");
+      const scale = Number(document.querySelector(".package-flow-svg").getAttribute("data-diagram-scale"));
+      return { scale, center: Number(((canvas.scrollLeft + canvas.clientWidth / 2) / scale).toFixed(1)) };
+    };
+    const press = (key) => document.querySelector(".package-flow-canvas").dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+    document.querySelector(".package-flow-canvas").focus();
+    for (let step = 0; step < 6; step++) { press("ArrowRight"); await frame(); }
+    const before = snap();
+    press("+");
+    await globalThis.__flowRender(false);
+    return { before, after: snap() };
+  });
+  expect(result.after.scale).toBe(1.25);
+  expect(Math.abs(result.after.center - result.before.center), JSON.stringify(result)).toBeLessThanOrEqual(1);
+});

@@ -365,7 +365,9 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
-  if (error.status === 429 || error.status >= 500) {
+  // `internal_error` é falha inesperada sem causa classificada: repetir a mesma
+  // operação não é orientação segura, então fica fora da repetição automática.
+  if (error.code !== "internal_error" && (error.status === 429 || error.status >= 500)) {
     return {
       strategy: "repeat_identical",
       retryable: true,

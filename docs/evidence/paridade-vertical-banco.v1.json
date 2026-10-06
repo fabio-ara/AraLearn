@@ -331,7 +331,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v17[check]",
+      "object": "constraint:private.course_change_receipts/course_change_receipts_operation_v18[check]",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1403,6 +1403,10 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "function:private.execute_course_source_bundle_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_commands jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-source-provenance"
+    },
+    {
       "object": "function:private.execute_course_source_command_core_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_channel text, p_request_id text)",
       "caseId": "course-source-provenance"
     },
@@ -1849,6 +1853,10 @@
     {
       "object": "function:public.execute_course_media_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_request_id text)",
       "caseId": "course-audio-media"
+    },
+    {
+      "object": "function:public.execute_course_source_bundle_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_commands jsonb, p_channel text, p_request_id text)",
+      "caseId": "course-source-provenance"
     },
     {
       "object": "function:public.execute_course_source_command_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_command jsonb, p_channel text, p_request_id text)",

@@ -5,7 +5,8 @@ import { createHash } from "node:crypto";
 
 import {
   COURSE_HUMAN_TASK_CATALOG_METADATA,
-  COURSE_HUMAN_TASKS
+  COURSE_HUMAN_TASKS,
+  HUMAN_TASK_RESULT_SCHEMA
 } from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS
@@ -21,7 +22,10 @@ const target = path.join(root, "docs", "downloads", "aralearn-chatgpt-action-ope
 const baseUrl =
   "https://jrfkphuhcseqmratijjr.supabase.co/functions/v1/aralearn-authoring-action";
 const actionTools = projectHumanAuthoringTasksForActions(COURSE_HUMAN_TASKS);
-const resultSchema = structuredClone(actionTools[0]?.outputSchema);
+// O outputSchema anunciado é a união sucesso+erro (contrato MCP); o artefato
+// OpenAPI separa as respostas, então a resposta de sucesso usa só o ramo sucesso.
+const outputSchema = actionTools[0]?.outputSchema;
+const resultSchema = structuredClone(HUMAN_TASK_RESULT_SCHEMA);
 const blockerSchema = {
   type: "array",
   maxItems: 256,
@@ -96,8 +100,8 @@ const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
 const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 100_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
-if (!resultSchema || actionTools.some(({ outputSchema }) => (
-  JSON.stringify(outputSchema) !== JSON.stringify(resultSchema)
+if (!outputSchema || actionTools.some(({ outputSchema: candidate }) => (
+  JSON.stringify(candidate) !== JSON.stringify(outputSchema)
 ))) {
   throw new TypeError("As tarefas humanas precisam compartilhar o contrato curto de resultado.");
 }

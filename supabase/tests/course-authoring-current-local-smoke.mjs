@@ -511,6 +511,49 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       limit: 1
     });
     assert.deepEqual(sourceDetail.items[0].defaultRoles, ["technical_conceptual"]);
+    // H1: o pacote de Fonte é atômico, idempotente e protegido no SQL real.
+    const catalogRead = (expectedRevision) => adapter.getCourseSources({ principal, courseId,
+      expectedRevision, mode: "catalog", sourceId: null, targetKind: null, targetId: null,
+      cursor: null, limit: 24 });
+    const catalogBefore = await catalogRead(sourceContext.course.revision);
+    await assert.rejects(() => executeHumanCourseTask({ adapter, principal, name: "manter_fonte",
+      rawArguments: { curso: title,
+        metadados: { titulo: "Fonte atômica descartável", citacao: "Descartável, 2026." },
+        ancoras: [{ seletor: { tipo: "paginas", paginaInicial: 1, paginaFinal: 1 },
+          localizadorHumano: "p. 1", hashDoPdf: "a".repeat(64) }] } }),
+    "âncora com PDF alheio precisa falhar");
+    const catalogAfterRollback = await catalogRead(sourceContext.course.revision);
+    assert.equal(catalogAfterRollback.items.length, catalogBefore.items.length,
+      "o pacote inválido não pode deixar Fonte parcial");
+    const currentRevision = (await resolveHumanCourseContext({ adapter, principal,
+      course: title })).course.revision;
+    const idempotentCommand = { type: "apply_source_bundle",
+      commands: [{ type: "set_bibliography_style", style: catalogBefore.bibliographyStyle }] };
+    const requestId = randomUUID();
+    await adapter.executeCourseSourceCommand({ principal, courseId, requestId,
+      expectedCourseRevision: currentRevision, command: idempotentCommand });
+    const replay = await adapter.executeCourseSourceCommand({ principal, courseId, requestId,
+      expectedCourseRevision: currentRevision, command: idempotentCommand });
+    assert.equal(replay.idempotent, true, "a repetição do mesmo requestId precisa ser idempotente");
+    await assert.rejects(() => adapter.executeCourseSourceCommand({ principal, courseId,
+      requestId: randomUUID(), expectedCourseRevision: currentRevision - 1, command: idempotentCommand }),
+    "revisão defasada precisa falhar");
+    await assert.rejects(() => adapter.executeCourseSourceCommand({ principal, courseId,
+      requestId: randomUUID(), expectedCourseRevision: currentRevision,
+      command: { type: "apply_source_bundle",
+        commands: Array.from({ length: 129 }, () => ({ type: "set_bibliography_style", style: "apa7" })) } }),
+    "pacote acima do máximo de comandos precisa ser recusado");
+    await assert.rejects(() => adapter.executeCourseSourceCommand({ principal, courseId,
+      requestId: randomUUID(), expectedCourseRevision: currentRevision,
+      command: { type: "apply_source_bundle", commands: [{ type: "apply_source_bundle",
+        commands: [{ type: "set_bibliography_style", style: "apa7" }] }] } }),
+    "pacote aninhado precisa ser recusado");
+    const anonymous = await localSupabaseRequest(config,
+      "/rest/v1/rpc/execute_course_source_bundle_for_actor_v1", { method: "POST", body: {
+        p_actor_id: actorId, p_course_id: courseId, p_expected_revision: currentRevision,
+        p_commands: idempotentCommand.commands, p_channel: "mcp", p_request_id: randomUUID() } });
+    assert.ok([401, 403, 404].includes(anonymous.response.status),
+      `o pacote exige service_role: HTTP ${anonymous.response.status}`);
     const beforeEditAttribution = await adapter.getCourseSources({
       principal,
       courseId,
@@ -700,6 +743,105 @@ export async function runLocalCourseAuthoringCurrent(environment = process.env) 
       exportedMicrosequences[1].explanation.reconciliation.contentBasis);
     assert.equal(correctedExplanation.reconciliation.entries[0].quote, correctedSupport.reconciliacao[0].trecho);
     assert.deepEqual(correctedMicrosequences[0].explanation, exportedMicrosequences[0].explanation);
+
+    // A prova de volume exige dois alvos VIVOS: units.items[0] foi excluída acima
+    // e o cache ainda a lista. Relê a unidade viva CORRENTE, clona seu conteúdo
+    // real como segunda unidade legítima e usa dois alvos vivos.
+    const volumeRevision = (await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision;
+    const volumeLive = await adapter.listCourseStudyUnits({ principal, courseId,
+      expectedRevision: volumeRevision, scopeKind: "course", limit: 24 });
+    assert.equal(volumeLive.items.length, 1, "a exclusão deixou uma única unidade viva");
+    const volumeSeed = volumeLive.items[0];
+    const volumeContent = structuredClone(volumeSeed.studyUnit);
+    delete volumeContent.id;
+    delete volumeContent.position;
+    volumeContent.title = `${volumeContent.title} (volume)`;
+    const occupiedPositions = new Set(volumeLive.items.map((item) => Number(item.studyUnit.position)));
+    let volumePosition = 1;
+    while (occupiedPositions.has(volumePosition)) volumePosition += 1;
+    const volumeCloneId = randomUUID();
+    const volumeClone = await adapter.commitCourseComposition({ principal, courseId,
+      requestId: randomUUID(), expectedRevision: volumeRevision,
+      upserts: [{ entityType: "study_unit", entityId: volumeCloneId, parentType: "microsequence",
+        parentId: volumeSeed.curriculumPath.didacticMicrosequence.id,
+        position: volumePosition, content: volumeContent }],
+      // A composição exige proveniência explícita por Unidade. O alvo novo declara
+      // um vínculo COMPLETO (linkId novo, papéis, ocorrências e âncoras) com a Fonte
+      // ativa já conhecida como needs_verification: não reutiliza a âncora retirada
+      // nem reivindica atualidade verificada.
+      deletes: [], sourceAttributionApplications: [{ studyUnitId: volumeCloneId,
+        sourceLinks: [{ linkId: randomUUID(), sourceId: sourceContext.source.sourceId,
+          relation: "needs_verification", roles: ["curricular_scope"],
+          anchors: [], occurrences: [] }] }] });
+    const liveUnits = await adapter.listCourseStudyUnits({ principal, courseId,
+      expectedRevision: volumeClone.revision, scopeKind: "course", limit: 24 });
+    assert.equal(liveUnits.items.length, 2, "a prova de volume precisa de dois alvos vivos");
+
+    // Volume real: um pacote com vários fatos legítimos devolve todos no recibo.
+    const bulkRevision = (await resolveHumanCourseContext({ adapter, principal, course: title })).course.revision;
+    const bulkSourceId = randomUUID();
+    const bulkDocument = { kind: "document", defaultRoles: [], title: "Fonte de volume", authors: [],
+      bibliographic: { editors: [], containerTitle: null, publisher: null, publisherPlace: null, volume: null,
+        issue: null, pages: null, articleNumber: null, doi: null, isbn: null, issn: null, accessedDate: null,
+        genre: null, number: null },
+      citationMode: "manual", publicationDate: null, identifier: null, language: null, citationText: null,
+      url: null, editionOrVersion: null, origin: "external", availability: "unknown",
+      verificationStatus: "unverified", studyVisibility: "hidden" };
+    const bulkBundle = { type: "apply_source_bundle", commands: [
+      { type: "save_source", sourceId: bulkSourceId, expectedSourceRevision: 0, source: bulkDocument },
+      ...Array.from({ length: 8 }, (_, index) => ({ type: "save_anchor", anchorId: randomUUID(),
+        sourceId: bulkSourceId, sourceRevision: null, expectedAnchorRevision: 0,
+        selector: { kind: "page_range", startPage: index + 1, endPage: index + 1 }, contentHash: null,
+        humanLocator: `p. ${index + 1}`, verificationExcerpt: null })) ] };
+    const bulkReceipt = await adapter.executeCourseSourceCommand({ principal, courseId,
+      requestId: randomUUID(), expectedCourseRevision: bulkRevision, command: bulkBundle });
+    assert.equal(bulkReceipt.changes.length, 9, "o recibo real devolve todos os fatos do pacote");
+
+    // Tolerância real do RPC local: p_commands acima de 196608 bytes num caso
+    // legítimo (dois alvos, vínculos informed_by citando trecho longo da fixture).
+    const heavyRevision = bulkReceipt.courseRevision;
+    const longExcerpt = "Trecho de prova do conteúdo da fixture sobre sockets e transporte. "
+      .repeat(70).slice(0, 4000);
+    const heavyCommands = [];
+    for (const item of liveUnits.items) {
+      const targetRead = await adapter.getCourseSources({ principal, courseId, expectedRevision: heavyRevision,
+        mode: "target", sourceId: null, targetKind: "study_unit", targetId: item.studyUnit.id,
+        cursor: null, limit: 1 });
+      heavyCommands.push({ type: "set_target_sources", targetKind: "study_unit", targetId: item.studyUnit.id,
+        expectedTargetVersion: targetRead.items[0].targetVersion,
+        sourceLinks: Array.from({ length: 28 }, () => ({ linkId: randomUUID(),
+          sourceId: sourceContext.source.sourceId, relation: "informed_by", roles: ["curricular_scope"],
+          anchors: [],
+          occurrences: [{ occurrenceId: randomUUID(), slot: "content", resourceId: "resource-heavy",
+            path: "text", quote: longExcerpt, prefix: null, suffix: null }] })) });
+    }
+    assert.ok(new TextEncoder().encode(JSON.stringify(heavyCommands)).byteLength > 196608,
+      "o corpo p_commands precisa passar de 196608 bytes");
+    const heavyReceipt = await adapter.executeCourseSourceCommand({ principal, courseId,
+      requestId: randomUUID(), expectedCourseRevision: heavyRevision,
+      command: { type: "apply_source_bundle", commands: heavyCommands } });
+    assert.equal(heavyReceipt.changed, true, "o backend local aceita o pacote acima de 196608 bytes");
+    const heavyReadback = await adapter.getCourseSources({ principal, courseId,
+      expectedRevision: heavyReceipt.courseRevision, mode: "target", sourceId: null,
+      targetKind: "study_unit", targetId: liveUnits.items[0].studyUnit.id, cursor: null, limit: 1 });
+    assert.equal(heavyReadback.items[0].sourceLinks.length, 28, "a releitura preserva os vínculos");
+    // O guard real alcançável pelo adapter é o limite individual de vínculos:
+    // 32 vínculos legais (quote 4000) passam de 131.072 bytes e são recusados
+    // pelo código exato, com a versão CORRENTE do alvo (sem CAS defasado).
+    const oversizedPerCommand = { type: "set_target_sources", targetKind: "study_unit",
+      targetId: liveUnits.items[0].studyUnit.id,
+      expectedTargetVersion: heavyReadback.items[0].targetVersion,
+      sourceLinks: Array.from({ length: 32 }, () => ({ linkId: randomUUID(),
+        sourceId: sourceContext.source.sourceId, relation: "informed_by", roles: ["curricular_scope"],
+        anchors: [],
+        occurrences: [{ occurrenceId: randomUUID(), slot: "content", resourceId: "resource-heavy",
+          path: "text", quote: longExcerpt, prefix: null, suffix: null }] })) };
+    assert.ok(new TextEncoder().encode(JSON.stringify(oversizedPerCommand.sourceLinks)).byteLength > 131072,
+      "os vínculos precisam passar do limite individual real de 131072 bytes");
+    await assert.rejects(() => adapter.executeCourseSourceCommand({ principal, courseId,
+      requestId: randomUUID(), expectedCourseRevision: heavyReceipt.courseRevision,
+      command: oversizedPerCommand }),
+    error => error.code === "course_source_links_too_large");
 
     return Object.freeze({
       contract: "aralearn.course-authoring-current-proof.v1",

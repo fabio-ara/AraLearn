@@ -21,6 +21,29 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261005120000 — pacote transacional de Fontes
+
+A migração candidata aplica metadados, âncoras, vínculos e estilo de uma fonte
+num único comando transacional (`apply_source_bundle`), atendendo ao defeito em
+que uma fonte era criada antes de uma âncora inválida ser recusada. O pacote
+reutiliza `private.execute_course_source_command_core_v1` por sub-comando dentro
+da mesma transação: qualquer falha reverte tudo e o recibo externo
+(`execute_course_source_bundle`) mantém a repetição idempotente pelo mesmo
+`requestId`.
+
+Não há transformação nem reparo de dados: fontes, âncoras, vínculos, papéis,
+pessoas e demais registros permanecem nos mecanismos existentes. A migração
+acrescenta as funções `private.execute_course_source_bundle_core_v1` e
+`public.execute_course_source_bundle_for_actor_v1` (execução restrita a
+`service_role`) e amplia o check de operações do recibo (`v18`), preservando
+todas as operações já aceitas. O manifesto declara a revisão `20261005120000` e
+o recurso `course-source-atomic-bundle-v1`, mantendo os recursos anteriores.
+
+Esta entrada descreve a candidata local, não uma implantação hospedada. A
+validação deve verificar atomicidade (entrada inválida sem gravação parcial),
+rollback no último passo, repetição idempotente e conflito de revisão em
+repetição cega, além da instalação e atualização exigidas para a promoção.
+
 ## 20260930010000 — ordem curricular na base de inspeção
 
 A [migração](../supabase/migrations/20260930010000_pedagogical_basis_study_order.sql)
