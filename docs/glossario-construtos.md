@@ -374,13 +374,13 @@ computacionais que propõem, transformam ou analisam conteúdo durante a autoria
 ### Transferência
 
 - **Tipo:** resultado.
-- **Definição:** aplicação de conhecimento ou estratégia a situação
-  suficientemente nova, preservando a estrutura relevante.
+- **Definição:** uso de conhecimento ou estratégia em uma tarefa ou contexto
+  novo, com a novidade explicitada no estudo.
 - **Manifestação possível:** resolver problema novo e explicar a relação com o
   princípio aprendido.
 - **Distinção:** trocar nomes ou valores pode preservar uma tarefa já
-  reconhecível. A investigação explicita o que mudou estruturalmente e que
-  relação o estudante precisou levar à nova situação.
+  reconhecível. A investigação explicita o que mudou na tarefa ou no contexto e
+  que relação o estudante precisou levar à nova situação.
 - **Evidência necessária:** justificar a distância entre tarefa de aprendizagem
   e tarefa de transferência. Os efeitos da prática por teste dependem dessa
   relação e de outras condições estudadas
