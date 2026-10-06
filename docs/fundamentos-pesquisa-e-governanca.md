@@ -169,8 +169,9 @@ cálculo. As **unidades de estudo** realizam essas etapas no percurso. A
 [organização didática](modelo-didatico.md) apresenta a relação completa.
 
 Na revisão, é possível perguntar onde está o problema: a afirmação da base
-está incorreta, falta um passo no exemplo ou a prática pede uma operação que
-não foi desenvolvida? A [análise instrucional](desenho-instrucional-parametrizado.md)
+está incorreta, falta um passo no exemplo ou a prática de consolidação pede uma
+operação que não foi desenvolvida nem assumida como pré-requisito? A
+[análise instrucional](desenho-instrucional-parametrizado.md)
 acompanha o conhecimento que atravessa essas etapas, ajudando a localizar
 lacunas. Separar base e realização é uma decisão do AraLearn; a hipótese é que
 a distinção ajude autores a inspecionar e reformular o material.
