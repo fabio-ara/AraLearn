@@ -118,6 +118,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
   let currentScale = 1;
   let expanded = false;
   let inlineRestorePending = false;
+  let exploreRestorePending = false;
   let scaleMode = "fit";
   let controlsReady = false;
   let resizeFrame = 0;
@@ -206,7 +207,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     toggleIcon.innerHTML = expanded ? DIAGRAM_ICONS.collapse : DIAGRAM_ICONS.expand;
     viewport.dataset.diagramExpanded = expanded ? "true" : "false";
     canvas.dataset.diagramViewportMode = expanded
-      ? "explore"
+      ? exploreRestorePending ? "explore-settling" : "explore"
       : inlineRestorePending ? "inline-settling" : "inline";
     toggleExpanded.setAttribute("aria-expanded", expanded ? "true" : "false");
     toggleExpanded.setAttribute("aria-label", expanded
@@ -306,6 +307,22 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     svg.style.height = `${naturalHeight * nextScale}px`;
     svg.setAttribute("data-diagram-scale", nextScale.toFixed(3));
     updateControls();
+    // Grava escala e scroll projetado sem esperar o rAF, para que um re-render nao
+    // restaure a escala nova com o scroll antigo. Usa a mesma guarda de epoca do rAF.
+    if (persist && scrollEpoch === userScrollEpoch && canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+      const projected = restoreScroll
+        ? clampScroll(restoreScroll.left, restoreScroll.top)
+        : clampScroll(content.x * nextScale - anchor.x, content.y * nextScale - anchor.y);
+      rememberViewport(stateKey, {
+        scaleMode,
+        scale: nextScale,
+        scrollLeft: projected.left,
+        scrollTop: projected.top,
+        viewportWidth: canvas.clientWidth,
+        viewportHeight: canvas.clientHeight,
+        expanded
+      });
+    }
 
     cancelAnimationFrame(scrollFrame);
     scrollFrame = requestAnimationFrame(() => {
@@ -321,7 +338,12 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
       }
       if (!expanded && inlineRestorePending) {
         inlineRestorePending = false;
-        canvas.dataset.diagramViewportMode = "inline";
+        updateControls();
+      }
+      // Prontidao verdadeira: "explore" so e publicado depois que a ancora assentou.
+      if (expanded && exploreRestorePending) {
+        exploreRestorePending = false;
+        updateControls();
       }
     });
   };
@@ -352,6 +374,7 @@ export async function hydrateDiagramViewport({ figure, canvas, svg, stateKey, in
     const scrollEpoch = userScrollEpoch;
     if (toDialog) {
       inlineRestorePending = false;
+      exploreRestorePending = true;
       dialog.append(viewport);
       dockPracticePrompt();
       dialog.showModal();

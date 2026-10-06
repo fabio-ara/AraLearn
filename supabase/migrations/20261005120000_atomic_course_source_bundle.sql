@@ -92,7 +92,7 @@ begin
   where course.id = p_course_id for update;
   if v_course.revision <> p_expected_revision then
     raise exception 'O Curso mudou; releia antes de salvar a Fonte.'
-      using errcode = '40001';
+      using errcode = 'PT409';
   end if;
   for v_index in 0..(v_count - 1) loop
     v_sub := p_commands -> v_index;
@@ -141,7 +141,7 @@ begin
     p_course_id,v_hash,v_result
   );
   return v_result;
-exception when serialization_failure then
+exception when serialization_failure or sqlstate 'PT409' then
   raise sqlstate 'PGRST' using
     message = jsonb_build_object(
       'code','40001','message',sqlerrm,'details',null,'hint',null
@@ -189,7 +189,7 @@ declare manifest jsonb:=public.get_aralearn_runtime_manifest();
 begin
   if manifest->>'schemaRevision' is distinct from '20261005120000' then
     manifest:=manifest||jsonb_build_object('schemaRevision','20261005120000',
-      'requiredFeatures',(manifest->'requiredFeatures')||jsonb_build_array('course-source-atomic-bundle-v1'));
+      'features',(manifest->'features')||jsonb_build_array('course-source-atomic-bundle-v1'));
     execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
       'select '||quote_literal(manifest::text)||'::jsonb');
   end if;
