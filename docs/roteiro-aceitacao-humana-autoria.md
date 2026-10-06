@@ -221,7 +221,7 @@ com versão, ambiente, ações e limites observados.
 | J9 — observação | Observação de estudante autenticado chega à autoria. Edição sem propriedade é recusada, sem cópia automática; visitante não envia observação. |
 | J10 — fontes | Referência e localizador são compreensíveis, inclusive quando incompletos. URL e arquivos respeitam direitos e políticas próprios. |
 | J11 — corrigir | Correções consideram a explicação e as práticas relacionadas, distinguindo tentativa exploratória prévia e consolidação posterior. A releitura examina o atendimento à observação, além de confirmar a gravação. |
-| J12 — parametrizar | Intenção, resolução e aplicação permanecem distinguíveis. Fixações prevalecem e definições do repertório são preservados ao aplicar um teto. |
+| J12 — parametrizar | Intenção, resolução e aplicação permanecem distinguíveis. Fixações prevalecem e definições do repertório são preservadas ao aplicar um teto. |
 | J13 — ferramentas | Idiomas, notações e múltiplos itens são preservados; áudio e calculadora mantêm acessibilidade e informam indisponibilidade ou custo quando pertinente. |
 | J14 — sincronizar | Modo manual suspende trocas automáticas de estudo e conteúdo. A ação explícita de sincronizar conserva rascunhos e resolve conflitos. |
 | J15 — copiar e comparar | A cópia conserva conteúdo, mapa, repertório, configuração e fontes; acesso, progresso e observações pessoais permanecem na origem. Tela e exportação usam objetos e denominadores correspondentes. |
