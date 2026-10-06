@@ -292,8 +292,9 @@ O curso de catálogo deriva os 34 pacotes do registro. Cada pacote possui uma
 microssequência independente com uma unidade de teoria e outra de prática. Os
 exemplos e as respostas usam conteúdo disciplinar concreto; o teste recusa perguntas
 que pedem apenas a finalidade ou o nome do pacote. Essa verificação demonstra a
-cobertura e a validade dos contratos nos exemplos. Especialistas e estudantes
-examinam, por métodos próprios, a adequação e a interpretação desses materiais.
+cobertura e a validade dos contratos nos exemplos; não mede eficácia pedagógica.
+Especialistas examinam a adequação da representação às convenções da área; estudos
+com estudantes avaliam a interpretação do material e os resultados de aprendizagem.
 
 Os arquivos de teste de [estresse acadêmico](../tests/fixtures/pedagogy/academic-stress-courses.json)
 e de [notação matemática e química](../tests/fixtures/formulas-matematica-quimica.json)
