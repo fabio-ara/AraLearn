@@ -442,7 +442,11 @@ test("catálogo MCP e recursos Edge respeitam orçamentos locais de regressão",
   assert.deepEqual(runtime.files, source.files.filter((file) => file !== localValidator));
   // Parser TeX, faixa/viewport e a medição/reserva HTML dos cabeçalhos C4
   // compõem este orçamento local de fontes; contexto MCP/Actions não muda.
-  assert.ok(runtime.bytes <= 675 * 1024, `Runtime de recursos: ${runtime.bytes} bytes; limite ${675 * 1024}.`);
+  // O SDK de viewport (sdk/diagramViewport.js) passou a preservar estado e soma
+  // +1.034 B sobre a revisão anterior: medido 691.289 B (690.255 B antes). O
+  // orçamento local arredonda ao próximo múltiplo de 8 KiB (680 KiB), sem alterar
+  // os limites externos de MCP/Actions.
+  assert.ok(runtime.bytes <= 680 * 1024, `Runtime de recursos: ${runtime.bytes} bytes; limite ${680 * 1024}.`);
 });
 
 test("documento registra uma decisão estática para cada pacote sem confundi-la com adequação", async () => {
