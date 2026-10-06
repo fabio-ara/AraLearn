@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.103] - 2026-10-06
+
+### Corrigido
+
+- A repetição da mesma ficha de fonte e da mesma âncora reconhece os valores equivalentes mesmo quando o banco devolve as chaves JSON em outra ordem, preservando as identidades existentes. A ordem de autores e editores e as edições distintas continuam significativas.
+- A preparação de revisão consulta uma única vez, dentro de cada requisição, a fonte usada tanto no planejamento quanto nos vínculos da Explicação. As continuações fazem uma leitura nova.
+
 ## [0.0.102] - 2026-10-06
 
 ### Corrigido

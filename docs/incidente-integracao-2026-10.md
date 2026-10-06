@@ -1,5 +1,21 @@
 # Incidente de integração MCP do AraLearn (outubro de 2026)
 
+## Situação corrente: corte 0.0.102 e correções posteriores
+
+O [PR 430](https://github.com/fabio-ara/AraLearn/pull/430) foi integrado à principal em [5c28077f](https://github.com/fabio-ara/AraLearn/commit/5c28077f1b69a984029022ff88a2ea6400adba38). A [CI 37455678161](https://github.com/fabio-ara/AraLearn/actions/runs/37455678161) aprovou preparação, web, Supabase real e Android: 585 testes web, dez casos locais cobertos pela integração Supabase, 906 asserções pgTAP em 22 arquivos e clientes reais OAuth/MCP/PostgREST/RLS, com limpeza concluída. O site [0.0.102 foi publicado](https://github.com/fabio-ara/AraLearn/actions/runs/37461687120), com 204 recursos conferidos. O backend efetivo é MCP 526, Actions 395 e API 373, revisão 20261005120000, 56 capacidades. Identidades e onze configurações foram preservadas. O APK 0.0.102/248 permanece em rascunho; última release pública 0.0.100/246.
+
+A leitura extensa nativa não passou: 354 fragmentos preservados completaram cinco páginas; a sexta ficou parcial. Um 503 recuperou pelo mesmo cursor, mas a sequência seguinte terminou em MCP -32603 sem conteúdo estruturado. O checkpoint não avançou nessa falha. Na janela observada, o MCP 526 registrou sete `service_timeout` na execução e sete `oauth_verification_unavailable` na autenticação; o endpoint de chaves JWKS teve seis respostas 504. Essa é uma fronteira de dependência observada, sem atribuir todos os erros históricos ao mesmo componente ou ao banco. O conector também devolveu `INVALID_ARGUMENT` para um erro interno transitório 503. A entrega permanece não concluída.
+
+Na fixture própria, duas repetições de `manter_fonte` com argumentos idênticos criaram duas fontes por execução. A comparação de equivalência usava JSON.stringify sobre objetos aninhados: a ordem das chaves devolvida pelo JSONB era diferente da construída no cliente. A leitura validava os valores, mas descartava o objeto canônico retornado pelo validador; não reordenava a entrada. O cenário foi reproduzido com o handler e o normalizador reais, em fixture mutável. A candidata 0.0.103 compara metadados e seletores de âncora com o serializador canônico já existente, preservando a ordem de arrays, autores, editores e edições distintas. Se mais de uma ficha equivalente já existe, mantém a recusa 409 sem escolher nem mesclar identidades.
+
+Também foi confirmada a consulta repetida da mesma fonte prevista e vinculada dentro de uma requisição. A candidata compartilha somente esse escopo de leitura em `preparar_revisao`: duas fontes custam duas consultas, antes quatro. Cada continuação faz consultas novas; alteração do literal recusa o cursor antigo. Não há cache entre requisições, mudança em fluxos de escrita, aumento de prazo, dependência, tabela ou migração nova. Esses ganhos não comprovam a eliminação dos 503 ou da indisponibilidade JWKS.
+
+A candidata 0.0.103/249 ainda exige preparação integral, CI, integração, implantação e nova prova nativa. As correções locais não aprovam a aceitação externa. A materialização continua recusada antes do handler por `explicacoes[].ideia`, obrigatório no contrato servido. Atualizar ferramentas e testar com um executor novo não resolveram a divergência. Não se removeu o campo obrigatório para contornar o validador.
+
+O coletor anterior preservou o literal completo em um campo separado e substituiu apenas sua cópia no envelope por um marcador; não é captura integral do envelope original. Metadados anteriores à chamada 226 não guardaram o cursor de entrada. O contador antigo reiniciava por execução e somou sete tentativas; foi substituído por um registro persistente por cursor e janela, com captura por tentativa. Os arquivos antigos permanecem imutáveis e suas limitações não são preenchidas retrospectivamente. As capturas novas guardam o retorno completo. Nenhuma dessas operações registrou inspeção, revisão humana ou alteração no curso real.
+
+As seções seguintes registram o percurso anterior e as provas de cada corte. Declarações de preparação ou implantação pendente nelas descrevem aquele momento; a matriz abaixo traz os resultados atuais do incidente.
+
 ## Resumo
 
 Uma sessão de autoria pelo conector MCP sofreu indisponibilidades recorrentes de leitura do curso e um fluxo de auditoria interrompido. A investigação separa o que está comprovado do que segue aberto. Estão corrigidos no código o envelope JSON-RPC de erro, o schema público de saída, a criação atômica de fonte e o replay equivalente de source-flow; a aceitação implantada dessas correções continua pendente. Permanecem abertos o campo de erro acrescentado pela camada do conector e a correlação das falhas do provedor de chaves, que cobre quatro das vinte e duas falhas e não as explica por inteiro.
@@ -69,7 +85,7 @@ A coluna Resultado usa exatamente quatro estados: APROVADO (prova executada no g
 | Cenário | Resultado | Evidência | Motivo ou limite |
 | --- | --- | --- | --- |
 | T01 caminhos mínimos do curso | BLOQUEADO | local aprovado no candidato; native pendente | coerência antes e durante o transporte depende de prova hospedada |
-| T02 taxonomia de erro e retry | BLOQUEADO | local | campo externo ainda aberto |
+| T02 taxonomia de erro e retry | FALHOU | local e CI aprovados; native 526 | o conector classificou um 503 transitório como INVALID_ARGUMENT e perdeu o diagnóstico no -32603; fronteira externa ainda aberta |
 | T03 retomada após falhas e reinício | APROVADO | candidate, 8 testes do incidente | prova local |
 | T04 integridade da remontagem | APROVADO | candidate, 8 testes do incidente | prova local |
 | T05 páginas lógicas e temMais | APROVADO | candidate, 8 testes do incidente | prova local |
@@ -79,14 +95,14 @@ A coluna Resultado usa exatamente quatro estados: APROVADO (prova executada no g
 | T09 dependências bibliográficas da base | APROVADO | candidate, suíte executada | [fontes, citações e estilo invalidam somente consumidores pertinentes](../tests/runtime/course-ai-inspection-pglite.test.js): fonte vinculada invalida, fonte não vinculada e alvo não pertinente permanecem atuais, sem fila duplicada |
 | T10 evidência literal e seis dimensões | APROVADO | candidate, 8 testes do incidente | prova local |
 | T11 idempotência do parecer | APROVADO | candidate, suíte executada | prova local |
-| T12 fonte criada após falha | APROVADO | local e RPC real local | atomicidade do bundle e replay equivalente em 19 casos locais; a causalidade histórica não reproduzida não bloqueia esta prova, e a aceitação hospedada segue pendente |
+| T12 fonte criada após falha | FALHOU | atomicidade aprovada local/RPC/PostgREST real; native 526 falhou | argumentos idênticos criaram fontes duplicadas na fixture; comparação sensível à ordem JSONB reproduzida e corrigida localmente, ainda sem nova aceitação implantada |
 | T13 limite de 32 vínculos | APROVADO | candidate, suíte executada | prova local; aceita 32 e recusa 33 antes de gravar, preservando fonte, âncora, papéis e identidades |
 | T14 retomada preserva identidades | APROVADO | candidate, suíte executada | prova local |
-| T15 ida e volta de aplicação e configuração | APROVADO | candidate, suíte executada | prova local |
+| T15 ida e volta de aplicação e configuração | FALHOU | local aprovado; native recusado | campo obrigatório explicacoes[].ideia rejeitado antes do handler, após atualizar ferramentas e testar com executor novo |
 | T16 reconciliação da Explicação | APROVADO | candidate, suíte executada | prova local |
 | T17 inspeção de IA não aprova humano | APROVADO | candidate, 8 testes do incidente | prova local |
 | T18 ausência de mutação em leitura e exclusividade do fluxo | BLOQUEADO | native | exige no máximo uma chamada em voo, snapshot antes e depois das leituras puras e transferência com checkpoint; exclui a negociação de mandato de retomar_curso das leituras puras |
-| T19 leitura formal grande com base própria | FALHOU | local aprovada em 135; leitura nativa extensa falhou no MCP 525 | local: 3112669 caracteres, 3468023 bytes, quatro páginas e 289 fragmentos; a leitura nativa real recebeu 503 `service_timeout` e não completou os 48 alvos. A candidata 0.0.102 ainda exige nova prova hospedada |
+| T19 leitura formal grande com base própria | FALHOU | local e CI aprovados; native 525/526 falhou | local em 585: 3112669 unidades UTF-16, 3468023 bytes, quatro páginas e 289 fragmentos; native 526 parou com 354 fragmentos na sexta página, após recuperação de 503 e posterior -32603. A fixture extensa depende também de T15 |
 | T20 aceitação ponta a ponta após interrupção | BLOQUEADO | native | três passagens passaram no handler MCP local; interface real pendente |
 
 ## Mapa de consumidores e provas
