@@ -58,8 +58,11 @@ test("quadro e protocolo proíbem proxies comportamentais ambíguos", () => {
     assert.match(source, /atenção|aprendizagem|domínio/u);
   }
   assert.match(framework, /abertura ou tempo como atenção/u);
-  assert.match(protocol, /\| retomada .* \| abertura ou atenção \|/u);
-  assert.match(glossary, /\*\*Distinção:\*\* Tempo, frequência e navegação descrevem aspectos do uso/u);
+  const resumptionRow = protocol.split(/\r?\n/u).find((line) => /^\| retomada \|/u.test(line));
+  assert.ok(resumptionRow, "o protocolo deve distinguir retomada de abertura e atenção");
+  assert.match(resumptionRow, /\| localização e reconstrução do objetivo \|/u);
+  assert.match(resumptionRow, /\| abrir o curso e manter a atenção são aspectos distintos \|/u);
+  assert.match(glossary, /\*\*Distinção:\*\* tempo, frequência e navegação descrevem aspectos do uso/iu);
   assert.match(glossary, /interpretação como engajamento depende da dimensão escolhida e de evidências/u);
 });
 
