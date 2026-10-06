@@ -179,7 +179,7 @@ de exposição, como data, acesso à ajuda e materiais externos disponíveis.
 Em **Dados de autoria**, **Exportar curso e análise** reúne o conteúdo integral
 salvo e a leitura quantitativa do escopo escolhido. O arquivo conserva, sob a
 mesma revisão do curso, o material e os registros necessários para interpretar
-seu desenho. PDFs e áudios permanecem referenciados e precisam ser guardados
+seu desenho. Documentos e arquivos de áudio permanecem referenciados e precisam ser guardados
 separadamente quando integram o estudo. A [referência de
 exportação](dicionario-metricas-datasets.md#comparação-e-exportação) descreve
 os campos disponíveis.
