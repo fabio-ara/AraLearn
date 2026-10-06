@@ -100,7 +100,7 @@ O apontamento motiva a conferência. A sustentação factual da explicação con
 
 ## Privacidade e minimização
 
-Registre somente o necessário para compreender o problema. Preserve os dados pessoais de terceiros e limite os trechos de obras à finalidade da contribuição e aos direitos de uso. O acesso e a retenção seguem a [política de privacidade](privacidade.md).
+Registre somente o necessário para compreender o problema. Proteja a privacidade de terceiros e limite os trechos de obras à finalidade da contribuição e aos direitos de uso. O acesso e a retenção seguem a [política de privacidade](privacidade.md).
 
 A observação guarda o apontamento destinado ao curso. Na revisão conversacional, o conector fornece o recorte autorizado necessário ao trabalho. O resumo da conversa pode encaminhar ao conteúdo salvo, conservando o material completo no aplicativo.
 
