@@ -64,8 +64,14 @@ material e de suas fontes.
 Uma representação aceita pelo contrato ainda pode condensar uma relação que
 precisa ser ensinada. Por exemplo, um cálculo de média pode mostrar a divisão
 correta sem explicar por que o total é dividido pela quantidade de observações.
-A revisão localiza essa relação implícita e examina onde desenvolvê-la, antes
-da prática que depende dela. A escolha de
+A revisão localiza essa relação implícita e examina sua função na sequência.
+Na prática de consolidação, a relação precisa ter sido desenvolvida ou estar
+assumida como pré-requisito. Uma tentativa exploratória pode pedir uma previsão
+antes desse ensino: nesse caso, o estudante precisa compreender a situação, os
+dados e a pergunta, e o ensino posterior precisa retomar o alvo investigado.
+A inspeção confere essas condições conforme a
+[função da prática](modelo-didatico.md#suficiência-teórica-no-percurso), sem
+contar a tentativa inicial como ensino. A escolha de
 [componentes didáticos](componentes-didaticos.md) atende à função do conteúdo;
 não há quantidade obrigatória de formatos diferentes.
 
@@ -74,7 +80,8 @@ não há quantidade obrigatória de formatos diferentes.
 A inspeção compara aquilo que o curso pretende ensinar com o que o estudante
 encontra. Cada unidade e cada explicação recebe um parecer próprio. A base da
 leitura reúne o alvo e o percurso pertinente, incluindo a ordem das unidades,
-a configuração aplicada e as fontes utilizadas. Na explicação, a análise
+a [configuração aplicada](desenho-instrucional-parametrizado.md#contexto-efetivo-e-aplicação-corrente)
+— as escolhas pedagógicas usadas na produção — e as fontes utilizadas. Na explicação, a análise
 alcança também as práticas e os retornos das unidades da microssequência.
 
 O contrato registra seis dimensões:
@@ -95,7 +102,9 @@ leitura evita substituir o trecho por uma paráfrase que o contrato recusará. A
 qualidade da inferência ainda depende da análise: encontrar as palavras
 confirma sua origem, enquanto a justificativa explica o que elas demonstram.
 
-As citações também são confrontadas com as âncoras escolhidas em cada vínculo.
+As citações também são confrontadas com as
+[âncoras](fontes-e-citacoes.md), localizações das passagens escolhidas em cada
+vínculo com uma fonte.
 A obra pode ser pertinente ao tema e ainda sustentar insuficientemente uma
 afirmação específica. Uma localização apenas por página exige abrir a passagem
 ou registrar o limite de verificação. Lacunas de sustentação permanecem como
