@@ -164,7 +164,7 @@ A [análise de autoria](analytics-instrucionais.md) explica o conteúdo exportad
 
 ## Conceder e revogar acesso
 
-Em **Pessoas e acesso**, use **Conceder acesso**, digite ao menos dois caracteres do identificador e selecione a pessoa apresentada. Confira o identificador e a foto opcional antes de confirmar. A busca mostra até dez pessoas e preserva o e-mail. Se o identificador mudar durante a escolha, refaça a busca.
+Em **Pessoas e acesso**, use **Conceder acesso**, digite ao menos dois caracteres do identificador e selecione a pessoa apresentada. Confira o identificador e a foto opcional antes de confirmar. A busca mostra até dez pessoas; o e-mail permanece privado. Se o identificador mudar durante a escolha, refaça a busca.
 
 O acesso permite estudar e enviar observações; a edição do original continua com o proprietário. A permissão de criar uma cópia é separada. Para revogar, use a ação junto ao identificador e confirme. O aplicativo remove a cópia compartilhada quando a próxima conferência pela rede constatar que a pessoa perdeu acesso. Uma cópia independente já criada continua sendo outro curso.
 
