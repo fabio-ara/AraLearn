@@ -317,7 +317,7 @@ investiga; `ideiasUtilizadas` registra os conhecimentos estabelecidos que
 permitem compreender a tarefa. A introdução do alvo ocorre no desenvolvimento
 posterior. A sequência conserva, assim, o lugar da tentativa e o do ensino.
 
-Há estudos experimentais sobre tentativas malsucedidas anteriores à apresentação do conteúdo, como [Kornell, Hays e Bjork (2009)](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Kornell_Hays_Bjork_2009_JEP-LMC.pdf). Isso fundamenta tratar a antecipação como possibilidade de investigação, sem presumir benefício em qualquer conteúdo ou público. O parâmetro registrado expressa a condição pretendida; sua realização exige conferir a sequência, os alvos e o conteúdo efetivamente salvo.
+Há estudos experimentais sobre tentativas malsucedidas anteriores à apresentação do conteúdo, como [Kornell et al. (2009)](referencias.md#ref-kornell2009unsuccessful). Isso fundamenta tratar a antecipação como possibilidade de investigação, sem presumir benefício em qualquer conteúdo ou público. O parâmetro registrado expressa a condição pretendida; sua realização exige conferir a sequência, os alvos e o conteúdo efetivamente salvo.
 
 ## Medidas observáveis e seus denominadores
 
@@ -688,6 +688,7 @@ instruções e contratos](fluxos-prompts-e-contratos.md).
 - [Greimas (1966)](referencias.md#ref-greimas1966recit): Algirdas Julien Greimas (1966). **Éléments pour une théorie de l'interprétation du récit mythique.** *Communications*, 8(1), p. 28–59.
 - [Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval): Jeffrey D. Karpicke; Henry L. Roediger (2008). **The Critical Importance of Retrieval for Learning.** *Science*, 319(5865), p. 966–968.
 - [Koedinger et al. (2012)](referencias.md#ref-koedinger2012kli): Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledge-Learning-Instruction Framework: Bridging the Science-Practice Chasm to Enhance Robust Student Learning.** *Cognitive Science*, 36(5), p. 757–798.
+- [Kornell et al. (2009)](referencias.md#ref-kornell2009unsuccessful): Nate Kornell; Matthew Jensen Hays; Robert A. Bjork (2009). **Unsuccessful Retrieval Attempts Enhance Subsequent Learning.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 35(4), p. 989–998.
 - [McNamara e Kintsch (1996)](referencias.md#ref-mcnamara1996coherence): Danielle S. McNamara; Walter Kintsch (1996). **Learning from Texts: Effects of Prior Knowledge and Text Coherence.** *Discourse Processes*, 22(3), p. 247–288.
 - [Miller (1984)](referencias.md#ref-miller1984genre): Carolyn R. Miller (1984). **Genre as Social Action.** *Quarterly Journal of Speech*, 70(2), p. 151–167.
 - [Pangakis et al. (2023)](referencias.md#ref-pangakis2023validation): Nicholas Pangakis; Samuel Wolken; Neil Fasching (2023). **Automated Annotation with Generative AI Requires Validation.** arXiv.

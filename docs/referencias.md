@@ -599,6 +599,14 @@ Kenneth R. Koedinger; Albert T. Corbett; Charles Perfetti (2012). **The Knowledg
 
 Chave bibliográfica: `koedinger2012kli`.
 
+<a id="ref-kornell2009unsuccessful"></a>
+
+### Kornell et al. (2009)
+
+Nate Kornell; Matthew Jensen Hays; Robert A. Bjork (2009). **Unsuccessful Retrieval Attempts Enhance Subsequent Learning.** *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 35(4), p. 989–998. [DOI 10.1037/a0015729](https://doi.org/10.1037/a0015729) · [acesso ao documento](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/07/Kornell_Hays_Bjork_2009_JEP-LMC.pdf).
+
+Chave bibliográfica: `kornell2009unsuccessful`.
+
 <a id="ref-lai2022mobile"></a>
 
 ### Lai et al. (2022)
