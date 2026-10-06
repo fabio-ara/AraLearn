@@ -512,8 +512,9 @@ o que cada fonte observa
 estudado, em vez de apenas relê-lo. Recordar pode integrar uma explicação ou
 uma decisão sobre um novo caso. Estudos experimentais e revisões
 encontraram benefícios em diferentes condições escolares, com variação por
-tarefa, conteúdo e medida ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). Transferência para estruturas novas é possível, mas
-moderada ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
+tarefa, conteúdo e medida ([Karpicke e Roediger (2008)](referencias.md#ref-karpicke2008retrieval); [Agarwal et al. (2021)](referencias.md#ref-agarwal2021retrieval); [Carpenter et al. (2022)](referencias.md#ref-carpenter2022spacing)). A prática por teste também pode favorecer a transferência para outras
+tarefas e contextos, com efeitos que variam conforme a relação entre a prática
+e a avaliação ([Pan e Rickard (2018)](referencias.md#ref-pan2018transfer)).
 
 Reconhecer uma alternativa, escrever uma explicação e ordenar etapas solicitam
 operações diferentes. A dificuldade maior de um formato, por si só, não o torna
