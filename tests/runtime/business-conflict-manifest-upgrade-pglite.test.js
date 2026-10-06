@@ -138,3 +138,52 @@ test("gates exigem a capacidade PT409 corrente e preservam o recorte da migraç�
   ]);
   assert.throws(() => pendingUpgradeMigrations(historicalNames, boundary, "20260905163000"), /última migration e o manifesto corrente/u);
 });
+
+// O bloco $manifest$ da migração do pacote de Fonte ordena as capacidades como
+// o padrão canônico: lista existente || nova, agregada com order by value collate
+// "C". O fixture parte da revisão 20260930010000 (55 capacidades).
+const atomicMigrationName = "20261005120000_atomic_course_source_bundle.sql";
+const atomicFeature = "course-source-atomic-bundle-v1";
+const atomicMigration = await fs.readFile(new URL(`../../supabase/migrations/${atomicMigrationName}`, import.meta.url), "utf8");
+const atomicManifestBlock = atomicMigration.slice(
+  atomicMigration.indexOf("do $manifest$"),
+  atomicMigration.indexOf("end $manifest$;") + "end $manifest$;".length
+);
+const atomicPreviousFeatures = expected.requiredFeatures.filter((item) => item !== atomicFeature);
+
+async function atomicFixture() {
+  const database = new PGlite();
+  const manifest = { schemaRevision: "20260930010000", contractVersion: 1, features: atomicPreviousFeatures };
+  await database.exec(`
+    create role manifest_owner; create role manifest_reader;
+    create function public.get_aralearn_runtime_manifest() returns jsonb
+      language sql stable security definer set search_path=pg_catalog
+      as $$ select '${JSON.stringify(manifest)}'::jsonb $$;
+    alter function public.get_aralearn_runtime_manifest() owner to manifest_owner;
+    revoke all on function public.get_aralearn_runtime_manifest() from public;
+    grant execute on function public.get_aralearn_runtime_manifest() to manifest_reader;
+    comment on function public.get_aralearn_runtime_manifest() is 'Preserve this metadata';
+    create table public.useful_fixture(id integer primary key, data jsonb);
+    insert into public.useful_fixture values(1,'{"draft":"preserve","revision":7,"units":36}');
+  `);
+  return database;
+}
+
+test("manifesto do pacote de Fonte ordena a capacidade canonicamente e preserva identidade, ACL e dados", async () => {
+  const database = await atomicFixture();
+  try {
+    const before = await snapshot(database);
+    await database.exec(atomicManifestBlock);
+    const after = await snapshot(database);
+    assert.equal(after.manifest.schemaRevision, "20261005120000");
+    assert.equal(after.manifest.contractVersion, 1);
+    assert.equal(after.manifest.features.length, 56);
+    assert.deepEqual(after.manifest.features, expected.requiredFeatures.slice().sort());
+    assert.deepEqual(after.manifest.features, [...atomicPreviousFeatures, atomicFeature].slice().sort());
+    assert.deepEqual(after.metadata, before.metadata);
+    assert.equal(after.comment, before.comment);
+    assert.deepEqual(after.data, before.data);
+    await database.exec(atomicManifestBlock);
+    assert.deepEqual((await snapshot(database)).manifest.features, after.manifest.features);
+  } finally { await database.close(); }
+});

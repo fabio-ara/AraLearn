@@ -189,7 +189,8 @@ declare manifest jsonb:=public.get_aralearn_runtime_manifest();
 begin
   if manifest->>'schemaRevision' is distinct from '20261005120000' then
     manifest:=manifest||jsonb_build_object('schemaRevision','20261005120000',
-      'features',(manifest->'features')||jsonb_build_array('course-source-atomic-bundle-v1'));
+      'features',(select jsonb_agg(value order by value collate "C") from jsonb_array_elements_text(
+        (manifest->'features')||'["course-source-atomic-bundle-v1"]'::jsonb)));
     execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
       'select '||quote_literal(manifest::text)||'::jsonb');
   end if;

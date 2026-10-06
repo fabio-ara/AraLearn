@@ -6,21 +6,25 @@ Uma sessão de autoria pelo conector MCP sofreu indisponibilidades recorrentes d
 
 ## Ambiente, versão e recibos
 
-A base observada é o commit `97923a6390e082e0fa8292c93c78f680cc665cee`, na versão `0.0.100`; a candidata `0.0.101` é o alvo do gate final. O manifesto de runtime lido em modo somente leitura informa `schemaRevision` `20260930010000`, `contractVersion` `1` e 55 recursos, compatível com o esperado.
+A branch candidata incorporou a revisão documental da principal no commit [37b8705e](https://github.com/fabio-ara/AraLearn/commit/37b8705e8d25b1cd2c47e68e6941c0f3306cce01), preservando o trabalho do PR 428. A candidata `0.0.101` é o alvo da entrega. O ambiente hospedado observado continua na versão `0.0.100`, com `schemaRevision` `20260930010000`, `contractVersion` `1` e 55 capacidades. A candidata declara a revisão `20261005120000` e 56 capacidades; sua implantação permanece pendente.
 
-O recibo da preparação local (commit [416d8d68](https://github.com/fabio-ara/AraLearn/commit/416d8d68e83d55cfcc884c35e9a19af3f0cc0f8b)) registrou aprovação nas cinco etapas: preflight 25090 ms, lint 40516 ms, contrato 4587 ms, runtime 832528 ms e Android 40189 ms. O runtime somou 2741 testes, 2726 aprovados, nenhuma falha e 15 ignorados, e os oito testes do incidente passaram. Numa preparação anterior, três casos falharam — orçamento do catálogo MCP e dos recursos Edge, linguagem de interface e documentação pública, e uma guarda estática de borda — e foram corrigidos. A proteção dos logs foi verificada por 64 testes focais de privacidade e MCP, incluindo casos com valores maliciosos.
+O recibo da preparação local no commit 37b registrou aprovação nas seis etapas: preflight 11277 ms, lint 29268 ms, contrato 3294 ms, runtime 668569 ms, frontend 65260 ms e Android 57100 ms. O runtime somou 2741 testes, 2726 aprovados, nenhuma falha e 15 ignorados; o frontend teve 16 testes esperados, sem ignorados, inesperados ou instáveis, em 47816,237 ms. Numa preparação anterior, três casos falharam — orçamento do catálogo MCP e dos recursos Edge, linguagem de interface e documentação pública, e uma guarda estática de borda — e foram corrigidos.
 
 ## Integração contínua protegida
 
-A [execução protegida 37411192536](https://github.com/fabio-ara/AraLearn/actions/runs/37411192536), no commit 416d8d68 e na tentativa 1, terminou com falha; o [PR 429](https://github.com/fabio-ara/AraLearn/pull/429) segue em rascunho, sem implantação nem merge. As falhas são de web e de banco, e não são atribuídas ao MCP.
+A [execução 37424182280](https://github.com/fabio-ara/AraLearn/actions/runs/37424182280), tentativa 1 no commit 37b8705e, foi cancelada após a falha comprovada no pgTAP 009, teste 26: "features do manifesto estão em ordem canônica". Das 906 asserções pgTAP, uma falhou. As listas contêm as mesmas 56 capacidades; a migração acrescentava a nova capacidade ao fim, em vez de sua posição na ordem canônica. A correção ordena a lista usando o padrão existente de SQL e conserva a asserção 009. Uma regressão focal executa o bloco SQL real e verifica ordem, conjunto completo, reaplicação e preservação de identidade, permissões, comentário e dados. Os quatro testes focais passaram. Android passou nessa CI, web foi cancelado e o agregado falhou; não há certificado promovível. O PR 429 voltou a rascunho e exige uma nova execução completa antes de integração e implantação.
 
-- Web: a escala do zoom era exibida imediatamente, mas sua memória só era gravada no quadro seguinte; um novo render podia remover o canvas antes dessa gravação. O modo expandido também anunciava prontidão antes de restaurar a posição. A correção grava a escala e a posição projetada de forma síncrona, respeita os gestos mais recentes e só anuncia prontidão depois de restaurar a posição. São 16 testes focais aprovados em duas especificações, com três reproduções que falhavam antes e passam depois; a CI segue pendente de nova execução.
-- Banco, verificação 009: a CI esperava uma revisão de schema anterior; a contagem de 55 recursos passou e revelou um recurso novo no campo errado. A correção de SQL congelada migra requiredFeatures para features, chegando a 56 recursos (55 mais 1).
-- Banco, verificação 024: a nova guarda de versão usava `40001`; o teste detectou uma ocorrência quando esperava zero. A correção usa `PT409` e captura tanto conflito de negócio quanto falha nativa de serialização, mantendo o envelope HTTP 409. A expectativa de envelopes passou de oito para nove com o novo pacote. Os testes acrescentados verificam conflito de versão, falha nativa e ausência de revisão ou recibos parciais.
-- Banco local: 52 features e uma guarda de mídia anterior impedem executar o agregado 009/024 por inteiro; as provas focais do bundle passaram e a sonda de manifesto TX passou. Uma execução de CI fresca é exigida.
 - Não executados: downstream Supabase, current-local-smoke e certificados permanecem bloqueados por ausência de execução.
 
-A prova local não é validade hospedada. As correções de SQL e de web estão congeladas e a CI segue pendente de nova execução. A matriz final dos vinte cenários será atualizada após nova execução de CI e das provas nativas, preservando como bloqueado o que ainda não tem caminho real.
+### Histórico: execução anterior
+
+A [execução 37411192536](https://github.com/fabio-ara/AraLearn/actions/runs/37411192536), no commit 416d8d68 e na tentativa 1, terminou com falha, e o [PR 429](https://github.com/fabio-ara/AraLearn/pull/429) foi convertido em rascunho. As falhas foram de web e de banco, sem atribuição ao MCP. Na web, a escala do zoom era exibida imediatamente, mas sua memória só era gravada no quadro seguinte, e um novo render podia remover o canvas antes dessa gravação; o modo expandido anunciava prontidão antes de restaurar a posição. A correção grava a escala e a posição projetada de forma síncrona, respeita os gestos mais recentes e só anuncia prontidão depois de restaurar a posição, com 16 testes focais aprovados em duas especificações e três reproduções que falhavam antes e passam depois. No banco, a verificação 009 esperava uma revisão de schema anterior e a contagem de 55 capacidades revelou uma capacidade nova no campo errado. A nova guarda da verificação 024 usava `40001` onde a correção passou a usar `PT409`, com captura de conflito de negócio ou falha nativa de serialização, mantendo o envelope HTTP 409; a expectativa de envelopes passou de oito para nove.
+
+A prova local não é validade hospedada. As correções de SQL e de web estão fechadas no código e a CI segue pendente de nova execução. A matriz final dos vinte cenários será atualizada após nova execução de CI e das provas nativas, preservando como bloqueado o que ainda não tem caminho real.
+
+## Restauração e atualização (prova real)
+
+A restauração e atualização de fixtures em contêineres isolados passou no commit 37b, sob o contrato `aralearn.backup-restore-upgrade-proof.v3`: seis migrações do corte histórico e 74 posteriores até `20261005120000`, com instalação limpa de 247 migrações convergente com a atualização. Foram preservados 13 grupos — planejamento, partes, curso, âncoras, fontes, entidades, orientação, itens de plano, parâmetros, anexos, vínculos, observações e decisões aplicadas — além de duas bases de autoria, seis alvos e um arquivo como metadado. Nenhuma migração ficou pendente após repetição; os contêineres descartáveis foram removidos. Esta prova preserva evidência de restauração dos dados e permissões em 37b. O delta posterior altera somente a ordem da lista do manifesto, verificada pela regressão SQL focal; a prova antiga não é apresentada como certificado da árvore nova. Objetos do Storage exigem cópia própria; este ensaio conserva seus metadados e não prova recuperação dos bytes desses objetos.
 
 ## Causas e correções comprovadas
 
@@ -40,7 +44,7 @@ Quatro pares de falha 504 do endpoint de chaves antecedem quatro das vinte e dua
 
 A taxonomia corrente do serviço distingue indisponibilidade transitória, conflito de estado e entrada inválida. Uma prova nativa consultou um curso sintético inexistente e recebeu `human_reference_not_found` com `retryable: false`, confirmando a classificação própria; em falhas transitórias o serviço responde `temporarily_unavailable` com `retryable: true`.
 
-O campo `error_code: INVALID_ARGUMENT` não existe no código do AraLearn e não aparece na saída nativa local do canal MCP; ele é acrescentado pela camada do conector, e a causa externa permanece não fechada.
+O campo `error_code: INVALID_ARGUMENT` não existe no código do AraLearn e não aparece na saída nativa local do canal MCP; ele é acrescentado pela camada do conector. A causa externa e a origem do `-32603` observado permanecem não fechadas, pendentes de prova nativa.
 
 ## Atomicidade da fonte e replay externo
 
@@ -77,11 +81,13 @@ A coluna Resultado usa exatamente quatro estados: APROVADO (prova executada no g
 
 | Módulo | Consumidores | Provas |
 | --- | --- | --- |
-| `courseHumanReadContext.js` | executor humano de leitura e continuação | [leitura de contexto](../tests/runtime/course-human-read-context.test.js), teste adicionado |
-| `courseHumanTasks.js` | gateway MCP e servidor de Actions | [canal MCP](../tests/runtime/course-human-mcp.test.js), teste adicionado |
-| `courseContentReviewReference.js` | registro de inspeção | [decisões de autoria](../tests/runtime/course-human-authoring-decisions.test.js), teste adicionado |
-| `coursePedagogicalAudit.js` | registro de inspeção | [auditoria pedagógica](../tests/runtime/course-pedagogical-audit.test.js), teste adicionado |
-| `mcpServer.js` | gateway MCP hospedado | teste adicionado na fronteira do `error_code` |
+| `courseHumanReadContext.js` | executor humano de leitura e continuação | [leitura de contexto](../tests/runtime/course-human-read-context.test.js) |
+| `courseHumanTasks.js` | gateway MCP e servidor de Actions | [canal MCP](../tests/runtime/course-human-mcp.test.js) |
+| `courseContentReviewReference.js` | registro de inspeção | [decisões de autoria](../tests/runtime/course-human-authoring-decisions.test.js) |
+| `coursePedagogicalAudit.js` | registro de inspeção | [auditoria pedagógica](../tests/runtime/course-pedagogical-audit.test.js) |
+| `mcpServer.js` | gateway MCP hospedado | [canal MCP](../tests/runtime/course-human-mcp.test.js) e [incidente](../tests/runtime/course-human-integration-incident.test.js) |
+
+A prova individual desta frente é [oito cenários do incidente](../tests/runtime/course-human-integration-incident.test.js); os demais links apontam para suítes existentes, não para arquivos alterados por este trabalho.
 
 ## Provas locais executadas
 
