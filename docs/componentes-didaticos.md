@@ -598,7 +598,7 @@ interação; e confere que o núcleo permaneceu igual. O pacote temporário fica
 fora do produto.
 
 Áudio e calculadora também são pacotes de conteúdo do mesmo registro, com
-identidade `aralearn.resource.*`. A consulta de obras e PDFs usa o mecanismo
+identidade `aralearn.resource.*`. A consulta de obras e documentos usa o mecanismo
 comum de [fontes e citações](fontes-e-citacoes.md). Uma ferramenta declara
 `manifest.tool` com rótulo e ícone e implementa
 `toolInteraction.bind(root, data, host)`, que devolve sua função de limpeza.
