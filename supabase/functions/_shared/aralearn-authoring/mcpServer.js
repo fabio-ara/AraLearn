@@ -10,7 +10,8 @@ import {
   readCourseAuthoringKnowledgeResource
 } from "./courseKnowledge.js";
 import { readAuthoringOAuthAuthorization } from "./security.js";
-import { projectHumanWriteRecovery, projectHumanMaterializationPreflight } from "./toolErrorEnvelope.js";
+import { projectExplanationReconciliationBlockers, projectHumanWriteRecovery,
+  projectHumanMaterializationPreflight } from "./toolErrorEnvelope.js";
 import {
   COURSE_HUMAN_TASKS,
   COURSE_HUMAN_TASK_CATALOG_HEADER,
@@ -370,6 +371,13 @@ function toolFailure(
   const retryable = authoringErrorIsRetryable(normalized);
   const recovery = projectHumanWriteRecovery(normalized);
   const preflight = projectHumanMaterializationPreflight(normalized);
+  const reconciliationBlockers = projectExplanationReconciliationBlockers(normalized);
+  // Projeções públicas já sanitizadas: o preflight agregado e os bloqueadores da
+  // reconciliação inválida chegam ao cliente no structuredContent e no texto.
+  const errorDetails = {
+    ...(preflight ? { preflight } : {}),
+    ...(reconciliationBlockers ? { blockers: reconciliationBlockers } : {})
+  };
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
   const derivableMaterialization = normalized.code === "human_materialization_contextual_calibration_required";
   const publicError = {
@@ -385,7 +393,7 @@ function toolFailure(
         : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable,
     ...(recovery ? { recovery } : {}),
-    ...(preflight ? { details: { preflight } } : {})
+    ...(Object.keys(errorDetails).length ? { details: errorDetails } : {})
   };
   let nextDecision = normalized.code === "ambiguous_human_reference"
     ? "Informe um título completo e único ou qualifique o escopo pai aceito pela ferramenta; repetir a mesma posição não distingue objetos."

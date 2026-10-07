@@ -17,7 +17,8 @@ import { inspectBpmnAuthoring, requireBpmnAuthoring } from "../aralearn/runtime/
 import { inspectPedagogicalEvidence } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { inspectCourseAudioReadiness, normalizeCourseMediaRead } from "../aralearn/runtime/domain/courseMedia.js";
 import { canonicalReconciliationLocator, explanationReconciliationTargets, inspectExplanationReconciliation,
-  locateExplanationPassage, RECONCILIATION_PASSAGE_LIMIT, RECONCILIATION_PASSAGE_TEXT_LIMIT }
+  locateExplanationPassage, normalizeExplanationReconciliation, RECONCILIATION_PASSAGE_LIMIT,
+  RECONCILIATION_PASSAGE_TEXT_LIMIT }
   from "../aralearn/runtime/domain/courseExplanationReconciliation.js";
 import { sha256Hex } from "./security.js";
 import { canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
@@ -581,6 +582,37 @@ function locateReconciliationDeclaration(entry, resourceTargets, index) {
   return { targets: [selected] };
 }
 
+// A declaração humana pode citar um papel que exige ideia sem informá-la, e a
+// normalização canônica recusa isso com TypeError. Reutiliza o próprio validador
+// para atribuir a recusa à passagem exata, sem transformar falha inesperada em
+// entrada inválida nem afrouxar a validação.
+const RECONCILIATION_ROLES_REQUIRING_IDEA = Object.freeze(["introduced", "established", "revisited"]);
+function reconciliationEntryBlockers(reconciliation) {
+  const entries = Array.isArray(reconciliation?.entries) ? reconciliation.entries : [];
+  const blockers = [];
+  entries.forEach((entry, index) => {
+    try {
+      normalizeExplanationReconciliation({ contract: reconciliation.contract,
+        contentBasis: reconciliation.contentBasis, entries: [entry] });
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      const needsIdea = plainObject(entry) &&
+        RECONCILIATION_ROLES_REQUIRING_IDEA.includes(entry.role) &&
+        Array.isArray(entry.analysisUnitIds) && entry.analysisUnitIds.length === 0;
+      blockers.push({ code: needsIdea ? "explanation_reconciliation_missing_idea" : "explanation_reconciliation_invalid_entry",
+        message: needsIdea
+          ? `A passagem de papel “${entry.role}” precisa citar ao menos uma ideia do repertório.`
+          : "Uma passagem não corresponde ao contrato da reconciliação salva.",
+        entry: index + 1 });
+    }
+  });
+  if (!blockers.length) {
+    blockers.push({ code: "explanation_reconciliation_required",
+      message: "A reconciliação precisa classificar as passagens da base e vincular o repertório antes de salvar." });
+  }
+  return blockers;
+}
+
 export async function reconcileHumanExplanation(content, entries, context) {
   const explanation = normalizeMicrosequenceExplanation(content);
   if (entries === undefined && explanation.reconciliation === undefined) return explanation;
@@ -638,6 +670,16 @@ export async function reconcileHumanExplanation(content, entries, context) {
   }
   // Inline declarations are new write input too. Never refresh their hash to
   // conceal a stale basis; unchanged legacy is restored from storage by callers.
+  if (entries !== undefined) {
+    try {
+      normalizeExplanationReconciliation(explanation.reconciliation);
+    } catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      throw new AuthoringApiError(422, "invalid_explanation_reconciliation",
+        "A descrição pedagógica precisa corresponder integralmente à base que será salva.",
+        { blockers: reconciliationEntryBlockers(explanation.reconciliation) });
+    }
+  }
   const normalized = normalizeMicrosequenceExplanation(explanation);
   const inspection = inspectExplanationReconciliation(normalized, {
     contentBasis: await explanationContentBasis(normalized),

@@ -21,6 +21,45 @@ test("salvar explicações conserva o aviso de base compartilhada na orientaçã
   assert.equal(adapter.commits.length, 1);
 });
 
+test("salvar_explicacoes recusa papel sem ideia antes de gravar e o mesmo roteiro válido grava uma vez", async () => {
+  const adapter = adapterFixture();
+  const plan = await adapter.getCourseInstructionalPlan();
+  plan.plan.instructionalAnalysisUnits = [{ id: "idea-dns", statement: "DNS resolve nomes" }];
+  plan.plan.evidenceRequirements = [];
+  adapter.getCourseInstructionalPlan = async () => structuredClone(plan);
+  const { title, content } = correctedContent("Explicação com reconciliação");
+  const principal = { actorId: COURSE_ID, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] };
+  const call = reconciliacao => executeHumanCourseTask({ adapter, principal, name: "salvar_explicacoes",
+    rawArguments: { curso: "Curso de Redes", explicacoes: [{ microssequencia: "Microssequência A",
+      conteudo: { title, content }, reconciliacao }] } });
+  const declaration = { recurso: 1, papel: "introduced", motivo: "Classifica a passagem.", ideias: [], requisitos: [] };
+  const before = structuredClone(content);
+  for (const [reconciliacao, expected] of [
+    [[declaration], "explanation_reconciliation_missing_idea"],
+    [[{ ...declaration, motivo: "   ", ideias: ["DNS resolve nomes"] }], "explanation_reconciliation_invalid_entry"]
+  ]) {
+    await assert.rejects(() => call(reconciliacao), error => {
+      assert.equal(error.code, "invalid_explanation_reconciliation");
+      assert.equal(error.status, 422);
+      assert.equal(error.details.blockers[0].code, expected);
+      assert.equal(error.details.blockers[0].entry, 1);
+      return true;
+    });
+  }
+  assert.equal(adapter.commits.length, 0, "nenhuma gravação antes da recusa");
+  assert.deepEqual(content, before, "a recusa não altera o conteúdo enviado");
+
+  // Mesmo roteiro com a ideia presente: grava uma vez e preserva conteúdo e identidades.
+  const receipt = await call([{ ...declaration, ideias: ["DNS resolve nomes"] }]);
+  assert.equal(adapter.commits.length, 1);
+  const written = adapter.commits[0].upserts[0].content.explanation;
+  assert.equal(written.content[0].id, content[0].id);
+  assert.equal(written.content[0].data.text, content[0].data.text);
+  assert.equal(written.reconciliation.entries.length, 1);
+  assert.deepEqual(written.reconciliation.entries[0].analysisUnitIds, ["idea-dns"]);
+  assert.ok(receipt.result.length > 0);
+});
+
 test("BPMN nas correções mantém legado textual e recusa nova estrutura em Unidade, feedback e Explicação", async () => {
   for (const slot of ["content", "feedback", "explanation"]) {
     const adapter = adapterFixture();
