@@ -3922,3 +3922,79 @@ test("Manutenção remove somente o objeto revalidado e relê o inventário", as
   assert.deepEqual(calls[1].body, { prefixes: [objectPath] });
   assert.equal(calls[1].init.headers.apikey, "sb_secret_test");
 });
+
+test("resolvePrincipal repete a RPC de leitura em 503 transitorio com os mesmos argumentos", async () => {
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    if (calls.length === 1) return json({ code: "XX000", message: "indisponivel" }, 503);
+    return json({ contract: "aralearn.mcp-oauth-principal.v1", actorId: USER_ID, oauthClientId: MCP_CLIENT_ID });
+  }, { attempts: 2, oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } } });
+  const principal = await value.resolvePrincipal({ kind: "oauth", credential: "token", resource: MCP_RESOURCE });
+  assert.equal(principal.actorId, USER_ID);
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.url.endsWith("/rest/v1/rpc/resolve_mcp_oauth_principal_v1")), "sem outra escrita antes da autenticacao");
+  assert.deepEqual(calls[0].body, calls[1].body);
+});
+
+test("resolvePrincipal repete apos abort de prazo da RPC e conclui", async () => {
+  const calls = [];
+  let firstAttemptAborted = null;
+  const value = adapter(async (url, init) => {
+    calls.push(url);
+    if (calls.length === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      firstAttemptAborted = init.signal.aborted;
+      throw new DOMException("aborted", "AbortError");
+    }
+    return json({ contract: "aralearn.mcp-oauth-principal.v1", actorId: USER_ID, oauthClientId: MCP_CLIENT_ID });
+  }, { attempts: 2, requestTimeoutMs: 5, oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } } });
+  const principal = await value.resolvePrincipal({ kind: "oauth", credential: "token", resource: MCP_RESOURCE });
+  assert.equal(principal.actorId, USER_ID);
+  assert.equal(calls.length, 2);
+  assert.equal(firstAttemptAborted, true, "o prazo deve ter abortado a primeira tentativa");
+});
+
+test("resolvePrincipal nao repete 403/404 de revogacao e converte em token invalido", async () => {
+  for (const setting of [[403, "42501"], [404, "PT404"]]) {
+    let calls = 0;
+    const value = adapter(async () => { calls += 1; return json({ code: setting[1], message: "revogado" }, setting[0]); },
+      { attempts: 3, oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } } });
+    await assert.rejects(
+      () => value.resolvePrincipal({ kind: "oauth", credential: "token", resource: MCP_RESOURCE }),
+      (error) => error.status === 401 && error.code === "invalid_oauth_token"
+    );
+    assert.equal(calls, 1, "status " + setting[0] + " nao deve ser repetido");
+  }
+});
+
+test("resolvePrincipal isola 401 do PostgREST da chave administrativa como indisponibilidade repetivel, sem confundir com credencial do usuario", async () => {
+  let calls = 0;
+  const value = adapter(async () => { calls += 1; return json({ code: "PGRST301", message: "chave rejeitada" }, 401); },
+    { attempts: 2, oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } } });
+  await assert.rejects(
+    () => value.resolvePrincipal({ kind: "oauth", credential: "token", resource: MCP_RESOURCE }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+  assert.equal(calls, 2, "falha do servico e repetivel dentro do prazo");
+});
+
+test("resolvePrincipal respeita o limite de tentativas e o prazo esgotado", async () => {
+  let calls = 0;
+  const value = adapter(async () => { calls += 1; return json({ code: "XX000", message: "indisponivel" }, 503); },
+    { attempts: 3, oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } } });
+  await assert.rejects(
+    () => value.resolvePrincipal({ kind: "oauth", credential: "token", resource: MCP_RESOURCE }),
+    (error) => error.status >= 500
+  );
+  assert.equal(calls, 3);
+
+  let afterDeadline = 0;
+  const expired = adapter(async () => { afterDeadline += 1; return json({}); },
+    { oauthJwtVerifier: { async verify() { return protectedMcpClaims(); } } });
+  await assert.rejects(
+    () => expired.resolvePrincipal({ kind: "oauth", credential: "token", resource: MCP_RESOURCE }, { deadlineAt: Date.now() - 1 }),
+    (error) => error.status === 503 && error.code === "service_timeout"
+  );
+  assert.equal(afterDeadline, 0);
+});
