@@ -607,8 +607,11 @@ function reconciliationEntryBlockers(reconciliation) {
     }
   });
   if (!blockers.length) {
-    blockers.push({ code: "explanation_reconciliation_required",
-      message: "A reconciliação precisa classificar as passagens da base e vincular o repertório antes de salvar." });
+    // A recusa de conjunto (mais de 512 passagens ou acima do tamanho serializado)
+    // não é ausência de classificação: o autor classificou, e a orientação precisa
+    // dizer isso sem espelhar o TypeError bruto do validador.
+    blockers.push({ code: "explanation_reconciliation_too_large",
+      message: "A reconciliação excede os limites do contrato da base (número de passagens ou tamanho serializado); reduza as passagens declaradas antes de salvar." });
   }
   return blockers;
 }

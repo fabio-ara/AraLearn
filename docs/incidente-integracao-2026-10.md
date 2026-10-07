@@ -22,7 +22,7 @@ O bloco textual dos erros do canal MCP passa a espelhar a mesma projeção públ
 
 ## Delta em preparação: classificação da reconciliação inválida
 
-Uma declaração de reconciliação com papel que exige ideia (`introduced`, `established` ou `revisited`) e nenhuma ideia informada — ou com referência repetida, ou motivo em branco — fazia a normalização lançar um `TypeError` cru, apresentado como 500 `internal_error`. **Em preparação**, essa recusa passa a ser erro de entrada tipado `invalid_explanation_reconciliation` (422, `retryable: false`), com bloqueador que indica a passagem e o papel, exposto também no canal MCP; a validação não foi afrouxada e nenhuma gravação ocorre. Ainda não implantado; é uma correção de tipagem da taxonomia (T02), distinta do fallback textual de erro.
+Uma declaração de reconciliação com papel que exige ideia (`introduced`, `established` ou `revisited`) e nenhuma ideia informada — ou com referência repetida, ou motivo em branco — fazia a normalização lançar um `TypeError` cru, apresentado como 500 `internal_error`. **Em preparação**, essa recusa passa a ser erro de entrada tipado `invalid_explanation_reconciliation` (422, `retryable: false`), com bloqueador que indica a passagem e o papel — ou, quando a recusa é do conjunto, um bloqueador de limite honesto (número de passagens ou tamanho serializado) —, exposto também no canal MCP; a validação não foi afrouxada e nenhuma gravação ocorre. Ainda não implantado; é uma correção de tipagem da taxonomia (T02), distinta do fallback textual de erro.
 
 ## Histórico essencial
 
