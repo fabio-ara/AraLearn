@@ -3856,3 +3856,247 @@ test("motivo não substitui autoridade de condição fixada ou de pesquisa", asy
   assert.equal(preserved.deepLink, null);
   assert.equal(preserved.nextDecision, null);
 });
+
+// --- Falha transitória antes do despacho (resolvePrincipal) -------------------
+// Durante a resolução do principal a chamada já é válida (envelope com id e
+// ferramenta do catálogo), mas nenhuma ferramenta foi executada. A falha
+// transitória da dependência precisa alcançar o cliente como falha da própria
+// ferramenta (result.isError) em HTTP 200: clientes MCP descartam o corpo de
+// respostas não-2xx e degradam o erro para -32603, perdendo code, retryable e
+// diagnostico. Nada é executado e nenhum principal é autorizado nesta rota.
+
+function handlerWithResolveFailure(error) {
+  const calls = [];
+  const value = adapter(PRINCIPAL);
+  value.resolvePrincipal = async () => {
+    throw error;
+  };
+  const spied = new Proxy(value, {
+    get(target, field) {
+      const member = target[field];
+      if (typeof member !== "function") return member;
+      return (...args) => {
+        calls.push(String(field));
+        return member.apply(target, args);
+      };
+    }
+  });
+  return {
+    calls,
+    handler: createAuthoringMcpHandler({
+      adapter: spied,
+      allowedOrigins: new Set([ORIGIN]),
+      resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    })
+  };
+}
+
+function retryableDependencyFailure() {
+  return new AuthoringApiError(503, "service_timeout", "A dependência não respondeu a tempo.");
+}
+
+function notification(method, params = {}) {
+  return new Request(RESOURCE_URL, {
+    method: "POST",
+    headers: {
+      Origin: ORIGIN,
+      Authorization: "Bearer token",
+      Accept: "application/json, text/event-stream",
+      "Content-Type": "application/json",
+      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", method, params })
+  });
+}
+
+test("falha transitória ao resolver o principal vira falha da ferramenta em HTTP 200", async () => {
+  const { calls, handler } = handlerWithResolveFailure(retryableDependencyFailure());
+  const response = await handler(request("tools/call", {
+    name: "preparar_revisao",
+    arguments: { curso: "Redes para iniciantes", microssequencia: "Sockets", unidades: [1] }
+  }));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.jsonrpc, "2.0");
+  assert.equal(body.id, 1);
+  assert.equal(body.result.isError, true);
+  const structured = body.result.structuredContent;
+  assert.equal(structured.error.code, "temporarily_unavailable");
+  assert.equal(structured.error.retryable, true);
+  assert.equal(structured.error.diagnostico.fase, "resolucao_principal");
+  assert.equal(structured.error.diagnostico.status, 503);
+  assert.match(
+    structured.error.diagnostico.requestId,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u
+  );
+  assert.equal(typeof structured.nextDecision, "string");
+  assert.deepEqual(JSON.parse(body.result.content[0].text), structured);
+  assert.equal(
+    response.headers.get("x-aralearn-request-id"),
+    structured.error.diagnostico.requestId
+  );
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.headers.get("www-authenticate"), null);
+  assert.equal(response.headers.get("retry-after"), null);
+  assert.deepEqual(calls, ["resolvePrincipal"]);
+  const serialized = JSON.stringify(body);
+  assert.doesNotMatch(serialized, new RegExp(PRINCIPAL.actorId, "u"));
+  assert.doesNotMatch(serialized, /Bearer/u);
+  assert.doesNotMatch(serialized, /não respondeu a tempo/u);
+});
+
+test("métodos que não são tools/call mantém o contrato de transporte atual", async () => {
+  const { handler } = handlerWithResolveFailure(retryableDependencyFailure());
+  const response = await handler(request("tools/list", {}));
+  const body = await response.json();
+  assert.equal(response.status, 503);
+  assert.equal(body.id, 1);
+  assert.equal(body.result, undefined);
+  assert.equal(body.error.code, -32000);
+  assert.equal(body.error.data.code, "temporarily_unavailable");
+  assert.equal(body.error.data.retryable, true);
+  assert.equal(body.error.data.fase, "resolucao_principal");
+  assert.equal(body.error.data.status, 503);
+});
+
+test("autenticação, autorização, limite de taxa e falha interna preservam o transporte", async () => {
+  const unauthorized = handlerWithResolveFailure(
+    new AuthoringApiError(401, "authentication_required", "Sessão ausente ou expirada.")
+  );
+  const unauthorizedResponse = await unauthorized.handler(
+    request("tools/call", { name: "preparar_revisao", arguments: {} })
+  );
+  assert.equal(unauthorizedResponse.status, 401);
+  assert.match(unauthorizedResponse.headers.get("www-authenticate"), /resource_metadata=/u);
+
+  const forbidden = handlerWithResolveFailure(
+    new AuthoringApiError(403, "insufficient_scope", "A sessão não permite esta operação.")
+  );
+  const forbiddenResponse = await forbidden.handler(
+    request("tools/call", { name: "preparar_revisao", arguments: {} })
+  );
+  assert.equal(forbiddenResponse.status, 403);
+  assert.equal(forbiddenResponse.headers.get("www-authenticate"), null);
+
+  const limited = handlerWithResolveFailure(
+    new AuthoringApiError(429, "rate_limited", "Limite temporário de uso.")
+  );
+  const limitedResponse = await limited.handler(
+    request("tools/call", { name: "preparar_revisao", arguments: {} })
+  );
+  assert.equal(limitedResponse.status, 429);
+  assert.equal(limitedResponse.headers.get("retry-after"), "60");
+
+  const internal = handlerWithResolveFailure(
+    new AuthoringApiError(500, "internal_error", "A operação não pôde ser concluída.")
+  );
+  const internalResponse = await internal.handler(
+    request("tools/call", { name: "preparar_revisao", arguments: {} })
+  );
+  assert.equal(internalResponse.status, 500);
+
+  const unverified = handlerWithResolveFailure(
+    new AuthoringApiError(503, "oauth_verification_unavailable", "Verificação indisponível.")
+  );
+  const unverifiedResponse = await unverified.handler(
+    request("tools/call", { name: "preparar_revisao", arguments: {} })
+  );
+  assert.equal(unverifiedResponse.status, 503);
+});
+
+test("chamada inválida ou notificação sem id não entra na rota de falha da ferramenta", async () => {
+  const unknownTool = handlerWithResolveFailure(retryableDependencyFailure());
+  const unknownResponse = await unknownTool.handler(
+    request("tools/call", { name: "ferramenta_inexistente", arguments: {} })
+  );
+  assert.equal(unknownResponse.status, 503);
+
+  const withoutName = handlerWithResolveFailure(retryableDependencyFailure());
+  const withoutNameResponse = await withoutName.handler(request("tools/call", {}));
+  assert.equal(withoutNameResponse.status, 503);
+
+  const silent = handlerWithResolveFailure(retryableDependencyFailure());
+  const silentResponse = await silent.handler(notification("notifications/initialized"));
+  assert.equal(silentResponse.status, 503);
+  const silentBody = await silentResponse.json();
+  assert.equal(silentBody.id, null);
+});
+
+function rawToolCall({
+  id = 1,
+  name = "preparar_revisao",
+  args = {},
+  protocolVersion = ARALEARN_MCP_PROTOCOL_VERSION,
+  includeProtocol = true
+} = {}) {
+  const headers = {
+    Origin: ORIGIN,
+    Authorization: "Bearer token",
+    Accept: "application/json, text/event-stream",
+    "Content-Type": "application/json"
+  };
+  if (includeProtocol) headers["MCP-Protocol-Version"] = protocolVersion;
+  const params = { name };
+  if (args !== undefined) params.arguments = args;
+  return new Request(RESOURCE_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call", params })
+  });
+}
+
+test("forma inválida da chamada não entra na rota de falha da ferramenta", async () => {
+  for (const args of [42, [], "", false]) {
+    const { handler } = handlerWithResolveFailure(retryableDependencyFailure());
+    const response = await handler(rawToolCall({ args }));
+    assert.equal(response.status, 503, "arguments " + JSON.stringify(args));
+    const payload = await response.json();
+    assert.equal(payload.result, undefined);
+    assert.equal(payload.error.data.code, "temporarily_unavailable");
+  }
+
+  const withoutProtocol = handlerWithResolveFailure(retryableDependencyFailure());
+  const withoutProtocolResponse = await withoutProtocol.handler(
+    rawToolCall({ includeProtocol: false })
+  );
+  assert.equal(withoutProtocolResponse.status, 503);
+  assert.equal((await withoutProtocolResponse.json()).result, undefined);
+
+  const staleProtocol = handlerWithResolveFailure(retryableDependencyFailure());
+  const staleProtocolResponse = await staleProtocol.handler(
+    rawToolCall({ protocolVersion: "2024-11-05" })
+  );
+  assert.equal(staleProtocolResponse.status, 503);
+  assert.equal((await staleProtocolResponse.json()).result, undefined);
+});
+
+test("chamada saudável preserva a recusa normal de forma", async () => {
+  const handler = mcpHandler();
+
+  const badArguments = await handler(rawToolCall({ args: 42 }));
+  assert.equal(badArguments.status, 200);
+  assert.equal((await badArguments.json()).error.code, -32602);
+
+  const missingProtocol = await handler(rawToolCall({ includeProtocol: false }));
+  assert.equal(missingProtocol.status, 400);
+  const missingProtocolPayload = await missingProtocol.json();
+  assert.equal(missingProtocolPayload.error.code, -32600);
+  assert.equal(missingProtocolPayload.error.data.code, "unsupported_protocol_version");
+
+  const staleProtocol = await handler(rawToolCall({ protocolVersion: "2024-11-05" }));
+  assert.equal(staleProtocol.status, 400);
+  assert.equal((await staleProtocol.json()).error.code, -32600);
+});
+
+test("id 0 e id textual sobrevivem à rota de falha transitória", async () => {
+  for (const id of [0, "chamada-alfa"]) {
+    const { handler } = handlerWithResolveFailure(retryableDependencyFailure());
+    const response = await handler(rawToolCall({ id }));
+    const payload = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(payload.id, id);
+    assert.equal(payload.result.isError, true);
+    assert.equal(payload.result.structuredContent.error.retryable, true);
+  }
+});

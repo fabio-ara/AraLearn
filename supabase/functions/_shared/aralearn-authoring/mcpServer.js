@@ -328,10 +328,16 @@ async function readMcpEnvelope(request) {
   return envelope;
 }
 
+// Única comparação da versão vigente de protocolo: serve a validação normal do
+// transporte e a rota de falha transitória, sem lista paralela divergente.
+function protocolHeaderIsCurrent(request) {
+  return String(request.headers.get("mcp-protocol-version") || "").trim()
+    === ARALEARN_MCP_PROTOCOL_VERSION;
+}
+
 function assertProtocolHeader(request, method) {
   if (method === "initialize") return;
-  const version = String(request.headers.get("mcp-protocol-version") || "").trim();
-  if (version !== ARALEARN_MCP_PROTOCOL_VERSION) {
+  if (!protocolHeaderIsCurrent(request)) {
     throw new AuthoringApiError(
       400,
       "unsupported_protocol_version",
@@ -489,6 +495,16 @@ async function executeTool({
   return toolSuccess(value);
 }
 
+// Mesma regra de forma aplicada ao despacho: `arguments` ausente ou nulo vira
+// objeto vazio; qualquer outro valor precisa ser objeto e não array. É forma de
+// protocolo, não validação de negócio dos argumentos.
+function toolArgumentsAreValid(params) {
+  const rawArguments = params?.arguments ?? {};
+  return Boolean(rawArguments)
+    && typeof rawArguments === "object"
+    && !Array.isArray(rawArguments);
+}
+
 async function dispatchMcpRequest(envelope, context) {
   const { method, params = {}, id } = envelope;
   if (!Object.hasOwn(envelope, "id")) {
@@ -595,10 +611,10 @@ async function dispatchMcpRequest(envelope, context) {
     if (!courseHumanTaskDefinition(params.name)) {
       return jsonRpcError(id, -32602, "Ferramenta de autoria inexistente.");
     }
-    const rawArguments = params.arguments ?? {};
-    if (!rawArguments || typeof rawArguments !== "object" || Array.isArray(rawArguments)) {
+    if (!toolArgumentsAreValid(params)) {
       return jsonRpcError(id, -32602, "tools/call exige arguments como objeto.");
     }
+    const rawArguments = params.arguments ?? {};
     if (!courseHumanTaskIsAllowed(
       params.name,
       context.principal,
@@ -679,6 +695,44 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "", diagnostico 
     });
   }
   if (normalized.status === 429) headers["Retry-After"] = "60";
+  // Enquanto resolve o principal, a chamada já está bem formada no protocolo —
+  // envelope com id, método tools/call, ferramenta do catálogo, arguments em
+  // objeto e MCP-Protocol-Version vigente — e nenhuma ferramenta foi executada.
+  // É forma de protocolo, não validação de negócio dos arguments. Uma falha
+  // transitória da dependência é devolvida como falha da própria ferramenta
+  // (result.isError), no mesmo envelope público de `fase=execucao`, para que
+  // code, retryable e diagnostico alcancem o cliente. O HTTP 200 aqui carrega
+  // apenas erro público válido — nunca sucesso de domínio — e o status original
+  // da dependência permanece no diagnostico. Só este caso entra na rota:
+  // autenticação, autorização, limite de taxa, entrada inválida, id ausente,
+  // protocolo divergente, método ou ferramenta desconhecida e falha interna
+  // seguem o contrato atual.
+  const envelope = diagnostico.envelope;
+  const hasJsonRpcId = diagnostico.jsonRpcId !== null && diagnostico.jsonRpcId !== undefined;
+  const routeAsToolFailure = retryable
+    && (normalized.status === 503 || normalized.status === 408)
+    && fase === "resolucao_principal"
+    && hasJsonRpcId
+    && envelope?.method === "tools/call"
+    && typeof envelope?.params?.name === "string"
+    && courseHumanTaskDefinition(envelope.params.name) != null
+    && toolArgumentsAreValid(envelope.params)
+    && diagnostico.protocolHeaderCurrent === true;
+  if (routeAsToolFailure) {
+    return jsonRpcResponse(
+      200,
+      {
+        jsonrpc: JSON_RPC_VERSION,
+        id: diagnostico.jsonRpcId,
+        result: toolFailure(diagnostico.jsonRpcId, normalized, null, {}, {
+          requestId: diagnostico.requestId,
+          fase,
+          startedAt: diagnostico.startedAt
+        })
+      },
+      headers
+    );
+  }
   const publicMessage = retryable
     ? "Não consegui concluir esta etapa."
     : normalized.message;
@@ -733,6 +787,7 @@ export function createAuthoringMcpHandler({
     let canonicalResource = normalizeEndpoint(resourceUrl);
     let fase = "transporte";
     let jsonRpcId = null;
+    let envelope = null;
     const withRequestId = (extra = {}) => ({
       ...extra,
       ...(requestId ? { [REQUEST_ID_HEADER]: requestId } : {})
@@ -771,7 +826,7 @@ export function createAuthoringMcpHandler({
       // O envelope limitado é lido antes da autenticação para preservar o id
       // JSON-RPC em falhas de auth; limite, protocolo e autorização continuam
       // sendo verificados antes de qualquer despacho.
-      const envelope = await readMcpEnvelope(request);
+      envelope = await readMcpEnvelope(request);
       if (Object.hasOwn(envelope, "id")) jsonRpcId = envelope.id;
       fase = "autenticacao";
       const authentication = {
@@ -812,7 +867,9 @@ export function createAuthoringMcpHandler({
         requestId,
         jsonRpcId,
         fase,
-        startedAt
+        startedAt,
+        envelope,
+        protocolHeaderCurrent: protocolHeaderIsCurrent(request)
       });
     }
   };
