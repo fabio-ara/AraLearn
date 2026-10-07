@@ -25,6 +25,7 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - Um cliente que lê apenas o texto do retorno passa a receber a mesma classificação pública do erro, com a indicação de retomada, em vez de uma mensagem genérica. Quando o volume excederia o limite da resposta, o texto traz um resumo com código, repetibilidade e correlação e um aviso claro, preservando os detalhes de bloqueios e recuperação na resposta estruturada.
+- Uma declaração de reconciliação que exige uma ideia do repertório sem informá-la, ou que repete uma referência ou deixa o motivo em branco, deixa de virar falha interna: o retorno passa a ser entrada inválida com bloqueador que indica a passagem e o papel, sem gravar nada. A validação da reconciliação não foi afrouxada.
 
 ### Documentação
 

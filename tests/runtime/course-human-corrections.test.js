@@ -3,6 +3,7 @@ import test from "node:test";
 import { createHash } from "node:crypto";
 import { canonicalAuthoringValue } from "../../src/domain/courseAuthoringBasis.js";
 import { bpmnInstance } from "../helpers/bpmnFixture.js";
+import { tablePackage } from "../../src/resources/packages/table/index.js";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
@@ -19,6 +20,76 @@ test("salvar explicações conserva o aviso de base compartilhada na orientaçã
       explicacoes: [{ microssequencia: "Microssequência A", conteudo: { title, content } }] } });
   assert.match(receipt.nextDecision, /base compartilhada.*microssequência inteira.*auditoria: true.*pareceres atuais completos/iu);
   assert.equal(adapter.commits.length, 1);
+});
+
+test("salvar_explicacoes recusa papel sem ideia antes de gravar e o mesmo roteiro válido grava uma vez", async () => {
+  const adapter = adapterFixture();
+  const plan = await adapter.getCourseInstructionalPlan();
+  plan.plan.instructionalAnalysisUnits = [{ id: "idea-dns", statement: "DNS resolve nomes" }];
+  plan.plan.evidenceRequirements = [];
+  adapter.getCourseInstructionalPlan = async () => structuredClone(plan);
+  const { title, content } = correctedContent("Explicação com reconciliação");
+  const principal = { actorId: COURSE_ID, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] };
+  const call = reconciliacao => executeHumanCourseTask({ adapter, principal, name: "salvar_explicacoes",
+    rawArguments: { curso: "Curso de Redes", explicacoes: [{ microssequencia: "Microssequência A",
+      conteudo: { title, content }, reconciliacao }] } });
+  const declaration = { recurso: 1, papel: "introduced", motivo: "Classifica a passagem.", ideias: [], requisitos: [] };
+  const before = structuredClone(content);
+  for (const [reconciliacao, expected] of [
+    [[declaration], "explanation_reconciliation_missing_idea"],
+    [[{ ...declaration, motivo: "   ", ideias: ["DNS resolve nomes"] }], "explanation_reconciliation_invalid_entry"]
+  ]) {
+    await assert.rejects(() => call(reconciliacao), error => {
+      assert.equal(error.code, "invalid_explanation_reconciliation");
+      assert.equal(error.status, 422);
+      assert.equal(error.details.blockers[0].code, expected);
+      assert.equal(error.details.blockers[0].entry, 1);
+      return true;
+    });
+  }
+  assert.equal(adapter.commits.length, 0, "nenhuma gravação antes da recusa");
+  assert.deepEqual(content, before, "a recusa não altera o conteúdo enviado");
+
+  // Mesmo roteiro com a ideia presente: grava uma vez e preserva conteúdo e identidades.
+  const receipt = await call([{ ...declaration, ideias: ["DNS resolve nomes"] }]);
+  assert.equal(adapter.commits.length, 1);
+  const written = adapter.commits[0].upserts[0].content.explanation;
+  assert.equal(written.content[0].id, content[0].id);
+  assert.equal(written.content[0].data.text, content[0].data.text);
+  assert.equal(written.reconciliation.entries.length, 1);
+  assert.deepEqual(written.reconciliation.entries[0].analysisUnitIds, ["idea-dns"]);
+  assert.ok(receipt.result.length > 0);
+});
+
+test("salvar_explicacoes recusa conjunto acima do contrato humano sem gravar", async () => {
+  const adapter = adapterFixture();
+  const plan = await adapter.getCourseInstructionalPlan();
+  plan.plan.instructionalAnalysisUnits = [{ id: "idea-dns", statement: "DNS resolve nomes" }];
+  plan.plan.evidenceRequirements = [];
+  adapter.getCourseInstructionalPlan = async () => structuredClone(plan);
+  // Três tabelas no limite do contrato produzem 248 folhas cada (8 colunas + 240 células),
+  // ultrapassando o teto de 512 passagens montadas por declaração de recurso inteiro.
+  const table = index => ({ id: `tabela-${index}`, package: tablePackage.manifest.id,
+    version: tablePackage.manifest.version, data: {
+      columns: Array.from({ length: 8 }, (_, column) => `Coluna ${column + 1}`),
+      rows: Array.from({ length: 30 }, () => Array.from({ length: 8 }, () => "Célula verificável")) } });
+  const content = [table(1), table(2), table(3)];
+  const before = structuredClone(content);
+  await assert.rejects(() => executeHumanCourseTask({ adapter,
+    principal: { actorId: COURSE_ID, authenticationKind: "oauth", scopes: ["authoring:read", "authoring:write"] },
+    name: "salvar_explicacoes", rawArguments: { curso: "Curso de Redes",
+      explicacoes: [{ microssequencia: "Microssequência A", conteudo: { title: "Base composta", content },
+        reconciliacao: content.map((_, index) => ({ recurso: index + 1, papel: "introduced",
+          motivo: "Classifica a tabela inteira.", ideias: ["DNS resolve nomes"], requisitos: [] })) }] } }),
+    error => {
+      assert.equal(error.code, "invalid_explanation_reconciliation");
+      assert.equal(error.status, 422);
+      assert.equal(error.details.blockers[0].code, "explanation_reconciliation_too_large");
+      assert.equal(Object.hasOwn(error.details.blockers[0], "entry"), false);
+      return true;
+    });
+  assert.equal(adapter.commits.length, 0, "nenhuma gravação antes da recusa");
+  assert.deepEqual(content, before, "a recusa não altera o conteúdo enviado");
 });
 
 test("BPMN nas correções mantém legado textual e recusa nova estrutura em Unidade, feedback e Explicação", async () => {

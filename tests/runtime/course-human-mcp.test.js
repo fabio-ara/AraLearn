@@ -1734,6 +1734,32 @@ test("MCP preserva requisito e microssequência no blocker de prática insuficie
   assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL/u);
 });
 
+test("MCP expõe bloqueadores da reconciliação inválida no SC e no texto, sem segredos", async () => {
+  const handler = createAuthoringMcpHandler({
+    adapter: { ...adapter(), async listCourses() {
+      throw new AuthoringApiError(422, "invalid_explanation_reconciliation",
+        "A descrição pedagógica precisa corresponder integralmente à base que será salva.",
+        { blockers: [{ code: "explanation_reconciliation_missing_idea",
+          message: "A passagem de papel “introduced” precisa citar ao menos uma ideia do repertório.",
+          entry: 1, rawSnapshot: "PRIVATE_SENTINEL" }] });
+    } },
+    allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const payload = await (await handler(request("tools/call", {
+    name: "retomar_curso", arguments: { titulo: "Redes para iniciantes" }
+  }))).json();
+  const projection = payload.result.structuredContent;
+  assert.equal(payload.result.isError, true);
+  assert.equal(projection.error.code, "invalid_explanation_reconciliation");
+  assert.equal(projection.error.retryable, false);
+  assert.deepEqual(projection.error.details.blockers, [{ code: "explanation_reconciliation_missing_idea",
+    message: "A passagem de papel “introduced” precisa citar ao menos uma ideia do repertório.", entry: 1 }]);
+  // Cliente que lê apenas o texto recebe a mesma projeção analisável.
+  assert.deepEqual(JSON.parse(payload.result.content[0].text), projection);
+  assert.doesNotMatch(JSON.stringify(payload), /PRIVATE_SENTINEL|rawSnapshot/u);
+});
+
 test("MCP espelha a projeção pública no content.text para o cliente que só lê o texto", async () => {
   const scenarios = [
     { label: "transitório 503 com correlação", name: "retomar_curso", args: { titulo: "Redes para iniciantes" },

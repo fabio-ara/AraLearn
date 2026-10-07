@@ -323,6 +323,55 @@ test("declaração legada com o nome interno da folha é recusada com erro útil
   });
 });
 
+test("papel que exige ideia sem ideias é entrada inválida tipada, não falha interna", async () => {
+  const explanation = { title: "Base", content: [paragraph("a", "Uma ideia central que o percurso desenvolve.")] };
+  const declaration = { recurso: 1, papel: "introduced", motivo: "Classifica a passagem.", ideias: [], requisitos: [] };
+  for (const papel of ["introduced", "established", "revisited"]) {
+    const before = structuredClone(explanation);
+    await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...declaration, papel }], planContext), error => {
+      assert.equal(error.code, "invalid_explanation_reconciliation");
+      assert.equal(error.status, 422);
+      assert.equal(error.details.blockers[0].code, "explanation_reconciliation_missing_idea");
+      assert.equal(error.details.blockers[0].entry, 1);
+      assert.match(error.details.blockers[0].message, new RegExp(papel, "u"));
+      return true;
+    });
+    assert.deepEqual(explanation, before, "a recusa não altera a base em memória");
+  }
+});
+
+test("referência duplicada e motivo em branco permanecem entrada inválida tipada", async () => {
+  const explanation = { title: "Base", content: [paragraph("a", "Uma ideia central que o percurso desenvolve.")] };
+  const base = { recurso: 1, papel: "introduced", motivo: "Classifica a passagem.", ideias: ["Ideia A"], requisitos: [] };
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...base, ideias: ["Ideia A", "Ideia A"] }], planContext),
+    error => error.code === "invalid_explanation_reconciliation" && error.status === 422 &&
+      error.details.blockers[0].code === "explanation_reconciliation_invalid_entry" && error.details.blockers[0].entry === 1);
+  // Espaço em branco passa o schema (minLength 1) e precisa continuar recusado pela validação.
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...base, motivo: "   " }], planContext),
+    error => error.code === "invalid_explanation_reconciliation" && error.status === 422 &&
+      error.details.blockers[0].code === "explanation_reconciliation_invalid_entry");
+  // A ideia inexistente continua resolvida pelo código de referência já existente.
+  await assert.rejects(() => reconcileHumanExplanation(explanation, [{ ...base, ideias: ["Ideia Inexistente"] }], planContext),
+    error => error.code === "human_reference_not_found");
+});
+
+test("nove declarações válidas reconciliam a base inteira e preservam a aplicação", async () => {
+  const content = Array.from({ length: 9 }, (_, index) => paragraph(`r${index + 1}`, `Passagem sintética número ${index + 1} do percurso.`));
+  const explanation = { title: "Base sintética de nove passagens", content };
+  const declarations = content.map((_, index) => ({ recurso: index + 1, papel: index === 0 ? "introduced" : "established",
+    motivo: `Classifica a passagem ${index + 1} do percurso.`, ideias: ["Ideia A"], requisitos: [] }));
+  const reconciled = await reconcileHumanExplanation(explanation, declarations, planContext);
+  assert.equal(reconciled.reconciliation.entries.length, 9);
+  assert.deepEqual(reconciled.reconciliation.entries.map(entry => entry.role), ["introduced", ...Array(8).fill("established")]);
+  for (const entry of reconciled.reconciliation.entries) {
+    assert.deepEqual(entry.analysisUnitIds, ["idea-a"]);
+    assert.ok(entry.reason.length > 0);
+    assert.ok(entry.quote.length > 0);
+  }
+  const checked = inspect(reconciled);
+  assert.equal(checked.ready, true, JSON.stringify(checked.blockers));
+});
+
 test("repetição dentro de uma parte não torna outra parte uma escolha implícita", async () => {
   const explanation = { title: "Trechos parecidos", content: [{ id: "ann", package: annotatedTextPackage.manifest.id,
     version: annotatedTextPackage.manifest.version, data: {
