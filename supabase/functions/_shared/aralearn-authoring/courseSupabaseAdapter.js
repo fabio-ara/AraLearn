@@ -2080,7 +2080,12 @@ export class CourseSupabaseAdapter {
           p_client_id: identity.clientId,
           p_source_session_id: identity.sourceSessionId
         },
-        { deadlineAt, retry: false, responseLimitBytes: 16 * 1024 }
+        // RPC de leitura estável: revalida sessão, escopos e consentimento revogado
+        // a cada tentativa. Repetir dentro do mesmo prazo não grava nem afrouxa a
+        // revogação. Um 401 do PostgREST é falha de serviço: vira 503 e é repetível
+        // sem tocar a autenticação do usuário; só as recusas de domínio 403/404
+        // permanecem sem repetição.
+        { deadlineAt, responseLimitBytes: 16 * 1024 }
       ), identity.clientId);
     } catch (error) {
       if (error instanceof AuthoringApiError &&
