@@ -360,6 +360,7 @@ function toolSuccess(value) {
 }
 
 function toolFailure(
+  id,
   error,
   challenge = null,
   failure = {},
@@ -430,14 +431,37 @@ function toolFailure(
     });
   }
   const structuredContent = { error: publicError, nextDecision };
-  return {
-    content: [{ type: "text", text: publicError.message }],
+  // Compatibilidade reversa do MCP 2025-11-25 (tools#structured-content): o
+  // structuredContent é a fonte de verdade, mas há clientes que leem apenas o
+  // bloco textual e perderiam code/retryable/diagnostico/preflight/orientação.
+  // O texto espelha a MESMA projeção pública já sanitizada, como JSON analisável.
+  const result = {
+    content: [{ type: "text", text: JSON.stringify(structuredContent) }],
     structuredContent,
     isError: true,
     ...(challenge
       ? { _meta: { "mcp/www_authenticate": [challenge] } }
       : {})
   };
+  // A duplicação não pode derrubar uma resposta entregável. A guarda mede o
+  // envelope JSON-RPC exatamente como jsonRpcResponse o serializa — jsonrpc, id
+  // e result — inclusive o id real do cliente. Quando o espelho completo o
+  // excederia, o texto passa a um JSON compacto com os campos públicos
+  // essenciais e o aviso explícito do limite. Nada é cortado em silêncio:
+  // bloqueadores e recuperação permanecem íntegros em structuredContent.
+  if (exceedsMcpResponseLimit({ jsonrpc: JSON_RPC_VERSION, id, result })) {
+    result.content = [{ type: "text", text: JSON.stringify({
+      error: {
+        code: publicError.code,
+        message: publicError.message,
+        retryable: publicError.retryable,
+        ...(publicError.diagnostico ? { diagnostico: publicError.diagnostico } : {})
+      },
+      nextDecision,
+      aviso: "Erro compactado pelo limite de tamanho desta resposta; os detalhes completos de bloqueios e recuperação não cabem no texto e permanecem em structuredContent."
+    }) }];
+  }
+  return result;
 }
 
 async function executeTool({
@@ -580,7 +604,7 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(denied, context.oauthChallenge, {}, {
+        result: toolFailure(id, denied, context.oauthChallenge, {}, {
           ...context.diagnostico, fase: "execucao", tool: params.name
         })
       };
@@ -606,6 +630,7 @@ async function dispatchMcpRequest(envelope, context) {
         jsonrpc: JSON_RPC_VERSION,
         id,
         result: toolFailure(
+          id,
           tooLarge,
           null,
           completedWrite ? { writeState: "complete" } : {},
@@ -622,7 +647,7 @@ async function dispatchMcpRequest(envelope, context) {
       return {
         jsonrpc: JSON_RPC_VERSION,
         id,
-        result: toolFailure(normalized, challenge, {}, {
+        result: toolFailure(id, normalized, challenge, {}, {
           ...context.diagnostico, fase: "execucao", tool: params.name
         })
       };
