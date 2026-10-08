@@ -4,7 +4,7 @@ import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringPr
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 import { reconciledExplanationFixture } from "../helpers/reconciledExplanationFixture.js";
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, createSign, generateKeyPairSync } from "node:crypto";
 import fs from "node:fs/promises";
 import test from "node:test";
 
@@ -2051,10 +2051,15 @@ test("MCP sanitiza também a falha transitória que sai pelo transporte HTTP", a
   assert.equal(payload.error.data.retryable, true, "429 é repetível");
 });
 
-test("falha de auth antes do dispatch preserva id JSON-RPC e correlação pública", async () => {
+test("falha transitória do JWKS na resolução do principal vira erro de ferramenta com id e correlação", async () => {
+  let toolDispatches = 0;
   const handler = createAuthoringMcpHandler({
     adapter: {
       ...adapter(),
+      async listCourses() {
+        toolDispatches += 1;
+        throw new Error("a ferramenta não deveria executar");
+      },
       async resolvePrincipal() {
         throw new AuthoringApiError(
           503,
@@ -2073,25 +2078,217 @@ test("falha de auth antes do dispatch preserva id JSON-RPC e correlação públi
   }));
   const payload = await response.json();
 
-  assert.equal(response.status, 503);
+  assert.equal(response.status, 200, "dependência transitória devolve envelope de ferramenta");
   assert.equal(payload.jsonrpc, "2.0");
-  assert.equal(payload.id, 1, "o id JSON-RPC sobrevive à falha de autenticação");
-  assert.equal(payload.error.code, -32000, "indisponibilidade usa o código do servidor, não o genérico");
-  assert.equal(payload.error.message, "Não consegui concluir esta etapa.");
-  assert.equal(payload.error.data.code, "temporarily_unavailable");
+  assert.equal(payload.id, 1, "o id JSON-RPC sobrevive à falha da dependência");
+  assert.equal(payload.result.isError, true);
+  const publicError = payload.result.structuredContent.error;
+  assert.equal(publicError.code, "temporarily_unavailable");
+  assert.equal(publicError.message, "Não consegui concluir esta etapa.");
+  assert.equal(publicError.retryable, true, "503 transitório é repetível");
   assert.deepEqual(
-    Object.keys(payload.error.data).sort(),
-    ["code", "fase", "nextDecision", "requestId", "retryable", "status"]
+    Object.keys(publicError.diagnostico).sort(),
+    ["fase", "requestId", "status"],
+    "o diagnóstico público expõe só a correlação"
   );
-  assert.equal(payload.error.data.retryable, true, "503 transitório é repetível");
-  assert.equal(payload.error.data.fase, "autenticacao");
-  assert.equal(payload.error.data.status, 503);
+  assert.equal(publicError.diagnostico.fase, "autenticacao", "o rótulo de fase permanece o de diagnóstico");
+  assert.equal(publicError.diagnostico.status, 503);
   assert.equal(
     response.headers.get("X-AraLearn-Request-Id"),
-    payload.error.data.requestId,
+    publicError.diagnostico.requestId,
     "o cabeçalho ecoa a correlação devolvida no corpo"
   );
-  assert.doesNotMatch(JSON.stringify(payload), /Bearer|token OAuth|\.well-known/iu);
+  const mirrored = JSON.parse(payload.result.content[0].text);
+  assert.equal(mirrored.error.code, "temporarily_unavailable", "o texto espelha o erro público");
+  assert.equal(toolDispatches, 0, "nenhuma ferramenta é executada");
+  assert.doesNotMatch(JSON.stringify(payload), /Bearer|token OAuth|\.well-known|JWKS/iu);
+});
+
+test("verificador real com JWKS abortado ou 5xx vira erro de ferramenta sem executar a tarefa", async () => {
+  const { SupabaseOAuthJwtVerifier } = await import(
+    "../../supabase/functions/_shared/aralearn-authoring/oauthJwtVerifier.js");
+  const segment = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const token = `${segment({ alg: "ES256", typ: "JWT", kid: "kid-jwks-test" })}.` +
+    `${segment({ sub: "pairwise-subject-test", iat: 1, exp: 9_999_999_999 })}.${"A".repeat(86)}`;
+  const hangingJwks = (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
+  });
+  const stubs = [hangingJwks, async () => new Response("", { status: 500 })];
+  for (const [index, fetchImpl] of stubs.entries()) {
+    const verifier = new SupabaseOAuthJwtVerifier({
+      issuer: "https://project.example/auth/v1", fetchImpl, requestTimeoutMs: 20,
+      maxAttempts: 3, retryBackoffMs: 0, sleep: () => Promise.resolve()
+    });
+    let principalCalls = 0;
+    let toolDispatches = 0;
+    const handler = createAuthoringMcpHandler({
+      adapter: {
+        async resolvePrincipal(authentication, options) {
+          principalCalls += 1;
+          return verifier.verify(authentication.credential, options);
+        },
+        async listCourses() {
+          toolDispatches += 1;
+          throw new Error("a ferramenta não deveria executar");
+        }
+      },
+      allowedOrigins: new Set([ORIGIN]),
+      resourceUrl: RESOURCE_URL,
+      authorizationServer: "https://project.example/auth/v1"
+    });
+    const logs = [];
+    const original = console.error;
+    console.error = (line) => { logs.push(String(line)); };
+    let response;
+    try {
+      response = await handler(new Request(RESOURCE_URL, {
+        method: "POST",
+        headers: {
+          Origin: ORIGIN, Authorization: `Bearer ${token}`,
+          Accept: "application/json, text/event-stream", "Content-Type": "application/json",
+          "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: index === 0 ? 0 : "s-id",
+          method: "tools/call", params: { name: "retomar_curso", arguments: { titulo: "Redes" } } })
+      }));
+    } finally { console.error = original; }
+    const payload = await response.json();
+    assert.equal(response.status, 200, `stub ${index}: erro de ferramenta`);
+    assert.equal(payload.id, index === 0 ? 0 : "s-id", `stub ${index}: id preservado`);
+    assert.equal(payload.error, undefined, `stub ${index}: sem envelope de transporte`);
+    assert.equal(payload.result.isError, true);
+    const publicError = payload.result.structuredContent.error;
+    assert.equal(publicError.code, "temporarily_unavailable");
+    assert.equal(publicError.diagnostico.fase, "autenticacao");
+    assert.equal(publicError.diagnostico.status, 503);
+    assert.equal(principalCalls, 1, `stub ${index}: principal tentado uma vez`);
+    assert.equal(toolDispatches, 0, `stub ${index}: ferramenta não executada`);
+    const joined = logs.join("\n");
+    assert.match(joined, /oauth_verification_unavailable/u);
+    assert.doesNotMatch(joined, /Bearer|\.well-known|jwks/iu, `stub ${index}: log sem URL/credencial`);
+  }
+});
+
+test("recupera na chamada seguinte com JWKS e JWT válidos sem reutilizar chave inválida", async () => {
+  const { SupabaseOAuthJwtVerifier } = await import(
+    "../../supabase/functions/_shared/aralearn-authoring/oauthJwtVerifier.js");
+  const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const jwk = { ...publicKey.export({ format: "jwk" }), alg: "ES256", kid: "key-ok",
+    key_ops: ["verify"], use: "sig" };
+  const base64urlJson = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const input = `${base64urlJson({ alg: "ES256", kid: "key-ok", typ: "JWT" })}.` +
+    `${base64urlJson({ iss: "https://project.example/auth/v1", sub: "10000000-0000-4000-8000-000000000001" })}`;
+  const signer = createSign("SHA256");
+  signer.update(input);
+  signer.end();
+  const token = `${input}.${signer.sign({ key: privateKey, dsaEncoding: "ieee-p1363" }).toString("base64url")}`;
+
+  let jwksState = "abort";
+  let jwksCalls = 0;
+  const verifier = new SupabaseOAuthJwtVerifier({
+    issuer: "https://project.example/auth/v1",
+    fetchImpl: (_url, init) => {
+      jwksCalls += 1;
+      if (jwksState === "abort") {
+        return new Promise((_resolve, reject) => init.signal.addEventListener("abort",
+          () => reject(new DOMException("aborted", "AbortError")), { once: true }));
+      }
+      return new Response(JSON.stringify({ keys: [jwk] }),
+        { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+    requestTimeoutMs: 20, maxAttempts: 3, retryBackoffMs: 0, sleep: () => Promise.resolve()
+  });
+  const baseAdapter = adapter();
+  const originalListCourses = baseAdapter.listCourses.bind(baseAdapter);
+  let toolDispatches = 0;
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...baseAdapter,
+      async resolvePrincipal(authentication, options) {
+        const claims = await verifier.verify(authentication.credential, options);
+        return { actorId: claims.sub, authenticationKind: "oauth",
+          scopes: ["authoring:read", "authoring:write"] };
+      },
+      async listCourses(args) {
+        toolDispatches += 1;
+        return originalListCourses(args);
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const call = (id) => handler(new Request(RESOURCE_URL, {
+    method: "POST",
+    headers: {
+      Origin: ORIGIN, Authorization: `Bearer ${token}`,
+      Accept: "application/json, text/event-stream", "Content-Type": "application/json",
+      "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id, method: "tools/call",
+      params: { name: "retomar_curso", arguments: { titulo: "Redes para iniciantes" } } })
+  }));
+
+  const failed = await call(21);
+  const failedPayload = await failed.json();
+  assert.equal(failed.status, 200, "a falha transitória vira erro de ferramenta");
+  assert.equal(failedPayload.result.isError, true);
+  assert.equal(failedPayload.result.structuredContent.error.code, "temporarily_unavailable");
+  assert.equal(failedPayload.result.structuredContent.error.diagnostico.fase, "autenticacao");
+  assert.equal(toolDispatches, 0, "a tarefa não executa na falha");
+  const callsAfterFailure = jwksCalls;
+
+  jwksState = "ok";
+  const recovered = await call(22);
+  const recoveredPayload = await recovered.json();
+  assert.equal(recovered.status, 200);
+  assert.equal(recoveredPayload.id, 22);
+  assert.equal(recoveredPayload.error, undefined, "a recuperação devolve resultado de domínio");
+  assert.notEqual(recoveredPayload.result?.isError, true);
+  assert.equal(toolDispatches, 1, "a tarefa executa exatamente uma vez");
+  assert.ok(jwksCalls > callsAfterFailure, "o JWKS é relido em vez de reutilizar chave inválida");
+});
+
+test("JWKS transitório fora do envelope válido mantém o contrato de transporte", async () => {
+  const base = {
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  };
+  const cases = [
+    ["protocolo divergente", "tools/call", { name: "retomar_curso", arguments: { titulo: "Redes" } }, { "MCP-Protocol-Version": "1999-01-01" }, 9, 503, -32000, "temporarily_unavailable"],
+    ["arguments não é objeto", "tools/call", { name: "retomar_curso", arguments: 3 }, {}, 9, 503, -32000, "temporarily_unavailable"],
+    ["fora do catálogo", "tools/call", { name: "nao_existe", arguments: {} }, {}, 9, 503, -32000, "temporarily_unavailable"],
+    ["método tools/list", "tools/list", {}, {}, 9, 503, -32000, "temporarily_unavailable"],
+    ["método initialize", "initialize", {}, {}, 9, 503, -32000, "temporarily_unavailable"],
+    ["id nulo é recusado antes do principal", "tools/call", { name: "retomar_curso", arguments: { titulo: "Redes" } }, {}, null, 400, -32600, "invalid_json_rpc"]
+  ];
+  for (const [label, method, params, extraHeaders, id, status, rpcCode, dataCode] of cases) {
+    const handler = createAuthoringMcpHandler({
+      adapter: {
+        ...adapter(),
+        async resolvePrincipal() {
+          throw new AuthoringApiError(503, "oauth_verification_unavailable", "JWKS indisponível.");
+        }
+      },
+      ...base
+    });
+    const response = await handler(new Request(RESOURCE_URL, {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN, Authorization: "Bearer token", Accept: "application/json, text/event-stream",
+        "Content-Type": "application/json", "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION,
+        ...extraHeaders
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params })
+    }));
+    const payload = await response.json();
+    assert.equal(response.status, status, label);
+    assert.equal(payload.id, id, label);
+    assert.equal(payload.error.code, rpcCode, label);
+    assert.equal(payload.result, undefined, `${label}: sem envelope de ferramenta`);
+    assert.equal(payload.error.data.code, dataCode, label);
+  }
 });
 
 test("transporte MCP distingue parse, requisição inválida, autorização e indisponibilidade", async () => {
@@ -2214,7 +2411,8 @@ test("log interno não expõe o id JSON-RPC nem credenciais", async () => {
     const payload = await response.json();
 
     assert.equal(payload.id, secretId, "a resposta ecoa o id recebido");
-    assert.equal(payload.error.code, -32000);
+    assert.equal(payload.result.isError, true);
+    assert.equal(payload.result.structuredContent.error.code, "temporarily_unavailable");
     assert.ok(logs.length > 0, "a falha transitória precisa aparecer no log");
     const joined = logs.join("\n");
     assert.match(joined, /aralearn\.authoring\.error/u);
@@ -3996,13 +4194,8 @@ test("autenticação, autorização, limite de taxa e falha interna preservam o 
   );
   assert.equal(internalResponse.status, 500);
 
-  const unverified = handlerWithResolveFailure(
-    new AuthoringApiError(503, "oauth_verification_unavailable", "Verificação indisponível.")
-  );
-  const unverifiedResponse = await unverified.handler(
-    request("tools/call", { name: "preparar_revisao", arguments: {} })
-  );
-  assert.equal(unverifiedResponse.status, 503);
+  // A falha transitória do JWKS não é recusa de credencial: ela sai do transporte e
+  // vira falha da ferramenta, coberta pelos testes dedicados acima.
 });
 
 test("chamada inválida ou notificação sem id não entra na rota de falha da ferramenta", async () => {

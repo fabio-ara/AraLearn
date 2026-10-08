@@ -748,15 +748,20 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "", diagnostico 
   // (result.isError), no mesmo envelope público de `fase=execucao`, para que
   // code, retryable e diagnostico alcancem o cliente. O HTTP 200 aqui carrega
   // apenas erro público válido — nunca sucesso de domínio — e o status original
-  // da dependência permanece no diagnostico. Só este caso entra na rota:
-  // autenticação, autorização, limite de taxa, entrada inválida, id ausente,
+  // da dependência permanece no diagnostico. Só este caso entra na rota: recusa
+  // de credencial (401/403), limite de taxa, entrada inválida, id ausente,
   // protocolo divergente, método ou ferramenta desconhecida e falha interna
-  // seguem o contrato atual.
+  // seguem o contrato atual. A falha transitória do JWKS chega como
+  // `oauth_verification_unavailable` na mesma resolução do principal e entra pela
+  // mesma rota, sem renomear o código nem o rótulo público de fase.
   const envelope = diagnostico.envelope;
   const hasJsonRpcId = diagnostico.jsonRpcId !== null && diagnostico.jsonRpcId !== undefined;
+  // A rota usa a fase REAL (`diagnostico.fase`), anterior ao rótulo de transporte.
+  const principalResolutionFailure = fase === "resolucao_principal"
+    || (diagnostico.fase === "resolucao_principal" && normalized.code === "oauth_verification_unavailable");
   const routeAsToolFailure = retryable
     && (normalized.status === 503 || normalized.status === 408)
-    && fase === "resolucao_principal"
+    && principalResolutionFailure
     && hasJsonRpcId
     && envelope?.method === "tools/call"
     && typeof envelope?.params?.name === "string"
