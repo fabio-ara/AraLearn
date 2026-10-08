@@ -2,7 +2,7 @@
 
 ## Situação corrente: corte 0.0.103 integrado e implantado
 
-Estado efetivo em 2026-10-07: MCP 531, API 374 e Actions 398 ativos, `verify_jwt=false` e schema `20261005120000`; T02 permanece FALHOU e T20 BLOQUEADO. A cronologia abaixo registra as promoções até este ponto.
+Estado efetivo em 2026-10-08, depois da implantação canônica: MCP 531, API 374 e Actions 398 ativos e inalterados, `verify_jwt=false` e schema `20261007234650`, com 248 migrações aplicadas e nenhuma pendente; T02 permanece FALHOU e T20 BLOQUEADO. A cronologia abaixo registra as promoções até este ponto.
 
 O corte 0.0.103 está integrado e implantado. Commit fonte [8bb99856](https://github.com/fabio-ara/AraLearn/commit/8bb99856290b318a1da04d977f393bb546afac56); merge/principal [b1621e95](https://github.com/fabio-ara/AraLearn/commit/b1621e9534afa22cbeec7b4fc50dc71fc3ce0c82), árvore idêntica à certificada; na verificação do corte, checkout limpo e principal local e remota coincidentes. A revisão independente aprovou 49 testes; o source-flow teve 19 aprovações; o conjunto focal teve 126. São conjuntos sobrepostos, não somados. A preparação passou nos cinco gates aplicáveis, com runtime local de 2709 aprovações, zero falhas e as 15 dispensas existentes.
 
@@ -77,8 +77,8 @@ Os estados se referem às provas e aos limites indicados, sem promover prova loc
 | Cenário | Resultado | Evidência e limite |
 | --- | --- | --- |
 | T01 caminhos mínimos do curso | APROVADO | Consultas nativas e leitura extensa concluídas; planejamento e acesso finais preservam revisão 555 e estado anterior. |
-| T02 taxonomia de erro e retry | FALHOU | Serviço/local/CI aprovados; a fronteira externa permanece aberta. Nos cortes 529, 530 e 531 o conector devolveu indisponibilidade transitória com `error_code: INVALID_ARGUMENT` no `structuredContent`, e o `-32603` veio sem `structuredContent`; as séries dos cortes 530 e 531 estão em "Detalhe das falhas transitórias dos cortes 529, 530 e 531". A recusa de declaração inválida em `salvar_explicacoes` foi tipada e implantada (PR 433, MCP 529). Na fixture descartável, um bloqueio de source bundle devolveu 409 `course_write_uncertain` — resultado incerto de escrita, não conflito de base —, sem duplicar no replay. O guard do PR 434 cobre apenas `tools/call` e não fechou a fronteira; a retentativa focal da leitura do principal está integrada e implantada (PR 435, MCP 531). A etiqueta `INVALID_ARGUMENT` da camada do conector continua aberta. |
-| T03 retomada após falhas e reinício | APROVADO | Oito testes locais de interrupção; retomada nativa do checkpoint preservado até o fim, com recuperações reportadas no mesmo cursor — incluindo as repetições de s125 e s210 no corte 531 — e limite persistido de tentativas. |
+| T02 taxonomia de erro e retry | FALHOU | Serviço/local/CI aprovados; a fronteira externa permanece aberta. Nos cortes 529, 530 e 531 o conector devolveu indisponibilidade transitória com `error_code: INVALID_ARGUMENT` no `structuredContent`, e o `-32603` veio sem `structuredContent`; as séries dos cortes 530 e 531 estão em "Detalhe das falhas transitórias dos cortes 529, 530 e 531". A recusa de declaração inválida em `salvar_explicacoes` foi tipada e implantada (PR 433, MCP 529). Na fixture descartável, um bloqueio de source bundle devolveu 409 `course_write_uncertain` — resultado incerto de escrita, não conflito de base —, sem duplicar no replay. O guard do PR 434 cobre apenas `tools/call` e não fechou a fronteira; a retentativa focal da leitura do principal está integrada e implantada (PR 435, MCP 531). A etiqueta `INVALID_ARGUMENT` da camada do conector continua aberta. Na leitura pós-implantação, seis respostas repetiram a contradição — indisponibilidade transitória com `retryable: true` junto do `error_code` da camada do conector —; em três delas a borda foi medida em HTTP 200 e nas outras três esse status não foi medido. |
+| T03 retomada após falhas e reinício | APROVADO | Oito testes locais de interrupção; retomada nativa do checkpoint preservado até o fim, com recuperações reportadas no mesmo cursor — incluindo as repetições de s125 e s210 no corte 531 — e limite persistido de tentativas. Na leitura pós-implantação, a interrupção planejada caiu entre os fragmentos 110 e 111 e a retomada em nova célula concluiu o restante sem erro. |
 | T04 integridade da remontagem | APROVADO | Testes locais e conferência nativa de oito páginas contíguas, bytes/hashes, literal, identidade dos alvos e referências. |
 | T05 páginas lógicas e temMais | APROVADO | Testes locais e fim nativo `temMais=false`; transições entre páginas sem lacuna, checkpoint final sem cursor. |
 | T06 bloqueio de parecer com escopo incompleto | APROVADO | O ensaio anterior, com cliente incompleto, tentou registrar 1 parecer após apenas a leitura da página 1 com `auditoria:false` e foi recusado — histórico preservado, não removido. No fluxo corrigido, os 48 registros nativos só ocorreram após a leitura formal completa (seis páginas, 289 respostas aceitas), com manifesto, guarda canônica do cliente em STUB, validação literal canônica e juízos próprios. A guarda é da orquestração, não uma proibição global da API por alvo. |
@@ -95,7 +95,7 @@ Os estados se referem às provas e aos limites indicados, sem promover prova loc
 | T17 inspeção de IA não aprova humano | APROVADO | Testes aprovados, e a prova real dos 48 registros mantém a revisão humana ausente (`content_review={}`), sem aprovação fabricada. |
 | T18 ausência de mutação em leitura e exclusividade do fluxo | APROVADO | Snapshots preservam revisão e acesso; registro original e código efetivamente executado comprovam dez lotes sequenciais de retomada no corte 103, chamadas de leitura aguardadas e término antes do lote seguinte. Telemetria histórica permanece parcial; não se infere exclusividade só de horários de fim. |
 | T19 leitura formal grande com base própria | APROVADO | Prova local de 3.468.023 bytes e nativa real completa: oito páginas, 528 fragmentos, posições 1–47, uma Explicação e referências próprias conferidas. A fixture extensa de produção e inspeção permanece no gate T20. |
-| T20 aceitação ponta a ponta após interrupção | BLOQUEADO | Três fluxos: o primeiro e o segundo medidos; o terceiro concluiu leitura, 48 registros e SQL final (305 sucessos em 312 chamadas, sete erros, revisão 166). O achado é o U15: 47 respostas informam recuperação de parecer e uma (U15) informa registro; o estado final dos 48 pareceres permaneceu igual. O primeiro cobriu seis páginas (289 de 291 invocações) e 49 chamadas de registro, com a comparação SQL em 118 → 166 e +48 recibos (158 → 206). O segundo teve 305 respostas válidas e 309 chamadas, com 48 brutos e uma captura de U1 perdida. Comparativo em "Três fluxos da aceitação". Segue bloqueado só enquanto T02 persistir. |
+| T20 aceitação ponta a ponta após interrupção | BLOQUEADO | Três fluxos: o primeiro e o segundo medidos; o terceiro concluiu leitura, 48 registros e SQL final (305 sucessos em 312 chamadas, sete erros, revisão 166). O achado é o U15: 47 respostas informam recuperação de parecer e uma (U15) informa registro; o estado final dos 48 pareceres permaneceu igual. O primeiro cobriu seis páginas (289 de 291 invocações) e 49 chamadas de registro, com a comparação SQL em 118 → 166 e +48 recibos (158 → 206). O segundo teve 305 respostas válidas e 309 chamadas, com 48 brutos e uma captura de U1 perdida. Comparativo em "Três fluxos da aceitação". Na leitura pós-implantação, a interrupção planejada caiu entre os fragmentos 110 e 111 e a retomada em nova célula concluiu o restante: 311 chamadas, 305 concluídas e seis repetições absorvidas pelo retry limitado, seis hashes de página iguais aos do terceiro fluxo, revisão 166, 48 alvos e 288 verificações. O bloqueio decorre de T02, não de a leitura pós-implantação não ter gravado: os três fluxos anteriores permanecem válidos. |
 
 ### Três fluxos da aceitação
 
@@ -106,6 +106,17 @@ Os estados se referem às provas e aos limites indicados, sem promover prova loc
 | 3º (P3) | 6 páginas; 305 sucessos em 312 chamadas (7 erros: 4 antes do 531 e 3 `temporarily_unavailable` depois) | 312 | 48 chamadas, 48 originais, zero erro, 288 verificações; 47 informam recuperação e uma (U15) informa registro | Comparação final: 7 consultas, 8 execuções; revisão 166 e estado selecionado preservados; +48 recibos desde o primeiro fluxo | 312 originais conferidos; páginas iguais ao 2º fluxo e diferentes do 1º só nos campos esperados | Leitura e registros sem perda; primeira captura da consulta SQL Q2 perdida, repetição preservada |
 
 A revisão humana permanece ausente (`content_review={}`) nos 48 pareceres. Na comparação SQL final, os recortes equivalentes aos payloads originais mudaram apenas `course_change_receipts` e `receipts_by_operation`: os 206 recibos anteriores seguem iguais, sem remoção, e o acréscimo de 48 abrange os fluxos 2 e 3, sem atribuir os 48 ao terceiro; a revisão 166, os 48 pareceres correntes com 288 verificações e os campos selecionados (identidades, configuração, fontes, âncoras, plano, parâmetros e orientações) permanecem iguais. A comparação final é contra o pós-primeiro-fluxo: sete originais finais estão íntegros e a primeira captura de Q2 perdeu-se antes do arquivo, sem afirmar oito retornos preservados; é limitação de captura desta rodada, não se chama a coleta de limpa nem se afirma ausência histórica de escrita além do snapshot preservado. Os retornos da consulta SQL não trazem status HTTP medido.
+
+### Leitura pós-implantação
+
+Depois da migração `20261007234650`, uma leitura completa de revisão foi reexecutada na
+mesma fixture sintética e comparada à linha de base anterior: seis páginas reconstruídas
+com hashes idênticos, 47 unidades de estudo mais a Explicação (48 alvos distintos, seis
+dimensões cada, 288 verificações), todas em estado corrente. A execução somou 3.601.479 ms
+de parede, incluindo a pausa planejada de retomada, com 311 chamadas — 305 concluídas e
+seis repetições absorvidas pelo retry limitado; o segundo segmento teve 195 conclusões e
+nenhuma falha. A comparação cobre o conteúdo transportado dessa leitura, não o banco nem a
+autorização inteiros, e não infere parecer novo.
 
 ## Mapa de consumidores e provas
 
@@ -135,15 +146,24 @@ Uma conversa antiga observou a recusa de `unidades[].aplicacaoPedagogica.explica
 
 Na leitura do curso real, quatro respostas chegaram antes de um 503 em uma janela anterior; os bytes e o cursor não foram preservados pelo coletor antigo, portanto não há prova de remontagem ou retomada daquelas quatro. Os logs correlacionaram duas falhas à execução do MCP com código interno `service_timeout`, classe transitória e status 503. O prazo específico que expirou não foi identificado: cada requisição usa oito segundos e até três tentativas, enquanto a chamada tem orçamento global de quarenta segundos. Na leitura atual (corte 103) não houve falha não recuperada; retornos integrais de falhas anteriores não foram preservados. Foram feitas somente consultas no curso real; revisão 555 e acesso permaneceram iguais, sem alegar snapshot completo de fontes, configuração e pareceres.
 
-## Candidata em validação: reuso da base de inspeção (não implantada)
+## Reuso da base de inspeção: integrado e implantado (PR 437)
 
-A branch `codex/audit-read-basis-reuse`, sobre `main` em `6a882202`, contém a
-migração `20261007234650_reuse_inspection_basis_within_read.sql` e o
-`runtime-manifest.json` na revisão `20261007234650`. O critério de parada é
-reduzir o trabalho repetido dentro de uma mesma requisição de leitura de
-inspeção sem mudar o contrato observável: `basisHash`, `pedagogicalBasis`,
-`inspection` e o payload permanecem idênticos, e `stable`, `security definer`,
-`search_path` e ACL são preservados.
+O [PR 437](https://github.com/fabio-ara/AraLearn/pull/437) foi integrado e implantado:
+merge `ebf7c9a0295c403ec51599c4dfdb657c35f39ee1` e árvore
+`aed472af6e51cf32c79d0e8d2788d606eb85d575`. A
+[CI 37712202013](https://github.com/fabio-ara/AraLearn/actions/runs/37712202013) aprovou os
+cinco gates aplicáveis — 916 asserções pgTAP, paridade de 740 objetos e 585 passagens
+Playwright —, com certificado, origem `b533` e hashes conferidos. A verificação de
+implantação de 2026-10-08 (UTC) confirmou o schema `20261007234650` aplicado, 248
+migrações e nenhuma pendente, com a verificação hospedada aprovada e as funções MCP 531,
+API 374 e Actions 398 inalteradas.
+
+A migração `20261007234650_reuse_inspection_basis_within_read.sql` e o
+`runtime-manifest.json` na revisão `20261007234650` mantêm o critério de parada:
+reduzir o trabalho repetido dentro de uma mesma requisição de leitura de inspeção sem
+mudar o contrato observável — `basisHash`, `pedagogicalBasis`, `inspection` e o payload
+permanecem idênticos, e `stable`, `security definer`, `search_path` e ACL são
+preservados.
 
 Reprodução: dois bancos PGlite com as migrações reais (47 unidades, uma Explicação
 e 32 fontes) comparados sem instrumentação — nenhum wrapper, nenhuma função
@@ -158,8 +178,8 @@ current/pending/unregistered, objeto ausente, base nula e Explicação sem corpo
 upgrade que não altera dados nem o carimbo da gravação, ACL com controles, seis
 dimensões com evidência literal, separação IA/humana, recusa de base obsoleta,
 negação por papel/ator e replay idempotente. O bloco pgTAP correspondente foi
-acrescentado à família de explicação/revisão; as expressões foram validadas em
-PGlite, mas o pgTAP não foi executado neste host por ausência de Docker.
+acrescentado à família de explicação/revisão; as expressões foram validadas em PGlite
+neste host, e o gate de integração da CI aprovou a suíte pgTAP, com 916 asserções.
 
 Diagnóstico local corrente: uma montagem completa LOCAL→PostgREST da página do
 recorte registrou 68 RPCs, 7.719 ms de parede e 3.195.573 bytes, devolvendo o
@@ -169,11 +189,43 @@ fragmento. São duas observações pontuais, obtidas antes desta migração, sem
 estabilidade medida; não explicam os ~40 s históricos e não constituem correção
 externa.
 
-Estado: **candidata em validação, não implantada**, e **T02 permanece aberto**.
-Ela não afirma causa hospedada: a validação de SCs125 confere o `outputSchema`
+Estado: **integrada e implantada em 2026-10-08**, e **T02 permanece aberto**. A
+migração não afirma causa hospedada: a validação de SCs125 confere o `outputSchema`
 das ferramentas, e a camada de Actions não explica T02; nenhuma das duas é prova
 de causa do incidente.
 
 ## Limitações e cuidados
 
 As correções do PR 429, do PR 430 e do corte 0.0.103 estão integradas e implantadas; o fallback textual de erro do canal MCP está implantado (PR 432, MCP 528); e a correção de tipagem da reconciliação inválida está implantada (PR 433, MCP 529 e Actions 397). A falha transitória do principal em `tools/call` válido está corrigida e implantada (PR 434, MCP 530), restrita a esse caminho, sem contorno de autenticação e sem eliminar o `error_code` da camada do conector. Esse guard cobre apenas `tools/call`; a retentativa focal da leitura do principal (`resolve_mcp_oauth_principal_v1`) está integrada e implantada (PR 435, MCP 531). A classificação de T02 persiste depois da atualização de definições no corte 531. A entrega do incidente não está concluída. O servidor não comprova consumo intelectual: a garantia de leitura completa antes do parecer pertence ao cliente de autoria. As contagens de disponibilidade descrevem a janela observada e não são uma taxa geral. Resultados hospedados permanecem separados dos locais, e a inspeção de IA não é aprovação humana. Os registros históricos preservam suas limitações de captura. No primeiro fluxo, o coletor sobrescreveu um registro bruto e os bytes exatos foram recuperados pelo hash, com proveniência registrada; no segundo, uma captura de U1 não foi recuperada. Na comparação SQL final, feita contra o pós-primeiro-fluxo, sete originais finais estão íntegros e a primeira captura de Q2 se perdeu antes do arquivo. Os arquivos permanecem fora do Git e não se afirma que nenhum original foi reescrito.
+
+## Diagnóstico interno de dependência (candidata local, NÃO implantada)
+
+> Correção local em revisão na branch `codex/mcp-dependency-diagnostics`; **não
+> implantada**. Nada aqui afirma causa do incidente: o código prova que existe um
+> orçamento de 40 s na execução e que `service_timeout` nasce no adapter, mas **não**
+> prova qual RPC consome o orçamento.
+
+O evento único `aralearn.authoring.error` ganha um campo opcional `dependency`, emitido
+somente quando a falha vem de uma chamada RPC do adapter (`rpc()`) e sem alterar a forma
+pública do erro MCP (o erro público continua com `code`, `message`, `retryable` e
+`diagnostico`). Campos:
+
+- `rpc`: nome da função PostgREST validado por um **enum fechado** — lista explícita
+  mantida no código com os nomes de RPC do adapter — usado pelo mesmo validador no
+  handler MCP. Nome fora da lista vira `null`, mesmo com forma válida; nunca URL,
+  query, payload, header, token, ator, curso, cursor ou mensagem.
+- `reason`: `deadline_exhausted` (orçamento já esgotado antes do fetch), `budget_abort`
+  (a tentativa foi abortada porque o orçamento global acabou), `attempt_abort` (a
+  tentativa individual estourou o próprio tempo) e `attempt_error` (transporte/HTTP
+  encerrou as tentativas). O motivo do abort é decidido pelo limite que o timer agendou.
+- `attemptsStarted`: quantos fetches foram realmente iniciados (0 = a dependência não
+  iniciou); `attemptsAllowed`: o limite configurado de tentativas. É essa contagem — não
+  o tempo — que diz se a dependência chegou a rodar.
+- `elapsedMs`: tempo total nesta chamada, **não** o tempo de cada tentativa;
+  `remainingMs`: orçamento restante na falha. Ambos inteiros de 0 a 600000 ms.
+
+Leitura e projeção são best-effort: getter hostil ou erro congelado não derruba a
+resposta. O diagnóstico viaja na própria exceção (não em estado do adapter), não é
+enumerável e não aparece no JSON do erro nem no `structuredContent`; requisições
+concorrentes não o compartilham. Registros anteriores, sem o campo, permanecem com a
+mesma forma.

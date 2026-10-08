@@ -11,7 +11,7 @@ import {
   normalizeAuthoringProfileChange, normalizeCourseAuthoringProfileRequest, normalizeCourseAuthoringProfilePreview,
   normalizeCourseAuthoringProfileChange
 } from "../aralearn/runtime/domain/authoringProfiles.js";
-import { AuthoringApiError } from "./errors.js";
+import { AuthoringApiError, withDependencyDiagnostic, closedAuthoringRpcName } from "./errors.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
   from "../aralearn/runtime/domain/courseContentReview.js";
@@ -1263,25 +1263,53 @@ export class CourseSupabaseAdapter {
     deadlineAt = null,
     timeoutMs = this.requestTimeoutMs,
     responseLimitBytes = this.responseLimitBytes,
-    errorDomain = "course"
+    errorDomain = "course",
+    dependencyRpc = null
   } = {}) {
     const oauthRequest = errorDomain === "oauth_request" || errorDomain === "oauth_grant";
     const administrative = errorDomain === "course_admin";
+    const requestedAt = Date.now();
+    let fetchesStarted = 0;
     let lastError = null;
     for (let attempt = 1; attempt <= this.attempts; attempt += 1) {
       const remaining = deadlineAt == null ? timeoutMs : deadlineAt - Date.now();
+      // Diagnóstico fechado da dependência: anexado à própria exceção (nunca a
+      // estado do adapter, compartilhado entre requisições concorrentes) e só
+      // quando a chamada veio de `rpc()`. `attemptsStarted` conta fetches
+      // realmente iniciados (0 = a dependência nem iniciou); `elapsedMs` mede o
+      // total desta chamada de #request, não o tempo de cada tentativa.
+      const decorate = (error, reason, remainingNow = null) => {
+        if (dependencyRpc === null) return error;
+        return withDependencyDiagnostic(error, {
+          rpc: dependencyRpc,
+          reason,
+          attemptsStarted: fetchesStarted,
+          attemptsAllowed: this.attempts,
+          elapsedMs: Math.max(0, Date.now() - requestedAt),
+          remainingMs: remainingNow === null ? null : Math.max(0, remainingNow)
+        });
+      };
       if (remaining <= 0) {
-        throw oauthRequest
-          ? new AuthoringApiError(
-              503,
-              "temporarily_unavailable",
-              "O serviço OAuth está temporariamente indisponível."
-            )
-          : new AuthoringApiError(503, "service_timeout", "O prazo da operação terminou.");
+        throw decorate(
+          oauthRequest
+            ? new AuthoringApiError(
+                503,
+                "temporarily_unavailable",
+                "O serviço OAuth está temporariamente indisponível."
+              )
+            : new AuthoringApiError(503, "service_timeout", "O prazo da operação terminou."),
+          "deadline_exhausted",
+          remaining
+        );
       }
       const controller = new AbortController();
+      // O limite agendado decide o motivo do abort: quando `remaining` é menor que
+      // o timeout da tentativa, quem estourou foi o orçamento global, não a
+      // tentativa individual.
+      const budgetBound = remaining < timeoutMs;
       const timer = setTimeout(() => controller.abort(), Math.max(1, Math.min(timeoutMs, remaining)));
       try {
+        fetchesStarted += 1;
         const response = await this.fetchImpl(url, { ...init, signal: controller.signal });
         const source = await readBoundedResponseText(response, responseLimitBytes);
         let body = null;
@@ -1320,7 +1348,15 @@ export class CourseSupabaseAdapter {
         if (!retry || !new Set([
           "service_timeout", "course_service_unavailable", "temporarily_unavailable"
         ]).has(normalized.code) ||
-            attempt === this.attempts) throw normalized;
+            attempt === this.attempts) {
+          throw decorate(
+            normalized,
+            controller.signal.aborted
+              ? (budgetBound ? "budget_abort" : "attempt_abort")
+              : "attempt_error",
+            deadlineAt == null ? null : Math.max(0, deadlineAt - Date.now())
+          );
+        }
       } finally {
         clearTimeout(timer);
       }
@@ -1827,7 +1863,7 @@ export class CourseSupabaseAdapter {
       method: "POST",
       headers: supabaseServerHeaders(this.serverApiKey),
       body: JSON.stringify(payload)
-    }, { errorDomain: "course_admin", ...options });
+    }, { errorDomain: "course_admin", ...options, dependencyRpc: closedAuthoringRpcName(functionName) });
   }
 
   async #userForJwt(jwt, { deadlineAt = null } = {}) {

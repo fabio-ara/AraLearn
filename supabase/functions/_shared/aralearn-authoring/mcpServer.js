@@ -2,7 +2,9 @@ import {
   asAuthoringApiError,
   authoringErrorClass,
   authoringErrorIsRetryable,
-  AuthoringApiError
+  AuthoringApiError,
+  readDependencyDiagnostic,
+  closedAuthoringRpcName
 } from "./errors.js";
 import {
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
@@ -59,6 +61,15 @@ const LOG_UNCLASSIFIED_CODE = "unclassified";
 const LOG_TOOL_NAMES = new Set(COURSE_HUMAN_TASKS.map(({ name }) => name));
 const LOG_REQUEST_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const LOG_MAX_DURATION_MS = 600_000;
+// Motivos transitórios fechados do diagnóstico de dependência. Quem diz se a
+// dependência chegou a iniciar é `attemptsStarted`, não o tempo. "deadline_exhausted"
+// = orçamento já esgotado antes do fetch; "budget_abort" = tentativa abortada
+// porque o orçamento global acabou; "attempt_abort" = a tentativa individual
+// estourou o próprio tempo; "attempt_error" = transporte/HTTP encerrou as tentativas.
+const LOG_DEPENDENCY_REASONS = new Set([
+  "deadline_exhausted", "budget_abort", "attempt_abort", "attempt_error"
+]);
+const LOG_MAX_ATTEMPT = 16;
 const AUTHENTICATION_ERROR_CODES = new Set([
   "oauth_verification_unavailable", "invalid_oauth_token", "oauth_required",
   "invalid_client", "authentication_required"
@@ -146,8 +157,40 @@ function closedLogValue(value, allowed) {
   return typeof value === "string" && allowed.has(value) ? value : null;
 }
 
-function logAuthoringError({ requestId, fase, status, code, classe, tool, duracaoMs } = {}) {
+function boundedLogMs(value) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= LOG_MAX_DURATION_MS ? value : null;
+}
+
+function boundedLogCount(value) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= LOG_MAX_ATTEMPT ? value : null;
+}
+
+// Projeção fechada e best-effort do diagnóstico de dependência anexado à exceção.
+// Toda a leitura vive no try: um getter hostil não pode derrubar a resposta. O
+// nome do RPC vem do enum compartilhado (nunca URL/payload/header/token/ator/
+// curso/cursor/mensagem). Sem RPC nem motivo reconhecidos, o campo não é emitido.
+function closedDependency(value) {
+  try {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const rpc = closedAuthoringRpcName(value.rpc);
+    const reason = closedLogValue(value.reason, LOG_DEPENDENCY_REASONS);
+    if (rpc === null && reason === null) return null;
+    return {
+      rpc,
+      reason,
+      attemptsStarted: boundedLogCount(value.attemptsStarted),
+      attemptsAllowed: boundedLogCount(value.attemptsAllowed),
+      elapsedMs: boundedLogMs(value.elapsedMs),
+      remainingMs: boundedLogMs(value.remainingMs)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function logAuthoringError({ requestId, fase, status, code, classe, tool, duracaoMs, dependency } = {}) {
   if (!LOGGED_ERROR_CLASSES.has(classe)) return;
+  const dependencyFields = closedDependency(dependency);
   const record = {
     event: LOG_EVENT,
     requestId: typeof requestId === "string" && LOG_REQUEST_ID.test(requestId) ? requestId : null,
@@ -158,7 +201,8 @@ function logAuthoringError({ requestId, fase, status, code, classe, tool, duraca
     tool: closedLogValue(tool, LOG_TOOL_NAMES),
     duracaoMs: Number.isSafeInteger(duracaoMs) && duracaoMs >= 0 && duracaoMs <= LOG_MAX_DURATION_MS
       ? duracaoMs
-      : null
+      : null,
+    ...(dependencyFields ? { dependency: dependencyFields } : {})
   };
   try {
     console.error(JSON.stringify(record));
@@ -441,7 +485,8 @@ function toolFailure(
       code: normalized.code,
       classe: authoringErrorClass(normalized),
       tool: diagnostico.tool,
-      duracaoMs: Number.isFinite(diagnostico.startedAt) ? Date.now() - diagnostico.startedAt : null
+      duracaoMs: Number.isFinite(diagnostico.startedAt) ? Date.now() - diagnostico.startedAt : null,
+      dependency: readDependencyDiagnostic(normalized)
     });
   }
   const structuredContent = { error: publicError, nextDecision };
@@ -745,7 +790,8 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "", diagnostico 
     status: normalized.status,
     code: normalized.code,
     classe,
-    duracaoMs: Number.isFinite(diagnostico.startedAt) ? Date.now() - diagnostico.startedAt : null
+    duracaoMs: Number.isFinite(diagnostico.startedAt) ? Date.now() - diagnostico.startedAt : null,
+    dependency: readDependencyDiagnostic(normalized)
   });
   return jsonRpcResponse(
     normalized.status,
