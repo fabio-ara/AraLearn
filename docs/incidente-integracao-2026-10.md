@@ -53,8 +53,9 @@ buscar o JWKS durante a resolução do principal, uma chamada `tools/call` bem f
 o envelope de falha da ferramenta — HTTP 200 com `result.isError`, `structuredContent` e o texto
 público —, sem executar a ferramenta e mantendo o rótulo de diagnóstico na fase `autenticacao`.
 Recusas de credencial (401/403), limite de taxa (429) e falha interna preservam o contrato de
-transporte. Na chamada seguinte, com JWKS e assinatura válidos, a mesma integração recupera e executa
-a tarefa uma única vez, sem reutilizar a chave da tentativa que falhou.
+transporte. No teste local com o verificador real, JWKS e assinatura válidos na chamada seguinte
+recuperam e executam a tarefa uma única vez, sem reutilizar a chave da tentativa que falhou; não há
+indução de JWKS em produção.
 
 O fechamento focal da investigação cobre a janela 06:12–06:22Z, com quatro timeouts de RPC e duas
 falhas de JWKS; o defeito de fase do guard foi confirmado localmente; o vínculo entre o 504 do JWKS e
@@ -66,16 +67,26 @@ adicional de SQL, retry ou prazo foi feito.
 Após a implantação, a prova nativa no MCP 537 fechou 10 chamadas reais em três execuções — 109–110,
 111–112 com o cursor persistido retomado e 300–305 até o terminal —, com 10 sucessos, zero erros e
 `autoRetry=false`; os 10 registros coincidem com o P4 em cursor de entrada e saída, offsets e texto,
-na revisão 166. A revisão independente dos originais foi concluída em 14:31:40.362Z com `issues: []`: bytes dos brutos iguais ao P4, sha256 e bytes
-dos 10 metadados conferidos, curso e revisão 166 preservados, cadeias contíguas 109–112 e 300–305 e
+na revisão 166. A revisão independente dos originais foi concluída em 14:31:40.362Z com `issues: []`: bytes dos brutos iguais ao P4, hashes e tamanhos dos 10 retornos brutos conferidos contra seus
+metadados, curso e revisão 166 preservados, cadeias contíguas 109–112 e 300–305 e
 terminal `null`/`false`; a execução correu de 14:23:54.028 a 14:25:37.785Z, sem retry e sem falha,
 limitada a três janelas. Nenhuma nova leitura integral de 305 no 537 foi executada: o P4 integral
 (305/311 com seis recuperações) permanece válido.
 
-A observação no ChatGPT Web (oito saídas, conversa nova autorizada) registrou a alegação de leitura
+Validação do PR 440: a [CI 37786992834](https://github.com/fabio-ara/AraLearn/actions/runs/37786992834)
+passou com 2.783 aprovadas no runtime Node (0 falhas e 15 dispensas), 585 no Playwright (10
+dispensas), 916 asserções pgTAP em 22 arquivos e paridade de 740 objetos; os focais locais somaram 88
+(12 do verificador e 76 do canal MCP), o incidente 8 e o Deno 2, e a preparação local ampla ficou em
+2.742 aprovadas, 0 falhas e 15 dispensas — conjuntos sobrepostos, não somados. A primeira preparação
+teve uma falha do WASM do PGlite (`initdb`) antes de qualquer asserção; o arquivo isolado passou 21/21 e
+a única repetição, com os mesmos bytes, passou; a causa não foi determinada e o log integral não foi
+preservado.
+
+A observação no ChatGPT Web (em 8 de outubro, conversa nova autorizada) registrou a alegação de leitura
 do assistente com 67 corpos de ferramenta vazios no GET; a interface não substitui o bruto. A fronteira
-externa do `error_code` segue sem mapeador, traço ou acesso; o bloqueio concreto exige o cliente
-recebido ou o suporte de traços, e o rascunho não foi enviado.
+externa do `error_code` segue sem mapeador, traço ou acesso; o bloqueio concreto exige acesso ao
+rastreio do cliente/conector ou resposta técnica de seu responsável para identificar a transformaç%C3%A3o,
+e o rascunho de solicitação não foi enviado.
 
 ## Taxonomia de erro e schema público
 
