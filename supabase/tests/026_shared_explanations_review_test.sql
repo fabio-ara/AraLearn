@@ -129,5 +129,56 @@ insert into private.course_design_target_plan_items(course_id,didactic_microsequ
 values(pg_temp.review_course(),'b','99260000-0000-4000-8000-000000000203','curriculum_scope_item');
 select isnt(private.course_content_basis_hash_v1(pg_temp.review_course(),'microsequence_explanation','b'),(select value from legacy_basis),'Vincular escopo curricular continua material para a impressão da base');
 select is(pg_temp.review_state('microsequence_explanation','b'),'unregistered','Alteração curricular não inventa revisão do acervo antigo');
+
+-- Reuso intrarrequisição da base de inspeção (20261007234650): no PG real, o
+-- payload devolve exatamente as bases canônicas, o hash continua ligado à mesma
+-- entrada e os helpers de reuso permanecem privados e estáveis.
+select set_config('request.jwt.claim.role','service_role',true);
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+create temporary table reuse_payload as select public.get_course_ai_inspection_for_actor_v1(
+  '99260000-0000-4000-8000-000000000001',pg_temp.review_course(),'study_unit','u1') value;
+create temporary table reuse_basis as select
+  private.course_content_basis_hash_v1(pg_temp.review_course(),'study_unit','u1') content,
+  private.course_pedagogical_basis_v1(pg_temp.review_course(),'study_unit','u1') pedagogical;
+select ok((select value->'pedagogicalBasis' from reuse_payload) = (select pedagogical from reuse_basis),
+  'Payload de inspeção devolve exatamente a base pedagógica canônica');
+select is((select value->>'basisHash' from reuse_payload),
+  private.course_source_json_hash_v1(jsonb_build_object('contentBasis',(select content from reuse_basis),
+    'pedagogicalBasis',(select pedagogical from reuse_basis),'bibliographyStyle',
+    case when exists(select 1 from private.course_source_attributions a
+        join private.course_source_attribution_sources l on l.course_id=a.course_id and l.attribution_id=a.id
+        where a.course_id=pg_temp.review_course() and a.target_kind='study_unit' and a.target_id='u1')
+      then (select bibliography_style from public.courses where id=pg_temp.review_course()) end)),
+  'basisHash reproduz a regra canônica sobre a mesma base');
+select is((select value->>'basisHash' from reuse_payload),
+  private.course_ai_inspection_hash_of_bases_v1(pg_temp.review_course(),'study_unit','u1',
+    (select content from reuse_basis),(select pedagogical from reuse_basis)),
+  'Helper de reuso e payload concordam no hash');
+select is((select value->>'basisHash' from reuse_payload),
+  private.course_ai_inspection_basis_hash_v1(pg_temp.review_course(),'study_unit','u1'),
+  'Função corrente de hash acompanha o payload');
+select is((select provolatile::text from pg_proc
+    where oid='private.course_ai_inspection_payload_v1(uuid,text,text)'::regprocedure),
+  's','Payload de inspeção permanece stable');
+select is((select prosecdef::text from pg_proc
+    where oid='private.course_ai_inspection_state_of_hash_v1(uuid,text,text,text)'::regprocedure),
+  'true','Helper de estado permanece security definer');
+select ok((select proconfig from pg_proc
+    where oid='private.course_ai_inspection_hash_of_bases_v1(uuid,text,text,text,jsonb)'::regprocedure)
+    = array['search_path=pg_catalog'],'Helper de hash mantém o search_path canônico');
+select ok(not exists(select 1 from pg_proc p cross join lateral
+  aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) acl
+  where p.oid in ('private.course_ai_inspection_hash_of_bases_v1(uuid,text,text,text,jsonb)'::regprocedure,
+    'private.course_ai_inspection_state_of_hash_v1(uuid,text,text,text)'::regprocedure,
+    'private.course_ai_inspection_payload_v1(uuid,text,text)'::regprocedure)
+    and acl.grantee=0 and acl.privilege_type='EXECUTE'),
+  'Helpers de reuso não expõem EXECUTE ao PUBLIC');
+select ok(not has_function_privilege('anon','private.course_ai_inspection_payload_v1(uuid,text,text)','execute')
+  and not has_function_privilege('authenticated','private.course_ai_inspection_payload_v1(uuid,text,text)','execute')
+  and not has_function_privilege('service_role','private.course_ai_inspection_payload_v1(uuid,text,text)','execute'),
+  'Payload privado fechado a anon, authenticated e service_role');
+select ok(has_function_privilege('service_role','public.get_course_ai_inspection_for_actor_v1(uuid,uuid,text,text)','execute')
+  and not has_function_privilege('anon','public.get_course_ai_inspection_for_actor_v1(uuid,uuid,text,text)','execute'),
+  'Canal de leitura segue exposto só ao service_role');
 select * from finish();
 rollback;

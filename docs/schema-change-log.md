@@ -21,6 +21,32 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261007234650 — reuso da base na leitura de inspeção
+
+Pelas fontes (leitura do SQL), a expressão do hash de inspeção e o payload
+reavaliavam as bases de conteúdo e pedagógica do mesmo alvo dentro da requisição,
+e o estado recalculava a base apenas para derivar o hash. A contagem exata de
+avaliações em execução não foi medida; o que existe é um A/B local em PGlite com
+payload idêntico, sem contagem de runtime e sem latência hospedada. Esta migração
+concentra a regra do hash em
+`private.course_ai_inspection_hash_of_bases_v1` e a do estado em
+`private.course_ai_inspection_state_of_hash_v1`; o hash, o estado e o payload
+passam a consumir a mesma base já calculada dentro da requisição.
+
+Não há transformação nem reparo de dados: entidades, revisões de curso, pareceres
+de inspeção, revisões humanas, fontes e permissões permanecem como estão, e não
+existe cache entre requisições. O contrato observável não muda — `basisHash`,
+`pedagogicalBasis`, `inspection` e o payload são idênticos antes e depois —,
+assim como a volatilidade `stable`, o `security definer` e o `search_path` das
+funções correntes, que continuam existindo e apenas passaram a usar os helpers.
+O manifesto declara a revisão `20261007234650` mantendo as mesmas capacidades,
+porque nenhuma capacidade nova é exposta.
+
+Esta entrada descreve a candidata local, não uma implantação hospedada. A
+validação deve conferir equivalência de payload para os estados `current`,
+`pending`, `unregistered` e objeto ausente, em alvo de unidade e de
+Explicação, além da preservação de ACL, volatilidade e dados no upgrade.
+
 ## 20261005120000 — pacote transacional de Fontes
 
 A migração candidata aplica metadados, âncoras, vínculos e estilo de uma fonte
