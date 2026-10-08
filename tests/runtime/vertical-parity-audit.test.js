@@ -76,10 +76,10 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 738);
+  assert.equal(inventory.objects.length, 740);
   assert.deepEqual(counts, {
     "study-course-experience": 31,
-    "course-authoring-experience": 297,
+    "course-authoring-experience": 299,
     "course-source-provenance": 136,
     "course-anchored-annotations": 89,
     "course-authoring-research": 2,

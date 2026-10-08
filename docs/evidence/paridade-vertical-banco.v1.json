@@ -1155,11 +1155,19 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:private.course_ai_inspection_hash_of_bases_v1(p_course_id uuid, p_target_kind text, p_target_id text, p_content_basis text, p_pedagogical jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_ai_inspection_payload_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
       "caseId": "course-authoring-experience"
     },
     {
       "object": "function:private.course_ai_inspection_pending_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.course_ai_inspection_state_of_hash_v1(p_course_id uuid, p_target_kind text, p_target_id text, p_hash text)",
       "caseId": "course-authoring-experience"
     },
     {
