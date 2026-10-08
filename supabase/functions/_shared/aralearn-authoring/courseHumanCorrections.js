@@ -388,7 +388,8 @@ export async function resumeHumanCourseObservationCorrection({ adapter, principa
 function withoutSourceLinkSelectors(requested) {
   return requested.map((entry) => {
     if (!plainObject(entry)) return entry;
-    const { vinculo, ...rest } = entry;
+    const rest = { ...entry };
+    delete rest.vinculo;
     return rest;
   });
 }
