@@ -2,7 +2,7 @@
 
 ## Situação corrente: corte 0.0.103 integrado e implantado
 
-Estado efetivo em 2026-10-08, depois do [PR 438](https://github.com/fabio-ara/AraLearn/pull/438): MCP 536, API 379 e Actions 403 ativos, `verify_jwt=false` e schema `20261007234650`, com 248 migrações aplicadas e nenhuma pendente; T02 permanece FALHOU e T20 BLOQUEADO. A cronologia abaixo registra as promoções até este ponto.
+Estado efetivo em 2026-10-08, depois do [PR 440](https://github.com/fabio-ara/AraLearn/pull/440): MCP 537 ativo (implantado 14:20:15Z; bundle `825895ec9e97448f6eae188cd47de24da7d5d91b56240dae62673cf9f242e20e`), API 379 e Actions 403 inalteradas, `verify_jwt=false`, schema `20261007234650` com 248 migrações aplicadas e nenhuma pendente, e verificação hospedada aprovada; o texto hospedado do `mcpServer` coincide exatamente com a fonte aprovada (`133CD83F8709AC0BFE12166AD712BBFFBAD4A97D59ECB729EB657D39FEFB0597`) e os 11 digests de segredos seguem iguais. T02 permanece FALHOU, T20 BLOQUEADO e os 18 demais aprovados. A cronologia abaixo registra as promoções até este ponto.
 
 O corte 0.0.103 está integrado e implantado. Commit fonte [8bb99856](https://github.com/fabio-ara/AraLearn/commit/8bb99856290b318a1da04d977f393bb546afac56); merge/principal [b1621e95](https://github.com/fabio-ara/AraLearn/commit/b1621e9534afa22cbeec7b4fc50dc71fc3ce0c82), árvore idêntica à certificada; na verificação do corte, checkout limpo e principal local e remota coincidentes. A revisão independente aprovou 49 testes; o source-flow teve 19 aprovações; o conjunto focal teve 126. São conjuntos sobrepostos, não somados. A preparação passou nos cinco gates aplicáveis, com runtime local de 2709 aprovações, zero falhas e as 15 dispensas existentes.
 
@@ -46,15 +46,33 @@ Os cortes anteriores corrigiram, com prova local própria, o envelope JSON-RPC d
 
 Quatro pares de falha 504 do endpoint de chaves antecedem quatro das vinte e duas falhas do gateway MCP. A correlação cobre quatro falhas e não explica as vinte e duas; nenhum limite rígido de volume é inferido dessa janela. As chamadas HTTP malsucedidas duraram entre 5 e 14 segundos, e o valor registrado entre 58 e 72 ms é tempo de CPU utilizado, não a duração da função.
 
-Uma candidata local corrige a falha transitória do endpoint de chaves: quando o verificador do
-token não consegue buscar o JWKS durante a resolução do principal, uma chamada `tools/call` bem
-formada passa a receber o envelope de falha da ferramenta — HTTP 200 com `result.isError`,
-`structuredContent` e o texto público —, sem executar a ferramenta e mantendo o rótulo de
-diagnóstico na fase `autenticacao`. Recusas de credencial (401/403), limite de taxa (429) e falha
-interna preservam o contrato de transporte. Essa candidata ainda não está implantada.
-Na chamada seguinte, com JWKS e assinatura válidos, a mesma integração recupera e executa a tarefa
-uma única vez, sem reutilizar a chave da tentativa que falhou — coberto em teste local com o
-verificador real.
+O [PR 440](https://github.com/fabio-ara/AraLearn/pull/440) integrou e implantou a correção (merge
+`0d6fe50c53a564f2448ce75c96b4f4213935e91c`, fonte `7cf18031e5e536cd4cd12d010c771d3ff44ec7c4`,
+árvore `0319b8da1a603daf110aa2a5a95c8ea4ce74cd7f`): quando o verificador do token não consegue
+buscar o JWKS durante a resolução do principal, uma chamada `tools/call` bem formada passa a receber
+o envelope de falha da ferramenta — HTTP 200 com `result.isError`, `structuredContent` e o texto
+público —, sem executar a ferramenta e mantendo o rótulo de diagnóstico na fase `autenticacao`.
+Recusas de credencial (401/403), limite de taxa (429) e falha interna preservam o contrato de
+transporte. Na chamada seguinte, com JWKS e assinatura válidos, a mesma integração recupera e executa
+a tarefa uma única vez, sem reutilizar a chave da tentativa que falhou.
+
+O fechamento focal da investigação cobre a janela 06:12–06:22Z, com quatro timeouts de RPC e duas
+falhas de JWKS; o defeito de fase do guard foi confirmado localmente; o vínculo entre o 504 do JWKS e
+o 503 do handler é temporal e não um traço 1:1; e os métodos das duas respostas 503 de autenticação
+não são conhecidos, sem afirmar que ambas foram `tools/call`. Estatísticas cumulativas de
+`pg_stat_statements` não incluem cancelamentos e não provam SQL rápido nos `57014`. Nenhum patch
+adicional de SQL, retry ou prazo foi feito.
+
+Após a implantação, a prova nativa no MCP 537 fechou 10 chamadas reais em três execuções — 109–110,
+111–112 com o cursor persistido retomado e 300–305 até o terminal —, com 10 sucessos, zero erros e
+`autoRetry=false`; os 10 registros coincidem com o P4 em cursor de entrada e saída, offsets e texto,
+na revisão 166. A ROOT ainda revisa brutos e hashes, e nenhuma nova leitura integral de 305 no 537 foi
+executada: o P4 integral (305/311 com seis recuperações) permanece válido.
+
+A observação no ChatGPT Web (oito saídas, conversa nova autorizada) registrou a alegação de leitura
+do assistente com 67 corpos de ferramenta vazios no GET; a interface não substitui o bruto. A fronteira
+externa do `error_code` segue sem mapeador, traço ou acesso; o bloqueio concreto exige o cliente
+recebido ou o suporte de traços, e o rascunho não foi enviado.
 
 ## Taxonomia de erro e schema público
 
