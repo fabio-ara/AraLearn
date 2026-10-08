@@ -7,6 +7,15 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.104] - 2026-10-08
+
+### Corrigido
+
+- A leitura de auditorias extensas compartilha citações repetidas dentro de cada página, preservando o texto completo e as referências de cada alvo.
+- Numa correção atômica de fontes, quando mais de uma posição poderia corresponder, é possível indicar o vínculo existente que deve ser mantido; a correção deixa de ser recusada por ambiguidade e preserva o vínculo escolhido.
+- Um cliente que lê apenas o texto do retorno passa a receber a mesma classificação pública do erro, com a indicação de retomada, em vez de uma mensagem genérica. Quando o volume excederia o limite da resposta, o texto traz um resumo com código, repetibilidade e correlação e um aviso claro, preservando os detalhes de bloqueios e recuperação na resposta estruturada.
+- Uma declaração de reconciliação que exige uma ideia do repertório sem informá-la, ou que repete uma referência ou deixa o motivo em branco, deixa de virar falha interna: o retorno passa a ser entrada inválida com bloqueador que indica a passagem e o papel, sem gravar nada. A validação da reconciliação não foi afrouxada.
+
 ## [0.0.103] - 2026-10-06
 
 ### Corrigido
@@ -21,11 +30,6 @@ explica os termos usados na implementação atual.
 - Seleções explícitas de unidades passam a ser paginadas antes das consultas de revisão e inspeção, preservando todos os alvos e a continuidade. Unidades grandes continuam disponíveis por fragmentos literais.
 
 ## [Não publicado]
-
-### Corrigido
-
-- Um cliente que lê apenas o texto do retorno passa a receber a mesma classificação pública do erro, com a indicação de retomada, em vez de uma mensagem genérica. Quando o volume excederia o limite da resposta, o texto traz um resumo com código, repetibilidade e correlação e um aviso claro, preservando os detalhes de bloqueios e recuperação na resposta estruturada.
-- Uma declaração de reconciliação que exige uma ideia do repertório sem informá-la, ou que repete uma referência ou deixa o motivo em branco, deixa de virar falha interna: o retorno passa a ser entrada inválida com bloqueador que indica a passagem e o papel, sem gravar nada. A validação da reconciliação não foi afrouxada.
 
 ### Documentação
 

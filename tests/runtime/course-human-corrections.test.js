@@ -7,7 +7,8 @@ import { tablePackage } from "../../src/resources/packages/table/index.js";
 
 import { applyHumanCourseCorrections } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanCorrections.js";
-import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { COURSE_HUMAN_TASKS, executeHumanCourseTask } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 
@@ -130,6 +131,305 @@ test("BPMN nas correções mantém legado textual e recusa nova estrutura em Uni
     await assert.rejects(() => applyHumanCourseCorrections(input), error => error.code === "bpmn_semantics_invalid");
     assert.equal(adapter.commits.length, 1);
   }
+});
+
+// O seletor posicional s? vale na corre??o focal de conte?do.
+function focalCorrection(input) {
+  return applyHumanCourseCorrections({ allowSourceLinkSelector: true, ...input });
+}
+
+const CORRECTION_PRINCIPAL = Object.freeze({ actorId: COURSE_ID, authenticationKind: "oauth",
+  scopes: ["authoring:read", "authoring:write"] });
+
+function existingSourceLink(linkId, sourceId, anchorId, occurrenceId, resourceId, quote) {
+  return { linkId, sourceId, relation: "supported_by", roles: ["technical_conceptual"],
+    anchors: [{ anchorId }],
+    occurrences: [{ occurrenceId, slot: "content", resourceId, path: "text", quote, prefix: null, suffix: null }] };
+}
+
+// Fixture com estado: a escrita atualiza os vínculos correntes e a revisão,
+// como o alvo real faria, para que o replay leia o resultado anterior.
+function consolidationAdapter(current) {
+  const adapter = adapterFixture();
+  const sources = [...new Set(current.map(link => link.sourceId))]
+    .map((sourceId, index) => ({ sourceId, revision: 1, title: `Fonte ${index + 1}` }));
+  let links = structuredClone(current);
+  let revision = 7;
+  const readPlan = adapter.getCourseInstructionalPlan;
+  adapter.getCourse = async () => ({ courseId: COURSE_ID, title: "Curso de Redes", revision });
+  adapter.getCourseInstructionalPlan = async (...args) =>
+    ({ ...await readPlan(...args), courseRevision: revision });
+  adapter.getCourseSources = async ({ mode, sourceId }) => {
+    if (mode === "target") return { items: [{ effective: true, sourceLinks: structuredClone(links) }] };
+    if (mode === "catalog") return { items: structuredClone(sources), nextCursor: null };
+    return { items: [{ sourceId, revision: 1, anchors: links.find(link => link.sourceId === sourceId)
+      .anchors.map(anchor => ({ ...anchor, revision: 1, status: "active", humanLocator: "Seção 1",
+        verificationExcerpt: "Hosts usam nomes e endereços." })) }] };
+  };
+  const commit = adapter.commitCourseComposition;
+  adapter.commitCourseComposition = async request => {
+    const receipt = await commit(request);
+    for (const application of request.sourceAttributionApplications ?? []) {
+      links = structuredClone(application.sourceLinks);
+    }
+    revision = receipt.revision;
+    return receipt;
+  };
+  return adapter;
+}
+
+function correctionSource({ fonte = "Fonte 1", vinculo, quotes } = {}) {
+  return { fonte, relacao: "supported_by", papeis: ["tecnica_conceitual"], ancoras: [1],
+    ...(vinculo === undefined ? {} : { vinculo }),
+    ...(quotes === undefined ? {}
+      : { ocorrencias: quotes.map(trecho => ({ lugar: "conteudo", recurso: 1, trecho })) }) };
+}
+
+for (const target of ["unidade", "explicação"]) {
+  test(`correção de ${target} consolida dois vínculos do mesmo binding numa escrita com o seletor vinculo`,
+    async () => {
+      const { title, content } = correctedContent("Apoio consolidado");
+      const resourceId = content[0].id;
+      const current = [
+        existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1", resourceId, "Conteúdo corrigido"),
+        existingSourceLink("link-O2", "source-1", "anchor-1", "occ-O2", resourceId, "percurso necessário")
+      ];
+      const adapter = consolidationAdapter(current);
+      const quotes = ["Conteúdo corrigido", "percurso necessário", "sem comprimir"];
+      const fontes = [correctionSource({ vinculo: 1, quotes })];
+      const input = { adapter, principal: CORRECTION_PRINCIPAL, course: "Curso de Redes",
+        ...(target === "unidade"
+          ? { corrections: [{ unidade: 1, conteudo: correctedContent("Apoio consolidado"), fontes }] }
+          : { explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content }, fontes }] }) };
+      const receipt = await focalCorrection(input);
+      assert.equal(adapter.commits.length, 1, "uma única escrita atômica");
+      const [application] = adapter.commits[0].sourceAttributionApplications;
+      assert.equal(application.replaceExisting, true);
+      assert.equal(application.sourceLinks.length, 1, "os dois vínculos viram o conjunto final de um");
+      const [link] = application.sourceLinks;
+      assert.equal(link.linkId, "link-O1", "preserva a identidade do vínculo selecionado");
+      assert.deepEqual(link.anchors, [{ anchorId: "anchor-1" }]);
+      assert.deepEqual(link.occurrences.map(({ quote }) => quote), quotes);
+      assert.equal(link.occurrences[0].occurrenceId, "occ-O1",
+        "a ocorrência equivalente à seleção conserva a identidade");
+      const identities = { linkId: link.linkId,
+        occurrences: link.occurrences.map(({ occurrenceId }) => occurrenceId) };
+      assert.equal(new Set(identities.occurrences).size, 3,
+        "a ocorrência nova recebe identidade própria em vez de herdar a do vínculo descartado");
+      assert.equal(receipt.context.sourceMode, "explicit");
+
+      // Replay sobre o estado salvo pela primeira escrita: nenhuma identidade muda.
+      const replay = await focalCorrection(input);
+      assert.equal(replay.context.sourceMode, "explicit");
+      assert.equal(adapter.commits.length, 2);
+      const [replayed] = adapter.commits[1].sourceAttributionApplications[0].sourceLinks;
+      assert.equal(replayed.linkId, identities.linkId);
+      assert.deepEqual(replayed.occurrences.map(({ occurrenceId }) => occurrenceId), identities.occurrences);
+    });
+}
+
+test("seletor vinculo fora de 1..32 é recusado antes de qualquer leitura ou escrita", async () => {
+  const { title, content } = correctedContent("Apoio consolidado");
+  const adapter = consolidationAdapter([existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1",
+    content[0].id, "Conteúdo corrigido")]);
+  for (const vinculo of [0, -1, 1.5, 33]) {
+    await assert.rejects(() => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+      course: "Curso de Redes",
+      corrections: [{ unidade: 1, conteudo: correctedContent("Apoio consolidado"),
+        fontes: [correctionSource({ vinculo })] }] }),
+      error => error.code === "invalid_human_corrections" && error.status === 422);
+    await assert.rejects(() => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+      course: "Curso de Redes",
+      explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content },
+        fontes: [correctionSource({ vinculo })] }] }),
+      error => error.code === "invalid_human_explanation" && error.status === 422);
+  }
+  assert.equal(adapter.commits.length, 0);
+});
+
+test("vínculo de fonte que não é objeto é recusado com erro tipado, sem escrita", async () => {
+  const { title, content } = correctedContent("Apoio consolidado");
+  const adapter = consolidationAdapter([existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1",
+    content[0].id, "Conteúdo corrigido")]);
+  for (const fontes of [[null], ["Fonte 1"]]) {
+    await assert.rejects(() => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+      course: "Curso de Redes", corrections: [{ unidade: 1, conteudo: correctedContent("Apoio consolidado"),
+        fontes }] }),
+      error => error.code === "invalid_human_corrections" && error.status === 422);
+    await assert.rejects(() => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+      course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A",
+        conteudo: { title, content }, fontes }] }),
+      error => error.code === "invalid_human_explanation" && error.status === 422);
+  }
+  assert.equal(adapter.commits.length, 0);
+  // O transporte da tarefa devolve o mesmo erro tipado, nunca uma falha interna.
+  await assert.rejects(() => executeHumanCourseTask({ adapter, principal: CORRECTION_PRINCIPAL,
+    name: "aplicar_correcoes", rawArguments: { curso: "Curso de Redes",
+      explicacoes: [{ microssequencia: "Microssequência A", conteudo: { title, content },
+        fontes: [null] }] } }),
+    error => error.code === "invalid_human_explanation" && error.status === 422);
+  assert.equal(adapter.commits.length, 0, "nenhuma escrita parcial");
+});
+
+test("seletor vinculo exige posição corrente, fonte coerente e uso único, sem gravar", async () => {
+  const { title, content } = correctedContent("Apoio consolidado");
+  const resourceId = content[0].id;
+  const twoOfOneSource = [
+    existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1", resourceId, "Conteúdo corrigido"),
+    existingSourceLink("link-O2", "source-1", "anchor-1", "occ-O2", resourceId, "percurso necessário")
+  ];
+  const call = (adapter, fontes) => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+    course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A",
+      conteudo: { title, content }, fontes }] });
+
+  const absent = consolidationAdapter(twoOfOneSource);
+  await assert.rejects(() => call(absent,
+    [correctionSource({ vinculo: 3, quotes: ["Conteúdo corrigido"] })]),
+    error => error.code === "ambiguous_human_source_link" && error.status === 422);
+  assert.equal(absent.commits.length, 0, "posição ausente não grava");
+
+  const divergent = consolidationAdapter([
+    existingSourceLink("link-A", "source-1", "anchor-1", "occ-A", resourceId, "Conteúdo corrigido"),
+    existingSourceLink("link-B", "source-2", "anchor-2", "occ-B", resourceId, "percurso necessário")
+  ]);
+  await assert.rejects(() => call(divergent, [correctionSource({ fonte: "Fonte 2", vinculo: 1,
+    quotes: ["percurso necessário"] })]), error => error.code === "ambiguous_human_source_link");
+  assert.equal(divergent.commits.length, 0, "posição de outra fonte não grava");
+
+  const duplicated = consolidationAdapter(twoOfOneSource);
+  await assert.rejects(() => call(duplicated, [correctionSource({ vinculo: 1, quotes: ["Conteúdo corrigido"] }),
+    correctionSource({ vinculo: 1, quotes: ["percurso necessário"] })]),
+    error => error.code === "ambiguous_human_source_link");
+  assert.equal(duplicated.commits.length, 0, "a mesma posição não pode ser usada duas vezes");
+});
+
+test("sem o seletor o mesmo conjunto permanece ambíguo e não grava", async () => {
+  const { title, content } = correctedContent("Apoio consolidado");
+  const resourceId = content[0].id;
+  const adapter = consolidationAdapter([
+    existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1", resourceId, "Conteúdo corrigido"),
+    existingSourceLink("link-O2", "source-1", "anchor-1", "occ-O2", resourceId, "percurso necessário")
+  ]);
+  await assert.rejects(() => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+    course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A",
+      conteudo: { title, content },
+      fontes: [correctionSource({ quotes: ["Conteúdo corrigido", "percurso necessário"] })] }] }),
+    error => error.code === "ambiguous_human_source_link" && error.status === 422);
+  assert.equal(adapter.commits.length, 0);
+});
+
+test("replay do seletor após consolidar exige releitura: a posição escolhida deixa de existir", async () => {
+  const { title, content } = correctedContent("Apoio consolidado");
+  const resourceId = content[0].id;
+  const adapter = consolidationAdapter([
+    existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1", resourceId, "Conteúdo corrigido"),
+    existingSourceLink("link-O2", "source-1", "anchor-1", "occ-O2", resourceId, "percurso necessário")
+  ]);
+  const fontes = [correctionSource({ vinculo: 2, quotes: ["percurso necessário"] })];
+  const call = () => focalCorrection({ adapter, principal: CORRECTION_PRINCIPAL,
+    course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A",
+      conteudo: { title, content }, fontes }] });
+  await call();
+  const [consolidated] = adapter.commits[0].sourceAttributionApplications[0].sourceLinks;
+  assert.equal(consolidated.linkId, "link-O2", "a posição 2 seleciona o segundo vínculo");
+  assert.equal(consolidated.occurrences[0].occurrenceId, "occ-O2");
+  await assert.rejects(() => call(),
+    error => error.code === "ambiguous_human_source_link" && error.status === 422);
+  assert.equal(adapter.commits.length, 1,
+    "o replay não grava nem reaponta a posição 2 para o vínculo sobrevivente");
+});
+
+test("seletor vinculo mantém a invalidação instrucional e não reinterpreta a posição na corrida", async () => {
+  const { title, content } = correctedContent("Apoio consolidado");
+  const current = [existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1",
+    content[0].id, "Conteúdo corrigido")];
+  const invalidation = consolidationAdapter(current);
+  const receipt = await focalCorrection({ adapter: invalidation, principal: CORRECTION_PRINCIPAL,
+    course: "Curso de Redes", corrections: [{ unidade: 1, conteudo: correctedContent("Apoio consolidado"),
+      fontes: [correctionSource({ vinculo: 1, quotes: ["Conteúdo corrigido"] })] }] });
+  assert.equal(receipt.context.aplicacaoInstrucional.estado, "invalidada_por_conteudo");
+  assert.equal(invalidation.commits.length, 1);
+
+  // Corrida: a posição é lida uma vez; nenhuma recarga automática a reinterpreta.
+  const twoLinks = [
+    existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1", content[0].id, "Conteúdo corrigido"),
+    existingSourceLink("link-O2", "source-1", "anchor-2", "occ-O2", content[0].id, "percurso necessário")
+  ];
+  const race = consolidationAdapter(twoLinks);
+  const read = race.getCourseSources;
+  let targetReads = 0;
+  race.getCourseSources = async args => {
+    if (args.mode === "target") targetReads += 1;
+    // Uma recarga veria a lista reordenada e a posição 1 passaria a outro vínculo.
+    if (args.mode === "target" && targetReads > 1) {
+      return { items: [{ effective: true,
+        sourceLinks: [structuredClone(twoLinks[1]), structuredClone(twoLinks[0])] }] };
+    }
+    return read(args);
+  };
+  const commit = race.commitCourseComposition;
+  let attempts = 0;
+  race.commitCourseComposition = async request => {
+    if (attempts++ === 0) {
+      throw Object.assign(new Error("Estado do curso obsoleto"), { code: "stale_course_state", status: 409 });
+    }
+    return commit(request);
+  };
+  await assert.rejects(() => focalCorrection({ adapter: race, principal: CORRECTION_PRINCIPAL,
+    course: "Curso de Redes", explanations: [{ microssequencia: "Microssequência A",
+      conteudo: { title, content },
+      fontes: [correctionSource({ vinculo: 1, quotes: ["Conteúdo corrigido"] })] }] }),
+    error => error.code === "stale_course_state" && error.status === 409);
+  assert.equal(targetReads, 1, "a posição não é relida às cegas");
+  assert.equal(race.commits.length, 0, "nada é gravado quando a posição poderia mudar de dono");
+
+  // Sem seletor, a releitura automática do CAS continua recompondo a escrita.
+  const plain = consolidationAdapter(twoLinks);
+  const plainCommit = plain.commitCourseComposition;
+  let plainAttempts = 0;
+  plain.commitCourseComposition = async request => {
+    if (plainAttempts++ === 0) {
+      throw Object.assign(new Error("Estado do curso obsoleto"), { code: "stale_course_state", status: 409 });
+    }
+    return plainCommit(request);
+  };
+  await focalCorrection({ adapter: plain, principal: CORRECTION_PRINCIPAL, course: "Curso de Redes",
+    explanations: [{ microssequencia: "Microssequência A", conteudo: { title, content },
+      fontes: [correctionSource({ quotes: ["Conteúdo corrigido"] })] }] });
+  assert.equal(plainAttempts, 2, "sem seletor o CAS continua com uma releitura");
+  assert.equal(plain.commits.length, 1);
+  assert.equal(plain.commits[0].sourceAttributionApplications[0].sourceLinks[0].linkId, "link-O1");
+});
+
+test("o seletor vinculo pertence às correções; preparo e materialização seguem sem ele", async () => {
+  const tasks = new Map(COURSE_HUMAN_TASKS.map(definition => [definition.name, definition]));
+  const explanationSelector = name => tasks.get(name).inputSchema.properties.explicacoes
+    .items.properties.fontes.items.properties.vinculo;
+  for (const name of ["preparar_materializacao", "materializar_parte", "salvar_explicacoes"]) {
+    assert.equal(explanationSelector(name), undefined, `${name} não publica o seletor`);
+  }
+  assert.ok(explanationSelector("aplicar_correcoes"), "a correção focal publica o seletor na Explicação");
+  assert.ok(tasks.get("aplicar_correcoes").inputSchema.properties.correcoes.items.properties.fontes
+    .items.properties.vinculo, "a correção focal publica o seletor na unidade");
+
+  const { title, content } = correctedContent("Apoio consolidado");
+  const adapter = consolidationAdapter([
+    existingSourceLink("link-O1", "source-1", "anchor-1", "occ-O1", content[0].id, "Conteúdo corrigido"),
+    existingSourceLink("link-O2", "source-1", "anchor-1", "occ-O2", content[0].id, "percurso necessário")
+  ]);
+  const invoke = (name, vinculo) => executeHumanCourseTask({ adapter, principal: CORRECTION_PRINCIPAL, name,
+    rawArguments: { curso: "Curso de Redes",
+      explicacoes: [{ microssequencia: "Microssequência A", conteudo: { title, content },
+        fontes: [correctionSource({ vinculo, quotes: ["Conteúdo corrigido", "percurso necessário"] })] }] } });
+  await assert.rejects(() => invoke("salvar_explicacoes", 1),
+    error => error.code === "invalid_human_explanation" && error.status === 422);
+  assert.equal(adapter.commits.length, 0,
+    "a ferramenta que reenvia a seleção completa recusa o seletor sem gravar");
+  const receipt = await invoke("aplicar_correcoes", 1);
+  assert.equal(adapter.commits.length, 1, "a correção focal grava uma vez");
+  assert.equal(adapter.commits[0].sourceAttributionApplications[0].sourceLinks[0].linkId, "link-O1");
+  assert.equal(adapter.commits[0].sourceAttributionApplications[0].sourceLinks.length, 1);
+  assert.equal(receipt.context.sourceMode, "explicit");
 });
 
 function sourceLink(suffix) {

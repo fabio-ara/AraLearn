@@ -92,7 +92,9 @@ test("compartilhamento conserva base integral e diagnósticos específicos de ca
   const shared = projected.auditoriasPedagogicas[0];
   for (const [key, expected] of [["studyUnits", unitAudit], ["explicacoes", explanationAudit]]) {
     const local = projected[key][0].auditoriaPedagogica;
-    const { foco, unidadesParaConfronto, ...resolved } = { ...local, instruction: shared.instruction, basis: { ...shared.basis, ...local.basis } };
+    const { foco, unidadesParaConfronto, citacoesDoFoco, ...resolved } = { ...local, instruction: shared.instruction, basis: { ...shared.basis, ...local.basis } };
+    if (citacoesDoFoco) resolved.basis = { ...resolved.basis,
+      citations: citacoesDoFoco.map(position => shared.citacoes[position - 1]) };
     resolved.units = unidadesParaConfronto.map(position => {
       const { observation, ...unit } = shared.unidadesParaConfronto[position - 1];
       const { declarado, tarefaApresentada, ...rest } = observation;

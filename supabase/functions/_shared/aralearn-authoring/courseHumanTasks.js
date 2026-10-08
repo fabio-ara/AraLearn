@@ -335,6 +335,16 @@ const SOURCE_LINKS_SCHEMA = Object.freeze({
     required: Object.freeze(["fonte", "relacao", "papeis"]),
     properties: Object.freeze({ fonte: HUMAN_REFERENCE_SCHEMA, ...SOURCE_LINK_PROPERTIES }) })
 });
+// Variante exclusiva das correções (unidade e Explicação): aceita o seletor
+// posicional `vinculo`, obtido da leitura dos vínculos atuais, para consolidar ou
+// substituir sem ambiguidade. Materialização e criação continuam no schema comum.
+const CORRECTION_SOURCE_LINKS_SCHEMA = Object.freeze({
+  ...SOURCE_LINKS_SCHEMA,
+  items: Object.freeze({ ...SOURCE_LINKS_SCHEMA.items,
+    properties: Object.freeze({ ...SOURCE_LINKS_SCHEMA.items.properties,
+      vinculo: Object.freeze({ type: "integer", minimum: 1, maximum: 32,
+        description: "Posição atual (1-based) do vínculo no alvo, obtida ao ler os vínculos; seleciona qual vínculo preservar." }) }) })
+});
 const SOURCE_METADATA_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -440,6 +450,13 @@ const EXPLANATIONS_SCHEMA = Object.freeze({ type: "array", minItems: 1, maxItems
         properties: { title: { type: "string", minLength: 1, maxLength: 300 },
           content: { type: "array", minItems: 1, maxItems: 64, items: COMPONENT_INSTANCE_SCHEMA } } },
       fontes: SOURCE_LINKS_SCHEMA, reconciliacao: EXPLANATION_RECONCILIATION_SCHEMA } } });
+
+// Variante exclusiva de `aplicar_correcoes`: a Explicação corrigida também aceita o
+// seletor posicional `vinculo`; produção, materialização e leitura seguem no schema comum.
+const CORRECTION_EXPLANATIONS_SCHEMA = Object.freeze({ ...EXPLANATIONS_SCHEMA,
+  items: Object.freeze({ ...EXPLANATIONS_SCHEMA.items,
+    properties: Object.freeze({ ...EXPLANATIONS_SCHEMA.items.properties,
+      fontes: CORRECTION_SOURCE_LINKS_SCHEMA }) }) });
 
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
@@ -1024,11 +1041,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
           properties: Object.freeze({
             unidade: HUMAN_REFERENCE_SCHEMA,
             conteudo: STUDY_UNIT_CONTENT_SCHEMA,
-            fontes: SOURCE_LINKS_SCHEMA
+            fontes: CORRECTION_SOURCE_LINKS_SCHEMA
           })
         })
       }),
-      explicacoes: EXPLANATIONS_SCHEMA,
+      explicacoes: CORRECTION_EXPLANATIONS_SCHEMA,
       observacoesTratadas: TREATED_OBSERVATIONS_SCHEMA
     }, ["curso"]), allOf: Object.freeze([atLeastOneRequired(["correcoes", "explicacoes"])]) }),
     { readOnly: false }
@@ -1184,7 +1201,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:8718881bbddd3b2bff35dbf2a438e77a95fb4805db86d0d38e2732a0b9e7b962";
+  "sha256:4b698ec5e1309c73886df618dddcd7d3af4023cbbfcad421ebbe6698fdda7de6";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3810,6 +3827,7 @@ HUMAN_TASK_HANDLERS.aplicar_correcoes = async ({
   corrections: args.correcoes === undefined ? [] : safeClone(args.correcoes, "correcoes", 480 * 1024),
   explanations: args.explicacoes === undefined ? [] : safeClone(args.explicacoes, "explicacoes", 480 * 1024),
   observations: normalizeCourseObservationCorrectionReferences(args.observacoesTratadas ?? []),
+  allowSourceLinkSelector: true,
   deadlineAt
 });
 
