@@ -523,11 +523,13 @@ test("T19: leitura formal de escala preserva a base compartilhada integral e equ
       "a base compartilhada cobre as 47 unidades");
     const explanation = (page.explicacoes ?? [])[0];
     assert.ok(explanation, "a Explicação integra a página formal");
-    assert.equal(explanation.auditoriaPedagogica.basis.citations[0].links.length, SOURCE_COUNT,
+    const sharedFocus = page.auditoriasPedagogicas[explanation.auditoriaPedagogica.foco - 1];
+    const explanationCitations = explanation.auditoriaPedagogica.citacoesDoFoco
+      .map(position => sharedFocus.citacoes[position - 1]);
+    assert.equal(explanationCitations[0].links.length, SOURCE_COUNT,
       "as 32 fontes pertencem à base da Explicação");
     assert.equal(Object.hasOwn(explanation.auditoriaPedagogica.basis, "studyUnits"), false,
       "a base das unidades permanece compartilhada, não duplicada no alvo");
-    const sharedFocus = page.auditoriasPedagogicas[explanation.auditoriaPedagogica.foco - 1];
     const resolved = explanation.auditoriaPedagogica.unidadesParaConfronto
       .map(position => sharedFocus.unidadesParaConfronto[position - 1]);
     assert.equal(resolved.length, UNIT_COUNT, "o foco da Explicação cobre as 47 unidades");
@@ -559,11 +561,15 @@ test("T19: leitura formal de escala preserva a base compartilhada integral e equ
     const focus = (page.auditoriasPedagogicas ?? [])[audit.foco - 1] ?? null;
     const observations = (audit.unidadesParaConfronto ?? [])
       .map(position => focus?.unidadesParaConfronto?.[position - 1] ?? null);
+    // Citações vivem no foco; a base local do alvo é resolvida pelas posições.
+    const localBasis = { ...audit.basis };
+    if (Array.isArray(audit.citacoesDoFoco)) localBasis.citations = audit.citacoesDoFoco
+      .map(position => focus?.citacoes?.[position - 1] ?? null);
     return {
       reference: target.referenciaInspecao,
       reviewReference: target.referenciaRevisao,
       content: normalize(target.studyUnit),
-      localBasis: normalize(audit.basis),
+      localBasis: normalize(localBasis),
       inspecao: normalize(target.inspecaoIA ?? null),
       focusBasis: normalize(focus?.basis ?? null),
       focusInstruction: normalize(focus?.instruction ?? null),

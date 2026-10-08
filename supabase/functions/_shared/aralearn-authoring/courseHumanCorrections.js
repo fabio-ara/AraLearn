@@ -63,7 +63,18 @@ function correctionApplicationImpact(prepared, preparedExplanations) {
   };
 }
 
-function validateCorrections(corrections, explanations) {
+// O seletor posicional pertence à correção focal que relê os vínculos do alvo;
+// as demais ferramentas reenviam a seleção completa sem essa autoridade.
+function sourceLinkSelectorError(links, { allowed }) {
+  const selected = (links ?? []).filter((link) => plainObject(link) && link.vinculo !== undefined);
+  if (!selected.length) return null;
+  if (!allowed) return "O seletor de vínculo pertence à correção focal de conteúdo.";
+  return selected.some((link) => !Number.isSafeInteger(link.vinculo) ||
+    link.vinculo < 1 || link.vinculo > 32)
+    ? "O vínculo da fonte precisa ser uma posição inteira de 1 a 32." : null;
+}
+
+function validateCorrections(corrections, explanations, { allowSourceLinkSelector = false } = {}) {
   if (!Array.isArray(corrections) || corrections.length > 64 ||
       !Array.isArray(explanations) || explanations.length > 64 ||
       corrections.length + explanations.length < 1 || corrections.length + explanations.length > 64) {
@@ -75,6 +86,11 @@ function validateCorrections(corrections, explanations) {
         correction.fontes != null && !Array.isArray(correction.fontes)) {
       fail("invalid_human_corrections", `A correção ${index + 1} é inválida.`);
     }
+    const selectorError = sourceLinkSelectorError(correction.fontes, { allowed: allowSourceLinkSelector });
+    if (selectorError) fail("invalid_human_corrections", `A correção ${index + 1} é inválida: ${selectorError}`);
+    if ((correction.fontes ?? []).some((link) => !plainObject(link))) {
+      fail("invalid_human_corrections", `A correção ${index + 1} tem um vínculo de fonte inválido.`);
+    }
   }
   for (const explanation of explanations) {
     if (!plainObject(explanation) || !Object.hasOwn(explanation, "microssequencia") ||
@@ -84,6 +100,8 @@ function validateCorrections(corrections, explanations) {
     }
     try { normalizeMicrosequenceExplanation(explanation.conteudo); }
     catch (error) { fail("invalid_human_explanation", error.message); }
+    const selectorError = sourceLinkSelectorError(explanation.fontes, { allowed: allowSourceLinkSelector });
+    if (selectorError) fail("invalid_human_explanation", `A explicação é inválida: ${selectorError}`);
     if ((explanation.fontes ?? []).some((link) => !plainObject(link) ||
       link.ocorrencias !== undefined && (!Array.isArray(link.ocorrencias) ||
         link.ocorrencias.some((occurrence) => !plainObject(occurrence) || occurrence.lugar !== "conteudo")))) {
@@ -365,6 +383,16 @@ export async function resumeHumanCourseObservationCorrection({ adapter, principa
   }
 }
 
+// O resolver de fontes aceita somente os campos públicos do vínculo; o seletor
+// posicional `vinculo` é metadado da correção e não segue para a materialização.
+function withoutSourceLinkSelectors(requested) {
+  return requested.map((entry) => {
+    if (!plainObject(entry)) return entry;
+    const { vinculo, ...rest } = entry;
+    return rest;
+  });
+}
+
 function preserveMatchingSourceIdentities(links, currentLinks, requestedSources) {
   const binding = (link) => canonicalAuthoringValue({ sourceId: link.sourceId,
     relation: link.relation, anchors: link.anchors.map(({ anchorId }) => anchorId).sort() });
@@ -373,15 +401,7 @@ function preserveMatchingSourceIdentities(links, currentLinks, requestedSources)
     delete value.occurrenceId;
     return canonicalAuthoringValue(value);
   };
-  const used = new Set();
-  return links.map((link, index) => {
-    const matches = currentLinks.filter((current) => binding(current) === binding(link));
-    if (matches.length > 1 || matches.length === 1 && used.has(matches[0].linkId)) {
-      fail("ambiguous_human_source_link", "A correção não identifica um único vínculo da fonte; inspecione os vínculos antes de salvar.");
-    }
-    const previous = matches[0];
-    if (!previous) return link;
-    used.add(previous.linkId);
+  const reuse = (link, previous, index) => {
     const usedOccurrences = new Set();
     return { ...link, linkId: previous.linkId,
       occurrences: requestedSources[index].ocorrencias === undefined
@@ -392,6 +412,27 @@ function preserveMatchingSourceIdentities(links, currentLinks, requestedSources)
           usedOccurrences.add(existing.occurrenceId);
           return { ...value, occurrenceId: existing.occurrenceId };
         }) };
+  };
+  const used = new Set();
+  return links.map((link, index) => {
+    // Seletor explícito da correção: posição atual do vínculo, com fonte coerente
+    // e uso único. Sem seletor, o guard de ambiguidade abaixo permanece.
+    if (requestedSources[index].vinculo !== undefined) {
+      const selected = currentLinks[requestedSources[index].vinculo - 1];
+      if (!selected || selected.sourceId !== link.sourceId || used.has(selected.linkId)) {
+        fail("ambiguous_human_source_link", "O vínculo indicado não identifica uma posição única e coerente desta fonte; releia os vínculos antes de salvar.");
+      }
+      used.add(selected.linkId);
+      return reuse(link, selected, index);
+    }
+    const matches = currentLinks.filter((current) => binding(current) === binding(link));
+    if (matches.length > 1 || matches.length === 1 && used.has(matches[0].linkId)) {
+      fail("ambiguous_human_source_link", "A correção não identifica um único vínculo da fonte; inspecione os vínculos antes de salvar.");
+    }
+    const previous = matches[0];
+    if (!previous) return link;
+    used.add(previous.linkId);
+    return reuse(link, previous, index);
   });
 }
 
@@ -402,11 +443,12 @@ export async function applyHumanCourseCorrections({
   corrections = [],
   explanations = [],
   observations = [],
-  deadlineAt = null
+  deadlineAt = null,
+  allowSourceLinkSelector = false
 }) {
   corrections = corrections.map(entry => ({ ...entry, conteudo: completeHumanContent(entry.conteudo) }));
   explanations = explanations.map(entry => ({ ...entry, conteudo: completeHumanContent(entry.conteudo, { explanation: true }) }));
-  validateCorrections(corrections, explanations);
+  validateCorrections(corrections, explanations, { allowSourceLinkSelector });
   try { observations = normalizeCourseObservationCorrectionReferences(observations); }
   catch (error) { fail(error.code ?? "invalid_course_observation_correction", error.message); }
   let correctedCourseId = null;
@@ -415,6 +457,10 @@ export async function applyHumanCourseCorrections({
   let bpmnIssues = [];
   let pendingObservationCount = 0;
   let applicationImpact = null;
+  // A posição do vínculo é lida no carregamento: uma recarga automática poderia
+  // reordenar a lista e reaplicar a mesma posição a outro vínculo da mesma fonte.
+  const positionalSelection = [...corrections, ...explanations].some(({ fontes }) =>
+    (fontes ?? []).some((link) => plainObject(link) && link.vinculo !== undefined));
   const receipt = await executeTrustedCourseWrite({
     load: async () => {
       const state = await loadCorrectionState({
@@ -442,7 +488,7 @@ export async function applyHumanCourseCorrections({
         studyUnitId: entry.unit.studyUnit.id,
         ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({
-          adapter, principal, courseContext: state, requested: entry.requestedSources,
+          adapter, principal, courseContext: state, requested: withoutSourceLinkSelectors(entry.requestedSources),
           content: entry.content, newId, identityPrefix: `correction:${index}:source-link`,
           deadlineAt, sourceCache, allowMissingOccurrences: true
         }), entry.currentLinks, entry.requestedSources)
@@ -451,7 +497,7 @@ export async function applyHumanCourseCorrections({
         targetKind: "microsequence_explanation", targetId: entry.entity.entityId,
         ...(entry.requestedSources === undefined ? {} : { replaceExisting: true }),
         sourceLinks: entry.sourceLinks ?? preserveMatchingSourceIdentities(await resolveHumanSourceLinks({ adapter, principal, courseContext: state,
-          requested: entry.requestedSources, content: entry.support, newId,
+          requested: withoutSourceLinkSelectors(entry.requestedSources), content: entry.support, newId,
           options: EXPLANATION_SOURCE_OCCURRENCE_OPTIONS,
           identityPrefix: `explanation-correction:${index}`, deadlineAt, sourceCache, allowMissingOccurrences: true }), entry.currentLinks, entry.requestedSources)
       }))));
@@ -504,7 +550,7 @@ export async function applyHumanCourseCorrections({
           adapter, principal, courseId: request.courseId, requestId: request.requestId, deadlineAt });
         pendingObservationCount = confirmed.pendingObservationCount;
         return { status: "confirmed", result: confirmed.receipt };
-      } } : {})
+      } } : positionalSelection ? { maxCasRetries: 0 } : {})
   });
   const unitLinks = correctedStudyUnits.map(({ id, title }) => createHumanNavigation(adapter,
     { courseId: correctedCourseId, relation: "content", target: { kind: "study_unit", id }, label: title }));

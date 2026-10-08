@@ -73,6 +73,22 @@ function resolveAuditUnits(context, audit) {
   });
 }
 
+// Citações deixam o alvo e vivem no foco: o consumidor resolve as posições no mesmo foco/página.
+function resolveAuditBasis(context, audit) {
+  const focus = context.auditoriasPedagogicas.find(item => item.foco === audit.foco);
+  assert.ok(focus, "foco presente na mesma página lógica");
+  const resolved = { ...audit, basis: { ...focus.basis, ...audit.basis } };
+  if (Object.hasOwn(focus, "instruction")) resolved.instruction = focus.instruction;
+  if (Object.hasOwn(audit, "citacoesDoFoco")) {
+    resolved.basis.citations = audit.citacoesDoFoco.map(position => {
+      const citation = focus.citacoes[position - 1];
+      assert.ok(citation, "posição de citação resolvida no mesmo foco e página lógica");
+      return citation;
+    });
+  }
+  return resolved;
+}
+
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
   const calls = { units: [], sources: [], annotations: [], reviews: [], inspections: [] };
   const adapter = {
@@ -779,6 +795,8 @@ test("revisão de unidade conserva base, citações associadas e orientação, f
   assert.equal(context.auditoriasPedagogicas.length, 1);
   const shared = context.auditoriasPedagogicas.find(item => item.foco === targetAudit.foco);
   const audit = { ...targetAudit, instruction: shared.instruction, basis: { ...shared.basis, ...targetAudit.basis } };
+  if (Object.hasOwn(targetAudit, "citacoesDoFoco")) audit.basis.citations = targetAudit.citacoesDoFoco
+    .map(position => shared.citacoes[position - 1]);
   assert.equal(audit.basis.microsequence.goal, "Relacionar conjuntos e estados");
   assert.equal(audit.basis.dependencies[0].title, "Pré-requisito");
   assert.equal(audit.basis.studyUnits.length, 2, "o restante do percurso continua na base");
@@ -875,7 +893,7 @@ test("revisão e retomada focal compartilham por identidade antes da projeção,
         assert.equal(review.targetId, ref.targetId);
         assert.equal(review.targetKind, ref.targetKind);
         assert.equal(ref.courseId, COURSE.id);
-        const audit = target.auditoriaPedagogica;
+        const audit = resolveAuditBasis(context, target.auditoriaPedagogica);
         const shared = context.auditoriasPedagogicas.find(item => item.foco === audit.foco);
         assert.ok(shared);
         assert.equal(audit.basis.targetKind, ref.targetKind);
@@ -976,7 +994,7 @@ test("MCP e Actions expõem BPMN inconsistente no alvo, preservam a base compart
     assert.deepEqual(context.studyUnits.map(target => target.auditoriaPedagogica.representationIssues.length), [0, 1, 0]);
     assert.deepEqual(context.explicacoes.map(target => target.auditoriaPedagogica.representationIssues.length), [2, 0]);
     for (const target of [...context.studyUnits, ...context.explicacoes]) {
-      const audit = target.auditoriaPedagogica;
+      const audit = resolveAuditBasis(context, target.auditoriaPedagogica);
       const shared = context.auditoriasPedagogicas.find(item => item.foco === audit.foco);
       const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
       const original = inspections.get(ref.targetId);
@@ -1399,8 +1417,10 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
           }
           if (target.designSnapshot) assert.deepEqual(resolve(target.designSnapshot.parameters), completeParameters(parameters));
           assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: canonical }));
-          assert.equal(target.auditoriaPedagogica.basis.citations[0].links[0].source.url, `https://example.test/${ref.targetId}`);
-          assert.equal(target.auditoriaPedagogica.basis.citations[0].links[0].anchors[0].selector.exact, `Passagem de ${ref.targetId}.`);
+          const citationsDoFoco = target.auditoriaPedagogica.citacoesDoFoco
+            .map(position => focus.citacoes[position - 1]);
+          assert.equal(citationsDoFoco[0].links[0].source.url, `https://example.test/${ref.targetId}`);
+          assert.equal(citationsDoFoco[0].links[0].anchors[0].selector.exact, `Passagem de ${ref.targetId}.`);
           const expected = projectPedagogicalAudit(basis).units
             .filter(unit => ref.targetKind !== "study_unit" || unit.unitId === ref.targetId);
           assert.deepEqual(resolveAuditUnits(context, target.auditoriaPedagogica).map(unit => unit.observation),
