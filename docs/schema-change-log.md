@@ -42,10 +42,15 @@ funções correntes, que continuam existindo e apenas passaram a usar os helpers
 O manifesto declara a revisão `20261007234650` mantendo as mesmas capacidades,
 porque nenhuma capacidade nova é exposta.
 
-Esta entrada descreve a candidata local, não uma implantação hospedada. A
-validação deve conferir equivalência de payload para os estados `current`,
-`pending`, `unregistered` e objeto ausente, em alvo de unidade e de
-Explicação, além da preservação de ACL, volatilidade e dados no upgrade.
+A migração foi integrada e implantada em 2026-10-08 pelo
+[PR 437](https://github.com/fabio-ara/AraLearn/pull/437), merge
+`ebf7c9a0295c403ec51599c4dfdb657c35f39ee1`: o esquema na revisão
+`20261007234650` está aplicado no ambiente hospedado, com 248 migrações e
+nenhuma pendente, e a verificação hospedada passou. A validação conferiu
+equivalência de payload para os estados `current`, `pending`, `unregistered` e
+objeto ausente, em alvo de unidade e de Explicação, além da preservação de ACL,
+volatilidade e dados no upgrade. Os gates automáticos da integração somaram 916
+asserções pgTAP, paridade de 740 objetos e 585 passagens Playwright.
 
 ## 20261005120000 — pacote transacional de Fontes
 
