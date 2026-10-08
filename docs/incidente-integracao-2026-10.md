@@ -66,8 +66,11 @@ adicional de SQL, retry ou prazo foi feito.
 Após a implantação, a prova nativa no MCP 537 fechou 10 chamadas reais em três execuções — 109–110,
 111–112 com o cursor persistido retomado e 300–305 até o terminal —, com 10 sucessos, zero erros e
 `autoRetry=false`; os 10 registros coincidem com o P4 em cursor de entrada e saída, offsets e texto,
-na revisão 166. A ROOT ainda revisa brutos e hashes, e nenhuma nova leitura integral de 305 no 537 foi
-executada: o P4 integral (305/311 com seis recuperações) permanece válido.
+na revisão 166. A revisão independente dos originais foi concluída em 14:31:40.362Z com `issues: []`: bytes dos brutos iguais ao P4, sha256 e bytes
+dos 10 metadados conferidos, curso e revisão 166 preservados, cadeias contíguas 109–112 e 300–305 e
+terminal `null`/`false`; a execução correu de 14:23:54.028 a 14:25:37.785Z, sem retry e sem falha,
+limitada a três janelas. Nenhuma nova leitura integral de 305 no 537 foi executada: o P4 integral
+(305/311 com seis recuperações) permanece válido.
 
 A observação no ChatGPT Web (oito saídas, conversa nova autorizada) registrou a alegação de leitura
 do assistente com 67 corpos de ferramenta vazios no GET; a interface não substitui o bruto. A fronteira
