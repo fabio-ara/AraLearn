@@ -1,6 +1,94 @@
-# Incidente de integração MCP do AraLearn (outubro de 2026)
+# Incidente de integração MCP do AraLearn — fechamento 0.0.104
 
-## Situação corrente: backend 537 em produção; 0.0.104/250 em implementação local
+Esta é a declaração de fechamento do incidente. O escopo do AraLearn está entregue: os testes pertinentes foram aprovados e a versão 0.0.104 foi publicada. A classificação adicional do rótulo do conector permanece não resolvida e fora do escopo desta entrega. Cada prova mantém o alcance declarado; nada aqui promete ausência universal de falhas.
+
+## Situação corrente: 0.0.104/250 e backend atualizado
+
+AraLearn 0.0.104, Android 250. Código integrado pelo [PR 442](https://github.com/fabio-ara/AraLearn/pull/442), commit [1e674c3d](https://github.com/fabio-ara/AraLearn/commit/1e674c3d2b99b9175ea3c88eb817b2580c3e3198), árvore `bb780154ad260041e9dbffb9cae82c5e7b651286`, idêntica à candidata aprovada. Commits de implementação: [99b50ee1](https://github.com/fabio-ara/AraLearn/commit/99b50ee17bab01b4bfc8ea6f4aee94df7037a5dc) e [eb96f7ac](https://github.com/fabio-ara/AraLearn/commit/eb96f7ac27b95e4108dd0a21289d467f1cc7a175). O registro documental posterior não muda os bytes dessa versão.
+
+Em produção: MCP 538, Actions 404 e API 379. A verificação hospedada passou; nove fontes implantadas coincidem byte a byte com as fontes aprovadas. Schema `20261007234650`, biblioteca v1 e catálogo `11.1.0`; onze digests de segredos inalterados. Não houve migração, mudança de permissão ou enfraquecimento da autorização neste corte.
+
+Bundles: MCP `c713fc119715bf60c8832b3cac348cb6df2cbae8c788f467b2a8f04362006d70`; Actions `6a2b54378e87380a54d1f77a7d5ee2dc57879d2ff2138eefc8eebee8efb675fe`; API `0ba0b0765463fd1ace889460d3ce17b6b8c8396cd1af0110b85196ac0e30be5d` (inalterada). Catálogo: `4b698ec5e1309c73886df618dddcd7d3af4023cbbfcad421ebbe6698fdda7de6`.
+
+## Verificações da entrega
+
+- Preparação local: cinco gates aprovados, 2.765 testes de runtime aprovados, zero falhas e quinze dispensas existentes; 6.360 hashes de inputs conferidos.
+- [CI 37809742867](https://github.com/fabio-ara/AraLearn/actions/runs/37809742867), tentativa 1, aprovada: cinco jobs; 585 testes web aprovados e dez dispensas; 916 asserções pgTAP em 22 arquivos; dois testes Deno; paridade de 740 objetos. Contagens pertencem a conjuntos diferentes e não devem ser somadas.
+- [Preparação 37814936651](https://github.com/fabio-ara/AraLearn/actions/runs/37814936651): APK assinado e prova Android v2 aprovados. Instalação limpa, atualização desde 0.0.67/213 e reinstalação, com UID e preferência de tema preservados; dezesseis arquivos de evidência tiveram os hashes conferidos e duas telas foram inspecionadas. Essa prova não certifica restauração de dados de conta ou de curso.
+- [Publicação do site 37818213742](https://github.com/fabio-ara/AraLearn/actions/runs/37818213742): backend, instalação Android e 204 recursos efetivamente publicados conferidos.
+- [Finalizador 37823276159](https://github.com/fabio-ara/AraLearn/actions/runs/37823276159), tentativa 1, aprovado: [release 0.0.104](https://github.com/fabio-ara/AraLearn/releases/tag/v0.0.104) pública em 08/10/2026 às 18:19:38Z, identidade e digests dos três assets conferidos. APK: `88ef1cbfa09852d572888fa2af547872d203f3df9eb56cd19cb359aac68afb40`, 3.863.809 bytes; certificado `c3d2ad6c97e44492c09d785d2d5e9f461eb6399914b196119e2cba0e5d271296`.
+
+## Diagnóstico e correções comprovadas
+
+O AraLearn tinha defeitos próprios: divergência entre o contrato de saída e o envelope de erro, tipagem genérica de reconciliação inválida, cobertura incompleta da falha transitória ao resolver a credencial, paginação aplicada tarde às seleções explícitas e replay de fonte sensível à ordem das chaves JSON. Os patches anteriores a 0.0.104, preservados no histórico, corrigiram esses caminhos. A gravação de fonte usa um pacote atômico; a causa exata da gravação parcial relatada no anexo antigo não foi reproduzida e não é atribuída retroativamente a uma única falha.
+
+O novo relatório confirmou repetição excessiva de citações no contexto de auditoria e ambiguidade ao consolidar vínculos de uma mesma fonte. A projeção agora guarda as citações por foco e página e fornece referências posicionais por alvo, conservando o conteúdo literal. O seletor opcional `vinculo` em `aplicar_correcoes` permite escolher o vínculo corrente a preservar. A atualização usa o conjunto final em uma única escrita; sem seletor, a ambiguidade continua sendo recusada. Uma seleção que deixou de existir exige nova leitura; conflito durante a correção com seletor não dispara repetição automática com uma seleção antiga.
+
+Na fixture sintética de volumetria, a projeção passou de 1.052.489 para 362.887 bytes, redução de 65,52%, e de 84 para 30 fragmentos. Isso mede a projeção em uma fixture de oito unidades e uma Explicação, não o tempo HTTP nem a causa dos erros 503. A medição nativa extensa fica separada abaixo.
+
+O resumo histórico alegadamente incompleto não foi preservado com detalhe suficiente para reproduzir aquela ocorrência. O teste H2 de `course-human-source-flow.test.js` verifica que a retomada declara o alcance do resumo e não sugere ausência de conteúdo; o H3 verifica que uma página de busca vazia com continuação não encerra a busca, inclusive quando o resultado só aparece na página seguinte. Ambos integram a cobertura aprovada.
+
+Os timeouts de RPC e as falhas de obtenção de chaves têm fronteira observada nos logs. Há correlação temporal com cancelamentos do banco, sem vínculo por identificador que demonstre o SQL responsável. Não se declara tamanho, banco ou timeout como causa única de todas as ocorrências.
+
+## Contrato e clientes reais
+
+Foram consultadas as fontes primárias de [resultados de ferramentas da OpenAI](https://developers.openai.com/plugins/reference#tool-results), [diagnóstico de servidor](https://developers.openai.com/plugins/deploy/troubleshooting#server-side-issues), [conectores MCP](https://developers.openai.com/api/docs/guides/tools-connectors-mcp) e a [especificação MCP](https://modelcontextprotocol.io/specification/2025-11-25/server/tools). A validação AJV usou o `outputSchema` extraído do handler real: duas capturas de erro e uma de sucesso passaram, com e sem o campo adicional `error_code`; três controles negativos foram recusados.
+
+Houve uma recusa concreta de `vinculo` como propriedade adicional antes da atualização das definições da conexão ChatGPT. A atualização respondeu HTTP 200, preservou as 56 ações e trouxe o campo; depois disso, a mesma chamada nativa de um cliente real foi aceita. A mesma correção também foi repetida por cliente real pelo conector com sucesso. O schema atualizado contém `explicacoes[].ideia` e aceita a forma da entrada correspondente; não se confunde essa validação de forma com materialização nativa concluída depois da atualização.
+
+Na conexão ChatGPT, a revisão dos originais corrigiu um erro de coleta nosso: as respostas estavam em `content.text`, não em `content.parts`. São 58 chamadas bem-sucedidas no recorte observado, com terminal de leitura; esse recorte cobre uma unidade, não as 47 unidades da auditoria extensa. Assim, não há evidência de incapacidade geral dos clientes reais usados para o contrato. Cada prova mantém seu próprio alcance.
+
+O rótulo adicional `error_code: INVALID_ARGUMENT`, observado junto de `temporarily_unavailable` e `retryable: true`, ainda não tem produtor demonstrado. Os testes do contrato emitido pelo AraLearn passaram; a classificação adicional ponta a ponta permanece não resolvida e fora do critério de entrega conforme o mandato vigente. Não foi atribuído esse comportamento à OpenAI como fato e não se depende de contato com suporte.
+
+## Prova nativa após a implantação
+
+A leitura nativa do MCP 538, pela conexão AraLearn, preservou **262 respostas completas**, remontadas em seis páginas, com **47 unidades e uma Explicação**, **48 alvos** e **288 verificações nas seis dimensões**. Os 262 hashes e tamanhos dos retornos, a cadeia dos cursores, os offsets em UTF-16, a identidade do curso e a revisão 166 foram conferidos. O terminal é `temMais=false`, com continuação nula. Os textos dos fragmentos somam 2.755.373 unidades UTF-16 e 2.817.201 bytes UTF-8; os arquivos dos retornos brutos somam 3.579.117 bytes. São medidas diferentes e não devem ser confundidas.
+
+A coleta registrada foi de 17:17:47.169Z a 18:12:13.128Z, incluindo pausas e interrupções do executor. As chamadas preservadas somam 1.731.650 ms de duração; isso não é o tempo total de parede nem uma previsão de disponibilidade. Os lotes produziram 3, 8 e 251 respostas completas. O último lote retomou o checkpoint 11 e chegou ao fragmento 262 sem erro do AraLearn e sem retentativa. Uma resposta adicional foi observada no executor interrompido antes da persistência do bruto; a leitura foi repetida no mesmo cursor. Portanto, 262 conta respostas completas preservadas, não todas as invocações observadas.
+
+A comparação integral contra as seis páginas da linha de base P4 passou sem divergências inesperadas, após reidratar as referências de citações e excluir somente a orientação de transporte `leituraDaAuditoria`. O comparador tem controles negativos para conteúdo, citação, referência, cursor, diretório vazio/ausente e erro disfarçado de sucesso. A leitura anterior exigiu 305 fragmentos completos; a nova exigiu 262 na mesma fixture. Os 288 checks são inspeções anteriores preservadas, não novos juízos produzidos nesta rodada.
+
+A retomada ocorreu depois de interrupções reais do executor, em novas execuções, com o cursor salvo. O negativo isolado posterior enviou uma continuação da projeção antiga: recebeu `human_read_context_changed`, diagnóstico 409, `retryable: false`, sem fragmento e sem avanço do checkpoint. Esse conflito de contexto não deve ser tratado como indisponibilidade temporária.
+
+A prova nativa de fonte consolidou dois vínculos da mesma fonte em um vínculo com três ocorrências. A repetição devolveu a mesma leitura; uma seleção inexistente foi recusada com 422 sem alteração. Uma nova repetição por cliente real, entre duas consultas SQL somente de leitura, preservou o objeto inteiro, o identificador do vínculo e os três identificadores de ocorrências. Não há snapshot SQL anterior à primeira consolidação: a preservação desse identificador original é prova local, enquanto a preservação dos identificadores no replay é também prova hospedada. O caminho de unidade tem cobertura automatizada local; esta nova prova nativa do seletor cobre a Explicação.
+
+## Matriz corrente T01–T20
+
+Esta é a matriz do fechamento 0.0.104: cada linha declara a prova e o limite do que ela cobre. Estados registrados em datas anteriores permanecem no registro histórico deste documento e não substituem esta leitura. T02 recebe aprovação somente do contrato emitido pelo AraLearn, com a classificação adicional não resolvida explicitada.
+
+| Cenário | Resultado | Evidência e limite |
+| --- | --- | --- |
+| T01 caminhos mínimos do curso | APROVADO | Consultas nativas e leitura completa da MS8 real; snapshots preservados; H2 verifica o alcance declarado do resumo. |
+| T02 taxonomia de erro e repetição | APROVADO no contrato do AraLearn | Testes de erros de entrada, conflito, indisponibilidade e autenticação; AJV sobre capturas reais; recusa nativa 422. O rótulo adicional do conector permanece não resolvido, fora do critério da entrega. |
+| T03 retomada após falhas e reinício | APROVADO | Provas locais de falha antes/depois da montagem, retomada nativa histórica e retomada nova do checkpoint. |
+| T04 integridade da remontagem | APROVADO | Unicode e posições locais; oito páginas e 528 fragmentos reais; comparação integral nova contra a linha de base. |
+| T05 páginas lógicas e terminal | APROVADO | Transições contíguas e terminal `temMais=false`, continuação nula; H3 verifica a continuação da busca após página vazia. |
+| T06 leitura completa antes do parecer | APROVADO | Guarda do cliente, tentativa incompleta recusada e 48 registros nativos após leitura formal completa. O servidor não comprova consumo intelectual. |
+| T07 recortes explícitos e união | APROVADO | Regressões de recortes e união de 47 unidades; alvo omitido não é renovado pela revisão de outro alvo. |
+| T08 rejeição de base desatualizada | APROVADO | Fixture recusa a base antiga sem escrita e aceita inspeção após nova leitura. Nenhuma falha induzida em curso real. |
+| T09 dependências bibliográficas da base | APROVADO | Mudança em fonte vinculada invalida os consumidores pertinentes; alvos não relacionados permanecem atuais. |
+| T10 evidência literal e seis dimensões | APROVADO | Negativos locais e 288 verificações nos 48 pareceres nativos; nova projeção comparada integralmente. |
+| T11 idempotência do parecer | APROVADO | Repetição nativa exata de U1 sem duplicação, além das regressões locais. |
+| T12 fonte criada após falha | APROVADO | Bundle atômico e RPC real local; replay nativo após pausa preserva fonte, âncora e catálogo. Não é simulação de perda física de rede em produção. |
+| T13 limite de vínculos | APROVADO | Aceita 32 e recusa 33 antes de escrever, preservando identidades e papéis. |
+| T14 preservação de identidades | APROVADO | Testes locais, snapshots nativos anteriores e replay novo com SQL somente leitura antes/depois: vínculo e três ocorrências idênticos. |
+| T15 aplicação e configuração na ida e volta | APROVADO | Materialização nativa anterior de teoria e prática com `ideia`, 47 identificadores e readback completo; schema atualizado conferido. Não se alega nova materialização após o refresh. |
+| T16 reconciliação da Explicação | APROVADO | Regressões da reconciliação e recusa tipada 422 sem gravação; invariantes mantidas. |
+| T17 inspeção de IA separada de revisão humana | APROVADO | 48 inspeções nativas preservam `content_review={}`; não foi fabricada aprovação humana. |
+| T18 leitura sem mutação e fluxo exclusivo | APROVADO | Curso real somente leitura; fixture sem gravações na leitura nova; curso, revisão e conteúdo conferidos; um operador por sequência. |
+| T19 leitura formal grande com base própria | APROVADO | Prova local de 3.468.023 bytes e MS8 real completa: oito páginas, 528 fragmentos, 47 unidades e uma Explicação com referências próprias. |
+| T20 aceitação nativa após interrupção | APROVADO | Produção/releitura/48 inspeções/consulta já percorridas em fixture; leitura integral pós-projeção concluída e comparada após retomada em nova execução. |
+
+## Continuidade segura
+
+No curso real da MS8 já existem 47 unidades e uma Explicação. A investigação fez somente consultas e não concluiu a autoria. A próxima sessão deve obter estado e referências frescos antes de escrever, preservar as identidades e evitar recriação. Leitura íntegra de transporte não substitui juízo pedagógico: manter evidência literal, seis dimensões e separação entre inspeção de IA e revisão humana. O curso real produzido em paralelo foi preservado.
+
+<details>
+<summary>Registro histórico anterior ao fechamento 0.0.104</summary>
+
+Este bloco descreve o estado anterior ao fechamento 0.0.104. Expressões como “pendente”, “não concluído” ou “bloqueado” descrevem a data daquele registro, e inferências ali anotadas não se convertem em causa demonstrada.
+
+## Estado histórico antes de 0.0.104
 
 Estado efetivo em 2026-10-08, depois do [PR 440](https://github.com/fabio-ara/AraLearn/pull/440): MCP 537 ativo (implantado 14:20:15Z; bundle `825895ec9e97448f6eae188cd47de24da7d5d91b56240dae62673cf9f242e20e`), API 379 e Actions 403 inalteradas, `verify_jwt=false`, schema `20261007234650` com 248 migrações aplicadas e nenhuma pendente, e verificação hospedada aprovada; o texto hospedado do `mcpServer` coincide exatamente com a fonte aprovada (`133CD83F8709AC0BFE12166AD712BBFFBAD4A97D59ECB729EB657D39FEFB0597`) e os 11 digests de segredos seguem iguais. A main está em `db79f9d62cbf0aa5063b8a40d6e2e92c3d5de752`. A implementação 0.0.104/250 está em preparação local (versionamento e notas) e **não implantada nem publicada**; o APK 0.0.103/249 segue em rascunho. Pelo critério corrente — que mede o AraLearn e deixa a camada externa fora do gate por decisão do titular — T02 está **APROVADO** no contrato do AraLearn (provas locais e de CI existentes mais a validação AJV das capturas), com a classificação ponta a ponta **não resolvida**; T20 está **APROVADO** na leitura extensa anterior do P4, com retomada, e a prova pós-nova-projeção é **PENDENTE** até execução. A cronologia abaixo registra as promoções até este ponto e permanece histórica.
 
@@ -305,3 +393,5 @@ resposta. O diagnóstico viaja na própria exceção (não em estado do adapter)
 enumerável e não aparece no JSON do erro nem no `structuredContent`; requisições
 concorrentes não o compartilham. Registros anteriores, sem o campo, permanecem com a
 mesma forma.
+
+</details>
