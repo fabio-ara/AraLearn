@@ -135,6 +135,45 @@ Uma conversa antiga observou a recusa de `unidades[].aplicacaoPedagogica.explica
 
 Na leitura do curso real, quatro respostas chegaram antes de um 503 em uma janela anterior; os bytes e o cursor não foram preservados pelo coletor antigo, portanto não há prova de remontagem ou retomada daquelas quatro. Os logs correlacionaram duas falhas à execução do MCP com código interno `service_timeout`, classe transitória e status 503. O prazo específico que expirou não foi identificado: cada requisição usa oito segundos e até três tentativas, enquanto a chamada tem orçamento global de quarenta segundos. Na leitura atual (corte 103) não houve falha não recuperada; retornos integrais de falhas anteriores não foram preservados. Foram feitas somente consultas no curso real; revisão 555 e acesso permaneceram iguais, sem alegar snapshot completo de fontes, configuração e pareceres.
 
+## Candidata em validação: reuso da base de inspeção (não implantada)
+
+A branch `codex/audit-read-basis-reuse`, sobre `main` em `6a882202`, contém a
+migração `20261007234650_reuse_inspection_basis_within_read.sql` e o
+`runtime-manifest.json` na revisão `20261007234650`. O critério de parada é
+reduzir o trabalho repetido dentro de uma mesma requisição de leitura de
+inspeção sem mudar o contrato observável: `basisHash`, `pedagogicalBasis`,
+`inspection` e o payload permanecem idênticos, e `stable`, `security definer`,
+`search_path` e ACL são preservados.
+
+Reprodução: dois bancos PGlite com as migrações reais (47 unidades, uma Explicação
+e 32 fontes) comparados sem instrumentação — nenhum wrapper, nenhuma função
+trocada. Os sha256 dos payloads de unidade e de Explicação e da montagem são
+idênticos antes e depois, com os mesmos bytes, e o tempo local cai no A/B,
+inclusive na ordem invertida. A contagem exata de avaliações de base em execução
+ficou inconclusiva: o coletor de funções do PGlite não sustenta o delta por
+chamada.
+
+Testes focais: `course-read-basis-reuse-pglite.test.js` cobre estados
+current/pending/unregistered, objeto ausente, base nula e Explicação sem corpo,
+upgrade que não altera dados nem o carimbo da gravação, ACL com controles, seis
+dimensões com evidência literal, separação IA/humana, recusa de base obsoleta,
+negação por papel/ator e replay idempotente. O bloco pgTAP correspondente foi
+acrescentado à família de explicação/revisão; as expressões foram validadas em
+PGlite, mas o pgTAP não foi executado neste host por ausência de Docker.
+
+Diagnóstico local corrente: uma montagem completa LOCAL→PostgREST da página do
+recorte registrou 68 RPCs, 7.719 ms de parede e 3.195.573 bytes, devolvendo o
+mesmo fragmento antes conhecido (offsets idênticos e mesmo sha256 do texto); uma
+chamada do conector nativo à mesma página levou 9.344 ms e devolveu o mesmo
+fragmento. São duas observações pontuais, obtidas antes desta migração, sem
+estabilidade medida; não explicam os ~40 s históricos e não constituem correção
+externa.
+
+Estado: **candidata em validação, não implantada**, e **T02 permanece aberto**.
+Ela não afirma causa hospedada: a validação de SCs125 confere o `outputSchema`
+das ferramentas, e a camada de Actions não explica T02; nenhuma das duas é prova
+de causa do incidente.
+
 ## Limitações e cuidados
 
 As correções do PR 429, do PR 430 e do corte 0.0.103 estão integradas e implantadas; o fallback textual de erro do canal MCP está implantado (PR 432, MCP 528); e a correção de tipagem da reconciliação inválida está implantada (PR 433, MCP 529 e Actions 397). A falha transitória do principal em `tools/call` válido está corrigida e implantada (PR 434, MCP 530), restrita a esse caminho, sem contorno de autenticação e sem eliminar o `error_code` da camada do conector. Esse guard cobre apenas `tools/call`; a retentativa focal da leitura do principal (`resolve_mcp_oauth_principal_v1`) está integrada e implantada (PR 435, MCP 531). A classificação de T02 persiste depois da atualização de definições no corte 531. A entrega do incidente não está concluída. O servidor não comprova consumo intelectual: a garantia de leitura completa antes do parecer pertence ao cliente de autoria. As contagens de disponibilidade descrevem a janela observada e não são uma taxa geral. Resultados hospedados permanecem separados dos locais, e a inspeção de IA não é aprovação humana. Os registros históricos preservam suas limitações de captura. No primeiro fluxo, o coletor sobrescreveu um registro bruto e os bytes exatos foram recuperados pelo hash, com proveniência registrada; no segundo, uma captura de U1 não foi recuperada. Na comparação SQL final, feita contra o pós-primeiro-fluxo, sete originais finais estão íntegros e a primeira captura de Q2 se perdeu antes do arquivo. Os arquivos permanecem fora do Git e não se afirma que nenhum original foi reescrito.
