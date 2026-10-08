@@ -78,14 +78,14 @@ passou com 2.783 aprovadas no runtime Node (0 falhas e 15 dispensas), 585 no Pla
 dispensas), 916 asserções pgTAP em 22 arquivos e paridade de 740 objetos; os focais locais somaram 88
 (12 do verificador e 76 do canal MCP), o incidente 8 e o Deno 2, e a preparação local ampla ficou em
 2.742 aprovadas, 0 falhas e 15 dispensas — conjuntos sobrepostos, não somados. A primeira preparação
-teve uma falha do WASM do PGlite (`initdb`) antes de qualquer asserção; o arquivo isolado passou 21/21 e
+teve uma falha do WASM do PGlite (`initdb`) antes das asserções desse arquivo; o arquivo isolado passou 21/21 e
 a única repetição, com os mesmos bytes, passou; a causa não foi determinada e o log integral não foi
 preservado.
 
 A observação no ChatGPT Web (em 8 de outubro, conversa nova autorizada) registrou a alegação de leitura
 do assistente com 67 corpos de ferramenta vazios no GET; a interface não substitui o bruto. A fronteira
 externa do `error_code` segue sem mapeador, traço ou acesso; o bloqueio concreto exige acesso ao
-rastreio do cliente/conector ou resposta técnica de seu responsável para identificar a transformaç%C3%A3o,
+rastreio do cliente/conector ou resposta técnica de seu responsável para identificar a transformação,
 e o rascunho de solicitação não foi enviado.
 
 ## Taxonomia de erro e schema público
