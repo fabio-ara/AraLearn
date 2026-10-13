@@ -47,7 +47,8 @@ const fixedFiles = [
   ["src/resources/kernel/manualTextMarkers.js", "resources/kernel/manualTextMarkers.js"],
   ["src/resources/kernel/packageRegistry.js", "resources/kernel/packageRegistry.js"],
   ["src/resources/kernel/schemaValidation.js", "resources/kernel/schemaValidation.js"],
-  ["src/resources/kernel/studyUnitEnvelope.js", "resources/kernel/studyUnitEnvelope.js"]
+  ["src/resources/kernel/studyUnitEnvelope.js", "resources/kernel/studyUnitEnvelope.js"],
+  ["src/resources/studySupport.js", "resources/studySupport.js"]
 ];
 
 async function listJavaScriptFiles(relativeRoot) {

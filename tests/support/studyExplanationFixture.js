@@ -8,7 +8,7 @@ const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", v
 const resource = (id, name, data) => ({ id, package: `aralearn.resource.${name}`, version: "1.0.0", data });
 
 /** UI sintética: nenhum cliente de conta, geração, download real ou escrita remota. */
-export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false } = {}) {
+export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false, tools = "authored" } = {}) {
   // A galeria de fixture não repassa opções extras: o parâmetro ?audio=1 da própria
   // URL habilita a ferramenta de áudio sem alterar a página compartilhada.
   const withAudio = includeAudio || new URLSearchParams(globalThis.location?.search || "").has("audio");
@@ -20,7 +20,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
   course.title = "Comunicação em rede — fixture sintética";
   const module = course.modules[0]; const lesson = module.lessons[0]; const ms = lesson.microsequences[0];
   ms.title = "Interfaces, sinais e quadros";
-  const tools = [resource("calculator", "calculator", structuredClone(calculatorPackage.authoringContract.example)),
+  const authoredTools = [resource("calculator", "calculator", structuredClone(calculatorPackage.authoringContract.example)),
     resource("calculator-second", "calculator", { title: "Conferir uma segunda estimativa", angleUnit: "radians" })];
 
   // Faixa nativa sintética para a prova de ferramenta: o leitor abre o player com os
@@ -31,7 +31,10 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     alternative: { text: "Alternativa textual sintética do aviso.", visibility: "on_request" }
   }] });
 
-  const toolResources = includeAudio => [...structuredClone(tools), ...(includeAudio ? [syntheticAudioTool()] : [])];
+  // tools=contextual monta a unidade sem bloco de ferramenta escolhido na autoria para
+  // provar o apoio contextual do Estudo (issue #445); audio=1 continua somando faixas.
+  const toolResources = includeAudio => tools === "contextual" ? []
+    : [...structuredClone(authoredTools), ...(includeAudio ? [syntheticAudioTool()] : [])];
   const support = { title: "Processos, interfaces e transporte: distinguir os participantes da comunicação sem confundir sinais, quadros e conexões",
     content: [paragraph("support-lead", "Um **quadro** transporta informações entre interfaces de uma rede local. Um processo é um programa em execução; sua interface com o transporte é chamada socket. Essa interface local não representa toda a conexão entre os participantes."),
       resource("comparison", "table", { title: "Papéis na comunicação",

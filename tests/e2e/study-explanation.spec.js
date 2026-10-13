@@ -68,14 +68,22 @@ for (const width of [320, 390, 430, 1280]) {
     const measured = await body.evaluate(node => {
       const stack = node.querySelector(":scope > .runtime-resource-stack");
       const resources = [...stack.children].filter(child => child.matches(".package-instance"));
+      const isProse = resource => resource.matches(":has(> .runtime-block.runtime-paragraph-block)");
       const rects = resources.map(resource => resource.getBoundingClientRect());
       return { count: resources.length,
-        gaps: rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+        gaps: rects.slice(1).map((rect, index) => ({ size: rect.top - rects[index].bottom,
+          prose: isProse(resources[index]) && isProse(resources[index + 1]) })),
         leading: rects[0].top - node.querySelector(":scope > h3").getBoundingClientRect().bottom,
         overflow: node.scrollWidth - node.clientWidth };
     });
     expect(measured.count).toBeGreaterThanOrEqual(2);
-    for (const gap of measured.gaps) { expect(gap).toBeGreaterThanOrEqual(7); expect(gap).toBeLessThanOrEqual(9); }
+    // Prosa vizinha ganha o degrau de seção; recursos de naturezas diferentes mantêm
+    // o ritmo compacto da pilha compartilhada pela Unidade de estudo e pela Explicação.
+    expect(measured.gaps.some(({ prose }) => prose)).toBe(true);
+    for (const gap of measured.gaps) {
+      if (gap.prose) { expect(gap.size).toBeGreaterThanOrEqual(15); expect(gap.size).toBeLessThanOrEqual(17); }
+      else { expect(gap.size).toBeGreaterThanOrEqual(7); expect(gap.size).toBeLessThanOrEqual(9); }
+    }
     expect(measured.leading).toBeGreaterThanOrEqual(11); expect(measured.leading).toBeLessThanOrEqual(13);
     expect(measured.overflow).toBeLessThanOrEqual(1);
     const table = body.locator('[data-package-instance-id="comparison"] .runtime-table-wrap');
@@ -319,6 +327,209 @@ for (const [hostName, hostLabel] of [["unidade", "Unidade"], ["explicacao", "Exp
     expect(errors).toEqual([]);
   });
 }
+
+// Apoio contextual (issue #445): a unidade sem bloco de ferramenta escolhido na
+// autoria ainda oferece a calculadora durante o Estudo, sem ler nem resolver o enunciado.
+// Os hosts de inspeção e revisão seguem sem esse apoio por padrão (default false).
+for (const [hostName, hostLabel] of [["unidade", "Unidade"], ["explicacao", "Explicação"]]) {
+  test(`apoio contextual sem bloco autoral oferece a calculadora na ${hostLabel} e devolve o foco`, async ({ page }, testInfo) => {
+    for (const width of toolWidths) {
+      await page.setViewportSize({ width, height: 844 });
+      const errors = await mount(page, "?unit=theory&tools=contextual");
+      const host = await openHostScope(page, hostName);
+      // Sem recurso escolhido na autoria não há menu de grupo: a ferramenta contextual
+      // aparece como controle direto do próprio rodapé.
+      await expect(host.getByRole("button", { name: "Ferramentas da unidade", exact: true })).toHaveCount(0);
+      const launcher = host.locator('[data-study-tool-id="study-contextual-calculator"]');
+      await expect(launcher).toBeVisible();
+      await expect(launcher).toHaveAccessibleName("Calculadora");
+      await launcher.click();
+      const panel = page.getByRole("dialog", { name: "Calculadora", exact: true });
+      await expect(panel).toBeVisible();
+      const input = panel.getByRole("textbox", { name: "Expressão", exact: true });
+      // A ferramenta não extrai nem resolve o enunciado: o campo abre vazio.
+      await expect(input).toHaveValue("");
+      await input.fill("2 + 3"); await page.keyboard.press("Enter");
+      await expect(panel.locator("[data-calculator-output]")).toHaveText("5");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+      if (width === 320 || width === 390) {
+        await page.screenshot({ path: testInfo.outputPath(`tool-calculadora-contextual-${hostName}-${width}.png`), fullPage: true });
+      }
+      await closeToolPanel(page, launcher, hostName);
+      expect(errors).toEqual([]);
+    }
+  });
+}
+
+const dockSizes = [[320, 844, false], [390, 844, false], [1280, 844, false], [320, 500, true], [390, 500, true]];
+const dockLabel = ([width, height, zoom]) => width + "x" + height + (zoom ? "+texto150" : "");
+
+async function focusRelativeToPanel(page) {
+  return page.evaluate(() => {
+    const active = document.activeElement;
+    const panel = document.querySelector(".study-tools-panel").getBoundingClientRect();
+    const rect = active.getBoundingClientRect();
+    const scroller = active.closest(".card-sheet-content, .study-explanation-body");
+    const view = scroller ? scroller.getBoundingClientRect() : rect;
+    return { insidePanel: Boolean(active.closest(".study-tools-panel")),
+      // Área realmente visível do elemento dentro da sua janela de leitura.
+      visibleArea: Math.round(Math.max(0, Math.min(rect.bottom, view.bottom) - Math.max(rect.top, view.top))),
+      // A janela de leitura não pode estar sob a folha.
+      readingCovered: view.bottom > panel.top + 1 && view.top < panel.bottom - 1 };
+  });
+}
+
+// O apoio encaixado participa do layout do host: a leitura encolhe e continua visível e
+// rolável até o último trecho, sem controles cobertos. O teclado alterna entre apoio e
+// material. Cobre a prática curta e a explicação longa em telas estreitas, curtas e desktop.
+test("apoio encaixado mantém as opções finais da prática, a resposta, a rolagem e o foco", async ({ page }, testInfo) => {
+  for (const size of dockSizes) {
+    const [width, height, zoom] = size;
+    const label = dockLabel(size);
+    await page.setViewportSize({ width, height });
+    const errors = await mount(page, "?unit=practice&tools=contextual");
+    if (zoom) await page.evaluate(() => { document.documentElement.style.fontSize = "150%"; });
+    const answer = page.locator('[data-action="choice-toggle"][data-choice-option-id="local"]');
+    await answer.click();
+    await page.locator(".card-sheet-content").evaluate(node => { node.scrollTop = 60; });
+    const launcher = page.locator(".study-reader-footer [data-study-tool-id='study-contextual-calculator']");
+    await expect(launcher).toBeVisible();
+    await launcher.click();
+    const panel = page.getByRole("dialog", { name: "Calculadora", exact: true });
+    await expect(panel).toBeVisible();
+    await expect(page.locator(".study-tools-panel")).toHaveCount(1);
+    expect(await panel.getAttribute("aria-modal"), label).toBeNull();
+    // A folha vive no contêiner de leitura e nunca ocupa mais da metade dele.
+    const layout = await page.evaluate(() => {
+      const element = document.querySelector(".study-tools-panel");
+      const scroller = document.querySelector(".card-sheet-content").getBoundingClientRect();
+      const panelRect = element.getBoundingClientRect();
+      return { readingHeight: Math.round(scroller.height), panelHeight: Math.round(panelRect.height),
+        hostHeight: element.parentElement.parentElement.clientHeight, panelTop: Math.round(panelRect.top),
+        scrollerBottom: Math.round(scroller.bottom),
+        parentClass: element.parentElement.className };
+    });
+    expect(layout.parentClass, label).toContain("is-docked");
+    expect(layout.hostHeight, label).toBeGreaterThan(0);
+    expect(layout.panelTop, label).toBeGreaterThanOrEqual(layout.scrollerBottom - 1);
+    expect(layout.panelHeight, label).toBeLessThanOrEqual(Math.round(layout.hostHeight / 2) + 1);
+    // O fim do material continua alcançável na leitura, acima da folha.
+    // A última opção renderizada é `local` (a ordem efetiva é prior, whole, local),
+    // então a identidade é conferida em vez de presumir a posição.
+    const lastOption = page.locator('[data-action="choice-toggle"]').last();
+    await expect(lastOption).toHaveAttribute("data-choice-option-id", "local");
+    await lastOption.evaluate(node => node.scrollIntoView({ block: "end" }));
+    const reached = await lastOption.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const scroller = node.closest(".card-sheet-content").getBoundingClientRect();
+      return { bottom: Math.round(rect.bottom), scrollerTop: Math.round(scroller.top),
+        scrollerBottom: Math.round(scroller.bottom),
+        panelTop: Math.round(document.querySelector(".study-tools-panel").getBoundingClientRect().top) };
+    });
+    expect(reached.bottom, label).toBeLessThanOrEqual(reached.scrollerBottom + 1);
+    expect(reached.bottom, label).toBeGreaterThan(reached.scrollerTop);
+    expect(reached.bottom, label).toBeLessThanOrEqual(reached.panelTop + 1);
+    // O apoio continua operável com a leitura visível.
+    const input = panel.getByRole("textbox", { name: "Expressão", exact: true });
+    await expect(input).toHaveValue("");
+    await input.fill("2 + 3"); await page.keyboard.press("Enter");
+    await expect(panel.locator("[data-calculator-output]")).toHaveText("5");
+    await page.screenshot({ path: testInfo.outputPath("docked-pratica-" + label + ".png") });
+    // Teclado: do apoio volta-se ao material visível, e Tab retorna à folha.
+    await page.locator(".study-tools-panel [data-close-study-tool]").focus();
+    await page.keyboard.press("Shift+Tab");
+    const outside = await focusRelativeToPanel(page);
+    expect(outside.insidePanel, label).toBe(false);
+    expect(outside.visibleArea, label).toBeGreaterThan(0);
+    expect(outside.readingCovered, label).toBe(false);
+    await page.keyboard.press("Tab");
+    expect((await focusRelativeToPanel(page)).insidePanel, label).toBe(true);
+    // Escape fecha, devolve o foco ao acionador e preserva resposta e rolagem.
+    const scrollBefore = await page.locator(".card-sheet-content").evaluate(node => node.scrollTop);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".study-tools-overlay")).toHaveCount(0);
+    await expect(launcher).toBeFocused();
+    await expect(answer).toHaveAttribute("aria-checked", "true");
+    // A leitura volta a ser mais alta ao fechar: a posição é preservada até o novo limite.
+    const after = await page.locator(".card-sheet-content").evaluate(node =>
+      ({ top: node.scrollTop, max: node.scrollHeight - node.clientHeight }));
+    expect(Math.abs(after.top - Math.min(scrollBefore, after.max)), label).toBeLessThanOrEqual(1);
+    expect(errors).toEqual([]);
+  }
+});
+
+test("apoio encaixado mantém o último parágrafo e as fontes da explicação alcançáveis", async ({ page }, testInfo) => {
+  for (const size of dockSizes) {
+    const [width, height, zoom] = size;
+    const label = dockLabel(size);
+    await page.setViewportSize({ width, height });
+    const errors = await mount(page, "?unit=theory&tools=contextual");
+    if (zoom) await page.evaluate(() => { document.documentElement.style.fontSize = "150%"; });
+    await openButton(page).click();
+    const launcher = overlay(page).locator(".study-explanation-tools [data-study-tool-id='study-contextual-calculator']");
+    await expect(launcher).toBeVisible();
+    await launcher.click();
+    const panel = page.getByRole("dialog", { name: "Calculadora", exact: true });
+    await expect(panel).toBeVisible();
+    expect(await panel.getAttribute("aria-modal"), label).toBeNull();
+    const layout = await page.evaluate(() => {
+      const element = document.querySelector(".study-tools-panel");
+      const reading = document.querySelector(".study-explanation-reading").getBoundingClientRect();
+      const panelRect = element.getBoundingClientRect();
+      return { readingHeight: Math.round(reading.height), panelHeight: Math.round(panelRect.height),
+        hostHeight: element.parentElement.parentElement.clientHeight, panelTop: Math.round(panelRect.top),
+        readingBottom: Math.round(reading.bottom),
+        parentClass: element.parentElement.className };
+    });
+    expect(layout.parentClass, label).toContain("is-docked");
+    expect(layout.panelTop, label).toBeGreaterThanOrEqual(layout.readingBottom - 1);
+    expect(layout.panelHeight, label).toBeLessThanOrEqual(Math.round(layout.hostHeight / 2) + 1);
+    // O último parágrafo e as fontes continuam alcançáveis no corpo da explicação.
+    const body = page.locator(".study-explanation-body");
+    const lastParagraph = body.locator('[data-package-instance-id="selective-7"]');
+    await lastParagraph.evaluate(node => node.scrollIntoView({ block: "end" }));
+    const paragraph = await lastParagraph.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const scroller = node.closest(".study-explanation-body").getBoundingClientRect();
+      return { bottom: Math.round(rect.bottom), scrollerTop: Math.round(scroller.top),
+        scrollerBottom: Math.round(scroller.bottom),
+        panelTop: Math.round(document.querySelector(".study-tools-panel").getBoundingClientRect().top) };
+    });
+    expect(paragraph.bottom, label).toBeLessThanOrEqual(paragraph.scrollerBottom + 1);
+    expect(paragraph.bottom, label).toBeGreaterThan(paragraph.scrollerTop);
+    expect(paragraph.bottom, label).toBeLessThanOrEqual(paragraph.panelTop + 1);
+    const bibliography = overlay(page).locator(".study-bibliography").first();
+    await bibliography.evaluate(node => node.scrollIntoView({ block: "end" }));
+    const sources = await bibliography.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const scroller = node.closest(".study-explanation-body").getBoundingClientRect();
+      return { bottom: Math.round(rect.bottom), scrollerTop: Math.round(scroller.top),
+        scrollerBottom: Math.round(scroller.bottom) };
+    });
+    expect(sources.bottom, label).toBeLessThanOrEqual(sources.scrollerBottom + 1);
+    expect(sources.bottom, label).toBeGreaterThan(sources.scrollerTop);
+    await page.screenshot({ path: testInfo.outputPath("docked-explicacao-" + label + ".png") });
+    // Teclado: do apoio volta-se ao material visível, e Tab retorna à folha.
+    await page.locator(".study-tools-panel [data-close-study-tool]").focus();
+    await page.keyboard.press("Shift+Tab");
+    const outside = await focusRelativeToPanel(page);
+    expect(outside.insidePanel, label).toBe(false);
+    expect(outside.visibleArea, label).toBeGreaterThan(0);
+    expect(outside.readingCovered, label).toBe(false);
+    await page.keyboard.press("Tab");
+    expect((await focusRelativeToPanel(page)).insidePanel, label).toBe(true);
+    const scrollBefore = await body.evaluate(node => node.scrollTop);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".study-tools-overlay")).toHaveCount(0);
+    await expect(overlay(page)).toBeVisible();
+    await expect(launcher).toBeFocused();
+    const after = await body.evaluate(node => ({ top: node.scrollTop, max: node.scrollHeight - node.clientHeight }));
+    expect(Math.abs(after.top - Math.min(scrollBefore, after.max)), label).toBeLessThanOrEqual(1);
+    await page.keyboard.press("Escape");
+    await expect(openButton(page)).toBeFocused();
+    expect(errors).toEqual([]);
+  }
+});
 
 
 test("ferramentas condicionais usam o grupo existente e altura reduzida mantém controles acessíveis", async ({ page }, testInfo) => {

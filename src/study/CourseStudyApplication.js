@@ -228,6 +228,13 @@ export function createCourseStudyApplication({
     root,
     getStudyUnit: () => context().studyUnit,
     getContextKey: () => studyUnitPathKey(state.selection),
+    // O apoio contextual (calculadora) permanece acessível durante o Estudo mesmo sem
+    // bloco escolhido na autoria; ele não lê nem resolve o enunciado automaticamente.
+    contextual: true,
+    // Encaixado dentro do card de leitura: divide o espaço com o texto em vez de sobrepô-lo.
+    docked: true,
+    getOverlayHost: () => root.querySelector(".runtime-card-rendered-content") ||
+      root.querySelector(".app-shell"),
     canOpen: () => !destroyed && !state.manualEditing && !state.assistanceSelection &&
       state.view === "microsequence" && state.microsequenceMode === "play",
     onOpen: () => { closeObservationSheet(); },

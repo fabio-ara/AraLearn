@@ -608,6 +608,11 @@ unidade, o foco e a posição ao abrir ou fechar a ferramenta; o pacote controla
 sua interação. Cada canal reconhece as ferramentas pelo catálogo, sem manter
 outra lista fixa de tipos.
 
+Além das instâncias escolhidas na autoria, o Estudo oferece a calculadora como
+apoio contextual quando a unidade não inclui o bloco. Ela calcula o que o
+estudante digita, sem extrair, preencher ou resolver a expressão do enunciado, e
+não preenche nem avalia a resposta.
+
 Os textos instrucionais dessas duas ferramentas seguem os mesmos contratos de
 edição e acessibilidade. Seus controles servem à consulta e à reprodução;
 atividades que recolhem respostas usam os componentes de resposta pertinentes.

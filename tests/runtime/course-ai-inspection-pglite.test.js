@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../../src/domain/courseContentInspection.js";
+import { normalizePedagogicalAudit } from "../../src/domain/coursePedagogicalAudit.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { createContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
@@ -26,6 +27,7 @@ const legacyReport = { summary: "Inspeção do conteúdo e correspondência das 
     dimension, result: "sufficient", reason: "Relação exposta na base.", evidence: ["Base"] })) };
 const report = { ...legacyReport, checks: [...legacyReport.checks, { ...legacyReport.checks[0], dimension: "configuration" }] };
 const CONFIGURATION_MIGRATION = "20260928110000_configuration_realization_inspection.sql";
+const GROUNDED_MIGRATION = "20261013120000_grounded_report_target_material.sql";
 const queryValue = async (db, sql, params = []) => (await db.query(sql, params)).rows[0].value;
 const read = (db, id = "u1", actor = OWNER, kind = "study_unit") => queryValue(db,
   "select public.get_course_ai_inspection_for_actor_v1($1,$2,$3,$4) value", [actor, COURSE, kind, id]);
@@ -83,8 +85,8 @@ async function fixture({ receiptFix = true, configuration = receiptFix } = {}) {
     insert into public.courses(id,owner_id) values('${COURSE}','${OWNER}');
     insert into private.course_entities(course_id,entity_type,entity_id,parent_id,content) values
       ('${COURSE}','microsequence','ms','lesson','{"title":"Base","dependsOn":[],"explanation":{"title":"Base","content":[]}}'),
-      ('${COURSE}','study_unit','u1','ms','{"title":"Primeira","content":[]}'),
-      ('${COURSE}','study_unit','u2','ms','{"title":"Segunda","content":[]}');
+      ('${COURSE}','study_unit','u1','ms','{"title":"Primeira","role":"theory","topics":[],"content":[{"id":"p-u1","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Base da unidade Primeira."}}],"response":null,"feedback":[]}'),
+      ('${COURSE}','study_unit','u2','ms','{"title":"Segunda","role":"theory","topics":[],"content":[{"id":"p-u2","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Base da unidade Segunda."}}],"response":null,"feedback":[]}');
     insert into private.course_source_attributions values('${COURSE}','${ATTRIBUTION}','study_unit','u1');
     insert into private.course_source_attribution_sources(course_id,attribution_id,source_id,relation)
       values('${COURSE}','${ATTRIBUTION}','source-a','supported_by');
@@ -111,6 +113,7 @@ async function fixture({ receiptFix = true, configuration = receiptFix } = {}) {
   await db.exec(await migration("20260930010000_pedagogical_basis_study_order.sql"));
   if (receiptFix) await db.exec(await migration(RECEIPT_MIGRATION));
   if (configuration) await db.exec(await migration(CONFIGURATION_MIGRATION));
+  await db.exec(await migration(GROUNDED_MIGRATION));
   return db;
 }
 
@@ -359,7 +362,11 @@ test("parecer acompanha objetivo, requisito, Explicação e prática focal; trec
     await db.query("insert into private.course_design_target_plan_items values($1,'ms',$2)", [COURSE, requirementId]);
     const focused = await read(db);
     assert.equal(focused.pedagogicalBasis.planItems[0].statement, "Relacionar perda e recuperação");
-    const grounded = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Justificar o mecanismo"] })) };
+    // Paridade com o domínio: citação do plano (descrição do requisito) existe na
+    // base, mas não é texto apresentado; o material do próprio alvo é aceito.
+    const planOnly = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Justificar o mecanismo"] })) };
+    await assert.rejects(record(db, "focal-plan-only-01", { value: planOnly }), { code: "22023" });
+    const grounded = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Base da unidade Primeira."] })) };
     await record(db, "focal-basis-01", { value: grounded });
     const invented = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Trecho inventado"] })) };
     await assert.rejects(record(db, "focal-invented-01", { value: invented }), { code: "22023" });
@@ -374,7 +381,7 @@ test("parecer acompanha objetivo, requisito, Explicação e prática focal; trec
       assert.notEqual((await read(db)).basisHash, before.basisHash);
       assert.equal((await read(db)).inspection.state, "pending");
       await assert.rejects(record(db, `focal-stale-${index}`, { hash: before.basisHash }), { code: "PT409" });
-      const current = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Relacionar perda e recuperação"] })) };
+      const current = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Base da unidade Primeira."] })) };
       await record(db, `focal-refresh-${index}`, { value: current });
     }
   } finally { await db.close(); }
@@ -407,7 +414,8 @@ test("auditoria reúne ocorrência e âncora selecionada; divergência semântic
     assert.equal(explanationBefore.pedagogicalBasis.citations[0].links[0].anchors[0].verificationExcerpt, wrong);
     const critique = { ...report, outcome: "needs_attention", findings: ["A âncora descreve valorações, sem sustentar a afirmação de pertença simultânea."],
       checks: report.checks.map(check => check.dimension === "representation"
-        ? { ...check, result: "insufficient", reason: "A obra existe, mas a passagem selecionada trata de outro conceito.", evidence: [claim, wrong] } : check) };
+        ? { ...check, result: "insufficient", reason: "A obra existe, mas a passagem selecionada trata de outro conceito.", evidence: [claim, wrong] }
+        : { ...check, evidence: [claim] }) };
     await record(db, "source-semantic-01", { value: critique });
     assert.equal(await queryValue(db, "select private.course_ai_inspection_pending_v1($1,'study_unit','u1') value", [COURSE]), true);
     const wrongSelectedEvidence = { ...critique, checks: critique.checks.map(check => ({ ...check, evidence: [supported] })) };
@@ -460,9 +468,9 @@ test("position das Unidades entra na base/hash de inspeção", async () => {
     const orderOf = basis => basis.studyUnits.map(unit => [unit.id, unit.position]);
     const reviewState = () => queryValue(db,
       "select private.course_content_review_v1($1,'microsequence_explanation','ms')->>'state' value", [COURSE]);
-    const recordExplanation = (hash, request) => queryValue(db,
+    const recordExplanation = (hash, request, value = report) => queryValue(db,
       "select public.record_course_ai_inspection_for_actor_v1($1,$2,'microsequence_explanation','ms',$3,$4,$5) value",
-      [OWNER, COURSE, hash, report, request]);
+      [OWNER, COURSE, hash, value, request]);
 
     // Controle de regressão: com o corpo anterior, trocar posições não mudava o hash.
     const legacyFunction = functionSql(await migration("20260924175938_revisao_v7_focal_audit_basis.sql"),
@@ -499,8 +507,9 @@ test("position das Unidades entra na base/hash de inspeção", async () => {
         "select private.course_content_basis_hash_v1($1,'microsequence_explanation','ms') value", [COURSE]),
         reviewedAt: "2026-09-30T00:00:00Z", reviewedBy: OWNER }]);
     assert.equal(await reviewState(), "current");
-    await record(db, "order-unit-01");
-    await recordExplanation(beforeExplanationHash, "order-explanation-01");
+    const synthetic = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Corpo sintético de u1."] })) };
+    await record(db, "order-unit-01", { value: synthetic });
+    await recordExplanation(beforeExplanationHash, "order-explanation-01", synthetic);
 
     await swapPositions(db, "u1", "ac");
     const after = await read(db, "u1");
@@ -522,7 +531,96 @@ test("position das Unidades entra na base/hash de inspeção", async () => {
       "conteúdo, aplicação e design não mudam ao trocar a ordem");
     assert.equal(JSON.stringify(after.pedagogicalBasis.citations), beforeCitations);
     assert.equal(await reviewState(), "current", "a revisão humana do conteúdo não depende da ordem das Unidades");
-    await record(db, "order-unit-02", { hash: await hashOf("study_unit", "u1") });
+    await record(db, "order-unit-02", { hash: await hashOf("study_unit", "u1"), value: synthetic });
     assert.equal((await read(db, "u1")).inspection.state, "current");
+  } finally { await db.close(); }
+});
+
+test("paridade domínio/SQL: suficiente cita o texto apresentado; título, envelope, plano e Explicação não demonstram", async () => {
+  const db = await fixture();
+  try {
+    const requirementId = "40000000-0000-4000-8000-000000000009";
+    await db.query("insert into private.course_instructional_plan_items values($1,$2,'evidence_requirement','Relacionar perda e recuperação','Justificar o mecanismo')", [COURSE, requirementId]);
+    await db.query("insert into private.course_design_target_plan_items values($1,'ms',$2)", [COURSE, requirementId]);
+    await db.exec("update private.course_entities set content=jsonb_set(content,'{explanation,title}','\"Explicação compartilhada\"') where entity_id='ms'");
+    await db.query("update private.course_entities set content=$1::jsonb where course_id=$2 and entity_id='u1'",
+      [JSON.stringify({ title: "Título que a prosa não repete", role: "theory", topics: [],
+        content: [{ id: "p-u1", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "Base apresentada da unidade." } }],
+        response: null, feedback: [] }), COURSE]);
+    const reportWith = quote => ({ ...report, checks: report.checks.map(check => ({ ...check, evidence: [quote] })) });
+    // A mesma base alimenta a barreira do banco e o domínio: os veredictos precisam
+    // coincidir, e o domínio continua sendo a regra de referência.
+    const agreed = async quote => {
+      const basis = (await read(db)).pedagogicalBasis;
+      const sqlGrounded = (await db.query("select private.course_pedagogical_report_grounded_v1($1::jsonb,$2::jsonb) v",
+        [JSON.stringify(reportWith(quote)), JSON.stringify(basis)])).rows[0].v;
+      const domainGrounded = (() => {
+        try { normalizePedagogicalAudit(reportWith(quote).checks, basis); return true; }
+        catch { return false; }
+      })();
+      return { sqlGrounded, domainGrounded };
+    };
+    for (const [index, quote] of ["Título que a prosa não repete", "aralearn.resource.paragraph",
+      "Justificar o mecanismo", "Explicação compartilhada"].entries()) {
+      assert.deepEqual(await agreed(quote), { sqlGrounded: false, domainGrounded: false }, quote);
+      await assert.rejects(record(db, `parity-reject-0${index}`, { value: reportWith(quote) }), { code: "22023" });
+    }
+    assert.deepEqual(await agreed("Base apresentada da unidade."), { sqlGrounded: true, domainGrounded: true });
+    await record(db, "parity-accept-01", { value: reportWith("Base apresentada da unidade.") });
+    // Base sem material no alvo: domínio e SQL caem no escopo de identidade e
+    // citações, preservando a leitura anterior sem afirmar suficiência indevida.
+    await db.query("update private.course_entities set content='{}'::jsonb where course_id=$1 and entity_id='u1'", [COURSE]);
+    assert.deepEqual(await agreed("Base"), { sqlGrounded: true, domainGrounded: true });
+    await record(db, "parity-empty-01", { value: reportWith("Base") });
+  } finally { await db.close(); }
+});
+
+test("paridade domínio/SQL: folhas de avaliação não fundamentam suficiência e o retorno por alternativa permanece", async () => {
+  const db = await fixture();
+  try {
+    const reportWith = quote => ({ ...report, checks: report.checks.map(check => ({ ...check, evidence: [quote] })) });
+    const agreed = async (basis, quote) => {
+      const sqlGrounded = (await db.query("select private.course_pedagogical_report_grounded_v1($1::jsonb,$2::jsonb) v",
+        [JSON.stringify(reportWith(quote)), JSON.stringify(basis)])).rows[0].v;
+      const domainGrounded = (() => {
+        try { normalizePedagogicalAudit(reportWith(quote).checks, basis); return true; }
+        catch { return false; }
+      })();
+      return { sqlGrounded, domainGrounded };
+    };
+    const basisFor = response => ({ targetKind: "study_unit", targetId: "u1", audience: null,
+      microsequence: { id: "ms", title: "Transporte", goal: "Recuperar perdas", explanation: { title: "Transporte", content: [] } },
+      planItems: [], dependencies: [], citations: [],
+      studyUnits: [{ id: "u1", position: 1, application: { mode: "practice", practiceApplications: [] },
+        content: { title: "Título fora da prosa", role: "practice", topics: [],
+          content: [{ id: "p-u1", package: "aralearn.resource.paragraph", version: "1.0.0",
+            data: { text: "Os protocolos diferem na recuperação de perdas." } }],
+          response, feedback: [] } }] });
+    const optionFeedback = "O TCP confirma o recebimento e retransmite o segmento perdido.";
+    const choice = basisFor({ id: "r", package: "aralearn.response.choice", version: "1.0.0", data: {
+      question: "Qual protocolo recupera as perdas?", selectionMode: "single", selectionCriterion: "correct",
+      options: [{ id: "alt-tcp", kind: "text", text: "TCP", feedback: optionFeedback },
+        { id: "alt-udp", kind: "text", text: "UDP", feedback: "O UDP não recupera as perdas." }], answerIds: ["alt-tcp"] } });
+    assert.deepEqual(await agreed(choice, optionFeedback), { sqlGrounded: true, domainGrounded: true },
+      "o retorno por alternativa é apresentado nos dois lados");
+    for (const hidden of ["alt-tcp", "alt-udp", "single", "correct", "text", "selectionMode", "selectionCriterion"]) {
+      assert.deepEqual(await agreed(choice, hidden), { sqlGrounded: false, domainGrounded: false }, hidden);
+    }
+    const gap = basisFor({ id: "r", package: "aralearn.response.gap", version: "1.0.0", data: { prompt: "Complete o protocolo.",
+      blanks: [{ id: "blank-interno", label: "protocolo", targetInstanceId: "p-u1", targetPath: "text:recuperação", responseMode: "text",
+        answer: "Fast Retransmit", acceptedAnswers: ["Retransmissão rápida"], distractors: ["Token Ring"] }] } });
+    for (const hidden of ["Fast Retransmit", "Retransmissão rápida", "Token Ring", "blank-interno", "text", "responseMode"]) {
+      assert.deepEqual(await agreed(gap, hidden), { sqlGrounded: false, domainGrounded: false }, hidden);
+    }
+    assert.deepEqual(await agreed(gap, "Complete o protocolo."), { sqlGrounded: true, domainGrounded: true });
+    assert.deepEqual(await agreed(gap, "protocolo"), { sqlGrounded: true, domainGrounded: true });
+    assert.deepEqual(await agreed(gap, "Os protocolos diferem na recuperação de perdas."),
+      { sqlGrounded: true, domainGrounded: true });
+    const ordering = basisFor({ id: "r", package: "aralearn.response.ordering", version: "3.0.0", data: { targets: [
+      { id: "t1", targetInstanceId: "p-u1", targetPath: "text:primeiro" },
+      { id: "t2", targetInstanceId: "p-u1", targetPath: "text:segundo" }] } });
+    for (const hidden of ["t1", "t2", "text:"]) {
+      assert.deepEqual(await agreed(ordering, hidden), { sqlGrounded: false, domainGrounded: false }, hidden);
+    }
   } finally { await db.close(); }
 });

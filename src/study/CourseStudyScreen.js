@@ -694,11 +694,12 @@ function renderStudyUnit({
     assistanceSelection ? renderAssistanceSelectionDock(manualEditor.assistance, "study_unit") :
     '<section class="study-reader-footer"><div class="study-action-dock"><div class="study-action-stack">' +
     '<div class="study-next-wrap runtime-card-external-dock">' +
-    renderStudyToolActions(studyUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true }) +
+    renderStudyToolActions(studyUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true, contextual: true }) +
     '<div class="study-usual-actions">' +
     '<button class="icon-ghost study-explanation-btn" type="button" data-action="open-explanation"' +
-    ' aria-haspopup="dialog" aria-expanded="false" title="Explicação" aria-label="Explicação">' +
-    renderUiIcon("book-open", "home-tab-icon") + "</button>" +
+    ' aria-haspopup="dialog" aria-expanded="false" aria-label="Explicação">' +
+    renderUiIcon("book-open", "home-tab-icon") +
+    '<span class="study-explanation-btn-label">Explicação</span></button>' +
     '<button class="icon-ghost study-observation-btn' +
     (observationCount > 0 ? " has-observations" : "") +
     '" type="button" data-action="open-observation" title="' + (visitor ? "Entre para enviar observações" : "Observações") + '" aria-label="' + (visitor ? "Entre para enviar observações" : "Observações") +

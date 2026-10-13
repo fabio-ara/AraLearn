@@ -7,6 +7,24 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.105] - 2026-10-13
+
+### Adicionado
+
+- No Estudo, a calculadora fica disponível como apoio contextual mesmo quando a autoria não incluiu o bloco na unidade; ela calcula o que o estudante digita, mas não extrai nem resolve a expressão do enunciado, não preenche a resposta e não avalia o que o estudante fez.
+- A inspeção passa a distinguir os apoios declarados na autoria dos oferecidos pelo Estudo, a expor o percurso real do foco e o início efetivo de cada unidade, e a sinalizar quando a operação exige cálculo.
+- A descoberta de componentes identifica, entre os candidatos, os que declaram uma ferramenta (`manifest.tool`).
+
+### Corrigido
+
+- A inspeção positiva passa a exigir evidência do material apresentado no próprio alvo: título, envelope do componente, plano e Explicação compartilhada identificam, mas não demonstram a apresentação.
+- Uma quebra de parágrafo passa a se distinguir de uma quebra de linha: recursos de prosa vizinhos usam o degrau de seção, como ocorre entre dois parágrafos de um recurso.
+- O controle da Explicação passa a exibir o rótulo visível "Explicação", preservando o alvo de toque.
+
+### Documentação
+
+- Componentes didáticos, autoria por MCP e ferramentas de cálculo acompanham o comportamento corrente, incluindo o apoio contextual do Estudo e o critério de evidência da inspeção.
+
 ## [0.0.104] - 2026-10-08
 
 ### Corrigido
