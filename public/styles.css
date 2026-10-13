@@ -6495,7 +6495,7 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .package-audio-tool [hidden] { display: none !important; }
 .study-usual-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-inline-start: auto; }
 /* A Base Explicativa é compartilhada por toda a microssequência: o controle recebe
-   rótulo visível para ser encontrável, sem reduzir a área de toque (issue #445). */
+   rótulo visível para ser encontrável, sem reduzir a área de toque (issue 445). */
 .study-usual-actions .study-explanation-btn {
   width: auto;
   min-width: var(--tap);
