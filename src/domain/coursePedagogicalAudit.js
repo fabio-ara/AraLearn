@@ -106,7 +106,7 @@ function presentedResponse(response) {
 // resposta e retornos.
 function presentedStudyUnit(content) {
   if (!plain(content)) return [];
-  let visible = content;
+  let visible;
   try { visible = RESOURCE_PACKAGE_REGISTRY.prepareStudyUnitForSemantics(content); }
   catch { visible = content; }
   return [
