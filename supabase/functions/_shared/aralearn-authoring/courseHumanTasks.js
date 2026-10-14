@@ -47,7 +47,7 @@ import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeC
   "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
   resolveHumanSourceOccurrences, preflightHumanCourseMaterialization, listExistingPartStudyUnits,
-  humanMaterializationRecovery } from "./courseHumanMaterialization.js";
+  humanMaterializationRecovery, resumeHumanCoursePartMaterialization } from "./courseHumanMaterialization.js";
 import { completeFocalMaterialization } from "./courseFocalMaterialization.js";
 import { applyHumanCourseCorrections, resumeHumanCourseObservationCorrection } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
@@ -510,6 +510,25 @@ const EXPLANATION_MATERIALIZATION_BRANCHES = Object.freeze([
   })
 ]);
 
+// Recuperação somente-leitura da materialização: consome a referência integral
+// devolvida por course_write_uncertain sem payload, sem preparo e sem reaplicar.
+// O modo é fechado e exclusivo com os argumentos de produção.
+const MATERIALIZATION_PRODUCTION_FIELDS = Object.freeze([
+  "curso", "microssequencia", "explicacoes", "concluir", "processo", "autonomo", "unidades"
+]);
+const MATERIALIZATION_RECOVERY_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["courseId", "requestId", "operation"]),
+  description: "Objeto recovery devolvido por course_write_uncertain. Consulte a mesma tentativa; não reenvie o payload original.",
+  properties: Object.freeze({
+    courseId: Object.freeze({ type: "string", format: "uuid" }),
+    requestId: Object.freeze({ type: "string", minLength: 8, maxLength: 128,
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }),
+    operation: Object.freeze({ type: "string", const: "course_write" })
+  })
+});
+
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -948,8 +967,8 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Produzir uma microssequência",
-    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. Explicação consultável; ensino e prática conforme a condição. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Inspecione a qualidade.",
-    inputSchema({
+    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. Explicação consultável; ensino e prática conforme a condição. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Com recuperacao, só consulta o recibo da tentativa. Inspecione a qualidade.",
+    { ...inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
       explicacoes: EXPLANATIONS_SCHEMA,
@@ -959,8 +978,13 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       unidades: Object.freeze({
         type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
         description: "Unidades da mesma microssequência, em ordem pedagógica. Preserve a cobertura necessária."
-      })
-    }, ["curso", "unidades"]),
+      }),
+      recuperacao: MATERIALIZATION_RECOVERY_SCHEMA
+    }), allOf: Object.freeze([
+      ifThen({ required: ["recuperacao"] }, { allOf: Object.freeze(MATERIALIZATION_PRODUCTION_FIELDS.map(field =>
+        Object.freeze({ not: Object.freeze({ required: Object.freeze([field]) }) }))) }),
+      ifThen({ not: { required: ["recuperacao"] } }, { required: ["curso", "unidades"] })
+    ]) },
     { readOnly: false }
   ),
   task(
@@ -1214,9 +1238,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.1";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.2";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:7981071e1594876e80009827639f7365b7b93b56bb96422d6a7c4ca20d66ed46";
+  "sha256:1ce40bf177b0761bc8feafcb14dbfaf5fe72adf9ca97be462c8bd67e0ca10add";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3781,6 +3805,16 @@ HUMAN_TASK_HANDLERS.salvar_parte = async ({ adapter, principal, args, deadlineAt
 HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
 }) => {
+  if (args.recuperacao !== undefined) {
+    // Modo somente-leitura: a referência devolvida pelo erro é fechada e
+    // exclusiva; nenhum argumento de produção a acompanha.
+    exactFields(args, new Set(["recuperacao"]));
+    return resumeHumanCoursePartMaterialization({ adapter, principal,
+      recuperacao: args.recuperacao, deadlineAt });
+  }
+  for (const field of ["curso", "unidades"]) {
+    if (!Object.hasOwn(args, field)) fail("missing_human_task_argument", `Informe ${field}.`, { field });
+  }
   const autonomous = humanAutonomyArgument(args);
   const course = humanCourseTitle(args);
   let resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });

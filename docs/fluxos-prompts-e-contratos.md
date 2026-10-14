@@ -189,7 +189,7 @@ com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
 preparo deve corresponder à base, configuração e intenção correntes.
 
-O contrato de autoria corrente é o catálogo **11.1.1**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.1.2**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,
@@ -445,6 +445,13 @@ Para correções, `retomar_correcao` recebe o objeto `recovery` integral no camp
 `recuperacao`, quando disponível, ou o curso e a tentativa original. Essa
 operação confere conteúdo e fila sem reescrever a correção apenas para retirar
 observações. Renomear o curso não muda o alvo da tentativa.
+
+`materializar_parte` também recebe `recuperacao`, o objeto devolvido por
+`course_write_uncertain`. A consulta não reenvia o payload, não repete o preparo
+e não reaplica a escrita: distingue o recibo confirmado da tentativa, a escrita
+ainda em andamento, a ausência de recibo e o recibo vencido. Ausência ou
+expiração não provam que a gravação foi revertida; reconcilie o conteúdo focal e
+suas pendências antes de qualquer nova alteração.
 
 Conflito de versão exige examinar o estado atualizado e a pertinência da
 alteração. Indisponibilidade temporária pode adiar a operação e seus dependentes;

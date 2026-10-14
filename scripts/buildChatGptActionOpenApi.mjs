@@ -88,16 +88,22 @@ const errorSchema = {
   }
 };
 // Local artifact budgets for the complete contextual catalog (#357), measured
-// after shared-schema projection. They are not OpenAPI import limits: the
-// documented 100,000-character limit concerns each Actions call's payload.
-// Catalog 5.0.0 added aggregate preflight, exact-basis inspection and multialvo
-// decisions and paged comparison. The candidate unit contract is now shared by
-// preparar_materializacao and materializar_parte; with catalog 11.1.0 the
-// measured baseline is 97.510 minified / 198.682 pretty-printed characters. The
-// per-call 100k guard is unchanged.
-// Acceptance in the actual editor remains a separate hosted release gate.
+// after shared-schema projection. No external ceiling for the whole artifact is
+// established: the published 100,000-character limitation applies to each
+// Actions request/response payload, and the OpenAPI specification only limits
+// description lengths (300/700). So these two constants are this repository's
+// own regression ceilings for the transported file, while the per-call body
+// keeps its own guard (ACTION_PAYLOAD_MAX_CHARACTERS). Catalog 5.0.0 added
+// aggregate preflight, exact-basis inspection and multialvo decisions and paged
+// comparison. The candidate unit contract is now shared by
+// preparar_materializacao and materializar_parte. Catalog 11.1.2 adds the
+// read-only recovery object of materializar_parte together with its exclusive
+// union against the production arguments; the measured baseline becomes 100814
+// minified / 209871 pretty-printed characters. Acceptance in the actual editor
+// remains a separate gate with the real client; it is not implied by these
+// counters.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
-const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 100_000;
+const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 102_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!outputSchema || actionTools.some(({ outputSchema: candidate }) => (

@@ -424,7 +424,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.1");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.2");
   // Orçamento local de regressão; o servidor aceita 2 MiB por resposta MCP e o
   // payload de chamada mantém o gate próprio. Baseline medida com o contrato de
   // saída só de sucesso: 144.996 B. A união tipada (sucesso + erro) exigida pelo
@@ -1204,7 +1204,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
           /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
             .test(path);
         if (localComponentIdentity) continue;
-        if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
+        if (["retomar_correcao", "materializar_parte"].includes(task.name) && path === "$.properties.recuperacao" &&
             ["courseId", "requestId"].includes(name)) continue;
         if (task.name === "decidir_observacao" && name === "id" &&
             path === "$.properties.referencia.properties.targets.items") continue;

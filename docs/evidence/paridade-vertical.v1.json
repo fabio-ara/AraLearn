@@ -175,6 +175,7 @@
           "course-instructional-plan-v3",
           "course-authoring-part-save-v1",
           "course-authoring-part-materialization-atomic-v2",
+          "course-authoring-part-materialization-receipt-v1",
           "course-study-unit-inspection-v2",
           "course-authoring-configuration-v3",
           "authoring-preference-profiles-v1",
@@ -198,7 +199,7 @@
           "^function:private\\.(?:course_microsequence_review_v1|mark_course_content_review_v1|save_course_part_explanations_v1|valid_course_explanation_plan_v1|valid_course_explanation_v1)\\(.*\\)$",
           "^table:private\\.authoring_process_preferences$",
           "^function:private\\.(?:capture_course_applied_explanation_basis_v1|copy_course_applied_explanation_basis_v1|course_content_basis_hash_v1|course_content_complete_v1|course_content_review_payload_v1|course_content_review_v1|default_authoring_process_preferences_v1|guard_applied_explanation_basis_v1|normalize_authoring_process_preferences_v1|set_course_content_review_policy_v1|set_course_content_review_v1|valid_applied_explanation_basis_v1|valid_course_content_review_v2)\\(.*\\)$",
-          "^function:public\\.(?:approve_course_curricular_map_for_actor_v1|get_authoring_process_preferences_for_actor_v1|get_course_change_receipt_for_actor_v1|get_course_content_review_for_actor_v1|get_course_content_review_v1|get_owned_course_curricular_map_for_actor_v1|get_owned_course_instructional_plan_for_actor_v4|save_authoring_process_preferences_for_actor_v1|set_course_content_review_for_actor_v1|set_course_content_review_policy_for_actor_v1|set_course_content_review_policy_v1|set_course_content_review_v1)\\(.*\\)$",
+          "^function:public\\.(?:approve_course_curricular_map_for_actor_v1|get_authoring_process_preferences_for_actor_v1|get_course_change_receipt_for_actor_v1|get_course_part_materialization_receipt_for_actor_v1|get_course_content_review_for_actor_v1|get_course_content_review_v1|get_owned_course_curricular_map_for_actor_v1|get_owned_course_instructional_plan_for_actor_v4|save_authoring_process_preferences_for_actor_v1|set_course_content_review_for_actor_v1|set_course_content_review_policy_for_actor_v1|set_course_content_review_policy_v1|set_course_content_review_v1)\\(.*\\)$",
           "^function:private\\.require_course_review_session_v1\\(.*\\)$",
           "^function:private\\.(?:apply_course_design_settings_core_v3|course_structure_dependency_issues_v1|remap_course_structure_content_v1)\\(.*\\)$",
           "^function:private\\.assert_course_application_pedagogy_v1\\(p_course_id uuid, p_units jsonb, p_require_complete_practice boolean\\)$",
@@ -368,6 +369,10 @@
         {
           "path": "supabase/migrations/20260916031133_incremental_materialization.sql",
           "token": "prepare_incremental_course_part_v1"
+        },
+        {
+          "path": "supabase/migrations/20261014143125_materialization_receipt_recovery.sql",
+          "token": "get_course_part_materialization_receipt_for_actor_v1"
         }
       ],
       "routes": [
@@ -459,6 +464,8 @@
         "tests/runtime/course-practice-authoring-pglite.test.js",
         "tests/runtime/course-practice-authoring.test.js",
         "tests/runtime/incremental-materialization-pglite.test.js",
+        "tests/runtime/course-materialization-recovery.test.js",
+        "tests/runtime/course-materialization-receipt-pglite.test.js",
         "tests/runtime/course-human-navigation.test.js",
         "tests/runtime/course-authoring-route.test.js"
       ],

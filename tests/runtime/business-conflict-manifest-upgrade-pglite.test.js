@@ -141,15 +141,19 @@ test("gates exigem a capacidade PT409 corrente e preservam o recorte da migraç�
 
 // O bloco $manifest$ da migração do pacote de Fonte ordena as capacidades como
 // o padrão canônico: lista existente || nova, agregada com order by value collate
-// "C". O fixture parte da revisão 20260930010000 (55 capacidades).
+// "C". O fixture parte da revisão 20260930010000; capacidades declaradas depois
+// dela não pertencem a esse recorte histórico.
 const atomicMigrationName = "20261005120000_atomic_course_source_bundle.sql";
 const atomicFeature = "course-source-atomic-bundle-v1";
+const featuresDeclaredAfterAtomicBundle = ["course-authoring-part-materialization-receipt-v1"];
 const atomicMigration = await fs.readFile(new URL(`../../supabase/migrations/${atomicMigrationName}`, import.meta.url), "utf8");
 const atomicManifestBlock = atomicMigration.slice(
   atomicMigration.indexOf("do $manifest$"),
   atomicMigration.indexOf("end $manifest$;") + "end $manifest$;".length
 );
-const atomicPreviousFeatures = expected.requiredFeatures.filter((item) => item !== atomicFeature);
+const atomicPreviousFeatures = expected.requiredFeatures
+  .filter((item) => ![atomicFeature, ...featuresDeclaredAfterAtomicBundle].includes(item));
+const atomicExpectedFeatures = [...atomicPreviousFeatures, atomicFeature].slice().sort();
 
 async function atomicFixture() {
   const database = new PGlite();
@@ -177,9 +181,12 @@ test("manifesto do pacote de Fonte ordena a capacidade canonicamente e preserva 
     const after = await snapshot(database);
     assert.equal(after.manifest.schemaRevision, "20261005120000");
     assert.equal(after.manifest.contractVersion, 1);
-    assert.equal(after.manifest.features.length, 56);
-    assert.deepEqual(after.manifest.features, expected.requiredFeatures.slice().sort());
-    assert.deepEqual(after.manifest.features, [...atomicPreviousFeatures, atomicFeature].slice().sort());
+    assert.equal(after.manifest.features.length, atomicExpectedFeatures.length);
+    assert.deepEqual(after.manifest.features, atomicExpectedFeatures);
+    for (const later of featuresDeclaredAfterAtomicBundle) {
+      assert.equal(after.manifest.features.includes(later), false,
+        "capacidade declarada depois do pacote de Fonte não pertence ao recorte histórico");
+    }
     assert.deepEqual(after.metadata, before.metadata);
     assert.equal(after.comment, before.comment);
     assert.deepEqual(after.data, before.data);

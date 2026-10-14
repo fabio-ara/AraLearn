@@ -201,7 +201,7 @@ aos ambientes e às operações efetivamente exercitados.
 O [procedimento de verificação dos canais de autoria](prova-local-canais-autoria.md)
 permite reproduzir chamadas de MCP e OpenAPI e conferir seus efeitos no banco.
 O [catálogo conversacional](autoria-mcp.md#tarefas-disponíveis), na versão
-11.1.1, reúne 56 tarefas. Os testes locais do protocolo verificam a comunicação
+11.1.2, reúne 56 tarefas. Os testes locais do protocolo verificam a comunicação
 com o AraLearn; o funcionamento numa aplicação externa depende também da
 conexão, da autorização e das capacidades dessa aplicação. As verificações dos
 serviços de IA possuem igualmente o alcance registrado na
