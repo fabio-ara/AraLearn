@@ -697,9 +697,9 @@ function renderStudyUnit({
     renderStudyToolActions(studyUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true, contextual: true }) +
     '<div class="study-usual-actions">' +
     '<button class="icon-ghost study-explanation-btn" type="button" data-action="open-explanation"' +
-    ' aria-haspopup="dialog" aria-expanded="false" aria-label="Explicação">' +
+    ' aria-haspopup="dialog" aria-expanded="false" title="Explicação" aria-label="Explicação">' +
     renderUiIcon("book-open", "home-tab-icon") +
-    '<span class="study-explanation-btn-label">Explicação</span></button>' +
+    "</button>" +
     '<button class="icon-ghost study-observation-btn' +
     (observationCount > 0 ? " has-observations" : "") +
     '" type="button" data-action="open-observation" title="' + (visitor ? "Entre para enviar observações" : "Observações") + '" aria-label="' + (visitor ? "Entre para enviar observações" : "Observações") +
