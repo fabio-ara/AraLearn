@@ -1363,3 +1363,113 @@ test("runner limita lock, instrução e processo sem confirmar escrita parcial",
     await result(psql(`drop table if exists ${probe};`));
   }
 });
+
+test("recibo de materialização confirma só depois do commit e reconfere a autorização corrente", {
+  skip: postgresGate
+}, async () => {
+  const owner = "30700000-0000-4000-8000-000000003001";
+  const other = "30700000-0000-4000-8000-000000003002";
+  const course = "30700000-0000-4000-8000-000000003003";
+  const request = "materializacao-recuperacao-307";
+  const abortedRequest = "materializacao-nao-confirmada-307";
+  const expiredRequest = "materializacao-expirada-307";
+  const foreignRequest = "materializacao-outra-operacao-307";
+  const holderMarker = "materialization-receipt-307-held";
+  const abortMarker = "materialization-abort-307-held";
+  const service = "select set_config('request.jwt.claim.role','service_role',true);";
+  const receipt = { contract: "aralearn.course-part-materialization.v1", courseId: course, courseRevision: 1,
+    authoringPartId: "30700000-0000-4000-8000-000000003004", changed: true, studyUnitCount: 2, idempotent: false };
+  const read = (attempt) => psql(`begin; ${service}
+    select public.get_course_part_materialization_receipt_for_actor_v1('${owner}','${course}','${attempt}'); commit;`);
+  // A sessão também imprime o retorno de set_config; o recibo é a linha JSON.
+  const parseRow = (text) => JSON.parse(text.split(/\r?\n/u).map((line) => line.trim())
+    .filter((line) => line.startsWith("{"))
+    .at(-1));
+  const statusOf = async (attempt) => parseRow(await result(read(attempt))).status;
+  const readAsOther = () => psql(`begin; ${service}
+    select public.get_course_part_materialization_receipt_for_actor_v1('${other}','${course}','${request}'); commit;`);
+  const insertReceipt = (attempt, operation, created, expires) => psql(`begin; ${service}
+    insert into private.course_change_receipts(actor_id,request_id,operation,course_id,request_hash,result,created_at,expires_at)
+      values('${owner}','${attempt}','${operation}','${course}','${"a".repeat(64)}','${JSON.stringify(receipt)}'::jsonb,${created},${expires});
+    commit;`);
+  await createUser(owner, "materialization-receipt-owner-307@example.test");
+  await createUser(other, "materialization-receipt-other-307@example.test");
+  try {
+    await result(psql(`begin; ${service}
+      update public.person_profiles set handle='receipt-owner-307' where user_id='${owner}';
+      update public.person_profiles set handle='receipt-other-307' where user_id='${other}';
+      insert into public.courses(id,owner_id,title,goal)
+        values('${course}','${owner}','Recibo de materialização','Provar recuperação focal.');
+      insert into private.course_instructional_plans(course_id) values('${course}'); commit;`));
+    // A chave do lock tomada pela sessão concorrente é a que o materializador
+    // real usa, conferida na definição instalada e não no texto do checkout.
+    const writer = await result(psql(`select p.prosrc from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public' and p.proname='materialize_course_authoring_part_for_actor_v2';`));
+    assert.match(writer, /course-change-request:'\|\|p_actor_id::text\|\|':'/u);
+    // Sem o helper de serviço, o próprio banco recusa a leitura.
+    await assert.rejects(result(psql(`begin;
+      select public.get_course_part_materialization_receipt_for_actor_v1('${owner}','${course}','${request}');
+      commit;`)), /service|permissão|42501/iu);
+    assert.equal(await statusOf(request), "not_recorded");
+    // Sessão A segura o lock da tentativa e grava o recibo sem confirmar.
+    const holder = psql([`begin; ${service}
+      select pg_advisory_xact_lock(hashtextextended('course-change-request:'||'${owner}'||':'||'${request}',0));
+      insert into private.course_change_receipts(actor_id,request_id,operation,course_id,request_hash,result)
+        values('${owner}','${request}','materialize_course_authoring_part_v2','${course}','${"a".repeat(64)}','${JSON.stringify(receipt)}'::jsonb);`,
+      `select '${holderMarker}';`], { keepOpen: true });
+    const holderResult = result(holder);
+    await marker(holder, holderMarker);
+    // A tentativa em curso não vira ausência nem produz resultado antes do commit.
+    assert.equal(await statusOf(request), "in_flight");
+    holder.stdin.end("commit;\n");
+    await holderResult;
+    const confirmed = parseRow(await result(read(request)));
+    assert.equal(confirmed.status, "confirmed");
+    assert.deepEqual(confirmed.result, { ...receipt, idempotent: true });
+    // Transação revertida não deixa resultado nem recibo.
+    const aborted = psql([`begin; ${service}
+      select pg_advisory_xact_lock(hashtextextended('course-change-request:'||'${owner}'||':'||'${abortedRequest}',0));
+      insert into private.course_change_receipts(actor_id,request_id,operation,course_id,request_hash,result)
+        values('${owner}','${abortedRequest}','materialize_course_authoring_part_v2','${course}','${"b".repeat(64)}','${JSON.stringify(receipt)}'::jsonb);`,
+      `select '${abortMarker}';`], { keepOpen: true });
+    const abortedResult = result(aborted);
+    await marker(aborted, abortMarker);
+    assert.equal(await statusOf(abortedRequest), "in_flight");
+    aborted.stdin.end("rollback;\n");
+    await abortedResult;
+    assert.equal(await statusOf(abortedRequest), "not_recorded");
+    // Recibo vencido que ainda existe é distinto de ausência.
+    await result(insertReceipt(expiredRequest, "materialize_course_authoring_part_v2",
+      "now() - interval '2 days'", "now() - interval '1 second'"));
+    assert.equal(await statusOf(expiredRequest), "expired");
+    // Tentativa de outra operação nunca é o recibo desta materialização.
+    await result(insertReceipt(foreignRequest, "commit_course_composition",
+      "now()", "now() + interval '1 day'"));
+    await assert.rejects(result(read(foreignRequest)), /outra alteração|23514/u);
+    // Autorização corrente com os helpers reais: acesso compartilhado concedido
+    // de verdade não abre o recibo, e a revogação volta a recusar a leitura.
+    await assert.rejects(result(readAsOther()), /inacess|PT404|42501/iu);
+    await result(psql(`begin; ${service} select public.manage_course_access_for_actor_v3('${owner}','${course}',
+      'grant_access','receipt-other-307','${other}',true,'materialization-grant-307',true); commit;`));
+    await assert.rejects(result(readAsOther()), /Edição do Curso não autorizada|42501/iu);
+    await result(psql(`begin; ${service} select public.manage_course_access_for_actor_v3('${owner}','${course}',
+      'revoke_access','receipt-other-307','${other}',true,'materialization-revoke-307',null); commit;`));
+    await assert.rejects(result(readAsOther()), /inacess|PT404|42501/iu);
+    // Nenhuma leitura materializou, apagou ou reescreveu recibo, curso ou
+    // revisão: as duas linhas extras pertencem ao writer real de acesso.
+    const receiptCount = await result(psql(`select count(*) from private.course_change_receipts where course_id='${course}';`));
+    assert.equal(receiptCount, "5");
+    assert.equal(await statusOf("materializacao-inexistente-307"), "not_recorded");
+    assert.equal(await result(psql(`select count(*) from private.course_change_receipts where course_id='${course}';`)), receiptCount);
+    assert.equal(await result(psql(`select revision from public.courses where id='${course}';`)), "1");
+  } finally {
+    await result(psql(`begin; ${service}
+      delete from private.course_change_receipts where course_id='${course}';
+      delete from public.course_access where course_id='${course}';
+      delete from private.course_instructional_plans where course_id='${course}';
+      delete from public.courses where id='${course}'; commit;`));
+    await cleanupUser(other, "materialization-receipt-other-307@example.test");
+    await cleanupUser(owner, "materialization-receipt-owner-307@example.test");
+  }
+});
+

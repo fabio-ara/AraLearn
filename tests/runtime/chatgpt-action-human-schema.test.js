@@ -899,11 +899,14 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
       default: { $ref: "#/components/responses/Error" }
     });
   }
-  // Orçamentos locais conciliados às 56 tarefas em 30 operações, preservando schemas integrais
-  // por referências compartilhadas. Não são limites oficiais do importador;
-  // o limite de 100.000 por chamada continua validado no runner de payload.
-  // O catálogo 11.1.2 acrescenta o objeto de recuperação da materialização e sua
-  // união exclusiva; a linha de base medida passa a 100.8xx minificados.
+  // Orçamentos locais conciliados às 56 tarefas em 30 operações, preservando
+  // schemas integrais por referências compartilhadas. Não são teto externo do
+  // artefato: o limite publicado de 100.000 vale por corpo de chamada e segue
+  // validado no runner de payload (ACTION_PAYLOAD_MAX_CHARACTERS); a
+  // especificação só limita descrições. O catálogo 11.1.2 acrescenta o objeto de
+  // recuperação da materialização e sua união exclusiva; a linha de base medida
+  // passa a 100814 minificados / 209871 formatados. A aceitação pelo editor é
+  // conferida à parte, com o cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 210_000);
   assert.doesNotMatch(openApiText, /"const"/u);

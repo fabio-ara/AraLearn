@@ -300,13 +300,16 @@ do catálogo 11.1.2. A aceitação do arquivo pelo editor, a publicação do
 assistente e a execução contra o serviço são verificações distintas.
 
 O gerador confere o tamanho em unidades UTF-16, a contagem usada por
-`String.length` em JavaScript. O arquivo compacto, incluindo a quebra de linha
-final, precisa ter menos de 100.000 unidades; sua apresentação formatada
-precisa ter menos de 210.000. Esses são os orçamentos locais definidos em
-[buildChatGptActionOpenApi.mjs](../scripts/buildChatGptActionOpenApi.mjs).
-Definições compartilhadas evitam repetir schemas, preservando as restrições
-e os exemplos de cada tarefa. Os orçamentos controlam o tamanho do contrato;
-a importação confere sua aceitação pelo cliente.
+`String.length` em JavaScript. Com o catálogo 11.1.2, o arquivo compacto,
+incluindo a quebra de linha final, precisa ficar abaixo de 102.000 unidades e a
+sua apresentação formatada abaixo de 210.000. Esses são tetos locais deste
+repositório, definidos em
+[buildChatGptActionOpenApi.mjs](../scripts/buildChatGptActionOpenApi.mjs), e não
+um limite da especificação ou do importador: o limite publicado de 100.000
+caracteres vale por corpo de chamada, cujo orçamento próprio segue em 99.999
+unidades UTF-16. Definições compartilhadas evitam repetir schemas, preservando as
+restrições e os exemplos de cada tarefa. A aceitação do arquivo pelo editor é
+conferida separadamente, com o cliente real, e não decorre desses contadores.
 
 UTF-8 é a codificação usada para transmitir o texto em bytes; UTF-16 é usada
 para representar o texto no JavaScript. Essas contagens podem ser diferentes.

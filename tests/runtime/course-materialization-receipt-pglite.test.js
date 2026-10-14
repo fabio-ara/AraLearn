@@ -6,10 +6,12 @@ import { PGlite } from "@electric-sql/pglite";
 import { definition } from "../support/authoringMaterializationPglite.js";
 
 // Integração SQL do leitor focal de recibo sobre um Postgres real embarcado.
-// Auth, composição e acesso corrente são stubs explícitos: esta prova cobre a
-// ACL da função, a chave do lock, a atomicidade da leitura e os quatro estados,
-// não o runtime hospedado. O estado em voo exige duas sessões concorrentes e é
-// provado na camada da ferramenta; aqui a paridade da chave é estrutural.
+// Auth e acesso corrente são stubs explícitos: esta prova cobre a visibilidade
+// da função, a atomicidade da leitura, a chave do lock e os estados gravados
+// (confirmado, sem registro, expirado e recusa de tentativa alheia). O estado
+// em voo exige duas sessões concorrentes, que este banco embarcado não oferece:
+// ele é provado sobre PostgreSQL real em course-postgres-concurrency.test.js,
+// junto da autorização corrente com os helpers reais.
 const MIGRATION = "20261014143125_materialization_receipt_recovery.sql";
 const MATERIALIZER_MIGRATION = "20260903160000_global_curriculum_authoring_flow.sql";
 const READER = "public.get_course_part_materialization_receipt_for_actor_v1";
@@ -107,7 +109,7 @@ test("mesmo requestId de outra operação ou de outro curso não é recibo desta
   await db.close();
 });
 
-test("autorização atual é conferida em cada leitura, inclusive após revogação", async () => {
+test("leitura exige o helper de serviço e o dono do curso; aqui a negação é um stub", async () => {
   const { db } = await database();
   await db.exec(receiptInsert());
   await assert.rejects(() => query(db, OTHER_ACTOR, COURSE), /owner denied|42501/u);
