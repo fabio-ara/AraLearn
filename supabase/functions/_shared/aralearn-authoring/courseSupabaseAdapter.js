@@ -3907,6 +3907,49 @@ export class CourseSupabaseAdapter {
     };
   }
 
+  // Consulta somente-leitura do recibo da materialização. Não materializa, não
+  // apaga e não reaplica: distingue recibo confirmado, escrita em voo, ausência
+  // de recibo e recibo expirado. O leitor genérico com hash obrigatório
+  // (get_course_change_receipt_for_actor_v1) permanece intocado.
+  async getCoursePartMaterializationReceipt({ principal, courseId, requestId, deadlineAt = null }) {
+    if (typeof courseId !== "string" || !UUID_PATTERN.test(courseId) ||
+        typeof requestId !== "string" || !INTERNAL_REQUEST_ID_PATTERN.test(requestId)) {
+      throw new AuthoringApiError(422, "invalid_materialization_recovery",
+        "Use a recuperação exata devolvida pela materialização deste curso.");
+    }
+    const value = first(await this.rpc(
+      "get_course_part_materialization_receipt_for_actor_v1",
+      { p_actor_id: principal.actorId, p_course_id: courseId, p_request_id: requestId },
+      { deadlineAt, responseLimitBytes: 32 * 1024 }
+    ));
+    return this.#partMaterializationReceipt(value, { courseId, requestId });
+  }
+
+  #partMaterializationReceipt(value, { courseId, requestId }) {
+    if (!jsonRecord(value) ||
+        value.contract !== "aralearn.course-part-materialization-receipt.v1" ||
+        !new Set(["confirmed", "in_flight", "not_recorded", "expired"]).has(value.status) ||
+        value.courseId !== courseId || value.requestId !== requestId) {
+      throw new AuthoringApiError(503, "course_service_unavailable",
+        "A consulta da materialização não pôde ser verificada.");
+    }
+    if (value.status !== "confirmed") return { status: value.status };
+    const result = value.result;
+    const allowed = new Set(["contract", "courseId", "courseRevision", "authoringPartId",
+      "changed", "studyUnitCount", "idempotent"]);
+    if (!jsonRecord(result) || Object.keys(result).length !== allowed.size ||
+        Object.keys(result).some((field) => !allowed.has(field)) ||
+        result.contract !== "aralearn.course-part-materialization.v1" ||
+        result.courseId !== courseId || !UUID_PATTERN.test(String(result.authoringPartId)) ||
+        typeof result.changed !== "boolean" || result.idempotent !== true ||
+        !Number.isSafeInteger(result.courseRevision) || result.courseRevision < 1 ||
+        !Number.isSafeInteger(result.studyUnitCount) || result.studyUnitCount < 0) {
+      throw new AuthoringApiError(503, "course_service_unavailable",
+        "O recibo da materialização é inválido.");
+    }
+    return { status: "confirmed", result: structuredClone(result) };
+  }
+
   async commitCourseComposition({
     principal,
     courseId,

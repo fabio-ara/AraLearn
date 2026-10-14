@@ -21,7 +21,7 @@ que reúne a importação do arquivo, a autorização da conta e o teste de leit
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas de autoria** do catálogo **11.1.1**. O OpenAPI as
+definem as **56 tarefas de autoria** do catálogo **11.1.2**. O OpenAPI as
 oferece por **30 operações HTTP**: 24 diretas e seis grupos contextuais.
 Uma operação HTTP é o pedido enviado a um endereço do serviço; um grupo permite
 escolher entre várias tarefas por esse mesmo endereço. Argumentos, validação
@@ -296,7 +296,7 @@ e dos campos, mas não estabelece um tamanho total para esse arquivo.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos com
 argumentos definidos para cada tarefa. Essa organização conserva as 56 tarefas
-do catálogo 11.1.1. A aceitação do arquivo pelo editor, a publicação do
+do catálogo 11.1.2. A aceitação do arquivo pelo editor, a publicação do
 assistente e a execução contra o serviço são verificações distintas.
 
 O gerador confere o tamanho em unidades UTF-16, a contagem usada por
@@ -320,6 +320,10 @@ O serviço informa o limite atingido. Uma leitura grande usa recorte ou
 paginação. Se o tempo se esgotar depois de uma escrita, a gravação pode ter
 terminado; o cliente relê o resultado antes da recuperação. Medidas e aceitação
 do cliente seguem o [roteiro dos canais](roteiro-aceitacao-humana-autoria.md#medição-e-prova-dos-canais).
+
+A materialização interrompida retoma pelo campo `recuperacao` de
+`materializar_parte`, com o objeto devolvido pelo erro. Essa consulta só
+distingue os estados do recibo da tentativa e não reaplica a escrita.
 
 Leituras extensas de planejamento e revisão usam a continuação comum aos canais.
 Para recuperar uma confirmação perdida de `salvar_mapa_curricular`, use

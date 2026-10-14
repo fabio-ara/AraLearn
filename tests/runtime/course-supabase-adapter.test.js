@@ -3998,3 +3998,56 @@ test("resolvePrincipal respeita o limite de tentativas e o prazo esgotado", asyn
   );
   assert.equal(afterDeadline, 0);
 });
+
+test("recuperação da materialização consulta o recibo focal por ator, curso e tentativa", async () => {
+  const body = [];
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/get_course_part_materialization_receipt_for_actor_v1$/u);
+    body.push(JSON.parse(init.body));
+    return json({ contract: "aralearn.course-part-materialization-receipt.v1", status: "confirmed",
+      courseId: COURSE_ID, requestId: "materializacao-original-0001",
+      result: { contract: "aralearn.course-part-materialization.v1", courseId: COURSE_ID, courseRevision: 8,
+        authoringPartId: PART_ID, changed: true, studyUnitCount: 1, idempotent: true } });
+  });
+  const receipt = await value.getCoursePartMaterializationReceipt({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, requestId: "materializacao-original-0001" });
+  assert.equal(receipt.status, "confirmed");
+  assert.equal(receipt.result.courseRevision, 8);
+  assert.equal(receipt.result.studyUnitCount, 1);
+  assert.equal(receipt.result.idempotent, true);
+  assert.deepEqual(body, [{ p_actor_id: USER_ID, p_course_id: COURSE_ID,
+    p_request_id: "materializacao-original-0001" }]);
+});
+
+test("recuperação da materialização preserva estados ausentes e recusa recibo incoerente sem escrever", async () => {
+  for (const [status, payload] of [["in_flight", {}], ["not_recorded", {}], ["expired", {}]]) {
+    let calls = 0;
+    const value = adapter(async () => { calls += 1; return json({ contract: "aralearn.course-part-materialization-receipt.v1",
+      status, courseId: COURSE_ID, requestId: "materializacao-original-0002", ...payload }); });
+    const receipt = await value.getCoursePartMaterializationReceipt({ principal: { actorId: USER_ID },
+      courseId: COURSE_ID, requestId: "materializacao-original-0002" });
+    assert.deepEqual(receipt, { status });
+    assert.equal(calls, 1);
+  }
+  // Resposta de outro curso ou tentativa não é o recibo desta consulta.
+  for (const override of [{ courseId: OTHER_COURSE_ID }, { requestId: "materializacao-outra-0003" },
+    { status: "unknown" }, { result: { contract: "aralearn.course-part-materialization.v1" } }]) {
+    const value = adapter(async () => json({ contract: "aralearn.course-part-materialization-receipt.v1",
+      status: "confirmed", courseId: COURSE_ID, requestId: "materializacao-original-0003",
+      result: { contract: "aralearn.course-part-materialization.v1", courseId: COURSE_ID, courseRevision: 8,
+        authoringPartId: PART_ID, changed: true, studyUnitCount: 1, idempotent: true }, ...override }));
+    await assert.rejects(value.getCoursePartMaterializationReceipt({ principal: { actorId: USER_ID },
+      courseId: COURSE_ID, requestId: "materializacao-original-0003" }),
+    error => error.code === "course_service_unavailable");
+  }
+  // Identidade inválida é recusada antes de qualquer RPC.
+  let network = 0;
+  const value = adapter(async () => { network += 1; return json({}); });
+  await assert.rejects(value.getCoursePartMaterializationReceipt({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, requestId: "curto" }), error => error.code === "invalid_materialization_recovery");
+  await assert.rejects(value.getCoursePartMaterializationReceipt({ principal: { actorId: USER_ID },
+    courseId: "não-é-uuid", requestId: "materializacao-original-0004" }),
+  error => error.code === "invalid_materialization_recovery");
+  assert.equal(network, 0);
+});
+

@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.1.1**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.1.2**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -76,7 +76,7 @@ ou reconstruir seu conteúdo.
 | `remover_ramo_curricular` | remover explicitamente ramo e descendentes, protegendo referências sobreviventes e fontes compartilhadas |
 | `salvar_parte` | agrupar microssequências já previstas para produção e registrar sua progressão local |
 | `salvar_explicacoes` | produzir ou corrigir bases explicativas e fontes antes ou depois das unidades, preservando as unidades existentes |
-| `materializar_parte` | gravar uma microssequência, com parte e preparação resolvidas pelo servidor |
+| `materializar_parte` | gravar uma microssequência com parte e preparação resolvidas pelo servidor; com `recuperacao`, apenas consultar o recibo da tentativa interrompida |
 | `reordenar_unidades` | salvar a ordem completa das unidades de uma microssequência, preservando identificadores, conteúdo e configuração aplicada |
 | `ajustar_configuracao` | fixar valores de autoria ou pesquisa, delegar parâmetros automáticos ou restaurar herança no escopo |
 | `ajustar_orientacao` | alterar a orientação do objeto corrente para trabalho futuro |
@@ -260,7 +260,9 @@ parcial mantém as demais incidências pendentes. `registrar_inspecao` registra
 separadamente o parecer da IA sobre a leitura que realizou.
 
 `retomar_correcao` recupera uma tentativa com resposta perdida, conferindo
-conteúdo e fila sem reaplicar a correção. A
+conteúdo e fila sem reaplicar a correção. `materializar_parte` usa o mesmo campo
+`recuperacao` para consultar o recibo da materialização interrompida, sem
+reenviar o payload, sem repetir o preparo e sem reaplicar a escrita. A
 [recuperação da tentativa](fluxos-prompts-e-contratos.md#confirmar-o-resultado-e-recuperar-uma-interrupção)
 explica quais referências precisam ser conservadas.
 

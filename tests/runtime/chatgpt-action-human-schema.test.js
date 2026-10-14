@@ -351,7 +351,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.1");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.2");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -413,7 +413,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
         if (localComponentIdentity) continue;
         if (task.name === "decidir_observacao" && name === "id" &&
             path === "$.properties.referencia.properties.targets.items") continue;
-        if (task.name === "retomar_correcao" && path === "$.properties.recuperacao" &&
+        if (["retomar_correcao", "materializar_parte"].includes(task.name) && path === "$.properties.recuperacao" &&
             ["courseId", "requestId"].includes(name)) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
       }
@@ -902,7 +902,9 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // Orçamentos locais conciliados às 56 tarefas em 30 operações, preservando schemas integrais
   // por referências compartilhadas. Não são limites oficiais do importador;
   // o limite de 100.000 por chamada continua validado no runner de payload.
-  assert.ok(openApiText.length < 100_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  // O catálogo 11.1.2 acrescenta o objeto de recuperação da materialização e sua
+  // união exclusiva; a linha de base medida passa a 100.8xx minificados.
+  assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 210_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });

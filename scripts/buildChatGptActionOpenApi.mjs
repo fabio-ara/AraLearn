@@ -92,12 +92,15 @@ const errorSchema = {
 // documented 100,000-character limit concerns each Actions call's payload.
 // Catalog 5.0.0 added aggregate preflight, exact-basis inspection and multialvo
 // decisions and paged comparison. The candidate unit contract is now shared by
-// preparar_materializacao and materializar_parte; with catalog 11.1.0 the
-// measured baseline is 97.510 minified / 198.682 pretty-printed characters. The
-// per-call 100k guard is unchanged.
+// preparar_materializacao and materializar_parte. Catalog 11.1.2 adds the
+// read-only recovery object of materializar_parte together with its exclusive
+// union against the production arguments; the measured baseline becomes 100.9xx
+// minified / 209.9xx pretty-printed characters. This local ceiling only tracks
+// the transported artifact of this repository; the documented per-call payload
+// limit remains untouched and is not what these constants measure.
 // Acceptance in the actual editor remains a separate hosted release gate.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
-const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 100_000;
+const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 102_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!outputSchema || actionTools.some(({ outputSchema: candidate }) => (

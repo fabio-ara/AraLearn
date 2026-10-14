@@ -175,6 +175,7 @@
           "course-instructional-plan-v3",
           "course-authoring-part-save-v1",
           "course-authoring-part-materialization-atomic-v2",
+          "course-authoring-part-materialization-receipt-v1",
           "course-study-unit-inspection-v2",
           "course-authoring-configuration-v3",
           "authoring-preference-profiles-v1",
@@ -368,6 +369,10 @@
         {
           "path": "supabase/migrations/20260916031133_incremental_materialization.sql",
           "token": "prepare_incremental_course_part_v1"
+        },
+        {
+          "path": "supabase/migrations/20261014143125_materialization_receipt_recovery.sql",
+          "token": "get_course_part_materialization_receipt_for_actor_v1"
         }
       ],
       "routes": [
@@ -459,6 +464,8 @@
         "tests/runtime/course-practice-authoring-pglite.test.js",
         "tests/runtime/course-practice-authoring.test.js",
         "tests/runtime/incremental-materialization-pglite.test.js",
+        "tests/runtime/course-materialization-recovery.test.js",
+        "tests/runtime/course-materialization-receipt-pglite.test.js",
         "tests/runtime/course-human-navigation.test.js",
         "tests/runtime/course-authoring-route.test.js"
       ],

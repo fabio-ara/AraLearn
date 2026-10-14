@@ -21,6 +21,30 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261014143125 — recuperação somente-leitura da materialização de Parte
+
+A [migração](../supabase/migrations/20261014143125_materialization_receipt_recovery.sql)
+acrescenta `public.get_course_part_materialization_receipt_for_actor_v1`, o leitor
+focal do recibo da materialização. Quando a resposta de `materializar_parte` se
+perde, o erro `course_write_uncertain` devolve `courseId`, `requestId` e a
+operação, e nenhuma ferramenta consumia essa referência. O leitor consulta o
+recibo pela identidade original — ator, curso e tentativa — sem exigir o hash
+usado por mapa e desenho; por isso não relaxa
+`public.get_course_change_receipt_for_actor_v1`, que continua obrigando o hash.
+Ele disputa o mesmo lock de tentativa do materializador
+(`pg_try_advisory_xact_lock` sobre `course-change-request:`), de modo que, se a
+escrita original ainda o segura, o estado é **em voo** e a tentativa é preservada.
+Recibo vivo da operação `materialize_course_authoring_part_v2`, do curso
+esperado, devolve o próprio recibo idempotente (**confirmado**); sem recibo
+visível o estado é **sem registro**; e recibo vencido que ainda existe é
+**expirado**. Nenhum estado materializa, apaga ou reaplica: ausência e expiração
+não são prova de reversão e exigem reconciliar o conteúdo focal antes de qualquer
+nova alteração. Acesso e autorização correntes são conferidos em cada leitura, e
+`requestId` pertencente a outra operação ou a outro curso é recusado sem revelar
+a origem. A execução permanece restrita ao `service_role`, com `search_path`
+fixo. O manifesto avança para `20261014143125` e declara
+`course-authoring-part-materialization-receipt-v1`.
+
 ## 20261013120000 — leitura positiva ancorada no material do alvo
 
 A [migração](../supabase/migrations/20261013120000_grounded_report_target_material.sql)

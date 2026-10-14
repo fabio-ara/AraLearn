@@ -2178,6 +2178,68 @@ export async function materializeHumanCoursePart({
   };
 }
 
+// Recuperação somente-leitura da materialização. Consome a referência integral
+// devolvida por course_write_uncertain sem reconstruir payload, sem reexecutar o
+// preparo, sem carga e sem reaplicar. Nenhum objeto é materializado ou apagado.
+const MATERIALIZATION_RECOVERY_FIELDS = Object.freeze(["courseId", "operation", "requestId"]);
+const MATERIALIZATION_RECOVERY_COURSE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const MATERIALIZATION_RECOVERY_REQUEST_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u;
+
+export function normalizeHumanMaterializationRecovery(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).sort().join(",") !== MATERIALIZATION_RECOVERY_FIELDS.join(",") ||
+      typeof value.courseId !== "string" || !MATERIALIZATION_RECOVERY_COURSE_ID.test(value.courseId) ||
+      value.operation !== "course_write" ||
+      typeof value.requestId !== "string" || !MATERIALIZATION_RECOVERY_REQUEST_ID.test(value.requestId)) {
+    fail("invalid_materialization_recovery",
+      "Use a recuperação exata devolvida pela materialização deste curso.");
+  }
+  return { courseId: value.courseId.toLowerCase(), requestId: value.requestId };
+}
+
+function materializationRecoveryUncertain(courseId, requestId, message) {
+  return new AuthoringApiError(409, "course_write_uncertain", message,
+    { requestId, targetCourseId: courseId, operation: "course_write" });
+}
+
+export async function resumeHumanCoursePartMaterialization({ adapter, principal, recuperacao, deadlineAt = null }) {
+  const { courseId, requestId } = normalizeHumanMaterializationRecovery(recuperacao);
+  let receipt;
+  try {
+    receipt = await adapter.getCoursePartMaterializationReceipt({ principal, courseId, requestId, deadlineAt });
+  } catch (error) {
+    // Recusa final (autorização, alvo ausente ou identidade de outra operação)
+    // nunca é mascarada como incerteza; só a falha transitória a conserva.
+    const status = Number(error?.status ?? 0);
+    if (error instanceof AuthoringApiError && status >= 400 && status < 500 && ![408, 425, 429].includes(status)) throw error;
+    throw materializationRecoveryUncertain(courseId, requestId,
+      "A consulta do recibo não pôde ser concluída; conserve esta tentativa.");
+  }
+  if (receipt?.status === "confirmed") {
+    const { result } = receipt;
+    const navigation = createHumanNavigation(adapter, { courseId, relation: "content",
+      target: { kind: "authoring_part", id: result.authoringPartId }, revision: result.courseRevision });
+    return {
+      result: `Recuperei o recibo confirmado da materialização desta tentativa: ${result.studyUnitCount} ` +
+        "unidades já salvas, sem nova escrita.",
+      ...buildHumanNavigationEnvelope(navigation, [], { nextDecision:
+        "A tentativa original está confirmada. Continue a produção a partir do conteúdo salvo e não reaplique esta escrita." }),
+      // Fatos humanos do recibo; identidades e revisões técnicas seguem no
+      // vínculo tipado e no erro, não no contexto público.
+      context: { recuperacao: "confirmed", unidadesMaterializadas: result.studyUnitCount,
+        changed: result.changed }
+    };
+  }
+  if (receipt?.status === "in_flight") throw materializationRecoveryUncertain(courseId, requestId,
+    "A tentativa original ainda está em processamento. Aguarde e repita esta recuperação; não reenvie o pedido nem reaplique a escrita.");
+  if (receipt?.status === "expired") throw materializationRecoveryUncertain(courseId, requestId,
+    "O recibo desta tentativa expirou. A expiração não prova que a escrita terminou sem efeito nem autoriza reaplicá-la; reconcilie o conteúdo focal, o original e as pendências antes de qualquer nova alteração.");
+  if (receipt?.status === "not_recorded") throw materializationRecoveryUncertain(courseId, requestId,
+    "Não há recibo visível para esta tentativa. A ausência não confirma que a escrita terminou sem efeito nem autoriza reaplicá-la; reconcilie o conteúdo focal, o original e as pendências antes de qualquer nova alteração.");
+  throw materializationRecoveryUncertain(courseId, requestId,
+    "A consulta do recibo devolveu um estado desconhecido; conserve esta tentativa.");
+}
+
 // Recuperação curta e acionável para o retorno de preparar_materializacao: nomeia
 // o ensino ausente ou o uso prematuro no percurso, sem repetir códigos, campos ou
 // estado interno. A barreira didática permanece; só o próximo passo fica explícito.

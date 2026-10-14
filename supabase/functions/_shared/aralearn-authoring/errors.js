@@ -56,6 +56,7 @@ const AUTHORING_RPC_NAMES = new Set([
   "get_course_media_for_actor_v1",
   "get_course_observation_comparison_for_actor_v1",
   "get_course_observation_correction_for_actor_v1",
+  "get_course_part_materialization_receipt_for_actor_v1",
   "get_course_source_pdf_download_for_actor_v1",
   "get_course_source_pdf_ingestion_receipt_for_actor_v1",
   "get_current_maintenance_for_actor_v1",
