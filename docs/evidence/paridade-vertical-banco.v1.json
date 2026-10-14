@@ -1939,6 +1939,10 @@
       "caseId": "course-anchored-annotations"
     },
     {
+      "object": "function:public.get_course_part_materialization_receipt_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_request_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.get_course_source_pdf_download_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_source_id text, p_source_revision bigint, p_content_hash text)",
       "caseId": "course-source-provenance"
     },
