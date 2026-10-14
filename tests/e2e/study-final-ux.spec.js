@@ -691,6 +691,7 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       const buttons = controls.map((button) => button.getBoundingClientRect());
       return {
         display: nextStyle.display,
+        tap: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap")),
         fitsDock: next.left >= dock.left && next.right <= dock.right + 1,
         fitsViewport: next.left >= 0 && next.right <= innerWidth,
         singleLine: next.height <= 48,
@@ -708,13 +709,14 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.actions, `Runtime ${width}px`).toEqual([
       "open-explanation", "open-observation", "toggle-review", "previous-study-unit", "next-study-unit"
     ]);
-    // O rótulo visível "Explicação" torna esse controle mais largo que os icon-only;
-    // o invariante do rodapé é o alvo de toque e a ordem, não larguras idênticas (#445).
+    // O leitor é icon-only: os cinco controles usam o alvo padrão de toque, sem largura
+    // extra herdada do rótulo visível que a Explicação chegou a exibir.
+    expect(runtimeDock.tap, `Runtime ${width}px · alvo padrão`).toBe(44);
     runtimeDock.buttonWidths.forEach((controlWidth, index) => {
-      expect(controlWidth, `Runtime ${width}px · ${runtimeDock.actions[index]}`).toBeGreaterThanOrEqual(44);
+      expect(Math.abs(controlWidth - runtimeDock.tap), `Runtime ${width}px · ${runtimeDock.actions[index]} largura`).toBeLessThanOrEqual(1);
     });
     runtimeDock.buttonHeights.forEach((controlHeight, index) => {
-      expect(controlHeight, `Runtime ${width}px · ${runtimeDock.actions[index]}`).toBeGreaterThanOrEqual(44);
+      expect(Math.abs(controlHeight - runtimeDock.tap), `Runtime ${width}px · ${runtimeDock.actions[index]} altura`).toBeLessThanOrEqual(1);
     });
     const explanationControl = page.locator("[data-action='open-explanation']");
     await expect(explanationControl).toHaveAccessibleName("Explicação");
