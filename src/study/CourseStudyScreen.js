@@ -661,7 +661,8 @@ function renderStudyUnit({
     '<section class="workbench-surface"><div class="workbench-surface-body">' +
     '<section class="workbench-surface-pane workbench-reader-pane study-reader-screen"' +
     ' data-study-destination-heading tabindex="-1">' +
-    '<section class="study-reader-context"><div class="study-reader-line">' +
+    '<section class="study-reader-context' + (citations?.citations?.length ? " has-unit-sources" : "") +
+    '"><div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
     escapeHtml(microsequence.title || lesson.title || "Unidade de estudo") + "</span>" +
     (citations?.citations?.length && !manualEditor.editing && !assistanceSelection

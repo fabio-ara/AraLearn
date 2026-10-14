@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.108] - 2026-10-14
+
+### Corrigido
+
+- Na unidade que tem Fontes, entrar e sair da edição deixa de deslocar o cabeçalho e a área de leitura: a linha do título reserva a altura do controle "Fontes da unidade" nessa unidade, que só aparece fora da edição. Unidades sem Fontes mantêm a geometria atual, e o rodapé e os alvos de toque seguem iguais.
+
 ## [0.0.107] - 2026-10-14
 
 ### Adicionado

@@ -14,13 +14,13 @@ const styles = [
   "/course-authoring.css"
 ];
 
-async function mountStudy(page, { savedView = "course", projectValue = fixture } = {}) {
+async function mountStudy(page, { savedView = "course", projectValue = fixture, unitSources = false } = {}) {
   await page.goto("/");
   await page.setContent('<!doctype html><html lang="pt-BR"><head><meta name="viewport" ' +
     'content="width=device-width,initial-scale=1">' +
     styles.map((href) => `<link rel="stylesheet" href="${href}">`).join("") +
     '</head><body><div id="study-root"></div></body></html>');
-  await page.evaluate(async ({ project, savedView, configuration }) => {
+  await page.evaluate(async ({ project, savedView, configuration, unitSources }) => {
     const { createCourseStudyApplication } = await import(
       "/src/study/CourseStudyApplication.js"
     );
@@ -101,6 +101,26 @@ async function mountStudy(page, { savedView = "course", projectValue = fixture }
         studyUnitVersion: 3,
         didacticMicrosequenceId: microsequence.id
       }),
+      ...(unitSources ? {
+        loadStudyUnitCitations: async (reference) => ({
+          contract: "aralearn.course-study-citations.v2",
+          bibliographyStyle: "abnt-2025",
+          courseId: reference.courseId,
+          courseRevision: revision,
+          studyUnitId: reference.studyUnitId,
+          citations: [{
+            linkId: "vinculo-sintetico-unidade", sourceRevision: 1, kind: "document",
+            authors: [], publicationDate: null, identifier: null, language: null,
+            bibliographic: (await import("/src/domain/courseSources.js")).createEmptyCourseSourceBibliographicMetadata(),
+            citationMode: "manual", relation: "informed_by", roles: ["recommended_reading"],
+            occurrences: [], attachments: [],
+            sourceId: "fonte-sintetica-unidade",
+            title: "Fonte sintética da unidade",
+            citationText: "Fonte sintética citada pela unidade.",
+            url: null, editionOrVersion: null, anchors: []
+          }]
+        })
+      } : {}),
       isStudyUnitMarkedForReview: () => false,
       setStudyUnitCompleted: async () => true,
       loadCourseSummariesFromCache: () => []
@@ -126,7 +146,7 @@ async function mountStudy(page, { savedView = "course", projectValue = fixture }
       onSaveManualEdit: saveUnit,
       onSaveAssistedStructure: saveStructure
     });
-  }, { project: projectValue, savedView, configuration: courseDesignFixture({
+  }, { project: projectValue, savedView, unitSources, configuration: courseDesignFixture({
     courseId: projectValue.courses[0].id,
     moduleId: projectValue.courses[0].modules[0].id,
     lessonId: projectValue.courses[0].modules[0].lessons[0].id,
@@ -157,8 +177,12 @@ function readDockGeometry(page) {
   return page.evaluate(() => {
     const dock = document.querySelector(".study-reader-footer, .study-manual-edit-dock");
     const content = document.querySelector(".card-sheet-content").getBoundingClientRect();
+    const context = document.querySelector(".study-reader-context").getBoundingClientRect();
+    const title = document.querySelector(".study-reader-course-title").getBoundingClientRect();
     const dockRect = dock.getBoundingClientRect();
-    return { contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
+    return { contextTop: context.top, contextBottom: context.bottom, contextHeight: context.height,
+      titleLeft: title.left, titleWidth: title.width, titleCenter: title.left + title.width / 2,
+      contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
       contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
       dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
       buttons: [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button, .study-manual-edit-dock button")]
@@ -180,7 +204,10 @@ function expectDockGeometryPreserved(width, { viewing, editing, returned }) {
   expect(spread(controls.map((button) => button.bottom)), `${width}: base dos controles`).toBeLessThanOrEqual(1);
   expect(spread(controls.map((button) => button.height)), `${width}: altura dos controles`).toBeLessThanOrEqual(1);
   for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
-    for (const [property, label] of [["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
+    for (const [property, label] of [["contextTop", "topo do cabeçalho"], ["contextBottom", "base do cabeçalho"],
+      ["contextHeight", "altura do cabeçalho"],
+      ["titleLeft", "esquerda do título"], ["titleWidth", "largura do título"], ["titleCenter", "centro do título"],
+      ["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
       ["contentLeft", "esquerda da leitura"], ["contentWidth", "largura da leitura"],
       ["dockTop", "topo do dock"], ["dockBottom", "base do dock"], ["dockLeft", "esquerda do dock"],
       ["dockWidth", "largura do dock"], ["dockHeight", "altura do dock"]]) {
@@ -810,6 +837,55 @@ for (const width of [320, 329, 330]) test(`rodapé e edição preservam a geomet
   await page.screenshot({ path: testInfo.outputPath(`study-dock-retorno-${width}.png`) });
   expectDockGeometryPreserved(width, { viewing, editing, returned });
 });
+
+// O controle "Fontes da unidade" chega com a leitura assíncrona das citações e não
+// aparece durante a edição. O cabeçalho precisa manter a altura nos dois casos para a
+// área de leitura não se deslocar ao entrar e sair da edição — com fontes e sem fontes.
+for (const width of [320, 360, 1100]) for (const unitSources of [false, true]) test(
+  `cabeçalho ${unitSources ? "com" : "sem"} fontes preserva a geometria em ${width}px`,
+  async ({ page }, testInfo) => {
+    const label = unitSources ? "fontes" : "sem-fontes";
+    await page.setViewportSize({ width, height: 900 });
+    await mountStudy(page, { savedView: "course", unitSources });
+    for (const action of ["open-course", "open-module", "open-lesson", "open-microsequence"]) {
+      await page.locator(`[data-action='${action}']`).click();
+    }
+    await page.locator("[data-action='open-study-unit']").first().click();
+    const sources = page.locator("[data-action='open-unit-sources']");
+    if (unitSources) {
+      // A citação chega depois da primeira abertura: só medir com o controle presente.
+      await expect(sources).toBeVisible();
+    } else {
+      await expect(sources).toHaveCount(0);
+    }
+    const viewing = await readDockGeometry(page);
+    await page.screenshot({ path: testInfo.outputPath(`header-leitura-${width}-${label}.png`) });
+    await page.locator("[data-action='study-manual-edit']").click();
+    await expect(page.locator(".study-manual-edit-dock")).toBeVisible();
+    await expect(sources).toHaveCount(0);
+    const editing = await readDockGeometry(page);
+    await page.screenshot({ path: testInfo.outputPath(`header-edicao-${width}-${label}.png`) });
+    await page.locator("[data-action='study-manual-cancel']").click();
+    await expect(page.locator(".study-reader-footer")).toBeVisible();
+    const returned = await readDockGeometry(page);
+    await page.screenshot({ path: testInfo.outputPath(`header-retorno-${width}-${label}.png`) });
+    expectDockGeometryPreserved(width, { viewing, editing, returned });
+    if (unitSources) {
+      // Abrir e fechar Fontes continua correto e devolve a mesma geometria de leitura.
+      await expect(sources).toBeVisible();
+      await sources.click();
+      const closeSources = page.getByRole("button", { name: "Fechar fontes" });
+      await expect(closeSources).toBeVisible();
+      await closeSources.click();
+      await expect(closeSources).toBeHidden();
+      const afterClose = await readDockGeometry(page);
+      for (const [property, labelText] of [["contextTop", "topo do cabeçalho"], ["contextHeight", "altura do cabeçalho"],
+        ["contentTop", "topo da leitura"], ["dockTop", "topo do dock"], ["dockHeight", "altura do dock"]]) {
+        expect(Math.abs(afterClose[property] - viewing[property]), `${width}: ${labelText} após fechar Fontes`)
+          .toBeLessThanOrEqual(1);
+      }
+    }
+  });
 
 for (const width of [390, 430]) test(`modos de estudo centralizados com assistência distinta em ${width}px`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 850 }); await mountStudy(page);
