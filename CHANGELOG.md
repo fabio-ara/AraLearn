@@ -7,6 +7,17 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.107] - 2026-10-14
+
+### Adicionado
+
+- `materializar_parte` aceita `recuperacao`, o objeto devolvido por `course_write_uncertain`, para consultar o recibo da tentativa original sem reenviar o payload, sem repetir o preparo e sem reaplicar a escrita. A consulta distingue recibo confirmado, escrita em voo, ausência de recibo e recibo expirado; ausência ou expiração não provam reversão nem autorizam reaplicar a escrita.
+
+### Corrigido
+
+- O controle que abre a Explicação no leitor volta a mostrar somente o ícone, preservando nome acessível, `title` e o estado anunciado. A reserva de duas linhas que compensava o rótulo sai do rodapé, e a área de leitura recupera 44px a 360px sem mudar altura, largura, topo e alinhamento ao entrar e sair da edição; a edição passa a ancorar os controles na mesma base da leitura.
+- A moldura das tabelas no leitor estreito passa a ter verificação própria, na Unidade e na Explicação, nas larguras de referência.
+
 ## [0.0.106] - 2026-10-14
 
 ### Corrigido
