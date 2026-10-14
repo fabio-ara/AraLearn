@@ -201,9 +201,19 @@ async function openStudyUnit(page, unit) {
   for (const { instance, label } of unit.tools) {
     let trigger = page.locator(`[data-study-tool-id="${instance.id}"]`);
     if (!await trigger.count()) {
-      trigger = page.getByRole("button", { name: "Mais ferramentas", exact: true });
-      await trigger.click();
-      await page.locator(`[data-open-study-tool="${instance.id}"]`).click();
+      // Com compact+contextual o grupo mostra um único botão que abre o menu de ferramentas;
+      // a variante não compacta segue usando "Mais ferramentas".
+      const toolsLauncher = page.getByRole("button", { name: "Ferramentas da unidade", exact: true });
+      if (await toolsLauncher.count()) {
+        trigger = toolsLauncher;
+        await toolsLauncher.click();
+        await page.getByRole("dialog", { name: "Ferramentas", exact: true })
+          .locator(`[data-open-study-tool="${instance.id}"]`).click();
+      } else {
+        trigger = page.getByRole("button", { name: "Mais ferramentas", exact: true });
+        await trigger.click();
+        await page.locator(`[data-open-study-tool="${instance.id}"]`).click();
+      }
     } else await trigger.click();
     const dialog = page.getByRole("dialog", { name: label, exact: true });
     await expect(dialog).toBeVisible();
@@ -359,17 +369,23 @@ async function expectResourceStack(page, host, label) {
     if (!stack) return { found: false };
     const resources = [...stack.children].filter((child) =>
       child.matches(".package-instance, .runtime-resource-edit-target"));
+    const isProse = (node) => node.matches(".package-instance:has(> .runtime-block.runtime-paragraph-block)");
     const rects = resources.map((resource) => resource.getBoundingClientRect());
     return { found: true, count: resources.length,
       gaps: rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+      prosePairs: resources.slice(1).map((resource, index) => isProse(resources[index]) && isProse(resource)),
       overflow: node.scrollWidth - node.clientWidth };
   });
   expect(measured.found, `${label}: pilha de recursos compartilhada`).toBe(true);
   expect(measured.count, `${label}: recursos na pilha`).toBeGreaterThanOrEqual(2);
-  for (const gap of measured.gaps) {
+  // A pilha compartilhada usa --space-copy (8px) entre recursos; prosa adjacente usa o
+  // ritmo de seção --space-section (16px), conforme a regra de parágrafos do produto.
+  measured.gaps.forEach((gap, index) => {
+    const prose = measured.prosePairs[index];
     expect(gap, `${label}: recursos consecutivos separados`).toBeGreaterThanOrEqual(7);
-    expect(gap, `${label}: sem espaço vazio grande`).toBeLessThanOrEqual(9);
-  }
+    expect(gap, `${label}: sem espaço vazio grande`).toBeLessThanOrEqual(prose ? 17 : 9);
+    if (prose) expect(gap, `${label}: prosa adjacente usa o ritmo de seção`).toBeGreaterThanOrEqual(15);
+  });
   expect(measured.overflow, `${label}: sem estouro horizontal`).toBeLessThanOrEqual(1);
   return measured;
 }
