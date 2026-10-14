@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.1.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.1.1**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos

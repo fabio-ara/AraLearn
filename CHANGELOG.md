@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.106] - 2026-10-14
+
+### Corrigido
+
+- As formas explicativas de unidades materializadas passam a ser declaradas em um objeto completo no contrato de autoria, mantendo a exigência de forma aplicada ou justificativa de não aplicabilidade.
+
 ## [0.0.105] - 2026-10-13
 
 ### Adicionado
