@@ -691,6 +691,7 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       const buttons = controls.map((button) => button.getBoundingClientRect());
       return {
         display: nextStyle.display,
+        tap: Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tap")),
         fitsDock: next.left >= dock.left && next.right <= dock.right + 1,
         fitsViewport: next.left >= 0 && next.right <= innerWidth,
         singleLine: next.height <= 48,
@@ -708,22 +709,71 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.actions, `Runtime ${width}px`).toEqual([
       "open-explanation", "open-observation", "toggle-review", "previous-study-unit", "next-study-unit"
     ]);
-    // O rótulo visível "Explicação" torna esse controle mais largo que os icon-only;
-    // o invariante do rodapé é o alvo de toque e a ordem, não larguras idênticas (#445).
+    // O leitor é icon-only: os cinco controles usam o alvo padrão de toque, sem largura
+    // extra herdada do rótulo visível que a Explicação chegou a exibir.
+    expect(runtimeDock.tap, `Runtime ${width}px · alvo padrão`).toBe(44);
     runtimeDock.buttonWidths.forEach((controlWidth, index) => {
-      expect(controlWidth, `Runtime ${width}px · ${runtimeDock.actions[index]}`).toBeGreaterThanOrEqual(44);
+      expect(Math.abs(controlWidth - runtimeDock.tap), `Runtime ${width}px · ${runtimeDock.actions[index]} largura`).toBeLessThanOrEqual(1);
     });
     runtimeDock.buttonHeights.forEach((controlHeight, index) => {
-      expect(controlHeight, `Runtime ${width}px · ${runtimeDock.actions[index]}`).toBeGreaterThanOrEqual(44);
+      expect(Math.abs(controlHeight - runtimeDock.tap), `Runtime ${width}px · ${runtimeDock.actions[index]} altura`).toBeLessThanOrEqual(1);
     });
     const explanationControl = page.locator("[data-action='open-explanation']");
     await expect(explanationControl).toHaveAccessibleName("Explicação");
-    // O rótulo visível "Explicação" acompanha o controle em todos os tamanhos; no leitor
-    // estreito o rodapé pode ocupar duas linhas, o que é legítimo.
-    await expect(explanationControl.locator(".study-explanation-btn-label")).toBeVisible();
+    // O leitor é icon-only: o controle não tem texto visível e conserva o próprio ícone,
+    // mantendo nome acessível e dica por title.
+    await expect(explanationControl).toHaveText("");
+    await expect(explanationControl.locator("svg")).toHaveCount(1);
+    await expect(explanationControl).toHaveAttribute("title", "Explicação");
     await explanationControl.focus();
     await expect(explanationControl).toBeFocused();
-    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-five-actions-360.png"), fullPage: true });
+    // Geometria preservada ao entrar e sair da edição: a área de leitura e o rodapé
+    // mantêm altura, largura e alinhamento no mesmo viewport.
+    const readDock = () => page.evaluate(() => {
+      const dock = document.querySelector(".study-reader-footer, .study-manual-edit-dock");
+      const content = document.querySelector(".card-sheet-content").getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      return { contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
+        contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
+        dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
+        buttons: [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button, .study-manual-edit-dock button")]
+          .map(button => { const rect = button.getBoundingClientRect();
+            return { action: button.dataset.action, top: rect.top, bottom: rect.bottom, height: rect.height }; }),
+        pageOverflow: document.documentElement.scrollWidth - innerWidth };
+    });
+    const viewing = await readDock();
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-leitura-360.png") });
+    await page.locator("[data-action='study-manual-edit']").click();
+    await expect(page.locator(".study-manual-edit-dock")).toBeVisible();
+    const editing = await readDock();
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-edicao-360.png") });
+    await page.locator("[data-action='study-manual-cancel']").click();
+    await expect(page.locator(".study-reader-footer")).toBeVisible();
+    const returned = await readDock();
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-retorno-360.png") });
+    const spread = (values) => Math.max(...values) - Math.min(...values);
+    for (const [state, snapshot] of [["leitura", viewing], ["edição", editing], ["retorno", returned]]) {
+      expect(snapshot.buttons.length, `${width}/${state}: controles do rodapé`).toBeGreaterThan(0);
+    }
+    // Os controles ocupam a mesma linha antes, durante e depois da edição: topo, base e
+    // altura coincidem entre os três estados (tolerância 1px), sem deslocamento vertical.
+    const controls = [viewing, editing, returned].flatMap((state) => state.buttons);
+    expect(spread(controls.map((button) => button.top)), `${width}: topo dos controles`).toBeLessThanOrEqual(1);
+    expect(spread(controls.map((button) => button.bottom)), `${width}: base dos controles`).toBeLessThanOrEqual(1);
+    expect(spread(controls.map((button) => button.height)), `${width}: altura dos controles`).toBeLessThanOrEqual(1);
+    // Entrar e sair da edição não move a área de leitura nem altera altura, largura e
+    // alinhamento do dock; o rodapé segue dentro da tela e sem sobreposição (1px).
+    for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
+      for (const [property, label] of [["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
+        ["contentLeft", "esquerda da leitura"], ["contentWidth", "largura da leitura"],
+        ["dockTop", "topo do dock"], ["dockBottom", "base do dock"], ["dockLeft", "esquerda do dock"],
+        ["dockWidth", "largura do dock"], ["dockHeight", "altura do dock"]]) {
+        expect(Math.abs(snapshot[property] - viewing[property]), `${width}/${state}: ${label}`).toBeLessThanOrEqual(1);
+      }
+      expect(snapshot.dockBottom, `${width}/${state}: dock dentro da tela`).toBeLessThanOrEqual(snapshot.viewport + 1);
+      expect(snapshot.dockTop, `${width}/${state}: leitura não sobrepõe o dock`).toBeGreaterThanOrEqual(snapshot.contentBottom - 1);
+      expect(snapshot.pageOverflow, `${width}/${state}: página contida`).toBeLessThanOrEqual(1);
+    }
   }
 });
 
