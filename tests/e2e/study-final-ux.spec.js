@@ -732,30 +732,33 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       const content = document.querySelector(".card-sheet-content").getBoundingClientRect();
       const dockRect = dock.getBoundingClientRect();
       return { contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
-        dockTop: dockRect.top, dockBottom: dockRect.bottom, dockWidth: dockRect.width,
-        dockHeight: dockRect.height, viewport: innerHeight,
+        contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
+        dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
         pageOverflow: document.documentElement.scrollWidth - innerWidth };
     });
     const viewing = await readDock();
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-leitura-360.png") });
     await page.locator("[data-action='study-manual-edit']").click();
     await expect(page.locator(".study-manual-edit-dock")).toBeVisible();
     const editing = await readDock();
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-edicao-360.png") });
     await page.locator("[data-action='study-manual-cancel']").click();
     await expect(page.locator(".study-reader-footer")).toBeVisible();
     const returned = await readDock();
-    // Entrar e sair da edição não move a área de leitura nem altera a largura ou a
-    // altura do dock; o rodapé segue dentro da tela e sem sobreposição (tolerância 1px).
+    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-retorno-360.png") });
+    // Entrar e sair da edição não move a área de leitura nem altera altura, largura e
+    // alinhamento do dock; o rodapé segue dentro da tela e sem sobreposição (1px).
     for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
-      expect(Math.abs(snapshot.contentTop - viewing.contentTop), `${width}/${state}: topo da leitura`).toBeLessThanOrEqual(1);
-      expect(Math.abs(snapshot.contentWidth - viewing.contentWidth), `${width}/${state}: largura da leitura`).toBeLessThanOrEqual(1);
-      expect(Math.abs(snapshot.dockWidth - viewing.dockWidth), `${width}/${state}: largura do dock`).toBeLessThanOrEqual(1);
-      expect(Math.abs(snapshot.dockHeight - viewing.dockHeight), `${width}/${state}: altura do dock`).toBeLessThanOrEqual(1);
-      expect(Math.abs(snapshot.dockTop - viewing.dockTop), `${width}/${state}: alinhamento do dock`).toBeLessThanOrEqual(1);
+      for (const [property, label] of [["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
+        ["contentLeft", "esquerda da leitura"], ["contentWidth", "largura da leitura"],
+        ["dockTop", "topo do dock"], ["dockBottom", "base do dock"], ["dockLeft", "esquerda do dock"],
+        ["dockWidth", "largura do dock"], ["dockHeight", "altura do dock"]]) {
+        expect(Math.abs(snapshot[property] - viewing[property]), `${width}/${state}: ${label}`).toBeLessThanOrEqual(1);
+      }
       expect(snapshot.dockBottom, `${width}/${state}: dock dentro da tela`).toBeLessThanOrEqual(snapshot.viewport + 1);
       expect(snapshot.dockTop, `${width}/${state}: leitura não sobrepõe o dock`).toBeGreaterThanOrEqual(snapshot.contentBottom - 1);
       expect(snapshot.pageOverflow, `${width}/${state}: página contida`).toBeLessThanOrEqual(1);
     }
-    if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-five-actions-360.png"), fullPage: true });
   }
 });
 
