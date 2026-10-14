@@ -1657,10 +1657,14 @@ button.account-settings-back[hidden] {
 }
 
 /* Ritmo de prosa: uma quebra de parágrafo precisa se distinguir de uma quebra de
-   linha. Vale no interior de um recurso e entre recursos de prosa vizinhos da
-   pilha compartilhada pela Unidade de estudo e pela Explicação. */
+   linha. Vale no interior de um recurso e entre recursos de prosa vizinhos da pilha
+   compartilhada pela Unidade de estudo e pela Explicação. A prosa é reconhecida pelo
+   bloco do próprio recurso da pilha; a moldura de edição, que envolve o recurso,
+   entra como caminho explícito — prosa interna de outro pacote não conta. */
 .runtime-resource-stack > .package-instance:has(> .runtime-block.runtime-paragraph-block)
-  + .package-instance:has(> .runtime-block.runtime-paragraph-block) {
+  + .package-instance:has(> .runtime-block.runtime-paragraph-block),
+.runtime-resource-stack > .runtime-resource-edit-target:has(> .runtime-resource-selection-content > .package-instance > .runtime-block.runtime-paragraph-block)
+  + .runtime-resource-edit-target:has(> .runtime-resource-selection-content > .package-instance > .runtime-block.runtime-paragraph-block) {
   margin-block-start: calc(var(--space-section) - var(--space-copy));
 }
 
@@ -4484,9 +4488,20 @@ button.account-settings-back[hidden] {
   min-height: calc(var(--tap) + 4px + var(--safe-bottom-tappable));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
   align-items: center;
   gap: 8px;
   padding: 0 0 var(--safe-bottom-tappable);
+}
+
+/* No leitor estreito o rodapé de leitura comporta duas linhas quando o rótulo visível
+   e as cinco ações não cabem juntos. O dock de edição reserva o mesmo footprint para a
+   área de leitura não mudar de altura ao entrar e sair da edição. */
+@media (max-width: 385px) {
+  .study-reader-footer,
+  .study-manual-edit-dock {
+    min-height: calc(2 * var(--tap) + 4px + var(--safe-bottom-tappable));
+  }
 }
 
 .study-manual-edit-dock p,

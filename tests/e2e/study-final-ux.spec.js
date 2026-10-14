@@ -718,7 +718,9 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     });
     const explanationControl = page.locator("[data-action='open-explanation']");
     await expect(explanationControl).toHaveAccessibleName("Explicação");
-    await expect(explanationControl).toContainText("Explicação");
+    // O rótulo visível "Explicação" acompanha o controle em todos os tamanhos; no leitor
+    // estreito o rodapé pode ocupar duas linhas, o que é legítimo.
+    await expect(explanationControl.locator(".study-explanation-btn-label")).toBeVisible();
     await explanationControl.focus();
     await expect(explanationControl).toBeFocused();
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-five-actions-360.png"), fullPage: true });

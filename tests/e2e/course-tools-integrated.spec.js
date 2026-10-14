@@ -62,7 +62,19 @@ test("ferramentas integradas preservam card, foco e calculadora em oito combina�
       await page.evaluate(() => globalThis.__toolsProbe.release());
       await expect(page.locator("[data-calculator-output]")).toHaveText("512");
     }
-    expect(await page.locator(".app-shell > .screen").evaluate(node => node.inert)).toBe(true);
+    // O apoio encaixado participa do layout: o card continua legível e a folha não
+    // isola a tela, substituindo o comportamento do overlay modal anterior.
+    expect(await page.locator(".app-shell > .screen").evaluate(node => node.inert)).toBe(false);
+    const docked = await page.evaluate(() => {
+      const panel = document.querySelector(".study-tools-panel");
+      const sheet = document.querySelector(".card-sheet-content").getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      return { wrapper: panel.parentElement.className, host: panel.parentElement.parentElement.className,
+        panelTop: panelRect.top, sheetBottom: sheet.bottom };
+    });
+    expect(docked.wrapper).toContain("is-docked");
+    expect(docked.host).toContain("runtime-card-rendered-content");
+    expect(docked.panelTop).toBeGreaterThanOrEqual(docked.sheetBottom - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     const dimensions = await page.locator(".study-tool-body button, .study-tool-body input, .study-tool-body select")
       .evaluateAll(nodes => nodes.map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })).filter(node => node.width && node.height));
