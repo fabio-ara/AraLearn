@@ -153,6 +153,45 @@ function modeButton(page, name) {
   return page.locator(".study-mode-actions").getByRole("button", { name });
 }
 
+function readDockGeometry(page) {
+  return page.evaluate(() => {
+    const dock = document.querySelector(".study-reader-footer, .study-manual-edit-dock");
+    const content = document.querySelector(".card-sheet-content").getBoundingClientRect();
+    const dockRect = dock.getBoundingClientRect();
+    return { contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
+      contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
+      dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
+      buttons: [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button, .study-manual-edit-dock button")]
+        .map(button => { const rect = button.getBoundingClientRect();
+          return { action: button.dataset.action, top: rect.top, bottom: rect.bottom, height: rect.height }; }),
+      pageOverflow: document.documentElement.scrollWidth - innerWidth };
+  });
+}
+
+// Entrar e sair da edição não move a área de leitura nem altera altura, largura e
+// alinhamento do dock; os controles ficam na mesma linha, sem deslocamento vertical.
+function expectDockGeometryPreserved(width, { viewing, editing, returned }) {
+  const spread = (values) => Math.max(...values) - Math.min(...values);
+  for (const [state, snapshot] of [["leitura", viewing], ["edição", editing], ["retorno", returned]]) {
+    expect(snapshot.buttons.length, `${width}/${state}: controles do rodapé`).toBeGreaterThan(0);
+  }
+  const controls = [viewing, editing, returned].flatMap((state) => state.buttons);
+  expect(spread(controls.map((button) => button.top)), `${width}: topo dos controles`).toBeLessThanOrEqual(1);
+  expect(spread(controls.map((button) => button.bottom)), `${width}: base dos controles`).toBeLessThanOrEqual(1);
+  expect(spread(controls.map((button) => button.height)), `${width}: altura dos controles`).toBeLessThanOrEqual(1);
+  for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
+    for (const [property, label] of [["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
+      ["contentLeft", "esquerda da leitura"], ["contentWidth", "largura da leitura"],
+      ["dockTop", "topo do dock"], ["dockBottom", "base do dock"], ["dockLeft", "esquerda do dock"],
+      ["dockWidth", "largura do dock"], ["dockHeight", "altura do dock"]]) {
+      expect(Math.abs(snapshot[property] - viewing[property]), `${width}/${state}: ${label}`).toBeLessThanOrEqual(1);
+    }
+    expect(snapshot.dockBottom, `${width}/${state}: dock dentro da tela`).toBeLessThanOrEqual(snapshot.viewport + 1);
+    expect(snapshot.dockTop, `${width}/${state}: leitura não sobrepõe o dock`).toBeGreaterThanOrEqual(snapshot.contentBottom - 1);
+    expect(snapshot.pageOverflow, `${width}/${state}: página contida`).toBeLessThanOrEqual(1);
+  }
+}
+
 test("jornada por cliques mantém voltar e modos contextuais distintos", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mountStudy(page, { savedView: "course" });
@@ -729,52 +768,47 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     await expect(explanationControl).toBeFocused();
     // Geometria preservada ao entrar e sair da edição: a área de leitura e o rodapé
     // mantêm altura, largura e alinhamento no mesmo viewport.
-    const readDock = () => page.evaluate(() => {
-      const dock = document.querySelector(".study-reader-footer, .study-manual-edit-dock");
-      const content = document.querySelector(".card-sheet-content").getBoundingClientRect();
-      const dockRect = dock.getBoundingClientRect();
-      return { contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
-        contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
-        dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
-        buttons: [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button, .study-manual-edit-dock button")]
-          .map(button => { const rect = button.getBoundingClientRect();
-            return { action: button.dataset.action, top: rect.top, bottom: rect.bottom, height: rect.height }; }),
-        pageOverflow: document.documentElement.scrollWidth - innerWidth };
-    });
-    const viewing = await readDock();
+    const viewing = await readDockGeometry(page);
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-leitura-360.png") });
     await page.locator("[data-action='study-manual-edit']").click();
     await expect(page.locator(".study-manual-edit-dock")).toBeVisible();
-    const editing = await readDock();
+    const editing = await readDockGeometry(page);
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-edicao-360.png") });
     await page.locator("[data-action='study-manual-cancel']").click();
     await expect(page.locator(".study-reader-footer")).toBeVisible();
-    const returned = await readDock();
+    const returned = await readDockGeometry(page);
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-retorno-360.png") });
-    const spread = (values) => Math.max(...values) - Math.min(...values);
-    for (const [state, snapshot] of [["leitura", viewing], ["edição", editing], ["retorno", returned]]) {
-      expect(snapshot.buttons.length, `${width}/${state}: controles do rodapé`).toBeGreaterThan(0);
-    }
-    // Os controles ocupam a mesma linha antes, durante e depois da edição: topo, base e
-    // altura coincidem entre os três estados (tolerância 1px), sem deslocamento vertical.
-    const controls = [viewing, editing, returned].flatMap((state) => state.buttons);
-    expect(spread(controls.map((button) => button.top)), `${width}: topo dos controles`).toBeLessThanOrEqual(1);
-    expect(spread(controls.map((button) => button.bottom)), `${width}: base dos controles`).toBeLessThanOrEqual(1);
-    expect(spread(controls.map((button) => button.height)), `${width}: altura dos controles`).toBeLessThanOrEqual(1);
-    // Entrar e sair da edição não move a área de leitura nem altera altura, largura e
-    // alinhamento do dock; o rodapé segue dentro da tela e sem sobreposição (1px).
-    for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
-      for (const [property, label] of [["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
-        ["contentLeft", "esquerda da leitura"], ["contentWidth", "largura da leitura"],
-        ["dockTop", "topo do dock"], ["dockBottom", "base do dock"], ["dockLeft", "esquerda do dock"],
-        ["dockWidth", "largura do dock"], ["dockHeight", "altura do dock"]]) {
-        expect(Math.abs(snapshot[property] - viewing[property]), `${width}/${state}: ${label}`).toBeLessThanOrEqual(1);
-      }
-      expect(snapshot.dockBottom, `${width}/${state}: dock dentro da tela`).toBeLessThanOrEqual(snapshot.viewport + 1);
-      expect(snapshot.dockTop, `${width}/${state}: leitura não sobrepõe o dock`).toBeGreaterThanOrEqual(snapshot.contentBottom - 1);
-      expect(snapshot.pageOverflow, `${width}/${state}: página contida`).toBeLessThanOrEqual(1);
-    }
+    expectDockGeometryPreserved(width, { viewing, editing, returned });
   }
+});
+
+// O rodapé estreito passa a duas linhas quando os seis alvos de 44px e os vãos de
+// 4px não cabem na coluna de leitura: 6*44 + 5*4 = 284, e a coluna mede viewport - 46
+// (274 em 320). A última largura que quebra é 329; 330 já cabe em uma linha. A edição
+// precisa reservar o mesmo footprint para a área de leitura não mudar de altura.
+for (const width of [320, 329, 330]) test(`rodapé e edição preservam a geometria da leitura em ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 800 });
+  await mountStudy(page, { savedView: "course" });
+  for (const action of ["open-course", "open-module", "open-lesson", "open-microsequence"]) {
+    await page.locator(`[data-action='${action}']`).click();
+  }
+  await page.locator("[data-action='open-study-unit']").first().click();
+  const tap = await page.evaluate(() => Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--tap")
+  ));
+  const viewing = await readDockGeometry(page);
+  await page.screenshot({ path: testInfo.outputPath(`study-dock-leitura-${width}.png`) });
+  expect(viewing.dockHeight >= 2 * tap ? 2 : 1, `${width}: linhas do rodapé de leitura`)
+    .toBe(width <= 329 ? 2 : 1);
+  await page.locator("[data-action='study-manual-edit']").click();
+  await expect(page.locator(".study-manual-edit-dock")).toBeVisible();
+  const editing = await readDockGeometry(page);
+  await page.screenshot({ path: testInfo.outputPath(`study-dock-edicao-${width}.png`) });
+  await page.locator("[data-action='study-manual-cancel']").click();
+  await expect(page.locator(".study-reader-footer")).toBeVisible();
+  const returned = await readDockGeometry(page);
+  await page.screenshot({ path: testInfo.outputPath(`study-dock-retorno-${width}.png`) });
+  expectDockGeometryPreserved(width, { viewing, editing, returned });
 });
 
 for (const width of [390, 430]) test(`modos de estudo centralizados com assistência distinta em ${width}px`, async ({ page }, info) => {

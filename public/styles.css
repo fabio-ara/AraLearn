@@ -4497,6 +4497,17 @@ button.account-settings-back[hidden] {
   padding: 0 0 var(--safe-bottom-tappable);
 }
 
+/* No leitor estreito o rodapé passa a duas linhas quando os seis alvos de 44px e os
+   vãos de 4px não cabem na coluna de leitura: 6*44 + 5*4 = 284, e a coluna mede
+   viewport - 46 (274 em 320, medido). A última largura que quebra é 329; 330 já cabe
+   em uma linha. O dock de edição reserva o mesmo footprint para a área de leitura não
+   mudar de altura ao entrar e sair da edição. */
+@media (max-width: 329px) {
+  .study-manual-edit-dock {
+    min-height: calc(2 * var(--tap) + 4px + var(--safe-bottom-tappable));
+  }
+}
+
 .study-manual-edit-dock p,
 .study-manual-status {
   min-width: 0;
