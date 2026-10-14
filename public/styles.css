@@ -4490,7 +4490,9 @@ button.account-settings-back[hidden] {
   min-height: calc(var(--tap) + 4px + var(--safe-bottom-tappable));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
+  /* Mesma linha dos controles do rodapé de leitura: lá o dock usa flex-end sobre a
+     mesma altura mínima, então a edição também ancora os controles na base. */
+  align-items: end;
   gap: 8px;
   padding: 0 0 var(--safe-bottom-tappable);
 }

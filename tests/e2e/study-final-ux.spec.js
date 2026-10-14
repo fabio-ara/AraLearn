@@ -734,6 +734,9 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
       return { contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
         contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
         dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
+        buttons: [...document.querySelectorAll(".study-next-wrap .study-usual-actions > button, .study-manual-edit-dock button")]
+          .map(button => { const rect = button.getBoundingClientRect();
+            return { action: button.dataset.action, top: rect.top, bottom: rect.bottom, height: rect.height }; }),
         pageOverflow: document.documentElement.scrollWidth - innerWidth };
     });
     const viewing = await readDock();
@@ -746,6 +749,16 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     await expect(page.locator(".study-reader-footer")).toBeVisible();
     const returned = await readDock();
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-dock-retorno-360.png") });
+    const spread = (values) => Math.max(...values) - Math.min(...values);
+    for (const [state, snapshot] of [["leitura", viewing], ["edição", editing], ["retorno", returned]]) {
+      expect(snapshot.buttons.length, `${width}/${state}: controles do rodapé`).toBeGreaterThan(0);
+    }
+    // Os controles ocupam a mesma linha antes, durante e depois da edição: topo, base e
+    // altura coincidem entre os três estados (tolerância 1px), sem deslocamento vertical.
+    const controls = [viewing, editing, returned].flatMap((state) => state.buttons);
+    expect(spread(controls.map((button) => button.top)), `${width}: topo dos controles`).toBeLessThanOrEqual(1);
+    expect(spread(controls.map((button) => button.bottom)), `${width}: base dos controles`).toBeLessThanOrEqual(1);
+    expect(spread(controls.map((button) => button.height)), `${width}: altura dos controles`).toBeLessThanOrEqual(1);
     // Entrar e sair da edição não move a área de leitura nem altera altura, largura e
     // alinhamento do dock; o rodapé segue dentro da tela e sem sobreposição (1px).
     for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
