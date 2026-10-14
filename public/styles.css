@@ -1463,6 +1463,14 @@ button.account-settings-back[hidden] {
   min-width: 0;
 }
 
+/* A unidade com Fontes mostra o controle "Fontes da unidade" fora da edição e sem ele
+   durante a edição. A linha reserva a altura do alvo de toque nessa unidade para o
+   cabeçalho não encolher quando o controle sai de cena; a unidade sem Fontes não
+   reserva nada. */
+.study-reader-context.has-unit-sources .study-reader-line {
+  min-height: var(--tap);
+}
+
 .study-reader-context-line {
   display: block;
   color: var(--resource-text-secondary);
