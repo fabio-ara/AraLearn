@@ -178,8 +178,10 @@ function readDockGeometry(page) {
     const dock = document.querySelector(".study-reader-footer, .study-manual-edit-dock");
     const content = document.querySelector(".card-sheet-content").getBoundingClientRect();
     const context = document.querySelector(".study-reader-context").getBoundingClientRect();
+    const title = document.querySelector(".study-reader-course-title").getBoundingClientRect();
     const dockRect = dock.getBoundingClientRect();
     return { contextTop: context.top, contextBottom: context.bottom, contextHeight: context.height,
+      titleLeft: title.left, titleWidth: title.width, titleCenter: title.left + title.width / 2,
       contentTop: content.top, contentBottom: content.bottom, contentWidth: content.width,
       contentLeft: content.left, dockTop: dockRect.top, dockBottom: dockRect.bottom,
       dockLeft: dockRect.left, dockWidth: dockRect.width, dockHeight: dockRect.height, viewport: innerHeight,
@@ -204,6 +206,7 @@ function expectDockGeometryPreserved(width, { viewing, editing, returned }) {
   for (const [state, snapshot] of [["edição", editing], ["retorno", returned]]) {
     for (const [property, label] of [["contextTop", "topo do cabeçalho"], ["contextBottom", "base do cabeçalho"],
       ["contextHeight", "altura do cabeçalho"],
+      ["titleLeft", "esquerda do título"], ["titleWidth", "largura do título"], ["titleCenter", "centro do título"],
       ["contentTop", "topo da leitura"], ["contentBottom", "base da leitura"],
       ["contentLeft", "esquerda da leitura"], ["contentWidth", "largura da leitura"],
       ["dockTop", "topo do dock"], ["dockBottom", "base do dock"], ["dockLeft", "esquerda do dock"],

@@ -1471,6 +1471,14 @@ button.account-settings-back[hidden] {
   min-height: var(--tap);
 }
 
+/* Fora da edição o controle "Fontes da unidade" ocupa a coluna da direita da linha.
+   Sem ele (edição e seleção de assistência), a linha reserva a mesma coluna — o alvo
+   mais o vão — para o título manter caixa, largura e centralização idênticas às da
+   leitura. A unidade sem Fontes não reserva nada. */
+.study-reader-context.has-unit-sources:not(:has(.study-unit-sources)) .study-reader-line {
+  padding-right: calc(var(--tap) + 6px);
+}
+
 .study-reader-context-line {
   display: block;
   color: var(--resource-text-secondary);
