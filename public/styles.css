@@ -2716,7 +2716,9 @@ button.account-settings-back[hidden] {
 .runtime-table-frame {
   display: inline-block;
   box-sizing: border-box;
-  width: max-content;
+  /* Encolhe até a coluna de leitura e só cresce quando o min-content da tabela
+     exige; aí o wrapper rola. max-content forçava rolagem em tabela textual. */
+  width: auto;
   min-width: 100%;
   border: 1px solid var(--resource-border);
   border-radius: 14px;
