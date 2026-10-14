@@ -351,7 +351,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.1");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -1130,4 +1130,61 @@ test("#v10 envelope de tarefa válida com campo alheio informa os argumentos can
   "invalid_action_task_binding");
   assert.equal(decodeBindingError("observacoes_autorais",
     { tarefa: "registrar_inspecao" }).code, "invalid_action_task_binding");
+});
+
+// Um cliente MCP recusou `explicacoes[0].ideia` como propriedade adicional no payload
+// canônico de `materializar_parte`. Cada alternativa da união passou a ser um objeto
+// completo; estas amostras conferem que a definição canônica e a entrada gerada decidem
+// igual e mantêm os mesmos obrigatórios.
+test("#447 item de explicações segue objeto completo e a forma gerada decide igual", () => {
+  const itemSamples = [
+    { label: "forma aplicada", value: { ideia: "Socket como interface", formas: ["plain_definition"] }, expected: true },
+    { label: "as duas listas preenchidas", value: { ideia: "Socket como interface", formas: ["plain_definition"],
+      formasNaoAplicaveis: [{ forma: "concrete_example", motivo: "Sem exemplo concreto aqui." }] }, expected: true },
+    { label: "só justificativas", value: { ideia: "Socket como interface", formas: [],
+      formasNaoAplicaveis: [{ forma: "mechanism", motivo: "Não se aplica ao caso." }] }, expected: true },
+    { label: "ideia por posição", value: { ideia: 3, formas: ["mechanism"] }, expected: true },
+    { label: "forma aplicada com justificativas vazias", value: { ideia: "Socket como interface",
+      formas: ["plain_definition"], formasNaoAplicaveis: [] }, expected: true },
+    { label: "nenhuma lista preenchida", value: { ideia: "Socket como interface", formas: [] }, expected: false },
+    { label: "listas vazias declaradas", value: { ideia: "Socket como interface", formas: [],
+      formasNaoAplicaveis: [] }, expected: false },
+    { label: "justificativa sem motivo", value: { ideia: "Socket como interface", formas: [],
+      formasNaoAplicaveis: [{ forma: "mechanism" }] }, expected: false },
+    { label: "motivo vazio", value: { ideia: "Socket como interface", formas: [],
+      formasNaoAplicaveis: [{ forma: "mechanism", motivo: "" }] }, expected: false },
+    { label: "forma inválida", value: { ideia: "Socket como interface", formas: ["example"] }, expected: false },
+    { label: "forma repetida", value: { ideia: "Socket como interface", formas: ["mechanism", "mechanism"] },
+      expected: false },
+    { label: "campo estranho", value: { ideia: "Socket como interface", formas: ["mechanism"], extra: true },
+      expected: false },
+    { label: "ideia ausente", value: { formas: ["mechanism"] }, expected: false },
+    { label: "formas ausente", value: { ideia: "Socket como interface" }, expected: false }
+  ];
+  const branchesOf = (schema) => (Array.isArray(schema.anyOf) ? schema.anyOf : []).map((branch) => ({
+    type: branch.type,
+    additionalProperties: branch.additionalProperties,
+    required: branch.required,
+    properties: Object.keys(branch.properties ?? {}).sort()
+  }));
+  const expectedBranches = [
+    { type: "object", additionalProperties: false, required: ["ideia", "formas"],
+      properties: ["formas", "formasNaoAplicaveis", "ideia"] },
+    { type: "object", additionalProperties: false, required: ["ideia", "formas", "formasNaoAplicaveis"],
+      properties: ["formas", "formasNaoAplicaveis", "ideia"] }
+  ];
+  const canonical = COURSE_HUMAN_TASKS.find(({ name }) => name === "materializar_parte")
+    .inputSchema.properties.unidades.items.properties.aplicacaoPedagogica.properties.explicacoes.items;
+  const generated = operation("materializar_parte").requestBody.content["application/json"].schema
+    .properties.unidades.items.properties.aplicacaoPedagogica.properties.explicacoes.items;
+  for (const [name, schema] of [["definição canônica", canonical], ["entrada gerada", generated]]) {
+    // Alternativa que omite `ideia` foi o que a recusa observada acusou como adicional.
+    assert.deepEqual(branchesOf(schema), expectedBranches, name);
+    const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+    for (const { label, value, expected } of itemSamples) {
+      assert.equal(validate(value), expected, name + ": " + label + ": " + JSON.stringify(validate.errors));
+    }
+  }
+  assert.equal(validatorFor("materializar_parte")(samples.materializar_parte), true);
+  assert.equal(typeof openApi.components.schemas.HumanPedagogicalApplication.properties.explicacoes.items, "object");
 });

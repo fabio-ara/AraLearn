@@ -281,7 +281,7 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
 const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
-  description: 'Repita os argumentos iniciais com esta continuação.' });
+  description: 'Repita os argumentos iniciais e esta continuação.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -458,6 +458,58 @@ const CORRECTION_EXPLANATIONS_SCHEMA = Object.freeze({ ...EXPLANATIONS_SCHEMA,
     properties: Object.freeze({ ...EXPLANATIONS_SCHEMA.items.properties,
       fontes: CORRECTION_SOURCE_LINKS_SCHEMA }) }) });
 
+// Formas de explicação de uma unidade materializada. Um cliente MCP recusou
+// `explicacoes[0].ideia` como propriedade adicional no payload canônico. Cada alternativa
+// passou a ser um objeto completo — `ideia`, `formas` e `formasNaoAplicaveis` declarados —
+// e a escolha virou uma união de objetos completos. Nada foi afrouxado: nenhuma lista
+// preenchida, forma repetida e campo estranho seguem inválidos, e as duas listas podem
+// coexistir.
+const EXPLANATION_FORMS_SCHEMA = Object.freeze({
+  type: "array", maxItems: EXPLANATION_FORMS.length, uniqueItems: true,
+  items: Object.freeze({ type: "string", enum: EXPLANATION_FORMS })
+});
+const EXPLANATION_UNAVAILABLE_FORMS_SCHEMA = Object.freeze({
+  type: "array", maxItems: EXPLANATION_FORMS.length,
+  items: Object.freeze({
+    type: "object", additionalProperties: false,
+    required: Object.freeze(["forma", "motivo"]),
+    properties: Object.freeze({
+      forma: Object.freeze({ type: "string", enum: EXPLANATION_FORMS }),
+      motivo: Object.freeze({ type: "string", minLength: 1, maxLength: 240 })
+    })
+  })
+});
+const EXPLANATION_FORMS_APPLIED_SCHEMA = Object.freeze({ ...EXPLANATION_FORMS_SCHEMA, minItems: 1 });
+// Sem justificativas, exige forma aplicada; com justificativas, permite as duas listas.
+const EXPLANATION_NO_UNAVAILABLE_FORMS_SCHEMA = Object.freeze({
+  ...EXPLANATION_UNAVAILABLE_FORMS_SCHEMA, maxItems: 0
+});
+const EXPLANATION_UNAVAILABLE_FORMS_REQUIRED_SCHEMA = Object.freeze({
+  ...EXPLANATION_UNAVAILABLE_FORMS_SCHEMA, minItems: 1
+});
+// Cada alternativa declara as três propriedades, então nenhuma delas deixa `ideia` fora
+// do próprio objeto.
+const EXPLANATION_MATERIALIZATION_BRANCHES = Object.freeze([
+  Object.freeze({
+    type: "object", additionalProperties: false,
+    required: Object.freeze(["ideia", "formas"]),
+    properties: Object.freeze({
+      ideia: HUMAN_REFERENCE_SCHEMA,
+      formas: EXPLANATION_FORMS_APPLIED_SCHEMA,
+      formasNaoAplicaveis: EXPLANATION_NO_UNAVAILABLE_FORMS_SCHEMA
+    })
+  }),
+  Object.freeze({
+    type: "object", additionalProperties: false,
+    required: Object.freeze(["ideia", "formas", "formasNaoAplicaveis"]),
+    properties: Object.freeze({
+      ideia: HUMAN_REFERENCE_SCHEMA,
+      formas: EXPLANATION_FORMS_SCHEMA,
+      formasNaoAplicaveis: EXPLANATION_UNAVAILABLE_FORMS_REQUIRED_SCHEMA
+    })
+  })
+]);
+
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -499,44 +551,7 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
         }),
         explicacoes: Object.freeze({
           type: "array", maxItems: 256,
-          items: Object.freeze({
-            type: "object", additionalProperties: false,
-            required: Object.freeze(["ideia", "formas"]),
-            properties: Object.freeze({
-              ideia: HUMAN_REFERENCE_SCHEMA,
-              formas: Object.freeze({
-                type: "array", maxItems: EXPLANATION_FORMS.length,
-                uniqueItems: true,
-                items: Object.freeze({ type: "string", enum: EXPLANATION_FORMS })
-              }),
-              formasNaoAplicaveis: Object.freeze({
-                type: "array",
-                maxItems: EXPLANATION_FORMS.length,
-                items: Object.freeze({
-                  type: "object",
-                  additionalProperties: false,
-                  required: Object.freeze(["forma", "motivo"]),
-                  properties: Object.freeze({
-                    forma: Object.freeze({ type: "string", enum: EXPLANATION_FORMS }),
-                    motivo: Object.freeze({ type: "string", minLength: 1, maxLength: 240 })
-                  })
-                })
-              })
-            }),
-            anyOf: Object.freeze([
-              Object.freeze({
-                properties: Object.freeze({
-                  formas: Object.freeze({ minItems: 1 })
-                })
-              }),
-              Object.freeze({
-                required: Object.freeze(["formasNaoAplicaveis"]),
-                properties: Object.freeze({
-                  formasNaoAplicaveis: Object.freeze({ minItems: 1 })
-                })
-              })
-            ])
-          })
+          items: Object.freeze({ anyOf: EXPLANATION_MATERIALIZATION_BRANCHES })
         }),
         praticas: Object.freeze({
           type: "array", maxItems: 256,
@@ -1199,9 +1214,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.1.1";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:4b698ec5e1309c73886df618dddcd7d3af4023cbbfcad421ebbe6698fdda7de6";
+  "sha256:7981071e1594876e80009827639f7365b7b93b56bb96422d6a7c4ca20d66ed46";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

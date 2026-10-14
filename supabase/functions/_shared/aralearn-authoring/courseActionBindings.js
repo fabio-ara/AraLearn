@@ -101,7 +101,7 @@ function groupArgumentSchema(members) {
   // Expose the typed fields to clients that discover inputs from properties.
   // Each task's oneOf branch still enforces its exact fields and requirements.
   return { type: "object", additionalProperties: false,
-    description: "Envie somente os argumentos da tarefa escolhida; envie {} quando ela não tiver argumentos.",
+    description: "Envie só os argumentos da tarefa escolhida; {} se não houver.",
     properties: Object.fromEntries([...fields].map(([name, variants]) => [name,
       variants.size === 1 ? [...variants.values()][0] : { anyOf: [...variants.values()] }])) };
 }
