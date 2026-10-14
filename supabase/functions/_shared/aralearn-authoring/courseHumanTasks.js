@@ -3436,6 +3436,7 @@ function componentSearchProjection(catalog) {
         referencia: `${packageId}@${version}`,
         label: candidate.label,
         finalidade: profile?.purpose ?? null,
+        ferramenta: profile?.tool?.label ?? null,
         fit: candidate.fit,
         useWhen: [...(candidate.useWhen || [])],
         avoidWhen: [...(candidate.avoidWhen || [])],

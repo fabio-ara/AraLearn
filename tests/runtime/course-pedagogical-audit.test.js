@@ -213,3 +213,131 @@ test("banco conserva a segunda barreira para relatório incompleto e needs_atten
     assert.equal((await db.query("select private.course_ai_inspection_pending_v1(null,null,null) pending")).rows[0].pending, true);
   } finally { await db.close(); }
 });
+
+test("suficiência não se declara por metadados nem pela Explicação compartilhada" , () => {
+  // A prosa do alvo não repete o título da Unidade nem o envelope do recurso: as
+  // citações existem na base salva, mas em nada que o aluno lê neste alvo.
+  const own = "A unidade apresenta objetivos, apoio e evidência observável no próprio alvo.";
+  const shared = "A situação educativa articula objetivos, atividades, apoio e evidência num percurso desenvolvido para consulta.";
+  const requirement = "Relacionar objetivos, atividades e evidência";
+  const unitTitle = "Título que a prosa não repete";
+  const content = { id: "u1", position: 1, title: unitTitle, role: "theory", topics: [],
+    content: [paragraph("p1", own)], response: null, feedback: [] };
+  const basis = { targetKind: "study_unit", targetId: "u1", audience: null,
+    microsequence: { id: "ms", title: "Situação educativa", goal: "Relacionar objetivos e evidência",
+      explanation: { title: "Situação educativa", content: [paragraph("e1", shared)] } },
+    planItems: [{ id: "a1", kind: "instructional_analysis_unit", statement: requirement, description: "" }],
+    studyUnits: [{ id: "u1", content, application: { mode: "expository", practiceApplications: [] } }],
+    dependencies: [] };
+  const judged = evidence => PEDAGOGICAL_AUDIT_DIMENSIONS.map(dimension => ({ dimension,
+    result: "sufficient", reason: "Base examinada.", evidence }));
+  // O título da própria Unidade, o nome do pacote, o título da microssequência, o
+  // plano e a Explicação compartilhada existem na base, mas não são o texto
+  // apresentado neste alvo: identificam ou declaram, não demonstram suficiência.
+  for (const quote of ["Situação educativa", requirement, shared, unitTitle, "aralearn.resource.paragraph"]) {
+    assert.throws(() => normalizePedagogicalAudit(judged([quote]), basis), error => {
+      assert.equal(error.code, "invalid_pedagogical_audit");
+      assert.match(error.message, /material apresentado ao aluno neste alvo/u);
+      return true;
+    });
+  }
+  assert.deepEqual(normalizePedagogicalAudit(judged([own]), basis), judged([own]));
+  assert.throws(() => normalizePedagogicalAudit(judged(["Passagem que não existe"]), basis),
+    { code: "invalid_pedagogical_audit" });
+  // O packet não duplica a Explicação por alvo: a instrução aponta para a base
+  // compartilhada, que já viaja em basis.microsequence.explanation.
+  const packet = projectPedagogicalAudit(basis);
+  assert.equal(Object.hasOwn(packet, "explicacaoCompartilhada"), false);
+  assert.match(packet.instruction, /basis\.microsequence\.explanation/u);
+});
+
+test("auditoria expõe o percurso real e os apoios presentes para confrontar continuidade e cálculo", () => {
+  const calculator = { id: "calc", package: "aralearn.resource.calculator", version: "1.0.0",
+    data: { title: "Confira o cálculo", angleUnit: "radians" } };
+  const studyUnits = [
+    { id: "u1", content: { id: "u1", position: 1, title: "Estimar", role: "theory", topics: [],
+      content: [paragraph("p1", "Estime o tempo antes de calcular a transmissão.")], response: null, feedback: [] },
+      application: { mode: "expository", practiceApplications: [] } },
+    { id: "u2", content: { id: "u2", position: 2, title: "Calcular a rota", role: "practice", topics: [],
+      content: [calculator],
+      response: { id: "r", package: "aralearn.response.gap", version: "1.0.0",
+        data: { blanks: [{ id: "b", targetInstanceId: "calc", targetPath: "title", responseMode: "text", answer: "Confira o cálculo" }] } },
+      feedback: [paragraph("f", "Some os segmentos e divida pela taxa para obter o tempo.")] },
+      application: { mode: "practice", practiceApplications: [{ evidenceRequirementId: "r1",
+        invariantTaskOperation: "Calcular o tempo de transmissão" }] } }
+  ];
+  const basis = { targetKind: "microsequence_explanation", targetId: "ms", audience: null,
+    microsequence: { id: "ms", title: "Redes", goal: "Dimensionar o enlace", explanation: { title: "Redes", content: [] } },
+    planItems: [{ id: "r1", kind: "evidence_requirement", statement: "Calcular o tempo", description: "" }],
+    studyUnits, dependencies: [] };
+  const audit = projectPedagogicalAudit(basis);
+  assert.deepEqual(audit.percurso, [{ unitId: "u1", position: 1, title: "Estimar", mode: "expository" },
+    { unitId: "u2", position: 2, title: "Calcular a rota", mode: "practice" }]);
+  const practice = audit.units.find(unit => unit.unitId === "u2").observation;
+  assert.deepEqual(practice.apoios, ["Calculadora"]);
+  assert.deepEqual(practice.apoiosDoHost, []);
+  assert.equal(practice.operacaoExigeCalculo, true);
+  const estimation = audit.units.find(unit => unit.unitId === "u1").observation;
+  assert.deepEqual(estimation.apoios, []);
+  assert.deepEqual(estimation.apoiosDoHost, ["Calculadora"],
+    "o host oferece a calculadora mesmo quando a autoria não a declarou");
+  assert.equal(estimation.inicio, "Estime o tempo antes de calcular a transmissão.",
+    "a abertura efetiva fica visível para confronto de continuidade");
+  assert.match(audit.instruction, /apoios/u);
+  assert.match(audit.instruction, /apoiosDoHost/u);
+  assert.match(audit.instruction, /basis\.microsequence\.explanation/u);
+  assert.match(audit.instruction, /inicio/u);
+  assert.match(audit.instruction, /material apresentado neste alvo/u);
+});
+
+test("material cobre o retorno por alternativa, oculta folhas de avaliação e não confunde computador com cálculo", () => {
+  const judged = quote => PEDAGOGICAL_AUDIT_DIMENSIONS.map(dimension => ({ dimension,
+    result: "sufficient", reason: "Base examinada.", evidence: [quote] }));
+  const basisFor = (response, text = "Os protocolos diferem na recuperação de perdas.") => ({ targetKind: "study_unit", targetId: "u1",
+    microsequence: { title: "Transporte" }, planItems: [], dependencies: [],
+    studyUnits: [{ id: "u1", application: { mode: "practice", practiceApplications: [] },
+      content: { id: "u1", position: 1, title: "Título fora da prosa", role: "practice", topics: [],
+        content: [paragraph("p", text)], response, feedback: [] } }] });
+  const accepted = (basis, quote) => assert.doesNotThrow(() => normalizePedagogicalAudit(judged(quote), basis));
+  const refused = (basis, quote) => assert.throws(() => normalizePedagogicalAudit(judged(quote), basis),
+    { code: "invalid_pedagogical_audit" });
+  const optionFeedback = "O TCP confirma o recebimento e retransmite o segmento perdido.";
+  const choice = basisFor({ id: "r", package: "aralearn.response.choice", version: "1.0.0", data: {
+    question: "Qual protocolo recupera as perdas?", selectionMode: "single", selectionCriterion: "correct",
+    options: [{ id: "alt-tcp", kind: "text", text: "TCP", feedback: optionFeedback },
+      { id: "alt-udp", kind: "text", text: "UDP", feedback: "O UDP não recupera as perdas." }], answerIds: ["alt-tcp"] } });
+  // O retorno por alternativa é apresentado, embora a projeção acessível o omita;
+  // enums de controle e identidades internas não são material apresentado.
+  accepted(choice, optionFeedback);
+  accepted(choice, "Qual protocolo recupera as perdas?");
+  for (const control of ["single", "correct", "text", "selectionMode", "selectionCriterion", "alt-tcp", "alt-udp"]) {
+    refused(choice, control);
+  }
+  const gap = basisFor({ id: "r", package: "aralearn.response.gap", version: "1.0.0", data: { prompt: "Complete o protocolo.",
+    blanks: [{ id: "blank-interno", label: "protocolo", targetInstanceId: "p", targetPath: "text:recuperação", responseMode: "text",
+      answer: "Fast Retransmit", acceptedAnswers: ["Retransmissão rápida"], distractors: ["Token Ring"] }] } });
+  for (const hidden of ["text", "responseMode", "blank-interno", "Fast Retransmit", "Retransmissão rápida", "Token Ring"]) {
+    refused(gap, hidden);
+  }
+  accepted(gap, "Complete o protocolo.");
+  accepted(gap, "protocolo");
+  accepted(gap, "Os protocolos diferem na recuperação de perdas.");
+  const ordering = basisFor({ id: "r", package: "aralearn.response.ordering", version: "3.0.0", data: { targets: [
+    { id: "t1", targetInstanceId: "p", targetPath: "text:primeiro" },
+    { id: "t2", targetInstanceId: "p", targetPath: "text:segundo" }] } });
+  for (const hidden of ["t1", "t2", "text:"]) refused(ordering, hidden);
+  accepted(ordering, "Os protocolos diferem na recuperação de perdas.");
+  // Valor de lacuna ainda oculto não conta como texto apresentado.
+  const masked = basisFor({ id: "r", package: "aralearn.response.gap", version: "1.0.0", data: { prompt: "Informe o fim.",
+    blanks: [{ id: "end", targetInstanceId: "p", targetPath: "text:0x100F", responseMode: "text", answer: "0x100F" }] } },
+  "O intervalo de 0x1000 até 0x100F contém 16 bytes.");
+  refused(masked, "0x100F");
+  accepted(masked, "contém 16 bytes");
+  const program = { id: "u", position: 1, title: "Programa", role: "theory", topics: [],
+    content: [paragraph("p", "O computador carrega o programa na memória.")], response: null, feedback: [] };
+  assert.equal(inspectPedagogicalEvidence({ content: program, practices: [{ evidenceRequirementId: "r1",
+    invariantTaskOperation: "Explicar como o computador carrega o programa na memória" }] }).observation.operacaoExigeCalculo, false,
+  "computador não é indício aritmético");
+  assert.equal(inspectPedagogicalEvidence({ content: program, practices: [{ evidenceRequirementId: "r1",
+    invariantTaskOperation: "Calcular o tempo de transmissão" }] }).observation.operacaoExigeCalculo, true);
+});

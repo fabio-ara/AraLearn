@@ -341,7 +341,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       `<h2 id="study-explanation-title">${title}</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="${closeLabel}" title="${closeLabel}">` +
       renderUiIcon("remove-state", "home-tab-icon") + '</button></header>' +
       `<div class="editor-body study-explanation-body" tabindex="0">${content}<div data-explanation-source-markers></div><div data-explanation-references></div></div>` +
-      (renderingUnit ? `<footer class="study-explanation-tools">${renderStudyToolActions(renderingUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true })}</footer>` : "") +
+      (renderingUnit ? `<footer class="study-explanation-tools">${renderStudyToolActions(renderingUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true, contextual: true })}</footer>` : "") +
       '</div></article>';
     overlay.classList.toggle("is-without-base", !renderingUnit);
     root.querySelector(".app-shell").append(overlay);
@@ -352,7 +352,12 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     root.ownerDocument.addEventListener("keydown", handleKeyDown);
     overlay.querySelector("[data-close-explanation]").focus({ preventScroll: true });
     tools = createStudyTools({ root: overlay, getStudyUnit: () => renderingUnit, getContextKey: () => contextKey,
-      getOverlayHost: () => overlay, getBackground: panel,
+      // A folha da explicação é aria-modal: o apoio encaixado precisa viver dentro dela
+      // para continuar exposto à tecnologia assistiva.
+      getOverlayHost: () => panel() || overlay, getBackground: panel,
+      contextual: true,
+      // Apoio encaixado dentro da folha: divide a altura com a leitura em vez de sobrepô-la.
+      docked: true,
       canOpen: () => Boolean(overlay && renderingUnit && !sourceOpen), getHost: async () => ({
         canRevealAnswers: false,
         loadAudioConfiguration: () => repository.loadStudyAudioConfiguration(reference()),

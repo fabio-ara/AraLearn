@@ -76,7 +76,14 @@ test("prosa e estruturas densas usam degraus próprios e opções preservam leit
   assert.match(styles, /\.runtime-text-gap-blank\s*\{[^}]*font-size:\s*var\(--type-base\)/u);
   assertUsesType(".package-system-diagram-node-content", "diagram");
   assert.match(styles, /\.package-system-diagram-node-label \.runtime-text-gap-blank,[^{]*\{[^}]*font-size:\s*var\(--type-diagram\)/u);
-  assert.match(styles, /\.runtime-markdown-paragraph \+ \.runtime-markdown-paragraph,[^{]*\{[^}]*margin-top:\s*8px/u);
+  // Uma quebra de parágrafo precisa se distinguir de uma quebra de linha: a prosa
+  // usa o degrau de seção, e recursos de prosa vizinhos somam o mesmo ritmo (issue #445).
+  assert.match(styles, /\.runtime-markdown-paragraph \+ \.runtime-markdown-paragraph,[^{]*\{[^}]*margin-top:\s*var\(--space-section\)/u);
+  assert.match(styles, /\.runtime-resource-stack > \.package-instance:has\(> \.runtime-block\.runtime-paragraph-block\)[^{]*\{[^}]*margin-block-start:\s*calc\(var\(--space-section\) - var\(--space-copy\)\)/u);
+  assert.match(styles, /\.runtime-resource-stack > \.runtime-resource-edit-target:has\(> \.runtime-resource-selection-content > \.package-instance > \.runtime-block\.runtime-paragraph-block\)[^{]*\{[^}]*margin-block-start:\s*calc\(var\(--space-section\) - var\(--space-copy\)\)/u,
+    "A moldura de edição entra como caminho explícito do bloco do próprio recurso");
+  assert.doesNotMatch(styles, /\.runtime-resource-stack >[^{]*:has\(\.runtime-block/u,
+    "Prosa interna de outro pacote não classifica o recurso da pilha como parágrafo");
 });
 
 test("metadados acadêmicos compactos usam apenas os degraus tipográficos secundários", () => {

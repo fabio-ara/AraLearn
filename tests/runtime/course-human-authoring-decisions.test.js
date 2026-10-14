@@ -120,12 +120,51 @@ test("registrar_inspecao recusa consistência quando a base aplicada está nula"
           data: { text: "A explicação apresenta a relação entre nomes e endereços." } }], response: null, feedback: [] }, application: null }],
       dependencies: [] } };
   const reference = await createContentReviewReference({ principal, read });
+  // A evidência de um juízo suficiente cita o texto apresentado no alvo, não o
+  // título da Unidade (identidade); assim a recusa testada é a da base nula.
+  const materialReport = { ...report, checks: report.checks.map(check => ({ ...check,
+    evidence: ["A explicação apresenta a relação entre nomes e endereços."] })) };
   let writes = 0;
   const adapter = { getCourseContentInspectionReceipt: async () => null, getCourseContentInspection: async () => structuredClone(read),
     recordCourseContentInspection: async () => { writes++; } };
-  await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report }),
+  await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: materialReport }),
     error => error.code === "pedagogical_audit_unapplied_design");
   assert.equal(writes, 0);
+});
+
+test("registrar_inspecao ancora no texto apresentado, inclusive o retorno por alternativa", async () => {
+  const optionFeedback = "O TCP confirma o recebimento e retransmite o segmento perdido.";
+  const content = { id: "unit-a", position: 1, title: "Relações", role: "practice", topics: [],
+    content: [{ id: "p", package: "aralearn.resource.paragraph", version: "1.0.0",
+      data: { text: "Os protocolos diferem na recuperação de perdas." } }],
+    response: { id: "r", package: "aralearn.response.choice", version: "1.0.0", data: {
+      question: "Qual protocolo recupera as perdas?", selectionMode: "single", selectionCriterion: "correct",
+      options: [{ id: "alt-tcp", kind: "text", text: "TCP", feedback: optionFeedback },
+        { id: "alt-udp", kind: "text", text: "UDP", feedback: "O UDP não recupera as perdas." }], answerIds: ["alt-tcp"] } },
+    feedback: [] };
+  const read = { ...initial(), targetKind: "study_unit", targetId: "unit-a",
+    pedagogicalBasis: { targetKind: "study_unit", targetId: "unit-a",
+      microsequence: { title: "Relações", goal: "Recuperar perdas" }, planItems: [],
+      studyUnits: [{ id: "unit-a", content, application: { mode: "practice", practiceApplications: [] } }], dependencies: [] } };
+  const reference = await createContentReviewReference({ principal, read });
+  const reportWith = quote => ({ ...report, checks: report.checks.map(check => ({ ...check, evidence: [quote] })) });
+  let recorded = null;
+  const adapter = { publicAppUrl: "https://example.org",
+    getCourseContentInspectionReceipt: async () => null,
+    getCourseContentInspection: async () => structuredClone(read),
+    async recordCourseContentInspection(request) {
+      recorded = request.report;
+      return { ...read, courseRevision: 6, inspection: { state: "current", basisHash: read.basisHash,
+        inspectedAt: "2026-10-13T00:00:00Z", report: request.report } };
+    } };
+  // Ids internos e enums de controle não são texto apresentado; o retorno é.
+  for (const hidden of ["alt-tcp", "alt-udp", "single", "correct", "text", "selectionMode", "selectionCriterion"]) {
+    await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: reportWith(hidden) }),
+      error => error.code === "invalid_pedagogical_audit");
+    assert.equal(recorded, null);
+  }
+  await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: reportWith(optionFeedback) });
+  assert.deepEqual(recorded, reportWith(optionFeedback));
 });
 
 test("decisão explícita encaminha somente alvos inspecionados e respectivas bases", async () => {

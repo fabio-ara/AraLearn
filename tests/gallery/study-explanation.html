@@ -17,7 +17,7 @@
     const parameters = new URLSearchParams(location.search);
     await mountStudyExplanationFixture(document.querySelector("#app-root"), {
       unit: parameters.get("unit") || "theory", state: parameters.get("state") || "available",
-      theme: parameters.get("theme") || "light"
+      theme: parameters.get("theme") || "light", tools: parameters.get("tools") || "authored"
     });
   </script>
 </body>

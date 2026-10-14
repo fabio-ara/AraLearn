@@ -167,11 +167,16 @@ test.describe("áudio persistido no Supabase local", () => {
       await signInBrowser(study, student); await study.goto(audioStudyPath(courseId));
       await expect(study.locator("ruby").first()).toBeVisible();
       await expect(study.locator(".card-sheet-content")).toContainText(AUDIO_WRITING_NOTE);
-      // Sem Gramática, Dicionário e Leitura no catálogo corrente, a unidade tem uma única
-      // ferramenta e o botão icon-only abre a ferramenta direto, sem menu intermediário.
-      const audioToolButton = study.locator('.study-tool-actions button[data-study-tool-id="audio-tracks"]');
-      await expect(audioToolButton).toHaveAttribute("aria-label", "Áudio");
-      await audioToolButton.click();
+      // A unidade declara só o áudio; com a calculadora contextual o grupo passa a ter duas
+      // ferramentas e o único botão icon-only abre o menu "Ferramentas da unidade".
+      const toolGroup = study.getByRole("group", { name: "Ferramentas da unidade" });
+      await expect(toolGroup.getByRole("button")).toHaveCount(1);
+      const toolsLauncher = toolGroup.getByRole("button", { name: "Ferramentas da unidade", exact: true });
+      await toolsLauncher.click();
+      const toolMenu = study.getByRole("dialog", { name: "Ferramentas", exact: true });
+      await expect(toolMenu.locator("[data-open-study-tool]")).toHaveCount(2);
+      await expect(toolMenu.getByRole("button", { name: /Áudio/u })).toBeVisible();
+      await toolMenu.locator('[data-open-study-tool="audio-tracks"]').click();
       const tool = study.getByRole("dialog", { name: "Áudio", exact: true });
       await expect(tool).toBeVisible();
       expect(await tool.textContent()).not.toContain(AUDIO_ALTERNATIVE);
@@ -191,13 +196,14 @@ test.describe("áudio persistido no Supabase local", () => {
       expect(await study.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
       await study.screenshot({ path: info.outputPath("study-audio-real-390.png"), fullPage: true });
       await tool.getByRole("button", { name: "Fechar ferramenta" }).click();
-      await expect(audioToolButton).toBeFocused();
+      await expect(toolsLauncher).toBeFocused();
       await study.getByRole("radio", { name: "A altura permanece constante." }).click();
       await study.locator('[data-action="next-study-unit"]').click();
       await expect(study.locator(".study-continue-popup")).toBeVisible();
       await study.locator(".study-reader-context").click();
       await expect(study.locator(".study-continue-popup")).toBeHidden();
-      await audioToolButton.click();
+      await toolsLauncher.click();
+      await toolMenu.locator('[data-open-study-tool="audio-tracks"]').click();
       await expect(tool).toContainText(AUDIO_ALTERNATIVE);
       await study.getByRole("button", { name: "Fechar ferramenta" }).click();
       await study.goto(audioStudyPath(courseId, CALCULATOR_UNIT_ID));

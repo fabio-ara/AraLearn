@@ -1656,6 +1656,18 @@ button.account-settings-back[hidden] {
   min-width: 0;
 }
 
+/* Ritmo de prosa: uma quebra de parágrafo precisa se distinguir de uma quebra de
+   linha. Vale no interior de um recurso e entre recursos de prosa vizinhos da pilha
+   compartilhada pela Unidade de estudo e pela Explicação. A prosa é reconhecida pelo
+   bloco do próprio recurso da pilha; a moldura de edição, que envolve o recurso,
+   entra como caminho explícito — prosa interna de outro pacote não conta. */
+.runtime-resource-stack > .package-instance:has(> .runtime-block.runtime-paragraph-block)
+  + .package-instance:has(> .runtime-block.runtime-paragraph-block),
+.runtime-resource-stack > .runtime-resource-edit-target:has(> .runtime-resource-selection-content > .package-instance > .runtime-block.runtime-paragraph-block)
+  + .runtime-resource-edit-target:has(> .runtime-resource-selection-content > .package-instance > .runtime-block.runtime-paragraph-block) {
+  margin-block-start: calc(var(--space-section) - var(--space-copy));
+}
+
 .package-instance {
   width: 100%;
   max-width: 100%;
@@ -1674,7 +1686,7 @@ button.account-settings-back[hidden] {
 .runtime-markdown-paragraph + .runtime-markdown-list,
 .runtime-markdown-list + .runtime-markdown-paragraph,
 .runtime-markdown-list + .runtime-markdown-list {
-  margin-top: 8px;
+  margin-top: var(--space-section);
 }
 
 .runtime-choice-body code,
@@ -4476,9 +4488,20 @@ button.account-settings-back[hidden] {
   min-height: calc(var(--tap) + 4px + var(--safe-bottom-tappable));
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
   align-items: center;
   gap: 8px;
   padding: 0 0 var(--safe-bottom-tappable);
+}
+
+/* No leitor estreito o rodapé de leitura comporta duas linhas quando o rótulo visível
+   e as cinco ações não cabem juntos. O dock de edição reserva o mesmo footprint para a
+   área de leitura não mudar de altura ao entrar e sair da edição. */
+@media (max-width: 385px) {
+  .study-reader-footer,
+  .study-manual-edit-dock {
+    min-height: calc(2 * var(--tap) + 4px + var(--safe-bottom-tappable));
+  }
 }
 
 .study-manual-edit-dock p,
@@ -5176,6 +5199,9 @@ button.account-settings-back[hidden] {
   min-height: 0;
   overflow: hidden;
 }
+/* Com o apoio encaixado a folha usa a altura disponível: painel e leitura dividem
+   um espaço medido, sem sobreposição e sem esconder o fim do texto. */
+.study-explanation-panel:has(> .study-tools-overlay.is-docked) { height: 100%; }
 .study-explanation-reading {
   display: flex;
   flex: 1 1 auto;
@@ -6375,6 +6401,23 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
   min-width: 0;
   max-height: 100%;
 }
+/* Apoio encaixado (não modal): participa do layout da área de leitura em vez de
+   sobrepô-la. O anfitrião encolhe o próprio scroller e reserva espaço real para a
+   folha; a altura máxima é medida pelo host, que nunca cede mais da metade. */
+.study-tools-overlay.is-docked {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+.study-tools-overlay.is-docked > .study-tools-panel {
+  width: min(100%, 430px);
+  height: auto;
+  min-height: 0;
+  overflow: auto;
+}
 .study-tool-body {
   min-width: 0;
   min-height: 0;
@@ -6466,6 +6509,20 @@ body:has([role="dialog"], [role="alertdialog"]) .study-home-feedback-layer {
 .package-audio-remote-consent span { min-width: 0; }
 .package-audio-tool [hidden] { display: none !important; }
 .study-usual-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-inline-start: auto; }
+/* A Base Explicativa é compartilhada por toda a microssequência: o controle recebe
+   rótulo visível para ser encontrável, sem reduzir a área de toque (issue 445). */
+.study-usual-actions .study-explanation-btn {
+  width: auto;
+  min-width: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-inline: 8px;
+  font-size: var(--type-xs);
+  font-weight: var(--weight-label);
+  white-space: nowrap;
+}
+.study-usual-actions .study-explanation-btn-label { min-width: 0; }
 .study-next-wrap:has(.study-tool-actions) .study-usual-actions { gap: 4px; }
 .study-tool-body :is(input, select, textarea) {
   box-sizing: border-box;

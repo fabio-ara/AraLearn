@@ -14,6 +14,27 @@ abertura dá acesso ao apoio; a atividade solicita o trabalho sobre o resultado.
 Um exercício pode, por exemplo, pedir que o estudante calcule uma razão e
 escolha a interpretação correspondente num componente de resposta.
 
+## Apoio autoral e apoio contextual
+
+A autoria define o bloco da ferramenta no `content` da unidade ou da Explicação,
+com título e orientação próprios. Além desse bloco, o Estudo oferece a calculadora
+como apoio contextual: ela permanece acessível durante a unidade mesmo quando a
+autoria não incluiu o componente, e a ausência do bloco no conteúdo não significa
+ausência de calculadora no Estudo.
+
+O apoio contextual começa vazio e calcula apenas o que o estudante digita. Ele não
+extrai, preenche nem resolve automaticamente a expressão do enunciado, não
+preenche a resposta e não avalia o que o estudante fez; serve para conferir
+valores, testar previsões ou acompanhar contas que não são o objetivo de
+aprendizagem. Quando observar passos e raciocínio é o objetivo, o desenho da
+tarefa recolhe essa operação num componente de resposta — o recurso calcula o que
+for digitado, mas não demonstra nem registra esse percurso.
+
+A disponibilidade não depende de um classificador do objetivo: não há bloqueio por
+se tratar de cálculo mental. As orientações de autoria recomendam oferecer o apoio
+quando a carga aritmética desviar o foco do que se pretende aprender; uma tarefa de
+cálculo mental pode dispensá-lo sem tornar a ferramenta indisponível.
+
 ## Calculadora
 
 A calculadora faz cálculos numéricos aproximados no dispositivo. É adequada
@@ -123,7 +144,8 @@ teste do fluxo integrado.
 
 `consultar_componentes` descobre os pacotes pelo mesmo catálogo utilizado no
 estudo. Uma consulta focal devolve o contrato de um pacote, seu exemplo e, quando
-existe, `ferramenta: {label, icon}`. `materializar_parte` e `aplicar_correcoes`
+existe, `ferramenta: {label, icon}`; a lista de candidatos também identifica, em
+`ferramenta`, os pacotes que declaram ferramenta. `materializar_parte` e `aplicar_correcoes`
 recebem as instâncias no `content` comum; assim, cada canal reutiliza o contrato
 de conteúdo e a mesma rotina de gravação.
 

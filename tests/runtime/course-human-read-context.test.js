@@ -1021,9 +1021,11 @@ test("MCP e Actions expõem BPMN inconsistente no alvo, preservam a base compart
         assert.doesNotMatch(issue.message, /Dependência fora do alvo/u);
       }
     }
+    // Unidades desta fixture apresentam só o diagrama: a evidência positiva cita o
+    // material do próprio alvo, não o título da microssequência (identidade).
     const report = { summary: "Base examinada.", outcome: "consistent", findings: [],
       checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
-        dimension, result: "sufficient", reason: "Relação examinada na base salva.", evidence: ["Mesmo título"] })) };
+        dimension, result: "sufficient", reason: "Relação examinada na base salva.", evidence: ["Necessidade identificada"] })) };
     for (const target of [context.studyUnits[1], context.explicacoes[0]]) {
       const before = writes;
       const args = { referencia: target.referenciaInspecao, parecer: report };

@@ -708,8 +708,21 @@ test("Home e toolbar preservam responsividade, tema e alvos de toque", async ({ 
     expect(runtimeDock.actions, `Runtime ${width}px`).toEqual([
       "open-explanation", "open-observation", "toggle-review", "previous-study-unit", "next-study-unit"
     ]);
-    expect(runtimeDock.buttonWidths, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
-    expect(runtimeDock.buttonHeights, `Runtime ${width}px`).toEqual([44, 44, 44, 44, 44]);
+    // O rótulo visível "Explicação" torna esse controle mais largo que os icon-only;
+    // o invariante do rodapé é o alvo de toque e a ordem, não larguras idênticas (#445).
+    runtimeDock.buttonWidths.forEach((controlWidth, index) => {
+      expect(controlWidth, `Runtime ${width}px · ${runtimeDock.actions[index]}`).toBeGreaterThanOrEqual(44);
+    });
+    runtimeDock.buttonHeights.forEach((controlHeight, index) => {
+      expect(controlHeight, `Runtime ${width}px · ${runtimeDock.actions[index]}`).toBeGreaterThanOrEqual(44);
+    });
+    const explanationControl = page.locator("[data-action='open-explanation']");
+    await expect(explanationControl).toHaveAccessibleName("Explicação");
+    // O rótulo visível "Explicação" acompanha o controle em todos os tamanhos; no leitor
+    // estreito o rodapé pode ocupar duas linhas, o que é legítimo.
+    await expect(explanationControl.locator(".study-explanation-btn-label")).toBeVisible();
+    await explanationControl.focus();
+    await expect(explanationControl).toBeFocused();
     if (width === 360) await page.screenshot({ path: testInfo.outputPath("study-five-actions-360.png"), fullPage: true });
   }
 });

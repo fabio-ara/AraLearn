@@ -148,7 +148,9 @@ comum, incluídos no campo `content` da unidade ou da explicação. A descoberta
 de componentes fornece páginas de até oito representações, com
 `total`, `temMais` e `continuacao`. Para recuperar a página seguinte, repita
 os filtros e acrescente a continuação recebida. Depois da escolha, consulte
-o contrato do componente, um por vez. A leitura de fontes fornece referências
+o contrato do componente, um por vez. Cada candidato informa se o pacote declara
+uma ferramenta (`ferramenta`), como a calculadora, para que a escolha considere
+o apoio exigido pela operação. A leitura de fontes fornece referências
 lógicas aos documentos anexados; a biblioteca fornece referências de áudio.
 Esses dados identificam o arquivo, mantendo os endereços internos no serviço.
 Veja [ferramentas e canais](ferramentas-calculo-e-consulta.md#composição-nos-canais-de-autoria).
@@ -282,6 +284,12 @@ base no campo `evidence`. Os [critérios comuns](fluxos-prompts-e-contratos.md#a
 explicam o que cada dimensão examina. O servidor vincula o parecer à versão e
 ao `basisHash`, uma impressão digital calculada dos dados examinados. Ele
 identifica quando a base muda e recusa evidência que não esteja no recorte.
+
+Um parecer `sufficient` de alinhamento, evidência, representação, feedback ou
+suficiência precisa citar o material apresentado no próprio alvo — conteúdo,
+pergunta, alternativas e retornos. Títulos de unidade, metadados de componente,
+o plano e a Explicação compartilhada identificam ou declaram, mas não demonstram
+a apresentação; a Explicação tem alvo próprio.
 
 `configuration` confronta os parâmetros aplicados com sua realização observável
 no alvo e no percurso pertinente, respeitando preferências contextuais e fixações.

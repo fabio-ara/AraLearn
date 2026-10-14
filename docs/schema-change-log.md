@@ -21,6 +21,70 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261013120000 — leitura positiva ancorada no material do alvo
+
+A [migração](../supabase/migrations/20261013120000_grounded_report_target_material.sql)
+reescreve `private.course_pedagogical_report_grounded_v1`, a função que confere
+a leitura positiva do parecer de inspeção. Um juízo `sufficient` das dimensões
+de conteúdo — `alignment`, `evidence`, `representation`, `feedback` e
+`sufficiency` — passa a exigir a citação do texto efetivamente apresentado no
+próprio alvo: conteúdo, pergunta, alternativas e retornos. Antes, a barreira
+aceitava qualquer trecho da base, e a primeira Unidade, cujo contexto só existia
+na Explicação compartilhada, podia ser declarada suficiente citando a Explicação,
+o título da Unidade ou o nome de um pacote. Na leitura corrente, título, plano,
+declaração de autoria, envelope do componente (`id`, pacote e versão) e a
+Explicação compartilhada, quando o alvo é a Unidade, identificam ou declaram, mas
+não demonstram a apresentação; a Explicação tem alvo próprio. A dimensão de
+realização da configuração permanece no escopo do alvo, com identidade, citações
+e material apresentado.
+
+O material da leitura é a projeção acessível do texto apresentado — conteúdo,
+pergunta e itens da resposta. O retorno por alternativa entra por cima dessa
+projeção, que o omite (`options[].feedback`, contrato existente), e não se
+presume apresentação onde o pacote não projeta: enums de controle (modo e
+critério de seleção, `kind`, modo de resposta) não são material. As folhas que o
+envelope guarda para avaliar (`answer`, `acceptedAnswers`, `distractors`,
+`answerIds`, `id`, `targetInstanceId`, `targetPath` e `misconceptionId`) ficam
+fora: valor de lacuna ainda oculto não conta como ensino; em lacuna por escolha
+os distratores podem aparecer como opções, mas isolados não demonstram a
+apresentação. O conteúdo é lido depois de preparado, com as lacunas mascaradas
+como o estudante as vê. A barreira SQL percorre os campos de dados dos recursos,
+da resposta e dos retornos, descarta as mesmas folhas e os enums de controle
+conhecidos do contrato de resposta e mantém o retorno por alternativa; é uma
+aproximação sem as projeções de pacote do runtime JavaScript. Ela nunca fundamenta suficiência na resposta
+esperada nem em identificadores, mas ainda pode aceitar outra folha interna, ou
+uma ocorrência que a projeção acessível mascara no alvo da lacuna — o domínio é a
+regra de referência e este guarda reduz o espaço, sem fechá-lo sozinho. Bases sem
+material no alvo (sintéticas ou legadas) preservam a leitura anterior — caem no
+escopo de identidade e citações, e um escopo vazio não reprova. A assinatura da
+função não muda; `create or replace` preserva proprietário e ACL, o `revoke`
+repetido mantém a propriedade explícita caso a ordem de instalação mude, e a
+função segue imutável com `search_path` fixo.
+
+O pacote de inspeção separa os apoios declarados no conteúdo (`apoios`) dos que o
+Estudo oferece contextualmente (`apoiosDoHost`), cuja lista vem da mesma fonte de
+dados da UI, `src/resources/studySupport.js`; não se afirma ausência de apoio só
+porque a autoria não declarou o recurso, e a calculadora executa o que o estudante
+digita sem ler o enunciado, preencher respostas ou avaliar a atividade. A citação
+exigida é um trecho distintivo e relevante: comprova ancoragem textual, não
+suficiência nem pertinência, e o juízo semântico e a inspeção visual continuam
+necessários — a barreira não adota limiar de tamanho de citação. A Explicação
+compartilhada não é duplicada por alvo; a instrução aponta para
+`basis.microsequence.explanation`, que já viaja na base, e mantém `inicio` e
+`percurso` para confrontar continuidade.
+
+Não há transformação nem reparo de dados: entidades, revisões de curso, pareceres
+de inspeção, revisões humanas, fontes e permissões permanecem como estão. O
+manifesto avança para a revisão `20261013120000` sem declarar capacidade nova: a
+assinatura, o formato e o envelope do parecer permanecem, e o que muda é o critério
+de aceitação da leitura positiva, agora mais estrito. A alteração do esquema e a
+correspondente no domínio JavaScript integram a mesma candidata: a validação
+precisa conferir a paridade entre as duas leituras — suficiente exige o material
+do alvo e recusa título, envelope, plano ou Explicação compartilhada —, além da
+instalação e da atualização do esquema.
+
+Esta entrada descreve a candidata local, não uma implantação hospedada.
+
 ## 20261007234650 — reuso da base na leitura de inspeção
 
 Pelas fontes (leitura do SQL), a expressão do hash de inspeção e o payload
