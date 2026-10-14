@@ -16,7 +16,7 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - O controle que abre a Explicação no leitor volta a mostrar somente o ícone, preservando nome acessível, `title` e o estado anunciado. A reserva de duas linhas que compensava o rótulo sai do rodapé, e a área de leitura recupera 44px a 360px sem mudar altura, largura, topo e alinhamento ao entrar e sair da edição; a edição passa a ancorar os controles na mesma base da leitura.
-- A moldura das tabelas no leitor estreito passa a ter verificação própria, na Unidade e na Explicação, nas larguras de referência.
+- No leitor, as tabelas textuais passam a caber na coluna de leitura em vez de exigirem rolagem horizontal por causa da própria moldura, mantendo rótulo e conteúdo próximos; tabelas largas conservam a rolagem dentro da moldura, sem estourar a página. A verificação mede a geometria real de `table`, `truth_table` e `state_transition_table`, na Unidade e na Explicação, nas larguras de referência.
 
 ## [0.0.106] - 2026-10-14
 
