@@ -98,10 +98,12 @@ const errorSchema = {
 // comparison. The candidate unit contract is now shared by
 // preparar_materializacao and materializar_parte. Catalog 11.1.2 adds the
 // read-only recovery object of materializar_parte together with its exclusive
-// union against the production arguments; the measured baseline becomes 100814
-// minified / 209871 pretty-printed characters. Acceptance in the actual editor
-// remains a separate gate with the real client; it is not implied by these
-// counters.
+// union against the production arguments. Catalog 11.2.0 makes
+// `microssequencia` optional in `registrar_aplicacoes_instrucionais`, so a
+// single request may declare existing units across microsequences of the same
+// course; the measured baseline becomes 100859 minified / 209905 pretty-printed
+// characters. Acceptance in the actual editor remains a separate gate with the
+// real client; it is not implied by these counters.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
 const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 102_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";

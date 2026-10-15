@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20261014143125",
+  "schemaRevision": "20261015021933",
   "contractVersion": 1,
   "requiredFeatures": [
     "object-content-review-v1",
@@ -57,6 +57,7 @@
     "configuration-realization-inspection-v1",
     "empty-practice-variation-dimensions-v1",
     "contextual-design-writer-edges-v1",
+    "contextual-design-course-scope-applications-v1",
     "course-source-atomic-bundle-v1",
     "course-authoring-part-materialization-receipt-v1"
   ]

@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.109] - 2026-10-15
+
+### Corrigido
+
+- Quando uma correção de prosa invalidava a declaração de desenho de unidades em duas ou mais microssequências do mesmo curso, nenhuma ordem de comandos conseguia restaurá-las: a guarda de "introdução anterior" valida o curso inteiro, mas cada pedido cobria uma única microssequência. `registrar_aplicacoes_instrucionais` passa a aceitar, num único pedido atômico, unidades existentes de várias microssequências do mesmo curso quando `microssequencia` é omitida; o texto, a configuração aplicada, as fontes, as posições e a origem editorial são preservados, unidades omitidas permanecem intactas e a recusa reverte o lote inteiro. Com `microssequencia`, o recorte continua sendo uma microssequência, e `aplicar_configuracao_instrucional` segue exigindo-a.
+
 ## [0.0.108] - 2026-10-14
 
 ### Corrigido

@@ -457,3 +457,173 @@ test("registro parcial conserva integridade da prática e materialização exige
     await assert.rejects(db.query("select private.assert_course_application_pedagogy_v1($1,$2,null)", [courseId, partial]), error => error.code === "22023");
   } finally { await db.close(); }
 });
+
+// --- Declaração de aplicações em várias microssequências (issue #456) ---
+const ideaY = "30000000-0000-4000-8000-000000000003";
+const applicationOf = (idea, mode = "expository") => ({ mode, introducedInstructionalAnalysisUnitIds: [idea], usedInstructionalAnalysisUnitIds: [],
+  curriculumScopeItemIds: [], explanationApplications: [{ instructionalAnalysisUnitId: idea, developedForms: ["plain_definition"], notApplicable: [] }], practiceApplications: [] });
+const usesIdea = idea => ({ mode: "expository", introducedInstructionalAnalysisUnitIds: [], usedInstructionalAnalysisUnitIds: [idea],
+  curriculumScopeItemIds: [], explanationApplications: [], practiceApplications: [] });
+const snapshotFor = micro => ({ ...snapshot, didacticMicrosequenceId: micro });
+const courseScope = units => ({ type: "set_study_unit_applications", scope: { kind: "course", ref: courseId }, units });
+const microScope = (ref, units) => ({ type: "set_study_unit_applications", scope: { kind: "didactic_microsequence", ref }, units });
+const unitEntry = (studyUnitId, application_, expectedStudyUnitVersion = 1) => ({ studyUnitId, expectedStudyUnitVersion, application: application_ });
+const targetLinks = (ref, ids) => ({ type: "set_target_plan_items", scope: { kind: "didactic_microsequence", ref }, instructionalAnalysisUnitIds: ids, evidenceRequirementIds: [] });
+// Colunas relevantes do alvo. snapshot_rest isola o snapshot sem os dois
+// arrays instrucionais que o escritor re-deriva do repertório da
+// microssequência (comportamento corrente, também no caminho de uma
+// microssequência); o design_snapshot completo permanece para as unidades
+// omitidas e o no-op, que não podem mudar em nada.
+const storedUnits = async db => (await db.query(`select entity_id,parent_id,position,content,version,applied_explanation_basis,content_review,updated_at,
+  design_snapshot,design_snapshot-'instructionalAnalysisUnitIds'-'evidenceRequirementIds' snapshot_rest,design_application
+  from private.course_entities where entity_type='study_unit' order by entity_id`)).rows;
+const stableRow = row => Object.fromEntries(Object.entries(row)
+  .filter(([column]) => !["design_application", "design_snapshot", "updated_at"].includes(column)));
+const byEntity = rows => new Map(rows.map(row => [row.entity_id, row]));
+const snapshotArrays = async (db, entityId) => value(db, "select jsonb_build_array(design_snapshot->'instructionalAnalysisUnitIds',design_snapshot->'evidenceRequirementIds') value from private.course_entities where entity_id=$1", [entityId]);
+const introducedIds = async (db, entityId) => value(db, "select design_application->'introducedInstructionalAnalysisUnitIds' value from private.course_entities where entity_id=$1", [entityId]);
+
+// Base real do escritor de desenho e o patch de integridade da prática (como em
+// recordedPracticeFixture). A migração da issue aplica-se por último, depois de
+// todas as emendas correntes do comando. Sem curso real, Supabase hospedado ou rede.
+async function multiMicrosequenceFixture() {
+  const db = await fixture({ units: true, currentOrder: true });
+  try {
+    await db.exec(await load("20260910054749_contextual_recorded_practice_integrity.sql"));
+    await db.exec(await load("20261015021933_contextual_design_course_scope_applications.sql"));
+  } catch (error) { await db.close(); throw error; }
+  await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content) values($1,'microsequence','micro2','lesson',1,$2)",
+    [courseId, JSON.stringify({ title: "Aprofundamento", explanation: { title: "Base salva", content: [] } })]);
+  for (const [id, position, stored] of [["unit-c", 1, applicationOf(ideaY)], ["unit-d", 2, usesIdea(ideaY)]]) {
+    await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content,design_snapshot,design_application,
+      applied_explanation_basis,content_review) values($1,'study_unit',$2,'micro2',$3,$4,$5,$6,$7,$8)`,
+    [courseId, id, position, content, snapshotFor("micro2"), { ...stored, contract: "aralearn.study-unit-design-application.v1" },
+      { version: 1, explanation: "base salva literal" }, { reviewedBy: owner, basisHash: "a".repeat(64) }]);
+  }
+  return db;
+}
+
+test("lote de curso restaura aplicações em várias microssequências do mesmo curso", async () => {
+  const db = await multiMicrosequenceFixture();
+  try {
+    await write(db, saveItem(analysisId), "course-scope-analysis-x");
+    await write(db, saveItem(ideaY, "instructional_analysis_unit", 0, "Ideia Y"), "course-scope-analysis-y");
+    await write(db, links([analysisId]), "course-scope-link-x");
+    await write(db, targetLinks("micro2", [ideaY]), "course-scope-link-y");
+    await write(db, microScope("micro", [unitEntry("unit-a", application()), unitEntry("unit-b", usesIdea(analysisId))]), "course-scope-seed-x");
+    await write(db, microScope("micro2", [unitEntry("unit-c", applicationOf(ideaY))]), "course-scope-seed-y");
+    // Correção de prosa invalida uma introdução em cada microssequência.
+    await db.query("update private.course_entities set design_application=null where entity_id in('unit-a','unit-c')");
+    const before = await storedUnits(db);
+    // Cada microssequência isolada é recusada pelo uso órfão da outra.
+    const orphaned = error => error.code === "23514" && /introdução anterior/u.test(error.message);
+    await assert.rejects(write(db, microScope("micro", [unitEntry("unit-a", application())]), "course-scope-reject-isolated-x"), orphaned);
+    await assert.rejects(write(db, microScope("micro2", [unitEntry("unit-c", applicationOf(ideaY))]), "course-scope-reject-isolated-y"), orphaned);
+    // Lote de curso incompleto também reverte por inteiro.
+    await assert.rejects(write(db, courseScope([unitEntry("unit-a", application())]), "course-scope-reject-incomplete"), orphaned);
+    assert.deepEqual(await storedUnits(db), before, "a recusa não deixa efeito parcial");
+    assert.equal(await value(db, "select count(*)::integer value from private.course_change_receipts where request_id like 'course-scope-reject-%'"), 0);
+    // Um único pedido do curso restaura as duas introduções.
+    const request = () => courseScope([unitEntry("unit-a", application()), unitEntry("unit-c", applicationOf(ideaY))]);
+    const revision = await value(db, "select revision value from public.courses");
+    const restored = await write(db, request(), "course-scope-restore", { revision });
+    assert.equal(restored.changed, true);
+    assert.deepEqual(await introducedIds(db, "unit-a"), [analysisId]);
+    assert.deepEqual(await introducedIds(db, "unit-c"), [ideaY]);
+    const after = await storedUnits(db);
+    const beforeById = byEntity(before);
+    const afterById = byEntity(after);
+    // Restauradas: só design_application e os dois arrays instrucionais do
+    // snapshot mudam; identidade, posição, texto, versão, base, revisão e o
+    // restante da configuração aplicada permanecem.
+    for (const id of ["unit-a", "unit-c"]) {
+      assert.deepEqual(stableRow(afterById.get(id)), stableRow(beforeById.get(id)),
+        `${id} restaurada preserva identificação, posição, texto, versão, base, revisão e configuração do snapshot`);
+    }
+    assert.deepEqual(await snapshotArrays(db, "unit-a"), [[analysisId], []]);
+    assert.deepEqual(await snapshotArrays(db, "unit-c"), [[ideaY], []]);
+    for (const id of ["unit-b", "unit-d"]) {
+      assert.deepEqual(afterById.get(id), beforeById.get(id), `${id} omitida permanece idêntica em todas as colunas`);
+    }
+    // Replay da tentativa original e no-op do mesmo conteúdo em nova tentativa.
+    const replay = await write(db, request(), "course-scope-restore", { revision });
+    assert.equal(replay.idempotent, true);
+    assert.equal(replay.courseRevision, restored.courseRevision);
+    const identical = await write(db, request(), "course-scope-identical");
+    assert.equal(identical.changed, false);
+    assert.equal(identical.courseRevision, restored.courseRevision);
+    assert.deepEqual(await storedUnits(db), after, "no-op não reescreve colunas nem a data de atualização");
+    assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"),
+      { schemaRevision: "20261015021933", contractVersion: 1,
+        features: ["contextual-design-course-scope-applications-v1", "contextual-design-writer-edges-v1", "fixture-manifest-v1"] });
+  } finally { await db.close(); }
+});
+
+test("alvos inválidos no lote de curso são recusados sem efeitos parciais", async () => {
+  const db = await multiMicrosequenceFixture();
+  const otherCourseId = "20000000-0000-4000-8000-000000000009";
+  try {
+    await db.query("insert into public.courses(id,owner_id) values($1,$2)", [otherCourseId, owner]);
+    await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content) values($1,'study_unit','foreign-unit','micro',1,$2)",
+      [otherCourseId, JSON.stringify(content)]);
+    await write(db, saveItem(analysisId), "course-guard-analysis");
+    await write(db, links([analysisId]), "course-guard-links");
+    const before = await storedUnits(db);
+    const good = () => unitEntry("unit-a", application());
+    const rejected = [
+      ["unknown-unit", courseScope([unitEntry("missing-unit", application())]), "PT404"],
+      ["foreign-course-unit", courseScope([unitEntry("foreign-unit", application())]), "PT404"],
+      ["stale-unit-version", courseScope([unitEntry("unit-a", application(), 9)]), "PT409"],
+      ["duplicate-unit", courseScope([good(), good()]), "22023"],
+      ["foreign-scope", { type: "set_study_unit_applications", scope: { kind: "course", ref: otherCourseId }, units: [good()] }, "22023"],
+      // O escopo de curso existe só para declarar aplicações: a configuração
+      // continua exigindo a microssequência, seu único consumidor humano.
+      ["course-configuration", { type: "apply_study_unit_configuration", scope: { kind: "course", ref: courseId },
+        units: [{ studyUnitId: "unit-a", expectedStudyUnitVersion: 1, automaticParameters: [] }] }, "22023"]
+    ];
+    for (const [name, command, code] of rejected) {
+      await assert.rejects(write(db, command, `course-reject-${name}`), error => error.code === code, name);
+    }
+    await assert.rejects(write(db, courseScope([good()]), "course-reject-stale-course", { revision: 1 }), error => error.code === "PT409");
+    assert.deepEqual(await storedUnits(db), before, "nenhuma recusa é parcialmente aplicada");
+    assert.equal(await value(db, "select count(*)::integer value from private.course_change_receipts where request_id like 'course-reject-%'"), 0);
+  } finally { await db.close(); }
+});
+
+test("guarda global recusa uso órfão e introdução duplicada no lote de curso", async () => {
+  const db = await multiMicrosequenceFixture();
+  try {
+    await write(db, saveItem(analysisId), "course-pedagogy-analysis");
+    await write(db, links([analysisId]), "course-pedagogy-links");
+    const before = await storedUnits(db);
+    const orphaned = error => error.code === "23514" && /introdução anterior/u.test(error.message);
+    // Uso sem introdução: nada introduz X.
+    await assert.rejects(write(db, courseScope([unitEntry("unit-b", usesIdea(analysisId))]), "course-orphan-use"), orphaned);
+    // Introdução posterior: unit-a usa X, mas X só viria em unit-b (depois).
+    await assert.rejects(write(db, courseScope([unitEntry("unit-a", usesIdea(analysisId)), unitEntry("unit-b", application())]), "course-orphan-deferred"), orphaned);
+    // Introdução duplicada: duas unidades introduzem a mesma ideia.
+    await assert.rejects(write(db, courseScope([unitEntry("unit-a", application()), unitEntry("unit-b", application())]), "course-orphan-duplicate"),
+      error => error.code === "23514" && /mais de uma introdução/u.test(error.message));
+    assert.deepEqual(await storedUnits(db), before, "as recusas pedagógicas revertem por inteiro");
+    assert.equal(await value(db, "select count(*)::integer value from private.course_change_receipts where request_id like 'course-orphan-%'"), 0);
+  } finally { await db.close(); }
+});
+
+test("a migração do escopo de curso aplica sobre a cadeia corrente do escritor", async () => {
+  // A migração reescreve o comando por pg_get_functiondef; aqui ela é aplicada
+  // sobre a maior cadeia de emendas disponível no teste (integridade da prática,
+  // procedência da calibração, formas explicativas e bordas do escritor) para
+  // provar que os fragmentos substituídos continuam únicos e presentes.
+  const db = await recordedPracticeFixture();
+  try {
+    await db.exec(await load("20261015021933_contextual_design_course_scope_applications.sql"));
+    const definition = await value(db, "select pg_get_functiondef('public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)'::regprocedure) value");
+    assert.match(definition, /not in\('didactic_microsequence','course'\)/u);
+    assert.match(definition, /and entity_id=entry->>'studyUnitId' for update;/u);
+    assert.doesNotMatch(definition, /'didacticMicrosequenceId',target/u);
+    assert.match(definition, /'didacticMicrosequenceId',unit.parent_id/u);
+    assert.match(definition, /didactic_microsequence_id=unit.parent_id/u);
+    assert.match(definition, /and e.design_application is not null and e.parent_id in\(/u);
+    assert.match(definition, /assert_course_application_pedagogy_v1\(p_course_id,all_units,false\)/u);
+  } finally { await db.close(); }
+});

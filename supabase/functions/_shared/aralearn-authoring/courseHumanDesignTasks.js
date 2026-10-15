@@ -41,9 +41,9 @@ export const COURSE_HUMAN_DESIGN_TASK_DEFINITIONS = [
   task("vincular_repertorio_instrucional", "Vincular repertório à microssequência", "Salva a seleção completa e expressa de análise e evidência desta microssequência. Cobertura curricular e aplicações já salvas são preservadas.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
       analise: list(reference), evidencias: list(reference) }, ["curso", "microssequencia", "analise", "evidencias"]),
-  task("registrar_aplicacoes_instrucionais", "Registrar aplicações instrucionais", "Registra aplicações expressas nas unidades inspecionadas de uma microssequência, mantendo texto, base explicativa e configuração aplicada. Unidades omitidas permanecem. Valida introdução, uso, formas e oportunidades no estado final.",
+  task("registrar_aplicacoes_instrucionais", "Registrar aplicações instrucionais", "Registra aplicações nas unidades inspecionadas, mantendo texto, base explicativa e configuração. Um pedido cobre unidades de várias microssequências do mesmo curso; microssequencia restringe o recorte. Unidades omitidas permanecem. Valida introdução, uso, formas e oportunidades no estado final.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
-      unidades: { ...list(object({ unidade: reference, ...applicationFields }), 64), minItems: 1 } }, ["curso", "microssequencia", "unidades"]),
+      unidades: { ...list(object({ unidade: reference, ...applicationFields }), 64), minItems: 1 } }, ["curso", "unidades"]),
   task("aplicar_configuracao_instrucional", "Aplicar configuração às unidades existentes", "Aplica a intenção às unidades inspecionadas. Grava calibração e aplicação juntas: calibra apenas parâmetros automáticos; preserva fixações, pesquisa, texto e base. Valida aplicações salvas; unidades sem aplicação exigem uma explícita. Não declara revisão humana.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
       unidades: { ...list(object({ unidade: reference,
@@ -212,13 +212,15 @@ export const COURSE_HUMAN_DESIGN_TASK_HANDLERS = {
   },
   async registrar_aplicacoes_instrucionais(values) {
     if (!Array.isArray(values.args.unidades) || !values.args.unidades.length || values.args.unidades.length > 64) fail("Selecione de 1 a 64 unidades inspecionadas.");
-    await write(values, resolved => {
-      if (!resolved.microsequence) fail("Indique a microssequência das aplicações.");
-      return { type: "set_study_unit_applications", scope: { kind: "didactic_microsequence", ref: resolved.microsequence.id },
-        units: values.args.unidades.map((entry, index) => ({ studyUnitId: resolved.studyUnits[index].studyUnit.id,
-          expectedStudyUnitVersion: resolved.studyUnits[index].version,
-          application: applicationCommand(resolved, entry) })) };
-    }, { applications: true });
+    await write(values, resolved => ({ type: "set_study_unit_applications",
+      // Com a microssequência indicada, o recorte é a unidade dela. Sem ela, o
+      // pedido é do curso: uma única transação declara as unidades existentes
+      // de várias microssequências, sem reenviar texto nem configuração.
+      scope: resolved.microsequence ? { kind: "didactic_microsequence", ref: resolved.microsequence.id }
+        : { kind: "course", ref: resolved.course.id },
+      units: values.args.unidades.map((entry, index) => ({ studyUnitId: resolved.studyUnits[index].studyUnit.id,
+        expectedStudyUnitVersion: resolved.studyUnits[index].version,
+        application: applicationCommand(resolved, entry) })) }), { applications: true });
     return envelope("Confirmei as aplicações instrucionais expressas nas unidades selecionadas.");
   },
   async aplicar_configuracao_instrucional(values) {

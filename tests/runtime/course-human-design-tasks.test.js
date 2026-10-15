@@ -177,3 +177,35 @@ test("aplicação expressa envia calibração tipada, lê intenção e recupera 
   assert.equal(lost.writes.length, 1); assert.equal(lost.recovery.length, 1);
   assert.equal(Object.hasOwn(lost.writes[0].p_command.units[0], "application"), false);
 });
+
+test("aplicações sem microssequência viajam num único pedido do curso", async () => {
+  const f = harness();
+  const listed = f.adapter.listCourseStudyUnits;
+  f.adapter.listCourseStudyUnits = async input => {
+    const page = await listed(input);
+    if (input.scopeKind !== "course") return page;
+    return { items: [
+      { ordinal: 1, version: 7, studyUnit: { id: "unit-a", title: "Introdução" } },
+      { ordinal: 2, version: 3, studyUnit: { id: "unit-c", title: "Retomada" } }
+    ], hasMore: false };
+  };
+  const entry = (unidade, idea) => ({ unidade, modo: "expository", ideiasIntroduzidas: [idea], ideiasUtilizadas: [], cobertura: [],
+    explicacoes: [{ ideia: idea, formas: ["plain_definition"] }], praticas: [] });
+  await f.run("registrar_aplicacoes_instrucionais", { curso: "Curso", unidades: [entry("Introdução", "Interação"), entry("Retomada", "Interação")] });
+  assert.equal(f.writes.length, 1, "as duas microssequências formam um único pedido transacional");
+  const command = f.writes[0].p_command;
+  assert.deepEqual(command.scope, { kind: "course", ref: courseId });
+  assert.deepEqual(command.units.map(unit => [unit.studyUnitId, unit.expectedStudyUnitVersion]), [["unit-a", 7], ["unit-c", 3]]);
+  assert.deepEqual(command.units.map(unit => unit.application.introducedInstructionalAnalysisUnitIds), [[analysisId], [analysisId]]);
+  assert.equal(Object.hasOwn(command.units[0], "content"), false);
+  assert.equal(Object.hasOwn(command.units[0], "designSnapshot"), false);
+  assert.equal(Object.hasOwn(command.units[0], "didacticMicrosequenceId"), false);
+  // A microssequência indicada continua restringindo o recorte e o escopo.
+  await f.run("registrar_aplicacoes_instrucionais", { curso: "Curso", microssequencia: 1, unidades: [entry(1, "Interação")] });
+  assert.deepEqual(f.writes[1].p_command.scope, { kind: "didactic_microsequence", ref: "micro" });
+  assert.deepEqual(f.writes[1].p_command.units.map(unit => unit.studyUnitId), ["unit"]);
+  assert.equal(f.writes.length, 2);
+  // O schema aceita o pedido sem a microssequência e segue exigindo curso e unidades.
+  assert.equal(valid.get("registrar_aplicacoes_instrucionais")({ curso: "Curso", unidades: [entry(1, "Interação")] }), true);
+  assert.equal(valid.get("registrar_aplicacoes_instrucionais")({ unidades: [entry(1, "Interação")] }), false);
+});
