@@ -77,6 +77,10 @@ export async function reusedReviewPage(adapter, identity, claim) {
   if (Date.now() - entry.storedAt >= MAX_AGE_MS) { forget(repository, key); return null; }
   const claimed = await claim(entry);
   if (!claimed || claimed.annotationSetVersion !== entry.annotationSetVersion) return null;
+  // `claim` aguarda leitura: a entrada pode ter sido descartada ou substituída nesse
+  // intervalo. Só a MESMA entrada ainda presente descreve o estado corrente; qualquer
+  // outra coisa é ausência, e nada volta ao repositório por conta desta chamada.
+  if (repository.pages.get(key) !== entry) return null;
   // Uso recente vai para o fim da ordem de inserção do Map (despejo do início).
   repository.pages.delete(key);
   repository.pages.set(key, entry);
@@ -89,6 +93,9 @@ export function rememberReviewPage(adapter, identity, { annotationSetVersion, ch
   const key = identityKey(identity);
   forget(repository, key);
   if (!Number.isSafeInteger(characters) || characters <= 0) return;
+  // Entrada que sozinha excede o teto serializado não é guardada: ela não seria servível
+  // e despejar as vizinhas para caber não traria reuso nenhum.
+  if (characters > MAX_SERIALIZED_CHARACTERS) return;
   repository.pages.set(key, { storedAt: Date.now(), annotationSetVersion, characters, digest,
     planDigest, unitPageDigest, record });
   repository.characters += characters;
