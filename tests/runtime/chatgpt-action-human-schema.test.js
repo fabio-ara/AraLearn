@@ -351,7 +351,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.2");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.2.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -903,10 +903,11 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // schemas integrais por referências compartilhadas. Não são teto externo do
   // artefato: o limite publicado de 100.000 vale por corpo de chamada e segue
   // validado no runner de payload (ACTION_PAYLOAD_MAX_CHARACTERS); a
-  // especificação só limita descrições. O catálogo 11.1.2 acrescenta o objeto de
-  // recuperação da materialização e sua união exclusiva; a linha de base medida
-  // passa a 100814 minificados / 209871 formatados. A aceitação pelo editor é
-  // conferida à parte, com o cliente real.
+  // especificação só limita descrições. O catálogo 11.2.0 torna
+  // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
+  // permitindo um lote atômico de unidades de várias microssequências do mesmo
+  // curso; a linha de base medida passa a 100859 minificados / 209905
+  // formatados. A aceitação pelo editor é conferida à parte, com o cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 210_000);
   assert.doesNotMatch(openApiText, /"const"/u);

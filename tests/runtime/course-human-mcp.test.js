@@ -424,7 +424,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.1.2");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.2.0");
   // Orçamento local de regressão; o servidor aceita 2 MiB por resposta MCP e o
   // payload de chamada mantém o gate próprio. Baseline medida com o contrato de
   // saída só de sucesso: 144.996 B. A união tipada (sucesso + erro) exigida pelo

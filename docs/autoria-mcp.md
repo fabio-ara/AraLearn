@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.1.2**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.2.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -84,7 +84,7 @@ ou reconstruir seu conteúdo.
 | `manter_unidade_analise` | incluir, editar ou remover um item expresso do repertório instrucional |
 | `manter_requisito_evidencia` | incluir, editar ou remover um requisito expresso de evidência |
 | `vincular_repertorio_instrucional` | salvar a seleção explícita de análise e evidência de uma microssequência |
-| `registrar_aplicacoes_instrucionais` | registrar introduções, usos, formas e oportunidades nas unidades inspecionadas |
+| `registrar_aplicacoes_instrucionais` | registrar introduções, usos, formas e oportunidades nas unidades inspecionadas, em uma ou várias microssequências do mesmo curso |
 | `aplicar_configuracao_instrucional` | aplicar a intenção corrente às unidades existentes, com calibração explícita dos automáticos e preservação de fixações e condições de pesquisa |
 | `registrar_observacao` | acrescentar uma observação única com incidências nas unidades e explicações selecionadas |
 | `registrar_inspecao` | registrar parecer da IA vinculado à base efetivamente lida, preservando conteúdo e revisão humana |
