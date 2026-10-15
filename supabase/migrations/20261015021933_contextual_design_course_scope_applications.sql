@@ -7,8 +7,10 @@ begin;
 -- na mesma correção de prosa, nenhuma ordem de comandos passava. O escopo
 -- 'course' localiza cada unidade pela própria identidade no curso e conserva o
 -- escopo 'didactic_microsequence' corrente, em que as unidades pertencem ao
--- alvo. A validação pedagógica passa a observar as microssequências presentes
--- no lote, exatamente como antes observava a única microssequência do recorte.
+-- alvo. O escopo de curso vale somente para set_study_unit_applications: a
+-- configuração não tem consumidor humano para o lote e segue exigindo a
+-- microssequência. A validação pedagógica passa a observar as microssequências
+-- presentes no lote, como antes observava a única microssequência do recorte.
 do $course_scope_applications$
 declare definition text; marker_start text; marker_end text;
         start_position integer; end_position integer;
@@ -35,7 +37,8 @@ begin
   -- 1. O escopo aceito passa a incluir 'course', com o próprio curso como alvo.
   new_block:=replace(new_block,marker_start,
     $n$   if p_command#>>'{scope,kind}' not in('didactic_microsequence','course')
-     or (p_command#>>'{scope,kind}'='course' and target<>p_course_id::text)
+     or (p_command#>>'{scope,kind}'='course'
+       and (command_type<>'set_study_unit_applications' or target<>p_course_id::text))
      or p_command-array['type','scope','expectedPlanVersion','units']<>'{}'::jsonb$n$);
 
   -- 2. No escopo de curso, a unidade é localizada pela identidade, sem exigir
@@ -84,8 +87,8 @@ end $course_scope_applications$;
 do $manifest$
 declare manifest jsonb:=public.get_aralearn_runtime_manifest();
 begin
-  if manifest->>'schemaRevision' is distinct from '20261014230000' then
-    manifest:=manifest||jsonb_build_object('schemaRevision','20261014230000',
+  if manifest->>'schemaRevision' is distinct from '20261015021933' then
+    manifest:=manifest||jsonb_build_object('schemaRevision','20261015021933',
       'features',(select jsonb_agg(value order by value collate "C") from jsonb_array_elements_text(
         (manifest->'features')||'["contextual-design-course-scope-applications-v1"]'::jsonb)));
     execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',

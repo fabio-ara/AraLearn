@@ -21,14 +21,16 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
-## 20261014230000 — declaração de aplicações em várias microssequências
+## 20261015021933 — declaração de aplicações em várias microssequências
 
-A [migração](../supabase/migrations/20261014230000_contextual_design_course_applications.sql)
+O arquivo foi criado pelo `supabase migration new` (CLI v2.120.0).
+A [migração](../supabase/migrations/20261015021933_contextual_design_course_scope_applications.sql)
 estende `public.apply_course_design_command_for_actor_v3` para aceitar, em
-`set_study_unit_applications` e `apply_study_unit_configuration`, o escopo
-`course` com o próprio curso como alvo. Cada unidade do lote é localizada pela
-identidade no curso e declara a sua microssequência; o escopo corrente
-`didactic_microsequence` continua exigindo que as unidades pertençam ao alvo.
+`set_study_unit_applications`, o escopo `course` com o próprio curso como
+alvo. Cada unidade do lote é localizada pela identidade no curso e declara a sua
+microssequência; o escopo corrente `didactic_microsequence` continua exigindo
+que as unidades pertençam ao alvo, e `apply_study_unit_configuration` segue
+aceitando somente esse escopo, sem consumidor humano para o lote de curso.
 A correção de prosa invalida `design_application` das unidades alteradas e a
 guarda de "introdução anterior" valida o curso inteiro; sem o escopo de curso,
 duas microssequências que perdiam a introdução na mesma correção não tinham
@@ -37,7 +39,7 @@ depois de todas as aplicações e uma recusa reverte tudo. Conteúdo literal,
 versões das unidades, fontes, posições, identidades, configuração aplicada e
 origem editorial permanecem; unidades omitidas ficam intactas. A validação
 pedagógica passa a observar as microssequências presentes no lote. O manifesto
-avança para `20261014230000` e declara
+avança para `20261015021933` e declara
 `contextual-design-course-scope-applications-v1`.
 
 ## 20261014143125 — recuperação somente-leitura da materialização de Parte

@@ -469,7 +469,16 @@ const courseScope = units => ({ type: "set_study_unit_applications", scope: { ki
 const microScope = (ref, units) => ({ type: "set_study_unit_applications", scope: { kind: "didactic_microsequence", ref }, units });
 const unitEntry = (studyUnitId, application_, expectedStudyUnitVersion = 1) => ({ studyUnitId, expectedStudyUnitVersion, application: application_ });
 const targetLinks = (ref, ids) => ({ type: "set_target_plan_items", scope: { kind: "didactic_microsequence", ref }, instructionalAnalysisUnitIds: ids, evidenceRequirementIds: [] });
-const storedUnits = async db => (await db.query("select entity_id,design_application,design_snapshot,content,version from private.course_entities where entity_type='study_unit' order by entity_id")).rows;
+// Colunas relevantes do alvo, com o snapshot sem os dois arrays instrucionais
+// que o escritor re-deriva do repertório da microssequência (comportamento
+// corrente, também no caminho de uma microssequência).
+const storedUnits = async db => (await db.query(`select entity_id,parent_id,position,content,version,applied_explanation_basis,content_review,updated_at,
+  design_snapshot-'instructionalAnalysisUnitIds'-'evidenceRequirementIds' snapshot_rest,design_application
+  from private.course_entities where entity_type='study_unit' order by entity_id`)).rows;
+const stableRow = row => Object.fromEntries(Object.entries(row)
+  .filter(([column]) => !["design_application", "updated_at"].includes(column)));
+const byEntity = rows => new Map(rows.map(row => [row.entity_id, row]));
+const snapshotArrays = async (db, entityId) => value(db, "select jsonb_build_array(design_snapshot->'instructionalAnalysisUnitIds',design_snapshot->'evidenceRequirementIds') value from private.course_entities where entity_id=$1", [entityId]);
 const introducedIds = async (db, entityId) => value(db, "select design_application->'introducedInstructionalAnalysisUnitIds' value from private.course_entities where entity_id=$1", [entityId]);
 
 // Base real do escritor de desenho e o patch de integridade da prática (como em
@@ -479,7 +488,7 @@ async function multiMicrosequenceFixture() {
   const db = await fixture({ units: true, currentOrder: true });
   try {
     await db.exec(await load("20260910054749_contextual_recorded_practice_integrity.sql"));
-    await db.exec(await load("20261014230000_contextual_design_course_applications.sql"));
+    await db.exec(await load("20261015021933_contextual_design_course_scope_applications.sql"));
   } catch (error) { await db.close(); throw error; }
   await db.query("insert into private.course_entities(course_id,entity_type,entity_id,parent_id,position,content) values($1,'microsequence','micro2','lesson',1,$2)",
     [courseId, JSON.stringify({ title: "Aprofundamento", explanation: { title: "Base salva", content: [] } })]);
@@ -520,19 +529,30 @@ test("lote de curso restaura aplicações em várias microssequências do mesmo 
     assert.deepEqual(await introducedIds(db, "unit-a"), [analysisId]);
     assert.deepEqual(await introducedIds(db, "unit-c"), [ideaY]);
     const after = await storedUnits(db);
-    assert.deepEqual(after.map(({ entity_id, content, version }) => ({ entity_id, content, version })),
-      before.map(({ entity_id, content, version }) => ({ entity_id, content, version })), "conteúdo e versão preservados");
-    for (const id of ["unit-b", "unit-d"]) {
-      const was = before.find(unit => unit.entity_id === id);
-      const now = after.find(unit => unit.entity_id === id);
-      assert.deepEqual(now.design_application, was.design_application, `${id} omitida permanece intacta`);
-      assert.deepEqual(now.design_snapshot, was.design_snapshot, `${id} omitida permanece intacta`);
+    const beforeById = byEntity(before);
+    const afterById = byEntity(after);
+    // Restauradas: só design_application e os dois arrays instrucionais do
+    // snapshot mudam; identidade, posição, texto, versão, base, revisão e o
+    // restante da configuração aplicada permanecem.
+    for (const id of ["unit-a", "unit-c"]) {
+      assert.deepEqual(stableRow(afterById.get(id)), stableRow(beforeById.get(id)),
+        `${id} restaurada preserva identificação, posição, texto, versão, base, revisão e configuração do snapshot`);
     }
+    assert.deepEqual(await snapshotArrays(db, "unit-a"), [[analysisId], []]);
+    assert.deepEqual(await snapshotArrays(db, "unit-c"), [[ideaY], []]);
+    for (const id of ["unit-b", "unit-d"]) {
+      assert.deepEqual(afterById.get(id), beforeById.get(id), `${id} omitida permanece idêntica em todas as colunas`);
+    }
+    // Replay da tentativa original e no-op do mesmo conteúdo em nova tentativa.
     const replay = await write(db, request(), "course-scope-restore", { revision });
     assert.equal(replay.idempotent, true);
     assert.equal(replay.courseRevision, restored.courseRevision);
+    const identical = await write(db, request(), "course-scope-identical");
+    assert.equal(identical.changed, false);
+    assert.equal(identical.courseRevision, restored.courseRevision);
+    assert.deepEqual(await storedUnits(db), after, "no-op não reescreve colunas nem a data de atualização");
     assert.deepEqual(await value(db, "select public.get_aralearn_runtime_manifest() value"),
-      { schemaRevision: "20261014230000", contractVersion: 1,
+      { schemaRevision: "20261015021933", contractVersion: 1,
         features: ["contextual-design-course-scope-applications-v1", "contextual-design-writer-edges-v1", "fixture-manifest-v1"] });
   } finally { await db.close(); }
 });
@@ -553,7 +573,11 @@ test("alvos inválidos no lote de curso são recusados sem efeitos parciais", as
       ["foreign-course-unit", courseScope([unitEntry("foreign-unit", application())]), "PT404"],
       ["stale-unit-version", courseScope([unitEntry("unit-a", application(), 9)]), "PT409"],
       ["duplicate-unit", courseScope([good(), good()]), "22023"],
-      ["foreign-scope", { type: "set_study_unit_applications", scope: { kind: "course", ref: otherCourseId }, units: [good()] }, "22023"]
+      ["foreign-scope", { type: "set_study_unit_applications", scope: { kind: "course", ref: otherCourseId }, units: [good()] }, "22023"],
+      // O escopo de curso existe só para declarar aplicações: a configuração
+      // continua exigindo a microssequência, seu único consumidor humano.
+      ["course-configuration", { type: "apply_study_unit_configuration", scope: { kind: "course", ref: courseId },
+        units: [{ studyUnitId: "unit-a", expectedStudyUnitVersion: 1, automaticParameters: [] }] }, "22023"]
     ];
     for (const [name, command, code] of rejected) {
       await assert.rejects(write(db, command, `course-reject-${name}`), error => error.code === code, name);
@@ -590,7 +614,7 @@ test("a migração do escopo de curso aplica sobre a cadeia corrente do escritor
   // provar que os fragmentos substituídos continuam únicos e presentes.
   const db = await recordedPracticeFixture();
   try {
-    await db.exec(await load("20261014230000_contextual_design_course_applications.sql"));
+    await db.exec(await load("20261015021933_contextual_design_course_scope_applications.sql"));
     const definition = await value(db, "select pg_get_functiondef('public.apply_course_design_command_for_actor_v3(uuid,uuid,bigint,jsonb,text,text,text)'::regprocedure) value");
     assert.match(definition, /not in\('didactic_microsequence','course'\)/u);
     assert.match(definition, /and entity_id=entry->>'studyUnitId' for update;/u);
