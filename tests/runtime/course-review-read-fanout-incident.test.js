@@ -55,6 +55,10 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
   const calls = { units: [], reviews: [], inspections: [], annotations: [], sources: [] };
   const adapter = {
     calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
+    // Versão independente do conjunto de observações: por contrato do banco ela não
+    // pertence à revisão do curso e precisa invalidar qualquer reuso por conta própria.
+    annotationSetVersion: 1,
+    annotationItems: { 1: [] },
     reset() { for (const key of Object.keys(calls)) calls[key].length = 0; },
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
     async listCourses() { return { items: [{ courseId: COURSE.id, title: TITLE }], hasMore: false, nextCursor: null }; },
@@ -92,7 +96,9 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
         sourceLinks: [] }], nextCursor: null };
       return { items: [], nextCursor: null }; },
     async getCourseAnchoredAnnotations() { calls.annotations.push(true);
-      return { items: [], annotationSetVersion: 1, hasMore: false, nextCursor: null }; }
+      return { items: structuredClone(adapter.annotationItems[adapter.annotationSetVersion] ?? []),
+        annotationSetVersion: adapter.annotationSetVersion,
+        courseRevision: adapter.revision, hasMore: false, nextCursor: null }; }
   };
   return { adapter, calls };
 }
@@ -102,22 +108,29 @@ const execute = (adapter, args) => executeHumanCourseTask({ adapter, principal: 
 
 const studyUnitReviews = calls => calls.reviews.filter(review => review.targetKind === "study_unit").length;
 
+const allInspections = calls => calls.inspections.length;
+
 // Leitor resiliente: segue continuações de página e reconstrói fragmentos literais.
 async function readAll(adapter, baseArgs) {
   const pages = [];
   const perCallReviews = [];
+  const perCallInspections = [];
+  const perPageFragments = [];
   let cursor;
   let literal = "";
   let fragments = 0;
+  let fragmentsInPage = 0;
   let guard = 0;
   while (true) {
     assert.ok(++guard < 400, "a leitura não pode entrar em laço");
     adapter.reset();
     const response = await execute(adapter, { ...baseArgs, ...(cursor === undefined ? {} : { continuacao: cursor }) });
     perCallReviews.push(studyUnitReviews(adapter.calls));
+    perCallInspections.push(allInspections(adapter.calls));
     const page = response.context;
     if (page.fragmento) {
       fragments += 1;
+      fragmentsInPage += 1;
       assert.equal(page.fragmento.inicio, literal.length, "fragmento contíguo");
       assert.equal(page.fragmento.formato, "application/json");
       literal += page.fragmento.texto;
@@ -125,15 +138,19 @@ async function readAll(adapter, baseArgs) {
       assert.equal(literal.length, page.fragmento.total);
       pages.push(JSON.parse(literal));
       literal = "";
+      perPageFragments.push(fragmentsInPage);
+      fragmentsInPage = 0;
       cursor = page.continuacao;
       if (cursor === null || cursor === undefined) break;
       continue;
     }
     pages.push(page);
+    perPageFragments.push(1);
     cursor = page.continuacao;
     if (!page.temMais) break;
   }
-  return { pages, perCallReviews, fragments };
+  assert.equal(perPageFragments.length, pages.length, "cada página lógica é contabilizada uma vez");
+  return { pages, perCallReviews, perCallInspections, perPageFragments, fragments };
 }
 
 const pageUnitIds = pages => pages.flatMap(page => (page.studyUnits ?? []).map(entry => entry.studyUnit.id));
@@ -217,9 +234,21 @@ test("o cap de bytes conta UTF-8 e separa identidades exatas", async () => {
   // caberiam no cap por caracteres, mas estouram o cap de bytes: um cap por
   // caracteres encaixaria os dois e seria falso positivo.
   const { adapter } = createAdapter({ unitCount: 4, unitSize: 12_000, multibyte: true });
-  const { pages, perCallReviews } = await readAll(adapter, { unidades: [1, 2, 3, 4] });
+  const { pages, perCallReviews, perPageFragments } = await readAll(adapter, { unidades: [1, 2, 3, 4] });
   assert.deepEqual(pageUnitIds(pages), ["unit-1", "unit-2", "unit-3", "unit-4"]);
-  for (const count of perCallReviews) assert.ok(count >= 1 && count <= MAX_PAGE_ITEMS);
+  // O cap limita cada chamada; o fanout, porém, pertence à página lógica: cada página
+  // lê seus alvos uma vez (na primeira chamada) e os fragmentos seguintes são
+  // transporte. O total por página é o que separa as identidades exatas.
+  let call = 0;
+  for (const pageFragments of perPageFragments) {
+    const perCall = perCallReviews.slice(call, call + pageFragments);
+    for (const count of perCall) assert.ok(count <= MAX_PAGE_ITEMS);
+    assert.ok(perCall[0] >= 1, "a primeira chamada da página lê seus alvos");
+    assert.equal(perCall.reduce((total, count) => total + count, 0), perCall[0],
+      "a página lógica paga o próprio fanout uma vez, não uma vez por fragmento");
+    call += pageFragments;
+  }
+  assert.equal(call, perCallReviews.length, "todas as chamadas pertencem a uma página");
   const rawItem = item => ({ ordinal: item.ordinal, version: item.version,
     curriculumPath: item.curriculumPath, studyUnit: item.studyUnit, authorship: item.authorship });
   const pair = [rawItem(pages[0].studyUnits[0]), rawItem(pages[1].studyUnits[0])];
@@ -228,4 +257,144 @@ test("o cap de bytes conta UTF-8 e separa identidades exatas", async () => {
     "a soma em bytes UTF-8 excede o cap");
   for (const page of pages) assert.ok(page.studyUnits.length < 2,
     `o cap de bytes separa os alvos, veio ${page.studyUnits.length}`);
+});
+
+// O custo do recorte é por PÁGINA LÓGICA, não por fragmento: consumir todos os
+// fragmentos do mesmo cursor não pode reexecutar o fanout (plano, fontes,
+// observações, alvos) uma vez por fragmento. O recorte de 12_000 caracteres é o
+// transporte; ele não define quanto trabalho de leitura a página exige.
+test("consumir todos os fragmentos não repete o fanout por fragmento", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const { pages, perCallReviews, perCallInspections, fragments } = await readAll(adapter, { unidades: [1] });
+  assert.ok(fragments > 1, `a página lógica precisa de mais de um fragmento, veio ${fragments}`);
+  assert.equal(pages.length, 1);
+  // Um fanout lê cada alvo da página uma vez: a unidade selecionada e a
+  // Explicação de sua microssequência. O total por página lógica é o da primeira
+  // chamada; multiplicá-lo pelo número de fragmentos é a regressão do incidente.
+  const alvosPorPagina = perCallReviews[0];
+  assert.ok(alvosPorPagina >= 1 && alvosPorPagina <= MAX_PAGE_ITEMS, `fanout por página = ${alvosPorPagina}`);
+  const totalReviews = perCallReviews.reduce((total, count) => total + count, 0);
+  const totalInspections = perCallInspections.reduce((total, count) => total + count, 0);
+  assert.equal(totalReviews, perCallReviews[0],
+    `o fanout de revisão ocorre uma vez por página lógica; veio ${totalReviews} em ${fragments} fragmentos`);
+  assert.equal(totalInspections, perCallInspections[0],
+    `o fanout de inspeção ocorre uma vez por página lógica; veio ${totalInspections} em ${fragments} fragmentos`);
+  assert.ok(perCallInspections[0] >= 2, "a página audita a unidade e a Explicação da microssequência");
+  assert.equal(pageUnitIds(pages).join(","), "unit-1");
+});
+
+test("mudança de revisão no meio da página falha a continuação sem novas leituras de alvo", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  assert.ok(cursor, "a página grande precisa de continuação");
+  adapter.revision = COURSE.revision + 1;
+  adapter.reset();
+  await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),
+    error => error.status === 409);
+  assert.equal(adapter.calls.reviews.length, 0, "revisão divergente não lê alvos");
+});
+
+test("a versão do conjunto de observações invalida o reuso sem alterar o recorte", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  // Mesma página, mesma revisão: o fragmento seguinte é transporte, não nova leitura.
+  adapter.reset();
+  const reused = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.equal(adapter.calls.reviews.length, 0, "o fragmento da mesma página não relê os alvos");
+  // As observações têm versão própria e NÃO pertencem à revisão do curso: mudar só a
+  // versão precisa invalidar o reuso e recompor o literal do zero.
+  adapter.reset();
+  adapter.annotationSetVersion += 1;
+  const recomposed = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(adapter.calls.reviews.length > 0, "a versão do conjunto de observações invalida o reuso");
+  assert.deepEqual(recomposed.context, reused.context,
+    "sem mudança de conteúdo, o recorte recomposto é exatamente o mesmo recorte");
+});
+
+test("o recorte materializado não atravessa atores", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  const outro = { actorId: "2a000000-0000-4000-8000-000000000002",
+    scopes: ["authoring:read", "authoring:write"] };
+  adapter.reset();
+  await assert.rejects(() => executeHumanCourseTask({ adapter, principal: outro,
+    name: "preparar_revisao", rawArguments: { curso: TITLE, auditoria: true, unidades: [1], continuacao: cursor } }),
+    error => error.status === 409);
+});
+
+// Observação do autor que entra na fila durante a leitura: ela muda o literal do recorte.
+const annotationItem = () => ({ annotationId: "5a000000-0000-4000-8000-000000000001", state: "open",
+  provenance: { origin: "author" }, targets: [{ kind: "study_unit", id: "unit-1", state: "pending" }],
+  rawText: "Observação sintética da prova focal.", annotationVersion: 1, targetSetVersion: 1,
+  createdAt: "2026-10-15T10:00:00.000Z" });
+
+test("observação nova no meio da página recusa a continuação com 409", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  adapter.annotationSetVersion += 1;
+  adapter.annotationItems[adapter.annotationSetVersion] = [annotationItem()];
+  adapter.reset();
+  await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),
+    error => error.status === 409 && error.code === "human_read_context_changed");
+  assert.ok(adapter.calls.reviews.length > 0, "sem reuso, o recorte é recomposto antes de recusar");
+});
+
+test("descarte da entrada recompõe a página com o mesmo literal e sem leitura duplicada", async () => {
+  const { adapter } = createAdapter({ unitCount: 8, unitSize: 80_000 });
+  const pages = [];
+  for (let index = 1; index <= 7; index += 1) {
+    const page = await execute(adapter, { unidades: [index] });
+    assert.ok(page.context.fragmento, `a página de unit-${index} precisa de fragmentos`);
+    pages.push(page.context);
+  }
+  // Sete páginas fragmentadas excedem o teto de entradas do reuso: a primeira foi despejada.
+  const cursor = pages[0].continuacao;
+  const token = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+  adapter.reset();
+  const evicted = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(adapter.calls.reviews.length > 0, "entrada descartada recompõe o material por alvo");
+  assert.equal(studyUnitReviews(adapter.calls), 1, "a página lê cada alvo uma vez, sem repetir I/O");
+  assert.equal(adapter.calls.units.length, 1, "a página de unidades é lida uma vez por chamada");
+  assert.equal(evicted.context.fragmento.inicio, token.o, "o fragmento continua exatamente de onde parou");
+  assert.equal(evicted.context.fragmento.total, pages[0].fragmento.total, "o recorte recomposto tem o mesmo tamanho");
+  const keptToken = JSON.parse(Buffer.from(pages[6].continuacao, "base64url").toString("utf8"));
+  adapter.reset();
+  const kept = await execute(adapter, { unidades: [7], continuacao: pages[6].continuacao });
+  assert.equal(adapter.calls.reviews.length, 0, "a entrada mais recente continua aproveitada");
+  assert.equal(kept.context.fragmento.inicio, keptToken.o,
+    "a entrada aproveitada entrega o fragmento seguinte do mesmo literal");
+});
+
+test("o reuso não atravessa adapters distintos", async () => {
+  const owner = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const other = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const warm = await execute(owner.adapter, { unidades: [1] });
+  const cursor = warm.context.continuacao;
+  other.adapter.reset();
+  const recomposed = await execute(other.adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(other.adapter.calls.reviews.length > 0, "outro adapter materializa o próprio recorte");
+  owner.adapter.reset();
+  const reused = await execute(owner.adapter, { unidades: [1], continuacao: cursor });
+  assert.equal(owner.adapter.calls.reviews.length, 0, "o adapter dono do material segue reutilizando");
+  assert.deepEqual(recomposed.context, reused.context,
+    "sem reuso, o literal recomposto é exatamente o mesmo recorte do fragmento seguinte");
+});
+
+test("reuso não é servido quando o acesso ao curso é revogado", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const warm = await execute(adapter, { unidades: [1] });
+  const cursor = warm.context.continuacao;
+  adapter.listCourses = async () => ({ items: [], hasMore: false, nextCursor: null });
+  adapter.reset();
+  await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),
+    error => error.status === 404 || error.status === 422);
+  assert.equal(adapter.calls.reviews.length, 0, "acesso revogado não lê alvos nem serve o material guardado");
+  adapter.listCourses = async () => ({ items: [{ courseId: COURSE.id, title: TITLE }],
+    hasMore: false, nextCursor: null });
+  const recovered = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(recovered.context.fragmento, "a leitura autorizada volta a entregar o recorte materializado");
 });

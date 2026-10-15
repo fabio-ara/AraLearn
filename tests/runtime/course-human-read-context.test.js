@@ -147,7 +147,10 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     },
     async getCourseAnchoredAnnotations(input) {
       calls.annotations.push(input);
-      return { items: [], annotationSetVersion: 1, hasMore: false, nextCursor: null };
+      // O payload corrente devolve as duas versões independentes: a revisão do curso e
+      // a versão do conjunto de observações.
+      return { items: [], annotationSetVersion: 1, courseRevision: adapter.revision,
+        hasMore: false, nextCursor: null };
     }
   };
   return adapter;
@@ -576,31 +579,41 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
     assert.match(metadata.referenciaRevisao, /^[A-Za-z0-9_-]+$/u);
     assert.doesNotMatch(JSON.stringify(metadata), /literal-json-field|requestId|payload|steps|version/u);
   }
-  assert.equal(adapter.calls.units.length, first.calls, "cada fragmento relê somente a mesma página lógica");
+  // A estrutura da página (plano e unidades) é relida em toda chamada e conferida contra
+  // o materializado; o material de auditoria por alvo é pago por PÁGINA LÓGICA, e os
+  // fragmentos seguintes relêem apenas o carimbo de versões (observações com limit 1).
+  const stampRead = input => input.limit === 1;
+  assert.equal(adapter.calls.units.length, first.calls, "cada chamada relê a mesma página de unidades");
   assert.ok(adapter.calls.units.every(input => input.cursorStudyUnitId === null), "não varrer as cem páginas do curso");
   assert.equal(adapter.calls.units[0].limit, 12);
   assert.equal(adapter.calls.units[0].expectedRevision, 7);
-  assert.deepEqual(adapter.calls.annotations.map(input => input.query.hierarchy.target.id),
-    Array.from({ length: first.calls }, () => units.slice(0, 12).map(item => item.studyUnit.id)).flat());
+  assert.deepEqual(adapter.calls.annotations.filter(input => !stampRead(input)).map(input => input.query.hierarchy.target.id),
+    units.slice(0, 12).map(item => item.studyUnit.id));
   assert.deepEqual(adapter.calls.reviews.map(({ courseId, targetKind, targetId }) => ({ courseId, targetKind, targetId })),
-    Array.from({ length: first.calls }, () => units.slice(0, 12).map(item => ({ courseId: COURSE.id,
-      targetKind: "study_unit", targetId: item.studyUnit.id }))).flat());
+    units.slice(0, 12).map(item => ({ courseId: COURSE.id,
+      targetKind: "study_unit", targetId: item.studyUnit.id })));
   assert.deepEqual(adapter.calls.inspections, adapter.calls.reviews);
   const second = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true,
     continuacao: first.context.continuacao });
   assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit), units.slice(12).map(item => item.studyUnit));
   assert.ok(second.context.studyUnits.every(item => Object.keys(item.authorship).length === 0));
   assert.deepEqual(adapter.calls.units.map(input => input.cursorStudyUnitId),
-    [...Array(first.calls).fill(null), ...Array(second.calls).fill("unit-12")]);
-  assert.equal(adapter.calls.annotations.length, (first.calls + second.calls) * 12);
-  assert.equal(adapter.calls.reviews.length, (first.calls + second.calls) * 12);
-  assert.equal(adapter.calls.inspections.length, (first.calls + second.calls) * 12);
+    [...Array(first.calls).fill(null), ...Array(second.calls).fill("unit-12")],
+    "cada chamada relê exatamente a página de unidades da sua página lógica");
+  assert.equal(adapter.calls.reviews.length, 24, "as duas páginas leem seus alvos uma vez");
+  assert.equal(adapter.calls.annotations.filter(input => !stampRead(input)).length, 24,
+    "os doze alvos de cada página são lidos uma vez");
+  assert.equal(adapter.calls.annotations.filter(stampRead).length, first.calls - 1 + second.calls - 1,
+    "cada fragmento reutilizado lê apenas o carimbo de versões");
+  assert.equal(adapter.calls.inspections.length, 24, "cada página lógica audita seus alvos uma vez");
 });
 
 // Escopo de leitura de Fontes por requisição: 1 MS, 6 unidades e 1 Explicação com as
 // mesmas duas fontes previstas E vinculadas devem custar 2 leituras de fonte + 1 de alvo
-// por chamada — não 4. A continuação é outra requisição: relê o escopo do zero.
-test("leitura pura compartilha o escopo de Fontes dentro da requisição e não entre continuações", async () => {
+// por materialização — não 4. O fragmento seguinte da MESMA página lógica é transporte:
+// entrega o recorte já materializado, sem reabrir o escopo de Fontes; uma nova leitura
+// da revisão recompõe o escopo do zero, sem cache entre requisições.
+test("leitura pura compartilha o escopo de Fontes por materialização e o fragmento da mesma página reusa o material", async () => {
   const titles = { s1: "Fonte s1", s2: "Fonte s2" };
   const build = () => {
     const units = Array.from({ length: 6 }, (_, index) => ({ ...studyUnit(index + 1),
@@ -642,8 +655,12 @@ test("leitura pura compartilha o escopo de Fontes dentro da requisição e não 
   first.reads.length = 0;
   await execute(first.adapter, "preparar_revisao", { auditoria: true,
     continuacao: page.context.continuacao });
+  assert.deepEqual(first.reads, [],
+    "o fragmento da mesma página lógica entrega o recorte materializado, sem reler o escopo");
+  first.reads.length = 0;
+  await execute(first.adapter, "preparar_revisao", { auditoria: true });
   assert.deepEqual(first.reads.slice().sort(), ["source:s1", "source:s2", "target:ms"],
-    "a continuação é outra requisição: relê o escopo, sem cache entre chamadas");
+    "uma nova leitura da revisão recompõe o escopo, sem cache entre requisições");
 
   // A Fonte vinculada precisa chegar como ITEM projetado, não como VIEW crua: título,
   // citação, âncoras e relação visíveis e corretos (flag do defeito de tipo no Map).
@@ -1689,8 +1706,9 @@ test("leitura comum da revisão não busca a inspeção e auditoria: true devolv
             "não consultar a inspeção não pode inventar indisponibilidade");
         }
       } else {
-        assert.equal(adapter.calls.inspections.length, targets.length * pages,
-          "cada reexecução da página lógica inspeciona seus próprios alvos");
+        assert.equal(adapter.calls.inspections.length, targets.length,
+          "cada página lógica inspeciona seus próprios alvos uma vez, inclusive ao remontar fragmentos");
+        assert.ok(pages >= 1, "a página lógica é remontada em fragmentos");
         assert.ok(context.auditoriasPedagogicas.length >= 1);
         assert.match(finalDecision, /^Registre o parecer das seis dimensões/u,
           "com a base devolvida, a decisão seguinte registra o parecer");
@@ -1784,8 +1802,8 @@ test("alcance da auditoria conta somente alvos lidos e distingue MS inteira de s
         assert.equal(read.context.studyUnits[target.posicao - 1].studyUnit.title, target.titulo);
         assert.ok(read.context.studyUnits[target.posicao - 1].referenciaInspecao);
       }
-      assert.equal(adapter.calls.inspections.length, summary.alvosLidos * read.pages,
-        "o resumo usa as inspeções já lidas, inclusive ao remontar fragmentos");
+      assert.equal(adapter.calls.inspections.length, summary.alvosLidos,
+        "o resumo usa as inspeções já lidas na página lógica, inclusive ao remontar fragmentos");
       assert.equal(adapter.calls.reviews.length, adapter.calls.inspections.length);
       assert.ok(read.decisions.filter(value => value.temMais).every(value =>
         /^Continue lendo as continuações/u.test(value.decision) && !/Registre o parecer/u.test(value.decision)));

@@ -56,6 +56,7 @@ import { AUTHORING_PROCESS_FOCUS, AUTHORING_PROCESS_CADENCE, AUTHORING_PROCESS_R
   AUTHORING_PROCESS_PARAMETER_DEFINITIONS, normalizeAuthoringProcessPreferences,
   resolveAuthoringProcessPreferences, createAuthoringProcessMandate } from "../aralearn/runtime/domain/authoringProcessPreferences.js";
 import { openHumanReadContinuation, paginateHumanReadContext } from './courseHumanReadContext.js';
+import { reusedReviewPage, rememberReviewPage, forgetReviewPage, readReviewPageStateStamp } from './courseReviewPageReuse.js';
 import { shareHumanAuditContext, projectHumanAppliedParameters, humanParameterLabel } from './courseHumanAuditContext.js';
 import { copyHumanCourse, compareHumanCourses, exportHumanCourse } from "./courseHumanCourseOperations.js";
 import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
@@ -2622,7 +2623,7 @@ function projectObservations(items) {
 }
 
 async function readObservations({ adapter, principal, resolved, args, deadlineAt,
-  scopeUnits = null, scopeMicrosequences = null }) {
+  scopeUnits = null, scopeMicrosequences = null, stateStamp = null }) {
   const selected = resolved.studyUnits ?? [];
   const micros = scopeMicrosequences ?? focalMicrosequences(resolved, scopeUnits ?? selected);
   const partUnitIds = !selected.length && !resolved.microsequence && resolved.part
@@ -2654,6 +2655,10 @@ async function readObservations({ adapter, principal, resolved, args, deadlineAt
         fail("course_service_unavailable", "A fila mudou ou sua leitura está incompleta; releia o recorte.", null, 503);
       }
       annotationSetVersion = page.annotationSetVersion ?? null;
+      // A própria leitura de observações já resolve as duas versões independentes
+      // (revisão do curso e conjunto de observações); quem pedir o carimbo recebe o
+      // valor que este recorte realmente reflete, sem leitura adicional.
+      if (stateStamp) stateStamp.annotationSetVersion = annotationSetVersion;
       items.push(...page.items);
       if (page.nextCursor == null && !page.hasMore) break;
       if (typeof page.nextCursor !== "string" || !page.nextCursor || seen.has(page.nextCursor) || pageIndex === MAX_CONTEXT_PAGES - 1) {
@@ -2869,7 +2874,8 @@ HUMAN_TASK_HANDLERS.consultar_planejamento = async ({
 
 // Escopo de leitura de Fontes por requisição (somente leitura): a mesma chave
 // (curso, revisão, modo, fonte, alvo) atende o consumidor de fontes previstas e o de
-// vínculos, sem atravessar continuações nem chegar aos fluxos de escrita.
+// vínculos, sem chegar aos fluxos de escrita. Ele vale para uma materialização: o
+// fragmento da mesma página entrega o material já lido e não reabre o escopo.
 function sourceReadScopeKey({ courseId, revision, mode, sourceId, targetKind, targetId }) {
   return [courseId, revision, mode, sourceId ?? "", targetKind ?? "", targetId ?? ""].join("|");
 }
@@ -3215,6 +3221,124 @@ function paginateSelectedStudyUnits(selected, cursorStudyUnitId) {
     nextCursor: hasMore ? { studyUnitId: items.at(-1).studyUnit.id } : null };
 }
 
+// Identidade de uma página lógica reutilizável: o ator e o curso isolam o acesso, a
+// revisão e a consulta isolam o recorte pedido e a página isola o cursor. A versão do
+// conjunto de observações, que por contrato não pertence à revisão do curso, é
+// confirmada na hora do uso.
+function reviewPageIdentity({ principal, courseId, revision, continuation }) {
+  return { actorId: principal?.actorId, courseId, revision, queryHash: continuation.q,
+    page: continuation.p };
+}
+
+// O carimbo de versões é uma leitura de observações: pedir o alvo mais estreito da
+// página (a primeira unidade, ou a Explicação da microssequência) mantém o custo
+// mínimo e repete a mesma forma de hierarquia que a própria página já lê.
+function reviewPageStampHierarchy(unitPage, reviewMicrosequences, courseId) {
+  const unit = unitPage?.items?.[0]?.studyUnit?.id;
+  if (typeof unit === "string" && unit) return { target: { kind: "study_unit", id: unit }, includeDescendants: false };
+  const microsequence = reviewMicrosequences?.[0]?.id;
+  if (typeof microsequence === "string" && microsequence) {
+    return { target: { kind: "microsequence_explanation", id: microsequence }, includeDescendants: false };
+  }
+  return { target: { kind: "course", id: courseId }, includeDescendants: true };
+}
+
+// Objeto de contexto da página lógica. O caminho completo e o reuso o reconstroem com
+// as mesmas funções puras a partir das mesmas leituras, e é este objeto que o paginador
+// serializa: ordem, literal, escapes Unicode, cap e hash permanecem os do contrato.
+function reviewPageContext({ args, selected, resolved, continuation, unitPage, observations,
+  explanations, studyUnits, reviewMicrosequences }) {
+  const coverage = args.auditoria === true ? reviewAuditCoverage({ resolved, selected,
+    continuation, unitPage, studyUnits, explanations }) : null;
+  const contextObject = withoutTechnicalState(shareHumanAuditContext({
+    ...(coverage ? { alcanceDaAuditoria: coverage } : {}),
+    observations, studyUnits,
+    explicacoes: explanations,
+    plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
+  }, resolved.course));
+  return { contextObject, coverage };
+}
+
+// O plano do recorte é lido uma vez por requisição e conferido contra a revisão pedida.
+async function ensureReviewPlan({ adapter, principal, resolved, deadlineAt }) {
+  if (resolved.plan) return resolved.plan;
+  resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
+  if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
+  return resolved.plan;
+}
+
+// A página de unidades é lida uma vez por requisição, com o cursor da continuação.
+async function readReviewPageUnitPage({ adapter, principal, resolved, continuation, units, deadlineAt }) {
+  const unitPage = units.length
+    ? paginateSelectedStudyUnits(resolved.studyUnits, continuation.p)
+    : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
+      expectedRevision: resolved.course.revision,
+      scopeKind: resolved.microsequence ? 'didactic_microsequence' : resolved.part ? 'authoring_part' : 'course',
+      scopeId: resolved.microsequence?.id ?? resolved.part?.id ?? null,
+      cursorStudyUnitId: continuation.p, direction: 'forward', limit: 12, maxBytes: 65536,
+      inspectionVersion: 2, deadlineAt });
+  if (!Array.isArray(unitPage?.items) || unitPage.hasMore &&
+      (typeof unitPage.nextCursor?.studyUnitId !== 'string' ||
+       !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
+    fail('course_service_unavailable', 'A página da revisão perdeu o ponto de continuação.', null, 503);
+  }
+  return unitPage;
+}
+
+// Só o fragmento de continuação da MESMA página lógica pode servir o material de auditoria
+// por alvo já lido, e só depois de três confirmações independentes:
+//   1. o resumo guardado é exatamente o literal que o cliente está continuando (digest);
+//   2. a estrutura da página — plano e unidades — foi RELIDA nesta requisição e os dois
+//      resumos coincidem, então mudança de conteúdo continua sendo detectada mesmo quando
+//      nada incrementa a revisão do curso;
+//   3. a revisão corrente e a versão corrente do conjunto de observações são as do
+//      materializado, o que cobre observações e o material de auditoria por alvo.
+// O primeiro fragmento de uma página não tem cadeia para confirmar (o = 0): ele sempre
+// recompõe. Qualquer divergência devolve null e a materialização desta mesma requisição
+// segue com as leituras de estrutura já feitas.
+async function reusedPreparedReviewPage({ adapter, principal, args, identity, continuation, resolved,
+  unitPage, reviewMicrosequences, units, deadlineAt }) {
+  if (continuation.o === 0) return null;
+  const claimed = await reusedReviewPage(adapter, identity, async (entry) => {
+    if (entry.digest !== continuation.h) return null;
+    if (await sha256Hex(JSON.stringify(resolved.plan)) !== entry.planDigest) return null;
+    if (await sha256Hex(JSON.stringify(unitPage)) !== entry.unitPageDigest) return null;
+    return { annotationSetVersion: await readReviewPageStateStamp({ adapter, principal,
+      courseId: continuation.c, revision: continuation.r, deadlineAt,
+      hierarchy: reviewPageStampHierarchy(unitPage, reviewMicrosequences, continuation.c) }), entry };
+  });
+  if (!claimed) return null;
+  const { observations, explanations, studyUnits } = claimed.entry.record;
+  const { contextObject, coverage } = reviewPageContext({ args, selected: units.length > 0, resolved,
+    continuation, unitPage, observations, explanations, studyUnits, reviewMicrosequences });
+  return await presentPreparedReviewPage({ adapter, auditoria: args.auditoria === true, resolved,
+    continuation, unitPage, reviewMicrosequences, contextObject, coverage });
+}
+
+// Um único caminho de apresentação: o recorte reutilizado e o recorte recém-lido
+// entregam o mesmo objeto de contexto ao mesmo paginador.
+async function presentPreparedReviewPage({ adapter, auditoria, resolved, continuation, unitPage,
+  reviewMicrosequences, contextObject, coverage }) {
+  const context = await paginateHumanReadContext(contextObject, { state: continuation,
+    nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
+  return result("Preparei este recorte da revisão sem aplicar mudanças.", {
+    deepLink: courseDeepLink(adapter, resolved.course, "content", unitPage.items.length
+      ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length
+        ? [["explanationId", reviewMicrosequences[0].id]] : []),
+    links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
+    // Enquanto houver continuação, a única ação segura é terminar de ler: escrever
+    // entre trechos pode invalidar a continuação vinculada à revisão do curso.
+    nextDecision: context.temMais
+      ? auditoria
+        ? "Continue lendo as continuações recebidas até o último trecho do recorte auditado; registre o parecer só depois de ler tudo."
+        : "Continue lendo as continuações recebidas até o último trecho do recorte; só depois avalie a inspeção formal com auditoria: true."
+      : auditoria
+        ? reviewAuditNextDecision(coverage)
+        : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
+    context
+  });
+}
+
 HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   adapter, principal, args, deadlineAt
 }) => {
@@ -3242,24 +3366,19 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
       context: await paginateHumanReadContext({ comparacaoDeObservacao: comparison }, { state: continuation })
     });
   }
-  if (!resolved.plan) {
-    resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
-    if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
-  }
-  const unitPage = units.length
-    ? paginateSelectedStudyUnits(resolved.studyUnits, continuation.p)
-    : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
-      expectedRevision: resolved.course.revision,
-      scopeKind: resolved.microsequence ? 'didactic_microsequence' : resolved.part ? 'authoring_part' : 'course',
-      scopeId: resolved.microsequence?.id ?? resolved.part?.id ?? null,
-      cursorStudyUnitId: continuation.p, direction: 'forward', limit: 12, maxBytes: 65536,
-      inspectionVersion: 2, deadlineAt });
-  if (!Array.isArray(unitPage?.items) || unitPage.hasMore &&
-      (typeof unitPage.nextCursor?.studyUnitId !== 'string' ||
-       !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
-    fail('course_service_unavailable', 'A página da revisão perdeu o ponto de continuação.', null, 503);
-  }
+  await ensureReviewPlan({ adapter, principal, resolved, deadlineAt });
+  const unitPage = await readReviewPageUnitPage({ adapter, principal, resolved, continuation, units, deadlineAt });
   const reviewMicrosequences = focalMicrosequences(resolved, unitPage.items);
+  const identity = reviewPageIdentity({ principal, courseId: resolved.course.id,
+    revision: resolved.course.revision, continuation });
+  // Reuso e materialização compartilham a resolução acima: o fragmento já lido não repete
+  // autorização, plano nem página de unidades, e um descarte só custa o fanout por alvo.
+  const reused = await reusedPreparedReviewPage({ adapter, principal, args, identity, continuation,
+    resolved, unitPage, reviewMicrosequences, units, deadlineAt });
+  if (reused) return reused;
+  // O recorte é guardado com a versão do conjunto de observações que ele mesmo leu: o
+  // carimbo é exato, não uma leitura extra nem uma estimativa.
+  const stateStamp = { annotationSetVersion: null };
   const observations = await readObservations({
     adapter,
     principal,
@@ -3267,11 +3386,13 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     args: { ...args, somenteAbertas: true },
     deadlineAt,
     scopeUnits: unitPage.items,
-    scopeMicrosequences: reviewMicrosequences
+    scopeMicrosequences: reviewMicrosequences,
+    stateStamp
   });
   const auditoria = args.auditoria === true;
-  // Uma única leitura de Fontes por requisição: o mesmo escopo atende as fontes previstas
-  // e os vínculos da Explicação; cada continuação abre um escopo novo.
+  // Uma única leitura de Fontes por materialização: o mesmo escopo atende as fontes
+  // previstas e os vínculos da Explicação. O fragmento da mesma página reaproveita o
+  // material já lido; uma nova materialização abre um escopo novo.
   const sourceScope = new Map();
   const explanations = await explanationReadContext({ adapter, principal, resolved, microsequences: reviewMicrosequences,
     deadlineAt, auditoria, focal: units.length > 0, sourceScope });
@@ -3279,30 +3400,25 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
     ...await readReviewContext({ adapter, principal, resolved, targetKind: "study_unit",
       targetId: unit.studyUnit.id, deadlineAt, auditoria })
   })));
-  const coverage = auditoria ? reviewAuditCoverage({ resolved, selected: units.length > 0,
-    continuation, unitPage, studyUnits, explanations }) : null;
-  const context = await paginateHumanReadContext(withoutTechnicalState(shareHumanAuditContext({
-    ...(coverage ? { alcanceDaAuditoria: coverage } : {}),
-    observations, studyUnits,
-    explicacoes: explanations,
-    plan: resolved.plan ? focusedReviewPlan(resolved.plan, resolved.part, unitPage.items, reviewMicrosequences) : null
-  }, resolved.course)), { state: continuation, nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
-  return result("Preparei este recorte da revisão sem aplicar mudanças.", {
-    deepLink: courseDeepLink(adapter, resolved.course, "content", unitPage.items.length
-      ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length
-        ? [["explanationId", reviewMicrosequences[0].id]] : []),
-    links: [courseDeepLink(adapter, resolved.course, "review")].filter(Boolean),
-    // Enquanto houver continuação, a única ação segura é terminar de ler: escrever
-    // entre trechos pode invalidar a continuação vinculada à revisão do curso.
-    nextDecision: context.temMais
-      ? auditoria
-        ? "Continue lendo as continuações recebidas até o último trecho do recorte auditado; registre o parecer só depois de ler tudo."
-        : "Continue lendo as continuações recebidas até o último trecho do recorte; só depois avalie a inspeção formal com auditoria: true."
-      : auditoria
-        ? reviewAuditNextDecision(coverage)
-        : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
-    context
-  });
+  const { contextObject, coverage } = reviewPageContext({ args, selected: units.length > 0, resolved,
+    continuation, unitPage, observations, explanations, studyUnits, reviewMicrosequences });
+  const page = await presentPreparedReviewPage({ adapter, auditoria, resolved, continuation, unitPage,
+    reviewMicrosequences, contextObject, coverage });
+  // Só a página que precisou de fragmento se beneficia do reuso, e o que fica guardado é o
+  // material de auditoria por alvo. Plano e página de unidades ficam como resumo e são
+  // conferidos contra a releitura de cada requisição.
+  const pageRecord = { observations, explanations, studyUnits };
+  if (stateStamp.annotationSetVersion === null || (page.context?.fragmento?.total ?? 0) <= 0) {
+    forgetReviewPage(adapter, identity);
+  } else {
+    rememberReviewPage(adapter, identity, { annotationSetVersion: stateStamp.annotationSetVersion,
+      characters: JSON.stringify(pageRecord).length,
+      digest: await sha256Hex(JSON.stringify(contextObject)),
+      planDigest: await sha256Hex(JSON.stringify(resolved.plan)),
+      unitPageDigest: await sha256Hex(JSON.stringify(unitPage)),
+      record: pageRecord });
+  }
+  return page;
 };
 
 async function resolveHumanSourceContentTarget({ adapter, principal, resolved, deadlineAt, requireExplanation = false }) {
