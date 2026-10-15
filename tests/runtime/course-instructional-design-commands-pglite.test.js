@@ -469,14 +469,16 @@ const courseScope = units => ({ type: "set_study_unit_applications", scope: { ki
 const microScope = (ref, units) => ({ type: "set_study_unit_applications", scope: { kind: "didactic_microsequence", ref }, units });
 const unitEntry = (studyUnitId, application_, expectedStudyUnitVersion = 1) => ({ studyUnitId, expectedStudyUnitVersion, application: application_ });
 const targetLinks = (ref, ids) => ({ type: "set_target_plan_items", scope: { kind: "didactic_microsequence", ref }, instructionalAnalysisUnitIds: ids, evidenceRequirementIds: [] });
-// Colunas relevantes do alvo, com o snapshot sem os dois arrays instrucionais
-// que o escritor re-deriva do repertório da microssequência (comportamento
-// corrente, também no caminho de uma microssequência).
+// Colunas relevantes do alvo. snapshot_rest isola o snapshot sem os dois
+// arrays instrucionais que o escritor re-deriva do repertório da
+// microssequência (comportamento corrente, também no caminho de uma
+// microssequência); o design_snapshot completo permanece para as unidades
+// omitidas e o no-op, que não podem mudar em nada.
 const storedUnits = async db => (await db.query(`select entity_id,parent_id,position,content,version,applied_explanation_basis,content_review,updated_at,
-  design_snapshot-'instructionalAnalysisUnitIds'-'evidenceRequirementIds' snapshot_rest,design_application
+  design_snapshot,design_snapshot-'instructionalAnalysisUnitIds'-'evidenceRequirementIds' snapshot_rest,design_application
   from private.course_entities where entity_type='study_unit' order by entity_id`)).rows;
 const stableRow = row => Object.fromEntries(Object.entries(row)
-  .filter(([column]) => !["design_application", "updated_at"].includes(column)));
+  .filter(([column]) => !["design_application", "design_snapshot", "updated_at"].includes(column)));
 const byEntity = rows => new Map(rows.map(row => [row.entity_id, row]));
 const snapshotArrays = async (db, entityId) => value(db, "select jsonb_build_array(design_snapshot->'instructionalAnalysisUnitIds',design_snapshot->'evidenceRequirementIds') value from private.course_entities where entity_id=$1", [entityId]);
 const introducedIds = async (db, entityId) => value(db, "select design_application->'introducedInstructionalAnalysisUnitIds' value from private.course_entities where entity_id=$1", [entityId]);
