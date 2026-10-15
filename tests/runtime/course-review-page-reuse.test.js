@@ -57,13 +57,18 @@ test("entrada acima do teto serializado não é servível e não desloca as vizi
   assert.ok(await reusedReviewPage(ADAPTER, identity("depois"), claim),
     "a vizinha seguinte continua servível");
 
-  // Contabilização real da representação serializada: seis entradas de ~2,2M caracteres
-  // excedem o teto e despejam as mais antigas, sem deixar o repositório inconsistente.
+  // Contabilização real da representação serializada: as seis entradas de ~2,2M caracteres
+  // caberiam no teto de entradas, mas somam ~13,2M e excedem o teto de 12M. A entrada mais
+  // antiga do bloco grande precisa sair POR TAMANHO: o teto de entradas sozinho a manteria.
   for (let index = 1; index <= 6; index += 1) store(`grande-${index}`, { tag: `grande-${index}`,
     bloco: "y".repeat(2_200_000) });
-  assert.equal(await reusedReviewPage(ADAPTER, identity("antes"), claim), null,
-    "o teto serializado despeja as entradas mais antigas");
+  assert.equal(await reusedReviewPage(ADAPTER, identity("grande-1"), claim), null,
+    "o teto agregado de tamanho despejou a entrada mais antiga do bloco");
+  assert.ok(await reusedReviewPage(ADAPTER, identity("grande-2"), claim),
+    "a entrada seguinte à despejada por tamanho continua servível");
   assert.ok(await reusedReviewPage(ADAPTER, identity("grande-6"), claim),
     "a entrada recente segue servível depois do despejo por tamanho");
+  assert.equal(await reusedReviewPage(ADAPTER, identity("antes"), claim), null,
+    "as entradas pequenas anteriores também saíram");
 });
 
