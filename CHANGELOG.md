@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.113] - 2026-10-16
+
+### Corrigido
+
+- A revelação do retorno autoral de uma prática passa a concluir no assentamento das citações da própria conferência. Quando a linha de marcadores entra na tela e os marcadores de referência são inseridos no fluxo do texto, a última linha do retorno deixava a banda visível; agora a revelação é reaplicada uma única vez nesse assentamento e descartada se a posição esperada do painel mudar, se a unidade mudar ou se outra tentativa substituir a conferência. Sem rolagem de página, sem mudança de foco, seleção ou progresso.
+
 ## [0.0.112] - 2026-10-16
 
 ### Corrigido
