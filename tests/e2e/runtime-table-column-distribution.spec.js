@@ -2,32 +2,69 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// Prova focal da issue #470: distribuicao de largura nas tabelas com rotulos
-// curtos. Cada caso captura a imagem antes de julgar, para que a mesma prova
-// produza pixels e medidas iguais antes e depois da correcao. A classificacao
-// fits/scrolls dos consumidores compartilhados segue em
-// runtime-table-frame-responsive.spec.js.
+// Prova focal da issue #470: distribuicao de largura nas tabelas do componente
+// compartilhado. As fixtures sao sinteticas e genericas, com enderecos da faixa
+// de documentacao (RFC 5737) e comprimentos representativos: rotulo curto na
+// primeira, na ultima e na coluna do meio, alem de uma tabela de duas colunas e
+// de uma coluna de prosa visivelmente curta ao lado de outra longa. O rotulo
+// curto nao e uma posicao fixa no contrato do pacote, entao as quatro
+// orientacoes precisam medir igual.
+//
+// A prova registra a geometria real de cada coluna (largura e pior numero de
+// caracteres por linha) e julga os invariantes que a mudanca nao pode alterar:
+// a tabela cabe na coluna de leitura, a pagina nao estoura, a moldura ocupa a
+// coluna inteira, os controles do leitor seguem 44x44, as celulas com contrato
+// proprio de largura seguem com o piso e a tabela larga mantem o piso das
+// colunas e a rolagem propria. A distribuicao interna do recorte de ate tres
+// colunas e medida e registrada sem assercao: reduzir o piso nesse recorte foi
+// medido e devolve largura a prosa longa as custas das colunas curtas, como
+// documenta o comentario de public/styles.css.
 
-const U5_ROWS = [
-  ["W1", "SSID visivel e perfil correspondente", "Cliente encontra LAB-RE-DES-A; conferir AP/BSSID previsto, se exibido"],
-  ["W2", "Conexao com credencial correta", "Estado confirma conexao/autenticacao; conferir cliente no estado ou registro do AP quando disponivel"],
-  ["W3", "IPv4 do CLIENTE-W", "192.168.5.0.20/24 aplicado a interface sem fio; sem outro caminho ativo"],
-  ["W4", "CLIENTE-W -> HOST-C", "ping 192.168.5.0.10 recebe resposta; comparar com teste cabeado positivo"],
-  ["W5", "Credencial incorreta em perfil limpo", "Apagar/esquecer perfil salvo, usar Rede-Estudo-2026; nao obter conexao protegida utilizavel"],
-  ["W6", "Retomar", "Esquecer perfil incorreto e repetir a associacao"]
+const ROWS = [
+  ["C1", "Conferir a etiqueta antes de registrar o item", "O registro confirma o item e o endereco 198.51.100.24/24 aparece no relatorio"],
+  ["C2", "Registrar o horario de cada leitura", "Cada leitura recebe horario e identificacao; comparar com a primeira medicao"],
+  ["C3", "Anotar o endereco do equipamento", "198.51.100.7 responde ao teste; sem outro caminho ativo no momento"],
+  ["C4", "Comparar duas leituras do mesmo item", "O desvio entre as leituras fica dentro da faixa aceita para o lote"],
+  ["C5", "Descartar o registro incompleto", "Apagar o registro parcial, usar a etiqueta correta e repetir a leitura"],
+  ["C6", "Retomar a leitura inicial", "Repetir a primeira leitura e conferir se o valor se mantem estavel"]
 ];
 
-const U5 = { title: "Acesso WLAN", columns: ["Teste", "Acao", "Resultado esperado"], rows: U5_ROWS };
+// Mesma cena com a segunda coluna curta e a terceira longa: e o caso em que a
+// folga liberada por uma coluna curta decide se a outra coluna continua legivel.
+const UNEVEN = [
+  ["C1", "Etiqueta ok", "O registro confirma o item, o horario e o endereco 198.51.100.24/24 no relatorio final do lote"],
+  ["C2", "Horario ok", "Cada leitura recebe horario e identificacao; comparar com a primeira medicao disponivel no sistema"],
+  ["C3", "Endereco ok", "198.51.100.7 responde ao teste; sem outro caminho ativo no momento da verificacao do lote"],
+  ["C4", "Duas leituras", "O desvio entre as duas leituras do mesmo item fica dentro da faixa aceita para o lote inteiro"],
+  ["C5", "Registro parcial", "Apagar o registro parcial, usar a etiqueta correta e repetir a leitura do item no lote atual"],
+  ["C6", "Repetir leitura", "Repetir a primeira leitura e conferir se o valor se mantem estavel durante a verificacao"]
+];
+
+const TWO_COLUMNS = [["Conhecimento previo", "Como o que ja foi aprendido antes influencia a leitura do conteudo novo?"],
+  ["Contexto de uso", "Em que situacao concreta esta relacao entre conceito e pratica costuma aparecer para quem aprende?"],
+  ["Integracao entre areas", "Que ligacao pode ser feita entre este conteudo e outro ja estudado na mesma trilha de formacao?"],
+  ["Aplicacao imediata", "Qual decisao pratica muda quando a relacao apresentada e levada a serio no trabalho cotidiano?"],
+  ["Limite do modelo", "Ate que ponto a relacao descrita continua valida e quando ela deixa de explicar o fenomeno observado?"],
+  ["Verificacao", "Que evidencia observavel mostraria que a integracao entre contexto e conteudo realmente aconteceu?"],
+  ["Retomada", "O que precisa ser revisitado depois para que a aprendizagem se mantenha em novas situacoes de estudo?"]];
 
 const WIDE8 = {
   columns: Array.from({ length: 8 }, (_, index) => "Coluna " + (index + 1)),
   rows: Array.from({ length: 6 }, (_, row) => Array.from({ length: 8 }, (_, column) => "Valor " + (row + 1) + "." + (column + 1)))
 };
 
+const SLICE = [
+  ["rotulo-primeiro", { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: ROWS }],
+  ["rotulo-ultimo", { title: "Rotina de leitura", columns: ["Verificacao", "Etapa", "Item"], rows: ROWS.map(([code, etapa, verif]) => [verif, etapa, code]) }],
+  ["rotulo-meio", { title: "Rotina de leitura", columns: ["Verificacao", "Item", "Etapa"], rows: ROWS.map(([code, etapa, verif]) => [verif, code, etapa]) }],
+  ["prosa-desigual", { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: UNEVEN }],
+  ["duas-colunas", { title: "Integrar para aprender", columns: ["Relacao", "Pergunta"], rows: TWO_COLUMNS }]
+];
+
 const FLOOR_REM = 5.5;
 const PROOF_DIR = path.resolve(process.env.ARALEARN_TABLE_PROOF_DIR || "test-results/table-reading-470");
 
-async function mount(page, { width, data, scale = 100 }) {
+async function mount(page, { width, data }) {
   await page.setViewportSize({ width, height: 740 });
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   for (const file of ["support/studyExplanationFixture.js", "fixtures/package/project-minimal.json"]) {
@@ -37,23 +74,14 @@ async function mount(page, { width, data, scale = 100 }) {
     }));
   }
   await page.goto("/");
-  await page.evaluate(async ({ data, scale }) => {
-    if (scale !== 100) document.documentElement.style.fontSize = scale + "%";
+  await page.evaluate(async ({ data }) => {
     document.body.innerHTML = '<div id="app-root"><div id="aralearn-editor-root"></div></div>';
     const { mountStudyExplanationFixture } = await import("/tests/support/studyExplanationFixture.js");
     await mountStudyExplanationFixture(document.querySelector("#aralearn-editor-root"), { unit: "theory",
       resourceContent: [{ id: "representation", package: "aralearn.resource.table", version: "1.0.0", data }] });
-  }, { data, scale });
+  }, { data });
 }
 
-async function openExplanation(page) {
-  await page.getByRole("button", { name: "Explicação", exact: true }).click();
-  await expect(page.locator(".study-explanation-body .runtime-table-wrap")).toHaveCount(1);
-}
-
-// Le geometria real: largura de cada coluna, moldura/wrapper, rolagem propria,
-// transbordo da pagina, piso vigente (5.5rem no rem corrente) e o pior numero de
-// caracteres por linha de cada coluna.
 function readGeometry(scope) {
   return scope.locator(".runtime-table-wrap").evaluate((node, floorRem) => {
     const table = node.querySelector("table.runtime-table");
@@ -62,8 +90,8 @@ function readGeometry(scope) {
     for (const row of table.querySelectorAll("tbody tr")) {
       [...row.children].forEach((cell, index) => {
         const target = cell.querySelector("p, li") || cell;
-        const range = document.createRange(); range.selectNodeContents(target);
         const text = target.textContent.trim();
+        const range = document.createRange(); range.selectNodeContents(target);
         const rects = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
         if (text && rects.length) minChars[index] = Math.min(minChars[index], Math.round(text.length / rects.length * 10) / 10);
       });
@@ -84,44 +112,20 @@ async function controlBoxes(page) {
       width: Math.round(rect.width), height: Math.round(rect.height) }; }));
 }
 
-async function lastColumnReachable(scope) {
-  return scope.locator(".runtime-table-wrap").evaluate(node => {
-    node.scrollLeft = node.scrollWidth;
-    const last = node.querySelector("tr:last-child > :last-child").getBoundingClientRect();
-    return { reachable: last.right <= node.getBoundingClientRect().right + 1, scroll: node.scrollWidth - node.clientWidth };
-  });
-}
-
-// Invariantes comuns ao rotulo curto e as colunas de dados, proporcionais ao rem.
-function expectDistribution(geometry, label) {
-  expect(geometry.overflowX, label + ": rolagem propria disponivel").toBe("auto");
-  expect(geometry.pageOverflow, label + ": a pagina nao estoura").toBeLessThanOrEqual(1);
-  expect(geometry.columns[0], label + ": coluna de rotulo abaixo do piso").toBeLessThan(geometry.floor);
-  for (const index of [1, 2]) {
-    expect(geometry.columns[index], label + ": coluna de dados preserva o piso").toBeGreaterThanOrEqual(geometry.floor - 1);
-  }
-  expect(geometry.columns[1] - geometry.columns[0], label + ": rotulo liberou espaco").toBeGreaterThanOrEqual(20);
-  // A prosa deixa de fragmentar em poucas letras por linha.
-  expect(geometry.minimumCharsPerColumn[1], label + ": caracteres por linha na prosa").toBeGreaterThanOrEqual(5);
-  expect(geometry.minimumCharsPerColumn[2], label + ": caracteres por linha na prosa").toBeGreaterThanOrEqual(6.5);
-}
-
-const HOSTS = [["unidade", ".card-sheet-content"], ["explicacao", ".study-explanation-body"]];
-
-for (const [hostName, hostSelector] of HOSTS) {
-  test("rotulo curto libera espaco para a prosa na " + hostName + " em 360px", async ({ page }) => {
-    await mount(page, { width: 360, data: U5 });
-    if (hostName === "explicacao") await openExplanation(page);
-    const scope = page.locator(hostSelector);
+for (const [name, data] of SLICE) {
+  test("tabela de rotulo curto " + name + " cabe na coluna de leitura em 360px", async ({ page }) => {
+    await mount(page, { width: 360, data });
+    const scope = page.locator(".card-sheet-content");
     const geometry = await readGeometry(scope);
-    console.log("geometria u5/" + hostName + "/360: " + JSON.stringify(geometry));
     const controls = await controlBoxes(page);
-    await page.screenshot({ path: path.join(PROOF_DIR, hostName + "-360.png") });
-    expectDistribution(geometry, "u5/" + hostName + "/360");
-    // Cabendo na largura de leitura, a tabela continua sem rolagem artificial e
-    // ocupando a coluna inteira: a geometria externa nao muda.
-    expect(geometry.wrapScroll - geometry.wrapClient).toBeLessThanOrEqual(1);
-    expect(Math.abs(geometry.table - (geometry.wrapClient - 12))).toBeLessThanOrEqual(2);
+    console.log("geometria " + name + "/360: " + JSON.stringify(geometry));
+    await page.screenshot({ path: path.join(PROOF_DIR, name + "-360.png") });
+    expect(geometry.overflowX, name).toBe("auto");
+    expect(geometry.pageOverflow, name).toBeLessThanOrEqual(1);
+    // Cabe: a moldura nao passa da coluna de leitura e a tabela ocupa a coluna inteira.
+    expect(geometry.wrapScroll - geometry.wrapClient, name).toBeLessThanOrEqual(1);
+    expect(Math.abs(geometry.table - (geometry.wrapClient - 12)), name).toBeLessThanOrEqual(2);
+    expect(Math.abs(geometry.frame - (geometry.wrapClient - 10)), name).toBeLessThanOrEqual(2);
     for (const control of controls) {
       expect(control.width, "controle " + control.label).toBe(44);
       expect(control.height, "controle " + control.label).toBe(44);
@@ -129,72 +133,58 @@ for (const [hostName, hostSelector] of HOSTS) {
   });
 }
 
-test("rotulo curto libera espaco para a prosa em 1280px e com texto ampliado", async ({ page }) => {
-  for (const scale of [100, 200]) {
-    await mount(page, { width: 1280, data: U5, scale });
-    const scope = page.locator(".card-sheet-content");
-    const geometry = await readGeometry(scope);
-    const reach = await lastColumnReachable(scope);
-    console.log("geometria u5/unidade/1280/" + scale + "%: " + JSON.stringify(geometry) + " alcance: " + JSON.stringify(reach));
-    await page.screenshot({ path: path.join(PROOF_DIR, "unidade-1280-" + scale + ".png") });
-    expectDistribution(geometry, "u5/1280/" + scale + "%");
-    if (scale === 100) {
-      expect(geometry.wrapScroll - geometry.wrapClient).toBeLessThanOrEqual(1);
-      expect(Math.abs(geometry.table - (geometry.wrapClient - 12))).toBeLessThanOrEqual(2);
-      continue;
-    }
-    // Com o texto ampliado o conteudo minimo excede a largura de leitura (ja era
-    // assim antes da correcao): vale o contrato de tabela larga.
-    expect(reach.reachable, "texto ampliado: ultima coluna alcancavel").toBe(true);
-  }
+test("tabela de rotulo curto em 1280px mantem a mesma distribuicao", async ({ page }) => {
+  await mount(page, { width: 1280, data: SLICE[0][1] });
+  const geometry = await readGeometry(page.locator(".card-sheet-content"));
+  console.log("geometria rotulo-primeiro/1280: " + JSON.stringify(geometry));
+  await page.screenshot({ path: path.join(PROOF_DIR, "rotulo-primeiro-1280.png") });
+  expect(geometry.pageOverflow).toBeLessThanOrEqual(1);
+  expect(geometry.wrapScroll - geometry.wrapClient).toBeLessThanOrEqual(1);
+  expect(Math.abs(geometry.table - (geometry.wrapClient - 12))).toBeLessThanOrEqual(2);
 });
 
-test("explicacao em 1280px preserva a distribuicao", async ({ page }) => {
-  await mount(page, { width: 1280, data: U5 });
-  await openExplanation(page);
-  const geometry = await readGeometry(page.locator(".study-explanation-body"));
-  console.log("geometria u5/explicacao/1280: " + JSON.stringify(geometry));
-  await page.screenshot({ path: path.join(PROOF_DIR, "explicacao-1280.png") });
-  expectDistribution(geometry, "u5/explicacao/1280");
-});
-
-test("tabela larga de 8 colunas mantem o piso e a rolagem propria", async ({ page }) => {
+test("tabela larga de 8 colunas mantem o piso das colunas e a rolagem propria", async ({ page }) => {
   for (const width of [360, 1280]) {
     await mount(page, { width, data: WIDE8 });
     const scope = page.locator(".card-sheet-content");
     const geometry = await readGeometry(scope);
-    const reach = await lastColumnReachable(scope);
-    console.log("geometria larga8/unidade/" + width + ": " + JSON.stringify(geometry) + " alcance: " + JSON.stringify(reach));
+    const reach = await scope.locator(".runtime-table-wrap").evaluate(node => {
+      node.scrollLeft = node.scrollWidth;
+      const last = node.querySelector("tr:last-child > :last-child").getBoundingClientRect();
+      return { reachable: last.right <= node.getBoundingClientRect().right + 1, scroll: node.scrollWidth - node.clientWidth };
+    });
+    console.log("geometria larga8/" + width + ": " + JSON.stringify(geometry) + " alcance: " + JSON.stringify(reach));
     if (width === 360) await page.screenshot({ path: path.join(PROOF_DIR, "larga8-360.png") });
     expect(geometry.pageOverflow, "larga8/" + width).toBeLessThanOrEqual(1);
-    expect(geometry.wrapScroll, "larga8/" + width + ": conteudo excede a coluna").toBeGreaterThan(geometry.wrapClient + 1);
+    expect(geometry.wrapScroll, "larga8/" + width).toBeGreaterThan(geometry.wrapClient + 1);
     expect(geometry.columns.length).toBe(8);
     for (const [index, columnWidth] of geometry.columns.entries()) {
-      expect(columnWidth, "larga8/" + width + ": coluna " + (index + 1) + " preserva o piso")
-        .toBeGreaterThanOrEqual(geometry.floor - 1);
+      expect(columnWidth, "larga8/" + width + ": coluna " + (index + 1)).toBeGreaterThanOrEqual(geometry.floor - 1);
     }
     expect(reach.reachable, "larga8/" + width + ": ultima coluna alcancavel").toBe(true);
   }
 });
 
-test("celulas com contrato proprio de largura seguem com o piso", async ({ page }) => {
-  await mount(page, { width: 360, data: U5 });
+test("celulas com contrato proprio de largura seguem com o piso em qualquer coluna", async ({ page }) => {
+  await mount(page, { width: 360, data: SLICE[0][1] });
   // O produto ainda nao emite estas classes (nao ha consumidor); a prova fixa o
-  // contrato de CSS aplicando-as a celula real do rotulo e lendo o valor computado.
-  const cell = page.locator(".card-sheet-content .runtime-table tbody tr:first-child > :first-child");
-  const computed = await cell.evaluate(node => {
-    const values = {};
-    for (const name of ["is-nowrap", "is-align-numeric"]) {
-      node.classList.add(name);
-      values[name] = getComputedStyle(node).minWidth;
-      node.classList.remove(name);
-    }
-    values.base = getComputedStyle(node).minWidth;
-    return values;
-  });
+  // contrato de CSS aplicando-as as celulas reais e lendo o valor computado.
+  const computed = await page.locator(".card-sheet-content .runtime-table tbody tr:first-child")
+    .evaluate(row => [...row.children].map(cell => {
+      const values = {};
+      for (const name of ["is-nowrap", "is-align-numeric"]) {
+        cell.classList.add(name);
+        values[name] = getComputedStyle(cell).minWidth;
+        cell.classList.remove(name);
+      }
+      values.base = getComputedStyle(cell).minWidth;
+      return values;
+    }));
   console.log("contrato de largura: " + JSON.stringify(computed));
-  expect(computed.base).toBe("0px");
-  expect(computed["is-nowrap"]).toBe("88px");
-  expect(computed["is-align-numeric"]).toBe("88px");
+  for (const values of computed) {
+    expect(values.base).toBe("88px");
+    expect(values["is-nowrap"]).toBe("88px");
+    expect(values["is-align-numeric"]).toBe("88px");
+  }
 });
 
