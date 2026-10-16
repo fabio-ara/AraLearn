@@ -159,6 +159,45 @@ test("limites de PDF recebem recuperação própria sem repetição automática"
   }
 });
 
+test("capacidade e orçamento de âncoras recebem recuperação própria antes do limite genérico", () => {
+  const capacity = toolErrorData(new AuthoringApiError(
+    409,
+    "course_source_anchor_capacity_reached",
+    "Esta revisão de Fonte já usa 64 identidades de Âncora, o máximo aceito. Reaproveite as âncoras existentes: revisar um localizador já usado não consome capacidade e nenhuma âncora precisa ser removida."
+  ), { requestId: "request-source-anchor-0001" });
+  assert.equal(capacity.recovery.strategy, "correct_and_retry");
+  assert.equal(capacity.recovery.retryable, true);
+  assert.equal(capacity.recovery.requestIdMode, "new");
+  const capacitySteps = capacity.recovery.steps.join(" ");
+  assert.match(capacitySteps, /Conserve as âncoras já usadas/u);
+  assert.match(capacitySteps, /mesmo trecho/u);
+  assert.match(capacitySteps, /pendência/u);
+  assert.doesNotMatch(capacitySteps, /composição|lote menor|divida|dividir|recicl|duplicar/iu);
+
+  const budget = toolErrorData(new AuthoringApiError(
+    413,
+    "course_source_anchor_budget_exceeded",
+    "As âncoras desta revisão de Fonte somam mais de 128 KiB, o orçamento aceito. Revise os trechos de conferência redundantes; a localização das âncoras já usadas permanece."
+  ), { requestId: "request-source-anchor-0002" });
+  assert.equal(budget.recovery.strategy, "correct_and_retry");
+  assert.equal(budget.recovery.retryable, true);
+  assert.equal(budget.recovery.requestIdMode, "new");
+  const budgetSteps = budget.recovery.steps.join(" ");
+  assert.match(budgetSteps, /redundância/u);
+  assert.match(budgetSteps, /leitura nova/u);
+  assert.match(budgetSteps, /sem substituir a passagem citada/u);
+  assert.match(budgetSteps, /pendência/u);
+  assert.doesNotMatch(budgetSteps, /composição|lote menor|divida|dividir|recicl|duplicar/iu);
+
+  // Sem código específico, o limite de 413 conserva a orientação genérica de lote menor.
+  const generic = toolErrorData(new AuthoringApiError(
+    413,
+    "payload_too_large",
+    "A alteração excede o limite aceito."
+  ), { requestId: "request-payload-too-large-0001" });
+  assert.equal(generic.recovery.strategy, "split_and_retry");
+});
+
 test("erros do transporte de PDF distinguem correção, reanexo, retry e recibo", () => {
   const cases = [
     {

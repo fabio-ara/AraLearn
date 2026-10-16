@@ -14,9 +14,11 @@ begin;
 -- trecho de conferência de até 2000 caracteres, o que mantém a identidade na
 -- casa de KiB. A medição do maior acervo que os dois tetos ainda aceitam — 64
 -- identidades com trecho de conferência real e 8 PDFs ativos — fica em torno de
--- 135 KiB, pouco mais da metade do orçamento. Esse teto é por revisão da Fonte:
--- a leitura de uma Fonte reúne também as âncoras das revisões anteriores e
--- segue limitada pelo guard de 256 KiB do leitor, que permanece a última
+-- 135 KiB, pouco mais da metade do orçamento. Fontes e âncoras são registros
+-- correntes: a chave estrangeira (course_id, source_id, source_revision) com
+-- cascata move as âncoras junto com a revisão da Fonte, então o acervo medido é
+-- o próprio estado corrente, sem histórico cumulativo de revisões. A leitura
+-- devolve essas âncoras e o guard de 256 KiB do leitor continua sendo a última
 -- proteção da leitura.
 --
 -- A guarda vive no produtor oficial, como as demais verificações desse
@@ -85,9 +87,6 @@ begin
       using errcode = '23514';
   end if;
   definition := replace(pg_get_functiondef(signature), E'\r\n', E'\n');
-  if definition like '%course_source_anchor_count_limit_v1%' then
-    return;
-  end if;
   occurrences := (length(definition) - length(replace(definition, old_block, '')))
     / length(old_block);
   if occurrences <> 1 then
