@@ -142,6 +142,10 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
   // A galeria de fixture não repassa opções extras: o parâmetro ?audio=1 da própria
   // URL habilita a ferramenta de áudio sem alterar a página compartilhada.
   const withAudio = includeAudio || new URLSearchParams(globalThis.location?.search || "").has("audio");
+  // A variante ?wide=1 troca a tabela de três colunas por uma de quatro: as células ficam
+  // fora do teto de largura de #470 e o quadro rola horizontalmente em 390 px, o que a prova
+  // exige com valor maior que zero antes e depois da atualização.
+  const wideTable = new URLSearchParams(globalThis.location?.search || "").has("wide");
   document.documentElement.dataset.colorMode = theme;
   const response = await fetch(new URL("../fixtures/package/project-minimal.json", import.meta.url));
   if (!response.ok) throw new Error("Fixture curricular local indisponível.");
@@ -167,7 +171,13 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     : [...structuredClone(authoredTools), ...(includeAudio ? [syntheticAudioTool()] : [])];
   const support = { title: "Processos, interfaces e transporte: distinguir os participantes da comunicação sem confundir sinais, quadros e conexões",
     content: [paragraph("support-lead", "Um **quadro** transporta informações entre interfaces de uma rede local. Um processo é um programa em execução; sua interface com o transporte é chamada socket. Essa interface local não representa toda a conexão entre os participantes."),
-      resource("comparison", "table", { title: "Papéis na comunicação",
+      wideTable ? resource("comparison", "table", { title: "Papéis na comunicação",
+        columns: ["Elemento", "Papel", "O que não representa", "Onde aparece"], rows: [
+          ["Processo", "Programa em execução", "Toda a rede", "Na ponta que envia e recebe"],
+          ["Socket", "Interface local com o transporte", "A conexão inteira", "Entre o processo e o transporte"],
+          ["Hub", "Repetição de sinais para as demais portas", "Seleção de destino por endereço MAC", "No meio físico compartilhado"],
+          ["Switch", "Encaminhamento de quadros", "O processo que produz os dados", "Entre segmentos da mesma rede local"]] }) :
+        resource("comparison", "table", { title: "Papéis na comunicação",
         columns: ["Elemento", "Papel", "O que não representa"], rows: [
           ["Processo", "Programa em execução", "Toda a rede"], ["Socket", "Interface local com o transporte", "A conexão inteira"],
           ["Hub", "Repetição de sinais para as demais portas", "Seleção de destino por endereço MAC"],
@@ -251,12 +261,19 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     },
     loadExplanationContext: reference => {
       if (probe.state === "error") throw new Error("A explicação desta cópia está indisponível.");
+      // Atualização real do conteúdo quando a revisão avança: a prova confere o texto novo.
+      const explanation = probe.state === "missing" ? null : structuredClone(support);
+      if (explanation && (probe.courseRevision || 1) >= 2 &&
+          !explanation.content.some(block => block.id === "revision-marker")) {
+        explanation.content.push(paragraph("revision-marker",
+          "Revisão 2 da explicação: o conteúdo foi atualizado e a leitura permaneceu na mesma posição."));
+      }
       // A revisão corrente é ajustável pela prova: uma atualização assíncrona legítima
       // (nova revisão da explicação) reusa o mesmo caminho de render. O padrão 1 preserva
       // o comportamento das demais provas.
       return { courseId: course.id, courseRevision: probe.courseRevision || 1, microsequenceId: ms.id, entityPath: [...path, reference.studyUnitId],
         targetKind: "microsequence_explanation", targetId: ms.id,
-        explanation: probe.state === "missing" ? null : structuredClone(support),
+        explanation,
         contentReview: ["draft", "stale", "unregistered"].includes(probe.state)
           ? { state: probe.state } : { state: "current", approvedAt: "2026-09-07T00:00:00Z" },
         state: probe.state, retainedForReview: false, availableRevision: 1, offline: probe.offline };

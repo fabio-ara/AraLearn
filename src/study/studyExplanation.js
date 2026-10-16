@@ -416,7 +416,9 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     },
     beforeRender() {
       detachedFocus = overlay?.contains(root.ownerDocument.activeElement) ? root.ownerDocument.activeElement : null;
-      detachedState = overlay ? captureRenderState(overlay, { includeFocus: false }) : null;
+      // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura precisa
+      // reencontrá-lo pelo caminho, sem guardar o nó do DOM antigo.
+      detachedState = overlay ? captureRenderState(overlay, { includeFocus: true }) : null;
       overlay?.remove();
     },
     afterRender() {
@@ -428,7 +430,9 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
         open(requestedCitation);
         // Mesma leitura com conteúdo atualizado: a folha reaberta conserva a rolagem
         // capturada antes de desanexar (corpo e quadros de tabela), sem repor conteúdo antigo.
-        if (overlay) restoreRenderState(overlay, detachedState, { restoreFocus: false, restorePageScroll: false });
+        // O foco volta ao alvo equivalente quando ele ainda existe; se o caminho desapareceu,
+        // o foco seguro já aplicado pela abertura (botão de fechar) permanece.
+        if (overlay) restoreRenderState(overlay, detachedState, { restoreFocus: true, restorePageScroll: false });
         return;
       }
       root.querySelector(".app-shell")?.append(overlay);
