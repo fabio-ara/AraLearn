@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.116] - 2026-10-16
+
+### Corrigido
+
+- Em tabelas de até três colunas na leitura, a largura de cada coluna passa a seguir o próprio conteúdo, em vez de reservar o piso fixo para o rótulo curto; a moldura cresce apenas o que as palavras pedem e rola dentro do controle quando o conteúdo não cabe. O controle Explicação de 44×44, a moldura externa do card e a rolagem própria permanecem preservados.
+
 ## [0.0.115] - 2026-10-16
 
 ### Corrigido
