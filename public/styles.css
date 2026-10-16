@@ -2789,6 +2789,17 @@ button.account-settings-back[hidden] {
   background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
 }
 
+/* O piso de 5.5rem existe para as tabelas que rolam: nelas cada coluna precisa
+   de largura legivel. Numa tabela que cabe na coluna de leitura (ate tres
+   colunas: 3 x 5.5rem = 264px sobre 292px de leitura na largura movel) o piso
+   nao produz rolagem nenhuma; na coluna de rotulo ele reservava a mesma
+   largura do texto curto e espremia a prosa. Ali a coluna de rotulo passa a
+   ocupar o que o conteudo pede e a folga vai para as demais colunas. Celulas
+   com contrato proprio de largura (sem quebra ou numerico) seguem intactas. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > :first-child:not(.is-nowrap):not(.is-align-numeric) {
+  min-width: 0;
+}
+
 .runtime-table-cell-content {
   min-width: 0;
   max-width: none;
