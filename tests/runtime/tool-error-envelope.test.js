@@ -267,3 +267,34 @@ test("escrita incerta mantém identidade e não se transforma em repetição com
   assert.equal(projected.recovery.requestIdMode, "same");
   assert.deepEqual(projected.details, { requestId: "uncertain-attempt-01", operation: "curricular_map_slice", targetCourseId: TARGET_COURSE_ID });
 });
+
+test("escrita incerta de inspeção declara a repetição da mesma referência e parecer", () => {
+  const projected = toolErrorData(new AuthoringApiError(409, "course_write_uncertain",
+    "Repita registrar_inspecao com a mesma referência e o mesmo parecer.", {
+      requestId: "uncertain-inspection-01", operation: "course_ai_inspection", targetCourseId: TARGET_COURSE_ID
+    }));
+  assert.equal(projected.recovery.strategy, "repeat_identical");
+  assert.equal(projected.recovery.requestIdMode, "same");
+  assert.match(projected.recovery.steps.join(" "), /registrar_inspecao com a mesma referência e o mesmo parecer/u);
+  // A repetição guiada é idêntica e conserva a identidade; a orientação declara as
+  // duas condições, porque o resultado depende de o recibo existir.
+  assert.equal(projected.recovery.retryable, true);
+  assert.match(projected.recovery.steps.join(" "), /Com recibo da mesma tentativa, a repetição devolve o parecer salvo sem reavaliar a base/u);
+  assert.match(projected.recovery.steps.join(" "), /Sem recibo, a base é lida e validada antes de registrar/u);
+  assert.deepEqual(projected.details, { requestId: "uncertain-inspection-01", operation: "course_ai_inspection", targetCourseId: TARGET_COURSE_ID });
+});
+
+test("conflito de base e identidade divergente da inspeção têm orientações distintas", () => {
+  const base = toolErrorData(new AuthoringApiError(409, "course_ai_inspection_conflict",
+    "O conteúdo mudou; leia e inspecione a base atual antes de registrar o parecer."));
+  assert.equal(base.recovery.strategy, "reread_and_retry");
+  assert.equal(base.recovery.requestIdMode, "new");
+  assert.match(base.recovery.steps.join(" "), /base vigente/u);
+
+  const identity = toolErrorData(new AuthoringApiError(409, "course_ai_inspection_identity_conflict",
+    "Esta tentativa de inspeção pertence ao parecer original."));
+  assert.equal(identity.recovery.strategy, "repeat_identical");
+  assert.equal(identity.recovery.requestIdMode, "same");
+  assert.match(identity.recovery.steps.join(" "), /mesmo parecer da tentativa original/u);
+  assert.doesNotMatch(identity.recovery.steps.join(" "), /nova referência|retomar_correcao/u);
+});

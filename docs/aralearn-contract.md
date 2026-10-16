@@ -515,6 +515,9 @@ examinada mesmo quando o texto permanece igual.
 `parecer`, com `summary`, `outcome`, `findings` e `checks`. A referência conserva
 a identidade da tentativa, do alvo e da base; o servidor confere acesso e
 correspondência antes de gravar.
+Uma resposta perdida se recupera repetindo a mesma referência e o mesmo parecer:
+com recibo, a repetição devolve o parecer salvo sem reavaliar a base; sem recibo,
+a base é validada antes de registrar, e uma base alterada recusa sem gravar.
 
 | Estado da inspeção | Significado |
 | --- | --- |

@@ -30,6 +30,8 @@ import { RESOURCE_PACKAGE_REGISTRY } from
   "../../supabase/functions/_shared/aralearn/runtime/resources/catalog/resourceCatalog.js";
 import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
+import { createContentReviewReference } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { applyCurricularMapSlice, inspectCurricularMapCompleteness } from
@@ -424,7 +426,11 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.2.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.3.0");
+  // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
+  // a mesma referência e o mesmo parecer, sem recompor a tentativa.
+  assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,
+    /Sem resposta, repita com a mesma referência e o mesmo parecer/u);
   // Orçamento local de regressão; o servidor aceita 2 MiB por resposta MCP e o
   // payload de chamada mantém o gate próprio. Baseline medida com o contrato de
   // saída só de sucesso: 144.996 B. A união tipada (sucesso + erro) exigida pelo
@@ -2621,6 +2627,41 @@ test("MCP conserva a tentativa de criação incerta e não recomenda outra escri
   assert.doesNotMatch(payload.result.structuredContent.nextDecision ?? "", /refaça|tente novamente/iu);
   assert.equal(writes.length, 2, "a recuperação transacional é limitada ao replay suportado");
   assert.deepEqual(writes[1], writes[0], "o replay não cria uma nova identidade ou intenção");
+});
+
+test("MCP declara a recuperação da inspeção pela mesma referência e parecer", async () => {
+  const read = { contract: "aralearn.course-ai-inspection.v1", courseId: COURSE_ID, courseRevision: 7,
+    targetKind: "microsequence_explanation", targetId: "micro", basisHash: "a".repeat(64),
+    pedagogicalBasis: { targetKind: "microsequence_explanation", targetId: "micro",
+      microsequence: { title: "Relações", goal: "Explicar relações" }, planItems: [], studyUnits: [], dependencies: [] },
+    inspection: { state: "unregistered", basisHash: "a".repeat(64) } };
+  const parecer = { summary: "Base e relações examinadas.", outcome: "consistent", findings: [],
+    checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
+      dimension, result: "sufficient", reason: "A explicação desenvolve a relação solicitada.", evidence: ["Relações"] })) };
+  const reference = await createContentReviewReference({ principal: PRINCIPAL, read });
+  let writes = 0;
+  const handler = createAuthoringMcpHandler({
+    adapter: { ...adapter(),
+      async getCourseContentInspectionReceipt() { return null; },
+      async getCourseContentInspection() { return structuredClone(read); },
+      async recordCourseContentInspection() { writes += 1;
+        throw new AuthoringApiError(503, "network_error", "Resposta perdida."); } },
+    allowedOrigins: new Set([ORIGIN]), resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const payload = await (await handler(request("tools/call", {
+    name: "registrar_inspecao", arguments: { referencia: reference, parecer }
+  }))).json();
+  const { error, nextDecision } = payload.result.structuredContent;
+  assert.equal(error.code, "course_write_uncertain");
+  assert.equal(error.retryable, false);
+  assert.match(error.message, /mesma referência e o mesmo parecer/u);
+  assert.match(nextDecision, /Repita registrar_inspecao com a mesma referência e o mesmo parecer/u);
+  assert.match(nextDecision, /com recibo, devolve o parecer salvo sem reavaliar a base/u);
+  assert.match(nextDecision, /sem recibo, a base é validada antes de registrar/u);
+  assert.equal(error.recovery.operation, "course_ai_inspection");
+  assert.equal(error.recovery.courseId, COURSE_ID);
+  assert.equal(writes, 1);
 });
 
 test("chamada MCP entrega o deep link como link Markdown sem expor estado técnico", async () => {

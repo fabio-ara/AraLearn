@@ -20,6 +20,8 @@ import { AuthoringApiError } from
   "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { courseAuthoringGuidanceForCall } from
   "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
+import { createContentReviewReference } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 
 const ORIGIN = "https://chatgpt.com";
 const CHAT_OPENAI_ORIGIN = "https://chat.openai.com";
@@ -600,6 +602,36 @@ test("Actions conserva a tentativa de criação incerta e não recomenda outra e
   assert.doesNotMatch(payload.nextDecision ?? "", /refaça|tente novamente/iu);
   assert.equal(writes.length, 2, "a recuperação transacional é limitada ao replay suportado");
   assert.deepEqual(writes[1], writes[0], "o replay não cria uma nova identidade ou intenção");
+});
+
+test("Actions declara a recuperação da inspeção pela mesma referência e parecer", async () => {
+  const read = { contract: "aralearn.course-ai-inspection.v1", courseId: ACTOR_ID, courseRevision: 3,
+    targetKind: "microsequence_explanation", targetId: "micro", basisHash: "a".repeat(64),
+    pedagogicalBasis: { targetKind: "microsequence_explanation", targetId: "micro",
+      microsequence: { title: "Relações", goal: "Explicar relações" }, planItems: [], studyUnits: [], dependencies: [] },
+    inspection: { state: "unregistered", basisHash: "a".repeat(64) } };
+  const parecer = { summary: "Base e relações examinadas.", outcome: "consistent", findings: [],
+    checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
+      dimension, result: "sufficient", reason: "A explicação desenvolve a relação solicitada.", evidence: ["Relações"] })) };
+  const reference = await createContentReviewReference({ principal: { actorId: ACTOR_ID }, read });
+  let writes = 0;
+  const response = await createHandler({
+    async getCourseContentInspectionReceipt() { return null; },
+    async getCourseContentInspection() { return structuredClone(read); },
+    async recordCourseContentInspection() { writes += 1;
+      throw new AuthoringApiError(503, "network_error", "Resposta perdida."); }
+  })(request("registrar_inspecao", { referencia: reference, parecer }));
+  const payload = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(payload.error.code, "course_write_uncertain");
+  assert.equal(payload.error.retryable, false);
+  assert.match(payload.error.message, /mesma referência e o mesmo parecer/u);
+  assert.match(payload.nextDecision, /Repita registrar_inspecao com a mesma referência e o mesmo parecer/u);
+  assert.match(payload.nextDecision, /com recibo, devolve o parecer salvo sem reavaliar a base/u);
+  assert.match(payload.nextDecision, /sem recibo, a base é validada antes de registrar/u);
+  assert.equal(payload.error.recovery.operation, "course_ai_inspection");
+  assert.equal(payload.error.recovery.courseId, ACTOR_ID);
+  assert.equal(writes, 1);
 });
 
 test("Actions não manda repetir incorporação de PDF com escrita incerta", async () => {

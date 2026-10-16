@@ -351,7 +351,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.2.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.3.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -906,8 +906,10 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // especificação só limita descrições. O catálogo 11.2.0 torna
   // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
   // permitindo um lote atômico de unidades de várias microssequências do mesmo
-  // curso; a linha de base medida passa a 100859 minificados / 209905
-  // formatados. A aceitação pelo editor é conferida à parte, com o cliente real.
+  // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
+  // mesma referência e parecer; a linha de base medida passa a 100922 minificados
+  // / 209968 formatados. A aceitação pelo editor é conferida à parte, com o
+  // cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
   assert.ok(JSON.stringify(openApi, null, 2).length < 210_000);
   assert.doesNotMatch(openApiText, /"const"/u);

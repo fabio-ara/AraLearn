@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.2.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.3.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -286,6 +286,10 @@ base no campo `evidence`. Os [critérios comuns](fluxos-prompts-e-contratos.md#a
 explicam o que cada dimensão examina. O servidor vincula o parecer à versão e
 ao `basisHash`, uma impressão digital calculada dos dados examinados. Ele
 identifica quando a base muda e recusa evidência que não esteja no recorte.
+Depois de uma resposta perdida, a recuperação repete a mesma referência e o mesmo
+parecer: com recibo da tentativa, devolve o parecer salvo sem reavaliar a base;
+sem recibo, lê e valida a base antes de registrar, o que grava uma única inspeção
+na base vigente. Base alterada é conflito, não escrita incerta: recusa sem gravar.
 
 Um parecer `sufficient` de alinhamento, evidência, representação, feedback ou
 suficiência precisa citar o material apresentado no próprio alvo — conteúdo,

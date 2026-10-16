@@ -69,6 +69,13 @@ test("#271 guidance conduz Observações abertas até reparo contextual e reinsp
   assert.match(decisionText, /Aprovação parcial conserva as demais incidências/iu);
   assert.match(inspectionText, /sem entidade de lote de inspeção/iu);
   assert.match(inspectionText, /progressão, pré-requisitos, transições, exemplos ou prática/iu);
+  // Resposta perdida na inspeção recupera pela própria operação, com o recibo
+  // conferido antes da leitura da base.
+  assert.match(decisionText, /Após resposta perdida, repita registrar_inspecao com a referência e o parecer originais/u);
+  assert.match(decisionText, /com recibo, a repetição devolve o parecer salvo sem reavaliar a base/u);
+  assert.match(decisionText, /sem recibo, a base lida é validada antes de registrar/u);
+  assert.match(decisionText, /retomar_correcao não se aplica à inspeção/u);
+  assert.match(decisionText, /Base alterada é conflito, não escrita incerta/u);
   assert.match(reviewText, /inspecionar, observar, pedir revisão.*propor reparo.*reinspecionar/iu);
   assert.match(reviewText, /não apenas os alvos anotados/iu);
   assert.match(sourceText, /referência humana, o papel efetivo.*Âncora ou trecho/iu);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
-import { createContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
+import { createContentReviewReference, openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
@@ -94,20 +94,121 @@ test("parecer vincula a base lida e reconcilia resposta perdida sem editar ou re
   assert.equal(Object.hasOwn(calls[0], "content"), false);
 });
 
-test("parecer não escreve base obsoleta e recusa conflito sem repetir a tentativa", async () => {
+test("recibo ausente com base alterada recusa o conflito sem gravar", async () => {
   const before = initial();
   const reference = await createContentReviewReference({ principal, read: before });
-  let writes = 0;
-  const adapter = { getCourseContentInspectionReceipt: async () => null, getCourseContentInspection: async () => ({ ...before, basisHash: "b".repeat(64),
+  let writes = 0; let receipts = 0;
+  const adapter = { getCourseContentInspectionReceipt: async () => { receipts += 1; return null; }, getCourseContentInspection: async () => ({ ...before, basisHash: "b".repeat(64),
     inspection: { state: "pending", basisHash: "b".repeat(64) } }),
     recordCourseContentInspection: async () => { writes++; } };
   await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report }),
     error => error.code === "course_ai_inspection_conflict" && error.status === 409);
+  assert.equal(receipts, 1, "a tentativa repetida não tinha recibo");
   assert.equal(writes, 0);
   adapter.getCourseContentInspection = async () => before;
   adapter.recordCourseContentInspection = async () => { writes++; throw new AuthoringApiError(409, "stale_course_state", "Base mudou"); };
   await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report }),
     error => error.code === "stale_course_state");
+  assert.equal(writes, 1);
+});
+
+test("escrita incerta de inspeção recupera pela mesma referência e parecer, sem reler nem duplicar", async () => {
+  const before = initial();
+  const reference = await createContentReviewReference({ principal, read: before });
+  const requestId = openContentReviewReference(reference, principal).requestId;
+  const attempts = []; let reads = 0; let receipt = null; let receiptCalls = 0;
+  const saved = () => ({ contract: "aralearn.course-ai-inspection-change.v1", changed: true, idempotent: true,
+    courseId, courseRevision: 6, targetKind: "microsequence_explanation", targetId: "micro",
+    basisHash: before.basisHash, inspection: { state: "current", basisHash: before.basisHash,
+      inspectedAt: "2026-10-15T00:00:00Z", report } });
+  const adapter = { publicAppUrl: "https://example.org",
+    async getCourseContentInspectionReceipt(input) { receiptCalls += 1;
+      assert.equal(input.requestId, requestId);
+      assert.deepEqual(input.report, report);
+      return receipt === null ? null : saved(); },
+    async getCourseContentInspection() { reads += 1; return structuredClone(before); },
+    async recordCourseContentInspection(input) { attempts.push(input);
+      throw new AuthoringApiError(503, "network_error", "Resposta perdida."); } };
+
+  const failure = await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report })
+    .then(() => null, error => error);
+  assert.equal(failure.status, 409);
+  assert.equal(failure.code, "course_write_uncertain");
+  assert.deepEqual(failure.details, { requestId, targetCourseId: courseId, operation: "course_ai_inspection" });
+  assert.match(failure.message, /mesma referência e o mesmo parecer/u);
+  assert.match(failure.message, /com recibo, ele devolve o parecer salvo sem reavaliar a base/u);
+  assert.match(failure.message, /sem recibo, a base é validada antes de registrar/u);
+  assert.equal(attempts.length, 1);
+  // A leitura inicial e a releitura de reconciliação da escrita incerta; nenhuma
+  // delas substitui o recibo.
+  assert.equal(reads, 2);
+
+  // A tentativa gravou apesar da resposta perdida: o recibo da MESMA identidade
+  // devolve o parecer salvo. O replay não relê a base nem grava de novo.
+  receipt = saved();
+  const recovered = await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report });
+  assert.deepEqual(recovered.context.inspecaoIA.report, report);
+  assert.match(recovered.result, /Recuperei o parecer da mesma tentativa/u);
+  assert.equal(reads, 2, "o recibo é conferido antes de qualquer leitura nova");
+  assert.equal(attempts.length, 1, "o replay não duplica a inspeção");
+  assert.equal(receiptCalls, 3);
+});
+
+test("parecer divergente na mesma referência não contorna o recibo da inspeção", async () => {
+  const before = initial();
+  const reference = await createContentReviewReference({ principal, read: before });
+  const divergent = { ...report, summary: "Parecer reescrito depois da resposta perdida." };
+  let reads = 0; let writes = 0;
+  const adapter = { publicAppUrl: "https://example.org",
+    async getCourseContentInspectionReceipt(input) {
+      if (input.report.summary === report.summary) return { contract: "aralearn.course-ai-inspection-change.v1",
+        changed: true, idempotent: true, courseId, courseRevision: 6, targetKind: "microsequence_explanation",
+        targetId: "micro", basisHash: before.basisHash, inspection: { state: "current", basisHash: before.basisHash,
+          inspectedAt: "2026-10-15T00:00:00Z", report } };
+      throw new AuthoringApiError(409, "course_ai_inspection_identity_conflict",
+        "Esta tentativa de inspeção pertence ao parecer original. Repita com a mesma referência e o mesmo parecer.");
+    },
+    async getCourseContentInspection() { reads += 1; return structuredClone(before); },
+    async recordCourseContentInspection() { writes += 1; return { contract: "aralearn.course-ai-inspection-change.v1",
+      changed: true, idempotent: false, courseId, courseRevision: 6, targetKind: "microsequence_explanation",
+      targetId: "micro", basisHash: before.basisHash, inspection: { state: "current", basisHash: before.basisHash,
+        inspectedAt: "2026-10-15T00:00:00Z", report: divergent } }; } };
+
+  await assert.rejects(execute(adapter, "registrar_inspecao", { referencia: reference, parecer: divergent }),
+    { code: "course_ai_inspection_identity_conflict" });
+  assert.equal(reads, 0, "o parecer divergente não cai na validação de base");
+  assert.equal(writes, 0, "o parecer divergente não sobrescreve a tentativa salva");
+
+  const recovered = await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report });
+  assert.deepEqual(recovered.context.inspecaoIA.report, report);
+  assert.equal(writes, 0);
+});
+
+test("recibo ausente com base vigente grava uma única inspeção e o replay seguinte usa o recibo", async () => {
+  const before = initial();
+  const reference = await createContentReviewReference({ principal, read: before });
+  let writes = 0; let receipts = 0; let receipt = null;
+  const adapter = { publicAppUrl: "https://example.org",
+    async getCourseContentInspectionReceipt() { receipts += 1; return receipt; },
+    async getCourseContentInspection() { return structuredClone(before); },
+    async recordCourseContentInspection(input) { writes += 1;
+      receipt = { contract: "aralearn.course-ai-inspection-change.v1", changed: true, idempotent: false,
+        courseId, courseRevision: 6, targetKind: "microsequence_explanation", targetId: "micro",
+        basisHash: before.basisHash, inspection: { state: "current", basisHash: before.basisHash,
+          inspectedAt: "2026-10-15T00:00:00Z", report: input.report } };
+      return structuredClone(receipt); } };
+
+  // Sem recibo, a repetição idêntica valida a base vigente e registra a inspeção.
+  const first = await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report });
+  assert.match(first.result, /Registrei o parecer de IA sobre a base lida/u);
+  assert.equal(receipts, 1);
+  assert.equal(writes, 1);
+
+  // O recibo criado pela própria gravação passa a devolver a mesma tentativa sem
+  // gravar de novo.
+  const second = await execute(adapter, "registrar_inspecao", { referencia: reference, parecer: report });
+  assert.match(second.result, /Recuperei o parecer da mesma tentativa/u);
+  assert.equal(receipts, 2);
   assert.equal(writes, 1);
 });
 

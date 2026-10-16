@@ -206,6 +206,25 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
+  if (error.code === "course_write_uncertain" && error.details?.operation === "course_ai_inspection") {
+    // A inspeção recupera pela própria operação e pela MESMA identidade, então a
+    // repetição idêntica é a orientação. Com recibo, o handler devolve o parecer
+    // salvo sem reavaliar a base. Sem recibo, ele lê e valida a base lida: base
+    // vigente registra no máximo uma inspeção e base alterada recusa sem gravar.
+    // retryable true descreve essa repetição guiada do mesmo corpo — não autoriza
+    // parecer novo nem identidade nova — e requestIdMode same conserva a tentativa
+    // original.
+    return {
+      strategy: "repeat_identical",
+      retryable: true,
+      requestIdMode: "same",
+      steps: [
+        "Repita registrar_inspecao com a mesma referência e o mesmo parecer.",
+        "Com recibo da mesma tentativa, a repetição devolve o parecer salvo sem reavaliar a base nem duplicar a inspeção.",
+        "Sem recibo, a base é lida e validada antes de registrar; base alterada recusa como conflito, não como escrita incerta, e não se retoma por retomar_correcao."
+      ]
+    };
+  }
   if (new Set(["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"]).has(error.code)) {
     return {
       strategy: "stop",
@@ -219,6 +238,28 @@ function errorRecovery(error, issues, requestId) {
     };
   }
   if (error.status === 409) {
+    if (error.code === "course_ai_inspection_conflict") {
+      return {
+        strategy: "reread_and_retry",
+        retryable: true,
+        requestIdMode: "new",
+        steps: [
+          "Leia a base vigente do alvo antes de registrar o parecer.",
+          "O parecer pertence à base lida: registre-o sobre a versão atual, sem reutilizar a referência da base anterior."
+        ]
+      };
+    }
+    if (error.code === "course_ai_inspection_identity_conflict") {
+      return {
+        strategy: "repeat_identical",
+        retryable: false,
+        requestIdMode: "same",
+        steps: [
+          "Repita com a mesma referência e o mesmo parecer da tentativa original.",
+          "Esta tentativa não aceita outro parecer: um parecer diferente pertence a uma nova inspeção da base."
+        ]
+      };
+    }
     if (error.code === "curricular_dependency_not_produced") {
       return {
         strategy: "correct_and_retry",
