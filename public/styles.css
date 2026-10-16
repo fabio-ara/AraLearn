@@ -2746,6 +2746,14 @@ button.account-settings-back[hidden] {
   -webkit-overflow-scrolling: touch;
 }
 
+/* O wrapper é o container de medida: a largura dele é a coluna de leitura e não
+   depende do tamanho que a tabela vai assumir. Assim a célula pode limitar a
+   própria contribuição em unidades do container. Vale para a tabela de até três
+   colunas; a tabela larga, que rola, fica como estava. */
+.runtime-table-wrap:not(:has(> .runtime-table-frame > table.runtime-table > thead > tr > :nth-child(4))) {
+  container-type: inline-size;
+}
+
 .runtime-table-frame {
   display: inline-block;
   box-sizing: border-box;
@@ -2777,6 +2785,9 @@ button.account-settings-back[hidden] {
   border-right: 1px solid var(--resource-border);
   border-bottom: 1px solid var(--resource-border);
   padding: 10px 11px;
+  /* O piso sustenta a largura das colunas de uma tabela que rola e das células com
+     contrato próprio de largura. Numa tabela de até três colunas a coluna segue o
+     conteúdo real, com o limite de célula descrito abaixo. */
   min-width: 5.5rem;
   text-align: left;
   vertical-align: middle;
@@ -2787,6 +2798,39 @@ button.account-settings-back[hidden] {
   font-size: var(--type-dense);
   line-height: var(--leading-dense);
   background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
+}
+
+/* Numa tabela de até três colunas o piso uniforme reservava para o rótulo curto a
+   largura da prosa longa. Ali cada coluna segue o conteúdo real e a moldura rola
+   dentro do controle quando o conteúdo pede mais do que a coluna de leitura; as
+   células com contrato próprio de largura (sem quebra ou numérico) mantêm o piso e
+   a tabela de mais de três colunas não muda. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) {
+  min-width: 0;
+  /* A hifenização também encolhe o min-content do texto; sem ela a coluna para de
+     encolher abaixo da palavra inteira. */
+  hyphens: none;
+}
+
+/* Dentro dessas células a quebra acontece no limite da palavra: o parágrafo e a
+   lista do markdown traziam overflow-wrap anywhere e word-break break-word, que
+   reduzem o min-content do texto e deixam o layout automático partir a frase no
+   meio da palavra. O token do código em linha segue quebrando em qualquer ponto. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-paragraph,
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list,
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list li {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* Uma sequência sem ponto de quebra (endereço ou URL em texto puro) não pode
+   definir sozinha a largura da coluna: acima deste limite ela quebra dentro da
+   célula, e a rolagem da moldura para de crescer com o tamanho do token. O
+   min-width devolve o preenchimento quando a coluna é mais larga que o limite, e o
+   piso em rem conserva a palavra inteira com o texto do leitor ampliado. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-table-cell-content {
+  max-width: max(50cqw, 8rem);
+  min-width: 100%;
 }
 
 .runtime-table-cell-content {
