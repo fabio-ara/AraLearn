@@ -21,6 +21,21 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261016071003 — folhas da base normalizadas na validação de fundamentação do parecer
+
+A [migração](../supabase/migrations/20261016071003_grounded_report_leaf_normalization.sql)
+reescreve `private.course_pedagogical_report_grounded_v1` para reduzir o custo da
+validação de fundamentação do parecer sem mudar veredicto algum. A conferência de que toda citação
+pertence à base refazia a varredura de todas as folhas da base para cada citação
+do parecer; cada trecho citado e cada folha da base passam a ser normalizados uma
+única vez, com deduplicação, em CTEs materializadas, e a pertinência compara
+somente os valores distintos. A segunda condição — o escopo próprio mínimo por
+check `sufficient` — permanece literalmente igual, assim como a normalização
+(NFC, `btrim`, colapso de espaços e caixa baixa) e o critério que exclui resposta
+esperada, identificadores e enums de controle. Assinatura, volatilidade,
+`search_path` e ACL são preservados, nenhuma capacidade nova é declarada e o
+manifesto avança para `20261016071003`.
+
 ## 20261016022810 — retorno autoral de erro nas práticas
 
 A [migração](../supabase/migrations/20261016022810_practice_error_feedback_catalog.sql), criada com `supabase migration new`, atualiza a impressão do catálogo de componentes para os campos opcionais `blanks[].feedback` e `targets[].feedback`. A versão do catálogo permanece a mesma: as políticas de componentes, os dados dos cursos e as inspeções existentes não são transformados. O manifesto avança para `20261016022810`, preservando a lista de capacidades e a correspondência entre a revisão exigida pelo cliente e a última migração do ensaio de restauração.
