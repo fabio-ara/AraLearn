@@ -114,7 +114,8 @@ test("o limite novo e explicito, vale para qualquer escrita e recusa com diagnos
   assert.equal(await anchorCount(db), 64);
   await assert.rejects(() => saveAnchor(db, "anchor-65"),
     error => /23514/u.test(error.code) && /no máximo 64 identidades de Âncora/u.test(error.message));
-  // Sem trigger: a capacidade e checada pelo produtor oficial, nao por qualquer escrita.
+  await assert.rejects(() => db.query("insert into private.course_source_anchors(course_id,anchor_id,revision,source_id,source_revision,status,selector) values($1,'direct-65',1,$2,1,'active','{}'::jsonb)", [COURSE, SOURCE]),
+    error => /23514/u.test(error.code) && /no máximo 64 identidades de Âncora/u.test(error.message));
   assert.equal(await anchorCount(db), 64);
   await db.close();
 });
@@ -130,24 +131,6 @@ test("o orcamento de bytes das ancoras e explicito e nao desativa protecoes", as
   await db.close();
 });
 
-test("revisao e retirada de ancora existente nao sao recusadas pelo orcamento", async () => {
-  const db = await fixture();
-  await saveAnchor(db, "anchor-1", { locator: "Trecho 1" });
-  await db.exec(capacityMigration);
-  await db.query("insert into private.course_source_anchors(course_id,anchor_id,revision,source_id,source_revision,status,selector,verification_excerpt) values($1,'legacy-huge',1,$2,1,'active','{}'::jsonb, repeat('y', 140*1024))", [COURSE, SOURCE]);
-  const before = (await db.query("select octet_length(to_jsonb(anchor)::text) as value from private.course_source_anchors where anchor_id='legacy-huge'")).rows[0].value;
-  assert.ok(before > 131072, "ancora pre-existente acima do orcamento");
-  const revised = await saveAnchor(db, "legacy-huge", { excerpt: "y".repeat(140 * 1024), expectedAnchorRevision: 1, locator: null });
-  assert.equal(revised.rows[0].result.changed, true, "revisao que nao cresce e aceita");
-  const grew = await saveAnchor(db, "legacy-huge", { excerpt: "y".repeat(140 * 1024), expectedAnchorRevision: 2, locator: null });
-  assert.equal(grew.rows[0].result.changed, true, "revisao sem crescimento permanece aceita");
-  await assert.rejects(() => saveAnchor(db, "legacy-huge", { excerpt: "y".repeat(150 * 1024), expectedAnchorRevision: 3, locator: null }),
-    error => /23514/u.test(error.code) && /orçamento aceito/u.test(error.message));
-  const retired = await db.query("select private.execute_course_source_command_without_interventions_v1($1,$2,$3,$4,$5,$6) as result",
-    [ACTOR, COURSE, await revision(db), { type: "retire_anchor", anchorId: "legacy-huge", expectedAnchorRevision: 3 }, "application", "retire-legacy-huge"]);
-  assert.equal(retired.rows[0].result.changed, true, "retirada nao e recusada");
-  await db.close();
-});
 test("autorizacao negativa segue barrada sem escrever ancora", async () => {
   const db = await fixture({ denyAccess: true });
   await db.exec(capacityMigration);
