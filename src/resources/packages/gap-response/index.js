@@ -6,11 +6,13 @@ import {
   escapePackageAttribute,
   packageReferenceText,
   renderPackageActionIcon,
+  renderPackageFeedbackGroup,
   renderPackageInline
 } from "../../sdk/html.js";
 import { academicProfile } from "../../sdk/academic.js";
 import { setPackagePracticeMarker } from "../../sdk/practice.js";
 import { shuffleExerciseOptions } from "../../../core/exerciseOptions.js";
+import { responseFeedbackMessages } from "../../sdk/responseFeedback.js";
 
 function normalizeAnswer(value) { return String(value ?? "").normalize("NFC").trim(); }
 
@@ -74,12 +76,30 @@ function replaceLocatedAnswers(source, locations, replacement) {
     ), source);
 }
 
-function feedbackHtml(blockKey, feedback) {
+// Retorno do estado: texto padrão do package e retorno autoral declarado nas
+// lacunas. A fonte é compartilhada com a auditoria pedagógica.
+// Lacunas efetivamente erradas nesta tentativa. A avaliação do package preserva os
+// equivalentes aceitos; sem a avaliação da tentativa, nenhum retorno é presumido.
+function wrongBlankIds(state) {
+  const results = Array.isArray(state?.results) ? state.results : null;
+  return results ? results.filter((result) => result.correct !== true).map((result) => result.id) : [];
+}
+
+// Retorno do estado: rótulo do package e retorno autoral da lacuna efetivamente
+// errada. Com retorno, a composição muda para a variante escopada (grupo em largura
+// e controles em linha própria); sem retorno, o markup anterior permanece.
+function feedbackHtml(blockKey, feedback, data, outcome) {
   if (!feedback) return "";
+  const state = feedback === "correct" || feedback === "incomplete" ? feedback : "wrong";
   const key = escapePackageAttribute(blockKey);
-  if (feedback === "correct") return `<div class="inline-feedback ok" data-complete-feedback-block-key="${key}"><p class="tiny">Correto.</p></div>`;
-  if (feedback === "incomplete") return `<div class="inline-feedback warn" role="alert" aria-live="assertive" data-complete-feedback-block-key="${key}"><p class="tiny">Complete todas as lacunas.</p></div>`;
-  return `<div class="inline-feedback err has-actions" data-complete-feedback-block-key="${key}"><p class="tiny">Incorreto. Tente novamente.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
+  const messages = responseFeedbackMessages("aralearn.response.gap", data, state, outcome);
+  const returns = messages.filter(({ origin }) => origin === "author").map(({ text }) => text);
+  const group = renderPackageFeedbackGroup((messages.find(({ origin }) => origin === "default") || {}).text || "", returns);
+  const variant = returns.length ? " has-authorial-returns" : "";
+  if (state === "correct") return '<div class="inline-feedback ok' + variant + '" data-complete-feedback-block-key="' + key + '">' + group + "</div>";
+  if (state === "incomplete") return '<div class="inline-feedback warn' + variant + '" role="alert" aria-live="assertive" data-complete-feedback-block-key="' + key + '">' + group + "</div>";
+  return '<div class="inline-feedback err has-actions' + variant + '" data-complete-feedback-block-key="' + key + '">' + group +
+    '<div class="feedback-icons"><button class="icon-pill" type="button" data-action="complete-view-answer" data-complete-block-key="' + key + '" title="Ver resposta" aria-label="Ver resposta">' + renderPackageActionIcon("answer") + '</button><button class="icon-pill primary" type="button" data-action="complete-try-again" data-complete-block-key="' + key + '" title="Tentar de novo" aria-label="Tentar de novo">' + renderPackageActionIcon("retry") + "</button></div></div>";
 }
 
 function practiceValueLabel(blank, value, options) {
@@ -156,9 +176,9 @@ export const gapResponsePackage = Object.freeze({
     academic: academicProfile({ domains: ["transversal"], knowledgeObjects: ["lacuna semântica", "resposta curta"], conventions: ["lacuna no lugar exato do conceito", "equivalentes aceitos explícitos"], appropriateWhen: ["recordar ou completar um elemento localizado é a operação desejada"], avoidWhen: ["a resposta exige argumentação extensa"], technologies: ["HTML semântico", "controles nativos"], practiceModes: ["gap", "typing", "selection"], content: false }),
     limitations: Object.freeze(["O package de conteúdo precisa declarar o targetPath como editável por resposta." ]), accessibility: "Cada lacuna tem prompt, rótulo e controle nativo próprios."
   }),
-  authoringContract: Object.freeze({ intent: "Declare lacunas com targetInstanceId e targetPath inequívocos, resposta formal e modo.", required: Object.freeze(["blanks"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["Não codifique lacunas dentro de strings.", "AcceptedAnswers só contém equivalentes formalmente aceitos."]), example: Object.freeze({ prompt: "Complete o termo.", blanks: [{ id: "protocol", targetInstanceId: "body-1", targetPath: "text:protocol", responseMode: "text", answer: "protocolo" }] }) }),
-  schema: Object.freeze({ type: "object", additionalProperties: false, required: ["blanks"], properties: { prompt: { type: "string", maxLength: 2000 }, blanks: { type: "array", minItems: 1, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "targetInstanceId", "targetPath", "responseMode", "answer"], properties: { id: { type: "string", minLength: 1 }, targetInstanceId: { type: "string", minLength: 1 }, targetPath: { type: "string", minLength: 1 }, label: { type: "string" }, responseMode: { type: "string", enum: ["text", "choice"] }, answer: { type: "string", minLength: 1 }, acceptedAnswers: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }, distractors: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } } } } } } }),
-  normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), blanks: (data?.blanks || []).map((blank) => ({ id: String(blank?.id || "").trim(), targetInstanceId: String(blank?.targetInstanceId || "").trim(), targetPath: String(blank?.targetPath || "").trim(), ...(blank?.label ? { label: String(blank.label).trim() } : {}), responseMode: String(blank?.responseMode || "text").trim(), answer: normalizeAnswer(blank?.answer), ...(blank?.acceptedAnswers ? { acceptedAnswers: blank.acceptedAnswers.map(normalizeAnswer) } : {}), ...(blank?.distractors ? { distractors: blank.distractors.map(normalizeAnswer) } : {}) })) }; },
+  authoringContract: Object.freeze({ intent: "Declare lacunas com targetInstanceId e targetPath inequívocos, resposta formal e modo.", required: Object.freeze(["blanks"]), optional: Object.freeze(["prompt"]), rules: Object.freeze(["Não codifique lacunas dentro de strings.", "AcceptedAnswers só contém equivalentes formalmente aceitos.", "blanks[].feedback é opcional: explica o erro daquela lacuna e aparece somente quando ela é respondida incorretamente, considerando os equivalentes aceitos."]), example: Object.freeze({ prompt: "Complete o termo.", blanks: [{ id: "protocol", targetInstanceId: "body-1", targetPath: "text:protocol", responseMode: "text", answer: "protocolo" }] }) }),
+  schema: Object.freeze({ type: "object", additionalProperties: false, required: ["blanks"], properties: { prompt: { type: "string", maxLength: 2000 }, blanks: { type: "array", minItems: 1, maxItems: 12, items: { type: "object", additionalProperties: false, required: ["id", "targetInstanceId", "targetPath", "responseMode", "answer"], properties: { id: { type: "string", minLength: 1 }, targetInstanceId: { type: "string", minLength: 1 }, targetPath: { type: "string", minLength: 1 }, label: { type: "string" }, responseMode: { type: "string", enum: ["text", "choice"] }, answer: { type: "string", minLength: 1 }, acceptedAnswers: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }, distractors: { type: "array", uniqueItems: true, items: { type: "string", minLength: 1 } }, feedback: { type: "string", minLength: 1 } } } } } }),
+  normalize(data) { return { ...(data?.prompt ? { prompt: String(data.prompt).trim() } : {}), blanks: (data?.blanks || []).map((blank) => ({ id: String(blank?.id || "").trim(), targetInstanceId: String(blank?.targetInstanceId || "").trim(), targetPath: String(blank?.targetPath || "").trim(), ...(blank?.label ? { label: String(blank.label).trim() } : {}), responseMode: String(blank?.responseMode || "text").trim(), answer: normalizeAnswer(blank?.answer), ...(blank?.acceptedAnswers ? { acceptedAnswers: blank.acceptedAnswers.map(normalizeAnswer) } : {}), ...(blank?.distractors ? { distractors: blank.distractors.map(normalizeAnswer) } : {}), ...(blank?.feedback ? { feedback: String(blank.feedback).trim() } : {}) })) }; },
   validate(data) { const errors = []; if (new Set(data.blanks.map(({ id }) => id)).size !== data.blanks.length) errors.push("Lacunas precisam de ids únicos."); data.blanks.forEach((blank) => { if (blank.responseMode === "choice" && (!blank.distractors || blank.distractors.length < 1)) errors.push(`Lacuna ${blank.id} por escolha precisa de distrator.`); if (blank.distractors?.includes(blank.answer)) errors.push(`Lacuna ${blank.id} repete a resposta nos distratores.`); }); return errors; },
   validateStudyUnit(studyUnit, registry) {
     const errors = [];
@@ -270,7 +290,7 @@ export const gapResponsePackage = Object.freeze({
     const prompt = choicePrompt(data, options);
     const feedback = options.revealPracticeAnswers === true
       ? '<div class="inline-feedback ok"><p class="tiny">Respostas esperadas exibidas.</p></div>'
-      : feedbackHtml(options.blockKey, options.responseState?.feedback);
+      : feedbackHtml(options.blockKey, options.responseState?.feedback, data, { wrongIds: wrongBlankIds(options.responseState) });
     if (Array.isArray(options.dockExerciseParts)) {
       if (prompt) options.dockExerciseParts.push(prompt);
       if (feedback) options.dockExerciseParts.push(feedback);

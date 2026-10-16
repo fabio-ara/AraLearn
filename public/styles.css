@@ -2192,6 +2192,23 @@ button.account-settings-back[hidden] {
   flex: 0 0 auto;
 }
 
+/* Retorno autoral de erro da prática (issue 461). Com retornos declarados, o grupo
+   ocupa a largura interna disponível e os controles passam para a linha seguinte,
+   mantendo os alvos de 44 px; sem retorno, a linha única e a geometria anteriores
+   permanecem. A rolagem continua no dock existente. */
+.inline-feedback.has-authorial-returns {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.inline-feedback.has-authorial-returns .feedback-icons {
+  justify-content: flex-end;
+}
+
+.runtime-feedback-group {
+  min-width: 0;
+}
+
 /* Delimitadores acadêmicos mantêm traço fino ao crescer com o conteúdo. */
 .resource-stretch-delimiter path {
   fill: none;

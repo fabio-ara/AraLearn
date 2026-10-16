@@ -6,12 +6,13 @@ function editableValue(node) {
 }
 
 export const gapResponseInteraction = Object.freeze({
-  createState() { return { values: [], feedback: null }; },
+  createState() { return { values: [], feedback: null, results: null }; },
   submit(data, state, host) {
     const values = data.blanks.map((_, index) => String(state.values[index] ?? "").trim());
     const index = values.findIndex((value) => !value);
     if (index >= 0) {
       state.feedback = "incomplete";
+      state.results = null;
       const choice = data.blanks[index].responseMode === "choice";
       if (choice) host.setActivePrompt({ blockKey: host.blockKey, blankIndex: index });
       host.focus(choice ? "[data-action='text-gap-set-choice']" : "[data-action='complete-input']", {
@@ -21,6 +22,7 @@ export const gapResponseInteraction = Object.freeze({
     }
     const result = host.evaluate({ values: Object.fromEntries(data.blanks.map((blank, index) => [blank.id, values[index]])) });
     state.feedback = result.correct ? "correct" : "wrong";
+    state.results = result.correct === true || !Array.isArray(result.results) ? null : result.results;
     return result.correct === true;
   },
   bind(root, data, host) {
@@ -33,6 +35,7 @@ export const gapResponseInteraction = Object.freeze({
       state.values = [...state.values];
       state.values[index] = editable ? editableValue(node) : String(node.value ?? node.textContent ?? "");
       state.feedback = null;
+      state.results = null;
       if (editable) node.setAttribute("data-empty", state.values[index] ? "false" : "true");
     };
     root.querySelectorAll(inputSelector).forEach((node) => {
@@ -62,6 +65,7 @@ export const gapResponseInteraction = Object.freeze({
       if (state.values[index]) {
         state.values[index] = "";
         state.feedback = null;
+        state.results = null;
         host.setActivePrompt(null);
         host.focus("[data-action='text-gap-open-choice']", attributes);
       } else {
@@ -82,6 +86,7 @@ export const gapResponseInteraction = Object.freeze({
       if (!state || !Number.isInteger(index) || index < 0 || index >= data.blanks.length) return;
       state.values[index] = node.getAttribute("data-text-gap-value") || "";
       state.feedback = null;
+      state.results = null;
       host.setActivePrompt(null);
       host.focus("[data-action='text-gap-open-choice']", {
         "data-complete-block-key": host.blockKey, "data-complete-blank-index": String(index)
@@ -95,6 +100,7 @@ export const gapResponseInteraction = Object.freeze({
       if (!state) return;
       state.values = data.blanks.map((blank) => String(blank.answer || ""));
       state.feedback = "correct";
+      state.results = null;
       host.setActivePrompt(null);
       host.render();
     });

@@ -8,7 +8,51 @@ const paragraph = (id, text) => ({ id, package: "aralearn.resource.paragraph", v
 const resource = (id, name, data) => ({ id, package: `aralearn.resource.${name}`, version: "1.0.0", data });
 
 /** UI sintética: nenhum cliente de conta, geração, download real ou escrita remota. */
-export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false, tools = "authored" } = {}) {
+
+// Práticas locais da prova de UI do retorno autoral de erro (issue 461): a lacuna
+// declara o retorno de cada decisão e a ordenação, o retorno de cada item. O texto
+// do erro aparece no estado errado; o acerto mantém apenas o rótulo do package.
+export const practiceErrorFeedbackFixtures = Object.freeze({
+  gap: {
+    content: [paragraph("practice", "O socket é a interface local do processo. A conexão relaciona as duas pontas e só existe após connect().")],
+    response: { id: "practice-gap", package: "aralearn.response.gap", version: "1.0.0",
+      data: { blanks: [
+        { id: "socket", targetInstanceId: "practice", targetPath: "text:socket", responseMode: "text", answer: "socket",
+          feedback: "O socket é a interface que o processo usa para falar com o transporte; ele não representa a conexão entre as pontas." },
+        { id: "connect", targetInstanceId: "practice", targetPath: "text:connect", responseMode: "text", answer: "connect()",
+          feedback: "A interface local existe antes da chamada connect(); a conexão só passa a existir depois dela." }
+      ] } }
+  },
+  ordering: {
+    content: [paragraph("sequence-text", "Primeiro preparar, depois executar e por fim conferir.")],
+    response: { id: "practice-ordering", package: "aralearn.response.ordering", version: "3.0.0",
+      data: { targets: [
+        { id: "prepare", targetInstanceId: "sequence-text", targetPath: "text:prepare", answer: "Primeiro preparar",
+          feedback: "Preparar vem antes de executar: sem a interface e os dados prontos não há o que transportar." },
+        { id: "execute", targetInstanceId: "sequence-text", targetPath: "text:execute", answer: "depois executar",
+          feedback: "Executar só faz sentido depois de preparar o processo e a interface." },
+        { id: "check", targetInstanceId: "sequence-text", targetPath: "text:check", answer: "por fim conferir",
+          feedback: "Conferir fecha o ciclo, depois de executar e observar o resultado." }
+      ] } }
+  },
+  "gap-long": {
+    content: [paragraph("practice-long", "O socket é a interface local do processo. A conexão relaciona as duas pontas e só existe após connect(). " +
+      "Antes disso o processo apenas prepara os dados. Depois, cada extremidade usa uma porta para identificar o serviço.")],
+    response: { id: "practice-gap-long", package: "aralearn.response.gap", version: "1.0.0",
+      data: { blanks: [
+        { id: "iface", targetInstanceId: "practice-long", targetPath: "text:socket", responseMode: "text", answer: "socket",
+          feedback: "O socket é a interface local que o processo usa para falar com o transporte. Ele existe no próprio processo e não representa a conexão inteira entre as duas pontas, nem a rede como um todo. Antes de completar a próxima lacuna, confira qual elemento do enunciado cumpre cada papel." },
+        { id: "call", targetInstanceId: "practice-long", targetPath: "text:connect", responseMode: "text", answer: "connect()",
+          feedback: "A interface local pode existir antes de qualquer tentativa de comunicação; é a chamada connect() que estabelece a conexão entre as pontas. Se você respondeu que a interface já depende da conexão, inverta a ordem dos acontecimentos no enunciado." },
+        { id: "prepare", targetInstanceId: "practice-long", targetPath: "text:prepara", responseMode: "text", answer: "prepara",
+          feedback: "Antes de estabelecer a conexão, o processo apenas prepara os dados que pretende enviar. Preparar não é transmitir: observe que o enunciado separa a preparação local do momento em que a comunicação passa a existir." },
+        { id: "port", targetInstanceId: "practice-long", targetPath: "text:porta", responseMode: "text", answer: "porta",
+          feedback: "Depois de estabelecida a conexão, cada extremidade usa uma porta para identificar o serviço em uso. A porta identifica o serviço naquela extremidade, e não a interface local do processo nem a rede inteira." }
+      ] } }
+  }
+});
+
+export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false, tools = "authored", practiceKind = "choice" } = {}) {
   // A galeria de fixture não repassa opções extras: o parâmetro ?audio=1 da própria
   // URL habilita a ferramenta de áudio sem alterar a página compartilhada.
   const withAudio = includeAudio || new URLSearchParams(globalThis.location?.search || "").has("audio");
@@ -56,6 +100,11 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       options: [{ id: "local", text: "O socket é uma interface local." }, { id: "prior", text: "A interface pode existir antes da conexão." },
         { id: "whole", text: "O socket representa a rede inteira." }], answerIds: ["local", "prior"] } };
   practice.feedback = [paragraph("feedback", "A interface local permite ao processo usar o transporte e existe antes da conexão. A conexão relaciona as pontas; nenhuma interface representa a rede inteira.")];
+  if (practiceErrorFeedbackFixtures[practiceKind]) {
+    const fixture = practiceErrorFeedbackFixtures[practiceKind];
+    practice.content = structuredClone(fixture.content);
+    practice.response = structuredClone(fixture.response);
+  }
   if (resourceContent) {
     theory.content = structuredClone(resourceContent);
     practice.content = structuredClone(resourceContent);

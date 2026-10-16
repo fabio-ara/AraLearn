@@ -12,7 +12,7 @@ select is((select count(*) from private.course_component_policy_assignments
 select is(private.course_component_catalog_v1()->>'version','1-fca7730b',
   'a projeção SQL acompanha a descoberta corrente de componentes');
 select is(private.course_component_catalog_v1()->>'schemaFingerprint',
-  'sha256:e97467a8e1a1fb436f743a1d9fae39e686b1537211e68d66ab61f6c339223475',
+  'sha256:c2ee83acef506e67e2c2c9fc7c5d35db75c81f03e88631b7933e7b066089a65d',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
