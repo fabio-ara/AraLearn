@@ -698,6 +698,15 @@ function databaseError(status, body, { administrative = false } = {}) {
     return new AuthoringApiError(409, "curricular_dependency_not_produced",
       "Há um pré-requisito curricular ainda sem unidade produzida fora deste lote. Produza essa dependência antes ou inclua as duas no mesmo pedido.");
   }
+  if (code === "23514" &&
+      databaseMessage.startsWith("Esta revisão de Fonte já usa") &&
+      databaseMessage.includes("identidades de Âncora")) {
+    return new AuthoringApiError(409, "course_source_anchor_capacity_reached", databaseMessage);
+  }
+  if (code === "23514" &&
+      databaseMessage.startsWith("As âncoras desta revisão de Fonte somam mais de")) {
+    return new AuthoringApiError(413, "course_source_anchor_budget_exceeded", databaseMessage);
+  }
   if (status === 422 || code === "22023" || code === "23514") {
     return new AuthoringApiError(422, "invalid_course_command", "Os dados do Curso são inválidos.");
   }
