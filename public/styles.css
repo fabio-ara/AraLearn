@@ -2746,6 +2746,14 @@ button.account-settings-back[hidden] {
   -webkit-overflow-scrolling: touch;
 }
 
+/* O wrapper e o container de medida: a largura dele e a coluna de leitura, e ela
+   nao depende do tamanho que a tabela vai assumir. Assim uma celula pode limitar
+   o proprio conteudo em unidades do container. Vale para a tabela de ate tres
+   colunas; a tabela larga, que rola, fica como estava. */
+.runtime-table-wrap:not(:has(> .runtime-table-frame > table.runtime-table > thead > tr > :nth-child(4))) {
+  container-type: inline-size;
+}
+
 .runtime-table-frame {
   display: inline-block;
   box-sizing: border-box;
@@ -2815,6 +2823,14 @@ button.account-settings-back[hidden] {
 .runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list li {
   overflow-wrap: break-word;
   word-break: normal;
+}
+
+/* Uma sequencia sem ponto de quebra (endereco ou URL em texto puro) nao pode
+   definir sozinha a largura da coluna: acima deste limite ela quebra dentro da
+   celula, e a rolagem da moldura para de crescer com o tamanho do token. O piso
+   em rem conserva a palavra inteira quando o texto do leitor esta ampliado. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-table-cell-content {
+  max-width: max(50cqw, 8rem);
 }
 
 .runtime-table-cell-content {

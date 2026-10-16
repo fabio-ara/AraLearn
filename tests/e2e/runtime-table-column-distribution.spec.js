@@ -214,6 +214,7 @@ function readGeometry(scope) {
     const footer = document.querySelector(".study-reader-footer")?.getBoundingClientRect();
     const box = node.getBoundingClientRect();
     return { columns, floor: round(parseFloat(getComputedStyle(document.documentElement).fontSize) * floorRem),
+      cells: cellsInfo, rem8: round(parseFloat(getComputedStyle(document.documentElement).fontSize) * 8),
       minContentSum: round(columns.reduce((total, column) => total + column.minContent + cellPadding, 0)),
       broken: cellsInfo.flatMap(cell => cell.broken), padding: cellPadding,
       table: Math.round(table.getBoundingClientRect().width),
@@ -236,19 +237,38 @@ async function lastColumnReachable(scope) {
   });
 }
 
+// Limite da celula: uma coluna de tabela de ate tres colunas nao precisa de mais
+// que metade da coluna de leitura (ou 8rem, quando o texto do leitor esta
+// ampliado), porque uma sequencia sem ponto de quebra quebra dentro da celula.
+function cellLimit(geometry) {
+  return Math.max(geometry.wrapClient / 2, geometry.rem8);
+}
+
 function expectContentDriven(geometry, name) {
+  const limit = cellLimit(geometry);
   for (const [index, column] of geometry.columns.entries()) {
-    expect(column.width + 4, name + ": coluna " + (index + 1) + " comporta o proprio conteudo").toBeGreaterThanOrEqual(column.minContent + CELL_PADDING);
+    const content = column.width - CELL_PADDING;
+    // A coluna nunca fica mais estreita do que o proprio conteudo pede...
+    expect(content + 4, name + ": coluna " + (index + 1) + " comporta o proprio conteudo")
+      .toBeGreaterThanOrEqual(Math.min(column.minContent, limit) - 4);
+    // ...e nenhuma sequencia sem ponto de quebra passa do limite da celula.
+    expect(content, name + ": coluna " + (index + 1) + " dentro do limite da sequencia").toBeLessThanOrEqual(limit + 6);
   }
-  expect(geometry.broken, name + ": nenhuma palavra partida fora do codigo em linha").toEqual([]);
+  // Quebra so onde a sequencia nao cabe: onde ela cabe, a palavra fica inteira.
+  for (const cell of geometry.cells) {
+    const content = geometry.columns[cell.column].width - CELL_PADDING;
+    if (cell.minContent <= content + 2) expect(cell.broken, name + ": palavra inteira na celula").toEqual([]);
+  }
 }
 
 // A tabela mede o que o conteudo pede: a coluna de leitura ou, quando as palavras
-// nao cabem nela, o min-content real do texto mais o preenchimento da celula. A
-// prosa longa nao decide a largura; um token sem ponto de quebra decide.
+// nao cabem nela, o min-content real do texto limitado pelo limite da celula. A
+// prosa longa nao decide a largura nem uma sequencia sem ponto de quebra a infla.
 function expectContentSizedFrame(geometry, name) {
-  const needed = Math.max(geometry.wrapClient - 12, geometry.minContentSum + 2);
-  expect(Math.abs(geometry.table - needed), name + ": largura igual ao que o conteudo pede").toBeLessThanOrEqual(4);
+  const limit = cellLimit(geometry);
+  const needed = Math.max(geometry.wrapClient - 12,
+    geometry.columns.reduce((total, column) => total + Math.min(column.minContent, limit) + CELL_PADDING, 0) + 2);
+  expect(Math.abs(geometry.table - needed), name + ": largura igual ao que o conteudo pede").toBeLessThanOrEqual(6);
 }
 
 function expectExternalFramesStable(geometry, name, reference) {
