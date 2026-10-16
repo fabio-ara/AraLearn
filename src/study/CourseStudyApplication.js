@@ -164,6 +164,7 @@ export function createCourseStudyApplication({
     activeGapPrompt: null,
     pendingStudyFocus: null,
     pendingPracticeReveal: null,
+    practiceReveal: null,
     feedbackOpen: false,
     advancePending: false,
     advanceError: "",
@@ -552,7 +553,7 @@ export function createCourseStudyApplication({
       Object.entries(target.attributes || {}).every(([name, value]) =>
         candidate.getAttribute(name) === String(value)));
     const panel = node?.closest?.(".card-sheet-content");
-    if (!panel || panel.clientHeight <= 0) return;
+    if (!panel || panel.clientHeight <= 0) { state.practiceReveal = null; return; }
     const panelBox = panel.getBoundingClientRect();
     const nodeBox = node.getBoundingClientRect();
     const bandTop = panelBox.top;
@@ -562,6 +563,35 @@ export function createCourseStudyApplication({
       : nodeBox.bottom > bandBottom ? nodeBox.bottom - bandBottom
         : nodeBox.top < bandTop ? nodeBox.top - bandTop : 0;
     if (delta) panel.scrollTop += delta;
+    state.practiceReveal = { ...target, scrollTop: panel.scrollTop, resposta: responseSignature() };
+  }
+
+  // Assinatura da resposta do bloco: outra tentativa (reinício, troca de alternativa, novo
+  // estado) substitui a conferência anterior e invalida a intenção da revelação dela.
+  function responseSignature() {
+    const entry = currentResponseEntry();
+    if (!entry) return "";
+    const resposta = state.responseByBlockKey[entry.blockKey];
+    return [entry.blockKey, resposta?.feedback ?? "", [...(resposta?.selected || [])].join(",")].join("|");
+  }
+
+  // A revelação precisa sobreviver ao que entra depois dela na mesma conferência: quando a
+  // leitura de citações desta unidade assenta, os marcadores entram no fluxo do texto e a
+  // linha de marcadores muda a altura útil do painel. A intenção é concluída nesse
+  // assentamento, uma única vez, e descartada se a posição esperada do painel mudou (pessoa
+  // rolou) ou se outro estado de resposta substituiu a tentativa.
+  function settlePracticeReveal() {
+    const active = state.practiceReveal;
+    if (!active) return false;
+    const node = [...root.querySelectorAll(active.selector)].find((candidate) =>
+      Object.entries(active.attributes || {}).every(([name, value]) =>
+        candidate.getAttribute(name) === String(value)));
+    const panel = node?.closest?.(".card-sheet-content");
+    if (!panel || active.resposta !== responseSignature()) { state.practiceReveal = null; return false; }
+    if (panel.scrollTop !== active.scrollTop) { state.practiceReveal = null; return false; }
+    revealPracticeReturn(active);
+    state.practiceReveal = null;
+    return true;
   }
 
   function focusStudyTarget(target) {
@@ -747,6 +777,7 @@ export function createCourseStudyApplication({
     state.activeGapPrompt = null;
     state.pendingStudyFocus = null;
     state.pendingPracticeReveal = null;
+    state.practiceReveal = null;
     state.feedbackOpen = false;
     state.advancePending = false;
     state.advanceError = "";
@@ -3306,6 +3337,9 @@ export function createCourseStudyApplication({
     void RESOURCE_PACKAGE_REGISTRY.hydrate(root.querySelector(".app-shell > .screen") || root).then(() => {
       if (generation !== studyRenderGeneration || destroyed) return;
       placeStudyCitationMarkers(root.querySelector(".study-reader-screen") || root, context().studyUnit, state.citations);
+      // A intenção só é concluída quando as citações desta conferência já assentaram neste
+      // render; enquanto a leitura estiver pendente, ela permanece para o render que chegar.
+      if (!state.citationsLoading) settlePracticeReveal();
       bindCitationMarkers();
       activateManualEditing();
       bindResponseInteraction(root);
