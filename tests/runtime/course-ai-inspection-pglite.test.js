@@ -28,6 +28,7 @@ const legacyReport = { summary: "Inspeção do conteúdo e correspondência das 
 const report = { ...legacyReport, checks: [...legacyReport.checks, { ...legacyReport.checks[0], dimension: "configuration" }] };
 const CONFIGURATION_MIGRATION = "20260928110000_configuration_realization_inspection.sql";
 const GROUNDED_MIGRATION = "20261013120000_grounded_report_target_material.sql";
+const GROUNDED_NORMALIZED_MIGRATION = "20261016071003_grounded_report_leaf_normalization.sql";
 const queryValue = async (db, sql, params = []) => (await db.query(sql, params)).rows[0].value;
 const read = (db, id = "u1", actor = OWNER, kind = "study_unit") => queryValue(db,
   "select public.get_course_ai_inspection_for_actor_v1($1,$2,$3,$4) value", [actor, COURSE, kind, id]);
@@ -114,6 +115,7 @@ async function fixture({ receiptFix = true, configuration = receiptFix } = {}) {
   if (receiptFix) await db.exec(await migration(RECEIPT_MIGRATION));
   if (configuration) await db.exec(await migration(CONFIGURATION_MIGRATION));
   await db.exec(await migration(GROUNDED_MIGRATION));
+  await db.exec(await migration(GROUNDED_NORMALIZED_MIGRATION));
   return db;
 }
 
@@ -622,5 +624,199 @@ test("paridade domínio/SQL: folhas de avaliação não fundamentam suficiência
     for (const hidden of ["t1", "t2", "text:"]) {
       assert.deepEqual(await agreed(ordering, hidden), { sqlGrounded: false, domainGrounded: false }, hidden);
     }
+  } finally { await db.close(); }
+});
+
+// A validação de fundamentação do parecer combina dois critérios: toda citação existe em
+// alguma string da base, e cada check sufficient com escopo próprio cita ao menos
+// um trecho desse escopo. As folhas da base normalizadas apenas evitam refazer a
+// varredura a cada citação; os veredictos abaixo continuam sendo o contrato: material do
+// alvo demonstra, e título, plano, envelope do componente, resposta oculta e enums
+// de controle não demonstram, inclusive com normalização Unicode, caixa e espaços,
+// duplicatas, lista vazia, nulo e check insufficient.
+test("fundamentação do parecer: folhas da base normalizadas preservam os veredictos", async () => {
+  const db = await fixture();
+  try {
+    const contrato = (await db.query("select provolatile,proconfig from pg_proc procedure_value join pg_namespace namespace_value on namespace_value.oid=procedure_value.pronamespace where namespace_value.nspname = $1 and procedure_value.proname = $2", ["private", "course_pedagogical_report_grounded_v1"])).rows[0];
+    assert.equal(contrato.provolatile, "i", "a barreira permanece imutável");
+    assert.deepEqual(contrato.proconfig, ["search_path=pg_catalog"], "a barreira mantém search_path fixo");
+    assert.equal(await queryValue(db, "select has_function_privilege($1,$2,$3) value",
+      ["authenticated", "private.course_pedagogical_report_grounded_v1(jsonb,jsonb)", "execute"]),
+      false, "clientes não executam a barreira interna");
+    const texto = "Os protocolos diferem na recuperação de perdas assinadas entre duas amostras consecutivas.";
+    const perdas = "recuperação de perdas";
+    const titulo = "Título fora da prosa";
+    const explicacaoTitulo = "Explicação compartilhada";
+    const explicacaoTexto = "A explicação compartilhada apresenta a comparação assinada.";
+    const planoItem = "Justificar o mecanismo";
+    const legadoTitulo = "Unidade legado";
+    const outroTexto = "Corpo sintético da unidade dois.";
+    const unidade = (opcoes = {}) => ({ id: opcoes.id || "u1", position: opcoes.position || 1,
+      application: { mode: opcoes.mode || "practice", practiceApplications: [] },
+      content: { title: opcoes.title === undefined ? titulo : opcoes.title, role: "practice", topics: [],
+        content: opcoes.content === undefined
+          ? [{ id: "p-" + (opcoes.id || "u1"), package: "aralearn.resource.paragraph", version: "1.0.0",
+            data: { text: opcoes.text === undefined ? texto : opcoes.text } }]
+          : opcoes.content,
+        response: opcoes.response || null, feedback: opcoes.feedback || [] } });
+    const base = (opcoes = {}) => ({ targetKind: opcoes.targetKind || "study_unit", targetId: opcoes.targetId || "u1", audience: null,
+      microsequence: opcoes.microsequence === undefined
+        ? { id: "ms", title: "Transporte", goal: "Recuperar perdas",
+          explanation: { title: explicacaoTitulo, content: [], feedback: [] } }
+        : opcoes.microsequence,
+      planItems: opcoes.planItems || [], dependencies: [], citations: opcoes.citations || [],
+      studyUnits: opcoes.studyUnits || [unidade({})] });
+    const parecer = (evidence, extra = {}) => ({ summary: "S", outcome: "consistent", findings: [],
+      checks: [{ dimension: "alignment", result: "sufficient", reason: "R", evidence, ...extra }] });
+    const plano = [{ id: "i1", kind: "evidence_requirement", statement: planoItem, description: "Relacionar perda e recuperação" }];
+    const escolha = { id: "r", package: "aralearn.response.choice", version: "1.0.0", data: {
+      question: "Qual protocolo recupera as perdas?", selectionMode: "single", selectionCriterion: "correct",
+      options: [{ id: "alt-tcp", kind: "text", text: "TCP", feedback: "O TCP confirma o recebimento e retransmite o segmento perdido." },
+        { id: "alt-udp", kind: "text", text: "UDP", feedback: "O UDP não recupera as perdas." }], answerIds: ["alt-tcp"] } };
+    const respostaOculta = { id: "r", package: "aralearn.response.gap", version: "1.0.0", data: { blanks: [
+      { id: "b", targetInstanceId: "p-u1", targetPath: "text", responseMode: "text", answer: "Protocolo TCP confirma o recebimento" }] } };
+    const microExplicacao = material => ({ id: "ms", title: "Transporte",
+      explanation: { title: explicacaoTitulo,
+        content: material
+          ? [{ id: "exp", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: explicacaoTexto } }]
+          : [], feedback: [] } });
+    const semResultado = { summary: "S", outcome: "consistent", findings: [],
+      checks: [{ dimension: "evidence", reason: "R", evidence: [titulo] }] };
+    const legado = () => base({ studyUnits: [unidade({ id: "u1", title: legadoTitulo, content: [], mode: "theory" })] });
+    const escolhaBase = () => base({ studyUnits: [unidade({ id: "u1", response: escolha })] });
+    const casos = [
+      { nome: "true_quote_presente", base: base(), parecer: parecer([perdas]), esperado: true },
+      { nome: "false_evidencia_ausente", base: base(), parecer: parecer(["Trecho inventado que não existe na base"]), esperado: false },
+      { nome: "false_apenas_plano_com_material_no_alvo", base: base({ planItems: plano }), parecer: parecer([planoItem]), esperado: false },
+      { nome: "false_apenas_titulo_com_material_no_alvo", base: base(), parecer: parecer([titulo]), esperado: false },
+      { nome: "true_legado_escopo_de_identidade", base: legado(), parecer: parecer([legadoTitulo]), esperado: true },
+      { nome: "false_legado_inventado", base: legado(), parecer: parecer(["Trecho legado inventado"]), esperado: false },
+      { nome: "true_legado_escopo_vazio_com_resposta_oculta",
+        base: base({ microsequence: { id: "ms", goal: "Recuperar perdas", explanation: { content: [], feedback: [] } },
+          studyUnits: [unidade({ id: "u1", title: null, content: [], response: respostaOculta })] }),
+        parecer: parecer(["Protocolo TCP confirma o recebimento"]), esperado: true },
+      { nome: "true_unicode_citacao_nfd_base_nfc",
+        base: base({ studyUnits: [unidade({ id: "u1", text: "A variação assinada entre duas amostras consecutivas." })] }),
+        parecer: parecer(["variação assinada".normalize("NFD")]), esperado: true },
+      { nome: "true_unicode_base_nfd_citacao_nfc",
+        base: base({ studyUnits: [unidade({ id: "u1", text: "A variação assinada entre duas amostras consecutivas.".normalize("NFD") })] }),
+        parecer: parecer(["variação assinada"]), esperado: true },
+      { nome: "true_caixa_e_espacos_colapsados", base: base(),
+        parecer: parecer(["  " + texto.toUpperCase().split(" ").join("   ") + "  "]), esperado: true },
+      { nome: "false_ligadura_nao_e_nfkd",
+        base: base({ studyUnits: [unidade({ id: "u1", text: "A \ufb01bra óptica transporta o sinal." })] }),
+        parecer: parecer(["A fibra óptica transporta o sinal."]), esperado: false },
+      { nome: "false_unicode_quase_igual", base: base(),
+        parecer: parecer([texto.replace("consecutivas", "semelhantes")]), esperado: false },
+      { nome: "true_duplicatas_entre_checks", base: base(),
+        parecer: { summary: "S", outcome: "consistent", findings: [], checks: [
+          { dimension: "alignment", result: "sufficient", reason: "R", evidence: [texto, texto] },
+          { dimension: "evidence", result: "sufficient", reason: "R", evidence: [texto, perdas] },
+          { dimension: "representation", result: "sufficient", reason: "R", evidence: [perdas, perdas] }] }, esperado: true },
+      { nome: "false_duplicatas_com_ausente", base: base(),
+        parecer: { summary: "S", outcome: "consistent", findings: [], checks: [
+          { dimension: "alignment", result: "sufficient", reason: "R", evidence: [texto, texto] },
+          { dimension: "evidence", result: "sufficient", reason: "R", evidence: ["Trecho ausente entre duplicatas"] }] }, esperado: false },
+      { nome: "false_check_insufficient_com_citacao_ausente", base: base(),
+        parecer: parecer(["Trecho inexistente em qualquer lugar"], { dimension: "configuration", result: "insufficient" }), esperado: false },
+      { nome: "true_configuration_sufficient_usa_escopo_proprio", base: base(),
+        parecer: parecer([titulo], { dimension: "configuration", result: "sufficient" }), esperado: true },
+      { nome: "true_check_sem_resultado_tem_escopo_nulo", base: base(), parecer: semResultado, esperado: true },
+      { nome: "false_evidence_sufficient_usa_apresentado", base: base(),
+        parecer: parecer([titulo], { dimension: "evidence", result: "sufficient" }), esperado: false },
+      { nome: "false_evidence_vazia_nao_demonstra_suficiencia", base: base(), parecer: parecer([]), esperado: false },
+      { nome: "true_citacao_vazia", base: base(), parecer: parecer([""]), esperado: true },
+      { nome: "true_citacao_so_espacos", base: base(), parecer: parecer(["   "]), esperado: true },
+      { nome: "false_citacao_null_no_array", base: base(), parecer: parecer([null]), esperado: false },
+      { nome: "false_base_sql_null", parecer: parecer([perdas]), esperado: false },
+      { nome: "false_base_jsonb_null", base: null, parecer: parecer([perdas]), esperado: false },
+      { nome: "true_base_vazia_sem_citacoes", base: {}, parecer: parecer([]), esperado: true },
+      { nome: "false_base_vazia_com_citacao", base: {}, parecer: parecer(["x"]), esperado: false },
+      { nome: "true_retorno_por_alternativa", base: escolhaBase(),
+        parecer: parecer(["O TCP confirma o recebimento e retransmite o segmento perdido."]), esperado: true },
+      { nome: "false_identificador_de_alternativa", base: escolhaBase(), parecer: parecer(["alt-tcp"]), esperado: false },
+      { nome: "false_enum_de_selecao", base: escolhaBase(), parecer: parecer(["single"]), esperado: false },
+      { nome: "true_micro_explicacao_material", alvo: { kind: "microsequence_explanation", id: "ms" },
+        base: base({ targetKind: "microsequence_explanation", targetId: "ms", microsequence: microExplicacao(true) }),
+        parecer: parecer([explicacaoTexto]), esperado: true },
+      { nome: "false_micro_apenas_titulo_da_explicacao", alvo: { kind: "microsequence_explanation", id: "ms" },
+        base: base({ targetKind: "microsequence_explanation", targetId: "ms", microsequence: microExplicacao(false) }),
+        parecer: parecer([explicacaoTitulo]), esperado: false },
+      { nome: "false_micro_apenas_plano", alvo: { kind: "microsequence_explanation", id: "ms" },
+        base: base({ targetKind: "microsequence_explanation", targetId: "ms", planItems: plano }),
+        parecer: parecer([planoItem]), esperado: false },
+      { nome: "false_material_de_outra_unidade",
+        base: base({ studyUnits: [unidade({ id: "u1" }), unidade({ id: "u2", position: 2, text: outroTexto })] }),
+        parecer: parecer([outroTexto]), esperado: false },
+      { nome: "true_check_insufficient_com_titulo", base: base(),
+        parecer: parecer([titulo], { dimension: "configuration", result: "insufficient" }), esperado: true },
+      { nome: "true_uma_citacao_propria_entre_duas", base: base(), parecer: parecer([titulo, perdas]), esperado: true }
+    ];
+    for (const caso of casos) {
+      if (caso.alvo) {
+        assert.equal(caso.base.targetKind, caso.alvo.kind, caso.nome + " exercita o alvo declarado");
+        assert.equal(caso.base.targetId, caso.alvo.id, caso.nome + " exercita o alvo declarado");
+      }
+      const valor = await queryValue(db,
+        "select private.course_pedagogical_report_grounded_v1($1::jsonb,$2::jsonb) value",
+        [JSON.stringify(caso.parecer), caso.base === undefined ? null : JSON.stringify(caso.base)]);
+      assert.equal(valor, caso.esperado, caso.nome);
+    }
+  } finally { await db.close(); }
+});
+
+test("fundamentação do parecer: caminho completo com correspondências tardias e duplicação", async () => {
+  const db = await fixture();
+  try {
+    const comprimentos = [454, 424, 390, 369, 364, 314];
+    const dimensoes = [["alignment", [454, 424]], ["evidence", [424, 364]], ["representation", [390, 369, 364]],
+      ["feedback", [390, 369, 364]], ["sufficiency", [454, 424, 364, 314]],
+      ["configuration", [424, 390, 369, 364, 314]]];
+    const preencher = (n, indice) => {
+      const frase = "No par " + indice + ", a comparação entre as duas amostras exige ler os dois atrasos na ordem temporal, subtrair o segundo do primeiro e registrar o sinal do resultado; a média das variações descreve outro conjunto e não substitui essa diferença assinada entre duas medidas consecutivas. ";
+      let texto = "";
+      while (texto.length < n) texto += frase;
+      return texto.slice(0, n - 1) + ".";
+    };
+    const quotes = comprimentos.map((n, indice) => preencher(n, indice + 1));
+    const paragrafo = (id, texto) => ({ id, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: texto } });
+    const celulas = Array.from({ length: 240 }, (_valor, indice) =>
+      "Amostra " + (indice % 60) + ": texto sintético de referência para a comparação assinada.");
+    const linhas = [];
+    for (let i = 0; i < celulas.length; i += 4) linhas.push(celulas.slice(i, i + 4));
+    const unidade = indice => {
+      const conteudo = [];
+      if (indice === 5) {
+        conteudo.push({ id: "t-final", package: "aralearn.resource.table", version: "1.0.0",
+          data: { title: "Campos finais", columns: ["Campo", "Bits", "Função", "Observação"], rows: linhas } });
+        quotes.forEach((quote, posicao) => {
+          conteudo.push(paragrafo("p-" + posicao + "-a", quote));
+          conteudo.push(paragrafo("p-" + posicao + "-b", quote));
+        });
+      }
+      return { id: "u" + (indice + 1), position: indice + 1,
+        application: { mode: "practice", practiceApplications: [] },
+        content: { title: "Unidade " + (indice + 1), role: "practice", topics: [], content: conteudo,
+          response: null, feedback: [] } };
+    };
+    const base = { targetKind: "microsequence_explanation", targetId: "ms", audience: null,
+      microsequence: { id: "ms", title: "Dois atrasos, uma variação", goal: "Determinar a variação assinada",
+        explanation: { title: "Dois atrasos, uma variação", content: [paragrafo("exp", quotes[0])], feedback: [] } },
+      planItems: [], dependencies: [], citations: [],
+      studyUnits: [0, 1, 2, 3, 4, 5].map(unidade) };
+    const relatorio = alterar => ({ summary: "Reprodução sintética integral", outcome: "consistent", findings: [],
+      checks: dimensoes.map((dimensao, indice) => ({ dimension: dimensao[0], result: "sufficient",
+        reason: "Relação exposta na base sintética.",
+        evidence: dimensao[1].map(n => {
+          const quote = quotes[comprimentos.indexOf(n)];
+          return indice === 0 && alterar ? quote.slice(0, -1) + "z" : quote;
+        }) })) });
+    const veredicto = parecer => queryValue(db,
+      "select private.course_pedagogical_report_grounded_v1($1::jsonb,$2::jsonb) value",
+      [JSON.stringify(parecer), JSON.stringify(base)]);
+    assert.equal(await veredicto(relatorio(false)), true,
+      "dezenove citações em seis dimensões demonstram suficiência com o material do alvo, com folhas duplicadas e primeira correspondência tardia");
+    assert.equal(await veredicto(relatorio(true)), false,
+      "uma citação alterada deixa de pertencer à base");
   } finally { await db.close(); }
 });

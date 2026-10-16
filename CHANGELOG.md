@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.111] - 2026-10-16
+
+### Desempenho
+
+- A validação de fundamentação do parecer de inspeção deixa de refazer a varredura de todas as folhas da base a cada citação. Cada trecho citado e cada folha da base passam a ser normalizados uma única vez, com deduplicação, e a conferência compara apenas os valores distintos. O critério de aceitação não muda: título, plano, envelope do componente, resposta oculta e enum de controle seguem sem demonstrar apresentação, e a normalização de Unicode, caixa e espaços é a mesma.
+
 ## [0.0.110] - 2026-10-16
 
 ### Adicionado
