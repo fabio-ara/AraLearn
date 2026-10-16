@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.112] - 2026-10-16
+
+### Corrigido
+
+- Na prática de escolha, o retorno autoral da alternativa marcada volta a ser alcançável depois de conferir. O retorno é renderizado dentro da alternativa, no painel de leitura, e ficava abaixo da dobra enquanto o dock mostrava apenas o rótulo do estado. A conferência passa a revelar uma única vez o retorno da alternativa marcada incorreta do próprio bloco e, no erro por omissão, o de uma alternativa marcada; sem retorno declarado nada é revelado. A rolagem é local ao painel, sem alterar layout, foco ou progresso, e no acerto o comentário final mantém a prioridade.
+
 ## [0.0.111] - 2026-10-16
 
 ### Desempenho
@@ -990,6 +996,8 @@ explica os termos usados na implementação atual.
 - a cache de Observações compara consultas canonizadas e preserva a fila local
   ao reconstruir dados incompatíveis.
 
+## [0.0.111] - 2026-10-16
+
 ### Desempenho
 
 - o salto para uma Unidade distante resolve o alvo uma vez e faz uma única
@@ -1009,6 +1017,8 @@ explica os termos usados na implementação atual.
   pedir configuração e apresenta somente contexto útil à pessoa;
 - o OpenAPI de Actions acompanha o site publicado e é verificado com sua
   versão, endpoint e cinco operações canônicas.
+
+## [0.0.111] - 2026-10-16
 
 ### Desempenho
 
