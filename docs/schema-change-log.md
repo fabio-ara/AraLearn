@@ -21,6 +21,27 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261016171317 — capacidade de âncoras de uma revisão de Fonte
+
+A [migração](../supabase/migrations/20261016171317_course_source_anchor_capacity.sql),
+criada com `supabase migration new`, substitui o teto fixo de oito identidades de
+Âncora por revisão de Fonte por dois contratos nomeados: até 64 identidades e até
+128 KiB de âncoras na mesma revisão. A guarda vive no produtor oficial
+`private.execute_course_source_command_without_interventions_v1`, já usado tanto
+pelo comando avulso quanto pelo pacote de Fontes; não há trigger na tabela.
+Revisar um localizador já usado, reduzir o trecho de conferência ou retirar a
+âncora não cresce o acervo e não é recusado. O lote de comandos do pacote e a
+seleção de âncoras por vínculo permanecem como estavam, e nenhuma capacidade nova
+é declarada: o manifesto avança para `20261016171317`.
+
+O teto é por revisão: a leitura de uma Fonte reúne também as âncoras das revisões
+anteriores e continua limitada pelo próprio guard de 256 KiB, que permanece a
+última proteção da leitura. A medição do maior acervo aceito — 64 identidades com
+trecho de conferência real e oito PDFs ativos — deixa a leitura em cerca de 135 KiB.
+Uma recusa chega ao autor como `course_source_anchor_capacity_reached` (409) ou
+`course_source_anchor_budget_exceeded` (413), com a mensagem do produtor, sem
+orientar a dividir a Fonte, duplicar o PDF ou remover âncoras usadas.
+
 ## 20261016071003 — folhas da base normalizadas na validação de fundamentação do parecer
 
 A [migração](../supabase/migrations/20261016071003_grounded_report_leaf_normalization.sql)

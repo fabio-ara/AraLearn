@@ -29,6 +29,10 @@ const WIDE = "\u{1d51e}"; // quatro octetos em UTF-8
 const CAPACITY_ERROR = error => /23514/u.test(error.code) && /o máximo aceito/u.test(error.message);
 const BUDGET_ERROR = error => /23514/u.test(error.code) && /orçamento aceito/u.test(error.message);
 
+const MANIFEST_BEFORE = { schemaRevision: "20261016071003", contractVersion: 1,
+  features: ["course-sources-v1", "flat-runtime-manifest-v1"] };
+const MANIFEST_AFTER = "20261016171317";
+
 const read = async name => (await fs.readFile(new URL("../../supabase/migrations/" + name, import.meta.url), "utf8")).replaceAll("\r\n", "\n");
 
 function definition(source, name) {
@@ -93,6 +97,8 @@ async function fixture(options) {
     "create function private.course_effective_source_attribution_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
     "  returns setof private.course_source_attributions language sql as",
     "  $$select * from private.course_source_attributions where course_id=p_course_id and target_kind=p_target_kind and target_id=p_target_id$$;",
+    "create function public.get_aralearn_runtime_manifest() returns jsonb language sql stable as",
+    "  $manifest$select '" + JSON.stringify(MANIFEST_BEFORE) + "'::jsonb$manifest$;",
     "insert into public.courses(id) values('" + COURSE + "');",
     "insert into private.course_sources(course_id, source_id) values('" + COURSE + "','" + SOURCE + "');"
   ].join("\n"));
@@ -192,7 +198,21 @@ test("a capacidade nomeada libera a nona identidade e preserva âncoras e víncu
 test("o patch é restrito: três contratos nomeados, sem trigger e sem outros contratos de Fontes", async () => {
   assert.equal((capacitySql.match(/create function/gu) || []).length, 3);
   assert.doesNotMatch(capacitySql, /create trigger|alter table|add constraint/u);
+  assert.equal((capacitySql.match(/get_aralearn_runtime_manifest/gu) || []).length, 2);
+  assert.match(capacitySql, /schemaRevision[\s\S]{0,160}['"]20261016171317['"]/u);
   assert.doesNotMatch(capacitySql, /course_source_bundle|sourceLinks|link_shape|get_owned_course_sources_for_actor_v1/u);
+});
+
+test("a migration avança o manifesto preservando as capacidades correntes", async () => {
+  const db = await fixture();
+  const before = (await db.query("select public.get_aralearn_runtime_manifest() as value")).rows[0].value;
+  assert.equal(before.schemaRevision, MANIFEST_BEFORE.schemaRevision);
+  await db.exec(capacityMigration);
+  const after = (await db.query("select public.get_aralearn_runtime_manifest() as value")).rows[0].value;
+  assert.equal(after.schemaRevision, MANIFEST_AFTER);
+  assert.equal(after.contractVersion, before.contractVersion);
+  assert.deepEqual(after.features, before.features);
+  await db.close();
 });
 
 test("o patch falha alto quando o produtor está ausente ou divergente", async () => {

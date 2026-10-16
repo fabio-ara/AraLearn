@@ -12,9 +12,12 @@ begin;
 -- embutidas no payload e é recusado acima de 262144 octetos (256 KiB); cada
 -- âncora carrega seletor, hash, localizador humano de até 500 caracteres e
 -- trecho de conferência de até 2000 caracteres, o que mantém a identidade na
--- casa de KiB. As duas capacidades abaixo (64 identidades e 128 KiB de âncoras
--- por revisão) mantêm essa leitura dentro do orçamento com folga para
--- metadados, vínculos e anexos.
+-- casa de KiB. A medição do maior acervo que os dois tetos ainda aceitam — 64
+-- identidades com trecho de conferência real e 8 PDFs ativos — fica em torno de
+-- 135 KiB, pouco mais da metade do orçamento. Esse teto é por revisão da Fonte:
+-- a leitura de uma Fonte reúne também as âncoras das revisões anteriores e
+-- segue limitada pelo guard de 256 KiB do leitor, que permanece a última
+-- proteção da leitura.
 --
 -- A guarda vive no produtor oficial, como as demais verificações desse
 -- contrato, e vale também para o pacote:
@@ -107,5 +110,17 @@ revoke all on function private.course_source_anchor_count_limit_v1(),
   private.course_source_anchor_bytes_limit_v1(),
   private.course_source_anchor_bytes_v1(uuid,text,text,bigint,jsonb,text,text,text)
   from public, anon, authenticated;
+
+-- Nenhuma capacidade nova é declarada: o manifesto avança a revisão de esquema
+-- preservando exatamente a lista corrente, como nas demais migrações do ciclo.
+do $manifest$
+declare manifest jsonb:=public.get_aralearn_runtime_manifest();
+begin
+  if manifest->>'schemaRevision' is distinct from '20261016171317' then
+    manifest:=manifest||jsonb_build_object('schemaRevision','20261016171317');
+    execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
+      'select '||quote_literal(manifest::text)||'::jsonb');
+  end if;
+end $manifest$;
 
 commit;
