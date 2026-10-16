@@ -222,7 +222,6 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     const incorrect = options.findIndex((option) => option?.feedback &&
       !practice.response.data.answerIds.includes(option.id) && quotes.every((quote) => option.feedback.includes(quote)));
     if (incorrect >= 0) {
-      const feedback = options[incorrect].feedback;
       citations.citations[0].occurrences = quotes.map((quote, index) => ({
         occurrenceId: "practice-anchor-" + (index + 1), slot: "response", resourceId: practice.response.id,
         path: "options[" + incorrect + "].feedback", quote, prefix: null, suffix: null, status: "resolved"
