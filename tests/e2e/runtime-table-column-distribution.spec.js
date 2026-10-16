@@ -146,7 +146,8 @@ function readGeometry(scope) {
     const minContent = (cell) => {
       const target = textTarget(cell);
       const clone = target.cloneNode(true);
-      clone.setAttribute("style", "position:absolute;left:0;top:0;visibility:hidden;width:min-content");
+      // min-width neutralizado: a medida e do conteudo, nao do preenchimento da coluna.
+      clone.setAttribute("style", "position:absolute;left:0;top:0;visibility:hidden;width:min-content;min-width:0");
       cell.appendChild(clone);
       const width = round(clone.getBoundingClientRect().width);
       clone.remove();
