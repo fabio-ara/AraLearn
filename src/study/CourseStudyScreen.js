@@ -1,5 +1,6 @@
 import {
   getPackageStudyUnitFeedbackEntry,
+  getPackageStudyUnitResponseEntry,
   renderPackageStudyUnitBlocksWithDock,
   renderPackageStudyUnitFeedback
 } from "../render/renderPackageStudyUnit.js";
@@ -14,6 +15,17 @@ import {
 import { renderStudySourceMarkers, studyCitationMarkers } from "./studyCitations.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 import { renderStudyToolActions } from "./studyTools.js";
+
+// Ação real do avanço quando a unidade tem prática: o pacote marca o estado da tentativa
+// (`feedback`: ausente, "incomplete", "wrong" ou "correct") e só "correct" representa
+// tentativa concluída — acerto ou resposta revelada. Qualquer outro estado faz o clique
+// conferir a resposta antes de qualquer comentário autoral.
+function practiceAttemptPending(studyUnit, packageStudyUnitOptions = {}) {
+  const entry = getPackageStudyUnitResponseEntry(studyUnit,
+    String(packageStudyUnitOptions.blockKeyPrefix || "runtime-study-unit"));
+  if (!entry) return false;
+  return packageStudyUnitOptions.responseStateByBlockKey?.[entry.blockKey]?.feedback !== "correct";
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -626,9 +638,13 @@ function renderStudyUnit({
     ...packageStudyUnitOptions
   });
   const feedbackEntry = getPackageStudyUnitFeedbackEntry(studyUnit);
-  const nextActionLabel = feedbackEntry && !feedbackOpen
-    ? "Ver comentário da unidade"
-    : "Próxima unidade de estudo";
+  // Uma pendência de prática confere a resposta mesmo com comentário autoral disponível;
+  // concluída a tentativa, a próxima ação real abre o comentário ou avança.
+  const nextActionLabel = practiceAttemptPending(studyUnit, packageStudyUnitOptions)
+    ? "Conferir resposta"
+    : feedbackEntry && !feedbackOpen
+      ? "Ver comentário da unidade"
+      : "Próxima unidade de estudo";
   const feedback = feedbackOpen && feedbackEntry
     ? renderPackageStudyUnitFeedback(feedbackEntry, {
         studyUnit,

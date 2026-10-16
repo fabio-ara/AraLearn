@@ -289,7 +289,8 @@ test("a ação da Unidade é icon-only, estável e anuncia a mudança de estado"
   };
   const ready = renderCourseStudyScreen(common);
   const readyButton = ready.match(/<button class="open-mini study-continue-btn"[\s\S]*?<\/button>/u)?.[0] || "";
-  assert.match(readyButton, /aria-label="(?:Ver comentário da unidade|Próxima unidade de estudo)"/u);
+  // Teoria com comentário autoral preserva o rótulo da ação real: abrir o comentário.
+  assert.match(readyButton, /aria-label="Ver comentário da unidade"/u);
   assert.doesNotMatch(readyButton, /<span>/u);
   assert.match(ready, /aria-label="Sincronização pendente"/u);
   assert.doesNotMatch(ready, /study-runtime-notice/u);
@@ -709,6 +710,82 @@ test("a edição em Estudo preserva o fluxo direto do proprietário sem criar c�
 
 });
 
+// O rótulo da ação de avanço representa a ação real: com prática pendente o clique confere
+// a resposta (mesmo com comentário autoral disponível); concluída a prática, o clique abre
+// o comentário; sem comentário, avança. Só o estado real do pacote decide — sem classificar
+// por papel da unidade.
+function advanceButton(html) {
+  return /<button class="open-mini study-continue-btn"[^>]*>/u.exec(html)?.[0] || "";
+}
+
+test("a ação de avanço anuncia a prática pendente, o comentário e o avanço real", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const practiceUnit = microsequence.studyUnits.find(unit => unit.id === "card-fixture-minimal-complete");
+  const theoryUnit = microsequence.studyUnits.find(unit => unit.id === "card-fixture-minimal-regra");
+  assert.ok(practiceUnit?.response && practiceUnit.feedback.length, "a fixture precisa da prática com comentário");
+  assert.ok(!theoryUnit.response && theoryUnit.feedback.length, "a fixture precisa da teoria com comentário");
+  const blockKeyPrefix = [course.id, moduleValue.id, lesson.id, microsequence.id, practiceUnit.id].join("::");
+  const responseKey = `${blockKeyPrefix}::response:${practiceUnit.response.id}`;
+  const base = {
+    project,
+    view: "microsequence",
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    microsequenceMode: "play",
+    progress: { version: 1, lessons: {} }
+  };
+  const selectionFor = unit => ({ courseId: course.id, moduleId: moduleValue.id, lessonId: lesson.id,
+    microsequenceId: microsequence.id, studyUnitId: unit.id, studyUnitIndex: unit.position - 1 });
+  const render = (unit, { feedback, feedbackOpen = false, advancePending = false, packageStudyUnitOptions } = {}) =>
+    renderCourseStudyScreen({ ...base, selection: selectionFor(unit), studyUnit: unit, feedbackOpen, advancePending,
+      packageStudyUnitOptions: packageStudyUnitOptions === undefined
+        ? { blockKeyPrefix, responseStateByBlockKey: feedback === undefined ? {} : { [responseKey]: { values: [], feedback } } }
+        : packageStudyUnitOptions });
+  const labelOf = html => advanceButton(html);
+
+  // Prática pendente: tentativa ausente, incompleta ou com erro confere a resposta.
+  for (const [name, feedback] of [["sem tentativa", undefined], ["incompleta", "incomplete"], ["com erro", "wrong"]]) {
+    const button = labelOf(render(practiceUnit, { feedback }));
+    assert.match(button, /aria-label="Conferir resposta"/u, name);
+    assert.match(button, /title="Conferir resposta"/u, name);
+  }
+  // Acerto ou revelação concluem a prática: o clique abre o comentário autoral.
+  const revealed = labelOf(render(practiceUnit, { feedback: "correct" }));
+  assert.match(revealed, /aria-label="Ver comentário da unidade"/u);
+  assert.match(revealed, /title="Ver comentário da unidade"/u);
+  // Sem comentário autoral, a prática concluída avança.
+  const withoutFeedback = { ...practiceUnit, feedback: [] };
+  const completed = labelOf(render(withoutFeedback, { feedback: "correct" }));
+  assert.match(completed, /aria-label="Próxima unidade de estudo"/u);
+  // Teoria preservada: comentário autoral disponível abre o comentário; sem comentário avança.
+  assert.match(labelOf(render(theoryUnit, {})), /aria-label="Ver comentário da unidade"/u);
+  assert.match(labelOf(render({ ...theoryUnit, feedback: [] }, {})), /aria-label="Próxima unidade de estudo"/u);
+  // Comentário aberto e progresso em gravação mantêm os rótulos existentes.
+  assert.match(labelOf(render(practiceUnit, { feedback: "correct", feedbackOpen: true })),
+    /aria-label="Próxima unidade de estudo"/u);
+  const saving = labelOf(render(practiceUnit, { feedback: "wrong", advancePending: true }));
+  assert.match(saving, /aria-label="Guardando progresso"/u);
+  assert.match(saving, /disabled aria-disabled="true"/u);
+
+  // Ícone, classes e o resto do markup não mudam com o rótulo (sem texto visível novo).
+  const pendingHtml = render(practiceUnit, { feedback: "wrong" });
+  const readyHtml = render(practiceUnit, { feedback: "correct" });
+  const pendingButton = labelOf(pendingHtml);
+  const readyButton = labelOf(readyHtml);
+  const stripLabels = tag => tag.replace(/ (?:aria-label|title)="[^"]*"/gu, "");
+  assert.match(pendingButton, /^<button class="open-mini study-continue-btn" type="button" data-action="next-study-unit" title="Conferir resposta" aria-label="Conferir resposta">$/u);
+  assert.equal(stripLabels(pendingButton), stripLabels(readyButton));
+  assert.doesNotMatch(pendingButton, />[^<]/u);
+  // Mesmo estado renderiza idêntico: o rótulo não introduz markup variável.
+  assert.equal(pendingHtml, render(practiceUnit, { feedback: "wrong" }));
+  assert.equal(readyHtml, render(practiceUnit, { feedback: "correct" }));
+});
 test("entrada das fontes permanece acessível quando a leitura falha e o painel declara o conflito", async () => {
   const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
   const course = project.courses[0];
