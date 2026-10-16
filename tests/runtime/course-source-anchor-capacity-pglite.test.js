@@ -75,10 +75,13 @@ async function fixture(options) {
     "  publication_date text, identifier text, language text, citation_mode text, bibliographic jsonb,",
     "  citation_text text, url text, edition_or_version text, origin text, availability text,",
     "  verification_status text, study_visibility text not null default 'citation', public_file_access text,",
-    "  created_at timestamptz not null default now(), primary key(course_id, source_id));",
+    "  created_at timestamptz not null default now(), primary key(course_id, source_id),",
+    "  constraint course_sources_version_identity_v1 unique(course_id, source_id, revision));",
     "create table private.course_source_anchors(course_id uuid, anchor_id text, revision bigint not null default 1,",
     "  source_id text, source_revision bigint, status text, selector jsonb, content_hash text, human_locator text,",
-    "  verification_excerpt text, created_at timestamptz not null default now(), primary key(course_id, anchor_id));",
+    "  verification_excerpt text, created_at timestamptz not null default now(), primary key(course_id, anchor_id),",
+    "  constraint course_source_anchors_source_fk_v1 foreign key(course_id, source_id, source_revision)",
+    "    references private.course_sources(course_id, source_id, revision) on update cascade on delete cascade);",
     "create table private.course_source_attachments(course_id uuid, source_id text, content_hash text,",
     "  public_file_access text, byte_size bigint, media_type text, storage_path text,",
     "  status text not null default 'active', created_at timestamptz not null default now());",
@@ -90,6 +93,7 @@ async function fixture(options) {
     "  $$begin if " + (denyAccess ? "true" : "false") + " then raise exception 'Acesso negado.' using errcode='42501'; end if; end$$;",
     "create function private.course_source_json_hash_v1(jsonb) returns text language sql immutable as",
     "  $$select repeat(md5($1::text),2)$$;",
+    "create function private.valid_course_source_document_v3(jsonb) returns boolean language sql as $$select true$$;",
     "create function private.course_source_pdf_unique_bytes_v1(uuid) returns bigint language sql as $$select 0::bigint$$;",
     "create function private.course_source_target_state_v1(uuid,text,text) returns jsonb language sql as $$select null::jsonb$$;",
     "create table private.course_source_attributions(course_id uuid, id uuid, target_kind text, target_id text);",
@@ -117,7 +121,7 @@ const command = (anchorId, options) => {
     type: "save_anchor",
     anchorId,
     sourceId: SOURCE,
-    sourceRevision: 1,
+    sourceRevision: extra.sourceRevision === undefined ? 1 : extra.sourceRevision,
     expectedAnchorRevision: extra.expectedAnchorRevision === undefined ? 0 : extra.expectedAnchorRevision,
     selector: extra.selector || { kind: "page_range", startPage: 1, endPage: 1 },
     contentHash: extra.contentHash === undefined ? null : extra.contentHash,
@@ -192,6 +196,36 @@ test("a capacidade nomeada libera a nona identidade e preserva âncoras e víncu
   const eight = ["anchor-1", "anchor-2", "anchor-3", "anchor-4", "anchor-5", "anchor-6", "anchor-7", "anchor-8"];
   assert.equal(await linkAccepted(db, eight), true, "oito âncoras por vínculo continuam aceitas");
   assert.equal(await linkAccepted(db, eight.concat("anchor-9")), false, "nove âncoras por vínculo continuam recusadas");
+  await db.close();
+});
+
+test("nova revisão de metadados da Fonte mantém as 64 âncoras correntes sem abrir a 65ª", async () => {
+  const db = await fixture({ withReader: true });
+  await db.exec(capacityMigration);
+  for (let index = 1; index <= COUNT_LIMIT; index += 1) {
+    await saveAnchor(db, "anchor-" + index, { locator: "Trecho " + index });
+  }
+  // Metadados da Fonte são registro corrente: a atualização incrementa a revisão
+  // do MESMO registro e a chave estrangeira em cascata move as âncoras junto, sem
+  // histórico cumulativo de revisões.
+  const saved = await db.query("select private.execute_course_source_command_without_interventions_v1($1,$2,$3,$4,$5,$6) as result",
+    [ACTOR, COURSE, await revision(db), { type: "save_source", sourceId: SOURCE, expectedSourceRevision: 1,
+      source: { kind: "document", title: "Documento revisado", citationMode: "manual",
+        origin: "author_provided", availability: "private", verificationStatus: "author_verified",
+        studyVisibility: "citation" } }, "application", nextRequestId("source-metadata")]);
+  assert.equal(saved.rows[0].result.changed, true, "metadados alterados avançam a revisão da Fonte");
+  const grouped = (await db.query([
+    "select source_revision, count(*) as total from private.course_source_anchors group by source_revision",
+    "order by source_revision"].join(" "))).rows;
+  assert.deepEqual(grouped.map(row => [Number(row.source_revision), Number(row.total)]), [[2, COUNT_LIMIT]],
+    "as 64 âncoras seguem o estado corrente, sem acervo de revisões anteriores");
+  await assert.rejects(() => saveAnchor(db, "anchor-65", { locator: "Trecho 65", sourceRevision: 2 }), CAPACITY_ERROR);
+  assert.equal(await anchorCount(db), COUNT_LIMIT, "a recusa não abre a 65ª identidade");
+  const payload = await readerPayload(db);
+  const anchors = payload.items[0].anchors;
+  assert.equal(anchors.length, COUNT_LIMIT, "a leitura devolve o acervo corrente");
+  assert.equal(anchors.every(anchor => anchor.sourceRevision === 2), true, "as âncoras acompanham a revisão corrente da Fonte");
+  assert.ok(await readerBytes(db) <= READER_LIMIT);
   await db.close();
 });
 

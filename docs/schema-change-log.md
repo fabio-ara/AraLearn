@@ -34,11 +34,13 @@ Revisões que não ampliam o volume de dados, reduções de trechos e retiradas 
 seleção de âncoras por vínculo permanecem como estavam, e nenhuma capacidade nova
 é declarada: o manifesto avança para `20261016171317`.
 
-O teto é por revisão: a leitura de uma Fonte reúne também as âncoras das revisões
-anteriores e continua limitada pelo próprio guard de 256 KiB, que permanece a
-última proteção da leitura. No ensaio com 64 identidades,
-trechos de conferência e oito PDFs ativos, a leitura coube no orçamento; essa
-medição não substitui a verificação de cada acervo.
+O teto vale para o estado corrente da Fonte: fontes e âncoras são registros
+correntes, e a chave estrangeira `(course_id, source_id, source_revision)` com
+cascata move as âncoras junto com a revisão da Fonte. A leitura de uma Fonte
+devolve esse acervo corrente, sem histórico cumulativo de revisões, e continua
+limitada pelo próprio guard de 256 KiB, que permanece a última proteção da leitura.
+No ensaio com 64 identidades, trechos de conferência e oito PDFs ativos, a
+leitura coube no orçamento; essa medição não substitui a verificação de cada acervo.
 Uma recusa chega ao autor como `course_source_anchor_capacity_reached` (409) ou
 `course_source_anchor_budget_exceeded` (413), com a mensagem do produtor, sem
 orientar a dividir a Fonte, duplicar o PDF ou remover âncoras usadas.
