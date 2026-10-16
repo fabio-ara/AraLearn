@@ -7,6 +7,19 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.110] - 2026-10-16
+
+### Adicionado
+
+- A autoria de lacunas e ordenações permite declarar um retorno para cada decisão incorreta. O leitor apresenta apenas os retornos pertinentes à tentativa, respeitando equivalentes aceitos e posições corretas. A inspeção pedagógica distingue o rótulo padrão, o texto autoral, o estado e a condição em que cada retorno pode aparecer, sem confundir presença de feedback com adequação pedagógica.
+- O painel de fontes identifica o papel declarado de cada vínculo, distinguindo uma obra que informou a elaboração de uma passagem que sustenta uma afirmação. Os retornos às ocorrências acompanham a ordem de leitura.
+
+### Corrigido
+
+- O nome acessível e a dica do botão de avanço anunciam "Conferir resposta" enquanto há uma tentativa pendente, reservando "Ver comentário da unidade" para a ação que realmente abre o comentário. O botão continua exibindo somente o ícone.
+- A leitura de fontes reconcilia uma revisão desatualizada com o conteúdo corrente antes de tentar novamente. A recuperação preserva o contexto do estudante e não aplica resultados atrasados após navegação, fechamento ou início de edição; conflitos persistentes permanecem explícitos.
+- O contrato de inspeção explica como retomar uma escrita incerta com a mesma referência e o mesmo parecer. Um recibo existente é recuperado sem duplicação; sem recibo, a base é validada antes de registrar. Identidades incompatíveis recebem um conflito específico.
+
 ## [0.0.109] - 2026-10-15
 
 ### Corrigido
