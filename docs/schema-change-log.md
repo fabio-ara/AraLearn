@@ -30,7 +30,7 @@ e `..._v4` continuam devolvendo a árvore completa e mantendo o limite de 183500
 `public.get_owned_course_instructional_plan_for_actor_v5`, restrita a `service_role` como as
 anteriores, publica as microssequências dos lotes apenas com identidade, posição de produção,
 caminho curricular e contagem de unidades, marcadas com `payloadEncoding`. Em modo compacto as
-explicações nunca são materializadas, o guard mede a representação realmente pedida — sem elevar
+explicações são materializadas apenas no currículo, sem duplicação nos lotes; o guard mede a representação realmente pedida — sem elevar
 limite algum — e o adapter do runtime reconstrói os campos a partir do currículo antes de validar
 o transporte, falhando claramente diante de marca ausente, referência órfã ou campo obrigatório
 ausente. O manifesto avança para `20261016162436`.
