@@ -2748,9 +2748,9 @@ button.account-settings-back[hidden] {
 
 /* O wrapper é o container de medida: a largura dele é a coluna de leitura e não
    depende do tamanho que a tabela vai assumir. Assim a célula pode limitar a
-   própria contribuição em unidades do container. Vale para a tabela de até três
-   colunas; a tabela larga, que rola, fica como estava. */
-.runtime-table-wrap:not(:has(> .runtime-table-frame > table.runtime-table > thead > tr > :nth-child(4))) {
+   própria contribuição em unidades do container, em qualquer tabela: a de até três
+   colunas segue o conteúdo e a larga conserva o piso de 5,5rem com rolagem própria. */
+.runtime-table-wrap {
   container-type: inline-size;
 }
 
@@ -2812,13 +2812,24 @@ button.account-settings-back[hidden] {
   hyphens: none;
 }
 
-/* Dentro dessas células a quebra acontece no limite da palavra: o parágrafo e a
+/* Na tabela larga o piso da célula permanece, mas a hifenização também encolhe o
+   min-content: a coluna ficaria no piso de 88 px e a palavra sairia partida no fim
+   da linha, do mesmo modo que prendia o endereço. Sem hifenização a coluna cresce
+   até a palavra inteira, como no recorte de até três colunas, e continua sem passar
+   do limite de célula definido abaixo. */
+.runtime-table:has(> thead > tr > :nth-child(4)) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) {
+  hyphens: none;
+}
+
+/* Dentro de qualquer célula a quebra acontece no limite da palavra: o parágrafo e a
    lista do markdown traziam overflow-wrap anywhere e word-break break-word, que
    reduzem o min-content do texto e deixam o layout automático partir a frase no
-   meio da palavra. O token do código em linha segue quebrando em qualquer ponto. */
-.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-paragraph,
-.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list,
-.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list li {
+   meio da palavra — numa tabela larga isso prendia a coluna no piso de 88 px e um
+   endereço saía partido no meio do octeto. O token do código em linha segue
+   quebrando em qualquer ponto. */
+.runtime-table > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-paragraph,
+.runtime-table > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list,
+.runtime-table > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list li {
   overflow-wrap: break-word;
   word-break: normal;
 }
@@ -2827,8 +2838,10 @@ button.account-settings-back[hidden] {
    definir sozinha a largura da coluna: acima deste limite ela quebra dentro da
    célula, e a rolagem da moldura para de crescer com o tamanho do token. O
    min-width devolve o preenchimento quando a coluna é mais larga que o limite, e o
-   piso em rem conserva a palavra inteira com o texto do leitor ampliado. */
-.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-table-cell-content {
+   piso em rem conserva a palavra inteira com o texto do leitor ampliado. Vale para
+   a tabela de qualquer número de colunas: na larga a coluna parte do piso de 5,5rem
+   e cresce apenas até este limite, mantendo a rolagem no próprio controle. */
+.runtime-table > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-table-cell-content {
   max-width: max(50cqw, 8rem);
   min-width: 100%;
 }
@@ -2842,6 +2855,15 @@ button.account-settings-back[hidden] {
    acima. A regra vale só para o campo editável e não altera a leitura. */
 .runtime-table:not(:has(> thead > tr > :nth-child(4))) [data-manual-edit-path]:not(.runtime-markdown-paragraph):not(.runtime-markdown-list) {
   overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* Na tabela larga a prosa da célula passou a quebrar no limite da palavra (regra
+   acima), então o campo de edição conserva esse mesmo contrato: com overflow-wrap
+   anywhere o campo encolheria o min-content e a coluna mudaria de largura assim que
+   a edição começasse. A tabela de até três colunas conserva a regra anterior. */
+.runtime-table:has(> thead > tr > :nth-child(4)) [data-manual-edit-path]:not(.runtime-markdown-paragraph):not(.runtime-markdown-list) {
+  overflow-wrap: break-word;
   word-break: normal;
 }
 
