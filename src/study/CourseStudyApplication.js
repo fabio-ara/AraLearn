@@ -262,6 +262,9 @@ export function createCourseStudyApplication({
       return { citations: state.citations, references: state.formattedReferences, error: state.citationsError,
         status: repository.loadStudyUnitCitationStatus?.(canonicalReference(state.selection)) };
     },
+    // Mesma reconciliação da leitura da unidade: a folha reabre com o conteúdo e as
+    // fontes da revisão recarregada, em vez de exigir sair, sincronizar e reabrir.
+    reconcileCitationsRevision: (courseId) => reconcileCitationsRevision(courseId),
     getContext: () => repository.loadExplanationContext?.(canonicalReference(state.selection)) || {
       courseId: state.selection.courseId, microsequenceId: state.selection.microsequenceId,
       explanation: context().microsequence?.explanation || null,
@@ -346,6 +349,16 @@ export function createCourseStudyApplication({
 
   function manualStudyUnitVersionKey(courseId, studyUnitId) {
     return `${courseId}\u0000${studyUnitId}`;
+  }
+
+  // Edição autoral em curso: recarregar o Curso aqui descartaria o rascunho, então a
+  // reconciliação de leitura cede lugar ao conflito explícito até a edição terminar.
+  function studyEditInProgress() {
+    return Boolean(
+      state.manualEditing || state.manualSaving || manualDraftChanged() ||
+      state.structuralEditing || state.structuralSaving || state.assistanceDraft ||
+      state.assistanceSaving || state.assistanceLoading || providerAssistance?.opened
+    );
   }
 
   function rebaseManualCompositionOverrides() {
@@ -585,6 +598,58 @@ export function createCourseStudyApplication({
     state.formattedReferences = {};
   }
 
+  // Recuperação limitada de leitura: o conflito de revisão não pode combinar as fontes
+  // de uma revisão com o conteúdo de outra. A revisão corrente é observada e o Curso é
+  // recarregado antes de repetir a leitura — uma única vez por leitura — preservando
+  // respostas, edições, posição de leitura e foco. Sem avanço observável nada é
+  // promovido e o conflito permanece explícito, sem sucesso aparente.
+  async function reconcileCitationsRevision(courseId) {
+    if (studyEditInProgress() || typeof repository.reconcileCourseRevision !== "function") return false;
+    const previousSelection = clone(state.selection);
+    const previousView = state.view;
+    const previousPathKey = studyUnitPathKey(state.selection);
+    const previousCitationsEpoch = citationsEpoch;
+    const preservedFocus = currentStudyFocusTarget();
+    const previousRevision = Number((repository.loadCourseSummaries?.() || [])
+      .find((item) => item.courseId === courseId)?.revision);
+    // Identidade da reconciliação: a espera não autoriza aplicar estado de leitura que já
+    // não vigora — tela viva, mesma unidade, mesma visão, nenhuma edição começada depois e
+    // nenhuma outra leitura de citações no meio (ida e volta ao mesmo alvo não é identidade).
+    const stillCurrent = () => !destroyed && !studyEditInProgress() &&
+      state.view === previousView && studyUnitPathKey(state.selection) === previousPathKey &&
+      citationsEpoch === previousCitationsEpoch;
+    try {
+      const revision = await repository.reconcileCourseRevision(courseId);
+      if (!stillCurrent()) return false;
+      if (!Number.isSafeInteger(revision) ||
+          (Number.isSafeInteger(previousRevision) && revision <= previousRevision)) return false;
+      const nextProject = repository.loadProject?.();
+      if (!Array.isArray(nextProject?.courses)) return false;
+      // A troca do projeto também é conferida: a releitura do repositório pode ter
+      // demorado o bastante para o leitor mudar de alvo.
+      if (!stillCurrent()) return false;
+      state.project = clone(nextProject);
+      const retained = retainContext(state.project, previousSelection, previousView);
+      state.selection = retained.selection;
+      state.view = retained.view;
+      if (previousSelection.courseId &&
+          !findCourse(state.project, previousSelection.courseId)) {
+        setHomeNotice("Seu acesso ao curso selecionado foi encerrado.");
+        state.homeError = "";
+        persistStudyNavigation({ includePosition: false });
+      }
+      rebaseManualCompositionOverrides();
+      state.pendingStudyFocus ||= preservedFocus;
+      // O recarregamento precisa aparecer mesmo quando a nova leitura ainda conflita: a
+      // folha da Explicação reabre pela mesma assinatura de conteúdo, sem sair e voltar.
+      render();
+      return true;
+    } catch (error) {
+      if (stillCurrent() && courseAccessWasRevoked(error)) reconcileProjectAfterRevocation();
+      return false;
+    }
+  }
+
   function resetObservationSheet() {
     ++observationsEpoch;
     unsubscribeAnnotations?.();
@@ -698,7 +763,7 @@ export function createCourseStudyApplication({
     return promise;
   }
 
-  async function readStudyCitations({ retry = false } = {}) {
+  async function readStudyCitations({ retry = false, recovery = false } = {}) {
     const reference = canonicalReference(state.selection);
     if (!reference || destroyed || !root.querySelector(".study-reader-screen") ||
         typeof repository.loadStudyUnitCitations !== "function") return false;
@@ -729,11 +794,21 @@ export function createCourseStudyApplication({
       if (epoch !== citationsEpoch || destroyed) return false;
       if (courseAccessWasRevoked(error) && reconcileProjectAfterRevocation()) return false;
       const code = String(error?.code || "").toLowerCase();
+      if (code === "course_revision_changed" && !recovery) {
+        const reconciled = await reconcileCitationsRevision(reference.courseId);
+        // A espera pode invalidar esta leitura (navegação, fechamento, novo alvo): o erro
+        // antigo não escreve no estado do alvo vigente nem renderiza a tela atual.
+        if (epoch !== citationsEpoch || destroyed) return false;
+        if (reconciled) return await readStudyCitations({ retry: true, recovery: true });
+      }
       state.citationsError = code === "course_revision_changed"
-        ? "O curso mudou. Reabra esta unidade de estudo para consultar as fontes atuais."
+        ? "O curso mudou e as fontes desta unidade ainda não correspondem à revisão atual. Sincronize e reabra esta unidade de estudo."
         : /offline|network|failed to fetch|connection/iu.test(`${code} ${error?.message || ""}`)
           ? "Sem conexão para consultar as fontes desta unidade de estudo."
           : "Não foi possível consultar as fontes desta unidade de estudo.";
+      // O conflito persistente precisa ficar explícito na tela: a entrada das fontes
+      // continua acessível para declarar o conflito e oferecer a retentativa.
+      if (code === "course_revision_changed") render();
       return false;
     } finally {
       if (epoch === citationsEpoch && !destroyed) {
@@ -3313,11 +3388,7 @@ export function createCourseStudyApplication({
       return resumeStudyDraftRecovery(options);
     },
     hasPendingManualEdit() {
-      return Boolean(
-        state.manualEditing || state.manualSaving || manualDraftChanged() ||
-        state.structuralEditing || state.structuralSaving || state.assistanceDraft ||
-        state.assistanceSaving || state.assistanceLoading || providerAssistance?.opened
-      );
+      return studyEditInProgress();
     },
     previewManualEdit({
       targetId,

@@ -11,7 +11,8 @@ export function gapAuthoringEditableTargets(data) {
         { path: `${prefix}.answer`, label: `Resposta correta${suffix}` },
         ...(typeof blank.label === "string" ? [{ path: `${prefix}.label`, label: `Rótulo${suffix}` }] : []),
         ...(blank.acceptedAnswers || []).map((_, answer) => ({ path: `${prefix}.acceptedAnswers[${answer}]`, label: `Resposta aceita ${answer + 1}${suffix}` })),
-        ...(blank.distractors || []).map((_, answer) => ({ path: `${prefix}.distractors[${answer}]`, label: `Alternativa ${answer + 1}${suffix}` }))
+        ...(blank.distractors || []).map((_, answer) => ({ path: `${prefix}.distractors[${answer}]`, label: `Alternativa ${answer + 1}${suffix}` })),
+        ...(blank.feedback ? [{ path: `${prefix}.feedback`, label: `Retorno do erro${suffix}` }] : [])
       ];
     })
   ];
@@ -78,6 +79,7 @@ export function renderGapAuthoringOptions(data, options) {
       row("Resposta correta", answer) +
       (blank.acceptedAnswers || []).map((value, answerIndex) => row(`Resposta aceita ${answerIndex + 1}`, value)).join("") +
       (blank.distractors || []).map((value, answerIndex) => row(`Alternativa ${answerIndex + 1}`, value)).join("") +
+      (blank.feedback ? row("Retorno do erro", blank.feedback) : "") +
       "</dl></section>";
   }).join("");
   const editing = options.authoringPracticeEditing === true || options.manualEditing === true;

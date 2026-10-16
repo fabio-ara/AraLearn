@@ -895,6 +895,21 @@ export class CourseStudyRepository {
     return this.#loadTargetCitations(reference, false);
   }
 
+  // Reconciliação limitada de leitura: a guarda de revisão continua no servidor e o
+  // cliente passa a observar a revisão corrente antes de repetir uma leitura. O Curso
+  // é recarregado quando a revisão avançou, para que o conteúdo e as fontes pertençam à
+  // mesma revisão; sem avanço observável nada é promovido e o conflito permanece.
+  async reconcileCourseRevision(courseIdentity) {
+    const courseId = this.resolveCourseContractKey(courseIdentity);
+    if (!this.courseList.some((item) => item.courseId === courseId)) {
+      throw new Error("O curso solicitado não está acessível.");
+    }
+    await this.#revalidateCourseRevision(courseId);
+    await this.loadCourse(courseId);
+    const revision = Number(this.loadedCourseById.get(courseId)?.revision);
+    return Number.isSafeInteger(revision) && revision >= 1 ? revision : null;
+  }
+
   loadProject() {
     return clone(this.project);
   }

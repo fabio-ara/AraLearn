@@ -1248,6 +1248,31 @@ test("exclusão iniciada informa ambiguidade retomável se a resposta do commit 
     init.method === "DELETE" && url.includes("/storage/v1/object/")).length, 0);
 });
 
+test("recibo de inspeção com identidade divergente não vira entrada inválida", async () => {
+  const report = { summary: "Base examinada.", outcome: "consistent", findings: [],
+    checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
+      dimension, result: "sufficient", reason: "A base expõe a relação.", evidence: ["Base"] })) };
+  const args = () => ({ principal: { actorId: USER_ID }, courseId: COURSE_ID, targetKind: "study_unit",
+    targetId: "unit-a", expectedBasisHash: "a".repeat(64), report, requestId: "inspection-identity-1" });
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    calls.push({ url, body: JSON.parse(init.body) });
+    return json({ code: "23514", message: "Identidade de inspeção incompatível." }, 400);
+  });
+  await assert.rejects(() => value.getCourseContentInspectionReceipt(args()), error =>
+    error.status === 409 && error.code === "course_ai_inspection_identity_conflict" &&
+    /mesma referência e o mesmo parecer/u.test(error.message));
+  assert.equal(calls.length, 1, "conflito de identidade não é retentado como falha transitória");
+  assert.match(calls[0].url, /get_course_ai_inspection_receipt_for_actor_v1$/u);
+  assert.equal(calls[0].body.p_request_id, "inspection-identity-1");
+
+  // Outra violação de verificação continua sendo entrada inválida: o conflito de
+  // identidade é reconhecido pela mensagem do banco, não pelo SQLSTATE sozinho.
+  const other = adapter(async () => json({ code: "23514", message: "Constraint relacional não satisfeita." }, 400));
+  await assert.rejects(() => other.getCourseContentInspectionReceipt(args()), error =>
+    error.status === 422 && error.code === "invalid_course_command");
+});
+
 test("exclusão não apaga Storage diante de violação relacional alheia", async () => {
   const calls = [];
   const value = adapter(async (url) => {

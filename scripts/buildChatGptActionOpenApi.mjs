@@ -101,7 +101,9 @@ const errorSchema = {
 // union against the production arguments. Catalog 11.2.0 makes
 // `microssequencia` optional in `registrar_aplicacoes_instrucionais`, so a
 // single request may declare existing units across microsequences of the same
-// course; the measured baseline becomes 100859 minified / 209905 pretty-printed
+// course. Catalog 11.3.0 declares in `registrar_inspecao` that a lost response
+// is recovered with the same reference and report. The measured baseline becomes
+// 100922 minified / 209968 pretty-printed
 // characters. Acceptance in the actual editor remains a separate gate with the
 // real client; it is not implied by these counters.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;

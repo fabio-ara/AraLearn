@@ -43,7 +43,8 @@ export function explanationRenderingUnit(explanation, id = "explanation") {
 
 /** Folha de leitura: mantém o card montado e usa os mesmos componentes, fontes e ferramentas. */
 export function createStudyExplanation({ root, repository, getContext, getReference, getContextKey,
-  getStudyUnit = () => null, loadUnitCitations, canOpen, canAuthorSources, onOpen, downloadPdf }) {
+  getStudyUnit = () => null, loadUnitCitations, canOpen, canAuthorSources, onOpen, downloadPdf,
+  reconcileCitationsRevision = null }) {
   let overlay = null;
   let tools = null;
   let captured = null;
@@ -63,6 +64,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   let selectedOccurrenceId = "";
   let downloadPending = false;
   let downloadError = "";
+  let sourcesRecoveredFor = null;
   let detachedFocus = null;
   let detachedState = null;
   let unitSources = null;
@@ -74,6 +76,9 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   const panel = () => overlay?.querySelector(".study-explanation-panel");
   const body = () => overlay?.querySelector(".study-explanation-body");
   const scrollKey = () => `${contextKey}::${sourceScope}`;
+  // Episódio de leitura: uma recuperação automática por alvo/escopo, consumida antes da
+  // espera; nova ação explícita ou leitura bem-sucedida inicia outro episódio.
+  const sourceEpisode = () => `${contextKey}::${sourceScope}`;
   const entryAction = () => requestedCitation?.source === SOURCE_SCOPE_UNIT ? "open-unit-sources" : "open-explanation";
   const reference = () => ({ ...getReference(), targetKind: "microsequence_explanation",
     courseRevision: contextValue?.courseRevision,
@@ -232,6 +237,8 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
 
   async function loadSources({ retry = false } = {}) {
     const ownEpoch = ++epoch;
+    // Ação explícita do usuário inicia um episódio novo de recuperação.
+    if (retry) sourcesRecoveredFor = null;
     loading = true; sourceError = ""; sourceNotice = ""; updateSources();
     try {
       if (sourceScope === SOURCE_SCOPE_UNIT) {
@@ -255,6 +262,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       const status = repository.loadExplanationCitationStatus?.(reference());
       sourceNotice = citationStatusNotice(status);
       placeSources();
+      sourcesRecoveredFor = null;
     } catch (error) {
       if (!overlay || ownEpoch !== epoch) return;
       if (sourceScope === SOURCE_SCOPE_UNIT) {
@@ -262,8 +270,25 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
           error: publicErrorMessage(error, "Não foi possível consultar as fontes desta unidade.") };
         return;
       }
+      // Conflito de revisão: a reconciliação recarrega o Curso e a folha reabre com o
+      // conteúdo e as fontes da mesma revisão. Ela é automática uma vez por episódio;
+      // depois disso o conflito fica explícito e a retentativa volta a ser do usuário.
+      if (String(error?.code || "").toLowerCase() === "course_revision_changed" &&
+          sourcesRecoveredFor !== sourceEpisode() && typeof reconcileCitationsRevision === "function") {
+        // O consumo é marcado ANTES da espera: a reabertura provocada pela reconciliação
+        // muda a época e não pode devolver orçamento (nem ser escrita depois dela).
+        sourcesRecoveredFor = sourceEpisode();
+        const pendingReference = JSON.stringify(reference());
+        await reconcileCitationsRevision(contextValue?.courseId || getReference().courseId);
+        // A espera pode fechar a folha, reabri-la para outro alvo ou trocar o contexto: o
+        // conflito antigo não escreve no estado da folha vigente.
+        if (!overlay || ownEpoch !== epoch) return;
+        if (JSON.stringify(reference()) !== pendingReference) return;
+        // Sem reabertura (mesmo epoch), o conflito continua declarado em vez de deixar o
+        // painel vazio; a folha reaberta já está relendo com o conteúdo recarregado.
+      }
       sourceError = publicErrorMessage(error, "Não foi possível consultar as fontes da explicação.", {
-        conflict: "O curso mudou. Reabra a explicação para consultar as fontes atuais.",
+        conflict: "O curso mudou e as fontes ainda não correspondem à revisão atual. Sincronize e reabra a explicação.",
         network: "As fontes não estão salvas nesta cópia e não foi possível consultá-las."
       });
     } finally {

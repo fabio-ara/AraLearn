@@ -1642,6 +1642,73 @@ test("citações são buscadas somente por Unidade carregada e vinculadas à rev
   assert.deepEqual(clearedCourses, [COURSE_A]);
 });
 
+test("conflito de revisão na leitura de citações recarrega o Curso e relê na mesma revisão", async () => {
+  const document = course(COURSE_A, "a");
+  const reads = [];
+  let serverRevision = 4;
+  let accessRevision = 4;
+  const descriptor = () => ({
+    courseId: COURSE_A, title: "Curso", revision: accessRevision, ownership: "owned", canEdit: true,
+    moduleCount: 1, lessonCount: 1, microsequenceCount: 1, studyUnitCount: 1, completedStudyUnitCount: 0
+  });
+  const bridge = {
+    async listAccessibleCourses() { return { items: [descriptor()], hasMore: false, nextCursor: null }; },
+    async checkCourseAccess() { return descriptor(); },
+    async loadCourse() {
+      const value = structuredClone(document);
+      value.title = `Curso revisão ${serverRevision}`;
+      return { course: { ...descriptor(), revision: serverRevision }, revision: serverRevision,
+        document: { contract: "aralearn.course.v1", courses: [value] }, rows: [] };
+    },
+    async clearCourse() {}
+  };
+  const api = {
+    async listCourseReviewItems() { return { items: [], hasMore: false, nextCursor: null }; },
+    async loadPersonalState() { return null; },
+    async mutatePersonalState() { throw new Error("Não deve alterar estado pessoal."); },
+    async getStudyUnitCitations(courseId, studyUnitId, { expectedRevision }) {
+      reads.push(expectedRevision);
+      if (expectedRevision !== serverRevision) {
+        throw Object.assign(new Error("Revisão base desatualizada."), { status: 409, code: "40001" });
+      }
+      return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+        courseId, courseRevision: expectedRevision, studyUnitId, citations: [] };
+    }
+  };
+  const repository = new CourseStudyRepository({ bridge, api, cache: cache() });
+  const reference = [COURSE_A, "module-a", "lesson-a", "micro-a", "unit-a"];
+  await repository.initialize();
+  await repository.loadCourse(COURSE_A);
+  assert.equal((await repository.loadStudyUnitCitations(reference)).courseRevision, 4);
+
+  // A autoria grava durante a leitura: a revisão corrente avança e a leitura conflita
+  // sem promover conteúdo nem fontes para a revisão nova.
+  serverRevision = 5;
+  accessRevision = 5;
+  await assert.rejects(repository.loadStudyUnitCitations(reference),
+    (error) => error.code === "course_revision_changed" && error.status === 409);
+  assert.equal(repository.loadedCourseById.get(COURSE_A).revision, 4);
+
+  // Reconciliação de leitura: a revisão corrente é observada e o conteúdo é recarregado
+  // antes da nova leitura, então conteúdo e fontes pertencem à mesma revisão.
+  assert.equal(await repository.reconcileCourseRevision(COURSE_A), 5);
+  const reconciled = await repository.loadStudyUnitCitations(reference);
+  assert.equal(reconciled.courseRevision, 5);
+  assert.equal(repository.loadExplanationContext(reference).courseRevision, 5);
+  assert.deepEqual(reads, [4, 4, 5]);
+
+  // Sem avanço observável nada é promovido e o conflito permanece explícito.
+  serverRevision = 6;
+  accessRevision = 5;
+  await assert.rejects(repository.loadStudyUnitCitations(reference),
+    (error) => error.code === "course_revision_changed");
+  assert.equal(await repository.reconcileCourseRevision(COURSE_A), 5);
+  await assert.rejects(repository.loadStudyUnitCitations(reference),
+    (error) => error.code === "course_revision_changed");
+  assert.equal(repository.loadCourseSummaries()[0].revision, 5);
+  assert.deepEqual(reads, [4, 4, 5, 5, 5]);
+});
+
 test("revogação nas observações purga o Curso, mas anotação ausente não", async () => {
   const courseValue = course(COURSE_A, "a");
   const cleared = [];

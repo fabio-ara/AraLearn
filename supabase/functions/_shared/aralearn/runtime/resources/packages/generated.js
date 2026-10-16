@@ -34,7 +34,7 @@ import { audioPackage } from "./audio/index.js";
 import { calculatorPackage } from "./calculator/index.js";
 import { terminalSessionPackage } from "./terminal-session/index.js";
 
-export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "sha256:e97467a8e1a1fb436f743a1d9fae39e686b1537211e68d66ab61f6c339223475";
+export const RESOURCE_PACKAGE_CONTRACT_FINGERPRINT = "sha256:c2ee83acef506e67e2c2c9fc7c5d35db75c81f03e88631b7933e7b066089a65d";
 
 export const RESOURCE_PACKAGE_DEFINITIONS = Object.freeze([
   paragraphPackage,

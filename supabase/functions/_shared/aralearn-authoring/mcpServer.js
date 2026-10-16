@@ -429,13 +429,22 @@ function toolFailure(
     ...(reconciliationBlockers ? { blockers: reconciliationBlockers } : {})
   };
   const uncertain = ["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(normalized.code);
+  // A inspeção recupera repetindo a própria operação com a MESMA identidade: com
+  // recibo, devolve o parecer salvo sem reavaliar a base; sem recibo, lê e valida
+  // a base antes de registrar. O campo retryable do canal continua falso por
+  // convenção das escritas incertas — ele classifica transitoriedade, não a
+  // repetição guiada, que viaja em message/nextDecision com a referência original.
+  const inspectionUncertain = normalized.code === "course_write_uncertain" &&
+    normalized.details?.operation === "course_ai_inspection";
   const derivableMaterialization = normalized.code === "human_materialization_contextual_calibration_required";
   const publicError = {
     code: retryable
       ? "temporarily_unavailable"
       : String(normalized.code || "human_task_failed"),
     message: uncertain
-      ? "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo."
+      ? inspectionUncertain
+        ? "O resultado desta tentativa de inspeção ainda não foi confirmado. Preserve a mesma referência e o mesmo parecer ao repetir."
+        : "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo."
       : retryable
       ? "Não consegui concluir esta etapa."
       : preflight || derivableMaterialization
@@ -462,7 +471,9 @@ function toolFailure(
     nextDecision = "Resolva autonomamente tudo que já estiver determinado pelo curso e repita a verificação. Se restar uma escolha que altere o percurso de aprendizagem, consolide as pendências relacionadas, explique ao autor o que precisa ser decidido e por que isso importa, faça uma única pergunta e, após a resposta, retome a produção original.";
   }
   if (normalized.code === "course_write_uncertain") {
-    nextDecision = "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração.";
+    nextDecision = inspectionUncertain
+      ? "Repita registrar_inspecao com a mesma referência e o mesmo parecer: com recibo, devolve o parecer salvo sem reavaliar a base; sem recibo, a base é validada antes de registrar. Não use retomar_correcao; base alterada é conflito e recusa sem gravar."
+      : "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração.";
   } else if (recovery) {
     nextDecision += " Preserve a mesma tentativa durante a conferência, sem reaplicar a alteração.";
   }

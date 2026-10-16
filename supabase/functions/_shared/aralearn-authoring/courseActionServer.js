@@ -158,13 +158,24 @@ function nextDecisionForError(error, retryable) {
 
 function publicError(error, { writeTaskStarted = false } = {}) {
   const recovery = projectHumanWriteRecovery(error);
+  // A inspeção recupera repetindo a própria operação com a MESMA identidade: com
+  // recibo, devolve o parecer salvo sem reavaliar a base; sem recibo, lê e valida
+  // a base antes de registrar. O campo retryable do canal permanece falso por
+  // convenção das escritas incertas: ele classifica transitoriedade, não a
+  // repetição guiada descrita em message/nextDecision.
+  const inspectionUncertain = error.code === "course_write_uncertain" &&
+    error.details?.operation === "course_ai_inspection";
   if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) {
     return {
       error: { code: error.code,
-        message: "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo.",
+        message: inspectionUncertain
+          ? "O resultado desta tentativa de inspeção ainda não foi confirmado. Preserve a mesma referência e o mesmo parecer ao repetir."
+          : "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo.",
         retryable: false, ...(recovery ? { recovery } : {}) },
       nextDecision: error.code === "course_write_uncertain"
-        ? "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração."
+        ? inspectionUncertain
+          ? "Repita registrar_inspecao com a mesma referência e o mesmo parecer: com recibo, devolve o parecer salvo sem reavaliar a base; sem recibo, a base é validada antes de registrar. Não use retomar_correcao; base alterada é conflito e recusa sem gravar."
+          : "Retome a mesma tentativa após reler o conteúdo e suas pendências, sem reaplicar a alteração."
         : `${nextDecisionForError(error, false)}${recovery
           ? " Preserve a mesma tentativa durante a conferência, sem reaplicar a alteração." : ""}`
     };

@@ -24,7 +24,8 @@ for (const kind of ['memory_layout', 'truth_table']) test(`${kind}: digitação 
   }, kind);
   const answer = kind === 'memory_layout' ? '0X00100F' : 'F';
   await page.locator('[data-action="complete-input"]').fill(answer);
-  await page.getByRole('button', { name: 'Ver comentário da unidade', exact: true }).click();
+  // Prática pendente: o clique confere a resposta e, acertando, abre o comentário autoral.
+  await page.getByRole('button', { name: 'Conferir resposta', exact: true }).click();
   await expect(page.locator('.study-continue-popup')).toBeVisible();
   await expect(page.locator('.inline-feedback.err')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath(`${kind}-study.png`) });

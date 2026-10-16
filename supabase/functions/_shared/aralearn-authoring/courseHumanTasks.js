@@ -1033,7 +1033,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
     { readOnly: false }
   ),
   task("registrar_inspecao", "Registrar inspeção da base lida",
-    "Base de preparar_revisao. Não edita nem declara revisão humana.",
+    "Base de preparar_revisao. Não edita nem declara revisão humana. Sem resposta, repita com a mesma referência e o mesmo parecer.",
     inputSchema({ referencia: { type: "string", minLength: 1, maxLength: 2048 }, parecer: { type: "object", additionalProperties: false,
       required: ["summary", "outcome", "findings", "checks"], properties: { summary: { type: "string", minLength: 1, maxLength: 2000 },
         outcome: { type: "string", enum: ["consistent", "needs_attention", "human_preference_retained"] },
@@ -1239,9 +1239,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.2.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.3.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:a49d577a55c219a8f6f38d2ee062b97a50b9cc78359bfdb80a847281a0ba2575";
+  "sha256:97f2053950ef7ff64d276a54aeb2b26c813dbefe5a60c4c57bf9336222f8f40c";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -4079,7 +4079,8 @@ HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, dead
     const current = await read().catch(() => null);
     if (!current || current.basisHash !== basisHash || current.inspection.state !== "current" ||
         canonicalAuthoringValue(current.inspection.report) !== canonicalAuthoringValue(report)) {
-      throw new AuthoringApiError(409, "course_write_uncertain", "Releia a inspeção e reconcilie a mesma referência antes de repetir.",
+      throw new AuthoringApiError(409, "course_write_uncertain",
+        "Repita registrar_inspecao com a mesma referência e o mesmo parecer: com recibo, ele devolve o parecer salvo sem reavaliar a base; sem recibo, a base é validada antes de registrar, e base alterada recusa sem gravar.",
         { requestId, targetCourseId: courseId, operation: "course_ai_inspection" });
     }
     saved = current;

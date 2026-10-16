@@ -183,6 +183,17 @@ function renderPackageInlineParsed(value) {
   return html + (state.inCode ? "</code>" : "");
 }
 
+// Grupo de retorno de uma prática. Sem retorno autoral devolve só o rótulo do
+// package, como antes; com retorno, reúne rótulo e prosa num item próprio, que a
+// regra escopada .has-authorial-returns alarga e empurra os controles para a linha
+// seguinte. A prosa do runtime já separa parágrafos consecutivos.
+export function renderPackageFeedbackGroup(label, returns) {
+  const labelHtml = label ? '<p class="tiny">' + renderPackageInline(label) + "</p>" : "";
+  return returns.length
+    ? '<div class="runtime-feedback-group">' + labelHtml + returns.map((text) => renderPackageProse(text)).join("") + "</div>"
+    : labelHtml;
+}
+
 export function renderPackageInlineReference(value) {
   return parsePackageManualTextSegments(value).map((segment) => {
     GAP_MARKER.lastIndex = 0;

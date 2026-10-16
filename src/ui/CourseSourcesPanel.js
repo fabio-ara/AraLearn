@@ -14,6 +14,7 @@ import { renderSourceOccurrenceForm, sourceOccurrenceFromSelection } from "./sou
 import {
   SOURCE_KIND_LABELS as SOURCE_KINDS,
   SOURCE_ROLE_LABELS as SOURCE_ROLES,
+  SOURCE_RELATION_LABELS as SOURCE_RELATIONS,
   BIBLIOGRAPHIC_FIELD_LABELS,
   createSourceBibliographyDraft as sourceDraft,
   captureSourceBibliographyDraft as sourceDraftFromForm,
@@ -68,16 +69,6 @@ const SELECTOR_KINDS = Object.freeze({
   time_range: "Intervalo de tempo",
   uri_fragment: "Trecho identificado",
   text_quote: "Trecho textual"
-});
-const SOURCE_RELATIONS = Object.freeze({
-  informed_by: "Informou a elaboração",
-  supported_by: "Sustenta o conteúdo",
-  adapted_from: "Conteúdo adaptado",
-  quoted_from: "Citação direta",
-  contrasted_with: "Contrasta com o conteúdo",
-  exemplified_by: "Exemplifica o conteúdo",
-  inspired_by: "Inspirou a elaboração",
-  needs_verification: "Precisa de verificação"
 });
 const SOURCE_OBSERVATION_KINDS = Object.freeze({
   note: { label: "Acrescentar nota", category: null },

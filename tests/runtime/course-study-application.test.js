@@ -517,6 +517,267 @@ test("atualização do curso renova a leitura de citações ainda pendente", asy
   } finally { app.destroy(); }
 });
 
+const revisionConflict = () => Object.assign(new Error("O curso mudou."),
+  { status: 409, code: "course_revision_changed" });
+
+function studyRootWithReader() {
+  const root = new FakeStudyRoot();
+  const query = root.querySelector.bind(root);
+  root.querySelector = selector => selector === ".study-reader-screen" && root.innerHTML.includes("study-reader-screen")
+    ? Object.assign(new FakeActionNode(), { querySelectorAll: () => [] }) : query(selector);
+  return root;
+}
+
+test("conflito de revisão nas fontes recarrega o Curso e relê uma única vez na mesma revisão", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const revised = project();
+  revised.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].data.text =
+    "Conteúdo da revisão nova.";
+  let revision = 1;
+  let reconciliations = 0;
+  let remainingConflicts = 1;
+  const reads = [];
+  const baseSummaries = repository.loadCourseSummaries();
+  repository.loadCourseSummaries = () => [{ ...baseSummaries[0], revision }];
+  repository.loadStudyUnitCitations = async reference => {
+    reads.push({ studyUnitId: reference.studyUnitId, revision });
+    if (remainingConflicts > 0) { remainingConflicts -= 1; throw revisionConflict(); }
+    return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "apa7",
+      courseRevision: revision, citations: [] };
+  };
+  repository.reconcileCourseRevision = async () => {
+    reconciliations += 1; revision = 2;
+    repository.loadProject = () => structuredClone(revised);
+    return revision;
+  };
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  try {
+    await openFirstStudyUnit(app);
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.equal(reconciliations, 1);
+    assert.deepEqual(reads, [{ studyUnitId: "unit-a", revision: 1 }, { studyUnitId: "unit-a", revision: 2 }]);
+    assert.match(root.innerHTML, /Conteúdo da revisão nova\./u);
+    assert.doesNotMatch(root.innerHTML, /Sincronize e reabra/u);
+  } finally { app.destroy(); }
+});
+
+test("conflito persistente de fontes não repete a recuperação nem apresenta fontes", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  let revision = 1;
+  let reconciliations = 0;
+  const reads = [];
+  const baseSummaries = repository.loadCourseSummaries();
+  repository.loadCourseSummaries = () => [{ ...baseSummaries[0], revision }];
+  repository.loadStudyUnitCitations = async reference => {
+    reads.push({ studyUnitId: reference.studyUnitId, revision });
+    throw revisionConflict();
+  };
+  repository.reconcileCourseRevision = async () => {
+    reconciliations += 1; revision = 2;
+    repository.loadProject = () => structuredClone(document);
+    return revision;
+  };
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  try {
+    await openFirstStudyUnit(app);
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.equal(reconciliations, 1);
+    assert.deepEqual(reads, [{ studyUnitId: "unit-a", revision: 1 }, { studyUnitId: "unit-a", revision: 2 }]);
+    // Sem sucesso aparente: nenhuma referência é apresentada, mas a entrada das fontes
+    // permanece para declarar o conflito persistente e oferecer a retentativa.
+    assert.match(root.innerHTML, /data-action="open-unit-sources"/u);
+    assert.doesNotMatch(root.innerHTML, /data-citation-reference-id/u);
+  } finally { app.destroy(); }
+});
+
+test("edição autoral em curso mantém o conflito de fontes explícito sem recarregar o Curso", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: 1, ownership: "owned", canEdit: true }];
+  repository.loadStudyUnitCompositionContext = reference => ({ courseId: reference.courseId,
+    courseRevision: 1, didacticMicrosequenceId: reference.microsequenceId,
+    studyUnitId: reference.studyUnitId, studyUnitVersion: 1 });
+  let reconciliations = 0;
+  let pendingRead = null;
+  repository.loadStudyUnitCitations = () => new Promise((resolve, reject) => {
+    pendingRead = { resolve, reject };
+  });
+  repository.reconcileCourseRevision = async () => { reconciliations += 1; return 2; };
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    onSaveManualEdit: async () => ({ courseId: COURSE_ID, courseRevision: 2, version: 2 }) });
+  try {
+    await openFirstStudyUnit(app);
+    assert.ok(pendingRead, "a leitura de citações precisa estar em curso");
+    assert.equal(app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), true);
+    pendingRead.reject(revisionConflict());
+    for (let turn = 0; turn < 4; turn += 1) await nextTurn();
+    assert.equal(reconciliations, 0);
+    assert.equal(app.hasPendingManualEdit(), true);
+    // Edição em curso mantém o padrão do leitor: a entrada das fontes volta quando a
+    // edição termina, e o conflito continua declarado no estado da leitura.
+    assert.doesNotMatch(root.innerHTML, /data-action="open-unit-sources"/u);
+    assert.doesNotMatch(root.innerHTML, /data-citation-reference-id/u);
+    root.click("study-manual-cancel");
+    assert.equal(app.hasPendingManualEdit(), false);
+    assert.match(root.innerHTML, /data-action="open-unit-sources"/u);
+  } finally { app.destroy(); }
+});
+
+// Corrida da revisão independente: a espera de `reconcileCourseRevision` não autoriza
+// aplicar leitura antiga. Os três casos usam promessa adiada para serem determinísticos.
+function deferredCourseRevision() {
+  const reconciled = project();
+  reconciled.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].data.text =
+    "Conteúdo reconciliado da unidade 1.";
+  let serverRevision = 2;
+  let appliedRevision = 1;
+  let reconciliations = 0;
+  let deferNext = true;
+  let release = null;
+  let projectMarker = null;
+  const reads = [];
+  return {
+    reconciled, reads,
+    get reconciliations() { return reconciliations; },
+    set serverRevision(value) { serverRevision = value; },
+    get appliedRevision() { return appliedRevision; },
+    set projectMarker(value) { projectMarker = value; },
+    release() { const value = release; release = null; value?.(); },
+    apply(repository) {
+      const baseSummaries = repository.loadCourseSummaries();
+      repository.loadCourseSummaries = () => [{ ...baseSummaries[0], revision: appliedRevision }];
+      repository.loadProject = () => {
+        const document = structuredClone(appliedRevision >= 2 ? reconciled : project());
+        if (projectMarker) {
+          document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].data.text = projectMarker;
+        }
+        return document;
+      };
+      repository.loadStudyUnitCitations = async reference => {
+        reads.push(reference.studyUnitId);
+        if (reference.studyUnitId === "unit-a" && appliedRevision !== serverRevision) throw revisionConflict();
+        return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "apa7",
+          courseRevision: serverRevision, citations: [] };
+      };
+      repository.reconcileCourseRevision = () => {
+        reconciliations += 1;
+        const settle = () => { appliedRevision = serverRevision; return serverRevision; };
+        if (!deferNext) return Promise.resolve(settle());
+        deferNext = false;
+        return new Promise(resolve => { release = () => resolve(settle()); });
+      };
+    }
+  };
+}
+
+test("navegação para outro alvo durante a conciliação não restaura a leitura antiga nem escreve o erro no alvo novo", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const pending = deferredCourseRevision();
+  pending.apply(repository);
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  try {
+    await openFirstStudyUnit(app);
+    assert.deepEqual(pending.reads, ["unit-a"]);
+    assert.equal(pending.reconciliations, 1);
+    // Navegação bem distinta durante a espera da reconciliação.
+    await app.openEntityPath([COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-b"]);
+    await nextTurn();
+    assert.deepEqual(pending.reads, ["unit-a", "unit-b"]);
+    pending.release();
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.match(root.innerHTML, /Conteúdo 2\./u);
+    assert.doesNotMatch(root.innerHTML, /Conteúdo reconciliado|open-unit-sources|Sincronize e reabra/u);
+    // O mesmo alvo ainda recupera uma vez: novo avanço do servidor ao voltar para a unidade.
+    pending.serverRevision = 3;
+    await app.openEntityPath([COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]);
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.deepEqual(pending.reads, ["unit-a", "unit-b", "unit-a", "unit-a"]);
+    assert.equal(pending.reconciliations, 2);
+    assert.match(root.innerHTML, /Conteúdo reconciliado da unidade 1\./u);
+    assert.doesNotMatch(root.innerHTML, /Sincronize e reabra/u);
+  } finally { app.destroy(); }
+});
+
+test("fechamento da aplicação durante a conciliação não renderiza nem aplica a revisão recarregada", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const pending = deferredCourseRevision();
+  pending.apply(repository);
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  await openFirstStudyUnit(app);
+  assert.equal(pending.reconciliations, 1);
+  const rendered = root.innerHTML;
+  app.destroy();
+  pending.release();
+  for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+  assert.deepEqual(pending.reads, ["unit-a"]);
+  assert.equal(root.innerHTML, rendered);
+  assert.doesNotMatch(root.innerHTML, /Conteúdo reconciliado/u);
+});
+
+test("edição iniciada durante a conciliação preserva o rascunho e não recarrega o Curso", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const pending = deferredCourseRevision();
+  pending.apply(repository);
+  repository.loadCourseSummaries = () => [{ courseId: COURSE_ID, revision: pending.appliedRevision,
+    ownership: "owned", canEdit: true }];
+  repository.loadStudyUnitCompositionContext = reference => ({ courseId: reference.courseId,
+    courseRevision: 1, didacticMicrosequenceId: reference.microsequenceId,
+    studyUnitId: reference.studyUnitId, studyUnitVersion: 1 });
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document,
+    onSaveManualEdit: async () => ({ courseId: COURSE_ID, courseRevision: 2, version: 2 }) });
+  try {
+    await openFirstStudyUnit(app);
+    assert.equal(pending.reconciliations, 1);
+    assert.equal(app.previewManualEdit({ targetId: "study_unit", pathValues: {} }), true);
+    pending.release();
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.deepEqual(pending.reads, ["unit-a"]);
+    assert.equal(app.hasPendingManualEdit(), true);
+    assert.doesNotMatch(root.innerHTML, /Conteúdo reconciliado/u);
+  } finally { app.destroy(); }
+});
+
+test("ida e volta ao mesmo alvo durante a conciliação não aplica estado antigo", async () => {
+  const document = project();
+  const repository = applicationRepository(document, async () => {});
+  const pending = deferredCourseRevision();
+  pending.apply(repository);
+  const root = studyRootWithReader();
+  const app = createCourseStudyApplication({ root, repository, initialProject: document, visitor: true });
+  try {
+    await openFirstStudyUnit(app);
+    assert.equal(pending.reconciliations, 1);
+    // A→B→A durante a espera: o caminho e a visão voltam a coincidir, a operação não.
+    await app.openEntityPath([COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-b"]);
+    await nextTurn();
+    await app.openEntityPath([COURSE_ID, "module-a", "lesson-a", "micro-a", "unit-a"]);
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.deepEqual(pending.reads, ["unit-a", "unit-b", "unit-a", "unit-a"]);
+    assert.equal(pending.reconciliations, 2);
+    assert.match(root.innerHTML, /Conteúdo reconciliado da unidade 1\./u);
+    // O repositório passa a devolver outro projeto: a conciliação antiga não pode aplicá-lo.
+    pending.projectMarker = "Projeto reaplicado por conciliação antiga.";
+    pending.release();
+    for (let turn = 0; turn < 8; turn += 1) await nextTurn();
+    assert.doesNotMatch(root.innerHTML, /Projeto reaplicado por conciliação antiga/u);
+    assert.match(root.innerHTML, /Conteúdo reconciliado da unidade 1\./u);
+    assert.deepEqual(pending.reads, ["unit-a", "unit-b", "unit-a", "unit-a"]);
+    assert.equal(pending.reconciliations, 2);
+    assert.doesNotMatch(root.innerHTML, /Sincronize e reabra/u);
+  } finally { app.destroy(); }
+});
+
 test("rascunho anterior sem destino comprovado fica visível até descarte explícito", async () => {
   const document = project();
   const repository = applicationRepository(document, async () => {});

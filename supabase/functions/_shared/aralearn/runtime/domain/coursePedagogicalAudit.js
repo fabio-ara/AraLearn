@@ -2,6 +2,7 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { inspectBpmnSemantics } from "../resources/packages/bpmn-process/semantics.js";
 import { inspectCourseAudioReadiness } from "./courseMedia.js";
 import { CONTEXTUAL_STUDY_TOOLS } from "../resources/studySupport.js";
+import { responseAuthoredFeedback, responseFeedbackStates } from "../resources/sdk/responseFeedback.js";
 
 const LEGACY_PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([
   "alignment", "evidence", "representation", "feedback", "sufficiency"
@@ -89,11 +90,15 @@ function projectedResponse(response) {
   return accessible ? [accessible] : [];
 }
 
-// Retorno por alternativa: visível no render e ausente da projeção acessível de
-// choice; vem do contrato existente (options[].feedback).
+// Retorno autoral declarado na própria prática, com escopo e condição de exibição.
+// A lista vem da mesma fonte que o renderer usa: o material apresentado e o juízo
+// de feedback não divergem do que o estudante pode ler.
+function authoredResponseFeedback(response) {
+  return responseAuthoredFeedback(response?.package, plain(response?.data) ? response.data : {});
+}
+
 function responseReturns(response) {
-  const options = plain(response?.data) && Array.isArray(response.data.options) ? response.data.options : [];
-  return options.flatMap(option => (typeof option?.feedback === "string" && option.feedback.trim() ? [option.feedback] : []));
+  return [...new Set(authoredResponseFeedback(response).map(({ text }) => text))];
 }
 
 // Resposta apresentada: pergunta e itens pela projeção acessível do pacote mais
@@ -182,7 +187,7 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
     }
   });
   const data = response?.data ?? {};
-  const feedbackTexts = [...feedback, ...(data.options ?? []).map(option => option.feedback).filter(value => typeof value === "string")];
+  const feedbackTexts = [...feedback, ...authoredResponseFeedback(response).map(({ text }) => text)];
   const operationTexts = practices.map(practice => practice.invariantTaskOperation).filter(Boolean);
   const requiresExplanatoryFeedback = operationTexts.some(explanatoryOperation);
   const optionFeedback = (data.options ?? []).map(option => option.feedback).filter(value => typeof value === "string");
@@ -240,6 +245,11 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
       expected: (data.answerIds ?? []).includes(option.id), feedback: option.feedback ?? "" })),
     targets, studentContent, feedback, operation: operationTexts,
     feedbackAssessment: { requiresExplanatoryFeedback, genericOptionFeedback, onlyGenericFeedback },
+    // Retorno visível por estado da prática, distinguindo o texto autoral do
+    // rótulo padrão do package. É o mesmo conteúdo que o renderer exibe. Só entra
+    // quando há prática: a leitura humana da auditoria tem orçamento de página e a
+    // unidade de teoria não tem retorno de resposta.
+    ...(response ? { feedbackStates: responseFeedbackStates(response.package, data) } : {}),
     content: (content?.content ?? []).map(instance => text(instance, "content")).filter(Boolean),
     // Início efetivo do alvo: a abertura que o aluno lê primeiro, para confrontar
     // continuidade com o contexto que só existe na Explicação compartilhada.
@@ -286,7 +296,7 @@ export function projectPedagogicalAudit(basis) {
     ...basis.studyUnits.filter(unit => basis.targetKind === "microsequence_explanation" || unit.id === basis.targetId)
       .flatMap(unit => representationIssues(unit.content, "study_unit", unit.id))
   ];
-  return { basis, units, percurso, representationIssues: representations, instruction: "Faça uma segunda leitura crítica do percurso salvo. Compare objetivo, Explicação, operação exigida, evidência esperada, resposta efetivamente recolhida e feedback. Julgue alinhamento, evidência, representação, feedback e suficiência; cite passagens reais. Examine a combinação das lacunas, os distratores e o conjunto de alternativas corretas. Procure atalhos óbvios, repetições mecânicas, explicação rasa ou quantidade artificialmente mínima. No feedback, verifique se cada trecho ajuda a compreender a resposta ou superar o erro; a extensão deve servir à necessidade, sem repetir a Explicação inteira nem acrescentar títulos internos dispensáveis. Considere também o feedback específico das alternativas. Uma alternativa ou lacuna não é insuficiente por contagem: demonstre qual relação necessária foi perdida. " +
+  return { basis, units, percurso, representationIssues: representations, instruction: "Faça uma segunda leitura crítica do percurso salvo. Compare objetivo, Explicação, operação exigida, evidência esperada, resposta efetivamente recolhida e feedback. Julgue alinhamento, evidência, representação, feedback e suficiência; cite passagens reais. Examine a combinação das lacunas, os distratores e o conjunto de alternativas corretas. Procure atalhos óbvios, repetições mecânicas, explicação rasa ou quantidade artificialmente mínima. Em feedbackStates, cada estado traz o retorno e sua origem: author é texto declarado na decisão, com escopo e condição, e default é o rótulo do package. Julgue se o retorno do erro explica o erro plausível, sem repetir a Explicação inteira nem acrescentar títulos internos dispensáveis; a condição não afirma o que o estudante viu e texto presente não demonstra adequação. Uma alternativa ou lacuna não é insuficiente por contagem: demonstre qual relação necessária foi perdida. " +
     "Na inspeção da Explicação, evidence e feedback avaliam as práticas, respostas e retornos das unidades da microssequência presentes na base. Para configuration, confronte seus parâmetros aplicados com a realização nessas unidades. Julgue a aplicabilidade desses critérios por esse conjunto; conteúdo expositivo e referências bibliográficas não substituem esse confronto. " +
     "Em citations, confronte as ocorrências locais com as passagens das âncoras selecionadas, considerando a relação declarada em cada vínculo. A pertinência geral da obra não demonstra suporte a uma afirmação que o vínculo declara sustentar ou citar. Não cruze âncoras de fontes diferentes nem presuma pareamento por posição quando há várias ocorrências. Se a âncora só indicar uma página, confira a passagem no destino ou registre que falta verificação; fonte existente não é fonte ausente. Divergência ou suporte declarado mas não demonstrado devem constar no parecer e impedir declarar consistência. " +
     "Em configuration, confronte os parâmetros pedagógicos aplicados em design com sua realização observável no alvo e no percurso pertinente: formas de explicação, oportunidades, variação e posição da prática. Cite conteúdo/ordem e distinga valor aplicado de realização. Preferência automática é contextual: justifique sua realização ou limite sem forçar alternância, formatos ou prática extra. Fixações e condições de pesquisa devem ser preservadas. Divergência ou realização relevante não demonstrada exige insufficient; pode demandar reconciliar declaração, calibrar o automático com justificativa ou corrigir conteúdo, sem alterar fixações. not_applicable só cabe quando não há parâmetro pedagógico observável aplicável, nunca por falta de evidência; conversa e cadência fora do alvo não são critérios sobre seu conteúdo. Uma tentativa anterior à explicação pode investigar um alvo ainda não ensinado: examine pré-requisitos e ensino posterior, sem contá-la como ensino. Seis juízos registrados não certificam sua correção nem aprendizagem. " +

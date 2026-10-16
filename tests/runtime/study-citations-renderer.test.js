@@ -111,3 +111,29 @@ test("web oferece locais diretos e conserva a página original com orientação 
   assert.match(html, /Se o trecho não abrir automaticamente, use a localização indicada na página original/u);
   assert.doesNotMatch(html, /download-citation-attachment|destaque confirmado|snapshot/iu);
 });
+
+test("o painel declara o papel do vínculo no vocabulário da autoria, sem sugerir verificação", () => {
+  const informed = render(citation({ relation: "informed_by", roles: ["technical_conceptual"] }));
+  assert.match(informed, /data-citation-relation="informed_by">Papel declarado: Informou a elaboração</u);
+  // Pertinência temática (papel/escala da fonte) não é sustentação direta desta afirmação.
+  assert.doesNotMatch(informed, /Sustentação do conteúdo|Leitura complementar|Escopo do estudo/u);
+  assert.match(render(citation({ relation: "contrasted_with" })),
+    /data-citation-relation="contrasted_with">Papel declarado: Contrasta com o conteúdo</u);
+  assert.match(render(citation({ relation: "supported_by" })),
+    /data-citation-relation="supported_by">Papel declarado: Sustenta o conteúdo</u);
+  const pending = render(citation({ relation: "needs_verification" }));
+  assert.match(pending, /O uso desta fonte ainda precisa ser verificado\./u);
+  assert.doesNotMatch(pending, /data-citation-relation|Precisa de verificação/u);
+});
+
+test("o retorno ao trecho numera as passagens na ordem de leitura, não na ordem recebida", () => {
+  const source = citation({ occurrences: [
+    occurrence({ occurrenceId: "later", prefix: "Outro ", suffix: " transporta" }),
+    occurrence({ occurrenceId: "earlier", prefix: "Um ", suffix: " liga" })
+  ] });
+  const html = render(source);
+  assert.match(html, /data-citation-occurrence-id="earlier"[^>]*aria-label="Voltar ao trecho 1 da referência 1 na explicação"/u);
+  assert.match(html, /data-citation-occurrence-id="later"[^>]*aria-label="Voltar ao trecho 2 da referência 1 na explicação"/u);
+  assert.equal((html.match(/data-action="return-citation"/gu) || []).length, 2);
+  assert.equal(studyCitationMarkers(content, { citations: [source] }).length, 2);
+});

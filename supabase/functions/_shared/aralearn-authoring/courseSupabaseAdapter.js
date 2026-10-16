@@ -656,6 +656,15 @@ function databaseError(status, body, { administrative = false } = {}) {
       "Esta revisão da Fonte já possui o máximo de oito PDFs."
     );
   }
+  if (code === "23514" && databaseMessage.startsWith("Identidade de inspeção incompatível")) {
+    // A tentativa de inspeção já está vinculada ao parecer original: repetir com
+    // outro parecer não é entrada inválida, é conflito de identidade.
+    return new AuthoringApiError(
+      409,
+      "course_ai_inspection_identity_conflict",
+      "Esta tentativa de inspeção pertence ao parecer original. Repita com a mesma referência e o mesmo parecer."
+    );
+  }
   if (code === "23514" && databaseMessage.startsWith("requestId reutilizado")) {
     return new AuthoringApiError(
       409,

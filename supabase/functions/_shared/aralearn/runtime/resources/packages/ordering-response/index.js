@@ -1,10 +1,12 @@
 import { reconcilePackageTextAnswers } from "../../sdk/reconcileTextAnswers.js";
 import { orderingResponseInteraction } from "./interaction.js";
 import { academicProfile } from "../../sdk/academic.js";
+import { responseFeedbackMessages } from "../../sdk/responseFeedback.js";
 import {
   createPackageGapMarker,
   escapePackageAttribute,
-  renderPackageActionIcon
+  renderPackageActionIcon,
+  renderPackageFeedbackGroup
 } from "../../sdk/html.js";
 
 function normalizedAnswer(value) {
@@ -109,13 +111,30 @@ function normalizedOrder(data, responseState) {
   return [...ids.slice(1), ids[0]];
 }
 
-function feedbackHtml(blockKey, feedback) {
+// Retorno do estado: texto padrão do package e retorno autoral declarado nos
+// itens ordenados. A fonte é compartilhada com a auditoria pedagógica.
+// Itens fora da posição esperada nesta tentativa. Sem a ordem efetiva da tentativa,
+// nenhum retorno é presumido.
+function misplacedTargetIds(data, state) {
+  const order = Array.isArray(state?.order) ? state.order : null;
+  if (!order) return [];
+  const expected = data.targets.map(({ id }) => String(id));
+  return expected.filter((id) => order.indexOf(id) !== expected.indexOf(id));
+}
+
+// Retorno do estado: rótulo do package e retorno autoral do item fora da posição.
+// Com retorno, vale a variante escopada; sem retorno, o markup anterior permanece.
+function feedbackHtml(blockKey, feedback, data, outcome) {
   if (!feedback) return "";
+  const state = feedback === "correct" ? "correct" : "wrong";
   const key = escapePackageAttribute(blockKey);
-  if (feedback === "correct") {
-    return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
-  }
-  return `<div class="inline-feedback err has-actions"><p class="tiny">A ordem ainda não está correta.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="ordering-view-answer" data-response-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="ordering-try-again" data-response-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
+  const messages = responseFeedbackMessages("aralearn.response.ordering", data, state, outcome);
+  const returns = messages.filter(({ origin }) => origin === "author").map(({ text }) => text);
+  const group = renderPackageFeedbackGroup((messages.find(({ origin }) => origin === "default") || {}).text || "", returns);
+  const variant = returns.length ? " has-authorial-returns" : "";
+  if (state === "correct") return '<div class="inline-feedback ok' + variant + '">' + group + "</div>";
+  return '<div class="inline-feedback err has-actions' + variant + '">' + group +
+    '<div class="feedback-icons"><button class="icon-pill" type="button" data-action="ordering-view-answer" data-response-block-key="' + key + '" title="Ver resposta" aria-label="Ver resposta">' + renderPackageActionIcon("answer") + '</button><button class="icon-pill primary" type="button" data-action="ordering-try-again" data-response-block-key="' + key + '" title="Tentar de novo" aria-label="Tentar de novo">' + renderPackageActionIcon("retry") + "</button></div></div>";
 }
 
 function groupedTargets(data, instanceId) {
@@ -227,7 +246,8 @@ export const orderingResponsePackage = Object.freeze({
       "Use um sufixo de ocorrência em targetPath quando mais de uma expressão pertence ao mesmo campo.",
       "Liste os alvos na ordem correta em que os campos e ocorrências são lidos.",
       "Use somente expressões de texto plano, fora e afastadas de delimitadores Markdown.",
-      "Use somente campos cujo practiceTargets declare ordering."
+      "Use somente campos cujo practiceTargets declare ordering.",
+      "targets[].feedback é opcional: explica aquele item e aparece somente quando ele fica fora da posição esperada."
     ]),
     example: Object.freeze({
       targets: [
@@ -253,7 +273,8 @@ export const orderingResponsePackage = Object.freeze({
             id: { type: "string", minLength: 1 },
             targetInstanceId: { type: "string", minLength: 1 },
             targetPath: { type: "string", minLength: 1 },
-            answer: { type: "string", minLength: 1 }
+            answer: { type: "string", minLength: 1 },
+            feedback: { type: "string", minLength: 1 }
           }
         }
       }
@@ -265,7 +286,8 @@ export const orderingResponsePackage = Object.freeze({
         id: String(target?.id || "").trim(),
         targetInstanceId: String(target?.targetInstanceId || "").trim(),
         targetPath: String(target?.targetPath || "").trim(),
-        answer: String(target?.answer || "").normalize("NFC").trim()
+        answer: String(target?.answer || "").normalize("NFC").trim(),
+        ...(target?.feedback ? { feedback: String(target.feedback).trim() } : {})
       }))
     };
   },
@@ -404,7 +426,7 @@ export const orderingResponsePackage = Object.freeze({
     return data;
   },
   render(data, options = {}) {
-    const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback);
+    const feedback = feedbackHtml(options.blockKey, options.responseState?.feedback, data, { wrongIds: misplacedTargetIds(data, options.responseState) });
     if (Array.isArray(options.dockExerciseParts)) {
       if (feedback) options.dockExerciseParts.push(feedback);
       return "";
@@ -414,8 +436,10 @@ export const orderingResponsePackage = Object.freeze({
   accessibleText() {
     return "Ordene as expressões nos campos indicados.";
   },
-  editableTargets() {
-    return [];
+  editableTargets(data) {
+    return data.targets.flatMap((target, index) => (
+      target.feedback ? [{ path: `targets[${index}].feedback`, label: `Retorno do erro ${index + 1}` }] : []
+    ));
   },
   evaluate(data, answer) {
     const expectedOrder = data.targets.map(({ id }) => id);

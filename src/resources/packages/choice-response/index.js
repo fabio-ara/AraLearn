@@ -8,6 +8,7 @@ import {
 } from "../../sdk/html.js";
 import { shuffleExerciseOptions } from "../../../core/exerciseOptions.js";
 import { academicProfile } from "../../sdk/academic.js";
+import { responseDefaultFeedback } from "../../sdk/responseFeedback.js";
 
 function optionValue(option) {
   return option.kind === "code" ? `${option.language}:${option.code}` : option.text;
@@ -22,10 +23,14 @@ function instruction(data) {
 
 function responseFeedback(blockKey, feedback) {
   if (!feedback) return "";
-  if (feedback === "correct") return '<div class="inline-feedback ok"><p class="tiny">Correto.</p></div>';
-  if (feedback === "incomplete") return '<div class="inline-feedback warn" role="alert" aria-live="assertive"><p class="tiny">Selecione pelo menos uma resposta.</p></div>';
+  // O retorno por alternativa aparece na própria alternativa; aqui fica o rótulo
+  // do estado, vindo da fonte compartilhada com a auditoria pedagógica.
+  const state = feedback === "correct" || feedback === "incomplete" ? feedback : "wrong";
+  const message = responseDefaultFeedback("aralearn.response.choice", state);
+  if (state === "correct") return `<div class="inline-feedback ok"><p class="tiny">${message}</p></div>`;
+  if (state === "incomplete") return `<div class="inline-feedback warn" role="alert" aria-live="assertive"><p class="tiny">${message}</p></div>`;
   const key = escapePackageAttribute(blockKey);
-  return `<div class="inline-feedback err has-actions"><p class="tiny">As respostas marcadas não correspondem ao conjunto esperado.</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
+  return `<div class="inline-feedback err has-actions"><p class="tiny">${message}</p><div class="feedback-icons"><button class="icon-pill" type="button" data-action="choice-view-answer" data-choice-block-key="${key}" title="Ver resposta" aria-label="Ver resposta">${renderPackageActionIcon("answer")}</button><button class="icon-pill primary" type="button" data-action="choice-try-again" data-choice-block-key="${key}" title="Tentar de novo" aria-label="Tentar de novo">${renderPackageActionIcon("retry")}</button></div></div>`;
 }
 
 export const choiceResponsePackage = Object.freeze({
@@ -48,7 +53,7 @@ export const choiceResponsePackage = Object.freeze({
   authoringContract: Object.freeze({
     intent: "Declare a pergunta, o modo de seleção, alternativas semanticamente distintas e o conjunto correto.",
     required: Object.freeze(["question", "selectionMode", "selectionCriterion", "options", "answerIds"]), optional: Object.freeze([]),
-    rules: Object.freeze(["A pergunta aparece somente aqui; não a repita em um paragraph de content.", "Distratores representam erros plausíveis.", "Multiple avalia o conjunto exato.", "Best só usa seleção single."]),
+    rules: Object.freeze(["A pergunta aparece somente aqui; não a repita em um paragraph de content.", "Distratores representam erros plausíveis.", "Multiple avalia o conjunto exato.", "Best só usa seleção single.", "options[].feedback aparece quando a alternativa é marcada, no acerto e no erro."]),
     example: Object.freeze({ question: "Uma aplicação usa TCP para transferir um arquivo. Quais propriedades o transporte fornece?", selectionMode: "multiple", selectionCriterion: "correct", options: [
       { id: "order", text: "Entrega dos bytes em ordem.", feedback: "Os números de sequência permitem remontar o fluxo na ordem." },
       { id: "recovery", text: "Recuperação de segmentos perdidos.", feedback: "Confirmações e retransmissões permitem recuperar perdas enquanto a conexão funciona." },

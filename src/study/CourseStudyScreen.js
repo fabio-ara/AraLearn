@@ -1,5 +1,6 @@
 import {
   getPackageStudyUnitFeedbackEntry,
+  getPackageStudyUnitResponseEntry,
   renderPackageStudyUnitBlocksWithDock,
   renderPackageStudyUnitFeedback
 } from "../render/renderPackageStudyUnit.js";
@@ -14,6 +15,17 @@ import {
 import { renderStudySourceMarkers, studyCitationMarkers } from "./studyCitations.js";
 import { collectLessonStudyUnits } from "./CourseStudyNavigation.js";
 import { renderStudyToolActions } from "./studyTools.js";
+
+// Ação real do avanço quando a unidade tem prática: o pacote marca o estado da tentativa
+// (`feedback`: ausente, "incomplete", "wrong" ou "correct") e só "correct" representa
+// tentativa concluída — acerto ou resposta revelada. Qualquer outro estado faz o clique
+// conferir a resposta antes de qualquer comentário autoral.
+function practiceAttemptPending(studyUnit, packageStudyUnitOptions = {}) {
+  const entry = getPackageStudyUnitResponseEntry(studyUnit,
+    String(packageStudyUnitOptions.blockKeyPrefix || "runtime-study-unit"));
+  if (!entry) return false;
+  return packageStudyUnitOptions.responseStateByBlockKey?.[entry.blockKey]?.feedback !== "correct";
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -601,6 +613,7 @@ function renderStudyUnit({
   markedForReview,
   runtimeStatus,
   citations,
+  citationsError = "",
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   const units = microsequence.studyUnits || [];
@@ -625,9 +638,13 @@ function renderStudyUnit({
     ...packageStudyUnitOptions
   });
   const feedbackEntry = getPackageStudyUnitFeedbackEntry(studyUnit);
-  const nextActionLabel = feedbackEntry && !feedbackOpen
-    ? "Ver comentário da unidade"
-    : "Próxima unidade de estudo";
+  // Uma pendência de prática confere a resposta mesmo com comentário autoral disponível;
+  // concluída a tentativa, a próxima ação real abre o comentário ou avança.
+  const nextActionLabel = practiceAttemptPending(studyUnit, packageStudyUnitOptions)
+    ? "Conferir resposta"
+    : feedbackEntry && !feedbackOpen
+      ? "Ver comentário da unidade"
+      : "Próxima unidade de estudo";
   const feedback = feedbackOpen && feedbackEntry
     ? renderPackageStudyUnitFeedback(feedbackEntry, {
         studyUnit,
@@ -665,7 +682,10 @@ function renderStudyUnit({
     '"><div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
     escapeHtml(microsequence.title || lesson.title || "Unidade de estudo") + "</span>" +
-    (citations?.citations?.length && !manualEditor.editing && !assistanceSelection
+    // A entrada icon-only das fontes permanece acessível quando a leitura falhou: o
+    // painel declara o conflito e oferece a retentativa, em vez de parecer ausência de
+    // fontes (issue 462, recuperação limitada de leitura).
+    ((citations?.citations?.length || citationsError) && !manualEditor.editing && !assistanceSelection
       ? '<button class="icon-ghost study-unit-sources" type="button" data-action="open-unit-sources"' +
         ' aria-label="Fontes da unidade" title="Fontes da unidade" aria-haspopup="dialog" aria-expanded="false">' +
         renderUiIcon("book-text", "home-tab-icon") + "</button>"
@@ -758,6 +778,7 @@ export function renderCourseStudyScreen({
   observationCount = 0,
   markedForReview = false,
   citations = null,
+  citationsError = "",
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } },
   assistance = { enabled: false, activeScope: "", draft: null, saving: false, error: "" },
   structuralEditor = { enabled: false, editing: false, saving: false }
@@ -810,7 +831,8 @@ export function renderCourseStudyScreen({
     visitor,
     markedForReview,
     runtimeStatus,
-      citations,
+    citations,
+    citationsError,
     manualEditor
   });
 }

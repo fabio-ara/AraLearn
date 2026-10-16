@@ -21,6 +21,12 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261016022810 — retorno autoral de erro nas práticas
+
+A [migração](../supabase/migrations/20261016022810_practice_error_feedback_catalog.sql), criada com `supabase migration new`, atualiza a impressão do catálogo de componentes para os campos opcionais `blanks[].feedback` e `targets[].feedback`. A versão do catálogo permanece a mesma: as políticas de componentes, os dados dos cursos e as inspeções existentes não são transformados. O manifesto avança para `20261016022810`, preservando a lista de capacidades e a correspondência entre a revisão exigida pelo cliente e a última migração do ensaio de restauração.
+
+O leitor apresenta o retorno apenas para a lacuna avaliada como incorreta, incluindo os equivalentes aceitos, ou para o item fora de posição. O contrato de autoria e a observação pedagógica descrevem essas condições. A migração e o runtime devem ser promovidos no mesmo corte, porque o cliente confere a impressão do catálogo. Antes da aplicação hospedada, manter backup verificável, ensaiar a restauração e conferir a preservação dos dados; a mudança não autoriza editar cursos para preencher os campos opcionais.
+
 ## 20261015021933 — declaração de aplicações em várias microssequências
 
 O arquivo foi criado pelo `supabase migration new` (CLI v2.120.0).
