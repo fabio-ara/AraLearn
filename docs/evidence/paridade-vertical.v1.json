@@ -211,7 +211,9 @@
         ],
         "database": [
           "function:private.course_pedagogical_basis_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
-          "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)"
+          "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)",
+          "function:private.build_course_instructional_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_compact boolean)",
+          "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)"
         ]
       },
       "ui": [
@@ -619,6 +621,11 @@
           "^function:private\\.(?:course_target_citations_payload_v1|valid_course_composition_source_applications_v1)\\(.*\\)$",
           "^function:public\\.(?:get_course_explanation_citations_v1)\\(.*\\)$",
           "^function:private\\.(?:execute_course_source_command_without_interventions_v1)\\(.*\\)$"
+        ],
+        "database": [
+          "function:private.course_source_anchor_bytes_limit_v1()",
+          "function:private.course_source_anchor_bytes_v1(p_course_id uuid, p_anchor_id text, p_source_id text, p_source_revision bigint, p_selector jsonb, p_content_hash text, p_human_locator text, p_verification_excerpt text)",
+          "function:private.course_source_anchor_count_limit_v1()"
         ]
       },
       "ui": [
