@@ -5,6 +5,7 @@ import {
   paginateHumanReadContext
 } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { resolveCitation, resolveUnit } from "../support/auditProjection.js";
 import { shareHumanAuditContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js";
 import { projectPedagogicalAudit } from "../../src/domain/coursePedagogicalAudit.js";
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
@@ -68,8 +69,7 @@ function resolveAuditUnits(context, audit) {
   return audit.unidadesParaConfronto.map(position => {
     const unit = focus.unidadesParaConfronto[position - 1];
     assert.ok(unit, "posição resolvida no mesmo foco e página lógica");
-    const { declarado, tarefaApresentada, ...rest } = unit.observation;
-    return { ...unit, observation: { ...rest, ...declarado, ...tarefaApresentada } };
+    return resolveUnit(unit);
   });
 }
 
@@ -83,7 +83,7 @@ function resolveAuditBasis(context, audit) {
     resolved.basis.citations = audit.citacoesDoFoco.map(position => {
       const citation = focus.citacoes[position - 1];
       assert.ok(citation, "posição de citação resolvida no mesmo foco e página lógica");
-      return citation;
+      return resolveCitation(citation, focus);
     });
   }
   return resolved;
@@ -807,17 +807,28 @@ test("revisão de unidade conserva base, citações associadas e orientação, f
     studyUnits: units.map(unit => ({ id: unit.studyUnit.id, content: unit.studyUnit })), citations
   } });
   const response = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE, auditoria: true });
-  const context = response.value.context;
-  const targetAudit = context.studyUnits[0].auditoriaPedagogica;
-  assert.equal(context.auditoriasPedagogicas.length, 1);
-  const shared = context.auditoriasPedagogicas.find(item => item.foco === targetAudit.foco);
+  let contexto = response.value.context;
+  if (contexto.fragmento) {
+    let literal = contexto.fragmento.texto;
+    let cursor = contexto.continuacao;
+    while (cursor) {
+      const proximo = await channelCall('mcp', adapter, 'preparar_revisao', { curso: TITLE, auditoria: true, continuacao: cursor });
+      const bloco = proximo.value.context;
+      if (bloco.fragmento) { literal += bloco.fragmento.texto; cursor = bloco.continuacao; }
+      else { literal += JSON.stringify(bloco); cursor = null; }
+    }
+    contexto = JSON.parse(literal);
+  }
+  const targetAudit = contexto.studyUnits[0].auditoriaPedagogica;
+  assert.equal(contexto.auditoriasPedagogicas.length, 1);
+  const shared = contexto.auditoriasPedagogicas.find(item => item.foco === targetAudit.foco);
   const audit = { ...targetAudit, instruction: shared.instruction, basis: { ...shared.basis, ...targetAudit.basis } };
   if (Object.hasOwn(targetAudit, "citacoesDoFoco")) audit.basis.citations = targetAudit.citacoesDoFoco
-    .map(position => shared.citacoes[position - 1]);
+    .map(position => resolveCitation(shared.citacoes[position - 1], shared));
   assert.equal(audit.basis.microsequence.goal, "Relacionar conjuntos e estados");
   assert.equal(audit.basis.dependencies[0].title, "Pré-requisito");
   assert.equal(audit.basis.studyUnits.length, 2, "o restante do percurso continua na base");
-  assert.deepEqual(resolveAuditUnits(context, audit).map(unit => unit.observation.title), ["Unidade 1"]);
+  assert.deepEqual(resolveAuditUnits(contexto, audit).map(unit => unit.observation.title), ["Unidade 1"]);
   assert.match(audit.instruction, /leitura crítica/u);
   assert.deepEqual(audit.basis.citations.map(citation => [citation.targetKind, citation.targetTitle]),
     [["study_unit", "Unidade 1"], ["microsequence_explanation", "Explicação"]]);
@@ -1437,7 +1448,7 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
           if (target.designSnapshot) assert.deepEqual(resolve(target.designSnapshot.parameters), completeParameters(parameters));
           assert.equal(target.referenciaInspecao, await createContentReviewReference({ principal: PRINCIPAL, read: canonical }));
           const citationsDoFoco = target.auditoriaPedagogica.citacoesDoFoco
-            .map(position => focus.citacoes[position - 1]);
+            .map(position => resolveCitation(focus.citacoes[position - 1], focus));
           assert.equal(citationsDoFoco[0].links[0].source.url, `https://example.test/${ref.targetId}`);
           assert.equal(citationsDoFoco[0].links[0].anchors[0].selector.exact, `Passagem de ${ref.targetId}.`);
           const expected = projectPedagogicalAudit(basis).units

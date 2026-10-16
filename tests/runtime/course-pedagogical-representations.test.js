@@ -5,6 +5,7 @@ import { inspectPedagogicalEvidence, projectPedagogicalAudit, requirePedagogical
 import { inspectBpmnSemantics } from "../../src/resources/packages/bpmn-process/semantics.js";
 import { shareHumanAuditContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js";
 import { bpmnInstance } from "../helpers/bpmnFixture.js";
+import { resolveCitation, resolveUnit } from "../support/auditProjection.js";
 
 function basis(targetKind = "study_unit") {
   const content = id => ({ id, title: `Unidade ${id}`, position: 1, role: "theory", topics: [],
@@ -94,12 +95,8 @@ test("compartilhamento conserva base integral e diagnósticos específicos de ca
     const local = projected[key][0].auditoriaPedagogica;
     const { foco, unidadesParaConfronto, citacoesDoFoco, ...resolved } = { ...local, instruction: shared.instruction, basis: { ...shared.basis, ...local.basis } };
     if (citacoesDoFoco) resolved.basis = { ...resolved.basis,
-      citations: citacoesDoFoco.map(position => shared.citacoes[position - 1]) };
-    resolved.units = unidadesParaConfronto.map(position => {
-      const { observation, ...unit } = shared.unidadesParaConfronto[position - 1];
-      const { declarado, tarefaApresentada, ...rest } = observation;
-      return { ...unit, observation: { ...rest, ...declarado, ...tarefaApresentada } };
-    });
+      citations: citacoesDoFoco.map(position => resolveCitation(shared.citacoes[position - 1], shared)) };
+    resolved.units = unidadesParaConfronto.map(position => resolveUnit(shared.unidadesParaConfronto[position - 1]));
     assert.equal(foco, shared.foco);
     assert.deepEqual(resolved, expected);
   }
