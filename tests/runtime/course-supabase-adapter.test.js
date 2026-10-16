@@ -2282,6 +2282,59 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
   );
 });
 
+test("comando de Fontes traduz a recusa de capacidade e de orçamento de Âncoras", async () => {
+  const command = {
+    type: "save_anchor",
+    anchorId: "anchor-capacity",
+    sourceId: "source-a",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 1, endPage: 1 },
+    contentHash: null,
+    humanLocator: "Página 1",
+    verificationExcerpt: null
+  };
+  // As respostas e as mensagens abaixo são as do produtor real (23514). O
+  // PostgREST devolve a classe 23 com HTTP 400; o mapeamento de domínio precisa
+  // olhar o código e a mensagem, não o transporte.
+  const cases = [
+    {
+      message: "Esta revisão de Fonte já usa 64 identidades de Âncora, o máximo aceito. Reaproveite as âncoras existentes: revisar um localizador já usado não consome capacidade e nenhuma âncora precisa ser removida.",
+      expected: { status: 409, code: "course_source_anchor_capacity_reached" }
+    },
+    {
+      message: "As âncoras desta revisão de Fonte somam mais de 128 KiB, o orçamento aceito. Revise os trechos de conferência redundantes; a localização das âncoras já usadas permanece.",
+      expected: { status: 413, code: "course_source_anchor_budget_exceeded" }
+    }
+  ];
+  for (const current of cases) {
+    const calls = [];
+    const value = adapter(async (url, init) => {
+      calls.push({ url, method: init.method, body: JSON.parse(init.body) });
+      return json({ code: "23514", message: current.message }, 400);
+    });
+    await assert.rejects(
+      () => value.executeCourseSourceCommand({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        requestId: "request-source-anchor-1",
+        expectedCourseRevision: 5,
+        command
+      }),
+      (error) => error.status === current.expected.status &&
+        error.code === current.expected.code &&
+        error.message === current.message
+    );
+    assert.doesNotMatch(current.message, /divida a Fonte|duplicar a Fonte|duplicar o PDF|recicle/iu);
+    assert.equal(calls.length, 1, "a escrita recusada não é repetida");
+    assert.equal(calls[0].method, "POST");
+    assert.match(calls[0].url, /\/rest\/v1\/rpc\/execute_course_source_command_for_actor_v1$/u);
+    assert.equal(calls[0].body.p_channel, "application");
+    assert.equal(calls[0].body.p_request_id, "request-source-anchor-1");
+    assert.deepEqual(calls[0].body.p_command, command);
+  }
+});
+
 test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bibliográficas", async () => {
   const pdfBytes = syntheticPdf("save-new");
   const contentHash = createHash("sha256").update(pdfBytes).digest("hex");
