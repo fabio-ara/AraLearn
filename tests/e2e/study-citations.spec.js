@@ -22,10 +22,28 @@ function projection() {
     }), citation("ambiguous", { title: "Referência do trecho anterior", occurrences: [{ occurrenceId: "old-where", slot: "content", resourceId: "missing", path: "text", quote: "Trecho anteriormente presente.", prefix: null, suffix: null, status: "needs_review" }] })] };
 }
 
-async function mount(page, { defer = false, owned = false, repeated = false } = {}) {
+// Duas passagens do mesmo recurso, declaradas na ordem inversa da leitura, reproduzem
+// o caso real em que o servidor devolve [segundo, primeiro].
+function orderedCitation() {
+  return citation("ordered", {
+    title: "Fonte de duas passagens", roles: ["technical_conceptual"], relation: "contrasted_with",
+    occurrences: [
+      { occurrenceId: "later-passage", slot: "content", resourceId: "ordered", path: "text",
+        quote: "Segundo trecho citado.", prefix: null, suffix: null, status: "resolved" },
+      { occurrenceId: "earlier-passage", slot: "content", resourceId: "ordered", path: "text",
+        quote: "Primeiro trecho citado.", prefix: null, suffix: null, status: "resolved" }
+    ]
+  });
+}
+
+async function mount(page, { defer = false, owned = false, repeated = false, conflicts = 0,
+  explanationConflicts = 0, deferReconcile = false, explanationAlwaysConflicts = false,
+  reconcileAlwaysAdvances = false } = {}) {
   await page.route("**/main.js", route => route.fulfill({ status: 200, contentType: "text/javascript", body: "" }));
   await page.goto("/");
-  await page.evaluate(async ({ initial, citations, expression, defer, owned, repeated }) => {
+  await page.evaluate(async ({ initial, citations, expression, defer, owned, repeated, conflicts,
+    explanationConflicts, deferReconcile, explanationAlwaysConflicts, reconcileAlwaysAdvances,
+    ordered, explanationCitation }) => {
     document.body.innerHTML = '<main id="citation-root"></main>';
     const { createCourseStudyApplication } = await import("/src/study/CourseStudyApplication.js");
     const canonical = structuredClone(initial);
@@ -45,20 +63,48 @@ async function mount(page, { defer = false, owned = false, repeated = false } = 
     if (repeated) {
       citations.citations[1].occurrences[0].prefix = "Outro ";
       citations.citations[1].occurrences[0].suffix = " recebe";
+      micro.studyUnits[0].content.splice(2, 0,
+        paragraph("ordered", "Primeiro trecho citado. Segundo trecho citado."));
+      citations.citations.push(structuredClone(ordered));
     }
     const path = [canonical.courses[0].id, canonical.courses[0].modules[0].id, canonical.courses[0].modules[0].lessons[0].id, micro.id];
-    const probe = { reads: [], downloads: [], opened: [], edits: [], defer, offline: false, rejectPdf: false, release: null };
+    let courseRevision = 1;
+    const probe = { reads: [], downloads: [], opened: [], edits: [], defer, offline: false, rejectPdf: false,
+      release: null, conflicts, reconciliations: 0, appliedReconciliations: 0, explanationReads: [],
+      explanationConflicts, deferReconcile, deferExplanationRead: false, releaseReconcile: null,
+      releaseReconcileWithoutAdvance: null, releaseExplanationRead: null, explanationHasCitations: false,
+      explanationAlwaysConflicts, reconcileAlwaysAdvances };
     const repository = {
       loadProject: () => structuredClone(canonical), loadCourse: async () => structuredClone(canonical.courses[0]),
       loadProgress: () => ({ version: 1, lessons: {} }), loadAnnotationsForPath: () => [], loadReviewItems: () => [],
       loadRuntimeStatus: () => ({}), isStudyUnitMarkedForReview: () => false,
-      loadCourseSummaries: () => [{ courseId: path[0], title: "Leitura sintética", ownership: owned ? "owned" : "public", canEdit: owned, revision: 1, studyUnitCount: 2 }],
+      loadCourseSummaries: () => [{ courseId: path[0], title: "Leitura sintética", ownership: owned ? "owned" : "public", canEdit: owned, revision: courseRevision, studyUnitCount: 2 }],
+      // Reconciliação adiável: os casos de corrida liberam a espera no momento exato.
+      reconcileCourseRevision: () => {
+        probe.reconciliations += 1;
+        const apply = () => {
+          courseRevision = probe.reconcileAlwaysAdvances ? courseRevision + 1 : 2;
+          citations.courseRevision = courseRevision;
+          micro.title = `Leitura com referências (revisão ${courseRevision})`;
+          probe.appliedReconciliations += 1;
+          return courseRevision;
+        };
+        if (!probe.deferReconcile) return Promise.resolve(apply());
+        return new Promise(resolve => {
+          probe.releaseReconcile = () => resolve(apply());
+          probe.releaseReconcileWithoutAdvance = () => resolve(courseRevision);
+        });
+      },
       loadStudyUnitCompositionContext: reference => ({ courseId: reference.courseId, courseRevision: 1,
         didacticMicrosequenceId: reference.microsequenceId, studyUnitId: reference.studyUnitId, studyUnitVersion: 1 }),
       loadStudyUnitCitations: async reference => {
         probe.reads.push(structuredClone(reference));
         const result = reference.studyUnitId === "citation-unit" ? structuredClone(citations) : { ...structuredClone(citations), studyUnitId: "next-unit", citations: [] };
         if (probe.defer && reference.studyUnitId === "citation-unit") await new Promise(resolve => { probe.release = resolve; });
+        if (probe.conflicts > 0) {
+          probe.conflicts -= 1;
+          throw Object.assign(new Error("O curso mudou."), { status: 409, code: "course_revision_changed" });
+        }
         if (probe.offline) throw Object.assign(new Error("Sem conexão"), { code: "network_error" });
         return result;
       },
@@ -66,7 +112,28 @@ async function mount(page, { defer = false, owned = false, repeated = false } = 
         probe.downloads.push({ reference: structuredClone(reference), request: structuredClone(request) });
         if (probe.rejectPdf) throw Object.assign(new Error("Acesso ao arquivo negado."), { status: 403, code: "42501" });
         return { signedUrl: `https://example.test/arquivo.pdf?token=fresh-${probe.downloads.length}` };
-      }, flush: async () => true
+      },
+      // A folha da Explicação lê a revisão do contexto: a assinatura acompanha a revisão
+      // recarregada, como no repositório real.
+      loadExplanationContext: reference => ({ courseId: reference.courseId,
+        microsequenceId: reference.microsequenceId, courseRevision,
+        explanation: null, contentReview: { state: "unregistered" } }),
+      loadExplanationCitations: async reference => {
+        probe.explanationReads.push(structuredClone(reference));
+        if (probe.deferExplanationRead) {
+          probe.deferExplanationRead = false;
+          await new Promise(resolve => { probe.releaseExplanationRead = resolve; });
+        }
+        if (probe.explanationAlwaysConflicts || probe.explanationConflicts > 0) {
+          if (!probe.explanationAlwaysConflicts) probe.explanationConflicts -= 1;
+          throw Object.assign(new Error("O curso mudou."), { status: 409, code: "course_revision_changed" });
+        }
+        return { contract: "aralearn.course-study-citations.v2", bibliographyStyle: "abnt-2025",
+          courseId: reference.courseId, courseRevision, targetKind: "microsequence_explanation",
+          targetId: reference.microsequenceId,
+          citations: probe.explanationHasCitations ? [structuredClone(explanationCitation)] : [] };
+      },
+      flush: async () => true
     };
     const app = createCourseStudyApplication({ root: document.querySelector("#citation-root"), initialProject: canonical, repository, visitor: !owned,
       onSaveManualEdit: async request => {
@@ -78,7 +145,10 @@ async function mount(page, { defer = false, owned = false, repeated = false } = 
     globalThis.__citationProbe = probe; globalThis.__citationApp = app; globalThis.__citationPath = path;
     await app.openEntityPath([...path, "citation-unit"]);
     await document.fonts.ready;
-  }, { initial: project, citations: projection(), expression: wideExpression(), defer, owned, repeated });
+  }, { initial: project, citations: projection(), expression: wideExpression(), defer, owned, repeated,
+    conflicts, explanationConflicts, deferReconcile, explanationAlwaysConflicts, reconcileAlwaysAdvances,
+    ordered: orderedCitation(),
+    explanationCitation: citation("explanation-source", { title: "Fonte da explicação" }) });
 }
 
 test("ocorrência repetida retorna ao trecho exato e vínculo geral não oferece retorno fictício", async ({ page }) => {
@@ -228,4 +298,138 @@ test("editar a folha citada conserva vínculo sem persistir números e torna tre
   await expect(page.locator('[data-citation-reference-id="context"]')).toContainText("O trecho mudou e precisa de revisão. A referência foi conservada.");
   await expect(page.locator('[data-citation-reference-id="context"] .study-citation-quote')).toHaveText("quadro");
   expect(await page.evaluate(() => globalThis.__citationProbe.reads.length)).toBe(3);
+});
+
+test("duas passagens do mesmo recurso retornam na ordem de leitura e declaram o papel do vínculo", async ({ page }) => {
+  await mount(page, { repeated: true });
+  const sources = page.getByRole("button", { name: "Fontes da unidade", exact: true });
+  await expect(sources).toBeVisible();
+  await sources.click();
+  const dialog = page.getByRole("dialog", { name: "Fontes da unidade", exact: true });
+  await expect(dialog).toBeVisible();
+  const reference = dialog.locator('[data-citation-reference-id="ordered"]');
+  await expect(reference).toContainText("Papel declarado: Contrasta com o conteúdo");
+  const backlinks = reference.locator('[data-action="return-citation"]');
+  await expect(backlinks).toHaveCount(2);
+  await expect(backlinks.nth(0)).toHaveAttribute("data-citation-occurrence-id", "earlier-passage");
+  await expect(backlinks.nth(0)).toHaveAttribute("aria-label", "Voltar ao trecho 1 da referência 4 na unidade");
+  await expect(backlinks.nth(1)).toHaveAttribute("data-citation-occurrence-id", "later-passage");
+  await expect(backlinks.nth(1)).toHaveAttribute("aria-label", "Voltar ao trecho 2 da referência 4 na unidade");
+  await backlinks.nth(0).click();
+  await expect(page.locator("[data-action='open-citation']:focus"))
+    .toHaveAttribute("data-citation-occurrence-id", "earlier-passage");
+});
+
+test("conflito de revisão ao abrir a Unidade recarrega o Curso e relê uma única vez", async ({ page }) => {
+  await mount(page, { conflicts: 1 });
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(1);
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reads.length)).toBe(2);
+  await expect(page.locator(".study-reader-course-title")).toHaveText("Leitura com referências (revisão 2)");
+  const marker = page.getByRole("button", { name: "Referência 2", exact: true });
+  await expect(marker).toBeVisible();
+  await marker.click();
+  const dialog = page.getByRole("dialog", { name: "Fontes da unidade", exact: true });
+  await expect(dialog.locator('[data-citation-reference-id="context"]')).toBeFocused();
+  await expect(dialog.locator('[data-citation-reference-id="context"]')).toContainText("Fonte do trecho");
+  await expect(dialog).not.toContainText("Sincronize e reabra");
+});
+
+test("conflito persistente declara o conflito e não repete a recuperação sozinho", async ({ page }) => {
+  await mount(page, { conflicts: 3 });
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reads.length)).toBe(2);
+  expect(await page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(1);
+  const sources = page.getByRole("button", { name: "Fontes da unidade", exact: true });
+  await expect(sources).toBeVisible();
+  await sources.click();
+  const dialog = page.getByRole("dialog", { name: "Fontes da unidade", exact: true });
+  await expect(dialog).toContainText("Sincronize e reabra esta unidade de estudo.");
+  await expect(dialog.locator(".study-citation-list")).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reads.length)).toBe(3);
+  expect(await page.evaluate(() => globalThis.__citationProbe.reads.length)).toBe(3);
+  await expect(dialog).toContainText("Sincronize e reabra esta unidade de estudo.");
+  await expect(dialog.locator(".study-citation-list")).toHaveCount(0);
+});
+
+test("conflito de revisão na Explicação reabre a folha e relê na revisão recarregada", async ({ page }) => {
+  await mount(page, { explanationConflicts: 1 });
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(1);
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.explanationReads.length)).toBe(2);
+  const reads = await page.evaluate(() => globalThis.__citationProbe.explanationReads
+    .map(reference => reference.courseRevision));
+  expect(reads).toEqual([1, 2]);
+  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).not.toContainText("Sincronize e reabra");
+});
+
+test("fechar a Explicação durante a conciliação não reabre a folha nem deixa erro", async ({ page }) => {
+  await mount(page, { explanationConflicts: 1, deferReconcile: true });
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(1);
+  await page.getByRole("button", { name: "Fechar explicação" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.evaluate(() => globalThis.__citationProbe.releaseReconcile());
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.appliedReconciliations)).toBe(1);
+  // A folha antiga não volta e a leitura recarregada aparece sem erro pendente.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".study-reader-course-title")).toHaveText("Leitura com referências (revisão 2)");
+  expect(await page.evaluate(() => globalThis.__citationProbe.explanationReads.length)).toBe(1);
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  const reopened = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(reopened).toBeVisible();
+  await expect(reopened).not.toContainText("Sincronize e reabra");
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.explanationReads.length)).toBe(2);
+});
+
+test("nova Explicação em outro alvo durante a conciliação não herda o conflito anterior", async ({ page }) => {
+  await mount(page, { explanationConflicts: 1, deferReconcile: true });
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(1);
+  await page.getByRole("button", { name: "Fechar explicação" }).click();
+  await page.evaluate(async () => { await globalThis.__citationApp.openEntityPath([...globalThis.__citationPath, "next-unit"]); });
+  await expect(page.getByText("Uma leitura independente.", { exact: true })).toBeVisible();
+  await expect(page.locator(".study-reader-count-value")).toHaveText("2/2");
+  // A folha do novo alvo fica pendente enquanto a conciliação antiga é liberada sem avanço:
+  // sem a guarda, o conflito da leitura antiga escreveria no estado da folha vigente.
+  await page.evaluate(() => {
+    globalThis.__citationProbe.deferExplanationRead = true;
+    globalThis.__citationProbe.explanationHasCitations = true;
+  });
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.explanationReads.length)).toBe(2);
+  await page.evaluate(() => globalThis.__citationProbe.releaseReconcileWithoutAdvance());
+  // Entre duas avaliações o ciclo de microtarefas drena: a leitura antiga já escreveu (ou
+  // não) o estado antes de a folha nova concluir e renderizar.
+  await page.evaluate(() => globalThis.__citationProbe.releaseExplanationRead());
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.appliedReconciliations)).toBe(0);
+  // A folha nova conclui e renderiza depois da leitura antiga ter escrito (ou não) o estado.
+  await expect(dialog.locator(".study-citation-list")).toHaveCount(1);
+  await expect(dialog).not.toContainText("Sincronize e reabra");
+  await expect(page.locator(".study-reader-count-value")).toHaveText("2/2");
+  await expect(page.getByRole("dialog", { name: "Explicação", exact: true })).toBeVisible();
+});
+
+test("conflito recorrente na Explicação recupera uma vez e declara o conflito, sem loop", async ({ page }) => {
+  // Servidor avança em cada leitura: a reabertura provocada pela reconciliação não pode
+  // devolver orçamento nem deixar o conflito antigo escrever na folha nova.
+  await mount(page, { explanationAlwaysConflicts: true, reconcileAlwaysAdvances: true });
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Sincronize e reabra a explicação.", { timeout: 15_000 });
+  expect(await page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(1);
+  expect(await page.evaluate(() => globalThis.__citationProbe.explanationReads.length)).toBe(2);
+  await expect(dialog.locator(".study-citation-list")).toHaveCount(0);
+  // Nova ação explícita abre outro episódio: mais uma recuperação, e novamente o conflito.
+  await dialog.getByRole("button", { name: "Tentar novamente" }).click();
+  await expect.poll(() => page.evaluate(() => globalThis.__citationProbe.reconciliations)).toBe(2);
+  await expect(dialog).toContainText("Sincronize e reabra a explicação.", { timeout: 15_000 });
+  expect(await page.evaluate(() => globalThis.__citationProbe.explanationReads.length)).toBe(4);
+  await expect(dialog.locator(".study-citation-list")).toHaveCount(0);
 });

@@ -601,6 +601,7 @@ function renderStudyUnit({
   markedForReview,
   runtimeStatus,
   citations,
+  citationsError = "",
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } }
 }) {
   const units = microsequence.studyUnits || [];
@@ -665,7 +666,10 @@ function renderStudyUnit({
     '"><div class="study-reader-line">' +
     '<span class="study-reader-context-line study-reader-course-title">' +
     escapeHtml(microsequence.title || lesson.title || "Unidade de estudo") + "</span>" +
-    (citations?.citations?.length && !manualEditor.editing && !assistanceSelection
+    // A entrada icon-only das fontes permanece acessível quando a leitura falhou: o
+    // painel declara o conflito e oferece a retentativa, em vez de parecer ausência de
+    // fontes (issue 462, recuperação limitada de leitura).
+    ((citations?.citations?.length || citationsError) && !manualEditor.editing && !assistanceSelection
       ? '<button class="icon-ghost study-unit-sources" type="button" data-action="open-unit-sources"' +
         ' aria-label="Fontes da unidade" title="Fontes da unidade" aria-haspopup="dialog" aria-expanded="false">' +
         renderUiIcon("book-text", "home-tab-icon") + "</button>"
@@ -758,6 +762,7 @@ export function renderCourseStudyScreen({
   observationCount = 0,
   markedForReview = false,
   citations = null,
+  citationsError = "",
   manualEditor = { enabled: false, editing: false, draft: { pathValues: {} } },
   assistance = { enabled: false, activeScope: "", draft: null, saving: false, error: "" },
   structuralEditor = { enabled: false, editing: false, saving: false }
@@ -810,7 +815,8 @@ export function renderCourseStudyScreen({
     visitor,
     markedForReview,
     runtimeStatus,
-      citations,
+    citations,
+    citationsError,
     manualEditor
   });
 }

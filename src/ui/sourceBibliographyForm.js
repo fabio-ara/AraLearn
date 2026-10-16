@@ -5,6 +5,12 @@ export const SOURCE_KIND_LABELS = Object.freeze({ web_page: "Página web", artic
   document: "Documento", media: "Áudio ou vídeo", other: "Outro" });
 export const SOURCE_ROLE_LABELS = Object.freeze({ curricular_scope: "Escopo do estudo", assessment_evidence: "Avaliação",
   technical_conceptual: "Sustentação do conteúdo", recommended_reading: "Leitura complementar" });
+// Vocabulário único da relação declarada no vínculo: a autoria escolhe a relação e a
+// consulta de estudo reapresenta o mesmo papel declarado, sem novo texto.
+export const SOURCE_RELATION_LABELS = Object.freeze({ informed_by: "Informou a elaboração",
+  supported_by: "Sustenta o conteúdo", adapted_from: "Conteúdo adaptado", quoted_from: "Citação direta",
+  contrasted_with: "Contrasta com o conteúdo", exemplified_by: "Exemplifica o conteúdo",
+  inspired_by: "Inspirou a elaboração", needs_verification: "Precisa de verificação" });
 export const BIBLIOGRAPHIC_FIELD_LABELS = Object.freeze({ containerTitle: "Livro, periódico ou publicação",
   publisher: "Editora ou instituição", publisherPlace: "Local de publicação", volume: "Volume", issue: "Número da edição",
   pages: "Páginas", articleNumber: "Identificador do artigo", doi: "DOI", isbn: "ISBN", issn: "ISSN",

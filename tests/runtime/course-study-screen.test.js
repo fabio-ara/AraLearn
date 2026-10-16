@@ -8,6 +8,9 @@ import { renderStudyCitations } from "../../src/study/studyCitations.js";
 
 const fixtureUrl = new URL("../fixtures/package/project-minimal.json", import.meta.url);
 
+const citationConflictMessage = "O curso mudou e as fontes desta unidade ainda não correspondem à revisão atual. " +
+  "Sincronize e reabra esta unidade de estudo.";
+
 function visibleText(html) {
   return html
     .replace(/<[^>]*>/gu, " ")
@@ -704,6 +707,49 @@ test("a edição em Estudo preserva o fluxo direto do proprietário sem criar c�
   assert.doesNotMatch(ownedHtml, /Salvar na minha cópia|Sua cópia/u);
 
 
+});
+
+test("entrada das fontes permanece acessível quando a leitura falha e o painel declara o conflito", async () => {
+  const project = JSON.parse(await readFile(fixtureUrl, "utf8"));
+  const course = project.courses[0];
+  const moduleValue = course.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microsequence = lesson.microsequences[0];
+  const studyUnit = microsequence.studyUnits[0];
+  const base = {
+    project,
+    view: "microsequence",
+    selection: {
+      courseId: course.id,
+      moduleId: moduleValue.id,
+      lessonId: lesson.id,
+      microsequenceId: microsequence.id,
+      studyUnitId: studyUnit.id,
+      studyUnitIndex: 0
+    },
+    course,
+    moduleValue,
+    lesson,
+    microsequence,
+    studyUnit,
+    microsequenceMode: "play",
+    progress: { version: 1, lessons: {} }
+  };
+
+  const failed = renderCourseStudyScreen({ ...base, citationsLoading: false,
+    citationsError: citationConflictMessage, citations: null });
+  assert.match(failed, /data-action="open-unit-sources"[^>]*aria-label="Fontes da unidade"/u);
+  assert.doesNotMatch(failed, /data-action="toggle-citations"|data-citation-reference-id/u);
+
+  const panel = renderStudyCitations({ open: true, contextId: "unit", heading: "Referências desta unidade",
+    loading: false, value: null, error: citationConflictMessage, courseId: course.id });
+  assert.match(panel, /Sincronize e reabra esta unidade de estudo\./u);
+  assert.match(panel, /data-action="retry-citations"[^>]*aria-label="Tentar novamente"/u);
+  assert.doesNotMatch(panel, /Nenhuma fonte\./u);
+
+  const withoutSources = renderCourseStudyScreen({ ...base, citationsLoading: false,
+    citationsError: "", citations: { citations: [] } });
+  assert.doesNotMatch(withoutSources, /data-action="open-unit-sources"/u);
 });
 
 test("Study preserva a unidade e concentra referências no corpo da Explicação", async () => {

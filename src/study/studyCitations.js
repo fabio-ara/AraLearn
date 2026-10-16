@@ -2,6 +2,7 @@ import { listCourseSourceOccurrenceTargets, resolveCourseSourceOccurrence } from
 import { renderPackageInline } from "../resources/sdk/html.js";
 import { renderBibliographicReference } from "../ui/renderBibliographicReference.js";
 import { renderUiIcon } from "../ui/renderUiIcons.js";
+import { SOURCE_RELATION_LABELS } from "../ui/sourceBibliographyForm.js";
 import { buildCourseAuthoringRoute } from "../ui/courseAuthoringRoute.js";
 import { buildSourceWebUrl } from "./sourceDocumentUrl.js";
 
@@ -103,6 +104,35 @@ function selectorLabel(selector) {
   return `“${selector.exact}”`;
 }
 
+// A ordem de leitura é a das folhas apresentadas e a do trecho dentro da folha; o
+// servidor devolve as ocorrências na ordem do vínculo, que pode não ser a do percurso
+// (duas passagens do mesmo recurso chegam em ordem trocada). O ordinal do retorno usa
+// o mesmo trecho já resolvido, sem regra nova na autoria.
+function readingOrderPosition(targets, occurrence) {
+  const index = targets.findIndex(target => target.slot === occurrence.slot &&
+    target.resourceId === occurrence.resourceId && target.path === occurrence.path);
+  if (index < 0) return null;
+  const text = targets[index].text;
+  const prefix = occurrence.prefix ?? null;
+  const suffix = occurrence.suffix ?? null;
+  for (let start = text.indexOf(occurrence.quote); start >= 0; start = text.indexOf(occurrence.quote, start + 1)) {
+    if (prefix !== null && !text.slice(0, start).endsWith(prefix)) continue;
+    if (suffix !== null && !text.slice(start + occurrence.quote.length).startsWith(suffix)) continue;
+    return [index, start];
+  }
+  return [index, text.length];
+}
+
+// O papel declarado é apresentado com o vocabulário da autoria e nunca como
+// verificação concluída. `needs_verification` já declara o próprio estado no painel,
+// que não repete o rótulo.
+function citationRelationMarkup(citation) {
+  const label = SOURCE_RELATION_LABELS[citation?.relation];
+  if (!label || citation.relation === "needs_verification") return "";
+  return `<p class="study-citations-status" data-citation-relation="${escape(citation.relation)}">` +
+    `Papel declarado: ${escape(label)}</p>`;
+}
+
 function documentFormatIcon(kind, label) {
   return `<span class="study-citation-format" role="img" aria-label="${escape(label)}" title="${escape(label)}">` +
     renderUiIcon(kind === "pdf" ? "book-text" : "cloud", "study-citation-format-icon") + "</span>";
@@ -132,7 +162,8 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
       Object.fromEntries(OCCURRENCE_FIELDS.map(field => [field, item[field]])), sourceOptions)) : [];
     const occurrence = resolvedOccurrences.find(item => item.occurrenceId === selectedOccurrenceId) ||
       resolvedOccurrences.find(item => item.status === "needs_review");
-    const quoteTarget = occurrence && listCourseSourceOccurrenceTargets(studyUnit, sourceOptions).find(target =>
+    const targets = studyUnit ? listCourseSourceOccurrenceTargets(studyUnit, sourceOptions) : [];
+    const quoteTarget = occurrence && targets.find(target =>
       target.slot === occurrence.slot && target.resourceId === occurrence.resourceId && target.path === occurrence.path);
     const reference = formattedReferences[citation.linkId];
     const references = citation.attachments || [];
@@ -163,7 +194,11 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
           ? '<span class="study-citations-status">Documento indisponível para abrir.</span>' : "")) + "</li>";
     }).join("");
     const backlinks = resolvedOccurrences.filter(item => item.status === "resolved")
-      .map((item, index) => `<button type="button" class="study-citation-backlink" data-action="return-citation"` +
+      .map((item, order) => ({ item, order, position: readingOrderPosition(targets, item) }))
+      .sort((left, right) => left.position && right.position
+        ? left.position[0] - right.position[0] || left.position[1] - right.position[1] || left.order - right.order
+        : left.order - right.order)
+      .map(({ item }, index) => `<button type="button" class="study-citation-backlink" data-action="return-citation"` +
         ` data-citation-context="${escape(contextId)}" data-citation-link-id="${escape(citation.linkId)}"` +
         ` data-citation-occurrence-id="${escape(item.occurrenceId)}"` +
         ` aria-label="Voltar ao trecho ${index + 1} da referência ${citationIndex + 1}${contextId === "unit" ? " na unidade" : " na explicação"}"` +
@@ -172,6 +207,7 @@ export function renderStudyCitations({ open, loading, value, error, courseId, ca
       (occurrence ? `<blockquote class="study-citation-quote">${quoteTarget?.preserveMarkup ? renderPackageInline(occurrence.quote) : escape(occurrence.quote)}</blockquote>` +
         (occurrence.status === "needs_review" ? `<p class="study-citations-status">${quoteTarget ? "O trecho mudou e precisa de revisão." : "O trecho citado não foi localizado nesta cópia."} A referência foi conservada.</p>` : "") : "") +
       `<p class="study-citation-reference">${linkedReference}</p>` +
+      citationRelationMarkup(citation) +
       (!citation.occurrences?.length ? '<p class="study-citations-status">Referência do conteúdo; sem trecho específico vinculado.</p>' : "") +
       (citation.relation === "needs_verification" ? '<p class="study-citations-status">O uso desta fonte ainda precisa ser verificado.</p>' : "") +
       (anchors ? `<ul class="study-citation-locations">${anchors}</ul>` : "") +
