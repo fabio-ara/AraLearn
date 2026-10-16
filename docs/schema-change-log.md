@@ -21,6 +21,20 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261016162436 — transporte normalizado do plano curricular
+
+A [migração](../supabase/migrations/20261016162436_planning_transport_deduplication.sql)
+move o construtor do plano curricular para `private.build_course_instructional_plan_for_actor_v1`,
+que passa a receber a representação pedida. `public.get_owned_course_instructional_plan_for_actor_v3`
+e `..._v4` continuam devolvendo a árvore completa e mantendo o limite de 1835008 bytes; a nova
+`public.get_owned_course_instructional_plan_for_actor_v5`, restrita a `service_role` como as
+anteriores, publica as microssequências dos lotes apenas com identidade, posição de produção,
+caminho curricular e contagem de unidades, marcadas com `payloadEncoding`. Em modo compacto as
+explicações nunca são materializadas, o guard mede a representação realmente pedida — sem elevar
+limite algum — e o adapter do runtime reconstrói os campos a partir do currículo antes de validar
+o transporte, falhando claramente diante de marca ausente, referência órfã ou campo obrigatório
+ausente. O manifesto avança para `20261016162436`.
+
 ## 20261016071003 — folhas da base normalizadas na validação de fundamentação do parecer
 
 A [migração](../supabase/migrations/20261016071003_grounded_report_leaf_normalization.sql)
