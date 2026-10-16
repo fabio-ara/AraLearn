@@ -2833,6 +2833,18 @@ button.account-settings-back[hidden] {
   min-width: 100%;
 }
 
+/* O campo de edição de qualquer alvo carrega overflow-wrap anywhere e word-break
+   break-word. Numa célula de tabela de até três colunas isso encolhe o min-content
+   do campo e a distribuição automática muda de largura quando a edição começa: o
+   cabeçalho passa a caber em uma linha e a altura da tabela muda entre leitura e
+   edição. O campo inline conserva o contrato de quebra da própria célula, que é o
+   que o leitor já mostra; a prosa e a lista da célula seguem a quebra definida
+   acima. A regra vale só para o campo editável e não altera a leitura. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) [data-manual-edit-path]:not(.runtime-markdown-paragraph):not(.runtime-markdown-list) {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .runtime-table-cell-content {
   min-width: 0;
   max-width: none;
