@@ -538,7 +538,7 @@ async function validateRuntimeFiles() {
     relativePath.endsWith("/courseSupabaseAdapter.js"))?.source || "";
   for (const required of [
     "aralearn.course-instructional-plan.v3",
-    "get_owned_course_instructional_plan_for_actor_v4",
+    "get_owned_course_instructional_plan_for_actor_v5",
     "save_course_curricular_map_for_actor_v1",
     "materialize_course_authoring_part_for_actor_v2",
     "p_complete: complete", "p_placements: normalizedPlacements",

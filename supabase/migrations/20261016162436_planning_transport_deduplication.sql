@@ -1,9 +1,9 @@
 -- 472: transporte normalizado do planejamento (RPC v5) sem alterar v3/v4.
--- O construtor privado passa a receber a representacao pedida (p_compact) e o guard
--- 1835008 mede exatamente essa representacao. Na forma compacta o lote omite apenas
--- os campos que o adapter reconstitui a partir do curriculo da mesma microssequencia
--- (title, goal, explanationPlan, explanation, contentReview, role). v3 e v4 mantem a
--- arvore completa e o guard original; v5 e a unica representacao compacta.
+-- O construtor privado recebe a representacao pedida (p_compact) e o guard 1835008
+-- mede exatamente essa representacao. Em modo compacto o lote constroi apenas os
+-- quatro campos basicos e nunca materializa as explicacoes duplicadas; os campos
+-- reconstituiveis (title, goal, explanationPlan, explanation, contentReview, role)
+-- entram somente na forma completa. v3 e v4 mantem a arvore completa e o guard
 
 create or replace function private.build_course_instructional_plan_for_actor_v1(
   p_actor_id uuid,
@@ -282,23 +282,29 @@ begin
     'id',part.id,'position',part.position,'title',part.title,
     'intent',part.intent,'progression',part.progression,'version',part.version,
     'microsequences',coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id',microsequence.entity_id,
-        'productionPosition',membership.production_position,
-        'title',microsequence.content->>'title',
-        'goal',coalesce(microsequence.content->>'goal',''),'explanationPlan',microsequence.content->'explanationPlan','explanation',microsequence.content->'explanation','contentReview',private.course_content_review_v1(p_course_id,'microsequence_explanation',microsequence.entity_id),
-        'role',coalesce(microsequence.content->>'role','explain'),
-        'curriculumPath',jsonb_build_object(
-          'moduleId',module_value.entity_id,
-          'moduleTitle',module_value.content->>'title',
-          'lessonId',lesson.entity_id,'lessonTitle',lesson.content->>'title'
-        ),
-        'studyUnitCount',(
-          select count(*)::integer from private.course_entities unit
-          where unit.course_id=p_course_id and unit.entity_type='study_unit'
-            and unit.parent_id=microsequence.entity_id
-        )
-      ) order by membership.production_position,microsequence.entity_id)
+      select jsonb_agg(
+        jsonb_build_object(
+          'id',microsequence.entity_id,
+          'productionPosition',membership.production_position,
+          'curriculumPath',jsonb_build_object(
+            'moduleId',module_value.entity_id,
+            'moduleTitle',module_value.content->>'title',
+            'lessonId',lesson.entity_id,'lessonTitle',lesson.content->>'title'
+          ),
+          'studyUnitCount',(
+            select count(*)::integer from private.course_entities unit
+            where unit.course_id=p_course_id and unit.entity_type='study_unit'
+              and unit.parent_id=microsequence.entity_id
+          )
+        )||case when p_compact then '{}'::jsonb else jsonb_build_object(
+          'title',microsequence.content->>'title',
+          'goal',coalesce(microsequence.content->>'goal',''),
+          'explanationPlan',microsequence.content->'explanationPlan',
+          'explanation',microsequence.content->'explanation',
+          'contentReview',private.course_content_review_v1(p_course_id,'microsequence_explanation',microsequence.entity_id),
+          'role',coalesce(microsequence.content->>'role','explain')
+        ) end
+        order by membership.production_position,microsequence.entity_id)
       from private.course_authoring_part_didactic_microsequences membership
       join private.course_entities microsequence
         on microsequence.course_id=membership.course_id
@@ -317,20 +323,6 @@ begin
   into v_parts
   from private.course_authoring_parts part
   where part.instructional_plan_id=v_plan.id;
-  if p_compact then
-    select coalesce(jsonb_agg(
-        jsonb_set(part_value,'{microsequences}',coalesce((
-          select jsonb_agg(
-              element_value - 'title' - 'goal' - 'explanationPlan' - 'explanation'
-                - 'contentReview' - 'role'
-              order by element_ordinal)
-          from jsonb_array_elements(coalesce(part_value->'microsequences','[]'::jsonb))
-            with ordinality element(element_value,element_ordinal)
-        ),'[]'::jsonb))
-        order by part_ordinal),'[]'::jsonb)
-    into v_parts
-    from jsonb_array_elements(v_parts) with ordinality part(part_value,part_ordinal);
-  end if;
 
   select jsonb_build_object(
     'intendedLearningOutcomeCount',jsonb_array_length(v_outcomes),

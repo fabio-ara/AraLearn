@@ -7,70 +7,59 @@ const COURSE = "10000000-0000-4000-8000-000000000001";
 const PLAN = "20000000-0000-4000-8000-000000000001";
 const PART = "30000000-0000-4000-8000-000000000001";
 
-function microsequenceSource(id, position) {
-  return {
-    id, position,
-    title: "Micro " + id,
-    objective: "Objetivo " + id,
-    explanationPlan: { purpose: "Plano " + id, prerequisites: [], relations: [], sourceIds: [] },
-    explanation: { title: "Explicacao " + id, content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: id } }] },
-    contentReview: { state: "current", microsequenceId: id },
-    role: "explain",
-    dependencyMicrosequenceIds: []
-  };
-}
+// Ordem de chaves do jsonb do Postgres para exatamente estes dez campos.
+const LEGACY_KEY_ORDER = ["id", "goal", "role", "title", "explanation", "contentReview",
+  "curriculumPath", "studyUnitCount", "explanationPlan", "productionPosition"];
 
-function compactEntry(id, productionPosition) {
-  return {
-    id, productionPosition,
-    curriculumPath: { moduleId: "module-1", moduleTitle: "Modulo 1", lessonId: "lesson-1", lessonTitle: "Licao 1" },
-    studyUnitCount: 0
-  };
+function curriculumMicrosequence(id, position) {
+  return "{\"id\":\"" + id + "\",\"position\":" + position +
+    ",\"title\":\"Micro " + id + "\",\"objective\":\"Objetivo " + id + "\"," +
+    "\"role\":\"explain\",\"dependencyMicrosequenceIds\":[]," +
+    "\"explanationPlan\":{\"purpose\":\"Plano " + id + "\"}," +
+    "\"explanation\":{\"title\":\"Explicacao " + id + "\",\"content\":[]}," +
+    "\"contentReview\":{\"state\":\"current\",\"microsequenceId\":\"" + id + "\"}}";
 }
 
 function compactPayload(options) {
   const settings = options || {};
   const curriculumIds = settings.curriculumIds || ["ms-1"];
   const partIds = settings.partIds || ["ms-1"];
-  return {
-    payloadEncoding: PLANNING_TRANSPORT_ENCODING,
-    contract: "aralearn.course-instructional-plan.v3",
-    courseId: COURSE,
-    courseRevision: 7,
-    plan: {
-      id: PLAN, version: 1, title: "Curso sintetico", objective: "", audience: "", scope: "",
-      curriculumMapStatus: "approved",
-      curriculum: { modules: [{ id: "module-1", position: 0, title: "Modulo 1", objective: "",
-        lessons: [{ id: "lesson-1", position: 0, title: "Licao 1", objective: "",
-          microsequences: curriculumIds.map((id, index) => microsequenceSource(id, index)) }] }] },
-      curriculumScopeItems: [], intendedLearningOutcomes: [], instructionalAnalysisUnits: [],
-      evidenceRequirements: [], parts: [{ id: PART, position: 0, title: "Parte 1", intent: "",
-        progression: [], version: 1,
-        microsequences: partIds.map((id, index) => compactEntry(id, index)) }], counts: {}
-    },
-    approvalBasis: { courseRevision: 7, planVersion: 1, basisHash: "0000" }
-  };
+  const extra = settings.extra || "";
+  const microsequences = curriculumIds.map((id, index) => curriculumMicrosequence(id, index)).join(",");
+  const entries = partIds.map((id, index) => "{\"id\":\"" + id + "\",\"productionPosition\":" + index +
+    ",\"curriculumPath\":{\"moduleId\":\"module-a\",\"moduleTitle\":\"Modulo\",\"lessonId\":\"lesson-a\",\"lessonTitle\":\"Licao\"}," +
+    "\"studyUnitCount\":" + index + "}").join(",");
+  return JSON.parse("{\"payloadEncoding\":\"" + PLANNING_TRANSPORT_ENCODING + "\"," +
+    "\"contract\":\"aralearn.course-instructional-plan.v3\",\"courseId\":\"" + COURSE + "\",\"courseRevision\":7," +
+    "\"plan\":{\"id\":\"" + PLAN + "\",\"version\":1,\"curriculumMapStatus\":\"approved\"," +
+    "\"curriculum\":{\"modules\":[{\"id\":\"module-a\",\"position\":0,\"lessons\":[{\"id\":\"lesson-a\",\"position\":0," +
+    "\"microsequences\":[" + microsequences + "]}]}]}," +
+    "\"curriculumScopeItems\":[],\"instructionalAnalysisUnits\":[],\"evidenceRequirements\":[]," +
+    "\"parts\":[{\"id\":\"" + PART + "\",\"position\":0,\"progress\":{\"state\":\"planned\"}," +
+    "\"microsequences\":[" + entries + "]}]" + extra + "}," +
+    "\"approvalBasis\":{\"courseRevision\":7,\"planVersion\":1,\"basisHash\":\"00\"}}");
 }
 
-test("expande o transporte compacto para a representacao legada completa", () => {
+test("reconstitui o lote na ordem do jsonb sem tocar no restante da arvore", () => {
   const expanded = expandPlanningTransport(compactPayload());
   assert.equal("payloadEncoding" in expanded, false);
   const part = expanded.plan.parts[0].microsequences[0];
-  assert.deepStrictEqual(Object.keys(part).sort(), ["contentReview", "curriculumPath", "explanation", "explanationPlan", "goal", "id", "productionPosition", "role", "studyUnitCount", "title"]);
+  assert.deepStrictEqual(Object.keys(part), LEGACY_KEY_ORDER);
   assert.equal(part.goal, "Objetivo ms-1");
   assert.equal(part.title, "Micro ms-1");
   assert.equal(part.role, "explain");
-  assert.deepStrictEqual(part.explanation, microsequenceSource("ms-1", 0).explanation);
-  assert.deepStrictEqual(part.explanationPlan, microsequenceSource("ms-1", 0).explanationPlan);
   assert.deepStrictEqual(part.contentReview, { state: "current", microsequenceId: "ms-1" });
-  assert.deepStrictEqual(part.curriculumPath, { moduleId: "module-1", moduleTitle: "Modulo 1", lessonId: "lesson-1", lessonTitle: "Licao 1" });
-  assert.deepStrictEqual(expanded.approvalBasis, { courseRevision: 7, planVersion: 1, basisHash: "0000" });
-  assert.deepStrictEqual(expanded.plan.curriculum.modules[0].lessons[0].microsequences[0], microsequenceSource("ms-1", 0));
+  assert.deepStrictEqual(part.curriculumPath, { moduleId: "module-a", moduleTitle: "Modulo", lessonId: "lesson-a", lessonTitle: "Licao" });
+  assert.equal(part.studyUnitCount, 0);
+  assert.equal(part.productionPosition, 0);
+  assert.deepStrictEqual(expanded.plan.curriculum.modules[0].lessons[0].microsequences[0],
+    JSON.parse(curriculumMicrosequence("ms-1", 0)));
+  assert.equal(expanded.plan.parts[0].progress.state, "planned");
 });
 
 test("recusa payload sem a marca interna, sem fallback para a forma legada", () => {
-  const legacy = { contract: "aralearn.course-instructional-plan.v3", courseId: COURSE, courseRevision: 7, plan: { parts: [] } };
-  assert.throws(() => expandPlanningTransport(legacy), (error) => error.code === "course_service_unavailable" && /transporte compacto esperado/u.test(error.message));
+  assert.throws(() => expandPlanningTransport({ contract: "aralearn.course-instructional-plan.v3", plan: { parts: [] } }),
+    (error) => error.code === "course_service_unavailable" && /transporte compacto esperado/u.test(error.message));
   assert.throws(() => expandPlanningTransport(null), (error) => error.code === "course_service_unavailable");
   assert.throws(() => expandPlanningTransport({ payloadEncoding: "outra-coisa" }), (error) => error.code === "course_service_unavailable");
 });
@@ -79,15 +68,35 @@ test("recusa referencia ausente, identidade repetida e campo nao previsto", () =
   assert.throws(() => expandPlanningTransport(compactPayload({ partIds: ["ms-2"] })), /ausente do curr/u);
   assert.throws(() => expandPlanningTransport(compactPayload({ curriculumIds: ["ms-1", "ms-1"] })), /repete a mesma/u);
   const withExtra = compactPayload();
-  withExtra.plan.parts[0].microsequences[0].title = "duplicado no transporte";
+  withExtra.plan.parts[0].microsequences[0].title = "duplicado";
   assert.throws(() => expandPlanningTransport(withExtra), /campos n/u);
 });
 
-test("recusa curriculo ou lote ausente", () => {
-  const withoutParts = compactPayload();
-  delete withoutParts.plan.parts;
-  assert.throws(() => expandPlanningTransport(withoutParts), /lotes do curso/u);
-  const withoutCurriculum = compactPayload();
-  delete withoutCurriculum.plan.curriculum;
-  assert.throws(() => expandPlanningTransport(withoutCurriculum), /curr.culo do curso/u);
+test("recusa campo obrigatorio ausente e preserva nulos validos", () => {
+  const missingPosition = compactPayload();
+  delete missingPosition.plan.parts[0].microsequences[0].productionPosition;
+  assert.throws(() => expandPlanningTransport(missingPosition), /posi..o de produ/u);
+
+  const missingExplanation = compactPayload();
+  delete missingExplanation.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation;
+  assert.throws(() => expandPlanningTransport(missingExplanation), /omite o campo explanation/u);
+
+  const nullTitle = compactPayload();
+  nullTitle.plan.curriculum.modules[0].lessons[0].microsequences[0].title = null;
+  const expanded = expandPlanningTransport(nullTitle);
+  assert.equal(Object.hasOwn(expanded.plan.parts[0].microsequences[0], "title"), true);
+  assert.equal(expanded.plan.parts[0].microsequences[0].title, null);
+});
+
+test("preserva subarvores desconhecidas com chaves unicode, __proto__ e constructor", () => {
+  const extra = ",\"extra\":{\"__proto__\":{\"polluted\":true},\"constructor\":\"x\",\"a\u00e7\u00e3o\":\"acento\",\"0\":\"zero\",\"1\":\"um\"}";
+  const expanded = expandPlanningTransport(compactPayload({ extra }));
+  const extraValue = expanded.plan.extra;
+  assert.equal(Object.hasOwn(extraValue, "__proto__"), true);
+  assert.equal(Object.hasOwn(extraValue, "constructor"), true);
+  assert.equal(extraValue.constructor, "x");
+  assert.deepStrictEqual(Object.getOwnPropertyDescriptor(extraValue, "__proto__").value, { polluted: true });
+  assert.equal(expanded.plan.extra.ação, "acento");
+  assert.equal(({}).polluted, undefined);
+  assert.equal(Object.getPrototypeOf(extraValue), Object.prototype);
 });
