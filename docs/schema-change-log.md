@@ -21,6 +21,44 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261016171317 — capacidade de âncoras de uma revisão de Fonte
+
+A [migração](../supabase/migrations/20261016171317_course_source_anchor_capacity.sql),
+criada com `supabase migration new`, substitui o teto fixo de oito identidades de
+Âncora por revisão de fonte por dois contratos nomeados: até 64 identidades e até
+128 KiB de âncoras na mesma revisão. A guarda vive no produtor oficial
+`private.execute_course_source_command_without_interventions_v1`, já usado tanto
+pelo comando avulso quanto pelo pacote de fontes; não há trigger na tabela.
+Revisões que não ampliam o volume de dados, reduções de trechos e retiradas de
+âncoras continuam aceitas mesmo quando o acervo herdado já supera o orçamento. O lote de comandos do pacote e a
+seleção de âncoras por vínculo permanecem como estavam, e nenhuma capacidade nova
+é declarada: o manifesto avança para `20261016171317`.
+
+O teto vale para o estado corrente da fonte: fontes e âncoras são registros
+correntes, e a chave estrangeira `(course_id, source_id, source_revision)` com
+cascata move as âncoras junto com a revisão da fonte. A leitura de uma fonte
+devolve esse acervo corrente, sem histórico cumulativo de revisões, e continua
+limitada pelo próprio guard de 256 KiB, que permanece a última proteção da leitura.
+No ensaio com 64 identidades, trechos de conferência e oito PDFs ativos, a
+leitura coube no orçamento; essa medição não substitui a verificação de cada acervo.
+Uma recusa chega ao autor como `course_source_anchor_capacity_reached` (409) ou
+`course_source_anchor_budget_exceeded` (413), com a mensagem do produtor, sem
+orientar a dividir a fonte, duplicar o PDF ou remover âncoras usadas.
+
+## 20261016162436 — transporte normalizado do plano curricular
+
+A [migração](../supabase/migrations/20261016162436_planning_transport_deduplication.sql)
+move o construtor do plano curricular para `private.build_course_instructional_plan_for_actor_v1`,
+que passa a receber a representação pedida. `public.get_owned_course_instructional_plan_for_actor_v3`
+e `..._v4` continuam devolvendo a árvore completa e mantendo o limite de 1835008 bytes; a nova
+`public.get_owned_course_instructional_plan_for_actor_v5`, restrita a `service_role` como as
+anteriores, publica as microssequências dos lotes apenas com identidade, posição de produção,
+caminho curricular e contagem de unidades, marcadas com `payloadEncoding`. Em modo compacto as
+explicações são materializadas apenas no currículo, sem duplicação nos lotes; o guard mede a representação realmente pedida — sem elevar
+limite algum — e o adapter do runtime reconstrói os campos a partir do currículo antes de validar
+o transporte, falhando claramente diante de marca ausente, referência órfã ou campo obrigatório
+ausente. O manifesto avança para `20261016162436`.
+
 ## 20261016071003 — folhas da base normalizadas na validação de fundamentação do parecer
 
 A [migração](../supabase/migrations/20261016071003_grounded_report_leaf_normalization.sql)

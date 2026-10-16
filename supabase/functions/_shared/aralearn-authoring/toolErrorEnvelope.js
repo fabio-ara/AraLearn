@@ -237,6 +237,37 @@ function errorRecovery(error, issues, requestId) {
       ]
     };
   }
+  if (error.code === "course_source_anchor_capacity_reached") {
+    // A capacidade é do acervo corrente da Fonte e a identidade da Âncora é
+    // preservada: nada aqui autoriza dividir lote, fonte ou PDF, nem reciclar a
+    // revisão. Reaproveitar o MESMO trecho já ancorado não consome capacidade.
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Conserve as âncoras já usadas: a capacidade é do acervo corrente da Fonte e nenhuma delas precisa ser removida.",
+        "Reaproveite a âncora existente quando o mesmo trecho voltar a ser usado; revisar um localizador já usado não consome capacidade nova.",
+        "Se todas as identidades forem realmente necessárias, registre o limite atingido como pendência em vez de repetir o mesmo pedido."
+      ]
+    };
+  }
+  if (error.code === "course_source_anchor_budget_exceeded") {
+    // Orçamento agregado do acervo corrente: reduzir redundância entre trechos
+    // de conferência, sem substituir a passagem citada nem trocar o arquivo, e
+    // confirmar a leitura nova antes de repetir. Não orienta dividir lote, fonte
+    // ou PDF e não reabre a revisão.
+    return {
+      strategy: "correct_and_retry",
+      retryable: true,
+      requestIdMode: requestId == null ? "none" : "new",
+      steps: [
+        "Reduza somente a redundância entre os trechos de conferência já existentes, sem substituir a passagem citada nem trocar o PDF de origem.",
+        "Confirme a leitura nova da Fonte depois da correção antes de repetir a operação.",
+        "Se o orçamento continuar insuficiente, registre o limite como pendência em vez de repetir o mesmo pedido."
+      ]
+    };
+  }
   if (error.status === 409) {
     if (error.code === "course_ai_inspection_conflict") {
       return {

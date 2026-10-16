@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.115] - 2026-10-16
+
+### Corrigido
+
+- O planejamento de cursos extensos transporta as microssequências dos lotes por referência ao currículo, preservando os dados completos e a base de aprovação sem duplicar explicações na resposta do banco.
+- Uma revisão de fonte admite até 64 identidades de âncora, com orçamento de 128 KiB. A manutenção que não aumenta o volume de um acervo antigo continua disponível; recusas de capacidade e tamanho informam a causa ao autor. Os limites de comandos por lote, âncoras por vínculo e leitura da fonte permanecem preservados.
+
 ## [0.0.114] - 2026-10-16
 
 ### Desempenho

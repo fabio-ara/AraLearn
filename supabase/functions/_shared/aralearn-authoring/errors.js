@@ -66,6 +66,7 @@ const AUTHORING_RPC_NAMES = new Set([
   "get_owned_course_design_for_actor_v3",
   "get_owned_course_for_actor_v1",
   "get_owned_course_instructional_plan_for_actor_v4",
+  "get_owned_course_instructional_plan_for_actor_v5",
   "get_owned_course_sources_for_actor_v1",
   "get_person_profile_for_actor_v2",
   "ingest_course_source_pdf_for_actor_v1",

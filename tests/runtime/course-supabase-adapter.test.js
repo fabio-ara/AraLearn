@@ -1412,11 +1412,26 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
             position: 0,
             title: "Da ideia à aplicação",
             microsequences: [{
-              id: "micro-a", position: 0, title: "Primeiro contato"
+              id: "micro-a", position: 0, title: "Primeiro contato",
+              objective: "Reconhecer a relação",
+              explanationPlan: { purpose: "Plano do primeiro contato" },
+              explanation: { title: "Explicação inicial", content: [] },
+              contentReview: { state: "current", microsequenceId: "micro-a" },
+              role: "explain"
             }, {
-              id: "micro-b", position: 1, title: "Uso imediato"
+              id: "micro-b", position: 1, title: "Uso imediato",
+              objective: "Aplicar a relação",
+              explanationPlan: { purpose: "Plano do uso imediato" },
+              explanation: { title: "Explicação aplicada", content: [] },
+              contentReview: { state: "current", microsequenceId: "micro-b" },
+              role: "explain"
             }, {
-              id: "micro-c", position: 2, title: "Retomada"
+              id: "micro-c", position: 2, title: "Retomada",
+              objective: "Retomar a relação",
+              explanationPlan: { purpose: "Plano da retomada" },
+              explanation: { title: "Explicação de retomada", content: [] },
+              contentReview: { state: "current", microsequenceId: "micro-c" },
+              role: "explain"
             }]
           }]
         }]
@@ -1455,19 +1470,37 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
     }
   };
   let payload = null;
+  let requests = 0;
+  const partEntry = {
+    id: "30000000-0000-4000-8000-000000000001",
+    position: 0,
+    title: "Parte 1",
+    intent: "",
+    progression: [],
+    version: 1,
+    progress: { state: "planned" },
+    microsequences: [{
+      id: "micro-a",
+      productionPosition: 0,
+      curriculumPath: { moduleId: "module-a", moduleTitle: "Relações fundamentais", lessonId: "lesson-a", lessonTitle: "Da ideia à aplicação" },
+      studyUnitCount: 1
+    }]
+  };
+  const planningTransport = { payloadEncoding: "curriculum-backed-microsequence-v1", ...read,
+    plan: { ...read.plan, parts: [partEntry] },
+    approvalBasis: { courseRevision: read.courseRevision, planVersion: read.plan.version, basisHash: "a".repeat(64) } };
   const value = adapter(async (url, init) => {
-    assert.match(url, /\/rpc\/get_owned_course_instructional_plan_for_actor_v4$/u);
+    assert.match(url, /\/rpc\/get_owned_course_instructional_plan_for_actor_v5$/u);
+    requests += 1;
     payload = JSON.parse(init.body);
-    return json({ ...read, approvalBasis: { courseRevision: read.courseRevision,
-      planVersion: read.plan.version, basisHash: "a".repeat(64) } });
+    return json(planningTransport);
   });
 
   const result = await value.getCourseInstructionalPlan({
     principal: { actorId: USER_ID },
-    courseId: COURSE_ID
+    courseId: COURSE_ID,
+    deadlineAt: Date.now() + 30_000
   });
-
-  assert.deepEqual(payload, { p_actor_id: USER_ID, p_course_id: COURSE_ID });
   assert.equal(result.contract, "aralearn.course-instructional-plan.v3");
   assert.deepEqual(result.plan.curriculumScopeItems[0], {
     id: CURRICULUM_SCOPE_ID,
@@ -1497,6 +1530,17 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
     `https://app.example/AraLearn/#/authoring/courses/${COURSE_ID}?section=planning`
   );
 
+  assert.equal(requests, 1);
+  assert.deepEqual(payload, { p_actor_id: USER_ID, p_course_id: COURSE_ID });
+  assert.equal(result.payloadEncoding, undefined);
+  const expandedMicrosequence = result.plan.parts[0].microsequences[0];
+  assert.equal(expandedMicrosequence.goal, "Reconhecer a relação");
+  assert.equal(expandedMicrosequence.title, "Primeiro contato");
+  assert.deepEqual(expandedMicrosequence.curriculumPath, partEntry.microsequences[0].curriculumPath);
+  assert.deepEqual(result.approvalBasis, planningTransport.approvalBasis);
+  assert.equal(typeof result.mapApprovalReference, "string");
+  assert.ok(result.mapApprovalReference.length > 0);
+
   const legacy = adapter(async () => json({ ...read,
     contract: "aralearn.course-instructional-plan.v2"
   }));
@@ -1505,6 +1549,12 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
       principal: { actorId: USER_ID },
       courseId: COURSE_ID
     }),
+    (error) => error.status === 503 && error.code === "course_service_unavailable"
+  );
+
+  const withoutMarker = adapter(async () => json({ ...read, approvalBasis: planningTransport.approvalBasis }));
+  await assert.rejects(
+    () => withoutMarker.getCourseInstructionalPlan({ principal: { actorId: USER_ID }, courseId: COURSE_ID }),
     (error) => error.status === 503 && error.code === "course_service_unavailable"
   );
 });
@@ -2280,6 +2330,59 @@ test("Fontes usam RPC owner-only, DTO exato, bind de consulta e teto de 256 KiB"
     }),
     (error) => error.status === 503 && error.code === "course_service_unavailable"
   );
+});
+
+test("comando de Fontes traduz a recusa de capacidade e de orçamento de Âncoras", async () => {
+  const command = {
+    type: "save_anchor",
+    anchorId: "anchor-capacity",
+    sourceId: "source-a",
+    sourceRevision: 1,
+    expectedAnchorRevision: 0,
+    selector: { kind: "page_range", startPage: 1, endPage: 1 },
+    contentHash: null,
+    humanLocator: "Página 1",
+    verificationExcerpt: null
+  };
+  // As respostas e as mensagens abaixo são as do produtor real (23514). O
+  // PostgREST devolve a classe 23 com HTTP 400; o mapeamento de domínio precisa
+  // olhar o código e a mensagem, não o transporte.
+  const cases = [
+    {
+      message: "Esta revisão de Fonte já usa 64 identidades de Âncora, o máximo aceito. Reaproveite as âncoras existentes: revisar um localizador já usado não consome capacidade e nenhuma âncora precisa ser removida.",
+      expected: { status: 409, code: "course_source_anchor_capacity_reached" }
+    },
+    {
+      message: "As âncoras desta revisão de Fonte somam mais de 128 KiB, o orçamento aceito. Revise os trechos de conferência redundantes; a localização das âncoras já usadas permanece.",
+      expected: { status: 413, code: "course_source_anchor_budget_exceeded" }
+    }
+  ];
+  for (const current of cases) {
+    const calls = [];
+    const value = adapter(async (url, init) => {
+      calls.push({ url, method: init.method, body: JSON.parse(init.body) });
+      return json({ code: "23514", message: current.message }, 400);
+    });
+    await assert.rejects(
+      () => value.executeCourseSourceCommand({
+        principal: { actorId: USER_ID, authenticationKind: "application" },
+        courseId: COURSE_ID,
+        requestId: "request-source-anchor-1",
+        expectedCourseRevision: 5,
+        command
+      }),
+      (error) => error.status === current.expected.status &&
+        error.code === current.expected.code &&
+        error.message === current.message
+    );
+    assert.doesNotMatch(current.message, /divida a Fonte|duplicar a Fonte|duplicar o PDF|recicle/iu);
+    assert.equal(calls.length, 1, "a escrita recusada não é repetida");
+    assert.equal(calls[0].method, "POST");
+    assert.match(calls[0].url, /\/rest\/v1\/rpc\/execute_course_source_command_for_actor_v1$/u);
+    assert.equal(calls[0].body.p_channel, "application");
+    assert.equal(calls[0].body.p_request_id, "request-source-anchor-1");
+    assert.deepEqual(calls[0].body.p_command, command);
+  }
 });
 
 test("ingestão server-side deriva identidade, sela o PDF e preserva lacunas bibliográficas", async () => {
