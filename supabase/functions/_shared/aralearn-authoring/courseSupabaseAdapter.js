@@ -12,6 +12,7 @@ import {
   normalizeCourseAuthoringProfileChange
 } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AuthoringApiError, withDependencyDiagnostic, closedAuthoringRpcName } from "./errors.js";
+import { expandPlanningTransport } from "./coursePlanningTransport.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
   from "../aralearn/runtime/domain/courseContentReview.js";
@@ -2212,10 +2213,10 @@ export class CourseSupabaseAdapter {
     courseId,
     deadlineAt = null
   }) {
-    const result = first(await this.rpc("get_owned_course_instructional_plan_for_actor_v4", {
+    const result = expandPlanningTransport(first(await this.rpc("get_owned_course_instructional_plan_for_actor_v5", {
       p_actor_id: principal.actorId,
       p_course_id: courseId
-    }, { deadlineAt }));
+    }, { deadlineAt })));
     if (!jsonRecord(result) ||
         result.contract !== "aralearn.course-instructional-plan.v3" ||
         result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
