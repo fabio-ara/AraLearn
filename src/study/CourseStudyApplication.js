@@ -163,6 +163,7 @@ export function createCourseStudyApplication({
     responseByBlockKey: {},
     activeGapPrompt: null,
     pendingStudyFocus: null,
+    pendingPracticeReveal: null,
     feedbackOpen: false,
     advancePending: false,
     advanceError: "",
@@ -538,6 +539,31 @@ export function createCourseStudyApplication({
     state.pendingStudyFocus = { selector, attributes };
   }
 
+  // O retorno autoral de uma prática vive dentro do próprio painel de leitura: quando a
+  // conferência o revela, ele é o conteúdo pertinente da ação e precisa entrar na área
+  // visível uma única vez, depois do render, sem mexer no layout e sem rolar a página.
+  function queuePracticeReveal(selector, attributes = {}) {
+    state.pendingPracticeReveal = { selector, attributes };
+  }
+
+  function revealPracticeReturn(target) {
+    if (!target?.selector) return;
+    const node = [...root.querySelectorAll(target.selector)].find((candidate) =>
+      Object.entries(target.attributes || {}).every(([name, value]) =>
+        candidate.getAttribute(name) === String(value)));
+    const panel = node?.closest?.(".card-sheet-content");
+    if (!panel || panel.clientHeight <= 0) return;
+    const panelBox = panel.getBoundingClientRect();
+    const nodeBox = node.getBoundingClientRect();
+    const bandTop = panelBox.top;
+    const bandBottom = panelBox.top + panel.clientHeight;
+    const delta = nodeBox.height > panel.clientHeight
+      ? nodeBox.top - bandTop
+      : nodeBox.bottom > bandBottom ? nodeBox.bottom - bandBottom
+        : nodeBox.top < bandTop ? nodeBox.top - bandTop : 0;
+    if (delta) panel.scrollTop += delta;
+  }
+
   function focusStudyTarget(target) {
     if (!target?.selector) return;
     const focus = () => {
@@ -720,6 +746,7 @@ export function createCourseStudyApplication({
     }
     state.activeGapPrompt = null;
     state.pendingStudyFocus = null;
+    state.pendingPracticeReveal = null;
     state.feedbackOpen = false;
     state.advancePending = false;
     state.advanceError = "";
@@ -2417,6 +2444,7 @@ export function createCourseStudyApplication({
       blockKey: entry.blockKey,
       studyUnit: context().studyUnit,
       focus: queueStudyFocus,
+      reveal: queuePracticeReveal,
       setActivePrompt: (prompt) => { state.activeGapPrompt = prompt; }
     });
     if (rerender) render();
@@ -3082,6 +3110,8 @@ export function createCourseStudyApplication({
     if (captureDraft) captureManualDraft();
     const pendingStudyFocus = state.pendingStudyFocus;
     state.pendingStudyFocus = null;
+    const pendingPracticeReveal = state.pendingPracticeReveal;
+    state.pendingPracticeReveal = null;
     const preservedState = preserveFocus || pendingStudyFocus
       ? captureRenderState(root, {
           trackedScrollSelectors: [".screen-content", ".card-sheet-content"],
@@ -3291,6 +3321,7 @@ export function createCourseStudyApplication({
         restoreFocus: preserveFocus && !pendingStudyFocus && !observationFocus
       });
     }
+    revealPracticeReturn(pendingPracticeReveal);
     focusStudyTarget(pendingStudyFocus || observationFocus);
     revealStudyObservationControl(root.ownerDocument?.activeElement);
     explanation.afterRender();
