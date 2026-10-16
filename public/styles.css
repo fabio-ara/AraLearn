@@ -2777,13 +2777,9 @@ button.account-settings-back[hidden] {
   border-right: 1px solid var(--resource-border);
   border-bottom: 1px solid var(--resource-border);
   padding: 10px 11px;
-  /* O piso vale igual em toda coluna: com 5.5rem (88px), o padding de 10px/11px
-     ainda deixa caber a palavra comum da coluna. Reduzir o piso em tabelas de ate
-     tres colunas foi medido: devolve largura a prosa mais longa as custas das
-     colunas curtas, que passam a dividir a propria palavra (a rotula de uma tabela
-     de duas colunas cai de ~100px para ~95px e 'Conhecimento' deixa de caber).
-     O piso segue igual em toda coluna; tokens longos continuam quebrando porque a
-     coluna de leitura nao os comporta. */
+  /* O piso sustenta a largura das colunas de uma tabela que rola e das celulas
+     com contrato proprio de largura. Numa tabela que cabe na coluna de leitura a
+     coluna segue o conteudo real; a regra esta logo abaixo. */
   min-width: 5.5rem;
   text-align: left;
   vertical-align: middle;
@@ -2794,6 +2790,28 @@ button.account-settings-back[hidden] {
   font-size: var(--type-dense);
   line-height: var(--leading-dense);
   background: color-mix(in srgb, var(--resource-surface-subtle) 92%, transparent);
+}
+
+/* Numa tabela que cabe na coluna de leitura o piso uniforme nao evita rolagem
+   nenhuma e reservava para o rotulo curto a largura da prosa longa. Ali cada
+   coluna segue o conteudo real; as celulas com contrato proprio de largura (sem
+   quebra ou numerico) mantem o piso e a tabela de mais de tres colunas nao muda. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) {
+  min-width: 0;
+  /* A hifenizacao tambem encolhe o min-content do texto; sem ela a coluna para de
+     encolher abaixo da palavra inteira. */
+  hyphens: none;
+}
+
+/* Dentro dessas celulas a quebra acontece no limite da palavra: o paragrafo e a
+   lista do markdown traziam overflow-wrap anywhere e word-break break-word, que
+   reduzem o min-content do texto e deixam o layout automatico partir a frase no
+   meio da palavra. O token do codigo em linha segue quebrando em qualquer ponto. */
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-paragraph,
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list,
+.runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list li {
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .runtime-table-cell-content {
