@@ -321,12 +321,14 @@ for (const [name, { data }] of SLICE) {
       await mount(page, { width, data });
       const scope = page.locator(".card-sheet-content");
       const geometry = await readGeometry(scope);
+      // Captura do inicio antes de deslocar a rolagem: a leitura comeca na
+      // primeira coluna. O deslocamento vem depois, para a captura do fim.
+      await page.screenshot({ path: path.join(PROOF_DIR, name + "-" + width + "-inicio.png") });
       const reach = await lastColumnReachable(scope);
       console.log("geometria " + name + "/" + width + ": " + JSON.stringify({ columns: geometry.columns,
         broken: geometry.broken, minContentSum: geometry.minContentSum, table: geometry.table, frame: geometry.frame,
         wrap: [geometry.wrapClient, geometry.wrapScroll], pageOverflow: geometry.pageOverflow,
         reading: geometry.reading.width, sheet: geometry.sheet.width, explanation: geometry.explanation }) + " alcance: " + JSON.stringify(reach));
-      await page.screenshot({ path: path.join(PROOF_DIR, name + "-" + width + "-inicio.png") });
       if (reach.scroll > 0) await page.screenshot({ path: path.join(PROOF_DIR, name + "-" + width + "-fim.png") });
       expect(geometry.overflowX, name).toBe("auto");
       expect(geometry.pageOverflow, name + ": a pagina nao estoura").toBeLessThanOrEqual(1);
