@@ -2806,7 +2806,10 @@ button.account-settings-back[hidden] {
 /* Dentro dessas celulas a quebra acontece no limite da palavra: o paragrafo e a
    lista do markdown traziam overflow-wrap anywhere e word-break break-word, que
    reduzem o min-content do texto e deixam o layout automatico partir a frase no
-   meio da palavra. O token do codigo em linha segue quebrando em qualquer ponto. */
+   meio da palavra. O token do codigo em linha segue quebrando em qualquer ponto.
+   Um token longo em texto puro (endereco ou URL sem codigo) nao tem ponto de
+   quebra: a coluna assume a largura da palavra e a moldura cresce com a rolagem
+   propria, em vez de partir a prosa. */
 .runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-paragraph,
 .runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list,
 .runtime-table:not(:has(> thead > tr > :nth-child(4))) > * > tr > *:not(.is-nowrap):not(.is-align-numeric) .runtime-markdown-list li {
