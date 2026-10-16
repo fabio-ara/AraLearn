@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.114] - 2026-10-16
+
+### Desempenho
+
+- A leitura humana da auditoria deixa de repetir literalmente a fonte integral idêntica e a abertura que já é o primeiro texto apresentado do alvo. A fonte repetida passa a viajar uma vez no registro do foco, com o vínculo apontando a posição, e a abertura redundante sai como remissão para o texto apresentado. A expansão reconstrói base, referência, ordem e variantes exatamente como antes, sem mudar o parecer nem o significado da leitura.
+
 ## [0.0.113] - 2026-10-16
 
 ### Corrigido
