@@ -30,7 +30,7 @@ function citation(targetId, source, extra = {}) {
       source: structuredClone(source) }], ...extra };
 }
 
-function target(id, { microsequenceId = 'ms-a', units = [], citations = [], observation: obs } = {}) {
+function target(id, { microsequenceId = 'ms-a', citations = [], observation: obs } = {}) {
   return { referenciaInspecao: `opaque-${id}`, auditoriaPedagogica: {
     basis: { targetKind: 'study_unit', targetId: id, audience: null,
       microsequence: { id: microsequenceId, title: 'MS', goal: 'Relacionar.', explanation: null },
@@ -75,7 +75,8 @@ function revert469(context) {
     for (const unit of focus.unidadesParaConfronto ?? []) {
       const observation = unit.observation;
       if (observation?.inicioRemitido !== INICIO_REMISSION_PATH || Object.hasOwn(observation, 'inicio')) continue;
-      const { inicioRemitido, ...rest } = observation;
+      const rest = { ...observation };
+      delete rest.inicioRemitido;
       unit.observation = { ...rest, inicio: observation.tarefaApresentada?.studentContent?.[0]?.text ?? '' };
     }
     if (!Array.isArray(focus.fontes)) continue;

@@ -15,7 +15,8 @@ export function resolveLinkSource(link, focus) {
   const source = focus.fontes[link.fonteDoFoco - 1];
   // Registro presente e sem source: posição inválida é falha real, não ausência.
   if (source === undefined) throw new Error(`fonteDoFoco sem fonte no registro do foco: ${String(link.fonteDoFoco)}`);
-  const { fonteDoFoco, ...rest } = link;
+  const rest = { ...link };
+  delete rest.fonteDoFoco;
   return { ...rest, source };
 }
 

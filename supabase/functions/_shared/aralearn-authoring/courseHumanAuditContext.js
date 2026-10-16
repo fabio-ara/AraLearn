@@ -62,7 +62,8 @@ function shareUnitInicio(observation) {
   const studentContent = observation.tarefaApresentada?.studentContent;
   const primeiro = Array.isArray(studentContent) ? studentContent[0]?.text : undefined;
   if (typeof inicio !== 'string' || !inicio || typeof primeiro !== 'string' || primeiro !== inicio) return observation;
-  const { [INICIO_FIELD]: omitido, ...restante } = observation;
+  const restante = { ...observation };
+  delete restante[INICIO_FIELD];
   return { ...restante, [INICIO_REMISSION_FIELD]: INICIO_REMISSION_PATH };
 }
 
