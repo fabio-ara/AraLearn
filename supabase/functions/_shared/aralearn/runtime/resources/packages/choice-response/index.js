@@ -97,7 +97,7 @@ export const choiceResponsePackage = Object.freeze({
       const optionFeedback = option.feedback && (
         manualEditing || revealAnswers || checked && (evaluatedCorrect || evaluatedWrong)
       )
-        ? `<div class="multiple-choice-option-feedback">${renderPackageProse(option.feedback)}</div>`
+        ? `<div class="multiple-choice-option-feedback" data-choice-return-option="${escapePackageAttribute(String(option.id))}" data-choice-return-block="${escapePackageAttribute(blockKey)}">${renderPackageProse(option.feedback)}</div>`
         : "";
       const tag = revealAnswers ? "div" : "button";
       const interaction = revealAnswers

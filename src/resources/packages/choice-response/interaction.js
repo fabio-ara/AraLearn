@@ -1,6 +1,30 @@
 import { getCorrectExerciseOptionIds } from "../../../core/exerciseOptions.js";
 import { bindPackageResponseControls as bind } from "../../sdk/responseInteraction.js";
 
+// O retorno autoral da alternativa marcada é renderizado dentro dela, no painel de leitura.
+// No erro, o alvo pertinente é o retorno de uma alternativa marcada INCORRETA do próprio
+// bloco: havendo marcada incorreta, só ela pode ser revelada e, se nenhuma delas declarar
+// retorno, nada é revelado (não se desvia o olhar para uma marcada correta sem explicação).
+// O retorno de uma marcada qualquer só serve quando o erro é por omissão, isto é, quando
+// não existe nenhuma marcada incorreta. Sem retorno declarado, nenhum texto é presumido.
+// Sem host compatível, o recurso é ignorado: o host decide como revelar.
+function revealMarkedReturn(data, state, host) {
+  if (typeof host?.reveal !== "function") return;
+  const expected = new Set((Array.isArray(data.answerIds) ? data.answerIds : []).map((id) => String(id)));
+  const declared = (id) => (data.options || []).some((option) =>
+    String(option.id) === String(id) && option.feedback);
+  const marked = [...state.selected].map((id) => String(id));
+  const incorrect = marked.filter((id) => !expected.has(id));
+  const target = incorrect.length
+    ? incorrect.find((id) => declared(id))
+    : marked.find((id) => declared(id));
+  if (!target) return;
+  host.reveal("[data-choice-return-option]", {
+    "data-choice-return-option": target,
+    "data-choice-return-block": host.blockKey
+  });
+}
+
 export const choiceResponseInteraction = Object.freeze({
   createState() { return { selected: [], feedback: null }; },
   submit(data, state, host) {
@@ -11,6 +35,7 @@ export const choiceResponseInteraction = Object.freeze({
     }
     const result = host.evaluate({ selectedIds: [...state.selected] });
     state.feedback = result.correct ? "correct" : "wrong";
+    if (state.feedback === "wrong") revealMarkedReturn(data, state, host);
     return result.correct === true;
   },
   bind(root, data, host) {

@@ -52,6 +52,70 @@ export const practiceErrorFeedbackFixtures = Object.freeze({
   }
 });
 
+// Práticas locais da prova de UI do retorno autoral por alternativa (issue 466): o retorno
+// da alternativa marcada é renderizado dentro dela, no painel de leitura. A contagem de
+// fluxos é apenas contagem: nenhuma alternativa afirma ganho de taxa. O parágrafo inicial é
+// longo o bastante para que o retorno de qualquer alternativa fique abaixo da dobra, e a
+// variação "choice-return-tall" declara retorno maior que o painel no risco de 320 px.
+export const choiceReturnFixtures = Object.freeze({
+  "choice-return": {
+    content: [paragraph("practice-choice", "Um AP admite quatro fluxos espaciais e o cliente usado no teste admite dois fluxos. O ambiente tem " +
+      "interferência e outros clientes ativos. Antes de concluir pela capacidade do AP, conte os fluxos que cada participante sustenta e " +
+      "verifique quantos continuam livres com a carga atual. A contagem do conjunto é uma contagem simples: nenhum participante acrescenta " +
+      "fluxos ao outro.")],
+    response: { id: "practice-choice-return", package: "aralearn.response.choice", version: "1.0.0",
+      data: { question: "Qual conclusão é adequada?", selectionMode: "single", selectionCriterion: "correct",
+        options: [
+          { id: "ambiente", text: "A interferência do ambiente aumenta o número de fluxos disponíveis.",
+            feedback: "A interferência reduz o que o meio entrega; ela não acrescenta fluxos." },
+          { id: "quatro", text: "Os quatro fluxos do AP ficam disponíveis para o cliente de dois fluxos.",
+            feedback: "A contagem utilizável segue o participante mais restrito, não o AP: o cliente admite dois fluxos, então o conjunto " +
+              "entrega dois. Antes de concluir pela capacidade do AP, conte os fluxos de cada participante e confira quais continuam livres " +
+              "com a carga atual." },
+          { id: "restrito", text: "A contagem utilizável é a do participante mais restrito.",
+            feedback: "O participante mais restrito determina a contagem utilizável do conjunto." }
+        ], answerIds: ["restrito"] } }
+  },
+  "choice-return-tall": {
+    content: [paragraph("practice-choice-tall", "Um AP admite quatro fluxos espaciais e o cliente usado no teste admite dois fluxos. O ambiente " +
+      "tem interferência e outros clientes ativos. Antes de concluir pela capacidade do AP, conte os fluxos que cada participante sustenta e " +
+      "verifique quantos continuam livres com a carga atual. A contagem do conjunto é uma contagem simples: nenhum participante acrescenta " +
+      "fluxos ao outro.")],
+    response: { id: "practice-choice-return-tall", package: "aralearn.response.choice", version: "1.0.0",
+      data: { question: "Qual conclusão é adequada?", selectionMode: "single", selectionCriterion: "correct",
+        options: [
+          { id: "soma", text: "Os fluxos do AP e do cliente se somam na contagem do conjunto.",
+            feedback: "Somar os fluxos dos participantes não descreve o conjunto, porque vale o participante mais restrito: se o cliente " +
+              "sustenta dois fluxos e o AP admite quatro, o conjunto entrega dois. Conte primeiro o que cada participante sustenta e depois " +
+              "compare com a carga em uso para saber quantos fluxos continuam livres. " +
+              "Repita a contagem para cada participante do caminho, porque o menor valor decide o conjunto e nenhum participante acrescenta " +
+              "fluxos ao outro. " +
+              "A carga em uso ocupa parte do que os participantes sustentam, então a contagem de livres é menor do que a contagem de " +
+              "sustentados. " +
+              "Somar os valores esconde justamente esse participante mais restrito, que é o que limita o conjunto. " +
+              "Verifique também se a interferência do ambiente reduz o que o meio entrega antes de concluir qualquer conta." },
+          { id: "restrito", text: "A contagem utilizável é a do participante mais restrito.",
+            feedback: "O participante mais restrito determina a contagem utilizável do conjunto." }
+        ], answerIds: ["restrito"] } }
+  },
+  "choice-multiple": {
+    content: [paragraph("practice-multiple", "Um switch encaminha quadros entre portas, e cada participante do caminho sustenta uma contagem " +
+      "própria de fluxos. A carga em uso ocupa parte dessa contagem, e o participante mais restrito limita o conjunto. Antes de responder, " +
+      "conte o que cada participante sustenta e confira o que continua livre com a carga atual.")],
+    response: { id: "practice-choice-multiple", package: "aralearn.response.choice", version: "1.0.0",
+      data: { question: "Quais afirmativas descrevem a contagem do conjunto?", selectionMode: "multiple", selectionCriterion: "correct",
+        options: [
+          { id: "restrito", text: "A contagem utilizável é a do participante mais restrito.",
+            feedback: "O participante mais restrito determina a contagem utilizável do conjunto." },
+          { id: "carga", text: "A carga em uso ocupa parte dos fluxos do conjunto.",
+            feedback: "O que está em uso não está livre: a carga reduz a contagem disponível do conjunto." },
+          { id: "soma", text: "A contagem do conjunto é a soma dos fluxos do AP e do cliente.",
+            feedback: "Somar os fluxos dos participantes não descreve o conjunto: vale o participante mais restrito, e a carga em uso ainda " +
+              "reduz o que sobra. Conte o participante mais restrito primeiro e depois desconte o que está em uso, sem somar os participantes." }
+        ], answerIds: ["restrito", "carga"] } }
+  }
+});
+
 export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false, tools = "authored", practiceKind = "choice" } = {}) {
   // A galeria de fixture não repassa opções extras: o parâmetro ?audio=1 da própria
   // URL habilita a ferramenta de áudio sem alterar a página compartilhada.
@@ -100,8 +164,8 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       options: [{ id: "local", text: "O socket é uma interface local." }, { id: "prior", text: "A interface pode existir antes da conexão." },
         { id: "whole", text: "O socket representa a rede inteira." }], answerIds: ["local", "prior"] } };
   practice.feedback = [paragraph("feedback", "A interface local permite ao processo usar o transporte e existe antes da conexão. A conexão relaciona as pontas; nenhuma interface representa a rede inteira.")];
-  if (practiceErrorFeedbackFixtures[practiceKind]) {
-    const fixture = practiceErrorFeedbackFixtures[practiceKind];
+  const fixture = practiceErrorFeedbackFixtures[practiceKind] || choiceReturnFixtures[practiceKind];
+  if (fixture) {
     practice.content = structuredClone(fixture.content);
     practice.response = structuredClone(fixture.response);
   }
