@@ -113,10 +113,32 @@ export const choiceReturnFixtures = Object.freeze({
             feedback: "Somar os fluxos dos participantes não descreve o conjunto: vale o participante mais restrito, e a carga em uso ainda " +
               "reduz o que sobra. Conte o participante mais restrito primeiro e depois desconte o que está em uso, sem somar os participantes." }
         ], answerIds: ["restrito", "carga"] } }
+  },
+  // Retorno autoral com duas âncoras de citação dentro da alternativa marcada (issue 466):
+  // o marcador entra depois da revelação e desloca a última linha do retorno.
+  "choice-return-anchored": {
+    content: [paragraph("practice-choice-anchored-text", "Um AP admite quatro fluxos espaciais e o cliente usado no teste admite dois fluxos. O canal usado " +
+      "no teste também limita o que chega a cada participante ativo. Antes de concluir pela capacidade do AP, conte os fluxos que cada " +
+      "participante sustenta e verifique quantos continuam livres com a carga atual do conjunto observado.")],
+    response: { id: "practice-choice-anchored", package: "aralearn.response.choice", version: "1.0.0",
+      data: { question: "Qual conclusão é adequada?", selectionMode: "single", selectionCriterion: "correct",
+        options: [
+          { id: "restrito", text: "A contagem utilizável é a do participante mais restrito.",
+            feedback: "O participante mais restrito determina a contagem utilizável do conjunto." },
+          { id: "ambiente", text: "A interferência do ambiente aumenta o número de fluxos disponíveis.",
+            feedback: "A interferência reduz o que o meio entrega; ela não acrescenta fluxos." },
+          { id: "quatro", text: "Os quatro fluxos do AP ficam disponíveis para o cliente de dois fluxos.",
+            feedback: "A contagem utilizável segue o participante mais restrito e não a capacidade nominal anunciada pelo AP, porque o " +
+              "cliente admite dois fluxos e o conjunto entrega dois; confira participante por participante antes de concluir pela " +
+              "capacidade do AP e desconte a carga que já está em uso no momento da medição." },
+        ], answerIds: ["restrito"] } }
   }
 });
 
 export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false, tools = "authored", practiceKind = "choice" } = {}) {
+  // O parâmetro anchors habilita as citações da unidade e as âncoras dentro do retorno
+  // autoral da alternativa marcada, sem depender de opção passada por código.
+  const anchorOccurrences = new URLSearchParams(globalThis.location?.search || "").has("anchors");
   // A galeria de fixture não repassa opções extras: o parâmetro ?audio=1 da própria
   // URL habilita a ferramenta de áudio sem alterar a página compartilhada.
   const withAudio = includeAudio || new URLSearchParams(globalThis.location?.search || "").has("audio");
@@ -191,6 +213,21 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       anchors: [{ anchorId: "support-page", selector: { kind: "page_range", startPage: 3, endPage: 3 }, humanLocator: "Mecanismo", contentHash: hash }],
       attachments: [{ contentHash: hash, byteSize: 128, mediaType: "application/pdf" }] }] };
   if (citationOccurrences) citations.citations[0].occurrences = structuredClone(citationOccurrences);
+  // Âncoras de citação dentro do retorno autoral da alternativa marcada (issue 466): o
+  // marcador entra no fluxo do texto depois da revelação, como no caso hospedado.
+  if (anchorOccurrences) {
+    const options = practice.response?.data?.options || [];
+    const quotes = ["capacidade nominal anunciada pelo AP", "carga que já está em uso no momento da medição"];
+    // A alternativa alvo é a marcada como incorreta cujo retorno contém as duas âncoras.
+    const incorrect = options.findIndex((option) => option?.feedback &&
+      !practice.response.data.answerIds.includes(option.id) && quotes.every((quote) => option.feedback.includes(quote)));
+    if (incorrect >= 0) {
+      citations.citations[0].occurrences = quotes.map((quote, index) => ({
+        occurrenceId: "practice-anchor-" + (index + 1), slot: "response", resourceId: practice.response.id,
+        path: "options[" + incorrect + "].feedback", quote, prefix: null, suffix: null, status: "resolved"
+      }));
+    }
+  }
   const repository = {
     loadProject: () => structuredClone(project), loadCourse: async () => structuredClone(course),
     loadProgress: () => ({ version: 1, lessons: {} }), loadAnnotationsForPath: () => [], loadReviewItems: () => [],
@@ -203,9 +240,14 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     loadCourseSummaries: () => [{ courseId: course.id, title: course.title, ownership: "public", canEdit: false,
       revision: 1, studyUnitCount: 2, availableOffline: true }],
     loadStudyUnitCitations: async reference => {
+      // Fluxo real: a leitura de citações chega depois da conferência. Com o parâmetro
+      // gate=1 o teste controla o instante da chegada, sem timeout arbitrário.
+      if (new URLSearchParams(globalThis.location?.search || "").has("gate")) {
+        await new Promise((resolve) => { globalThis.__releaseStudyCitations = resolve; });
+      }
       const unitCitations = structuredClone(citations);
       delete unitCitations.targetKind; delete unitCitations.targetId;
-      return { ...unitCitations, studyUnitId: reference.studyUnitId, citations: citationOccurrences ? unitCitations.citations : [] };
+      return { ...unitCitations, studyUnitId: reference.studyUnitId, citations: citationOccurrences || anchorOccurrences ? unitCitations.citations : [] };
     },
     loadExplanationContext: reference => {
       if (probe.state === "error") throw new Error("A explicação desta cópia está indisponível.");
