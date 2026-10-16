@@ -123,7 +123,7 @@ test("guard mede a representacao pedida: v3 estoura e v5 permanece abaixo", asyn
     "select octet_length(public.get_owned_course_instructional_plan_for_actor_v5($1,$2)::text) as bytes", [ACTOR, COURSE])).rows[0].bytes);
   assert.ok(compactBytes < GUARD_BYTES, "compacto " + compactBytes);
   console.log("[472] guard=" + GUARD_BYTES + " compactoGrande=" + compactBytes);
-  await assert.rejects(() => db.query("select private.get_course_instructional_plan_for_actor_v3($1,$2)", [ACTOR, COURSE]), /excede o limite/u);
+  await assert.rejects(() => db.query("select private.get_course_instructional_plan_for_actor_v3($1,$2)", [ACTOR, COURSE]), /excede o limite de leitura/u);
 });
 
 test("v5 preserva o gate de servico e o escopo do proprietario", async () => {
