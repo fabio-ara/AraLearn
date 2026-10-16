@@ -9,7 +9,17 @@ const SHARED_BASIS_FIELDS = ['audience', 'planItems', 'studyUnits', 'dependencie
 const BASIS_CITATIONS_FIELD = 'citations';
 const CITATIONS_REGISTRY_FIELD = 'citacoes';
 const CITATION_POSITIONS_FIELD = 'citacoesDoFoco';
-const READING_GUIDANCE = 'Para cada alvo, leia basis, instruction e definicoesDosParametros do foco em auditoriasPedagogicas junto de sua auditoriaPedagogica.basis. unidadesParaConfronto no alvo indica posições, começando em 1, na lista de mesmo nome do foco; units, quando presente, permanece local. Em observation, declarado contém requisitos e operação declarada pelo autor; tarefaApresentada contém enunciado, alternativas, respostas previstas e feedback, não uma operação efetiva calculada. Os demais campos conservam contexto e indícios. O campo identifica a definição do parâmetro neste mesmo foco, sem consulta adicional. As citações pertencem ao alvo: citacoesDoFoco no alvo indica posições, começando em 1, na lista citacoes do foco, preservando a ordem e as repetições. Use referenciaInspecao para registrar o parecer, sem reenviar a base.';
+// Fonte integral idêntica viaja uma vez por foco, como as citações; o vínculo
+// troca o objeto repetido pela posição, preservando variantes e campos alheios.
+const LINK_SOURCE_FIELD = 'source';
+const SOURCES_REGISTRY_FIELD = 'fontes';
+const SOURCE_POSITION_FIELD = 'fonteDoFoco';
+// A abertura do alvo já é exatamente o primeiro texto apresentado; o campo
+// redundante sai com remissão local, e só quando a igualdade é literal.
+const INICIO_FIELD = 'inicio';
+const INICIO_REMISSION_FIELD = 'inicioRemitido';
+const INICIO_REMISSION_PATH = 'tarefaApresentada.studentContent[0].text';
+const READING_GUIDANCE = 'Para cada alvo, leia basis, instruction e definicoesDosParametros do foco em auditoriasPedagogicas junto de sua auditoriaPedagogica.basis. unidadesParaConfronto no alvo indica posições, começando em 1, na lista de mesmo nome do foco; units, quando presente, permanece local. Em observation, declarado contém requisitos e operação declarada pelo autor; tarefaApresentada contém enunciado, alternativas, respostas previstas e feedback, não uma operação efetiva calculada. Os demais campos conservam contexto e indícios. O campo identifica a definição do parâmetro neste mesmo foco, sem consulta adicional. As citações pertencem ao alvo: citacoesDoFoco no alvo indica posições, começando em 1, na lista citacoes do foco, preservando a ordem e as repetições; a fonte repetida entra uma vez em fontes do mesmo foco, e fonteDoFoco, começando em 1, só remete a essa lista se o vínculo não tiver source. Use referenciaInspecao para registrar o parecer, sem reenviar a base. O vínculo com source conserva a fonte integral; inicioRemitido vale tarefaApresentada.studentContent[0].text e indica inicio ausente; um inicio presente continua sendo a abertura declarada.';
 const TASK_OBSERVATION_FIELDS = ['question', 'response', 'selectionMode', 'options', 'correctAlternativeCount',
   'alternatives', 'targets', 'studentContent', 'feedback', 'content'];
 
@@ -33,13 +43,81 @@ function shareUnitObservations(audit, group) {
       index = group.observations.length;
       group.observations.push({ unitId: unit.unitId, literal });
       (group.shared.unidadesParaConfronto ??= []).push({ ...unit,
-        observation: { ...observation, declarado, tarefaApresentada } });
+        observation: shareUnitInicio({ ...observation, declarado, tarefaApresentada }) });
     }
     return index + 1;
   });
   const local = { ...audit };
   delete local.units;
   return { ...local, unidadesParaConfronto: positions };
+}
+
+// Remove somente a abertura idêntica ao primeiro texto apresentado e publica a
+// remissão no mesmo objeto. Estrutura inesperada, campo desconhecido com o nome
+// da remissão, valor ausente, nulo, vazio ou divergente ficam como estavam.
+function shareUnitInicio(observation) {
+  if (!observation || typeof observation !== 'object' || Array.isArray(observation)) return observation;
+  if (!Object.hasOwn(observation, INICIO_FIELD) || Object.hasOwn(observation, INICIO_REMISSION_FIELD)) return observation;
+  const inicio = observation[INICIO_FIELD];
+  const studentContent = observation.tarefaApresentada?.studentContent;
+  const primeiro = Array.isArray(studentContent) ? studentContent[0]?.text : undefined;
+  if (typeof inicio !== 'string' || !inicio || typeof primeiro !== 'string' || primeiro !== inicio) return observation;
+  const restante = { ...observation };
+  delete restante[INICIO_FIELD];
+  return { ...restante, [INICIO_REMISSION_FIELD]: INICIO_REMISSION_PATH };
+}
+
+// Compartilha fonte integral só com ganho real. A decisão é tomada uma única vez
+// sobre as citações JÁ deduplicadas pela identidade original, contando apenas
+// entradas armazenadas: nenhuma fonte é substituída antes da chave e nada é
+// desfeito depois. Fonte que não seja objeto simples fica intacta, e qualquer
+// fonteDoFoco preexistente desativa o compartilhamento do foco inteiro, porque a
+// posição deixaria de ter significado único.
+// A compactação é medida em bytes UTF-8 do objeto publicado: unidades UTF-16
+// subestimariam fonte acentuada e ignorariam o custo da chave fontes.
+const UTF8_ENCODER = new TextEncoder();
+const utf8Bytes = value => UTF8_ENCODER.encode(JSON.stringify(value)).byteLength;
+function shareRegistrySources(citations) {
+  const positions = new Map();
+  const list = [];
+  let repeats = 0;
+  let colisao = false;
+  const compartilhavel = link => link && typeof link === 'object' && !Array.isArray(link) &&
+    Object.hasOwn(link, LINK_SOURCE_FIELD) && !Object.hasOwn(link, SOURCE_POSITION_FIELD) &&
+    link[LINK_SOURCE_FIELD] && typeof link[LINK_SOURCE_FIELD] === 'object' &&
+    !Array.isArray(link[LINK_SOURCE_FIELD]);
+  for (const citation of citations) {
+    if (!citation || !Array.isArray(citation.links)) continue;
+    for (const link of citation.links) {
+      if (link && typeof link === 'object' && !Array.isArray(link) && Object.hasOwn(link, SOURCE_POSITION_FIELD)) {
+        colisao = true;
+      }
+      if (!compartilhavel(link)) continue;
+      const key = canonicalAuthoringValue(link[LINK_SOURCE_FIELD]);
+      if (positions.has(key)) repeats += 1;
+      else {
+        positions.set(key, list.length + 1);
+        list.push(link[LINK_SOURCE_FIELD]);
+      }
+    }
+  }
+  if (repeats === 0 || colisao) return { citations, fontes: null };
+  const compartilhadas = citations.map(citation => {
+    if (!citation || !Array.isArray(citation.links)) return citation;
+    return { ...citation, links: citation.links.map(link => {
+      if (!compartilhavel(link)) return link;
+      const { [LINK_SOURCE_FIELD]: fonte, ...restante } = link;
+      return { ...restante, [SOURCE_POSITION_FIELD]: positions.get(canonicalAuthoringValue(fonte)) };
+    }) };
+  });
+  // A posição só substitui a fonte quando o registro mais as posições encolhem a
+  // serialização entregue: a comparação usa os objetos completos {citacoes} e
+  // {citacoes, fontes}, em bytes UTF-8. Fonte pequena repetida cresce com o
+  // registro, e aí nada muda.
+  const semRegistro = utf8Bytes({ [CITATIONS_REGISTRY_FIELD]: citations });
+  const comRegistro = utf8Bytes({ [CITATIONS_REGISTRY_FIELD]: compartilhadas, [SOURCES_REGISTRY_FIELD]: list });
+  if (comRegistro >= semRegistro) return { citations, fontes: null };
+  return { fontes: list, citations: compartilhadas };
 }
 
 export function humanParameterLabel(parameterId, definitionById) {
@@ -129,7 +207,11 @@ export function shareHumanAuditContext(context, course) {
         ? { ...target, designSnapshot: projectDesign(target.designSnapshot, definitions) } : target);
     }
     if (definitions.size) group.shared.definicoesDosParametros = [...definitions.values()];
-    if (group.citations?.list.length) group.shared[CITATIONS_REGISTRY_FIELD] = group.citations.list;
+    if (group.citations?.list.length) {
+      const shared = shareRegistrySources(group.citations.list);
+      if (shared.fontes) group.shared[SOURCES_REGISTRY_FIELD] = shared.fontes;
+      group.shared[CITATIONS_REGISTRY_FIELD] = shared.citations;
+    }
   }
   return groups.length ? { ...projected, auditoriasPedagogicas: groups.map(group => group.shared),
     leituraDaAuditoria: READING_GUIDANCE } : context;

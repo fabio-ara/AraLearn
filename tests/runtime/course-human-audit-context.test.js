@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { shareHumanAuditContext } from '../../supabase/functions/_shared/aralearn-authoring/courseHumanAuditContext.js';
 import { openHumanReadContinuation, paginateHumanReadContext } from '../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js';
+import { resolveCitation, resolveUnit } from '../support/auditProjection.js';
 
 const COURSE = { id: 'course-a', revision: 7 };
 const literal = 'Texto literal: 😀 α /ɲ/ \\n "citação".\nOutra linha.';
@@ -46,15 +47,14 @@ function restore(context) {
       audit.basis.citations = audit.citacoesDoFoco.map(position => {
         const citation = shared.citacoes[position - 1];
         assert.ok(citation, 'posição de citação resolvida no mesmo foco e página lógica');
-        return citation;
+        return resolveCitation(citation, shared);
       });
       delete audit.citacoesDoFoco;
     }
     if (!Object.hasOwn(audit, 'units') && Array.isArray(audit.unidadesParaConfronto)) {
       audit.units = audit.unidadesParaConfronto.map(position => {
         const unit = shared.unidadesParaConfronto[position - 1];
-        const { declarado, tarefaApresentada, ...context } = unit.observation;
-        return { ...unit, observation: { ...context, ...declarado, ...tarefaApresentada } };
+        return resolveUnit(unit);
       });
       delete audit.unidadesParaConfronto;
     }
