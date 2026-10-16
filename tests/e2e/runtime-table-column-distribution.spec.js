@@ -91,6 +91,21 @@ const TOKEN_LONG = [
   ["C6", "Retomar leitura", "Repetir a primeira leitura e conferir se o valor se mantem estavel"]
 ];
 
+// Uma coluna e uma coluna de prosa dominante entre duas curtas: sao os casos em que
+// a coluna fica mais larga que o limite de celula e o conteudo precisa preencher o
+// espaco utilizavel, sem sobra.
+const ONE_COLUMN = Array.from({ length: 6 }, (_, index) =>
+  ["C" + (index + 1) + " O registro confirma o item e o endereco 198.51.100.24/24 aparece no relatorio final do lote"]);
+
+const DOMINANT = [
+  ["1", "Nota", "O registro confirma o item, o horario e o endereco 198.51.100.24/24 no relatorio final do lote"],
+  ["2", "Nota", "Cada leitura recebe horario e identificacao; comparar com a primeira medicao disponivel"],
+  ["3", "Nota", "O desvio entre as duas leituras do mesmo item fica dentro da faixa aceita para o lote"],
+  ["4", "Nota", "Apagar o registro parcial, usar a etiqueta correta e repetir a leitura do item atual"],
+  ["5", "Nota", "Repetir a primeira leitura e conferir se o valor se mantem estavel na verificacao"],
+  ["6", "Nota", "Comparar as leituras do lote com a primeira medicao e registrar o desvio final"]
+];
+
 const WIDE8 = {
   columns: Array.from({ length: 8 }, (_, index) => "Coluna " + (index + 1)),
   rows: Array.from({ length: 6 }, (_, row) => Array.from({ length: 8 }, (_, column) => "Valor " + (row + 1) + "." + (column + 1)))
@@ -107,7 +122,9 @@ const SLICE = [
   ["codigo-em-linha", { data: { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: CODE_INLINE } }],
   ["url-em-texto", { data: { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: URL_PLAIN } }],
   ["link-markdown", { data: { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: LINK_MARKDOWN } }],
-  ["token-longo", { data: { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: TOKEN_LONG } }]
+  ["token-longo", { data: { title: "Rotina de leitura", columns: ["Item", "Etapa", "Verificacao"], rows: TOKEN_LONG } }],
+  ["uma-coluna", { data: { title: "Rotina de leitura", columns: ["Verificacao"], rows: ONE_COLUMN } }],
+  ["coluna-dominante", { data: { title: "Rotina de leitura", columns: ["N", "Tipo", "Verificacao"], rows: DOMINANT } }]
 ];
 
 const FLOOR_REM = 5.5;
@@ -140,6 +157,10 @@ function readGeometry(scope) {
     const round = (value) => Math.round(value * 10) / 10;
     const table = node.querySelector("table.runtime-table");
     const headers = [...table.querySelectorAll("thead th")];
+    const headerFillGap = (header) => {
+      const block = header.querySelector(".runtime-table-cell-content");
+      return block ? round(header.getBoundingClientRect().width - cellPadding - block.getBoundingClientRect().width) : 0;
+    };
     const textTarget = (cell) => cell.querySelector("p, li") || cell.querySelector(".runtime-table-cell-content") || cell;
     // Min-content do conteudo da celula: a largura que o layout automatico exige
     // para a coluna. Palavra e token sem ponto de quebra contam inteiros.
@@ -193,7 +214,11 @@ function readGeometry(scope) {
         const rects = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
         const lines = new Set(rects.map(rect => Math.round(rect.top))).size;
         const text = target.textContent.trim();
-        cellsInfo.push({ column, minContent: minContent(cell), broken: brokenWords(cell),
+        const block = cell.querySelector(".runtime-table-cell-content");
+        // Sobra entre a celula e o bloco de conteudo: a coluna mais larga que o
+        // limite precisa continuar preenchendo o espaco utilizavel.
+        const fillGap = block ? round(cell.getBoundingClientRect().width - cellPadding - block.getBoundingClientRect().width) : 0;
+        cellsInfo.push({ column, minContent: minContent(cell), fillGap, broken: brokenWords(cell),
           minimumCharsPerLine: lines ? round(text.length / lines) : 0 });
       });
     });
@@ -201,6 +226,7 @@ function readGeometry(scope) {
       const own = cellsInfo.filter(cell => cell.column === index);
       return { width: round(header.getBoundingClientRect().width),
         minContent: round(Math.max(minContent(header), ...own.map(cell => cell.minContent))),
+        fillGap: round(Math.max(headerFillGap(header), ...own.map(cell => cell.fillGap))),
         minimumCharsPerLine: Math.min(...own.map(cell => cell.minimumCharsPerLine)) };
     });
     const external = (selector) => {
@@ -252,8 +278,8 @@ function expectContentDriven(geometry, name) {
     // A coluna nunca fica mais estreita do que o proprio conteudo pede...
     expect(content + 4, name + ": coluna " + (index + 1) + " comporta o proprio conteudo")
       .toBeGreaterThanOrEqual(Math.min(column.minContent, limit) - 4);
-    // ...e nenhuma sequencia sem ponto de quebra passa do limite da celula.
-    expect(content, name + ": coluna " + (index + 1) + " dentro do limite da sequencia").toBeLessThanOrEqual(limit + 6);
+    // ...e a celula preenche o espaco utilizavel, sem sobra para o bloco de conteudo.
+    expect(column.fillGap, name + ": coluna " + (index + 1) + " preenche o espaco utilizavel").toBeLessThanOrEqual(2);
   }
   // Quebra so onde a sequencia nao cabe: onde ela cabe, a palavra fica inteira.
   for (const cell of geometry.cells) {
