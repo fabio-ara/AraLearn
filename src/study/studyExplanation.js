@@ -98,7 +98,10 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   function close({ restore = true } = {}) {
     if (!overlay) return false;
     ++epoch;
-    scrollByContext.set(scrollKey(), body()?.scrollTop || 0);
+    // A folha desanexada em beforeRender leria scrollTop 0: isso sobrescreveria a posição
+    // da leitura com o valor de um DOM fora do documento. Só a folha no documento registra.
+    const scrollNode = body();
+    if (scrollNode?.isConnected) scrollByContext.set(scrollKey(), scrollNode.scrollTop);
     if (scrollByContext.size > 32) scrollByContext.delete(scrollByContext.keys().next().value);
     tools?.destroy(); tools = null;
     overlay.remove(); overlay = null;
@@ -421,7 +424,13 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       if (!canOpen() || contextKey !== getContextKey()) { close({ restore: false }); return; }
       let nextSignature;
       try { nextSignature = sourceScope === SOURCE_SCOPE_UNIT ? signature : contentSignature(getContext()); } catch { nextSignature = "unavailable"; }
-      if (signature !== nextSignature) { open(requestedCitation); return; }
+      if (signature !== nextSignature) {
+        open(requestedCitation);
+        // Mesma leitura com conteúdo atualizado: a folha reaberta conserva a rolagem
+        // capturada antes de desanexar (corpo e quadros de tabela), sem repor conteúdo antigo.
+        if (overlay) restoreRenderState(overlay, detachedState, { restoreFocus: false, restorePageScroll: false });
+        return;
+      }
       root.querySelector(".app-shell")?.append(overlay);
       setBackground(true);
       // Desanexar a folha tira diálogos nativos do top layer, embora conserve open.

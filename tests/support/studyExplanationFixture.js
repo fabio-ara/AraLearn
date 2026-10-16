@@ -251,7 +251,10 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     },
     loadExplanationContext: reference => {
       if (probe.state === "error") throw new Error("A explicação desta cópia está indisponível.");
-      return { courseId: course.id, courseRevision: 1, microsequenceId: ms.id, entityPath: [...path, reference.studyUnitId],
+      // A revisão corrente é ajustável pela prova: uma atualização assíncrona legítima
+      // (nova revisão da explicação) reusa o mesmo caminho de render. O padrão 1 preserva
+      // o comportamento das demais provas.
+      return { courseId: course.id, courseRevision: probe.courseRevision || 1, microsequenceId: ms.id, entityPath: [...path, reference.studyUnitId],
         targetKind: "microsequence_explanation", targetId: ms.id,
         explanation: probe.state === "missing" ? null : structuredClone(support),
         contentReview: ["draft", "stale", "unregistered"].includes(probe.state)
