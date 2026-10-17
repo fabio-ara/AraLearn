@@ -21,6 +21,35 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261017140000 — leitura estrutural do plano para revisão
+
+A [migração](../supabase/migrations/20261017140000_review_plan_focal_read.sql)
+parametriza o construtor privado do plano para omitir somente as avaliações
+globais de `contentReview` na leitura que prepara uma revisão formal. A nova
+`public.get_owned_course_review_plan_for_actor_v1`, restrita a `service_role` e
+ao mesmo guard de titularidade, conserva curso, currículo, explicações,
+dependências, mapa, cobertura, lotes e o hash de aprovação do mapa. O estado de
+revisão por alvo continua vindo de `readReviewContext`; a v5 não muda e segue
+entregando a árvore com revisões para seus demais consumidores. Os digests de
+reuso continuam cobrindo a explicação focal, as dependências e a página. O
+manifesto avança para `20261017140000` e declara
+`course-review-plan-projection-v1`; o catálogo humano permanece em `11.5.0`.
+
+## 20261017130000 — lote atômico de comandos de desenho
+
+A [migração](../supabase/migrations/20261017130000_atomic_design_command_batch.sql)
+executa os comandos de `ajustar_configuracao` em uma única transação e publica
+somente um recibo externo do lote. Cada subcomando usa o writer simples já
+existente; quando altera o desenho, a revisão real do curso avança uma vez. O
+resultado conserva a última revisão efetiva da cadeia CAS, e qualquer falha
+intermediária reverte todos os efeitos, inclusive os avanços de revisão e os
+recibos internos. O lote aceita até 13 comandos e 32 KiB, mantendo o orçamento
+vigente. O leitor de recuperação aceita apenas o lote novo e o comando
+`apply_course_design_command_v3` já emitido; o ramo legado devolve somente o
+`change` salvo e nunca o converte em lote. O manifesto avança para
+`20261017130000`, declara `contextual-design-command-atomic-batch-v1` e o
+catálogo humano avança para `11.5.0`.
+
 ## 20261017120000 — orçamento do comando instrucional
 
 A [migração](../supabase/migrations/20261017120000_instructional_command_budget.sql)

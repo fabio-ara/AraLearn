@@ -1,7 +1,7 @@
 import { AuthoringApiError } from "./errors.js";
 import { sha256Hex } from "./security.js";
 import { executeTrustedCourseWrite, resolveHumanCourseContext } from "./courseHumanTaskExecutor.js";
-import { EXPLANATION_FORMS, PRACTICE_VARIATION_DIMENSIONS, COURSE_DESIGN_PARAMETER_DEFINITIONS,
+import { COURSE_DESIGN_OPERATION, EXPLANATION_FORMS, PRACTICE_VARIATION_DIMENSIONS, COURSE_DESIGN_PARAMETER_DEFINITIONS,
   normalizeCourseDesignParameterValue, normalizeCourseDesignCommand, normalizeCourseDesignChange }
   from "../aralearn/runtime/domain/courseDesignParameters.js";
 
@@ -119,7 +119,7 @@ async function write(values, buildCommand, { applications = false, settings = fa
   const payload = request => ({ p_actor_id: principal.actorId, p_course_id: request.courseId,
     p_expected_course_revision: request.expectedCourseRevision, p_command: request.command,
     p_request_id: request.requestId, p_request_hash: request.requestHash, p_channel: channel });
-  return executeTrustedCourseWrite({ operation: "apply_course_design_command_v3", maxCasRetries: 0,
+  return executeTrustedCourseWrite({ operation: COURSE_DESIGN_OPERATION, maxCasRetries: 0,
     load: () => loadContext(values, { applications }),
     build: async (resolved, identity) => {
       let command = await buildCommand(resolved, identity);
@@ -132,7 +132,7 @@ async function write(values, buildCommand, { applications = false, settings = fa
       { deadlineAt, retry: false, timeoutMs: 40_000, responseLimitBytes: 256 * 1024 })), request, settings),
     reconcile: async ({ request }) => {
       const receipt = first(await adapter.rpc("get_course_change_receipt_for_actor_v1", { p_actor_id: principal.actorId,
-        p_course_id: request.courseId, p_operation: "apply_course_design_command_v3", p_request_id: request.requestId,
+        p_course_id: request.courseId, p_operation: COURSE_DESIGN_OPERATION, p_request_id: request.requestId,
         p_request_hash: request.requestHash }, { deadlineAt, responseLimitBytes: 256 * 1024 }));
       if (receipt?.status !== "confirmed") return { status: "pending" };
       const result = checkReceipt(receipt.result, request, settings);

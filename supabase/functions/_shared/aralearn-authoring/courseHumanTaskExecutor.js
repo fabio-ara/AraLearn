@@ -375,11 +375,15 @@ export async function resolveHumanCourseContext({
   source = null,
   internalSourceId = null,
   copySourcesOnly = false,
+  planReader = null,
   deadlineAt = null
 }) {
   if (!adapter || !principal) throw new TypeError("Dependências da resolução humana são inválidas.");
   if (source !== null && internalSourceId !== null) {
     throw new TypeError("A resolução da fonte recebeu duas autoridades.");
+  }
+  if (planReader !== null && typeof planReader !== "function") {
+    throw new TypeError("O leitor do planejamento humano é inválido.");
   }
   const resolvedCourse = await resolveCourse({ adapter, principal, course, deadlineAt, copySourcesOnly });
   let plan = null;
@@ -388,12 +392,8 @@ export async function resolveHumanCourseContext({
   let resolvedLesson = null;
   let resolvedMicrosequence = null;
   if (part !== null || module !== null || lesson !== null || microsequence !== null) {
-    plan = await adapter.getCourseInstructionalPlan({
-      principal,
-      courseId: resolvedCourse.id,
-      recentLimit: 1,
-      deadlineAt
-    });
+    const planInput = { principal, courseId: resolvedCourse.id, recentLimit: 1, deadlineAt };
+    plan = planReader ? await planReader(planInput) : await adapter.getCourseInstructionalPlan(planInput);
     const revision = Number(plan?.courseRevision);
     if (!plainObject(plan?.plan) || !Number.isSafeInteger(revision) || revision < 1) {
       throw new AuthoringApiError(503, "course_service_unavailable", "O planejamento do curso é inválido.");
@@ -523,11 +523,13 @@ async function internalEntityId(factory, requestId, slot) {
 function uncertainWriteError(error, request, operation) {
   const code = new Set(["course_source_pdf_write_uncertain", "course_media_write_uncertain"]).has(error?.code)
     ? error.code : "course_write_uncertain";
+  const causeCode = error?.code === "statement_timeout" ? "statement_timeout" : null;
   return new AuthoringApiError(409, code,
     "A escrita ainda não foi confirmada. Releia o resultado da mesma tentativa antes de iniciar outra alteração.", {
       requestId: request.requestId, operation,
       ...(typeof request.courseId === "string" && UUID_PATTERN.test(request.courseId)
-        ? { targetCourseId: request.courseId } : {})
+        ? { targetCourseId: request.courseId } : {}),
+      ...(causeCode ? { causeCode } : {})
     });
 }
 

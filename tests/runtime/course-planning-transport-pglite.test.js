@@ -4,7 +4,8 @@ import test from "node:test";
 
 import { PGlite } from "@electric-sql/pglite";
 
-import { expandPlanningTransport, PLANNING_TRANSPORT_ENCODING } from "../../supabase/functions/_shared/aralearn-authoring/coursePlanningTransport.js";
+import { expandPlanningTransport, expandReviewPlanningTransport, PLANNING_TRANSPORT_ENCODING,
+  REVIEW_PLANNING_TRANSPORT_ENCODING } from "../../supabase/functions/_shared/aralearn-authoring/coursePlanningTransport.js";
 
 const read = async (name) => (await fs.readFile(
   new URL("../../supabase/migrations/" + name, import.meta.url), "utf8")).replaceAll(String.fromCharCode(13) + String.fromCharCode(10), String.fromCharCode(10));
@@ -22,6 +23,7 @@ function definition(source, name) {
 const originalFlow = await read("20260903160000_global_curriculum_authoring_flow.sql");
 const mapReference = await read("20260909025135_contextual_curricular_map_reference.sql");
 const delta = await read("20261016162436_planning_transport_deduplication.sql");
+const reviewPlanDelta = await read("20261017140000_review_plan_focal_read.sql");
 
 // Cadeia legada real: definição original de 20260903160000 mais as duas cirurgias
 // posteriores (shared explanations 20260907222912 e correction queue 20260909032748).
@@ -104,7 +106,8 @@ async function fixture(options) {
       "('" + COURSE + "','lesson','lesson-1','module','module-1',0,'" + lessonContent + "'::jsonb,'{}'::jsonb)," +
       Array.from({ length: microsequences }, (unused, index) => microsequenceEntity(index, textBytes, contentStyle)).join(","));
   }
-  const partIds = partAssignments.map((unused, index) => "90000000-0000-4000-8000-00000000000" + (index + 1));
+  const partIds = partAssignments.map((unused, index) =>
+    "90000000-0000-4000-8000-" + String(index + 1).padStart(12, "0"));
   for (let index = 0; index < partAssignments.length; index += 1) {
     await db.exec("insert into private.course_authoring_parts(id,course_id,instructional_plan_id,position,title,intent,progression) values ('" +
       partIds[index] + "','" + COURSE + "','" + PLAN + "'," + index + ",'Parte " + (index + 1) + "','','[]'::jsonb)");
@@ -125,6 +128,21 @@ const v4Text = async (db) => (await db.query(
   "select public.get_owned_course_instructional_plan_for_actor_v4($1,$2)::text as value", [ACTOR, COURSE])).rows[0].value;
 const v5Payload = async (db) => (await db.query(
   "select public.get_owned_course_instructional_plan_for_actor_v5($1,$2) as value", [ACTOR, COURSE])).rows[0].value;
+const reviewPayload = async (db) => (await db.query(
+  "select public.get_owned_course_review_plan_for_actor_v1($1,$2) as value", [ACTOR, COURSE])).rows[0].value;
+const queryValue = async (db, sql, params = []) => (await db.query(sql, params)).rows[0].value;
+const withoutContentReview = value => {
+  const result = structuredClone(value);
+  for (const moduleValue of result.plan.curriculum.modules) {
+    for (const lesson of moduleValue.lessons) {
+      for (const item of lesson.microsequences) delete item.contentReview;
+    }
+  }
+  for (const part of result.plan.parts) {
+    for (const item of part.microsequences) delete item.contentReview;
+  }
+  return result;
+};
 
 test("produtor legado real e v5 reconstituem o mesmo texto, e v4 nao muda", async () => {
   const db = await fixture({ microsequences: 6, textBytes: 300, partAssignments: [[0, 2, 1], [3, 4]] });
@@ -175,4 +193,89 @@ test("encadeamento local da v5: gates de servico e de escopo propagam a negacao 
   await db.exec("set test.denied=''");
   await assert.rejects(() => db.query("select public.get_owned_course_instructional_plan_for_actor_v5($1,$2)", ["90000000-0000-4000-8000-000000000009", COURSE]), /nao autorizada/u);
   assert.equal((await v5Payload(db)).approvalBasis.courseRevision, 7);
+});
+
+test("projecao de revisao omite apenas contentReview e preserva o plano e o hash da v5", async () => {
+  const db = await fixture({ microsequences: 6, textBytes: 300, partAssignments: [[0, 2, 1], [3, 4]] });
+  try {
+    await db.exec(delta);
+    const integral = JSON.parse(await v4Text(db));
+    await db.exec(reviewPlanDelta);
+
+    const fullExpanded = expandPlanningTransport(await v5Payload(db));
+    assert.equal(JSON.stringify(fullExpanded), JSON.stringify(integral), "v5 continua igual ao produtor integral");
+
+    const review = await reviewPayload(db);
+    assert.equal(review.payloadEncoding, REVIEW_PLANNING_TRANSPORT_ENCODING);
+    const reviewExpanded = expandReviewPlanningTransport(review);
+    assert.deepEqual(reviewExpanded, withoutContentReview(integral),
+      "a leitura de revisão conserva todo conteúdo, estrutura e metadados, exceto as revisões globais");
+    assert.deepEqual(review.approvalBasis, (await v5Payload(db)).approvalBasis,
+      "hash de aprovação do mapa permanece vinculado ao mesmo estado");
+
+    await db.exec(`drop function private.course_content_review_v1(uuid,text,text);
+      create function private.course_content_review_v1(p_course_id uuid,p_target_kind text,p_target_id text) returns jsonb
+      language plpgsql as $f$ begin raise exception 'avaliacao global nao pode ocorrer na leitura focal'; end $f$`);
+    const withoutReviewEvaluation = await reviewPayload(db);
+    assert.deepEqual(expandReviewPlanningTransport(withoutReviewEvaluation), withoutContentReview(integral));
+  } finally { await db.close(); }
+});
+
+test("leitura de revisao cobre vazio, parte/micro sem unidades materializadas, ACL e guard", async () => {
+  const empty = await fixture({ microsequences: 0, partAssignments: [] });
+  try {
+    await empty.exec(delta);
+    await empty.exec(reviewPlanDelta);
+    assert.deepEqual(expandReviewPlanningTransport(await reviewPayload(empty)),
+      withoutContentReview(JSON.parse(await v4Text(empty))));
+  } finally { await empty.close(); }
+
+  const partial = await fixture({ microsequences: 3, textBytes: 120, partAssignments: [[0, 2]] });
+  try {
+    await partial.exec(delta);
+    await partial.exec(reviewPlanDelta);
+    const review = expandReviewPlanningTransport(await reviewPayload(partial));
+    assert.equal(review.plan.parts[0].microsequences.length, 2);
+    assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences.length, 3);
+    assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences[1].contentReview, undefined);
+    assert.equal(await queryValue(partial, "select count(*)::integer value from private.course_entities where entity_type='study_unit'"), 0);
+    assert.equal(await queryValue(partial, "select has_function_privilege('service_role','public.get_owned_course_review_plan_for_actor_v1(uuid,uuid)','execute') value"), true);
+    assert.equal(await queryValue(partial, "select has_function_privilege('authenticated','public.get_owned_course_review_plan_for_actor_v1(uuid,uuid)','execute') value"), false);
+    assert.equal(await queryValue(partial, "select has_function_privilege('anon','public.get_owned_course_review_plan_for_actor_v1(uuid,uuid)','execute') value"), false);
+
+    await partial.exec("set test.denied='service'");
+    await assert.rejects(() => reviewPayload(partial), /servico de autoria/u);
+    await partial.exec("set test.denied=''");
+    await assert.rejects(() => partial.query(
+      "select public.get_owned_course_review_plan_for_actor_v1($1,$2)",
+      ["90000000-0000-4000-8000-000000000009", COURSE]), /nao autorizada/u);
+  } finally { await partial.close(); }
+
+  const large = await fixture({ microsequences: 4, textBytes: 500000, contentStyle: "full", partAssignments: [[0, 1, 2, 3]] });
+  try {
+    await large.exec(delta);
+    await large.exec(reviewPlanDelta);
+    await assert.rejects(() => reviewPayload(large), GUARD_MESSAGE);
+  } finally { await large.close(); }
+});
+
+test("curso grande le a estrutura sem executar a revisao global por microssequencia", async () => {
+  const assignments = Array.from({ length: 12 }, (unused, part) =>
+    Array.from({ length: 8 }, (ignored, offset) => part * 8 + offset));
+  const db = await fixture({ microsequences: 96, textBytes: 500, partAssignments: assignments });
+  try {
+    await db.exec(delta);
+    await db.exec(reviewPlanDelta);
+    await db.exec(`drop function private.course_content_review_v1(uuid,text,text);
+      create function private.course_content_review_v1(p_course_id uuid,p_target_kind text,p_target_id text) returns jsonb
+      language plpgsql as $f$ begin raise exception 'course_content_review_v1 nao pode ser avaliada no plano focal'; end $f$`);
+    const review = expandReviewPlanningTransport(await reviewPayload(db));
+    assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences.length, 96);
+    assert.equal(review.plan.parts.length, 12);
+    assert.equal(review.plan.parts.every(part => part.microsequences.length === 8), true);
+    assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences
+      .every(item => item.contentReview === undefined), true);
+    await assert.rejects(() => v5Payload(db), /nao pode ser avaliada/u,
+      "o controle negativo prova que apenas a leitura de revisão evita o fanout global");
+  } finally { await db.close(); }
 });

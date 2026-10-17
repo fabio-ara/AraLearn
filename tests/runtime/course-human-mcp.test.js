@@ -54,6 +54,23 @@ const READ_PRINCIPAL = Object.freeze({
   ...PRINCIPAL,
   scopes: Object.freeze(["authoring:read"])
 });
+
+function appliedDesignBatch(input) {
+  return {
+    contract: "aralearn.course-design-batch-change.v1",
+    courseId: input.courseId,
+    courseRevision: input.expectedCourseRevision + input.commands.length,
+    requestId: input.requestId,
+    idempotent: false,
+    changed: true,
+    changes: input.commands.map(command => ({
+      type: command.type,
+      scope: command.scope,
+      parameterId: command.parameterId ?? null
+    }))
+  };
+}
+
 const EXPECTED_NAMES = Object.freeze([
   "consultar_acesso", "definir_visibilidade", "alterar_acesso", "definir_acesso_arquivos", "definir_politica_revisao",
   "consultar_repertorio_instrucional", "manter_unidade_analise", "manter_requisito_evidencia",
@@ -426,7 +443,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.4.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.5.0");
   // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
   // a mesma referência e o mesmo parecer, sem recompor a tentativa.
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,
@@ -1210,7 +1227,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
           /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
             .test(path);
         if (localComponentIdentity) continue;
-        if (["retomar_correcao", "materializar_parte"].includes(task.name) &&
+        if (["retomar_correcao", "materializar_parte", "ajustar_configuracao"].includes(task.name) &&
             /^\$\.properties\.recuperacao(?:\.oneOf\[\d\])?$/u.test(path) &&
             ["courseId", "requestId"].includes(name)) continue;
         if (task.name === "decidir_observacao" && name === "id" &&
@@ -3492,7 +3509,7 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
   await assert.rejects(() => executeHumanCourseTask({
     adapter: {
       ...adapter(),
-      async applyCourseDesignCommand() {
+      async applyCourseDesignCommandBatch() {
         writes += 1;
         return { changed: true };
       }
@@ -3508,6 +3525,293 @@ test("#272 configuração invalida todo o pedido antes da primeira escrita", asy
       }
     }
   }), (error) => typeof error.code === "string");
+  assert.equal(writes, 0);
+});
+
+test("ajuste usa um único lote e recupera a mesma tentativa sem reaplicar", async () => {
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS[0];
+  const change = {
+    type: "set_parameter",
+    scope: { kind: "course", ref: COURSE_ID },
+    parameterId: definition.id
+  };
+  const receipt = {
+    status: "confirmed",
+    result: {
+      contract: "aralearn.course-design-batch-change.v1",
+      courseId: COURSE_ID,
+      courseRevision: 8,
+      requestId: "request-design-batch-lost-1",
+      idempotent: true,
+      changed: true,
+      changes: [change]
+    }
+  };
+  let batches = 0;
+  let receiptReads = 0;
+  const lostResponse = {
+    ...adapter(),
+    async getCourse() {
+      return { courseId: COURSE_ID, title: "Redes para iniciantes", revision: 8 };
+    },
+    async getCourseInstructionalPlan() {
+      return { courseId: COURSE_ID, courseRevision: 8,
+        plan: { id: "40000000-0000-4000-8000-000000000004", version: 3,
+          title: "Redes para iniciantes", objective: "Explicar serviços em rede.",
+          instructionalAnalysisUnits: [], evidenceRequirements: [], parts: [] } };
+    },
+    async applyCourseDesignCommandBatch() {
+      batches += 1;
+      throw new AuthoringApiError(503, "network_error", "Resposta perdida.");
+    },
+    async getCourseDesignBatchReceipt() {
+      receiptReads += 1;
+      return structuredClone(receipt);
+    }
+  };
+  const output = await executeHumanCourseTask({
+    adapter: lostResponse,
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      condicao: "fixada_pelo_autor",
+      parametros: { [definition.humanField]: definition.defaultValue }
+    }
+  });
+  assert.match(output.result, /Atualizei a configuração/u);
+  assert.equal(batches, 1);
+  assert.equal(receiptReads, 1);
+  assert.deepEqual(output.context.configuracaoAplicada, {
+    status: "confirmed",
+    courseId: COURSE_ID,
+    requestId: "request-design-batch-lost-1",
+    operation: "apply_course_design_command_batch_v3",
+    courseRevision: 8,
+    changed: true,
+    changes: [change]
+  });
+
+  let writes = 0;
+  const recovered = await executeHumanCourseTask({
+    adapter: {
+      ...adapter(),
+      async applyCourseDesignCommandBatch() {
+        writes += 1;
+        throw new Error("recuperação não pode escrever");
+      },
+      async getCourseDesignRecoveryReceipt(value) {
+        assert.deepEqual(value, {
+          principal: PRINCIPAL,
+          courseId: COURSE_ID,
+          requestId: "request-design-batch-lost-1",
+          operation: "apply_course_design_command_batch_v3",
+          deadlineAt: value.deadlineAt
+        });
+        return structuredClone(receipt);
+      }
+    },
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      recuperacao: {
+        courseId: COURSE_ID,
+        requestId: "request-design-batch-lost-1",
+        operation: "apply_course_design_command_batch_v3"
+      }
+    }
+  });
+  assert.match(recovered.result, /Recuperei o lote/u);
+  assert.equal(recovered.context.configuracaoRecuperada.status, "confirmed");
+  assert.equal(recovered.context.configuracaoRecuperada.courseId, COURSE_ID);
+  assert.equal(recovered.context.configuracaoRecuperada.requestId, "request-design-batch-lost-1");
+  assert.deepEqual(recovered.context.configuracaoRecuperada.changes, [change]);
+  assert.equal(writes, 0);
+});
+
+test("leitura posterior falha sem perder o recibo confirmado e a recuperação não regrava", async () => {
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS[0];
+  let batches = 0;
+  let committed = null;
+  const readFailure = new AuthoringApiError(503, "course_service_unavailable",
+    "Leitura posterior indisponível.");
+  const adapterWithPostCommitFailure = {
+    ...adapter(),
+    async applyCourseDesignCommandBatch(input) {
+      batches += 1;
+      committed = appliedDesignBatch(input);
+      return structuredClone(committed);
+    },
+    async getCourseDesign() {
+      throw readFailure;
+    }
+  };
+  await assert.rejects(() => executeHumanCourseTask({
+    adapter: adapterWithPostCommitFailure,
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: {
+      curso: "Redes para iniciantes",
+      condicao: "fixada_pelo_autor",
+      parametros: { [definition.humanField]: definition.defaultValue }
+    }
+  }), error => {
+    assert.equal(error.code, "course_write_confirmed_read_pending");
+    assert.match(error.message, /confirmada e está salva.*releitura.*não reenvie/iu);
+    assert.equal(error.details.requestId, committed.requestId);
+    assert.equal(error.details.targetCourseId, COURSE_ID);
+    assert.equal(error.details.operation, "apply_course_design_command_batch_v3");
+    return true;
+  });
+  assert.equal(batches, 1);
+
+  let recoveryWrites = 0;
+  const recovered = await executeHumanCourseTask({
+    adapter: {
+      ...adapter(),
+      async applyCourseDesignCommandBatch() {
+        recoveryWrites += 1;
+        throw new Error("a recuperação não pode reaplicar o lote");
+      },
+      async getCourseDesign() {
+        throw new Error("a recuperação não depende da leitura do desenho");
+      },
+      async getCourseDesignRecoveryReceipt() {
+        return { status: "confirmed", result: { ...structuredClone(committed), idempotent: true } };
+      }
+    },
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: { recuperacao: {
+      courseId: COURSE_ID,
+      requestId: committed.requestId,
+      operation: "apply_course_design_command_batch_v3"
+    } }
+  });
+  assert.equal(recovered.context.configuracaoRecuperada.requestId, committed.requestId);
+  assert.equal(recovered.context.configuracaoRecuperada.courseId, COURSE_ID);
+  assert.equal(recoveryWrites, 0);
+});
+
+test("MCP distingue escrita confirmada de releitura pendente e preserva a recuperação", async () => {
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS[0];
+  let batches = 0;
+  let committed = null;
+  const handler = createAuthoringMcpHandler({
+    adapter: {
+      ...adapter(),
+      async applyCourseDesignCommandBatch(input) {
+        batches += 1;
+        committed = appliedDesignBatch(input);
+        return structuredClone(committed);
+      },
+      async getCourseDesign() {
+        throw new AuthoringApiError(503, "course_service_unavailable",
+          "Leitura posterior indisponível.");
+      }
+    },
+    allowedOrigins: new Set([ORIGIN]),
+    resourceUrl: RESOURCE_URL,
+    authorizationServer: "https://project.example/auth/v1"
+  });
+  const payload = await (await handler(request("tools/call", {
+    name: "ajustar_configuracao",
+    arguments: {
+      curso: "Redes para iniciantes",
+      condicao: "fixada_pelo_autor",
+      parametros: { [definition.humanField]: definition.defaultValue }
+    }
+  }))).json();
+  const { error, nextDecision } = payload.result.structuredContent;
+  assert.equal(error.code, "course_write_confirmed_read_pending");
+  assert.match(error.message, /confirmada e está salva.*releitura.*não reenvie/iu);
+  assert.deepEqual(error.recovery, {
+    requestId: committed.requestId,
+    operation: "apply_course_design_command_batch_v3",
+    courseId: COURSE_ID
+  });
+  assert.match(nextDecision, /não reenvie o ajuste/iu);
+  assert.match(payload.result.content[0].text, new RegExp(committed.requestId));
+  assert.equal(batches, 1);
+});
+
+test("recuperação ausente ou expirada não cria nova escrita", async () => {
+  for (const status of ["absent", "expired"]) {
+    let writes = 0;
+    await assert.rejects(() => executeHumanCourseTask({
+      adapter: {
+        ...adapter(),
+        async applyCourseDesignCommandBatch() {
+          writes += 1;
+          throw new Error("recuperação não pode escrever");
+        },
+        async getCourseDesignRecoveryReceipt() {
+          return { status };
+        }
+      },
+      principal: PRINCIPAL,
+      name: "ajustar_configuracao",
+      rawArguments: {
+        recuperacao: {
+          courseId: COURSE_ID,
+          requestId: "request-design-batch-missing-1",
+          operation: "apply_course_design_command_batch_v3"
+        }
+      }
+    }), error => error.code === "course_write_uncertain" &&
+      error.details.operation === "apply_course_design_command_batch_v3");
+    assert.equal(writes, 0);
+  }
+});
+
+test("recuperação legada devolve somente o comando já emitido, sem sintetizar lote", async () => {
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS[0];
+  const change = {
+    type: "set_parameter",
+    scope: { kind: "course", ref: COURSE_ID },
+    parameterId: definition.id
+  };
+  let writes = 0;
+  const recovered = await executeHumanCourseTask({
+    adapter: {
+      ...adapter(),
+      async applyCourseDesignCommandBatch() {
+        writes += 1;
+        throw new Error("recuperação não pode escrever");
+      },
+      async getCourseDesignRecoveryReceipt(value) {
+        assert.deepEqual(value, {
+          principal: PRINCIPAL,
+          courseId: COURSE_ID,
+          requestId: "request-design-legacy-lost-1",
+          operation: "apply_course_design_command_v3",
+          deadlineAt: value.deadlineAt
+        });
+        return { status: "confirmed", result: {
+          contract: "aralearn.course-design-change.v3",
+          courseId: COURSE_ID,
+          courseRevision: 8,
+          requestId: "request-design-legacy-lost-1",
+          idempotent: true,
+          changed: true,
+          change
+        } };
+      }
+    },
+    principal: PRINCIPAL,
+    name: "ajustar_configuracao",
+    rawArguments: { recuperacao: {
+      courseId: COURSE_ID,
+      requestId: "request-design-legacy-lost-1",
+      operation: "apply_course_design_command_v3"
+    } }
+  });
+  assert.match(recovered.result, /Recuperei o ajuste/u);
+  assert.deepEqual(recovered.context.configuracaoRecuperada.change, change);
+  assert.equal(Object.hasOwn(recovered.context.configuracaoRecuperada, "changes"), false);
+  assert.equal(recovered.context.configuracaoRecuperada.courseId, COURSE_ID);
+  assert.equal(recovered.context.configuracaoRecuperada.requestId, "request-design-legacy-lost-1");
+  assert.equal(recovered.context.configuracaoRecuperada.operation, "apply_course_design_command_v3");
   assert.equal(writes, 0);
 });
 
@@ -3545,7 +3849,7 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
       };
     },
     async getCourseDesign() {
-      const currentParameter = designCommands
+      const currentParameter = designCommands.flat()
         .filter(({ type, parameterId }) => type === "set_parameter" &&
           parameterId === "new_analysis_unit_ceiling_per_expository_study_unit")
         .at(-1);
@@ -3576,9 +3880,9 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
         targetPlanItems: null
       };
     },
-    async applyCourseDesignCommand(value) {
-      designCommands.push(structuredClone(value.command));
-      return { changed: true };
+    async applyCourseDesignCommandBatch(value) {
+      designCommands.push(structuredClone(value.commands));
+      return appliedDesignBatch(value);
     },
     async listCourseStudyUnits() {
       return {
@@ -3614,11 +3918,12 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
       direcaoEditorial: "Use títulos informativos; crie mais unidades se necessário."
     }
   });
-  assert.deepEqual(designCommands.map(({ type }) => type), [
+  assert.equal(designCommands.length, 1);
+  assert.deepEqual(designCommands[0].map(({ type }) => type), [
     "set_parameter", "set_parameter", "set_parameter", "set_guidance"
   ]);
-  assert.equal(designCommands.every(({ origin }) => origin === "author"), true);
-  assert.deepEqual(designCommands.slice(1, 3).map(({ parameterId, value }) => ({
+  assert.equal(designCommands[0].every(({ origin }) => origin === "author"), true);
+  assert.deepEqual(designCommands[0].slice(1, 3).map(({ parameterId, value }) => ({
     parameterId,
     value
   })), [{
@@ -3641,7 +3946,8 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
       parametros: { maximo_ideias_novas_por_unidade: 2 }
     }
   });
-  assert.deepEqual(designCommands.at(-1), {
+  assert.equal(designCommands.length, 2);
+  assert.deepEqual(designCommands.at(-1)[0], {
     type: "set_parameter",
     scope: { kind: "didactic_microsequence", ref: "micro-sockets" },
     parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
@@ -3651,9 +3957,12 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
   });
   assert.ok(JSON.stringify(calibratedMicrosequence.context).length < 2500);
   assert.doesNotMatch(
-    JSON.stringify(calibratedMicrosequence.context),
+    JSON.stringify(calibratedMicrosequence.context.configuracao),
     /StudyUnit|AnalysisUnit|requestId|revision|authoring-guidance/iu
   );
+  assert.equal(calibratedMicrosequence.context.configuracaoAplicada.courseId, COURSE_ID);
+  assert.equal(calibratedMicrosequence.context.configuracaoAplicada.operation,
+    "apply_course_design_command_batch_v3");
   assert.deepEqual(
     calibratedMicrosequence.context.configuracao.parametros[0],
     {
@@ -3681,7 +3990,7 @@ test("fixação explícita configura o foco, condição de pesquisa prevalece e 
       parametros: { maximo_ideias_novas_por_unidade: 2 }
     }
   });
-  assert.deepEqual(designCommands.at(-1), {
+  assert.deepEqual(designCommands.at(-1)[0], {
     type: "set_parameter",
     scope: { kind: "study_unit", ref: "unit-one" },
     parameterId: "new_analysis_unit_ceiling_per_expository_study_unit",
@@ -3757,7 +4066,11 @@ test("delegação humana não inventa valor e rejeita ajuste automático numéri
   const commands = [];
   const writer = { ...adapter(),
     getCourseDesign: async () => ({ definitions: [], parameters: [], guidance: { effectiveAssignments: [] } }),
-    applyCourseDesignCommand: async ({ command }) => { commands.push(command); return { changed: true }; } };
+    applyCourseDesignCommandBatch: async ({ requestId, commands: batch }) => {
+      commands.push(...batch);
+      return appliedDesignBatch({ courseId: COURSE_ID, expectedCourseRevision: 7,
+        requestId, commands: batch });
+    } };
   await executeHumanCourseTask({ adapter: writer, principal: PRINCIPAL, name: "ajustar_configuracao",
     rawArguments: { curso: "Redes para iniciantes", condicao: "automatica", automaticos: ["distribuicao_da_pratica"] } });
   assert.equal(commands.length, 1);
@@ -3999,9 +4312,10 @@ function configurationWriter({ protectedParameterOrigin = null } = {}) {
         guidance: { localAssignment: null, effectiveAssignments: [] }
       };
     },
-    async applyCourseDesignCommand({ command }) {
-      commands.push(structuredClone(command));
-      return { changed: true };
+    async applyCourseDesignCommandBatch({ requestId, commands: batch }) {
+      commands.push(...structuredClone(batch));
+      return appliedDesignBatch({ courseId: COURSE_ID, expectedCourseRevision: 7,
+        requestId, commands: batch });
     }
   };
 }

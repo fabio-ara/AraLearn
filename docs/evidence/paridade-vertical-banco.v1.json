@@ -1087,7 +1087,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "function:private.build_course_instructional_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_compact boolean)",
+      "object": "function:private.build_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_compact boolean, p_include_content_review boolean)",
       "caseId": "course-authoring-experience"
     },
     {
@@ -1755,6 +1755,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.apply_course_design_command_batch_for_actor_v3(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_commands jsonb, p_request_id text, p_request_hash text, p_channel text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.apply_course_design_command_for_actor_v3(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_request_id text, p_request_hash text, p_channel text)",
       "caseId": "course-authoring-experience"
     },
@@ -1935,6 +1939,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.get_course_design_recovery_receipt_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_operation text, p_request_id text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.get_course_explanation_citations_v1(p_course_id uuid, p_expected_revision bigint, p_microsequence_id text)",
       "caseId": "course-source-provenance"
     },
@@ -2020,6 +2028,10 @@
     },
     {
       "object": "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)",
       "caseId": "course-authoring-experience"
     },
     {

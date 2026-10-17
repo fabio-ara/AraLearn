@@ -12,7 +12,7 @@ import {
   normalizeCourseAuthoringProfileChange
 } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AuthoringApiError, withDependencyDiagnostic, closedAuthoringRpcName } from "./errors.js";
-import { expandPlanningTransport } from "./coursePlanningTransport.js";
+import { expandPlanningTransport, expandReviewPlanningTransport } from "./coursePlanningTransport.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
   from "../aralearn/runtime/domain/courseContentReview.js";
@@ -28,9 +28,13 @@ import { supabaseServerHeaders } from "./supabaseEnvironment.js";
 import { SupabaseOAuthJwtVerifier } from "./oauthJwtVerifier.js";
 import {
   COURSE_COMPONENT_CATALOG,
+  COURSE_DESIGN_BATCH_OPERATION,
   CourseDesignParametersError,
+  normalizeCourseDesignBatchChange,
+  normalizeCourseDesignCommandBatch,
   normalizeCourseDesignChange,
   normalizeCourseDesignCommand,
+  normalizeCourseDesignRecoveryReceipt,
   normalizeCourseDesignRead
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 import {
@@ -607,6 +611,21 @@ function databaseError(status, body, { administrative = false } = {}) {
   }
   if (code === "PT409" && databaseMessage === "Esta gravação ainda compõe o estudo. Substitua ou retire suas faixas antes de remover o arquivo.") {
     return new AuthoringApiError(409, "course_audio_in_use", databaseMessage);
+  }
+  if (code === "23514" &&
+      databaseMessage === "A tentativa do desenho pertence a outra alteração.") {
+    return new AuthoringApiError(
+      409,
+      "course_design_recovery_mismatch",
+      "A referência de recuperação pertence a outra tentativa ou Curso."
+    );
+  }
+  if (code === "57014") {
+    return new AuthoringApiError(
+      503,
+      "statement_timeout",
+      "O banco cancelou a operação por limite de tempo; o resultado precisa ser reconciliado."
+    );
   }
   if (code === "PT422") {
     const track = databaseMessage.match(/^(?:A faixa|O arquivo da faixa) ([1-9]\d*) /u)?.[1];
@@ -2250,6 +2269,34 @@ export class CourseSupabaseAdapter {
     return withDeepLink({ ...result, mapApprovalReference }, this.publicAppUrl, "planning");
   }
 
+  async getCourseReviewPlan({
+    principal,
+    courseId,
+    deadlineAt = null
+  }) {
+    const result = expandReviewPlanningTransport(first(await this.rpc("get_owned_course_review_plan_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId
+    }, { deadlineAt })));
+    if (!jsonRecord(result) ||
+        result.contract !== "aralearn.course-instructional-plan.v3" ||
+        result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
+        !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
+        !jsonRecord(result.plan.curriculum) ||
+        !Array.isArray(result.plan.curriculum.modules) ||
+        !Array.isArray(result.plan.curriculumScopeItems) ||
+        !Array.isArray(result.plan.instructionalAnalysisUnits)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço devolveu um plano estrutural de revisão inválido."
+      );
+    }
+    const mapApprovalReference = result.plan.curriculumMapStatus === "absent" ? null
+      : createMapApprovalReference({ principal, courseId, basis: result.approvalBasis });
+    return withDeepLink({ ...result, mapApprovalReference }, this.publicAppUrl, "planning");
+  }
+
   async listAuthoringProfiles({ principal, deadlineAt = null }) {
     const value = first(await this.rpc("list_authoring_profiles_for_actor_v1", {
       p_actor_id: principal.actorId
@@ -3576,6 +3623,97 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "A confirmação do desenho não corresponde ao comando solicitado."
+      );
+    }
+    return normalized;
+  }
+
+  async applyCourseDesignCommandBatch({
+    principal,
+    courseId,
+    requestId,
+    expectedCourseRevision,
+    commands,
+    deadlineAt = null
+  }) {
+    const normalizedCommands = normalizeCourseDesignInputValue(() =>
+      normalizeCourseDesignCommandBatch(commands)
+    );
+    const requestHash = await sha256Hex(new TextEncoder().encode(JSON.stringify({
+      courseId,
+      expectedCourseRevision,
+      commands: normalizedCommands
+    })));
+    const result = first(await this.rpc("apply_course_design_command_batch_for_actor_v3", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_expected_course_revision: expectedCourseRevision,
+      p_commands: normalizedCommands,
+      p_request_id: requestId,
+      p_request_hash: requestHash,
+      p_channel: authoringChannel(principal)
+    }, {
+      deadlineAt,
+      retry: false,
+      timeoutMs: 40_000,
+      responseLimitBytes: COURSE_DESIGN_RESPONSE_LIMIT_BYTES
+    }));
+    const normalized = normalizeCourseDesignDatabaseValue(() =>
+      normalizeCourseDesignBatchChange(result)
+    );
+    const expectedFacts = normalizedCommands.map((command) => [
+      command.type, command.scope.kind, command.scope.ref, command.parameterId ?? null
+    ].join("\0")).sort();
+    const actualFacts = normalized.changes.map((change) => [
+      change.type, change.scope.kind, change.scope.ref, change.parameterId ?? null
+    ].join("\0")).sort();
+    const remainingFacts = new Map();
+    for (const fact of expectedFacts) remainingFacts.set(fact, (remainingFacts.get(fact) ?? 0) + 1);
+    const unexpectedFact = actualFacts.find((fact) => {
+      const remaining = remainingFacts.get(fact) ?? 0;
+      if (!remaining) return true;
+      remainingFacts.set(fact, remaining - 1);
+      return false;
+    });
+    if (normalized.courseId !== courseId || normalized.requestId !== requestId ||
+        normalized.courseRevision !== expectedCourseRevision + normalized.changes.length ||
+        unexpectedFact) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "A confirmação do lote de desenho não corresponde aos comandos solicitados."
+      );
+    }
+    return normalized;
+  }
+
+  async getCourseDesignBatchReceipt({ principal, courseId, requestId, deadlineAt = null }) {
+    return await this.getCourseDesignRecoveryReceipt({ principal, courseId, requestId,
+      operation: COURSE_DESIGN_BATCH_OPERATION, deadlineAt });
+  }
+
+  async getCourseDesignRecoveryReceipt({
+    principal,
+    courseId,
+    requestId,
+    operation,
+    deadlineAt = null
+  }) {
+    const result = first(await this.rpc("get_course_design_recovery_receipt_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId,
+      p_operation: operation,
+      p_request_id: requestId
+    }, { deadlineAt, retry: false, responseLimitBytes: 256 * 1024 }));
+    const normalized = normalizeCourseDesignDatabaseValue(() =>
+      normalizeCourseDesignRecoveryReceipt(result, operation)
+    );
+    if (normalized.status === "confirmed" &&
+        (normalized.result.courseId !== courseId || normalized.result.requestId !== requestId)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O recibo recuperado pertence a outra tentativa de desenho."
       );
     }
     return normalized;

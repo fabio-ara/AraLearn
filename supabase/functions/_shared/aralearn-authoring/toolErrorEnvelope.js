@@ -85,7 +85,8 @@ export function projectHumanSourceOccurrenceBlockers(error) {
 }
 
 export function projectHumanWriteRecovery(error) {
-  if (!["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error?.code)) {
+  if (!["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain",
+    "course_write_confirmed_read_pending"].includes(error?.code)) {
     return undefined;
   }
   const details = error.details;

@@ -10,10 +10,13 @@ import {
   resolveHumanCourseContext
 } from "./courseHumanTaskExecutor.js";
 import {
+  COURSE_DESIGN_BATCH_OPERATION,
+  COURSE_DESIGN_OPERATION,
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   EXPLANATION_FORMS,
   PRACTICE_VARIATION_DIMENSIONS,
-  normalizeCourseDesignCommand
+  normalizeCourseDesignCommand,
+  normalizeCourseDesignRecovery
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 import {
   COURSE_SOURCE_KINDS,
@@ -546,6 +549,19 @@ const MATERIALIZATION_RECOVERY_SCHEMA = Object.freeze({
   ])
 });
 
+const DESIGN_RECOVERY_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["courseId", "requestId", "operation"]),
+  properties: Object.freeze({
+    courseId: Object.freeze({ type: "string" }),
+    requestId: Object.freeze({ type: "string", minLength: 8, maxLength: 128,
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }),
+    operation: Object.freeze({ type: "string",
+      pattern: "^apply_course_design_command(_batch)?_v3$" })
+  })
+});
+
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -690,8 +706,8 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   parte: "Parte: posição ou título.",
   progressao: "Progressão do lote.",
   microssequencias: "Microssequências do lote.",
-  microssequencia: "Microssequência (posição/título).",
-  unidade: "Unidade: posição ou título.",
+  microssequencia: "Posição ou título.",
+  unidade: "Posição ou título.",
   unidades: "Unidades: posições ou títulos.",
   fonte: "Fonte: posição ou título.",
   busca: "Termos da busca.",
@@ -699,10 +715,10 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   componente: "Componente a inspecionar.",
   somenteAbertas: "Filtrar só abertas.",
   intencao: "Intenção confirmada.",
-  parametros: "Valores pelo catálogo de ajustes.",
-  automaticos: "Escolhas delegadas sem valor fixo.",
-  direcaoEditorial: "Direção editorial.",
-  condicao: "Origem da definição.",
+  parametros: "Parâmetros.",
+  automaticos: "Delegações.",
+  direcaoEditorial: "Direção.",
+  condicao: "Condição.",
   texto: "Texto da observação.",
   categoria: "Categoria da observação.",
   correcoes: "Conteúdos corrigidos.",
@@ -1007,7 +1023,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "ajustar_configuracao",
     "Ajustar a configuração autoral",
-    "Use para fixar autoria/pesquisa; não para calibração automática rotineira.",
+    "Fixar autoria/pesquisa; lote atômico; não calibração automática rotineira",
     Object.freeze({
       ...inputSchema({
       curso: COURSE_SCHEMA,
@@ -1024,9 +1040,18 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       parametros: PARAMETERS_SCHEMA,
       automaticos: { type: "array", minItems: 1, maxItems: PARAMETER_FIELDS.length, uniqueItems: true,
         items: { type: "string", enum: PARAMETER_FIELDS } },
-        direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
-      }, ["curso", "condicao"]),
-      allOf: Object.freeze([atLeastOneRequired(["parametros", "automaticos", "direcaoEditorial"])])
+        direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 }),
+        recuperacao: DESIGN_RECOVERY_SCHEMA
+      }, []),
+      allOf: Object.freeze([Object.freeze({
+        if: Object.freeze({ required: Object.freeze(["recuperacao"]) }),
+        then: Object.freeze({ maxProperties: 1 }),
+        else: Object.freeze({
+          required: Object.freeze(["curso", "condicao"]),
+          anyOf: Object.freeze(["parametros", "automaticos", "direcaoEditorial"].map(field =>
+            Object.freeze({ required: Object.freeze([field]) })))
+        })
+      })])
     }),
     { readOnly: false }
   ),
@@ -1255,9 +1280,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.4.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.5.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:569af9b8ae18ea7d64164e32d1db92e664805ac229c3e903696697f2a61cdcff";
+  "sha256:0f5f9e7c6952eb07407cf8e5c490554d08901191a24c59bf856439c115fcf09a";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1450,7 +1475,8 @@ function withoutTechnicalState(value) {
       // campos técnicos; valor sob esta chave que não seja essa referência exata é
       // defeito do produtor e falha explicitamente, nunca vira estado comum.
       if (Object.keys(entry).sort().join(",") !== "courseId,operation,requestId" ||
-          entry.operation !== "course_write" || typeof entry.courseId !== "string" ||
+          !new Set(["course_write", COURSE_DESIGN_OPERATION, COURSE_DESIGN_BATCH_OPERATION])
+            .has(entry.operation) || typeof entry.courseId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
             .test(entry.courseId) ||
           typeof entry.requestId !== "string" ||
@@ -1458,8 +1484,38 @@ function withoutTechnicalState(value) {
         fail("course_service_unavailable",
           "A referência de recuperação devolvida pela descoberta é inválida.", null, 503);
       }
-      projected[key] = { courseId: entry.courseId, operation: "course_write",
+      projected[key] = { courseId: entry.courseId, operation: entry.operation,
         requestId: entry.requestId };
+      continue;
+    }
+    if (new Set(["configuracao_recuperada", "configuracao_aplicada"])
+      .has(normalizedKey) && entry !== null &&
+        typeof entry === "object" && !Array.isArray(entry)) {
+      const batch = entry.operation === COURSE_DESIGN_BATCH_OPERATION;
+      const fields = Object.keys(entry).sort().join(",");
+      if (entry.status !== "confirmed" ||
+          !new Set([COURSE_DESIGN_OPERATION, COURSE_DESIGN_BATCH_OPERATION])
+            .has(entry.operation) ||
+          fields !== (batch
+            ? "changed,changes,courseId,courseRevision,operation,requestId,status"
+            : "change,changed,courseId,courseRevision,operation,requestId,status") ||
+          typeof entry.courseId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+            .test(entry.courseId) ||
+          typeof entry.requestId !== "string" ||
+          !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(entry.requestId) ||
+          !Number.isSafeInteger(entry.courseRevision) || entry.courseRevision < 1 ||
+          typeof entry.changed !== "boolean" ||
+          batch && (!Array.isArray(entry.changes) || entry.changes.length > 13) ||
+          !batch && (entry.change !== null && (typeof entry.change !== "object" ||
+            Array.isArray(entry.change)))) {
+        fail("course_service_unavailable",
+          "O resultado de recuperação devolvido pela tarefa é inválido.", null, 503);
+      }
+      // A confirmação é o resultado persistido da tentativa: conserva a
+      // identidade do parâmetro e a forma exata de change/changes. Ela não é
+      // recomposta a partir de outra operação para esconder uma incompatibilidade.
+      projected[key] = structuredClone(entry);
       continue;
     }
     if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
@@ -2415,7 +2471,7 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
   };
 }
 
-async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [] }) {
+async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [], planReader = null }) {
   return await resolveHumanCourseContext({
     adapter,
     principal,
@@ -2426,6 +2482,7 @@ async function resolveTaskContext({ adapter, principal, args, deadlineAt, units 
     microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null,
     studyUnits: units,
     source: optionalReference(args.fonte, "fonte") ?? null,
+    planReader,
     deadlineAt
   });
 }
@@ -3294,10 +3351,23 @@ function reviewPageContext({ args, selected, resolved, continuation, unitPage, o
   return { contextObject, coverage };
 }
 
+// A inspeção usa a projeção estrutural do mesmo plano, sem avaliar a base de
+// revisão de todo o curso. Adaptadores antigos mantêm o leitor completo como
+// compatibilidade de teste; o adapter de produção oferece a leitura focal.
+function reviewPlanReader(adapter) {
+  if (typeof adapter?.getCourseReviewPlan === "function") {
+    return adapter.getCourseReviewPlan.bind(adapter);
+  }
+  return typeof adapter?.getCourseInstructionalPlan === "function"
+    ? adapter.getCourseInstructionalPlan.bind(adapter) : null;
+}
+
 // O plano do recorte é lido uma vez por requisição e conferido contra a revisão pedida.
 async function ensureReviewPlan({ adapter, principal, resolved, deadlineAt }) {
   if (resolved.plan) return resolved.plan;
-  resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
+  const readPlan = reviewPlanReader(adapter);
+  if (!readPlan) fail("course_service_unavailable", "O leitor do planejamento está indisponível.", null, 503);
+  resolved.plan = await readPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
   if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
   return resolved.plan;
 }
@@ -3378,7 +3448,8 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const planReader = reviewPlanReader(adapter);
+  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units, planReader });
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   if (args.comparacao !== undefined) {
     const reference = normalizeObservationComparisonReference(args.comparacao);
@@ -3406,8 +3477,9 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   const reviewMicrosequences = focalMicrosequences(resolved, unitPage.items);
   const identity = reviewPageIdentity({ principal, courseId: resolved.course.id,
     revision: resolved.course.revision, continuation });
-  // Reuso e materialização compartilham a resolução acima: o fragmento já lido não repete
-  // autorização, plano nem página de unidades, e um descarte só custa o fanout por alvo.
+  // Reuso e materialização compartilham a resolução acima. O fragmento confirma a
+  // projeção estrutural e a página por digest, sem reavaliar a revisão global de cada
+  // microssequência; o material de observações, inspeção e Fontes fica por página.
   const reused = await reusedPreparedReviewPage({ adapter, principal, args, identity, continuation,
     resolved, unitPage, reviewMicrosequences, units, deadlineAt });
   if (reused) return reused;
@@ -4199,10 +4271,12 @@ function designScope(resolved) {
     : { kind: "course", ref: resolved.course.id };
 }
 
-async function applyDesignCommand({
-  adapter, principal, course, module = null, lesson = null, microsequence, studyUnit, command, deadlineAt
+async function applyDesignCommandBatch({
+  adapter, principal, course, module = null, lesson = null, microsequence, studyUnit, commands, deadlineAt
 }) {
   return await executeTrustedCourseWrite({
+    operation: COURSE_DESIGN_BATCH_OPERATION,
+    maxCasRetries: 0,
     load: async () => await resolveHumanCourseContext({
       adapter,
       principal,
@@ -4214,20 +4288,84 @@ async function applyDesignCommand({
     build: async (resolved) => ({
       courseId: resolved.course.id,
       expectedCourseRevision: resolved.course.revision,
-      command: normalizeCourseDesignCommand(command(resolved), {
-        knownComponentRefs: RESOURCE_PACKAGE_REGISTRY.listCatalog()
-          .map(({ id, version }) => `${id}@${version}`)
-      })
+      commands: commands.map(command => ({
+        ...command,
+        scope: designScope(resolved)
+      }))
     }),
-    commit: async ({ requestId, courseId, ...value }) => await adapter.applyCourseDesignCommand({
-      principal, courseId, ...value, requestId, deadlineAt
-    })
+    commit: async request => await adapter.applyCourseDesignCommandBatch({
+      principal, ...request, deadlineAt
+    }),
+    reconcile: async ({ request }) => {
+      const receipt = await adapter.getCourseDesignBatchReceipt({
+        principal,
+        courseId: request.courseId,
+        requestId: request.requestId,
+        deadlineAt
+      });
+      if (receipt.status !== "confirmed") return { status: receipt.status };
+      const current = await adapter.getCourseInstructionalPlan({
+        principal,
+        courseId: request.courseId,
+        recentLimit: 1,
+        deadlineAt
+      });
+      if (current.courseId != null && current.courseId !== request.courseId ||
+          !Number.isSafeInteger(current.courseRevision) ||
+          current.courseRevision < receipt.result.courseRevision) {
+        return { status: "pending" };
+      }
+      return { status: "confirmed", result: receipt.result };
+    }
   });
 }
 
 HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   adapter, principal, args, deadlineAt
 }) => {
+  if (args.recuperacao !== undefined) {
+    exactFields(args, new Set(["recuperacao"]));
+    const recuperacao = normalizeCourseDesignRecovery(args.recuperacao);
+    const receipt = await adapter.getCourseDesignRecoveryReceipt({
+      principal,
+      courseId: recuperacao.courseId,
+      requestId: recuperacao.requestId,
+      operation: recuperacao.operation,
+      deadlineAt
+    });
+    if (receipt.status === "confirmed") {
+      const batch = recuperacao.operation === COURSE_DESIGN_BATCH_OPERATION;
+      return result(batch
+        ? "Recuperei o lote de configuração já salvo; nenhuma escrita foi repetida."
+        : "Recuperei o ajuste de configuração já salvo; nenhuma escrita foi repetida.", {
+        deepLink: null,
+        nextDecision: "Releia a configuração aplicada antes de propor outra alteração.",
+        context: {
+          configuracaoRecuperada: {
+            status: receipt.status,
+            courseId: receipt.result.courseId,
+            requestId: receipt.result.requestId,
+            operation: recuperacao.operation,
+            courseRevision: receipt.result.courseRevision,
+            changed: receipt.result.changed,
+            ...(batch ? { changes: receipt.result.changes } : { change: receipt.result.change })
+          }
+        }
+      });
+    }
+    throw new AuthoringApiError(
+      409,
+      "course_write_uncertain",
+      receipt.status === "expired"
+        ? "O recibo desta tentativa expirou; preserve o estado salvo e não reaplique o lote."
+        : "O recibo desta tentativa ainda não está disponível; releia o estado salvo sem reaplicar o lote.",
+      {
+        requestId: recuperacao.requestId,
+        targetCourseId: recuperacao.courseId,
+        operation: recuperacao.operation
+      }
+    );
+  }
   const course = humanCourseTitle(args);
   const module = optionalReference(args.modulo, "modulo") ?? null;
   const lesson = optionalReference(args.licao, "licao") ?? null;
@@ -4365,60 +4503,81 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
       return true;
     });
   }
-  for (const normalizedCommand of applicableCommands) {
-    await applyDesignCommand({
+  const applied = applicableCommands.length
+    ? await applyDesignCommandBatch({
       adapter,
       principal,
       course, module, lesson,
       microsequence,
       studyUnit,
       deadlineAt,
-      command: (resolved) => ({
-        ...normalizedCommand,
-        scope: designScope(resolved)
-      })
+      commands: applicableCommands
+    })
+    : null;
+  // Os comandos de desenho alteram parâmetros e orientação, não a identidade
+  // nem o recorte dos objetos resolvidos antes do lote. Reutilizar esse contexto
+  // evita uma releitura dispensável depois do commit; a revisão é atualizada
+  // pelo recibo real para a leitura do desenho e para o link de retorno.
+  const resolved = applied
+    ? { ...preflightState, course: { ...preflightState.course, revision: applied.courseRevision } }
+    : preflightState;
+  try {
+    const configuration = await adapter.getCourseDesign({
+      principal,
+      courseId: resolved.course.id,
+      scopeKind: designScope(resolved).kind,
+      scopeRef: designScope(resolved).ref,
+      childLimit: 32,
+      childCursor: null,
+      deadlineAt
     });
+    const preservedCondition = preservedOrigins.has("research_condition")
+      ? "a condição de pesquisa"
+      : preservedOrigins.has("author")
+        ? "a condição fixada pela pessoa autora"
+        : null;
+    const automatic = origin === "automatic";
+    return result(preservedCondition
+      ? applicableCommands.length
+        ? `Mantive ${preservedCondition} e atualizei os demais ajustes.`
+        : `Mantive ${preservedCondition}; a calibração automática não a substituiu.`
+      : "Atualizei a configuração autoral e reli os valores efetivos.", {
+      deepLink: automatic
+        ? null
+        : courseDeepLink(adapter, resolved.course, "parameters",
+          resolved.studyUnits?.[0]
+            ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
+            : resolved.microsequence
+              ? [["didacticMicrosequenceId", resolved.microsequence.id]]
+              : resolved.lesson ? [["lessonId", resolved.lesson.id]]
+              : resolved.module ? [["moduleId", resolved.module.id]] : []),
+      nextDecision: automatic ? null : "A intenção orienta futuras produções; aplicar ao conteúdo existente é uma alteração autoral própria.",
+      context: {
+        configuracao: projectConfiguration(configuration),
+        ...(applied ? { configuracaoAplicada: {
+          status: "confirmed",
+          courseId: applied.courseId,
+          requestId: applied.requestId,
+          operation: COURSE_DESIGN_BATCH_OPERATION,
+          courseRevision: applied.courseRevision,
+          changed: applied.changed,
+          changes: applied.changes
+        } } : {})
+      }
+    });
+  } catch (error) {
+    if (!applied) throw error;
+    throw new AuthoringApiError(
+      409,
+      "course_write_confirmed_read_pending",
+      "A configuração foi confirmada e está salva, mas a releitura ou a preparação da resposta ainda não pôde ser concluída. Consulte a recuperação exata; não reenvie o ajuste.",
+      {
+        requestId: applied.requestId,
+        targetCourseId: applied.courseId,
+        operation: COURSE_DESIGN_BATCH_OPERATION
+      }
+    );
   }
-  const resolved = await resolveHumanCourseContext({
-    adapter,
-    principal,
-    course, module, lesson,
-    microsequence: microsequence ?? null,
-    studyUnits: studyUnit == null ? [] : [studyUnit],
-    deadlineAt
-  });
-  const configuration = await adapter.getCourseDesign({
-    principal,
-    courseId: resolved.course.id,
-    scopeKind: designScope(resolved).kind,
-    scopeRef: designScope(resolved).ref,
-    childLimit: 32,
-    childCursor: null,
-    deadlineAt
-  });
-  const preservedCondition = preservedOrigins.has("research_condition")
-    ? "a condição de pesquisa"
-    : preservedOrigins.has("author")
-      ? "a condição fixada pela pessoa autora"
-      : null;
-  const automatic = origin === "automatic";
-  return result(preservedCondition
-    ? applicableCommands.length
-      ? `Mantive ${preservedCondition} e atualizei os demais ajustes.`
-      : `Mantive ${preservedCondition}; a calibração automática não a substituiu.`
-    : "Atualizei a configuração autoral e reli os valores efetivos.", {
-    deepLink: automatic
-      ? null
-      : courseDeepLink(adapter, resolved.course, "parameters",
-        resolved.studyUnits?.[0]
-          ? [["studyUnitId", resolved.studyUnits[0].studyUnit.id]]
-          : resolved.microsequence
-            ? [["didacticMicrosequenceId", resolved.microsequence.id]]
-            : resolved.lesson ? [["lessonId", resolved.lesson.id]]
-            : resolved.module ? [["moduleId", resolved.module.id]] : []),
-    nextDecision: automatic ? null : "A intenção orienta futuras produções; aplicar ao conteúdo existente é uma alteração autoral própria.",
-    context: { configuracao: projectConfiguration(configuration) }
-  });
 };
 
 HUMAN_TASK_HANDLERS.registrar_observacao = async ({

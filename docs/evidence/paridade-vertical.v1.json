@@ -188,20 +188,22 @@
           "configuration-realization-inspection-v1",
           "empty-practice-variation-dimensions-v1",
           "contextual-design-writer-edges-v1",
-          "contextual-design-course-scope-applications-v1"
+          "contextual-design-course-scope-applications-v1",
+          "contextual-design-command-atomic-batch-v1",
+          "course-review-plan-projection-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_design_parameter_definitions|private\\.course_design_parameter_assignments|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_assignments|private\\.course_component_policy_assignments)$",
           "^function:private\\.(?:list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|list_course_study_units_for_actor_v1|list_course_study_units_for_actor_continuous_v2|decorate_course_inspection_page_v2|assert_course_lesson_dependencies_v1|delete_course_authoring_relations_before_course_v1|delete_course_design_assignments_before_entity_v1|commit_course_composition_core_v1|course_authoring_part_progress_v1|course_component_catalog_v1|reject_course_design_parameter_definition_change_v1|course_design_json_hash_v1|valid_course_design_parameter_value_v1|canonical_course_design_parameter_value_v1|valid_course_component_policy_v1|course_design_scope_path_v1|course_design_scope_context_v1|course_component_refs_from_content_v1|valid_course_component_refs_in_content_v1|course_component_policy_allows_v1|course_current_design_parameters_v1|course_current_authoring_guidance_v1|course_current_component_policy_v1|current_course_curricular_map_v1|get_course_instructional_plan_for_actor_v3|materialize_course_authoring_part_core_v1|valid_course_authoring_progression_v1|valid_course_curricular_map_shape_v1|assert_course_materialization_pedagogy_v1)\\(.*\\)$",
           "^trigger:private\\.course_entities/course_entities_delete_design_assignments_v1$",
-          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|save_course_curricular_map_for_actor_v1|save_course_authoring_part_for_actor_v1|materialize_course_authoring_part_for_actor_v2|get_owned_course_instructional_plan_for_actor_v3|get_owned_course_design_for_actor_v3|apply_course_design_command_for_actor_v3|list_owned_course_study_units_for_actor_v2|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$",
+          "^function:public\\.(?:list_courses_v1|get_course_v1|list_course_entities_v1|list_courses_for_actor_v1|get_course_for_actor_v1|list_course_entities_for_actor_v1|create_course_for_actor_v1|commit_course_composition_for_actor_v1|save_course_curricular_map_for_actor_v1|save_course_authoring_part_for_actor_v1|materialize_course_authoring_part_for_actor_v2|get_owned_course_instructional_plan_for_actor_v3|get_owned_course_design_for_actor_v3|apply_course_design_command_for_actor_v3|apply_course_design_command_batch_for_actor_v3|list_owned_course_study_units_for_actor_v2|list_owned_courses_for_actor_v1|get_owned_course_for_actor_v1|list_owned_course_entities_for_actor_v1|list_owned_courses_v1|get_owned_course_v1|list_owned_course_entities_v1)\\(.*\\)$",
           "^table:private\\.authoring_profiles$",
           "^function:private\\.(?:authoring_profile_payload_v1|course_design_research_conflicts_v1|mutate_authoring_profile_v1|normalize_authoring_profile_preferences_v1|valid_applied_course_design_parameters_v1)\\(.*\\)$",
           "^function:public\\.(?:list_authoring_profiles_for_actor_v1|save_authoring_profile_for_actor_v1|delete_authoring_profile_for_actor_v1|preview_course_authoring_profile_for_actor_v1|apply_course_authoring_profile_for_actor_v1)\\(.*\\)$",
           "^function:private\\.(?:course_microsequence_review_v1|mark_course_content_review_v1|save_course_part_explanations_v1|valid_course_explanation_plan_v1|valid_course_explanation_v1)\\(.*\\)$",
           "^table:private\\.authoring_process_preferences$",
           "^function:private\\.(?:capture_course_applied_explanation_basis_v1|copy_course_applied_explanation_basis_v1|course_content_basis_hash_v1|course_content_complete_v1|course_content_review_payload_v1|course_content_review_v1|default_authoring_process_preferences_v1|guard_applied_explanation_basis_v1|normalize_authoring_process_preferences_v1|set_course_content_review_policy_v1|set_course_content_review_v1|valid_applied_explanation_basis_v1|valid_course_content_review_v2)\\(.*\\)$",
-          "^function:public\\.(?:approve_course_curricular_map_for_actor_v1|discover_course_part_materialization_receipts_for_actor_v1|get_authoring_process_preferences_for_actor_v1|get_course_change_receipt_for_actor_v1|get_course_part_materialization_receipt_for_actor_v1|get_course_content_review_for_actor_v1|get_course_content_review_v1|get_owned_course_curricular_map_for_actor_v1|get_owned_course_instructional_plan_for_actor_v4|save_authoring_process_preferences_for_actor_v1|set_course_content_review_for_actor_v1|set_course_content_review_policy_for_actor_v1|set_course_content_review_policy_v1|set_course_content_review_v1)\\(.*\\)$",
+          "^function:public\\.(?:approve_course_curricular_map_for_actor_v1|discover_course_part_materialization_receipts_for_actor_v1|get_authoring_process_preferences_for_actor_v1|get_course_change_receipt_for_actor_v1|get_course_design_recovery_receipt_for_actor_v1|get_course_part_materialization_receipt_for_actor_v1|get_course_content_review_for_actor_v1|get_course_content_review_v1|get_owned_course_curricular_map_for_actor_v1|get_owned_course_instructional_plan_for_actor_v4|save_authoring_process_preferences_for_actor_v1|set_course_content_review_for_actor_v1|set_course_content_review_policy_for_actor_v1|set_course_content_review_policy_v1|set_course_content_review_v1)\\(.*\\)$",
           "^function:private\\.require_course_review_session_v1\\(.*\\)$",
           "^function:private\\.(?:apply_course_design_settings_core_v3|course_structure_dependency_issues_v1|remap_course_structure_content_v1)\\(.*\\)$",
           "^function:private\\.assert_course_application_pedagogy_v1\\(p_course_id uuid, p_units jsonb, p_require_complete_practice boolean\\)$",
@@ -213,8 +215,9 @@
         "database": [
           "function:private.course_pedagogical_basis_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
           "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)",
-          "function:private.build_course_instructional_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_compact boolean)",
-          "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)"
+          "function:private.build_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_compact boolean, p_include_content_review boolean)",
+          "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)",
+          "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)"
           ,"function:private.course_instructional_command_bytes_limit_v1()"
         ]
       },
@@ -386,6 +389,10 @@
         {
           "path": "supabase/migrations/20261017124500_materialization_receipt_discovery.sql",
           "token": "discover_course_part_materialization_receipts_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20261017140000_review_plan_focal_read.sql",
+          "token": "get_owned_course_review_plan_for_actor_v1"
         }
       ],
       "routes": [
@@ -480,7 +487,10 @@
         "tests/runtime/course-materialization-recovery.test.js",
         "tests/runtime/course-materialization-receipt-pglite.test.js",
         "tests/runtime/course-human-navigation.test.js",
-        "tests/runtime/course-authoring-route.test.js"
+        "tests/runtime/course-authoring-route.test.js",
+        "tests/runtime/course-planning-transport.test.js",
+        "tests/runtime/course-planning-transport-pglite.test.js",
+        "tests/runtime/course-review-read-fanout-incident.test.js"
       ],
       "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental. Expansão do mapa, folhas de contexto e seleção vertical preservam a leitura; a seleção não cria parte. Dividir, reunir e reordenar partes reutiliza o escritor com revisão e recibo, preservando currículo e aplicações históricas. Ramos podem ser incluídos, editados, movidos, duplicados ou removidos por intenção expressa, mantendo descendentes e vínculos úteis; dependência sobrevivente impede remoção incompatível. Reordenar unidades exige a seleção completa e conserva suas identidades. A aprovação do mapa usa referência à versão persistida inspecionada e não declara revisão de conteúdo. A base explicativa pode ser salva antes das unidades. O repertório mantém análise e evidência por item versionado, sem remoção por omissão; vínculos e aplicações são operações expressas. Aplicar configuração às unidades existentes resolve a intenção corrente, exige calibração contextual para parâmetros automáticos e respeita fixações e condições de pesquisa. Texto e base permanecem; mudança material no snapshot ou na aplicação desatualiza a revisão pertinente. Orientações percorrem os cinco níveis reais. Edição manual conserva o restante da microssequência e sua proveniência. Escrita incerta conserva a identidade e reconcilia recibo e efeito pela leitura prevista no caso de uso. A existência dos testes listados é rastreabilidade do contrato, não recibo de execução, prova hospedada ou revisão humana de curso real. O preflight agrega repertório, vínculos, cobertura reconciliada, formas, componentes e práticas avaliáveis com feedback offline antes da escrita. Materialização incremental conserva conteúdo omitido e exige identidade explícita para substituir unidades, com posição final transacional. Parecer contextual da IA registra a base e permanece distinto da declaração humana; mudanças editoriais invalidam somente a evidência pertinente. A origem corrente é ai, com intervenções humanas e de IA contadas por alternância efetiva. Links tipados conservam intenção e identidade mesmo após mover um alvo. A base pedagógica focal reúne contexto, aplicações e fontes para a inspeção; o registro do parecer exige trechos dessa base, sem converter correspondência textual em certificação pedagógica."
     },

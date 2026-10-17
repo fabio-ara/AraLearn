@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
+import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "../../src/domain/courseDesignParameters.js";
 import { courseDesignFixture } from "../helpers/courseDesignFixture.js";
 
 import {
@@ -85,6 +86,22 @@ function adapterFixture(overrides = {}, scopes = ["authoring:read", "authoring:w
       };
     },
     ...overrides
+  };
+}
+
+function appliedDesignBatch(input) {
+  return {
+    contract: "aralearn.course-design-batch-change.v1",
+    courseId: input.courseId,
+    courseRevision: input.expectedCourseRevision + input.commands.length,
+    requestId: input.requestId,
+    idempotent: false,
+    changed: true,
+    changes: input.commands.map(command => ({
+      type: command.type,
+      scope: command.scope,
+      parameterId: command.parameterId ?? null
+    }))
   };
 }
 
@@ -586,6 +603,38 @@ test("Actions não apresenta falha interna como indisponibilidade temporária", 
   assert.equal(payload.error.retryable, false);
   assert.equal(payload.nextDecision, null);
   assert.doesNotMatch(JSON.stringify(payload), /defeito sintético|temporarily_unavailable/iu);
+});
+
+test("Actions preserva a identidade quando a escrita foi confirmada e a leitura falhou", async () => {
+  const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS[0];
+  let batches = 0;
+  let committed = null;
+  const response = await createHandler({
+    async applyCourseDesignCommandBatch(input) {
+      batches += 1;
+      committed = appliedDesignBatch(input);
+      return structuredClone(committed);
+    },
+    async getCourseDesign() {
+      throw new AuthoringApiError(503, "course_service_unavailable",
+        "Leitura posterior indisponível.");
+    }
+  })(request("ajustar_configuracao", {
+    curso: "Redes para iniciantes",
+    condicao: "fixada_pelo_autor",
+    parametros: { [definition.humanField]: definition.defaultValue }
+  }));
+  const payload = await response.json();
+  assert.equal(response.status, 409);
+  assert.equal(payload.error.code, "course_write_confirmed_read_pending");
+  assert.match(payload.error.message, /confirmada e está salva.*releitura.*não reenvie/iu);
+  assert.deepEqual(payload.error.recovery, {
+    requestId: committed.requestId,
+    operation: "apply_course_design_command_batch_v3",
+    courseId: ACTOR_ID
+  });
+  assert.match(payload.nextDecision, /não reenvie o ajuste/iu);
+  assert.equal(batches, 1);
 });
 
 test("Actions conserva a tentativa de criação incerta e não recomenda outra escrita", async () => {
