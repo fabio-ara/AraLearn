@@ -9,6 +9,11 @@ explica os termos usados na implementação atual.
 
 ## [0.0.118] - 2026-10-17
 
+### Adicionado
+
+- Ao retomar a materialização de uma parte, o recibo é recuperado nativamente pelo mesmo curso e pela mesma microssequência: o recorte é paginado, os totais vêm por estado e a ordenação não elege candidato por si.
+- Tentativa em processamento, recibo expirado e recibo ilegível são declarados com a próxima decisão humana em vez de virarem ausência de efeito.
+
 ### Corrigido
 
 - Ao atualizar a Explicação que já está aberta, a tabela da leitura conserva também a rolagem horizontal: o quadro volta à mesma coluna em que a pessoa estava, junto do corpo e do foco que já eram preservados.
