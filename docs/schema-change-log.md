@@ -21,6 +21,24 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261017181734 — projeção lean do plano de revisão
+
+A [migração](../supabase/migrations/20261017181734_review_plan_lean_projection.sql)
+substitui somente `public.get_owned_course_review_plan_for_actor_v1` por uma
+projeção explícita para `preparar_revisao`, sob o contrato interno
+`aralearn.course-review-plan.v1` e o transporte
+`curriculum-backed-review-lean-v1`. A leitura conserva currículo, títulos,
+posições, objetivos, Explicações, dependências, pré-requisitos, escopo,
+cobertura, fontes previstas e partes/progressão. Ela omite proveniência das
+unidades de análise, progresso por Parte, contagens, `studyUnitCount` e
+`approvalBasis`; a aprovação do mapa continua pertencendo ao leitor integral.
+O plano v5 e os demais consumidores permanecem inalterados. O acesso continua
+restrito ao owner autorizado e ao modo de serviço, a revisão do Curso é
+conferida antes do uso e o digest cobre os campos apresentados. O manifesto
+avança para `20261017181734`, mantendo as capacidades declaradas; o catálogo
+humano não muda. A prova local usa gates de ACL simulados; RLS e permissões
+efetivas no ambiente hospedado permanecem sujeitas à verificação de implantação.
+
 ## 20261017140000 — leitura estrutural do plano para revisão
 
 A [migração](../supabase/migrations/20261017140000_review_plan_focal_read.sql)
