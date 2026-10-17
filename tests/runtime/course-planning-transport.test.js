@@ -44,10 +44,18 @@ function compactPayload(options) {
 function reviewCompactPayload(options) {
   const payload = compactPayload(options);
   payload.payloadEncoding = REVIEW_PLANNING_TRANSPORT_ENCODING;
+  payload.contract = "aralearn.course-review-plan.v1";
+  delete payload.approvalBasis;
+  delete payload.plan.instructionalAnalysisUnits;
+  delete payload.plan.evidenceRequirements;
   for (const moduleValue of payload.plan.curriculum.modules) {
     for (const lesson of moduleValue.lessons) {
       for (const item of lesson.microsequences) delete item.contentReview;
     }
+  }
+  for (const part of payload.plan.parts) {
+    delete part.progress;
+    for (const item of part.microsequences) delete item.studyUnitCount;
   }
   return payload;
 }
@@ -116,13 +124,21 @@ test("preserva subarvores desconhecidas com chaves unicode, __proto__ e construc
 test("reconstitui a leitura de revisão sem exigir ou inventar contentReview global", () => {
   const expanded = expandReviewPlanningTransport(reviewCompactPayload());
   const part = expanded.plan.parts[0].microsequences[0];
-  assert.deepStrictEqual(Object.keys(part), ["id", "goal", "role", "title", "explanation",
-    "curriculumPath", "studyUnitCount", "explanationPlan", "productionPosition"]);
+  assert.deepStrictEqual(Object.keys(part), ["id", "goal", "title", "explanation",
+    "curriculumPath", "explanationPlan", "productionPosition"]);
   assert.equal(Object.hasOwn(part, "contentReview"), false);
+  assert.equal(Object.hasOwn(part, "role"), false);
+  assert.equal(Object.hasOwn(part, "studyUnitCount"), false);
+  assert.equal(Object.hasOwn(expanded, "approvalBasis"), false);
+  assert.equal(Object.hasOwn(expanded.plan, "instructionalAnalysisUnits"), false);
   assert.deepStrictEqual(part.explanation, { title: "Explicacao ms-1", content: [] });
   assert.deepStrictEqual(part.explanationPlan, { purpose: "Plano ms-1" });
   assert.throws(() => expandPlanningTransport(reviewCompactPayload()),
     (error) => error.code === "course_service_unavailable" && /transporte compacto esperado/u.test(error.message));
   assert.throws(() => expandReviewPlanningTransport(compactPayload()),
     (error) => error.code === "course_service_unavailable" && /transporte compacto esperado/u.test(error.message));
+  const withDiscardedCount = reviewCompactPayload();
+  withDiscardedCount.plan.parts[0].microsequences[0].studyUnitCount = 1;
+  assert.throws(() => expandReviewPlanningTransport(withDiscardedCount),
+    (error) => error.code === "course_service_unavailable" && /campos não previstos/u.test(error.message));
 });

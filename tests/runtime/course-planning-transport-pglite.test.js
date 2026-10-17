@@ -6,6 +6,8 @@ import { PGlite } from "@electric-sql/pglite";
 
 import { expandPlanningTransport, expandReviewPlanningTransport, PLANNING_TRANSPORT_ENCODING,
   REVIEW_PLANNING_TRANSPORT_ENCODING } from "../../supabase/functions/_shared/aralearn-authoring/coursePlanningTransport.js";
+import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 
 const read = async (name) => (await fs.readFile(
   new URL("../../supabase/migrations/" + name, import.meta.url), "utf8")).replaceAll(String.fromCharCode(13) + String.fromCharCode(10), String.fromCharCode(10));
@@ -24,6 +26,7 @@ const originalFlow = await read("20260903160000_global_curriculum_authoring_flow
 const mapReference = await read("20260909025135_contextual_curricular_map_reference.sql");
 const delta = await read("20261016162436_planning_transport_deduplication.sql");
 const reviewPlanDelta = await read("20261017140000_review_plan_focal_read.sql");
+const leanReviewDelta = await read("20261017181734_review_plan_lean_projection.sql");
 
 // Cadeia legada real: definição original de 20260903160000 mais as duas cirurgias
 // posteriores (shared explanations 20260907222912 e correction queue 20260909032748).
@@ -59,7 +62,8 @@ const microsequenceContent = (index, textBytes, contentStyle) => {
     content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: "t".repeat(textBytes) } }] };
   if (contentStyle !== "full" && index % 3 === 2) return JSON.stringify({ title: "Microssequencia " + (index + 1), explanation });
   return JSON.stringify({ title: "Microssequencia " + (index + 1), goal: "Explicar o caso " + (index + 1),
-    role: "explain", dependsOn: [], explanationPlan: { purpose: "Plano da base " + (index + 1) }, explanation });
+    role: "explain", dependsOn: [], explanationPlan: { purpose: "Plano da base " + (index + 1),
+      prerequisites: [], relations: [], sourceIds: ["source-1"] }, explanation });
 };
 
 const microsequenceEntity = (index, textBytes, contentStyle) => "('" + COURSE + "','microsequence','" + microsequenceId(index) +
@@ -121,6 +125,26 @@ async function fixture(options) {
   if (membership.length > 0) {
     await db.exec("insert into private.course_authoring_part_didactic_microsequences(course_id,authoring_part_id,didactic_microsequence_id,production_position) values " + membership.join(","));
   }
+  if (settings.rich) {
+    const prerequisite = "30000000-0000-4000-8000-000000000001";
+    const outcome = "30000000-0000-4000-8000-000000000002";
+    const analysis = "30000000-0000-4000-8000-000000000003";
+    const evidence = "30000000-0000-4000-8000-000000000004";
+    const scope = "30000000-0000-4000-8000-000000000005";
+    await db.exec(
+      "insert into private.course_instructional_plan_items(id,course_id,instructional_plan_id,item_kind,position,statement,description) values " +
+      "('" + prerequisite + "','" + COURSE + "','" + PLAN + "','declared_prerequisite',0,'Pré-requisito rico','')," +
+      "('" + outcome + "','" + COURSE + "','" + PLAN + "','intended_learning_outcome',0,'Resultado rico','')," +
+      "('" + analysis + "','" + COURSE + "','" + PLAN + "','instructional_analysis_unit',0,'Relação rica','Descrição rica')," +
+      "('" + evidence + "','" + COURSE + "','" + PLAN + "','evidence_requirement',0,'Evidência rica','')," +
+      "('" + scope + "','" + COURSE + "','" + PLAN + "','curriculum_scope_item',0,'Escopo rico','');" +
+      "insert into private.course_design_target_plan_items(course_id,didactic_microsequence_id,plan_item_id,plan_item_kind) values " +
+      "('" + COURSE + "','ms-001','" + scope + "','curriculum_scope_item')," +
+      "('" + COURSE + "','ms-002','" + scope + "','curriculum_scope_item');" +
+      "update private.course_entities set content=content||'{\"dependsOn\":[\"ms-002\"]}'::jsonb " +
+      "where course_id='" + COURSE + "' and entity_type='microsequence' and entity_id='ms-001'"
+    );
+  }
   return db;
 }
 
@@ -143,9 +167,117 @@ const withoutContentReview = value => {
   }
   return result;
 };
+const leanReviewProjection = value => ({
+  contract: "aralearn.course-review-plan.v1",
+  courseId: value.courseId,
+  courseRevision: value.courseRevision,
+  plan: {
+    id: value.plan.id,
+    version: value.plan.version,
+    title: value.plan.title,
+    objective: value.plan.objective,
+    audience: value.plan.audience,
+    curriculumMapStatus: value.plan.curriculumMapStatus,
+    declaredPrerequisites: structuredClone(value.plan.declaredPrerequisites),
+    curriculum: { modules: value.plan.curriculum.modules.map(moduleValue => ({
+      id: moduleValue.id, position: moduleValue.position,
+      title: moduleValue.title, objective: moduleValue.objective,
+      lessons: moduleValue.lessons.map(lesson => ({
+        id: lesson.id, position: lesson.position,
+        title: lesson.title, objective: lesson.objective,
+        microsequences: lesson.microsequences.map(microsequence => ({
+          id: microsequence.id, position: microsequence.position,
+          title: microsequence.title, objective: microsequence.objective,
+          explanationPlan: structuredClone(microsequence.explanationPlan),
+          explanation: structuredClone(microsequence.explanation),
+          dependencyMicrosequenceIds: structuredClone(microsequence.dependencyMicrosequenceIds)
+        }))
+      }))
+    })) },
+    curriculumScopeItems: value.plan.curriculumScopeItems.map(scopeItem => ({
+      id: scopeItem.id, position: scopeItem.position, statement: scopeItem.statement,
+      curriculumTargets: structuredClone(scopeItem.curriculumTargets)
+    })),
+    parts: value.plan.parts.map(part => ({
+      id: part.id, position: part.position, title: part.title,
+      intent: part.intent, progression: structuredClone(part.progression), version: part.version,
+      microsequences: part.microsequences.map(entry => ({
+        id: entry.id,
+        productionPosition: entry.productionPosition,
+        curriculumPath: structuredClone(entry.curriculumPath),
+        title: entry.title,
+        goal: entry.goal,
+        explanationPlan: structuredClone(entry.explanationPlan),
+        explanation: structuredClone(entry.explanation)
+      }))
+    })),
+    updatedAt: value.plan.updatedAt
+  }
+});
+
+function finalContextAdapter(reviewPlan) {
+  const units = ["ms-001", "ms-002", "ms-003"].map((microsequenceId, index) => ({
+    ordinal: index + 1,
+    version: 1,
+    curriculumPath: { didacticMicrosequence: { id: microsequenceId,
+      title: "Microssequencia " + microsequenceId.slice(-1) } },
+    studyUnit: { id: "unit-" + (index + 1), version: 1,
+      title: "Unidade " + (index + 1), kind: "theory",
+      content: [{ id: "paragraph-" + (index + 1), package: "aralearn.resource.paragraph",
+        version: "1.0.0", data: { text: "Conteudo focal rico " + (index + 1) + "." } }],
+      response: null, feedback: [] },
+    authorship: {}
+  }));
+  return {
+    publicAppUrl: "https://app.example/",
+    annotationSetVersion: 1,
+    async listCourses() {
+      return { items: [{ courseId: COURSE, title: "Curso sintetico" }], hasMore: false, nextCursor: null };
+    },
+    async getCourse() { return { courseId: COURSE, title: "Curso sintetico", revision: 7 }; },
+    async getCourseReviewPlan() { return structuredClone(reviewPlan); },
+    async getAuthoringProcessPreferences() {
+      return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
+        updatedAt: null, preferences: defaultAuthoringProcessPreferences() };
+    },
+    async listCourseStudyUnits() {
+      return { items: structuredClone(units), hasMore: false, nextCursor: null };
+    },
+    async getCourseContentReview(input) {
+      return { contract: "aralearn.course-content-review.v1", courseId: input.courseId,
+        courseRevision: 7, targetKind: input.targetKind, targetId: input.targetId,
+        entityVersion: 1, basisHash: "a".repeat(64), contentReview: { state: "draft" },
+        reviewPolicy: "saved" };
+    },
+    async getCourseContentInspection(input) {
+      return { contract: "aralearn.course-ai-inspection.v1", courseId: input.courseId,
+        courseRevision: 7, targetKind: input.targetKind, targetId: input.targetId,
+        basisHash: "b".repeat(64), inspection: { state: "unregistered", basisHash: "b".repeat(64) },
+        pedagogicalBasis: { targetKind: input.targetKind, targetId: input.targetId, audience: null,
+          microsequence: {}, planItems: [], dependencies: [], studyUnits: [], citations: [],
+          additionalContext: {} } };
+    },
+    async getCourseContentInspectionReceipt() { return null; },
+    async getCourseSources(input) {
+      if (input.mode === "source") return { items: [{ id: input.sourceId,
+        title: "Fonte prevista", sourceLinks: [] }], nextCursor: null };
+      if (input.mode === "target") return { items: [{ targetKind: input.targetKind,
+        targetId: input.targetId, sourceLinks: [] }], nextCursor: null };
+      return { items: [], nextCursor: null };
+    },
+    async getCourseAnchoredAnnotations() {
+      return { items: [], annotationSetVersion: 1, courseRevision: 7,
+        hasMore: false, nextCursor: null };
+    }
+  };
+}
+
+const prepareReview = async (adapter, args) => executeHumanCourseTask({ adapter,
+  principal: { actorId: ACTOR, scopes: ["authoring:read", "authoring:write"] },
+  name: "preparar_revisao", rawArguments: { curso: "Curso sintetico", auditoria: true, ...args } });
 
 test("produtor legado real e v5 reconstituem o mesmo texto, e v4 nao muda", async () => {
-  const db = await fixture({ microsequences: 6, textBytes: 300, partAssignments: [[0, 2, 1], [3, 4]] });
+  const db = await fixture({ microsequences: 6, textBytes: 300, partAssignments: [[0, 2, 1], [3, 4]], rich: true });
   const legacyText = await v4Text(db);
   const legacySerialized = JSON.stringify(JSON.parse(legacyText));
   assert.ok(legacyText.includes("ms-003"), "fixture cobre multiplas partes");
@@ -195,12 +327,13 @@ test("encadeamento local da v5: gates de servico e de escopo propagam a negacao 
   assert.equal((await v5Payload(db)).approvalBasis.courseRevision, 7);
 });
 
-test("projecao de revisao omite apenas contentReview e preserva o plano e o hash da v5", async () => {
+test("projecao de revisao conserva somente o recorte consumido e nao chama helpers descartados", async () => {
   const db = await fixture({ microsequences: 6, textBytes: 300, partAssignments: [[0, 2, 1], [3, 4]] });
   try {
     await db.exec(delta);
     const integral = JSON.parse(await v4Text(db));
     await db.exec(reviewPlanDelta);
+    await db.exec(leanReviewDelta);
 
     const fullExpanded = expandPlanningTransport(await v5Payload(db));
     assert.equal(JSON.stringify(fullExpanded), JSON.stringify(integral), "v5 continua igual ao produtor integral");
@@ -208,16 +341,48 @@ test("projecao de revisao omite apenas contentReview e preserva o plano e o hash
     const review = await reviewPayload(db);
     assert.equal(review.payloadEncoding, REVIEW_PLANNING_TRANSPORT_ENCODING);
     const reviewExpanded = expandReviewPlanningTransport(review);
-    assert.deepEqual(reviewExpanded, withoutContentReview(integral),
-      "a leitura de revisão conserva todo conteúdo, estrutura e metadados, exceto as revisões globais");
-    assert.deepEqual(review.approvalBasis, (await v5Payload(db)).approvalBasis,
-      "hash de aprovação do mapa permanece vinculado ao mesmo estado");
+    assert.deepEqual(reviewExpanded, leanReviewProjection(fullExpanded),
+      "a leitura de revisão conserva exatamente os campos consumidores e seus valores");
+    assert.equal(Object.hasOwn(reviewExpanded.plan, "instructionalAnalysisUnits"), false);
+    assert.equal(Object.hasOwn(reviewExpanded.plan, "evidenceRequirements"), false);
+    assert.equal(Object.hasOwn(reviewExpanded.plan, "counts"), false);
+    assert.equal(Object.hasOwn(reviewExpanded, "approvalBasis"), false);
 
     await db.exec(`drop function private.course_content_review_v1(uuid,text,text);
       create function private.course_content_review_v1(p_course_id uuid,p_target_kind text,p_target_id text) returns jsonb
-      language plpgsql as $f$ begin raise exception 'avaliacao global nao pode ocorrer na leitura focal'; end $f$`);
+      language plpgsql as $f$ begin raise exception 'course_content_review_v1 nao deve ocorrer'; end $f$;
+      drop function private.course_authoring_part_progress_v1(uuid,uuid);
+      create function private.course_authoring_part_progress_v1(p_course_id uuid,p_part_id uuid) returns jsonb
+      language plpgsql as $f$ begin raise exception 'course_authoring_part_progress_v1 nao deve ocorrer'; end $f$;
+      drop function private.current_course_curricular_map_v1(uuid);
+      create function private.current_course_curricular_map_v1(p_course_id uuid) returns jsonb
+      language plpgsql as $f$ begin raise exception 'current_course_curricular_map_v1 nao deve ocorrer'; end $f$`);
     const withoutReviewEvaluation = await reviewPayload(db);
-    assert.deepEqual(expandReviewPlanningTransport(withoutReviewEvaluation), withoutContentReview(integral));
+    assert.deepEqual(expandReviewPlanningTransport(withoutReviewEvaluation), leanReviewProjection(fullExpanded));
+  } finally { await db.close(); }
+});
+
+test("handler real entrega o mesmo contexto final para plano integral e projecao lean ricos", async () => {
+  const db = await fixture({ microsequences: 6, textBytes: 300,
+    partAssignments: [[0, 2, 1], [3, 4]], rich: true });
+  try {
+    await db.exec(delta);
+    const before = withoutContentReview(expandPlanningTransport(await v5Payload(db)));
+    await db.exec(reviewPlanDelta);
+    await db.exec(leanReviewDelta);
+    const after = expandReviewPlanningTransport(await reviewPayload(db));
+    const cases = [
+      { name: "curso", args: {} },
+      { name: "parte", args: { parte: 1 } },
+      { name: "microssequencia", args: { microssequencia: "Microssequencia 1" } },
+      { name: "unidades", args: { unidades: [2, 1, 3] } }
+    ];
+    for (const current of cases) {
+      const complete = await prepareReview(finalContextAdapter(before), current.args);
+      const projected = await prepareReview(finalContextAdapter(after), current.args);
+      assert.deepEqual(projected.context, complete.context,
+        current.name + ": contexto final preservado pela projecao lean");
+    }
   } finally { await db.close(); }
 });
 
@@ -226,14 +391,16 @@ test("leitura de revisao cobre vazio, parte/micro sem unidades materializadas, A
   try {
     await empty.exec(delta);
     await empty.exec(reviewPlanDelta);
+    await empty.exec(leanReviewDelta);
     assert.deepEqual(expandReviewPlanningTransport(await reviewPayload(empty)),
-      withoutContentReview(JSON.parse(await v4Text(empty))));
+      leanReviewProjection(JSON.parse(await v4Text(empty))));
   } finally { await empty.close(); }
 
   const partial = await fixture({ microsequences: 3, textBytes: 120, partAssignments: [[0, 2]] });
   try {
     await partial.exec(delta);
     await partial.exec(reviewPlanDelta);
+    await partial.exec(leanReviewDelta);
     const review = expandReviewPlanningTransport(await reviewPayload(partial));
     assert.equal(review.plan.parts[0].microsequences.length, 2);
     assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences.length, 3);
@@ -255,6 +422,7 @@ test("leitura de revisao cobre vazio, parte/micro sem unidades materializadas, A
   try {
     await large.exec(delta);
     await large.exec(reviewPlanDelta);
+    await large.exec(leanReviewDelta);
     await assert.rejects(() => reviewPayload(large), GUARD_MESSAGE);
   } finally { await large.close(); }
 });
@@ -266,16 +434,25 @@ test("curso grande le a estrutura sem executar a revisao global por microssequen
   try {
     await db.exec(delta);
     await db.exec(reviewPlanDelta);
+    await db.exec(leanReviewDelta);
     await db.exec(`drop function private.course_content_review_v1(uuid,text,text);
       create function private.course_content_review_v1(p_course_id uuid,p_target_kind text,p_target_id text) returns jsonb
-      language plpgsql as $f$ begin raise exception 'course_content_review_v1 nao pode ser avaliada no plano focal'; end $f$`);
+      language plpgsql as $f$ begin raise exception 'course_content_review_v1 nao pode ser avaliada no plano focal'; end $f$;
+      drop function private.course_authoring_part_progress_v1(uuid,uuid);
+      create function private.course_authoring_part_progress_v1(p_course_id uuid,p_part_id uuid) returns jsonb
+      language plpgsql as $f$ begin raise exception 'progresso nao pode ser avaliado no plano focal'; end $f$;
+      drop function private.current_course_curricular_map_v1(uuid);
+      create function private.current_course_curricular_map_v1(p_course_id uuid) returns jsonb
+      language plpgsql as $f$ begin raise exception 'mapa integral nao pode ser avaliado no plano focal'; end $f$`);
     const review = expandReviewPlanningTransport(await reviewPayload(db));
     assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences.length, 96);
     assert.equal(review.plan.parts.length, 12);
     assert.equal(review.plan.parts.every(part => part.microsequences.length === 8), true);
     assert.equal(review.plan.curriculum.modules[0].lessons[0].microsequences
       .every(item => item.contentReview === undefined), true);
-    await assert.rejects(() => v5Payload(db), /nao pode ser avaliada/u,
-      "o controle negativo prova que apenas a leitura de revisão evita o fanout global");
+    assert.equal(review.plan.parts.every(part => !Object.hasOwn(part, "progress")), true);
+    assert.equal(Object.hasOwn(review, "approvalBasis"), false);
+    await assert.rejects(() => v5Payload(db),
+      "o caminho v5 continua exercendo os helpers completos");
   } finally { await db.close(); }
 });

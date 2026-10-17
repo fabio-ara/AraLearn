@@ -1,12 +1,15 @@
 import { AuthoringApiError } from "./errors.js";
 
 export const PLANNING_TRANSPORT_ENCODING = "curriculum-backed-microsequence-v1";
-export const REVIEW_PLANNING_TRANSPORT_ENCODING = "curriculum-backed-review-microsequence-v1";
+export const REVIEW_PLANNING_TRANSPORT_ENCODING = "curriculum-backed-review-lean-v1";
 
 // Campos que o lote compacto carrega. Qualquer outro campo é recusado, para não
 // descartar em silêncio uma variante futura do produtor.
 const COMPACT_PART_MICROSEQUENCE_KEYS = Object.freeze([
   "id", "productionPosition", "curriculumPath", "studyUnitCount"
+]);
+const LEAN_REVIEW_PART_MICROSEQUENCE_KEYS = Object.freeze([
+  "id", "productionPosition", "curriculumPath"
 ]);
 
 // Campos que o lote omite e o currículo da MESMA microssequência fornece.
@@ -27,8 +30,7 @@ const REVIEW_PART_FIELD_FROM_CURRICULUM = Object.freeze({
   title: "title",
   goal: "objective",
   explanationPlan: "explanationPlan",
-  explanation: "explanation",
-  role: "role"
+  explanation: "explanation"
 });
 
 function isPlainRecord(value) {
@@ -82,7 +84,7 @@ function orderedRecord(entries, expectedLimit) {
 // Expande o transporte compacto antes de validar, consumir e digerir. Não existe
 // fallback: marca ausente, referência quebrada ou campo obrigatório ausente falham
 // claramente; valores nulos vindos do SQL são preservados.
-function expandTransport(value, encoding, fieldsFromCurriculum) {
+function expandTransport(value, encoding, fieldsFromCurriculum, compactKeys) {
   if (!isPlainRecord(value) || value.payloadEncoding !== encoding) {
     throw failure("O planejamento recebido não usa o transporte compacto esperado.");
   }
@@ -119,7 +121,7 @@ function expandTransport(value, encoding, fieldsFromCurriculum) {
     }
     const microsequences = part.microsequences.map((entry) => {
       if (!isPlainRecord(entry)) throw failure("O lote compacto traz microssequência inválida.");
-      if (Object.keys(entry).some((key) => !COMPACT_PART_MICROSEQUENCE_KEYS.includes(key))) {
+      if (Object.keys(entry).some((key) => !compactKeys.includes(key))) {
         throw failure("O lote compacto traz campos não previstos no transporte.");
       }
       const id = requiredOwn(entry, "id", "O lote compacto traz microssequência sem identidade.");
@@ -135,15 +137,17 @@ function expandTransport(value, encoding, fieldsFromCurriculum) {
         ["productionPosition", requiredOwn(entry, "productionPosition",
           "O lote compacto omite a posição de produção.")],
         ["curriculumPath", requiredOwn(entry, "curriculumPath",
-          "O lote compacto omite o caminho curricular.")],
-        ["studyUnitCount", requiredOwn(entry, "studyUnitCount",
-          "O lote compacto omite a contagem de unidades.")]
+          "O lote compacto omite o caminho curricular.")]
       ];
+      if (compactKeys.includes("studyUnitCount")) {
+        values.push(["studyUnitCount", requiredOwn(entry, "studyUnitCount",
+          "O lote compacto omite a contagem de unidades.")]);
+      }
       for (const [target, from] of Object.entries(fieldsFromCurriculum)) {
         values.push([target, requiredOwn(source, from,
           "O currículo compacto omite o campo " + from + " da microssequência.")]);
       }
-      return orderedRecord(values, 4 + Object.keys(fieldsFromCurriculum).length);
+      return orderedRecord(values, compactKeys.length + Object.keys(fieldsFromCurriculum).length);
     });
     return { ...part, microsequences };
   });
@@ -155,9 +159,11 @@ function expandTransport(value, encoding, fieldsFromCurriculum) {
 }
 
 export function expandPlanningTransport(value) {
-  return expandTransport(value, PLANNING_TRANSPORT_ENCODING, PART_FIELD_FROM_CURRICULUM);
+  return expandTransport(value, PLANNING_TRANSPORT_ENCODING, PART_FIELD_FROM_CURRICULUM,
+    COMPACT_PART_MICROSEQUENCE_KEYS);
 }
 
 export function expandReviewPlanningTransport(value) {
-  return expandTransport(value, REVIEW_PLANNING_TRANSPORT_ENCODING, REVIEW_PART_FIELD_FROM_CURRICULUM);
+  return expandTransport(value, REVIEW_PLANNING_TRANSPORT_ENCODING, REVIEW_PART_FIELD_FROM_CURRICULUM,
+    LEAN_REVIEW_PART_MICROSEQUENCE_KEYS);
 }

@@ -1542,11 +1542,18 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
   assert.ok(result.mapApprovalReference.length > 0);
 
   const reviewTransport = structuredClone(planningTransport);
-  reviewTransport.payloadEncoding = "curriculum-backed-review-microsequence-v1";
+  reviewTransport.contract = "aralearn.course-review-plan.v1";
+  reviewTransport.payloadEncoding = "curriculum-backed-review-lean-v1";
+  delete reviewTransport.approvalBasis;
+  delete reviewTransport.plan.instructionalAnalysisUnits;
+  delete reviewTransport.plan.evidenceRequirements;
   for (const moduleValue of reviewTransport.plan.curriculum.modules) {
     for (const lesson of moduleValue.lessons) {
       for (const microsequence of lesson.microsequences) delete microsequence.contentReview;
     }
+  }
+  for (const part of reviewTransport.plan.parts) {
+    for (const microsequence of part.microsequences) delete microsequence.studyUnitCount;
   }
   let reviewRequests = 0;
   const reviewAdapter = adapter(async (url, init) => {
@@ -1559,10 +1566,12 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
     principal: { actorId: USER_ID }, courseId: COURSE_ID, deadlineAt: Date.now() + 30_000
   });
   assert.equal(reviewRequests, 1);
+  assert.equal(review.contract, "aralearn.course-review-plan.v1");
   assert.equal(review.plan.parts[0].microsequences[0].goal, "Reconhecer a relação");
   assert.equal(Object.hasOwn(review.plan.parts[0].microsequences[0], "contentReview"), false);
-  assert.deepEqual(review.approvalBasis, planningTransport.approvalBasis);
-  assert.equal(typeof review.mapApprovalReference, "string");
+  assert.equal(Object.hasOwn(review.plan.parts[0].microsequences[0], "studyUnitCount"), false);
+  assert.equal(Object.hasOwn(review, "approvalBasis"), false);
+  assert.equal(Object.hasOwn(review, "mapApprovalReference"), false);
 
   const legacy = adapter(async () => json({ ...read,
     contract: "aralearn.course-instructional-plan.v2"
