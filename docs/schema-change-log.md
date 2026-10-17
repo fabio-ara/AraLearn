@@ -21,7 +21,48 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261017120000 — orçamento do comando instrucional
+
+A [migração](../supabase/migrations/20261017120000_instructional_command_budget.sql)
+substitui o teto herdado de 32 KiB dos dois comandos que carregam lote de
+unidades (`set_study_unit_applications` e `apply_study_unit_configuration`) por
+um contrato nomeado de 256 KiB, medido em octetos do próprio jsonb recebido. O
+número reusa a referência numérica que a leitura do mesmo desenho já aplica
+(`get_owned_course_design_for_actor_v3`, 262144 octetos); leitura e comando não
+são o mesmo payload. No lote observado de sete unidades, o comando real mede
+33279 octetos e ficava acima do teto herdado. A recusa por tamanho passa a
+devolver 413 `course_command_too_large` no lugar do 422 genérico, a validação
+estrutural de superfície continua antes do orçamento e a validação de cada
+unidade permanece no laço. O lote é atômico: exceder o orçamento não grava
+parte das unidades nem cria recibo. Os comandos de plano e vínculo e os
+delegados ao núcleo de preferências mantêm os tetos que já tinham, e nenhuma
+capacidade nova é declarada: o manifesto avança para `20261017120000`.
+
 ## 20261016171317 — capacidade de âncoras de uma revisão de Fonte
+## 20261017124500 — descoberta somente-leitura do recibo de materialização
+
+A [migração](../supabase/migrations/20261017124500_materialization_receipt_discovery.sql),
+criada com `supabase migration new`, acrescenta
+`public.discover_course_part_materialization_receipts_for_actor_v1`, que localiza as
+tentativas de materialização de parte do próprio ator num curso quando a resposta
+se perdeu antes do corpo e o `requestId` interno não é conhecido. A leitura é estreita:
+mesma operação do writer (`materialize_course_authoring_part_v2`), guarda de acesso
+idêntica à do writer, recorte pela chave primária `(actor_id, request_id)` e filtro
+opcional pelo `authoringPartId` gravado no próprio resultado. Nada é materializado,
+apagado ou reaproveitado, nenhum recibo é alterado e nenhum CAS é relaxado. A leitura
+devolve os candidatos vigentes, os expirados e a contagem de recibos cujo formato não
+confere; nunca elege a tentativa mais recente nem trata ausência como ausência de
+efeito. O campo `recuperacao` de `materializar_parte` passa a aceitar, além da
+referência exata devolvida pelo erro, o curso e a microssequência como forma de
+localizar a tentativa perdida: a união continua fechada e exclusiva com os argumentos
+de produção, e o catálogo humano avança para `11.4.0`. O manifesto avança para
+`20261017124500` e declara
+`course-authoring-part-materialization-receipt-discovery-v1`.
+A leitura é paginada por chave estável, com continuação opaca devolvida ao
+autor: as tentativas vigentes precedem as expiradas, os totais são do recorte
+inteiro — nunca do tamanho da página — e o recorte continua explícito mesmo
+quando só parte dele cabe numa resposta.
+
 
 A [migração](../supabase/migrations/20261016171317_course_source_anchor_capacity.sql),
 criada com `supabase migration new`, substitui o teto fixo de oito identidades de

@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20261016171317",
+  "schemaRevision": "20261017124500",
   "contractVersion": 1,
   "requiredFeatures": [
     "object-content-review-v1",
@@ -59,6 +59,7 @@
     "contextual-design-writer-edges-v1",
     "contextual-design-course-scope-applications-v1",
     "course-source-atomic-bundle-v1",
-    "course-authoring-part-materialization-receipt-v1"
+    "course-authoring-part-materialization-receipt-v1",
+    "course-authoring-part-materialization-receipt-discovery-v1"
   ]
 }

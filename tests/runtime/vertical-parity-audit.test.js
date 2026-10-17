@@ -76,10 +76,10 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 746);
+  assert.equal(inventory.objects.length, 748);
   assert.deepEqual(counts, {
     "study-course-experience": 31,
-    "course-authoring-experience": 302,
+    "course-authoring-experience": 304,
     "course-source-provenance": 139,
     "course-anchored-annotations": 89,
     "course-authoring-research": 2,
@@ -99,6 +99,12 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     new Set(currentCaseIds)
   );
   assert.equal(assignments.get("table:public.courses"), "course-authoring-experience");
+  assert.equal(
+    assignments.get(
+      "function:public.discover_course_part_materialization_receipts_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_limit integer, p_cursor text)"
+    ),
+    "course-authoring-experience"
+  );
   assert.equal(assignments.get("function:public.set_course_content_review_v1(p_course_id uuid, p_target_kind text, p_target_id text, p_expected_basis_hash text, p_reviewed boolean, p_request_id text)"), "course-authoring-experience");
   for (const signature of [
     "private.apply_course_design_settings_core_v3(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_command jsonb, p_request_id text, p_request_hash text, p_channel text)",

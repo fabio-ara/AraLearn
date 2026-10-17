@@ -12,7 +12,8 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 import { resolveHumanCourseContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 
 import { materializeHumanCoursePart as materializeCompletePart, humanMaterializationUnitPlan,
-  preflightHumanCourseMaterialization, reconcileHumanExplanation, humanMaterializationRecovery } from
+  preflightHumanCourseMaterialization, reconcileHumanExplanation,
+  humanMaterializationRecovery } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
@@ -252,11 +253,28 @@ test("base persistida não dispensa releitura completa de fontes antes de produz
   assert.equal(adapter.calls.length, 0);
 });
 
-function adapterFixture({ savedExplanation = true } = {}) {
+function adapterFixture({ savedExplanation = true, discovery = null, receipt = null } = {}) {
   const calls = [];
+  const discoveryCalls = [];
+  const recoveryCalls = [];
   let revision = 8;
   return {
     calls,
+    discoveryCalls,
+    recoveryCalls,
+    async discoverCoursePartMaterializationReceipts(input) {
+      discoveryCalls.push(structuredClone(input));
+      if (discovery instanceof Error) throw discovery;
+      if (typeof discovery === "function") return await discovery(input);
+      if (!discovery) return { status: "none", items: [], candidateCount: 0, expiredCount: 0,
+        illegible: 0, hasMore: false, nextCursor: null };
+      return structuredClone(discovery);
+    },
+    async getCoursePartMaterializationReceipt({ courseId, requestId }) {
+      recoveryCalls.push({ courseId, requestId });
+      if (receipt instanceof Error) throw receipt;
+      return structuredClone(receipt ?? { status: "not_recorded" });
+    },
     async listCourses() {
       return {
         items: [{ courseId: COURSE_ID, title: "Curso de Redes" }],
@@ -3042,3 +3060,181 @@ test("preflight aceita 32 vínculos de Fonte e recusa 33 antes de qualquer grava
   assert.equal(rejected.calls.length, 0, "33 vínculos não gravam nada");
 });
 
+// Recorte sintético da descoberta: nenhum identificador da ocorrência privada
+// entra no repositório. A leitura localiza a tentativa por Curso e Parte, em
+// páginas com continuação, e a recuperação existente confirma o mesmo recibo sem
+// reenviar a escrita.
+const OUTRA_PART_ID = "20000000-0000-4000-8000-000000000002";
+const RECEIPT_REQUEST_ID = "materializacao-original-0007";
+const PEDIDO = Object.freeze({ curso: "Curso de Redes", microssequencia: "DNS" });
+const GRAVADO_EM = "2026-10-17T12:00:00.000+00:00";
+const itemDescoberto = ({ requestId = RECEIPT_REQUEST_ID, authoringPartId = PART_ID, courseRevision = 8,
+  changed = true, studyUnitCount = 2, expired = false, createdAt = GRAVADO_EM } = {}) =>
+  ({ requestId, authoringPartId, courseRevision, changed, studyUnitCount, expired, createdAt });
+const paginaDescoberta = ({ status = "candidate", items = [], expiredCount = 0, illegible = 0,
+  hasMore = false, nextCursor = null, candidateCount = null } = {}) => ({ status, items,
+  candidateCount: candidateCount ?? items.filter(entry => !entry.expired).length, expiredCount,
+  illegible, hasMore, nextCursor });
+const descoberta = (adapter, args) => discoveryArgs({ adapter, args: { recuperacao: args } });
+const discoveryArgs = ({ adapter, args }) => executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+  name: "materializar_parte", rawArguments: args });
+async function discoveryFailure(run) {
+  try {
+    await run;
+  } catch (error) {
+    return error;
+  }
+  throw new Error("A descoberta deveria falhar.");
+}
+
+test("descoberta localiza a tentativa vigente e devolve a recuperação sem escrever", async () => {
+  const adapter = adapterFixture({ discovery: paginaDescoberta({ items: [itemDescoberto()] }) });
+  adapter.publicAppUrl = "https://app.example/";
+  const value = await descoberta(adapter, PEDIDO);
+  assert.equal(value.context.descoberta, "candidate");
+  assert.equal(value.context.criterio, "parte");
+  assert.deepEqual(value.context.totais, { vigentes: 1, expirados: 0, ilegiveis: 0 });
+  assert.equal(value.context.candidatos.length, 1);
+  assert.equal(value.context.candidatos[0].tentativa, RECEIPT_REQUEST_ID);
+  assert.equal(value.context.candidatos[0].unidadesMaterializadas, 2);
+  assert.deepEqual(value.context.candidatos[0].parte, { posicao: 0, titulo: "Fundamentos",
+    microssequencias: ["DNS"] });
+  assert.deepEqual(value.context.candidatos[0].recuperacao, { courseId: COURSE_ID,
+    operation: "course_write", requestId: RECEIPT_REQUEST_ID });
+  assert.equal(value.context.continuacao, undefined);
+  assert.match(value.result, /tentativa vigente/iu);
+  assert.match(value.result, /sem nova escrita/iu);
+  assert.ok(String(value.deepLink).includes(PART_ID), "a Parte localizada é o destino");
+  assert.equal(adapter.calls.length, 0, "a descoberta não materializa");
+  assert.equal(adapter.discoveryCalls.length, 1);
+  assert.equal(adapter.discoveryCalls[0].authoringPartId, PART_ID);
+  assert.equal(adapter.discoveryCalls[0].cursor, null);
+});
+
+test("a referência devolvida confirma o mesmo recibo sem nova escrita", async () => {
+  const adapter = adapterFixture({ discovery: paginaDescoberta({ items: [itemDescoberto()] }),
+    receipt: { status: "confirmed", result: { contract: "aralearn.course-part-materialization.v1",
+      courseId: COURSE_ID, courseRevision: 8, authoringPartId: PART_ID, changed: true,
+      studyUnitCount: 2, idempotent: true } } });
+  const found = await descoberta(adapter, PEDIDO);
+  const confirmed = await discoveryArgs({ adapter, args: { recuperacao:
+    { ...found.context.candidatos[0].recuperacao } } });
+  assert.equal(confirmed.context.recuperacao, "confirmed");
+  assert.equal(confirmed.context.unidadesMaterializadas, 2);
+  assert.equal(adapter.calls.length, 0, "nenhuma escrita foi reenviada");
+  assert.deepEqual(adapter.recoveryCalls, [{ courseId: COURSE_ID, requestId: RECEIPT_REQUEST_ID }]);
+});
+
+test("duas tentativas vigentes não elegem a mais recente e a página não decide o recorte", async () => {
+  const adapter = adapterFixture({ discovery: paginaDescoberta({ status: "ambiguous",
+    items: [itemDescoberto({ requestId: "materializacao-original-0009", courseRevision: 9, changed: false,
+      studyUnitCount: 1 }), itemDescoberto({ requestId: "materializacao-original-0008" })],
+    hasMore: true, nextCursor: "1|1|materializacao-original-0008" }) });
+  const value = await descoberta(adapter, { curso: "Curso de Redes" });
+  assert.equal(value.context.descoberta, "ambiguous");
+  assert.equal(value.context.criterio, "curso");
+  assert.deepEqual(value.context.totais, { vigentes: 2, expirados: 0, ilegiveis: 0 });
+  assert.deepEqual(value.context.candidatos.map(item => item.tentativa),
+    ["materializacao-original-0009", "materializacao-original-0008"]);
+  assert.equal(value.context.continuacao, "1|1|materializacao-original-0008");
+  assert.match(value.result, /mais recente não é automaticamente/iu);
+  assert.equal(value.deepLink, null, "sem escolha automática não há destino de Parte");
+  assert.equal(adapter.calls.length, 0);
+});
+
+test("ambiguidade global não vira unicidade por página", async () => {
+  const adapter = adapterFixture({ discovery: paginaDescoberta({ status: "ambiguous",
+    candidateCount: 2, items: [itemDescoberto()], hasMore: true,
+    nextCursor: "1|1|materializacao-original-0007" }) });
+  const value = await descoberta(adapter, PEDIDO);
+  assert.equal(value.context.descoberta, "ambiguous");
+  assert.equal(value.context.candidatos.length, 1, "a página mostra uma parte do recorte");
+  assert.equal(value.context.totais.vigentes, 2, "o recorte inteiro continua ambíguo");
+  assert.equal(value.result.includes("esta página mostra 1"), true);
+});
+
+test("descoberta sem tentativa vigente não declara ausência de efeito", async () => {
+  const adapter = adapterFixture({ discovery: paginaDescoberta({ status: "none",
+    items: [itemDescoberto({ requestId: "materializacao-original-0006", expired: true })],
+    expiredCount: 1, illegible: 1, hasMore: true, nextCursor: "0|1|materializacao-original-0006" }) });
+  const value = await descoberta(adapter, PEDIDO);
+  assert.equal(value.context.descoberta, "none");
+  assert.deepEqual(value.context.candidatos, []);
+  assert.deepEqual(value.context.expirados.map(item => item.tentativa), ["materializacao-original-0006"]);
+  assert.deepEqual(value.context.totais, { vigentes: 0, expirados: 1, ilegiveis: 1 });
+  assert.match(value.result, /não confirma que a escrita terminou sem efeito/iu);
+  assert.doesNotMatch(value.result, /não houve escrita|sem efeito algum/iu);
+});
+
+test("tentativa fora da primeira página é alcançada pela continuação e recuperada sem nova escrita", async () => {
+  const primeiraPagina = paginaDescoberta({ status: "ambiguous", candidateCount: 2,
+    items: [itemDescoberto({ requestId: "materializacao-original-0009", authoringPartId: OUTRA_PART_ID }),
+      itemDescoberto({ requestId: "materializacao-original-0008", authoringPartId: OUTRA_PART_ID })],
+    hasMore: true, nextCursor: "1|1|materializacao-original-0008" });
+  const segundaPagina = paginaDescoberta({ status: "ambiguous", candidateCount: 2,
+    items: [itemDescoberto()] });
+  const adapter = adapterFixture({
+    discovery: (input) => input.cursor === null ? primeiraPagina : segundaPagina,
+    receipt: { status: "confirmed", result: { contract: "aralearn.course-part-materialization.v1",
+      courseId: COURSE_ID, courseRevision: 8, authoringPartId: PART_ID, changed: true,
+      studyUnitCount: 2, idempotent: true } } });
+  const first = await descoberta(adapter, { curso: "Curso de Redes" });
+  const soughtOutOfPage = first.context.candidatos.every(item =>
+    item.tentativa !== RECEIPT_REQUEST_ID);
+  assert.equal(soughtOutOfPage, true, "a tentativa procurada não está nesta página");
+  const second = await descoberta(adapter, { curso: "Curso de Redes",
+    continuacao: first.context.continuacao });
+  assert.equal(adapter.discoveryCalls[1].cursor, "1|1|materializacao-original-0008");
+  const found = second.context.candidatos.find(item => item.tentativa === RECEIPT_REQUEST_ID);
+  assert.ok(found, "a continuação devolve a tentativa procurada");
+  assert.deepEqual(found.parte, { posicao: 0, titulo: "Fundamentos", microssequencias: ["DNS"] },
+    JSON.stringify(found));
+  const confirmed = await discoveryArgs({ adapter, args: { recuperacao: { ...found.recuperacao } } });
+  assert.equal(confirmed.context.recuperacao, "confirmed");
+  assert.equal(adapter.calls.length, 0, "nenhuma escrita foi reenviada");
+});
+
+test("descoberta é fechada e exclusiva com a recuperação e com a produção", async () => {
+  const invalid = [
+    { curso: "Curso de Redes", descoberta: true },
+    { curso: "Curso de Redes", continuacao: 7 },
+    { curso: "Curso de Redes", unidades: [] },
+    { courseId: COURSE_ID, requestId: RECEIPT_REQUEST_ID },
+    {}
+  ];
+  for (const args of invalid) {
+    const adapter = adapterFixture({ discovery: paginaDescoberta({ items: [itemDescoberto()] }) });
+    const error = await discoveryFailure(descoberta(adapter, args));
+    assert.ok(["invalid_materialization_recovery", "unknown_human_task_argument"].includes(error.code),
+      JSON.stringify(args) + ": " + error.code);
+    assert.equal(adapter.discoveryCalls.length, 0, "a recusa antecede qualquer leitura");
+    assert.equal(adapter.calls.length, 0);
+  }
+});
+
+
+test("páginas posteriores sem a vigente não confirmam nem inventam recuperação", async () => {
+  const vencido = (index) => itemDescoberto({
+    requestId: "materializacao-vencida-" + String(index).padStart(4, "0") + "-1", expired: true });
+  const firstPage = paginaDescoberta({ status: "candidate", candidateCount: 1, items: [itemDescoberto()],
+    expiredCount: 64, hasMore: true, nextCursor: "0|1792241100000000|materializacao-vencida-0000-1" });
+  const laterPage = paginaDescoberta({ status: "candidate", candidateCount: 1,
+    items: [vencido(0), vencido(1)], expiredCount: 64 });
+  const adapter = adapterFixture({
+    discovery: (input) => input.cursor === null ? firstPage : laterPage });
+  const first = await descoberta(adapter, { curso: "Curso de Redes" });
+  assert.equal(first.context.descoberta, "candidate");
+  assert.deepEqual(first.context.totais, { vigentes: 1, expirados: 64, ilegiveis: 0 });
+  assert.equal(first.context.candidatos[0].tentativa, RECEIPT_REQUEST_ID);
+  assert.ok(first.context.candidatos[0].recuperacao, "a vigente traz a referência fechada");
+  const later = await descoberta(adapter, { curso: "Curso de Redes",
+    continuacao: first.context.continuacao });
+  assert.equal(later.context.descoberta, "candidate");
+  assert.deepEqual(later.context.totais, { vigentes: 1, expirados: 64, ilegiveis: 0 });
+  assert.deepEqual(later.context.candidatos, [], "a página não fabrica candidato");
+  assert.deepEqual(later.context.expirados.map(item => item.tentativa),
+    ["materializacao-vencida-0000-1", "materializacao-vencida-0001-1"]);
+  assert.match(later.result, /não está nesta página/iu);
+  assert.doesNotMatch(later.result, /recuperação devolvida/iu);
+  assert.equal(later.deepLink, null);
+});

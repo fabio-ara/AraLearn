@@ -102,8 +102,10 @@ const errorSchema = {
 // `microssequencia` optional in `registrar_aplicacoes_instrucionais`, so a
 // single request may declare existing units across microsequences of the same
 // course. Catalog 11.3.0 declares in `registrar_inspecao` that a lost response
-// is recovered with the same reference and report. The measured baseline becomes
-// 100922 minified / 209968 pretty-printed
+// is recovered with the same reference and report. Catalog 11.4.0 accepts in
+// `materializar_parte` the discovery form of `recuperacao`, which locates the attempt
+// by course and microsequence when the reference was lost. The measured baseline
+// becomes 101900 minified / 209568 pretty-printed
 // characters. Acceptance in the actual editor remains a separate gate with the
 // real client; it is not implied by these counters.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
@@ -354,9 +356,12 @@ for (const [key, value] of repeated) {
   if (value.descriptions.size === 1 && typeof [...value.descriptions][0] === "string") {
     value.shape.description = [...value.descriptions][0];
   }
-  const shapeLength = JSON.stringify(value.shape).length;
-  const referenceLength = JSON.stringify({ $ref: `#/components/schemas/${value.name}` }).length;
-  const definitionLength = shapeLength + JSON.stringify(value.name).length + 1;
+  // O orçamento é medido na projeção indentada que o editor recebe. Comparar
+  // custos minificados subestimava a repetição e mantinha fragmentos grandes
+  // inline; a troca continua sendo só de transporte, sem perder construto.
+  const shapeLength = JSON.stringify(value.shape, null, 2).length;
+  const referenceLength = JSON.stringify({ $ref: `#/components/schemas/${value.name}` }, null, 2).length;
+  const definitionLength = shapeLength + JSON.stringify(value.name, null, 2).length + 1;
   if (value.count * (shapeLength - referenceLength) <= definitionLength) repeated.delete(key);
 }
 function internSchemas(value, root = false) {

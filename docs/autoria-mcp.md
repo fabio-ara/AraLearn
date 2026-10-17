@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.3.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.4.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -265,6 +265,11 @@ conteúdo e fila sem reaplicar a correção. `materializar_parte` usa o mesmo ca
 reenviar o payload, sem repetir o preparo e sem reaplicar a escrita. A
 [recuperação da tentativa](fluxos-prompts-e-contratos.md#confirmar-o-resultado-e-recuperar-uma-interrupção)
 explica quais referências precisam ser conservadas.
+Sem a referência, o mesmo campo aceita o curso e a microssequência e devolve os
+recibos vigentes da parte, sem eleger a tentativa mais recente. A leitura é
+paginada: a continuação devolvida percorre o recorte inteiro, os totais são do
+recorte e a comparação entre candidatos usa parte, revisão e conteúdo reconciliado.
+
 
 A declaração humana de revisão pertence ao conteúdo inspecionado. Acesso ao
 curso e aos arquivos têm operações próprias; a política opcional de somente

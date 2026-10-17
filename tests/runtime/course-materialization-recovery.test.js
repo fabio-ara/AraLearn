@@ -180,6 +180,16 @@ test("esquema do cliente fecha o modo e recusa a mistura com a produção", () =
     assert.equal(validate({ recuperacao: { ...RECOVERY, requsetId: REQUEST_ID } }), false, "campo alheio na recuperação");
     assert.equal(validate({ recuperacao: { ...RECOVERY }, curso: "Curso de Redes" }), false);
     assert.equal(validate({ recuperacao: { ...RECOVERY }, unidades: [] }), false);
+    assert.equal(validate({ recuperacao: { curso: "Curso de Redes" } }), true, JSON.stringify(validate.errors));
+    assert.equal(validate({ recuperacao: { curso: "Curso de Redes", microssequencia: "DNS" } }), true);
+    assert.equal(validate({ recuperacao: { curso: "Curso de Redes",
+      continuacao: "1|1|materializacao-original-0001" } }), true);
+    assert.equal(validate({ recuperacao: { curso: "Curso de Redes", continuacao: 7 } }), false);
+    assert.equal(validate({ recuperacao: {} }), false, "a localização exige o curso");
+    assert.equal(validate({ recuperacao: { curso: "Curso de Redes", requestId: REQUEST_ID } }), false,
+      "a referência exata não aceita o curso");
+    assert.equal(validate({ recuperacao: { ...RECOVERY }, unidades: [] }), false,
+      "a leitura não recebe produção");
     assert.equal(validate({ curso: "Curso de Redes" }), false, "a produção continua exigindo as unidades");
   }
 });

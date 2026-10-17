@@ -1291,6 +1291,10 @@
       "caseId": "course-independent-copy"
     },
     {
+      "object": "function:private.course_instructional_command_bytes_limit_v1()",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_list_projection_v2(p_course_id uuid, p_actor_id uuid)",
       "caseId": "study-course-experience"
     },
@@ -1857,6 +1861,10 @@
     {
       "object": "function:public.derive_mcp_oauth_pairwise_id_v1(p_domain text, p_source_id uuid, p_client_id uuid)",
       "caseId": "current-data-lifecycle"
+    },
+    {
+      "object": "function:public.discover_course_part_materialization_receipts_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_limit integer, p_cursor text)",
+      "caseId": "course-authoring-experience"
     },
     {
       "object": "function:public.enforce_aralearn_data_api_token_v1()",
