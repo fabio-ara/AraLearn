@@ -48,6 +48,7 @@ function explanation() {
 
 function microsequence() {
   return { id: MS, title: MS_TITLE, position: 0, goal: "Relacionar protocolos, serviços e portas.",
+    objective: "Relacionar protocolos, serviços e portas.",
     explanationPlan: { purpose: "Explicitar a relação.", prerequisites: [], relations: [], sourceIds: [] },
     explanation: explanation(), contentReview: { state: "draft" } };
 }
@@ -65,18 +66,74 @@ function withoutPlanContentReviews(value) {
   return result;
 }
 
-function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false } = {}) {
+function leanReviewPlan(value, courseId) {
+  const plan = withoutPlanContentReviews(value).plan;
+  const curriculumByMicrosequenceId = new Map(plan.curriculum.modules.flatMap(moduleValue =>
+    moduleValue.lessons.flatMap(lesson => lesson.microsequences.map(microsequence =>
+      [microsequence.id, microsequence]))));
+  return {
+    contract: "aralearn.course-review-plan.v1",
+    courseId,
+    courseRevision: value.courseRevision,
+    plan: {
+      id: plan.id, version: plan.version, title: plan.title, objective: plan.objective,
+      audience: plan.audience, curriculumMapStatus: plan.curriculumMapStatus,
+      declaredPrerequisites: structuredClone(plan.declaredPrerequisites),
+      curriculum: { modules: plan.curriculum.modules.map(moduleValue => ({
+        id: moduleValue.id, position: moduleValue.position, title: moduleValue.title, objective: moduleValue.objective,
+        lessons: moduleValue.lessons.map(lesson => ({
+          id: lesson.id, position: lesson.position, title: lesson.title, objective: lesson.objective,
+          microsequences: lesson.microsequences.map(microsequence => ({
+            id: microsequence.id, position: microsequence.position, title: microsequence.title,
+            objective: microsequence.objective, explanationPlan: structuredClone(microsequence.explanationPlan),
+            explanation: structuredClone(microsequence.explanation),
+            dependencyMicrosequenceIds: structuredClone(microsequence.dependencyMicrosequenceIds ?? microsequence.dependsOn ?? [])
+          }))
+        }))
+      })) },
+      curriculumScopeItems: plan.curriculumScopeItems.map(scopeItem => ({
+        id: scopeItem.id, position: scopeItem.position, statement: scopeItem.statement,
+        curriculumTargets: structuredClone(scopeItem.curriculumTargets ?? [])
+      })),
+      parts: plan.parts.map(part => ({
+        id: part.id, position: part.position, title: part.title, intent: part.intent,
+        progression: structuredClone(part.progression ?? []), version: part.version,
+        microsequences: part.microsequences.map(entry => {
+          const source = curriculumByMicrosequenceId.get(entry.id);
+          return {
+            id: entry.id, productionPosition: entry.productionPosition,
+            curriculumPath: structuredClone(entry.curriculumPath),
+            title: source?.title, goal: source?.objective,
+            explanationPlan: structuredClone(source?.explanationPlan),
+            explanation: structuredClone(source?.explanation)
+          };
+        })
+      })),
+      updatedAt: plan.updatedAt
+    }
+  };
+}
+
+function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false,
+  reviewProjection = "full" } = {}) {
   const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize, multibyte));
   const calls = { units: [], reviews: [], inspections: [], annotations: [], sources: [],
     instructionalPlans: [], reviewPlans: [] };
   const totals = { instructionalPlans: 0, reviewPlans: 0 };
-  const plan = { courseRevision: COURSE.revision, plan: { title: TITLE, objective: "Objetivo sintético",
+  const plan = { courseRevision: COURSE.revision, plan: { id: "plan-review", version: 2,
+    title: TITLE, objective: "Objetivo sintético", updatedAt: "2026-10-17T00:00:00Z",
     audience: "Turma sintética", declaredPrerequisites: [], curriculumMapStatus: "approved",
-    instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
+    instructionalAnalysisUnits: [{ id: "analysis-unused", statement: "Proveniência descartada." }],
+    evidenceRequirements: [], curriculumScopeItems: [{ id: "scope-1", position: 0,
+      statement: "Cobertura preservada", state: "planned", developedIn: [],
+      curriculumTargets: [{ moduleId: "module-1", lessonId: "lesson-1", didacticMicrosequenceIds: [MS] }] }],
     curriculum: { modules: [{ id: "module-1", title: "Módulo", lessons: [
-      { id: "lesson-1", title: "Lição", microsequences: [microsequence()] }] }] },
+      { id: "lesson-1", title: "Lição", microsequences: [{ ...microsequence(), scopeItemIds: ["scope-1"],
+        dependencyMicrosequenceIds: [] }] }] }] },
     parts: [{ id: PART, position: 0, title: "Parte única", intent: "Cobrir protocolos.",
-      microsequences: [microsequence()] }] } };
+      progression: [], version: 1, progress: { state: "planned" },
+      microsequences: [{ ...microsequence(), productionPosition: 0, studyUnitCount: 1,
+        curriculumPath: { moduleId: "module-1", moduleTitle: "Módulo", lessonId: "lesson-1", lessonTitle: "Lição" } }] }] } };
   const adapter = {
     calls, totals, plan, revision: COURSE.revision, publicAppUrl: "https://app.example/",
     // Versão independente do conjunto de observações: por contrato do banco ela não
@@ -92,7 +149,9 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
       return { ...structuredClone(plan), courseRevision: adapter.revision }; },
     async getCourseReviewPlan(input) { calls.reviewPlans.push(input);
       totals.reviewPlans += 1;
-      return withoutPlanContentReviews({ ...plan, courseRevision: adapter.revision }); },
+      const full = withoutPlanContentReviews({ ...plan, courseRevision: adapter.revision });
+      return reviewProjection === "lean" ? leanReviewPlan(full, input.courseId)
+        : { contract: "aralearn.course-instructional-plan.v3", courseId: input.courseId, ...full }; },
     async getAuthoringProcessPreferences() { return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
       updatedAt: null, preferences: defaultAuthoringProcessPreferences() }; },
     async getCourseContentReview(input) { calls.reviews.push(input);
@@ -525,7 +584,7 @@ test("projeção estrutural entrega o mesmo contexto nos quatro seletores sem pl
     { name: "unidades", args: { unidades: [1] } }
   ];
   for (const current of cases) {
-    const optimized = createAdapter();
+    const optimized = createAdapter({ reviewProjection: "lean" });
     const full = createAdapter();
     delete full.adapter.getCourseReviewPlan;
     const projected = await execute(optimized.adapter, current.args);
@@ -540,11 +599,31 @@ test("projeção estrutural entrega o mesmo contexto nos quatro seletores sem pl
   }
 });
 
-test("corpo ou dependência da Explicação muda sem revision e invalida o reuso", async () => {
+test("projeção lean e plano integral entregam o mesmo contexto final nos seletores ricos", async () => {
+  const cases = [
+    { name: "curso", args: {} },
+    { name: "parte", args: { parte: 1 } },
+    { name: "microssequência", args: { microssequencia: MS_TITLE } },
+    { name: "unidades", args: { unidades: [2, 1, 3] } }
+  ];
+  for (const current of cases) {
+    const full = createAdapter({ unitCount: 3, unitSize: 1_500, reviewProjection: "full" });
+    const lean = createAdapter({ unitCount: 3, unitSize: 1_500, reviewProjection: "lean" });
+    const complete = await execute(full.adapter, current.args);
+    const projected = await execute(lean.adapter, current.args);
+    assert.deepEqual(projected.context, complete.context,
+      `${current.name}: o contexto final independe dos campos descartados`);
+    assert.equal(full.adapter.totals.instructionalPlans, 0, `${current.name}: nenhum plano v5`);
+    assert.equal(lean.adapter.totals.instructionalPlans, 0, `${current.name}: nenhum plano v5`);
+  }
+});
+
+test("corpo, plano ou dependência da Explicação muda sem revision e invalida o reuso", async () => {
   const mutations = [
     {
       name: "corpo",
       dependency: false,
+      invalidates: true,
       mutate: (plan) => {
         plan.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation.content[0].data.text =
           "Corpo focal materialmente alterado sem nova revisão do curso.";
@@ -553,14 +632,31 @@ test("corpo ou dependência da Explicação muda sem revision e invalida o reuso
     {
       name: "dependência",
       dependency: true,
+      invalidates: true,
       mutate: (plan) => {
         plan.plan.curriculum.modules[0].lessons[0].microsequences[0].dependencyMicrosequenceIds = ["ms-base"];
         plan.plan.parts[0].microsequences[0].dependencyMicrosequenceIds = ["ms-base"];
       }
+    },
+    {
+      name: "plano de explicação",
+      invalidates: true,
+      mutate: (plan) => {
+        plan.plan.curriculum.modules[0].lessons[0].microsequences[0].explanationPlan.purpose =
+          "Propósito apresentado materialmente alterado.";
+      }
+    },
+    {
+      name: "campo descartado",
+      invalidates: false,
+      mutate: (plan) => {
+        plan.plan.instructionalAnalysisUnits.push({ id: "analysis-new", statement: "Não apresentado." });
+        plan.plan.parts[0].progress = { state: "materialized" };
+      }
     }
   ];
   for (const current of mutations) {
-    const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+    const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000, reviewProjection: "lean" });
     const base = microsequence();
     base.id = "ms-base";
     base.title = "Base necessária";
@@ -573,17 +669,25 @@ test("corpo ou dependência da Explicação muda sem revision e invalida o reuso
     assert.equal(adapter.calls.reviews.length, 0, "sem mudança, o material da página é reutilizado");
     assert.equal(reused.context.fragmento.inicio, first.context.fragmento.fim);
 
+    const projectedBefore = current.invalidates ? null
+      : await adapter.getCourseReviewPlan({ courseId: COURSE.id });
     current.mutate(adapter.plan);
     assert.equal(adapter.revision, COURSE.revision, "o discriminante não incrementa a revisão do curso");
     adapter.reset();
-    if (current.dependency) {
-      await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),
-        error => error.status === 409 && error.code === "human_read_context_changed");
-    } else {
-      const recomposed = await execute(adapter, { unidades: [1], continuacao: cursor });
-      assert.equal(recomposed.context.fragmento.inicio, reused.context.fragmento.inicio,
-        "o corpo não exibido não muda o transporte, mas o digest é conferido");
+    if (!current.invalidates) {
+      const projectedAfter = await adapter.getCourseReviewPlan({ courseId: COURSE.id });
+      assert.deepEqual(projectedAfter, projectedBefore,
+        "o contrato focal não transporta o campo descartado");
+      adapter.reset();
+      const notInvalidated = await execute(adapter, { unidades: [1], continuacao: cursor });
+      assert.equal(adapter.calls.reviews.length, 0,
+        "campos descartados não forçam nova leitura de alvos");
+      assert.deepEqual(notInvalidated.context, reused.context,
+        "o digest ignora somente o que não pertence ao contrato focal");
+      continue;
     }
+    await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),
+      error => error.status === 409 && error.code === "human_read_context_changed");
     assert.ok(adapter.calls.reviews.length > 0, "o digest invalidado força recompor o recorte");
     assert.equal(adapter.totals.instructionalPlans, 0,
       "a invalidação usa a projeção estrutural, não a avaliação global");

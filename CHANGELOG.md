@@ -7,6 +7,14 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.121] - 2026-10-17
+
+### Desempenho
+
+- A preparação de revisão passa a projetar somente currículo, explicações, dependências, escopo, cobertura e partes usados na leitura.
+- Proveniência de análise, progresso por parte, contagens e material de aprovação do mapa deixam de ampliar cada fragmento.
+- O acesso do proprietário, a revisão corrente e as invalidações de digest permanecem; o plano v5 e os demais consumidores não mudam.
+
 ## [0.0.120] - 2026-10-17
 
 ### Corrigido

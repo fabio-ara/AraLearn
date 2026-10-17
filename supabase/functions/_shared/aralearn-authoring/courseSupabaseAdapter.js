@@ -98,6 +98,7 @@ const AUTHORING_PART_STATES = new Set([
 const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
+const COURSE_REVIEW_PLAN_CONTRACT = "aralearn.course-review-plan.v1";
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
 const PERSON_AVATAR_BUCKET = "person-avatars";
@@ -2279,22 +2280,22 @@ export class CourseSupabaseAdapter {
       p_course_id: courseId
     }, { deadlineAt })));
     if (!jsonRecord(result) ||
-        result.contract !== "aralearn.course-instructional-plan.v3" ||
+        result.contract !== COURSE_REVIEW_PLAN_CONTRACT ||
         result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
         !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
         !jsonRecord(result.plan.curriculum) ||
         !Array.isArray(result.plan.curriculum.modules) ||
         !Array.isArray(result.plan.curriculumScopeItems) ||
-        !Array.isArray(result.plan.instructionalAnalysisUnits)) {
+        !Array.isArray(result.plan.parts)) {
       throw new AuthoringApiError(
         503,
         "course_service_unavailable",
         "O serviço devolveu um plano estrutural de revisão inválido."
       );
     }
-    const mapApprovalReference = result.plan.curriculumMapStatus === "absent" ? null
-      : createMapApprovalReference({ principal, courseId, basis: result.approvalBasis });
-    return withDeepLink({ ...result, mapApprovalReference }, this.publicAppUrl, "planning");
+    // Somente preparar_revisao consome esta projeção. Uma referência de aprovação
+    // do mapa pertence ao leitor integral e não deve ser derivada aqui.
+    return withDeepLink(result, this.publicAppUrl, "planning");
   }
 
   async listAuthoringProfiles({ principal, deadlineAt = null }) {
