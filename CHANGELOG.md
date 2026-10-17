@@ -18,6 +18,7 @@ explica os termos usados na implementação atual.
 
 - Ao atualizar a Explicação que já está aberta, a tabela da leitura conserva também a rolagem horizontal: o quadro volta à mesma coluna em que a pessoa estava, junto do corpo e do foco que já eram preservados.
 - Uma atualização que reabre a Explicação não descarta mais a posição guardada quando a folha já está fora do documento.
+- Um lote de configuração com várias unidades e justificativas completas deixa de ser recusado por um teto herdado: o orçamento do comando instrucional passa a acompanhar o da leitura do desenho, e o excesso real responde com erro próprio de tamanho antes de qualquer escrita.
 
 ## [0.0.117] - 2026-10-16
 

@@ -10,7 +10,7 @@ begin;
 -- salvável.
 --
 -- Medições locais das provas focais
--- (tests/runtime/instructional-command-budget-pglite.test.mjs), sempre sobre o
+-- (tests/runtime/instructional-command-budget-pglite.test.js), sempre sobre o
 -- comando real, já com expectedPlanVersion: o lote observado de sete unidades
 -- (seis com motivo de 670 caracteres e uma com aplicação explícita) mede 33279
 -- octetos, acima do teto herdado de 32768 e abaixo do orçamento de 262144. No

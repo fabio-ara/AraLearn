@@ -1,6 +1,6 @@
 // Evidência da investigação focal: o lote heterogêneo de sete unidades era
 // recusado pelo teto herdado de 32 KiB antes da correção. O comportamento
-// corrigido está em instructional-command-budget-pglite.test.mjs.
+// corrigido está em instructional-command-budget-pglite.test.js.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { analysisId, commandOctets, configurationCommand, courseRevision, delegateParametersToContext, linkAnalysis,
