@@ -465,8 +465,12 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       return tools?.isOpen() ? tools.close() : sourceOpen ? closeSources() : close();
     },
     beforeRender() {
-      detachedFocus = overlay?.contains(root.ownerDocument.activeElement) ? root.ownerDocument.activeElement : null;
-      detachedIdentities = semanticFocusIdentities(overlay, root.ownerDocument.activeElement);
+      // Só a folha aberta tem foco a preservar: sem ela o alvo ativo é irrelevante, e a
+      // montagem headless dos testes runtime não traz ownerDocument. Ler o foco apenas
+      // quando a folha existe mantém a montagem sem documento válida.
+      const active = overlay ? root.ownerDocument.activeElement : null;
+      detachedFocus = overlay?.contains(active) ? active : null;
+      detachedIdentities = semanticFocusIdentities(overlay, active);
       // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura o
       // reencontra pela identidade semântica (ocorrência, vínculo, ação, href ou o próprio
       // corpo de leitura), nunca pelo índice do caminho nem guardando o nó do DOM antigo.
