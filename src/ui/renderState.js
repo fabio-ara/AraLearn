@@ -13,6 +13,10 @@ const TRACKED_SCROLL_SELECTORS = [
   ".study-citations-body",
   ".study-tool-body",
   "[data-resource-scroll-frame]",
+  // Recipiente próprio de rolagem horizontal da tabela renderizada. A folha é
+  // desanexada para atualizar a leitura: o quadro de diagrama é reposto pela lista
+  // acima, e a tabela precisa da mesma reposição para não voltar à coluna zero.
+  ".runtime-table-wrap",
   ".dependency-strip",
   ".dependency-chip-row"
 ];

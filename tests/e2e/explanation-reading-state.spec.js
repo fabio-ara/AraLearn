@@ -143,3 +143,52 @@ test("alvo removido mantém o foco seguro da abertura, sem trocar de controle", 
   expect(errors).toEqual([]);
 });
 
+// A tabela interna da explicação tem recipiente próprio de rolagem horizontal
+// (.runtime-table-wrap), distinto do quadro de diagrama ([data-resource-scroll-frame]).
+// A atualização de status do runtime é o caminho real que reanexa a folha sem trocar o
+// conteúdo: corpo e quadro de diagrama voltam pelo estado capturado, e a tabela precisa
+// voltar pelo mesmo contrato.
+test("atualização de status preserva a rolagem horizontal da tabela aninhada", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mount(page, "?wide=1");
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  const overlay = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(overlay).toBeVisible();
+  const body = page.locator(".study-explanation-body");
+  const table = body.locator(".runtime-table-wrap").first();
+  await expect(table).toBeVisible();
+  // Garantia da prova horizontal: a tabela larga rola de fato dentro da leitura em 390 px.
+  expect(await table.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(0);
+  await body.evaluate(node => { node.scrollTop = 240; });
+  await table.evaluate(node => { node.scrollLeft = Math.min(24, node.scrollWidth - node.clientWidth); });
+  await body.focus();
+  const beforeHorizontal = await table.evaluate(node => node.scrollLeft);
+  expect(beforeHorizontal).toBeGreaterThan(0);
+  // Atualização legítima sem troca de conteúdo: só o status do runtime muda, como na volta
+  // ao primeiro plano com a rede caindo. A folha é desanexada e reanexada pelo contrato.
+  const sameBody = await page.evaluate(() => {
+    const current = document.querySelector(".study-explanation-body");
+    globalThis.__explanationFixture.probe.offline = true;
+    globalThis.__explanationFixture.app.refreshRuntimeStatus();
+    return current === document.querySelector(".study-explanation-body");
+  });
+  testInfo.annotations.push({ type: "branch", description: sameBody ? "mesmo no do corpo" : "corpo recriado" });
+  await expect(overlay).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("explanation-table-scroll-390.png"), fullPage: true });
+  expect(await body.evaluate(node => node.scrollTop)).toBe(240);
+  expect(await table.evaluate(node => node.scrollLeft)).toBe(beforeHorizontal);
+  expect(await page.evaluate(() => document.activeElement?.className)).toContain("study-explanation-body");
+  // Segunda via real do mesmo contrato: a explicação chega em outra revisão e o
+  // conteúdo é trocado (a folha reabre no mesmo instante). A leitura da tabela
+  // precisa sobreviver também aqui, junto do corpo e do foco.
+  await page.evaluate(() => {
+    globalThis.__explanationFixture.probe.courseRevision = 2;
+    globalThis.__explanationFixture.app.refreshRuntimeStatus();
+  });
+  await expect(overlay).toBeVisible();
+  await expect(body).toContainText("Revisão 2 da explicação");
+  expect(await body.evaluate(node => node.scrollTop)).toBe(240);
+  expect(await table.evaluate(node => node.scrollLeft)).toBe(beforeHorizontal);
+  expect(await page.evaluate(() => document.activeElement?.className)).toContain("study-explanation-body");
+  expect(errors).toEqual([]);
+});
