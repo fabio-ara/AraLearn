@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.120] - 2026-10-17
+
+### Corrigido
+
+Ao inspecionar uma prática de ordenação, a auditoria pedagógica passa a reconhecer como material apresentado os rótulos dos itens que o estudante realmente vê e reordena. Continuam fora da evidência positiva respostas ocultas, identificadores internos, metadados e sequências que não foram materializadas.
+
 ## [0.0.119] - 2026-10-17
 
 ### Corrigido
