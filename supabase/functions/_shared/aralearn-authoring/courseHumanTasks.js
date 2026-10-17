@@ -706,8 +706,8 @@ const TOP_LEVEL_ARGUMENT_DESCRIPTIONS = Object.freeze({
   parte: "Parte: posição ou título.",
   progressao: "Progressão do lote.",
   microssequencias: "Microssequências do lote.",
-  microssequencia: "Microssequência.",
-  unidade: "Unidade.",
+  microssequencia: "Posição ou título.",
+  unidade: "Posição ou título.",
   unidades: "Unidades: posições ou títulos.",
   fonte: "Fonte: posição ou título.",
   busca: "Termos da busca.",
@@ -1280,7 +1280,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.5.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:e17f547eb012da7ceb4da37d53b5067325077393cb2c605cca4f033c4edc0f61";
+  "sha256:efabd528139cd4ef0f168398f0db8c4698a89c3c9c6cd5b0252ad13f7e876e68";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

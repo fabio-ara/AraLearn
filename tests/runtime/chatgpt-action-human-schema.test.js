@@ -359,6 +359,20 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
   assert.doesNotMatch(COURSE_HUMAN_TASK_CATALOG_METADATA.hash, /pending/iu);
 });
 
+test("referências humanas explicam posição ou título em MCP e OpenAPI", () => {
+  const task = COURSE_HUMAN_TASKS.find(({ name }) => name === "ajustar_configuracao");
+  const action = taskInputSchema("ajustar_configuracao");
+  for (const field of ["microssequencia", "unidade"]) {
+    assert.equal(task.inputSchema.properties[field].description, "Posição ou título.");
+    assert.equal(action.properties[field].description, "Posição ou título.");
+    assert.deepEqual(action.properties[field].type, ["integer", "string"]);
+    assert.equal(action.properties[field].minimum, 1);
+    assert.equal(action.properties[field].maximum, 1000000);
+    assert.equal(action.properties[field].minLength, 1);
+    assert.equal(action.properties[field].maxLength, 300);
+  }
+});
+
 test("#272 metadata segue quando usar, desambiguação e hints pelo efeito real", () => {
   for (const task of COURSE_HUMAN_TASKS) {
     assert.equal(typeof task.description, "string", task.name);
@@ -912,7 +926,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // as referências fechadas do lote novo e do comando de desenho legado. Em
   // `materializar_parte`, a
   // localização da tentativa pelo curso e pela microssequência permanece; a linha de base
-  // medida passa a 101637 minificados / 209636 formatados. A aceitação pelo editor
+  // medida passa a 101739 minificados / 209738 formatados. A aceitação pelo editor
   // é conferida à parte, com o
   // cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
