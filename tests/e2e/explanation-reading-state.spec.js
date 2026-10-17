@@ -192,3 +192,63 @@ test("atualização de status preserva a rolagem horizontal da tabela aninhada",
   expect(await page.evaluate(() => document.activeElement?.className)).toContain("study-explanation-body");
   expect(errors).toEqual([]);
 });
+
+// Caminho real da abertura: as fontes da revisão chegam depois, com a folha já legível
+// ("Carregando fontes…"). A leitura focada no corpo e a rolagem da tabela precisam
+// sobreviver à chegada da fonte, que é o instante em que a QA hospedada viu a folha
+// trocar de corpo e mandar o foco para o botão Fechar.
+test("chegada assíncrona das fontes preserva foco da leitura e rolagem da tabela", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mount(page, "?wide=1");
+  // A fonte desta leitura é assíncrona no aplicativo real. O teste retém a resposta do
+  // próprio repositório da fixture para observar a folha aberta e legível antes dela
+  // (mesma condição do "Carregando fontes…" hospedado), sem alterar arquivo de fixture.
+  await page.evaluate(() => {
+    const repository = globalThis.__explanationFixture.repository;
+    const original = repository.loadExplanationCitations;
+    repository.loadExplanationCitations = async reference => {
+      await new Promise(resolve => { globalThis.__releaseExplanationCitations = resolve; });
+      return original(reference);
+    };
+  });
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  const overlay = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(overlay).toBeVisible();
+  const body = page.locator(".study-explanation-body");
+  const table = body.locator(".runtime-table-wrap").first();
+  await expect(table).toBeVisible();
+  // A leitura está aberta e a fonte desta revisão ainda não chegou.
+  await expect(overlay).toContainText("Carregando fontes");
+  expect(await table.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(0);
+  await body.evaluate(node => { node.scrollTop = 240; });
+  await table.evaluate(node => { node.scrollLeft = Math.min(24, node.scrollWidth - node.clientWidth); });
+  await body.focus();
+  const readingDuringLoad = await page.evaluate(() => {
+    const node = document.querySelector(".study-explanation-body");
+    globalThis.__bodyDuringLoad = node;
+    return { dataReading: node?.getAttribute("data-explanation-reading"), textLength: node?.textContent?.length || 0,
+      focused: document.activeElement === node };
+  });
+  expect(readingDuringLoad.dataReading).toBe("body");
+  expect(readingDuringLoad.focused).toBe(true);
+  const beforeHorizontal = await table.evaluate(node => node.scrollLeft);
+  expect(beforeHorizontal).toBeGreaterThan(0);
+  // A fonte chega: a folha atualiza o painel de referências com a leitura aberta.
+  await page.evaluate(() => globalThis.__releaseExplanationCitations?.());
+  await expect(overlay).not.toContainText("Carregando fontes");
+  await expect(overlay.locator(".study-bibliography").first()).toBeVisible();
+  const after = await page.evaluate(() => {
+    const node = document.querySelector(".study-explanation-body");
+    return { textLength: node?.textContent?.length || 0, focused: document.activeElement === node,
+      sameNode: node === globalThis.__bodyDuringLoad,
+      activeIsClose: document.activeElement?.hasAttribute("data-close-explanation") === true };
+  });
+  testInfo.annotations.push({ type: "leitura",
+    description: "durante=" + readingDuringLoad.textLength + " depois=" + after.textLength +
+      " mesmoNo=" + after.sameNode + " focoFecha=" + after.activeIsClose });
+  await page.screenshot({ path: testInfo.outputPath("explanation-async-source-390.png"), fullPage: true });
+  expect(await body.evaluate(node => node.scrollTop)).toBe(240);
+  expect(await table.evaluate(node => node.scrollLeft)).toBe(beforeHorizontal);
+  expect(after.focused).toBe(true);
+  expect(errors).toEqual([]);
+});
