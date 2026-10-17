@@ -12,6 +12,35 @@ import { createStudyTools, openStudyResourceUrl, renderStudyToolActions } from "
 import { buildSourceDocumentUrl } from "./sourceDocumentUrl.js";
 
 const SOURCE_OPTIONS = Object.freeze({ targetKind: "microsequence_explanation" });
+// Identidade semântica do alvo focado dentro da folha. O caminho por índices deixa de valer
+// quando o conteúdo muda de forma entre a leitura e a reabertura (bloco preposto, retirada ou
+// reordenação). Os atributos já existem nos marcadores, nas referências e nas ações da folha.
+const FOCUS_IDENTITY_ATTRIBUTES = Object.freeze(["data-citation-occurrence-id", "data-citation-link-id",
+  "data-citation-reference-id", "data-manual-edit-path", "data-study-source-return", "data-action"]);
+function semanticFocusIdentities(root, active) {
+  if (!root || !active || active === root || !root.contains(active)) return [];
+  if (active.hasAttribute("data-close-explanation")) return [];
+  const tag = active.tagName.toLowerCase();
+  const candidates = [];
+  for (const attribute of FOCUS_IDENTITY_ATTRIBUTES) {
+    const value = active.getAttribute(attribute);
+    if (value) candidates.push({ attribute, value, tag });
+  }
+  const href = tag === "a" ? active.getAttribute("href") : null;
+  if (href) candidates.push({ attribute: "href", value: href, tag });
+  return candidates;
+}
+// Restaura pelo primeiro candidato que resolve exatamente um controle do mesmo tipo: duas
+// marcas iguais deixam o foco seguro da abertura em vez de escolher um deles por ordem.
+function findSemanticFocus(root, identities) {
+  if (!root || !Array.isArray(identities)) return null;
+  for (const identity of identities) {
+    const matches = [...root.querySelectorAll(`[${identity.attribute}]`)]
+      .filter(node => node.tagName.toLowerCase() === identity.tag && node.getAttribute(identity.attribute) === identity.value);
+    if (matches.length === 1) return matches[0];
+  }
+  return null;
+}
 const SOURCE_SCOPE_EXPLANATION = "explanation";
 const SOURCE_SCOPE_UNIT = "unit";
 const citationStatusNotice = status => status?.serviceUnavailable ? "Serviço indisponível. Exibindo as fontes salvas desta revisão." :
@@ -66,6 +95,10 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
   let downloadError = "";
   let sourcesRecoveredFor = null;
   let detachedFocus = null;
+  let detachedIdentities = [];
+  // O alvo do foco pode nascer no painel de referências, renderizado depois da reabertura:
+  // a identidade fica pendente até o painel assentar, sem escolher outro controle por ordem.
+  let pendingFocusIdentities = [];
   let detachedState = null;
   let unitSources = null;
   let unitValue = null;
@@ -104,6 +137,8 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     if (scrollNode?.isConnected) scrollByContext.set(scrollKey(), scrollNode.scrollTop);
     if (scrollByContext.size > 32) scrollByContext.delete(scrollByContext.keys().next().value);
     tools?.destroy(); tools = null;
+    detachedIdentities = [];
+    pendingFocusIdentities = [];
     overlay.remove(); overlay = null;
     sourceOpen = false; sourceReturn = null;
     root.ownerDocument.removeEventListener("keydown", handleKeyDown);
@@ -188,6 +223,20 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       openSources(requestedCitation.trigger, requestedCitation.source, requestedCitation.linkId,
         requestedCitation.occurrenceId);
     }
+    applyPendingFocus();
+  }
+
+  // O alvo pode nascer no painel de referências depois da reabertura: a identidade pendente
+  // espera o painel assentar e só então foca, sem escolher outro controle por ordem.
+  function applyPendingFocus() {
+    if (!overlay || !pendingFocusIdentities.length) return;
+    const target = findSemanticFocus(overlay, pendingFocusIdentities);
+    if (target && typeof target.focus === "function") {
+      target.focus({ preventScroll: true });
+      pendingFocusIdentities = [];
+      return;
+    }
+    if (!loading && !sourceError) pendingFocusIdentities = [];
   }
 
   function openSources(node, source = SOURCE_SCOPE_EXPLANATION, linkId = node?.dataset.citationLinkId || "",
@@ -416,6 +465,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     },
     beforeRender() {
       detachedFocus = overlay?.contains(root.ownerDocument.activeElement) ? root.ownerDocument.activeElement : null;
+      detachedIdentities = semanticFocusIdentities(overlay, root.ownerDocument.activeElement);
       // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura precisa
       // reencontrá-lo pelo caminho, sem guardar o nó do DOM antigo.
       detachedState = overlay ? captureRenderState(overlay, { includeFocus: true }) : null;
@@ -427,12 +477,24 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       let nextSignature;
       try { nextSignature = sourceScope === SOURCE_SCOPE_UNIT ? signature : contentSignature(getContext()); } catch { nextSignature = "unavailable"; }
       if (signature !== nextSignature) {
+        // open() reabre e o close interno limpa o estado de foco: as identidades precisam ser
+        // lidas antes, senão a reabertura perde o alvo capturado em beforeRender.
+        const focusIdentities = detachedIdentities;
         open(requestedCitation);
         // Mesma leitura com conteúdo atualizado: a folha reaberta conserva a rolagem
         // capturada antes de desanexar (corpo e quadros de tabela), sem repor conteúdo antigo.
-        // O foco volta ao alvo equivalente quando ele ainda existe; se o caminho desapareceu,
-        // o foco seguro já aplicado pela abertura (botão de fechar) permanece.
-        if (overlay) restoreRenderState(overlay, detachedState, { restoreFocus: true, restorePageScroll: false });
+        // O foco volta ao alvo de mesma identidade semântica (link de referência inclusive, que
+        // não é capturável pelo caminho): nada é atribuído por índice a outro controle. Alvo
+        // ausente ou ambíguo mantém o foco seguro já aplicado pela abertura.
+        if (overlay) {
+          restoreRenderState(overlay, detachedState, { restoreFocus: false, restorePageScroll: false });
+          const target = findSemanticFocus(overlay, focusIdentities);
+          if (target && typeof target.focus === "function") target.focus({ preventScroll: true });
+          // Alvo ainda ausente (painel de referências em construção) fica pendente para o
+          // instante em que o painel assenta; alvo ambíguo ou removido não recebe foco.
+          pendingFocusIdentities = target ? [] : focusIdentities;
+        }
+        detachedFocus = null; detachedIdentities = [];
         return;
       }
       root.querySelector(".app-shell")?.append(overlay);

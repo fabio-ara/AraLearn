@@ -68,3 +68,73 @@ test("mudança de contexto fecha a folha da explicação", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+// A âncora de referência é <a class="study-citation-link" href=...> sem tabindex: o caminho do
+// estado não a captura, então a folha resolve o alvo pela identidade semântica (href) e só
+// quando ela é única. Focar não ativa o link: nenhuma navegação pode ocorrer na atualização.
+async function openReferences(page) {
+  await page.getByRole("button", { name: "Explicação", exact: true }).click();
+  const overlay = page.getByRole("dialog", { name: "Explicação", exact: true });
+  await expect(overlay).toBeVisible();
+  await overlay.getByRole("button", { name: "Referência 1", exact: true }).first().tap();
+  await expect(overlay.locator('[data-citation-reference-id="support-link"]')).toBeVisible();
+  return overlay;
+}
+
+test("foco em âncora de referência sobrevive à atualização da revisão", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mount(page, "?weblink=1");
+  const overlay = await openReferences(page);
+  const anchor = overlay.locator("a[href]").first();
+  await expect(anchor).toBeVisible();
+  expect(await anchor.getAttribute("tabindex")).toBeNull();
+  await anchor.evaluate(node => node.focus());
+  expect(await anchor.evaluate(node => document.activeElement === node)).toBe(true);
+  const beforeHref = await anchor.getAttribute("href");
+  const urlBefore = page.url();
+  await page.evaluate(() => {
+    globalThis.__explanationFixture.probe.courseRevision = 2;
+    globalThis.__explanationFixture.app.refreshRuntimeStatus();
+  });
+  await expect(overlay).toBeVisible();
+  const same = overlay.locator(`a[href="${beforeHref}"]`).first();
+  expect(await same.evaluate(node => document.activeElement === node)).toBe(true);
+  expect(page.url()).toBe(urlBefore);
+  expect(errors).toEqual([]);
+});
+
+test("bloco válido preposto antes do alvo preserva o mesmo link", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mount(page, "?weblink=1");
+  const overlay = await openReferences(page);
+  const anchor = overlay.locator("a[href]").first();
+  const beforeHref = await anchor.getAttribute("href");
+  await anchor.evaluate(node => node.focus());
+  await page.evaluate(() => {
+    globalThis.__explanationFixture.probe.courseRevision = 2;
+    globalThis.__explanationFixture.probe.explanationLayout = "prepend-block";
+    globalThis.__explanationFixture.app.refreshRuntimeStatus();
+  });
+  await expect(overlay).toBeVisible();
+  await expect(overlay.locator(".study-explanation-body")).toContainText("um bloco novo entra antes do texto anterior");
+  const same = overlay.locator(`a[href="${beforeHref}"]`).first();
+  expect(await same.evaluate(node => document.activeElement === node)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("alvo removido mantém o foco seguro da abertura, sem trocar de controle", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 850 });
+  const errors = await mount(page, "?weblink=1");
+  const overlay = await openReferences(page);
+  const anchor = overlay.locator("a[href]").first();
+  await anchor.evaluate(node => node.focus());
+  await page.evaluate(() => {
+    globalThis.__explanationFixture.probe.courseRevision = 2;
+    globalThis.__explanationFixture.probe.explanationLayout = "drop-weblink";
+    globalThis.__explanationFixture.app.refreshRuntimeStatus();
+  });
+  await expect(overlay).toBeVisible();
+  expect(await overlay.locator("a[href]").count()).toBe(0);
+  expect(await page.evaluate(() => document.activeElement?.hasAttribute("data-close-explanation") === true)).toBe(true);
+  expect(errors).toEqual([]);
+});
+

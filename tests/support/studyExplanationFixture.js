@@ -146,6 +146,9 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
   // fora do teto de largura de #470 e o quadro rola horizontalmente em 390 px, o que a prova
   // exige com valor maior que zero antes e depois da atualização.
   const wideTable = new URLSearchParams(globalThis.location?.search || "").has("wide");
+  // ?weblink=1 dá url à citação: a referência passa a renderizar a âncora nativa
+  // <a class="study-citation-link" href=...> sem tabindex, que é o alvo real do foco.
+  const webLink = new URLSearchParams(globalThis.location?.search || "").has("weblink");
   document.documentElement.dataset.colorMode = theme;
   const response = await fetch(new URL("../fixtures/package/project-minimal.json", import.meta.url));
   if (!response.ok) throw new Error("Fixture curricular local indisponível.");
@@ -215,7 +218,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
       linkId: "support-link", sourceId: "synthetic-source", sourceRevision: 1, kind: "article", title: "Fonte sintética do mecanismo",
       authors: [{ literal: "Autoria sintética" }], publicationDate: null, identifier: null, language: "pt-BR",
       bibliographic: createEmptyCourseSourceBibliographicMetadata(), citationMode: "manual", citationText: "Autoria sintética. Referência local para inspeção da interface. 2026.",
-      url: null, editionOrVersion: null, relation: "supported_by", roles: ["technical_conceptual"],
+      url: webLink ? "https://example.test/fonte-sintetica" : null, editionOrVersion: null, relation: "supported_by", roles: ["technical_conceptual"],
       occurrences: [{ occurrenceId: "support-occurrence", slot: "content", resourceId: "support-lead", path: "text",
         quote: "**quadro**", prefix: "Um ", suffix: " transporta", status: "resolved" },
       { occurrenceId: "support-process-occurrence", slot: "content", resourceId: "support-lead", path: "text",
@@ -268,6 +271,10 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
         explanation.content.push(paragraph("revision-marker",
           "Revisão 2 da explicação: o conteúdo foi atualizado e a leitura permaneceu na mesma posição."));
       }
+      // Forma da revisão 2: bloco válido preposto desloca os índices antes do alvo.
+      if (explanation && (probe.courseRevision || 1) >= 2 && probe.explanationLayout === "prepend-block") {
+        explanation.content.unshift(paragraph("revision-lead", "Revisão 2: um bloco novo entra antes do texto anterior."));
+      }
       // A revisão corrente é ajustável pela prova: uma atualização assíncrona legítima
       // (nova revisão da explicação) reusa o mesmo caminho de render. O padrão 1 preserva
       // o comportamento das demais provas.
@@ -281,7 +288,10 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     loadExplanationCitations: async reference => {
       probe.reads.push(structuredClone(reference));
       if (probe.sourceError) throw Object.assign(new Error("Serviço indisponível"), { status: 503, code: "network_error" });
-      return structuredClone(citations);
+      const value = structuredClone(citations);
+      // Remoção legítima do alvo: a referência perde a url e a âncora deixa de existir.
+      if (probe.explanationLayout === "drop-weblink") value.citations[0].url = null;
+      return value;
     },
     loadExplanationCitationStatus: () => ({ courseRevision: 1, source: probe.offline ? "cache" : "remote",
       offline: probe.offline, serviceUnavailable: false }),
