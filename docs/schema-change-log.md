@@ -30,10 +30,10 @@ projeção explícita para `preparar_revisao`, sob o contrato interno
 `curriculum-backed-review-lean-v1`. A leitura conserva currículo, títulos,
 posições, objetivos, Explicações, dependências, pré-requisitos, escopo,
 cobertura, fontes previstas e partes/progressão. Ela omite proveniência das
-unidades de análise, progresso por Parte, contagens, `studyUnitCount` e
+unidades de análise, progresso por parte, contagens, `studyUnitCount` e
 `approvalBasis`; a aprovação do mapa continua pertencendo ao leitor integral.
 O plano v5 e os demais consumidores permanecem inalterados. O acesso continua
-restrito ao owner autorizado e ao modo de serviço, a revisão do Curso é
+restrito ao owner autorizado e ao modo de serviço, a revisão do curso é
 conferida antes do uso e o digest cobre os campos apresentados. O manifesto
 avança para `20261017181734`, mantendo as capacidades declaradas; o catálogo
 humano não muda. A prova local usa gates de ACL simulados; RLS e permissões
