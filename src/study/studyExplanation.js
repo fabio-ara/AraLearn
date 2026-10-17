@@ -469,12 +469,18 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       // montagem headless dos testes runtime não traz ownerDocument. Ler o foco apenas
       // quando a folha existe mantém a montagem sem documento válida.
       const active = overlay ? root.ownerDocument.activeElement : null;
-      detachedFocus = overlay?.contains(active) ? active : null;
-      detachedIdentities = semanticFocusIdentities(overlay, active);
-      // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura o
-      // reencontra pela identidade semântica (ocorrência, vínculo, ação, href ou o próprio
-      // corpo de leitura), nunca pelo índice do caminho nem guardando o nó do DOM antigo.
-      detachedState = overlay ? captureRenderState(overlay, { includeFocus: true }) : null;
+      // Só a folha no documento registra leitura: uma folha já desanexada leria rolagem
+      // zero em qualquer captura e apagaria a posição guardada. A regra é a mesma do
+      // close(), que só grava a posição com o nó conectado. O teste headless não declara
+      // o campo, então só o false explícito recusa a captura.
+      if (overlay && overlay.isConnected !== false) {
+        detachedFocus = overlay.contains(active) ? active : null;
+        detachedIdentities = semanticFocusIdentities(overlay, active);
+        // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura o
+        // reencontra pela identidade semântica (ocorrência, vínculo, ação, href ou o próprio
+        // corpo de leitura), nunca pelo índice do caminho nem guardando o nó do DOM antigo.
+        detachedState = captureRenderState(overlay, { includeFocus: true });
+      }
       overlay?.remove();
     },
     afterRender() {
