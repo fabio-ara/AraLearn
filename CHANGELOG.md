@@ -12,6 +12,7 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - Ao ajustar várias escolhas de autoria em um único pedido, a configuração é salva por inteiro ou não é alterada. Se a confirmação chegar mas a leitura dos valores efetivos falhar, o AraLearn informa que a alteração já está salva e oferece a tentativa exata para consulta, sem pedir que o ajuste seja enviado novamente.
+- A preparação de uma revisão lê o recorte estrutural sem recalcular a revisão global de cada microssequência, mantendo o contexto exibido, as dependências e as verificações de continuação.
 
 ## [0.0.118] - 2026-10-17
 
