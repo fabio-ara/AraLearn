@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.117] - 2026-10-16
+
+### Corrigido
+
+- Ao atualizar em segundo plano a Explicação que já está aberta, a posição de leitura, o foco da âncora de referência e o quadro da explicação permanecem onde a pessoa estava.
+- Nas tabelas da leitura, um endereço ou token técnico (IPv4, máscara, IPv6, caminho) ocupa a largura que o próprio valor pede e quebra apenas entre os grupos, nunca no meio de um octeto ou hexteto; palavras longas deixam de ser hifenizadas e o comando com endereço permanece legível na matriz de cinco colunas.
+
 ## [0.0.116] - 2026-10-16
 
 ### Corrigido
