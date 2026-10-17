@@ -1863,6 +1863,10 @@
       "caseId": "current-data-lifecycle"
     },
     {
+      "object": "function:public.discover_course_part_materialization_receipts_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_authoring_part_id uuid, p_limit integer, p_cursor text)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.enforce_aralearn_data_api_token_v1()",
       "caseId": "current-data-lifecycle"
     },
