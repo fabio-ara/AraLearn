@@ -34,6 +34,8 @@
 // teto de tamanho sempre leva ao caminho completo — nunca a conteúdo incompleto, e nunca
 // a juntar trechos de estados diferentes.
 
+import { AuthoringApiError } from './errors.js';
+
 const MAX_ENTRIES = 6;
 // Teto conservador da representação serializada retida. É um limite do que o processo
 // guarda em JSON, não uma medida de heap.
@@ -41,6 +43,7 @@ const MAX_SERIALIZED_CHARACTERS = 12 * 1024 * 1024;
 // Idade máxima como defesa em profundidade: as duas versões cobrem o estado observado
 // nas leituras, e o limite restringe divergências que as leituras não vejam.
 const MAX_AGE_MS = 15 * 60 * 1000;
+const LEGITIMATE_STALE_READ_CODES = new Set(['stale_course_state', 'human_read_context_changed']);
 
 const repositories = new WeakMap();
 
@@ -126,6 +129,13 @@ export async function readReviewPageStateStamp({ adapter, principal, courseId, r
     const annotationSetVersion = page?.annotationSetVersion;
     if (!Number.isSafeInteger(annotationSetVersion) || annotationSetVersion < 0) return null;
     return Number(page?.courseRevision) === revision ? annotationSetVersion : null;
-  } catch { return null; }
+  } catch (error) {
+    // Uma revisão que avançou é uma ausência de reuso legítima: o caminho
+    // completo recompõe e aplica a confirmação final de coerência. Falhas
+    // transitórias ou de autorização, porém, não podem virar cache miss e
+    // provocar uma segunda rodada de leitura/inspeção dentro do mesmo pedido.
+    if (error instanceof AuthoringApiError && LEGITIMATE_STALE_READ_CODES.has(error.code)) return null;
+    throw error;
+  }
 }
 
