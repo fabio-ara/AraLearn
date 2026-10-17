@@ -3990,10 +3990,10 @@ export class CourseSupabaseAdapter {
         p_limit: 32, p_cursor: cursor },
       { deadlineAt, responseLimitBytes: 96 * 1024 }
     ));
-    return this.#partMaterializationDiscovery(value, { courseId, authoringPartId });
+    return this.#partMaterializationDiscovery(value, { courseId, authoringPartId, cursor });
   }
 
-  #partMaterializationDiscovery(value, { courseId, authoringPartId }) {
+  #partMaterializationDiscovery(value, { courseId, authoringPartId, cursor: fromCursor }) {
     const failure = () => new AuthoringApiError(503, "course_service_unavailable",
       "A descoberta do recibo da materialização não pôde ser verificada.");
     if (!jsonRecord(value) ||
@@ -4032,7 +4032,10 @@ export class CourseSupabaseAdapter {
     if (shown > value.candidateCount || items.length - shown > value.expiredCount) throw failure();
     if ((value.status === "candidate") !== (value.candidateCount === 1)) throw failure();
     if (value.status === "ambiguous" && value.candidateCount < 2) throw failure();
-    if (value.status === "candidate" && shown !== 1) throw failure();
+    // A unicidade é do recorte: a vigente única abre a leitura, mas uma página
+    // posterior pode conter apenas recibos fora de vigência.
+    if (value.status === "candidate" && fromCursor === null && shown !== 1) throw failure();
+    if (value.status === "candidate" && shown > 1) throw failure();
     if (value.status === "none" && shown !== 0) throw failure();
     if (authoringPartId !== null && items.some(item =>
       item.authoringPartId !== authoringPartId.toLowerCase())) throw failure();

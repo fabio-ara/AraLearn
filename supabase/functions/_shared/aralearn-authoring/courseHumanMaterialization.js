@@ -2307,11 +2307,15 @@ export async function discoverHumanCoursePartMaterialization({ adapter, principa
     continuacao === null ? null : "há mais páginas neste recorte"
   ].filter(Boolean);
   const message = status === "candidate"
-    ? "Localizei a tentativa vigente deste recorte: " +
-      materializationDiscoveryUnits(escolhida.studyUnitCount) +
-      " na revisão " + escolhida.courseRevision + " do curso" +
-      (escolhida.changed ? "" : ", registrada sem alteração de conteúdo") +
-      ". Use a recuperação devolvida para confirmar o efeito sem nova escrita; não reenvie o payload da produção."
+    ? escolhida !== null
+      ? "Localizei a tentativa vigente deste recorte: " +
+        materializationDiscoveryUnits(escolhida.studyUnitCount) +
+        " na revisão " + escolhida.courseRevision + " do curso" +
+        (escolhida.changed ? "" : ", registrada sem alteração de conteúdo") +
+        ". Use a recuperação devolvida para confirmar o efeito sem nova escrita; não reenvie o payload da produção."
+      : "A tentativa vigente deste recorte não está nesta página: o recorte tem " + totais.vigentes +
+        " tentativa vigente e esta página mostra apenas recibos fora de vigência." + pagina +
+        " Repita a leitura sem continuação para recuperá-la."
     : status === "ambiguous"
       ? "Há " + totais.vigentes + " tentativas vigentes neste recorte; esta página mostra " +
         candidatos.length + "." + pagina + " Compare os candidatos pela Parte, pela revisão do curso, pelos" +
@@ -2321,7 +2325,9 @@ export async function discoverHumanCoursePartMaterialization({ adapter, principa
         ". Isso não confirma que a escrita terminou sem efeito: uma tentativa ainda em processamento não" +
         " aparece no recibo. Reconcilie o conteúdo focal antes de qualquer nova alteração.";
   const nextDecision = status === "candidate"
-    ? "Confirme o efeito pela recuperação desta tentativa e continue a produção a partir do conteúdo salvo, sem reaplicar a escrita."
+    ? escolhida !== null
+      ? "Confirme o efeito pela recuperação desta tentativa e continue a produção a partir do conteúdo salvo, sem reaplicar a escrita."
+      : "Repita a leitura sem continuação para ver a tentativa vigente; não reaplique a escrita."
     : status === "ambiguous"
       ? "Compare os candidatos devolvidos e recupere a tentativa correta; não presuma a mais recente nem reaplique a escrita." +
         (continuacao === null ? "" : " Continue a leitura pela mesma referência para ver as demais páginas.")

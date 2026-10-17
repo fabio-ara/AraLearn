@@ -3195,6 +3195,32 @@ test("tentativa fora da primeira página é alcançada pela continuação e recu
 });
 
 test("descoberta é fechada e exclusiva com a recuperação e com a produção", async () => {
+test("páginas posteriores sem a vigente não confirmam nem inventam recuperação", async () => {
+  const vencido = (index) => itemDescoberto({
+    requestId: "materializacao-vencida-" + String(index).padStart(4, "0") + "-1", expired: true });
+  const firstPage = paginaDescoberta({ status: "candidate", candidateCount: 1, items: [itemDescoberto()],
+    expiredCount: 64, hasMore: true, nextCursor: "0|1792241100000000|materializacao-vencida-0000-1" });
+  const laterPage = paginaDescoberta({ status: "candidate", candidateCount: 1,
+    items: [vencido(0), vencido(1)], expiredCount: 64 });
+  const adapter = adapterFixture({
+    discovery: (input) => input.cursor === null ? firstPage : laterPage });
+  const first = await descoberta(adapter, { curso: "Curso de Redes" });
+  assert.equal(first.context.descoberta, "candidate");
+  assert.deepEqual(first.context.totais, { vigentes: 1, expirados: 64, ilegiveis: 0 });
+  assert.equal(first.context.candidatos[0].tentativa, RECEIPT_REQUEST_ID);
+  assert.ok(first.context.candidatos[0].recuperacao, "a vigente traz a referência fechada");
+  const later = await descoberta(adapter, { curso: "Curso de Redes",
+    continuacao: first.context.continuacao });
+  assert.equal(later.context.descoberta, "candidate");
+  assert.deepEqual(later.context.totais, { vigentes: 1, expirados: 64, ilegiveis: 0 });
+  assert.deepEqual(later.context.candidatos, [], "a página não fabrica candidato");
+  assert.deepEqual(later.context.expirados.map(item => item.tentativa),
+    ["materializacao-vencida-0000-1", "materializacao-vencida-0001-1"]);
+  assert.match(later.result, /não está nesta página/iu);
+  assert.doesNotMatch(later.result, /recuperação devolvida/iu);
+  assert.equal(later.deepLink, null);
+});
+
   const invalid = [
     { curso: "Curso de Redes", descoberta: true },
     { curso: "Curso de Redes", continuacao: 7 },

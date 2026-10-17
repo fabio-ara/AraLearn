@@ -130,6 +130,35 @@ test("acervo vencido numeroso não esconde a tentativa vigente e a continuação
 });
 
 test("mais de uma tentativa vigente continua ambígua em qualquer página", async () => {
+test("instante idêntico não duplica nem omite linha na continuação", async () => {
+  const { db } = await database();
+  const expired = [];
+  for (let index = 0; index < 64; index += 1) expired.push(expiredRow(index));
+  await insert(db, expired);
+  await insert(db, [row({ request: REQUEST })]);
+  // Todas as linhas passam a compartilhar o instante: só o desempate ordena.
+  await db.exec("update private.course_change_receipts set created_at = (select max(created_at) from private.course_change_receipts)");
+  const expected = [REQUEST];
+  for (let index = 0; index < 64; index += 1) {
+    expected.push("materializacao-vencida-" + String(index).padStart(4, "0") + "-1");
+  }
+  const seen = [];
+  let cursor = null;
+  let pages = 0;
+  do {
+    const page = await discovery(db, ACTOR, COURSE, PART, 7, cursor);
+    pages += 1;
+    assert.equal(page.status, "candidate", "a unicidade é do recorte, não da página");
+    assert.equal(page.candidateCount, 1);
+    for (const item of page.items) seen.push(item.requestId);
+    cursor = page.nextCursor;
+  } while (cursor !== null);
+  assert.equal(pages, 10, "65 linhas em páginas de 7");
+  assert.equal(seen.length, 65, "nenhuma linha se repete entre páginas");
+  assert.deepEqual([...seen].sort(), [...expected].sort());
+  assert.deepEqual(seen, [...expected].sort(), "a ordenação e o cursor usam a mesma chave");
+  await db.close();
+});
   const { db } = await database();
   const expired = [];
   for (let index = 0; index < 64; index += 1) expired.push(expiredRow(index));

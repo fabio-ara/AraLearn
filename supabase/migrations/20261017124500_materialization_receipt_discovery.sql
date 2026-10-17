@@ -82,10 +82,12 @@ begin
   ordered as (
     select candidate.* from filtered candidate
     where candidate.usable
+      -- O filtro usa exatamente a chave da ordenação: tier DESC, instante DESC e
+      -- request_id ASC. Empate de instante não duplica nem omite linha.
       and (p_cursor is null or candidate.tier<v_tier
         or candidate.tier=v_tier and (candidate.created_micros<v_created
           or candidate.created_micros=v_created
-            and candidate.request_id collate "C"<v_request collate "C"))
+            and candidate.request_id collate "C">v_request collate "C"))
   ),
   page as (
     select scope.*,

@@ -4260,3 +4260,31 @@ test("descoberta da materialização recusa página incoerente sem escrever", as
     courseId: COURSE_ID, cursor: "sem-forma" }), error => error.code === "invalid_materialization_discovery");
   assert.equal(network, 0);
 });
+
+test("página posterior sem a vigente preserva a unicidade global", async () => {
+  const expiredItem = { requestId: "materializacao-vencida-0001-1", authoringPartId: PART_ID,
+    courseRevision: 8, changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00",
+    expired: true };
+  const page = { contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
+    authoringPartId: PART_ID, status: "candidate", candidateCount: 1, expiredCount: 64, illegible: 0,
+    items: [expiredItem], hasMore: false, nextCursor: null };
+  const value = adapter(async () => json(page));
+  const later = await value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, authoringPartId: PART_ID,
+    cursor: "0|1792241100000000|materializacao-vencida-0001-1" });
+  assert.equal(later.status, "candidate");
+  assert.equal(later.candidateCount, 1);
+  assert.equal(later.items[0].expired, true, "a página não fabrica candidato");
+  // A mesma página sem continuação não pode reivindicar a vigente única.
+  const first = adapter(async () => json(page));
+  await assert.rejects(first.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, authoringPartId: PART_ID }),
+  error => error.code === "course_service_unavailable");
+  // Duas vigentes numa página contradizem o recorte com uma única vigente.
+  const two = adapter(async () => json({ ...page, items: [expiredItem,
+    { ...expiredItem, requestId: "materializacao-vencida-0002-1", expired: false },
+    { ...expiredItem, requestId: "materializacao-vencida-0003-1", expired: false }] }));
+  await assert.rejects(two.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, authoringPartId: PART_ID }),
+  error => error.code === "course_service_unavailable");
+});
