@@ -43,7 +43,7 @@ const MAX_SERIALIZED_CHARACTERS = 12 * 1024 * 1024;
 // Idade máxima como defesa em profundidade: as duas versões cobrem o estado observado
 // nas leituras, e o limite restringe divergências que as leituras não vejam.
 const MAX_AGE_MS = 15 * 60 * 1000;
-const LEGITIMATE_STALE_READ_CODES = new Set(['stale_course_state', 'human_read_context_changed']);
+const LEGITIMATE_STALE_READ_CODE = 'stale_course_state';
 
 const repositories = new WeakMap();
 
@@ -115,10 +115,10 @@ export function forgetReviewPage(adapter, identity) {
   forget(repositoryFor(adapter), identityKey(identity));
 }
 
-// A consulta de observações já existente valida a revisão do curso e a versão do
-// conjunto e devolve as duas. `limit: 1` mantém o custo mínimo: o valor lido descreve o
-// Curso e o observador, não os itens. Falha de leitura não invalida a requisição em
-// curso: apenas impede o reuso.
+// A consulta de observações já existente devolve a revisão do Curso e a versão do
+// conjunto. `limit: 1` reduz somente os itens da página; limpeza, filtros e resumos
+// continuam executando. Resultado incompatível impede o reuso e permite recompor. Erro
+// de dependência ou autorização propaga sem iniciar esse caminho completo.
 export async function readReviewPageStateStamp({ adapter, principal, courseId, revision, hierarchy,
   deadlineAt = null }) {
   try {
@@ -130,11 +130,10 @@ export async function readReviewPageStateStamp({ adapter, principal, courseId, r
     if (!Number.isSafeInteger(annotationSetVersion) || annotationSetVersion < 0) return null;
     return Number(page?.courseRevision) === revision ? annotationSetVersion : null;
   } catch (error) {
-    // Uma revisão que avançou é uma ausência de reuso legítima: o caminho
-    // completo recompõe e aplica a confirmação final de coerência. Falhas
-    // transitórias ou de autorização, porém, não podem virar cache miss e
-    // provocar uma segunda rodada de leitura/inspeção dentro do mesmo pedido.
-    if (error instanceof AuthoringApiError && LEGITIMATE_STALE_READ_CODES.has(error.code)) return null;
+    // O CAS do Curso (40001/PT409) confirma que a revisão avançou: o caminho
+    // completo recompõe e aplica a confirmação final de coerência. Demais falhas
+    // mantêm o tipo e não podem virar cache miss dentro do mesmo pedido.
+    if (error instanceof AuthoringApiError && error.code === LEGITIMATE_STALE_READ_CODE) return null;
     throw error;
   }
 }
