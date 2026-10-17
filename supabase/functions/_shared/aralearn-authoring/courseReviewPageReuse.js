@@ -34,6 +34,8 @@
 // teto de tamanho sempre leva ao caminho completo — nunca a conteúdo incompleto, e nunca
 // a juntar trechos de estados diferentes.
 
+import { AuthoringApiError } from './errors.js';
+
 const MAX_ENTRIES = 6;
 // Teto conservador da representação serializada retida. É um limite do que o processo
 // guarda em JSON, não uma medida de heap.
@@ -41,6 +43,7 @@ const MAX_SERIALIZED_CHARACTERS = 12 * 1024 * 1024;
 // Idade máxima como defesa em profundidade: as duas versões cobrem o estado observado
 // nas leituras, e o limite restringe divergências que as leituras não vejam.
 const MAX_AGE_MS = 15 * 60 * 1000;
+const LEGITIMATE_STALE_READ_CODE = 'stale_course_state';
 
 const repositories = new WeakMap();
 
@@ -112,10 +115,10 @@ export function forgetReviewPage(adapter, identity) {
   forget(repositoryFor(adapter), identityKey(identity));
 }
 
-// A consulta de observações já existente valida a revisão do curso e a versão do
-// conjunto e devolve as duas. `limit: 1` mantém o custo mínimo: o valor lido descreve o
-// Curso e o observador, não os itens. Falha de leitura não invalida a requisição em
-// curso: apenas impede o reuso.
+// A consulta de observações já existente devolve a revisão do Curso e a versão do
+// conjunto. `limit: 1` reduz somente os itens da página; limpeza, filtros e resumos
+// continuam executando. Resultado incompatível impede o reuso e permite recompor. Erro
+// de dependência ou autorização propaga sem iniciar esse caminho completo.
 export async function readReviewPageStateStamp({ adapter, principal, courseId, revision, hierarchy,
   deadlineAt = null }) {
   try {
@@ -126,6 +129,12 @@ export async function readReviewPageStateStamp({ adapter, principal, courseId, r
     const annotationSetVersion = page?.annotationSetVersion;
     if (!Number.isSafeInteger(annotationSetVersion) || annotationSetVersion < 0) return null;
     return Number(page?.courseRevision) === revision ? annotationSetVersion : null;
-  } catch { return null; }
+  } catch (error) {
+    // O CAS do Curso (40001/PT409) confirma que a revisão avançou: o caminho
+    // completo recompõe e aplica a confirmação final de coerência. Demais falhas
+    // mantêm o tipo e não podem virar cache miss dentro do mesmo pedido.
+    if (error instanceof AuthoringApiError && error.code === LEGITIMATE_STALE_READ_CODE) return null;
+    throw error;
+  }
 }
 

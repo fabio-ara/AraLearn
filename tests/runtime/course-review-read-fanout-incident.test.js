@@ -6,6 +6,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
+import { AuthoringApiError, readDependencyDiagnostic, withDependencyDiagnostic }
+  from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
 
@@ -339,6 +341,94 @@ test("a versão do conjunto de observações invalida o reuso sem alterar o reco
   assert.ok(adapter.calls.reviews.length > 0, "a versão do conjunto de observações invalida o reuso");
   assert.deepEqual(recomposed.context, reused.context,
     "sem mudança de conteúdo, o recorte recomposto é exatamente o mesmo recorte");
+});
+
+test("indisponibilidade tipada do carimbo interrompe sem iniciar o fanout", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  assert.ok(cursor, "a página precisa de continuação");
+  const dependency = { rpc: "get_owned_course_anchored_annotations_for_actor_v1", reason: "attempt_abort",
+    attemptsStarted: 3, attemptsAllowed: 3, elapsedMs: 24_000, remainingMs: 8_000 };
+  const failure = withDependencyDiagnostic(new AuthoringApiError(
+    503, "service_timeout", "A dependência não respondeu dentro do orçamento."
+  ), dependency);
+  const original = adapter.getCourseAnchoredAnnotations;
+  let stampCalls = 0;
+  adapter.getCourseAnchoredAnnotations = async (input) => {
+    stampCalls += 1;
+    adapter.calls.annotations.push(input);
+    if (stampCalls === 1) throw failure;
+    return original(input);
+  };
+  adapter.reset();
+  let thrown = null;
+  try { await execute(adapter, { unidades: [1], continuacao: cursor }); }
+  catch (error) { thrown = error; }
+  assert.equal(thrown, failure, `o erro tipado deve propagar sem recomposição; carimbos lidos: ${stampCalls}`);
+  assert.equal(thrown.status, 503);
+  assert.equal(thrown.code, "service_timeout");
+  assert.deepEqual(readDependencyDiagnostic(thrown), dependency,
+    "o diagnóstico e o orçamento restante continuam disponíveis");
+  assert.equal(stampCalls, 1, "a falha do carimbo não dispara uma segunda leitura de anotações");
+  assert.equal(adapter.calls.reviews.length, 0, "nenhum alvo é relido");
+  assert.equal(adapter.calls.inspections.length, 0, "nenhuma inspeção é reexecutada");
+  assert.equal(adapter.calls.sources.length, 0, "nenhuma fonte é relida");
+
+  // A falha não descarta o recorte: restabelecida a dependência, a mesma
+  // continuação retoma do cursor e reutiliza o material já materializado.
+  const offset = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")).o;
+  adapter.reset();
+  const retried = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.equal(retried.context.fragmento.inicio, offset, "o cursor permanece no mesmo ponto");
+  assert.equal(adapter.calls.reviews.length, 0, "a nova tentativa reutiliza o cache");
+  assert.equal(adapter.calls.inspections.length, 0, "a nova tentativa não refaz a inspeção");
+});
+
+test("falha de autorização no carimbo não vira cache miss", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  const failure = new AuthoringApiError(403, "not_authorized", "O acesso não foi autorizado.");
+  const original = adapter.getCourseAnchoredAnnotations;
+  let stampCalls = 0;
+  adapter.getCourseAnchoredAnnotations = async (input) => {
+    stampCalls += 1;
+    adapter.calls.annotations.push(input);
+    if (stampCalls === 1) throw failure;
+    return original(input);
+  };
+  adapter.reset();
+  await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }), error => {
+    assert.equal(error, failure);
+    assert.equal(error.status, 403);
+    assert.equal(error.code, "not_authorized");
+    return true;
+  });
+  assert.equal(stampCalls, 1, "o erro não dispara uma segunda consulta de anotações");
+  assert.equal(adapter.calls.reviews.length, 0, "nenhum alvo é relido");
+  assert.equal(adapter.calls.inspections.length, 0, "nenhuma inspeção é reexecutada");
+});
+
+test("revisão divergente no carimbo ainda permite a recomposição legítima", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  const original = adapter.getCourseAnchoredAnnotations;
+  let annotations = 0;
+  adapter.getCourseAnchoredAnnotations = async (input) => {
+    annotations += 1;
+    if (annotations === 1) {
+      adapter.calls.annotations.push(input);
+      throw new AuthoringApiError(409, "stale_course_state", "O Curso mudou durante o carimbo.");
+    }
+    return original(input);
+  };
+  adapter.reset();
+  const recomposed = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(recomposed.context.fragmento, "o fragmento continua sendo entregue");
+  assert.ok(adapter.calls.reviews.length > 0, "a divergência legítima recompõe os alvos");
+  assert.ok(adapter.calls.inspections.length > 0, "a recomposição revalida a inspeção");
 });
 
 test("o recorte materializado não atravessa atores", async () => {

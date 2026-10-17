@@ -7,6 +7,16 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.120] - 2026-10-17
+
+### Corrigido
+
+Ao inspecionar uma prática de ordenação, a auditoria pedagógica passa a reconhecer como material apresentado os rótulos dos itens que o estudante realmente vê e reordena. Continuam fora da evidência positiva respostas ocultas, identificadores internos, metadados e sequências que não foram materializadas.
+
+Ao consultar o repertório instrucional de uma unidade, o desenho aplicado passa a ser devolvido em campo próprio, sem ser confundido com o recibo de uma escrita. Executor, MCP e Actions preservam a configuração real ou nula; recibos ausentes, expirados ou malformados continuam falhando de forma fechada.
+
+Se a consulta que valida o carimbo de uma revisão falhar, a continuação é interrompida com o erro e o diagnóstico originais, sem tratar a falha como ausência de cache nem multiplicar leituras. Apenas a detecção de que o Curso avançou permite recompor a página e aplicar a verificação final.
+
 ## [0.0.119] - 2026-10-17
 
 ### Corrigido

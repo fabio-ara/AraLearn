@@ -74,6 +74,8 @@ test("catálogo mantém schemas pequenos, referências humanas e leitura de repe
   assert.deepEqual(read.context.analise, [{ posicao: 1, enunciado: "Interação", descricao: "Descrição preservada." }]);
   assert.deepEqual(read.context.vinculos.analise, ["Interação"]);
   assert.equal(read.context.aplicacao.mode, "expository");
+  assert.equal(read.context.configuracaoAplicadaNaUnidade.application.mode, "expository");
+  assert.equal(Object.hasOwn(read.context, "configuracaoAplicada"), false);
   assert.ok(read.context.componentes.every(item => item.nome));
   assert.equal(f.writes.length, 0);
   assert.equal(valid.get("manter_unidade_analise")({ curso: "Curso", operacao: "criar", enunciado: "Novo", patch: {} }), false);
