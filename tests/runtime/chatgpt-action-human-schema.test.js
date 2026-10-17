@@ -351,7 +351,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.5.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.6.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -760,6 +760,24 @@ test("MCP e Actions conservam proposta e base completa, permitem reutilizar a ba
     const forged = structuredClone(samples.materializar_parte);
     forged.explicacoes[0].conteudo.contentReview = { state: "current" };
     assert.equal(materialize(forged), false, "Conteúdo não pode conceder revisão humana.");
+    const closing = { curso: "Redes para iniciantes", microssequencia: "Sockets",
+      unidades: [], concluir: true };
+    assert.equal(materialize(closing), true,
+      "A conclusão pode reutilizar o acumulado sem reenviar unidades ou explicações.");
+    const prepareEmpty = new Ajv2020({ allErrors: true, strict: false }).compile(
+      tools.find(({ name }) => name === "preparar_materializacao").inputSchema);
+    assert.equal(prepareEmpty({ curso: "Redes para iniciantes", microssequencia: "Sockets",
+      unidades: [], concluir: true }), true,
+    "A preparação pública aceita a mesma conclusão sem conteúdo novo.");
+    for (const name of ["preparar_materializacao", "materializar_parte"]) {
+      const description = tools.find(task => task.name === name).inputSchema.properties.unidades.description;
+      assert.match(description, /ordem final da microssequência/u, name);
+      assert.match(description, /preserve a cobertura/u, name);
+      assert.match(description, /preparo devolve ready ou blocked sem gravar/u, name);
+      assert.match(description, /escrita conclui a parte inteira, não só a micro/u, name);
+      assert.match(description, /conteúdo salvo, sem reenviar nem regravar unidades/u, name);
+      assert.doesNotMatch(description, /aprovad|revisão humana/iu, name);
+    }
     const planned = structuredClone(samples.salvar_mapa_curricular);
     assert.equal(map(planned), true, JSON.stringify(map.errors));
     const proposal = planned.modulos[0].licoes[0].microssequencias[0].explicacao;
@@ -922,7 +940,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
   // permitindo um lote atômico de unidades de várias microssequências do mesmo
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
-  // mesma referência e parecer. O catálogo 11.5.0 também aceita em `ajustar_configuracao`
+  // mesma referência e parecer. O catálogo 11.6.0 também aceita em `ajustar_configuracao`
   // as referências fechadas do lote novo e do comando de desenho legado. Em
   // `materializar_parte`, a
   // localização da tentativa pelo curso e pela microssequência permanece; a linha de base

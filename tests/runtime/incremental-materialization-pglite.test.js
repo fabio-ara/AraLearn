@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fixture, COURSE, PART, IDEA, EVIDENCE, parameters } from "../support/authoringMaterializationPglite.js";
+import { fixture, installCourseInspectionFixture, COURSE, PART, IDEA, EVIDENCE, parameters }
+  from "../support/authoringMaterializationPglite.js";
 import { COURSE_COMPONENT_CATALOG_VERSION } from "../../src/domain/courseDesignParameters.js";
 
 const policyCompleta = { policy: { catalogVersion: COURSE_COMPONENT_CATALOG_VERSION, availability: "all",
@@ -166,6 +167,127 @@ test("upgrade aceita fragmentos sem sobrescrever omitidos e só conclui com o ac
     const repeated = await write(db, [middle], [placement(first), placement(middle)], { complete: true, revision: result.courseRevision, request: "fragment-0002" });
     assert.equal(repeated.idempotent, true);
     assert.equal(repeated.courseRevision, complete.courseRevision);
+  } finally { await db.close(); }
+});
+
+test("conclusão preserva parecer humano e de IA correntes ao reutilizar o acumulado", async () => {
+  const db = await fixture();
+  try {
+    await installCourseInspectionFixture(db);
+    const existing = unit("unit-existing", 1, { introduced: true,
+      developedForms: ["plain_definition", "concrete_example"],
+      practices: [{ evidenceRequirementId: EVIDENCE, opportunityId: "existing-case",
+        invariantTaskOperation: "Distinguir os casos", variedDimensions: [] }] });
+    existing.content = { ...existing.content, response: null, feedback: [], topics: [],
+      content: [{ id: "existing-body", package: "aralearn.resource.paragraph", version: "1.0.0",
+        data: { text: existing.studyUnitId } }] };
+    existing.designApplication.componentRefs = ["aralearn.resource.paragraph@1.0.0"];
+    const initial = await write(db, [existing], [placement(existing)], { request: "existing-part-001" });
+    await db.query(`update private.course_entities set
+      source_links=$1,editorial_interventions=$2 where entity_id=$3`,
+    [[{ linkId: "keep-source" }], { human: 2, ai: 1 }, existing.studyUnitId]);
+
+    const humanBasis = (await db.query(
+      "select private.course_content_basis_hash_v1($1,'study_unit',$2) value",
+      [COURSE, existing.studyUnitId])).rows[0].value;
+    await db.query("select public.set_course_content_review_for_actor_v1($1,$2,'study_unit',$3,$4,true,$5)",
+      [COURSE, COURSE, existing.studyUnitId, humanBasis, "existing-human-001"]);
+    const readAi = async () => (await db.query(
+      "select public.get_course_ai_inspection_for_actor_v1($1,$2,'study_unit',$3) value",
+      [COURSE, COURSE, existing.studyUnitId])).rows[0].value;
+    const readHuman = async () => (await db.query(
+      "select public.get_course_content_review_for_actor_v1($1,$2,'study_unit',$3) value",
+      [COURSE, COURSE, existing.studyUnitId])).rows[0].value;
+    const aiUninspected = await readAi();
+    assert.equal(aiUninspected.inspection.state, "pending");
+    const aiReport = { summary: "Parecer sintético emitido sobre a Unidade lida.",
+      outcome: "consistent", findings: [], checks: ["alignment", "evidence", "representation",
+        "feedback", "sufficiency", "configuration"].map((dimension) => ({ dimension,
+        result: "sufficient", reason: "A passagem sustenta o parecer.", evidence: [existing.studyUnitId] })) };
+    const recorded = (await db.query(
+      "select public.record_course_ai_inspection_for_actor_v1($1,$2,'study_unit',$3,$4,$5,$6) value",
+      [COURSE, COURSE, existing.studyUnitId, aiUninspected.basisHash, aiReport, "existing-ai-001"]
+    )).rows[0].value;
+    assert.equal(recorded.inspection.state, "current");
+    const aiBefore = await readAi();
+    const humanBefore = await readHuman();
+    assert.equal(aiBefore.contract, "aralearn.course-ai-inspection.v1");
+    assert.equal(humanBefore.contract, "aralearn.course-content-review.v1");
+    assert.equal(aiBefore.inspection.state, "current");
+    assert.equal(humanBefore.contentReview.state, "current");
+    const entitiesBefore = (await db.query(
+      "select * from private.course_entities order by entity_type,entity_id")).rows;
+    const aiStoredBefore = entitiesBefore.find(row => row.entity_id === existing.studyUnitId).ai_inspection;
+    const humanStoredBefore = entitiesBefore.find(row => row.entity_id === existing.studyUnitId).content_review;
+    const partBefore = (await db.query("select * from private.course_authoring_parts where id=$1", [PART])).rows[0];
+    const currentRevision = (await db.query("select revision from public.courses where id=$1", [COURSE])).rows[0].revision;
+    const reader = async revision => (await db.query(
+      "select private.list_course_study_units_for_actor_v1($1,$1,$2,'course',null,null,null,'forward',12,524288) value",
+      [COURSE, revision])).rows[0].value;
+    const readBefore = await reader(currentRevision);
+
+    await assert.rejects(write(db, [], [placement(existing)], { complete: true,
+      revision: currentRevision - 1, request: "existing-stale-001" }), /curso mudou/iu);
+    assert.deepEqual((await db.query(
+      "select * from private.course_entities order by entity_type,entity_id")).rows, entitiesBefore);
+
+    const completed = await write(db, [], [placement(existing)], { complete: true,
+      revision: currentRevision, request: "existing-complete-001" });
+    const readAfter = await reader(completed.courseRevision);
+    const entitiesAfter = (await db.query(
+      "select * from private.course_entities order by entity_type,entity_id")).rows;
+    const aiAfter = await readAi();
+    const humanAfter = await readHuman();
+    const partAfter = (await db.query("select * from private.course_authoring_parts where id=$1", [PART])).rows[0];
+    const aiStoredAfter = entitiesAfter.find(row => row.entity_id === existing.studyUnitId).ai_inspection;
+    const humanStoredAfter = entitiesAfter.find(row => row.entity_id === existing.studyUnitId).content_review;
+    const withoutPartState = values => values.map(({ authoringPart, ...value }) => ({
+      ...value, authoringPart: { id: authoringPart.id, title: authoringPart.title,
+        position: authoringPart.position }
+    }));
+
+    assert.equal(completed.changed, true);
+    assert.equal(completed.studyUnitCount, 0);
+    assert.equal(completed.courseRevision, currentRevision + 1);
+    assert.deepEqual(entitiesAfter, entitiesBefore,
+      "corpos, fontes, pareceres e intervenções permanecem byte a byte iguais");
+    assert.equal(aiAfter.inspection.state, "current");
+    assert.equal(aiAfter.courseRevision, completed.courseRevision);
+    assert.deepEqual(aiAfter.inspection, aiBefore.inspection,
+      "o parecer de IA conserva base, relatório e carimbo e continua atual");
+    assert.deepEqual(aiStoredAfter, aiStoredBefore);
+    assert.equal(humanAfter.contentReview.state, "current");
+    assert.equal(humanAfter.courseRevision, completed.courseRevision);
+    assert.deepEqual(humanAfter.contentReview, humanBefore.contentReview,
+      "a revisão humana permanece atual e separada do parecer de IA");
+    assert.deepEqual(humanStoredAfter, humanStoredBefore);
+    assert.deepEqual(withoutPartState(readAfter.items), withoutPartState(readBefore.items),
+      "o leitor preserva o material pedagógico e ignora somente o estado técnico da Parte");
+    assert.equal(readBefore.items[0].authoringPart.state, "partially_materialized");
+    assert.equal(readAfter.items[0].authoringPart.state, "materialized");
+    assert.equal(partAfter.version, partBefore.version, "concluir não altera a versão da base");
+    assert.equal(partBefore.materialization_complete, false);
+    assert.equal(partAfter.materialization_complete, true);
+    assert.equal((await db.query("select private.course_authoring_part_progress_v1($1,$2)->>'state' state",
+      [COURSE, PART])).rows[0].state, "materialized");
+
+    const repeated = await write(db, [], [placement(existing)], { complete: true,
+      revision: initial.courseRevision, request: "existing-complete-001" });
+    assert.equal(repeated.idempotent, true);
+    assert.equal(repeated.courseRevision, completed.courseRevision);
+    assert.deepEqual((await db.query(
+      "select * from private.course_entities order by entity_type,entity_id")).rows, entitiesBefore);
+
+    await db.query(`update private.course_entities set
+      content=jsonb_set(content,'{content,0,data,text}',to_jsonb($3::text),false)
+      where course_id=$1 and entity_type='study_unit' and entity_id=$2`,
+    [COURSE, existing.studyUnitId, "Texto alterado depois da inspeção."]);
+    const aiStale = await readAi();
+    const humanStale = await readHuman();
+    assert.equal(aiStale.inspection.state, "pending", "o leitor de IA recalcula a base atual");
+    assert.equal(humanStale.contentReview.state, "stale", "o leitor humano recalcula a base atual");
+    assert.notEqual(aiStale.basisHash, aiBefore.basisHash);
+    assert.notEqual(humanStale.basisHash, humanBefore.basisHash);
   } finally { await db.close(); }
 });
 

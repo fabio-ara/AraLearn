@@ -443,7 +443,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.5.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.6.0");
   // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
   // a mesma referência e o mesmo parecer, sem recompor a tentativa.
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,

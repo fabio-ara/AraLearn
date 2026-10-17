@@ -635,12 +635,11 @@ const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   })
 });
 
-const MATERIALIZATION_PLAN_SCHEMA = Object.freeze({
+const MATERIALIZATION_INPUT_SCHEMA = Object.freeze({
   type: "array",
-  minItems: 1,
   maxItems: 64,
   items: MATERIALIZATION_UNIT_SCHEMA,
-  description: "As mesmas unidades candidatas usadas na escrita; o preparo deriva componentes, resposta, feedback, fontes e configuração aplicada do próprio candidato."
+  description: "Unidades novas ou alteradas, na ordem final da microssequência; preserve a cobertura. Com [] e concluir:true, o foco valida o acumulado: o preparo devolve ready ou blocked sem gravar; a escrita conclui a parte inteira, não só a micro, pelo conteúdo salvo, sem reenviar nem regravar unidades."
 });
 
 // O `outputSchema` MCP exige raiz `type: "object"` (spec 2025-11-25). A raiz
@@ -837,10 +836,10 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Confere uma microssequência e suas bases/dependências. Opcional: a escrita já faz esta verificação.",
+    "Confere unidades candidatas ou o acumulado salvo; retorna ready/blocked sem gravar.",
     inputSchema({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
-      unidades: MATERIALIZATION_PLAN_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
+      unidades: MATERIALIZATION_INPUT_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
     }, ["curso", "unidades"]),
     { readOnly: true }
   ),
@@ -1000,7 +999,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Produzir uma microssequência",
-    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. Explicação consultável; ensino e prática conforme a condição. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Com recuperacao, só consulta o recibo da tentativa. Inspecione a qualidade.",
+    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Com recuperacao, consulta o recibo. Inspecione o resultado.",
     { ...inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
@@ -1008,10 +1007,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       concluir: { type: "boolean", default: false },
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
-      unidades: Object.freeze({
-        type: "array", minItems: 1, maxItems: 64, items: MATERIALIZATION_UNIT_SCHEMA,
-        description: "Unidades da mesma microssequência, em ordem pedagógica. Preserve a cobertura necessária."
-      }),
+      unidades: MATERIALIZATION_INPUT_SCHEMA,
       recuperacao: MATERIALIZATION_RECOVERY_SCHEMA
     }), allOf: Object.freeze([
       ifThen({ required: ["recuperacao"] }, { allOf: Object.freeze(MATERIALIZATION_PRODUCTION_FIELDS.map(field =>
@@ -1280,9 +1276,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.5.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.6.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:0f5f9e7c6952eb07407cf8e5c490554d08901191a24c59bf856439c115fcf09a";
+  "sha256:bb6814e3d4a38ef6c1556cca003c22ffa19aa051008f9b92637007ce81cf5a4e";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1388,6 +1384,20 @@ function safeClone(value, field, maximumBytes = 256 * 1024) {
   return result;
 }
 
+function validateMaterializationInputArguments(name, args) {
+  // Preparo e escrita publicam a mesma forma de fechamento. As combinações que
+  // distinguem fechamento, parcial e nova base são validadas no contrato comum.
+  if (!["preparar_materializacao", "materializar_parte"].includes(name) ||
+      Object.hasOwn(args, "recuperacao") ||
+      !Array.isArray(args.unidades) || args.unidades.length > 0) return;
+  if (args.concluir !== true) fail("invalid_human_materialization_empty_partial",
+    "Uma lista vazia só pode validar e concluir a Parte com concluir:true.");
+  if (args.microssequencia === undefined) fail("human_materialization_focus_required",
+    "Informe a microssequência focal para localizar a Parte cujo acumulado será concluído.");
+  if (Object.hasOwn(args, "explicacoes")) fail("human_materialization_empty_complete_has_content",
+    "A conclusão sem unidades novas reutiliza o conteúdo salvo e não aceita explicações.");
+}
+
 function assertTaskArguments(name, rawArguments) {
   const definition = courseHumanTaskDefinition(name);
   if (!definition) throw new AuthoringApiError(404, "unknown_human_task", "Tarefa de autoria inexistente.");
@@ -1398,6 +1408,7 @@ function assertTaskArguments(name, rawArguments) {
       fail("missing_human_task_argument", `Informe ${required}.`, { field: required });
     }
   }
+  validateMaterializationInputArguments(name, raw);
   return safeClone(raw, "arguments", 512 * 1024);
 }
 
@@ -3077,10 +3088,13 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
     });
   }
   const ready = preflight.state === "ready";
+  const closesSavedPart = args.concluir === true && Array.isArray(args.unidades) && args.unidades.length === 0;
   const recovery = ready ? null : humanMaterializationRecovery(preflight);
   return result(
     ready
-      ? "A produção solicitada está coerente com o percurso e pode ser salva."
+      ? closesSavedPart
+        ? "O conteúdo salvo está coerente para concluir a Parte; nenhuma unidade será regravada."
+        : "A produção solicitada está coerente com o percurso e pode ser salva."
       : recovery ?? "Ainda há uma dependência a resolver antes desta produção.",
     {
       deepLink: null,

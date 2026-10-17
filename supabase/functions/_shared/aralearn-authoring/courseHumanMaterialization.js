@@ -751,8 +751,10 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
     principal, courseId: context.course.id, scopeKind: "didactic_microsequence", scopeRef: micro.id,
     childLimit: 1, childCursor: null, deadlineAt
   })])));
-  if (!planUnits.length) add("human_materialization_plan_required",
+  if (!complete && !planUnits.length) add("human_materialization_plan_required",
     "Informe as unidades candidatas para conferir sua coerência antes de escrever.");
+  if (complete && !planUnits.length && explanations.length) add("human_materialization_empty_complete_has_content",
+    "A conclusão do conteúdo já salvo não aceita alterações de Explicação; salve essas alterações antes de concluir.");
   for (const [index, planned] of planUnits.entries()) {
     const details = { unit: index + 1 };
     const micro = capture(() => resolveReference(micros, planned.microssequencia, {
@@ -1087,9 +1089,11 @@ function pedagogicalMode(unit) {
   return unit.aplicacaoPedagogica.explicacoes.length ? "mixed" : "practice";
 }
 
-function validateUnits(units) {
-  if (!Array.isArray(units) || units.length < 1 || units.length > 64) {
-    fail("invalid_human_materialization", "A materialização precisa conter de 1 a 64 unidades de estudo.");
+function validateUnits(units, { complete = false } = {}) {
+  if (!Array.isArray(units) || units.length > 64 || (!complete && units.length < 1)) {
+    fail("invalid_human_materialization", complete
+      ? "A conclusão da materialização aceita no máximo 64 unidades de estudo."
+      : "A materialização parcial precisa conter de 1 a 64 unidades de estudo.");
   }
   for (const [index, unit] of units.entries()) {
     if (!plainObject(unit) || !plainObject(unit.conteudo) ||
@@ -2057,7 +2061,8 @@ export async function materializeHumanCoursePart({
   allowDraftCurricularMap = false,
   deadlineAt = null
 }) {
-  validateUnits(units);
+  const completesSavedContent = complete && Array.isArray(units) && units.length === 0;
+  validateUnits(units, { complete });
   let producedPartPosition = null;
   let producedContentTarget = null;
   let practiceObservations = [];
@@ -2164,16 +2169,21 @@ export async function materializeHumanCoursePart({
     commit: (request) => adapter.materializeCourseAuthoringPart(request)
   });
   return {
-    result: complete ? (producedPartPosition === 1 ? "Primeira parte produzida." : `Parte ${producedPartPosition} produzida.`)
+    result: completesSavedContent
+      ? `Parte ${producedPartPosition} concluída a partir do conteúdo já salvo.`
+      : complete ? (producedPartPosition === 1 ? "Primeira parte produzida." : `Parte ${producedPartPosition} produzida.`)
       : "Gravação parcial: o conteúdo solicitado foi salvo, mas a parte ainda não está concluída.",
     ...buildHumanNavigationEnvelope(producedContentTarget ? createHumanNavigation(adapter, {
       courseId: producedContentTarget.courseId, relation: "content", target: { kind: "authoring_part", id: producedContentTarget.partId }
-    }) : null, [], { nextDecision: complete
+    }) : null, [], { nextDecision: completesSavedContent
+      ? "A Parte foi concluída tecnicamente sem regravar unidades. Consulte as inspeções existentes e use preparar_revisao somente para o que estiver realmente pendente ou obsoleto; pareceres atuais permanecem válidos."
+      : complete
       ? "Use preparar_revisao com auditoria: true para uma segunda leitura pedagógica do percurso salvo. Registre as seis dimensões, incluindo configuration; corrija insuficiências antes de considerar a produção satisfatória."
       : "A gravação é parcial: continue somente o que falta, confira o acumulado e conclua a parte antes da inspeção final. Só então use preparar_revisao com auditoria: true e as seis dimensões, incluindo configuration." }),
     context: { distribuicaoDaPratica: practiceObservations, completion: complete ? "complete" : "partial",
       ...(bpmnReview ? { bpmnReview } : {}),
-      qualidadePedagogica: "pending_independent_inspection",
+      qualidadePedagogica: completesSavedContent
+        ? "not_reevaluated_existing_inspections_preserved" : "pending_independent_inspection",
       cursoRevision: receipt.courseRevision }
   };
 }

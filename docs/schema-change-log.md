@@ -21,6 +21,26 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261017193000 — conclusão de parte já acumulada
+
+A [migração](../supabase/migrations/20261017193000_complete_saved_course_authoring_part.sql)
+permite que o RPC de materialização receba `p_units: []` somente quando
+`p_complete=true`. O helper incremental continua montando o conjunto acumulado
+sob lock e valida pedagogia, dependências, aplicações e cobertura; o núcleo não
+repassa unidades para composição. A conclusão atualiza apenas o estado técnico
+da parte, sem regravar corpos, posições, fontes, aplicações, configuração ou
+inspeções existentes.
+
+O manifesto avança para `20261017193000` sem alterar as capacidades já
+declaradas. O catálogo humano avança para `11.6.0`, pois `preparar_materializacao`
+e `materializar_parte` passam a publicar a mesma forma de conclusão sobre o
+acumulado. O preparo permanece somente-leitura e devolve `ready` ou `blocked`
+segundo o conteúdo salvo. A prova local distingue revisão humana de parecer de
+IA e confirma que ambos os readers preservam a atualidade depois da conclusão;
+uma alteração do corpo torna o parecer de IA pendente e a revisão humana
+obsoleta. RLS e permissões efetivas no ambiente hospedado continuam sujeitas à
+verificação de implantação.
+
 ## 20261017181734 — projeção lean do plano de revisão
 
 A [migração](../supabase/migrations/20261017181734_review_plan_lean_projection.sql)

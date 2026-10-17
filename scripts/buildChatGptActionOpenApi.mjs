@@ -104,10 +104,12 @@ const errorSchema = {
 // course. Catalog 11.3.0 declares in `registrar_inspecao` that a lost response
 // is recovered with the same reference and report. Catalog 11.5.0 adds both closed
 // design-recovery operations to `ajustar_configuracao` while preserving the former
-// `materializar_parte` discovery form. The measured baseline
-// becomes 101751 minified / 209947 pretty-printed
-// characters. Acceptance in the actual editor remains a separate gate with the
-// real client; it is not implied by these counters.
+// `materializar_parte` discovery form. The 11.5.0 measured baseline was
+// 101751 minified / 209947 pretty-printed characters. Catalog 11.6.0 adds the
+// completion of an existing part from saved content and its corresponding
+// read-only preparation. Its measured baseline is 101679 minified / 209831
+// pretty-printed characters. Acceptance in the actual editor remains a separate
+// gate with the real client.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
 const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 102_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";

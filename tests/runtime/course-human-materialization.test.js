@@ -151,6 +151,145 @@ test("Explicação incompleta bloqueia a gravação conjunta sem aprovar ou omit
   }
 });
 
+test("conclui o acumulado salvo com unidades vazias sem regravar conteúdo", async () => {
+  const adapter = adapterFixture();
+  const saved = persistedStudyUnit("saved-existing-unit", 1);
+  saved.designApplication.curriculumScopeItemIds = [CURRICULUM_SCOPE_ID];
+  adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(saved)],
+    hasMore: false, nextCursor: null });
+
+  const partial = await prepareMaterialization(adapter, []);
+  assert.equal(partial.state, "blocked");
+  assert.ok(partial.blockers.some(item => item.code === "human_materialization_plan_required"));
+
+  const complete = await prepareMaterialization(adapter, [], { complete: true });
+  assert.equal(complete.state, "ready", JSON.stringify(complete.blockers));
+  assert.equal(complete.completion, "complete");
+  assert.equal(adapter.calls.length, 0);
+
+  const output = await materializeCompletePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [], complete: true });
+  assert.match(output.result, /conteúdo já salvo/iu);
+  assert.equal(output.context.completion, "complete");
+  assert.equal(output.context.qualidadePedagogica,
+    "not_reevaluated_existing_inspections_preserved");
+  assert.match(output.nextDecision, /pendente ou obsoleto/iu);
+  assert.doesNotMatch(output.nextDecision, /segunda leitura|seis dimensões/iu);
+  assert.equal(adapter.calls.length, 1);
+  assert.deepEqual(adapter.calls[0].units, []);
+  assert.deepEqual(adapter.calls[0].explanations, []);
+  assert.deepEqual(adapter.calls[0].placements, [{ studyUnitId: saved.studyUnit.id,
+    didacticMicrosequenceId: "micro-dns", position: 1 }]);
+  assert.equal(adapter.calls[0].complete, true);
+  assert.ok(adapter.calls[0].targetPlanItems.length > 0);
+
+  await assert.rejects(() => materializeCompletePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [], complete: false }),
+  error => error.code === "invalid_human_materialization");
+  await assert.rejects(() => materializeCompletePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [], complete: true,
+    explanations: explanationFixtures() }),
+  error => Boolean(preflightBlocker(error, "human_materialization_empty_complete_has_content")));
+  assert.equal(adapter.calls.length, 1, "nenhuma tentativa inválida alcança o escritor");
+
+  adapter.getAuthoringProcessPreferences = async () => ({
+    contract: "aralearn.authoring-process-preferences.v1", revision: 1,
+    updatedAt: "2026-10-17T12:00:00Z", preferences: {
+      ...defaultAuthoringProcessPreferences(), focus: "content", cadence: "batch", reviewPoints: [] }
+  });
+  adapter.getCourseDesign = async request => {
+    const course = await adapter.getCourse();
+    const design = courseDesignFixture({ courseId: COURSE_ID, moduleId: "module-network",
+      lessonId: "lesson-network", microsequenceId: "micro-dns",
+      studyUnitId: saved.studyUnit.id }, { scope: request.scopeKind, revision: course.revision });
+    design.targetPlanItems = { instructionalAnalysisUnitIds: [ANALYSIS_ID], evidenceRequirementIds: [] };
+    const applied = fixtureAppliedParameters([
+      ["new_analysis_unit_ceiling_per_expository_study_unit", 1],
+      ["required_explanation_forms", ["plain_definition"]],
+      ["minimum_distinct_practice_opportunities_per_evidence_requirement", 1],
+      ["required_practice_variation_dimensions", ["case_or_data"]],
+      ["authoring_chat_response_word_target", 90], ["study_unit_content_word_target", 180]
+    ], { origin: "author", scope: "didactic_microsequence" });
+    const appliedById = new Map(applied.map(item => [item.parameterId, item]));
+    design.parameters = design.parameters.map(parameter => ({
+      ...parameter, conflicts: structuredClone(appliedById.get(parameter.parameterId).conflicts),
+      effectiveAssignment: {
+        ...structuredClone(appliedById.get(parameter.parameterId).effectiveAssignment),
+        inherited: appliedById.get(parameter.parameterId).effectiveAssignment.sourceScope.kind !== request.scopeKind ||
+          appliedById.get(parameter.parameterId).effectiveAssignment.sourceScope.ref !== request.scopeRef
+      }
+    }));
+    return design;
+  };
+
+  adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
+  adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action" });
+  const channelError = (channel, response) => channel === "actions"
+    ? response.payload?.error : response.payload?.result?.structuredContent?.error;
+  for (const channel of ["mcp", "actions"]) {
+    const response = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", microssequencia: "DNS", unidades: [], concluir: true });
+    assert.equal(response.status, 200, response.envelope);
+    assert.equal(response.value.context.preflight.state, "ready", channel);
+    assert.match(response.value.result, /conteúdo salvo está coerente para concluir a Parte; nenhuma unidade será regravada/iu);
+  }
+  assert.equal(adapter.calls.length, 1, "preparar a conclusão não grava");
+
+  const incomplete = structuredClone(saved);
+  incomplete.designApplication = null;
+  incomplete.designSnapshot = null;
+  adapter.listCourseStudyUnits = async () => ({ items: [incomplete], hasMore: false, nextCursor: null });
+  for (const channel of ["mcp", "actions"]) {
+    const response = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", microssequencia: "DNS", unidades: [], concluir: true });
+    assert.equal(response.status, 200, response.envelope);
+    assert.equal(response.value.context.preflight.state, "blocked", channel);
+    assert.ok(response.value.context.preflight.blockers.some(item =>
+      item.code === "human_materialization_existing_application_missing"), channel);
+  }
+  adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(saved)],
+    hasMore: false, nextCursor: null });
+  assert.equal(adapter.calls.length, 1, "preparo bloqueado também não grava");
+
+  for (const name of ["preparar_materializacao", "materializar_parte"]) {
+    for (const channel of ["mcp", "actions"]) {
+      const partialResponse = await materializationChannel(channel, adapter, name, {
+        curso: "Curso de Redes", microssequencia: "DNS", unidades: [], concluir: false });
+      assert.equal(channelError(channel, partialResponse).code,
+        "invalid_human_materialization_empty_partial", `${channel}:${name}:partial`);
+      const changedSupport = await materializationChannel(channel, adapter, name, {
+        curso: "Curso de Redes", microssequencia: "DNS", unidades: [], concluir: true,
+        explicacoes: explanationFixtures() });
+      assert.equal(channelError(channel, changedSupport).code,
+        "human_materialization_empty_complete_has_content", `${channel}:${name}:explanation`);
+    }
+  }
+  assert.equal(adapter.calls.length, 1, "entradas vazias inválidas não alcançam o escritor");
+
+  const routed = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "materializar_parte", rawArguments: { curso: "Curso de Redes",
+      microssequencia: "DNS", unidades: [], concluir: true } });
+  assert.match(routed.result, /conteúdo já salvo/iu);
+  assert.equal(adapter.calls.length, 2);
+  assert.deepEqual(adapter.calls[1].units, []);
+  assert.equal(adapter.calls[1].complete, true);
+
+  for (const channel of ["mcp", "actions"]) {
+    const response = await materializationChannel(channel, adapter, "materializar_parte", {
+      curso: "Curso de Redes", microssequencia: "DNS", unidades: [], concluir: true });
+    assert.equal(response.status, 200, response.envelope);
+    assert.match(response.value.result, /conteúdo já salvo/iu);
+  }
+  assert.equal(adapter.calls.length, 4);
+  assert.ok(adapter.calls.slice(2).every(call => call.units.length === 0 && call.complete === true));
+
+  const withNewContent = adapterFixture();
+  const produced = await materializeCompletePart({ adapter: withNewContent, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [unit()], complete: true });
+  assert.equal(produced.context.qualidadePedagogica, "pending_independent_inspection");
+  assert.match(produced.nextDecision, /segunda leitura pedagógica/iu);
+});
+
 test("Explicação conserva fonte e âncora na mesma operação das unidades", async () => {
   const adapter = adapterFixture();
   const support = explanationFixtures()[0];

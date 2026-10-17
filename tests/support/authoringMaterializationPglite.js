@@ -19,6 +19,16 @@ const originMigration = await read("20260916030333_editorial_interventions_and_o
 const copyMigration = await read("20260905145236_independent_course_copies.sql");
 const savedApplicationMigration = await read("20260909061332_contextual_instructional_design_commands.sql");
 const designParametersMigration = await read("20260817180000_course_design_parameters.sql");
+const completeSavedPartMigration = await read("20261017193000_complete_saved_course_authoring_part.sql");
+const reviewAccessMigration = await read("20260909025232_contextual_content_review_access.sql");
+const contentCompletenessMigration = await read("20260909060955_contextual_runtime_integration_guards.sql");
+const aiInspectionMigration = await read("20260916025342_contextual_ai_inspection.sql");
+const pedagogicalInspectionMigration = await read("20260924164623_revisao_v7_pedagogical_inspection.sql");
+const focalInspectionMigration = await read("20260924175938_revisao_v7_focal_audit_basis.sql");
+const compactInspectionReceiptMigration = await read("20260928094500_compact_ai_inspection_receipts.sql");
+const configurationInspectionMigration = await read("20260928110000_configuration_realization_inspection.sql");
+const groundedInspectionMigration = await read("20261013120000_grounded_report_target_material.sql");
+const normalizedGroundingMigration = await read("20261016071003_grounded_report_leaf_normalization.sql");
 function definition(source, name) {
   const start = source.search(new RegExp(`create (?:or replace )?function ${name.replaceAll(".", "\\.")}\\(`, "iu"));
   assert.ok(start >= 0, name);
@@ -167,9 +177,61 @@ async function fixture({ focalCurricularDependencies = true } = {}) {
     "end $catalog_version$"
   ].join("\n"));
   await db.exec(autonomousFirstPart);
+  await db.exec(completeSavedPartMigration);
   return db;
 }
-export { read, definition, block, fixture, fixtureSchema, COURSE, PART, IDEA, EVIDENCE, parameters, policy,
+
+// Instala as leituras e escritores reais de revisão humana e de parecer de IA
+// sobre o fixture de materialização. Autenticação, digest e mídia continuam
+// adaptadores locais; a atualidade é sempre calculada pelas funções SQL reais.
+async function installCourseInspectionFixture(db) {
+  await db.exec(`
+    alter table public.courses add column bibliography_style text default 'abnt-2025',
+      add column content_review_policy text default 'saved';
+    alter table private.course_instructional_plans add column audience text;
+    create table private.course_source_attributions(course_id uuid,id uuid,target_kind text,target_id text);
+    create table private.course_source_attribution_sources(course_id uuid,attribution_id uuid,source_id text,
+      relation text,link_id text default 'link-a',source_ordinal integer default 0,
+      roles text[] default '{technical_conceptual}',occurrences jsonb default '[]');
+    create table private.course_source_attribution_anchors(course_id uuid,attribution_id uuid,anchor_id text,
+      source_ordinal integer default 0,anchor_ordinal integer default 0);
+    create table private.course_sources(course_id uuid,source_id text,title text,status text default 'active',
+      revision bigint default 1,citation_text text,url text,verification_status text default 'author_verified');
+    create table private.course_source_anchors(course_id uuid,anchor_id text,source_id text,content_hash text,
+      selector jsonb,status text default 'active',human_locator text,verification_excerpt text);
+    create table private.course_source_attachments(course_id uuid,source_id text,content_hash text,status text,
+      public_file_access text);
+    create table private.course_media(course_id uuid,content_hash text,status text,byte_size bigint,media_type text);
+    create function private.course_source_json_hash_v1(v jsonb) returns text language sql immutable
+      as $$select repeat(md5(v::text),2)$$;
+    create function private.course_content_media_hashes_v1(v jsonb) returns setof text language sql
+      as $$select null::text where false$$;
+    create function private.require_course_review_session_v1(uuid) returns uuid language sql
+      as $$select '${COURSE}'::uuid$$;
+  `);
+  await db.exec([
+    definition(await read("20260905101903_contextual_course_sources.sql"), "private.course_source_links_v1"),
+    definition(reviewAccessMigration, "private.course_content_basis_hash_v1"),
+    definition(reviewAccessMigration, "private.course_content_review_v1"),
+    definition(contentCompletenessMigration, "private.course_content_complete_v1"),
+    definition(reviewAccessMigration, "private.course_content_review_payload_v1"),
+    definition(reviewAccessMigration, "private.set_course_content_review_v1"),
+    definition(reviewAccessMigration, "public.get_course_content_review_for_actor_v1"),
+    definition(reviewAccessMigration, "public.set_course_content_review_for_actor_v1")
+  ].join("\n"));
+  await db.exec(aiInspectionMigration);
+  await db.exec(pedagogicalInspectionMigration);
+  const materializationBlock = /do \$focal_curricular_dependencies\$[\s\S]*?end \$focal_curricular_dependencies\$;/u;
+  assert.match(focalInspectionMigration, materializationBlock);
+  await db.exec(focalInspectionMigration.replace(materializationBlock, ""));
+  await db.exec(compactInspectionReceiptMigration);
+  await db.exec(configurationInspectionMigration);
+  await db.exec(groundedInspectionMigration);
+  await db.exec(normalizedGroundingMigration);
+}
+
+export { read, definition, block, fixture, fixtureSchema, installCourseInspectionFixture,
+  COURSE, PART, IDEA, EVIDENCE, parameters, policy,
   materializer, globalPlan, cutover, explanations, appliedBasis, forms, practice, inspection, migration,
   focalScopeMigration, focalAuditBasis, autonomousFirstPart, discriminatorCorrection, originMigration,
   copyMigration, savedApplicationMigration, designParametersMigration };

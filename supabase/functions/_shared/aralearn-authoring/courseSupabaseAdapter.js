@@ -3981,13 +3981,14 @@ export class CourseSupabaseAdapter {
     if (!Array.isArray(planItemUpserts) || planItemUpserts.length > 256 ||
         !Array.isArray(targetPlanItems) || targetPlanItems.length < 1 ||
         targetPlanItems.length > 64 ||
-        !Array.isArray(units) || units.length < 1 || units.length > 64 ||
+        !Array.isArray(units) || units.length > 64 || (!complete && units.length < 1) ||
         !Array.isArray(explanations) || explanations.length > 64 || !Array.isArray(placements) ||
-        placements.length < units.length || typeof complete !== "boolean") {
+        placements.length < units.length || (complete && units.length === 0 && placements.length === 0) ||
+        typeof complete !== "boolean") {
       throw new AuthoringApiError(
         422,
         "invalid_course_part_materialization",
-        "A Parte precisa conter de 1 a 64 Unidades."
+        "A Parte aceita de 1 a 64 Unidades novas ou alteradas; a conclusão pode reutilizar o acumulado."
       );
     }
     const normalizedPlanItemUpserts = structuredClone(planItemUpserts);
@@ -4066,7 +4067,8 @@ export class CourseSupabaseAdapter {
     return {
       ...result,
       deepLink: `${this.publicAppUrl}/#/authoring/courses/${encodeURIComponent(courseId)}` +
-        `?section=content&studyUnitId=${encodeURIComponent(normalizedUnits[0].studyUnitId)}`
+        `?section=content${normalizedUnits.length
+          ? `&studyUnitId=${encodeURIComponent(normalizedUnits[0].studyUnitId)}` : ""}`
     };
   }
 
