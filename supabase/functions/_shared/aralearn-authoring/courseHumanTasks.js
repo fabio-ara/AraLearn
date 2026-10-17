@@ -47,7 +47,8 @@ import { normalizeCourseMediaChange, normalizeCourseMediaCatalogItem, normalizeC
   "../aralearn/runtime/domain/courseMedia.js";
 import { materializeHumanCoursePart, HUMAN_SOURCE_ROLES, resolveHumanSourceRoles,
   resolveHumanSourceOccurrences, preflightHumanCourseMaterialization, listExistingPartStudyUnits,
-  humanMaterializationRecovery, resumeHumanCoursePartMaterialization } from "./courseHumanMaterialization.js";
+  humanMaterializationRecovery, resumeHumanCoursePartMaterialization,
+  discoverHumanCoursePartMaterialization } from "./courseHumanMaterialization.js";
 import { completeFocalMaterialization } from "./courseFocalMaterialization.js";
 import { applyHumanCourseCorrections, resumeHumanCourseObservationCorrection } from "./courseHumanCorrections.js";
 import { sha256Hex } from "./security.js";
@@ -517,17 +518,31 @@ const EXPLANATION_MATERIALIZATION_BRANCHES = Object.freeze([
 const MATERIALIZATION_PRODUCTION_FIELDS = Object.freeze([
   "curso", "microssequencia", "explicacoes", "concluir", "processo", "autonomo", "unidades"
 ]);
+// Duas leituras fechadas da mesma tentativa: a referência exata devolvida pelo
+// erro e, quando ela se perdeu, o curso e a microssequência do recorte. Nenhuma
+// escreve, reaplica ou elege a tentativa mais recente.
 const MATERIALIZATION_RECOVERY_SCHEMA = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  required: Object.freeze(["courseId", "requestId", "operation"]),
-  description: "Objeto recovery devolvido por course_write_uncertain. Consulte a mesma tentativa; não reenvie o payload original.",
-  properties: Object.freeze({
-    courseId: Object.freeze({ type: "string", format: "uuid" }),
-    requestId: Object.freeze({ type: "string", minLength: 8, maxLength: 128,
-      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }),
-    operation: Object.freeze({ type: "string", const: "course_write" })
-  })
+  oneOf: Object.freeze([
+    Object.freeze({
+      type: "object",
+      additionalProperties: false,
+      required: Object.freeze(["courseId", "requestId", "operation"]),
+      description: "Objeto recovery devolvido por course_write_uncertain. Consulte a mesma tentativa; não reenvie o payload original.",
+      properties: Object.freeze({
+        courseId: Object.freeze({ type: "string", format: "uuid" }),
+        requestId: Object.freeze({ type: "string", minLength: 8, maxLength: 128,
+          pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }),
+        operation: Object.freeze({ type: "string", const: "course_write" })
+      })
+    }),
+    Object.freeze({
+      type: "object",
+      additionalProperties: false,
+      required: Object.freeze(["curso"]),
+      description: "Localização somente-leitura da tentativa perdida pelo curso e, quando informada, pela microssequência. Devolve os recibos vigentes do recorte sem escrever.",
+      properties: Object.freeze({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA })
+    })
+  ])
 });
 
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
@@ -1239,9 +1254,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.3.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.4.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:97f2053950ef7ff64d276a54aeb2b26c813dbefe5a60c4c57bf9336222f8f40c";
+  "sha256:4bc50efbbc1d58b70b7259a3b8b0a2e2a07192b212cd85c51de12da489fcbcb5";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1425,6 +1440,24 @@ function withoutTechnicalState(value) {
         fail("course_service_unavailable", "A tentativa de correção não pôde ser identificada.", null, 503);
       }
       projected.tentativaDeCorrecao = entry;
+      continue;
+    }
+    if (normalizedKey === "recuperacao" && entry !== null && typeof entry === "object" &&
+        !Array.isArray(entry)) {
+      // A descoberta devolve a própria referência fechada da recuperação
+      // existente. Preservá-la integral evita remontar identidade a partir de
+      // campos técnicos; qualquer outro valor sob esta chave segue o estado comum.
+      if (Object.keys(entry).sort().join(",") !== "courseId,operation,requestId" ||
+          entry.operation !== "course_write" || typeof entry.courseId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+            .test(entry.courseId) ||
+          typeof entry.requestId !== "string" ||
+          !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(entry.requestId)) {
+        fail("course_service_unavailable",
+          "A referência de recuperação devolvida pela descoberta é inválida.", null, 503);
+      }
+      projected[key] = { courseId: entry.courseId, operation: "course_write",
+        requestId: entry.requestId };
       continue;
     }
     if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
@@ -3922,11 +3955,33 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
   adapter, principal, args, deadlineAt
 }) => {
   if (args.recuperacao !== undefined) {
-    // Modo somente-leitura: a referência devolvida pelo erro é fechada e
-    // exclusiva; nenhum argumento de produção a acompanha.
+    // Modo somente-leitura: a referência exata devolvida pelo erro é fechada, e
+    // sem ela o curso e a microssequência localizam a tentativa perdida. Nenhum
+    // argumento de produção acompanha as duas leituras.
     exactFields(args, new Set(["recuperacao"]));
-    return resumeHumanCoursePartMaterialization({ adapter, principal,
-      recuperacao: args.recuperacao, deadlineAt });
+    const pedido = args.recuperacao;
+    if (pedido !== null && typeof pedido === "object" && !Array.isArray(pedido) &&
+        Object.keys(pedido).sort().join(",") === "courseId,operation,requestId") {
+      return resumeHumanCoursePartMaterialization({ adapter, principal, recuperacao: pedido, deadlineAt });
+    }
+    if (pedido === null || typeof pedido !== "object" || Array.isArray(pedido) ||
+        !Object.hasOwn(pedido, "curso")) {
+      fail("invalid_materialization_recovery",
+        "Use a recuperação exata devolvida pela materialização deste curso, ou o curso e a microssequência para localizar a tentativa.");
+    }
+    exactFields(pedido, new Set(["curso", "microssequencia"]));
+    const discoveryContext = await resolveTaskContext({ adapter, principal,
+      args: { curso: pedido.curso, microssequencia: pedido.microssequencia }, deadlineAt });
+    const parts = Array.isArray(discoveryContext.plan?.plan?.parts)
+      ? discoveryContext.plan.plan.parts : [];
+    const microsequence = pedido.microssequencia === undefined ? null : discoveryContext.microsequence;
+    const part = microsequence === null ? null : parts.find(item =>
+      (item?.microsequences ?? []).some(micro => micro?.id === microsequence.id)) ?? null;
+    const discovery = await discoverHumanCoursePartMaterialization({ adapter, principal,
+      courseId: discoveryContext.course.id, authoringPartId: part?.id ?? null,
+      microsequence, parts, deadlineAt });
+    return result(discovery.result, { deepLink: discovery.navigation,
+      nextDecision: discovery.nextDecision, context: discovery.context });
   }
   for (const field of ["curso", "unidades"]) {
     if (!Object.hasOwn(args, field)) fail("missing_human_task_argument", `Informe ${field}.`, { field });

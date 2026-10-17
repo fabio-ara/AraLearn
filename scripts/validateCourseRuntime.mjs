@@ -65,7 +65,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "current-administrative-maintenance-v1",
   "gpt-actions-openapi-v1",
   "course-source-atomic-bundle-v1",
-  "course-authoring-part-materialization-receipt-v1"
+  "course-authoring-part-materialization-receipt-v1",
+  "course-authoring-part-materialization-receipt-discovery-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -303,7 +304,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20261016171317" ||
+  if (manifest.schemaRevision !== "20261017124500" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||

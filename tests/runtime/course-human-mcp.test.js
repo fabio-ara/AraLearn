@@ -426,7 +426,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.3.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.4.0");
   // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
   // a mesma referência e o mesmo parecer, sem recompor a tentativa.
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,
@@ -1210,7 +1210,8 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
           /\.properties\.conteudo\.properties\.(?:content\.items|response\.anyOf\[1\]|feedback\.items)$/u
             .test(path);
         if (localComponentIdentity) continue;
-        if (["retomar_correcao", "materializar_parte"].includes(task.name) && path === "$.properties.recuperacao" &&
+        if (["retomar_correcao", "materializar_parte"].includes(task.name) &&
+            /^\$\.properties\.recuperacao(?:\.oneOf\[\d\])?$/u.test(path) &&
             ["courseId", "requestId"].includes(name)) continue;
         if (task.name === "decidir_observacao" && name === "id" &&
             path === "$.properties.referencia.properties.targets.items") continue;

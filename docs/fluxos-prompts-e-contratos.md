@@ -189,7 +189,7 @@ com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
 preparo deve corresponder à base, configuração e intenção correntes.
 
-O contrato de autoria corrente é o catálogo **11.3.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.4.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,
@@ -452,6 +452,10 @@ e não reaplica a escrita: distingue o recibo confirmado da tentativa, a escrita
 ainda em andamento, a ausência de recibo e o recibo vencido. Ausência ou
 expiração não provam que a gravação foi revertida; reconcilie o conteúdo focal e
 suas pendências antes de qualquer nova alteração.
+Quando a resposta se perdeu antes de qualquer referência, a mesma recuperação aceita
+o curso e a microssequência, devolve os recibos vigentes do recorte e não confirma
+ausência de efeito.
+
 
 `registrar_inspecao` recupera pela própria operação: repita a chamada com a
 referência e o parecer originais. Com recibo da mesma tentativa, a repetição

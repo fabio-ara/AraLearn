@@ -176,6 +176,7 @@
           "course-authoring-part-save-v1",
           "course-authoring-part-materialization-atomic-v2",
           "course-authoring-part-materialization-receipt-v1",
+          "course-authoring-part-materialization-receipt-discovery-v1",
           "course-study-unit-inspection-v2",
           "course-authoring-configuration-v3",
           "authoring-preference-profiles-v1",
@@ -376,6 +377,10 @@
         {
           "path": "supabase/migrations/20261014143125_materialization_receipt_recovery.sql",
           "token": "get_course_part_materialization_receipt_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20261017124500_materialization_receipt_discovery.sql",
+          "token": "discover_course_part_materialization_receipts_for_actor_v1"
         }
       ],
       "routes": [

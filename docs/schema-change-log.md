@@ -22,6 +22,26 @@ Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
 ## 20261016171317 — capacidade de âncoras de uma revisão de Fonte
+## 20261017124500 — descoberta somente-leitura do recibo de materialização
+
+A [migração](../supabase/migrations/20261017124500_materialization_receipt_discovery.sql),
+criada com `supabase migration new`, acrescenta
+`public.discover_course_part_materialization_receipts_for_actor_v1`, que localiza as
+tentativas de materialização de Parte do próprio ator num curso quando a resposta
+se perdeu antes do corpo e o `requestId` interno não é conhecido. A leitura é estreita:
+mesma operação do writer (`materialize_course_authoring_part_v2`), guarda de acesso
+idêntica à do writer, recorte pela chave primária `(actor_id, request_id)` e filtro
+opcional pelo `authoringPartId` gravado no próprio resultado. Nada é materializado,
+apagado ou reaproveitado, nenhum recibo é alterado e nenhum CAS é relaxado. A leitura
+devolve os candidatos vigentes, os expirados e a contagem de recibos cujo formato não
+confere; nunca elege a tentativa mais recente nem trata ausência como ausência de
+efeito. O campo `recuperacao` de `materializar_parte` passa a aceitar, além da
+referência exata devolvida pelo erro, o curso e a microssequência como forma de
+localizar a tentativa perdida: a união continua fechada e exclusiva com os argumentos
+de produção, e o catálogo humano avança para `11.4.0`. O manifesto avança para
+`20261017124500` e declara
+`course-authoring-part-materialization-receipt-discovery-v1`.
+
 
 A [migração](../supabase/migrations/20261016171317_course_source_anchor_capacity.sql),
 criada com `supabase migration new`, substitui o teto fixo de oito identidades de

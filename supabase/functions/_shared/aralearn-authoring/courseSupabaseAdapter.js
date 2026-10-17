@@ -3969,6 +3969,76 @@ export class CourseSupabaseAdapter {
     return { status: "confirmed", result: structuredClone(result) };
   }
 
+  // Descoberta somente-leitura das tentativas de materialização desta Parte no
+  // Curso. Localiza o recibo do próprio ator quando a resposta se perdeu antes
+  // do corpo e o requestId não é conhecido, sem escrever, sem apagar, sem
+  // reaplicar e sem eleger a tentativa mais recente: devolve os candidatos
+  // vigentes, os expirados e a contagem de recibos ilegíveis do recorte.
+  async discoverCoursePartMaterializationReceipts({ principal, courseId, authoringPartId = null, deadlineAt = null }) {
+    if (typeof courseId !== "string" || !UUID_PATTERN.test(courseId) ||
+        authoringPartId !== null &&
+          (typeof authoringPartId !== "string" || !UUID_PATTERN.test(authoringPartId))) {
+      throw new AuthoringApiError(422, "invalid_materialization_discovery",
+        "Informe o Curso e, quando conhecida, a Parte das tentativas a localizar.");
+    }
+    const value = first(await this.rpc(
+      "discover_course_part_materialization_receipts_for_actor_v1",
+      { p_actor_id: principal.actorId, p_course_id: courseId, p_authoring_part_id: authoringPartId },
+      { deadlineAt, responseLimitBytes: 96 * 1024 }
+    ));
+    return this.#partMaterializationDiscovery(value, { courseId, authoringPartId });
+  }
+
+  #partMaterializationDiscovery(value, { courseId, authoringPartId }) {
+    const failure = () => new AuthoringApiError(503, "course_service_unavailable",
+      "A descoberta do recibo da materialização não pôde ser verificada.");
+    const limit = 64;
+    if (!jsonRecord(value) ||
+        value.contract !== "aralearn.course-part-materialization-discovery.v1" ||
+        value.courseId !== courseId ||
+        String(value.authoringPartId ?? "").toLowerCase() !== String(authoringPartId ?? "").toLowerCase() ||
+        !["candidate", "ambiguous", "none"].includes(value.status) ||
+        !Array.isArray(value.candidates) || value.candidates.length > limit ||
+        !Array.isArray(value.expired) || value.expired.length > limit ||
+        !Number.isSafeInteger(value.illegible) || value.illegible < 0) throw failure();
+    // Identidade e retenção do recibo: instante inválido ou vencimento anterior
+    // ao registro não descrevem tentativa recuperável.
+    const retention = (item) => {
+      if (!jsonRecord(item) || typeof item.requestId !== "string" ||
+          !INTERNAL_REQUEST_ID_PATTERN.test(item.requestId) ||
+          typeof item.createdAt !== "string" || typeof item.expiresAt !== "string") return null;
+      const createdAt = Date.parse(item.createdAt), expiresAt = Date.parse(item.expiresAt);
+      if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt) || expiresAt <= createdAt) return null;
+      return { requestId: item.requestId, createdAt: item.createdAt, expiresAt: item.expiresAt };
+    };
+    const candidates = value.candidates.map((item) => {
+      const base = retention(item);
+      if (!base || Object.keys(item).length !== 7 ||
+          typeof item.authoringPartId !== "string" || !UUID_PATTERN.test(item.authoringPartId) ||
+          !Number.isSafeInteger(item.courseRevision) || item.courseRevision < 1 ||
+          typeof item.changed !== "boolean" ||
+          !Number.isSafeInteger(item.studyUnitCount) || item.studyUnitCount < 0) return null;
+      return { ...base, authoringPartId: item.authoringPartId.toLowerCase(),
+        courseRevision: item.courseRevision, changed: item.changed, studyUnitCount: item.studyUnitCount };
+    });
+    const expired = value.expired.map((item) => {
+      const base = retention(item);
+      if (!base || Object.keys(item).length !== 4 ||
+          typeof item.authoringPartId !== "string" || !UUID_PATTERN.test(item.authoringPartId)) return null;
+      return { ...base, authoringPartId: item.authoringPartId.toLowerCase() };
+    });
+    if (candidates.includes(null) || expired.includes(null)) throw failure();
+    // Um requestId distinto por linha: a mesma tentativa não aparece duas vezes
+    // nem ao mesmo tempo como vigente e vencida.
+    if (new Set([...candidates, ...expired].map(item => item.requestId)).size !==
+        candidates.length + expired.length) throw failure();
+    if ((value.status === "candidate") !== (candidates.length === 1)) throw failure();
+    if (value.status === "ambiguous" && candidates.length < 2) throw failure();
+    if (authoringPartId !== null && [...candidates, ...expired].some(item =>
+      item.authoringPartId !== authoringPartId.toLowerCase())) throw failure();
+    return { status: value.status, candidates, expired, illegible: value.illegible };
+  }
+
   async commitCourseComposition({
     principal,
     courseId,

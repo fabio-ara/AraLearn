@@ -12,7 +12,8 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 import { resolveHumanCourseContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 
 import { materializeHumanCoursePart as materializeCompletePart, humanMaterializationUnitPlan,
-  preflightHumanCourseMaterialization, reconcileHumanExplanation, humanMaterializationRecovery } from
+  preflightHumanCourseMaterialization, reconcileHumanExplanation, humanMaterializationRecovery,
+  discoverHumanCoursePartMaterialization } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
@@ -252,11 +253,26 @@ test("base persistida não dispensa releitura completa de fontes antes de produz
   assert.equal(adapter.calls.length, 0);
 });
 
-function adapterFixture({ savedExplanation = true } = {}) {
+function adapterFixture({ savedExplanation = true, discovery = null, receipt = null } = {}) {
   const calls = [];
+  const discoveryCalls = [];
+  const recoveryCalls = [];
   let revision = 8;
   return {
     calls,
+    discoveryCalls,
+    recoveryCalls,
+    async discoverCoursePartMaterializationReceipts(input) {
+      discoveryCalls.push(structuredClone(input));
+      if (discovery instanceof Error) throw discovery;
+      if (!discovery) return { status: "none", candidates: [], expired: [], illegible: 0 };
+      return structuredClone(discovery);
+    },
+    async getCoursePartMaterializationReceipt({ courseId, requestId }) {
+      recoveryCalls.push({ courseId, requestId });
+      if (receipt instanceof Error) throw receipt;
+      return structuredClone(receipt ?? { status: "not_recorded" });
+    },
     async listCourses() {
       return {
         items: [{ courseId: COURSE_ID, title: "Curso de Redes" }],
@@ -3041,4 +3057,146 @@ test("preflight aceita 32 vínculos de Fonte e recusa 33 antes de qualquer grava
     assert.match(blocker.message, /32 vínculos de fontes/u); return true; });
   assert.equal(rejected.calls.length, 0, "33 vínculos não gravam nada");
 });
+
+// Recorte sintético da descoberta: nenhum identificador da ocorrência privada
+// entra no repositório. A leitura localiza a tentativa por Curso e Parte e a
+// recuperação existente confirma o recibo sem reenviar a escrita.
+const OUTRA_PART_ID = "20000000-0000-4000-8000-000000000002";
+const RECEIPT_REQUEST_ID = "materializacao-original-0007";
+const RECEIPT_SEEN_AT = "2026-10-17T12:00:00.000+00:00";
+const RECEIPT_EXPIRES_AT = "2026-10-31T12:00:00.000+00:00";
+const receiptCandidate = ({ requestId = RECEIPT_REQUEST_ID, authoringPartId = PART_ID,
+  courseRevision = 8, changed = true, studyUnitCount = 2 } = {}) => ({ requestId, authoringPartId,
+  courseRevision, changed, studyUnitCount, createdAt: RECEIPT_SEEN_AT, expiresAt: RECEIPT_EXPIRES_AT });
+const discoveryRead = ({ status = "candidate", candidates = [], expired = [], illegible = 0 } = {}) =>
+  ({ status, candidates, expired, illegible });
+const discoveryArgs = (value) => executeHumanCourseTask({ adapter: value.adapter,
+  principal: PRINCIPAL, name: "materializar_parte", rawArguments: value.args });
+async function discoveryFailure(run) {
+  try {
+    await run;
+  } catch (error) {
+    return error;
+  }
+  throw new Error("A descoberta deveria falhar.");
+}
+
+test("descoberta localiza a tentativa vigente e devolve a recuperação sem escrever", async () => {
+  const adapter = adapterFixture({ discovery: discoveryRead({ candidates: [receiptCandidate()] }) });
+  adapter.publicAppUrl = "https://app.example/";
+  const value = await discoveryArgs({ adapter, args: { recuperacao: { curso: "Curso de Redes",
+    microssequencia: "DNS" } } });
+  assert.equal(value.context.descoberta, "candidate");
+  assert.equal(value.context.criterio, "parte");
+  assert.equal(value.context.candidatos.length, 1);
+  assert.equal(value.context.candidatos[0].tentativa, RECEIPT_REQUEST_ID);
+  assert.equal(value.context.candidatos[0].unidadesMaterializadas, 2);
+  assert.equal(value.context.candidatos[0].mudou, true);
+  assert.deepEqual(value.context.candidatos[0].parte, { posicao: 0, titulo: "Fundamentos",
+    microssequencias: ["DNS"] });
+  assert.deepEqual(value.context.candidatos[0].recuperacao, { courseId: COURSE_ID,
+    operation: "course_write", requestId: RECEIPT_REQUEST_ID });
+  assert.match(value.result, /tentativa vigente/iu);
+  assert.match(value.result, /sem nova escrita/iu);
+  assert.ok(String(value.deepLink).includes(PART_ID), "a Parte localizada é o destino");
+  assert.equal(adapter.calls.length, 0, "a descoberta não materializa");
+  assert.equal(adapter.discoveryCalls.length, 1);
+  assert.equal(adapter.discoveryCalls[0].courseId, COURSE_ID);
+  assert.equal(adapter.discoveryCalls[0].authoringPartId, PART_ID);
+});
+
+test("a referência devolvida confirma o mesmo recibo sem nova escrita", async () => {
+  const adapter = adapterFixture({ discovery: discoveryRead({ candidates: [receiptCandidate()] }),
+    receipt: { status: "confirmed", result: { contract: "aralearn.course-part-materialization.v1",
+      courseId: COURSE_ID, courseRevision: 8, authoringPartId: PART_ID, changed: true,
+      studyUnitCount: 2, idempotent: true } } });
+  const found = await discoveryArgs({ adapter, args: { recuperacao: { curso: "Curso de Redes",
+    microssequencia: "DNS" } } });
+  const confirmed = await discoveryArgs({ adapter, args: { recuperacao:
+    { ...found.context.candidatos[0].recuperacao } } });
+  assert.equal(confirmed.context.recuperacao, "confirmed");
+  assert.equal(confirmed.context.unidadesMaterializadas, 2);
+  assert.equal(confirmed.context.changed, true);
+  assert.equal(adapter.calls.length, 0, "nenhuma escrita foi reenviada");
+  assert.deepEqual(adapter.recoveryCalls, [{ courseId: COURSE_ID, requestId: RECEIPT_REQUEST_ID }]);
+});
+
+test("descoberta com mais de uma tentativa vigente não elege a mais recente", async () => {
+  const adapter = adapterFixture({ discovery: discoveryRead({ status: "ambiguous", candidates: [
+    receiptCandidate({ requestId: "materializacao-original-0009", courseRevision: 9, changed: false,
+      studyUnitCount: 1 }),
+    receiptCandidate({ requestId: "materializacao-original-0008" })] }) });
+  adapter.publicAppUrl = "https://app.example/";
+  const value = await discoveryArgs({ adapter, args: { recuperacao: { curso: "Curso de Redes" } } });
+  assert.equal(value.context.descoberta, "ambiguous");
+  assert.equal(value.context.criterio, "curso");
+  assert.deepEqual(value.context.candidatos.map((item) => item.tentativa),
+    ["materializacao-original-0009", "materializacao-original-0008"]);
+  assert.match(value.result, /não elejo nenhuma/iu);
+  assert.equal(value.deepLink, null, "sem escolha automática não há destino de Parte");
+  assert.equal(adapter.calls.length, 0);
+});
+
+test("descoberta sem tentativa vigente não declara ausência de efeito", async () => {
+  const adapter = adapterFixture({ discovery: discoveryRead({ expired: [{ requestId: "materializacao-original-0006",
+    authoringPartId: PART_ID, createdAt: RECEIPT_SEEN_AT, expiresAt: "2026-10-20T12:00:00.000+00:00" }],
+    illegible: 1 }) });
+  const value = await discoveryArgs({ adapter, args: { recuperacao: { curso: "Curso de Redes",
+    microssequencia: "DNS" } } });
+  assert.equal(value.context.descoberta, "none");
+  assert.deepEqual(value.context.candidatos, []);
+  assert.deepEqual(value.context.expirados.map((item) => item.tentativa), ["materializacao-original-0006"]);
+  assert.equal(value.context.recibosIlegiveis, 1);
+  assert.match(value.result, /não confirma que a escrita terminou sem efeito/iu);
+  assert.match(value.result, /expirado/iu);
+  assert.doesNotMatch(value.result, /sem efeito\./u);
+});
+
+test("localização pelo curso e microssequência usa a mesma referência fechada da recuperação", async () => {
+  const adapter = adapterFixture({ discovery: discoveryRead({ candidates: [receiptCandidate()] }) });
+  const value = await discoveryArgs({ adapter, args: { recuperacao: { curso: "Curso de Redes",
+    microssequencia: "DNS" } } });
+  assert.equal(value.context.candidatos.length, 1);
+  assert.deepEqual(Object.keys(value.context.candidatos[0].recuperacao).sort(),
+    ["courseId", "operation", "requestId"]);
+  assert.equal(value.context.candidatos[0].recuperacao.operation, "course_write");
+  assert.equal(adapter.calls.length, 0);
+  assert.equal(adapter.discoveryCalls[0].authoringPartId, PART_ID);
+});
+
+test("descoberta sem Parte persistida restringe pela microssequência sem esconder as demais", async () => {
+  const adapter = adapterFixture({ discovery: discoveryRead({ candidates: [
+    receiptCandidate({ requestId: "materializacao-outra-0001", authoringPartId: OUTRA_PART_ID })] }) });
+  const value = await discoverHumanCoursePartMaterialization({ adapter, principal: PRINCIPAL,
+    courseId: COURSE_ID, microsequence: { id: "micro-sem-parte", title: "Sem parte" },
+    parts: [{ id: PART_ID, position: 0, title: "Fundamentos",
+      microsequences: [{ id: "micro-dns", title: "DNS" }] }] });
+  assert.equal(value.context.descoberta, "none");
+  assert.equal(value.context.criterio, "microssequencia");
+  assert.equal(value.context.microssequencia, "Sem parte");
+  assert.deepEqual(value.context.candidatos, []);
+  assert.deepEqual(value.context.outrosVigentes, [{ tentativa: "materializacao-outra-0001",
+    revisaoDoCurso: 8 }]);
+  assert.match(value.result, /fora da microssequência informada/u);
+});
+
+test("descoberta é fechada e exclusiva com a recuperação e com a produção", async () => {
+  const invalid = [
+    { recuperacao: {} },
+    { recuperacao: { curso: "Curso de Redes", descoberta: true } },
+    { recuperacao: { curso: "Curso de Redes", unidades: [] } },
+    { recuperacao: { courseId: COURSE_ID, requestId: RECEIPT_REQUEST_ID } },
+    { recuperacao: { curso: "Curso de Redes" }, curso: "Curso de Redes" },
+    { recuperacao: { curso: "Curso de Redes" }, unidades: [] }
+  ];
+  for (const args of invalid) {
+    const adapter = adapterFixture({ discovery: discoveryRead({ candidates: [receiptCandidate()] }) });
+    const error = await discoveryFailure(discoveryArgs({ adapter, args }));
+    assert.ok(["invalid_materialization_recovery", "unknown_human_task_argument",
+      "missing_human_task_argument"].includes(error.code), JSON.stringify(args) + ": " + error.code);
+    assert.equal(adapter.discoveryCalls.length, 0, "a recusa antecede qualquer leitura");
+    assert.equal(adapter.calls.length, 0);
+  }
+});
+
 

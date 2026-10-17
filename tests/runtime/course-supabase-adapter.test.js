@@ -4179,3 +4179,69 @@ test("recuperação da materialização preserva estados ausentes e recusa recib
   assert.equal(network, 0);
 });
 
+test("descoberta da materialização consulta o leitor focal por ator, curso e Parte", async () => {
+  const body = [];
+  const discovery = { contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
+    authoringPartId: PART_ID, status: "candidate", illegible: 0, expired: [],
+    candidates: [{ requestId: "materializacao-original-0001", authoringPartId: PART_ID,
+      courseRevision: 8, changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00",
+      expiresAt: "2026-10-31T12:00:00.000+00:00" }] };
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/discover_course_part_materialization_receipts_for_actor_v1$/u);
+    body.push(JSON.parse(init.body));
+    return json(discovery);
+  });
+  const found = await value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, authoringPartId: PART_ID });
+  assert.equal(found.status, "candidate");
+  assert.deepEqual(found.candidates, discovery.candidates);
+  assert.deepEqual(found.expired, []);
+  assert.equal(found.illegible, 0);
+  assert.deepEqual(body, [{ p_actor_id: USER_ID, p_course_id: COURSE_ID, p_authoring_part_id: PART_ID }]);
+  // Sem Parte conhecida, o recorte é o Curso e o eco permanece nulo.
+  const whole = adapter(async (url, init) => { body.push(JSON.parse(init.body));
+    return json({ ...discovery, authoringPartId: null, status: "none", candidates: [] }); });
+  const empty = await whole.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID });
+  assert.equal(empty.status, "none");
+  assert.deepEqual(body.at(-1), { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_authoring_part_id: null });
+});
+
+test("descoberta da materialização recusa resposta incoerente sem escrever", async () => {
+  const coherent = { contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
+    authoringPartId: PART_ID, status: "candidate", illegible: 0, expired: [],
+    candidates: [{ requestId: "materializacao-original-0001", authoringPartId: PART_ID,
+      courseRevision: 8, changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00",
+      expiresAt: "2026-10-31T12:00:00.000+00:00" }] };
+  for (const override of [
+    { status: "unknown" },
+    { contract: "aralearn.course-part-materialization-receipt.v1" },
+    { courseId: OTHER_COURSE_ID },
+    { authoringPartId: "20000000-0000-4000-8000-000000000009" },
+    { candidates: [] },
+    { status: "ambiguous", candidates: [coherent.candidates[0], coherent.candidates[0]] },
+    { illegible: -1 },
+    { candidates: [{ ...coherent.candidates[0], changed: "sim" }] },
+    { candidates: [{ ...coherent.candidates[0], expiresAt: "2026-10-01T12:00:00.000+00:00" }] },
+    { candidates: [{ ...coherent.candidates[0], extra: 1 }] },
+    { expired: [{ requestId: "materializacao-original-0002",
+      authoringPartId: "20000000-0000-4000-8000-000000000009",
+      createdAt: "2026-10-17T12:00:00.000+00:00", expiresAt: "2026-10-31T12:00:00.000+00:00" }] }
+  ]) {
+    const value = adapter(async () => json({ ...coherent, ...override }));
+    await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+      courseId: COURSE_ID, authoringPartId: PART_ID }),
+    error => error.code === "course_service_unavailable", JSON.stringify(override));
+  }
+  // Identidade inválida é recusada antes de qualquer RPC.
+  let network = 0;
+  const value = adapter(async () => { network += 1; return json({}); });
+  await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, authoringPartId: "não-é-uuid" }),
+  error => error.code === "invalid_materialization_discovery");
+  await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: "não-é-uuid" }), error => error.code === "invalid_materialization_discovery");
+  assert.equal(network, 0);
+});
+
+

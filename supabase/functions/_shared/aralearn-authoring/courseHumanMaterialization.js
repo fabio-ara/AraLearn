@@ -2239,6 +2239,116 @@ export async function resumeHumanCoursePartMaterialization({ adapter, principal,
   throw materializationRecoveryUncertain(courseId, requestId,
     "A consulta do recibo devolveu um estado desconhecido; conserve esta tentativa.");
 }
+const MATERIALIZATION_DISCOVERY_CANDIDATE_LIMIT = 64;
+
+// Identidade humana da Parte a partir do planejamento corrente: posição, título
+// e microssequências. Uma Parte ausente do planejamento permanece sem identidade
+// em vez de ser adivinhada pelo título ou pela data da tentativa.
+function materializationDiscoveryPart(parts, authoringPartId) {
+  const part = (Array.isArray(parts) ? parts : []).find(item => item && item.id === authoringPartId);
+  if (!part) return null;
+  return {
+    posicao: Number.isSafeInteger(part.position) ? part.position : null,
+    titulo: typeof part.title === "string" ? part.title : null,
+    microssequencias: partMicrosequences(part).map(micro => micro?.title)
+      .filter(title => typeof title === "string")
+  };
+}
+
+function materializationDiscoveryUnits(count) {
+  return count === 1 ? "1 unidade" : count + " unidades";
+}
+
+// A microssequência resolvida pertence a uma Parte persistida; o vínculo é a
+// identidade estável da microssequência, nunca o título nem a data da tentativa.
+function materializationDiscoveryCovers(parts, authoringPartId, microsequenceId) {
+  const part = (Array.isArray(parts) ? parts : []).find(item => item && item.id === authoringPartId);
+  return part !== undefined && partMicrosequences(part).some(micro => micro?.id === microsequenceId);
+}
+
+// Descoberta somente-leitura das tentativas de materialização desta Parte. O
+// leitor estreito devolve o que o recibo registra por ator, curso e Parte; a
+// escolha entre tentativas continua sendo da pessoa e a ausência de recibo
+// nunca é declarada como ausência de efeito.
+export async function discoverHumanCoursePartMaterialization({
+  adapter, principal, courseId, authoringPartId = null, microsequence = null, parts = [], deadlineAt = null
+}) {
+  const discovery = await adapter.discoverCoursePartMaterializationReceipts({
+    principal, courseId, authoringPartId, deadlineAt
+  });
+  const identities = discovery.candidates.map(candidate => ({
+    candidate, parte: materializationDiscoveryPart(parts, candidate.authoringPartId)
+  }));
+  // O critério é a Parte informada ou, quando só a intenção é conhecida, o
+  // pertencimento da microssequência à Parte. A data nunca decide sozinha.
+  const criterio = authoringPartId !== null ? "parte" : microsequence === null ? "curso" : "microssequencia";
+  const correlatos = criterio === "microssequencia"
+    ? identities.filter(entry =>
+      materializationDiscoveryCovers(parts, entry.candidate.authoringPartId, microsequence.id))
+    : identities;
+  const restantes = identities.filter(entry => !correlatos.includes(entry));
+  const status = correlatos.length === 0 ? "none" : correlatos.length === 1 ? "candidate" : "ambiguous";
+  const candidato = entry => ({
+    tentativa: entry.candidate.requestId,
+    revisaoDoCurso: entry.candidate.courseRevision,
+    mudou: entry.candidate.changed,
+    unidadesMaterializadas: entry.candidate.studyUnitCount,
+    gravadoEm: entry.candidate.createdAt,
+    expiraEm: entry.candidate.expiresAt,
+    ...(entry.parte === null ? {} : { parte: entry.parte }),
+    // Referência fechada da recuperação existente; a leitura não a aplica.
+    recuperacao: { courseId, operation: "course_write", requestId: entry.candidate.requestId }
+  });
+  const expirado = entry => {
+    const parte = materializationDiscoveryPart(parts, entry.authoringPartId);
+    return { tentativa: entry.requestId, gravadoEm: entry.createdAt, expiraEm: entry.expiresAt,
+      ...(parte === null ? {} : { parte }) };
+  };
+  const escolhida = correlatos.length === 1 ? correlatos[0] : null;
+  const navigation = escolhida === null ? null : createHumanNavigation(adapter, { courseId, relation: "content",
+    target: { kind: "authoring_part", id: escolhida.candidate.authoringPartId } });
+  const detalhe = [
+    criterio !== "microssequencia" || restantes.length === 0 ? null
+      : restantes.length + " tentativa(s) vigente(s) fora da microssequência informada",
+    discovery.expired.length === 0 ? null : discovery.expired.length + " recibo(s) expirado(s) no recorte",
+    discovery.illegible === 0 ? null : discovery.illegible + " recibo(s) ilegível(is) no recorte"
+  ].filter(Boolean);
+  const message = status === "candidate"
+    ? "Localizei a tentativa vigente desta Parte: " +
+      materializationDiscoveryUnits(escolhida.candidate.studyUnitCount) +
+      " na revisão " + escolhida.candidate.courseRevision + " do curso" +
+      (escolhida.candidate.changed ? "" : ", registrada sem alteração de conteúdo") +
+      ". Use a recuperação devolvida para confirmar o efeito sem nova escrita; não reenvie o payload da produção."
+    : status === "ambiguous"
+      ? "Localizei " + correlatos.length + " tentativas vigentes neste recorte e não elejo nenhuma. " +
+        "Escolha pela Parte, pela revisão do curso e pelo conteúdo reconciliado antes de usar uma recuperação."
+      : "Não localizei tentativa vigente neste recorte" +
+        (detalhe.length === 0 ? "" : " (" + detalhe.join("; ") + ")") +
+        ". Isso não confirma que a escrita terminou sem efeito: uma tentativa ainda em processamento não aparece no recibo. " +
+        "Reconcilie o conteúdo focal antes de qualquer nova alteração.";
+  const nextDecision = status === "candidate"
+    ? "Confirme o efeito pela recuperação desta tentativa e continue a produção a partir do conteúdo salvo, sem reaplicar a escrita."
+    : status === "ambiguous"
+      ? "Escolha a tentativa pela Parte, pela revisão e pelo conteúdo; não presuma a mais recente nem reaplique a escrita."
+      : "Releia o conteúdo focal com retomar_curso ou preparar_revisao; se a tentativa ainda puder estar em processamento, repita esta descoberta antes de qualquer nova alteração.";
+  return {
+    result: message,
+    navigation,
+    nextDecision,
+    context: {
+      descoberta: status,
+      criterio,
+      ...(microsequence === null ? {} : { microssequencia: microsequence.title }),
+      candidatos: correlatos.slice(0, MATERIALIZATION_DISCOVERY_CANDIDATE_LIMIT).map(candidato),
+      ...(restantes.length === 0 ? {} : { outrosVigentes: restantes
+        .slice(0, MATERIALIZATION_DISCOVERY_CANDIDATE_LIMIT)
+        .map(entry => ({ tentativa: entry.candidate.requestId, revisaoDoCurso: entry.candidate.courseRevision })) }),
+      ...(discovery.expired.length === 0 ? {} : { expirados: discovery.expired
+        .slice(0, MATERIALIZATION_DISCOVERY_CANDIDATE_LIMIT).map(expirado) }),
+      ...(discovery.illegible === 0 ? {} : { recibosIlegiveis: discovery.illegible })
+    }
+  };
+}
 
 // Recuperação curta e acionável para o retorno de preparar_materializacao: nomeia
 // o ensino ausente ou o uso prematuro no percurso, sem repetir códigos, campos ou
