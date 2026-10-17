@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.118] - 2026-10-17
+
+### Corrigido
+
+- Ao atualizar a Explicação que já está aberta, a tabela da leitura conserva também a rolagem horizontal: o quadro volta à mesma coluna em que a pessoa estava, junto do corpo e do foco que já eram preservados.
+- Uma atualização que reabre a Explicação não descarta mais a posição guardada quando a folha já está fora do documento.
+
 ## [0.0.117] - 2026-10-16
 
 ### Corrigido
