@@ -12,8 +12,8 @@ import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-aut
 import { resolveHumanCourseContext } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js";
 
 import { materializeHumanCoursePart as materializeCompletePart, humanMaterializationUnitPlan,
-  preflightHumanCourseMaterialization, reconcileHumanExplanation, humanMaterializationRecovery,
-  discoverHumanCoursePartMaterialization } from
+  preflightHumanCourseMaterialization, reconcileHumanExplanation,
+  humanMaterializationRecovery } from
   "../../supabase/functions/_shared/aralearn-authoring/courseHumanMaterialization.js";
 import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
