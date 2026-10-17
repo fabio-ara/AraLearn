@@ -101,6 +101,29 @@ function responseReturns(response) {
   return [...new Set(authoredResponseFeedback(response).map(({ text }) => text))];
 }
 
+// A ordenação apresenta os próprios alvos como valores reordenáveis. A
+// projeção semântica os oculta para evitar gabaritos, mas o renderer os mostra.
+// Só recupere esses labels depois que a relação completa provar que cada
+// resposta ocorre uma vez no campo e materializa um controle visível. Nenhum
+// id, metadado ou valor solto de target entra no material apresentado.
+function presentedOrderingLabels(studyUnit) {
+  if (!plain(studyUnit) || studyUnit.response?.package !== "aralearn.response.ordering") return [];
+  const targets = studyUnit.response?.data?.targets;
+  if (!Array.isArray(targets) || targets.length === 0) return [];
+  try {
+    if (RESOURCE_PACKAGE_REGISTRY.validateStudyUnitRelations(studyUnit).length) return [];
+    const instances = new Map((studyUnit.content ?? []).filter(plain).map(instance => [instance.id, instance]));
+    return [...new Set(targets.map(target => {
+      const instance = instances.get(target?.targetInstanceId);
+      if (!plain(instance)) return "";
+      const field = String(target?.targetPath ?? "").split(":", 1)[0].trim();
+      return field && typeof target?.answer === "string"
+        ? RESOURCE_PACKAGE_REGISTRY.practiceValueLabel(instance, field, target.answer).trim()
+        : "";
+    }).filter(Boolean))];
+  } catch { return []; }
+}
+
 // Resposta apresentada: pergunta e itens pela projeção acessível do pacote mais
 // os retornos por alternativa.
 function presentedResponse(response) {
@@ -117,7 +140,8 @@ function presentedStudyUnit(content) {
   return [
     ...(Array.isArray(visible?.content) ? visible.content : []).flatMap(instance => presentedInstance(instance, "content")),
     ...(visible?.response ? presentedResponse(visible.response) : []),
-    ...(Array.isArray(visible?.feedback) ? visible.feedback : []).flatMap(instance => presentedInstance(instance, "feedback"))
+    ...(Array.isArray(visible?.feedback) ? visible.feedback : []).flatMap(instance => presentedInstance(instance, "feedback")),
+    ...presentedOrderingLabels(content)
   ];
 }
 
@@ -174,6 +198,9 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
     const visible = RESOURCE_PACKAGE_REGISTRY.prepareStudyUnitForSemantics(content);
     studentContent = (visible?.content ?? []).map(instance => ({ component: instance.package,
       text: RESOURCE_PACKAGE_REGISTRY.accessibleText(instance, "content").trim() }));
+    studentContent.push(...presentedOrderingLabels(content).map(value => ({
+      component: content.response.package, text: value
+    })));
   } catch {
     add("pedagogical_student_view_unavailable", "content", "Não foi possível reconstruir o enunciado com as respostas ocultas. Corrija os alvos antes da inspeção.");
   }
