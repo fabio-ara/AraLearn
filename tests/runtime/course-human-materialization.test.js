@@ -3195,6 +3195,24 @@ test("tentativa fora da primeira página é alcançada pela continuação e recu
 });
 
 test("descoberta é fechada e exclusiva com a recuperação e com a produção", async () => {
+  const invalid = [
+    { curso: "Curso de Redes", descoberta: true },
+    { curso: "Curso de Redes", continuacao: 7 },
+    { curso: "Curso de Redes", unidades: [] },
+    { courseId: COURSE_ID, requestId: RECEIPT_REQUEST_ID },
+    {}
+  ];
+  for (const args of invalid) {
+    const adapter = adapterFixture({ discovery: paginaDescoberta({ items: [itemDescoberto()] }) });
+    const error = await discoveryFailure(descoberta(adapter, args));
+    assert.ok(["invalid_materialization_recovery", "unknown_human_task_argument"].includes(error.code),
+      JSON.stringify(args) + ": " + error.code);
+    assert.equal(adapter.discoveryCalls.length, 0, "a recusa antecede qualquer leitura");
+    assert.equal(adapter.calls.length, 0);
+  }
+});
+
+
 test("páginas posteriores sem a vigente não confirmam nem inventam recuperação", async () => {
   const vencido = (index) => itemDescoberto({
     requestId: "materializacao-vencida-" + String(index).padStart(4, "0") + "-1", expired: true });
@@ -3219,21 +3237,4 @@ test("páginas posteriores sem a vigente não confirmam nem inventam recuperaç�
   assert.match(later.result, /não está nesta página/iu);
   assert.doesNotMatch(later.result, /recuperação devolvida/iu);
   assert.equal(later.deepLink, null);
-});
-
-  const invalid = [
-    { curso: "Curso de Redes", descoberta: true },
-    { curso: "Curso de Redes", continuacao: 7 },
-    { curso: "Curso de Redes", unidades: [] },
-    { courseId: COURSE_ID, requestId: RECEIPT_REQUEST_ID },
-    {}
-  ];
-  for (const args of invalid) {
-    const adapter = adapterFixture({ discovery: paginaDescoberta({ items: [itemDescoberto()] }) });
-    const error = await discoveryFailure(descoberta(adapter, args));
-    assert.ok(["invalid_materialization_recovery", "unknown_human_task_argument"].includes(error.code),
-      JSON.stringify(args) + ": " + error.code);
-    assert.equal(adapter.discoveryCalls.length, 0, "a recusa antecede qualquer leitura");
-    assert.equal(adapter.calls.length, 0);
-  }
 });

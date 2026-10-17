@@ -4,6 +4,8 @@ import fs from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
 import { definition } from "../support/authoringMaterializationPglite.js";
+import { CourseSupabaseAdapter } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 // Integração SQL da descoberta paginada de recibo sobre um Postgres real
 // embarcado. Auth e acesso corrente são stubs explícitos: esta prova cobre a
@@ -197,22 +199,6 @@ test("recibo expirado, ilegível e continuação inválida não são confirmados
 });
 
 test("leitura exige o helper de serviço e o dono do curso; aqui a negação é um stub", async () => {
-test("recibo de outro ator no mesmo curso não aparece nem altera os totais do dono", async () => {
-  const { db } = await database();
-  await insert(db, [row({ request: REQUEST }),
-    row({ actor: OTHER_ACTOR, request: "materializacao-de-outro-ator-0001" }),
-    row({ actor: OTHER_ACTOR, request: "materializacao-de-outro-ator-0002",
-      expires: "- interval '1 hour'" })]);
-  const value = await discovery(db, ACTOR, COURSE);
-  assert.deepEqual(value.items.map(item => item.requestId), [REQUEST]);
-  assert.equal(value.candidateCount, 1);
-  assert.equal(value.expiredCount, 0, "o acervo alheio não entra no recorte do dono");
-  assert.equal(value.illegible, 0);
-  assert.equal(value.hasMore, false);
-  await db.close();
-});
-  const { db } = await database();
-  await insert(db, [row({ request: REQUEST })]);
   await assert.rejects(() => discovery(db, OTHER_ACTOR, COURSE), /owner denied|42501/u);
   await assert.rejects(() => discovery(db, ACTOR, FOREIGN_COURSE), /owner denied|42501/u);
   await db.exec("select set_config('test.denied','service',false)");
@@ -240,3 +226,21 @@ test("somente service_role executa o leitor e a função é security definer com
   assert.ok(signature.proconfig.some(item => item.startsWith("search_path=")), "o search_path é fixo na definição");
   await db.close();
 });
+
+
+test("recibo de outro ator no mesmo curso não aparece nem altera os totais do dono", async () => {
+  const { db } = await database();
+  await insert(db, [row({ request: REQUEST }),
+    row({ actor: OTHER_ACTOR, request: "materializacao-de-outro-ator-0001" }),
+    row({ actor: OTHER_ACTOR, request: "materializacao-de-outro-ator-0002",
+      expires: "- interval '1 hour'" })]);
+  const value = await discovery(db, ACTOR, COURSE);
+  assert.deepEqual(value.items.map(item => item.requestId), [REQUEST]);
+  assert.equal(value.candidateCount, 1);
+  assert.equal(value.expiredCount, 0, "o acervo alheio não entra no recorte do dono");
+  assert.equal(value.illegible, 0);
+  assert.equal(value.hasMore, false);
+  await db.close();
+});
+  const { db } = await database();
+  await insert(db, [row({ request: REQUEST })]);
