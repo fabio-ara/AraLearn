@@ -50,11 +50,33 @@ function microsequence() {
     explanation: explanation(), contentReview: { state: "draft" } };
 }
 
+function withoutPlanContentReviews(value) {
+  const result = structuredClone(value);
+  for (const moduleValue of result.plan.curriculum.modules) {
+    for (const lesson of moduleValue.lessons) {
+      for (const item of lesson.microsequences) delete item.contentReview;
+    }
+  }
+  for (const part of result.plan.parts) {
+    for (const item of part.microsequences) delete item.contentReview;
+  }
+  return result;
+}
+
 function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false } = {}) {
   const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize, multibyte));
-  const calls = { units: [], reviews: [], inspections: [], annotations: [], sources: [] };
+  const calls = { units: [], reviews: [], inspections: [], annotations: [], sources: [],
+    instructionalPlans: [], reviewPlans: [] };
+  const totals = { instructionalPlans: 0, reviewPlans: 0 };
+  const plan = { courseRevision: COURSE.revision, plan: { title: TITLE, objective: "Objetivo sintético",
+    audience: "Turma sintética", declaredPrerequisites: [], curriculumMapStatus: "approved",
+    instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
+    curriculum: { modules: [{ id: "module-1", title: "Módulo", lessons: [
+      { id: "lesson-1", title: "Lição", microsequences: [microsequence()] }] }] },
+    parts: [{ id: PART, position: 0, title: "Parte única", intent: "Cobrir protocolos.",
+      microsequences: [microsequence()] }] } };
   const adapter = {
-    calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
+    calls, totals, plan, revision: COURSE.revision, publicAppUrl: "https://app.example/",
     // Versão independente do conjunto de observações: por contrato do banco ela não
     // pertence à revisão do curso e precisa invalidar qualquer reuso por conta própria.
     annotationSetVersion: 1,
@@ -63,12 +85,12 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
     async listCourses() { return { items: [{ courseId: COURSE.id, title: TITLE }], hasMore: false, nextCursor: null }; },
     async getCourse({ courseId }) { return { courseId, revision: adapter.revision, title: TITLE }; },
-    async getCourseInstructionalPlan() { return { courseRevision: adapter.revision, plan: { title: TITLE,
-      curriculumMapStatus: "approved", instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
-      curriculum: { modules: [{ id: "module-1", title: "Módulo", lessons: [
-        { id: "lesson-1", title: "Lição", microsequences: [microsequence()] }] }] },
-      parts: [{ id: PART, position: 0, title: "Parte única", intent: "Cobrir protocolos.",
-        microsequences: [microsequence()] }] } }; },
+    async getCourseInstructionalPlan(input) { calls.instructionalPlans.push(input);
+      totals.instructionalPlans += 1;
+      return { ...structuredClone(plan), courseRevision: adapter.revision }; },
+    async getCourseReviewPlan(input) { calls.reviewPlans.push(input);
+      totals.reviewPlans += 1;
+      return withoutPlanContentReviews({ ...plan, courseRevision: adapter.revision }); },
     async getAuthoringProcessPreferences() { return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
       updatedAt: null, preferences: defaultAuthoringProcessPreferences() }; },
     async getCourseContentReview(input) { calls.reviews.push(input);
@@ -115,6 +137,7 @@ async function readAll(adapter, baseArgs) {
   const pages = [];
   const perCallReviews = [];
   const perCallInspections = [];
+  const perCallReviewPlans = [];
   const perPageFragments = [];
   let cursor;
   let literal = "";
@@ -127,6 +150,7 @@ async function readAll(adapter, baseArgs) {
     const response = await execute(adapter, { ...baseArgs, ...(cursor === undefined ? {} : { continuacao: cursor }) });
     perCallReviews.push(studyUnitReviews(adapter.calls));
     perCallInspections.push(allInspections(adapter.calls));
+    perCallReviewPlans.push(adapter.calls.reviewPlans.length);
     const page = response.context;
     if (page.fragmento) {
       fragments += 1;
@@ -150,7 +174,7 @@ async function readAll(adapter, baseArgs) {
     if (!page.temMais) break;
   }
   assert.equal(perPageFragments.length, pages.length, "cada página lógica é contabilizada uma vez");
-  return { pages, perCallReviews, perCallInspections, perPageFragments, fragments };
+  return { pages, perCallReviews, perCallInspections, perCallReviewPlans, perPageFragments, fragments };
 }
 
 const pageUnitIds = pages => pages.flatMap(page => (page.studyUnits ?? []).map(entry => entry.studyUnit.id));
@@ -263,9 +287,9 @@ test("o cap de bytes conta UTF-8 e separa identidades exatas", async () => {
 // fragmentos do mesmo cursor não pode reexecutar o fanout (plano, fontes,
 // observações, alvos) uma vez por fragmento. O recorte de 12_000 caracteres é o
 // transporte; ele não define quanto trabalho de leitura a página exige.
-test("consumir todos os fragmentos não repete o fanout por fragmento", async () => {
+test("consumir todos os fragmentos não repete a revisão global por fragmento", async () => {
   const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
-  const { pages, perCallReviews, perCallInspections, fragments } = await readAll(adapter, { unidades: [1] });
+  const { pages, perCallReviews, perCallInspections, perCallReviewPlans, fragments } = await readAll(adapter, { unidades: [1] });
   assert.ok(fragments > 1, `a página lógica precisa de mais de um fragmento, veio ${fragments}`);
   assert.equal(pages.length, 1);
   // Um fanout lê cada alvo da página uma vez: a unidade selecionada e a
@@ -280,6 +304,10 @@ test("consumir todos os fragmentos não repete o fanout por fragmento", async ()
   assert.equal(totalInspections, perCallInspections[0],
     `o fanout de inspeção ocorre uma vez por página lógica; veio ${totalInspections} em ${fragments} fragmentos`);
   assert.ok(perCallInspections[0] >= 2, "a página audita a unidade e a Explicação da microssequência");
+  assert.equal(adapter.totals.instructionalPlans, 0,
+    "as continuações não chamam o plano integral com avaliação global de revisão");
+  assert.equal(perCallReviewPlans.reduce((total, count) => total + count, 0), fragments,
+    "cada fragmento relê somente a projeção estrutural necessária ao digest");
   assert.equal(pageUnitIds(pages).join(","), "unit-1");
 });
 
@@ -397,4 +425,82 @@ test("reuso não é servido quando o acesso ao curso é revogado", async () => {
     hasMore: false, nextCursor: null });
   const recovered = await execute(adapter, { unidades: [1], continuacao: cursor });
   assert.ok(recovered.context.fragmento, "a leitura autorizada volta a entregar o recorte materializado");
+});
+
+test("projeção estrutural entrega o mesmo contexto nos quatro seletores sem plano integral", async () => {
+  const cases = [
+    { name: "curso", args: {} },
+    { name: "parte", args: { parte: 1 } },
+    { name: "microssequência", args: { microssequencia: MS_TITLE } },
+    { name: "unidades", args: { unidades: [1] } }
+  ];
+  for (const current of cases) {
+    const optimized = createAdapter();
+    const full = createAdapter();
+    delete full.adapter.getCourseReviewPlan;
+    const projected = await execute(optimized.adapter, current.args);
+    const complete = await execute(full.adapter, current.args);
+    assert.deepEqual(projected.context, complete.context, `${current.name}: contexto idêntico`);
+    assert.equal(optimized.adapter.totals.instructionalPlans, 0,
+      `${current.name}: não chama o plano com revisão global`);
+    assert.equal(optimized.adapter.totals.reviewPlans, 1,
+      `${current.name}: uma projeção estrutural por requisição`);
+    assert.equal(full.adapter.totals.instructionalPlans, 1,
+      `${current.name}: o controle negativo exercita o caminho integral`);
+  }
+});
+
+test("corpo ou dependência da Explicação muda sem revision e invalida o reuso", async () => {
+  const mutations = [
+    {
+      name: "corpo",
+      dependency: false,
+      mutate: (plan) => {
+        plan.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation.content[0].data.text =
+          "Corpo focal materialmente alterado sem nova revisão do curso.";
+      }
+    },
+    {
+      name: "dependência",
+      dependency: true,
+      mutate: (plan) => {
+        plan.plan.curriculum.modules[0].lessons[0].microsequences[0].dependencyMicrosequenceIds = ["ms-base"];
+        plan.plan.parts[0].microsequences[0].dependencyMicrosequenceIds = ["ms-base"];
+      }
+    }
+  ];
+  for (const current of mutations) {
+    const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+    const base = microsequence();
+    base.id = "ms-base";
+    base.title = "Base necessária";
+    base.position = 1;
+    adapter.plan.plan.curriculum.modules[0].lessons[0].microsequences.push(base);
+    const first = await execute(adapter, { unidades: [1] });
+    const cursor = first.context.continuacao;
+    adapter.reset();
+    const reused = await execute(adapter, { unidades: [1], continuacao: cursor });
+    assert.equal(adapter.calls.reviews.length, 0, "sem mudança, o material da página é reutilizado");
+    assert.equal(reused.context.fragmento.inicio, first.context.fragmento.fim);
+
+    current.mutate(adapter.plan);
+    assert.equal(adapter.revision, COURSE.revision, "o discriminante não incrementa a revisão do curso");
+    adapter.reset();
+    if (current.dependency) {
+      await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),
+        error => error.status === 409 && error.code === "human_read_context_changed");
+    } else {
+      const recomposed = await execute(adapter, { unidades: [1], continuacao: cursor });
+      assert.equal(recomposed.context.fragmento.inicio, reused.context.fragmento.inicio,
+        "o corpo não exibido não muda o transporte, mas o digest é conferido");
+    }
+    assert.ok(adapter.calls.reviews.length > 0, "o digest invalidado força recompor o recorte");
+    assert.equal(adapter.totals.instructionalPlans, 0,
+      "a invalidação usa a projeção estrutural, não a avaliação global");
+    if (current.dependency) {
+      const after = await readAll(adapter, { unidades: [1] });
+      assert.match(JSON.stringify(after.pages[0].plan), /Base necessária/u,
+        "a dependência alterada sem revisão aparece no plano focal recomposto");
+    }
+  }
 });

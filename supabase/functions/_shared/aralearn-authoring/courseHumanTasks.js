@@ -2471,7 +2471,7 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
   };
 }
 
-async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [] }) {
+async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [], planReader = null }) {
   return await resolveHumanCourseContext({
     adapter,
     principal,
@@ -2482,6 +2482,7 @@ async function resolveTaskContext({ adapter, principal, args, deadlineAt, units 
     microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null,
     studyUnits: units,
     source: optionalReference(args.fonte, "fonte") ?? null,
+    planReader,
     deadlineAt
   });
 }
@@ -3350,10 +3351,23 @@ function reviewPageContext({ args, selected, resolved, continuation, unitPage, o
   return { contextObject, coverage };
 }
 
+// A inspeção usa a projeção estrutural do mesmo plano, sem avaliar a base de
+// revisão de todo o curso. Adaptadores antigos mantêm o leitor completo como
+// compatibilidade de teste; o adapter de produção oferece a leitura focal.
+function reviewPlanReader(adapter) {
+  if (typeof adapter?.getCourseReviewPlan === "function") {
+    return adapter.getCourseReviewPlan.bind(adapter);
+  }
+  return typeof adapter?.getCourseInstructionalPlan === "function"
+    ? adapter.getCourseInstructionalPlan.bind(adapter) : null;
+}
+
 // O plano do recorte é lido uma vez por requisição e conferido contra a revisão pedida.
 async function ensureReviewPlan({ adapter, principal, resolved, deadlineAt }) {
   if (resolved.plan) return resolved.plan;
-  resolved.plan = await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
+  const readPlan = reviewPlanReader(adapter);
+  if (!readPlan) fail("course_service_unavailable", "O leitor do planejamento está indisponível.", null, 503);
+  resolved.plan = await readPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
   if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
   return resolved.plan;
 }
@@ -3434,7 +3448,8 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   adapter, principal, args, deadlineAt
 }) => {
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units });
+  const planReader = reviewPlanReader(adapter);
+  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units, planReader });
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   if (args.comparacao !== undefined) {
     const reference = normalizeObservationComparisonReference(args.comparacao);
@@ -3462,8 +3477,9 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   const reviewMicrosequences = focalMicrosequences(resolved, unitPage.items);
   const identity = reviewPageIdentity({ principal, courseId: resolved.course.id,
     revision: resolved.course.revision, continuation });
-  // Reuso e materialização compartilham a resolução acima: o fragmento já lido não repete
-  // autorização, plano nem página de unidades, e um descarte só custa o fanout por alvo.
+  // Reuso e materialização compartilham a resolução acima. O fragmento confirma a
+  // projeção estrutural e a página por digest, sem reavaliar a revisão global de cada
+  // microssequência; o material de observações, inspeção e Fontes fica por página.
   const reused = await reusedPreparedReviewPage({ adapter, principal, args, identity, continuation,
     resolved, unitPage, reviewMicrosequences, units, deadlineAt });
   if (reused) return reused;

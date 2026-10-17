@@ -67,7 +67,8 @@ const REQUIRED_FEATURES = Object.freeze([
   "course-source-atomic-bundle-v1",
   "course-authoring-part-materialization-receipt-v1",
   "course-authoring-part-materialization-receipt-discovery-v1",
-  "contextual-design-command-atomic-batch-v1"
+  "contextual-design-command-atomic-batch-v1",
+  "course-review-plan-projection-v1"
 ]);
 
 const CANONICAL_RUNTIME_FILES = Object.freeze([
@@ -305,7 +306,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20261017130000" ||
+  if (manifest.schemaRevision !== "20261017140000" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
@@ -541,6 +542,7 @@ async function validateRuntimeFiles() {
   for (const required of [
     "aralearn.course-instructional-plan.v3",
     "get_owned_course_instructional_plan_for_actor_v5",
+    "get_owned_course_review_plan_for_actor_v1",
     "save_course_curricular_map_for_actor_v1",
     "materialize_course_authoring_part_for_actor_v2",
     "p_complete: complete", "p_placements: normalizedPlacements",

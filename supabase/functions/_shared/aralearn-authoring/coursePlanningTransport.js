@@ -1,6 +1,7 @@
 import { AuthoringApiError } from "./errors.js";
 
 export const PLANNING_TRANSPORT_ENCODING = "curriculum-backed-microsequence-v1";
+export const REVIEW_PLANNING_TRANSPORT_ENCODING = "curriculum-backed-review-microsequence-v1";
 
 // Campos que o lote compacto carrega. Qualquer outro campo é recusado, para não
 // descartar em silêncio uma variante futura do produtor.
@@ -19,10 +20,16 @@ const PART_FIELD_FROM_CURRICULUM = Object.freeze({
   role: "role"
 });
 
-const EXPANDED_PART_MICROSEQUENCE_KEYS = Object.freeze(Object.keys({
-  id: 0, productionPosition: 0, title: 0, goal: 0, explanationPlan: 0, explanation: 0,
-  contentReview: 0, role: 0, curriculumPath: 0, studyUnitCount: 0
-}));
+// A leitura de revisão conserva todos os inputs semânticos do plano, inclusive
+// explicação e dependências, mas não carrega a avaliação global de contentReview.
+// O estado de revisão continua sendo lido por alvo em readReviewContext.
+const REVIEW_PART_FIELD_FROM_CURRICULUM = Object.freeze({
+  title: "title",
+  goal: "objective",
+  explanationPlan: "explanationPlan",
+  explanation: "explanation",
+  role: "role"
+});
 
 function isPlainRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -62,11 +69,11 @@ function requiredOwn(source, key, detail) {
   return source[key];
 }
 
-function orderedRecord(entries) {
+function orderedRecord(entries, expectedLimit) {
   const ordered = entries.slice().sort(([left], [right]) => compareJsonbKeys(left, right));
   const record = {};
   for (const [key, value] of ordered) setOwn(record, key, value);
-  if (Object.keys(record).length !== EXPANDED_PART_MICROSEQUENCE_KEYS.length) {
+  if (Object.keys(record).length !== expectedLimit) {
     throw failure("O transporte compacto não reconstituiu todos os campos da microssequência.");
   }
   return record;
@@ -75,8 +82,8 @@ function orderedRecord(entries) {
 // Expande o transporte compacto antes de validar, consumir e digerir. Não existe
 // fallback: marca ausente, referência quebrada ou campo obrigatório ausente falham
 // claramente; valores nulos vindos do SQL são preservados.
-export function expandPlanningTransport(value) {
-  if (!isPlainRecord(value) || value.payloadEncoding !== PLANNING_TRANSPORT_ENCODING) {
+function expandTransport(value, encoding, fieldsFromCurriculum) {
+  if (!isPlainRecord(value) || value.payloadEncoding !== encoding) {
     throw failure("O planejamento recebido não usa o transporte compacto esperado.");
   }
   const plan = value.plan;
@@ -132,11 +139,11 @@ export function expandPlanningTransport(value) {
         ["studyUnitCount", requiredOwn(entry, "studyUnitCount",
           "O lote compacto omite a contagem de unidades.")]
       ];
-      for (const [target, from] of Object.entries(PART_FIELD_FROM_CURRICULUM)) {
+      for (const [target, from] of Object.entries(fieldsFromCurriculum)) {
         values.push([target, requiredOwn(source, from,
           "O currículo compacto omite o campo " + from + " da microssequência.")]);
       }
-      return orderedRecord(values);
+      return orderedRecord(values, 4 + Object.keys(fieldsFromCurriculum).length);
     });
     return { ...part, microsequences };
   });
@@ -145,4 +152,12 @@ export function expandPlanningTransport(value) {
   const rest = { ...value };
   delete rest.payloadEncoding;
   return { ...rest, plan: { ...plan, parts } };
+}
+
+export function expandPlanningTransport(value) {
+  return expandTransport(value, PLANNING_TRANSPORT_ENCODING, PART_FIELD_FROM_CURRICULUM);
+}
+
+export function expandReviewPlanningTransport(value) {
+  return expandTransport(value, REVIEW_PLANNING_TRANSPORT_ENCODING, REVIEW_PART_FIELD_FROM_CURRICULUM);
 }

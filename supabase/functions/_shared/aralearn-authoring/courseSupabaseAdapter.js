@@ -12,7 +12,7 @@ import {
   normalizeCourseAuthoringProfileChange
 } from "../aralearn/runtime/domain/authoringProfiles.js";
 import { AuthoringApiError, withDependencyDiagnostic, closedAuthoringRpcName } from "./errors.js";
-import { expandPlanningTransport } from "./coursePlanningTransport.js";
+import { expandPlanningTransport, expandReviewPlanningTransport } from "./coursePlanningTransport.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
   from "../aralearn/runtime/domain/courseContentReview.js";
@@ -2262,6 +2262,34 @@ export class CourseSupabaseAdapter {
         503,
         "course_service_unavailable",
         "O serviço devolveu um planejamento curricular inválido."
+      );
+    }
+    const mapApprovalReference = result.plan.curriculumMapStatus === "absent" ? null
+      : createMapApprovalReference({ principal, courseId, basis: result.approvalBasis });
+    return withDeepLink({ ...result, mapApprovalReference }, this.publicAppUrl, "planning");
+  }
+
+  async getCourseReviewPlan({
+    principal,
+    courseId,
+    deadlineAt = null
+  }) {
+    const result = expandReviewPlanningTransport(first(await this.rpc("get_owned_course_review_plan_for_actor_v1", {
+      p_actor_id: principal.actorId,
+      p_course_id: courseId
+    }, { deadlineAt })));
+    if (!jsonRecord(result) ||
+        result.contract !== "aralearn.course-instructional-plan.v3" ||
+        result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
+        !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
+        !jsonRecord(result.plan.curriculum) ||
+        !Array.isArray(result.plan.curriculum.modules) ||
+        !Array.isArray(result.plan.curriculumScopeItems) ||
+        !Array.isArray(result.plan.instructionalAnalysisUnits)) {
+      throw new AuthoringApiError(
+        503,
+        "course_service_unavailable",
+        "O serviço devolveu um plano estrutural de revisão inválido."
       );
     }
     const mapApprovalReference = result.plan.curriculumMapStatus === "absent" ? null

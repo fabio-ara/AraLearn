@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { expandPlanningTransport, PLANNING_TRANSPORT_ENCODING } from "../../supabase/functions/_shared/aralearn-authoring/coursePlanningTransport.js";
+import { expandPlanningTransport, expandReviewPlanningTransport, PLANNING_TRANSPORT_ENCODING,
+  REVIEW_PLANNING_TRANSPORT_ENCODING } from "../../supabase/functions/_shared/aralearn-authoring/coursePlanningTransport.js";
 
 const COURSE = "10000000-0000-4000-8000-000000000001";
 const PLAN = "20000000-0000-4000-8000-000000000001";
@@ -38,6 +39,17 @@ function compactPayload(options) {
     "\"parts\":[{\"id\":\"" + PART + "\",\"position\":0,\"progress\":{\"state\":\"planned\"}," +
     "\"microsequences\":[" + entries + "]}]" + extra + "}," +
     "\"approvalBasis\":{\"courseRevision\":7,\"planVersion\":1,\"basisHash\":\"00\"}}");
+}
+
+function reviewCompactPayload(options) {
+  const payload = compactPayload(options);
+  payload.payloadEncoding = REVIEW_PLANNING_TRANSPORT_ENCODING;
+  for (const moduleValue of payload.plan.curriculum.modules) {
+    for (const lesson of moduleValue.lessons) {
+      for (const item of lesson.microsequences) delete item.contentReview;
+    }
+  }
+  return payload;
 }
 
 test("reconstitui o lote na ordem do jsonb sem tocar no restante da arvore", () => {
@@ -99,4 +111,18 @@ test("preserva subarvores desconhecidas com chaves unicode, __proto__ e construc
   assert.equal(expanded.plan.extra.ação, "acento");
   assert.equal(({}).polluted, undefined);
   assert.equal(Object.getPrototypeOf(extraValue), Object.prototype);
+});
+
+test("reconstitui a leitura de revisão sem exigir ou inventar contentReview global", () => {
+  const expanded = expandReviewPlanningTransport(reviewCompactPayload());
+  const part = expanded.plan.parts[0].microsequences[0];
+  assert.deepStrictEqual(Object.keys(part), ["id", "goal", "role", "title", "explanation",
+    "curriculumPath", "studyUnitCount", "explanationPlan", "productionPosition"]);
+  assert.equal(Object.hasOwn(part, "contentReview"), false);
+  assert.deepStrictEqual(part.explanation, { title: "Explicacao ms-1", content: [] });
+  assert.deepStrictEqual(part.explanationPlan, { purpose: "Plano ms-1" });
+  assert.throws(() => expandPlanningTransport(reviewCompactPayload()),
+    (error) => error.code === "course_service_unavailable" && /transporte compacto esperado/u.test(error.message));
+  assert.throws(() => expandReviewPlanningTransport(compactPayload()),
+    (error) => error.code === "course_service_unavailable" && /transporte compacto esperado/u.test(error.message));
 });

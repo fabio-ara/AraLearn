@@ -1087,7 +1087,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "function:private.build_course_instructional_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_compact boolean)",
+      "object": "function:private.build_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_compact boolean, p_include_content_review boolean)",
       "caseId": "course-authoring-experience"
     },
     {
@@ -2028,6 +2028,10 @@
     },
     {
       "object": "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)",
       "caseId": "course-authoring-experience"
     },
     {

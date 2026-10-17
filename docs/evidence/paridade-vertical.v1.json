@@ -189,7 +189,8 @@
           "empty-practice-variation-dimensions-v1",
           "contextual-design-writer-edges-v1",
           "contextual-design-course-scope-applications-v1",
-          "contextual-design-command-atomic-batch-v1"
+          "contextual-design-command-atomic-batch-v1",
+          "course-review-plan-projection-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_design_parameter_definitions|private\\.course_design_parameter_assignments|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_assignments|private\\.course_component_policy_assignments)$",
@@ -214,8 +215,9 @@
         "database": [
           "function:private.course_pedagogical_basis_v1(p_course_id uuid, p_target_kind text, p_target_id text)",
           "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)",
-          "function:private.build_course_instructional_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_compact boolean)",
-          "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)"
+          "function:private.build_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_compact boolean, p_include_content_review boolean)",
+          "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)",
+          "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)"
           ,"function:private.course_instructional_command_bytes_limit_v1()"
         ]
       },
@@ -387,6 +389,10 @@
         {
           "path": "supabase/migrations/20261017124500_materialization_receipt_discovery.sql",
           "token": "discover_course_part_materialization_receipts_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20261017140000_review_plan_focal_read.sql",
+          "token": "get_owned_course_review_plan_for_actor_v1"
         }
       ],
       "routes": [
@@ -481,7 +487,10 @@
         "tests/runtime/course-materialization-recovery.test.js",
         "tests/runtime/course-materialization-receipt-pglite.test.js",
         "tests/runtime/course-human-navigation.test.js",
-        "tests/runtime/course-authoring-route.test.js"
+        "tests/runtime/course-authoring-route.test.js",
+        "tests/runtime/course-planning-transport.test.js",
+        "tests/runtime/course-planning-transport-pglite.test.js",
+        "tests/runtime/course-review-read-fanout-incident.test.js"
       ],
       "justification": "A interface e os dois transportes operam o mesmo curso vivo. O mapa curricular global precede partes operacionais, configuração corrente e materialização incremental. Expansão do mapa, folhas de contexto e seleção vertical preservam a leitura; a seleção não cria parte. Dividir, reunir e reordenar partes reutiliza o escritor com revisão e recibo, preservando currículo e aplicações históricas. Ramos podem ser incluídos, editados, movidos, duplicados ou removidos por intenção expressa, mantendo descendentes e vínculos úteis; dependência sobrevivente impede remoção incompatível. Reordenar unidades exige a seleção completa e conserva suas identidades. A aprovação do mapa usa referência à versão persistida inspecionada e não declara revisão de conteúdo. A base explicativa pode ser salva antes das unidades. O repertório mantém análise e evidência por item versionado, sem remoção por omissão; vínculos e aplicações são operações expressas. Aplicar configuração às unidades existentes resolve a intenção corrente, exige calibração contextual para parâmetros automáticos e respeita fixações e condições de pesquisa. Texto e base permanecem; mudança material no snapshot ou na aplicação desatualiza a revisão pertinente. Orientações percorrem os cinco níveis reais. Edição manual conserva o restante da microssequência e sua proveniência. Escrita incerta conserva a identidade e reconcilia recibo e efeito pela leitura prevista no caso de uso. A existência dos testes listados é rastreabilidade do contrato, não recibo de execução, prova hospedada ou revisão humana de curso real. O preflight agrega repertório, vínculos, cobertura reconciliada, formas, componentes e práticas avaliáveis com feedback offline antes da escrita. Materialização incremental conserva conteúdo omitido e exige identidade explícita para substituir unidades, com posição final transacional. Parecer contextual da IA registra a base e permanece distinto da declaração humana; mudanças editoriais invalidam somente a evidência pertinente. A origem corrente é ai, com intervenções humanas e de IA contadas por alternância efetiva. Links tipados conservam intenção e identidade mesmo após mover um alvo. A base pedagógica focal reúne contexto, aplicações e fontes para a inspeção; o registro do parecer exige trechos dessa base, sem converter correspondência textual em certificação pedagógica."
     },
