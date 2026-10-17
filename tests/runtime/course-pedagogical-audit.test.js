@@ -341,3 +341,42 @@ test("material cobre o retorno por alternativa, oculta folhas de avaliação e n
   assert.equal(inspectPedagogicalEvidence({ content: program, practices: [{ evidenceRequirementId: "r1",
     invariantTaskOperation: "Calcular o tempo de transmissão" }] }).observation.operacaoExigeCalculo, true);
 });
+
+test("texto visível de ordenação fundamenta o parecer sem aceitar alvos ocultos ou decorativos", () => {
+  const labels = [
+    "Os dados orientam o circuito que controla a emissão óptica.",
+    "O emissor varia a luz segundo a modulação que representa esses dados.",
+    "A luz modulada percorre o caminho até o receptor.",
+    "O fotodiodo converte as variações de luz recebidas em um sinal elétrico.",
+    "O processamento do receptor interpreta o sinal e recupera a informação, quando as condições do enlace permitem."
+  ];
+  const content = { id: "uo", position: 1, title: "Reconstruir a cadeia", role: "practice", topics: [],
+    content: [paragraph("steps", labels.join(" "))],
+    response: { id: "ro", package: "aralearn.response.ordering", version: "3.0.0", data: { targets: labels.map((answer, index) => ({
+      id: `step-${index + 1}`, targetInstanceId: "steps", targetPath: `text:${index + 1}`, answer })) } },
+    feedback: [paragraph("fo", "A sequência correta reconstrói a cadeia óptica até a recuperação dos dados.")] };
+  const basisFor = value => ({ targetKind: "study_unit", targetId: "uo", microsequence: { title: "Comunicação por luz" },
+    planItems: [], dependencies: [], studyUnits: [{ id: "uo", content: value,
+      application: { mode: "practice", practiceApplications: [] } }] });
+  const checksFor = evidence => PEDAGOGICAL_AUDIT_DIMENSIONS.map(dimension => ({ dimension, result: "sufficient",
+    reason: "A cadeia aparece no material apresentado.", evidence: [evidence] }));
+  const accepted = (value, quote) => assert.doesNotThrow(() => normalizePedagogicalAudit(checksFor(quote), basisFor(value)));
+  const refused = (value, quote) => assert.throws(() => normalizePedagogicalAudit(checksFor(quote), basisFor(value)),
+    { code: "invalid_pedagogical_audit" });
+  assert.equal(validateStudyUnitEnvelope(content, RESOURCE_PACKAGE_REGISTRY).valid, true);
+  assert.deepEqual(RESOURCE_PACKAGE_REGISTRY.validateStudyUnitRelations(content), []);
+  const observation = inspectPedagogicalEvidence({ content }).observation;
+  for (const label of labels) {
+    assert.ok(observation.studentContent.some(item => item.text.includes(label)));
+    accepted(content, label);
+  }
+  for (const hidden of ["step-1", "text:1", "aralearn.response.ordering@3.0.0"]) refused(content, hidden);
+  const unlinked = structuredClone(content);
+  unlinked.response.data.targets[0].answer = "Resposta sem ocorrência visível";
+  assert.notDeepEqual(RESOURCE_PACKAGE_REGISTRY.validateStudyUnitRelations(unlinked), []);
+  refused(unlinked, "Resposta sem ocorrência visível");
+  const decorated = structuredClone(content);
+  decorated.content[0].data.text = decorated.content[0].data.text.replace(labels[0], `**${labels[0]}**`);
+  assert.notDeepEqual(RESOURCE_PACKAGE_REGISTRY.validateStudyUnitRelations(decorated), []);
+  refused(decorated, labels[0]);
+});
