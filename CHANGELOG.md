@@ -13,6 +13,8 @@ explica os termos usados na implementação atual.
 
 Ao inspecionar uma prática de ordenação, a auditoria pedagógica passa a reconhecer como material apresentado os rótulos dos itens que o estudante realmente vê e reordena. Continuam fora da evidência positiva respostas ocultas, identificadores internos, metadados e sequências que não foram materializadas.
 
+Ao consultar o repertório instrucional de uma unidade, o desenho aplicado passa a ser devolvido em campo próprio, sem ser confundido com o recibo de uma escrita. Executor, MCP e Actions preservam a configuração real ou nula; recibos ausentes, expirados ou malformados continuam falhando de forma fechada.
+
 ## [0.0.119] - 2026-10-17
 
 ### Corrigido
