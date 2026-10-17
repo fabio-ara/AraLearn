@@ -53,7 +53,7 @@ const LOG_CLASSES = new Set([
   "transitorio", "interno", "incerto", "conflito", "autorizacao", "entrada", "definitivo"
 ]);
 const LOG_CODES = new Set([
-  "temporarily_unavailable", "service_timeout", "request_timeout", "network_error",
+  "temporarily_unavailable", "service_timeout", "statement_timeout", "request_timeout", "network_error",
   "course_service_unavailable", "oauth_verification_unavailable", "internal_error",
   "course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"
 ]);
@@ -437,6 +437,9 @@ function toolFailure(
   const inspectionUncertain = normalized.code === "course_write_uncertain" &&
     normalized.details?.operation === "course_ai_inspection";
   const derivableMaterialization = normalized.code === "human_materialization_contextual_calibration_required";
+  const causeCode = normalized.details?.causeCode === "statement_timeout"
+    ? "statement_timeout"
+    : null;
   const publicError = {
     code: retryable
       ? "temporarily_unavailable"
@@ -452,6 +455,7 @@ function toolFailure(
         : String(normalized.message || "A tarefa não pôde ser concluída.").slice(0, 1000),
     retryable,
     ...(recovery ? { recovery } : {}),
+    ...(causeCode ? { causeCode } : {}),
     ...(Object.keys(errorDetails).length ? { details: errorDetails } : {})
   };
   let nextDecision = normalized.code === "ambiguous_human_reference"

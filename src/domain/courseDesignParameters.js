@@ -8,6 +8,9 @@ const encoder = new TextEncoder();
 
 export const COURSE_DESIGN_CONTRACT = "aralearn.course-design.v3";
 export const COURSE_DESIGN_CHANGE_CONTRACT = "aralearn.course-design-change.v3";
+export const COURSE_DESIGN_BATCH_CHANGE_CONTRACT = "aralearn.course-design-batch-change.v1";
+export const COURSE_DESIGN_OPERATION = "apply_course_design_command_v3";
+export const COURSE_DESIGN_BATCH_OPERATION = "apply_course_design_command_batch_v3";
 export const COURSE_DESIGN_PARAMETER_CATALOG_VERSION = "1.2.1";
 export const COURSE_COMPONENT_CATALOG_VERSION = RESOURCE_CATALOG.catalogVersion;
 export const COURSE_COMPONENT_CATALOG_SCHEMA_FINGERPRINT = RESOURCE_PACKAGE_CONTRACT_FINGERPRINT;
@@ -519,6 +522,13 @@ export function normalizeCourseDesignCommand(value, { knownComponentRefs = null 
   return { type: command.type, scope: normalizeCourseDesignScope(command.scope) };
 }
 
+export function normalizeCourseDesignCommandBatch(value, options = {}) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 13) {
+    fail("invalid_course_design_command_batch", "O lote de comandos de desenho é inválido.");
+  }
+  return value.map(command => normalizeCourseDesignCommand(command, options));
+}
+
 
 
 function canonicalJson(value) {
@@ -963,34 +973,126 @@ export function normalizeCourseDesignChange(value) {
   if (typeof change.requestId !== "string" || !REQUEST_ID_PATTERN.test(change.requestId)) {
     fail("invalid_course_design_change", "A identidade da requisição é inválida.");
   }
-  if (change.change !== null) {
-    exact(
-      change.change,
-      ["type", "scope", "parameterId"],
-      "invalid_course_design_change",
-      "O fato da mudança"
-    );
-    if (!COMMAND_TYPES.includes(change.change.type)) fail("invalid_course_design_change", "O tipo da mudança é inválido.");
-    const scope = normalizeCourseDesignScope(change.change.scope, {
-      parameter: ["set_parameter", "clear_parameter", "delegate_parameter"].includes(change.change.type)
-    });
-    if (scope.kind === "course" && scope.ref !== change.courseId) {
-      fail("invalid_course_design_change", "O escopo Course da mudança diverge do Curso retornado.");
-    }
-    const parameterChange = ["set_parameter", "clear_parameter", "delegate_parameter"].includes(change.change.type);
-    if (parameterChange) {
-      const parameterId = identity(
-        change.change.parameterId,
-        160,
-        "invalid_course_design_change",
-        "O parâmetro alterado"
-      );
-      if (!PEDAGOGICAL_PARAMETER_BY_ID.has(parameterId)) {
-        fail("invalid_course_design_change", "A mudança referencia parâmetro desconhecido.");
-      }
-    } else if (change.change.parameterId !== null) {
-      fail("invalid_course_design_change", "Uma mudança não pedagógica informou parâmetro.");
-    }
-  }
+  if (change.change !== null) normalizeCourseDesignChangeFact(change.change, change.courseId);
   return change;
+}
+
+function normalizeCourseDesignChangeFact(fact, courseId) {
+  exact(
+    fact,
+    ["type", "scope", "parameterId"],
+    "invalid_course_design_change",
+    "O fato da mudança"
+  );
+  if (!COMMAND_TYPES.includes(fact.type)) fail("invalid_course_design_change", "O tipo da mudança é inválido.");
+  const scope = normalizeCourseDesignScope(fact.scope, {
+    parameter: ["set_parameter", "clear_parameter", "delegate_parameter"].includes(fact.type)
+  });
+  if (scope.kind === "course" && scope.ref !== courseId) {
+    fail("invalid_course_design_change", "O escopo Course da mudança diverge do Curso retornado.");
+  }
+  const parameterChange = ["set_parameter", "clear_parameter", "delegate_parameter"].includes(fact.type);
+  if (parameterChange) {
+    const parameterId = identity(
+      fact.parameterId,
+      160,
+      "invalid_course_design_change",
+      "O parâmetro alterado"
+    );
+    if (!PEDAGOGICAL_PARAMETER_BY_ID.has(parameterId)) {
+      fail("invalid_course_design_change", "A mudança referencia parâmetro desconhecido.");
+    }
+  } else if (fact.parameterId !== null) {
+    fail("invalid_course_design_change", "Uma mudança não pedagógica informou parâmetro.");
+  }
+  return fact;
+}
+
+export function normalizeCourseDesignBatchChange(value) {
+  const change = clone(value);
+  exact(
+    change,
+    ["contract", "courseId", "courseRevision", "requestId", "idempotent", "changed", "changes"],
+    "invalid_course_design_batch_change",
+    "O resultado do lote de mudanças de desenho"
+  );
+  if (change.contract !== COURSE_DESIGN_BATCH_CHANGE_CONTRACT ||
+      !Number.isSafeInteger(change.courseRevision) || change.courseRevision < 1 ||
+      typeof change.idempotent !== "boolean" || typeof change.changed !== "boolean" ||
+      !Array.isArray(change.changes) || change.changes.length > 13 ||
+      change.changed !== (change.changes.length > 0)) {
+    fail("invalid_course_design_batch_change", "O resultado do lote de mudanças de desenho é inválido.");
+  }
+  uuid(change.courseId, "invalid_course_design_batch_change", "A identidade do Curso");
+  if (typeof change.requestId !== "string" || !REQUEST_ID_PATTERN.test(change.requestId)) {
+    fail("invalid_course_design_batch_change", "A identidade da requisição é inválida.");
+  }
+  change.changes = change.changes.map(fact => normalizeCourseDesignChangeFact(fact, change.courseId));
+  return change;
+}
+
+export function normalizeCourseDesignRecovery(value) {
+  const recovery = clone(value);
+  exact(
+    recovery,
+    ["courseId", "requestId", "operation"],
+    "invalid_course_design_recovery",
+    "A recuperação do desenho"
+  );
+  uuid(recovery.courseId, "invalid_course_design_recovery", "A identidade do Curso");
+  if (!new Set([COURSE_DESIGN_OPERATION, COURSE_DESIGN_BATCH_OPERATION]).has(recovery.operation) ||
+      typeof recovery.requestId !== "string" || !REQUEST_ID_PATTERN.test(recovery.requestId)) {
+    fail("invalid_course_design_recovery", "A recuperação do desenho é inválida.");
+  }
+  return recovery;
+}
+
+function normalizeCourseDesignBatchReceipt(value) {
+  const receipt = clone(value);
+  if (receipt?.status === "confirmed") {
+    exact(
+      receipt,
+      ["status", "result"],
+      "invalid_course_design_batch_receipt",
+      "O recibo do lote de desenho"
+    );
+    return { status: "confirmed", result: normalizeCourseDesignBatchChange(receipt.result) };
+  }
+  if (!new Set(["absent", "expired"]).has(receipt?.status)) {
+    fail("invalid_course_design_batch_receipt", "O estado do recibo do lote de desenho é inválido.");
+  }
+  exact(
+    receipt,
+    ["status"],
+    "invalid_course_design_batch_receipt",
+    "O recibo do lote de desenho"
+  );
+  return receipt;
+}
+
+export function normalizeCourseDesignRecoveryReceipt(value, operation) {
+  if (operation === COURSE_DESIGN_BATCH_OPERATION) return normalizeCourseDesignBatchReceipt(value);
+  if (operation !== COURSE_DESIGN_OPERATION) {
+    fail("invalid_course_design_recovery", "A recuperação do desenho é inválida.");
+  }
+  const receipt = clone(value);
+  if (receipt?.status === "confirmed") {
+    exact(
+      receipt,
+      ["status", "result"],
+      "invalid_course_design_recovery_receipt",
+      "O recibo da recuperação do desenho"
+    );
+    return { status: "confirmed", result: normalizeCourseDesignChange(receipt.result) };
+  }
+  if (!new Set(["absent", "expired"]).has(receipt?.status)) {
+    fail("invalid_course_design_recovery_receipt", "O estado do recibo do desenho é inválido.");
+  }
+  exact(
+    receipt,
+    ["status"],
+    "invalid_course_design_recovery_receipt",
+    "O recibo da recuperação do desenho"
+  );
+  return receipt;
 }

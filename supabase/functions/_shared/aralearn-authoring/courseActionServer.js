@@ -166,12 +166,14 @@ function publicError(error, { writeTaskStarted = false } = {}) {
   const inspectionUncertain = error.code === "course_write_uncertain" &&
     error.details?.operation === "course_ai_inspection";
   if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) {
+    const causeCode = error.details?.causeCode === "statement_timeout" ? "statement_timeout" : null;
     return {
       error: { code: error.code,
         message: inspectionUncertain
           ? "O resultado desta tentativa de inspeção ainda não foi confirmado. Preserve a mesma referência e o mesmo parecer ao repetir."
           : "O resultado desta tentativa ainda não foi confirmado. Preserve a mesma tentativa e releia o estado salvo.",
-        retryable: false, ...(recovery ? { recovery } : {}) },
+        retryable: false, ...(recovery ? { recovery } : {}),
+        ...(causeCode ? { causeCode } : {}) },
       nextDecision: error.code === "course_write_uncertain"
         ? inspectionUncertain
           ? "Repita registrar_inspecao com a mesma referência e o mesmo parecer: com recibo, devolve o parecer salvo sem reavaliar a base; sem recibo, a base é validada antes de registrar. Não use retomar_correcao; base alterada é conflito e recusa sem gravar."

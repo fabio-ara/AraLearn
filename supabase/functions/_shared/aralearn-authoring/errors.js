@@ -17,6 +17,7 @@ export class AuthoringApiError extends Error {
 // focais exercitam alguns desses nomes, não a lista inteira.
 const AUTHORING_RPC_NAMES = new Set([
   "apply_course_authoring_profile_for_actor_v1",
+  "apply_course_design_command_batch_for_actor_v3",
   "apply_course_design_command_for_actor_v3",
   "approve_authoring_action_oauth_authorization_v4",
   "approve_course_curricular_map_for_actor_v1",
@@ -50,6 +51,7 @@ const AUTHORING_RPC_NAMES = new Set([
   "get_course_ai_inspection_for_actor_v1",
   "get_course_ai_inspection_receipt_for_actor_v1",
   "get_course_change_receipt_for_actor_v1",
+  "get_course_design_recovery_receipt_for_actor_v1",
   "get_course_content_review_for_actor_v1",
   "get_course_explanation_media_download_for_actor_v1",
   "get_course_media_download_for_actor_v1",
@@ -162,6 +164,7 @@ const UNCERTAIN_WRITE_CODES = new Set([
 const TRANSIENT_ERROR_CODES = new Set([
   "temporarily_unavailable",
   "service_timeout",
+  "statement_timeout",
   "request_timeout",
   "network_error",
   "course_service_unavailable",

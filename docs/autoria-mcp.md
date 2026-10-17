@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.4.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.5.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -78,7 +78,7 @@ ou reconstruir seu conteúdo.
 | `salvar_explicacoes` | produzir ou corrigir bases explicativas e fontes antes ou depois das unidades, preservando as unidades existentes |
 | `materializar_parte` | gravar uma microssequência com parte e preparação resolvidas pelo servidor; com `recuperacao`, apenas consultar o recibo da tentativa interrompida |
 | `reordenar_unidades` | salvar a ordem completa das unidades de uma microssequência, preservando identificadores, conteúdo e configuração aplicada |
-| `ajustar_configuracao` | fixar valores de autoria ou pesquisa, delegar parâmetros automáticos ou restaurar herança no escopo |
+| `ajustar_configuracao` | fixar valores de autoria ou pesquisa, delegar parâmetros automáticos ou restaurar herança no escopo em um lote atômico; consultar a recuperação exata sem reaplicar |
 | `ajustar_orientacao` | alterar a orientação do objeto corrente para trabalho futuro |
 | `ajustar_componentes` | definir disponibilidade, exclusões e preferências de componentes no escopo escolhido |
 | `manter_unidade_analise` | incluir, editar ou remover um item expresso do repertório instrucional |
@@ -108,6 +108,13 @@ segue com o mapa em rascunho, preservando a aprovação humana e as preferência
 da conta. O campo não combina com `processo`: a referência de processo conserva
 um acordo mais completo, conforme [Conservar o acordo durante a retomada](fluxos-prompts-e-contratos.md#conservar-o-acordo-durante-a-retomada).
 Sem o pedido de autonomia, o bloqueio do mapa não aprovado permanece.
+
+Quando `ajustar_configuracao` recebe várias escolhas, todas são validadas antes
+da escrita e confirmadas na mesma transação. Uma falha intermediária não deixa
+parte do ajuste aplicada. Se a resposta se perder, a recuperação fechada
+devolve o resultado persistido daquela tentativa sem executar os comandos de
+novo; a forma anterior do comando de desenho continua legível como um único
+`change`, sem ser transformada artificialmente em lote.
 
 O mesmo catálogo gera a descrição de dados aceita em Actions. Cada operação
 corresponde a uma tarefa delimitada. Atualizar o catálogo exige usar os nomes

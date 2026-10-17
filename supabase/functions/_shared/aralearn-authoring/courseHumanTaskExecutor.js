@@ -523,11 +523,13 @@ async function internalEntityId(factory, requestId, slot) {
 function uncertainWriteError(error, request, operation) {
   const code = new Set(["course_source_pdf_write_uncertain", "course_media_write_uncertain"]).has(error?.code)
     ? error.code : "course_write_uncertain";
+  const causeCode = error?.code === "statement_timeout" ? "statement_timeout" : null;
   return new AuthoringApiError(409, code,
     "A escrita ainda não foi confirmada. Releia o resultado da mesma tentativa antes de iniciar outra alteração.", {
       requestId: request.requestId, operation,
       ...(typeof request.courseId === "string" && UUID_PATTERN.test(request.courseId)
-        ? { targetCourseId: request.courseId } : {})
+        ? { targetCourseId: request.courseId } : {}),
+      ...(causeCode ? { causeCode } : {})
     });
 }
 

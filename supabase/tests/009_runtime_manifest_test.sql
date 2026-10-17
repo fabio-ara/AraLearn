@@ -5,7 +5,7 @@ select plan(28);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20261017124500','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20261017130000','o manifesto identifica as capacidades correntes em ordem canônica');
 select is((select count(*) from private.course_component_policy_assignments
   where private.valid_course_component_policy_v1(policy) is not true),0::bigint,
   'todas as políticas persistidas satisfazem o catálogo corrente');
@@ -41,6 +41,7 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-source-atomic-bundle-v1",
   "course-authoring-part-materialization-receipt-v1",
   "course-authoring-part-materialization-receipt-discovery-v1",
+  "contextual-design-command-atomic-batch-v1",
   "course-study-unit-inspection-v2",
   "single-authoring-runtime-v1",
   "person-profile-v2",

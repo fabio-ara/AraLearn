@@ -4323,3 +4323,117 @@ test("página posterior sem a vigente preserva a unicidade global", async () => 
     courseId: COURSE_ID, authoringPartId: PART_ID }),
   error => error.code === "course_service_unavailable");
 });
+
+
+test("lote de desenho envia comandos normalizados, lê recibo exato e preserva timeout SQL", async () => {
+  const commands = [
+    {
+      type: "set_parameter",
+      scope: { kind: "course", ref: COURSE_ID },
+      parameterId: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].id,
+      value: COURSE_DESIGN_PARAMETER_DEFINITIONS[0].defaultValue,
+      origin: "author",
+      reason: "Escolha do lote."
+    },
+    {
+      type: "set_guidance",
+      scope: { kind: "course", ref: COURSE_ID },
+      guidance: "Preserve a progressão.",
+      origin: "author",
+      reason: "Direção do lote."
+    }
+  ];
+  const changes = commands.map(command => ({
+    type: command.type,
+    scope: command.scope,
+    parameterId: command.parameterId ?? null
+  }));
+  const batchResult = {
+    contract: "aralearn.course-design-batch-change.v1",
+    courseId: COURSE_ID,
+    courseRevision: 7,
+    requestId: "request-design-batch-1",
+    idempotent: false,
+    changed: true,
+    changes
+  };
+  const calls = [];
+  const value = adapter(async (url, init) => {
+    const payload = JSON.parse(init.body);
+    calls.push({ url, payload });
+    if (url.endsWith("/rpc/apply_course_design_command_batch_for_actor_v3")) return json(batchResult);
+    if (url.endsWith("/rpc/get_course_design_recovery_receipt_for_actor_v1")) {
+      return json({ status: "confirmed", result: { ...batchResult, idempotent: true } });
+    }
+    throw new Error("RPC inesperada: " + url);
+  });
+  const request = {
+    principal: { actorId: USER_ID, authenticationKind: "application" },
+    courseId: COURSE_ID,
+    expectedCourseRevision: 5,
+    requestId: "request-design-batch-1",
+    commands
+  };
+  assert.deepEqual(await value.applyCourseDesignCommandBatch(request), batchResult);
+  assert.equal(calls[0].payload.p_commands.length, 2);
+  assert.match(calls[0].payload.p_request_hash, /^[a-f0-9]{64}$/u);
+  assert.equal(calls[0].payload.p_channel, "application");
+
+  const receipt = await value.getCourseDesignBatchReceipt({
+    principal: request.principal,
+    courseId: COURSE_ID,
+    requestId: request.requestId
+  });
+  assert.equal(receipt.status, "confirmed");
+  assert.equal(receipt.result.idempotent, true);
+  assert.deepEqual(calls[1].payload, {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_operation: "apply_course_design_command_batch_v3",
+    p_request_id: request.requestId
+  });
+
+  const absent = adapter(async () => json({ status: "absent" }));
+  assert.deepEqual(await absent.getCourseDesignBatchReceipt({
+    principal: request.principal,
+    courseId: COURSE_ID,
+    requestId: request.requestId
+  }), { status: "absent" });
+
+  const legacy = adapter(async () => json({ status: "confirmed", result: {
+    contract: "aralearn.course-design-change.v3",
+    courseId: COURSE_ID,
+    courseRevision: 8,
+    requestId: "request-design-legacy-recovery",
+    idempotent: true,
+    changed: true,
+    change: changes[0]
+  } }));
+  const legacyReceipt = await legacy.getCourseDesignRecoveryReceipt({
+    principal: request.principal,
+    courseId: COURSE_ID,
+    requestId: "request-design-legacy-recovery",
+    operation: "apply_course_design_command_v3"
+  });
+  assert.deepEqual(legacyReceipt.result.change, changes[0]);
+  assert.equal(Object.hasOwn(legacyReceipt.result, "changes"), false);
+
+  const timeout = adapter(async () => json({
+    code: "57014",
+    message: "canceling statement due to statement timeout"
+  }, 500));
+  await assert.rejects(() => timeout.applyCourseDesignCommandBatch(request),
+    error => error.status === 503 && error.code === "statement_timeout" &&
+      !/^canceling/u.test(error.message));
+
+  const mismatch = adapter(async () => json({
+    code: "23514",
+    message: "A tentativa do desenho pertence a outra alteração."
+  }, 400));
+  await assert.rejects(() => mismatch.getCourseDesignBatchReceipt({
+    principal: request.principal,
+    courseId: COURSE_ID,
+    requestId: request.requestId
+  }), error => error.status === 409 &&
+    error.code === "course_design_recovery_mismatch");
+});

@@ -351,7 +351,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.4.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.5.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -413,7 +413,7 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
         if (localComponentIdentity) continue;
         if (task.name === "decidir_observacao" && name === "id" &&
             path === "$.properties.referencia.properties.targets.items") continue;
-        if (["retomar_correcao", "materializar_parte"].includes(task.name) &&
+        if (["retomar_correcao", "materializar_parte", "ajustar_configuracao"].includes(task.name) &&
             /^\$\.properties\.recuperacao(?:\.oneOf\[\d\])?$/u.test(path) &&
             ["courseId", "requestId"].includes(name)) continue;
         assert.doesNotMatch(name, forbidden, `${task.name}:${path}.${name}`);
@@ -908,9 +908,11 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
   // permitindo um lote atômico de unidades de várias microssequências do mesmo
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
-  // mesma referência e parecer. O catálogo 11.4.0 aceita em `materializar_parte` a
-  // localização da tentativa pelo curso e pela microssequência; a linha de base
-  // medida passa a 101900 minificados / 209568 formatados. A aceitação pelo editor
+  // mesma referência e parecer. O catálogo 11.5.0 também aceita em `ajustar_configuracao`
+  // as referências fechadas do lote novo e do comando de desenho legado. Em
+  // `materializar_parte`, a
+  // localização da tentativa pelo curso e pela microssequência permanece; a linha de base
+  // medida passa a 101998 minificados / 209997 formatados. A aceitação pelo editor
   // é conferida à parte, com o
   // cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);

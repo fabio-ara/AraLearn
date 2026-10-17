@@ -10,10 +10,13 @@ import {
   resolveHumanCourseContext
 } from "./courseHumanTaskExecutor.js";
 import {
+  COURSE_DESIGN_BATCH_OPERATION,
+  COURSE_DESIGN_OPERATION,
   COURSE_DESIGN_PARAMETER_DEFINITIONS,
   EXPLANATION_FORMS,
   PRACTICE_VARIATION_DIMENSIONS,
-  normalizeCourseDesignCommand
+  normalizeCourseDesignCommand,
+  normalizeCourseDesignRecovery
 } from "../aralearn/runtime/domain/courseDesignParameters.js";
 import {
   COURSE_SOURCE_KINDS,
@@ -546,6 +549,19 @@ const MATERIALIZATION_RECOVERY_SCHEMA = Object.freeze({
   ])
 });
 
+const DESIGN_RECOVERY_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: Object.freeze(["courseId", "requestId", "operation"]),
+  properties: Object.freeze({
+    courseId: Object.freeze({ type: "string" }),
+    requestId: Object.freeze({ type: "string", minLength: 8, maxLength: 128,
+      pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$" }),
+    operation: Object.freeze({ type: "string",
+      pattern: "^apply_course_design_command(_batch)?_v3$" })
+  })
+});
+
 const MATERIALIZATION_UNIT_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -1006,27 +1022,36 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   ),
   task(
     "ajustar_configuracao",
-    "Ajustar a configuração autoral",
-    "Use para fixar autoria/pesquisa; não para calibração automática rotineira.",
+    "Ajuste",
+    "Fixar autoria/pesquisa; lote atômico; não calibração automática rotineira",
     Object.freeze({
       ...inputSchema({
       curso: COURSE_SCHEMA,
-      modulo: HUMAN_REFERENCE_SCHEMA,
-      licao: HUMAN_REFERENCE_SCHEMA,
-      microssequencia: HUMAN_REFERENCE_SCHEMA,
-      unidade: HUMAN_REFERENCE_SCHEMA,
+      modulo: { ...HUMAN_REFERENCE_SCHEMA, description: "Módulo" },
+      licao: { ...HUMAN_REFERENCE_SCHEMA, description: "Lição" },
+      microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Microssequência" },
+      unidade: { ...HUMAN_REFERENCE_SCHEMA, description: "Unidade" },
       condicao: Object.freeze({
         type: "string",
-        enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"])
+        enum: Object.freeze(["automatica", "fixada_pelo_autor", "pesquisa"]),
+        description: "Tipo"
       }),
       motivo: { type: "string", minLength: 1, maxLength: 1000,
-        description: "Justificativa da escolha, incluindo a condição de pesquisa quando pertinente." },
-      parametros: PARAMETERS_SCHEMA,
+        description: "Nota." },
+      parametros: { ...PARAMETERS_SCHEMA, description: "Dados" },
       automaticos: { type: "array", minItems: 1, maxItems: PARAMETER_FIELDS.length, uniqueItems: true,
-        items: { type: "string", enum: PARAMETER_FIELDS } },
-        direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 })
-      }, ["curso", "condicao"]),
-      allOf: Object.freeze([atLeastOneRequired(["parametros", "automaticos", "direcaoEditorial"])])
+        items: { type: "string", enum: PARAMETER_FIELDS }, description: "Deleg." },
+        direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000,
+          description: "Foco" }),
+        recuperacao: DESIGN_RECOVERY_SCHEMA
+      }, []),
+      if: Object.freeze({ required: Object.freeze(["recuperacao"]) }),
+      then: Object.freeze({ maxProperties: 1 }),
+      else: Object.freeze({
+        required: Object.freeze(["curso", "condicao"]),
+        anyOf: Object.freeze(["parametros", "automaticos", "direcaoEditorial"].map(field =>
+          Object.freeze({ required: Object.freeze([field]) })))
+      })
     }),
     { readOnly: false }
   ),
@@ -1255,9 +1280,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.4.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.5.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:569af9b8ae18ea7d64164e32d1db92e664805ac229c3e903696697f2a61cdcff";
+  "sha256:97365ddc36a1e8bf6482f31c34eeda3b72b87b68d48861037df74129af5d2be4";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1450,7 +1475,8 @@ function withoutTechnicalState(value) {
       // campos técnicos; valor sob esta chave que não seja essa referência exata é
       // defeito do produtor e falha explicitamente, nunca vira estado comum.
       if (Object.keys(entry).sort().join(",") !== "courseId,operation,requestId" ||
-          entry.operation !== "course_write" || typeof entry.courseId !== "string" ||
+          !new Set(["course_write", COURSE_DESIGN_OPERATION, COURSE_DESIGN_BATCH_OPERATION])
+            .has(entry.operation) || typeof entry.courseId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
             .test(entry.courseId) ||
           typeof entry.requestId !== "string" ||
@@ -1458,8 +1484,32 @@ function withoutTechnicalState(value) {
         fail("course_service_unavailable",
           "A referência de recuperação devolvida pela descoberta é inválida.", null, 503);
       }
-      projected[key] = { courseId: entry.courseId, operation: "course_write",
+      projected[key] = { courseId: entry.courseId, operation: entry.operation,
         requestId: entry.requestId };
+      continue;
+    }
+    if (normalizedKey === "configuracao_recuperada" && entry !== null &&
+        typeof entry === "object" && !Array.isArray(entry)) {
+      const batch = entry.operation === COURSE_DESIGN_BATCH_OPERATION;
+      const fields = Object.keys(entry).sort().join(",");
+      if (entry.status !== "confirmed" ||
+          !new Set([COURSE_DESIGN_OPERATION, COURSE_DESIGN_BATCH_OPERATION])
+            .has(entry.operation) ||
+          fields !== (batch
+            ? "changed,changes,courseRevision,operation,status"
+            : "change,changed,courseRevision,operation,status") ||
+          !Number.isSafeInteger(entry.courseRevision) || entry.courseRevision < 1 ||
+          typeof entry.changed !== "boolean" ||
+          batch && (!Array.isArray(entry.changes) || entry.changes.length > 13) ||
+          !batch && (entry.change !== null && (typeof entry.change !== "object" ||
+            Array.isArray(entry.change)))) {
+        fail("course_service_unavailable",
+          "O resultado de recuperação devolvido pela tarefa é inválido.", null, 503);
+      }
+      // A confirmação é o resultado persistido da tentativa: conserva a
+      // identidade do parâmetro e a forma exata de change/changes. Ela não é
+      // recomposta a partir de outra operação para esconder uma incompatibilidade.
+      projected[key] = structuredClone(entry);
       continue;
     }
     if (normalizedKey === "default_roles" || normalizedKey === "roles" && Array.isArray(entry) &&
@@ -4199,10 +4249,12 @@ function designScope(resolved) {
     : { kind: "course", ref: resolved.course.id };
 }
 
-async function applyDesignCommand({
-  adapter, principal, course, module = null, lesson = null, microsequence, studyUnit, command, deadlineAt
+async function applyDesignCommandBatch({
+  adapter, principal, course, module = null, lesson = null, microsequence, studyUnit, commands, deadlineAt
 }) {
   return await executeTrustedCourseWrite({
+    operation: COURSE_DESIGN_BATCH_OPERATION,
+    maxCasRetries: 0,
     load: async () => await resolveHumanCourseContext({
       adapter,
       principal,
@@ -4214,20 +4266,82 @@ async function applyDesignCommand({
     build: async (resolved) => ({
       courseId: resolved.course.id,
       expectedCourseRevision: resolved.course.revision,
-      command: normalizeCourseDesignCommand(command(resolved), {
-        knownComponentRefs: RESOURCE_PACKAGE_REGISTRY.listCatalog()
-          .map(({ id, version }) => `${id}@${version}`)
-      })
+      commands: commands.map(command => ({
+        ...command,
+        scope: designScope(resolved)
+      }))
     }),
-    commit: async ({ requestId, courseId, ...value }) => await adapter.applyCourseDesignCommand({
-      principal, courseId, ...value, requestId, deadlineAt
-    })
+    commit: async request => await adapter.applyCourseDesignCommandBatch({
+      principal, ...request, deadlineAt
+    }),
+    reconcile: async ({ request }) => {
+      const receipt = await adapter.getCourseDesignBatchReceipt({
+        principal,
+        courseId: request.courseId,
+        requestId: request.requestId,
+        deadlineAt
+      });
+      if (receipt.status !== "confirmed") return { status: receipt.status };
+      const current = await adapter.getCourseInstructionalPlan({
+        principal,
+        courseId: request.courseId,
+        recentLimit: 1,
+        deadlineAt
+      });
+      if (current.courseId != null && current.courseId !== request.courseId ||
+          !Number.isSafeInteger(current.courseRevision) ||
+          current.courseRevision < receipt.result.courseRevision) {
+        return { status: "pending" };
+      }
+      return { status: "confirmed", result: receipt.result };
+    }
   });
 }
 
 HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
   adapter, principal, args, deadlineAt
 }) => {
+  if (args.recuperacao !== undefined) {
+    exactFields(args, new Set(["recuperacao"]));
+    const recuperacao = normalizeCourseDesignRecovery(args.recuperacao);
+    const receipt = await adapter.getCourseDesignRecoveryReceipt({
+      principal,
+      courseId: recuperacao.courseId,
+      requestId: recuperacao.requestId,
+      operation: recuperacao.operation,
+      deadlineAt
+    });
+    if (receipt.status === "confirmed") {
+      const batch = recuperacao.operation === COURSE_DESIGN_BATCH_OPERATION;
+      return result(batch
+        ? "Recuperei o lote de configuração já salvo; nenhuma escrita foi repetida."
+        : "Recuperei o ajuste de configuração já salvo; nenhuma escrita foi repetida.", {
+        deepLink: null,
+        nextDecision: "Releia a configuração aplicada antes de propor outra alteração.",
+        context: {
+          configuracaoRecuperada: {
+            status: receipt.status,
+            operation: recuperacao.operation,
+            courseRevision: receipt.result.courseRevision,
+            changed: receipt.result.changed,
+            ...(batch ? { changes: receipt.result.changes } : { change: receipt.result.change })
+          }
+        }
+      });
+    }
+    throw new AuthoringApiError(
+      409,
+      "course_write_uncertain",
+      receipt.status === "expired"
+        ? "O recibo desta tentativa expirou; preserve o estado salvo e não reaplique o lote."
+        : "O recibo desta tentativa ainda não está disponível; releia o estado salvo sem reaplicar o lote.",
+      {
+        requestId: recuperacao.requestId,
+        targetCourseId: recuperacao.courseId,
+        operation: recuperacao.operation
+      }
+    );
+  }
   const course = humanCourseTitle(args);
   const module = optionalReference(args.modulo, "modulo") ?? null;
   const lesson = optionalReference(args.licao, "licao") ?? null;
@@ -4365,18 +4479,15 @@ HUMAN_TASK_HANDLERS.ajustar_configuracao = async ({
       return true;
     });
   }
-  for (const normalizedCommand of applicableCommands) {
-    await applyDesignCommand({
+  if (applicableCommands.length) {
+    await applyDesignCommandBatch({
       adapter,
       principal,
       course, module, lesson,
       microsequence,
       studyUnit,
       deadlineAt,
-      command: (resolved) => ({
-        ...normalizedCommand,
-        scope: designScope(resolved)
-      })
+      commands: applicableCommands
     });
   }
   const resolved = await resolveHumanCourseContext({

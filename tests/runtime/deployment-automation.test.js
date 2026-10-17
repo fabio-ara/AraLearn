@@ -608,7 +608,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
     path.join(repositoryRoot, "supabase", "runtime-manifest.json"),
     "utf8"
   ));
-  assert.equal(manifest.schemaRevision, "20261017124500");
+  assert.equal(manifest.schemaRevision, "20261017130000");
   assert.equal(manifest.requiredFeatures.includes("configuration-realization-inspection-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("object-content-review-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("independent-review-access-v1"), true);
@@ -681,6 +681,7 @@ test("validator canônico cerca RPCs e observações pessoais removidos", () => 
   assert.equal(manifest.requiredFeatures.includes("single-authoring-runtime-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-product-operations-v1"), true);
   assert.equal(manifest.requiredFeatures.includes("course-source-atomic-bundle-v1"), true);
+  assert.equal(manifest.requiredFeatures.includes("contextual-design-command-atomic-batch-v1"), true);
 });
 
 test("manifesto estático acompanha a última migration que avança o runtime", async (context) => {
@@ -691,8 +692,8 @@ test("manifesto estático acompanha a última migration que avança o runtime", 
   ));
   const latest = await latestRuntimeManifestMigration(migrationsDirectory);
   assert.deepEqual(latest, {
-    fileName: "20261017124500_materialization_receipt_discovery.sql",
-    revision: "20261017124500"
+    fileName: "20261017130000_atomic_design_command_batch.sql",
+    revision: "20261017130000"
   });
   await validateRuntimeManifestRevision(manifest, migrationsDirectory);
 
