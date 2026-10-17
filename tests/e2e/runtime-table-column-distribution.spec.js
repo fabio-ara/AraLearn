@@ -172,7 +172,10 @@ function readGeometry(scope) {
       cell.appendChild(clone);
       const width = round(clone.getBoundingClientRect().width);
       clone.remove();
-      return width;
+      // A caixa do token conserva a largura natural ate o limite de celula: e ela que
+      // determina o que a coluna precisa, e nao os fragmentos entre delimitadores.
+      const boxed = [...cell.querySelectorAll(".runtime-token")].map((box) => round(box.getBoundingClientRect().width));
+      return round(Math.max(width, ...boxed));
     };
     // Quebra entre duas letras da mesma palavra, fora do codigo em linha. Uma
     // quebra depois de pontuacao (fim de link, por exemplo) nao conta.
@@ -205,6 +208,44 @@ function readGeometry(scope) {
       walk(element, false);
       return found;
     };
+    // Cada grupo tecnico (sequencia entre delimitadores de um endereco, mascara ou
+    // caminho) precisa ficar inteiro em uma linha: a oportunidade de quebra so existe
+    // no delimitador. Mede a linha real de cada caractere do conteudo.
+    const tokenGroupSplits = (cell) => {
+      const element = textTarget(cell);
+      const range = document.createRange();
+      const characters = [];
+      const walk = (parent, inCode) => {
+        for (const child of parent.childNodes) {
+          if (child.nodeType === 3) {
+            const value = child.nodeValue;
+            for (let index = 0; index < value.length; index += 1) {
+              range.setStart(child, index);
+              range.setEnd(child, index + 1);
+              characters.push({ character: value[index], top: Math.round(range.getBoundingClientRect().top), inCode });
+            }
+          } else if (child.nodeType === 1) {
+            walk(child, inCode || child.tagName === "CODE");
+          }
+        }
+      };
+      walk(element, false);
+      const flat = characters.map((entry) => entry.character).join("");
+      const found = [];
+      for (const match of flat.matchAll(/[0-9A-Za-z]+(?:[.:/][0-9A-Za-z]+)+/gu)) {
+        if (characters.slice(match.index, match.index + match[0].length).some((entry) => entry.inCode)) continue;
+        let cursor = match.index;
+        for (const group of match[0].split(/([.:/])/u)) {
+          const start = cursor;
+          cursor += group.length;
+          if (/^[.:/]$/u.test(group)) continue;
+          const tops = new Set();
+          for (let index = start; index < cursor; index += 1) tops.add(characters[index].top);
+          if (tops.size > 1) found.push(group);
+        }
+      }
+      return found;
+    };
     const cellsInfo = [];
     [...table.querySelectorAll("tbody tr")].forEach((row) => {
       [...row.children].forEach((cell, column) => {
@@ -218,8 +259,8 @@ function readGeometry(scope) {
         // Sobra entre a celula e o bloco de conteudo: a coluna mais larga que o
         // limite precisa continuar preenchendo o espaco utilizavel.
         const fillGap = block ? round(cell.getBoundingClientRect().width - cellPadding - block.getBoundingClientRect().width) : 0;
-        cellsInfo.push({ column, minContent: minContent(cell), fillGap, broken: brokenWords(cell),
-          minimumCharsPerLine: lines ? round(text.length / lines) : 0 });
+        cellsInfo.push({ column, minContent: minContent(cell), fillGap, broken: brokenWords(cell), text,
+          tokenGroupSplits: tokenGroupSplits(cell), minimumCharsPerLine: lines ? round(text.length / lines) : 0 });
       });
     });
     const columns = headers.map((header, index) => {
@@ -242,6 +283,7 @@ function readGeometry(scope) {
     const box = node.getBoundingClientRect();
     return { columns, floor: round(parseFloat(getComputedStyle(document.documentElement).fontSize) * floorRem),
       cells: cellsInfo, rem8: round(parseFloat(getComputedStyle(document.documentElement).fontSize) * 8),
+      tokenGroupSplits: cellsInfo.flatMap((cell) => cell.tokenGroupSplits),
       minContentSum: round(columns.reduce((total, column) => total + column.minContent + cellPadding, 0)),
       broken: cellsInfo.flatMap(cell => cell.broken), padding: cellPadding,
       table: Math.round(table.getBoundingClientRect().width),
@@ -286,6 +328,9 @@ function expectContentDriven(geometry, name) {
     const content = geometry.columns[cell.column].width - CELL_PADDING;
     if (cell.minContent <= content + 2) expect(cell.broken, name + ": palavra inteira na celula").toEqual([]);
   }
+  // Nenhum grupo tecnico parte entre duas linhas: a quebra de endereco, mascara ou
+  // caminho acontece somente no delimitador.
+  expect(geometry.tokenGroupSplits, name + ": grupo tecnico inteiro na linha").toEqual([]);
 }
 
 // A tabela mede o que o conteudo pede: a coluna de leitura ou, quando as palavras
@@ -404,4 +449,165 @@ test("celulas com contrato proprio de largura seguem com o piso", async ({ page 
     .evaluate(row => [...row.children].map(cell => getComputedStyle(cell).minWidth));
   console.log("contrato na tabela larga: " + JSON.stringify(wide));
   for (const value of wide) expect(value).toBe("88px");
+});
+
+// Defeito A14/U4 — tabela larga de quatro colunas com enderecos e tokens tecnicos.
+// O piso de 5,5rem da 88 px a cada coluna e o paragrafo da celula quebra em
+// qualquer caractere: 192.168.30.1 saia como 192.168.3 / 0.1 e 255.255.255.0 como
+// 255.255.2 / 55.0 na captura nativa 360x740. A tabela larga conserva o piso e a
+// rolagem propria; a celula passa a comportar o endereco inteiro ate o limite de
+// celula e, acima dele, o token quebra dentro da celula — a mesma politica das
+// tabelas de ate tres colunas. As fixtures usam as faixas de documentacao (RFC 5737
+// e RFC 3849) e nao dependem do curso nem de um endereco real.
+const ADDRESS_PROOF_DIR = path.resolve(
+  process.env.ARALEARN_TABLE_ADDRESS_PROOF_DIR || "test-results/table-address-reading");
+
+const ADDRESS4 = Object.freeze({
+  title: "Enderecamento do lote",
+  columns: ["Interface", "IPv4", "Mascara", "Gateway"],
+  rows: [
+    ["R1 G0/0", "198.51.100.1", "255.255.255.0", "Nao se aplica"],
+    ["R1 G0/1", "198.51.100.9", "255.255.255.0", "198.51.100.1"],
+    ["PC-A1", "198.51.100.11", "255.255.255.0", "198.51.100.1"],
+    ["PC-A2", "198.51.100.12", "255.255.255.128", "198.51.100.1"],
+    ["Servidor", "198.51.100.20", "255.255.255.0", "198.51.100.1"],
+    ["Impressora", "198.51.100.30", "255.255.255.0", "198.51.100.1"]
+  ]
+});
+
+// Endereco IPv6 completo: excede o limite de celula e por isso quebra dentro da
+// celula, como nas tabelas de ate tres colunas; a coluna nao pode crescer com o
+// tamanho do token.
+const ADDRESS_IPV6_4 = Object.freeze({
+  title: "Enderecamento IPv6 do lote",
+  columns: ["Interface", "Endereco", "Prefixo", "Observacao"],
+  rows: [
+    ["R1 G0/0", "2001:db8:85a3:0000:0000:8a2e:0370:7334", "/64", "sem link local"],
+    ["R1 G0/1", "2001:db8:85a3:0000:0000:8a2e:0370:7335", "/64", "sem link local"],
+    ["PC-A1", "2001:db8:85a3:0000:0000:8a2e:0370:7336", "/64", "endereco do lote"],
+    ["PC-A2", "2001:db8:85a3:0000:0000:8a2e:0370:7337", "/64", "endereco do lote"],
+    ["Servidor", "2001:db8:85a3:0000:0000:8a2e:0370:7338", "/64", "endereco do lote"],
+    ["Impressora", "2001:db8:85a3:0000:0000:8a2e:0370:7339", "/64", "endereco do lote"]
+  ]
+});
+
+// Endereco dentro de uma frase e prosa com palavra longa: a coluna precisa
+// comportar a palavra, sem partir nem o endereco nem a palavra.
+const ADDRESS_MIXED_4 = Object.freeze({
+  title: "Diagnostico do lote",
+  columns: ["Interface", "Teste", "Resultado", "Observacao"],
+  rows: [
+    ["R1 G0/0", "ping 198.51.100.1", "Responde", "O gateway do lote responde ao teste feito na interface do roteador"],
+    ["R1 G0/1", "ping 198.51.100.1", "Responde", "A rota padrao aponta para o gateway e o teste confirma o caminho ativo"],
+    ["PC-A1", "ping 198.51.100.9", "Responde", "O host responde e o endereco 198.51.100.9 permanece durante a verificacao"],
+    ["PC-A2", "ping 198.51.100.9", "Sem resposta", "O host nao responde enquanto a interface fica desativada no switch"],
+    ["Servidor", "ping 198.51.100.20", "Responde", "O servico do lote responde no endereco combinado para a verificacao"],
+    ["Impressora", "ping 198.51.100.30", "Responde", "O equipamento do lote responde e o endereco confere com o registro"]
+  ]
+});
+
+// A tabela larga mantem o piso de cada coluna, comporta o proprio conteudo ate o
+// limite de celula, nao parte o token dentro da coluna, rola no proprio controle e
+// nao move a geometria externa.
+function expectWideAddressReading(geometry, name) {
+  const limit = cellLimit(geometry);
+  expect(geometry.overflowX, name).toBe("auto");
+  expect(geometry.pageOverflow, name + ": a pagina nao estoura").toBeLessThanOrEqual(1);
+  expect(geometry.broken, name + ": token inteiro na celula").toEqual([]);
+  for (const [index, column] of geometry.columns.entries()) {
+    expect(column.width, name + ": coluna " + (index + 1) + " conserva o piso da tabela larga")
+      .toBeGreaterThanOrEqual(geometry.floor - 1);
+    expect(column.width - CELL_PADDING + 4, name + ": coluna " + (index + 1) + " comporta o proprio conteudo")
+      .toBeGreaterThanOrEqual(Math.min(column.minContent, limit) - 4);
+  }
+  expect(geometry.wrapScroll, name + ": o conteudo excede a coluna de leitura")
+    .toBeGreaterThan(geometry.wrapClient + 1);
+}
+
+for (const [name, data] of [["enderecos-ipv4", ADDRESS4], ["enderecos-mistos", ADDRESS_MIXED_4]]) {
+  for (const width of [360, 390]) {
+    test("tabela larga de " + name + " conserva o endereco em " + width + "px", async ({ page }) => {
+      await mount(page, { width, data });
+      const scope = page.locator(".card-sheet-content");
+      const geometry = await readGeometry(scope);
+      await page.screenshot({ path: path.join(ADDRESS_PROOF_DIR, name + "-" + width + "-inicio.png") });
+      const reach = await lastColumnReachable(scope);
+      console.log("enderecos " + name + "/" + width + ": " + JSON.stringify({ columns: geometry.columns,
+        broken: geometry.broken, table: geometry.table, frame: geometry.frame, floor: geometry.floor,
+        wrap: [geometry.wrapClient, geometry.wrapScroll], pageOverflow: geometry.pageOverflow }) +
+        " alcance: " + JSON.stringify(reach));
+      if (reach.scroll > 0) await page.screenshot({ path: path.join(ADDRESS_PROOF_DIR, name + "-" + width + "-fim.png") });
+      expectWideAddressReading(geometry, name + "/" + width);
+      expectExternalFramesStable(geometry, name + "/" + width);
+      expect(reach.reachable, name + "/" + width + ": ultima coluna alcancavel").toBe(true);
+    });
+  }
+}
+
+test("tabela larga de endereco IPv6 limita a coluna do token sem estourar a pagina", async ({ page }) => {
+  for (const width of [360, 390]) {
+    await mount(page, { width, data: ADDRESS_IPV6_4 });
+    const scope = page.locator(".card-sheet-content");
+    const geometry = await readGeometry(scope);
+    await page.screenshot({ path: path.join(ADDRESS_PROOF_DIR, "enderecos-ipv6-" + width + "-inicio.png") });
+    const reach = await lastColumnReachable(scope);
+    const limit = cellLimit(geometry);
+    const column = geometry.columns[1];
+    const address = ADDRESS_IPV6_4.rows[0][1];
+    console.log("enderecos ipv6/" + width + ": " + JSON.stringify({ columns: geometry.columns,
+      limit: limit, gruposPartidos: geometry.tokenGroupSplits, broken: geometry.broken,
+      table: geometry.table, wrap: [geometry.wrapClient, geometry.wrapScroll],
+      pageOverflow: geometry.pageOverflow }) + " alcance: " + JSON.stringify(reach));
+    if (reach.scroll > 0) await page.screenshot({ path: path.join(ADDRESS_PROOF_DIR, "enderecos-ipv6-" + width + "-fim.png") });
+    expect(geometry.overflowX, "ipv6/" + width).toBe("auto");
+    expect(geometry.pageOverflow, "ipv6/" + width + ": a pagina nao estoura").toBeLessThanOrEqual(1);
+    // O endereco nao parte hexteto e chega inteiro ao conteudo copiavel.
+    expect(geometry.tokenGroupSplits, "ipv6/" + width + ": nenhum hexteto partido").toEqual([]);
+    expect(geometry.cells.map((cell) => cell.text), "ipv6/" + width + ": texto e copia preservados").toContain(address);
+    expect(column.width - CELL_PADDING, "ipv6/" + width + ": coluna do token limitada pela celula")
+      .toBeLessThanOrEqual(limit + 4);
+    expect(column.width, "ipv6/" + width + ": coluna do token conserva o piso").toBeGreaterThanOrEqual(geometry.floor - 1);
+    expect(geometry.wrapScroll, "ipv6/" + width + ": a rolagem fica no controle").toBeGreaterThan(geometry.wrapClient + 1);
+    expect(reach.reachable, "ipv6/" + width + ": ultima coluna alcancavel").toBe(true);
+    expectExternalFramesStable(geometry, "ipv6/" + width);
+  }
+});
+
+// A15/U7 — matriz de cinco colunas com comando, endereco e prosa: a mesma protecao do
+// token vale aqui. O comando com IP nao parte o octeto, a palavra longa nao e
+// hifenizada e a coluna segue o conteudo, com a moldura rolando no proprio controle.
+const COMMAND_5COL = Object.freeze({
+  title: "Matriz de teste do lote",
+  columns: ["ID", "Origem → destino", "Teste", "Esperado", "Observado"],
+  rows: [
+    ["T1", "R1 G0/0 → PC-A1", "ping 198.51.100.11", "Responde", "O host do lote responde ao teste"],
+    ["T2", "PC-A1 → R1 G0/0", "ping 198.51.100.1", "Responde", "O gateway responde ao teste do lote"],
+    ["T3", "R1 G0/0 → servidor", "ping 198.51.100.20", "Disponível", "O serviço do lote responde ao teste"],
+    ["T4", "PC-A2 → servidor", "ping 198.51.100.20", "Sem resposta", "O host não responde enquanto fica desativado"],
+    ["T5", "R1 G0/1 → impressora", "ping 198.51.100.30", "Disponível", "O equipamento responde e confere com o registro"],
+    ["T6", "PC-A1 → impressora", "preencher o endereço", "198.51.100.30", "O endereço confere com o registro do lote"]
+  ]
+});
+
+test("matriz de cinco colunas conserva comando e endereco em 360 e 390 px", async ({ page }) => {
+  for (const width of [360, 390]) {
+    await mount(page, { width, data: COMMAND_5COL });
+    const scope = page.locator(".card-sheet-content");
+    const geometry = await readGeometry(scope);
+    await page.screenshot({ path: path.join(ADDRESS_PROOF_DIR, "matriz-5col-" + width + "-inicio.png") });
+    const reach = await lastColumnReachable(scope);
+    const texts = geometry.cells.map((cell) => cell.text);
+    console.log("matriz 5 colunas/" + width + ": " + JSON.stringify({ columns: geometry.columns,
+      gruposPartidos: geometry.tokenGroupSplits, broken: geometry.broken, table: geometry.table,
+      wrap: [geometry.wrapClient, geometry.wrapScroll], pageOverflow: geometry.pageOverflow }) +
+      " alcance: " + JSON.stringify(reach));
+    if (reach.scroll > 0) await page.screenshot({ path: path.join(ADDRESS_PROOF_DIR, "matriz-5col-" + width + "-fim.png") });
+    expectWideAddressReading(geometry, "matriz-5col/" + width);
+    expect(geometry.tokenGroupSplits, "matriz-5col/" + width + ": nenhum octeto partido").toEqual([]);
+    expect(texts, "matriz-5col/" + width + ": texto e copia preservados").toContain("ping 198.51.100.11");
+    expect(texts, "matriz-5col/" + width + ": palavra longa inteira").toContain("Disponível");
+    expect(texts, "matriz-5col/" + width + ": comando preservado").toContain("preencher o endereço");
+    expectExternalFramesStable(geometry, "matriz-5col/" + width);
+    expect(reach.reachable, "matriz-5col/" + width + ": ultima coluna alcancavel").toBe(true);
+  }
 });

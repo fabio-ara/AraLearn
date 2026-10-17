@@ -43,7 +43,10 @@ export const tablePackage = Object.freeze({
   render(data) {
     const caption = data.title ? `<caption>${renderPackageInline(data.title)}</caption>` : "";
     const head = `<thead><tr>${data.columns.map((column) => `<th scope="col"><div class="runtime-table-cell-content">${renderPackageInline(column)}</div></th>`).join("")}</tr></thead>`;
-    const body = `<tbody>${data.rows.map((row) => `<tr>${row.map((cell) => `<td><div class="runtime-table-cell-content">${renderPackageProse(cell)}</div></td>`).join("")}</tr>`).join("")}</tbody>`;
+    // A célula pede a caixa do token técnico: o endereço conserva a largura natural
+    // até o limite da célula e quebra entre os grupos, nunca dentro de um octeto,
+    // hexteto ou caminho.
+    const body = `<tbody>${data.rows.map((row) => `<tr>${row.map((cell) => `<td><div class="runtime-table-cell-content">${renderPackageProse(cell, { tokenBoxes: true })}</div></td>`).join("")}</tr>`).join("")}</tbody>`;
     return `<div class="runtime-block runtime-table-block"><div class="runtime-table-wrap"><div class="runtime-table-frame"><table class="runtime-table">${caption}${head}${body}</table></div></div>${data.legend ? `<div class="runtime-table-legend">${renderPackageProse(data.legend)}</div>` : ""}${data.note ? `<div class="runtime-table-note">${renderPackageProse(data.note)}</div>` : ""}</div>`;
   },
   accessibleText(data) { return [data.title, ...data.columns, ...data.rows.flat(), data.legend, data.note].filter(Boolean).join(". "); },

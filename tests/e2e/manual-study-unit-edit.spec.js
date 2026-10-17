@@ -433,6 +433,12 @@ async function openInspectionUnit(page, ownership, { longTitles = false, variant
       studyUnit.content = [{ id: "inspection-table-1", package: "aralearn.resource.table", version: "1.0.0",
         data: { columns: ["Camada do ambiente", "Responsabilidade"], rows: [["Computador hospedeiro", "Oferece os recursos físicos."], ["Hipervisor", "Cria e controla máquinas virtuais."]] } }];
     }
+    if (variant === "table-wide") {
+      studyUnit.content = [{ id: "inspection-table-1", package: "aralearn.resource.table", version: "1.0.0",
+        data: { columns: ["Interface", "IPv4", "Máscara", "Gateway"], rows: [
+          ["R1 G0/0", "198.51.100.1", "255.255.255.0", "Não se aplica"],
+          ["PC-A1", "198.51.100.11", "255.255.255.0", "198.51.100.1"]] } }];
+    }
     if (variant === "gap" || variant === "gap-text") {
       studyUnit.role = "practice";
       studyUnit.content[0].data.text = "O VirtualBox atua como hipervisor no computador hospedeiro.";
@@ -1444,6 +1450,33 @@ test("inspeção conserva as células da tabela ao editar e cancelar sem mudanç
     await expect(page.locator('[data-manual-edit-path="rows[0][0]"]')).toBeEditable();
     expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/células`);
     await testInfo.attach(`tabela-editavel-${width}`, { body: await page.screenshot({ path: testInfo.outputPath(`tabela-editavel-${width}.png`) }), contentType: "image/png" });
+    await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/cancelar`);
+    expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+});
+
+// Defeito A14/U4 — a tabela larga deixa de prender a coluna no piso de 88 px: depois
+// da correção a largura da coluna do endereço é decidida pelo próprio token, então a
+// entrada em edição precisa conservar essa geometria. O recorte cobre a célula do
+// rótulo (a coluna é decidida pela palavra mais longa) e a célula do endereço.
+test("inspeção conserva a geometria da tabela larga ao editar o endereço", async ({ page }, testInfo) => {
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await openInspectionUnit(page, "owned", { variant: "table-wide" });
+    const selectors = [".runtime-table", ".runtime-table th:first-child", ".runtime-table td:first-child",
+      ".runtime-table td:nth-child(2)", ".runtime-table tr:last-child td:last-child"];
+    const before = await elementGeometry(page, selectors);
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/entrada`);
+    await page.locator('[data-resource-target-id="content:inspection-table-1"]').click();
+    await expect(page.locator('[data-manual-edit-path="rows[0][0]"]')).toBeEditable();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/celula-rotulo`);
+    await page.locator('[data-manual-edit-path="rows[0][1]"]').click();
+    await expect(page.locator('[data-manual-edit-path="rows[0][1]"]')).toBeEditable();
+    expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/celula-endereco`);
+    await testInfo.attach(`tabela-larga-editavel-${width}`, { body: await page.screenshot({ path: testInfo.outputPath(`tabela-larga-editavel-${width}.png`) }), contentType: "image/png" });
     await page.getByRole("button", { name: "Cancelar edição", exact: true }).click();
     expectSameGeometry(before, await elementGeometry(page, selectors), `${width}/cancelar`);
     expect(await page.evaluate(() => globalThis.__inspectionManualRequests)).toEqual([]);
