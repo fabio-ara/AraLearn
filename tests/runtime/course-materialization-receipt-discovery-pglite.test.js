@@ -6,6 +6,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { definition } from "../support/authoringMaterializationPglite.js";
 import { CourseSupabaseAdapter } from
   "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { executeHumanCourseTask } from
+  "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 
 // Integração SQL da descoberta paginada de recibo sobre um Postgres real
 // embarcado. Auth e acesso corrente são stubs explícitos: esta prova cobre a
@@ -244,3 +246,82 @@ test("recibo de outro ator no mesmo curso não aparece nem altera os totais do d
 });
   const { db } = await database();
   await insert(db, [row({ request: REQUEST })]);
+
+// Prova integrada do recorte que mudou: o transporte real do adapter atende
+// apenas a RPC nova contra o PGlite, e o handler real percorre as continuações.
+// As leituras estáveis (Curso e planejamento) são stubs declarados: não mudaram
+// neste delta e nenhuma delas é implementada aqui.
+test("transporte real do adapter entrega as páginas do banco e o handler percorre as continuações", async () => {
+  const { db } = await database();
+  const expired = [];
+  for (let index = 0; index < 64; index += 1) expired.push(expiredRow(index));
+  await insert(db, expired);
+  await insert(db, [row({ request: REQUEST, created: "now() - interval '3 days'" })]);
+  const reply = (value) => new Response(JSON.stringify(value), { status: 200,
+    headers: { "Content-Type": "application/json" } });
+  const names = [];
+  const reader = new CourseSupabaseAdapter({
+    supabaseUrl: "https://project.example",
+    serverApiKey: "sb_secret_test",
+    publishableKey: "sb_publishable_test",
+    publicAppUrl: "https://app.example/",
+    attempts: 1,
+    fetchImpl: async (url, init) => {
+      const body = JSON.parse(init.body);
+      const name = String(url).split("/").pop();
+      if (name !== "discover_course_part_materialization_receipts_for_actor_v1") {
+        throw new Error("O transporte real cobre só a RPC nova nesta prova: " + name);
+      }
+      names.push(name);
+      const rows = (await db.query("select " + READER + "($1,$2,$3,$4,$5) value",
+        [body.p_actor_id, body.p_course_id, body.p_authoring_part_id, body.p_limit,
+          body.p_cursor])).rows;
+      return reply(rows[0].value);
+    }
+  });
+  const stable = {
+    async listCourses() {
+      return { items: [{ courseId: COURSE, title: "Curso de Redes" }], hasMore: false, nextCursor: null };
+    },
+    async getCourse() {
+      return { courseId: COURSE, title: "Curso de Redes", revision: 7 };
+    },
+    async getCourseInstructionalPlan() {
+      return { contract: "aralearn.course-instructional-plan.v3", courseRevision: 7,
+        plan: { version: 3, title: "Curso de Redes", curriculumMapStatus: "approved",
+          curriculum: { modules: [{ id: "module-1", position: 0, title: "Rede local",
+            lessons: [{ id: "lesson-1", position: 0, title: "Serviços de rede",
+              microsequences: [{ id: "micro-dns", position: 0, title: "DNS" }] }] }] },
+          curriculumScopeItems: [], instructionalAnalysisUnits: [], evidenceRequirements: [],
+          parts: [{ id: PART, position: 0, title: "Fundamentos", version: 2,
+            microsequences: [{ id: "micro-dns", productionPosition: 0, title: "DNS" }] }] } };
+    },
+    discoverCoursePartMaterializationReceipts: (input) =>
+      reader.discoverCoursePartMaterializationReceipts(input)
+  };
+  const principal = { actorId: ACTOR, scopes: ["authoring:read", "authoring:write"] };
+  const seen = [];
+  let continuacao;
+  let pages = 0;
+  do {
+    const rawArguments = continuacao === undefined
+      ? { recuperacao: { curso: "Curso de Redes" } }
+      : { recuperacao: { curso: "Curso de Redes", continuacao } };
+    const value = await executeHumanCourseTask({ adapter: stable, principal, name: "materializar_parte",
+      rawArguments });
+    pages += 1;
+    assert.equal(value.context.descoberta, "candidate", "a unicidade é do recorte em toda página");
+    assert.equal(value.context.totais.vigentes, 1);
+    assert.equal(value.context.totais.expirados, 64);
+    for (const item of value.context.candidatos ?? []) seen.push(item.tentativa);
+    for (const item of value.context.expirados ?? []) seen.push(item.tentativa);
+    continuacao = value.context.continuacao;
+  } while (continuacao !== undefined);
+  assert.equal(pages, 3);
+  assert.equal(seen.length, 65, "o handler percorre o recorte inteiro sem repetir nem omitir");
+  assert.equal(new Set(seen).size, 65);
+  assert.equal(seen[0], REQUEST, "a vigente abre a leitura");
+  assert.equal(names.length, 3, "o transporte real atendeu cada página");
+  await db.close();
+});
+
