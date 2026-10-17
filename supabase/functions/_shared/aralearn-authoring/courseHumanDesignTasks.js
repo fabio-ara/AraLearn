@@ -195,7 +195,8 @@ export const COURSE_HUMAN_DESIGN_TASK_HANDLERS = {
       vinculos: design.targetPlanItems ? { analise: linked(design.targetPlanItems.instructionalAnalysisUnitIds, "instructionalAnalysisUnits"),
         evidencias: linked(design.targetPlanItems.evidenceRequirementIds, "evidenceRequirements") } : null,
       aplicacao: resolved.studyUnits[0]?.authorship?.design?.application ?? null,
-      configuracaoAplicada: resolved.studyUnits[0]?.authorship?.design ?? null,
+      // O estado persistido não é o recibo fechado de uma escrita confirmada.
+      configuracaoAplicadaNaUnidade: resolved.studyUnits[0]?.authorship?.design ?? null,
       componentes: design.componentCatalog.options.map((item, index) => ({ posicao: index + 1, nome: item.label, finalidade: item.purpose }))
     });
   },
