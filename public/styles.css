@@ -2881,6 +2881,17 @@ button.account-settings-back[hidden] {
   padding-left: 1.1rem;
 }
 
+/* O token técnico da célula (endereço, máscara, comando com caminho) conserva a
+   largura natural até o limite de célula e só quebra entre os grupos: o wbr do
+   renderizador cria a oportunidade no delimitador e a caixa mantém a contribuição
+   que a coluna já tinha, sem partir octeto ou hexteto e sem alterar texto ou
+   cópia. */
+.runtime-table-cell-content .runtime-token {
+  display: inline-block;
+  width: max-content;
+  max-width: max(50cqw, 8rem);
+}
+
 .runtime-table-cell-content > .runtime-markdown-paragraph + .runtime-markdown-paragraph,
 .runtime-table-cell-content > .runtime-markdown-paragraph + .runtime-markdown-list,
 .runtime-table-cell-content > .runtime-markdown-list + .runtime-markdown-paragraph,

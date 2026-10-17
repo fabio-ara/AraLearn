@@ -109,8 +109,20 @@ function renderPackageGapMarker(marker, separator = "") {
   return `<span class="${classes}" contenteditable="true" role="textbox" spellcheck="false" dir="auto" inputmode="text" enterkeyhint="done" autocapitalize="off" autocorrect="off" aria-multiline="false" data-text-gap-field="true" data-action="complete-input" data-complete-block-key="${blockKey}" data-complete-blank-index="${blankIndex}" data-empty="${current ? "false" : "true"}" aria-label="Preencher resposta${current ? `: ${escapePackageAttribute(current)}` : ""}">${escapePackageHtml(current)}</span>`;
 }
 
-function renderInlineMarkup(value) {
-  return escapePackageHtmlText(value)
+// Um endereço ou token técnico em texto puro conserva o próprio texto e a cópia: a
+// quebra acontece entre os grupos do token, nunca dentro deles, e o wbr não escreve
+// caractere. Vale onde o consumidor pede — a célula de tabela usa a caixa para
+// manter a largura natural do token até o limite da célula.
+const TECHNICAL_TOKEN = /[0-9A-Za-z]+(?:[.:/][0-9A-Za-z]+)+/gu;
+
+function renderTechnicalTokenMarkup(value) {
+  return value.replace(TECHNICAL_TOKEN, (token) =>
+    `<span class="runtime-token">${token.replace(/[.:/]/gu, (delimiter) => `${delimiter}<wbr>`)}</span>`);
+}
+
+function renderInlineMarkup(value, state) {
+  const escaped = escapePackageHtmlText(value);
+  return (state?.tokenBoxes ? renderTechnicalTokenMarkup(escaped) : escaped)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(/\n/g, "<br>");
@@ -122,7 +134,8 @@ function renderPackageInlineText(value, state) {
   let html = "";
   segments.forEach((segment, index) => {
     const code = state ? state.inCode : inCode;
-    html += code ? escapePackageHtmlText(segment).replace(/\n/g, "<br>") : renderTexDelimitedText(segment, renderInlineMarkup);
+    html += code ? escapePackageHtmlText(segment).replace(/\n/g, "<br>")
+      : renderTexDelimitedText(segment, (text) => renderInlineMarkup(text, state));
     if (index < segments.length - 1) {
       html += code ? "</code>" : "<code>";
       if (state) state.inCode = !code;
@@ -177,8 +190,8 @@ export function renderPackageInline(value) {
   return html + (state.inCode ? "</code>" : "");
 }
 
-function renderPackageInlineParsed(value) {
-  const state = { inCode: false };
+function renderPackageInlineParsed(value, options = {}) {
+  const state = { inCode: false, ...options };
   const html = renderPackageInlineSegment(value, state);
   return html + (state.inCode ? "</code>" : "");
 }
@@ -228,14 +241,15 @@ function renderPackageProseText(value, metadata = {}) {
   let paragraph = [];
   let activeList = null;
   const attrs = packageTextAttributes(metadata);
+  const inlineOptions = { tokenBoxes: metadata.tokenBoxes === true };
   const flushParagraph = () => {
     if (!paragraph.length) return;
-    blocks.push(`<p class="runtime-markdown-paragraph"${attrs}>${renderPackageInlineParsed(paragraph.join("\n"))}</p>`);
+    blocks.push(`<p class="runtime-markdown-paragraph"${attrs}>${renderPackageInlineParsed(paragraph.join("\n"), inlineOptions)}</p>`);
     paragraph = [];
   };
   const flushList = () => {
     if (!activeList) return;
-    blocks.push(`<${activeList.tag} class="runtime-markdown-list"${attrs}>${activeList.items.map((item) => `<li${attrs}>${renderPackageInlineParsed(item)}</li>`).join("")}</${activeList.tag}>`);
+    blocks.push(`<${activeList.tag} class="runtime-markdown-list"${attrs}>${activeList.items.map((item) => `<li${attrs}>${renderPackageInlineParsed(item, inlineOptions)}</li>`).join("")}</${activeList.tag}>`);
     activeList = null;
   };
   source.split("\n").forEach((line) => {
