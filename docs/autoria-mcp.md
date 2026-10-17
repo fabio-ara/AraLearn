@@ -266,9 +266,9 @@ reenviar o payload, sem repetir o preparo e sem reaplicar a escrita. A
 [recuperação da tentativa](fluxos-prompts-e-contratos.md#confirmar-o-resultado-e-recuperar-uma-interrupção)
 explica quais referências precisam ser conservadas.
 Sem a referência, o mesmo campo aceita o curso e a microssequência e devolve os
-recibos vigentes da Parte, sem eleger a tentativa mais recente. A leitura é
+recibos vigentes da parte, sem eleger a tentativa mais recente. A leitura é
 paginada: a continuação devolvida percorre o recorte inteiro, os totais são do
-recorte e a comparação entre candidatos usa Parte, revisão e conteúdo reconciliado.
+recorte e a comparação entre candidatos usa parte, revisão e conteúdo reconciliado.
 
 
 A declaração humana de revisão pertence ao conteúdo inspecionado. Acesso ao

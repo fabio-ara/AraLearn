@@ -27,7 +27,7 @@ Outros termos recorrentes estão no
 A [migração](../supabase/migrations/20261017124500_materialization_receipt_discovery.sql),
 criada com `supabase migration new`, acrescenta
 `public.discover_course_part_materialization_receipts_for_actor_v1`, que localiza as
-tentativas de materialização de Parte do próprio ator num curso quando a resposta
+tentativas de materialização de parte do próprio ator num curso quando a resposta
 se perdeu antes do corpo e o `requestId` interno não é conhecido. A leitura é estreita:
 mesma operação do writer (`materialize_course_authoring_part_v2`), guarda de acesso
 idêntica à do writer, recorte pela chave primária `(actor_id, request_id)` e filtro
