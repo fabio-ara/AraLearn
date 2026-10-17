@@ -105,7 +105,7 @@ const errorSchema = {
 // is recovered with the same reference and report. Catalog 11.5.0 adds both closed
 // design-recovery operations to `ajustar_configuracao` while preserving the former
 // `materializar_parte` discovery form. The measured baseline
-// becomes 101739 minified / 209738 pretty-printed
+// becomes 101751 minified / 209947 pretty-printed
 // characters. Acceptance in the actual editor remains a separate gate with the
 // real client; it is not implied by these counters.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;

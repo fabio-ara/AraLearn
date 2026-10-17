@@ -1043,13 +1043,15 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
         direcaoEditorial: Object.freeze({ type: ["string", "null"], maxLength: 4000 }),
         recuperacao: DESIGN_RECOVERY_SCHEMA
       }, []),
-      if: Object.freeze({ required: Object.freeze(["recuperacao"]) }),
-      then: Object.freeze({ maxProperties: 1 }),
-      else: Object.freeze({
-        required: Object.freeze(["curso", "condicao"]),
-        anyOf: Object.freeze(["parametros", "automaticos", "direcaoEditorial"].map(field =>
-          Object.freeze({ required: Object.freeze([field]) })))
-      })
+      allOf: Object.freeze([Object.freeze({
+        if: Object.freeze({ required: Object.freeze(["recuperacao"]) }),
+        then: Object.freeze({ maxProperties: 1 }),
+        else: Object.freeze({
+          required: Object.freeze(["curso", "condicao"]),
+          anyOf: Object.freeze(["parametros", "automaticos", "direcaoEditorial"].map(field =>
+            Object.freeze({ required: Object.freeze([field]) })))
+        })
+      })])
     }),
     { readOnly: false }
   ),
@@ -1280,7 +1282,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.5.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:efabd528139cd4ef0f168398f0db8c4698a89c3c9c6cd5b0252ad13f7e876e68";
+  "sha256:0f5f9e7c6952eb07407cf8e5c490554d08901191a24c59bf856439c115fcf09a";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

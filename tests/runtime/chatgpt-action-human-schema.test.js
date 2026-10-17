@@ -926,7 +926,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // as referências fechadas do lote novo e do comando de desenho legado. Em
   // `materializar_parte`, a
   // localização da tentativa pelo curso e pela microssequência permanece; a linha de base
-  // medida passa a 101739 minificados / 209738 formatados. A aceitação pelo editor
+  // medida passa a 101751 minificados / 209947 formatados. A aceitação pelo editor
   // é conferida à parte, com o
   // cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);

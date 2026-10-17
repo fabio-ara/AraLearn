@@ -113,14 +113,18 @@ test('pedido de parâmetro em lição resolve o ramo e preserva unidades já pro
   const {adapter}=harness();const writes=[];const reads=[];
   adapter.getCourseDesign=async request=>{reads.push(request);return courseDesignFixture({courseId,moduleId:'module',lessonId:'lesson',microsequenceId:'micro',studyUnitId:'unit'},
     {scope:request.scopeKind,revision:1});};
-  adapter.applyCourseDesignCommand=async request=>{writes.push(request);return{changed:true};};
+  adapter.applyCourseDesignCommandBatch=async request=>{writes.push(request);return{
+    contract:'aralearn.course-design-batch-change.v1',courseId:request.courseId,
+    courseRevision:request.expectedCourseRevision+request.commands.length,requestId:request.requestId,
+    idempotent:false,changed:true,changes:request.commands.map(command=>({type:command.type,
+      scope:command.scope,parameterId:command.parameterId??null}))};};
   const args={curso:'Curso',modulo:'Módulo',licao:'Lição'};
   await execute(adapter,'consultar_configuracao',args);
   const output=await execute(adapter,'ajustar_configuracao',{...args,condicao:'fixada_pelo_autor',
     parametros:{maximo_ideias_novas_por_unidade:1}});
   assert.equal(writes.length,1);
-  assert.deepEqual(writes[0].command.scope,{kind:'lesson',ref:'lesson'});
-  assert.equal(writes[0].command.parameterId,'new_analysis_unit_ceiling_per_expository_study_unit');
+  assert.deepEqual(writes[0].commands[0].scope,{kind:'lesson',ref:'lesson'});
+  assert.equal(writes[0].commands[0].parameterId,'new_analysis_unit_ceiling_per_expository_study_unit');
   assert.ok(reads.every(request=>request.scopeKind==='lesson'&&request.scopeRef==='lesson'));
   assert.match(output.nextDecision,/futuras produções/u);
   assert.equal(Object.hasOwn(writes[0],'upserts'),false);

@@ -26,7 +26,7 @@ Outros termos recorrentes estão no
 A [migração](../supabase/migrations/20261017130000_atomic_design_command_batch.sql)
 executa os comandos de `ajustar_configuracao` em uma única transação e publica
 somente um recibo externo do lote. Cada subcomando usa o writer simples já
-existente; quando altera o desenho, a revisão real do Curso avança uma vez. O
+existente; quando altera o desenho, a revisão real do curso avança uma vez. O
 resultado conserva a última revisão efetiva da cadeia CAS, e qualquer falha
 intermediária reverte todos os efeitos, inclusive os avanços de revisão e os
 recibos internos. O lote aceita até 13 comandos e 32 KiB, mantendo o orçamento
