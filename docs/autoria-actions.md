@@ -328,7 +328,9 @@ A materialização interrompida retoma pelo campo `recuperacao` de
 `materializar_parte`, com o objeto devolvido pelo erro. Essa consulta só
 distingue os estados do recibo da tentativa e não reaplica a escrita.
 Sem a referência, o mesmo campo aceita o curso e a microssequência e devolve os
-recibos vigentes, sem escolha automática.
+recibos vigentes, sem escolha automática. A resposta é paginada: a continuação
+devolvida percorre o restante do recorte, cujos totais vêm completos na própria
+leitura.
 
 
 Leituras extensas de planejamento e revisão usam a continuação comum aos canais.

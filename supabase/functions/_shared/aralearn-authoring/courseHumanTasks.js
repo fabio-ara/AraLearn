@@ -539,8 +539,9 @@ const MATERIALIZATION_RECOVERY_SCHEMA = Object.freeze({
       type: "object",
       additionalProperties: false,
       required: Object.freeze(["curso"]),
-      description: "Localização somente-leitura da tentativa perdida pelo curso e, quando informada, pela microssequência. Devolve os recibos vigentes do recorte sem escrever.",
-      properties: Object.freeze({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA })
+      description: "Localização somente-leitura da tentativa perdida: informe o curso e, quando conhecida, a microssequência. Devolve os recibos vigentes do recorte, com totais e continuação, sem escrever.",
+      properties: Object.freeze({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA,
+        continuacao: READ_CONTINUATION_SCHEMA })
     })
   ])
 });
@@ -1256,7 +1257,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.4.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:4bc50efbbc1d58b70b7259a3b8b0a2e2a07192b212cd85c51de12da489fcbcb5";
+  "sha256:569af9b8ae18ea7d64164e32d1db92e664805ac229c3e903696697f2a61cdcff";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1446,7 +1447,8 @@ function withoutTechnicalState(value) {
         !Array.isArray(entry)) {
       // A descoberta devolve a própria referência fechada da recuperação
       // existente. Preservá-la integral evita remontar identidade a partir de
-      // campos técnicos; qualquer outro valor sob esta chave segue o estado comum.
+      // campos técnicos; valor sob esta chave que não seja essa referência exata é
+      // defeito do produtor e falha explicitamente, nunca vira estado comum.
       if (Object.keys(entry).sort().join(",") !== "courseId,operation,requestId" ||
           entry.operation !== "course_write" || typeof entry.courseId !== "string" ||
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
@@ -3969,9 +3971,26 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
       fail("invalid_materialization_recovery",
         "Use a recuperação exata devolvida pela materialização deste curso, ou o curso e a microssequência para localizar a tentativa.");
     }
-    exactFields(pedido, new Set(["curso", "microssequencia"]));
+    exactFields(pedido, new Set(["curso", "microssequencia", "continuacao"]));
+    // A continuação é opaca e devolvida por esta mesma leitura; um valor de
+    // outra forma não vira recorte silencioso.
+    const continuacao = pedido.continuacao === undefined ? null :
+      typeof pedido.continuacao === "string" && pedido.continuacao.length > 0 &&
+        pedido.continuacao.length <= 4096 ? pedido.continuacao : false;
+    if (continuacao === false) {
+      fail("invalid_materialization_recovery", "A continuação da descoberta é inválida.");
+    }
     const discoveryContext = await resolveTaskContext({ adapter, principal,
       args: { curso: pedido.curso, microssequencia: pedido.microssequencia }, deadlineAt });
+    // Sem microssequência a resolução não lê o planejamento; a identidade das
+    // Partes devolvidas depende dele, então a leitura acontece sempre.
+    if (discoveryContext.plan === null || discoveryContext.plan === undefined) {
+      discoveryContext.plan = await adapter.getCourseInstructionalPlan({ principal,
+        courseId: discoveryContext.course.id, recentLimit: 1, deadlineAt });
+      if (discoveryContext.plan?.courseRevision !== discoveryContext.course.revision) {
+        fail("course_revision_conflict", "O planejamento mudou; releia o foco de produção.", null, 409);
+      }
+    }
     const parts = Array.isArray(discoveryContext.plan?.plan?.parts)
       ? discoveryContext.plan.plan.parts : [];
     const microsequence = pedido.microssequencia === undefined ? null : discoveryContext.microsequence;
@@ -3979,7 +3998,7 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
       (item?.microsequences ?? []).some(micro => micro?.id === microsequence.id)) ?? null;
     const discovery = await discoverHumanCoursePartMaterialization({ adapter, principal,
       courseId: discoveryContext.course.id, authoringPartId: part?.id ?? null,
-      microsequence, parts, deadlineAt });
+      microsequence, parts, cursor: continuacao, deadlineAt });
     return result(discovery.result, { deepLink: discovery.navigation,
       nextDecision: discovery.nextDecision, context: discovery.context });
   }

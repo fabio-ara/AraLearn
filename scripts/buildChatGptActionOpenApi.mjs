@@ -105,7 +105,7 @@ const errorSchema = {
 // is recovered with the same reference and report. Catalog 11.4.0 accepts in
 // `materializar_parte` the discovery form of `recuperacao`, which locates the attempt
 // by course and microsequence when the reference was lost. The measured baseline
-// becomes 101713 minified / 209266 pretty-printed
+// becomes 101900 minified / 209568 pretty-printed
 // characters. Acceptance in the actual editor remains a separate gate with the
 // real client; it is not implied by these counters.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;

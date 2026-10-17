@@ -454,7 +454,9 @@ expiração não provam que a gravação foi revertida; reconcilie o conteúdo f
 suas pendências antes de qualquer nova alteração.
 Quando a resposta se perdeu antes de qualquer referência, a mesma recuperação aceita
 o curso e a microssequência, devolve os recibos vigentes do recorte e não confirma
-ausência de efeito.
+ausência de efeito. A resposta é paginada e traz os totais do recorte; a
+continuação devolvida percorre o restante sem truncar a leitura nem transformar
+ambiguidade em unicidade.
 
 
 `registrar_inspecao` recupera pela própria operação: repita a chamada com a

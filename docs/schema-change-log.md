@@ -41,6 +41,10 @@ localizar a tentativa perdida: a união continua fechada e exclusiva com os argu
 de produção, e o catálogo humano avança para `11.4.0`. O manifesto avança para
 `20261017124500` e declara
 `course-authoring-part-materialization-receipt-discovery-v1`.
+A leitura é paginada por chave estável, com continuação opaca devolvida ao
+autor: as tentativas vigentes precedem as expiradas, os totais são do recorte
+inteiro — nunca do tamanho da página — e o recorte continua explícito mesmo
+quando só parte dele cabe numa resposta.
 
 
 A [migração](../supabase/migrations/20261016171317_course_source_anchor_capacity.sql),

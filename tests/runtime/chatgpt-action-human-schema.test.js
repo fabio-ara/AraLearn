@@ -910,7 +910,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
   // mesma referência e parecer. O catálogo 11.4.0 aceita em `materializar_parte` a
   // localização da tentativa pelo curso e pela microssequência; a linha de base
-  // medida passa a 101713 minificados / 209266 formatados. A aceitação pelo editor
+  // medida passa a 101900 minificados / 209568 formatados. A aceitação pelo editor
   // é conferida à parte, com o
   // cliente real.
   assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);

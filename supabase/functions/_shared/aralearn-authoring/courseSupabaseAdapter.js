@@ -3970,20 +3970,24 @@ export class CourseSupabaseAdapter {
   }
 
   // Descoberta somente-leitura das tentativas de materialização desta Parte no
-  // Curso. Localiza o recibo do próprio ator quando a resposta se perdeu antes
-  // do corpo e o requestId não é conhecido, sem escrever, sem apagar, sem
-  // reaplicar e sem eleger a tentativa mais recente: devolve os candidatos
-  // vigentes, os expirados e a contagem de recibos ilegíveis do recorte.
-  async discoverCoursePartMaterializationReceipts({ principal, courseId, authoringPartId = null, deadlineAt = null }) {
+  // Curso, em páginas com continuação. Localiza o recibo do próprio ator quando a
+  // resposta se perdeu antes do corpo e o requestId não é conhecido, sem escrever,
+  // sem apagar, sem reaplicar e sem eleger a tentativa mais recente. Os totais do
+  // recorte vêm do banco: a página nunca decide sozinha se há ambiguidade.
+  async discoverCoursePartMaterializationReceipts({ principal, courseId, authoringPartId = null,
+    cursor = null, deadlineAt = null }) {
     if (typeof courseId !== "string" || !UUID_PATTERN.test(courseId) ||
         authoringPartId !== null &&
-          (typeof authoringPartId !== "string" || !UUID_PATTERN.test(authoringPartId))) {
+          (typeof authoringPartId !== "string" || !UUID_PATTERN.test(authoringPartId)) ||
+        cursor !== null && (typeof cursor !== "string" ||
+          !/^[01]\|[0-9]{1,19}\|[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(cursor))) {
       throw new AuthoringApiError(422, "invalid_materialization_discovery",
-        "Informe o Curso e, quando conhecida, a Parte das tentativas a localizar.");
+        "Informe o Curso e, quando conhecida, a Parte, com a continuação devolvida pela própria descoberta.");
     }
     const value = first(await this.rpc(
       "discover_course_part_materialization_receipts_for_actor_v1",
-      { p_actor_id: principal.actorId, p_course_id: courseId, p_authoring_part_id: authoringPartId },
+      { p_actor_id: principal.actorId, p_course_id: courseId, p_authoring_part_id: authoringPartId,
+        p_limit: 32, p_cursor: cursor },
       { deadlineAt, responseLimitBytes: 96 * 1024 }
     ));
     return this.#partMaterializationDiscovery(value, { courseId, authoringPartId });
@@ -3992,51 +3996,49 @@ export class CourseSupabaseAdapter {
   #partMaterializationDiscovery(value, { courseId, authoringPartId }) {
     const failure = () => new AuthoringApiError(503, "course_service_unavailable",
       "A descoberta do recibo da materialização não pôde ser verificada.");
-    const limit = 64;
     if (!jsonRecord(value) ||
         value.contract !== "aralearn.course-part-materialization-discovery.v1" ||
         value.courseId !== courseId ||
         String(value.authoringPartId ?? "").toLowerCase() !== String(authoringPartId ?? "").toLowerCase() ||
         !["candidate", "ambiguous", "none"].includes(value.status) ||
-        !Array.isArray(value.candidates) || value.candidates.length > limit ||
-        !Array.isArray(value.expired) || value.expired.length > limit ||
-        !Number.isSafeInteger(value.illegible) || value.illegible < 0) throw failure();
-    // Identidade e retenção do recibo: instante inválido ou vencimento anterior
-    // ao registro não descrevem tentativa recuperável.
-    const retention = (item) => {
-      if (!jsonRecord(item) || typeof item.requestId !== "string" ||
-          !INTERNAL_REQUEST_ID_PATTERN.test(item.requestId) ||
-          typeof item.createdAt !== "string" || typeof item.expiresAt !== "string") return null;
-      const createdAt = Date.parse(item.createdAt), expiresAt = Date.parse(item.expiresAt);
-      if (!Number.isFinite(createdAt) || !Number.isFinite(expiresAt) || expiresAt <= createdAt) return null;
-      return { requestId: item.requestId, createdAt: item.createdAt, expiresAt: item.expiresAt };
-    };
-    const candidates = value.candidates.map((item) => {
-      const base = retention(item);
-      if (!base || Object.keys(item).length !== 7 ||
+        !Array.isArray(value.items) || value.items.length > 32 ||
+        !Number.isSafeInteger(value.candidateCount) || value.candidateCount < 0 ||
+        !Number.isSafeInteger(value.expiredCount) || value.expiredCount < 0 ||
+        !Number.isSafeInteger(value.illegible) || value.illegible < 0 ||
+        typeof value.hasMore !== "boolean") throw failure();
+    const cursor = value.nextCursor ?? null;
+    if (cursor !== null && (typeof cursor !== "string" ||
+        !/^[01]\|[0-9]{1,19}\|[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(cursor))) throw failure();
+    // Continuação e fim de recorte são a mesma afirmação vista de dois lados.
+    if (value.hasMore !== (cursor !== null)) throw failure();
+    const items = value.items.map((item) => {
+      if (!jsonRecord(item) || Object.keys(item).length !== 7 ||
+          typeof item.requestId !== "string" || !INTERNAL_REQUEST_ID_PATTERN.test(item.requestId) ||
           typeof item.authoringPartId !== "string" || !UUID_PATTERN.test(item.authoringPartId) ||
           !Number.isSafeInteger(item.courseRevision) || item.courseRevision < 1 ||
           typeof item.changed !== "boolean" ||
-          !Number.isSafeInteger(item.studyUnitCount) || item.studyUnitCount < 0) return null;
-      return { ...base, authoringPartId: item.authoringPartId.toLowerCase(),
-        courseRevision: item.courseRevision, changed: item.changed, studyUnitCount: item.studyUnitCount };
+          !Number.isSafeInteger(item.studyUnitCount) || item.studyUnitCount < 0 ||
+          typeof item.expired !== "boolean" || typeof item.createdAt !== "string" ||
+          !Number.isFinite(Date.parse(item.createdAt))) return null;
+      return { requestId: item.requestId, authoringPartId: item.authoringPartId.toLowerCase(),
+        courseRevision: item.courseRevision, changed: item.changed,
+        studyUnitCount: item.studyUnitCount, createdAt: item.createdAt, expired: item.expired };
     });
-    const expired = value.expired.map((item) => {
-      const base = retention(item);
-      if (!base || Object.keys(item).length !== 4 ||
-          typeof item.authoringPartId !== "string" || !UUID_PATTERN.test(item.authoringPartId)) return null;
-      return { ...base, authoringPartId: item.authoringPartId.toLowerCase() };
-    });
-    if (candidates.includes(null) || expired.includes(null)) throw failure();
-    // Um requestId distinto por linha: a mesma tentativa não aparece duas vezes
-    // nem ao mesmo tempo como vigente e vencida.
-    if (new Set([...candidates, ...expired].map(item => item.requestId)).size !==
-        candidates.length + expired.length) throw failure();
-    if ((value.status === "candidate") !== (candidates.length === 1)) throw failure();
-    if (value.status === "ambiguous" && candidates.length < 2) throw failure();
-    if (authoringPartId !== null && [...candidates, ...expired].some(item =>
+    if (items.includes(null)) throw failure();
+    if (new Set(items.map(item => item.requestId)).size !== items.length) throw failure();
+    const shown = items.filter(item => !item.expired).length;
+    // A página não reivindica mais tentativas do que o recorte tem, e a vigente
+    // única precisa estar nela: as vigentes vêm antes das expiradas.
+    if (shown > value.candidateCount || items.length - shown > value.expiredCount) throw failure();
+    if ((value.status === "candidate") !== (value.candidateCount === 1)) throw failure();
+    if (value.status === "ambiguous" && value.candidateCount < 2) throw failure();
+    if (value.status === "candidate" && shown !== 1) throw failure();
+    if (value.status === "none" && shown !== 0) throw failure();
+    if (authoringPartId !== null && items.some(item =>
       item.authoringPartId !== authoringPartId.toLowerCase())) throw failure();
-    return { status: value.status, candidates, expired, illegible: value.illegible };
+    return { status: value.status, items, candidateCount: value.candidateCount,
+      expiredCount: value.expiredCount, illegible: value.illegible, hasMore: value.hasMore,
+      nextCursor: cursor };
   }
 
   async commitCourseComposition({

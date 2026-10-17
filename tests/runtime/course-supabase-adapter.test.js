@@ -4179,61 +4179,76 @@ test("recuperação da materialização preserva estados ausentes e recusa recib
   assert.equal(network, 0);
 });
 
-test("descoberta da materialização consulta o leitor focal por ator, curso e Parte", async () => {
+test("descoberta da materialização consulta o leitor paginado por ator, curso e Parte", async () => {
   const body = [];
-  const discovery = { contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
-    authoringPartId: PART_ID, status: "candidate", illegible: 0, expired: [],
-    candidates: [{ requestId: "materializacao-original-0001", authoringPartId: PART_ID,
-      courseRevision: 8, changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00",
-      expiresAt: "2026-10-31T12:00:00.000+00:00" }] };
+  const item = { requestId: "materializacao-original-0001", authoringPartId: PART_ID,
+    courseRevision: 8, changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00",
+    expired: false };
   const value = adapter(async (url, init) => {
     assert.match(url, /\/rpc\/discover_course_part_materialization_receipts_for_actor_v1$/u);
     body.push(JSON.parse(init.body));
-    return json(discovery);
+    return json({ contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
+      authoringPartId: PART_ID, status: "candidate", candidateCount: 1, expiredCount: 0, illegible: 0,
+      items: [item], hasMore: false, nextCursor: null });
   });
   const found = await value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
     courseId: COURSE_ID, authoringPartId: PART_ID });
   assert.equal(found.status, "candidate");
-  assert.deepEqual(found.candidates, discovery.candidates);
-  assert.deepEqual(found.expired, []);
-  assert.equal(found.illegible, 0);
-  assert.deepEqual(body, [{ p_actor_id: USER_ID, p_course_id: COURSE_ID, p_authoring_part_id: PART_ID }]);
-  // Sem Parte conhecida, o recorte é o Curso e o eco permanece nulo.
-  const whole = adapter(async (url, init) => { body.push(JSON.parse(init.body));
-    return json({ ...discovery, authoringPartId: null, status: "none", candidates: [] }); });
-  const empty = await whole.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
-    courseId: COURSE_ID });
-  assert.equal(empty.status, "none");
-  assert.deepEqual(body.at(-1), { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_authoring_part_id: null });
+  assert.deepEqual(found.items, [item]);
+  assert.equal(found.candidateCount, 1);
+  assert.equal(found.hasMore, false);
+  assert.equal(found.nextCursor, null);
+  assert.deepEqual(body[0], { p_actor_id: USER_ID, p_course_id: COURSE_ID,
+    p_authoring_part_id: PART_ID, p_limit: 32, p_cursor: null });
+  // A continuação é encaminhada como estava; o recorte continua o mesmo.
+  const continued = adapter(async (url, init) => { body.push(JSON.parse(init.body));
+    return json({ contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
+      authoringPartId: null, status: "ambiguous", candidateCount: 2, expiredCount: 64, illegible: 0,
+      items: [{ ...item, expired: true }], hasMore: true, nextCursor: "0|1|materializacao-original-0001" }); });
+  const page = await continued.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, cursor: "1|1|materializacao-original-0001" });
+  assert.equal(page.status, "ambiguous");
+  assert.equal(page.expiredCount, 64);
+  assert.deepEqual(body[1], { p_actor_id: USER_ID, p_course_id: COURSE_ID,
+    p_authoring_part_id: null, p_limit: 32, p_cursor: "1|1|materializacao-original-0001" });
 });
 
-test("descoberta da materialização recusa resposta incoerente sem escrever", async () => {
+test("descoberta da materialização recusa página incoerente sem escrever", async () => {
   const coherent = { contract: "aralearn.course-part-materialization-discovery.v1", courseId: COURSE_ID,
-    authoringPartId: PART_ID, status: "candidate", illegible: 0, expired: [],
-    candidates: [{ requestId: "materializacao-original-0001", authoringPartId: PART_ID,
-      courseRevision: 8, changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00",
-      expiresAt: "2026-10-31T12:00:00.000+00:00" }] };
+    authoringPartId: PART_ID, status: "candidate", candidateCount: 1, expiredCount: 0, illegible: 0,
+    items: [{ requestId: "materializacao-original-0001", authoringPartId: PART_ID, courseRevision: 8,
+      changed: true, studyUnitCount: 2, createdAt: "2026-10-17T12:00:00.000+00:00", expired: false }],
+    hasMore: false, nextCursor: null };
   for (const override of [
     { status: "unknown" },
     { contract: "aralearn.course-part-materialization-receipt.v1" },
     { courseId: OTHER_COURSE_ID },
     { authoringPartId: "20000000-0000-4000-8000-000000000009" },
-    { candidates: [] },
-    { status: "ambiguous", candidates: [coherent.candidates[0], coherent.candidates[0]] },
+    { status: "ambiguous", candidateCount: 1 },
+    { candidateCount: 0 },
+    { candidateCount: 2, status: "candidate" },
+    { status: "none" },
+    { status: "none", candidateCount: 0, expiredCount: 0,
+      items: [{ ...coherent.items[0], expired: true }] },
     { illegible: -1 },
-    { candidates: [{ ...coherent.candidates[0], changed: "sim" }] },
-    { candidates: [{ ...coherent.candidates[0], expiresAt: "2026-10-01T12:00:00.000+00:00" }] },
-    { candidates: [{ ...coherent.candidates[0], extra: 1 }] },
-    { expired: [{ requestId: "materializacao-original-0002",
-      authoringPartId: "20000000-0000-4000-8000-000000000009",
-      createdAt: "2026-10-17T12:00:00.000+00:00", expiresAt: "2026-10-31T12:00:00.000+00:00" }] }
+    { hasMore: true },
+    { hasMore: true, nextCursor: "sem-forma" },
+    { nextCursor: "1|1|materializacao-original-0001" },
+    { items: [] },
+    { items: [coherent.items[0], coherent.items[0]] },
+    { items: [{ ...coherent.items[0], changed: "sim" }] },
+    { items: [{ ...coherent.items[0], expired: "sim" }] },
+    { items: [{ ...coherent.items[0], createdAt: "ontem" }] },
+    { items: [{ ...coherent.items[0], extra: 1 }] },
+    { items: Array.from({ length: 33 }, (_, index) => ({ ...coherent.items[0],
+      requestId: "materializacao-original-" + String(index).padStart(4, "0") })), candidateCount: 33 }
   ]) {
     const value = adapter(async () => json({ ...coherent, ...override }));
     await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
       courseId: COURSE_ID, authoringPartId: PART_ID }),
-    error => error.code === "course_service_unavailable", JSON.stringify(override));
+    error => error.code === "course_service_unavailable", JSON.stringify(override).slice(0, 90));
   }
-  // Identidade inválida é recusada antes de qualquer RPC.
+  // Identidade e continuação inválidas são recusadas antes de qualquer RPC.
   let network = 0;
   const value = adapter(async () => { network += 1; return json({}); });
   await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
@@ -4241,7 +4256,7 @@ test("descoberta da materialização recusa resposta incoerente sem escrever", a
   error => error.code === "invalid_materialization_discovery");
   await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
     courseId: "não-é-uuid" }), error => error.code === "invalid_materialization_discovery");
+  await assert.rejects(value.discoverCoursePartMaterializationReceipts({ principal: { actorId: USER_ID },
+    courseId: COURSE_ID, cursor: "sem-forma" }), error => error.code === "invalid_materialization_discovery");
   assert.equal(network, 0);
 });
-
-
