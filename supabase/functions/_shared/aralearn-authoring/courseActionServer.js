@@ -165,6 +165,13 @@ function publicError(error, { writeTaskStarted = false } = {}) {
   // repetição guiada descrita em message/nextDecision.
   const inspectionUncertain = error.code === "course_write_uncertain" &&
     error.details?.operation === "course_ai_inspection";
+  if (error.code === "course_write_confirmed_read_pending") {
+    return {
+      error: { code: error.code, message: error.message, retryable: false,
+        ...(recovery ? { recovery } : {}) },
+      nextDecision: "A escrita foi confirmada. Consulte a recuperação exata antes de decidir outra alteração; não reenvie o ajuste."
+    };
+  }
   if (["course_write_uncertain", "course_source_pdf_write_uncertain", "course_media_write_uncertain"].includes(error.code)) {
     const causeCode = error.details?.causeCode === "statement_timeout" ? "statement_timeout" : null;
     return {

@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.119] - 2026-10-17
+
+### Corrigido
+
+- Ao ajustar várias escolhas de autoria em um único pedido, a configuração é salva por inteiro ou não é alterada. Se a confirmação chegar mas a leitura dos valores efetivos falhar, o AraLearn informa que a alteração já está salva e oferece a tentativa exata para consulta, sem pedir que o ajuste seja enviado novamente.
+
 ## [0.0.118] - 2026-10-17
 
 ### Adicionado
