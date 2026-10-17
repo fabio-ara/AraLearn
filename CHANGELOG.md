@@ -11,7 +11,9 @@ explica os termos usados na implementação atual.
 
 ### Desempenho
 
-Quando uma revisão é preparada, o servidor passa a projetar somente currículo, explicações, dependências, escopo, cobertura e partes usados na leitura. A proveniência de análise, o progresso por parte, contagens e o material de aprovação do mapa deixam de ampliar cada fragmento; a leitura continua sujeita ao acesso do proprietário, à revisão corrente e às mesmas invalidações de digest. O plano v5 e os demais consumidores permanecem inalterados.
+- A preparação de revisão passa a projetar somente currículo, explicações, dependências, escopo, cobertura e partes usados na leitura.
+- Proveniência de análise, progresso por parte, contagens e material de aprovação do mapa deixam de ampliar cada fragmento.
+- O acesso do proprietário, a revisão corrente e as invalidações de digest permanecem; o plano v5 e os demais consumidores não mudam.
 
 ## [0.0.120] - 2026-10-17
 
