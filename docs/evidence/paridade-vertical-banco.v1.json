@@ -1291,6 +1291,10 @@
       "caseId": "course-independent-copy"
     },
     {
+      "object": "function:private.course_instructional_command_bytes_limit_v1()",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_list_projection_v2(p_course_id uuid, p_actor_id uuid)",
       "caseId": "study-course-experience"
     },

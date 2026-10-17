@@ -21,6 +21,23 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261017120000 — orçamento do comando instrucional
+
+A [migração](../supabase/migrations/20261017120000_instructional_command_budget.sql)
+substitui o teto herdado de 32 KiB dos dois comandos que carregam lote de
+unidades (`set_study_unit_applications` e `apply_study_unit_configuration`) por
+um contrato nomeado de 256 KiB, medido em octetos do próprio jsonb recebido. O
+número reusa a referência numérica que a leitura do mesmo desenho já aplica
+(`get_owned_course_design_for_actor_v3`, 262144 octetos); leitura e comando não
+são o mesmo payload. No lote observado de sete unidades, o comando real mede
+33279 octetos e ficava acima do teto herdado. A recusa por tamanho passa a
+devolver 413 `course_command_too_large` no lugar do 422 genérico, a validação
+estrutural de superfície continua antes do orçamento e a validação de cada
+unidade permanece no laço. O lote é atômico: exceder o orçamento não grava
+parte das unidades nem cria recibo. Os comandos de plano e vínculo e os
+delegados ao núcleo de preferências mantêm os tetos que já tinham, e nenhuma
+capacidade nova é declarada: o manifesto avança para `20261017120000`.
+
 ## 20261016171317 — capacidade de âncoras de uma revisão de Fonte
 ## 20261017124500 — descoberta somente-leitura do recibo de materialização
 

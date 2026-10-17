@@ -215,6 +215,7 @@
           "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)",
           "function:private.build_course_instructional_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_compact boolean)",
           "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)"
+          ,"function:private.course_instructional_command_bytes_limit_v1()"
         ]
       },
       "ui": [
@@ -377,6 +378,10 @@
         {
           "path": "supabase/migrations/20261014143125_materialization_receipt_recovery.sql",
           "token": "get_course_part_materialization_receipt_for_actor_v1"
+        },
+        {
+          "path": "supabase/migrations/20261017120000_instructional_command_budget.sql",
+          "token": "course_instructional_command_bytes_limit_v1"
         },
         {
           "path": "supabase/migrations/20261017124500_materialization_receipt_discovery.sql",

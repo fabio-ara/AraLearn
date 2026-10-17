@@ -676,6 +676,11 @@ function databaseError(status, body, { administrative = false } = {}) {
   if (status === 409 || code === "23505") {
     return new AuthoringApiError(409, "conflict", "A operação conflita com o estado existente.");
   }
+  if (code === "PT413" && databaseMessage.startsWith("O comando instrucional excede o orçamento de ")) {
+    // Recusa de transporte do comando instrucional: o lote permanece atômico e
+    // a mensagem do banco já nomeia o orçamento e o caminho de divisão.
+    return new AuthoringApiError(413, "course_command_too_large", databaseMessage);
+  }
   if (status === 413 || code === "54000") {
     return new AuthoringApiError(413, "payload_too_large", "A alteração excede o limite aceito.");
   }

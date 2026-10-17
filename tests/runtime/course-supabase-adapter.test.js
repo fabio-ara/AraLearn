@@ -3479,6 +3479,41 @@ test("prontidão de áudio preserva a causa corrigível sem expor detalhes inter
   }
 });
 
+test("orçamento do comando instrucional devolve causa própria de tamanho sem expor detalhes internos do banco", async () => {
+  const payload = {
+    p_actor_id: USER_ID,
+    p_course_id: COURSE_ID,
+    p_expected_course_revision: 5,
+    p_command: { type: "apply_study_unit_configuration", scope: { kind: "didactic_microsequence", ref: "micro-a" },
+      expectedPlanVersion: 3, units: [] },
+    p_request_id: "command-budget-0001",
+    p_request_hash: "a".repeat(64),
+    p_channel: "mcp"
+  };
+  const budgetMessage = "O comando instrucional excede o orçamento de 262144 octetos e nada foi gravado. " +
+    "Divida o lote em pedidos menores, preservando o texto de cada unidade.";
+  const value = adapter(async () => json({ code: "PT413", message: budgetMessage }, 400));
+  await assert.rejects(
+    () => value.rpc("apply_course_design_command_for_actor_v3", payload),
+    error => {
+      assert.equal(error.status, 413);
+      assert.equal(error.code, "course_command_too_large");
+      assert.match(error.message, /orçamento de 262144 octetos/u);
+      assert.match(error.message, /pedidos menores/u);
+      return true;
+    }
+  );
+  const unexpected = adapter(async () => json({ code: "PT413", message: "Constraint relacional private.secret" }, 400));
+  await assert.rejects(
+    () => unexpected.rpc("apply_course_design_command_for_actor_v3", payload),
+    error => {
+      assert.notEqual(error.code, "course_command_too_large");
+      assert.ok(!error.message.includes("private.secret"));
+      return true;
+    }
+  );
+});
+
 test("mapa em rascunho recusa a produção com causa específica, sem expor detalhes internos do banco", async () => {
   const value = adapter(async () => json({ code: "23514",
     message: "A producao so pode ser organizada depois da aprovacao do mapa curricular. private.secret" }, 422));
