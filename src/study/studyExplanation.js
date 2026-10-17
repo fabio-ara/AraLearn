@@ -16,7 +16,8 @@ const SOURCE_OPTIONS = Object.freeze({ targetKind: "microsequence_explanation" }
 // quando o conteúdo muda de forma entre a leitura e a reabertura (bloco preposto, retirada ou
 // reordenação). Os atributos já existem nos marcadores, nas referências e nas ações da folha.
 const FOCUS_IDENTITY_ATTRIBUTES = Object.freeze(["data-citation-occurrence-id", "data-citation-link-id",
-  "data-citation-reference-id", "data-manual-edit-path", "data-study-source-return", "data-action"]);
+  "data-citation-reference-id", "data-manual-edit-path", "data-study-source-return", "data-action",
+  "data-explanation-reading"]);
 function semanticFocusIdentities(root, active) {
   if (!root || !active || active === root || !root.contains(active)) return [];
   if (active.hasAttribute("data-close-explanation")) return [];
@@ -417,7 +418,7 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
       '<div class="study-explanation-reading"><header class="editor-head">' +
       `<h2 id="study-explanation-title">${title}</h2><button class="icon-ghost" type="button" data-close-explanation aria-label="${closeLabel}" title="${closeLabel}">` +
       renderUiIcon("remove-state", "home-tab-icon") + '</button></header>' +
-      `<div class="editor-body study-explanation-body" tabindex="0">${content}<div data-explanation-source-markers></div><div data-explanation-references></div></div>` +
+      '<div class="editor-body study-explanation-body" tabindex="0" data-explanation-reading="body">' + content + '<div data-explanation-source-markers></div><div data-explanation-references></div></div>' +
       (renderingUnit ? `<footer class="study-explanation-tools">${renderStudyToolActions(renderingUnit, RESOURCE_PACKAGE_REGISTRY, { compact: true, contextual: true })}</footer>` : "") +
       '</div></article>';
     overlay.classList.toggle("is-without-base", !renderingUnit);
@@ -466,8 +467,9 @@ export function createStudyExplanation({ root, repository, getContext, getRefere
     beforeRender() {
       detachedFocus = overlay?.contains(root.ownerDocument.activeElement) ? root.ownerDocument.activeElement : null;
       detachedIdentities = semanticFocusIdentities(overlay, root.ownerDocument.activeElement);
-      // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura precisa
-      // reencontrá-lo pelo caminho, sem guardar o nó do DOM antigo.
+      // O alvo focado pertence ao contrato do estado: a reabertura da mesma leitura o
+      // reencontra pela identidade semântica (ocorrência, vínculo, ação, href ou o próprio
+      // corpo de leitura), nunca pelo índice do caminho nem guardando o nó do DOM antigo.
       detachedState = overlay ? captureRenderState(overlay, { includeFocus: true }) : null;
       overlay?.remove();
     },

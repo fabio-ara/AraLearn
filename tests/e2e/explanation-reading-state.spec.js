@@ -41,10 +41,15 @@ test("atualização assíncrona preserva rolagem, quadro horizontal e foco em 39
   expect(await page.evaluate(() => document.activeElement?.className)).toContain("study-explanation-body");
 
   // Atualização legítima: a explicação passa para a revisão 2 e o texto novo entra no conteúdo.
-  await page.evaluate(() => {
+  // Discriminante: a leitura síncrona é feita no mesmo instante do render. O preserveFocus do
+  // aplicativo restaura por caminho numa RAF; se o foco já está no corpo aqui, quem o repôs foi
+  // o contrato da folha, e não o acerto incidental do caminho externo.
+  const immediateFocus = await page.evaluate(() => {
     globalThis.__explanationFixture.probe.courseRevision = 2;
     globalThis.__explanationFixture.app.refreshRuntimeStatus();
+    return document.activeElement?.className || "";
   });
+  expect(immediateFocus).toContain("study-explanation-body");
   await expect(overlay).toBeVisible();
   await expect(body).toContainText("Revisão 2 da explicação");
   expect(await frame.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(0);
