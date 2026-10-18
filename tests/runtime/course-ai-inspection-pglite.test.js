@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../../src/domain/courseContentInspection.js";
 import { normalizePedagogicalAudit } from "../../src/domain/coursePedagogicalAudit.js";
+import { normalizeCourseInspectionTriagePage } from "../../src/domain/courseInspectionTriage.js";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { createContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
@@ -859,15 +860,21 @@ test("triagem SQL recalcula currentness, pagina alvos com identidade global, res
       [COURSE]);
     await db.query("select set_config('aralearn.ai_inspection_write','',false)");
     const firstRead = await read(db, "tri-u1");
-    const triageReport = { ...report, summary: "x".repeat(1000), outcome: "needs_attention",
-      findings: Array.from({ length: 20 }, (_, index) => `Ressalva ${index} `.padEnd(300, "x")),
-      checks: report.checks.map(check => ({ ...check, reason: "r".repeat(200), evidence: ["Texto 1."] })) };
+    const triageReport = { ...report, summary: "😀".repeat(1000), outcome: "needs_attention",
+      findings: Array.from({ length: 20 }, () => "😀".repeat(300)),
+      checks: report.checks.map(check => ({ ...check, reason: "😀".repeat(200), evidence: ["Texto 1."] })) };
     await record(db, "triage-current-001", { id: "tri-u1", hash: firstRead.basisHash, value: triageReport });
     const revision = await queryValue(db, "select revision value from public.courses where id=$1", [COURSE]);
     const page = async (actor = OWNER, expected = revision, cursor = 0, limit = 2) => queryValue(db,
       "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'course',null,null,$4,$5) value",
       [actor, COURSE, expected, cursor, limit]);
     const one = await page();
+    const normalizedOne = normalizeCourseInspectionTriagePage(one, { courseId: COURSE, expectedRevision: revision });
+    const normalizedCurrent = normalizedOne.items.find(item => item.targetId === "tri-u1");
+    assert.equal(normalizedCurrent.report.summary, triageReport.summary);
+    assert.deepEqual(normalizedCurrent.report.findings, triageReport.findings);
+    assert.deepEqual(normalizedCurrent.report.checks.map(check => check.reason),
+      triageReport.checks.map(check => check.reason), "PostgreSQL e normalizador limitam por code point Unicode");
     assert.equal(one.totalCount, 6);
     assert.equal(one.items.length, 2);
     assert.deepEqual(one.items.map(item => item.targetKind), ["microsequence_explanation", "study_unit"]);

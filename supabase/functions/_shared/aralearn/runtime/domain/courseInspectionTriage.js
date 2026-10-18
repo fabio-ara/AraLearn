@@ -14,11 +14,18 @@ const fail = (message = "A triagem de inspeção é inválida.") => {
   throw Object.assign(new TypeError(message), { code: "invalid_course_inspection_triage" });
 };
 const positive = value => Number.isSafeInteger(value) && value > 0;
-const bounded = (value, max) => typeof value === "string" && value.length <= max &&
-  ![...value].some(character => {
+const bounded = (value, max) => {
+  if (typeof value !== "string") return false;
+  let length = 0;
+  for (const character of value) {
+    // PostgreSQL left(text, n) counts Unicode code points; match that limit,
+    // rather than JavaScript's UTF-16 code units, for the projected fields.
+    if (++length > max) return false;
     const code = character.codePointAt(0);
-    return code < 32 && ![9, 10, 13].includes(code) || code === 127;
-  });
+    if (code < 32 && ![9, 10, 13].includes(code) || code === 127) return false;
+  }
+  return true;
+};
 
 function normalizeItem(value) {
   exact(value, ["targetKind", "targetId", "title", "ordinal", "focusArguments", "state", "dimensionsCurrentComplete", "report"]);
