@@ -36,6 +36,7 @@ import { createAuthoringActionHandler } from "../../supabase/functions/_shared/a
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { applyCurricularMapSlice, inspectCurricularMapCompleteness } from
   "../../src/domain/courseCurricularMapSlices.js";
+import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 const ORIGIN = "https://client.example";
 const RESOURCE_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
@@ -443,7 +444,7 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.6.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.8.0");
   // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
   // a mesma referência e o mesmo parecer, sem recompor a tentativa.
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,
@@ -4648,4 +4649,219 @@ test("id 0 e id textual sobrevivem à rota de falha transitória", async () => {
     assert.equal(payload.result.isError, true);
     assert.equal(payload.result.structuredContent.error.retryable, true);
   }
+});
+
+test("preparar_revisao resumo pagina estados sem ler fontes nem conteúdo", async () => {
+  const value = adapter();
+  const dimensions = ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"];
+  const current = (ordinal, checks = dimensions) => ({ targetKind: "study_unit", targetId: `unit-${ordinal}`,
+    title: `Unidade ${ordinal}`, ordinal, focusArguments: { unidades: [ordinal] }, state: "current", dimensionsCurrentComplete: checks.length === 6,
+    report: { summary: "Síntese sintética", outcome: "needs_attention", findings: ["Verificar ressalva"],
+      checks: checks.map(dimension => ({ dimension, result: "sufficient", reason: "Razão curta" })) } });
+  value.getCourseInspectionTriageOutline = async () => { throw new Error("curso inteiro não deve carregar outline"); };
+  const requested = [];
+  value.getCourseInspectionTriagePage = async input => {
+    requested.push(input);
+    const firstPage = input.cursorOrdinal === "0";
+    const items = firstPage ? [current(1), current(2, dimensions.slice(0, 5)),
+      { targetKind: "study_unit", targetId: "unit-3", title: "Unidade 3", ordinal: 3, focusArguments: { unidades: [3] },
+        state: "pending", dimensionsCurrentComplete: null, report: null },
+      { targetKind: "study_unit", targetId: "unit-4", title: "Unidade 4", ordinal: 4, focusArguments: { unidades: [4] },
+        state: "unregistered", dimensionsCurrentComplete: null, report: null }]
+      : [{ targetKind: "microsequence_explanation", targetId: "micro-5", title: "Explicação", ordinal: 5,
+        focusArguments: { modulo: 1, licao: 1, microssequencia: 3 },
+        state: "unavailable", dimensionsCurrentComplete: null, report: null }];
+    return { contract: "aralearn.course-inspection-triage-page.v1", courseId: COURSE_ID,
+      courseRevision: input.expectedRevision, scope: { kind: "course", id: null }, items,
+      totalCount: 5, hasMore: firstPage, nextCursor: firstPage ? "4" : null };
+  };
+  for (const name of ["getCourseReviewPlan", "getCourseInstructionalPlan", "listCourseStudyUnits",
+    "getCourseContentReview", "getCourseContentInspection", "getCourseSources"]) {
+    value[name] = async () => { throw new Error(`triagem chamou indevidamente ${name}`); };
+  }
+  const first = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", resumo: true } });
+  assert.equal(first.context.totalDeAlvosNoEscopo, 5);
+  assert.equal(first.context.alvosNestaPagina, 4);
+  assert.deepEqual(first.context.estadosNestaPagina, { current: 2, pending: 1, unregistered: 1, unavailable: 0 });
+    assert.equal(first.context.alvos[1].dimensoesAtuaisCompletas, false);
+  assert.equal(first.context.alvos[1].alvo.indiceTriagem, 2);
+  assert.deepEqual(first.context.alvos[1].argumentosParaLeituraFormal,
+    { curso: "Redes para iniciantes", unidades: [2], auditoria: true });
+  assert.match(first.context.alvos[1].ressalva, /não cobre as seis dimensões/u);
+  assert.doesNotMatch(JSON.stringify(first), /referenciaInspecao|referenciaRevisao|basisHash|pedagogicalBasis/u);
+  assert.match(first.context.nota, /auditoria:true/u);
+  const second = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", resumo: true, continuacao: first.context.continuacao } });
+  assert.equal(second.context.estadosNestaPagina.unavailable, 1);
+  assert.equal(requested.length, 2);
+  await assert.rejects(() => executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "preparar_revisao", rawArguments: { curso: "Redes para iniciantes", resumo: false,
+      continuacao: first.context.continuacao } }), error => error.status === 409);
+  await assert.rejects(() => executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "preparar_revisao", rawArguments: { curso: "Redes para iniciantes", resumo: true, auditoria: true } }),
+  error => error.code === "invalid_human_task_argument");
+});
+
+test("argumentos de triagem reabrem os mesmos alvos em auditoria formal com micros homônimas", async () => {
+  const value = adapter();
+  const micros = ["micro-a", "micro-b"].map((id, index) => ({ id, position: index,
+    title: "Microssequência duplicada", goal: `Objetivo ${index + 1}`, explanation: null }));
+  const plan = { id: "plan", version: 1, title: "Redes para iniciantes", objective: "Objetivo", parts: [],
+    curriculum: { modules: [{ id: "module-a", position: 0, title: "Módulo",
+      lessons: [{ id: "lesson-a", position: 0, title: "Lição", microsequences: micros }] }] } };
+  value.getCourseInspectionTriageOutline = async () => { throw new Error("curso inteiro não deve carregar outline"); };
+  value.getCourseInspectionTriagePage = async input => ({ contract: "aralearn.course-inspection-triage-page.v1",
+    courseId: COURSE_ID, courseRevision: input.expectedRevision, scope: { kind: "course", id: null },
+    items: [
+      { targetKind: "microsequence_explanation", targetId: "micro-a", title: "Explicação A", ordinal: 1,
+        focusArguments: { modulo: 1, licao: 1, microssequencia: 1 }, state: "unregistered",
+        dimensionsCurrentComplete: null, report: null },
+      { targetKind: "study_unit", targetId: "unit-a", title: "Unidade A", ordinal: 2,
+        focusArguments: { unidades: [1] }, state: "pending", dimensionsCurrentComplete: null, report: null },
+      { targetKind: "microsequence_explanation", targetId: "micro-b", title: "Explicação B", ordinal: 3,
+        focusArguments: { modulo: 1, licao: 1, microssequencia: 2 }, state: "unregistered",
+        dimensionsCurrentComplete: null, report: null },
+      { targetKind: "study_unit", targetId: "unit-b", title: "Unidade B", ordinal: 4,
+        focusArguments: { unidades: [2] }, state: "current", dimensionsCurrentComplete: true,
+        report: { summary: "Síntese", outcome: "consistent", findings: [], checks: [
+          "alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"
+        ].map(dimension => ({ dimension, result: "sufficient", reason: "Razão" })) } }
+    ], totalCount: 4, hasMore: false, nextCursor: null });
+  value.getCourseInstructionalPlan = async () => ({ courseId: COURSE_ID, courseRevision: 7, plan });
+  const formalReads = [];
+  value.listCourseStudyUnits = async ({ scopeKind, scopeId }) => {
+    const items = [
+      { ordinal: 1, studyUnit: { id: "unit-a", title: "Unidade A", position: 0 },
+        curriculumPath: { didacticMicrosequence: { id: "micro-a", title: micros[0].title } } },
+      { ordinal: 2, studyUnit: { id: "unit-b", title: "Unidade B", position: 0 },
+        curriculumPath: { didacticMicrosequence: { id: "micro-b", title: micros[1].title } } }
+    ].filter(item => scopeKind !== "didactic_microsequence" || item.curriculumPath.didacticMicrosequence.id === scopeId);
+    return { items, hasMore: false, nextCursor: null };
+  };
+  value.getCourseContentReview = async ({ targetKind, targetId }) => ({ contract: "aralearn.course-content-review.v1",
+    courseId: COURSE_ID, courseRevision: 7, targetKind, targetId, entityVersion: 1,
+    basisHash: "a".repeat(64), contentReview: { state: "unregistered" }, reviewPolicy: "saved" });
+  value.getCourseContentInspection = async ({ targetKind, targetId }) => {
+    formalReads.push(`${targetKind}:${targetId}`);
+    const basisHash = "a".repeat(64);
+    return { contract: "aralearn.course-ai-inspection.v1", courseId: COURSE_ID, courseRevision: 7,
+      targetKind, targetId, basisHash,
+      pedagogicalBasis: { targetKind, targetId, microsequence: { title: "Micro", goal: "Objetivo" },
+        planItems: [], studyUnits: [], dependencies: [] },
+      inspection: { state: "unregistered", basisHash } };
+  };
+  const triage = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", resumo: true } });
+  assert.equal(triage.context.alvos.length, 4);
+  for (const item of triage.context.alvos) {
+    formalReads.length = 0;
+    const formal = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+      rawArguments: item.argumentosParaLeituraFormal });
+    assert.ok(formal.context);
+    const expectedId = { "Explicação A": "micro-a", "Explicação B": "micro-b",
+      "Unidade A": "unit-a", "Unidade B": "unit-b" }[item.alvo.titulo];
+    assert.ok(formalReads.includes(`${item.alvo.tipo}:${expectedId}`),
+      `${item.alvo.titulo} deve abrir ${expectedId} pela referência retornada`);
+  }
+});
+
+test("triagem resolve seleção por índice compacto e não lista unidades literais", async () => {
+  const value = adapter();
+  value.getCourseInspectionTriageOutline = async ({ expectedRevision }) => ({
+    contract: "aralearn.course-inspection-triage-outline.v1", courseId: COURSE_ID, courseRevision: expectedRevision,
+    plan: { title: "Curso sintético", curriculum: { modules: [] }, parts: [], studyUnits: [
+      { id: "safe-unit-id", title: "Alvo sintético", ordinal: 1,
+        curriculumPath: { moduleId: "module", lessonId: "lesson", didacticMicrosequenceId: "micro" },
+        authoringPartId: null }
+    ] }
+  });
+  let pageRequest;
+  value.getCourseInspectionTriagePage = async input => {
+    pageRequest = input;
+    return { contract: "aralearn.course-inspection-triage-page.v1", courseId: COURSE_ID,
+      courseRevision: input.expectedRevision, scope: { kind: "selected_units", id: null }, items: [{
+        targetKind: "study_unit", targetId: "safe-unit-id", title: "Alvo sintético", ordinal: 1,
+        focusArguments: { unidades: [1] }, state: "pending", dimensionsCurrentComplete: null, report: null
+      }], totalCount: 1, hasMore: false, nextCursor: null };
+  };
+  value.listCourseStudyUnits = async () => { throw new Error("não deve listar unidades por RPC de conteúdo"); };
+  const output = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", unidades: [1], resumo: true } });
+  assert.deepEqual(pageRequest.selectedUnitIds, ["safe-unit-id"]);
+  assert.equal(output.context.escopo.kind, "selected_units");
+});
+
+test("triagem não escolhe unidade homônima por título", async () => {
+  const value = adapter();
+  value.getCourseInspectionTriageOutline = async ({ expectedRevision }) => ({
+    contract: "aralearn.course-inspection-triage-outline.v1", courseId: COURSE_ID, courseRevision: expectedRevision,
+    plan: { title: "Curso sintético", curriculum: { modules: [] }, parts: [], studyUnits: [1, 2].map(ordinal => ({
+      id: `unit-${ordinal}`, title: "Título duplicado", ordinal,
+      curriculumPath: { moduleId: "module", lessonId: "lesson", didacticMicrosequenceId: `micro-${ordinal}` },
+      authoringPartId: null
+    })) }
+  });
+  value.getCourseInspectionTriagePage = async () => { assert.fail("não deve consultar página para referência ambígua"); };
+  await assert.rejects(() => executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "preparar_revisao", rawArguments: { curso: "Redes para iniciantes", unidades: ["Título duplicado"], resumo: true } }),
+  error => error.code === "ambiguous_human_reference");
+});
+
+test("triagem mantém payload limitado sem outline/conteúdo/fontes e propaga conflitos", async () => {
+  const value = adapter();
+  const report = { summary: "Resumo curto", outcome: "consistent", findings: [], checks: [
+    "alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"
+  ].map(dimension => ({ dimension, result: "sufficient", reason: "Verificação sintética".padEnd(200, "x") })) };
+  value.getCourseInspectionTriageOutline = async () => { throw new Error("outline completo inesperado"); };
+  value.getCourseInspectionTriagePage = async input => ({
+    contract: "aralearn.course-inspection-triage-page.v1", courseId: COURSE_ID,
+    courseRevision: input.expectedRevision, scope: { kind: "course", id: null },
+    items: Array.from({ length: 8 }, (_, index) => ({ targetKind: "study_unit", targetId: `unit-${index + 1}`,
+      title: `Unidade ${index + 1}`, ordinal: index + 1, focusArguments: { unidades: [index + 1] }, state: "current",
+      dimensionsCurrentComplete: true, report: { ...report, summary: "x".repeat(1000),
+        findings: Array.from({ length: 20 }, (_, index) => `Ressalva ${index} `.padEnd(300, "x")) } })), totalCount: 26, hasMore: true, nextCursor: "8"
+  });
+  const result = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", resumo: true } });
+  const compactBytes = Buffer.byteLength(JSON.stringify(result.context));
+  assert.ok(compactBytes < 16 * 1024, `fragmento de triagem ${compactBytes} B excedeu o teto de contexto`);
+  assert.ok(result.context.fragmento.total > compactBytes, "a página representativa foi fragmentada, não truncada");
+  for (const name of ["getCourseContentReview", "getCourseContentInspection", "getCourseSources", "listCourseStudyUnits"]) {
+    value[name] = async () => { throw new Error(`triagem chamou indevidamente ${name}`); };
+  }
+  for (const status of [403, 409]) {
+    value.getCourseInspectionTriagePage = async () => { throw new AuthoringApiError(status,
+      status === 403 ? "course_access_denied" : "course_revision_conflict", "Conflito sintético."); };
+    await assert.rejects(() => executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+      name: "preparar_revisao", rawArguments: { curso: "Redes para iniciantes", resumo: true } }),
+    error => error.status === status);
+  }
+});
+
+test("adapter usa RPCs compactas com owner, revisão, escopo e cursor ordinais", async () => {
+  const value = Object.create(CourseSupabaseAdapter.prototype);
+  const calls = [];
+  value.rpc = async (name, input, options) => {
+    calls.push({ name, input, options });
+    if (name.endsWith("_outline_for_actor_v1")) return {
+      contract: "aralearn.course-inspection-triage-outline.v1", courseId: COURSE_ID, courseRevision: 7,
+      plan: { title: "Curso sintético", curriculum: { modules: [] }, parts: [], studyUnits: [] }
+    };
+    return { contract: "aralearn.course-inspection-triage-page.v1", courseId: COURSE_ID, courseRevision: 7,
+      scope: { kind: "course", id: null }, items: [], totalCount: 0, hasMore: false, nextCursor: null };
+  };
+  await value.getCourseInspectionTriageOutline({ principal: PRINCIPAL, courseId: COURSE_ID, expectedRevision: 7 });
+  await value.getCourseInspectionTriagePage({ principal: PRINCIPAL, courseId: COURSE_ID,
+    expectedRevision: 7, scopeKind: "course", cursorOrdinal: "0", limit: 8 });
+  assert.deepEqual(calls.map(call => call.name), [
+    "get_owned_course_inspection_triage_outline_for_actor_v1",
+    "get_owned_course_inspection_triage_page_for_actor_v1"
+  ]);
+  assert.equal(calls[0].input.p_actor_id, PRINCIPAL.actorId);
+  assert.equal(calls[0].input.p_expected_revision, 7);
+  assert.equal(calls[1].input.p_cursor_ordinal, "0");
+  assert.equal(calls[1].input.p_limit, 8);
+  assert.equal(calls[0].options.responseLimitBytes, 256 * 1024);
+  assert.equal(calls[1].options.responseLimitBytes, 96 * 1024);
 });

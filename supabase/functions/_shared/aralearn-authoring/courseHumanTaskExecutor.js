@@ -392,7 +392,7 @@ export async function resolveHumanCourseContext({
   let resolvedLesson = null;
   let resolvedMicrosequence = null;
   if (part !== null || module !== null || lesson !== null || microsequence !== null) {
-    const planInput = { principal, courseId: resolvedCourse.id, recentLimit: 1, deadlineAt };
+    const planInput = { principal, courseId: resolvedCourse.id, expectedRevision: resolvedCourse.revision, recentLimit: 1, deadlineAt };
     plan = planReader ? await planReader(planInput) : await adapter.getCourseInstructionalPlan(planInput);
     const revision = Number(plan?.courseRevision);
     if (!plainObject(plan?.plan) || !Number.isSafeInteger(revision) || revision < 1) {

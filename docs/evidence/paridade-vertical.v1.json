@@ -210,6 +210,8 @@
           "^function:public\\.(?:mutate_course_structure_for_actor_v1|reorder_course_study_units_for_actor_v1)\\(.*\\)$",
           "^function:private\\.(?:course_ai_inspection_basis_hash_v1|course_ai_inspection_hash_of_bases_v1|guard_course_ai_inspection_v1|course_ai_inspection_state_of_hash_v1|course_ai_inspection_state_v1|course_ai_inspection_pending_v1|course_ai_inspection_payload_v1|valid_course_ai_inspection_report_v1|record_course_ai_inspection_v1|complete_course_ai_inspection_report_v1)\\(.*\\)$",
           "^function:public\\.(?:get_course_ai_inspection_for_actor_v1|record_course_ai_inspection_for_actor_v1|get_course_ai_inspection_v1|get_course_ai_inspection_receipt_for_actor_v1)\\(.*\\)$",
+          "^function:private\\.(?:course_inspection_triage_item_v1|course_inspection_triage_outline_v1|course_inspection_triage_targets_v1)\\(.*\\)$",
+          "^function:public\\.get_owned_course_inspection_triage_(?:outline|page)_for_actor_v1\\(.*\\)$",
           "^function:private\\.(?:next_course_editorial_intervention_v1|record_course_editorial_intervention_v1|count_course_editorial_intervention_v1|valid_explanation_reconciliation_v1|assert_course_practice_authoring_v1|prepare_incremental_course_part_v1)\\(.*\\)$"
         ],
         "database": [

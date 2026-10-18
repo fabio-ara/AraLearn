@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.126] - 2026-10-18
+
+### Corrigido
+
+- Adiciona triagem paginada de inspeções atuais sem ler conteúdo ou fontes e oferece referências posicionais para reabrir o mesmo alvo na auditoria formal.
+- Avança o contrato público de autoria para 11.8.0 e a revisão do esquema para 20261018160627.
+
 ## [0.0.125] - 2026-10-18
 
 ### Corrigido

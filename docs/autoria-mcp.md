@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.6.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.8.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -52,7 +52,7 @@ ou reconstruir seu conteúdo.
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_repertorio_instrucional` | ler unidades de análise, requisitos de evidência, vínculos e aplicações salvas |
 | `consultar_observacoes` | ler as entradas versionadas da fila pertinente à explicação ou às unidades |
-| `preparar_revisao` | reunir também unidades afetadas por progressão, exemplos ou prática |
+| `preparar_revisao` | leitura integral para revisão e parecer; `resumo: true` consulta triagem compacta por alvo e devolve argumentos posicionais para reabrir o mesmo alvo com `auditoria: true`, sem validade para `registrar_inspecao` |
 | `consultar_fontes` | localizar fontes, âncoras e proveniência |
 | `consultar_componentes` | buscar representações pela função e ler o contrato exato do componente escolhido |
 | `consultar_audios` | recuperar uma página da biblioteca de áudios do curso para reutilização |

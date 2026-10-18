@@ -132,7 +132,7 @@ select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]
   where n.nspname in('public','private') and p.prokind='f'),0::bigint,'contratos atuais não levantam serialização para conflito de negócio');
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),97::bigint,'97 guardas de negócio usam PT409, incluindo lote atômico de desenho, decisões multialvo, inspeção por IA, pacote de Fonte e retirada de áudio ainda usado pelo estudo');
+  where n.nspname in('public','private') and p.prokind='f'),99::bigint,'99 guardas de negócio usam PT409, incluindo lote atômico de desenho, decisões multialvo, inspeção por IA, pacote de Fonte e retirada de áudio ainda usado pelo estudo');
 select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i') from pg_proc
   where oid='public.get_course_observation_comparison_for_actor_v1(uuid,uuid,uuid,text,text,bigint,bigint)'::regprocedure),
   1,'comparação usa conflito de negócio para a versão apresentada');

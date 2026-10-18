@@ -320,6 +320,10 @@ test("enum admite RPC real e rejeita valor de comando ou forma desconhecida", as
     await import("../../supabase/functions/_shared/aralearn-authoring/errors.js");
   assert.equal(closedAuthoringRpcName(READ_RPC), READ_RPC);
   assert.equal(closedAuthoringRpcName(OTHER_RPC), OTHER_RPC);
+  assert.equal(closedAuthoringRpcName("get_owned_course_inspection_triage_outline_for_actor_v1"),
+    "get_owned_course_inspection_triage_outline_for_actor_v1");
+  assert.equal(closedAuthoringRpcName("get_owned_course_inspection_triage_page_for_actor_v1"),
+    "get_owned_course_inspection_triage_page_for_actor_v1");
   assert.equal(closedAuthoringRpcName("segredo_do_curso_abc"), null);
   assert.equal(closedAuthoringRpcName("approve"), null, "valor de comando não é RPC");
   assert.equal(closedAuthoringRpcName("remove_pdf"), null, "valor de comando não é RPC");

@@ -21,6 +21,20 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261018160627 — triagem compacta de inspeção por IA
+
+A [migração](../supabase/migrations/20261018160627_course_inspection_triage.sql)
+adiciona páginas de estado de inspeção com identificadores posicionais executáveis
+na leitura formal. O cursor da página é separado do ordinal global das unidades;
+explicações usam módulo, lição e posição da microssequência. A RPC recalcula o
+estado pela base corrente e retorna somente currentness, dimensões, resultado
+resumido e metadados focais, sem conteúdo, fontes ou base pedagógica. A leitura
+de curso inteiro não materializa o índice estrutural. A RPC exige owner, papel de
+serviço e revisão esperada; cursor ordinal é limitado ao recorte e cada página
+refaz a avaliação corrente. `preparar_revisao(resumo:true)` não substitui
+`auditoria:true`. A prova PGlite cobre o SQL real e estados após alterações locais;
+não é prova hospedada nem de latência do serviço.
+
 ## 20261018062036 — captura de base apenas na produção
 
 A [migração](../supabase/migrations/20261018062036_capture_basis_only_for_produced_units.sql)

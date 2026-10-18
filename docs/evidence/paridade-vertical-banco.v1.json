@@ -1291,6 +1291,18 @@
       "caseId": "course-independent-copy"
     },
     {
+      "object": "function:private.course_inspection_triage_item_v1(p_course_id uuid, p_target_kind text, p_target_id text, p_title text, p_ordinal bigint, p_focus_arguments jsonb)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.course_inspection_triage_outline_v1(p_course_id uuid)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:private.course_inspection_triage_targets_v1(p_course_id uuid, p_scope_kind text, p_scope_id text, p_selected_unit_ids text[])",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_instructional_command_bytes_limit_v1()",
       "caseId": "course-authoring-experience"
     },
@@ -2016,6 +2028,14 @@
     },
     {
       "object": "function:public.get_owned_course_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_include_outline boolean)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_owned_course_inspection_triage_outline_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_owned_course_inspection_triage_page_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_scope_kind text, p_scope_id text, p_selected_unit_ids text[], p_cursor_ordinal bigint, p_limit integer)",
       "caseId": "course-authoring-experience"
     },
     {
