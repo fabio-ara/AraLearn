@@ -1919,6 +1919,7 @@ test("contexto não muda a revisão de uma gravação ambígua nem repete o escr
     inspectionManualAction: "save"
   }), false);
   assert.equal(await sequence.refreshContext(REVISION + 1), false);
+  assert.equal(await sequence.refresh(REVISION + 1, { reread: true }), false);
   assert.equal(controller.calls.length, 1);
   assert.equal(writes, 1);
   assert.equal(sequence.snapshot().courseRevision, REVISION);

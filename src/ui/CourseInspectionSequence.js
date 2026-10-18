@@ -886,7 +886,10 @@ function inspectionCitationEntry(item, state) {
 }
 
 function renderInspectionBibliography(item, state) {
-  const entry = inspectionCitationEntry(item, state);
+  // Keep the error's footprint during recovery, avoiding a temporary scroll clamp.
+  const previous = state.citations.get(item.studyUnit.id);
+  const entry = inspectionCitationEntry(item, state) ||
+    (previous?.status === "error" && previous.retrying ? previous : null);
   if (state.manualStudyUnitId && !entry?.applied) return "";
   if (entry?.status === "ready") {
     return entry.snapshot.value.citations.length
@@ -897,7 +900,8 @@ function renderInspectionBibliography(item, state) {
   if (entry?.status === "error") {
     return '<p class="course-authoring-notice is-error" role="status">Não foi possível carregar as referências.</p>' +
       '<div class="course-source-compact-actions"><button type="button" data-inspection-retry-citations' +
-      ' aria-label="Tentar carregar referências novamente" title="Tentar novamente">' +
+      ` data-inspection-control-key="retry-sources:${escapeHtml(item.studyUnit.id)}"` +
+      ` aria-label="Tentar carregar referências novamente" title="Tentar novamente"${entry.retrying ? " disabled" : ""}>` +
       `${renderUiIcon("rotate", "course-authoring-button-icon")}</button></div>`;
   }
   return "";
@@ -1362,6 +1366,7 @@ export function createCourseInspectionSequence({
     observationCancelReason: "withdrawal",
     observationRecoveryExpired: false,
     citations: new Map(),
+    citationRetryFocus: null,
     emptyMicrosequences: [],
     multipleView: false,
     modeBlock: null,
@@ -1684,7 +1689,9 @@ export function createCourseInspectionSequence({
       const details = controlForKey(controlKey)?.closest?.("details");
       if (details) details.open = true;
     }
-    const control = controlForKey(snapshot?.controlKey);
+    const control = controlForKey(snapshot?.controlKey) ||
+      (snapshot?.controlKey?.startsWith("retry-sources:")
+        ? controlForKey(snapshot.controlKey.replace("retry-sources:", "sources:")) : null);
     const details = control?.closest?.("details");
     if (details) details.open = true;
     let focusControl = control;
@@ -1756,6 +1763,9 @@ export function createCourseInspectionSequence({
     if (state.destroyed || epoch !== renderEpoch || !scope.isConnected ||
         inspectionCitationEntry(item, state) !== entry || state.manualStudyUnitId && !entry.applied) return;
     const snapshot = captureAnchor();
+    const retryFocused = snapshot.controlKey === `retry-sources:${item.studyUnit.id}` ||
+      (entry.retryFocus && snapshot.controlKey === `sources:${item.studyUnit.id}`);
+    if (retryFocused) snapshot.controlKey = `retry-sources:${item.studyUnit.id}`;
     if (updateReferences) {
       const host = scope.querySelector("[data-inspection-citations]");
       if (host) host.innerHTML = renderInspectionBibliography(item, state);
@@ -1769,7 +1779,7 @@ export function createCourseInspectionSequence({
       entry.applied = true;
     }
     // This patch keeps the current DOM, focus and draft. Only compensate layout.
-    restoreAnchor({ ...snapshot, controlKey: "" });
+    restoreAnchor({ ...snapshot, controlKey: retryFocused ? snapshot.controlKey : "" });
   }
 
   function hydrateInspectionCitations(epoch, { load = false } = {}) {
@@ -1784,12 +1794,15 @@ export function createCourseInspectionSequence({
         continue;
       }
       if (!load || typeof controller.loadCourseSources !== "function") continue;
-      entry = { revision: state.pinnedRevision, version: item.version, status: "loading", applied: false };
+      entry = { revision: state.pinnedRevision, version: item.version, status: "loading", applied: false,
+        retryFocus: state.citationRetryFocus === item.studyUnit.id };
+      if (entry.retryFocus) state.citationRetryFocus = null;
       state.citations.set(item.studyUnit.id, entry);
       void citations.load({ courseId: state.courseId, courseRevision: entry.revision,
         studyUnitId: item.studyUnit.id, studyUnitVersion: item.version, studyUnit: item.studyUnit
-      }).then(snapshot => { entry.status = "ready"; entry.snapshot = snapshot; }, () => {
+      }).then(snapshot => { entry.status = "ready"; entry.snapshot = snapshot; }, error => {
         entry.status = "error";
+        entry.error = error;
       }).then(() => {
         // A later render may still display this unit. Resolve its current node,
         // while an edit begun during the read leaves the new references deferred.
@@ -2008,25 +2021,27 @@ export function createCourseInspectionSequence({
     );
   }
 
-  async function readCoherentPage(options, epoch) {
-    try {
-      return await readPage(options);
-    } catch (error) {
-      if (error?.code !== "course_revision_changed" || state.destroyed || epoch !== requestEpoch ||
-          typeof controller.getCourse !== "function") throw error;
-      // A cursor belongs to one revision. Reconcile from the current anchor only.
-      const detail = await controller.getCourse(state.courseId);
-      if (state.destroyed || epoch !== requestEpoch) throw error;
-      if (detail?.stale === true || detail?.offline === true) throw error;
-      if (detail?.courseId !== state.courseId || !Number.isSafeInteger(detail.revision) || detail.revision < 1) {
-        throw new TypeError("A revisão corrente do curso é inválida.", { cause: error });
+  async function readCoherentPage(options, epoch, { reread = false } = {}) {
+    let conflict = Object.assign(new Error("O curso mudou durante a leitura."), { code: "course_revision_changed" });
+    if (!reread) {
+      try { return await readPage(options); }
+      catch (error) {
+        if (error?.code !== "course_revision_changed") throw error;
+        conflict = error;
       }
-      const page = await readPage({ ...options, cursor: null, expectedRevision: detail.revision });
-      if (state.destroyed || epoch !== requestEpoch) throw error;
-      state.pinnedRevision = detail.revision;
-      onCourseRead(detail);
-      return page;
     }
+    if (state.destroyed || epoch !== requestEpoch || typeof controller.getCourse !== "function") throw conflict;
+    // A cursor belongs to one revision. Reconcile from the current anchor only.
+    const detail = await controller.getCourse(state.courseId);
+    if (state.destroyed || epoch !== requestEpoch || detail?.stale === true || detail?.offline === true) throw conflict;
+    if (detail?.courseId !== state.courseId || !Number.isSafeInteger(detail.revision) || detail.revision < 1) {
+      throw new TypeError("A revisão corrente do curso é inválida.", { cause: conflict });
+    }
+    const page = await readPage({ ...options, cursor: null, expectedRevision: detail.revision });
+    if (state.destroyed || epoch !== requestEpoch) throw conflict;
+    state.pinnedRevision = detail.revision;
+    onCourseRead(detail);
+    return page;
   }
 
   function loadCourseSearchIndex() {
@@ -3273,8 +3288,30 @@ export function createCourseInspectionSequence({
     const retryCitations = event.target.closest?.("[data-inspection-retry-citations]");
     if (retryCitations && !state.manualStudyUnitId) {
       const id = retryCitations.closest("[data-inspection-study-unit]")?.dataset.inspectionStudyUnit;
-      state.citations.delete(id);
+      const entry = state.citations.get(id);
+      if (retryCitations.disabled || entry?.retrying || state.manualSaving || state.manualUnknownSignature ||
+          state.pendingBatchObservation || state.pendingObservationMutation) return false;
+      const retryFocused = documentValue?.activeElement === retryCitations;
       retryCitations.disabled = true;
+      if (entry) entry.retrying = true;
+      state.citationRetryFocus = retryFocused ? id : null;
+      const stale = ["stale_course_state", "course_revision_changed"].includes(entry?.error?.code);
+      if (stale) {
+        // Refresh the unit as well as the revision; never attach new sources to old content.
+        const refreshed = await sequence.refresh(state.pinnedRevision, { reread: true,
+          returnFocusKey: retryFocused ? `retry-sources:${id}` : "" });
+        if (!refreshed) {
+          if (entry) entry.retrying = false;
+          state.citationRetryFocus = null;
+          retryCitations.disabled = false;
+          const currentRetry = controlForKey(`retry-sources:${id}`);
+          if (currentRetry) currentRetry.disabled = false;
+          return false;
+        }
+        if (state.citations.get(id) !== entry) return true;
+      }
+      state.citations.delete(id);
+      if (retryFocused) controlForKey(`sources:${id}`)?.focus?.({ preventScroll: true });
       hydrateInspectionCitations(renderEpoch, { load: true });
       return true;
     }
@@ -3894,7 +3931,7 @@ export function createCourseInspectionSequence({
     }
   }
 
-  return Object.freeze({
+  const sequence = Object.freeze({
     hasPendingDraft,
     async open() {
       let position = returnPosition;
@@ -3947,7 +3984,7 @@ export function createCourseInspectionSequence({
       return this.refresh(nextRevision, { contextual: true, returnPosition, returnFocusKey });
     },
     async refresh(nextRevision = state.pinnedRevision, {
-      contextual = false, returnPosition = null, returnFocusKey = ""
+      contextual = false, returnPosition = null, returnFocusKey = "", reread = false
     } = {}) {
       const revision = natural(nextRevision, "A revisão do curso", { minimum: 1 });
       if (state.manualSaving || state.manualUnknownSignature ||
@@ -3964,12 +4001,20 @@ export function createCourseInspectionSequence({
       const localEditItem = manualEditId
         ? state.items.find(({ studyUnit }) => studyUnit.id === manualEditId) || null : null;
       const previousRevision = state.pinnedRevision;
+      const recoveryInterrupted = () => reread && (state.manualStudyUnitId !== manualEditId || state.manualSaving ||
+        state.manualUnknownSignature || state.pendingBatchObservation || state.pendingObservationMutation);
       state.stale = true;
       state.loadingDirection = "refresh";
       state.pinnedRevision = revision;
       try {
-        let page = await readCoherentPage(pageOptions({ anchorStudyUnitId: anchor.studyUnitId }), epoch);
+        let page = await readCoherentPage(pageOptions({ anchorStudyUnitId: anchor.studyUnitId }), epoch, { reread });
         if (state.destroyed || epoch !== requestEpoch) return false;
+        if (recoveryInterrupted()) {
+          // An edit begun during this read owns its DOM and draft.
+          state.pinnedRevision = previousRevision;
+          state.loadingDirection = "";
+          return false;
+        }
         if (localEditItem) {
           const refreshed = page.items.find(({ studyUnit }) =>
             studyUnit.id === localEditItem.studyUnit.id) || null;
@@ -4029,6 +4074,11 @@ export function createCourseInspectionSequence({
             statusMessage(error);
           state.manualError = message;
           render({ anchor, captureDraft: false });
+          return false;
+        }
+        if (recoveryInterrupted()) {
+          state.pinnedRevision = previousRevision;
+          state.loadingDirection = "";
           return false;
         }
         let refreshError = error;
@@ -4125,4 +4175,5 @@ export function createCourseInspectionSequence({
       positionChannel = null;
     }
   });
+  return sequence;
 }
