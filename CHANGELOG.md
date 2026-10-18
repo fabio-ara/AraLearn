@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.125] - 2026-10-18
+
+### Corrigido
+
+- Na prévia de autoria, tentar carregar referências novamente relê o curso e a unidade quando a revisão mudou, preservando rascunhos e a posição de leitura. Conflitos persistentes continuam visíveis, sem repetir a recuperação automaticamente.
+
 ## [0.0.124] - 2026-10-18
 
 ### Corrigido

@@ -34,11 +34,21 @@ function installCitationFixture(fixture, helpers, documentValue, options) {
     paragraph("inspection-repeated-second", options.repeatedText),
     paragraph("inspection-tail", "A leitura prossegue com condições e limites do exemplo sintético. ".repeat(16))
   ];
+  if (options.practice) {
+    fixture.units[0].studyUnit.role = "practice";
+    fixture.units[0].studyUnit.content[2].data.text = "O VirtualBox atua como hipervisor no computador hospedeiro.";
+    fixture.units[0].studyUnit.response = { id: "inspection-retry-gap", package: "aralearn.response.gap", version: "1.0.0",
+      data: { prompt: "Indique a função.", blanks: [{ id: "role", targetInstanceId: "inspection-tail", targetPath: "text:role",
+        label: "Função", responseMode: "text", answer: "hipervisor" }] } };
+  }
   const link = (linkId, prefix, suffix) => ({ linkId, sourceId, relation: "supported_by", roles: ["technical_conceptual"],
     anchors: [{ anchorId: source.anchors[0].anchorId }], occurrences: [{ occurrenceId: "same-occurrence-id",
       slot: "content", resourceId: "inspection-repeated-second", path: "text", quote: "**quadro**", prefix, suffix }] });
   const links = [link("inspection-link-second", "Outro ", " recebe"), link("inspection-link-first", "Um ", " liga")];
   const probe = fixture.citationProbe = { reads: [], delivered: [], writes: [], pdfReads: [], opened: [], release: null };
+  const getCourse = fixture.controller.getCourse.bind(fixture.controller);
+  probe.metadataReads = 0;
+  fixture.controller.getCourse = async (...args) => { probe.metadataReads++; if (probe.deferMetadata) await new Promise(resolve => { probe.releaseMetadata = resolve; }); if (probe.failMetadata) throw new Error("Releitura sintética indisponível"); return getCourse(...args); };
   const sourcePage = (mode, query, items) => normalizeCourseSourcesRead({
     contract: "aralearn.course-sources.v3", bibliographyStyle: "abnt-2025", courseId: fixture.course.courseId,
     courseRevision: fixture.course.revision, mode, query, pdfStorage: { uniqueBytes: 128, maxUniqueBytes: 64 * 1024 * 1024 },
@@ -46,6 +56,16 @@ function installCitationFixture(fixture, helpers, documentValue, options) {
   });
   fixture.controller.loadCourseSources = async (_courseId, request = {}) => {
     probe.reads.push(structuredClone(request));
+    if (options.failure && request.mode === "target" && request.targetId === fixture.units[0].studyUnit.id) {
+      const first = !probe.failed;
+      probe.failed = true;
+      if (first && options.failure !== "network") fixture.course.revision += 1;
+      if (first || options.failure === "persistent" || request.expectedRevision !== fixture.course.revision) {
+        throw Object.assign(new Error("Falha sintética de referências"), {
+          code: options.failure === "network" ? "network_error" : "stale_course_state", status: 409
+        });
+      }
+    }
     const query = { sourceId: request.sourceId || null, targetKind: request.targetKind || null, targetId: request.targetId || null };
     const mode = request.mode || (query.sourceId ? "source" : query.targetId ? "target" : "catalog");
     let result;
@@ -54,6 +74,7 @@ function installCitationFixture(fixture, helpers, documentValue, options) {
       result = sourcePage(mode, query, current ? [{ targetKind: "study_unit", targetId: current.studyUnit.id,
         targetVersion: current.version, sourceLinks: current === fixture.units[0] ? links : [], createdAt: timestamp }] : []);
       if (options.defer && current === fixture.units[0]) await new Promise(resolve => { probe.release = resolve; });
+      if (options.deferSecond && current === fixture.units[1]) await new Promise(resolve => { probe.releaseSecond = resolve; });
     } else if (mode === "source") result = sourcePage(mode, query, [source]);
     else {
       const catalogSource = { ...source }; delete catalogSource.anchors; delete catalogSource.attachments;
@@ -93,7 +114,7 @@ function installCitationFixture(fixture, helpers, documentValue, options) {
   };
 }
 
-async function mount(page, { width = 390, defer = false } = {}) {
+async function mount(page, { width = 390, defer = false, failure = null, practice = false, deferSecond = false } = {}) {
   await page.setViewportSize({ width, height: 844 });
   const errors = []; page.on("pageerror", error => errors.push(error.message));
   for (const relative of ["fixtures/uxUi328.html", "fixtures/uxUi328Harness.js", "fixtures/uxUi328Fixture.js",
@@ -103,7 +124,7 @@ async function mount(page, { width = 390, defer = false } = {}) {
     if (relative.endsWith("Harness.js")) {
       body = 'import * as citationHelpers from "../../src/domain/courseSources.js";\n' + body.replace(
         "const surface = createCourseAuthoringSurface(",
-        `(${installCitationFixture.toString()})(fixture, citationHelpers, document, ${JSON.stringify({ repeatedText, defer })});\nconst surface = createCourseAuthoringSurface(`);
+        `(${installCitationFixture.toString()})(fixture, citationHelpers, document, ${JSON.stringify({ repeatedText, defer, failure, practice, deferSecond })});\nconst surface = createCourseAuthoringSurface(`);
     }
     await page.route(url => url.pathname === `/tests/${relative}`, route => route.fulfill({ body,
       contentType: relative.endsWith(".html") ? "text/html; charset=utf-8" : "text/javascript; charset=utf-8" }));
@@ -229,6 +250,90 @@ test("fonte da unidade anterior que chega tarde conserva unidade, foco, rolagem 
   const after = await page.evaluate(() => ({ hash: location.hash, windowY: scrollY,
     scrollers: [...document.querySelectorAll(".course-authoring-root, .course-authoring-surface")].map(node => node.scrollTop) }));
   expect(after).toEqual(before);
+  expect(await page.evaluate(() => globalThis.uxUi328.citationProbe.writes)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+for (const failure of ["stale", "persistent", "network", "changed"]) test(`retry focal de referências ${failure}`, async ({ page }, info) => {
+  const errors = await mount(page, { failure });
+  const retry = unit(page).getByRole("button", { name: "Tentar carregar referências novamente", exact: true });
+  await expect(retry).toBeVisible();
+  const before = await page.evaluate(() => ({ reads: globalThis.uxUi328.citationProbe.metadataReads, revision: globalThis.uxUi328.course.revision }));
+  if (failure === "changed") await page.evaluate(() => {
+    globalThis.uxUi328.units[0].studyUnit.content[2].data.text = "Conteúdo atual relido antes das fontes.";
+    globalThis.uxUi328.units[0].version += 1;
+  });
+  await retry.scrollIntoViewIfNeeded();
+  await retry.focus();
+  const geometry = await retry.evaluate(node => ({ width: node.offsetWidth, height: node.offsetHeight }));
+  const hash = await page.evaluate(() => location.hash);
+  const unitTop = await unit(page).evaluate(node => node.getBoundingClientRect().top);
+  await retry.click();
+  if (failure === "persistent") await expect(retry).toBeEnabled();
+  else await expect(unit(page).locator(".source-marker")).toHaveCount(2);
+  if (failure === "changed") await expect(unit(page)).toContainText("Conteúdo atual relido antes das fontes.");
+  await page.waitForLoadState("networkidle");
+  const probe = await page.evaluate(() => ({ reads: globalThis.uxUi328.citationProbe.reads, metadata: globalThis.uxUi328.citationProbe.metadataReads, writes: globalThis.uxUi328.citationProbe.writes }));
+  const targets = probe.reads.filter(read => read.mode === "target" && read.targetId === "ux328-unit-01");
+  expect(targets.map(read => read.expectedRevision)).toEqual(failure === "network" ? [5, 5] : [5, 6]);
+  expect(probe.metadata - before.reads).toBe(failure === "network" ? 0 : 1);
+  expect(probe.writes).toEqual([]);
+  expect(await page.evaluate(() => location.hash)).toBe(hash);
+  if (failure !== "changed") expect(Math.abs(await unit(page).evaluate(node => node.getBoundingClientRect().top) - unitTop)).toBeLessThanOrEqual(1);
+  if (failure === "persistent") {
+    await expect(retry).toBeFocused();
+    expect(await retry.evaluate(node => ({ width: node.offsetWidth, height: node.offsetHeight }))).toEqual(geometry);
+  } else await expect(unit(page).locator("[data-inspection-edit-sources]")).toBeFocused();
+  expect(errors).toEqual([]);
+  await unit(page).locator("[data-inspection-references]").screenshot({ path: info.outputPath(`retry-${failure}.png`) });
+});
+
+for (const failMetadata of [false, true]) test(`retry focal preserva edição iniciada durante releitura (falha=${failMetadata})`, async ({ page }) => {
+  await mount(page, { failure: "stale" });
+  const current = unit(page);
+  await page.evaluate(fail => { globalThis.uxUi328.citationProbe.deferMetadata = true; globalThis.uxUi328.citationProbe.failMetadata = fail; }, failMetadata);
+  await current.getByRole("button", { name: "Tentar carregar referências novamente", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => typeof globalThis.uxUi328.citationProbe.releaseMetadata)).toBe("function");
+  await current.getByRole("button", { name: "Editar", exact: true }).click();
+  await current.getByRole("button", { name: "Selecionar recurso para edição", exact: true }).nth(1).click();
+  const field = current.locator('[data-package-instance-id="inspection-repeated-second"] [data-manual-edit-path="text"]');
+  await field.fill("Rascunho local durante recuperação.");
+  await field.focus();
+  await page.evaluate(() => globalThis.uxUi328.citationProbe.releaseMetadata());
+  await page.waitForLoadState("networkidle");
+  await expect(field).toHaveText("Rascunho local durante recuperação.");
+  await expect(field).toBeFocused();
+  expect(await page.evaluate(() => globalThis.uxUi328.citationProbe.writes)).toEqual([]);
+});
+
+test("retry focal conserva resposta de prática quando conteúdo permanece igual", async ({ page }) => {
+  await mount(page, { failure: "stale", practice: true });
+  const current = unit(page);
+  const field = current.locator('[data-action="complete-input"]');
+  await field.fill("hipervisor");
+  await current.getByRole("button", { name: "Conferir resposta", exact: true }).click();
+  await expect(current.getByText("Correto.", { exact: true })).toBeVisible();
+  const retry = current.getByRole("button", { name: "Tentar carregar referências novamente", exact: true });
+  await retry.click();
+  await expect(current.locator(".source-marker")).toHaveCount(2);
+  await expect(field).toHaveText("hipervisor");
+  await expect(current.getByText("Correto.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => globalThis.uxUi328.citationProbe.writes)).toEqual([]);
+});
+
+test("retry focal de A mantém foco quando fontes de B concluem na visão múltipla", async ({ page }) => {
+  const errors = await mount(page, { failure: "network", deferSecond: true });
+  await unit(page).getByRole("button", { name: "Mostrar várias unidades", exact: true }).click();
+  await expect(page.locator("[data-inspection-study-unit]")).toHaveCount(12);
+  await expect.poll(() => page.evaluate(() => typeof globalThis.uxUi328.citationProbe.releaseSecond)).toBe("function");
+  await page.waitForLoadState("networkidle");
+  const retryA = unit(page).getByRole("button", { name: "Tentar carregar referências novamente", exact: true });
+  await retryA.scrollIntoViewIfNeeded();
+  await retryA.focus();
+  await expect(retryA).toBeFocused();
+  await page.evaluate(() => globalThis.uxUi328.citationProbe.releaseSecond());
+  await expect(unit(page, 2).locator("[data-inspection-citations]")).toContainText("Nenhuma referência preparada para esta unidade.");
+  await expect(retryA).toBeFocused();
   expect(await page.evaluate(() => globalThis.uxUi328.citationProbe.writes)).toEqual([]);
   expect(errors).toEqual([]);
 });
