@@ -137,6 +137,43 @@ async function mount(page, { width = 390, defer = false, failure = null, practic
 
 const marker = (page, linkId) => unit(page).locator(`[data-action="open-citation"][data-citation-link-id="${linkId}"]`);
 
+test.describe("retorno de referência sob a navegação fixa", () => {
+  test.use({ isMobile: false, deviceScaleFactor: 1 });
+
+  for (const width of [360, 1100]) test(`mantém o marcador visível sem alterar geometria em ${width}px`, async ({ page }, info) => {
+    const errors = await mount(page, { width });
+    const citation = marker(page, "inspection-link-first");
+    await expect(citation).toHaveCount(1);
+    const geometry = () => citation.evaluate(node => {
+      const marker = node.getBoundingClientRect();
+      const item = node.closest("[data-inspection-study-unit]").getBoundingClientRect();
+      const toolbar = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
+      return { markerWidth: marker.width, markerHeight: marker.height, markerX: marker.x,
+        markerOffset: marker.y - item.y, itemWidth: item.width, itemHeight: item.height,
+        toolbarWidth: toolbar.width, toolbarHeight: toolbar.height };
+    });
+    const before = await geometry();
+    await citation.click();
+    const reference = unit(page).locator('[data-citation-reference-id="inspection-link-first"]');
+    await expect(reference).toBeFocused();
+    await reference.locator('[data-action="return-citation"]').click();
+    await expect(citation).toBeFocused();
+    const returned = await citation.evaluate(node => {
+      const marker = node.getBoundingClientRect();
+      const toolbar = document.querySelector(".course-inspection-sticky-context").getBoundingClientRect();
+      return { top: marker.top, toolbarBottom: toolbar.bottom,
+        unobstructed: node.contains(document.elementFromPoint(marker.x + marker.width / 2, marker.y + marker.height / 2)) };
+    });
+    await info.attach("retorno-geometria", { body: JSON.stringify({ before, after: await geometry(), returned }), contentType: "application/json" });
+    await page.screenshot({ path: info.outputPath(`citation-return-${width}.png`) });
+    expect(returned.top).toBeGreaterThanOrEqual(returned.toolbarBottom);
+    expect(returned.unobstructed).toBe(true);
+    expect(await geometry()).toEqual(before);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+    expect(errors).toEqual([]);
+  });
+});
+
 for (const width of [390, 1280]) test(`citações da unidade preservam trecho, vínculo, referência e acesso em ${width}px`, async ({ page }, info) => {
   const errors = await mount(page, { width });
   const current = unit(page);

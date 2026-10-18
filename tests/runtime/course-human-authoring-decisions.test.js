@@ -4,6 +4,7 @@ import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralear
 import { createContentReviewReference, openContentReviewReference } from "../../supabase/functions/_shared/aralearn-authoring/courseContentReviewReference.js";
 import { AuthoringApiError } from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
+import { toolErrorData } from "../../supabase/functions/_shared/aralearn-authoring/toolErrorEnvelope.js";
 
 const actorId = "10000000-0000-4000-8000-000000000001";
 const courseId = "20000000-0000-4000-8000-000000000002";
@@ -17,7 +18,73 @@ const initial = () => ({ contract: "aralearn.course-ai-inspection.v1", courseId,
   pedagogicalBasis: { targetKind: "microsequence_explanation", targetId: "micro",
     microsequence: { title: "Relações", goal: "Explicar relações" }, planItems: [], studyUnits: [], dependencies: [] },
   inspection: { state: "pending", basisHash: "a".repeat(64) } });
+const reviewRead = () => ({ contract: "aralearn.course-content-review.v1", courseId, courseRevision: 5,
+  targetKind: "microsequence_explanation", targetId: "micro", entityVersion: 1, basisHash: "a".repeat(64),
+  contentReview: { state: "draft" }, reviewPolicy: "saved" });
+const legacyReference = reference => {
+  const legacy = JSON.parse(Buffer.from(reference, "base64url").toString("utf8"));
+  delete legacy.purpose;
+  return Buffer.from(JSON.stringify(legacy), "utf8").toString("base64url");
+};
 const execute = (adapter, name, args) => executeHumanCourseTask({ adapter, principal, name, rawArguments: args });
+
+test("referências carimbam finalidade, mantêm requestId e validam estritamente valores e campos", async () => {
+  const requestId = "40000000-0000-4000-8000-000000000004";
+  const inspection = await createContentReviewReference({ principal, read: initial(), requestId });
+  const review = await createContentReviewReference({ principal, read: reviewRead(), requestId });
+  assert.notEqual(inspection, review, "a mesma tentativa não colapsa referências de finalidades distintas");
+  assert.equal(openContentReviewReference(inspection, principal).purpose, "ai_inspection");
+  assert.equal(openContentReviewReference(review, principal).purpose, "human_review");
+  assert.equal(openContentReviewReference(inspection, principal).requestId, requestId);
+  assert.equal(openContentReviewReference(review, principal).requestId, requestId);
+  assert.equal(openContentReviewReference(legacyReference(inspection), principal).purpose, undefined,
+    "referências prévias sem finalidade continuam legíveis");
+  assert.equal(openContentReviewReference(legacyReference(inspection), principal, "ai_inspection").requestId, requestId);
+  assert.equal(openContentReviewReference(legacyReference(review), principal, "human_review").requestId, requestId);
+  const pageReview = await createContentReviewReference({ principal, read: reviewRead() });
+  assert.equal(pageReview, await createContentReviewReference({ principal, read: reviewRead() }),
+    "a paginação continua produzindo a mesma referência para a mesma base");
+
+  const unsupported = JSON.parse(Buffer.from(inspection, "base64url").toString("utf8"));
+  unsupported.purpose = "other";
+  assert.throws(() => openContentReviewReference(Buffer.from(JSON.stringify(unsupported)).toString("base64url"), principal),
+  { code: "invalid_content_review_reference" });
+  const extra = JSON.parse(Buffer.from(inspection, "base64url").toString("utf8"));
+  extra.unexpected = true;
+  assert.throws(() => openContentReviewReference(Buffer.from(JSON.stringify(extra)).toString("base64url"), principal),
+  { code: "invalid_content_review_reference" });
+});
+
+test("finalidade trocada recusa 422 antes de recibos, leituras e escritas e aponta o campo correto", async () => {
+  const inspection = await createContentReviewReference({ principal, read: initial() });
+  const review = await createContentReviewReference({ principal, read: reviewRead() });
+  const calls = [];
+  const adapter = {
+    getCourseContentInspectionReceipt: async () => { calls.push("inspection-receipt"); return null; },
+    getCourseContentInspection: async () => { calls.push("inspection-read"); return initial(); },
+    recordCourseContentInspection: async () => { calls.push("inspection-write"); },
+    getCourseContentReview: async () => { calls.push("review-read"); return reviewRead(); },
+    setCourseContentReview: async () => { calls.push("review-write"); return reviewRead(); }
+  };
+  for (const [name, reference, field] of [
+    ["registrar_inspecao", review, "referenciaInspecao"],
+    ["declarar_revisao", inspection, "referenciaRevisao"]
+  ]) {
+    const args = name === "registrar_inspecao"
+      ? { referencia: reference, parecer: report }
+      : { referencia: reference, declaracao: "revisado" };
+    const error = await execute(adapter, name, args).then(() => null, value => value);
+    assert.equal(error.status, 422);
+    assert.equal(error.code, "content_review_reference_purpose_mismatch");
+    assert.equal(error.details.field, field);
+    assert.match(error.message, new RegExp(field, "u"));
+    const envelope = toolErrorData(error);
+    assert.equal(envelope.details.field, field);
+    assert.equal(envelope.recovery.strategy, "correct_and_retry");
+    assert.doesNotMatch(JSON.stringify(envelope.recovery), /releia|releitura|reler/iu);
+  }
+  assert.deepEqual(calls, [], "a finalidade é conferida antes do recibo e das leituras/escritas caras");
+});
 
 test("parecer de cinco dimensões só pode recuperar recibo exato, nunca gravar como nova inspeção", async () => {
   const before = initial();
@@ -114,7 +181,7 @@ test("recibo ausente com base alterada recusa o conflito sem gravar", async () =
 
 test("escrita incerta de inspeção recupera pela mesma referência e parecer, sem reler nem duplicar", async () => {
   const before = initial();
-  const reference = await createContentReviewReference({ principal, read: before });
+  const reference = legacyReference(await createContentReviewReference({ principal, read: before }));
   const requestId = openContentReviewReference(reference, principal).requestId;
   const attempts = []; let reads = 0; let receipt = null; let receiptCalls = 0;
   const saved = () => ({ contract: "aralearn.course-ai-inspection-change.v1", changed: true, idempotent: true,

@@ -1828,6 +1828,12 @@ export function createCourseInspectionSequence({
             node.dataset.citationOccurrenceId === button.dataset.citationOccurrenceId
           : node.dataset.citationReferenceId === button.dataset.citationLinkId);
       target?.scrollIntoView?.({ block: "nearest", behavior: "auto" });
+      // A reserva CSS pode ser menor que a barra fixa renderizada. Compense
+      // somente a parte encoberta, no mesmo rolador, sem mudar a geometria.
+      const hiddenOffset = target?.getBoundingClientRect?.().top - stickyTop();
+      if (hiddenOffset < 0) {
+        scrollTarget?.scrollBy?.({ top: Math.floor(hiddenOffset), left: 0, behavior: "auto" });
+      }
       target?.focus?.({ preventScroll: true });
       return Boolean(target);
     }

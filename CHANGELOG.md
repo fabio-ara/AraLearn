@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.127] - 2026-10-18
+
+### Corrigido
+
+- Na prévia de autoria, voltar de uma referência mantém o trecho citado visível abaixo da navegação fixa, preservando as dimensões e o alinhamento da interface.
+- Na autoria, o uso de uma referência de revisão humana em uma inspeção por IA, ou vice-versa, passa a indicar a referência correta sem pedir uma releitura desnecessária. Referências válidas já emitidas continuam aceitas.
+
 ## [0.0.126] - 2026-10-18
 
 ### Corrigido
