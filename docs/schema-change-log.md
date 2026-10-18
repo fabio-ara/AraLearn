@@ -21,6 +21,18 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261018160000 — triagem compacta de inspeção por IA
+
+A [migração](../supabase/migrations/20261018160000_course_inspection_triage.sql)
+adiciona índice estrutural e páginas de estado de inspeção. A leitura compara
+cada alvo com a base corrente no servidor, mas retorna apenas currentness,
+resultado e checks resumidos, sem transportar conteúdo, fontes, base pedagógica
+ou referências utilizáveis para gravação. A RPC exige owner, papel de serviço e
+revisão esperada; cursor ordinal é limitado ao recorte e cada página refaz a
+avaliação corrente. `preparar_revisao(resumo:true)` não substitui
+`auditoria:true`. Não há prova de execução ou desempenho hospedado nesta
+alteração.
+
 ## 20261018062036 — captura de base apenas na produção
 
 A [migração](../supabase/migrations/20261018062036_capture_basis_only_for_produced_units.sql)

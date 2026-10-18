@@ -519,6 +519,12 @@ Uma resposta perdida se recupera repetindo a mesma referência e o mesmo parecer
 com recibo, a repetição devolve o parecer salvo sem reavaliar a base; sem recibo,
 a base é validada antes de registrar, e uma base alterada recusa sem gravar.
 
+`preparar_revisao(resumo: true)` é uma triagem não formal, paginada e compacta
+de currentness e resultados existentes. Ela informa o total de alvos no escopo
+e os estados somente da página atual, não retorna referência ou prova de base e
+nunca substitui a leitura integral `auditoria: true` exigida para criar parecer.
+Os modos `resumo: true` e `auditoria: true` não podem ser combinados.
+
 | Estado da inspeção | Significado |
 | --- | --- |
 | `unregistered` | Base anterior preservada sem declaração de inspeção por IA. |

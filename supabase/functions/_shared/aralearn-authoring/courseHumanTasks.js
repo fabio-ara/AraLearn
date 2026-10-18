@@ -69,6 +69,7 @@ import { normalizeMicrosequenceExplanation } from "../aralearn/runtime/domain/co
 import { createContentReviewReference, openContentReviewReference } from "./courseContentReviewReference.js";
 import { normalizeCourseContentReview } from "../aralearn/runtime/domain/courseContentReview.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
+import { normalizeCourseInspectionTriagePage } from "../aralearn/runtime/domain/courseInspectionTriage.js";
 import { normalizePedagogicalAudit, projectPedagogicalAudit, requirePedagogicalAuditConsistency,
   PEDAGOGICAL_AUDIT_DIMENSIONS, hasCurrentPedagogicalAudit } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
@@ -872,7 +873,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Lê conteúdo literal e contexto da revisão.",
+    "Lê revisão ou triagem.",
     inputSchema({
       curso: COURSE_SCHEMA,
       comparacao: OBSERVATION_COMPARISON_SCHEMA,
@@ -880,7 +881,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
       auditoria: Object.freeze({ type: "boolean", default: false,
-        description: "Use true na inspeção formal e no parecer; inclui bases de IA e o desenvolvimento completo." }),
+        description: "Use true para leitura integral e parecer formal." }),
+      resumo: Object.freeze({ type: "boolean",
+        description: "Triagem não formal; para parecer, use auditoria:true." }),
       continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
@@ -1276,9 +1279,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.6.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.7.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:bb6814e3d4a38ef6c1556cca003c22ffa19aa051008f9b92637007ce81cf5a4e";
+  "sha256:ee041e703ce1883cf14388d32f587fad859c651f1d3fdf37a46e0c093707dd5f";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3376,6 +3379,79 @@ function reviewPlanReader(adapter) {
     ? adapter.getCourseInstructionalPlan.bind(adapter) : null;
 }
 
+async function prepareInspectionTriage({ adapter, principal, args, deadlineAt }) {
+  if (args.auditoria === true) fail("invalid_human_task_argument",
+    "resumo:true é mutuamente exclusivo de auditoria:true; use auditoria:true para ler a base formal.");
+  if (args.comparacao !== undefined) fail("invalid_human_task_argument",
+    "A comparação de observação exige leitura focal; não pode ser combinada com resumo:true.");
+  if (typeof adapter?.getCourseInspectionTriageOutline !== "function" ||
+      typeof adapter?.getCourseInspectionTriagePage !== "function") {
+    fail("course_service_unavailable", "A leitura compacta de triagem está indisponível.", null, 503);
+  }
+  const outlineReader = input => adapter.getCourseInspectionTriageOutline(input);
+  const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
+  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, planReader: outlineReader });
+  if (!resolved.plan) {
+    resolved.plan = await outlineReader({ principal, courseId: resolved.course.id,
+      expectedRevision: resolved.course.revision, deadlineAt });
+    if (resolved.plan?.courseRevision !== resolved.course.revision) {
+      fail("course_revision_conflict", "A estrutura do curso mudou; recomece a triagem.", null, 409);
+    }
+  }
+  const plan = resolved.plan?.plan;
+  if (!plan || resolved.plan.courseRevision !== resolved.course.revision) {
+    fail("course_revision_conflict", "A estrutura do curso mudou; recomece a triagem.", null, 409);
+  }
+  const selectedUnitIds = units.length ? units.map(reference => {
+    const matches = Number.isSafeInteger(reference)
+      ? (plan.studyUnits ?? []).filter(item => item.ordinal === reference)
+      : (plan.studyUnits ?? []).filter(item => normalizeFacetText(item.title) === normalizeFacetText(reference));
+    if (matches.length !== 1) fail(matches.length ? "ambiguous_human_reference" : "invalid_human_reference",
+      matches.length ? "O título da unidade corresponde a mais de um alvo; use a posição." : "A unidade selecionada não foi encontrada no índice da triagem.");
+    return matches[0].id;
+  }) : null;
+  if (selectedUnitIds && new Set(selectedUnitIds).size !== selectedUnitIds.length) {
+    fail("duplicate_human_reference", "A seleção repete uma unidade de estudo.");
+  }
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: "preparar_revisao" });
+  if (continuation.p !== null && !/^(0|[1-9][0-9]{0,17})$/u.test(continuation.p)) {
+    fail("invalid_read_continuation", "A continuação da triagem não pertence a esta paginação.");
+  }
+  const scopeKind = resolved.microsequence ? "didactic_microsequence" : resolved.lesson ? "lesson"
+    : resolved.module ? "module" : resolved.part ? "authoring_part" : "course";
+  const scopeId = resolved.microsequence?.id ?? resolved.lesson?.id ?? resolved.module?.id ?? resolved.part?.id ?? null;
+  const rawPage = await adapter.getCourseInspectionTriagePage({ principal, courseId: resolved.course.id,
+    expectedRevision: resolved.course.revision, scopeKind, scopeId, selectedUnitIds,
+    cursorOrdinal: continuation.p ?? "0", limit: 8, deadlineAt });
+  const page = normalizeCourseInspectionTriagePage(rawPage, { courseId: resolved.course.id,
+    expectedRevision: resolved.course.revision });
+  const pageCounts = Object.fromEntries(["current", "pending", "unregistered", "unavailable"]
+    .map(state => [state, page.items.filter(item => item.state === state).length]));
+  const entries = page.items.map(item => ({
+    alvo: { tipo: item.targetKind, titulo: item.title, posicao: item.ordinal },
+    estadoIA: item.state,
+    dimensoesAtuaisCompletas: item.state === "current" ? item.dimensionsCurrentComplete : null,
+    ...(item.state === "current" ? { resultado: item.report } : {}),
+    ressalva: item.state === "current" && !item.dimensionsCurrentComplete
+      ? "O registro está current, mas não cobre as seis dimensões atuais; currentness não atesta qualidade."
+      : item.state !== "current" ? "Sem parecer current, não há resultado nem dimensões atuais confirmadas." : null,
+    link: courseDeepLink(adapter, resolved.course, "content", [[
+      item.targetKind === "study_unit" ? "studyUnitId" : "explanationId", item.targetId]])
+  }));
+  const context = { tipo: "triagem_de_inspecao_nao_formal", escopo: page.scope,
+    alvosNaPagina: page.items.length, totalDeAlvosNoEscopo: page.totalCount,
+    estadosNestaPagina: pageCounts, alvos: entries,
+    nota: "Esta triagem não é leitura formal, não fornece referência de inspeção e não pode fundamentar registrar_inspecao. Para emitir novo parecer, releia integralmente o recorte com auditoria:true." };
+  return result("Consultei o estado atual da inspeção sem materializar o conteúdo da revisão.", {
+    deepLink: entries[0]?.link ?? courseDeepLink(adapter, resolved.course, "review"),
+    links: [courseDeepLink(adapter, resolved.course, "review"), ...entries.slice(1).map(item => item.link)].filter(Boolean),
+    nextDecision: page.hasMore
+      ? "Continue a triagem com a continuação recebida; a contagem de estados acima vale somente para esta página."
+      : "Para formar ou atualizar parecer, faça a leitura integral do recorte com auditoria:true; a triagem não permite registrá-lo.",
+    context: await paginateHumanReadContext(context, { state: continuation, nextPage: page.nextCursor })
+  });
+}
+
 // O plano do recorte é lido uma vez por requisição e conferido contra a revisão pedida.
 async function ensureReviewPlan({ adapter, principal, resolved, deadlineAt }) {
   if (resolved.plan) return resolved.plan;
@@ -3461,6 +3537,10 @@ async function presentPreparedReviewPage({ adapter, auditoria, resolved, continu
 HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   adapter, principal, args, deadlineAt
 }) => {
+  if (args.resumo === true) return await prepareInspectionTriage({ adapter, principal, args, deadlineAt });
+  if (args.resumo !== undefined && typeof args.resumo !== "boolean") {
+    fail("invalid_human_task_argument", "resumo precisa ser booleano.");
+  }
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const planReader = reviewPlanReader(adapter);
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units, planReader });

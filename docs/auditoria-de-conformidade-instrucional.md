@@ -41,6 +41,11 @@ A proposta identifica o problema e o conjunto que precisa mudar. Correções já
 incluídas no pedido podem prosseguir; uma decisão substantiva ainda não
 autorizada volta à pessoa autora.
 
+`preparar_revisao(resumo: true)` serve apenas para localizar estados de
+inspeção por alvo. Currentness não certifica qualidade e a triagem não contém
+base nem referência para parecer; qualquer parecer novo exige leitura integral
+com `auditoria: true`.
+
 ## Contexto pedagogicamente afetado
 
 O alcance da análise acompanha as dependências do problema. Uma mudança pode

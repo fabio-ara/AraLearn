@@ -14,6 +14,7 @@ import {
 import { AuthoringApiError, withDependencyDiagnostic, closedAuthoringRpcName } from "./errors.js";
 import { expandPlanningTransport, expandReviewPlanningTransport } from "./coursePlanningTransport.js";
 import { normalizeCourseContentInspection, normalizeCourseContentInspectionReport } from "../aralearn/runtime/domain/courseContentInspection.js";
+import { normalizeCourseInspectionTriageOutline, normalizeCourseInspectionTriagePage } from "../aralearn/runtime/domain/courseInspectionTriage.js";
 import { normalizeCourseContentReview, normalizeCourseContentReviewState, normalizeCourseContentReviewChange, normalizeCourseContentReviewPolicyChange }
   from "../aralearn/runtime/domain/courseContentReview.js";
 import { createMapApprovalReference, openMapApprovalReference } from "./courseMapApproval.js";
@@ -2296,6 +2297,25 @@ export class CourseSupabaseAdapter {
     // Somente preparar_revisao consome esta projeção. Uma referência de aprovação
     // do mapa pertence ao leitor integral e não deve ser derivada aqui.
     return withDeepLink(result, this.publicAppUrl, "planning");
+  }
+
+  async getCourseInspectionTriageOutline({ principal, courseId, expectedRevision, deadlineAt = null }) {
+    const value = first(await this.rpc("get_owned_course_inspection_triage_outline_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision
+    }, { deadlineAt, responseLimitBytes: 256 * 1024 }));
+    try { return normalizeCourseInspectionTriageOutline(value, { courseId, expectedRevision }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "O índice compacto da triagem é inválido ou excede seu contrato."); }
+  }
+
+  async getCourseInspectionTriagePage({ principal, courseId, expectedRevision, scopeKind, scopeId = null,
+    selectedUnitIds = null, cursorOrdinal = "0", limit = 8, deadlineAt = null }) {
+    const value = first(await this.rpc("get_owned_course_inspection_triage_page_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision,
+      p_scope_kind: scopeKind, p_scope_id: scopeId, p_selected_unit_ids: selectedUnitIds,
+      p_cursor_ordinal: cursorOrdinal, p_limit: limit
+    }, { deadlineAt, responseLimitBytes: 96 * 1024 }));
+    try { return normalizeCourseInspectionTriagePage(value, { courseId, expectedRevision, cursorOrdinal }); }
+    catch { throw new AuthoringApiError(503, "course_service_unavailable", "A página compacta de triagem é inválida ou excede seu contrato."); }
   }
 
   async listAuthoringProfiles({ principal, deadlineAt = null }) {

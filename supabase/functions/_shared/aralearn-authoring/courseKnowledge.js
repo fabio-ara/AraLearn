@@ -2,7 +2,7 @@ const KNOWLEDGE_BASE_URI = "aralearn://authoring";
 
 export const COURSE_AUTHORING_ALIGNMENT_GUIDANCE = "Relacione objetivo, operação do estudante e evidência da resposta.";
 
-export const COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE = "Conteúdo ou fontes alterados podem deixar pendentes pareceres de outras unidades pela base compartilhada. Ao fechar a correção, confira a microssequência inteira com preparar_revisao e auditoria: true, sem seleção de unidades; conclua as continuações e relate o alcance, as pendências e as ressalvas, preservando pareceres atuais completos.";
+export const COURSE_AUTHORING_SHARED_REVIEW_GUIDANCE = "Conteúdo ou fontes alterados podem deixar pendentes pareceres de outras unidades pela base compartilhada. A triagem preparar_revisao(resumo:true) só localiza estados e nunca fundamenta parecer. Ao fechar a correção, confira a microssequência inteira com preparar_revisao e auditoria: true, sem seleção de unidades; conclua as continuações e relate o alcance, as pendências e as ressalvas, preservando pareceres atuais completos.";
 
 // Caminho de saída único para exigência de forma explicativa divergente da
 // declaração: recalibrar a intenção automática e aplicar na mesma chamada, sem
