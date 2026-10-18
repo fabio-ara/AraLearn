@@ -106,6 +106,7 @@ const HUMAN_REFERENCE_SCHEMA = Object.freeze({
   type: Object.freeze(["integer", "string"]), minimum: 1, maximum: 1000000,
   minLength: 1, maxLength: 300
 });
+const POSITION_REFERENCE_SCHEMA = Object.freeze({ type: "integer", minimum: 1, maximum: 1000000 });
 const COURSE_SCHEMA = Object.freeze({
   type: "string",
   minLength: 1,
@@ -878,13 +879,15 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       curso: COURSE_SCHEMA,
       comparacao: OBSERVATION_COMPARISON_SCHEMA,
       parte: HUMAN_REFERENCE_SCHEMA,
+      modulo: POSITION_REFERENCE_SCHEMA,
+      licao: POSITION_REFERENCE_SCHEMA,
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
       auditoria: Object.freeze({ type: "boolean", default: false,
-        description: "Use true para leitura integral e parecer formal." }),
+        description: "Leitura integral formal." }),
       resumo: Object.freeze({ type: "boolean",
-        description: "Triagem não formal; para parecer, use auditoria:true." }),
-      continuacao: READ_CONTINUATION_SCHEMA
+        description: "Triagem sem validade formal." }),
+      continuacao: Object.freeze({ type: "string", maxLength: 4096 })
     }, ["curso"]),
     { readOnly: true }
   ),
@@ -1279,9 +1282,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.7.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.8.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:ee041e703ce1883cf14388d32f587fad859c651f1d3fdf37a46e0c093707dd5f";
+  "sha256:0870fe3e73000f148a79000594c4a3900e8fb991a4e15280ec6fbc5f1af184ca";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3391,7 +3394,7 @@ async function prepareInspectionTriage({ adapter, principal, args, deadlineAt })
   const outlineReader = input => adapter.getCourseInspectionTriageOutline(input);
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, planReader: outlineReader });
-  if (!resolved.plan) {
+  if (!resolved.plan && units.length > 0) {
     resolved.plan = await outlineReader({ principal, courseId: resolved.course.id,
       expectedRevision: resolved.course.revision, deadlineAt });
     if (resolved.plan?.courseRevision !== resolved.course.revision) {
@@ -3399,7 +3402,7 @@ async function prepareInspectionTriage({ adapter, principal, args, deadlineAt })
     }
   }
   const plan = resolved.plan?.plan;
-  if (!plan || resolved.plan.courseRevision !== resolved.course.revision) {
+  if (units.length > 0 && (!plan || resolved.plan.courseRevision !== resolved.course.revision)) {
     fail("course_revision_conflict", "A estrutura do curso mudou; recomece a triagem.", null, 409);
   }
   const selectedUnitIds = units.length ? units.map(reference => {
@@ -3428,7 +3431,9 @@ async function prepareInspectionTriage({ adapter, principal, args, deadlineAt })
   const pageCounts = Object.fromEntries(["current", "pending", "unregistered", "unavailable"]
     .map(state => [state, page.items.filter(item => item.state === state).length]));
   const entries = page.items.map(item => ({
-    alvo: { tipo: item.targetKind, titulo: item.title, posicao: item.ordinal },
+    alvo: { tipo: item.targetKind, titulo: item.title, indiceTriagem: item.ordinal },
+    argumentosParaLeituraFormal: { curso: resolved.course.title,
+      ...item.focusArguments, auditoria: true },
     estadoIA: item.state,
     dimensoesAtuaisCompletas: item.state === "current" ? item.dimensionsCurrentComplete : null,
     ...(item.state === "current" ? { resultado: item.report } : {}),
@@ -3439,7 +3444,7 @@ async function prepareInspectionTriage({ adapter, principal, args, deadlineAt })
       item.targetKind === "study_unit" ? "studyUnitId" : "explanationId", item.targetId]])
   }));
   const context = { tipo: "triagem_de_inspecao_nao_formal", escopo: page.scope,
-    alvosNaPagina: page.items.length, totalDeAlvosNoEscopo: page.totalCount,
+    alvosNestaPagina: page.items.length, totalDeAlvosNoEscopo: page.totalCount,
     estadosNestaPagina: pageCounts, alvos: entries,
     nota: "Esta triagem não é leitura formal, não fornece referência de inspeção e não pode fundamentar registrar_inspecao. Para emitir novo parecer, releia integralmente o recorte com auditoria:true." };
   return result("Consultei o estado atual da inspeção sem materializar o conteúdo da revisão.", {

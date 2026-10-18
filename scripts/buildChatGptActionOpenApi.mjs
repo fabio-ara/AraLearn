@@ -9,7 +9,7 @@ import {
   HUMAN_TASK_RESULT_SCHEMA
 } from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
-  COURSE_AUTHORING_SERVER_INSTRUCTIONS
+  COURSE_AUTHORING_ACTION_INSTRUCTIONS
 } from "../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
   projectHumanAuthoringTasksForActions
@@ -285,8 +285,8 @@ const document = {
     "x-aralearn-task-catalog-version": COURSE_HUMAN_TASK_CATALOG_METADATA.version,
     "x-aralearn-task-catalog-fingerprint": COURSE_HUMAN_TASK_CATALOG_METADATA.hash,
     description: [
-      "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.",
-      COURSE_AUTHORING_SERVER_INSTRUCTIONS
+      "Autoria.",
+      COURSE_AUTHORING_ACTION_INSTRUCTIONS
     ].join("\n\n")
   },
   servers: [{ url: baseUrl }],

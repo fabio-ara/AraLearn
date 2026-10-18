@@ -95,7 +95,7 @@ $function$;
 create function private.course_inspection_triage_targets_v1(
   p_course_id uuid,p_scope_kind text,p_scope_id text,p_selected_unit_ids text[]
 )
-returns table(target_kind text,target_id text,title text,ordinal bigint)
+returns table(target_kind text,target_id text,title text,ordinal bigint,focus_arguments jsonb)
 language sql stable security definer set search_path=pg_catalog,private as $function$
   with selected as materialized (
     select requested.id,requested.position
@@ -106,6 +106,8 @@ language sql stable security definer set search_path=pg_catalog,private as $func
       q.position micro_position,l.entity_id lesson_id,l.position lesson_position,
       m.entity_id module_id,m.position module_position,
       membership.authoring_part_ids,
+      row_number() over(order by m.position,m.entity_id,l.position,l.entity_id,
+        q.position,q.entity_id,u.position,u.entity_id) study_unit_ordinal,
       selected.position selected_position
     from private.course_entities u
     join private.course_entities q on q.course_id=u.course_id and q.entity_type='microsequence'
@@ -156,10 +158,11 @@ language sql stable security definer set search_path=pg_catalog,private as $func
       and (p_selected_unit_ids is null or selected.id is not null)
     group by q.entity_id,q.content,q.position,l.position,m.position,membership.authoring_part_ids
   ), targets as (
-  select 'study_unit'::text kind,u.id,left(u.title,300) title,
+    select 'study_unit'::text kind,u.id,left(u.title,300) title,
       case when p_selected_unit_ids is null then u.module_position::numeric*1000000000+
         u.lesson_position::numeric*1000000+u.micro_position::numeric*1000+u.unit_position::numeric*2
         else u.selected_position::numeric*2 end sort_key,
+      jsonb_build_object('unidades',jsonb_build_array(u.study_unit_ordinal)) focus_arguments,
       1 target_order,
       u.module_position,u.lesson_position,u.micro_position,u.unit_position,u.id tie_id
     from units u
@@ -168,16 +171,18 @@ language sql stable security definer set search_path=pg_catalog,private as $func
       case when p_selected_unit_ids is null then q.module_position::numeric*1000000000+
         q.lesson_position::numeric*1000000+q.micro_position::numeric*1000
         else q.selected_position::numeric*2-1 end,
+      jsonb_build_object('modulo',q.module_position+1,'licao',q.lesson_position+1,
+        'microssequencia',q.micro_position+1) focus_arguments,
       0 target_order,q.module_position,q.lesson_position,q.micro_position,0,q.id
     from micros q
   )
   select t.kind,t.id,t.title,row_number() over(order by t.sort_key,t.target_order,t.module_position,
-    t.lesson_position,t.micro_position,t.unit_position,t.tie_id)
+    t.lesson_position,t.micro_position,t.unit_position,t.tie_id),t.focus_arguments
   from targets t
 $function$;
 
 create function private.course_inspection_triage_item_v1(
-  p_course_id uuid,p_target_kind text,p_target_id text,p_title text,p_ordinal bigint
+  p_course_id uuid,p_target_kind text,p_target_id text,p_title text,p_ordinal bigint,p_focus_arguments jsonb
 )
 returns jsonb language plpgsql stable security definer set search_path=pg_catalog,private as $function$
 declare v_state jsonb; v_report jsonb; v_checks jsonb; v_complete boolean:=false;
@@ -189,11 +194,13 @@ begin
   end;
   if v_state is null then
     return jsonb_build_object('targetKind',p_target_kind,'targetId',p_target_id,'title',p_title,
-      'ordinal',p_ordinal,'state','unavailable','dimensionsCurrentComplete',null,'report',null);
+      'ordinal',p_ordinal,'focusArguments',p_focus_arguments,
+      'state','unavailable','dimensionsCurrentComplete',null,'report',null);
   end if;
   if v_state->>'state'<>'current' then
     return jsonb_build_object('targetKind',p_target_kind,'targetId',p_target_id,'title',p_title,
-      'ordinal',p_ordinal,'state',v_state->>'state','dimensionsCurrentComplete',null,'report',null);
+      'ordinal',p_ordinal,'focusArguments',p_focus_arguments,
+      'state',v_state->>'state','dimensionsCurrentComplete',null,'report',null);
   end if;
   v_report:=v_state->'report';
   select coalesce(jsonb_agg(jsonb_build_object('dimension',check_value->>'dimension',
@@ -205,10 +212,11 @@ begin
       bool_and(check_value->>'dimension' in ('alignment','evidence','representation','feedback','sufficiency','configuration'))
       from jsonb_array_elements(v_checks) check_value),false);
   return jsonb_build_object('targetKind',p_target_kind,'targetId',p_target_id,'title',p_title,
-    'ordinal',p_ordinal,'state','current','dimensionsCurrentComplete',v_complete,
+    'ordinal',p_ordinal,'focusArguments',p_focus_arguments,'state','current','dimensionsCurrentComplete',v_complete,
     'report',jsonb_build_object('summary',left(v_report->>'summary',1000),'outcome',v_report->>'outcome',
       'findings',coalesce((select jsonb_agg(left(value,300) order by ordinality)
-        from jsonb_array_elements_text(coalesce(v_report->'findings','[]'::jsonb)) with ordinality), '[]'::jsonb),
+        from jsonb_array_elements_text(coalesce(v_report->'findings','[]'::jsonb)) with ordinality
+        limit 20), '[]'::jsonb),
       'checks',v_checks));
 end
 $function$;
@@ -261,7 +269,7 @@ begin
     where targets.ordinal>v_cursor order by targets.ordinal limit p_limit
   ), materialized as (
     select page.*,private.course_inspection_triage_item_v1(p_course_id,page.target_kind,
-      page.target_id,page.title,page.ordinal) item from page
+      page.target_id,page.title,page.ordinal,page.focus_arguments) item from page
   )
   select coalesce(jsonb_agg(item order by ordinal),'[]'::jsonb),count(*)::integer,
     (array_agg(ordinal order by ordinal desc))[1]
@@ -277,7 +285,7 @@ $function$;
 
 revoke all on function private.course_inspection_triage_outline_v1(uuid),
   private.course_inspection_triage_targets_v1(uuid,text,text,text[]),
-  private.course_inspection_triage_item_v1(uuid,text,text,text,bigint),
+  private.course_inspection_triage_item_v1(uuid,text,text,text,bigint,jsonb),
   public.get_owned_course_inspection_triage_outline_for_actor_v1(uuid,uuid,bigint),
   public.get_owned_course_inspection_triage_page_for_actor_v1(uuid,uuid,bigint,text,text,text[],bigint,integer)
   from public,anon,authenticated,service_role;
@@ -288,7 +296,7 @@ grant execute on function public.get_owned_course_inspection_triage_outline_for_
 do $manifest$
 declare manifest jsonb:=public.get_aralearn_runtime_manifest();
 begin
-  manifest:=manifest||jsonb_build_object('schemaRevision','20261018160000');
+  manifest:=manifest||jsonb_build_object('schemaRevision','20261018160627');
   execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
     'select '||quote_literal(manifest::text)||'::jsonb');
 end

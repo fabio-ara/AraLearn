@@ -21,9 +21,16 @@ const bounded = (value, max) => typeof value === "string" && value.length <= max
   });
 
 function normalizeItem(value) {
-  exact(value, ["targetKind", "targetId", "title", "ordinal", "state", "dimensionsCurrentComplete", "report"]);
+  exact(value, ["targetKind", "targetId", "title", "ordinal", "focusArguments", "state", "dimensionsCurrentComplete", "report"]);
   if (!TARGETS.has(value.targetKind) || !bounded(value.targetId, 240) || !value.targetId.trim() ||
-      !bounded(value.title, 300) || !value.title.trim() || !positive(value.ordinal) || !STATES.has(value.state)) fail();
+      !bounded(value.title, 300) || !value.title.trim() || !positive(value.ordinal) || !plain(value.focusArguments) ||
+      value.targetKind === "study_unit" && (!Array.isArray(value.focusArguments.unidades) ||
+        value.focusArguments.unidades.length !== 1 || !positive(value.focusArguments.unidades[0]) ||
+        Object.keys(value.focusArguments).some(key => key !== "unidades")) ||
+      value.targetKind === "microsequence_explanation" &&
+        (!positive(value.focusArguments.modulo) || !positive(value.focusArguments.licao) ||
+          !positive(value.focusArguments.microssequencia) || Object.keys(value.focusArguments).some(key =>
+            !["modulo", "licao", "microssequencia"].includes(key))) || !STATES.has(value.state)) fail();
   if (value.state !== "current") {
     if (value.dimensionsCurrentComplete !== null || value.report !== null) fail();
     return { ...value };

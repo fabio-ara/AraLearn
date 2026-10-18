@@ -820,3 +820,129 @@ test("fundamentação do parecer: caminho completo com correspondências tardias
       "uma citação alterada deixa de pertencer à base");
   } finally { await db.close(); }
 });
+
+test("triagem SQL recalcula currentness, pagina alvos com identidade global, restringe owner e CAS", async () => {
+  const db = await fixture();
+  try {
+    await db.exec(`
+      alter table private.course_entities add column parent_type text;
+      alter table public.courses add column title text;
+      update public.courses set title='Curso de fixture';
+      create table private.course_authoring_parts(course_id uuid,id uuid,position integer,title text,state text);
+      create table private.course_authoring_part_didactic_microsequences(
+        course_id uuid,authoring_part_id uuid,didactic_microsequence_id text,production_position integer);
+      insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content) values
+        ('${COURSE}','module','tri-mod',null,null,0,'{"title":"Módulo"}'),
+        ('${COURSE}','lesson','tri-lesson','module','tri-mod',0,'{"title":"Lição"}'),
+        ('${COURSE}','microsequence','tri-ms1','lesson','tri-lesson',0,'{"title":"Duplicado","explanation":{"title":"E1","content":[]}}'),
+        ('${COURSE}','microsequence','tri-ms2','lesson','tri-lesson',1,'{"title":"Duplicado","explanation":{"title":"E2","content":[]}}'),
+        ('${COURSE}','microsequence','tri-ms3','lesson','tri-lesson',2,'{"title":"Sem unidade null","explanation":null}'),
+        ('${COURSE}','microsequence','tri-ms4','lesson','tri-lesson',3,'{"title":"Planejada sem explicação"}'),
+        ('${COURSE}','microsequence','tri-ms5','lesson','tri-lesson',4,'{"title":"Sem unidade vazia","explanation":{}}'),
+        ('${COURSE}','study_unit','tri-u1','microsequence','tri-ms1',0,'{"title":"U1","role":"theory","topics":[],"content":[{"id":"p1","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Texto 1."}}],"response":null,"feedback":[]}'),
+        ('${COURSE}','study_unit','tri-u2','microsequence','tri-ms2',0,'{"title":"U2","role":"theory","topics":[],"content":[{"id":"p2","package":"aralearn.resource.paragraph","version":"1.0.0","data":{"text":"Texto 2."}}],"response":null,"feedback":[]}');
+      insert into private.course_source_attributions(course_id,id,target_kind,target_id)
+        values('${COURSE}','30000000-0000-4000-8000-000000000002','study_unit','tri-u1');
+      insert into private.course_source_attribution_sources(course_id,attribution_id,source_id,relation)
+        values('${COURSE}','30000000-0000-4000-8000-000000000002','source-a','supported_by');
+    `);
+    await db.exec(await migration("20261018160627_course_inspection_triage.sql"));
+    const manifest = await queryValue(db, "select public.get_aralearn_runtime_manifest()->>'schemaRevision' value");
+    assert.equal(manifest, "20261018160627");
+    assert.deepEqual(await queryValue(db, "select public.get_aralearn_runtime_manifest()->'features' value"),
+      ["configuration-realization-inspection-v1"],
+      "a triagem não inventa capacidade canônica de runtime");
+    await db.query("insert into private.course_authoring_parts(course_id,id,position,title,state) values($1,'30000000-0000-4000-8000-000000000003',0,'Parte','draft')", [COURSE]);
+    await db.query("insert into private.course_authoring_part_didactic_microsequences(course_id,authoring_part_id,didactic_microsequence_id,production_position) values($1,'30000000-0000-4000-8000-000000000003','tri-ms1',0),($1,'30000000-0000-4000-8000-000000000003','tri-ms2',1)", [COURSE]);
+    await db.query("select set_config('aralearn.ai_inspection_write','semantic-inspection-command',false)");
+    await db.query("update private.course_entities set ai_inspection=jsonb_build_object('legacyBasisHash',private.course_ai_inspection_basis_hash_v1($1,'study_unit','tri-u2')) where course_id=$1 and entity_id='tri-u2'",
+      [COURSE]);
+    await db.query("select set_config('aralearn.ai_inspection_write','',false)");
+    const firstRead = await read(db, "tri-u1");
+    const triageReport = { ...report, summary: "x".repeat(1000), outcome: "needs_attention",
+      findings: Array.from({ length: 20 }, (_, index) => `Ressalva ${index} `.padEnd(300, "x")),
+      checks: report.checks.map(check => ({ ...check, reason: "r".repeat(200), evidence: ["Texto 1."] })) };
+    await record(db, "triage-current-001", { id: "tri-u1", hash: firstRead.basisHash, value: triageReport });
+    const revision = await queryValue(db, "select revision value from public.courses where id=$1", [COURSE]);
+    const page = async (actor = OWNER, expected = revision, cursor = 0, limit = 2) => queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'course',null,null,$4,$5) value",
+      [actor, COURSE, expected, cursor, limit]);
+    const one = await page();
+    assert.equal(one.totalCount, 6);
+    assert.equal(one.items.length, 2);
+    assert.deepEqual(one.items.map(item => item.targetKind), ["microsequence_explanation", "study_unit"]);
+    assert.deepEqual(one.items[1].focusArguments, { unidades: [1] }, "unidade usa ordinal global do RPC formal");
+    assert.equal(one.items[1].state, "current");
+    assert.equal(one.items[1].report.findings.length, 20, "SQL preserva o máximo de ressalvas do contrato");
+    const two = await page(OWNER, revision, Number(one.nextCursor));
+    assert.deepEqual(two.items.map(item => item.targetKind), ["microsequence_explanation", "study_unit"]);
+    assert.deepEqual(two.items[0].focusArguments, { modulo: 1, licao: 1, microssequencia: 2 },
+      "microssequências homônimas usam caminho posicional inequívoco");
+    assert.equal(two.items[1].state, "unregistered");
+    const three = await page(OWNER, revision, Number(two.nextCursor));
+    assert.deepEqual(three.items.map(item => item.targetId), ["tri-ms3", "tri-ms5"]);
+    const all = [...one.items, ...two.items, ...three.items];
+    assert.equal(new Set(all.map(item => `${item.targetKind}:${item.targetId}`)).size, 6);
+    assert.equal(all.some(item => item.targetId === "tri-ms4"), false,
+      "planejamento sem explicação materializada não entra como alvo de inspeção");
+    const partScope = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'authoring_part','30000000-0000-4000-8000-000000000003',null,0,8) value",
+      [OWNER, COURSE, revision]);
+    assert.equal(partScope.totalCount, 4);
+    const microScope = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'didactic_microsequence','tri-ms3',null,0,8) value",
+      [OWNER, COURSE, revision]);
+    assert.equal(microScope.totalCount, 1);
+    await assert.rejects(page(OTHER), { code: "42501" });
+    await assert.rejects(page(OWNER, revision + 1), { code: "PT409" });
+    await assert.rejects(page(OWNER, revision, 99), { code: "22023" });
+    assert.equal(await queryValue(db, "select has_function_privilege('authenticated','public.get_owned_course_inspection_triage_page_for_actor_v1(uuid,uuid,bigint,text,text,text[],bigint,integer)','execute') value"), false);
+    assert.equal(await queryValue(db, "select has_function_privilege('service_role','public.get_owned_course_inspection_triage_page_for_actor_v1(uuid,uuid,bigint,text,text,text[],bigint,integer)','execute') value"), true);
+    const legacy = await read(db, "tri-u2");
+    await db.query("select set_config('aralearn.ai_inspection_write','semantic-inspection-command',false)");
+    await db.query("update private.course_entities set ai_inspection=jsonb_build_object('basisHash',$2::text,'report',$3::jsonb,'inspectedAt',now()) where course_id=$1 and entity_id='tri-u2'",
+      [COURSE, legacy.basisHash, JSON.stringify(legacyReport)]);
+    await db.query("select set_config('aralearn.ai_inspection_write','',false)");
+    const afterLegacy = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,(select revision from public.courses where id=$2),'course',null,null,0,8) value",
+      [OWNER, COURSE]);
+    const legacyTarget = afterLegacy.items.find(item => item.targetId === "tri-u2");
+    assert.equal(legacyTarget.state, "current");
+    assert.equal(legacyTarget.dimensionsCurrentComplete, false);
+    await db.query("update private.course_entities set content=jsonb_set(content,'{content,0,data,text}','\"Texto alterado.\"') where entity_id='tri-u1'");
+    const afterDelta = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,(select revision from public.courses where id=$2),'course',null,null,0,8) value",
+      [OWNER, COURSE]);
+    assert.equal(afterDelta.items.find(item => item.targetId === "tri-u1").state, "pending");
+    const updatedReport = { ...report, checks: report.checks.map(check => ({ ...check, evidence: ["Texto alterado."] })) };
+    let currentBasis = await read(db, "tri-u1");
+    await record(db, "triage-current-002", { id: "tri-u1", hash: currentBasis.basisHash, value: updatedReport });
+    const sourceBasis = await read(db, "tri-u1");
+    await db.query("update private.course_sources set title='Fonte A revisada' where course_id=$1 and source_id='source-a'", [COURSE]);
+    const changedSource = await read(db, "tri-u1");
+    assert.notEqual(changedSource.basisHash, sourceBasis.basisHash, "alteração de fonte participa do hash corrente");
+    const afterSourceDelta = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,(select revision from public.courses where id=$2),'course',null,null,0,8) value",
+      [OWNER, COURSE]);
+    assert.equal(afterSourceDelta.items.find(item => item.targetId === "tri-u1").state, "pending");
+    await record(db, "triage-current-003", { id: "tri-u1", hash: changedSource.basisHash, value: updatedReport });
+    const beforeConfiguration = await read(db, "tri-u1");
+    await db.query("update private.course_entities set design_application='{}'::jsonb where course_id=$1 and entity_id='tri-u1'", [COURSE]);
+    const changedConfiguration = await read(db, "tri-u1");
+    assert.notEqual(changedConfiguration.basisHash, beforeConfiguration.basisHash,
+      "mudança de configuração participa do hash corrente");
+    const afterConfigurationDelta = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,(select revision from public.courses where id=$2),'course',null,null,0,8) value",
+      [OWNER, COURSE]);
+    assert.equal(afterConfigurationDelta.items.find(item => item.targetId === "tri-u1").state, "pending");
+    await db.exec("alter function private.course_ai_inspection_state_v1(uuid,text,text) rename to course_ai_inspection_state_real_v1");
+    await db.exec(`create function private.course_ai_inspection_state_v1(p_course_id uuid,p_target_kind text,p_target_id text)
+      returns jsonb language plpgsql stable security definer set search_path=pg_catalog,private as $function$
+      begin if p_target_id='tri-ms3' then raise exception 'fixture unavailable'; end if;
+        return private.course_ai_inspection_state_real_v1(p_course_id,p_target_kind,p_target_id); end $function$`);
+    const unavailable = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,(select revision from public.courses where id=$2),'course',null,null,4,2) value",
+      [OWNER, COURSE]);
+    assert.equal(unavailable.items.find(item => item.targetId === "tri-ms3").state, "unavailable");
+  } finally { await db.close(); }
+});

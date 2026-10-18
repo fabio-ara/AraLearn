@@ -17,6 +17,7 @@ import {
   encodeCourseActionTaskRequest
 } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
+  COURSE_AUTHORING_ACTION_INSTRUCTIONS,
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
   COURSE_AUTHORING_GUIDES
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
@@ -351,7 +352,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.7.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.8.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -440,14 +441,15 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.equal(
     openApi.info.description,
-    "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
-      COURSE_AUTHORING_SERVER_INSTRUCTIONS
+    "Autoria.\n\n" +
+      COURSE_AUTHORING_ACTION_INSTRUCTIONS
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
     /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
-  assert.match(openApi.info.description, /Aprovação humana é só do mapa salvo visto pela pessoa/iu);
-  assert.match(openApi.info.description, /mandato automático.*rascunho sem aprovação humana/iu);
-  assert.match(openApi.info.description, /Parte é lote técnico, não dependência pedagógica/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Aprovação humana é só do mapa salvo visto pela pessoa/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /mandato automático.*rascunho sem aprovação humana/iu);
+  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Parte é lote técnico, não dependência pedagógica/iu);
+  assert.match(openApi.info.description, /Triagem `resumo:true` informa estado e não fundamenta parecer/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
   assert.match(openApi.info.description, /respeite confirmações/iu);
@@ -487,16 +489,16 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
-    openApi.info.description,
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
     /resolva autonomamente escolhas deriváveis/iu
   );
   assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
-    openApi.info.description,
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
     /Siga preferências, fixações e mandato/iu
   );
   assert.match(
-    openApi.info.description,
+    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
     /Chat breve; conteúdo completo e literal[\s\S]*Use o link exato em Markdown/iu
   );
   assert.match(
@@ -940,7 +942,7 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
   // permitindo um lote atômico de unidades de várias microssequências do mesmo
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
-  // mesma referência e parecer. O catálogo 11.7.0 também aceita em `ajustar_configuracao`
+  // mesma referência e parecer. O catálogo 11.8.0 também aceita em `ajustar_configuracao`
   // as referências fechadas do lote novo e do comando de desenho legado. Em
   // `materializar_parte`, a
   // localização da tentativa pelo curso e pela microssequência permanece; a linha de base
