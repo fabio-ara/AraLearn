@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.123] - 2026-10-18
+
+### Corrigido
+
+- A conclusão de uma Parte já salva deixa de falhar ao fechar sem conteúdo novo. O conteúdo e os pareceres existentes são preservados, incluindo pendências pedagógicas: concluir a Parte não significa aprová-las.
+- O painel identifica a decisão automática como configuração, distinguindo-a do valor aplicado na produção existente, sem alterar a disposição dos controles.
+
 ## [0.0.122] - 2026-10-17
 
 ### Adicionado

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fixture, installCourseInspectionFixture, COURSE, PART, IDEA, EVIDENCE, parameters }
+import { fixture, installCourseInspectionFixture, installCourseCompositionFixture, COURSE, PART, IDEA, EVIDENCE, parameters }
   from "../support/authoringMaterializationPglite.js";
 import { COURSE_COMPONENT_CATALOG_VERSION } from "../../src/domain/courseDesignParameters.js";
 
@@ -183,6 +183,7 @@ test("conclusão preserva parecer humano e de IA correntes ao reutilizar o acumu
         data: { text: existing.studyUnitId } }] };
     existing.designApplication.componentRefs = ["aralearn.resource.paragraph@1.0.0"];
     const initial = await write(db, [existing], [placement(existing)], { request: "existing-part-001" });
+    await installCourseCompositionFixture(db);
     await db.query(`update private.course_entities set
       source_links=$1,editorial_interventions=$2 where entity_id=$3`,
     [[{ linkId: "keep-source" }], { human: 2, ai: 1 }, existing.studyUnitId]);
@@ -201,9 +202,9 @@ test("conclusão preserva parecer humano e de IA correntes ao reutilizar o acumu
     const aiUninspected = await readAi();
     assert.equal(aiUninspected.inspection.state, "pending");
     const aiReport = { summary: "Parecer sintético emitido sobre a Unidade lida.",
-      outcome: "consistent", findings: [], checks: ["alignment", "evidence", "representation",
+      outcome: "needs_attention", findings: ["A prática não recolhe justificativa independente."], checks: ["alignment", "evidence", "representation",
         "feedback", "sufficiency", "configuration"].map((dimension) => ({ dimension,
-        result: "sufficient", reason: "A passagem sustenta o parecer.", evidence: [existing.studyUnitId] })) };
+        result: dimension === "evidence" ? "insufficient" : "sufficient", reason: "Parecer sintético sobre a passagem observada.", evidence: [existing.studyUnitId] })) };
     const recorded = (await db.query(
       "select public.record_course_ai_inspection_for_actor_v1($1,$2,'study_unit',$3,$4,$5,$6) value",
       [COURSE, COURSE, existing.studyUnitId, aiUninspected.basisHash, aiReport, "existing-ai-001"]

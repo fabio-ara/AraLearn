@@ -161,7 +161,7 @@ function renderParameterCard(design, definition, resolution, busy, { editing = f
   const automatic = (local || effective).mode === "automatic";
   const source = sourceScopeLabel(design, effective.sourceScope);
   const displayedOrigin = effective.mode === "automatic" && effective.value !== null
-    ? "Valor aplicado · decisão automática"
+    ? "Configuração · decisão automática"
     : effective.inherited ? `Herdado de ${source}`
       : local ? "Definido neste escopo" : "";
   const editor = supported
