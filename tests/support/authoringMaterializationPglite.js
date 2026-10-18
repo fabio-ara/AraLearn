@@ -21,6 +21,7 @@ const savedApplicationMigration = await read("20260909061332_contextual_instruct
 const designParametersMigration = await read("20260817180000_course_design_parameters.sql");
 const completeSavedPartMigration = await read("20261017193000_complete_saved_course_authoring_part.sql");
 const completeSavedReceiptMigration = await read("20261018031500_complete_saved_part_receipt.sql");
+const captureProducedBasisMigration = await read("20261018062036_capture_basis_only_for_produced_units.sql");
 const reviewAccessMigration = await read("20260909025232_contextual_content_review_access.sql");
 const contentCompletenessMigration = await read("20260909060955_contextual_runtime_integration_guards.sql");
 const aiInspectionMigration = await read("20260916025342_contextual_ai_inspection.sql");
@@ -136,7 +137,7 @@ async function fixtureSchema() {
       declare all_units jsonb; begin perform private.assert_course_materialization_pedagogy_v1(p_course_id,all_units); end$$;`;
 }
 
-async function fixture({ focalCurricularDependencies = true, completeSavedReceipt = true } = {}) {
+async function fixture({ focalCurricularDependencies = true, completeSavedReceipt = true, captureProducedBasis = true } = {}) {
   const db = new PGlite();
   // Actual materialization/core/pedagogy/reader definitions and migration run on
   // a minimal relational fixture. Auth, configuration, source storage and the
@@ -180,6 +181,7 @@ async function fixture({ focalCurricularDependencies = true, completeSavedReceip
   await db.exec(autonomousFirstPart);
   await db.exec(completeSavedPartMigration);
   if (completeSavedReceipt) await db.exec(completeSavedReceiptMigration);
+  if (captureProducedBasis) await db.exec(captureProducedBasisMigration);
   return db;
 }
 
@@ -216,6 +218,31 @@ async function installCourseCompositionFixture(db) {
   await db.exec(definition(await read("001_aralearn_relational.sql"), "private.request_role"));
   await db.exec(definition(await read("20260721160000_authoring_workflow.sql"), "private.require_service_role"));
   await db.exec("set request.jwt.claim.role='service_role';");
+}
+
+// Nesta trilha, captura, hash, completude, revisão e composição usam SQL real.
+// Os suportes gerais de configuração/registry continuam mínimos; a jornada
+// channels-local valida o schema completo sem estas substituições.
+async function installAppliedBasisFixture(db) {
+  await installCourseInspectionFixture(db);
+  await installCourseCompositionFixture(db);
+  const reconciliation = await read("20260916030020_explanation_reconciliation.sql");
+  await db.exec(`drop function private.valid_course_explanation_v1(jsonb);
+    drop function private.valid_course_component_refs_in_content_v1(jsonb);
+    drop function private.course_content_media_hashes_v1(jsonb);`);
+  await db.exec(definition(reconciliation, "private.valid_explanation_reconciliation_v1"));
+  await db.exec(definition(reconciliation, "private.valid_course_explanation_v1"));
+  await db.exec(definition(designParametersMigration, "private.valid_course_component_refs_in_content_v1"));
+  await db.exec(definition(explanations, "private.course_content_media_hashes_v1"));
+  await db.exec("drop function private.capture_course_applied_explanation_basis_v1(uuid,jsonb)");
+  await db.exec(definition(appliedBasis, "private.capture_course_applied_explanation_basis_v1"));
+  await db.exec(definition(appliedBasis, "private.valid_applied_explanation_basis_v1"));
+  await db.exec(definition(appliedBasis, "private.guard_applied_explanation_basis_v1"));
+  await db.exec(`alter table private.course_entities add constraint course_applied_explanation_basis_v1
+    check(applied_explanation_basis is null or entity_type='study_unit'
+      and private.valid_applied_explanation_basis_v1(applied_explanation_basis));
+    create trigger course_applied_explanation_basis_guard before insert or update on private.course_entities
+      for each row execute function private.guard_applied_explanation_basis_v1();`);
 }
 
 // Instala as leituras e escritores reais de revisão humana e de parecer de IA
@@ -268,7 +295,7 @@ async function installCourseInspectionFixture(db) {
 }
 
 export { read, definition, block, fixture, fixtureSchema, installCourseInspectionFixture,
-  installCourseCompositionFixture, completeSavedReceiptMigration, COURSE, PART, IDEA, EVIDENCE, parameters, policy,
+  installCourseCompositionFixture, installAppliedBasisFixture, captureProducedBasisMigration, completeSavedReceiptMigration, COURSE, PART, IDEA, EVIDENCE, parameters, policy,
   materializer, globalPlan, cutover, explanations, appliedBasis, forms, practice, inspection, migration,
   focalScopeMigration, focalAuditBasis, autonomousFirstPart, discriminatorCorrection, originMigration,
   copyMigration, savedApplicationMigration, designParametersMigration };

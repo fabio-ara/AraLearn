@@ -108,10 +108,10 @@ create function pg_temp.materialize_contextual(request_id text,p_units jsonb,p_e
   select public.materialize_course_authoring_part_for_actor_v2(
     '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',1,1,'[]'::jsonb,
     '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
-    p_units,request_id,encode(extensions.digest(jsonb_build_object('units',p_units,'complete',true,
+    p_units,request_id,encode(extensions.digest(jsonb_build_object('units',p_units,'complete',false,
       'placements',pg_temp.materialization_placements(p_units),'explanations',p_explanations)::text,'sha256'),'hex'),
     coalesce(p_explanations,pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb)),
-    true,pg_temp.materialization_placements(p_units))
+    false,pg_temp.materialization_placements(p_units))
 $f$;
 select ok(private.valid_applied_course_design_parameters_v1(payload.units#>'{0,designSnapshot,parameters}',resolved.parameters),'calibração tipada completa aceita cadência automática ainda sem valor corrente') from payload,resolved;
 select ok(not private.valid_applied_course_design_parameters_v1(jsonb_set(payload.units#>'{0,designSnapshot,parameters}','{5,value}','241'),resolved.parameters),'fixação humana não pode ser substituída pela escolha automática') from payload,resolved;
@@ -141,8 +141,35 @@ select throws_ok($$select pg_temp.materialize_contextual('context-stale-0001',un
 select ok(not private.valid_applied_course_design_parameters_v1(payload.units#>'{0,designSnapshot,parameters}',jsonb_set(resolved.parameters,'{0,conflicts}','[{"fixedValue":1,"exceptionValue":2}]')),'conflito de pesquisa exige resolução antes da aplicação contextual') from payload,resolved;
 select is((select design_snapshot->>'parameterCatalogVersion' from private.course_entities where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
   '1.2.0','aplicação compatível conserva a versão histórica literal');
+-- Full migrated schema: capture is real, not a fixture function.
+select throws_ok($$select private.capture_course_applied_explanation_basis_v1(
+ '95000000-0000-4000-8000-000000000301','[]')$$,'22023','Recorte de aplicação da base inválido.',
+ 'hook direto conserva o guard de produção não vazia');
+select is((select applied_explanation_basis->>'basisHash' from private.course_entities
+ where course_id='95000000-0000-4000-8000-000000000301' and entity_id='unit-contextual'),
+ private.course_content_basis_hash_v1('95000000-0000-4000-8000-000000000301','microsequence_explanation','micro-calibration'),
+ 'produção não vazia capturou a base verdadeira');
+create temporary table closure_before as select jsonb_agg(to_jsonb(e) order by entity_type,entity_id) value
+ from private.course_entities e where course_id='95000000-0000-4000-8000-000000000301';
+create function pg_temp.close_saved(p_request text,p_revision bigint default 2) returns jsonb language sql as $close$
+ select public.materialize_course_authoring_part_for_actor_v2(
+ '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',p_revision,1,'[]',
+ '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]',
+ '[]',p_request,repeat('a',64),'[]',true,pg_temp.materialization_placements(units),false) from payload
+$close$;
+select lives_ok($$select pg_temp.close_saved('context-empty-close')$$,
+ 'schema completo conclui sem produzir unidades e sem reaplicar base');
+select is((select revision from public.courses where id='95000000-0000-4000-8000-000000000301'),3::bigint,'conclusão avança revisão uma vez');
+select is((select jsonb_agg(to_jsonb(e) order by entity_type,entity_id) from private.course_entities e
+ where course_id='95000000-0000-4000-8000-000000000301'),(select value from closure_before),
+ 'fechamento preserva conteúdo/base/config/fontes/revisão/timestamps de todas as entidades');
+select is(pg_temp.close_saved('context-empty-close')->>'idempotent','true','replay retorna recibo sem regravar');
+select throws_ok($$select pg_temp.close_saved('context-stale-close',2)$$,'PT409',null,'CAS recusa revisão anterior');
+select ok((select materialization_complete from private.course_authoring_parts where id='95000000-0000-4000-8000-000000000341'),
+ 'Parte fica tecnicamente concluída');
+
 select lives_ok($$select public.materialize_course_authoring_part_for_actor_v2(
-  '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',2,1,'[]'::jsonb,
+  '95000000-0000-4000-8000-000000000001','95000000-0000-4000-8000-000000000301','95000000-0000-4000-8000-000000000341',3,1,'[]'::jsonb,
   '[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb,
   jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"'),'context-catalog-121',
   encode(extensions.digest(jsonb_set(units,'{0,designSnapshot,parameterCatalogVersion}','"1.2.1"')::text,'sha256'),'hex'), pg_temp.explanation_fixture('[{"didacticMicrosequenceId":"micro-calibration","instructionalAnalysisUnitIds":[],"evidenceRequirementIds":[]}]'::jsonb),
