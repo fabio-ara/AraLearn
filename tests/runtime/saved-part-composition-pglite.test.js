@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {fixture, installCourseCompositionFixture, completeSavedReceiptMigration,
+import {fixture, installAppliedBasisFixture, captureProducedBasisMigration, completeSavedReceiptMigration,
   COURSE, PART, IDEA, EVIDENCE, parameters} from "../support/authoringMaterializationPglite.js";
 import {CourseSupabaseAdapter} from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 
 test("fechamento vazio atravessa composição real: 22023 antes, recibo e CAS preservados depois", async () => {
-  const db=await fixture({completeSavedReceipt:false});
+  const db=await fixture({completeSavedReceipt:false, captureProducedBasis:false});
   const trace=[];
   try {
   const snapshot={contract:'aralearn.study-unit-design-snapshot.v2',parameterCatalogVersion:'1.2.0',didacticMicrosequenceId:'micro',instructionalAnalysisUnitIds:[IDEA],evidenceRequirementIds:[EVIDENCE],parameters,editorialDirections:[],componentPolicy:{policy:{},origin:'automatic',sourceScopeKind:'course'}};
   const application={mode:'mixed',introducedInstructionalAnalysisUnitIds:[IDEA],usedInstructionalAnalysisUnitIds:[],curriculumScopeItemIds:[],explanationApplications:[{instructionalAnalysisUnitId:IDEA,developedForms:['plain_definition','concrete_example'],notApplicable:[]}],practiceApplications:[{evidenceRequirementId:EVIDENCE,opportunityId:'case-1',invariantTaskOperation:'Distinguir os casos',variedDimensions:[]}],componentRefs:[]};
-  await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application) values($1,'study_unit','unit-existing','microsequence','micro',1,$2,$3,$4)`,[COURSE,{title:'Unidade existente',role:'theory',content:[{text:'Texto preservado'}]},snapshot,application]);
-  await installCourseCompositionFixture(db);
+  await db.query(`insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_snapshot,design_application) values($1,'study_unit','unit-existing','microsequence','micro',1,$2,$3,$4)`,[COURSE,{title:'Unidade existente',role:'theory',content:[{id:'saved-body',package:'aralearn.resource.paragraph',version:'1.0.0',data:{text:'Texto preservado'}}],response:null,feedback:[],topics:[]},snapshot,application]);
+  await installAppliedBasisFixture(db);
   const adapter=new CourseSupabaseAdapter({supabaseUrl:'http://127.0.0.1:54321',serverApiKey:'local-only',publishableKey:'local-only',publicAppUrl:'http://127.0.0.1:5173',attempts:1,
     fetchImpl:async(url,init)=>{
       assert.ok(url.endsWith('/rpc/materialize_course_authoring_part_for_actor_v2'));
@@ -32,6 +32,30 @@ test("fechamento vazio atravessa composição real: 22023 antes, recibo e CAS pr
   assert.match(trace.at(-1).databaseError.where, /materialize_course_authoring_part_core_v1/u);
   assert.equal((await db.query('select count(*)::int n from private.course_change_receipts')).rows[0].n, 0);
   await db.exec(completeSavedReceiptMigration);
+  await assert.rejects(call({}), e => e.status === 422 && e.code === 'invalid_course_command');
+  assert.equal(trace.at(-1).databaseError.message, 'Recorte de aplicação da base inválido.');
+  assert.match(trace.at(-1).databaseError.where, /capture_course_applied_explanation_basis_v1/u);
+  await db.exec(captureProducedBasisMigration);
+  await assert.rejects(db.query("select private.capture_course_applied_explanation_basis_v1($1,'[]')",[COURSE]),e=>e.code==='22023');
+  // Nonempty production captures the actual hash/version; closure must preserve it.
+  const produced=[{studyUnitId:'unit-existing',didacticMicrosequenceId:'micro'}];
+  await db.query("select private.capture_course_applied_explanation_basis_v1($1,$2)",[COURSE,produced]);
+  const captured=(await db.query("select applied_explanation_basis value from private.course_entities where entity_id='unit-existing'")).rows[0].value;
+  assert.equal(captured.basisHash,(await db.query("select private.course_content_basis_hash_v1($1,'microsequence_explanation','micro') value",[COURSE])).rows[0].value);
+  assert.equal(captured.entityVersion,1);
+  assert.equal(captured.microsequenceId,'micro');
+  const humanBasis=(await db.query("select private.course_content_basis_hash_v1($1,'study_unit','unit-existing') value",[COURSE])).rows[0].value;
+  await db.query("select public.set_course_content_review_for_actor_v1($1,$1,'study_unit','unit-existing',$2,true,'saved-human-124')",[COURSE,humanBasis]);
+  const aiRead=async()=> (await db.query("select public.get_course_ai_inspection_for_actor_v1($1,$1,'study_unit','unit-existing') value",[COURSE])).rows[0].value;
+  const pending=await aiRead();
+  const report={summary:'Texto sintético sem prática independente.',outcome:'needs_attention',findings:['Falta evidência de aplicação.'],
+    checks:['alignment','evidence','representation','feedback','sufficiency','configuration'].map(dimension=>({dimension,
+      result:'insufficient',reason:'O texto não recolhe evidência de aplicação.',evidence:['Texto preservado']}))};
+  await db.query("select public.record_course_ai_inspection_for_actor_v1($1,$1,'study_unit','unit-existing',$2,$3,'saved-ai-124')",[COURSE,pending.basisHash,report]);
+  const aiBefore=await aiRead();assert.equal(aiBefore.inspection.state,'current');
+  request.expectedCourseRevision=Number((await db.query('select revision from public.courses')).rows[0].revision);
+  const completedRevision=request.expectedCourseRevision+1;
+
   // A failure after the core inserted its receipt must roll everything back.
   const beforeRollback = await databaseSnapshot();
   await db.exec(`create function pg_temp.reject_completion() returns trigger language plpgsql as $$
@@ -45,27 +69,29 @@ test("fechamento vazio atravessa composição real: 22023 antes, recibo e CAS pr
   await db.exec("drop trigger reject_completion on private.course_authoring_parts;");
   const beforeSuccess=await databaseSnapshot();
   const success=await call({});
-  assert.equal(success.changed,true);assert.equal(success.courseRevision,2);assert.equal(success.studyUnitCount,0);
+  assert.equal(success.changed,true);assert.equal(success.courseRevision,completedRevision);assert.equal(success.studyUnitCount,0);
   const afterSuccess=await databaseSnapshot();assert.deepEqual(afterSuccess.entities,beforeSuccess.entities);
   assert.equal(afterSuccess.parts[0].materialization_complete,true);
-  assert.equal(afterSuccess.receipts.length,1);assert.equal(afterSuccess.receipts[0].operation,'materialize_course_authoring_part_v2');assert.deepEqual(afterSuccess.receipts[0].result,Object.fromEntries(Object.entries(success).filter(([key])=>key!=="deepLink")));
-  const replay=await call({});assert.equal(replay.idempotent,true);assert.equal(replay.courseRevision,2);assert.deepEqual(await databaseSnapshot(),afterSuccess);
+  assert.equal(afterSuccess.receipts.length,beforeSuccess.receipts.length+1);assert.deepEqual(afterSuccess.receipts.filter(r=>r.request_id!==request.requestId),beforeSuccess.receipts);const closureReceipt=afterSuccess.receipts.find(r=>r.request_id===request.requestId);assert.equal(closureReceipt.operation,'materialize_course_authoring_part_v2');assert.deepEqual(closureReceipt.result,Object.fromEntries(Object.entries(success).filter(([key])=>key!=="deepLink")));
+  assert.deepEqual((await aiRead()).inspection,aiBefore.inspection);
+  assert.equal((await aiRead()).inspection.report.outcome,'needs_attention');
+  const replay=await call({});assert.equal(replay.idempotent,true);assert.equal(replay.courseRevision,completedRevision);assert.deepEqual(await databaseSnapshot(),afterSuccess);
   const rejected = async (name, overrides, code) => {
     const before = await databaseSnapshot();
     await assert.rejects(call(overrides), error => error.code === code, name);
     assert.deepEqual(await databaseSnapshot(), before, name + " must be atomic");
   };
   await rejected('stale course revision',{requestId:'stale-course-0001'},'stale_course_state');
-  await rejected('stale part version',{requestId:'stale-part-0001',expectedCourseRevision:2,expectedAuthoringPartVersion:99},'stale_course_state');
-  await rejected('request replay with incompatible payload',{expectedCourseRevision:2},'request_id_conflict');
+  await rejected('stale part version',{requestId:'stale-part-0001',expectedCourseRevision:completedRevision,expectedAuthoringPartVersion:99},'stale_course_state');
+  await rejected('request replay with incompatible payload',{expectedCourseRevision:completedRevision},'request_id_conflict');
   await rejected('partial empty remains invalid',{requestId:'partial-empty-0001',complete:false},'invalid_course_part_materialization');
   await db.exec("set request.jwt.claim.role='authenticated';");
-  await rejected('non-service role',{requestId:'wrong-role-0001',expectedCourseRevision:2},'not_authorized');
+  await rejected('non-service role',{requestId:'wrong-role-0001',expectedCourseRevision:completedRevision},'not_authorized');
   await db.exec("set request.jwt.claim.role='service_role';");
   const other='99999999-0000-4000-8000-000000000009';
   await db.query('insert into auth.users values($1)',[other]);await db.query('insert into public.person_profiles values($1)',[other]);await db.query('insert into public.course_access values($1,$2)',[COURSE,other]);
-  await rejected('shared non-owner',{requestId:'non-owner-0001',expectedCourseRevision:2,principal:{actorId:other}},'not_authorized');
+  await rejected('shared non-owner',{requestId:'non-owner-0001',expectedCourseRevision:completedRevision,principal:{actorId:other}},'not_authorized');
   await assert.rejects(db.query("select public.commit_course_composition_for_actor_v1($1,$1,2,'[]','[]','[]','no-op-general-0001')",[COURSE]),e=>e.code==='22023');
-  const noChange=await call({requestId:'already-complete-0001',expectedCourseRevision:2});assert.equal(noChange.changed,false);assert.equal(noChange.courseRevision,2);assert.deepEqual((await databaseSnapshot()).entities,beforeSuccess.entities);
+  const noChange=await call({requestId:'already-complete-0001',expectedCourseRevision:completedRevision});assert.equal(noChange.changed,false);assert.equal(noChange.courseRevision,completedRevision);assert.deepEqual((await databaseSnapshot()).entities,beforeSuccess.entities);
   } finally {await db.close();}
 });

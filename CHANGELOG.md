@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.124] - 2026-10-18
+
+### Corrigido
+
+- A conclusão de uma Parte já salva preserva as bases aplicadas às unidades, sem tentar recapturá-las na ausência de conteúdo novo. Pareceres e pendências pedagógicas existentes permanecem separados da conclusão técnica.
+
 ## [0.0.123] - 2026-10-18
 
 ### Corrigido

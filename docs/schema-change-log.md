@@ -21,6 +21,13 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261018062036 — captura de base apenas na produção
+
+A [migração](../supabase/migrations/20261018062036_capture_basis_only_for_produced_units.sql)
+condiciona o hook de captura à presença de unidades efetivamente produzidas.
+O fechamento vazio preserva as bases existentes; o guard direto de 1..64 unidades,
+os controles de acesso, CAS, locks e recibos permanecem intactos.
+
 ## 20261018031500 — recibo da conclusão sem regravar conteúdo
 
 A [migração](../supabase/migrations/20261018031500_complete_saved_part_receipt.sql)

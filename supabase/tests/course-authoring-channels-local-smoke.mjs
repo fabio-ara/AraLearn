@@ -160,6 +160,26 @@ export async function materializeChannelPart(client, lot, { concluir = true } = 
   return { ...prepared, pages: 1 };
 }
 
+// Full migrated DB through the canonical adapter; no SQL fixture substitutions.
+async function savedClosureState(adapter, principal, courseId, revision) {
+  const rows = []; let cursor = null;
+  do {
+    const page = await adapter.listCourseEntities({ principal, courseId, expectedRevision: revision,
+      limit: 50, afterEntityType: cursor?.entityType ?? null, afterEntityId: cursor?.entityId ?? null });
+    assert.equal(page.revision, revision);
+    rows.push(...page.items);
+    cursor = page.hasMore ? page.nextCursor : null;
+    assert.ok(!page.hasMore || cursor);
+  } while (cursor);
+  const inspections = [];
+  for (const row of rows.filter(row => row.entityType === "study_unit")) {
+    const value = await adapter.getCourseContentInspection({ principal, courseId,
+      targetKind: "study_unit", targetId: row.entityId });
+    inspections.push({ targetId: row.entityId, inspection: value.inspection, basisHash: value.basisHash });
+  }
+  return { rows, inspections };
+}
+
 export async function runLocalAuthoringChannels(environment = process.env) {
   const config = localSupabaseConfiguration(environment);
   const marker = randomUUID(); const password = `Channels-${marker}-Aa1!`;
@@ -236,14 +256,54 @@ export async function runLocalAuthoringChannels(environment = process.env) {
       for (const [index, group] of fixture.parts.entries()) {
         await client.call("salvar_parte", group.part);
         let prepared;
-        for (const [position, lot] of group.lots.entries()) {
-          const closing = position === group.lots.length - 1;
+        for (const lot of group.lots) {
+          const closing = false; // Complete separately without rewriting the saved production.
           prepared = await materializeChannelPart(client, lot, { concluir: closing });
           assert.equal(prepared.context.preflight.completion, closing ? "complete" : "partial",
             "O preparo focal precisa acompanhar a conclusão da parte.");
           assert.equal(prepared.context.parte.titulo, group.part.titulo,
             "A parte derivada pelo servidor precisa ser a parte declarada do foco.");
         }
+        // Register a deliberately unresolved synthetic inspection before closure.
+        const reviewContext = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
+        const reviewState = await savedClosureState(adapter, principal, courseId, reviewContext.course.revision);
+        const reviewTarget = reviewState.rows.find(row => row.entityType === "study_unit" && row.content.role === "theory");
+        assert.ok(reviewTarget);
+        const reviewBasis = await adapter.getCourseContentInspection({ principal, courseId,
+          targetKind: "study_unit", targetId: reviewTarget.entityId });
+        const quote = reviewTarget.content.content.find(block => block.package === "aralearn.resource.paragraph").data.text;
+        await adapter.recordCourseContentInspection({ principal, courseId, targetKind: "study_unit",
+          targetId: reviewTarget.entityId, expectedBasisHash: reviewBasis.basisHash,
+          requestId: randomUUID(), report: { summary: "Parecer sintético conservador para a prova de preservação.",
+            outcome: "needs_attention", findings: ["Esta Unidade expositiva não recolhe justificativa independente do aluno."],
+            checks: ["alignment", "evidence", "representation", "feedback", "sufficiency", "configuration"].map(dimension => ({
+              dimension, result: "insufficient", reason: "A passagem expositiva isolada não demonstra domínio pelo aluno; a prova não concede aprovação pedagógica.", evidence: [quote] })) } });
+        const beforeClose = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
+        const beforeExport = await adapter.getCourseAuthoringExport({ principal, courseId,
+          expectedRevision: beforeClose.course.revision, scope: { kind: "course", ref: null } });
+        const savedBefore = await savedClosureState(adapter, principal, courseId, beforeClose.course.revision);
+        const inspectedBefore = savedBefore.inspections.find(row => row.targetId === reviewTarget.entityId);
+        assert.equal(inspectedBefore.inspection.state, "current");
+        assert.equal(inspectedBefore.inspection.report.outcome, "needs_attention");
+        const emptyClosure = { curso: title, microssequencia: group.lots.at(-1).materialization.microssequencia,
+          unidades: [], concluir: true, autonomo: true };
+        const ready = await client.call("preparar_materializacao", emptyClosure);
+        assert.equal(ready.context.preflight.state, "ready", JSON.stringify(ready.context.preflight.blockers));
+        assert.equal(ready.context.preflight.completion, "complete");
+        const afterPrepare = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
+        assert.equal(afterPrepare.course.revision, beforeClose.course.revision, "Preparo vazio deve ser read-only.");
+        await client.call("materializar_parte", emptyClosure);
+        const afterClose = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
+        assert.equal(afterClose.course.revision, beforeClose.course.revision + 1);
+        const savedAfter = await savedClosureState(adapter, principal, courseId, afterClose.course.revision);
+        assert.deepEqual(savedAfter, savedBefore, "Fechamento preserva entidades, bases, aplicações, fontes, timestamps e inspeções atuais.");
+        const afterExport = await adapter.getCourseAuthoringExport({ principal, courseId,
+          expectedRevision: afterClose.course.revision, scope: { kind: "course", ref: null } });
+        assert.deepEqual(microsequences(afterExport), microsequences(beforeExport),
+          "Fechar sem produção preserva todas as unidades e Explicações.");
+        const sourceState = values => values.map(value => Object.fromEntries(Object.entries(value).filter(([key]) => key !== "courseRevision")));
+        assert.deepEqual(sourceState(afterExport.artifact.explanationSources), sourceState(beforeExport.artifact.explanationSources),
+          "Fechamento vazio preserva as fontes.");
         const read = await completeRead(client, "exportar_autoria", { recorte: { curso: title } });
         const exported = read.context.authoringExport;
         const context = await resolveHumanCourseContext({ adapter, principal, course: title, part: index + 1 });
@@ -284,6 +344,7 @@ export async function runLocalAuthoringChannels(environment = process.env) {
         }
         lots.push({ lot: index + 1, revision: context.course.revision, preparePages: prepared.pages,
           exportPages: read.pages, studyUnits: (index + 1) * 6, explanations: materialized.length,
+          emptyClosure: { ready: true, revisionBefore: beforeClose.course.revision, revisionAfter: afterClose.course.revision, contentPreserved: true, sourcesPreserved: true },
           firstLotContentSha256: digest(firstLot), firstLotSourceLinksSha256: digest(firstSourceLinks) });
       }
       results.push({ channel, lots, firstLotPreserved: true, independentExportMatches: true });
