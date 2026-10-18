@@ -1748,6 +1748,36 @@ test("materialização envia repertório e alvos no mesmo commit das unidades", 
   assert.equal(payload.p_request_hash.length, 64);
 });
 
+test("materialização conclusiva aceita somente unidades vazias e mantém a ordem acumulada", async () => {
+  let payload = null;
+  const value = adapter(async (url, init) => {
+    assert.match(url, /\/rpc\/materialize_course_authoring_part_for_actor_v2$/u);
+    payload = JSON.parse(init.body);
+    return json({ contract: "aralearn.course-part-materialization.v1", courseId: COURSE_ID,
+      courseRevision: 8, authoringPartId: PART_ID, changed: true, studyUnitCount: 0, idempotent: false });
+  });
+  const request = {
+    principal: { actorId: USER_ID }, courseId: COURSE_ID, authoringPartId: PART_ID,
+    requestId: "request-materialization-empty-1", expectedCourseRevision: 7,
+    expectedAuthoringPartVersion: 2, planItemUpserts: [],
+    targetPlanItems: [{ didacticMicrosequenceId: "micro-a", instructionalAnalysisUnitIds: [PLAN_ID],
+      evidenceRequirementIds: [] }],
+    units: [], explanations: [],
+    placements: [{ studyUnitId: "unit-a", didacticMicrosequenceId: "micro-a", position: 1 }],
+    complete: true
+  };
+  await value.materializeCourseAuthoringPart(request);
+  assert.deepEqual(payload.p_units, []);
+  assert.deepEqual(payload.p_placements, request.placements);
+  assert.equal(payload.p_complete, true);
+  await assert.rejects(() => value.materializeCourseAuthoringPart({ ...request,
+    requestId: "request-materialization-empty-2", complete: false }),
+  error => error.code === "invalid_course_part_materialization");
+  await assert.rejects(() => value.materializeCourseAuthoringPart({ ...request,
+    requestId: "request-materialization-empty-3", placements: [] }),
+  error => error.code === "invalid_course_part_materialization");
+});
+
 test("parecer IA usa base/identidade do alvo e recusa resposta de outro objeto", async () => {
   const calls = [];
   const report = { summary: "Explicação inspecionada.", outcome: "consistent", findings: [] };

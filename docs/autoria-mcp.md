@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.5.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.6.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -223,6 +223,13 @@ Identidades, versões correntes dos pacotes e posições finais podem ser omitid
 e são derivadas pela materialização. `unidade` identifica a existente a
 substituir; sua ausência cria uma nova. Unidades omitidas permanecem.
 `concluir: false` mantém a produção parcial; a conclusão verifica o acumulado.
+Se todas as unidades já foram salvas, `unidades: []` com `concluir: true` e a
+`microssequencia` focal conclui a parte inteira associada ao foco, usando o
+conteúdo salvo e sem reenviar a base ou regravar as unidades.
+`preparar_materializacao` aceita a mesma entrada e devolve `ready` ou `blocked`
+segundo o acumulado, sem gravar.
+`explicacoes` permanece omitido nesse fechamento; conclusão parcial vazia e
+estado obsoleto são recusados.
 Práticas novas exigem uma resposta que o aplicativo consiga avaliar e um
 retorno explicativo utilizável sem conexão, também chamado de **feedback**.
 O contrato de [desenho](aralearn-contract.md#desenho) descreve seus campos.

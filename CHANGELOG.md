@@ -7,6 +7,17 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.122] - 2026-10-17
+
+### Adicionado
+
+- Ao terminar uma Parte que já teve todas as suas unidades salvas, o fluxo de autoria pode concluí-la sem reenviar nem regravar conteúdo. A conclusão valida o acumulado, as dependências e a cobertura, atualiza somente o estado técnico da Parte e mantém unidades, fontes, aplicações e configuração existentes.
+- A consulta de preparo aceita o mesmo fechamento para informar se o conteúdo salvo está pronto, sem gravar nada.
+
+### Corrigido
+
+- A conclusão sem conteúdo novo deixa de marcar inspeções atuais como pendentes ou orientar uma segunda leitura completa. Pareceres de IA e revisões humanas preservados continuam atuais; somente inspeções realmente pendentes ou obsoletas precisam ser examinadas.
+
 ## [0.0.121] - 2026-10-17
 
 ### Desempenho

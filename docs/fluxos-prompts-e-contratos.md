@@ -189,7 +189,7 @@ com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
 causas previsíveis para correção. Quando fornecida, a referência explícita de
 preparo deve corresponder à base, configuração e intenção correntes.
 
-O contrato de autoria corrente é o catálogo **11.5.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.6.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,
@@ -199,6 +199,19 @@ uma nova. Unidades omitidas permanecem e podem ser deslocadas sem reenvio do
 conteúdo. `concluir: false` conserva produção parcial; `concluir: true` verifica
 a cobertura do acumulado salvo e solicitado. Explicações salvas são
 reutilizadas; `explicacoes` contém somente bases criadas ou alteradas.
+Quando a produção incremental já terminou, a conclusão usa `unidades: []`,
+`concluir: true` e a `microssequencia` de foco. A flag conclui a **parte**
+associada ao foco, além de apenas identificar a microssequência; a validação
+usa o conteúdo já salvo, sem reenviar nem regravar unidades. Essa chamada não
+recebe explicações e atualiza somente a conclusão técnica da parte.
+Lista vazia em produção parcial continua inválida, e uma revisão obsoleta,
+autorização ausente ou conjunto incompleto são recusados antes da atualização.
+`preparar_materializacao` aceita a mesma chamada vazia e devolve `ready` ou
+`blocked` conforme o acumulado e suas dependências, sem gravar.
+O recibo da conclusão vazia registra que a qualidade não foi reavaliada e que
+as inspeções existentes foram preservadas. A orientação retornada pede leitura
+somente de inspeções realmente pendentes ou obsoletas; um parecer atual não
+precisa ser repetido por causa da mudança de estado técnico da parte.
 
 Prática nova tem resposta avaliável e feedback explicativo local, utilizáveis
 offline. `gap.text` serve para respostas curtas e canônicas, com equivalentes

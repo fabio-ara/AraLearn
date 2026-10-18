@@ -21,7 +21,7 @@ que reúne a importação do arquivo, a autorização da conta e o teste de leit
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas de autoria** do catálogo **11.5.0**. O OpenAPI as
+definem as **56 tarefas de autoria** do catálogo **11.6.0**. O OpenAPI as
 oferece por **30 operações HTTP**: 24 diretas e seis grupos contextuais.
 Uma operação HTTP é o pedido enviado a um endereço do serviço; um grupo permite
 escolher entre várias tarefas por esse mesmo endereço. Argumentos, validação
@@ -131,7 +131,12 @@ a hierarquia curricular. `materializar_parte` recebe o foco de uma única
 microssequência e resolve a parte no servidor. Identificadores de instâncias,
 versões correntes e posições finais podem ser omitidos e são derivados pela
 operação. `unidade` identifica uma unidade existente a substituir; unidades
-omitidas permanecem. `concluir: false` conserva a produção parcial.
+omitidas permanecem. `concluir: false` conserva a produção parcial. Para fechar
+uma produção já salva, envie `unidades: []` com `concluir: true` e o foco da
+microssequência, sem reenviar explicações. A flag conclui a parte associada ao
+foco usando o acumulado salvo; `preparar_materializacao` aceita a mesma entrada
+e devolve `ready` ou `blocked` sem gravar. O conteúdo, as fontes, as aplicações
+e a configuração existentes permanecem intactos.
 
 Práticas novas exigem resposta avaliável pelo aplicativo e retorno explicativo
 utilizável sem conexão, também chamado de **feedback**. Uma escolha automática
@@ -296,11 +301,11 @@ e dos campos, mas não estabelece um tamanho total para esse arquivo.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos com
 argumentos definidos para cada tarefa. Essa organização conserva as 56 tarefas
-do catálogo 11.5.0. A aceitação do arquivo pelo editor, a publicação do
+do catálogo 11.6.0. A aceitação do arquivo pelo editor, a publicação do
 assistente e a execução contra o serviço são verificações distintas.
 
 O gerador confere o tamanho em unidades UTF-16, a contagem usada por
-`String.length` em JavaScript. Com o catálogo 11.5.0, o arquivo compacto,
+`String.length` em JavaScript. Com o catálogo 11.6.0, o arquivo compacto,
 incluindo a quebra de linha final, precisa ficar abaixo de 102.000 unidades e a
 sua apresentação formatada abaixo de 210.000. Esses são tetos locais deste
 repositório, definidos em
