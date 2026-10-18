@@ -852,8 +852,8 @@ test("triagem SQL recalcula currentness, pagina alvos com identidade global, res
     assert.deepEqual(await queryValue(db, "select public.get_aralearn_runtime_manifest()->'features' value"),
       ["configuration-realization-inspection-v1"],
       "a triagem não inventa capacidade canônica de runtime");
-    await db.query("insert into private.course_authoring_parts(course_id,id,position,title,state) values($1,'30000000-0000-4000-8000-000000000003',0,'Parte','draft')", [COURSE]);
-    await db.query("insert into private.course_authoring_part_didactic_microsequences(course_id,authoring_part_id,didactic_microsequence_id,production_position) values($1,'30000000-0000-4000-8000-000000000003','tri-ms1',0),($1,'30000000-0000-4000-8000-000000000003','tri-ms2',1)", [COURSE]);
+    await db.query("insert into private.course_authoring_parts(course_id,id,position,title,state) values($1,'30000000-0000-4000-8000-000000000003',0,'Parte focal','draft')", [COURSE]);
+    await db.query("insert into private.course_authoring_part_didactic_microsequences(course_id,authoring_part_id,didactic_microsequence_id,production_position) values($1,'30000000-0000-4000-8000-000000000003','tri-ms2',0)", [COURSE]);
     await db.query("select set_config('aralearn.ai_inspection_write','semantic-inspection-command',false)");
     await db.query("update private.course_entities set ai_inspection=jsonb_build_object('legacyBasisHash',private.course_ai_inspection_basis_hash_v1($1,'study_unit','tri-u2')) where course_id=$1 and entity_id='tri-u2'",
       [COURSE]);
@@ -878,6 +878,8 @@ test("triagem SQL recalcula currentness, pagina alvos com identidade global, res
     assert.deepEqual(two.items.map(item => item.targetKind), ["microsequence_explanation", "study_unit"]);
     assert.deepEqual(two.items[0].focusArguments, { modulo: 1, licao: 1, microssequencia: 2 },
       "microssequências homônimas usam caminho posicional inequívoco");
+    assert.deepEqual(two.items[1].focusArguments, { unidades: [2] },
+      "a segunda unidade conserva o ordinal global na leitura do curso inteiro");
     assert.equal(two.items[1].state, "unregistered");
     const three = await page(OWNER, revision, Number(two.nextCursor));
     assert.deepEqual(three.items.map(item => item.targetId), ["tri-ms3", "tri-ms5"]);
@@ -888,11 +890,20 @@ test("triagem SQL recalcula currentness, pagina alvos com identidade global, res
     const partScope = await queryValue(db,
       "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'authoring_part','30000000-0000-4000-8000-000000000003',null,0,8) value",
       [OWNER, COURSE, revision]);
-    assert.equal(partScope.totalCount, 4);
+    assert.equal(partScope.totalCount, 2);
+    assert.deepEqual(partScope.items.find(item => item.targetKind === "study_unit").focusArguments,
+      { unidades: [2] }, "parte com somente a segunda microssequência preserva a posição global da unidade");
     const microScope = await queryValue(db,
-      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'didactic_microsequence','tri-ms3',null,0,8) value",
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'didactic_microsequence','tri-ms2',null,0,8) value",
       [OWNER, COURSE, revision]);
-    assert.equal(microScope.totalCount, 1);
+    assert.equal(microScope.totalCount, 2);
+    assert.deepEqual(microScope.items.find(item => item.targetKind === "study_unit").focusArguments,
+      { unidades: [2] }, "escopo de microssequência preserva a posição global da unidade");
+    const selected = await queryValue(db,
+      "select public.get_owned_course_inspection_triage_page_for_actor_v1($1,$2,$3,'course',null,array['tri-u2'],0,8) value",
+      [OWNER, COURSE, revision]);
+    assert.deepEqual(selected.items.find(item => item.targetKind === "study_unit").focusArguments,
+      { unidades: [2] }, "seleção explícita preserva a posição global da unidade");
     await assert.rejects(page(OTHER), { code: "42501" });
     await assert.rejects(page(OWNER, revision + 1), { code: "PT409" });
     await assert.rejects(page(OWNER, revision, 99), { code: "22023" });

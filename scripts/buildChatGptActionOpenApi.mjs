@@ -9,7 +9,7 @@ import {
   HUMAN_TASK_RESULT_SCHEMA
 } from "../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import {
-  COURSE_AUTHORING_ACTION_INSTRUCTIONS
+  COURSE_AUTHORING_SERVER_INSTRUCTIONS
 } from "../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
 import {
   projectHumanAuthoringTasksForActions
@@ -108,10 +108,13 @@ const errorSchema = {
 // 101751 minified / 209947 pretty-printed characters. Catalog 11.6.0 adds the
 // completion of an existing part from saved content and its corresponding
 // read-only preparation. Its measured baseline is 101679 minified / 209831
-// pretty-printed characters. Acceptance in the actual editor remains a separate
-// gate with the real client.
-const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 210_000;
-const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 102_000;
+// pretty-printed characters. Catalog 11.8.0 adds two formal focal-reference
+// arguments and compact triage. Its full server instructions and triage guidance
+// measure 102066 minified / 210555 pretty-printed characters. These local
+// regression ceilings leave about 1% headroom; acceptance in the real editor
+// remains a separate gate.
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 212_000;
+const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 103_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!outputSchema || actionTools.some(({ outputSchema: candidate }) => (
@@ -285,8 +288,9 @@ const document = {
     "x-aralearn-task-catalog-version": COURSE_HUMAN_TASK_CATALOG_METADATA.version,
     "x-aralearn-task-catalog-fingerprint": COURSE_HUMAN_TASK_CATALOG_METADATA.hash,
     description: [
-      "Autoria.",
-      COURSE_AUTHORING_ACTION_INSTRUCTIONS
+      "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.",
+      COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+      "A triagem `resumo:true` só localiza estados; para novo parecer, releia integralmente o recorte com `auditoria:true`."
     ].join("\n\n")
   },
   servers: [{ url: baseUrl }],

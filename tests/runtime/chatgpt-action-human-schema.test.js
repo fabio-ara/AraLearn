@@ -17,7 +17,6 @@ import {
   encodeCourseActionTaskRequest
 } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import {
-  COURSE_AUTHORING_ACTION_INSTRUCTIONS,
   COURSE_AUTHORING_SERVER_INSTRUCTIONS,
   COURSE_AUTHORING_GUIDES
 } from "../../supabase/functions/_shared/aralearn-authoring/courseKnowledge.js";
@@ -441,15 +440,16 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
   );
   assert.equal(
     openApi.info.description,
-    "Autoria.\n\n" +
-      COURSE_AUTHORING_ACTION_INSTRUCTIONS
+    "Opera cursos privados por tarefas humanas, sem exigir controles internos do banco.\n\n" +
+      COURSE_AUTHORING_SERVER_INSTRUCTIONS + "\n\n" +
+      "A triagem `resumo:true` só localiza estados; para novo parecer, releia integralmente o recorte com `auditoria:true`."
   );
   assert.match(operation("salvar_mapa_curricular").requestBody.content["application/json"].schema.properties.modulos.description,
     /Árvore completa.*iniciar contexto e escopo.*salvar_ramo_curricular/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Aprovação humana é só do mapa salvo visto pela pessoa/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /mandato automático.*rascunho sem aprovação humana/iu);
-  assert.match(COURSE_AUTHORING_SERVER_INSTRUCTIONS, /Parte é lote técnico, não dependência pedagógica/iu);
-  assert.match(openApi.info.description, /Triagem `resumo:true` informa estado e não fundamenta parecer/iu);
+  assert.match(openApi.info.description, /Aprovação humana é só do mapa salvo visto pela pessoa/iu);
+  assert.match(openApi.info.description, /mandato automático.*rascunho sem aprovação humana/iu);
+  assert.match(openApi.info.description, /Parte é lote técnico, não dependência pedagógica/iu);
+  assert.match(openApi.info.description, /Triagem `resumo:true` só localiza estados.*releia integralmente.*`auditoria:true`/iu);
   assert.match(planningGuidance, /Mandato delimita escopo, lotes e restrições autorizados/iu);
   assert.match(planningGuidance, /continuidade autorizada, avance até o limite ou uma decisão material/iu);
   assert.match(openApi.info.description, /respeite confirmações/iu);
@@ -489,16 +489,16 @@ test("#272 argumentos humanos são documentados e não recebem controles interno
 
 test("contrato global mantém a calibração automática fora do chat", () => {
   assert.match(
-    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    openApi.info.description,
     /resolva autonomamente escolhas deriváveis/iu
   );
   assert.match(planningGuidance, /em automático, escolha valores e motivos conforme assunto e planejamento/iu);
   assert.match(
-    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    openApi.info.description,
     /Siga preferências, fixações e mandato/iu
   );
   assert.match(
-    COURSE_AUTHORING_SERVER_INSTRUCTIONS,
+    openApi.info.description,
     /Chat breve; conteúdo completo e literal[\s\S]*Use o link exato em Markdown/iu
   );
   assert.match(
@@ -944,13 +944,13 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
   // mesma referência e parecer. O catálogo 11.8.0 também aceita em `ajustar_configuracao`
   // as referências fechadas do lote novo e do comando de desenho legado. Em
-  // `materializar_parte`, a
-  // localização da tentativa pelo curso e pela microssequência permanece; a linha de base
-  // medida passa a 101751 minificados / 209947 formatados. A aceitação pelo editor
-  // é conferida à parte, com o
-  // cliente real.
-  assert.ok(openApiText.length < 102_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 210_000);
+  // `materializar_parte`, a localização da tentativa pelo curso e pela
+  // microssequência permanece. No catálogo 11.8.0, com instruções completas do
+  // servidor e orientação de triagem, a medição é 102066 minificados / 210555
+  // formatados. Tetos 103000 / 212000 mantêm cerca de 1% de folga local; não
+  // são limites do editor, cuja aceitação exige conferência no cliente real.
+  assert.ok(openApiText.length < 103_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 212_000);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 

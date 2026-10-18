@@ -874,7 +874,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Lê revisão ou triagem.",
+    "Lê conteúdo literal e contexto da revisão; resumo:true consulta estado sem validade formal.",
     inputSchema({
       curso: COURSE_SCHEMA,
       comparacao: OBSERVATION_COMPARISON_SCHEMA,
@@ -884,10 +884,10 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       microssequencia: HUMAN_REFERENCE_SCHEMA,
       unidades: HUMAN_REFERENCE_LIST_SCHEMA,
       auditoria: Object.freeze({ type: "boolean", default: false,
-        description: "Leitura integral formal." }),
+        description: "Use true para leitura integral e parecer formal." }),
       resumo: Object.freeze({ type: "boolean",
-        description: "Triagem sem validade formal." }),
-      continuacao: Object.freeze({ type: "string", maxLength: 4096 })
+        description: "Triagem não formal; para parecer, use auditoria:true." }),
+      continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso"]),
     { readOnly: true }
   ),
@@ -1284,7 +1284,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.8.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:0870fe3e73000f148a79000594c4a3900e8fb991a4e15280ec6fbc5f1af184ca";
+  "sha256:d619cc0a872bf634378945f30e936b8078d8ccae712f60e61226ffbe15a7dd7f";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,

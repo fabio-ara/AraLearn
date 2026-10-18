@@ -100,7 +100,7 @@ language sql stable security definer set search_path=pg_catalog,private as $func
   with selected as materialized (
     select requested.id,requested.position
     from unnest(coalesce(p_selected_unit_ids,'{}'::text[])) with ordinality requested(id,position)
-  ), units as materialized (
+  ), all_units as materialized (
     select u.entity_id id,u.content->>'title' title,u.position unit_position,
       q.entity_id micro_id,q.content->>'title' micro_title,q.content ? 'explanation' has_explanation,
       q.position micro_position,l.entity_id lesson_id,l.position lesson_position,
@@ -121,15 +121,17 @@ language sql stable security definer set search_path=pg_catalog,private as $func
       where m.course_id=q.course_id and m.didactic_microsequence_id=q.entity_id) membership on true
     left join selected on selected.id=u.entity_id
     where u.course_id=p_course_id and u.entity_type='study_unit'
-      and case p_scope_kind
+  ), units as materialized (
+    select * from all_units u
+    where case p_scope_kind
         when 'course' then true
-        when 'authoring_part' then p_scope_id=any(membership.authoring_part_ids)
-        when 'unassigned' then membership.authoring_part_ids is null
-        when 'module' then m.entity_id=p_scope_id
-        when 'lesson' then l.entity_id=p_scope_id
-        when 'didactic_microsequence' then q.entity_id=p_scope_id
+        when 'authoring_part' then p_scope_id=any(u.authoring_part_ids)
+        when 'unassigned' then u.authoring_part_ids is null
+        when 'module' then u.module_id=p_scope_id
+        when 'lesson' then u.lesson_id=p_scope_id
+        when 'didactic_microsequence' then u.micro_id=p_scope_id
         else false end
-      and (p_selected_unit_ids is null or selected.id is not null)
+      and (p_selected_unit_ids is null or u.selected_position is not null)
   ), micros as materialized (
     select q.entity_id id,q.content->>'title' title,q.position micro_position,
       l.position lesson_position,m.position module_position,

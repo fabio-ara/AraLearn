@@ -314,13 +314,13 @@ argumentos definidos para cada tarefa. Essa organização conserva as 56 tarefas
 do catálogo 11.8.0. A aceitação do arquivo pelo editor, a publicação do
 assistente e a execução contra o serviço são verificações distintas.
 
-O gerador confere o tamanho em unidades UTF-16, a contagem usada por
-`String.length` em JavaScript. Com o catálogo 11.8.0, o arquivo compacto,
-incluindo a quebra de linha final, precisa ficar abaixo de 102.000 unidades e a
-sua apresentação formatada abaixo de 210.000. Esses são tetos locais deste
-repositório, definidos em
+O gerador mede o tamanho em unidades UTF-16, a contagem usada por
+`String.length` em JavaScript. Com o catálogo 11.8.0, a medição atual é de
+102.066 unidades no arquivo compacto e 210.555 na apresentação formatada. O
+repositório mantém tetos locais de regressão de 103.000 e 212.000 unidades,
+respectivamente, definidos em
 [buildChatGptActionOpenApi.mjs](../scripts/buildChatGptActionOpenApi.mjs), e não
-um limite da especificação ou do importador: o limite publicado de 100.000
+um limite da especificação ou do importador. O limite publicado de 100.000
 caracteres vale por corpo de chamada, cujo orçamento próprio segue em 99.999
 unidades UTF-16. Definições compartilhadas evitam repetir schemas, preservando as
 restrições e os exemplos de cada tarefa. A aceitação do arquivo pelo editor é
