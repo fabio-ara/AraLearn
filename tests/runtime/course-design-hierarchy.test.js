@@ -26,16 +26,16 @@ test("alcance explicita os cinco níveis e mantém nó corrente sem link para si
   assert.deepEqual(design, before);
 });
 
-test("valor numérico aplicado automaticamente permanece distinto de uma decisão fixa", () => {
+test("valor numérico configurado automaticamente permanece distinto de uma decisão fixa", () => {
   const input = courseDesignFixture(selection);
   const parameter = input.parameters.find((item) => item.parameterId === parameterId);
   parameter.effectiveAssignment = { mode: "automatic", value: 180, origin: "automatic",
-    reason: "Valor aplicado por calibração sintética.", sourceScope: { kind: "study_unit", ref: "unit-1" }, inherited: false };
+    reason: "Valor configurado por calibração sintética.", sourceScope: { kind: "study_unit", ref: "unit-1" }, inherited: false };
   const design = normalizeCourseDesign(input);
   const before = structuredClone(design);
   const html = renderCourseDesignPanel({ courseDesign: design, designCategory: "editorial" });
   assert.match(html, /<strong>180<\/strong>/);
-  assert.match(html, /Valor aplicado · decisão automática/);
+  assert.match(html, /Configuração · decisão automática/);
   const editor = renderCourseDesignPanel({ courseDesign: design, designCategory: "editorial", designParameterId: parameterId });
   assert.match(editor, /value="automatic" selected>Automático pelo contexto/);
   assert.match(editor, /data-design-values hidden/);
@@ -51,7 +51,7 @@ test("valor fixo herdado comunica origem sem criar atribuição local ao abrir",
   const before = structuredClone(design);
   const html = renderCourseDesignPanel({ courseDesign: design, designCategory: "editorial" });
   assert.match(html, /Herdado de course sintético/);
-  assert.doesNotMatch(html, /Valor aplicado · decisão automática/);
+  assert.doesNotMatch(html, /Configuração · decisão automática/);
   const editor = renderCourseDesignPanel({ courseDesign: design, designCategory: "editorial", designParameterId: parameterId });
   assert.match(editor, /value="fixed" selected>Fixar valor/);
   assert.match(editor, /aria-label="Restaurar herança" title="Restaurar herança" disabled/);
@@ -63,7 +63,35 @@ test("automático ainda não calibrado não inventa valor aplicado", () => {
   const design = normalizeCourseDesign(courseDesignFixture(selection));
   const html = renderCourseDesignPanel({ courseDesign: design, designCategory: "editorial" });
   assert.match(html, /<strong>Automático<\/strong>/);
-  assert.doesNotMatch(html, /Valor aplicado · decisão automática/);
+  assert.doesNotMatch(html, /Configuração · decisão automática/);
+});
+
+test("card automático mostra a intenção e editor conserva o aplicado divergente", () => {
+  const input = courseDesignFixture(selection);
+  const formsId = "required_explanation_forms";
+  const parameter = input.parameters.find(item => item.parameterId === formsId);
+  const requested = ["application_condition", "limit_or_exception", "worked_example"];
+  parameter.localAssignment = { mode: "automatic", value: requested,
+    origin: "automatic", reason: "Orientação para a próxima produção." };
+  parameter.effectiveAssignment = { ...parameter.localAssignment,
+    sourceScope: { kind: "study_unit", ref: selection.studyUnitId }, inherited: false };
+  const state = { courseDesign: normalizeCourseDesign(input), designCategory: "content",
+    designAppliedParameters: [{ parameterId: formsId,
+      value: ["application_condition", "concrete_example", "limit_or_exception"],
+      origin: "automatic", reason: "Escolha registrada na produção existente.",
+      sourceScope: { kind: "study_unit", ref: selection.studyUnitId } }] };
+  const before = structuredClone(state);
+  const card = renderCourseDesignPanel(state);
+  assert.match(card, /<strong>Condição de aplicação · Limite ou exceção · Exemplo resolvido<\/strong>/u);
+  assert.match(card, /Configuração · decisão automática/u);
+  assert.doesNotMatch(card, /Valor aplicado · decisão automática|Exemplo concreto/u);
+  const editor = renderCourseDesignPanel({ ...state, designParameterId: formsId });
+  assert.match(editor, /Aplicado nesta produção:<\/strong> Condição de aplicação · Exemplo concreto · Limite ou exceção/u);
+  assert.match(editor, /Escolha registrada na produção existente\./u);
+  assert.match(editor, /Configuração atual:<\/strong> Automático: escolher e justificar/u);
+  assert.match(editor, /value="automatic" selected>Automático pelo contexto/u);
+  assert.match(editor, /data-design-values hidden/u);
+  assert.deepEqual(state, before);
 });
 
 function inspectionState({ applied = null, currentValue = 240, currentMode = "fixed" } = {}) {

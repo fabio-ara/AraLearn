@@ -21,6 +21,17 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261018031500 — recibo da conclusão sem regravar conteúdo
+
+A [migração](../supabase/migrations/20261018031500_complete_saved_part_receipt.sql)
+separa o fechamento técnico da composição de conteúdo. Depois das verificações
+existentes de propriedade, serviço, revisão e bloqueios, o núcleo cria o recibo
+atômico para o lote vazio autorizado. O wrapper conserva a validação integral do
+acumulado, registra a conclusão e avança a revisão somente quando há mudança.
+A composição genérica continua recusando listas vazias. Unidades, explicações,
+configuração, fontes e pareceres existentes não são regravados; repetição da mesma
+requisição devolve o recibo e conflitos de revisão ou identidade continuam recusados.
+
 ## 20261017193000 — conclusão de parte já acumulada
 
 A [migração](../supabase/migrations/20261017193000_complete_saved_course_authoring_part.sql)

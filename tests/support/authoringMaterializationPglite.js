@@ -20,6 +20,7 @@ const copyMigration = await read("20260905145236_independent_course_copies.sql")
 const savedApplicationMigration = await read("20260909061332_contextual_instructional_design_commands.sql");
 const designParametersMigration = await read("20260817180000_course_design_parameters.sql");
 const completeSavedPartMigration = await read("20261017193000_complete_saved_course_authoring_part.sql");
+const completeSavedReceiptMigration = await read("20261018031500_complete_saved_part_receipt.sql");
 const reviewAccessMigration = await read("20260909025232_contextual_content_review_access.sql");
 const contentCompletenessMigration = await read("20260909060955_contextual_runtime_integration_guards.sql");
 const aiInspectionMigration = await read("20260916025342_contextual_ai_inspection.sql");
@@ -35,9 +36,9 @@ function definition(source, name) {
   const delimiter = /\bas\s+(\$\w*\$)/iu.exec(source.slice(start));
   assert.ok(delimiter, name);
   const body = start + delimiter.index + delimiter[0].length;
-  const end = source.indexOf(`${delimiter[1]};`, body);
+  const end = source.indexOf(delimiter[1], body);
   assert.ok(end > start, name);
-  return source.slice(start, end + delimiter[1].length + 1);
+  return source.slice(start, end + delimiter[1].length) + ";";
 }
 function block(source, name) {
   const start = source.indexOf(`do $${name}$`);
@@ -135,7 +136,7 @@ async function fixtureSchema() {
       declare all_units jsonb; begin perform private.assert_course_materialization_pedagogy_v1(p_course_id,all_units); end$$;`;
 }
 
-async function fixture({ focalCurricularDependencies = true } = {}) {
+async function fixture({ focalCurricularDependencies = true, completeSavedReceipt = true } = {}) {
   const db = new PGlite();
   // Actual materialization/core/pedagogy/reader definitions and migration run on
   // a minimal relational fixture. Auth, configuration, source storage and the
@@ -178,7 +179,43 @@ async function fixture({ focalCurricularDependencies = true } = {}) {
   ].join("\n"));
   await db.exec(autonomousFirstPart);
   await db.exec(completeSavedPartMigration);
+  if (completeSavedReceipt) await db.exec(completeSavedReceiptMigration);
   return db;
+}
+
+// Replace the composition stub for closure regressions. The actual SQL writer,
+// provenance overload and empty-command guard must participate in this path.
+async function installCourseCompositionFixture(db) {
+  await db.exec(definition(cutover, "private.commit_course_composition_core_v1"));
+  const metadata = await read("20260905070507_atomic_course_metadata_and_public_citations.sql");
+  const start = metadata.indexOf("do $migration$");
+  const end = metadata.indexOf("  select replace(pg_get_functiondef('public.commit_course_composition_for_actor_v1", start);
+  assert.ok(start >= 0 && end > start);
+  // Exact first operation of the migration; subsequent overload/UI migrations
+  // are irrelevant to the core's metadata-aware empty-command validation.
+  await db.exec(metadata.slice(start, end) + "end $migration$;");
+  await db.exec(`drop function private.commit_course_composition_core_v1(uuid,uuid,bigint,jsonb,jsonb,text);
+    drop function public.commit_course_composition_for_actor_v1(uuid,uuid,bigint,jsonb,jsonb,jsonb,text);`);
+  await db.exec(definition(await read("20260905101903_contextual_course_sources.sql"),
+    "public.commit_course_composition_for_actor_v1"));
+  await db.exec(definition(explanations, "private.valid_course_composition_source_applications_v1"));
+  await db.exec(block(explanations, "composition"));
+  await db.exec(`create function extensions.digest(bytea,text) returns bytea language sql immutable
+    as $$select case when $2='sha256' then sha256($1) else null end$$;
+    drop function if exists private.course_source_json_hash_v1(jsonb);`);
+  await db.exec(definition(await read("20260817190000_course_sources_provenance.sql"),
+    "private.course_source_json_hash_v1"));
+  await db.exec(`alter table public.courses add column visibility text default 'private';
+    create table public.course_access(course_id uuid,user_id uuid);
+    create table public.person_profiles(user_id uuid);
+    insert into public.person_profiles values('${COURSE}');
+    drop function private.require_course_access_v1(uuid,uuid,boolean);`);
+  const identity = await read("20260905062817_public_course_access_and_identity.sql");
+  await db.exec(definition(identity, "private.course_ownership_v1"));
+  await db.exec(definition(await read("20260817140000_course_identity_cutover.sql"), "private.require_course_access_v1"));
+  await db.exec(definition(await read("001_aralearn_relational.sql"), "private.request_role"));
+  await db.exec(definition(await read("20260721160000_authoring_workflow.sql"), "private.require_service_role"));
+  await db.exec("set request.jwt.claim.role='service_role';");
 }
 
 // Instala as leituras e escritores reais de revisão humana e de parecer de IA
@@ -231,7 +268,7 @@ async function installCourseInspectionFixture(db) {
 }
 
 export { read, definition, block, fixture, fixtureSchema, installCourseInspectionFixture,
-  COURSE, PART, IDEA, EVIDENCE, parameters, policy,
+  installCourseCompositionFixture, completeSavedReceiptMigration, COURSE, PART, IDEA, EVIDENCE, parameters, policy,
   materializer, globalPlan, cutover, explanations, appliedBasis, forms, practice, inspection, migration,
   focalScopeMigration, focalAuditBasis, autonomousFirstPart, discriminatorCorrection, originMigration,
   copyMigration, savedApplicationMigration, designParametersMigration };
