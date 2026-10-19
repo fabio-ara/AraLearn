@@ -215,7 +215,7 @@ function normalizeParameterValue(value, parameterId) {
   catch { fail("invalid_course_authoring_analytics", "O valor aplicado diverge do catálogo."); }
 }
 
-function normalizeParameter(value) {
+function normalizeParameter(value, maximumEffectiveValues) {
   const source = exact(value, [
     "parameterId", "label", "valueKind", "definition", "effectiveValues"
   ], "Um parâmetro pedagógico");
@@ -238,7 +238,7 @@ function normalizeParameter(value) {
   }
   const effectiveValues = uniqueRows(
     source.effectiveValues,
-    256,
+    maximumEffectiveValues,
     (entry) => [
       JSON.stringify(entry.value),
       entry.origin ?? "",
@@ -459,7 +459,10 @@ function normalizeDesign(value) {
     COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.length,
     (entry) => entry.parameterId,
     "Os parâmetros pedagógicos",
-    normalizeParameter
+    // The SQL projection groups resolved assignments across units. Each unit
+    // contributes at most one resolved assignment per catalog parameter, so
+    // the number of distinct effective rows cannot exceed this selected scope.
+    (entry) => normalizeParameter(entry, studyUnitCount)
   );
   if (parameters.length !== COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.length ||
       COURSE_AUTHORING_ANALYTICS_PARAMETER_IDS.some((id) =>
