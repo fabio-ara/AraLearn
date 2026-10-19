@@ -28,10 +28,11 @@ function decode(value) {
       Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), character => character.charCodeAt(0))));
   } catch { fail('A continuação da consulta é inválida. Repita a consulta inicial.'); }
 }
-export async function openHumanReadContinuation({ args, course, task }) {
+export async function openHumanReadContinuation({ args, course, task, queryContext = undefined }) {
   const query = Object.fromEntries(Object.entries(args).filter(([key]) => key !== 'continuacao')
     .sort(([left], [right]) => left.localeCompare(right)));
-  const queryHash = await sha256Hex(canonicalAuthoringValue({ task, query }));
+  const queryIdentity = queryContext === undefined ? { task, query } : { task, query, context: queryContext };
+  const queryHash = await sha256Hex(canonicalAuthoringValue(queryIdentity));
   const initial = { c: course.id, r: course.revision, q: queryHash, p: null, o: 0, h: null };
   if (args.continuacao === undefined) return initial;
   const value = decode(args.continuacao);

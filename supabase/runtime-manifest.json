@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20261018233443",
+  "schemaRevision": "20261019153000",
   "contractVersion": 1,
   "requiredFeatures": [
     "object-content-review-v1",
@@ -37,6 +37,7 @@
     "course-source-pdf-access-lifecycle-v1",
     "course-source-human-locators-v1",
     "course-anchored-annotations-v1",
+    "course-export-annotation-version-fence-v1",
     "course-anchored-annotations-atomic-create-v1",
     "course-annotation-subject-classification-v1",
     "course-personal-state-v2",

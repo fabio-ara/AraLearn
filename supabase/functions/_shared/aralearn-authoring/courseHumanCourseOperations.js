@@ -4,6 +4,7 @@ import { openHumanReadContinuation, paginateHumanReadContext, paginatePreparedHu
   prepareSerializedAuthoringExportLiteral } from "./courseHumanReadContext.js";
 import { createCourseCopyRequestIdentity, normalizeCourseCopyRequest } from "../aralearn/runtime/domain/courseCopy.js";
 import { COURSE_AUTHORING_EXPORT_CONTRACT, normalizeCourseAuthoringComparison,
+  normalizeCourseAuthoringExport, isValidatedCourseAuthoringExport,
   serializeCourseAuthoringExport, takeSerializedCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 
@@ -83,23 +84,38 @@ export async function compareHumanCourses({ adapter, principal, args, deadlineAt
     ...buildHumanNavigationEnvelope(selectedContentLink(adapter, left), [selectedContentLink(adapter, right)]),
     context: await paginateHumanReadContext({ authoringComparison: comparison }, { state }) };
 }
-function humanExportCacheKey(principal, selected, state) {
+function humanExportCacheKey(principal, selected, state, annotationSetVersion) {
+  return [humanExportCacheIdentity(principal, selected, state), selected.scope.kind,
+    selected.scope.ref ?? "", annotationSetVersion].join("\u0000");
+}
+function humanExportCacheIdentity(principal, selected, state) {
   return [principal.actorId, selected.courseId, selected.expectedRevision, state.q].join("\u0000");
 }
-function reusedHumanExport(adapter, key) {
+function reusedHumanExport(adapter, identity, key, state) {
   const entry = humanExportCache.get(adapter);
   if (!entry) return null;
-  if (entry.key !== key) {
+  if (state.o > 0 && entry.identity === identity && entry.key !== key) {
+    throw new AuthoringApiError(409, "human_read_context_changed", "A seleção ou as observações do Curso mudaram. Recomece a exportação.");
+  }
+  if (entry.identity !== identity || entry.key !== key) {
     humanExportCache.delete(adapter);
     return null;
   }
   return entry.prepared;
 }
-function rememberHumanExport(adapter, key, prepared) {
+function rememberHumanExport(adapter, identity, key, prepared) {
   humanExportCache.delete(adapter);
   if (prepared.literal.length <= MAX_CACHED_EXPORT_LITERAL_CHARACTERS) {
-    humanExportCache.set(adapter, { key, prepared });
+    humanExportCache.set(adapter, { identity, key, prepared });
   }
+}
+async function readExportAnnotationSetVersion(adapter, principal, selected, deadlineAt) {
+  const course = await adapter.getCourse({ principal, courseId: selected.courseId, includeOutline: false, deadlineAt });
+  if (!course || course.courseId !== selected.courseId || course.revision !== selected.expectedRevision ||
+      !Number.isSafeInteger(course.annotationSetVersion) || course.annotationSetVersion < 0) {
+    throw new AuthoringApiError(503, "course_service_unavailable", "A versão das observações não corresponde ao Curso selecionado.");
+  }
+  return course.annotationSetVersion;
 }
 function assertSelectedExport(value, selected) {
   if (!value || value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT ||
@@ -110,13 +126,21 @@ function assertSelectedExport(value, selected) {
 }
 export async function exportHumanCourse({ adapter, principal, args, deadlineAt }) {
   const selected = await selection(adapter, principal, args.recorte, deadlineAt);
+  const annotationSetVersion = await readExportAnnotationSetVersion(adapter, principal, selected, deadlineAt);
   const state = await openHumanReadContinuation({ args, task: "exportar_autoria",
-    course: { id: selected.courseId, revision: selected.expectedRevision } });
-  const cacheKey = humanExportCacheKey(principal, selected, state);
-  let prepared = reusedHumanExport(adapter, cacheKey);
+    course: { id: selected.courseId, revision: selected.expectedRevision },
+    queryContext: { annotationSetVersion } });
+  const cacheIdentity = humanExportCacheIdentity(principal, selected, state);
+  const cacheKey = humanExportCacheKey(principal, selected, state, annotationSetVersion);
+  let prepared = reusedHumanExport(adapter, cacheIdentity, cacheKey, state);
   if (!prepared) {
     let exported = await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt });
     assertSelectedExport(exported, selected);
+    if (!isValidatedCourseAuthoringExport(exported)) {
+      exported = normalizeCourseAuthoringExport(exported, { expectedSelection: {
+        courseId: selected.courseId, expectedRevision: selected.expectedRevision, scope: selected.scope
+      } });
+    }
     let serialized = takeSerializedCourseAuthoringExport(exported);
     try {
       if (serialized === null) {
@@ -131,10 +155,14 @@ export async function exportHumanCourse({ adapter, principal, args, deadlineAt }
     prepared = await prepareSerializedAuthoringExportLiteral(serialized);
     serialized = null;
     exported = null;
+    const finalAnnotationSetVersion = await readExportAnnotationSetVersion(adapter, principal, selected, deadlineAt);
+    if (finalAnnotationSetVersion !== annotationSetVersion) {
+      throw new AuthoringApiError(409, "human_read_context_changed", "As observações mudaram durante a exportação. Recomece a consulta.");
+    }
   }
   const context = await paginatePreparedHumanReadLiteral(prepared, { state });
   if (!humanExportCache.has(adapter) || humanExportCache.get(adapter)?.key !== cacheKey) {
-    rememberHumanExport(adapter, cacheKey, prepared);
+    rememberHumanExport(adapter, cacheIdentity, cacheKey, prepared);
   }
   return { result: "Preparei a exportação literal do artefato e da leitura autoral; continue até receber todos os trechos.",
     ...buildHumanNavigationEnvelope(selectedContentLink(adapter, selected)),

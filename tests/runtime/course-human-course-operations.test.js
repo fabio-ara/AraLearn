@@ -5,7 +5,8 @@ import { createHash } from "node:crypto";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { courseAuthoringAnalyticsFixture } from "../helpers/courseAuthoringAnalyticsFixture.js";
-import { assembleCourseAuthoringExport, buildCourseAuthoringComparison } from "../../src/domain/courseAuthoringComparison.js";
+import { assembleCourseAuthoringExport, buildCourseAuthoringComparison, serializeCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
+import { exportHumanCourse } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanCourseOperations.js";
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { ARALEARN_MCP_PROTOCOL_VERSION, createAuthoringMcpHandler } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
@@ -23,7 +24,7 @@ function readers() {
     resolvePrincipal: async () => readPrincipal,
     resolveActionPrincipal: async () => ({ ...readPrincipal, authenticationKind: "action" }),
     listCourses: async request => { calls.push(["list", request]); return { items: [{ courseId: request.query === "Direita" ? RIGHT : LEFT, title: request.query }], hasMore: false }; },
-    getCourse: async request => { calls.push(["get", request]); return { courseId: request.courseId, title: request.courseId === RIGHT ? "Direita" : "Esquerda", revision: 7, deepLink: "https://app.example/#/study" }; }
+    getCourse: async request => { calls.push(["get", request]); return { courseId: request.courseId, title: request.courseId === RIGHT ? "Direita" : "Esquerda", revision: 7, annotationSetVersion: 1, deepLink: "https://app.example/#/study" }; }
   };
   return adapter;
 }
@@ -374,8 +375,103 @@ test("exportação humana grande reconstrói JSON literal por fragmentos e recus
     "uma continuação conserva o literal imutável da revisão já entregue");
   assert.equal(exportReads, 1, "mutação do objeto retornado não substitui o literal já validado");
   text.text = originalText;
-  adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 8 });
+  adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 8, annotationSetVersion: 1 });
   await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" }, continuacao: firstContinuation }), error => error.code === "human_read_context_changed");
+});
+
+test("exportação sem recibo do adapter normaliza integralmente e serializer genérico não autentica", async () => {
+  const adapter = readers(); const malformed = exportValue();
+  delete malformed.artifact.contentReviews;
+  serializeCourseAuthoringExport(malformed);
+  adapter.getCourseAuthoringExport = async () => malformed;
+  await assert.rejects(exportHumanCourse({ adapter, principal: readPrincipal,
+    args: { recorte: { curso: "Esquerda" } } }), error => error.name === "CourseAuthoringBasisError");
+});
+
+test("cache revalida ACL e seleção antes de reutilizar literal, e versão de observações invalida o snapshot", async () => {
+  const adapter = readers(); const exported = exportValue({ large: 24 }); let exportReads = 0; let annotationSetVersion = 4;
+  adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 7, annotationSetVersion });
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exported; };
+  const args = { recorte: { curso: "Esquerda" } };
+  const first = await call(adapter, "exportar_autoria", args, readPrincipal);
+  assert.ok(first.context.continuacao);
+  adapter.getCourse = async () => { throw Object.assign(new Error("ACL revogada"), { status: 404 }); };
+  await assert.rejects(call(adapter, "exportar_autoria", { ...args, continuacao: first.context.continuacao }, readPrincipal), error => error.status === 404);
+  assert.equal(exportReads, 1, "a permissão é verificada antes de consultar a cache");
+
+  adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 7, annotationSetVersion });
+  annotationSetVersion += 1;
+  await assert.rejects(call(adapter, "exportar_autoria", { ...args, continuacao: first.context.continuacao }, readPrincipal),
+    error => error.code === "human_read_context_changed");
+  assert.equal(exportReads, 1, "mudança na versão das observações não serve literal obsoleto nem reconstrói cursor antigo");
+});
+
+test("exportação descarta cold read quando a versão de observações muda durante a montagem", async () => {
+  const adapter = readers(); let exportReads = 0; let versionReads = 0;
+  adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 7,
+    annotationSetVersion: ++versionReads <= 2 ? 8 : 9 });
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exportValue(); };
+  await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" } }, readPrincipal),
+    error => error.code === "human_read_context_changed");
+  assert.equal(exportReads, 1);
+  assert.equal(versionReads, 3, "seleção e fences usam o leitor de curso, sem RPC de limpeza de anotações");
+});
+
+test("reader autenticado de curso devolve fence de anotações sem chamar limpeza na leitura", () => {
+  const migration = readFileSync(new URL("../../supabase/migrations/20261019153000_course_export_annotation_fence.sql", import.meta.url), "utf8");
+  assert.match(migration, /create or replace function public\.get_owned_course_for_actor_v1/u);
+  assert.match(migration, /security definer[\s\S]*?perform private\.require_course_access_v1\(p_course_id, p_actor_id, true\)/u);
+  assert.match(migration, /'annotationSetVersion',[\s\S]*?course\.annotation_set_version/u);
+  assert.match(migration, /'reviewPolicy',[\s\S]*?course\.content_review_policy/u);
+  assert.doesNotMatch(migration, /cleanup_course_anchored_annotations/u);
+  assert.match(migration, /schemaRevision', '20261019153000'/u);
+  assert.match(migration, /course-export-annotation-version-fence-v1/u);
+});
+
+test("mudança de resultado da seleção invalida literal mesmo com curso e revisão iguais", async () => {
+  const adapter = readers(); let selectedRef = "micro-a"; let exportReads = 0;
+  adapter.getCourseInspectionTriageOutline = async request => ({ courseId: LEFT, courseRevision: request.expectedRevision, plan: {
+    title: "Esquerda", curriculum: { modules: [{ id: "module-a", title: "Módulo", position: 0, lessons: [{ id: "lesson-a", title: "Lição", position: 0,
+      microsequences: [{ id: selectedRef, title: "Contexto", position: 0 }] }] }] }, parts: [], studyUnits: []
+  } });
+  adapter.getCourseAuthoringExport = async request => {
+    exportReads++;
+    const exported = exportValue(); exported.scope = { kind: "didactic_microsequence", ref: request.scope.ref, label: "Contexto" };
+    exported.analytics.scope = { selected: exported.scope, options: [exported.scope] };
+    return exported;
+  };
+  const args = { recorte: { curso: "Esquerda", microssequencia: "Contexto" } };
+  const first = await call(adapter, "exportar_autoria", args, readPrincipal);
+  selectedRef = "micro-b";
+  await assert.rejects(call(adapter, "exportar_autoria", { ...args, continuacao: first.context.continuacao }, readPrincipal),
+    error => error.code === "human_read_context_changed");
+  assert.equal(exportReads, 1, "a identidade corrente selecionada participa da chave e o cursor antigo é recusado");
+});
+
+test("cache miss após substituição por outra consulta recompõe integralmente para o mesmo ator", async () => {
+  const adapter = readers(); let exportReads = 0;
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exportValue({ large: 24 }); };
+  const firstArgs = { recorte: { curso: "Esquerda" } };
+  const first = await call(adapter, "exportar_autoria", firstArgs, readPrincipal);
+  await call(adapter, "exportar_autoria", { recorte: { curso: " Esquerda " } }, readPrincipal);
+  assert.equal(exportReads, 2);
+  const replay = await call(adapter, "exportar_autoria", { ...firstArgs, continuacao: first.context.continuacao }, readPrincipal);
+  assert.equal(replay.context.fragmento.inicio, first.context.fragmento.fim);
+  assert.equal(exportReads, 3, "cache miss pelo slot substituído continua funcional sem dependência da cache");
+});
+
+test("continuação antiga falha após cache miss se annotationSetVersion mudou", async () => {
+  const adapter = readers(); let exportReads = 0; let annotationSetVersion = 2;
+  adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 7, annotationSetVersion });
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exportValue({ large: 24 }); };
+  const originalArgs = { recorte: { curso: "Esquerda" } };
+  const first = await call(adapter, "exportar_autoria", originalArgs, readPrincipal);
+  await call(adapter, "exportar_autoria", { recorte: { curso: " Esquerda " } }, readPrincipal);
+  assert.equal(exportReads, 2, "a entrada original foi expulsa antes da retomada");
+  annotationSetVersion += 1;
+  await assert.rejects(call(adapter, "exportar_autoria", { ...originalArgs, continuacao: first.context.continuacao }, readPrincipal),
+    error => error.code === "human_read_context_changed");
+  assert.equal(exportReads, 2, "a versão participa do hash assinado mesmo sem entrada de cache para comparar");
 });
 
 test("literal de exportação é isolado por ator e a entrada única expulsa a seleção anterior", async () => {

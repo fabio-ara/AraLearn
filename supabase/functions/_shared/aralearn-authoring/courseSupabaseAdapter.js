@@ -70,10 +70,11 @@ import {
 import {
   CourseAuthoringAnalyticsError,
   assembleCourseAuthoringAnalyticsPage,
+  normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
 import { CourseAuthoringBasisError, canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
-import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExportFromValidatedInputs, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExportFromValidatedInputs, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport, recordValidatedCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { composeCourseDocument } from "../aralearn/runtime/domain/courseEntities.js";
 import { collectAppliedExplanationBases } from "../aralearn/runtime/domain/appliedExplanationBasis.js";
 
@@ -81,6 +82,8 @@ const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const sameCourseMedia = (left, right) => ["contentHash", "byteSize", "mediaType"].every(key => left?.[key] === right?.[key]);
 const COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES = 8 * 1024 * 1024;
 const COURSE_AUTHORING_EXPORT_ANALYTICS_RESPONSE_LIMIT_BYTES = COURSE_AUTHORING_EXPORT_MAX_BYTES;
+const normalizedAuthoringAnalyticsReads = new WeakSet();
+const normalizedCourseSourceReads = new WeakSet();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const INSPECTION_FIELDS = new Set([
   "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions",
@@ -2519,6 +2522,7 @@ export class CourseSupabaseAdapter {
         "A leitura de Fontes não corresponde ao Curso e à consulta solicitados."
       );
     }
+    normalizedCourseSourceReads.add(normalized);
     return normalized;
   }
 
@@ -2989,7 +2993,7 @@ export class CourseSupabaseAdapter {
       }
       throw error;
     }
-    return normalizeCourseAuthoringAnalyticsDatabaseValue(() =>
+    const normalized = normalizeCourseAuthoringAnalyticsDatabaseValue(() =>
       assembleCourseAuthoringAnalyticsPage(raw, {
         publicAppUrl: this.publicAppUrl,
         expectedCourseId: courseId,
@@ -2997,6 +3001,8 @@ export class CourseSupabaseAdapter {
         expectedQuery: normalizedQuery
       })
     );
+    normalizedAuthoringAnalyticsReads.add(normalized);
+    return normalized;
   }
 
   async listCourseEntities({
@@ -4381,8 +4387,15 @@ export class CourseSupabaseAdapter {
 
   async getCourseAuthoringExport({ principal, courseId, expectedRevision, scope = { kind: "course", ref: null }, deadlineAt = null }) {
     const selection = normalizeCourseAuthoringAnalyticsInputValue(() => normalizeCourseAuthoringSelection({ courseId, expectedRevision, scope }));
-    const analytics = await this.getCourseAuthoringAnalytics({ principal, courseId, expectedCourseRevision: selection.expectedRevision,
+    let analytics = await this.getCourseAuthoringAnalytics({ principal, courseId, expectedCourseRevision: selection.expectedRevision,
       query: { scope: selection.scope }, responseLimitBytes: COURSE_AUTHORING_EXPORT_ANALYTICS_RESPONSE_LIMIT_BYTES, deadlineAt });
+    if (!normalizedAuthoringAnalyticsReads.has(analytics)) {
+      analytics = normalizeCourseAuthoringAnalyticsPage(analytics, {
+        expectedCourseId: courseId,
+        expectedRevision: selection.expectedRevision,
+        expectedQuery: { scope: selection.scope }
+      });
+    }
     const course = await this.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
     if (course?.courseId !== courseId || course.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou; releia antes de exportar.");
     const rows = []; const cursors = new Set(); let cursor = null; let bytes = 0;
@@ -4400,9 +4413,11 @@ export class CourseSupabaseAdapter {
     }
     const explanationSources = [];
     for (const row of rows.filter(row => row.entityType === "microsequence" && row.content?.explanation)) {
-      explanationSources.push(await this.getCourseSources({ principal, courseId, expectedRevision,
+      const read = await this.getCourseSources({ principal, courseId, expectedRevision,
         mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: row.entityId,
-        cursor: null, limit: 1, deadlineAt }));
+        cursor: null, limit: 1, deadlineAt });
+      explanationSources.push(normalizedCourseSourceReads.has(read) ? read :
+        normalizeCourseSourcesDatabaseValue(() => normalizeCourseSourcesRead(read)));
     }
     const current = await this.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
     if (current?.courseId !== courseId || current.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou durante a exportação.");
@@ -4417,6 +4432,6 @@ export class CourseSupabaseAdapter {
     }
     try { serializeCourseAuthoringExport(result); }
     catch { throw new AuthoringApiError(413, "course_export_too_large", "A exportação excede o limite de 32 MiB."); }
-    return result;
+    return recordValidatedCourseAuthoringExport(result);
   }
 }

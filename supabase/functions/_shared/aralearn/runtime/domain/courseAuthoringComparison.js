@@ -10,6 +10,7 @@ export const COURSE_AUTHORING_COMPARISON_CONTRACT = "aralearn.course-authoring-c
 export const COURSE_AUTHORING_EXPORT_CONTRACT = "aralearn.course-authoring-export.v2";
 export const COURSE_AUTHORING_EXPORT_MAX_BYTES = 32 * 1024 * 1024;
 const serializedCourseAuthoringExports = new WeakMap();
+const validatedCourseAuthoringExports = new WeakSet();
 export function serializeCourseAuthoringExport(value) {
   const content = JSON.stringify(value);
   if (new TextEncoder().encode(content).byteLength > COURSE_AUTHORING_EXPORT_MAX_BYTES) {
@@ -23,6 +24,16 @@ export function takeSerializedCourseAuthoringExport(value) {
   const content = serializedCourseAuthoringExports.get(value) ?? null;
   serializedCourseAuthoringExports.delete(value);
   return content;
+}
+// Set only after the adapter has assembled from the canonical readers and the
+// complete export contract checks have passed. Serialization alone is not proof.
+export function recordValidatedCourseAuthoringExport(value) {
+  if (!value || typeof value !== "object") fail("A exportação validada precisa ser um objeto.");
+  validatedCourseAuthoringExports.add(value);
+  return value;
+}
+export function isValidatedCourseAuthoringExport(value) {
+  return Boolean(value && typeof value === "object" && validatedCourseAuthoringExports.has(value));
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SEMANTIC_VERIFICATION = Object.freeze({ status: "not_performed", message: "A comparação confronta declarações, contagens e textos literais. Não verifica equivalência semântica, aprendizagem ou qualidade pedagógica." });
@@ -219,7 +230,7 @@ function assembleCourseAuthoringExportCore({ analytics, document, explanationSou
     appliedIds.add(entry.studyUnitId);
     const basis = normalizeAppliedExplanationBasis(entry.basis);
     if (!basis?.sourceCourseId) fail("A exportação identifica a origem da base aplicada.");
-    return validatedInputs ? entry : { studyUnitId: entry.studyUnitId, basis };
+    return { studyUnitId: entry.studyUnitId, basis };
   });
   const reviewIds = new Set();
   contentReviews = contentReviews.map(entry => {
@@ -228,7 +239,7 @@ function assembleCourseAuthoringExportCore({ analytics, document, explanationSou
     const key = `${entry.targetKind}:${entry.targetId}`;
     if (!ids?.has(entry.targetId) || reviewIds.has(key)) fail("A revisão não corresponde a um objeto do artefato.");
     reviewIds.add(key);
-    return validatedInputs ? entry : { targetKind: entry.targetKind, targetId: entry.targetId, contentReview: normalizeCourseContentReviewState(entry.contentReview) };
+    return { targetKind: entry.targetKind, targetId: entry.targetId, contentReview: normalizeCourseContentReviewState(entry.contentReview) };
   });
   // Read metadata is exported separately from the importable course content.
   return { contract: COURSE_AUTHORING_EXPORT_CONTRACT, course: analytics.course, scope: analytics.scope.selected, analytics,
