@@ -35,4 +35,13 @@ from public,anon,authenticated;
 grant execute on function public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)
 to service_role;
 
+do $manifest$
+declare manifest jsonb:=public.get_aralearn_runtime_manifest();
+begin
+  manifest:=manifest||jsonb_build_object('schemaRevision','20261018233443');
+  execute format('create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
+    'select '||quote_literal(manifest::text)||'::jsonb');
+end
+$manifest$;
+
 commit;

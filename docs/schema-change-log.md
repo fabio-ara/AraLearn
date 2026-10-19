@@ -21,6 +21,16 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261018233443 — leitura do mapa curricular em cursos extensos
+
+A [migração](../supabase/migrations/20261018233443_curricular_map_lean_version_read.sql)
+consulta a revisão do curso e a versão do plano diretamente nas linhas de origem,
+sem materializar o plano completo para obter esses dois valores. O mapa permanece
+integral, com a mesma base de aprovação, hash, permissões e estabilidade da leitura.
+O limite da leitura legada continua vigente; ultrapassá-lo no conteúdo explicativo
+não impede consultar o mapa curricular. O manifesto acompanha a nova revisão do
+esquema, sem acrescentar capacidades ou transformar dados de curso.
+
 ## 20261018160627 — triagem compacta de inspeção por IA
 
 A [migração](../supabase/migrations/20261018160627_course_inspection_triage.sql)
