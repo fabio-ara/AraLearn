@@ -41,21 +41,44 @@ export function resolveTestFiles(args = [], root = repositoryRoot) {
   return available.filter((file) => selected.has(file));
 }
 
+export function batchTestFiles(files, maxArgumentLength = process.platform === "win32" ? 12_000 : Infinity) {
+  const batches = [];
+  let batch = [];
+  let length = 0;
+  for (const file of files) {
+    const size = file.length + 3;
+    if (batch.length && length + size > maxArgumentLength) {
+      batches.push(batch);
+      batch = [];
+      length = 0;
+    }
+    if (size > maxArgumentLength) throw new Error("O caminho de um teste excede o limite de argumentos do processo.");
+    batch.push(file);
+    length += size;
+  }
+  if (batch.length) batches.push(batch);
+  return batches;
+}
+
 export function runTests(args = [], root = repositoryRoot) {
   const files = resolveTestFiles(args, root);
   const testConcurrency = process.env.ARALEARN_TEST_CONCURRENCY || "1";
   const mode = args.length ? "focal" : "integral";
   process.stdout.write(`Testes: modo ${mode}, ${files.length} arquivo(s).\n`);
-  const result = spawnSync(process.execPath, [
-    "--test",
-    `--test-concurrency=${testConcurrency}`,
-    ...files
-  ], {
-    cwd: root,
-    stdio: "inherit"
-  });
-  if (result.error) process.stderr.write(`Falha ao iniciar os testes: ${result.error.message}\n`);
-  return typeof result.status === "number" ? result.status : 1;
+  let exitCode = 0;
+  for (const batch of batchTestFiles(files)) {
+    const result = spawnSync(process.execPath, [
+      "--test",
+      `--test-concurrency=${testConcurrency}`,
+      ...batch
+    ], {
+      cwd: root,
+      stdio: "inherit"
+    });
+    if (result.error) process.stderr.write(`Falha ao iniciar os testes: ${result.error.message}\n`);
+    if (typeof result.status !== "number" || result.status !== 0) exitCode = result.status || 1;
+  }
+  return exitCode;
 }
 
 const modulePath = path.resolve(fileURLToPath(import.meta.url));

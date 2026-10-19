@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { resolveTestFiles } from "../../scripts/runTests.mjs";
+import { batchTestFiles, resolveTestFiles } from "../../scripts/runTests.mjs";
 
 const runnerUrl = new URL("../../scripts/runTests.mjs", import.meta.url);
 const runnerPath = fileURLToPath(runnerUrl);
@@ -54,6 +54,13 @@ test("runner mantém integral por padrão e seleciona arquivos explícitos sem d
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("runner divide seleções extensas sem perder nem reordenar arquivos", () => {
+  const files = ["a", "bbb", "cc", "dddd"];
+  const batches = batchTestFiles(files, 10);
+  assert.deepEqual(batches, [["a", "bbb"], ["cc"], ["dddd"]]);
+  assert.deepEqual(batches.flat(), files);
 });
 
 test("runner focal real não executa arquivo fora da seleção e integral propaga a falha", () => {
