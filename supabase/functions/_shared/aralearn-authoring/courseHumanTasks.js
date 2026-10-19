@@ -3329,6 +3329,9 @@ function reviewAuditNextDecision(coverage) {
 // é o último identificador da seção anterior e precisa pertencer à seleção.
 const MAX_SELECTED_PAGE_ITEMS = 12;
 const MAX_SELECTED_PAGE_BYTES = 65536;
+const selectedStudyUnitByteLength = (item, encoder = new TextEncoder()) =>
+  encoder.encode(JSON.stringify(item)).byteLength;
+
 function selectedStudyUnitReferencePage(selected, cursorStudyUnitId) {
   let start = 0;
   if (cursorStudyUnitId !== null && cursorStudyUnitId !== undefined) {
@@ -3355,7 +3358,7 @@ function paginateSelectedStudyUnits(selected, cursorStudyUnitId) {
   const items = [];
   let bytes = 0;
   for (let index = start; index < selected.length; index += 1) {
-    const size = encoder.encode(JSON.stringify(selected[index])).byteLength;
+    const size = selectedStudyUnitByteLength(selected[index], encoder);
     // O primeiro item entra sempre, mesmo acima de 64 KiB: a página nunca fica
     // vazia com hasMore, e o volume é recuperado por fragmentos literais.
     if (items.length && (items.length >= MAX_SELECTED_PAGE_ITEMS ||
@@ -3511,7 +3514,11 @@ async function readReviewPageUnitPage({ adapter, principal, resolved, continuati
       : resolved.module ? "module" : resolved.part ? "authoring_part" : "course";
     const scopeId = resolved.microsequence?.id ?? resolved.lesson?.id ?? resolved.module?.id ?? resolved.part?.id ?? null;
     const items = [];
-    for (const reference of referencePage.items) {
+    const encoder = new TextEncoder();
+    let bytes = 0;
+    let stoppedAtPageBoundary = false;
+    for (let index = 0; index < referencePage.items.length; index += 1) {
+      const reference = referencePage.items[index];
       const page = await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
         expectedRevision: resolved.course.revision, scopeKind, scopeId,
         anchorStudyUnitId: reference.id, cursorStudyUnitId: null, direction: "forward",
@@ -3531,14 +3538,26 @@ async function readReviewPageUnitPage({ adapter, principal, resolved, continuati
           Number(page.courseRevision) !== resolved.course.revision) {
         fail("human_read_context_changed", "A unidade selecionada divergiu do índice ou do escopo atual; repita a consulta.", null, 409);
       }
+      const size = selectedStudyUnitByteLength(item, encoder);
+      if (items.length && (items.length >= MAX_SELECTED_PAGE_ITEMS ||
+          bytes + size > MAX_SELECTED_PAGE_BYTES)) {
+        // Este único lookahead determina a fronteira UTF-8; o cursor fica no último
+        // item incluído para que o alvo sondado seja relido como primeiro da próxima página.
+        stoppedAtPageBoundary = true;
+        break;
+      }
       items.push(item);
+      bytes += size;
+      if ((items.length >= MAX_SELECTED_PAGE_ITEMS || bytes >= MAX_SELECTED_PAGE_BYTES) &&
+          (index + 1 < referencePage.items.length || referencePage.hasMore)) {
+        stoppedAtPageBoundary = true;
+        break;
+      }
     }
     resolved.studyUnits = items;
-    unitPage = paginateSelectedStudyUnits(items, null);
-    if (referencePage.hasMore && !unitPage.hasMore) {
-      unitPage.hasMore = true;
-      unitPage.nextCursor = referencePage.nextCursor;
-    }
+    const hasMore = stoppedAtPageBoundary || referencePage.hasMore;
+    unitPage = { items, hasMore,
+      nextCursor: hasMore && items.length ? { studyUnitId: items.at(-1).studyUnit.id } : null };
   } else {
     unitPage = units.length
       ? paginateSelectedStudyUnits(resolved.studyUnits, continuation.p)

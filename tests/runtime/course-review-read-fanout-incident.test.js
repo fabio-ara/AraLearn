@@ -222,6 +222,7 @@ async function readAll(adapter, baseArgs) {
   const perCallReviews = [];
   const perCallInspections = [];
   const perCallReviewPlans = [];
+  const perCallUnitBodies = [];
   const perPageFragments = [];
   let cursor;
   let literal = "";
@@ -235,6 +236,7 @@ async function readAll(adapter, baseArgs) {
     perCallReviews.push(studyUnitReviews(adapter.calls));
     perCallInspections.push(allInspections(adapter.calls));
     perCallReviewPlans.push(adapter.calls.reviewPlans.length);
+    perCallUnitBodies.push(adapter.calls.unitBodies.slice());
     const page = response.context;
     if (page.fragmento) {
       fragments += 1;
@@ -258,7 +260,8 @@ async function readAll(adapter, baseArgs) {
     if (!page.temMais) break;
   }
   assert.equal(perPageFragments.length, pages.length, "cada página lógica é contabilizada uma vez");
-  return { pages, perCallReviews, perCallInspections, perCallReviewPlans, perPageFragments, fragments };
+  return { pages, perCallReviews, perCallInspections, perCallReviewPlans, perCallUnitBodies,
+    perPageFragments, fragments };
 }
 
 const pageUnitIds = pages => pages.flatMap(page => (page.studyUnits ?? []).map(entry => entry.studyUnit.id));
@@ -388,6 +391,22 @@ test("o cap de bytes conta UTF-8 e separa identidades exatas", async () => {
     "a soma em bytes UTF-8 excede o cap");
   for (const page of pages) assert.ok(page.studyUnits.length < 2,
     `o cap de bytes separa os alvos, veio ${page.studyUnits.length}`);
+});
+
+test("hidratação interrompe no cap UTF-8 com um lookahead e retoma sem ler o resto da seleção", async () => {
+  const { adapter } = createAdapter({ unitCount: 12, unitSize: 12_000, multibyte: true });
+  const selection = Array.from({ length: 12 }, (_, index) => index + 1);
+  const { pages, perCallUnitBodies, perPageFragments } = await readAll(adapter, { unidades: selection });
+  assert.equal(pages.length, 12, "cada unidade grande inicia a próxima página lógica");
+  assert.deepEqual(pageUnitIds(pages), selection.map(index => `unit-${index}`), "o cursor mantém a ordem completa");
+  assert.ok(perPageFragments.some(count => count > 1), "o corpo ainda é recomposto por fragmentos");
+  assert.ok(perCallUnitBodies.length > 12, "a prova exercita continuações de fragmento e página");
+  for (const ids of perCallUnitBodies) {
+    assert.ok(ids.length <= 2, `uma página de um alvo aceita no máximo o alvo e um lookahead, leu ${ids.length}`);
+  }
+  assert.deepEqual(perCallUnitBodies[0], ["unit-1", "unit-2"], "o segundo corpo só mede a fronteira");
+  assert.ok(perCallUnitBodies.slice(1).some(ids => ids[0] === "unit-2"),
+    "o lookahead não avança o cursor e volta como primeiro alvo da próxima página");
 });
 
 // O custo do recorte é por PÁGINA LÓGICA, não por fragmento: consumir todos os
