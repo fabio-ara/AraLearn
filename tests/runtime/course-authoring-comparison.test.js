@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { courseAuthoringAnalyticsFixture, ANALYTICS_COURSE_ID } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import { normalizeCourseAuthoringAnalyticsPage } from "../../src/domain/courseAuthoringAnalytics.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
-import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import { composeCourseDocument, flattenCourseDocument } from "../../src/domain/courseEntities.js";
 import { buildCourseAuthoringComparison, normalizeCourseAuthoringComparison, normalizeCourseAuthoringComparisonRequest, assembleCourseAuthoringExport, normalizeCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { executeCourseRoute } from "../../supabase/functions/_shared/aralearn-authoring/courseRouter.js";
@@ -225,6 +225,37 @@ test("exportação recompõe artefato integral e cerca curso/revisão sem snapsh
   assert.throws(() => normalizeCourseAuthoringExport({ ...result, course: { ...result.course, revision: 8 } }));
   assert.throws(() => normalizeCourseAuthoringExport({ ...result, actorId: ACTOR_ID }));
   assert.equal(JSON.stringify(result).includes("design_snapshot"), false);
+});
+
+test("montador export preserva ordenação canônica esparsa, rejeições e isolamento do documento", () => {
+  const fixture = sharedExplanationExportFixture();
+  const micro = fixture.document.courses[0].modules[0].lessons[0].microsequences[0];
+  micro.studyUnits[0].position = 9;
+  micro.studyUnits[1].position = 3;
+  micro.studyUnits.reverse();
+  const original = structuredClone(fixture.document);
+  const flattened = flattenCourseDocument(original, { allowIncompleteCurriculum: true });
+  const priorRoundTrip = composeCourseDocument(flattened.course, flattened.rows, { allowIncompleteCurriculum: true });
+  const result = assembleCourseAuthoringExport(fixture);
+  assert.deepEqual(result.artifact.document, priorRoundTrip,
+    "a substituição mantém a ordem/normalização do flatten+compose inclusive com posições esparsas");
+  assert.deepEqual(result.artifact.document.courses[0].modules[0].lessons[0].microsequences[0]
+    .studyUnits.map(unit => [unit.id, unit.position]), [["unit-2", 3], ["unit-1", 9]]);
+  assert.deepEqual(fixture.document, original, "a ordenação não muta o input do chamador");
+
+  const invalidDocuments = [
+    document => { document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].position = 3; },
+    document => { document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].id = "unit-2"; },
+    document => { document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].package = "missing.resource@1"; },
+    document => { document.courses.push({ ...structuredClone(document.courses[0]), id: OTHER_ID }); }
+  ];
+  for (const mutate of invalidDocuments) {
+    const bad = structuredClone(original);
+    mutate(bad);
+    const before = structuredClone(bad);
+    assert.throws(() => assembleCourseAuthoringExport({ ...fixture, document: bad }));
+    assert.deepEqual(bad, before, "rejeição também preserva o input");
+  }
 });
 function adapterFixture() { return new CourseSupabaseAdapter({ supabaseUrl: "https://project.example", serverApiKey: "sb_secret_test", publishableKey: "sb_publishable_test", publicAppUrl: "https://app.example/", fetchImpl: () => { throw new Error("Unexpected network"); }, attempts: 1 }); }
 test("Adapter compara dois readers CAS e recusa mudança posterior de qualquer curso", async () => {

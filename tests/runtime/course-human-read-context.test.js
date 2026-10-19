@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   openHumanReadContinuation,
   paginateHumanReadContext
@@ -448,6 +449,42 @@ test("continuação liga tarefa, consulta, curso e revisão; argumentos reordena
       args: { ...(changed.args ?? args), continuacao: first.continuacao } }),
     error => error.status === 409 && error.code === "human_read_context_changed");
   }
+});
+
+test("continuação de exportação aceita offsets expandido-UTF8 sem relaxar cursor comum, argumentos ou CAS", async () => {
+  const args = { curso: TITLE };
+  const initial = await openHumanReadContinuation({ args, course: COURSE, task: "exportar_autoria" });
+  // 3 MiB de U+2011 ocupam 9 MiB em UTF-8, mas viram 18 Mi caracteres na
+  // representação literal protegida pela exportação.
+  const context = { value: "\u2011".repeat(3 * 1024 * 1024) + "😀fim" };
+  const literal = JSON.stringify(context).replaceAll("\u2011", "\\u2011");
+  const offset = 16 * 1024 * 1024 + 1;
+  assert.ok(literal.length > offset);
+  const state = { ...initial, o: offset, h: createHash("sha256").update(literal).digest("hex") };
+  const cursor = encodeCursor(state);
+  const reopened = await openHumanReadContinuation({ args: { ...args, continuacao: cursor }, course: COURSE,
+    task: "exportar_autoria" });
+  assert.equal(reopened.o, offset);
+  await assert.rejects(() => openHumanReadContinuation({ args: { ...args, continuacao: cursor }, course: COURSE,
+    task: "consultar_fontes" }), error => error.status === 422 && error.code === "invalid_read_continuation");
+  await assert.rejects(() => openHumanReadContinuation({ args: { ...args, busca: "alterada", continuacao: cursor },
+    course: COURSE, task: "exportar_autoria" }), error => error.status === 409 && error.code === "human_read_context_changed");
+  await assert.rejects(() => openHumanReadContinuation({ args: { ...args, continuacao: cursor },
+    course: { ...COURSE, revision: COURSE.revision + 1 }, task: "exportar_autoria" }),
+  error => error.status === 409 && error.code === "human_read_context_changed");
+  const oversized = encodeCursor({ ...state, o: 96 * 1024 * 1024 + 1 });
+  await assert.rejects(() => openHumanReadContinuation({ args: { ...args, continuacao: oversized }, course: COURSE,
+    task: "exportar_autoria" }), error => error.status === 422 && error.code === "invalid_read_continuation");
+
+  const page = await paginateHumanReadContext(context, { state, escapeNonbreakingHyphen: true });
+  assert.equal(page.fragmento.inicio, offset);
+  assert.equal(page.fragmento.texto, literal.slice(offset, page.fragmento.fim));
+  assert.equal(page.fragmento.texto.isWellFormed(), true);
+  assert.ok(page.fragmento.fim > offset);
+  assert.ok(page.continuacao);
+  const next = await openHumanReadContinuation({ args: { ...args, continuacao: page.continuacao }, course: COURSE,
+    task: "exportar_autoria" });
+  assert.equal(next.o, page.fragmento.fim);
 });
 
 test("continuação conserva consulta com objetos aninhados reordenados, mas rejeita listas ou valores alterados", async () => {

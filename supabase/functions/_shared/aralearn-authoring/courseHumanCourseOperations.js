@@ -54,7 +54,10 @@ async function selection(adapter, principal, input, deadlineAt) {
   const resolved = await resolveHumanCourseContext({ adapter, principal, course: humanText(input.curso, "o curso"),
     part: input.parte ?? null, microsequence: input.microssequencia ?? null,
     studyUnits: input.unidade === undefined ? [] : [input.unidade],
-    studyUnitReferenceIndex: input.unidade !== undefined, deadlineAt });
+    studyUnitReferenceIndex: input.unidade !== undefined,
+    outlineReader: input.parte !== undefined || input.microssequencia !== undefined
+      ? request => adapter.getCourseInspectionTriageOutline(request) : null,
+    deadlineAt });
   const selectedStudyUnit = resolved.studyUnits[0] ?? resolved.studyUnitReferences[0] ?? null;
   return { courseId: resolved.course.id, expectedRevision: resolved.course.revision,
     scope: selectedStudyUnit ? { kind: "study_unit", ref: selectedStudyUnit.studyUnit?.id ?? selectedStudyUnit.id }

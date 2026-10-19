@@ -168,6 +168,43 @@ test("seleção humana de unidade usa a identidade do reader curricular", async 
   assert.ok(outlineRequests.every(request => request.courseId === LEFT && request.expectedRevision === 7));
 });
 
+test("seleção por microssequência usa outline compacto para ordinal global e local sem chamar plano integral", async () => {
+  const adapter = readers();
+  const outline = { courseId: LEFT, courseRevision: 7, plan: {
+    title: "Esquerda",
+    curriculum: { modules: [{ id: "module-1", title: "M1", position: 0, lessons: [{ id: "lesson-1", title: "L1", position: 0,
+      microsequences: [{ id: "micro-a", title: "Endereçamento", position: 0 },
+        { id: "micro-b", title: "Roteamento", position: 1 }] }] }] },
+    parts: [{ id: "part-1", title: "Fundamentos", position: 4,
+      microsequences: [{ id: "micro-a", title: "Endereçamento", productionPosition: 0 }] }], studyUnits: []
+  } };
+  const outlineReads = [];
+  adapter.getCourseInspectionTriageOutline = async request => { outlineReads.push(request); return structuredClone(outline); };
+  adapter.getCourseInstructionalPlan = async () => { throw Error("A seleção export não deve carregar plano integral"); };
+  for (const [recorte, expectedRef, label] of [
+    [{ curso: "Esquerda", microssequencia: 2 }, "micro-b", "Roteamento"],
+    [{ curso: "Esquerda", parte: 5, microssequencia: 1 }, "micro-a", "Endereçamento"],
+    [{ curso: "Esquerda", parte: "Fundamentos", microssequencia: "Endereçamento" }, "micro-a", "Endereçamento"]
+  ]) {
+    const exported = exportValue();
+    exported.scope = { kind: "didactic_microsequence", ref: expectedRef, label };
+    exported.analytics.scope = { selected: exported.scope, options: [exported.scope] };
+    adapter.getCourseAuthoringExport = async request => {
+      assert.deepEqual(request.scope, { kind: "didactic_microsequence", ref: expectedRef });
+      return exported;
+    };
+    await call(adapter, "exportar_autoria", { recorte }, readPrincipal);
+  }
+  for (const invalidIdentity of [{ courseId: RIGHT }, { courseRevision: 8 }]) {
+    adapter.getCourseInspectionTriageOutline = async request => ({ ...structuredClone(outline), ...invalidIdentity });
+    adapter.getCourseAuthoringExport = async () => { throw Error("Não exportar com uma identidade/revisão divergente"); };
+    await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda", microssequencia: 1 } }, readPrincipal),
+      error => error.status === 409 && error.code === "course_revision_conflict");
+  }
+  assert.equal(outlineReads.length, 3);
+  assert.ok(outlineReads.every(request => request.courseId === LEFT && request.expectedRevision === 7));
+});
+
 test("comparação resolve as duas unidades pelo índice compacto e conserva identidade/revisão", async () => {
   const adapter = readers();
   const left = page(); const right = page(RIGHT, "Direita");

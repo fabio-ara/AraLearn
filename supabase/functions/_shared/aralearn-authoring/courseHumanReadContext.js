@@ -1,11 +1,18 @@
 import { AuthoringApiError } from './errors.js';
 import { sha256Hex } from './security.js';
 import { canonicalAuthoringValue } from '../aralearn/runtime/domain/courseAuthoringBasis.js';
+import { COURSE_AUTHORING_EXPORT_MAX_BYTES } from '../aralearn/runtime/domain/courseAuthoringComparison.js';
 
 // Internal focal budget, below the Actions envelope limit. Larger literal data
 // remains recoverable through contiguous JSON fragments, never through a summary.
 const MAX_CONTEXT_CHARACTERS = 12_000;
 const MAX_CONTEXT_BYTES = 16 * 1024;
+// Export v2 accepts at most 32 MiB of UTF-8 JSON. Its outer read envelope adds
+// only a small fixed overhead, while escaping U+2011 expands each 3-byte UTF-8
+// code point to six ASCII characters. Three times the export byte cap safely
+// bounds the UTF-16 cursor offset for that representation without widening any
+// other human-read continuation.
+const MAX_EXPORT_CONTEXT_OFFSET = COURSE_AUTHORING_EXPORT_MAX_BYTES * 3;
 const encoder = new TextEncoder();
 const fail = (message, status = 422) => { throw new AuthoringApiError(status,
   status === 409 ? 'human_read_context_changed' : 'invalid_read_continuation', message); };
@@ -30,7 +37,8 @@ export async function openHumanReadContinuation({ args, course, task }) {
   if (!value || typeof value !== 'object' || Array.isArray(value) ||
       Object.keys(value).sort().join(',') !== 'c,h,o,p,q,r' ||
       !(value.p === null || typeof value.p === 'string' && value.p.length > 0 && value.p.length <= 240) ||
-      !Number.isSafeInteger(value.o) || value.o < 0 || value.o > 16 * 1024 * 1024 ||
+      !Number.isSafeInteger(value.o) || value.o < 0 || value.o >
+        (task === 'exportar_autoria' ? MAX_EXPORT_CONTEXT_OFFSET : 16 * 1024 * 1024) ||
       !(value.h === null || typeof value.h === 'string' && /^[a-f0-9]{64}$/u.test(value.h)) ||
       (value.o === 0) !== (value.h === null)) {
     fail('A continuação da consulta é inválida. Repita a consulta inicial.');
