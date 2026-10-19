@@ -1359,6 +1359,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:private.course_review_plan_source_fingerprint_v1(p_course_id uuid)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:private.course_source_anchor_bytes_limit_v1()",
       "caseId": "course-source-provenance"
     },
@@ -2052,6 +2056,10 @@
     },
     {
       "object": "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)",
+      "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.get_owned_course_review_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_explanation_ids text[], p_if_none_match text)",
       "caseId": "course-authoring-experience"
     },
     {
