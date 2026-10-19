@@ -3432,26 +3432,12 @@ async function prepareInspectionTriage({ adapter, principal, args, deadlineAt })
   }
   const outlineReader = input => adapter.getCourseInspectionTriageOutline(input);
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, planReader: outlineReader });
-  if (!resolved.plan && units.length > 0) {
-    resolved.plan = await outlineReader({ principal, courseId: resolved.course.id,
-      expectedRevision: resolved.course.revision, deadlineAt });
-    if (resolved.plan?.courseRevision !== resolved.course.revision) {
-      fail("course_revision_conflict", "A estrutura do curso mudou; recomece a triagem.", null, 409);
-    }
-  }
-  const plan = resolved.plan?.plan;
-  if (units.length > 0 && (!plan || resolved.plan.courseRevision !== resolved.course.revision)) {
+  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, planReader: outlineReader,
+    units, studyUnitReferenceIndex: units.length > 0 });
+  const selectedUnitIds = units.length ? resolved.studyUnitReferences?.map(item => item.id) ?? [] : null;
+  if (units.length > 0 && selectedUnitIds.length !== units.length) {
     fail("course_revision_conflict", "A estrutura do curso mudou; recomece a triagem.", null, 409);
   }
-  const selectedUnitIds = units.length ? units.map(reference => {
-    const matches = Number.isSafeInteger(reference)
-      ? (plan.studyUnits ?? []).filter(item => item.ordinal === reference)
-      : (plan.studyUnits ?? []).filter(item => normalizeFacetText(item.title) === normalizeFacetText(reference));
-    if (matches.length !== 1) fail(matches.length ? "ambiguous_human_reference" : "invalid_human_reference",
-      matches.length ? "O título da unidade corresponde a mais de um alvo; use a posição." : "A unidade selecionada não foi encontrada no índice da triagem.");
-    return matches[0].id;
-  }) : null;
   if (selectedUnitIds && new Set(selectedUnitIds).size !== selectedUnitIds.length) {
     fail("duplicate_human_reference", "A seleção repete uma unidade de estudo.");
   }

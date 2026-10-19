@@ -36,7 +36,8 @@ function exportValue({ large = false } = {}) {
   if (large) {
     const micro = course.modules[0].lessons[0].microsequences[0];
     const template = micro.studyUnits[0];
-    micro.studyUnits = Array.from({ length: 30 }, (_, index) => ({ ...structuredClone(template), id: `literal-${index}`, position: index + 1,
+    const count = Number.isSafeInteger(large) ? large : 30;
+    micro.studyUnits = Array.from({ length: count }, (_, index) => ({ ...structuredClone(template), id: `literal-${index}`, position: index + 1,
       content: [{ id: `paragraph-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0", data: { text: `Literal ${index}: ${LITERAL_TEXT} `.repeat(100) } }] }));
   }
   const units = course.modules.flatMap(module => module.lessons.flatMap(lesson => lesson.microsequences.flatMap(micro => micro.studyUnits)))
@@ -140,7 +141,13 @@ test("seleção humana de unidade usa a identidade do reader curricular", async 
   const adapter = readers(); const exported = exportValue();
   const selected = { kind: "study_unit", ref: "unit-selected", label: "Unidade escolhida" };
   exported.scope = selected; exported.analytics.scope = { selected, options: [selected] };
-  adapter.listCourseStudyUnits = async () => ({ items: [{ ordinal: 1, studyUnit: { id: "unit-selected", title: "Unidade escolhida" } }], hasMore: false });
+  adapter.listCourseStudyUnits = async () => { throw Error("A resolução compacta não deve abrir a lista antiga de unidades."); };
+  const outlineRequests = [];
+  adapter.getCourseInspectionTriageOutline = async request => {
+    outlineRequests.push(request);
+    return { courseId: request.courseId, courseRevision: request.expectedRevision,
+      plan: { studyUnits: [{ id: "unit-selected", ordinal: 1, title: "Unidade escolhida" }] } };
+  };
   adapter.getCourseAuthoringExport = async request => { assert.deepEqual(request.scope, { kind: "study_unit", ref: "unit-selected" }); return exported; };
   let continuation, literal = "", pages = 0;
   do {
@@ -157,6 +164,85 @@ test("seleção humana de unidade usa a identidade do reader curricular", async 
   } while (continuation);
   assert.deepEqual(JSON.parse(literal), { authoringExport: exported });
   assert.equal(JSON.parse(literal).authoringExport.scope.ref, "unit-selected");
+  assert.ok(outlineRequests.length > 0);
+  assert.ok(outlineRequests.every(request => request.courseId === LEFT && request.expectedRevision === 7));
+});
+
+test("comparação resolve as duas unidades pelo índice compacto e conserva identidade/revisão", async () => {
+  const adapter = readers();
+  const left = page(); const right = page(RIGHT, "Direita");
+  const leftScope = { kind: "study_unit", ref: "left-unit", label: "Unidade esquerda" };
+  const rightScope = { kind: "study_unit", ref: "right-unit", label: "Unidade direita" };
+  left.scope = { selected: leftScope, options: [leftScope] };
+  right.scope = { selected: rightScope, options: [rightScope] };
+  const comparison = buildCourseAuthoringComparison({ left, right });
+  const requests = [];
+  adapter.listCourseStudyUnits = async () => { throw Error("A comparação não deve paginar a lista antiga."); };
+  adapter.getCourseInspectionTriageOutline = async request => {
+    requests.push(request);
+    const target = request.courseId === LEFT
+      ? { id: "left-unit", ordinal: 67, title: "Unidade esquerda" }
+      : { id: "right-unit", ordinal: 12, title: "Unidade direita" };
+    return { courseId: request.courseId, courseRevision: request.expectedRevision, plan: { studyUnits: [target] } };
+  };
+  adapter.compareCourseAuthoring = async request => {
+    assert.deepEqual(request.left, { courseId: LEFT, expectedRevision: 7, scope: { kind: leftScope.kind, ref: leftScope.ref } });
+    assert.deepEqual(request.right, { courseId: RIGHT, expectedRevision: 7, scope: { kind: rightScope.kind, ref: rightScope.ref } });
+    return comparison;
+  };
+  const output = await call(adapter, "comparar_cursos", {
+    esquerda: { curso: "Esquerda", unidade: 67 }, direita: { curso: "Direita", unidade: 12 }
+  }, readPrincipal);
+  assert.deepEqual(output.context.authoringComparison, comparison);
+  assert.deepEqual(requests.map(({ courseId, expectedRevision }) => [courseId, expectedRevision]), [[LEFT, 7], [RIGHT, 7]]);
+});
+
+test("exportação de 405 unidades usa posição 67 no índice e mantém integral o artefato paginado", async () => {
+  const adapter = readers(); const exported = exportValue({ large: 405 });
+  const selected = { kind: "study_unit", ref: "literal-66", label: "Unidade literal-66" };
+  exported.scope = selected; exported.analytics.scope = { selected, options: [selected] };
+  const outline = Array.from({ length: 405 }, (_, index) => ({ id: `literal-${index}`, ordinal: index + 1, title: `Unidade ${index + 1}` }));
+  let outlineReads = 0, oldScans = 0, exportReads = 0;
+  adapter.getCourseInspectionTriageOutline = async request => {
+    outlineReads++;
+    assert.equal(request.courseId, LEFT); assert.equal(request.expectedRevision, 7);
+    return { courseId: LEFT, courseRevision: 7, plan: { studyUnits: outline } };
+  };
+  adapter.listCourseStudyUnits = async () => { oldScans++; throw Error("Lista paginada antiga chamada"); };
+  adapter.getCourseAuthoringExport = async request => {
+    exportReads++;
+    assert.equal(request.principal, readPrincipal);
+    assert.equal(request.courseId, LEFT); assert.equal(request.expectedRevision, 7);
+    assert.deepEqual(request.scope, { kind: selected.kind, ref: selected.ref });
+    assert.ok(request.deadlineAt > 0);
+    return exported;
+  };
+  const output = await call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda", unidade: 67 } }, readPrincipal);
+  const fragment = output.context.fragmento;
+  assert.equal(fragment.inicio, 0);
+  assert.equal(fragment.total, JSON.stringify({ authoringExport: exported }).replaceAll("\u2011", "\\u2011").length);
+  assert.equal(output.context.temMais, true);
+  assert.equal(exported.scope.ref, "literal-66");
+  const returnedDocument = exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0];
+  assert.equal(returnedDocument.studyUnits.length, 405);
+  assert.match(returnedDocument.studyUnits[404].content[0].data.text, /Literal 404/u);
+  assert.equal(oldScans, 0);
+  assert.equal(outlineReads, 1);
+  assert.equal(exportReads, 1);
+});
+
+test("seleção compacta mantém ambiguidade explícita para títulos repetidos", async () => {
+  const adapter = readers(); let exportReads = 0, oldScans = 0;
+  adapter.getCourseInspectionTriageOutline = async request => ({ courseId: request.courseId,
+    courseRevision: request.expectedRevision, plan: { studyUnits: [
+      { id: "ambiguous-a", ordinal: 1, title: "Endereçamento" },
+      { id: "ambiguous-b", ordinal: 2, title: "Endereçamento" }
+    ] } });
+  adapter.listCourseStudyUnits = async () => { oldScans++; throw Error("Lista antiga chamada"); };
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exportValue(); };
+  await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda", unidade: "Endereçamento" } }, readPrincipal),
+    error => error.code === "ambiguous_human_reference");
+  assert.equal(oldScans, 0); assert.equal(exportReads, 0);
 });
 
 for (const channel of ["actions", "mcp"]) for (const large of [false, true]) {

@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.131] - 2026-10-19
+
+### Corrigido
+
+- Exportar autoria e comparar cursos localizam unidades pelo índice compacto, mantendo a seleção correta em cursos extensos sem reduzir o documento exportado.
+- A triagem de inspeções aplica a mesma seleção por posição global ou pelo escopo escolhido, sem incluir unidades de outros recortes.
+
 ## [0.0.130] - 2026-10-19
 
 ### Corrigido
