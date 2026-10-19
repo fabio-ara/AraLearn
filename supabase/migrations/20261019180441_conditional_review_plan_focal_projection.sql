@@ -45,7 +45,7 @@ begin
   select course.revision into strict v_course_revision
   from public.courses course where course.id=p_course_id;
   if v_course_revision<>p_expected_revision then
-    raise exception 'A revisão do curso mudou.' using errcode='40001';
+    raise exception 'A revisão do curso mudou.' using errcode='PT409';
   end if;
   select plan.version into strict v_plan_version
   from private.course_instructional_plans plan where plan.course_id=p_course_id;
