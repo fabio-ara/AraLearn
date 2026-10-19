@@ -289,6 +289,38 @@ function resolveStudyUnitReferences(items, values) {
   return resolved;
 }
 
+function studyUnitOutlineInScope(item, { part, module, lesson, microsequence }) {
+  if (microsequence) return item.curriculumPath?.didacticMicrosequenceId === microsequence.id;
+  if (lesson) return item.curriculumPath?.lessonId === lesson.id;
+  if (module) return item.curriculumPath?.moduleId === module.id;
+  if (part) return item.authoringPartId === part.id;
+  return true;
+}
+
+function resolveStudyUnitOutlineReferences(outline, values, scope) {
+  const units = outline?.plan?.studyUnits;
+  if (!Array.isArray(units)) {
+    throw new AuthoringApiError(503, "course_service_unavailable", "O índice compacto de unidades é inválido.");
+  }
+  const scoped = units.filter(item => studyUnitOutlineInScope(item, scope));
+  const resolved = values.map(value => {
+    const reference = humanReference(value, "A unidade de estudo");
+    if (reference.kind === "text") return textMatches(scoped, reference, item => [item.title], "A unidade de estudo");
+    const localPosition = scope.part || scope.module || scope.lesson || scope.microsequence;
+    const matches = scoped.filter((item, index) => Number(localPosition ? index + 1 : item.ordinal) === reference.value);
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) ambiguous("A unidade de estudo", matches.length, "position");
+    return positionedMatch(scoped, reference, (_item, index) => index, item => [item.title], "A unidade de estudo");
+  });
+  if (new Set(resolved.map(item => item.id)).size !== resolved.length) {
+    throw new AuthoringApiError(422, "duplicate_human_reference", "A seleção repete a mesma unidade de estudo.");
+  }
+  return resolved.map(item => ({ ...item,
+    selectionOrdinal: (scope.part || scope.module || scope.lesson || scope.microsequence)
+      ? scoped.indexOf(item) + 1 : item.ordinal
+  }));
+}
+
 async function resolveSource({ adapter, principal, course, source, deadlineAt }) {
   const reference = humanReference(source, "A fonte");
   const items = [];
@@ -372,6 +404,7 @@ export async function resolveHumanCourseContext({
   lesson = null,
   microsequence = null,
   studyUnits = [],
+  studyUnitReferenceIndex = false,
   source = null,
   internalSourceId = null,
   copySourcesOnly = false,
@@ -417,8 +450,23 @@ export async function resolveHumanCourseContext({
       } else resolvedMicrosequence = resolveMicrosequence(plan, resolvedPart, microsequence);
     }
   }
-  const resolvedStudyUnits = studyUnits.length
-    ? resolveStudyUnitReferences(await listStudyUnits({
+  let studyUnitReferences = [];
+  let resolvedStudyUnits = [];
+  if (studyUnits.length && studyUnitReferenceIndex) {
+    if (typeof adapter.getCourseInspectionTriageOutline !== "function") {
+      throw new AuthoringApiError(503, "course_service_unavailable", "O índice compacto de unidades está indisponível.");
+    }
+    const outline = await adapter.getCourseInspectionTriageOutline({ principal, courseId: resolvedCourse.id,
+      expectedRevision: resolvedCourse.revision, deadlineAt });
+    if (!plainObject(outline) || Number(outline.courseRevision) !== resolvedCourse.revision ||
+        outline.courseId !== resolvedCourse.id) {
+      throw new AuthoringApiError(409, "course_revision_conflict", "O curso mudou; releia a seleção de unidades.");
+    }
+    studyUnitReferences = resolveStudyUnitOutlineReferences(outline, studyUnits, {
+      part: resolvedPart, module: resolvedModule, lesson: resolvedLesson, microsequence: resolvedMicrosequence
+    });
+  } else if (studyUnits.length) {
+    resolvedStudyUnits = resolveStudyUnitReferences(await listStudyUnits({
         adapter,
         principal,
         course: resolvedCourse,
@@ -427,8 +475,8 @@ export async function resolveHumanCourseContext({
         lesson: resolvedLesson,
         microsequence: resolvedMicrosequence,
         deadlineAt
-      }), studyUnits)
-    : [];
+      }), studyUnits);
+  }
   const resolvedSource = internalSourceId !== null
     ? await resolveInternalSource({
         adapter,
@@ -454,6 +502,7 @@ export async function resolveHumanCourseContext({
     lesson: resolvedLesson,
     microsequence: resolvedMicrosequence,
     studyUnits: resolvedStudyUnits,
+    studyUnitReferences,
     source: resolvedSource
   };
 }
