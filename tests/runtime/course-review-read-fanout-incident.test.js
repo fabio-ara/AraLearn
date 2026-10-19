@@ -225,7 +225,8 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
   return { adapter, calls, units };
 }
 
-function configureReviewPageScope(adapter, units, microsequences, { unitMicrosequenceIds = [], partUnitIds = [] } = {}) {
+function configureReviewPageScope(adapter, units, microsequences, { unitMicrosequenceIds = [], partUnitIds = [],
+  partMicrosequenceIds = microsequences.map(item => item.id) } = {}) {
   const partUnits = new Set(partUnitIds);
   const specsById = new Map(microsequences.map(item => [item.id, item]));
   units.forEach((unit, index) => {
@@ -239,13 +240,17 @@ function configureReviewPageScope(adapter, units, microsequences, { unitMicroseq
     ...microsequence(item.id, item.title), position, scopeItemIds: ["scope-1"], dependencyMicrosequenceIds: []
   }]));
   lesson.microsequences = [...microById.values()];
-  adapter.plan.plan.parts[0].microsequences = microsequences.map((item, productionPosition) => ({
-    ...structuredClone(microById.get(item.id)), productionPosition,
-    studyUnitCount: units.filter(unit => unit.curriculumPath.didacticMicrosequence.id === item.id &&
-      partUnits.has(unit.studyUnit.id)).length,
-    curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
-      lessonId: lesson.id, lessonTitle: lesson.title }
-  }));
+  adapter.plan.plan.parts[0].microsequences = partMicrosequenceIds.map((id, productionPosition) => {
+    const item = specsById.get(id);
+    assert.ok(item, `parte inclui microssequência conhecida ${id}`);
+    return {
+      ...structuredClone(microById.get(item.id)), productionPosition,
+      studyUnitCount: units.filter(unit => unit.curriculumPath.didacticMicrosequence.id === item.id &&
+        partUnits.has(unit.studyUnit.id)).length,
+      curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
+        lessonId: lesson.id, lessonTitle: lesson.title }
+    };
+  });
 
   const indexedUnits = units.map((unit, index) => {
     const micro = unit.curriculumPath.didacticMicrosequence;
@@ -410,14 +415,16 @@ test("seleção global projeta explicações pela página e inclui vazias só na
 
 test("seleção por parte projeta unidades da parte e vazias apenas na primeira página", async () => {
   const { adapter, units } = createAdapter({ unitCount: 15, unitSize: 1_000 });
-  configureReviewPageScope(adapter, units, scopedMicroSpecs, {
-    unitMicrosequenceIds: [...Array(7).fill("ms-page-a"), ...Array(7).fill("ms-page-b"), "ms-empty"],
+  const partMicroSpecs = [...scopedMicroSpecs, { id: "ms-outside", title: "Explicação fora da parte" }];
+  configureReviewPageScope(adapter, units, partMicroSpecs, {
+    unitMicrosequenceIds: [...Array(7).fill("ms-page-a"), ...Array(7).fill("ms-page-b"), "ms-outside"],
+    partMicrosequenceIds: ["ms-page-a", "ms-page-b", "ms-empty"],
     partUnitIds: units.slice(0, 14).map(unit => unit.studyUnit.id)
   });
   const result = await readAll(adapter, { parte: 1 });
 
   assert.deepEqual(pageUnitIds(result.pages), Array.from({ length: 14 }, (_, index) => `unit-${index + 1}`),
-    "unit-15 pertence a outra parte e não torna ms-empty não vazia dentro deste escopo");
+    "unit-15 pertence a uma microssequência fora da parte e não a torna vazia dentro deste escopo");
   assert.equal(result.pages.length, 2);
   const plans = reviewPlanIdsByPage(result);
   assert.deepEqual(plans, [["ms-page-a", "ms-page-b", "ms-empty"], ["ms-page-b"]]);

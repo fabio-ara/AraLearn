@@ -4713,7 +4713,11 @@ test("argumentos de triagem reabrem os mesmos alvos em auditoria formal com micr
   value.getCourseInspectionTriageOutline = async ({ expectedRevision }) => ({
     contract: "aralearn.course-inspection-triage-outline.v1", courseId: COURSE_ID,
     courseRevision: expectedRevision, plan: { title: "Redes para iniciantes", parts: [],
-      curriculum: { modules: [] }, studyUnits: [
+      curriculum: { modules: [{ id: "module-a", position: 0, title: "Módulo", lessons: [
+        { id: "lesson-a", position: 0, title: "Lição", microsequences: micros.map(item => ({
+          id: item.id, title: item.title, position: item.position
+        })) }
+      ] }] }, studyUnits: [
         { id: "unit-a", title: "Unidade A", ordinal: 1,
           curriculumPath: { moduleId: "module-a", lessonId: "lesson-a", didacticMicrosequenceId: "micro-a" },
           authoringPartId: null },

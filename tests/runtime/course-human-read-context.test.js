@@ -90,8 +90,44 @@ function resolveAuditBasis(context, audit) {
   return resolved;
 }
 
+function reviewOutlinePlan(plan, units) {
+  const projectMicro = micro => ({ id: micro.id, title: micro.title,
+    ...(micro.position !== undefined ? { position: micro.position } : {}) });
+  return {
+    title: plan.title,
+    curriculum: { modules: (plan.curriculum?.modules ?? []).map(module => ({ id: module.id,
+      title: module.title, position: module.position,
+      lessons: (module.lessons ?? []).map(lesson => ({ id: lesson.id, title: lesson.title,
+        position: lesson.position, microsequences: (lesson.microsequences ?? []).map(projectMicro) })) })) },
+    parts: (plan.parts ?? []).map(part => ({ id: part.id, title: part.title, position: part.position,
+      microsequences: (part.microsequences ?? []).map(micro => ({ id: micro.id, title: micro.title,
+        productionPosition: micro.productionPosition })) })),
+    studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
+      ordinal: index + 1, curriculumPath: {
+        moduleId: item.curriculumPath?.moduleId ?? item.curriculumPath?.module?.id ?? "module",
+        lessonId: item.curriculumPath?.lessonId ?? item.curriculumPath?.lesson?.id ?? "lesson",
+        didacticMicrosequenceId: item.curriculumPath?.didacticMicrosequenceId ??
+          item.curriculumPath?.didacticMicrosequence?.id ?? "ms"
+      }, authoringPartId: item.authoringPartId ?? null }))
+  };
+}
+
+function setReviewPlan(adapter, plan) {
+  adapter.reviewPlanForOutline = plan;
+  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: structuredClone(plan) });
+}
+
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
   const calls = { courses: [], units: [], sources: [], annotations: [], reviews: [], inspections: [] };
+  const microsequences = [...new Map(units.map(item => {
+    const path = item.curriculumPath ?? {};
+    const value = path.didacticMicrosequence ?? {};
+    const id = path.didacticMicrosequenceId ?? value.id ?? "ms";
+    return [id, { id, title: value.title ?? "Microssequência", position: 0, explanation: null }];
+  })).values()];
+  const defaultPlan = { title: TITLE, parts: [], curriculum: { modules: microsequences.length ? [{
+    id: "module", title: "Módulo", position: 0, lessons: [{ id: "lesson", title: "Lição", position: 0, microsequences }]
+  }] : [] } };
   const adapter = {
     calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
@@ -107,7 +143,7 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
         title: courseId === COURSE.id ? TITLE : "Outro curso" };
     },
     async getCourseInstructionalPlan() {
-      return { courseRevision: adapter.revision, plan: { title: TITLE, parts: [] } };
+      return { courseRevision: adapter.revision, plan: structuredClone(adapter.reviewPlanForOutline) };
     },
     async getAuthoringProcessPreferences() {
       return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
@@ -162,14 +198,7 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     },
     async getCourseInspectionTriageOutline({ courseId }) {
       return { contract: "aralearn.course-inspection-triage-outline.v1", courseId,
-        courseRevision: adapter.revision, plan: { title: TITLE, curriculum: { modules: [] }, parts: [],
-          studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
-            ordinal: index + 1, curriculumPath: {
-              moduleId: item.curriculumPath?.moduleId ?? item.curriculumPath?.module?.id ?? "module",
-              lessonId: item.curriculumPath?.lessonId ?? item.curriculumPath?.lesson?.id ?? "lesson",
-              didacticMicrosequenceId: item.curriculumPath?.didacticMicrosequenceId ??
-                item.curriculumPath?.didacticMicrosequence?.id ?? "ms"
-            }, authoringPartId: item.authoringPartId ?? null })) } };
+        courseRevision: adapter.revision, plan: reviewOutlinePlan(adapter.reviewPlanForOutline, units) };
     },
     async getCourseSources(input) {
       calls.sources.push(input);
@@ -186,6 +215,7 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
         hasMore: false, nextCursor: null };
     }
   };
+  adapter.reviewPlanForOutline = defaultPlan;
   return adapter;
 }
 
@@ -276,6 +306,7 @@ test("planejamento grande tem resumo recuperável, foco local e leitura integral
       objective: "Conteúdo alheio ao foco. ".repeat(100), dependencies: [], scopeItemIds: ["shared-scope"] });
     plan.parts.push({ id: OTHER_PART, position: 1, title: "Lote alheio", intent: "Conteúdo alheio ao foco.",
       microsequences: lesson.microsequences.slice(1) });
+    adapter.reviewPlanForOutline = plan;
     adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision,
       mapApprovalReference: `persisted-map-${adapter.revision}`, plan: structuredClone(plan) });
     const summary = await channelCall(channel, adapter, "consultar_planejamento", { curso: TITLE, resumo: true });
@@ -731,13 +762,13 @@ test("leitura pura compartilha o escopo de Fontes por materialização e o fragm
     const units = Array.from({ length: 6 }, (_, index) => ({ ...studyUnit(index + 1),
       curriculumPath: { didacticMicrosequence: { id: "ms", title: "MS" } } }));
     const adapter = fixture({ units, totalUnits: 6 });
-    adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision,
-      plan: { title: TITLE, parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{
+    const plan = { title: TITLE, parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{
         id: "ms", title: "MS", position: 0,
         explanationPlan: { purpose: "Explicitar", prerequisites: [], relations: [], sourceIds: ["s1", "s2"] },
         explanation: { title: "Exp", content: [{ id: "p-0", package: "aralearn.resource.paragraph",
           version: "1.0.0", data: { text: "Texto único" } }] },
-        contentReview: { state: "draft" } }] }] } });
+        contentReview: { state: "draft" } }] }] };
+    setReviewPlan(adapter, plan);
     const reads = [];
     adapter.getCourseSources = async (input) => {
       reads.push(`${input.mode}:${input.sourceId ?? input.targetId}`);
@@ -808,10 +839,12 @@ test("revisão inclui um apoio literal por microssequência, com proposta e situ
   const adapter = fixture({ units });
   const support = { title: "Relação completa", content: [{ id: "support", package: "aralearn.resource.paragraph",
     version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
-  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
-    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
+  setReviewPlan(adapter, { title: TITLE,
+    curriculum: { modules: [{ id: "module", title: "Módulo", position: 0, lessons: [{ id: "lesson",
+      title: "Lição", position: 0, microsequences: [{ id: "ms", title: "Um avanço", position: 0 }] }] }] },
+    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", productionPosition: 0,
       explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds: [] },
-      explanation: support, contentReview: { state: "draft" } }] }] } });
+      explanation: support, contentReview: { state: "draft" } }] }] });
   const read = await execute(adapter, "preparar_revisao", {});
   assert.equal(read.context.explicacoes.length, 1);
   assert.deepEqual(read.context.explicacoes[0].conteudo, support);
@@ -829,9 +862,9 @@ function sourceReviewFixture() {
     data: { text: `Definição: ${quote} Confira.` }
   })) };
   const adapter = fixture();
-  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
+  setReviewPlan(adapter, { title: TITLE,
     parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Relações e estados",
-      productionPosition: 0, explanation: support }] }] } });
+      productionPosition: 0, explanation: support }] }] });
   const details = [
     { sourceId: "logic", title: "Lógica sintética", citationText: "Autoria sintética. Lógica.",
       url: "https://example.test/logic.pdf", status: "active", anchors: [
@@ -960,8 +993,12 @@ function focalAuditFixture({ unitCount = 3 } = {}) {
     explanation: { title: "Explicação", content: [{ id: `paragraph-${id}`, package: "aralearn.resource.paragraph",
       version: "1.0.0", data: { text: `Base ${id}. ` + 'Texto literal 😀 α "citado".\n'.repeat(80) } }] },
     contentReview: { state: "draft" } }));
-  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
-    parts: [{ id: PART, position: 0, title: "Foco", microsequences }] } });
+  setReviewPlan(adapter, { title: TITLE,
+    curriculum: { modules: [{ id: "module", title: "Módulo", position: 0, lessons: [{ id: "lesson",
+      title: "Lição", position: 0, microsequences: structuredClone(microsequences) }] }] },
+    parts: [{ id: PART, position: 0, title: "Foco", microsequences: microsequences.map((item, index) => ({
+      ...item, productionPosition: index
+    })) }] });
   const originalInspection = adapter.getCourseContentInspection;
   const inspections = new Map();
   adapter.getCourseContentInspection = async input => {
@@ -1540,7 +1577,8 @@ test("definições e valores se reconstroem por foco e página lógica nos dois 
           pages.push(context);
           continue;
         }
-        assert.equal(context.auditoriasPedagogicas.length, 2, "dois focos de mesmo título, independentes em cada página");
+        assert.equal(context.auditoriasPedagogicas.length, logicalPage === 0 ? 2 : 1,
+          "a página materializa somente as microssequências representadas nela");
         for (const target of [...(context.studyUnits ?? []), ...context.explicacoes]) {
           const ref = openContentReviewReference(target.referenciaInspecao, PRINCIPAL);
           const canonical = inspections.get(ref.targetId);
@@ -1601,13 +1639,14 @@ test("segunda página lógica entrega sua base completa com foco local, sem depe
   assert.equal(first.context.temMais, true);
   const second = await readLogicalPage(adapter, "preparar_revisao", { auditoria: true,
     continuacao: first.context.continuacao });
-  assert.equal(second.context.auditoriasPedagogicas.length, 2, "a leitura sem filtro mantém as explicações do planejamento nesta página");
+  assert.equal(second.context.auditoriasPedagogicas.length, 1,
+    "a segunda página mantém somente a explicação da microssequência que contém suas unidades");
   assert.equal(second.context.auditoriasPedagogicas[0].foco, 1);
   assert.equal(second.context.auditoriasPedagogicas[0].basis.microsequence.goal, "Objetivo 2");
   assert.equal(second.context.auditoriasPedagogicas[0].basis.studyUnits.length, 12, "a base contém a MS inteira, não só os alvos da página");
   assert.deepEqual(second.context.studyUnits.map(item => item.studyUnit.id), ["unit-13", "unit-14"]);
   assert.ok(second.context.studyUnits.every(item => item.auditoriaPedagogica.foco === 1));
-  assert.deepEqual(second.context.explicacoes.map(item => item.auditoriaPedagogica.foco), [2, 1]);
+  assert.deepEqual(second.context.explicacoes.map(item => item.auditoriaPedagogica.foco), [1]);
   assert.equal(second.context.temMais, false);
   assert.equal(second.context.continuacao, null);
 });
@@ -1879,8 +1918,9 @@ function reviewCoverageFixture({ count = 10, text, legacy = false, currentUnitId
   const units = Array.from({ length: count }, (_, index) => ({ ...studyUnit(index + 1, text),
     curriculumPath: { didacticMicrosequence: { id: "ms", title: "Um avanço" } } }));
   const adapter = fixture({ units });
-  const plan = sharedExplanationFixture().adapter.getCourseInstructionalPlan;
-  adapter.getCourseInstructionalPlan = plan;
+  const shared = sharedExplanationFixture();
+  adapter.reviewPlanForOutline = shared.adapter.reviewPlanForOutline;
+  adapter.getCourseInstructionalPlan = shared.adapter.getCourseInstructionalPlan;
   const inspect = adapter.getCourseContentInspection;
   adapter.getCourseContentInspection = async input => {
     const read = await inspect(input);
@@ -2108,10 +2148,12 @@ function sharedExplanationFixture({ sourceIds = [] } = {}) {
   const adapter = fixture({ units });
   const support = { title: "Relação completa", content: [{ id: "support", package: "aralearn.resource.paragraph",
     version: "1.0.0", data: { text: "Uma explicação compartilhada preserva este texto integral para as duas unidades." } }] };
-  adapter.getCourseInstructionalPlan = async () => ({ courseRevision: adapter.revision, plan: { title: TITLE,
-    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", position: 0,
+  setReviewPlan(adapter, { title: TITLE,
+    curriculum: { modules: [{ id: "module", title: "Módulo", position: 0, lessons: [{ id: "lesson",
+      title: "Lição", position: 0, microsequences: [{ id: "ms", title: "Um avanço", position: 0 }] }] }] },
+    parts: [{ id: PART, position: 0, title: "Lote", microsequences: [{ id: "ms", title: "Um avanço", productionPosition: 0,
       explanationPlan: { purpose: "Explicitar a relação", prerequisites: [], relations: ["Uma relação"], sourceIds },
-      explanation: support, contentReview: { state: "draft" } }] }] } });
+      explanation: support, contentReview: { state: "draft" } }] }] });
   return { adapter, support, units };
 }
 
