@@ -254,6 +254,27 @@ test("processo real preserva exit code e escreve log redigido sem saída narrati
   assert.equal(redactOutput("Bearer abcdefg"), "Bearer [REDACTED]");
 });
 
+test("runtime-focal envia seleção extensa em arquivo-resposta e remove o temporário", async t => {
+  const root = fixture(t);
+  fs.mkdirSync(path.join(root, "scripts"), { recursive: true });
+  fs.writeFileSync(path.join(root, "scripts/runTests.mjs"), `
+    import fs from "node:fs";
+    const [mode, file] = process.argv.slice(2);
+    const selected = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (mode !== "--focal-list" || selected.length !== 1200 ||
+        selected[0] !== "tests/runtime/test-0000.test.js" ||
+        selected.at(-1) !== "tests/runtime/test-1199.test.js") process.exit(1);
+    console.log("selection-response-ok");
+  `);
+  const args = ["scripts/runTests.mjs", "--focal", ...Array.from({ length: 1200 }, (_, index) =>
+    `tests/runtime/test-${String(index).padStart(4, "0")}.test.js`)];
+  const logPath = path.join(root, "test.log");
+  const result = await executeGate({ gate: "runtime-focal", args }, { root, logPath, env: {} });
+  assert.equal(result.exitCode, 0, fs.readFileSync(logPath, "utf8"));
+  assert.match(fs.readFileSync(logPath, "utf8"), /selection-response-ok/u);
+  assert.equal(fs.existsSync(path.join(root, ".validation/runtime-focal-files.json")), false);
+});
+
 test("E2E obrigatório exige execução, zero skip, zero retry instável e zero erro", () => {
   const pass = { stats: { expected: 3, unexpected: 0, skipped: 0, flaky: 0 }, errors: [] };
   assert.equal(verifyBrowserReport(pass).passed, 3);

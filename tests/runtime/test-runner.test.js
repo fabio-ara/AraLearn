@@ -46,6 +46,11 @@ test("runner mantém integral por padrão e seleciona arquivos explícitos sem d
     assert.deepEqual(resolveTestFiles([
       "--focal", "tests/kernel/pass.test.js", "tests/kernel/pass.test.js"
     ], root), [integral[0]]);
+    fs.mkdirSync(path.join(root, ".validation"));
+    fs.writeFileSync(path.join(root, ".validation/runtime-focal-files.json"),
+      '["tests/runtime/fail.test.js","tests/kernel/pass.test.js"]\n');
+    assert.deepEqual(resolveTestFiles(["--focal-list", ".validation/runtime-focal-files.json"], root), integral,
+      "a lista compacta mantém a ordenação determinística do runner");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -67,6 +72,13 @@ test("runner focal real não executa arquivo fora da seleção e integral propag
 
     const failedFocal = executeFixture(root, ["--focal", "tests/runtime/fail.test.js"]);
     assert.equal(failedFocal.status, 1, failedFocal.stderr + failedFocal.stdout);
+
+    fs.mkdirSync(path.join(root, ".validation"));
+    fs.writeFileSync(path.join(root, ".validation/runtime-focal-files.json"),
+      '["tests/kernel/pass.test.js"]\n');
+    const focalList = executeFixture(root, ["--focal-list", ".validation/runtime-focal-files.json"]);
+    assert.equal(focalList.status, 0, focalList.stderr + focalList.stdout);
+    assert.match(focalList.stdout, /selected passes/u);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

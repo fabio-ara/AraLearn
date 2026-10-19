@@ -18,10 +18,20 @@ export function resolveTestFiles(args = [], root = repositoryRoot) {
     if (!available.length) throw new Error("Nenhum arquivo de teste encontrado.");
     return available;
   }
-  if (args[0] !== "--focal" || args.length < 2) {
+  let selectedArguments;
+  if (args[0] === "--focal" && args.length >= 2) selectedArguments = args.slice(1);
+  else if (args[0] === "--focal-list" && args.length === 2 &&
+      args[1] === ".validation/runtime-focal-files.json") {
+    const list = JSON.parse(fs.readFileSync(path.join(root, args[1]), "utf8"));
+    if (!Array.isArray(list) || list.some(file => typeof file !== "string")) {
+      throw new Error("Lista de testes focais inválida.");
+    }
+    selectedArguments = list;
+  } else {
     throw new Error("Uso: npm run test:focal -- tests/runtime/arquivo.test.js [outro.test.js]. Sem argumentos, o runner executa o conjunto integral.");
   }
-  const selected = new Set(args.slice(1).map((argument) => {
+  if (!selectedArguments.length) throw new Error("Uso: a seleção focal precisa conter ao menos um teste.");
+  const selected = new Set(selectedArguments.map((argument) => {
     const absolute = path.resolve(root, argument);
     if (!available.includes(absolute)) {
       throw new Error(`Teste focal não encontrado em tests/kernel ou tests/runtime: ${argument}`);
