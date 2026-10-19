@@ -4,13 +4,20 @@ import { normalizeCourseContentInspection } from "../aralearn/runtime/domain/cou
 import { sha256Hex } from "./security.js";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u;
+const PURPOSES = ["human_review", "ai_inspection"];
 const invalid = () => { throw new AuthoringApiError(422, "invalid_content_review_reference",
   "Use a referência do objeto salvo que foi inspecionado, sem alterá-la."); };
+const invalidPurpose = purpose => {
+  const field = purpose === "ai_inspection" ? "referenciaInspecao" : "referenciaRevisao";
+  throw new AuthoringApiError(422, "content_review_reference_purpose_mismatch",
+    `Use ${field}, devolvida pela leitura da base para esta operação.`, { field });
+};
 
 // A referência conserva a base e a tentativa. O banco exige o proprietário e
 // verifica o hash corrente; este transporte não concede acesso nem prova leitura.
 export async function createContentReviewReference({ principal, read, requestId = null }) {
-  const value = read?.contract === "aralearn.course-ai-inspection.v1"
+  const purpose = read?.contract === "aralearn.course-ai-inspection.v1" ? "ai_inspection" : "human_review";
+  const value = purpose === "ai_inspection"
     ? normalizeCourseContentInspection(read) : normalizeCourseContentReview(read);
   if (requestId === null) {
     const hash = await sha256Hex(JSON.stringify({ actor: principal?.actorId, read: value }));
@@ -18,21 +25,28 @@ export async function createContentReviewReference({ principal, read, requestId 
   }
   if (!UUID.test(principal?.actorId) || !UUID.test(requestId)) invalid();
   return btoa(Array.from(new TextEncoder().encode(JSON.stringify({ actor: principal.actorId, courseId: value.courseId,
-    targetKind: value.targetKind, targetId: value.targetId, basisHash: value.basisHash, requestId })), byte => String.fromCharCode(byte)).join(""))
+    targetKind: value.targetKind, targetId: value.targetId, basisHash: value.basisHash, requestId, purpose })), byte => String.fromCharCode(byte)).join(""))
     .replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
 }
 
-export function openContentReviewReference(reference, principal) {
+export function openContentReviewReference(reference, principal, expectedPurpose = null) {
   let value;
   try {
     if (typeof reference !== "string" || reference.length > 2048 || !/^[A-Za-z0-9_-]+$/u.test(reference)) invalid();
     value = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(
       atob(reference.replaceAll("-", "+").replaceAll("_", "/")), character => character.charCodeAt(0))));
   } catch { invalid(); }
-  if (!value || Object.keys(value).sort().join(",") !== "actor,basisHash,courseId,requestId,targetId,targetKind" ||
+  const keys = Object.keys(value || {}).sort().join(",");
+  if (!value || !["actor,basisHash,courseId,requestId,targetId,targetKind",
+    "actor,basisHash,courseId,purpose,requestId,targetId,targetKind"].includes(keys) ||
       value.actor !== principal?.actorId || !UUID.test(value.actor) || !UUID.test(value.courseId) ||
       !UUID.test(value.requestId) || !["microsequence_explanation", "study_unit"].includes(value.targetKind) ||
       typeof value.targetId !== "string" || !value.targetId.trim() || value.targetId.length > 300 || /\p{Cc}/u.test(value.targetId) ||
-      !/^[a-f0-9]{64}$/u.test(value.basisHash)) invalid();
+      !/^[a-f0-9]{64}$/u.test(value.basisHash) ||
+      Object.hasOwn(value, "purpose") && !PURPOSES.includes(value.purpose) ||
+      expectedPurpose !== null && !PURPOSES.includes(expectedPurpose)) invalid();
+  if (value.purpose !== undefined && expectedPurpose !== null && value.purpose !== expectedPurpose) {
+    invalidPurpose(expectedPurpose);
+  }
   return value;
 }

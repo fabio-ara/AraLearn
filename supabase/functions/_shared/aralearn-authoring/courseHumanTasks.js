@@ -4264,7 +4264,7 @@ HUMAN_TASK_HANDLERS.retomar_correcao = async ({ adapter, principal, args, deadli
 
 HUMAN_TASK_HANDLERS.declarar_revisao = async ({ adapter, principal, args, deadlineAt }) => {
   if (!["revisado", "retirar"].includes(args.declaracao)) fail("invalid_human_task_argument", "Informe a declaração expressa da pessoa autora.");
-  const reference = openContentReviewReference(args.referencia, principal);
+  const reference = openContentReviewReference(args.referencia, principal, "human_review");
   const { courseId, targetKind, targetId, basisHash, requestId } = reference;
   const reviewed = args.declaracao === "revisado";
   const read = async () => normalizeCourseContentReview(await adapter.getCourseContentReview({ principal,
@@ -4292,7 +4292,8 @@ HUMAN_TASK_HANDLERS.declarar_revisao = async ({ adapter, principal, args, deadli
 };
 
 HUMAN_TASK_HANDLERS.registrar_inspecao = async ({ adapter, principal, args, deadlineAt }) => {
-  const { courseId, targetKind, targetId, basisHash, requestId } = openContentReviewReference(args.referencia, principal);
+  const { courseId, targetKind, targetId, basisHash, requestId } =
+    openContentReviewReference(args.referencia, principal, "ai_inspection");
   const report = normalizeCourseContentInspectionReport(args.parecer);
   const recover = async () => adapter.getCourseContentInspectionReceipt({ principal, courseId, targetKind, targetId,
     expectedBasisHash: basisHash, report, requestId, deadlineAt });
