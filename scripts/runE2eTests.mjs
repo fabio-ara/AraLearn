@@ -20,14 +20,14 @@ export function runE2eTests({
   execute = run, reportError = message => console.error(message)
 } = {}) {
   const originalEnvironment = { ...environment };
-  const hadRuntimeConfiguration = Boolean(
-    environment.ARALEARN_SUPABASE_URL && environment.ARALEARN_SUPABASE_PUBLISHABLE_KEY
-  );
-  const testEnvironment = {
+  const realLocalBackend = environment.ARALEARN_E2E_REAL_SUPABASE === "1";
+  const testEnvironment = realLocalBackend ? { ...environment } : {
     ...environment,
-    ARALEARN_SUPABASE_URL: environment.ARALEARN_SUPABASE_URL || "https://project.supabase.test",
-    ARALEARN_SUPABASE_PUBLISHABLE_KEY: environment.ARALEARN_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_e2e"
+    ARALEARN_SUPABASE_URL: "https://project.supabase.test",
+    ARALEARN_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_e2e"
   };
+  const changedRuntimeConfiguration = ["ARALEARN_SUPABASE_URL", "ARALEARN_SUPABASE_PUBLISHABLE_KEY"]
+    .some(name => testEnvironment[name] !== originalEnvironment[name]);
   const buildArguments = ["./scripts/stageWebRuntime.mjs", "--target", "pages", "--output", ".pages"];
   const invoke = (args, env) => {
     const result = execute(process.execPath, args, env, cwd);
@@ -46,7 +46,7 @@ export function runE2eTests({
   } finally {
     // Pages pode reutilizar .pages. Mesmo uma falha de spawn não deve deixar
     // no artefato uma configuração fictícia introduzida pelo runner.
-    if (!hadRuntimeConfiguration) {
+    if (changedRuntimeConfiguration) {
       try {
         if (invoke(buildArguments, buildEnvironment(originalEnvironment)) !== 0) status = 1;
       } catch (error) {
