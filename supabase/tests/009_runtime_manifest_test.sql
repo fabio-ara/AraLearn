@@ -5,7 +5,7 @@ select plan(33);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20261019180441','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20261019232352','o manifesto identifica as capacidades correntes em ordem canônica');
 select is((select count(*) from private.course_component_policy_assignments
   where private.valid_course_component_policy_v1(policy) is not true),0::bigint,
   'todas as políticas persistidas satisfazem o catálogo corrente');

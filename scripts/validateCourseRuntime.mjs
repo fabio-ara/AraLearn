@@ -309,7 +309,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20261019180441" ||
+  if (manifest.schemaRevision !== "20261019232352" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
