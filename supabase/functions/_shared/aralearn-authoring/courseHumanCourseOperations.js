@@ -134,27 +134,27 @@ export async function exportHumanCourse({ adapter, principal, args, deadlineAt }
   const cacheKey = humanExportCacheKey(principal, selected, state, annotationSetVersion);
   let prepared = reusedHumanExport(adapter, cacheIdentity, cacheKey, state);
   if (!prepared) {
-    let exported = await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt });
-    assertSelectedExport(exported, selected);
-    if (!isValidatedCourseAuthoringExport(exported)) {
-      exported = normalizeCourseAuthoringExport(exported, { expectedSelection: {
-        courseId: selected.courseId, expectedRevision: selected.expectedRevision, scope: selected.scope
-      } });
-    }
-    let serialized = takeSerializedCourseAuthoringExport(exported);
-    try {
-      if (serialized === null) {
-        serialized = serializeCourseAuthoringExport(exported);
-        takeSerializedCourseAuthoringExport(exported);
+    {
+      let exported = await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt });
+      assertSelectedExport(exported, selected);
+      if (!isValidatedCourseAuthoringExport(exported)) {
+        exported = normalizeCourseAuthoringExport(exported, { expectedSelection: {
+          courseId: selected.courseId, expectedRevision: selected.expectedRevision, scope: selected.scope
+        } });
       }
+      let serialized = takeSerializedCourseAuthoringExport(exported);
+      try {
+        if (serialized === null) {
+          serialized = serializeCourseAuthoringExport(exported);
+          takeSerializedCourseAuthoringExport(exported);
+        }
+      }
+      catch (error) {
+        if (error instanceof RangeError) throw new AuthoringApiError(413, "course_export_too_large", "A exportação excede o limite de 32 MiB.");
+        throw error;
+      }
+      prepared = await prepareSerializedAuthoringExportLiteral(serialized);
     }
-    catch (error) {
-      if (error instanceof RangeError) throw new AuthoringApiError(413, "course_export_too_large", "A exportação excede o limite de 32 MiB.");
-      throw error;
-    }
-    prepared = await prepareSerializedAuthoringExportLiteral(serialized);
-    serialized = null;
-    exported = null;
     const finalAnnotationSetVersion = await readExportAnnotationSetVersion(adapter, principal, selected, deadlineAt);
     if (finalAnnotationSetVersion !== annotationSetVersion) {
       throw new AuthoringApiError(409, "human_read_context_changed", "As observações mudaram durante a exportação. Recomece a consulta.");

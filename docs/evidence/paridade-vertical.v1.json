@@ -795,6 +795,7 @@
         "manifestFeatures": [
           "course-anchored-annotations-v1",
           "course-anchored-annotations-atomic-create-v1",
+          "course-export-annotation-version-fence-v1",
           "course-annotation-subject-classification-v1"
         ],
         "databasePatterns": [

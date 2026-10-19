@@ -197,7 +197,7 @@ test("seleção por microssequência usa outline compacto para ordinal global e 
     await call(adapter, "exportar_autoria", { recorte }, readPrincipal);
   }
   for (const invalidIdentity of [{ courseId: RIGHT }, { courseRevision: 8 }]) {
-    adapter.getCourseInspectionTriageOutline = async request => ({ ...structuredClone(outline), ...invalidIdentity });
+    adapter.getCourseInspectionTriageOutline = async () => ({ ...structuredClone(outline), ...invalidIdentity });
     adapter.getCourseAuthoringExport = async () => { throw Error("Não exportar com uma identidade/revisão divergente"); };
     await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda", microssequencia: 1 } }, readPrincipal),
       error => error.status === 409 && error.code === "course_revision_conflict");
