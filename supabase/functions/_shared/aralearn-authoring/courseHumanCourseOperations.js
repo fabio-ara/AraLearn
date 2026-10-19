@@ -53,9 +53,11 @@ async function selection(adapter, principal, input, deadlineAt) {
       Object.keys(input).some(key => !["curso", "parte", "microssequencia", "unidade"].includes(key))) fail("Selecione curso e recorte legíveis.");
   const resolved = await resolveHumanCourseContext({ adapter, principal, course: humanText(input.curso, "o curso"),
     part: input.parte ?? null, microsequence: input.microssequencia ?? null,
-    studyUnits: input.unidade === undefined ? [] : [input.unidade], deadlineAt });
+    studyUnits: input.unidade === undefined ? [] : [input.unidade],
+    studyUnitReferenceIndex: input.unidade !== undefined, deadlineAt });
+  const selectedStudyUnit = resolved.studyUnits[0] ?? resolved.studyUnitReferences[0] ?? null;
   return { courseId: resolved.course.id, expectedRevision: resolved.course.revision,
-    scope: resolved.studyUnits.length ? { kind: "study_unit", ref: resolved.studyUnits[0].studyUnit.id }
+    scope: selectedStudyUnit ? { kind: "study_unit", ref: selectedStudyUnit.studyUnit?.id ?? selectedStudyUnit.id }
       : resolved.microsequence ? { kind: "didactic_microsequence", ref: resolved.microsequence.id }
         : resolved.part ? { kind: "authoring_part", ref: resolved.part.id } : { kind: "course", ref: null } };
 }

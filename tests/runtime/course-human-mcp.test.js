@@ -4808,6 +4808,67 @@ test("triagem resolve seleção por índice compacto e não lista unidades liter
   assert.equal(output.context.escopo.kind, "selected_units");
 });
 
+test("triagem compartilha resolução compacta local/global e não vaza unidades fora do escopo", async () => {
+  const value = adapter();
+  const targetIds = new Set(["unit-66", "unit-67"]);
+  const outlineUnits = Array.from({ length: 67 }, (_, index) => {
+    const ordinal = index + 1, local = ordinal >= 62;
+    return { id: `unit-${ordinal}`, title: `Unidade ${ordinal}`, ordinal,
+      curriculumPath: local
+        ? { moduleId: "module-2", lessonId: "lesson-3", didacticMicrosequenceId: "micro-1" }
+        : { moduleId: "module-1", lessonId: "lesson-1", didacticMicrosequenceId: "micro-other" },
+      authoringPartId: null };
+  });
+  value.getCourseInspectionTriageOutline = async ({ courseId, expectedRevision }) => ({
+    contract: "aralearn.course-inspection-triage-outline.v1", courseId, courseRevision: expectedRevision,
+    plan: { title: "Redes para iniciantes", parts: [], curriculum: { modules: [
+      { id: "module-1", position: 0, title: "Módulo 1", lessons: [] },
+      { id: "module-2", position: 1, title: "Módulo 2", lessons: [
+        { id: "lesson-3", position: 2, title: "Lição 3", microsequences: [
+          { id: "micro-1", position: 0, title: "Micro 1" }
+        ] }
+      ] }
+    ] }, studyUnits: outlineUnits }
+  });
+  value.getCourseInstructionalPlan = async () => ({ courseId: COURSE_ID, courseRevision: 7, plan: {
+    id: "plan", version: 1, title: "Redes para iniciantes", objective: "Objetivo", parts: [],
+    curriculum: { modules: [
+      { id: "module-1", position: 0, title: "Módulo 1", lessons: [] },
+      { id: "module-2", position: 1, title: "Módulo 2", lessons: [
+        { id: "lesson-3", position: 2, title: "Lição 3", microsequences: [
+          { id: "micro-1", position: 0, title: "Micro 1" }
+        ] }
+      ] }
+    ] }
+  } });
+  value.listCourseStudyUnits = async () => { throw new Error("triagem não deve varrer a lista antiga de unidades"); };
+  const selectedPerRead = [];
+  value.getCourseInspectionTriagePage = async input => {
+    selectedPerRead.push(input.selectedUnitIds);
+    assert.equal(input.expectedRevision, 7);
+    assert.deepEqual(input.selectedUnitIds, ["unit-66", "unit-67"]);
+    return { contract: "aralearn.course-inspection-triage-page.v1", courseId: COURSE_ID,
+      courseRevision: 7, scope: { kind: "selected_units", id: null },
+      items: input.selectedUnitIds.map((targetId, index) => ({ targetKind: "study_unit", targetId,
+        title: targetId === "unit-66" ? "Unidade 66" : "Unidade 67", ordinal: index + 1,
+        focusArguments: { unidades: [index + 1] }, state: "pending", dimensionsCurrentComplete: null, report: null })),
+      totalCount: 2, hasMore: false, nextCursor: null };
+  };
+  const local = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", modulo: 2, licao: 3, microssequencia: 1,
+      unidades: [5, 6], resumo: true } });
+  const global = await executeHumanCourseTask({ adapter: value, principal: PRINCIPAL, name: "preparar_revisao",
+    rawArguments: { curso: "Redes para iniciantes", unidades: [66, 67], resumo: true } });
+  assert.deepEqual(selectedPerRead, [["unit-66", "unit-67"], ["unit-66", "unit-67"]]);
+  assert.deepEqual(local.context.alvos.map(item => item.alvo.titulo), ["Unidade 66", "Unidade 67"]);
+  assert.equal(global.context.alvos.length, 2);
+  await assert.rejects(() => executeHumanCourseTask({ adapter: value, principal: PRINCIPAL,
+    name: "preparar_revisao", rawArguments: { curso: "Redes para iniciantes", modulo: 2, licao: 3,
+      microssequencia: 1, unidades: [7], resumo: true } }), error => error.status === 404);
+  assert.equal(selectedPerRead.length, 2, "unidade fora do escopo deve falhar antes da leitura da página");
+  assert.ok(targetIds.has(selectedPerRead[0][0]) && targetIds.has(selectedPerRead[0][1]));
+});
+
 test("triagem não escolhe unidade homônima por título", async () => {
   const value = adapter();
   value.getCourseInspectionTriageOutline = async ({ expectedRevision }) => ({
