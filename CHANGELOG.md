@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.128] - 2026-10-18
+
+### Corrigido
+
+- O Planejamento volta a carregar em cursos extensos cujo conteúdo explicativo excede o limite da leitura completa. A consulta do mapa curricular preserva sua estrutura, referências e controles de acesso.
+
 ## [0.0.127] - 2026-10-18
 
 ### Corrigido
