@@ -36,10 +36,11 @@ export function runTests(args = [], root = repositoryRoot) {
   const testConcurrency = process.env.ARALEARN_TEST_CONCURRENCY || "1";
   const mode = args.length ? "focal" : "integral";
   process.stdout.write(`Testes: modo ${mode}, ${files.length} arquivo(s).\n`);
+  const relativeFiles = files.map(file => path.relative(root, file));
   const result = spawnSync(process.execPath, [
     "--test",
     `--test-concurrency=${testConcurrency}`,
-    ...files
+    ...relativeFiles
   ], {
     cwd: root,
     stdio: "inherit"

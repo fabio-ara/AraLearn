@@ -344,8 +344,26 @@ function producerAdapter() {
       inspection: { state: 'unregistered', basisHash: 'b'.repeat(64) },
       pedagogicalBasis: pedagogicalBasis(input.targetKind, input.targetId) }; },
     async getCourseContentInspectionReceipt() { return null; },
+    async getCourseInspectionTriageOutline({ courseId, expectedRevision }) {
+      return { contract: 'aralearn.course-inspection-triage-outline.v1', courseId,
+        courseRevision: expectedRevision, plan: { title: 'C', curriculum: { modules: [{ id: 'module-1',
+          title: 'Módulo', position: 0, lessons: [{ id: 'lesson-1', title: 'Lição', position: 0,
+            microsequences: [{ id: MS, title: 'MS', position: 0 }] }] }] }, parts: [],
+          studyUnits: units.map((item, index) => ({ id: item.studyUnit.id,
+            title: item.studyUnit.title ?? item.studyUnit.content?.title ?? `Unidade ${index + 1}`,
+            ordinal: index + 1,
+            curriculumPath: { moduleId: 'module-1', lessonId: 'lesson-1', didacticMicrosequenceId: MS },
+            authoringPartId: null })) } };
+    },
     async listCourseStudyUnits(input) { const start = input.cursorStudyUnitId
       ? Number(String(input.cursorStudyUnitId).split('-').at(-1)) : 0;
+      if (input.anchorStudyUnitId) {
+        const item = units.find(unit => unit.studyUnit.id === input.anchorStudyUnitId);
+        return { courseRevision: COURSE.revision, items: item ? [{ ...structuredClone(item),
+          curriculumPath: { module: { id: 'module-1' }, lesson: { id: 'lesson-1' },
+            didacticMicrosequence: { id: MS } }, authoringPart: null }] : [],
+          hasMore: false, nextCursor: null };
+      }
       const items = units.slice(start, start + 12); const end = start + items.length;
       return { items: structuredClone(items), hasMore: end < units.length,
         nextCursor: end < units.length ? { studyUnitId: `unit-${end}` } : null }; },

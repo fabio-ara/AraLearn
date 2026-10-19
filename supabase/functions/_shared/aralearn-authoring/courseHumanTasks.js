@@ -73,7 +73,8 @@ import { normalizeCourseInspectionTriagePage } from "../aralearn/runtime/domain/
 import { normalizePedagogicalAudit, projectPedagogicalAudit, requirePedagogicalAuditConsistency,
   PEDAGOGICAL_AUDIT_DIMENSIONS, hasCurrentPedagogicalAudit } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
-import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS } from "./courseHumanDesignTasks.js";
+import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS,
+  humanUnitApplication } from "./courseHumanDesignTasks.js";
 import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS } from "./courseHumanStructureTasks.js";
 import { AUTHORING_PROCESS_REFERENCE_SCHEMA, createAuthoringProcessReference, openAuthoringProcessReference } from "./courseAuthoringProcessReference.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope, normalizeHumanNavigationEnvelope } from "./courseHumanNavigation.js";
@@ -2507,7 +2508,8 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
   };
 }
 
-async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [], planReader = null }) {
+async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [], planReader = null,
+  studyUnitReferenceIndex = false }) {
   return await resolveHumanCourseContext({
     adapter,
     principal,
@@ -2517,6 +2519,7 @@ async function resolveTaskContext({ adapter, principal, args, deadlineAt, units 
     part: optionalReference(args.parte, "parte") ?? null,
     microsequence: optionalReference(args.microssequencia, "microssequencia") ?? null,
     studyUnits: units,
+    studyUnitReferenceIndex,
     source: optionalReference(args.fonte, "fonte") ?? null,
     planReader,
     deadlineAt
@@ -3242,7 +3245,7 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
           : "A intenção solicitada e o valor aplicado podem divergir legitimamente; quer manter a herança, fixar alguma condição ou detalhar um parâmetro?",
         context: {
           configuracaoSolicitada: projectConfiguration(configuration),
-          aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null,
+          aplicacaoNaUnidade: humanUnitApplication(unit),
           configuracaoAplicadaNaUnidade: appliedConfiguration
         }
       }
@@ -3327,6 +3330,23 @@ function reviewAuditNextDecision(coverage) {
 // é o último identificador da seção anterior e precisa pertencer à seleção.
 const MAX_SELECTED_PAGE_ITEMS = 12;
 const MAX_SELECTED_PAGE_BYTES = 65536;
+const selectedStudyUnitByteLength = (item, encoder = new TextEncoder()) =>
+  encoder.encode(JSON.stringify(item)).byteLength;
+
+function selectedStudyUnitReferencePage(selected, cursorStudyUnitId) {
+  let start = 0;
+  if (cursorStudyUnitId !== null && cursorStudyUnitId !== undefined) {
+    const index = selected.findIndex(item => item?.id === cursorStudyUnitId);
+    if (index < 0) fail("human_read_context_changed",
+      "A seleção mudou desde a página anterior; repita a consulta inicial.", null, 409);
+    start = index + 1;
+  }
+  const items = selected.slice(start, start + MAX_SELECTED_PAGE_ITEMS);
+  const hasMore = start + items.length < selected.length;
+  return { items, hasMore,
+    nextCursor: hasMore ? { studyUnitId: items.at(-1).id } : null };
+}
+
 function paginateSelectedStudyUnits(selected, cursorStudyUnitId) {
   const encoder = new TextEncoder();
   let start = 0;
@@ -3339,7 +3359,7 @@ function paginateSelectedStudyUnits(selected, cursorStudyUnitId) {
   const items = [];
   let bytes = 0;
   for (let index = start; index < selected.length; index += 1) {
-    const size = encoder.encode(JSON.stringify(selected[index])).byteLength;
+    const size = selectedStudyUnitByteLength(selected[index], encoder);
     // O primeiro item entra sempre, mesmo acima de 64 KiB: a página nunca fica
     // vazia com hasMore, e o volume é recuperado por fragmentos literais.
     if (items.length && (items.length >= MAX_SELECTED_PAGE_ITEMS ||
@@ -3488,14 +3508,67 @@ async function ensureReviewPlan({ adapter, principal, resolved, deadlineAt }) {
 
 // A página de unidades é lida uma vez por requisição, com o cursor da continuação.
 async function readReviewPageUnitPage({ adapter, principal, resolved, continuation, units, deadlineAt }) {
-  const unitPage = units.length
-    ? paginateSelectedStudyUnits(resolved.studyUnits, continuation.p)
+  let unitPage;
+  if (units.length && resolved.studyUnitReferences?.length) {
+    const referencePage = selectedStudyUnitReferencePage(resolved.studyUnitReferences, continuation.p);
+    const scopeKind = resolved.microsequence ? "didactic_microsequence" : resolved.lesson ? "lesson"
+      : resolved.module ? "module" : resolved.part ? "authoring_part" : "course";
+    const scopeId = resolved.microsequence?.id ?? resolved.lesson?.id ?? resolved.module?.id ?? resolved.part?.id ?? null;
+    const items = [];
+    const encoder = new TextEncoder();
+    let bytes = 0;
+    let stoppedAtPageBoundary = false;
+    for (let index = 0; index < referencePage.items.length; index += 1) {
+      const reference = referencePage.items[index];
+      const page = await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
+        expectedRevision: resolved.course.revision, scopeKind, scopeId,
+        anchorStudyUnitId: reference.id, cursorStudyUnitId: null, direction: "forward",
+        limit: 1, maxBytes: 512 * 1024, inspectionVersion: 2, deadlineAt });
+      const item = Array.isArray(page?.items) && page.items.length === 1 ? page.items[0] : null;
+      const path = item?.curriculumPath;
+      const sameIndexedScope = path?.module?.id === reference.curriculumPath?.moduleId &&
+        path?.lesson?.id === reference.curriculumPath?.lessonId &&
+        path?.didacticMicrosequence?.id === reference.curriculumPath?.didacticMicrosequenceId &&
+        (item?.authoringPart?.id ?? null) === reference.authoringPartId;
+      const inScope = resolved.part ? item?.authoringPart?.id === resolved.part.id
+        : resolved.microsequence ? path?.didacticMicrosequence?.id === resolved.microsequence.id
+          : resolved.lesson ? path?.lesson?.id === resolved.lesson.id
+            : resolved.module ? path?.module?.id === resolved.module.id : true;
+      if (!item || item.studyUnit?.id !== reference.id || Number(item.ordinal) !== reference.selectionOrdinal ||
+          !sameIndexedScope || !inScope || page.courseRevision !== undefined &&
+          Number(page.courseRevision) !== resolved.course.revision) {
+        fail("human_read_context_changed", "A unidade selecionada divergiu do índice ou do escopo atual; repita a consulta.", null, 409);
+      }
+      const size = selectedStudyUnitByteLength(item, encoder);
+      if (items.length && (items.length >= MAX_SELECTED_PAGE_ITEMS ||
+          bytes + size > MAX_SELECTED_PAGE_BYTES)) {
+        // Este único lookahead determina a fronteira UTF-8; o cursor fica no último
+        // item incluído para que o alvo sondado seja relido como primeiro da próxima página.
+        stoppedAtPageBoundary = true;
+        break;
+      }
+      items.push(item);
+      bytes += size;
+      if ((items.length >= MAX_SELECTED_PAGE_ITEMS || bytes >= MAX_SELECTED_PAGE_BYTES) &&
+          (index + 1 < referencePage.items.length || referencePage.hasMore)) {
+        stoppedAtPageBoundary = true;
+        break;
+      }
+    }
+    resolved.studyUnits = items;
+    const hasMore = stoppedAtPageBoundary || referencePage.hasMore;
+    unitPage = { items, hasMore,
+      nextCursor: hasMore && items.length ? { studyUnitId: items.at(-1).studyUnit.id } : null };
+  } else {
+    unitPage = units.length
+      ? paginateSelectedStudyUnits(resolved.studyUnits, continuation.p)
     : await adapter.listCourseStudyUnits({ principal, courseId: resolved.course.id,
       expectedRevision: resolved.course.revision,
       scopeKind: resolved.microsequence ? 'didactic_microsequence' : resolved.part ? 'authoring_part' : 'course',
       scopeId: resolved.microsequence?.id ?? resolved.part?.id ?? null,
       cursorStudyUnitId: continuation.p, direction: 'forward', limit: 12, maxBytes: 65536,
       inspectionVersion: 2, deadlineAt });
+  }
   if (!Array.isArray(unitPage?.items) || unitPage.hasMore &&
       (typeof unitPage.nextCursor?.studyUnitId !== 'string' ||
        !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
@@ -3567,7 +3640,8 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   }
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const planReader = reviewPlanReader(adapter);
-  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units, planReader });
+  const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units, planReader,
+    studyUnitReferenceIndex: units.length > 0 });
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   if (args.comparacao !== undefined) {
     const reference = normalizeObservationComparisonReference(args.comparacao);

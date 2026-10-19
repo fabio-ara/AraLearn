@@ -72,6 +72,47 @@ test("runner focal real não executa arquivo fora da seleção e integral propag
   }
 });
 
+test("runner focal executa uma seleção longa completa com caminhos relativos", () => {
+  const parent = os.tmpdir();
+  const root = fs.mkdtempSync(path.join(parent, `aralearn-long-test-runner-${"x".repeat(112)}-`));
+  fs.mkdirSync(path.join(root, "tests/kernel"), { recursive: true });
+  const runtime = path.join(root, "tests/runtime");
+  fs.mkdirSync(runtime, { recursive: true });
+  fs.writeFileSync(path.join(root, "package.json"), '{"type":"module"}\n');
+  const selected = Array.from({ length: 270 }, (_, index) => {
+    const name = `focal-${String(index).padStart(3, "0")}.test.js`;
+    fs.writeFileSync(path.join(runtime, name),
+      `import test from "node:test"; test("identity-${String(index).padStart(3, "0")}", () => {});\n`);
+    return path.join("tests/runtime", name);
+  });
+
+  try {
+    const files = resolveTestFiles(["--focal", ...selected], root);
+    const relativeFiles = files.map(file => path.relative(root, file));
+    assert.equal(files.length, 270);
+    assert.equal(new Set(relativeFiles).size, 270);
+    assert.deepEqual(relativeFiles, selected);
+    assert.ok(relativeFiles.every(file => !path.isAbsolute(file)));
+    if (process.platform === "win32") {
+      assert.ok(files.every(file => file.length < 250), "cada caminho individual deve continuar válido no Windows");
+      assert.ok(files.join(" ").length > 32_767, "os caminhos absolutos reproduzem o limite do spawn Windows");
+      assert.ok(relativeFiles.join(" ").length < 32_767, "a lista relativa cabe em um único spawn Windows");
+    }
+
+    const result = executeFixture(root, ["--focal", ...selected]);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stdout, /modo focal, 270 arquivo/u);
+    assert.match(result.stdout, /(?:ℹ|#) tests 270/u);
+    assert.match(result.stdout, /(?:ℹ|#) pass 270/u);
+    for (let index = 0; index < 270; index += 1) {
+      assert.ok(result.stdout.includes(`identity-${String(index).padStart(3, "0")}`),
+        `a seleção perdeu o arquivo ${selected[index]}`);
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("seleção vazia, desconhecida ou fora das suítes falha antes de iniciar testes", () => {
   for (const args of [
     ["--focal"],
