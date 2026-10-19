@@ -848,7 +848,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "consultar_configuracao",
     "Consultar a configuração autoral",
-    "Lê a configuração solicitada e, na unidade, o aplicado. Intenção efetiva automática nula pede calibração; aplicado nulo é pendente; vazio é escolha resolvida.",
+    "Lê a configuração solicitada e, na unidade, o aplicado. A aplicação também distingue oportunidade autoral, operação do requisito e dimensões variadas. Intenção efetiva automática nula pede calibração; aplicado nulo é pendente; vazio é escolha resolvida.",
     inputSchema({
       curso: COURSE_SCHEMA,
       modulo: HUMAN_REFERENCE_SCHEMA,
@@ -874,7 +874,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_revisao",
     "Preparar uma revisão coerente",
-    "Lê conteúdo literal e contexto da revisão; resumo:true consulta estado sem validade formal.",
+    "Lê conteúdo literal e contexto da revisão; em auditoria, oportunidade é o caso autoral aplicado, operação invariável é a tarefa do requisito e dimensões são variações declaradas. resumo:true consulta estado sem validade formal.",
     inputSchema({
       curso: COURSE_SCHEMA,
       comparacao: OBSERVATION_COMPARISON_SCHEMA,
@@ -1284,7 +1284,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
 export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.8.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:d619cc0a872bf634378945f30e936b8078d8ccae712f60e61226ffbe15a7dd7f";
+  "sha256:03f434bd96fda0adbbc677babff41d3b56358f8d1264133d7c773d6b05fa042e";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1428,6 +1428,21 @@ function normalizeObservationComparisonReference(value) {
   return { ...normalized, targetSetVersion };
 }
 
+function addHumanOpportunityAliases(application) {
+  if (!application || typeof application !== "object" || Array.isArray(application) ||
+      !Array.isArray(application.practiceApplications)) return application;
+  // opportunityId is authored case text, not a technical identity. Give it an
+  // explicit human field before the generic *_id filter removes technical refs.
+  return { ...application, practiceApplications: application.practiceApplications.map(practice =>
+    practice && typeof practice === "object" && !Array.isArray(practice) &&
+      typeof practice.opportunityId === "string"
+      ? { ...practice, oportunidade: practice.opportunityId } : practice) };
+}
+
+const HUMAN_APPLICATION_FIELDS = new Set([
+  "application", "aplicacao", "aplicacao_na_unidade", "design_application"
+]);
+
 function withoutTechnicalState(value) {
   if (Array.isArray(value)) return value.map(withoutTechnicalState);
   if (!value || typeof value !== "object") return value;
@@ -1441,6 +1456,10 @@ function withoutTechnicalState(value) {
   const projected = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalizedKey = key.replace(/([a-z0-9])([A-Z])/gu, "$1_$2").toLowerCase();
+    if (HUMAN_APPLICATION_FIELDS.has(normalizedKey)) {
+      projected[key] = withoutTechnicalState(addHumanOpportunityAliases(entry));
+      continue;
+    }
     if (normalizedKey === "inspecao_ia" && entry?.state === "current") {
       const complete = hasCurrentPedagogicalAudit(entry.report?.checks);
       projected[key] = { ...withoutTechnicalState(entry), dimensoesAtuaisCompletas: complete,

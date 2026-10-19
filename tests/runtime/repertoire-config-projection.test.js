@@ -181,6 +181,50 @@ test("curso e escopo sem unidade continuam preservados", async () => {
   }
 });
 
+test("readback focal expõe oportunidades aplicadas sem expor referências internas", async () => {
+  const application = {
+    mode: "practice",
+    practiceApplications: [
+      { evidenceRequirementId: "40000000-0000-4000-8000-000000000001",
+        opportunityId: "Identificar FTTB pelo ponto em que a fibra termina e reconhecer que o cenário não informa arquitetura óptica nem taxa.",
+        invariantTaskOperation: "Classificar alcance e ponto de chegada da fibra",
+        variedDimensions: [] },
+      { evidenceRequirementId: "40000000-0000-4000-8000-000000000001",
+        opportunityId: "Associar WPAN, WMAN e WWAN aos alcances pessoal, metropolitano e geograficamente amplo, mantendo separados o meio sem fio e o alcance.",
+        invariantTaskOperation: "Classificar alcance e ponto de chegada da fibra",
+        variedDimensions: [] }
+    ]
+  };
+  const adapter = adapterFixture(application);
+  adapter.getCourseInstructionalPlan = async () => {
+    adapter.reads.push("plan");
+    const read = planRead();
+    read.plan.evidenceRequirements = [{ id: "40000000-0000-4000-8000-000000000001", position: 0,
+      version: 1, statement: "Classificar alcance e ponto de chegada da fibra",
+      description: "Relacionar siglas de alcance ao critério e identificar FTTx pelas fronteiras do cenário." }];
+    return read;
+  };
+  const args = { curso: TITLE, microssequencia: "Sockets", unidade: 1 };
+  const output = await throughMcp(adapter, args);
+  const practices = output.context.aplicacao.practiceApplications;
+  assert.deepEqual(practices.map(({ oportunidade }) => oportunidade), application.practiceApplications.map(({ opportunityId }) => opportunityId));
+  assert.deepEqual(practices.map(({ invariantTaskOperation }) => invariantTaskOperation),
+    ["Classificar alcance e ponto de chegada da fibra", "Classificar alcance e ponto de chegada da fibra"]);
+  assert.deepEqual(practices.map(({ variedDimensions }) => variedDimensions), [[], []]);
+  assert.notEqual(practices[0].oportunidade, output.context.evidencias[0].descricao);
+  assert.ok(practices.every(item => !Object.hasOwn(item, "opportunityId") &&
+    !Object.hasOwn(item, "evidenceRequirementId")));
+  assert.equal(output.context.aplicacao.mode, "practice");
+  const configuration = await executeHumanCourseTask({ adapter: adapterFixture(application), principal: PRINCIPAL,
+    name: "consultar_configuracao", rawArguments: args });
+  assert.deepEqual(configuration.context.aplicacaoNaUnidade.practiceApplications.map(item => item.oportunidade),
+    application.practiceApplications.map(({ opportunityId }) => opportunityId));
+  assert.ok(configuration.context.aplicacaoNaUnidade.practiceApplications.every(item =>
+    !Object.hasOwn(item, "opportunityId") && !Object.hasOwn(item, "evidenceRequirementId")));
+  assert.equal(adapter.reads.filter(read => read === "plan").length, 1);
+  assert.equal(adapter.reads.includes("units"), true);
+});
+
 test("recibo de recuperação incompleto permanece falha fechada", async () => {
   const adapter = adapterFixture(null);
   adapter.getCourseDesignRecoveryReceipt = async () => ({
