@@ -117,7 +117,7 @@ function leanReviewPlan(value, courseId) {
 function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false,
   reviewProjection = "full" } = {}) {
   const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize, multibyte));
-  const calls = { units: [], unitBodies: [], outlines: [], reviews: [], inspections: [], annotations: [], sources: [],
+  const calls = { courses: [], units: [], unitBodies: [], outlines: [], reviews: [], inspections: [], annotations: [], sources: [],
     instructionalPlans: [], reviewPlans: [] };
   const totals = { instructionalPlans: 0, reviewPlans: 0 };
   const plan = { courseRevision: COURSE.revision, plan: { id: "plan-review", version: 2,
@@ -143,7 +143,9 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
     reset() { for (const key of Object.keys(calls)) calls[key].length = 0; },
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
     async listCourses() { return { items: [{ courseId: COURSE.id, title: TITLE }], hasMore: false, nextCursor: null }; },
-    async getCourse({ courseId }) { return { courseId, revision: adapter.revision, title: TITLE }; },
+    async getCourse(input) { calls.courses.push(input);
+      return { courseId: input.courseId, revision: adapter.revision, annotationSetVersion: adapter.annotationSetVersion,
+        title: TITLE }; },
     async getCourseInstructionalPlan(input) { calls.instructionalPlans.push(input);
       totals.instructionalPlans += 1;
       return { ...structuredClone(plan), courseRevision: adapter.revision }; },
@@ -467,22 +469,65 @@ test("a versão do conjunto de observações invalida o reuso sem alterar o reco
     "sem mudança de conteúdo, o recorte recomposto é exatamente o mesmo recorte");
 });
 
+test("fragmento quente valida ACL e versão por getCourse sem acionar a lista de observações", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  adapter.reset();
+  const reused = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(reused.context.fragmento, "o fragmento solicitado é entregue");
+  assert.equal(adapter.calls.courses.length, 2,
+    "a resolução normal e a nova confirmação de carimbo leem o Curso separadamente");
+  assert.deepEqual({ ...adapter.calls.courses[1], deadlineAt: null }, {
+    principal: PRINCIPAL, courseId: COURSE.id, includeOutline: false, deadlineAt: null
+  }, "o carimbo ocorre pela leitura focal fresca após os digests");
+  assert.ok(Number.isSafeInteger(adapter.calls.courses[1].deadlineAt), "o prazo da requisição é propagado");
+  assert.equal(adapter.calls.annotations.length, 0,
+    "o fragmento quente não invoca a lista que executa cleanup_course_anchored_annotations_v1");
+  assert.equal(adapter.calls.reviews.length, 0, "a revisão já materializada é reutilizada");
+  assert.equal(adapter.calls.inspections.length, 0, "a inspeção já materializada é reutilizada");
+});
+
+test("carimbo ausente, de curso divergente ou malformado vira cache miss", async () => {
+  for (const malformed of [
+    { courseId: "outro-curso", revision: COURSE.revision, annotationSetVersion: 1 },
+    { courseId: COURSE.id, revision: COURSE.revision + 1, annotationSetVersion: 1 },
+    { courseId: COURSE.id, revision: COURSE.revision, annotationSetVersion: -1 },
+    { courseId: COURSE.id, revision: COURSE.revision, annotationSetVersion: 1.5 },
+    { courseId: COURSE.id, revision: COURSE.revision }
+  ]) {
+    const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+    const first = await execute(adapter, { unidades: [1] });
+    const cursor = first.context.continuacao;
+    const original = adapter.getCourse;
+    let reads = 0;
+    adapter.getCourse = async input => {
+      reads += 1;
+      if (reads === 2) return malformed;
+      return original(input);
+    };
+    adapter.reset();
+    await execute(adapter, { unidades: [1], continuacao: cursor });
+    assert.ok(adapter.calls.reviews.length > 0, "carimbo inválido recompõe a página");
+    assert.ok(adapter.calls.annotations.length > 0, "só a recomposição lê observações");
+  }
+});
+
 test("indisponibilidade tipada do carimbo interrompe sem iniciar o fanout", async () => {
   const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
   const first = await execute(adapter, { unidades: [1] });
   const cursor = first.context.continuacao;
   assert.ok(cursor, "a página precisa de continuação");
-  const dependency = { rpc: "get_owned_course_anchored_annotations_for_actor_v1", reason: "attempt_abort",
+  const dependency = { rpc: "get_owned_course_for_actor_v1", reason: "attempt_abort",
     attemptsStarted: 3, attemptsAllowed: 3, elapsedMs: 24_000, remainingMs: 8_000 };
   const failure = withDependencyDiagnostic(new AuthoringApiError(
     503, "service_timeout", "A dependência não respondeu dentro do orçamento."
   ), dependency);
-  const original = adapter.getCourseAnchoredAnnotations;
+  const original = adapter.getCourse;
   let stampCalls = 0;
-  adapter.getCourseAnchoredAnnotations = async (input) => {
+  adapter.getCourse = async (input) => {
     stampCalls += 1;
-    adapter.calls.annotations.push(input);
-    if (stampCalls === 1) throw failure;
+    if (stampCalls === 2) throw failure;
     return original(input);
   };
   adapter.reset();
@@ -494,7 +539,8 @@ test("indisponibilidade tipada do carimbo interrompe sem iniciar o fanout", asyn
   assert.equal(thrown.code, "service_timeout");
   assert.deepEqual(readDependencyDiagnostic(thrown), dependency,
     "o diagnóstico e o orçamento restante continuam disponíveis");
-  assert.equal(stampCalls, 1, "a falha do carimbo não dispara uma segunda leitura de anotações");
+  assert.equal(stampCalls, 2, "há uma leitura de resolução e uma única confirmação de carimbo");
+  assert.equal(adapter.calls.annotations.length, 0, "o carimbo não chama a lista que executa limpeza");
   assert.equal(adapter.calls.reviews.length, 0, "nenhum alvo é relido");
   assert.equal(adapter.calls.inspections.length, 0, "nenhuma inspeção é reexecutada");
   assert.equal(adapter.calls.sources.length, 0, "nenhuma fonte é relida");
@@ -514,12 +560,11 @@ test("falha de autorização no carimbo não vira cache miss", async () => {
   const first = await execute(adapter, { unidades: [1] });
   const cursor = first.context.continuacao;
   const failure = new AuthoringApiError(403, "not_authorized", "O acesso não foi autorizado.");
-  const original = adapter.getCourseAnchoredAnnotations;
+  const original = adapter.getCourse;
   let stampCalls = 0;
-  adapter.getCourseAnchoredAnnotations = async (input) => {
+  adapter.getCourse = async (input) => {
     stampCalls += 1;
-    adapter.calls.annotations.push(input);
-    if (stampCalls === 1) throw failure;
+    if (stampCalls === 2) throw failure;
     return original(input);
   };
   adapter.reset();
@@ -529,7 +574,8 @@ test("falha de autorização no carimbo não vira cache miss", async () => {
     assert.equal(error.code, "not_authorized");
     return true;
   });
-  assert.equal(stampCalls, 1, "o erro não dispara uma segunda consulta de anotações");
+  assert.equal(stampCalls, 2, "há uma leitura de resolução e uma única confirmação de carimbo");
+  assert.equal(adapter.calls.annotations.length, 0, "o carimbo não chama a lista que executa limpeza");
   assert.equal(adapter.calls.reviews.length, 0, "nenhum alvo é relido");
   assert.equal(adapter.calls.inspections.length, 0, "nenhuma inspeção é reexecutada");
 });
@@ -538,14 +584,12 @@ test("revisão divergente no carimbo ainda permite a recomposição legítima", 
   const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
   const first = await execute(adapter, { unidades: [1] });
   const cursor = first.context.continuacao;
-  const original = adapter.getCourseAnchoredAnnotations;
-  let annotations = 0;
-  adapter.getCourseAnchoredAnnotations = async (input) => {
-    annotations += 1;
-    if (annotations === 1) {
-      adapter.calls.annotations.push(input);
-      throw new AuthoringApiError(409, "stale_course_state", "O Curso mudou durante o carimbo.");
-    }
+  const original = adapter.getCourse;
+  let courseReads = 0;
+  adapter.getCourse = async (input) => {
+    courseReads += 1;
+    if (courseReads === 2) return { courseId: input.courseId, revision: COURSE.revision + 1,
+      annotationSetVersion: adapter.annotationSetVersion, title: TITLE };
     return original(input);
   };
   adapter.reset();
@@ -553,6 +597,26 @@ test("revisão divergente no carimbo ainda permite a recomposição legítima", 
   assert.ok(recomposed.context.fragmento, "o fragmento continua sendo entregue");
   assert.ok(adapter.calls.reviews.length > 0, "a divergência legítima recompõe os alvos");
   assert.ok(adapter.calls.inspections.length > 0, "a recomposição revalida a inspeção");
+  assert.ok(adapter.calls.annotations.length > 0, "a recomposição lê observações pelo caminho normal");
+});
+
+test("stale_course_state tipado no getCourse fresco vira miss e recompõe", async () => {
+  const { adapter } = createAdapter({ unitCount: 1, unitSize: 80_000 });
+  const first = await execute(adapter, { unidades: [1] });
+  const cursor = first.context.continuacao;
+  const original = adapter.getCourse;
+  let reads = 0;
+  adapter.getCourse = async input => {
+    reads += 1;
+    if (reads === 2) throw new AuthoringApiError(409, "stale_course_state", "O Curso avançou.");
+    return original(input);
+  };
+  adapter.reset();
+  const recomposed = await execute(adapter, { unidades: [1], continuacao: cursor });
+  assert.ok(recomposed.context.fragmento, "a leitura reconstituída mantém o cursor");
+  assert.ok(adapter.calls.reviews.length > 0, "a revisão é recomposta após o stamp stale");
+  assert.ok(adapter.calls.inspections.length > 0, "a inspeção também é revalidada");
+  assert.ok(adapter.calls.annotations.length > 0, "as observações voltam a ser lidas no caminho completo");
 });
 
 test("o recorte materializado não atravessa atores", async () => {

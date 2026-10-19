@@ -91,7 +91,7 @@ function resolveAuditBasis(context, audit) {
 }
 
 function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
-  const calls = { units: [], sources: [], annotations: [], reviews: [], inspections: [] };
+  const calls = { courses: [], units: [], sources: [], annotations: [], reviews: [], inspections: [] };
   const adapter = {
     calls, revision: COURSE.revision, publicAppUrl: "https://app.example/",
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
@@ -100,8 +100,11 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
       return { items: [{ courseId: COURSE.id, title: TITLE },
         { courseId: OTHER_COURSE, title: "Outro curso" }], hasMore: false, nextCursor: null };
     },
-    async getCourse({ courseId }) {
-      return { courseId, revision: adapter.revision, title: courseId === COURSE.id ? TITLE : "Outro curso" };
+    async getCourse(input) {
+      const { courseId } = input;
+      calls.courses.push(input);
+      return { courseId, revision: adapter.revision, annotationSetVersion: 1,
+        title: courseId === COURSE.id ? TITLE : "Outro curso" };
     },
     async getCourseInstructionalPlan() {
       return { courseRevision: adapter.revision, plan: { title: TITLE, parts: [] } };
@@ -647,13 +650,13 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   }
   // A estrutura da página (plano e unidades) é relida em toda chamada e conferida contra
   // o materializado; o material de auditoria por alvo é pago por PÁGINA LÓGICA, e os
-  // fragmentos seguintes relêem apenas o carimbo de versões (observações com limit 1).
-  const stampRead = input => input.limit === 1;
+  // fragmentos seguintes confirmam novamente o carimbo pela leitura focal do Curso,
+  // sem chamar a lista de observações que pode executar limpeza física.
   assert.equal(adapter.calls.units.length, first.calls, "cada chamada relê a mesma página de unidades");
   assert.ok(adapter.calls.units.every(input => input.cursorStudyUnitId === null), "não varrer as cem páginas do curso");
   assert.equal(adapter.calls.units[0].limit, 12);
   assert.equal(adapter.calls.units[0].expectedRevision, 7);
-  assert.deepEqual(adapter.calls.annotations.filter(input => !stampRead(input)).map(input => input.query.hierarchy.target.id),
+  assert.deepEqual(adapter.calls.annotations.map(input => input.query.hierarchy.target.id),
     units.slice(0, 12).map(item => item.studyUnit.id));
   assert.deepEqual(adapter.calls.reviews.map(({ courseId, targetKind, targetId }) => ({ courseId, targetKind, targetId })),
     units.slice(0, 12).map(item => ({ courseId: COURSE.id,
@@ -667,10 +670,11 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
     [...Array(first.calls).fill(null), ...Array(second.calls).fill("unit-12")],
     "cada chamada relê exatamente a página de unidades da sua página lógica");
   assert.equal(adapter.calls.reviews.length, 24, "as duas páginas leem seus alvos uma vez");
-  assert.equal(adapter.calls.annotations.filter(input => !stampRead(input)).length, 24,
+  assert.equal(adapter.calls.annotations.length, 24,
     "os doze alvos de cada página são lidos uma vez");
-  assert.equal(adapter.calls.annotations.filter(stampRead).length, first.calls - 1 + second.calls - 1,
-    "cada fragmento reutilizado lê apenas o carimbo de versões");
+  assert.equal(adapter.calls.courses.length,
+    first.calls + second.calls + first.calls - 1 + second.calls - 1,
+    "cada continuação reutilizada faz uma leitura focal fresca além da resolução normal");
   assert.equal(adapter.calls.inspections.length, 24, "cada página lógica audita seus alvos uma vez");
 });
 

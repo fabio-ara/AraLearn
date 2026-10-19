@@ -3381,19 +3381,6 @@ function reviewPageIdentity({ principal, courseId, revision, continuation }) {
     page: continuation.p };
 }
 
-// O carimbo de versões é uma leitura de observações: pedir o alvo mais estreito da
-// página (a primeira unidade, ou a Explicação da microssequência) mantém o custo
-// mínimo e repete a mesma forma de hierarquia que a própria página já lê.
-function reviewPageStampHierarchy(unitPage, reviewMicrosequences, courseId) {
-  const unit = unitPage?.items?.[0]?.studyUnit?.id;
-  if (typeof unit === "string" && unit) return { target: { kind: "study_unit", id: unit }, includeDescendants: false };
-  const microsequence = reviewMicrosequences?.[0]?.id;
-  if (typeof microsequence === "string" && microsequence) {
-    return { target: { kind: "microsequence_explanation", id: microsequence }, includeDescendants: false };
-  }
-  return { target: { kind: "course", id: courseId }, includeDescendants: true };
-}
-
 // Objeto de contexto da página lógica. O caminho completo e o reuso o reconstroem com
 // as mesmas funções puras a partir das mesmas leituras, e é este objeto que o paginador
 // serializa: ordem, literal, escapes Unicode, cap e hash permanecem os do contrato.
@@ -3582,8 +3569,7 @@ async function reusedPreparedReviewPage({ adapter, principal, args, identity, co
     if (await sha256Hex(JSON.stringify(resolved.plan)) !== entry.planDigest) return null;
     if (await sha256Hex(JSON.stringify(unitPage)) !== entry.unitPageDigest) return null;
     return { annotationSetVersion: await readReviewPageStateStamp({ adapter, principal,
-      courseId: continuation.c, revision: continuation.r, deadlineAt,
-      hierarchy: reviewPageStampHierarchy(unitPage, reviewMicrosequences, continuation.c) }), entry };
+      courseId: continuation.c, revision: continuation.r, deadlineAt }), entry };
   });
   if (!claimed) return null;
   const { observations, explanations, studyUnits } = claimed.entry.record;
