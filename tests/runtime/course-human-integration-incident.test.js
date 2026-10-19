@@ -86,9 +86,9 @@ function createAdapter(options = {}) {
   // da Explicação, que já chega pelo plano; isso mantém a base compartilhada
   // integral sem reprocessar o volume a cada fragmento.
   const slimMicrosequence = () => { const value = microsequenceFixture(); delete value.explanation; return value; };
-  const calls = { units: [], sources: [], reviews: [], inspections: [] };
+  const calls = { course: [], units: [], sources: [], reviews: [], inspections: [], annotations: [] };
   const reports = new Map();
-  const state = { basisHash: "b".repeat(64), writes: 0, lastTarget: null };
+  const state = { basisHash: "b".repeat(64), annotationSetVersion: 1, writes: 0, lastTarget: null };
   const pedagogicalBasis = (targetKind, targetId) => {
     const selected = targetKind === "study_unit"
       ? units.filter(unit => unit.studyUnit.id === targetId)
@@ -107,13 +107,15 @@ function createAdapter(options = {}) {
     async resolvePrincipal() { return { ...PRINCIPAL, authenticationKind: "oauth" }; },
     async resolveActionPrincipal() { return { ...PRINCIPAL, authenticationKind: "action" }; },
     async listCourses() { return { items: [{ courseId: COURSE.id, title: TITLE }], hasMore: false, nextCursor: null }; },
-    async getCourse({ courseId }) { return { courseId, revision: adapter.revision, title: TITLE }; },
+    async getCourse({ courseId }) { calls.course.push(courseId);
+      return { courseId, revision: adapter.revision, title: TITLE,
+        annotationSetVersion: state.annotationSetVersion }; },
     async getCourseInstructionalPlan() { return { courseRevision: adapter.revision, plan: { title: TITLE,
       curriculumMapStatus: "approved", instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
-      curriculum: { modules: [{ id: "module-1", title: "Módulo", lessons: [
-        { id: "lesson-1", title: "Lição", microsequences: [microsequenceFixture()] }] }] },
+      curriculum: { modules: [{ id: "module-1", title: "Módulo", position: 0, lessons: [
+        { id: "lesson-1", title: "Lição", position: 0, microsequences: [microsequenceFixture()] }] }] },
       parts: [{ id: PART, position: 0, title: "Parte única", intent: "Cobrir protocolos.",
-        microsequences: [microsequenceFixture()] }] } }; },
+        microsequences: [{ ...microsequenceFixture(), productionPosition: 0 }] }] } }; },
     async getAuthoringProcessPreferences() { return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
       updatedAt: null, preferences: defaultAuthoringProcessPreferences() }; },
     async getCourseDesign(input) { return courseDesignFixture({ courseId: input.courseId, moduleId: "module-1",
@@ -136,7 +138,9 @@ function createAdapter(options = {}) {
         courseRevision: expectedRevision, plan: { title: TITLE,
           curriculum: { modules: [{ id: "module-1", title: "Módulo", position: 0, lessons: [
             { id: "lesson-1", title: "Lição", position: 0, microsequences: [
-              { id: MS, title: MS_TITLE, position: 0 }] }] }] }, parts: [],
+              { id: MS, title: MS_TITLE, position: 0 }] }] }] },
+          parts: [{ id: PART, position: 0, title: "Parte única", intent: "Cobrir protocolos.",
+            microsequences: [{ id: MS, title: MS_TITLE, productionPosition: 0 }] }],
           studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
             ordinal: index + 1, curriculumPath: { moduleId: "module-1", lessonId: "lesson-1",
               didacticMicrosequenceId: MS }, authoringPartId: null })) } };
@@ -172,7 +176,8 @@ function createAdapter(options = {}) {
       const items = sources.slice(start, start + limit);
       const end = start + items.length;
       return { items: structuredClone(items), nextCursor: end < sources.length ? `source-${end}` : null }; },
-    async getCourseAnchoredAnnotations() { return { items: [], annotationSetVersion: 1, hasMore: false, nextCursor: null }; }
+    async getCourseAnchoredAnnotations() { calls.annotations.push(true);
+      return { items: [], annotationSetVersion: state.annotationSetVersion, hasMore: false, nextCursor: null }; }
   };
   return { adapter, state };
 }
@@ -357,6 +362,32 @@ test("fragmentos preservam Unicode, fecham temMais na transição e rejeitam mis
   const opened = await execute(mixed.adapter, "preparar_revisao", { auditoria: true });
   await assert.rejects(() => execute(mixed.adapter, "preparar_revisao",
     { auditoria: true, unidades: [1], continuacao: opened.context.continuacao }), error => error.status === 409);
+});
+
+test("retomada de fragmento usa carimbo atual e não relê inspeções, fontes ou anotações", async () => {
+  const { adapter } = createAdapter({ explanationBlocks: 9, explanationRepeat: 160,
+    unitRepeat: 45, fullBasis: true, citationCount: 32 });
+  const { calls } = adapter;
+  const first = await execute(adapter, "preparar_revisao", { auditoria: true });
+  assert.ok(first.context.fragmento && first.context.continuacao,
+    "a base integral extensa abre uma continuação reutilizável");
+  const afterCold = { course: calls.course.length, inspections: calls.inspections.length,
+    sources: calls.sources.length, annotations: calls.annotations.length };
+  assert.equal(afterCold.course, 1, "a leitura fria consulta o Curso para fixar o carimbo atual");
+
+  const resumed = await execute(adapter, "preparar_revisao",
+    { auditoria: true, continuacao: first.context.continuacao });
+  assert.ok(resumed.context.fragmento, "a continuação devolve o próximo fragmento literal");
+  assert.equal(resumed.context.fragmento.inicio, first.context.fragmento.fim,
+    "o fragmento retomado é contíguo ao anterior");
+  assert.equal(calls.course.length, afterCold.course + 2,
+    "a retomada resolve o Curso e valida novamente o carimbo fresco antes do reuso");
+  assert.equal(calls.inspections.length, afterCold.inspections,
+    "a retomada não recompõe a base a partir de inspeções");
+  assert.equal(calls.sources.length, afterCold.sources,
+    "a retomada não relê vínculos de fontes");
+  assert.equal(calls.annotations.length, afterCold.annotations,
+    "o carimbo não executa a leitura/manutenção de anotações");
 });
 
 test("parecer de IA exige seis dimensões com evidência literal, vincula o alvo e mantém a revisão humana separada", async () => {
