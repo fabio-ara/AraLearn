@@ -28,6 +28,7 @@ const delta = await read("20261016162436_planning_transport_deduplication.sql");
 const reviewPlanDelta = await read("20261017140000_review_plan_focal_read.sql");
 const leanReviewDelta = await read("20261017181734_review_plan_lean_projection.sql");
 const conditionalReviewPlanDelta = await read("20261019174421_conditional_review_plan_snapshot.sql");
+const focalReviewPlanDelta = await read("20261019180441_conditional_review_plan_focal_projection.sql");
 
 // Cadeia legada real: definição original de 20260903160000 mais as duas cirurgias
 // posteriores (shared explanations 20260907222912 e correction queue 20260909032748).
@@ -155,9 +156,10 @@ const v5Payload = async (db) => (await db.query(
   "select public.get_owned_course_instructional_plan_for_actor_v5($1,$2) as value", [ACTOR, COURSE])).rows[0].value;
 const reviewPayload = async (db) => (await db.query(
   "select public.get_owned_course_review_plan_for_actor_v1($1,$2) as value", [ACTOR, COURSE])).rows[0].value;
-const conditionalReviewPayload = async (db, fingerprint = null, actor = ACTOR) => (await db.query(
-  "select public.get_owned_course_review_plan_for_actor_v2($1,$2,$3) as value",
-  [actor, COURSE, fingerprint])).rows[0].value;
+const conditionalReviewPayload = async (db, fingerprint = null, actor = ACTOR, expectedRevision = 7,
+  explanationIds = ["ms-001", "ms-002", "ms-003"]) => (await db.query(
+  "select public.get_owned_course_review_plan_for_actor_v2($1,$2,$3,$4,$5) as value",
+  [actor, COURSE, expectedRevision, explanationIds, fingerprint])).rows[0].value;
 const queryValue = async (db, sql, params = []) => (await db.query(sql, params)).rows[0].value;
 const withoutContentReview = value => {
   const result = structuredClone(value);
@@ -245,13 +247,19 @@ function finalContextAdapter(reviewPlan) {
         updatedAt: null, preferences: defaultAuthoringProcessPreferences() };
     },
     async getCourseInspectionTriageOutline({ courseId, expectedRevision }) {
-      const microsequences = [...new Map(units.map(item => [item.curriculumPath.didacticMicrosequence.id,
-        item.curriculumPath.didacticMicrosequence])).values()]
-        .map((item, position) => ({ id: item.id, title: item.title, position }));
+      const modules = reviewPlan.plan.curriculum.modules.map(moduleValue => ({ id: moduleValue.id,
+        title: moduleValue.title, position: moduleValue.position,
+        lessons: moduleValue.lessons.map(lesson => ({ id: lesson.id, title: lesson.title,
+          position: lesson.position, microsequences: lesson.microsequences.map(item => ({
+            id: item.id, title: item.title, position: item.position
+          })) })) }));
+      const parts = reviewPlan.plan.parts.map(part => ({ id: part.id, title: part.title,
+        position: part.position, microsequences: part.microsequences.map(item => ({
+          id: item.id, title: item.title, productionPosition: item.productionPosition
+        })) }));
       return { contract: "aralearn.course-inspection-triage-outline.v1", courseId,
         courseRevision: expectedRevision, plan: { title: "Curso sintetico",
-          curriculum: { modules: [{ id: "module-1", title: "Modulo", position: 0, lessons: [
-            { id: "lesson-1", title: "Licao", position: 0, microsequences }] }] }, parts: [],
+          curriculum: { modules }, parts,
           studyUnits: units.map(item => ({ id: item.studyUnit.id, title: item.studyUnit.title,
             ordinal: item.ordinal, curriculumPath: { moduleId: "module-1", lessonId: "lesson-1",
               didacticMicrosequenceId: item.curriculumPath.didacticMicrosequence.id }, authoringPartId: null })) } };
@@ -488,6 +496,21 @@ test("plano condicional mantém a representação exata e invalida cada família
     await db.exec(reviewPlanDelta);
     await db.exec(leanReviewDelta);
     await db.exec(conditionalReviewPlanDelta);
+    await db.exec(focalReviewPlanDelta);
+    const focalBefore = await conditionalReviewPayload(db, null, ACTOR, 7, ["ms-001"]);
+    await db.exec(`update private.course_entities set content=jsonb_set(content,'{explanation,title}','"Corpo fora do foco atualizado"')
+      where course_id='${COURSE}' and entity_type='microsequence' and entity_id='ms-003'`);
+    assert.equal(await queryValue(db, `select content#>>'{explanation,title}' value from private.course_entities
+      where course_id='${COURSE}' and entity_type='microsequence' and entity_id='ms-003'`), "Corpo fora do foco atualizado");
+    assert.notEqual(await queryValue(db, `select private.course_review_plan_source_fingerprint_v1('${COURSE}') value`),
+      focalBefore.fingerprint, "a impressão digital em dados de origem observa o corpo fora do foco");
+    const outsideBodyChanged = await conditionalReviewPayload(db, focalBefore.fingerprint, ACTOR, 7, ["ms-001"]);
+    assert.equal(outsideBodyChanged.notModified, false,
+      "fingerprint global invalida resposta mesmo quando o corpo alterado não está projetado");
+    assert.notEqual(outsideBodyChanged.fingerprint, focalBefore.fingerprint);
+    const outsideBodyProjection = expandReviewPlanningTransport(outsideBodyChanged.representation);
+    assert.equal(outsideBodyProjection.plan.curriculum.modules[0].lessons[0].microsequences[2].explanation, null,
+      "a detecção de frescor não reintroduz o corpo fora do foco na transferência");
     const original = expandReviewPlanningTransport(await reviewPayload(db));
     let full = await conditionalReviewPayload(db);
     assert.equal(full.contract, "aralearn.course-review-plan.snapshot.v1");
@@ -497,6 +520,23 @@ test("plano condicional mantém a representação exata e invalida cada família
     assert.match(full.fingerprint, /^[0-9a-f]{64}$/u);
     assert.deepEqual(expandReviewPlanningTransport(full.representation), original,
       "cold path conserva integralmente payload, encoding e approvalBasis do contrato anterior");
+    const focal = await conditionalReviewPayload(db, null, ACTOR, 7, ["ms-002"]);
+    const focalExpanded = expandReviewPlanningTransport(focal.representation);
+    assert.equal(focalExpanded.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation, null,
+      "corpos fora do recorte são omitidos do transporte");
+    assert.equal(focalExpanded.plan.curriculum.modules[0].lessons[0].microsequences[1].explanation,
+      original.plan.curriculum.modules[0].lessons[0].microsequences[1].explanation,
+      "corpo solicitado mantém literal canônico");
+    assert.equal(focalExpanded.plan.curriculum.modules[0].lessons[0].microsequences[2].explanation, null);
+    const expectedFocalParts = structuredClone(original.plan.parts);
+    for (const part of expectedFocalParts) for (const item of part.microsequences) {
+      if (item.id !== "ms-002") item.explanation = null;
+    }
+    assert.deepEqual(focalExpanded.plan.parts, expectedFocalParts,
+      "projeção preserva partes, hierarquia e metadados de planejamento");
+    const empty = expandReviewPlanningTransport((await conditionalReviewPayload(db, null, ACTOR, 7, [])).representation);
+    assert.equal(empty.plan.curriculum.modules[0].lessons[0].microsequences
+      .every(item => item.explanation === null), true, "seleção sem corpo não transmite explicações");
     const initialFingerprint = full.fingerprint;
     await db.exec(`create or replace function public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid,p_course_id uuid)
       returns jsonb language plpgsql stable as $f$ begin raise exception 'plano completo nao deve ser reconstruido no warm path'; end $f$`);
@@ -537,15 +577,22 @@ test("plano condicional mantém a representação exata e invalida cada família
     }
 
     await assert.rejects(() => conditionalReviewPayload(db, "not-a-fingerprint"), /impressão digital.*inválida/iu);
+    await assert.rejects(() => conditionalReviewPayload(db, null, ACTOR, 0), /seleção.*inválida/u,
+      "revisão esperada inválida é rejeitada antes da leitura do plano");
+    await assert.rejects(() => conditionalReviewPayload(db, null, ACTOR, 8), /revisão do curso mudou/u,
+      "a revisão do outline é fence do plano projetado");
+    await assert.rejects(() => conditionalReviewPayload(db, null, ACTOR, 7, ["outside-course"]), /fora do curso/u);
+    await assert.rejects(() => conditionalReviewPayload(db, null, ACTOR, 7, ["ms-001", "ms-001"]), /seleção.*inválida/u);
     await assert.rejects(() => conditionalReviewPayload(db, previousFingerprint, "90000000-0000-4000-8000-000000000009"),
       /nao autorizada/u, "ACL é verificada mesmo em requisição condicional");
     await db.exec("update public.courses set owner_id='90000000-0000-4000-8000-000000000009' where id='" + COURSE + "'");
     await assert.rejects(() => conditionalReviewPayload(db, previousFingerprint),
       /nao autorizada/u, "revogação do proprietário prevalece sobre fingerprint ainda em cache");
-    assert.equal(await queryValue(db, "select has_function_privilege('service_role','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') value"), true);
-    assert.equal(await queryValue(db, "select has_function_privilege('authenticated','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') value"), false);
-    assert.equal(await queryValue(db, "select has_function_privilege('anon','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') value"), false);
-    assert.equal(await queryValue(db, "select public.get_aralearn_runtime_manifest()->>'schemaRevision' value"), "20261019174421");
+    assert.equal(await queryValue(db, "select has_function_privilege('service_role','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,bigint,text[],text)','execute') value"), true);
+    assert.equal(await queryValue(db, "select has_function_privilege('authenticated','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,bigint,text[],text)','execute') value"), false);
+    assert.equal(await queryValue(db, "select has_function_privilege('anon','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,bigint,text[],text)','execute') value"), false);
+    assert.equal(await queryValue(db, "select public.get_aralearn_runtime_manifest()->>'schemaRevision' value"), "20261019180441");
     assert.equal(await queryValue(db, "select public.get_aralearn_runtime_manifest()->'features' ? 'course-review-plan-conditional-snapshot-v1' value"), true);
+    assert.equal(await queryValue(db, "select public.get_aralearn_runtime_manifest()->'features' ? 'course-review-plan-focal-projection-v1' value"), true);
   } finally { await db.close(); }
 });

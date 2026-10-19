@@ -40,14 +40,26 @@ do $manifest$
 declare
   manifest jsonb := public.get_aralearn_runtime_manifest();
 begin
-  manifest := manifest || jsonb_build_object(
-    'schemaRevision', '20261019153000',
-    'requiredFeatures', manifest->'requiredFeatures' || '"course-export-annotation-version-fence-v1"'::jsonb
-  );
-  execute format(
-    'create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
-    'select ' || quote_literal(manifest::text) || '::jsonb'
-  );
+  if manifest->>'schemaRevision' is distinct from '20261019153000' or
+      not (manifest->'features' ? 'course-export-annotation-version-fence-v1') then
+    manifest := manifest || jsonb_build_object(
+      'schemaRevision', '20261019153000',
+      'features', (
+        select jsonb_agg(value order by value collate "C")
+        from (
+          select distinct value
+          from jsonb_array_elements_text(
+            coalesce(manifest->'features', '[]'::jsonb) ||
+            '["course-export-annotation-version-fence-v1"]'::jsonb
+          ) as feature(value)
+        ) unique_features
+      )
+    );
+    execute format(
+      'create or replace function public.get_aralearn_runtime_manifest() returns jsonb language sql stable security definer set search_path=pg_catalog as %L',
+      'select ' || quote_literal(manifest::text) || '::jsonb'
+    );
+  end if;
 end;
 $manifest$;
 

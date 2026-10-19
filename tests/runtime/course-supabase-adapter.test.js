@@ -39,7 +39,7 @@ test("comparação lê apenas o alvo autorizado e valida as identidades da respo
   await assert.rejects(value.getCourseObservationComparison(args), error => error.code === "course_service_unavailable");
 });
 
-test("plano condicional reutiliza representação literal entre adaptadores, mas sempre consulta ACL e fingerprint atuais", async () => {
+test("plano condicional reutiliza somente no mesmo adapter/escopo e sempre consulta ACL e fingerprint atuais", async () => {
   const courseId = "51000000-0000-4000-8000-000000000001";
   const otherActor = "10000000-0000-4000-8000-000000000002";
   const firstFingerprint = "b".repeat(64);
@@ -64,16 +64,18 @@ test("plano condicional reutiliza representação literal entre adaptadores, mas
     calls.at(-1).responseBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
     return json(payload);
   };
-  const first = await adapter(fetchImpl).getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId });
+  const value = adapter(fetchImpl);
+  const request = { principal: { actorId: USER_ID }, courseId, expectedRevision: 7, explanationIds: [] };
+  const first = await value.getCourseReviewPlan(request);
   assert.equal(first.plan.title, "Plano focado");
   assert.equal(calls.length, 1, "cold consulta a RPC uma vez");
   assert.equal(calls[0].args.p_if_none_match, null, "sem representação em memória, cold pede o plano completo");
   first.plan.title = "mutação local não pode contaminar o cache";
-  const second = await adapter(fetchImpl).getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId });
+  const second = await value.getCourseReviewPlan(request);
   assert.equal(second.plan.title, "Plano focado", "cache guarda representação isolada de mutações do consumidor");
   assert.equal(calls.length, 2, "warm ainda consulta a RPC para ACL e fingerprint atuais");
   assert.equal(calls[1].args.p_if_none_match, firstFingerprint,
-    "adaptador recém-criado envia somente o fingerprint em memória do mesmo ator/curso");
+    "o mesmo adapter envia fingerprint em memória após a primeira resposta");
   assert.ok(calls[0].requestBytes > 0 && calls[1].requestBytes > calls[0].requestBytes,
     "warm acrescenta fingerprint ao pedido, sem evitar a chamada RPC");
   assert.ok(calls[0].responseBytes > 0 && calls[1].responseBytes > 0,
@@ -81,22 +83,28 @@ test("plano condicional reutiliza representação literal entre adaptadores, mas
   assert.ok(calls[1].responseBytes < calls[0].responseBytes / 10,
     "a resposta warm contém o envelope compacto, sem transferir o plano novamente");
 
-  const isolated = await adapter(fetchImpl).getCourseReviewPlan({ principal: { actorId: otherActor }, courseId });
-  assert.equal(isolated.plan.title, "Plano focado");
-  assert.equal(calls[2].args.p_if_none_match, null, "ator diferente não recebe representação do cache alheio");
-
   revision = 8;
   fingerprint = "c".repeat(64);
-  const changed = await adapter(fetchImpl).getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId });
-  assert.equal(calls[3].args.p_if_none_match, firstFingerprint, "a RPC valida o fingerprint antigo em toda continuação");
+  const changed = await value.getCourseReviewPlan({ ...request, expectedRevision: 8 });
+  assert.equal(calls[2].args.p_if_none_match, firstFingerprint, "a RPC valida o fingerprint antigo em toda continuação");
   assert.equal(changed.plan.title, "Plano novo");
   assert.equal(changed.courseRevision, 8);
 
   revoked = true;
   await assert.rejects(() => adapter(fetchImpl).getCourseReviewPlan({
-    principal: { actorId: USER_ID }, courseId
+    ...request
   }), error => error.status === 403 && error.code === "not_authorized");
-  assert.equal(calls.length, 5, "revogação não é ocultada por resposta condicional/cache local");
+  assert.equal(calls.length, 4, "revogação não é ocultada por resposta condicional/cache local");
+  revoked = false;
+  const isolated = await value.getCourseReviewPlan({ ...request, expectedRevision: 8, principal: { actorId: otherActor } });
+  assert.equal(isolated.plan.title, "Plano novo");
+  assert.equal(calls.at(-1).args.p_if_none_match, null, "ator diferente não recebe representação do cache alheio");
+  await adapter(fetchImpl).getCourseReviewPlan({ ...request, expectedRevision: 8 });
+  assert.equal(calls.at(-1).args.p_if_none_match, null, "adapter recém-criado começa cold");
+  await value.getCourseReviewPlan({ ...request, expectedRevision: 8, explanationIds: ["ms-b", "ms-a"] });
+  assert.equal(calls.at(-1).args.p_if_none_match, null, "escopo diferente começa cold");
+  await value.getCourseReviewPlan({ ...request, expectedRevision: 8, explanationIds: ["ms-a", "ms-b", "ms-a"] });
+  assert.notEqual(calls.at(-1).args.p_if_none_match, null, "IDs ordenados/deduplicados compartilham a mesma chave");
 });
 
 test("expiração do cache provoca leitura completa e não substitui o fingerprint fresco", async t => {
@@ -111,9 +119,10 @@ test("expiração do cache provoca leitura completa e não substitui o fingerpri
     return json(reviewSnapshot(courseId,
       reviewPlanRepresentation(courseId), fingerprint));
   });
-  await value.getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId });
-  now += 60_001;
-  await value.getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId });
+  const input = { principal: { actorId: USER_ID }, courseId, expectedRevision: 7, explanationIds: [] };
+  await value.getCourseReviewPlan(input);
+  now += 15 * 60_000 + 1;
+  await value.getCourseReviewPlan(input);
   assert.deepEqual(requests, [null, null], "cache expirado é apenas uma perda de desempenho; caminho cold continua correto");
 });
 
@@ -123,7 +132,7 @@ test("cache condicional falha fechado sem representação e respeita o orçament
     courseId: missingCacheCourse, courseRevision: 7, planVersion: 1,
     fingerprint: "d".repeat(64), notModified: true }));
   await assert.rejects(() => missing.getCourseReviewPlan({
-    principal: { actorId: USER_ID }, courseId: missingCacheCourse
+    principal: { actorId: USER_ID }, courseId: missingCacheCourse, expectedRevision: 7, explanationIds: []
   }), error => error.status === 503 && error.code === "course_service_unavailable");
 
   const fingerprints = new Map();
@@ -145,11 +154,11 @@ test("cache condicional falha fechado sem representação e respeita o orçament
   const ids = Array.from({ length: 9 }, (_unused, index) =>
     `53000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`);
   for (const courseId of ids) {
-    await large.getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId });
+    await large.getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId, expectedRevision: 7, explanationIds: [] });
   }
-  await large.getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId: ids[0] });
+  await large.getCourseReviewPlan({ principal: { actorId: USER_ID }, courseId: ids[0], expectedRevision: 7, explanationIds: [] });
   assert.equal(requests.at(-1).ifNoneMatch, null,
-    "a representação evictada por ultrapassar 8 MiB volta por caminho completo, sem retorno notModified sem cache");
+    "o slot por adapter conserva apenas a identidade mais recente e não permite warm sem cache compatível");
 });
 
 function analyticsSnapshot() {
@@ -1687,17 +1696,21 @@ test("plano v3 liga escopo ao currículo e deriva o repertório das unidades cor
   for (const part of reviewTransport.plan.parts) {
     for (const microsequence of part.microsequences) delete microsequence.studyUnitCount;
   }
+  const reviewExplanationIds = reviewTransport.plan.curriculum.modules.flatMap(moduleValue =>
+    moduleValue.lessons.flatMap(lesson => lesson.microsequences.map(microsequence => microsequence.id))).sort();
   let reviewRequests = 0;
   const reviewAdapter = adapter(async (url, init) => {
     assert.match(url, /\/rpc\/get_owned_course_review_plan_for_actor_v2$/u);
     reviewRequests += 1;
-    assert.deepEqual(JSON.parse(init.body), { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_if_none_match: null });
+    assert.deepEqual(JSON.parse(init.body), { p_actor_id: USER_ID, p_course_id: COURSE_ID,
+      p_expected_revision: 7, p_explanation_ids: reviewExplanationIds, p_if_none_match: null });
     return json({ contract: "aralearn.course-review-plan.snapshot.v1", courseId: COURSE_ID,
       courseRevision: 7, planVersion: reviewTransport.plan.version, fingerprint: "a".repeat(64), notModified: false,
       representation: reviewTransport });
   });
   const review = await reviewAdapter.getCourseReviewPlan({
-    principal: { actorId: USER_ID }, courseId: COURSE_ID, deadlineAt: Date.now() + 30_000
+    principal: { actorId: USER_ID }, courseId: COURSE_ID, expectedRevision: 7, explanationIds: reviewExplanationIds,
+    deadlineAt: Date.now() + 30_000
   });
   assert.equal(reviewRequests, 1);
   assert.equal(review.contract, "aralearn.course-review-plan.v1");

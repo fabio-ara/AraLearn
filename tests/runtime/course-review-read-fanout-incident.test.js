@@ -5,6 +5,7 @@
 // Adaptador sintético em memória; nenhuma chamada hospedada.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { executeHumanCourseTask } from "../../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js";
 import { AuthoringApiError, readDependencyDiagnostic, withDependencyDiagnostic }
   from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
@@ -117,7 +118,7 @@ function leanReviewPlan(value, courseId) {
 function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false,
   reviewProjection = "full" } = {}) {
   const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize, multibyte));
-  const calls = { courses: [], units: [], unitBodies: [], outlines: [], reviews: [], inspections: [], annotations: [], sources: [],
+  const calls = { courses: [], units: [], unitBodies: [], outlines: [], reviews: [], inspections: [], annotations: [], sources: [], events: [],
     instructionalPlans: [], reviewPlans: [] };
   const totals = { instructionalPlans: 0, reviewPlans: 0 };
   const plan = { courseRevision: COURSE.revision, plan: { id: "plan-review", version: 2,
@@ -127,8 +128,8 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
     evidenceRequirements: [], curriculumScopeItems: [{ id: "scope-1", position: 0,
       statement: "Cobertura preservada", state: "planned", developedIn: [],
       curriculumTargets: [{ moduleId: "module-1", lessonId: "lesson-1", didacticMicrosequenceIds: [MS] }] }],
-    curriculum: { modules: [{ id: "module-1", title: "Módulo", lessons: [
-      { id: "lesson-1", title: "Lição", microsequences: [{ ...microsequence(), scopeItemIds: ["scope-1"],
+    curriculum: { modules: [{ id: "module-1", position: 0, title: "Módulo", lessons: [
+      { id: "lesson-1", position: 0, title: "Lição", microsequences: [{ ...microsequence(), position: 0, scopeItemIds: ["scope-1"],
         dependencyMicrosequenceIds: [] }] }] }] },
     parts: [{ id: PART, position: 0, title: "Parte única", intent: "Cobrir protocolos.",
       progression: [], version: 1, progress: { state: "planned" },
@@ -149,19 +150,32 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
     async getCourseInstructionalPlan(input) { calls.instructionalPlans.push(input);
       totals.instructionalPlans += 1;
       return { ...structuredClone(plan), courseRevision: adapter.revision }; },
-    async getCourseReviewPlan(input) { calls.reviewPlans.push(input);
+    async getCourseReviewPlan(input) { calls.reviewPlans.push(input); calls.events.push("review-plan");
       totals.reviewPlans += 1;
       const full = withoutPlanContentReviews({ ...plan, courseRevision: adapter.revision });
-      return reviewProjection === "lean" ? leanReviewPlan(full, input.courseId)
-        : { contract: "aralearn.course-instructional-plan.v3", courseId: input.courseId, ...full }; },
-    async getCourseInspectionTriageOutline(input) { calls.outlines.push(input);
+      const sourceFingerprint = createHash("sha256").update(JSON.stringify(full)).digest("hex");
+      if (reviewProjection === "lean") {
+        const projected = leanReviewPlan(full, input.courseId);
+        const selected = new Set(input.explanationIds ?? []);
+        for (const moduleValue of projected.plan.curriculum.modules) for (const lesson of moduleValue.lessons) {
+          for (const item of lesson.microsequences) if (!selected.has(item.id)) item.explanation = null;
+        }
+        return { ...projected, sourceFingerprint };
+      }
+      return { contract: "aralearn.course-instructional-plan.v3", courseId: input.courseId,
+        ...full, sourceFingerprint }; },
+    async getCourseInspectionTriageOutline(input) { calls.outlines.push(input); calls.events.push("outline");
+      const outlineModules = adapter.plan.plan.curriculum.modules.map(moduleValue => ({ id: moduleValue.id,
+        title: moduleValue.title, position: moduleValue.position, lessons: moduleValue.lessons.map(lesson => ({
+          id: lesson.id, title: lesson.title, position: lesson.position,
+          microsequences: lesson.microsequences.map(item => ({ id: item.id, title: item.title, position: item.position }))
+        })) }));
+      const outlineParts = adapter.plan.plan.parts.map(part => ({ id: part.id, title: part.title,
+        position: part.position, microsequences: part.microsequences.map(item => ({ id: item.id,
+          title: item.title, productionPosition: item.productionPosition })) }));
       return { contract: "aralearn.course-inspection-triage-outline.v1", courseId: input.courseId,
         courseRevision: adapter.revision, plan: { title: TITLE,
-          curriculum: { modules: [{ id: "module-1", title: "Módulo", position: 0, lessons: [
-            { id: "lesson-1", title: "Lição", position: 0, microsequences: [
-              { id: MS, title: MS_TITLE, position: 0 }] }] }] },
-          parts: [{ id: PART, title: "Parte única", position: 0, microsequences: [
-            { id: MS, title: MS_TITLE, productionPosition: 0 }] }],
+          curriculum: { modules: outlineModules }, parts: outlineParts,
           studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
             ordinal: index + 1, curriculumPath: { moduleId: "module-1", lessonId: "lesson-1",
               didacticMicrosequenceId: MS }, authoringPartId: item.ordinal > 2 ? PART : null })) } }; },
@@ -179,7 +193,7 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
           microsequence: (() => { const value = microsequence(); delete value.explanation; return value; })(),
           planItems: [], dependencies: [], studyUnits: [], citations: [], additionalContext: {} } }; },
     async getCourseContentInspectionReceipt() { return null; },
-    async listCourseStudyUnits(input) { calls.units.push(input);
+    async listCourseStudyUnits(input) { calls.units.push(input); calls.events.push("unit-page");
       if (input.anchorStudyUnitId) {
         const item = units.find(unit => unit.studyUnit.id === input.anchorStudyUnitId);
         if (item) calls.unitBodies.push(item.studyUnit.id);
@@ -303,6 +317,14 @@ test("preparar_revisao resolve por índice e hidrata somente os IDs selecionados
   assert.deepEqual(adapter.calls.unitBodies, ["unit-46", "unit-44", "unit-45"]);
   assert.equal(adapter.calls.units.length, 3, "uma leitura canônica ancorada por ID selecionado");
   assert.equal(adapter.calls.outlines.length, 1, "a identidade vem do índice compacto autenticado");
+  assert.equal(adapter.calls.events.indexOf("review-plan") > adapter.calls.events.lastIndexOf("unit-page"), true,
+    "o plano só é projetado depois que a página de unidades define o foco");
+  assert.deepEqual(adapter.calls.reviewPlans[0].explanationIds, [MS],
+    "auditoria de unidades inclui só as explicações consumidas pelo contexto");
+  adapter.reset();
+  await execute(adapter, { auditoria: false, unidades: [46] });
+  assert.deepEqual(adapter.calls.reviewPlans[0].explanationIds, [],
+    "foco de unidade sem corpo não pede explicações que explanationReadContext não apresenta");
 });
 
 test("ordinais de escopo permanecem locais e títulos continuam resolvidos", async () => {
@@ -723,6 +745,8 @@ test("projeção estrutural entrega o mesmo contexto nos quatro seletores sem pl
       `${current.name}: não chama o plano com revisão global`);
     assert.equal(optimized.adapter.totals.reviewPlans, 1,
       `${current.name}: uma projeção estrutural por requisição`);
+    assert.deepEqual(optimized.adapter.calls.reviewPlans[0].explanationIds, [MS],
+      `${current.name}: somente IDs do foco são solicitados ao plano`);
     assert.equal(full.adapter.totals.instructionalPlans, 1,
       `${current.name}: o controle negativo exercita o caminho integral`);
   }
@@ -747,6 +771,66 @@ test("projeção lean e plano integral entregam o mesmo contexto final nos selet
   }
 });
 
+function arrangePartOrderDifferentFromCurriculum(adapter) {
+  const moduleValue = adapter.plan.plan.curriculum.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const lessonTwo = { ...structuredClone(lesson), id: "lesson-2", title: "Lição 2", position: 1 };
+  const first = { ...microsequence(), id: "ms-first", title: "Primeira da parte", position: 0 };
+  const second = { ...microsequence(), id: "ms-second", title: "Segunda da parte", position: 1 };
+  const selected = { ...microsequence(), position: 0 };
+  lesson.microsequences = [first, second];
+  moduleValue.lessons = [lesson, { ...lessonTwo, microsequences: [selected] }];
+  adapter.plan.plan.parts[0].microsequences = [
+    { ...structuredClone(adapter.plan.plan.parts[0].microsequences[0]), id: first.id,
+      title: first.title, productionPosition: 0,
+      curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
+        lessonId: lesson.id, lessonTitle: lesson.title } },
+    { ...structuredClone(adapter.plan.plan.parts[0].microsequences[0]), id: second.id,
+      title: second.title, productionPosition: 1,
+      curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
+        lessonId: lesson.id, lessonTitle: lesson.title } },
+    { ...structuredClone(adapter.plan.plan.parts[0].microsequences[0]), id: selected.id,
+      title: selected.title, productionPosition: 2,
+      curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
+        lessonId: lessonTwo.id, lessonTitle: lessonTwo.title } }
+  ];
+}
+
+test("seleção por parte preserva productionPosition quando diverge da posição curricular", async () => {
+  const full = createAdapter({ unitCount: 3, unitSize: 1_500, reviewProjection: "full" });
+  const lean = createAdapter({ unitCount: 3, unitSize: 1_500, reviewProjection: "lean" });
+  arrangePartOrderDifferentFromCurriculum(full.adapter);
+  arrangePartOrderDifferentFromCurriculum(lean.adapter);
+  const args = { parte: 1, microssequencia: 3 };
+  const complete = await readAll(full.adapter, args);
+  const projected = await readAll(lean.adapter, args);
+  assert.deepEqual(projected.pages, complete.pages,
+    "a projeção mantém o mesmo literal mesmo quando a terceira da parte é a primeira da segunda lição");
+  assert.equal(lean.adapter.calls.units[0].scopeKind, "didactic_microsequence");
+  assert.equal(lean.adapter.calls.units[0].scopeId, MS,
+    "a página continua vinculada à microssequência escolhida pela ordem da parte");
+  assert.deepEqual(projected.pages[0].plan.parteEmFoco.microssequencias,
+    [{ posicao: 3, titulo: MS_TITLE }], "a ordem de produção da parte é preservada no contexto final");
+  assert.equal(projected.pages[0].plan.mapaCurricular.modulos[0].licoes[0].titulo, "Lição 2",
+    "o caminho curricular original da microssequência permanece preservado");
+});
+
+test("drift do conjunto de partes durante resolução é recusado sem bump de revisão", async () => {
+  const { adapter } = createAdapter({ unitCount: 3, unitSize: 1_500, reviewProjection: "lean" });
+  const readPlan = adapter.getCourseReviewPlan.bind(adapter);
+  adapter.getCourseReviewPlan = async input => {
+    adapter.plan.plan.parts.push({ id: "part-added-during-read", position: 1,
+      title: "Parte surgida durante a leitura", intent: "", progression: [], version: 1,
+      microsequences: [] });
+    return await readPlan(input);
+  };
+  await assert.rejects(() => execute(adapter, { parte: 1 }),
+    error => error.status === 409 && error.code === "course_revision_conflict");
+  assert.equal(adapter.calls.outlines.length, 1, "o primeiro conjunto foi resolvido pelo outline");
+  assert.equal(adapter.calls.reviews.length, 0, "o drift é detectado antes da leitura de pareceres por alvo");
+  assert.equal(adapter.calls.inspections.length, 0, "o drift é detectado antes de reler inspeções");
+});
+
 test("corpo, plano ou dependência da Explicação muda sem revision e invalida o reuso", async () => {
   const mutations = [
     {
@@ -756,6 +840,15 @@ test("corpo, plano ou dependência da Explicação muda sem revision e invalida 
       mutate: (plan) => {
         plan.plan.curriculum.modules[0].lessons[0].microsequences[0].explanation.content[0].data.text =
           "Corpo focal materialmente alterado sem nova revisão do curso.";
+      }
+    },
+    {
+      name: "corpo fora do foco",
+      invalidates: true,
+      cacheMissOnly: true,
+      mutate: (plan) => {
+        plan.plan.curriculum.modules[0].lessons[0].microsequences[1].explanation.content[0].data.text =
+          "Corpo não projetado alterado sem bump da revisão.";
       }
     },
     {
@@ -777,7 +870,8 @@ test("corpo, plano ou dependência da Explicação muda sem revision e invalida 
     },
     {
       name: "campo descartado",
-      invalidates: false,
+      invalidates: true,
+      cacheMissOnly: true,
       mutate: (plan) => {
         plan.plan.instructionalAnalysisUnits.push({ id: "analysis-new", statement: "Não apresentado." });
         plan.plan.parts[0].progress = { state: "materialized" };
@@ -798,21 +892,23 @@ test("corpo, plano ou dependência da Explicação muda sem revision e invalida 
     assert.equal(adapter.calls.reviews.length, 0, "sem mudança, o material da página é reutilizado");
     assert.equal(reused.context.fragmento.inicio, first.context.fragmento.fim);
 
-    const projectedBefore = current.invalidates ? null
-      : await adapter.getCourseReviewPlan({ courseId: COURSE.id });
+    const planRequest = { courseId: COURSE.id, expectedRevision: adapter.revision, explanationIds: [MS] };
+    const projectedBefore = await adapter.getCourseReviewPlan(planRequest);
     current.mutate(adapter.plan);
     assert.equal(adapter.revision, COURSE.revision, "o discriminante não incrementa a revisão do curso");
     adapter.reset();
-    if (!current.invalidates) {
-      const projectedAfter = await adapter.getCourseReviewPlan({ courseId: COURSE.id });
-      assert.deepEqual(projectedAfter, projectedBefore,
-        "o contrato focal não transporta o campo descartado");
+    const projectedAfter = await adapter.getCourseReviewPlan(planRequest);
+    assert.notEqual(projectedAfter.sourceFingerprint, projectedBefore.sourceFingerprint,
+      "o carimbo interno detecta mudança de qualquer fonte, inclusive fora da projeção");
+    if (current.name === "corpo fora do foco") {
+      const outside = projectedAfter.plan.curriculum.modules[0].lessons[0].microsequences[1];
+      assert.equal(outside.explanation, null, "o corpo alterado fora do foco segue omitido no transporte projetado");
+    }
+    if (current.cacheMissOnly) {
       adapter.reset();
-      const notInvalidated = await execute(adapter, { unidades: [1], continuacao: cursor });
-      assert.equal(adapter.calls.reviews.length, 0,
-        "campos descartados não forçam nova leitura de alvos");
-      assert.deepEqual(notInvalidated.context, reused.context,
-        "o digest ignora somente o que não pertence ao contrato focal");
+      const recomposed = await execute(adapter, { unidades: [1], continuacao: cursor });
+      assert.ok(adapter.calls.reviews.length > 0, "fingerprint novo invalida reuso e recompõe mesmo sem mudar o literal apresentado");
+      assert.ok(recomposed.context.fragmento, "a continuação continua válida quando o conteúdo visível não mudou");
       continue;
     }
     await assert.rejects(() => execute(adapter, { unidades: [1], continuacao: cursor }),

@@ -470,8 +470,10 @@ export async function resolveHumanCourseContext({
     if (typeof adapter.getCourseInspectionTriageOutline !== "function") {
       throw new AuthoringApiError(503, "course_service_unavailable", "O índice compacto de unidades está indisponível.");
     }
-    const outline = inspectionOutline ?? await adapter.getCourseInspectionTriageOutline({ principal, courseId: resolvedCourse.id,
-      expectedRevision: resolvedCourse.revision, deadlineAt });
+    const outline = inspectionOutline ?? await (outlineReader
+      ? outlineReader({ principal, courseId: resolvedCourse.id, expectedRevision: resolvedCourse.revision, deadlineAt })
+      : adapter.getCourseInspectionTriageOutline({ principal, courseId: resolvedCourse.id,
+        expectedRevision: resolvedCourse.revision, deadlineAt }));
     if (!plainObject(outline) || Number(outline.courseRevision) !== resolvedCourse.revision ||
         outline.courseId !== resolvedCourse.id) {
       throw new AuthoringApiError(409, "course_revision_conflict", "O curso mudou; releia a seleção de unidades.");

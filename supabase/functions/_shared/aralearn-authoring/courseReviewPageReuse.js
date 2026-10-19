@@ -21,8 +21,8 @@
 //   - `public.courses.revision` governa conteúdo, fontes, plano, revisão e inspeção;
 //   - `public.courses.annotation_set_version` governa as observações, que por contrato
 //     NÃO alteram a revisão do curso.
-// O carimbo das duas é lido por uma consulta de observações já existente, que valida a
-// revisão e devolve a versão. Sem correspondência exata, o chamador volta ao caminho
+// O carimbo das duas é lido por uma leitura fresca do Curso depois dos digests, que
+// valida a revisão e devolve a versão. Sem correspondência exata, o chamador volta ao caminho
 // completo, que recompõe o literal do zero e deixa o 409 corrente decidir.
 //
 // O processo guarda um repositório por adapter. Cada ponto de entrada do produto cria o

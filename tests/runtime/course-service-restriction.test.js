@@ -54,7 +54,7 @@ test("plano de revisão condicional preserva 402 terminal sem repetir a RPC", as
   });
   await assert.rejects(value.getCourseReviewPlan({
     principal: { actorId: "10000000-0000-4000-8000-000000000001" },
-    courseId: "20000000-0000-4000-8000-000000000002"
+    courseId: "20000000-0000-4000-8000-000000000002", expectedRevision: 1, explanationIds: []
   }), error => error.status === 402 && error.code === "course_service_restricted" &&
     authoringErrorIsRetryable(error) === false);
   assert.equal(fetches, 1);

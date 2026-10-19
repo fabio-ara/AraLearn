@@ -1,11 +1,11 @@
 begin;
 
-select plan(31);
+select plan(33);
 
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20261019174421','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20261019180441','o manifesto identifica as capacidades correntes em ordem canônica');
 select is((select count(*) from private.course_component_policy_assignments
   where private.valid_course_component_policy_v1(policy) is not true),0::bigint,
   'todas as políticas persistidas satisfazem o catálogo corrente');
@@ -16,8 +16,11 @@ select is(private.course_component_catalog_v1()->>'schemaFingerprint',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),62,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),64,
   'o manifesto contém somente capacidades correntes');
+select ok(public.get_aralearn_runtime_manifest()->'features' ?
+  'course-export-annotation-version-fence-v1',
+  'o manifesto anuncia o fence de versão das annotations');
 select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "shared-microsequence-explanation-v1",
   "human-content-review-v1",
@@ -44,6 +47,7 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "contextual-design-command-atomic-batch-v1",
   "course-review-plan-projection-v1",
   "course-review-plan-conditional-snapshot-v1",
+  "course-review-plan-focal-projection-v1",
   "course-study-unit-inspection-v2",
   "single-authoring-runtime-v1",
   "person-profile-v2",
@@ -56,14 +60,16 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-authoring-export-v1"
 ]'::jsonb,'o manifesto anuncia o runtime corrente');
 select has_function('public','get_owned_course_review_plan_for_actor_v2',
-  array['uuid','uuid','text'],'o plano condicional fica disponível apenas pelo RPC vigente');
+  array['uuid','uuid','bigint','text[]','text'],'o plano condicional projetado fica disponível apenas pelo RPC vigente');
+select hasnt_function('public','get_owned_course_review_plan_for_actor_v2',
+  array['uuid','uuid','text'],'a assinatura sem revisão esperada não permanece exposta');
 select ok(has_function_privilege('service_role',
-  'public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute'),
+  'public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,bigint,text[],text)','execute'),
   'o RPC condicional é permitido ao serviço');
 select ok(not has_function_privilege('authenticated',
-  'public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') and
+  'public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,bigint,text[],text)','execute') and
   not has_function_privilege('anon',
-  'public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute'),
+  'public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,bigint,text[],text)','execute'),
   'o RPC condicional não fica exposto a clientes');
 select ok(not (public.get_aralearn_runtime_manifest()->'features' ?| array[
   'authenticated-course-source-pdf-upload-v1',

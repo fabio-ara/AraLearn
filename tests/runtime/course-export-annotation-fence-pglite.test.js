@@ -45,7 +45,7 @@ test("upgrade do reader de curso preserva policy, fence de anotações e ACL", a
       $course$;
       create function public.get_aralearn_runtime_manifest()
       returns jsonb language sql stable as $manifest$
-        select '{"schemaRevision":"20260909063859","requiredFeatures":["human-content-review-v1"]}'::jsonb
+        select '{"schemaRevision":"20260909063859","contractVersion":1,"features":["human-content-review-v1"]}'::jsonb
       $manifest$;
       insert into public.courses(id,owner_id,revision,title,content_review_policy,annotation_set_version)
       values('${COURSE}','${OWNER}',19,'Curso protegido','reviewed_only',4);
@@ -85,8 +85,12 @@ test("upgrade do reader de curso preserva policy, fence de anotações e ACL", a
     assert.ok(definition.proconfig.some(value => value.includes("search_path=pg_catalog, public, private")));
     const manifest = (await db.query("select public.get_aralearn_runtime_manifest() as value")).rows[0].value;
     assert.equal(manifest.schemaRevision, "20261019153000");
-    assert.ok(manifest.requiredFeatures.includes("human-content-review-v1"));
-    assert.ok(manifest.requiredFeatures.includes("course-export-annotation-version-fence-v1"));
+    assert.equal(manifest.contractVersion, 1);
+    assert.deepEqual(manifest.features, [
+      "course-export-annotation-version-fence-v1",
+      "human-content-review-v1"
+    ]);
+    assert.equal(Object.hasOwn(manifest, "requiredFeatures"), false);
   } finally {
     await db.close();
   }

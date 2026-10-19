@@ -105,10 +105,9 @@ const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_REVIEW_PLAN_CONTRACT = "aralearn.course-review-plan.v1";
 const COURSE_REVIEW_PLAN_SNAPSHOT_CONTRACT = "aralearn.course-review-plan.snapshot.v1";
-const COURSE_REVIEW_PLAN_CACHE_TTL_MS = 60_000;
-const COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET = 8 * 1024 * 1024;
-const COURSE_REVIEW_PLAN_CACHE_MAX_ENTRIES = 32;
-const COURSE_REVIEW_PLAN_CACHE = new Map();
+const COURSE_REVIEW_PLAN_CACHE_TTL_MS = 15 * 60_000;
+const COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET = 1_835_008;
+const COURSE_REVIEW_PLAN_CACHE = new WeakMap();
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
 const PERSON_AVATAR_BUCKET = "person-avatars";
@@ -221,36 +220,26 @@ function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value);
 }
 
-function reviewPlanCacheKey(principal, courseId) {
-  return JSON.stringify([principal?.actorId, courseId]);
+function reviewPlanCacheKey(principal, courseId, explanationIds) {
+  return JSON.stringify([principal?.actorId, courseId, explanationIds]);
 }
 
-function reviewPlanCacheRead(key, now) {
-  const entry = COURSE_REVIEW_PLAN_CACHE.get(key);
-  if (!entry) return null;
-  if (entry.expiresAt <= now) {
-    COURSE_REVIEW_PLAN_CACHE.delete(key);
+function reviewPlanCacheRead(adapter, key, now) {
+  const state = COURSE_REVIEW_PLAN_CACHE.get(adapter);
+  if (!state || state.key !== key) return null;
+  if (state.entry.expiresAt <= now) {
+    COURSE_REVIEW_PLAN_CACHE.delete(adapter);
     return null;
   }
-  COURSE_REVIEW_PLAN_CACHE.delete(key);
-  COURSE_REVIEW_PLAN_CACHE.set(key, entry);
-  return entry;
+  return state.entry;
 }
 
-function reviewPlanCacheRemember(key, entry) {
-  const previous = COURSE_REVIEW_PLAN_CACHE.get(key);
-  if (previous) COURSE_REVIEW_PLAN_CACHE.delete(key);
-  if (entry.bytes > COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET) return;
-  COURSE_REVIEW_PLAN_CACHE.set(key, entry);
-  let bytes = 0;
-  for (const value of COURSE_REVIEW_PLAN_CACHE.values()) bytes += value.bytes;
-  while (bytes > COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET ||
-      COURSE_REVIEW_PLAN_CACHE.size > COURSE_REVIEW_PLAN_CACHE_MAX_ENTRIES) {
-    const oldestKey = COURSE_REVIEW_PLAN_CACHE.keys().next().value;
-    const oldest = COURSE_REVIEW_PLAN_CACHE.get(oldestKey);
-    COURSE_REVIEW_PLAN_CACHE.delete(oldestKey);
-    bytes -= oldest.bytes;
+function reviewPlanCacheRemember(adapter, key, entry) {
+  if (entry.bytes > COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET) {
+    COURSE_REVIEW_PLAN_CACHE.delete(adapter);
+    return;
   }
+  COURSE_REVIEW_PLAN_CACHE.set(adapter, { key, entry });
 }
 
 function normalizeComponentPolicy(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }) {
@@ -2323,13 +2312,23 @@ export class CourseSupabaseAdapter {
   async getCourseReviewPlan({
     principal,
     courseId,
+    expectedRevision,
+    explanationIds = [],
     deadlineAt = null
   }) {
-    const cacheKey = reviewPlanCacheKey(principal, courseId);
-    const cached = reviewPlanCacheRead(cacheKey, Date.now());
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1 || !Array.isArray(explanationIds) ||
+        explanationIds.length > 500 || explanationIds.some(id => typeof id !== "string" || !id.trim() || id.length > 240)) {
+      throw new AuthoringApiError(503, "course_service_unavailable",
+        "A seleção do planejamento estrutural de revisão é inválida.");
+    }
+    const selectedExplanationIds = [...new Set(explanationIds)].sort();
+    const cacheKey = reviewPlanCacheKey(principal, courseId, selectedExplanationIds);
+    const cached = reviewPlanCacheRead(this, cacheKey, Date.now());
     const response = first(await this.rpc("get_owned_course_review_plan_for_actor_v2", {
       p_actor_id: principal.actorId,
       p_course_id: courseId,
+      p_expected_revision: expectedRevision,
+      p_explanation_ids: selectedExplanationIds,
       p_if_none_match: cached?.fingerprint ?? null
     }, { deadlineAt }));
     const unavailable = () => new AuthoringApiError(
@@ -2345,8 +2344,13 @@ export class CourseSupabaseAdapter {
       response.courseId === courseId && positiveSafeInteger(response.courseRevision) &&
       positiveSafeInteger(response.planVersion) &&
       typeof response.fingerprint === "string" && /^[0-9a-f]{64}$/u.test(response.fingerprint);
+    if (validSnapshot && response.courseRevision !== expectedRevision) {
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw new AuthoringApiError(409, "course_revision_conflict",
+        "O curso mudou durante a leitura do plano estrutural de revisão.");
+    }
     if (!validSnapshot) {
-      COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
       throw unavailable();
     }
     if (response.notModified === true) {
@@ -2354,14 +2358,15 @@ export class CourseSupabaseAdapter {
           cached.courseRevision !== response.courseRevision ||
           cached.planVersion !== response.planVersion ||
           cached.fingerprint !== response.fingerprint) {
-        COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+        COURSE_REVIEW_PLAN_CACHE.delete(this);
         throw unavailable();
       }
-      return withDeepLink(structuredClone(cached.representation), this.publicAppUrl, "planning");
+      const result = expandReviewPlanningTransport(JSON.parse(cached.representationJson));
+      return withDeepLink({ ...result, sourceFingerprint: response.fingerprint }, this.publicAppUrl, "planning");
     }
     if (response.notModified !== false || !exactRecord(response,
       new Set([...snapshotFields, "representation"])) || !jsonRecord(response.representation)) {
-      COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
       throw unavailable();
     }
     const result = expandReviewPlanningTransport(response.representation);
@@ -2375,21 +2380,30 @@ export class CourseSupabaseAdapter {
         !Array.isArray(result.plan.curriculum.modules) ||
         !Array.isArray(result.plan.curriculumScopeItems) ||
         !Array.isArray(result.plan.parts)) {
-      COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
       throw unavailable();
     }
-    const bytes = new TextEncoder().encode(JSON.stringify(result)).byteLength;
-    reviewPlanCacheRemember(cacheKey, {
+    const selectedIds = new Set(selectedExplanationIds);
+    const allMicrosequences = result.plan.curriculum.modules.flatMap(moduleValue =>
+      (moduleValue.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+    if (allMicrosequences.some(microsequence => !selectedIds.has(microsequence.id) &&
+        microsequence.explanation !== null)) {
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw unavailable();
+    }
+    const representationJson = JSON.stringify(response.representation);
+    const bytes = new TextEncoder().encode(representationJson).byteLength;
+    reviewPlanCacheRemember(this, cacheKey, {
       courseRevision: response.courseRevision,
       planVersion: response.planVersion,
       fingerprint: response.fingerprint,
-      representation: structuredClone(result),
+      representationJson,
       bytes,
       expiresAt: Date.now() + COURSE_REVIEW_PLAN_CACHE_TTL_MS
     });
     // Somente preparar_revisao consome esta projeção. Uma referência de aprovação
     // do mapa pertence ao leitor integral e não deve ser derivada aqui.
-    return withDeepLink(structuredClone(result), this.publicAppUrl, "planning");
+    return withDeepLink({ ...result, sourceFingerprint: response.fingerprint }, this.publicAppUrl, "planning");
   }
 
   async getCourseInspectionTriageOutline({ principal, courseId, expectedRevision, deadlineAt = null }) {
