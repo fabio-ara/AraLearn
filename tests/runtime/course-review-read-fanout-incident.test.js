@@ -117,7 +117,7 @@ function leanReviewPlan(value, courseId) {
 function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = false,
   reviewProjection = "full" } = {}) {
   const units = Array.from({ length: unitCount }, (_, index) => studyUnit(index + 1, unitSize, multibyte));
-  const calls = { units: [], reviews: [], inspections: [], annotations: [], sources: [],
+  const calls = { units: [], unitBodies: [], outlines: [], reviews: [], inspections: [], annotations: [], sources: [],
     instructionalPlans: [], reviewPlans: [] };
   const totals = { instructionalPlans: 0, reviewPlans: 0 };
   const plan = { courseRevision: COURSE.revision, plan: { id: "plan-review", version: 2,
@@ -152,6 +152,17 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
       const full = withoutPlanContentReviews({ ...plan, courseRevision: adapter.revision });
       return reviewProjection === "lean" ? leanReviewPlan(full, input.courseId)
         : { contract: "aralearn.course-instructional-plan.v3", courseId: input.courseId, ...full }; },
+    async getCourseInspectionTriageOutline(input) { calls.outlines.push(input);
+      return { contract: "aralearn.course-inspection-triage-outline.v1", courseId: input.courseId,
+        courseRevision: adapter.revision, plan: { title: TITLE,
+          curriculum: { modules: [{ id: "module-1", title: "Módulo", position: 0, lessons: [
+            { id: "lesson-1", title: "Lição", position: 0, microsequences: [
+              { id: MS, title: MS_TITLE, position: 0 }] }] }] },
+          parts: [{ id: PART, title: "Parte única", position: 0, microsequences: [
+            { id: MS, title: MS_TITLE, productionPosition: 0 }] }],
+          studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
+            ordinal: index + 1, curriculumPath: { moduleId: "module-1", lessonId: "lesson-1",
+              didacticMicrosequenceId: MS }, authoringPartId: item.ordinal > 2 ? PART : null })) } }; },
     async getAuthoringProcessPreferences() { return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
       updatedAt: null, preferences: defaultAuthoringProcessPreferences() }; },
     async getCourseContentReview(input) { calls.reviews.push(input);
@@ -167,6 +178,17 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
           planItems: [], dependencies: [], studyUnits: [], citations: [], additionalContext: {} } }; },
     async getCourseContentInspectionReceipt() { return null; },
     async listCourseStudyUnits(input) { calls.units.push(input);
+      if (input.anchorStudyUnitId) {
+        const item = units.find(unit => unit.studyUnit.id === input.anchorStudyUnitId);
+        if (item) calls.unitBodies.push(item.studyUnit.id);
+        const index = item ? units.indexOf(item) : -1;
+        const canonical = item ? { ...structuredClone(item),
+          ordinal: input.scopeKind === "authoring_part" ? index - 1 : index + 1,
+          curriculumPath: { module: { id: "module-1" }, lesson: { id: "lesson-1" },
+            didacticMicrosequence: { id: MS } },
+          authoringPart: index >= 2 ? { id: PART } : null } : null;
+        return { courseRevision: adapter.revision, items: canonical ? [canonical] : [], hasMore: false, nextCursor: null };
+      }
       const start = input.cursorStudyUnitId === null || input.cursorStudyUnitId === undefined
         ? 0 : Number(String(input.cursorStudyUnitId).split("-").at(-1));
       const limit = Number.isSafeInteger(input.limit) && input.limit > 0 ? input.limit : 12;
@@ -268,6 +290,26 @@ test("seleção não monotônica preserva a ordem vigente e não ordena por iden
   assert.deepEqual(pageUnitIds(pages), ["unit-3", "unit-1", "unit-5", "unit-2"]);
 });
 
+test("preparar_revisao resolve por índice e hidrata somente os IDs selecionados", async () => {
+  const { adapter } = createAdapter({ unitCount: 196 });
+  adapter.reset();
+  await execute(adapter, { unidades: ["Unidade 46", 44, 45] });
+  assert.equal(adapter.calls.units.length, 3, "uma leitura canônica ancorada por ID selecionado");
+  assert.deepEqual(adapter.calls.unitBodies, ["unit-46", "unit-44", "unit-45"]);
+  assert.equal(adapter.calls.outlines.length, 1, "a identidade vem do índice compacto autenticado");
+});
+
+test("ordinais de escopo permanecem locais e títulos continuam resolvidos", async () => {
+  const { adapter } = createAdapter({ unitCount: UNIT_COUNT });
+  adapter.reset();
+  const local = await execute(adapter, { parte: "Parte única", unidades: [1] });
+  assert.deepEqual(adapter.calls.unitBodies, ["unit-3"], "ordinal 1 da parte aponta para seu primeiro alvo");
+  assert.ok(local.context.fragmento, "a resposta continua usando fragmentação literal");
+  adapter.reset();
+  await execute(adapter, { unidades: ["Unidade 47"] });
+  assert.deepEqual(adapter.calls.unitBodies, ["unit-47"]);
+});
+
 test("cursor p fora da seleção é rejeitado com 409 antes de novas leituras", async () => {
   const { adapter } = createAdapter({ unitCount: 6 });
   const first = await execute(adapter, { unidades: [1, 2, 3] });
@@ -276,6 +318,7 @@ test("cursor p fora da seleção é rejeitado com 409 antes de novas leituras", 
   adapter.reset();
   await assert.rejects(() => execute(adapter, { unidades: [1, 2, 3], continuacao: tampered }),
     error => error.code === "human_read_context_changed" && error.status === 409);
+  assert.equal(adapter.calls.unitBodies.length, 0, "cursor fora da seleção é rejeitado antes de hidratar corpos");
   assert.equal(adapter.calls.reviews.length, 0, "nenhum alvo foi lido antes de rejeitar");
 });
 
@@ -287,11 +330,13 @@ test("mudança de revisão ou de argumentos é rejeitada com 409 antes das leitu
   adapter.revision = COURSE.revision + 1;
   await assert.rejects(() => execute(adapter, { unidades: [1, 2, 3], continuacao: cursor }),
     error => error.status === 409);
+  assert.equal(adapter.calls.unitBodies.length, 0, "revisão divergente não hidrata unidades");
   assert.equal(adapter.calls.reviews.length, 0, "revisão divergente não lê alvos");
   adapter.revision = COURSE.revision;
   adapter.reset();
   await assert.rejects(() => execute(adapter, { unidades: [1, 2, 3, 4], continuacao: cursor }),
     error => error.status === 409);
+  assert.equal(adapter.calls.unitBodies.length, 0, "argumentos divergentes não hidratam unidades");
   assert.equal(adapter.calls.reviews.length, 0, "argumentos divergentes não leem alvos");
 });
 

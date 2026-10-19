@@ -4710,7 +4710,18 @@ test("argumentos de triagem reabrem os mesmos alvos em auditoria formal com micr
   const plan = { id: "plan", version: 1, title: "Redes para iniciantes", objective: "Objetivo", parts: [],
     curriculum: { modules: [{ id: "module-a", position: 0, title: "Módulo",
       lessons: [{ id: "lesson-a", position: 0, title: "Lição", microsequences: micros }] }] } };
-  value.getCourseInspectionTriageOutline = async () => { throw new Error("curso inteiro não deve carregar outline"); };
+  value.getCourseInspectionTriageOutline = async ({ expectedRevision }) => ({
+    contract: "aralearn.course-inspection-triage-outline.v1", courseId: COURSE_ID,
+    courseRevision: expectedRevision, plan: { title: "Redes para iniciantes", parts: [],
+      curriculum: { modules: [] }, studyUnits: [
+        { id: "unit-a", title: "Unidade A", ordinal: 1,
+          curriculumPath: { moduleId: "module-a", lessonId: "lesson-a", didacticMicrosequenceId: "micro-a" },
+          authoringPartId: null },
+        { id: "unit-b", title: "Unidade B", ordinal: 2,
+          curriculumPath: { moduleId: "module-a", lessonId: "lesson-a", didacticMicrosequenceId: "micro-b" },
+          authoringPartId: null }
+      ] }
+  });
   value.getCourseInspectionTriagePage = async input => ({ contract: "aralearn.course-inspection-triage-page.v1",
     courseId: COURSE_ID, courseRevision: input.expectedRevision, scope: { kind: "course", id: null },
     items: [
@@ -4730,13 +4741,18 @@ test("argumentos de triagem reabrem os mesmos alvos em auditoria formal com micr
     ], totalCount: 4, hasMore: false, nextCursor: null });
   value.getCourseInstructionalPlan = async () => ({ courseId: COURSE_ID, courseRevision: 7, plan });
   const formalReads = [];
-  value.listCourseStudyUnits = async ({ scopeKind, scopeId }) => {
+  value.listCourseStudyUnits = async ({ scopeKind, scopeId, anchorStudyUnitId }) => {
     const items = [
       { ordinal: 1, studyUnit: { id: "unit-a", title: "Unidade A", position: 0 },
         curriculumPath: { didacticMicrosequence: { id: "micro-a", title: micros[0].title } } },
       { ordinal: 2, studyUnit: { id: "unit-b", title: "Unidade B", position: 0 },
         curriculumPath: { didacticMicrosequence: { id: "micro-b", title: micros[1].title } } }
     ].filter(item => scopeKind !== "didactic_microsequence" || item.curriculumPath.didacticMicrosequence.id === scopeId);
+    if (anchorStudyUnitId) return { courseRevision: 7,
+      items: items.filter(item => item.studyUnit.id === anchorStudyUnitId).map(item => ({ ...item,
+        curriculumPath: { module: { id: "module-a" }, lesson: { id: "lesson-a" },
+          didacticMicrosequence: { id: item.curriculumPath.didacticMicrosequence.id } }, authoringPart: null })),
+      hasMore: false, nextCursor: null };
     return { items, hasMore: false, nextCursor: null };
   };
   value.getCourseContentReview = async ({ targetKind, targetId }) => ({ contract: "aralearn.course-content-review.v1",
