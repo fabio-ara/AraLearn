@@ -610,12 +610,19 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
 
 test("leitura formal mantém oportunidade autoral aplicada e remove IDs da projeção", async () => {
   const evidenceRequirementId = "40000000-0000-4000-8000-000000000001";
-  const application = { mode: "practice", practiceApplications: [
+  const application = { mode: "practice", introducedInstructionalAnalysisUnitIds: ["analysis-1"],
+    usedInstructionalAnalysisUnitIds: ["analysis-1"], curriculumScopeItemIds: [],
+    practiceApplications: [
     { evidenceRequirementId, opportunityId: "Oportunidade autoral formal",
       invariantTaskOperation: "Classificar alcance e ponto de chegada da fibra",
       variedDimensions: ["case_or_data"] }
   ] };
-  const unit = { ...studyUnit(1), authorship: { design: { application } } };
+  const legacySnapshot = { mode: "practice", analysisIdeas: { introduced: [], used: [{ name: "Fibra", description: "Meio guiado." }], revisited: [] },
+    componentRefs: ["aralearn.resource.paragraph@1.0.0"],
+    explanationApplications: [{ developedForms: ["mechanism"], notApplicable: [] }],
+    practiceEvidence: [{ name: "Classificar alcance", description: "Aplicar ao caso." }] };
+  const unit = { ...studyUnit(1), designApplication: application,
+    authorship: { design: { application: legacySnapshot } } };
   const adapter = fixture({ units: [unit] });
   const formalReads = [];
   adapter.getCourseContentInspection = async ({ courseId, targetKind, targetId }) => {
@@ -624,7 +631,7 @@ test("leitura formal mantém oportunidade autoral aplicada e remove IDs da proje
       targetKind, targetId, basisHash: "b".repeat(64),
       inspection: { state: "unregistered", basisHash: "b".repeat(64) },
       pedagogicalBasis: { targetKind, targetId, microsequence: { goal: "Classificar uma rede." },
-        studyUnits: [{ id: targetId, content: unit.studyUnit, application }],
+        studyUnits: [{ id: targetId, content: unit.studyUnit, application: unit.designApplication }],
         planItems: [{ id: evidenceRequirementId, kind: "evidence_requirement",
           statement: "Classificar alcance e ponto de chegada da fibra", description: "Aplicar o critério ao caso." }],
         dependencies: [] }
@@ -639,6 +646,7 @@ test("leitura formal mantém oportunidade autoral aplicada e remove IDs da proje
   assert.deepEqual(practices, [{ invariantTaskOperation: "Classificar alcance e ponto de chegada da fibra",
     variedDimensions: ["case_or_data"], oportunidade: "Oportunidade autoral formal" }]);
   assert.doesNotMatch(JSON.stringify(practices), /opportunityId|evidenceRequirementId/u);
+  assert.doesNotMatch(JSON.stringify(meta.auditoriaPedagogica.basis), /instructionalAnalysisUnitIds|curriculumScopeItemIds/u);
   assert.deepEqual(formalReads, ["unit-1"]);
 });
 

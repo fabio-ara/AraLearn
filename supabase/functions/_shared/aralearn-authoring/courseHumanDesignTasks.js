@@ -94,6 +94,19 @@ async function readDesign(values, resolved) {
   return values.adapter.getCourseDesign({ principal: values.principal, courseId: resolved.course.id,
     scopeKind: scope(resolved).kind, scopeRef: scope(resolved).ref, childLimit: 1, deadlineAt: values.deadlineAt });
 }
+export function humanUnitApplication(unit) {
+  const snapshot = unit?.authorship?.design?.application ?? null;
+  const canonical = unit?.designApplication;
+  if (!canonical || typeof canonical !== "object" || Array.isArray(canonical) ||
+      !Array.isArray(canonical.practiceApplications)) return snapshot;
+  return { ...canonical, ...(snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) ? snapshot : {}),
+    practiceApplications: structuredClone(canonical.practiceApplications) };
+}
+function humanUnitAppliedDesign(unit) {
+  const design = unit?.authorship?.design;
+  if (!design || typeof design !== "object" || Array.isArray(design)) return null;
+  return { ...design, application: humanUnitApplication(unit) };
+}
 function checkReceipt(value, request, settings) {
   if (settings) {
     try { value = normalizeCourseDesignChange(value); } catch { fail("A confirmação da configuração é inválida.", 503, "course_service_unavailable"); }
@@ -194,9 +207,9 @@ export const COURSE_HUMAN_DESIGN_TASK_HANDLERS = {
       analise: human("instructionalAnalysisUnits"), evidencias: human("evidenceRequirements"), cobertura: human("curriculumScopeItems"),
       vinculos: design.targetPlanItems ? { analise: linked(design.targetPlanItems.instructionalAnalysisUnitIds, "instructionalAnalysisUnits"),
         evidencias: linked(design.targetPlanItems.evidenceRequirementIds, "evidenceRequirements") } : null,
-      aplicacao: resolved.studyUnits[0]?.authorship?.design?.application ?? null,
+      aplicacao: humanUnitApplication(resolved.studyUnits[0]),
       // O estado persistido não é o recibo fechado de uma escrita confirmada.
-      configuracaoAplicadaNaUnidade: resolved.studyUnits[0]?.authorship?.design ?? null,
+      configuracaoAplicadaNaUnidade: humanUnitAppliedDesign(resolved.studyUnits[0]),
       componentes: design.componentCatalog.options.map((item, index) => ({ posicao: index + 1, nome: item.label, finalidade: item.purpose }))
     });
   },

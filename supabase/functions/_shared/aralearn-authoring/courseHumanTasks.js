@@ -73,7 +73,8 @@ import { normalizeCourseInspectionTriagePage } from "../aralearn/runtime/domain/
 import { normalizePedagogicalAudit, projectPedagogicalAudit, requirePedagogicalAuditConsistency,
   PEDAGOGICAL_AUDIT_DIMENSIONS, hasCurrentPedagogicalAudit } from "../aralearn/runtime/domain/coursePedagogicalAudit.js";
 import { COURSE_HUMAN_ACCESS_TASK_DEFINITIONS, COURSE_HUMAN_ACCESS_TASK_HANDLERS } from "./courseHumanAccessTasks.js";
-import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS } from "./courseHumanDesignTasks.js";
+import { COURSE_HUMAN_DESIGN_TASK_DEFINITIONS, COURSE_HUMAN_DESIGN_TASK_HANDLERS,
+  humanUnitApplication } from "./courseHumanDesignTasks.js";
 import { COURSE_HUMAN_STRUCTURE_TASK_DEFINITIONS, COURSE_HUMAN_STRUCTURE_TASK_HANDLERS } from "./courseHumanStructureTasks.js";
 import { AUTHORING_PROCESS_REFERENCE_SCHEMA, createAuthoringProcessReference, openAuthoringProcessReference } from "./courseAuthoringProcessReference.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope, normalizeHumanNavigationEnvelope } from "./courseHumanNavigation.js";
@@ -3242,7 +3243,7 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
           : "A intenção solicitada e o valor aplicado podem divergir legitimamente; quer manter a herança, fixar alguma condição ou detalhar um parâmetro?",
         context: {
           configuracaoSolicitada: projectConfiguration(configuration),
-          aplicacaoNaUnidade: unit?.authorship?.design?.application ?? null,
+          aplicacaoNaUnidade: humanUnitApplication(unit),
           configuracaoAplicadaNaUnidade: appliedConfiguration
         }
       }
