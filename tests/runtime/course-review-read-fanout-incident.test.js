@@ -31,9 +31,9 @@ const unitText = (index, size, multibyte = false) => {
   return (base + pad).slice(0, size);
 };
 
-function studyUnit(index, size, multibyte) {
+function studyUnit(index, size, multibyte, microsequenceId = MS, microsequenceTitle = MS_TITLE) {
   return { ordinal: index, version: 5,
-    curriculumPath: { didacticMicrosequence: { id: MS, title: MS_TITLE } },
+    curriculumPath: { didacticMicrosequence: { id: microsequenceId, title: microsequenceTitle } },
     studyUnit: { id: `unit-${index}`, version: 5, title: `Unidade ${index}`, kind: "theory",
       content: [{ id: `paragraph-${index}`, package: "aralearn.resource.paragraph", version: "1.0.0",
         data: { text: unitText(index, size, multibyte) } }],
@@ -47,8 +47,8 @@ function explanation() {
       data: { text: "Texto sintético mínimo que define o termo fictício e o relaciona ao objetivo da prova focal." } }] });
 }
 
-function microsequence() {
-  return { id: MS, title: MS_TITLE, position: 0, goal: "Relacionar protocolos, serviços e portas.",
+function microsequence(id = MS, title = MS_TITLE) {
+  return { id, title, position: 0, goal: "Relacionar protocolos, serviços e portas.",
     objective: "Relacionar protocolos, serviços e portas.",
     explanationPlan: { purpose: "Explicitar a relação.", prerequisites: [], relations: [], sourceIds: [] },
     explanation: explanation(), contentReview: { state: "draft" } };
@@ -222,7 +222,97 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
         annotationSetVersion: adapter.annotationSetVersion,
         courseRevision: adapter.revision, hasMore: false, nextCursor: null }; }
   };
-  return { adapter, calls };
+  return { adapter, calls, units };
+}
+
+function configureReviewPageScope(adapter, units, microsequences, { unitMicrosequenceIds = [], partUnitIds = [] } = {}) {
+  const partUnits = new Set(partUnitIds);
+  const specsById = new Map(microsequences.map(item => [item.id, item]));
+  units.forEach((unit, index) => {
+    const selected = specsById.get(unitMicrosequenceIds[index] ?? microsequences[0]?.id);
+    assert.ok(selected, `unit-${index + 1} has a configured microsequence`);
+    unit.curriculumPath.didacticMicrosequence = { id: selected.id, title: selected.title };
+  });
+  const moduleValue = adapter.plan.plan.curriculum.modules[0];
+  const lesson = moduleValue.lessons[0];
+  const microById = new Map(microsequences.map((item, position) => [item.id, {
+    ...microsequence(item.id, item.title), position, scopeItemIds: ["scope-1"], dependencyMicrosequenceIds: []
+  }]));
+  lesson.microsequences = [...microById.values()];
+  adapter.plan.plan.parts[0].microsequences = microsequences.map((item, productionPosition) => ({
+    ...structuredClone(microById.get(item.id)), productionPosition,
+    studyUnitCount: units.filter((unit, index) => unit.curriculumPath.didacticMicrosequence.id === item.id &&
+      partUnits.has(unit.studyUnit.id)).length,
+    curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
+      lessonId: lesson.id, lessonTitle: lesson.title }
+  }));
+
+  const indexedUnits = units.map((unit, index) => {
+    const micro = unit.curriculumPath.didacticMicrosequence;
+    const inPart = partUnits.has(unit.studyUnit.id);
+    return { unit, id: unit.studyUnit.id, microsequenceId: micro.id, microsequenceTitle: micro.title,
+      authoringPartId: inPart ? PART : null, globalOrdinal: index + 1 };
+  });
+  adapter.getCourseInspectionTriageOutline = async input => {
+    adapter.calls.outlines.push(input);
+    adapter.calls.events.push("outline");
+    const outlineModules = adapter.plan.plan.curriculum.modules.map(value => ({ id: value.id,
+      title: value.title, position: value.position, lessons: value.lessons.map(current => ({
+        id: current.id, title: current.title, position: current.position,
+        microsequences: current.microsequences.map(item => ({ id: item.id, title: item.title, position: item.position }))
+      })) }));
+    const outlineParts = adapter.plan.plan.parts.map(value => ({ id: value.id, title: value.title,
+      position: value.position, microsequences: value.microsequences.map(item => ({ id: item.id,
+        title: item.title, productionPosition: item.productionPosition })) }));
+    return { contract: "aralearn.course-inspection-triage-outline.v1", courseId: COURSE.id,
+      courseRevision: adapter.revision, plan: { title: TITLE,
+        curriculum: { modules: outlineModules }, parts: outlineParts,
+        studyUnits: indexedUnits.map(item => ({ id: item.id, title: item.unit.studyUnit.title,
+          ordinal: item.authoringPartId ? indexedUnits.filter(value => value.authoringPartId === item.authoringPartId)
+            .findIndex(value => value.id === item.id) + 1 : item.globalOrdinal,
+          curriculumPath: { moduleId: moduleValue.id, lessonId: lesson.id,
+            didacticMicrosequenceId: item.microsequenceId }, authoringPartId: item.authoringPartId })) } };
+  };
+  adapter.listCourseStudyUnits = async input => {
+    adapter.calls.units.push(input);
+    adapter.calls.events.push("unit-page");
+    let scoped = indexedUnits;
+    if (input.scopeKind === "authoring_part") scoped = scoped.filter(item => item.authoringPartId === input.scopeId);
+    if (input.scopeKind === "didactic_microsequence") scoped = scoped.filter(item => item.microsequenceId === input.scopeId);
+    if (input.anchorStudyUnitId) {
+      const index = scoped.findIndex(item => item.id === input.anchorStudyUnitId);
+      const item = index < 0 ? null : scoped[index];
+      if (item) adapter.calls.unitBodies.push(item.id);
+      return { courseRevision: adapter.revision, items: item ? [{ ...structuredClone(item.unit),
+        ordinal: index + 1, curriculumPath: { module: { id: moduleValue.id }, lesson: { id: lesson.id },
+          didacticMicrosequence: { id: item.microsequenceId, title: item.microsequenceTitle } },
+        authoringPart: item.authoringPartId ? { id: item.authoringPartId } : null }] : [],
+        hasMore: false, nextCursor: null };
+    }
+    const cursorIndex = input.cursorStudyUnitId == null ? -1 : scoped.findIndex(item => item.id === input.cursorStudyUnitId);
+    if (input.cursorStudyUnitId != null && cursorIndex < 0) {
+      return { courseRevision: adapter.revision, items: [], hasMore: false, nextCursor: null };
+    }
+    const start = cursorIndex + 1;
+    const selected = [];
+    let bytes = 0;
+    for (let index = start; index < scoped.length; index += 1) {
+      const item = scoped[index];
+      const canonical = { ...structuredClone(item.unit),
+        ordinal: index + 1, curriculumPath: { module: { id: moduleValue.id }, lesson: { id: lesson.id },
+          didacticMicrosequence: { id: item.microsequenceId, title: item.microsequenceTitle } },
+        authoringPart: item.authoringPartId ? { id: item.authoringPartId } : null };
+      const size = Buffer.byteLength(JSON.stringify(canonical));
+      if (selected.length && (selected.length >= input.limit || bytes + size > input.maxBytes)) break;
+      selected.push({ item, canonical });
+      bytes += size;
+    }
+    adapter.calls.unitBodies.push(...selected.map(value => value.item.id));
+    return { courseRevision: adapter.revision, items: selected.map(value => value.canonical),
+      hasMore: start + selected.length < scoped.length,
+      nextCursor: start + selected.length < scoped.length && selected.length
+        ? { studyUnitId: selected.at(-1).item.id } : null };
+  };
 }
 
 const execute = (adapter, args) => executeHumanCourseTask({ adapter, principal: PRINCIPAL,
@@ -238,6 +328,7 @@ async function readAll(adapter, baseArgs) {
   const perCallReviews = [];
   const perCallInspections = [];
   const perCallReviewPlans = [];
+  const perCallReviewPlanExplanationIds = [];
   const perCallUnitBodies = [];
   const perPageFragments = [];
   let cursor;
@@ -252,6 +343,7 @@ async function readAll(adapter, baseArgs) {
     perCallReviews.push(studyUnitReviews(adapter.calls));
     perCallInspections.push(allInspections(adapter.calls));
     perCallReviewPlans.push(adapter.calls.reviewPlans.length);
+    perCallReviewPlanExplanationIds.push(adapter.calls.reviewPlans[0]?.explanationIds ?? []);
     perCallUnitBodies.push(adapter.calls.unitBodies.slice());
     const page = response.context;
     if (page.fragmento) {
@@ -277,10 +369,88 @@ async function readAll(adapter, baseArgs) {
   }
   assert.equal(perPageFragments.length, pages.length, "cada página lógica é contabilizada uma vez");
   return { pages, perCallReviews, perCallInspections, perCallReviewPlans, perCallUnitBodies,
-    perPageFragments, fragments };
+    perCallReviewPlanExplanationIds, perPageFragments, fragments };
 }
 
 const pageUnitIds = pages => pages.flatMap(page => (page.studyUnits ?? []).map(entry => entry.studyUnit.id));
+
+function reviewPlanIdsByPage(result) {
+  let offset = 0;
+  return result.perPageFragments.map(fragmentCount => {
+    const calls = result.perCallReviewPlanExplanationIds.slice(offset, offset + fragmentCount);
+    offset += fragmentCount;
+    assert.ok(calls.length > 0, "cada página materializa um plano de revisão");
+    for (const ids of calls.slice(1)) assert.deepEqual(ids, calls[0], "fragmentos da mesma página mantêm o mesmo foco");
+    return calls[0];
+  });
+}
+
+const scopedMicroSpecs = [
+  { id: "ms-page-a", title: "Explicação A" },
+  { id: "ms-page-b", title: "Explicação B" },
+  { id: "ms-empty", title: "Explicação sem unidades" }
+];
+
+test("seleção global projeta explicações pela página e inclui vazias só na primeira", async () => {
+  const { adapter, units } = createAdapter({ unitCount: 14, unitSize: 1_000 });
+  configureReviewPageScope(adapter, units, scopedMicroSpecs, {
+    unitMicrosequenceIds: [...Array(13).fill("ms-page-a"), "ms-page-b"]
+  });
+  const result = await readAll(adapter, {});
+
+  assert.deepEqual(pageUnitIds(result.pages), Array.from({ length: 14 }, (_, index) => `unit-${index + 1}`));
+  assert.equal(result.pages.length, 2, "o cap de 12 unidades produz duas páginas lógicas");
+  const plans = reviewPlanIdsByPage(result);
+  assert.deepEqual(plans, [["ms-page-a", "ms-empty"], ["ms-page-a", "ms-page-b"]]);
+  assert.deepEqual([...new Set(plans.flat())].sort(), scopedMicroSpecs.map(item => item.id).sort(),
+    "a união das páginas cobre todas as explicações do curso");
+  assert.deepEqual(result.pages.map(page => page.explicacoes.map(item => item.microssequencia)),
+    [["Explicação A", "Explicação sem unidades"], ["Explicação A", "Explicação B"]]);
+});
+
+test("seleção por parte projeta unidades da parte e vazias apenas na primeira página", async () => {
+  const { adapter, units } = createAdapter({ unitCount: 15, unitSize: 1_000 });
+  configureReviewPageScope(adapter, units, scopedMicroSpecs, {
+    unitMicrosequenceIds: [...Array(7).fill("ms-page-a"), ...Array(7).fill("ms-page-b"), "ms-empty"],
+    partUnitIds: units.slice(0, 14).map(unit => unit.studyUnit.id)
+  });
+  const result = await readAll(adapter, { parte: 1 });
+
+  assert.deepEqual(pageUnitIds(result.pages), Array.from({ length: 14 }, (_, index) => `unit-${index + 1}`),
+    "unit-15 pertence a outra parte e não torna ms-empty não vazia dentro deste escopo");
+  assert.equal(result.pages.length, 2);
+  const plans = reviewPlanIdsByPage(result);
+  assert.deepEqual(plans, [["ms-page-a", "ms-page-b", "ms-empty"], ["ms-page-b"]]);
+  assert.deepEqual([...new Set(plans.flat())].sort(), scopedMicroSpecs.map(item => item.id).sort(),
+    "a união das páginas da parte cobre todas as explicações no escopo");
+  assert.deepEqual(result.pages.map(page => page.explicacoes.map(item => item.microssequencia)),
+    [["Explicação A", "Explicação B", "Explicação sem unidades"], ["Explicação B"]]);
+});
+
+test("seleções explícitas e escopos sem unidades preservam os corpos esperados", async () => {
+  {
+    const { adapter, units } = createAdapter({ unitCount: 2, unitSize: 1_000 });
+    configureReviewPageScope(adapter, units, scopedMicroSpecs,
+      { unitMicrosequenceIds: ["ms-page-a", "ms-page-b"] });
+    await execute(adapter, { microssequencia: "Explicação sem unidades" });
+    assert.deepEqual(adapter.calls.reviewPlans[0].explanationIds, ["ms-empty"], "microssequência explícita permanece integral");
+  }
+  {
+    const { adapter, units } = createAdapter({ unitCount: 2, unitSize: 1_000 });
+    configureReviewPageScope(adapter, units, scopedMicroSpecs,
+      { unitMicrosequenceIds: ["ms-page-a", "ms-page-b"] });
+    await execute(adapter, { unidades: [2] });
+    assert.deepEqual(adapter.calls.reviewPlans[0].explanationIds, ["ms-page-b"], "unidade explícita mantém foco próprio");
+  }
+  {
+    const { adapter, units } = createAdapter({ unitCount: 0, unitSize: 1_000 });
+    configureReviewPageScope(adapter, units, scopedMicroSpecs);
+    const result = await readAll(adapter, {});
+    assert.equal(result.pages.length, 1);
+    assert.deepEqual(reviewPlanIdsByPage(result), [["ms-page-a", "ms-page-b", "ms-empty"]],
+      "sem unidades, o escopo global continua cobrindo todas as explicações");
+  }
+});
 
 test("seleção de 47 unidades limita calls por página e conserva 47 únicas na ordem", async () => {
   const { adapter } = createAdapter();
