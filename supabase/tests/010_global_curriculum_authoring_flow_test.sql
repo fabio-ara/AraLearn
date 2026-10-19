@@ -10,7 +10,7 @@ create function pg_temp.explanation_fixture(p_targets jsonb) returns jsonb langu
 $fixture$;
 
 
-select plan(23);
+select plan(31);
 
 select set_config('request.jwt.claim.role','service_role',true);
 set constraints all deferred;
@@ -965,6 +965,93 @@ select is(
   '[{"componentRef":"aralearn.response.choice@1.0.0","instanceCount":1,"studyUnitCount":1}]'::jsonb,
   'componentes de Analytics incluem a resposta materializada sem metadado de pratica'
 );
+
+-- A projeção completa do plano pode exceder seu orçamento sem que o mapa,
+-- que não transporta explicações, deixe de caber. A leitura do mapa usa somente
+-- revisão/versão e preserva sua base integral no mesmo snapshot estável.
+create temporary table curricular_map_large_expected as
+select private.current_course_curricular_map_v1(
+  '91000000-0000-4000-8000-000000000501') as map;
+
+update private.course_entities entity
+set content=jsonb_set(entity.content,'{explanation}',jsonb_build_object(
+  'title','Explicação ampla de fixture',
+  'content',jsonb_build_array(jsonb_build_object(
+    'id','p','package','aralearn.resource.paragraph','version','1.0.0',
+    'data',jsonb_build_object('text',repeat('x',620000))
+  ))
+),true)
+where entity.course_id='91000000-0000-4000-8000-000000000501'
+  and entity.entity_type='microsequence'
+  and entity.entity_id in ('micro-lote-a','micro-lote-b','micro-lote-c');
+
+select is((select count(*) from private.course_entities entity
+  where entity.course_id='91000000-0000-4000-8000-000000000501'
+    and entity.entity_type='microsequence'
+    and entity.entity_id in ('micro-lote-a','micro-lote-b','micro-lote-c')
+    and entity.content#>>'{explanation,content,0,data,text}'=repeat('x',620000)),3::bigint,
+  'fixture excedente grava tres explicacoes dentro do limite por entidade');
+
+create temporary table curricular_map_large_versions as
+select course.revision as course_revision,plan.version as plan_version
+from public.courses course
+join private.course_instructional_plans plan on plan.course_id=course.id
+where course.id='91000000-0000-4000-8000-000000000501';
+
+select throws_ok($test$
+  select public.get_owned_course_instructional_plan_for_actor_v3(
+    '91000000-0000-4000-8000-000000000001',
+    '91000000-0000-4000-8000-000000000501')
+$test$,'54000','O planejamento curricular excede o limite de leitura.',
+  'a leitura legada completa cruza o teto de 1835008 bytes');
+
+select lives_ok($test$
+  create temporary table curricular_map_large_actual as
+  select public.get_owned_course_curricular_map_for_actor_v1(
+    '91000000-0000-4000-8000-000000000001',
+    '91000000-0000-4000-8000-000000000501') as value
+$test$,'o mapa continua legível quando a projeção completa do plano excede o teto');
+
+select is((select jsonb_build_object(
+    'courseRevision',actual.value->'courseRevision',
+    'planVersion',actual.value->'planVersion')
+  from curricular_map_large_actual actual),
+  (select jsonb_build_object(
+    'courseRevision',versions.course_revision,
+    'planVersion',versions.plan_version)
+   from curricular_map_large_versions versions),
+  'a resposta usa as revisoes correntes do curso e do plano');
+
+select is((select actual.value->'map' from curricular_map_large_actual actual),
+  (select expected.map from curricular_map_large_expected expected),
+  'a leitura conserva o mapa curricular completo e inalterado');
+
+select is((select actual.value->'approvalBasis' from curricular_map_large_actual actual),
+  (select jsonb_build_object(
+    'courseRevision',versions.course_revision,
+    'planVersion',versions.plan_version,
+    'basisHash',encode(extensions.digest(convert_to(expected.map::text,'UTF8'),'sha256'),'hex'))
+   from curricular_map_large_expected expected
+   cross join curricular_map_large_versions versions),
+  'hash e versoes de approvalBasis permanecem ligados ao mesmo mapa');
+
+select throws_ok($test$
+  select public.get_owned_course_curricular_map_for_actor_v1(
+    '91000000-0000-4000-8000-000000000002',
+    '91000000-0000-4000-8000-000000000501')
+$test$,'PT404','Curso inexistente ou inacessível.',
+  'o mapa continua recusando ator sem acesso ao curso');
+
+select is((select jsonb_build_object(
+    'stable',proc.provolatile='s',
+    'securityDefiner',proc.prosecdef,
+    'serviceRoleExecute',has_function_privilege('service_role',proc.oid,'EXECUTE'),
+    'anonExecute',has_function_privilege('anon',proc.oid,'EXECUTE'),
+    'authenticatedExecute',has_function_privilege('authenticated',proc.oid,'EXECUTE'))
+  from pg_proc proc
+  where proc.oid='public.get_owned_course_curricular_map_for_actor_v1(uuid,uuid)'::regprocedure),
+  '{"stable":true,"securityDefiner":true,"serviceRoleExecute":true,"anonExecute":false,"authenticatedExecute":false}'::jsonb,
+  'a leitura preserva estabilidade, SECURITY DEFINER e ACL restrita ao service_role');
 
 select * from finish();
 rollback;
