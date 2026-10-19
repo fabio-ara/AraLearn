@@ -132,11 +132,40 @@ function fixture({ units = [], sources = [], totalUnits = units.length } = {}) {
     },
     async listCourseStudyUnits(input) {
       calls.units.push(input);
-      const start = input.cursorStudyUnitId === null ? 0 : Number(input.cursorStudyUnitId.split("-").at(-1));
-      const items = units.slice(start, start + input.limit);
+      const anchorIndex = input.anchorStudyUnitId
+        ? units.findIndex(item => item.studyUnit.id === input.anchorStudyUnitId) : -1;
+      const start = input.anchorStudyUnitId ? Math.max(anchorIndex, 0)
+        : input.cursorStudyUnitId === null ? 0 : Number(input.cursorStudyUnitId.split("-").at(-1));
+      const selectedItems = input.anchorStudyUnitId
+        ? anchorIndex < 0 ? [] : [units[anchorIndex]] : units.slice(start, start + input.limit);
+      const items = selectedItems.map((item, index) => {
+        if (!input.anchorStudyUnitId) return structuredClone(item);
+        const path = item.curriculumPath ?? {};
+        return { ...structuredClone(item), ordinal: item.ordinal ?? start + index + 1,
+          curriculumPath: {
+            module: path.module ?? { id: path.moduleId ?? "module", title: "Módulo" },
+            lesson: path.lesson ?? { id: path.lessonId ?? "lesson", title: "Lição" },
+            didacticMicrosequence: path.didacticMicrosequence ?? {
+              id: path.didacticMicrosequenceId ?? "ms", title: "Microssequência"
+            }
+          },
+          authoringPart: item.authoringPart ?? (item.authoringPartId ? { id: item.authoringPartId } : null)
+        };
+      });
       const end = start + items.length;
       return { items: structuredClone(items), hasMore: end < totalUnits,
         nextCursor: end < totalUnits ? { studyUnitId: `unit-${end}` } : null };
+    },
+    async getCourseInspectionTriageOutline({ courseId }) {
+      return { contract: "aralearn.course-inspection-triage-outline.v1", courseId,
+        courseRevision: adapter.revision, plan: { title: TITLE, curriculum: { modules: [] }, parts: [],
+          studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
+            ordinal: index + 1, curriculumPath: {
+              moduleId: item.curriculumPath?.moduleId ?? item.curriculumPath?.module?.id ?? "module",
+              lessonId: item.curriculumPath?.lessonId ?? item.curriculumPath?.lesson?.id ?? "lesson",
+              didacticMicrosequenceId: item.curriculumPath?.didacticMicrosequenceId ??
+                item.curriculumPath?.didacticMicrosequence?.id ?? "ms"
+            }, authoringPartId: item.authoringPartId ?? null })) } };
     },
     async getCourseSources(input) {
       calls.sources.push(input);

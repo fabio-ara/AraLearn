@@ -7,11 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
-## [0.0.129] - 2026-10-19
+## [0.0.130] - 2026-10-19
 
 ### Corrigido
 
-- As leituras de autoria identificam cada oportunidade de aplicação sem confundi-la com a operação do requisito ou com suas variações; pedidos por curso continuam cobrindo unidades de várias microssequências.
+- As consultas de repertório e configuração mostram cada oportunidade aplicada, sua operação e suas variações, preservando os demais dados autorais já salvos.
+- A revisão de unidades selecionadas em cursos extensos respeita o limite de conteúdo por página e continua a seleção global sem hidratar antecipadamente as unidades seguintes.
 
 ## [0.0.128] - 2026-10-18
 
