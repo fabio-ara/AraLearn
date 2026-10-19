@@ -46,6 +46,20 @@ test("a interrupção de 402 preserva a recuperação existente de 503", async (
   assert.equal(fetches, 2);
 });
 
+test("plano de revisão condicional preserva 402 terminal sem repetir a RPC", async () => {
+  let fetches = 0;
+  const value = adapter(async () => {
+    fetches += 1;
+    return new Response("provider-private-data", { status: 402 });
+  });
+  await assert.rejects(value.getCourseReviewPlan({
+    principal: { actorId: "10000000-0000-4000-8000-000000000001" },
+    courseId: "20000000-0000-4000-8000-000000000002"
+  }), error => error.status === 402 && error.code === "course_service_restricted" &&
+    authoringErrorIsRetryable(error) === false);
+  assert.equal(fetches, 1);
+});
+
 test("MCP preserva a restrição e não manda repetir nem autenticar, antes e depois do principal", async () => {
   for (const phase of ["resolucao_principal", "execucao"]) {
     let fetches = 0;

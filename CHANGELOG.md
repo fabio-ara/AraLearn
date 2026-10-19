@@ -15,6 +15,7 @@ explica os termos usados na implementação atual.
 - A inspeção identifica tentativas de ordenação causal ou procedural cujo erro oferece apenas um retorno genérico, sem confundir o comentário disponível após o acerto com ajuda durante a tentativa.
 - A leitura extensa de revisão evita executar a manutenção de observações a cada continuação, preservando as verificações de acesso e de alterações no conteúdo. (#516)
 - A leitura de revisão revalida suas fontes antes de reutilizar o plano e evita transferi-lo novamente enquanto permanecer igual. (#517)
+- Quando o serviço sinaliza restrição de uso, o aplicativo preserva o erro terminal e não repete a chamada nem pede nova autenticação. (#518)
 
 ## [0.0.131] - 2026-10-19
 
