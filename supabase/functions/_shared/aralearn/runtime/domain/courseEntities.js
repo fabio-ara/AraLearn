@@ -376,7 +376,10 @@ export function composeCourseDocument(courseValue, rows = [], {
   }
   const entities = new Map();
   for (const row of normalized) {
-    const entity = cloneJson(row.content, "Conteúdo da entidade");
+    // normalizeCourseEntityRows already made the defensive deep copy. A shallow
+    // shell is enough here because the composer only attaches structural fields;
+    // validateProjectDocument below remains the final full document validator.
+    const entity = { ...row.content };
     entity.id = row.entityId;
     for (const child of CHILDREN[row.entityType]) entity[child.field] = [];
     if (row.entityType === "study_unit") entity.position = row.position;

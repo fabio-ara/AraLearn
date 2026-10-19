@@ -330,7 +330,7 @@ test("Adapter exporta fonte, aplicação e revisão do objeto fora do documento 
   const { rows } = flattenCourseDocument(fixture.document);
   const calls = [];
   const adapter = adapterFixture();
-  adapter.getCourseAuthoringAnalytics = async () => fixture.analytics;
+  adapter.getCourseAuthoringAnalytics = async () => normalizeCourseAuthoringAnalyticsPage(fixture.analytics);
   adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
   adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
     revision: 7, hasMore: false, nextCursor: null, items: rows.map(row => ({ ...row,

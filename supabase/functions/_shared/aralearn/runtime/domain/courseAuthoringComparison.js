@@ -9,11 +9,19 @@ import { normalizeCourseContentReviewState } from "./courseContentReview.js";
 export const COURSE_AUTHORING_COMPARISON_CONTRACT = "aralearn.course-authoring-comparison.v1";
 export const COURSE_AUTHORING_EXPORT_CONTRACT = "aralearn.course-authoring-export.v2";
 export const COURSE_AUTHORING_EXPORT_MAX_BYTES = 32 * 1024 * 1024;
+const serializedCourseAuthoringExports = new WeakMap();
 export function serializeCourseAuthoringExport(value) {
   const content = JSON.stringify(value);
   if (new TextEncoder().encode(content).byteLength > COURSE_AUTHORING_EXPORT_MAX_BYTES) {
     throw new RangeError("A exportação excede o limite de 32 MiB.");
   }
+  if (value && typeof value === "object") serializedCourseAuthoringExports.set(value, content);
+  return content;
+}
+export function takeSerializedCourseAuthoringExport(value) {
+  if (!value || typeof value !== "object") return null;
+  const content = serializedCourseAuthoringExports.get(value) ?? null;
+  serializedCourseAuthoringExports.delete(value);
   return content;
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -162,15 +170,15 @@ export function normalizeCourseAuthoringComparison(value, { expectedRequest = nu
   }
   return structuredClone(value);
 }
-export function assembleCourseAuthoringExport({ analytics, document, explanationSources = [], appliedExplanationBases = [], contentReviews = [] }) {
-  analytics = normalizeCourseAuthoringAnalyticsPage(analytics);
-  // Validate the document once. Flattening and composing it again revalidated
-  // every resource twice more, even though export does not change its structure.
-  const validation = validateProjectDocument(document, { allowIncompleteCurriculum: true });
-  if (!validation.ok || validation.value?.courses?.length !== 1) fail("A exportação precisa conter exatamente um Curso válido.");
-  const courseDocument = validation.value.courses[0];
+function assembleCourseAuthoringExportCore({ analytics, document, explanationSources = [], appliedExplanationBases = [], contentReviews = [] }, validatedInputs) {
+  if (!validatedInputs) analytics = normalizeCourseAuthoringAnalyticsPage(analytics);
+  const validation = validatedInputs ? null : validateProjectDocument(document, { allowIncompleteCurriculum: true });
+  const courseDocument = validatedInputs
+    ? document?.courses?.length === 1 && document?.contract === "aralearn.course.v1" ? document.courses[0] : null
+    : validation?.ok && validation.value?.courses?.length === 1 ? validation.value.courses[0] : null;
+  if (!courseDocument) fail("A exportação precisa conter exatamente um Curso válido.");
   if (courseDocument.id !== analytics.course.id || courseDocument.title !== analytics.course.title) fail("O artefato exportado pertence a outro curso.");
-  const normalizedDocument = { contract: "aralearn.course.v1", courses: [courseDocument] };
+  const normalizedDocument = validatedInputs ? document : { contract: "aralearn.course.v1", courses: [courseDocument] };
   const supportIds = new Set();
   const unitIds = new Set();
   for (const module of courseDocument.modules) {
@@ -185,14 +193,14 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
           positions.add(unit.position);
           unitIds.add(unit.id);
         }
-        microsequence.studyUnits.sort((left, right) => left.position - right.position || left.id.localeCompare(right.id));
+        if (!validatedInputs) microsequence.studyUnits.sort((left, right) => left.position - right.position || left.id.localeCompare(right.id));
       }
     }
   }
   const seen = new Set();
   if (!Array.isArray(explanationSources)) fail("A proveniência da explicação é inválida.");
   explanationSources = explanationSources.map(value => {
-    const read = normalizeCourseSourcesRead(value);
+    const read = validatedInputs ? value : normalizeCourseSourcesRead(value);
     if (read.courseId !== analytics.course.id || read.courseRevision !== analytics.course.revision ||
         read.mode !== "target" || read.query.targetKind !== "microsequence_explanation" ||
         !supportIds.has(read.query.targetId) || seen.has(read.query.targetId) || read.nextCursor !== null ||
@@ -211,7 +219,7 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
     appliedIds.add(entry.studyUnitId);
     const basis = normalizeAppliedExplanationBasis(entry.basis);
     if (!basis?.sourceCourseId) fail("A exportação identifica a origem da base aplicada.");
-    return { studyUnitId: entry.studyUnitId, basis };
+    return validatedInputs ? entry : { studyUnitId: entry.studyUnitId, basis };
   });
   const reviewIds = new Set();
   contentReviews = contentReviews.map(entry => {
@@ -220,11 +228,20 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
     const key = `${entry.targetKind}:${entry.targetId}`;
     if (!ids?.has(entry.targetId) || reviewIds.has(key)) fail("A revisão não corresponde a um objeto do artefato.");
     reviewIds.add(key);
-    return { targetKind: entry.targetKind, targetId: entry.targetId, contentReview: normalizeCourseContentReviewState(entry.contentReview) };
+    return validatedInputs ? entry : { targetKind: entry.targetKind, targetId: entry.targetId, contentReview: normalizeCourseContentReviewState(entry.contentReview) };
   });
   // Read metadata is exported separately from the importable course content.
   return { contract: COURSE_AUTHORING_EXPORT_CONTRACT, course: analytics.course, scope: analytics.scope.selected, analytics,
     artifact: { document: normalizedDocument, explanationSources, appliedExplanationBases, contentReviews } };
+}
+export function assembleCourseAuthoringExport(input) {
+  return assembleCourseAuthoringExportCore(input, false);
+}
+// Internal adapter path: every input has already crossed its canonical reader or
+// composer. Keep cross-reference, revision, and target checks here, but do not
+// deep-normalize the analytics or validate/copy the whole document a second time.
+export function assembleCourseAuthoringExportFromValidatedInputs(input) {
+  return assembleCourseAuthoringExportCore(input, true);
 }
 export function normalizeCourseAuthoringExport(value, { expectedSelection = null } = {}) {
   exactAuthoringObject(value, ["contract", "course", "scope", "analytics", "artifact"]);

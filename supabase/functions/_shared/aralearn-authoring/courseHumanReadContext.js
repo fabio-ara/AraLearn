@@ -14,6 +14,7 @@ const MAX_CONTEXT_BYTES = 16 * 1024;
 // other human-read continuation.
 const MAX_EXPORT_CONTEXT_OFFSET = COURSE_AUTHORING_EXPORT_MAX_BYTES * 3;
 const encoder = new TextEncoder();
+const preparedLiterals = new WeakSet();
 const fail = (message, status = 422) => { throw new AuthoringApiError(status,
   status === 409 ? 'human_read_context_changed' : 'invalid_read_continuation', message); };
 function encode(value) {
@@ -55,15 +56,31 @@ function fits(value) {
   const json = JSON.stringify(value);
   return json.length <= MAX_CONTEXT_CHARACTERS && encoder.encode(json).byteLength <= MAX_CONTEXT_BYTES;
 }
-export async function paginateHumanReadContext(context, { state, nextPage = null, escapeNonbreakingHyphen = false }) {
-  const next = nextPage === null ? null : encode({ ...state, p: nextPage, o: 0, h: null });
-  const complete = { ...context, continuacao: next, temMais: next !== null };
-  if (!escapeNonbreakingHyphen && state.o === 0 && fits(complete)) return complete;
+export async function prepareHumanReadContextLiteral(context, { escapeNonbreakingHyphen = false } = {}) {
   const json = JSON.stringify(context);
-  // The inner JSON escape survives envelope decoding; JSON.parse restores U+2011.
-  // Hashes and offsets describe this representation, including a one-fragment export.
   const literal = escapeNonbreakingHyphen ? json.replaceAll('\u2011', '\\u2011') : json;
-  const digest = await sha256Hex(literal);
+  const prepared = Object.freeze({ literal, digest: await sha256Hex(literal) });
+  preparedLiterals.add(prepared);
+  return prepared;
+}
+export async function prepareSerializedAuthoringExportLiteral(serializedExport) {
+  if (typeof serializedExport !== 'string' || serializedExport.length === 0 ||
+      serializedExport[0] !== '{' || serializedExport.at(-1) !== '}') {
+    fail('A exportação serializada é inválida. Recomece a consulta.');
+  }
+  const json = `{"authoringExport":${serializedExport}}`;
+  const literal = json.replaceAll('\u2011', '\\u2011');
+  const prepared = Object.freeze({ literal, digest: await sha256Hex(literal) });
+  preparedLiterals.add(prepared);
+  return prepared;
+}
+export async function paginatePreparedHumanReadLiteral(prepared, { state, nextPage = null }) {
+  if (!preparedLiterals.has(prepared) || typeof prepared.literal !== 'string' ||
+      !/^[a-f0-9]{64}$/u.test(prepared.digest)) {
+    fail('O literal preparado para continuação é inválido. Recomece a consulta.');
+  }
+  const next = nextPage === null ? null : encode({ ...state, p: nextPage, o: 0, h: null });
+  const { literal, digest } = prepared;
   if (state.o >= literal.length || state.h !== null && state.h !== digest) {
     fail('O conteúdo da consulta mudou. Recomece para não combinar trechos diferentes.', 409);
   }
@@ -83,4 +100,11 @@ export async function paginateHumanReadContext(context, { state, nextPage = null
   if (end < literal.length && /[\uD800-\uDBFF]/u.test(literal[end - 1])) end--;
   if (end <= state.o) fail('O recorte não cabe na consulta. Escolha uma unidade específica.');
   return fragment(end);
+}
+export async function paginateHumanReadContext(context, { state, nextPage = null, escapeNonbreakingHyphen = false }) {
+  const next = nextPage === null ? null : encode({ ...state, p: nextPage, o: 0, h: null });
+  const complete = { ...context, continuacao: next, temMais: nextPage !== null };
+  if (!escapeNonbreakingHyphen && state.o === 0 && fits(complete)) return complete;
+  const prepared = await prepareHumanReadContextLiteral(context, { escapeNonbreakingHyphen });
+  return paginatePreparedHumanReadLiteral(prepared, { state, nextPage });
 }

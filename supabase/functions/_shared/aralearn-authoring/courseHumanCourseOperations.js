@@ -1,11 +1,15 @@
 import { AuthoringApiError } from "./errors.js";
 import { resolveHumanCourseContext } from "./courseHumanTaskExecutor.js";
-import { openHumanReadContinuation, paginateHumanReadContext } from "./courseHumanReadContext.js";
+import { openHumanReadContinuation, paginateHumanReadContext, paginatePreparedHumanReadLiteral,
+  prepareSerializedAuthoringExportLiteral } from "./courseHumanReadContext.js";
 import { createCourseCopyRequestIdentity, normalizeCourseCopyRequest } from "../aralearn/runtime/domain/courseCopy.js";
-import { normalizeCourseAuthoringComparison, normalizeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { COURSE_AUTHORING_EXPORT_CONTRACT, normalizeCourseAuthoringComparison,
+  serializeCourseAuthoringExport, takeSerializedCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
 
 const fail = message => { throw new AuthoringApiError(422, "invalid_human_course_operation", message); };
+const MAX_CACHED_EXPORT_LITERAL_CHARACTERS = 12 * 1024 * 1024;
+const humanExportCache = new WeakMap();
 function humanText(value, field) {
   if (typeof value !== "string" || !value.trim() || [...value].length > 300 || /\p{Cc}/u.test(value)) fail(`Informe ${field}.`);
   return value.trim();
@@ -79,13 +83,60 @@ export async function compareHumanCourses({ adapter, principal, args, deadlineAt
     ...buildHumanNavigationEnvelope(selectedContentLink(adapter, left), [selectedContentLink(adapter, right)]),
     context: await paginateHumanReadContext({ authoringComparison: comparison }, { state }) };
 }
+function humanExportCacheKey(principal, selected, state) {
+  return [principal.actorId, selected.courseId, selected.expectedRevision, state.q].join("\u0000");
+}
+function reusedHumanExport(adapter, key) {
+  const entry = humanExportCache.get(adapter);
+  if (!entry) return null;
+  if (entry.key !== key) {
+    humanExportCache.delete(adapter);
+    return null;
+  }
+  return entry.prepared;
+}
+function rememberHumanExport(adapter, key, prepared) {
+  humanExportCache.delete(adapter);
+  if (prepared.literal.length <= MAX_CACHED_EXPORT_LITERAL_CHARACTERS) {
+    humanExportCache.set(adapter, { key, prepared });
+  }
+}
+function assertSelectedExport(value, selected) {
+  if (!value || value.contract !== COURSE_AUTHORING_EXPORT_CONTRACT ||
+      value.course?.id !== selected.courseId || value.course?.revision !== selected.expectedRevision ||
+      value.scope?.kind !== selected.scope.kind || value.scope?.ref !== selected.scope.ref) {
+    throw new AuthoringApiError(503, "course_service_unavailable", "A exportação não corresponde à edição e ao recorte selecionados.");
+  }
+}
 export async function exportHumanCourse({ adapter, principal, args, deadlineAt }) {
   const selected = await selection(adapter, principal, args.recorte, deadlineAt);
   const state = await openHumanReadContinuation({ args, task: "exportar_autoria",
     course: { id: selected.courseId, revision: selected.expectedRevision } });
-  const exported = normalizeCourseAuthoringExport(await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt }),
-    { expectedSelection: selected });
+  const cacheKey = humanExportCacheKey(principal, selected, state);
+  let prepared = reusedHumanExport(adapter, cacheKey);
+  if (!prepared) {
+    let exported = await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt });
+    assertSelectedExport(exported, selected);
+    let serialized = takeSerializedCourseAuthoringExport(exported);
+    try {
+      if (serialized === null) {
+        serialized = serializeCourseAuthoringExport(exported);
+        takeSerializedCourseAuthoringExport(exported);
+      }
+    }
+    catch (error) {
+      if (error instanceof RangeError) throw new AuthoringApiError(413, "course_export_too_large", "A exportação excede o limite de 32 MiB.");
+      throw error;
+    }
+    prepared = await prepareSerializedAuthoringExportLiteral(serialized);
+    serialized = null;
+    exported = null;
+  }
+  const context = await paginatePreparedHumanReadLiteral(prepared, { state });
+  if (!humanExportCache.has(adapter) || humanExportCache.get(adapter)?.key !== cacheKey) {
+    rememberHumanExport(adapter, cacheKey, prepared);
+  }
   return { result: "Preparei a exportação literal do artefato e da leitura autoral; continue até receber todos os trechos.",
     ...buildHumanNavigationEnvelope(selectedContentLink(adapter, selected)),
-    context: await paginateHumanReadContext({ authoringExport: exported }, { state, escapeNonbreakingHyphen: true }) };
+    context };
 }

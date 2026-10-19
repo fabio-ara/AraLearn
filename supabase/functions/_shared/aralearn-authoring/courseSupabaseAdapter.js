@@ -73,7 +73,7 @@ import {
   normalizeCourseAuthoringAnalyticsQuery
 } from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
 import { CourseAuthoringBasisError, canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
-import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExport, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExportFromValidatedInputs, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { composeCourseDocument } from "../aralearn/runtime/domain/courseEntities.js";
 import { collectAppliedExplanationBases } from "../aralearn/runtime/domain/appliedExplanationBasis.js";
 
@@ -4408,7 +4408,7 @@ export class CourseSupabaseAdapter {
     if (current?.courseId !== courseId || current.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou durante a exportação.");
     let result;
     try {
-      result = assembleCourseAuthoringExport({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows, { allowIncompleteCurriculum: true }), explanationSources,
+      result = assembleCourseAuthoringExportFromValidatedInputs({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows, { allowIncompleteCurriculum: true }), explanationSources,
         appliedExplanationBases: collectAppliedExplanationBases(rows, courseId),
         contentReviews: rows.filter(row => row.contentReview != null && (row.entityType === "study_unit" || row.entityType === "microsequence" && row.content?.explanation))
           .map(row => ({ targetKind: row.entityType === "study_unit" ? "study_unit" : "microsequence_explanation", targetId: row.entityId, contentReview: row.contentReview })) });

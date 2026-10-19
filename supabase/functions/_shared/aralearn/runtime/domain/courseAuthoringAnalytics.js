@@ -705,8 +705,8 @@ export function assembleCourseAuthoringAnalyticsPage(rawValue, {
     query += `&analyticsScopeId=${encodeURIComponent(snapshot.scope.selected.ref)}`;
   }
   query += `&analyticsRevision=${snapshot.course.revision}`;
-  return normalizeCourseAuthoringAnalyticsPage({
-    ...snapshot,
-    deepLink: `${baseUrl}/#/authoring/courses/${encodeURIComponent(snapshot.course.id)}?${query}`
-  }, { expectedCourseId: snapshot.course.id, expectedQuery });
+  const deepLink = nullableDeepLink(
+    `${baseUrl}/#/authoring/courses/${encodeURIComponent(snapshot.course.id)}?${query}`
+  );
+  return { ...snapshot, deepLink };
 }

@@ -351,7 +351,8 @@ for (const channel of ["actions", "mcp"]) for (const large of [false, true]) {
 
 test("exportação humana grande reconstrói JSON literal por fragmentos e recusa edição misturada", async () => {
   const adapter = readers(); const exported = exportValue({ large: true });
-  adapter.getCourseAuthoringExport = async () => exported;
+  let exportReads = 0;
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exported; };
   let continuation; let literal = ""; let pages = 0; let firstContinuation;
   do {
     const output = await call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" }, ...(continuation ? { continuacao: continuation } : {}) }, readPrincipal);
@@ -363,12 +364,30 @@ test("exportação humana grande reconstrói JSON literal por fragmentos e recus
     assert.ok(pages <= Math.ceil(fragment.total / 1000) + 1);
   } while (continuation);
   assert.ok(pages > 1); assert.deepEqual(JSON.parse(literal), { authoringExport: exported });
+  assert.equal(exportReads, 1, "continuações da mesma revisão reutilizam a montagem validada");
   const text = exported.artifact.document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].data;
   const originalText = text.text;
   text.text = text.text.replaceAll("\u2011", "-");
-  await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" }, continuacao: firstContinuation }),
-    error => error.code === "human_read_context_changed", "a mesma conversão nos dados reais continua sendo mudança material");
+  const retained = await call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" }, continuacao: firstContinuation });
+  const retainedFragment = retained.context.fragmento;
+  assert.equal(retainedFragment.texto, literal.slice(retainedFragment.inicio, retainedFragment.fim),
+    "uma continuação conserva o literal imutável da revisão já entregue");
+  assert.equal(exportReads, 1, "mutação do objeto retornado não substitui o literal já validado");
   text.text = originalText;
   adapter.getCourse = async request => ({ courseId: request.courseId, title: "Esquerda", revision: 8 });
   await assert.rejects(call(adapter, "exportar_autoria", { recorte: { curso: "Esquerda" }, continuacao: firstContinuation }), error => error.code === "human_read_context_changed");
+});
+
+test("literal de exportação é isolado por ator e a entrada única expulsa a seleção anterior", async () => {
+  const adapter = readers(); const exported = exportValue({ large: 24 }); let exportReads = 0;
+  adapter.getCourseAuthoringExport = async () => { exportReads++; return exported; };
+  const args = { recorte: { curso: "Esquerda" } };
+  const first = await call(adapter, "exportar_autoria", args, readPrincipal);
+  const cursor = first.context.continuacao;
+  assert.ok(cursor);
+  await call(adapter, "exportar_autoria", { ...args, continuacao: cursor }, { ...readPrincipal, actorId: RIGHT });
+  assert.equal(exportReads, 2, "outro ator não reutiliza o literal retido pelo primeiro");
+  const replay = await call(adapter, "exportar_autoria", { ...args, continuacao: cursor }, readPrincipal);
+  assert.equal(replay.context.fragmento.inicio, first.context.fragmento.fim);
+  assert.equal(exportReads, 3, "o slot limitado perdeu a entrada anterior e a continuação ainda recompõe integralmente");
 });
