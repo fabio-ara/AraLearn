@@ -241,7 +241,7 @@ function configureReviewPageScope(adapter, units, microsequences, { unitMicroseq
   lesson.microsequences = [...microById.values()];
   adapter.plan.plan.parts[0].microsequences = microsequences.map((item, productionPosition) => ({
     ...structuredClone(microById.get(item.id)), productionPosition,
-    studyUnitCount: units.filter((unit, index) => unit.curriculumPath.didacticMicrosequence.id === item.id &&
+    studyUnitCount: units.filter(unit => unit.curriculumPath.didacticMicrosequence.id === item.id &&
       partUnits.has(unit.studyUnit.id)).length,
     curriculumPath: { moduleId: moduleValue.id, moduleTitle: moduleValue.title,
       lessonId: lesson.id, lessonTitle: lesson.title }
