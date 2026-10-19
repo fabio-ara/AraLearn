@@ -2,7 +2,7 @@ import { RESOURCE_PACKAGE_REGISTRY } from "../resources/packages/index.js";
 import { inspectBpmnSemantics } from "../resources/packages/bpmn-process/semantics.js";
 import { inspectCourseAudioReadiness } from "./courseMedia.js";
 import { CONTEXTUAL_STUDY_TOOLS } from "../resources/studySupport.js";
-import { responseAuthoredFeedback, responseFeedbackStates } from "../resources/sdk/responseFeedback.js";
+import { responseAuthoredFeedback, responseFeedbackStates, responseFeedbackMessages, responseDefaultFeedback } from "../resources/sdk/responseFeedback.js";
 
 const LEGACY_PEDAGOGICAL_AUDIT_DIMENSIONS = Object.freeze([
   "alignment", "evidence", "representation", "feedback", "sufficiency"
@@ -14,8 +14,27 @@ export function hasCurrentPedagogicalAudit(checks) {
 }
 const comparable = value => String(value ?? "").normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase("pt-BR");
 const folded = value => comparable(value).normalize("NFD").replace(/\p{M}/gu, "");
-const explanatoryOperation = value => /\b(?:compar|calcul|justific|relacion|explic|infer|interpret|analis|transform)/u.test(folded(value));
+const explanatoryOperation = value => /\b(?:compar|calcul|justific|relacion|explic|infer|interpret|analis|transform)|\breconstru\w*\b.*\b(?:cadeia|sequencia|procedimento|processo)\b/u.test(folded(value));
 const genericFeedback = value => /^(?:corret[oa]|incorret[oa]|cert[oa]|errad[oa]|resposta\s+(?:in)?correta|isso\s+mesmo|boa\s+tentativa|tente\s+novamente)[.!?…\s]*$/iu.test(comparable(value));
+
+// Uma troca desloca pelo menos dois itens. Se dois itens só têm rótulos ou não
+// têm retorno, trocá-los produz um erro sem ajuda, mesmo que outro item tenha
+// boa explicação. Não se exige retorno em todos os itens. O comentário geral
+// pós-acerto não é mostrado nessa tentativa; não pode encobrir esse estado.
+function unexplainedOrderingError(response) {
+  if (response?.package !== "aralearn.response.ordering") return null;
+  const targets = response.data?.targets ?? [];
+  const defaultWrong = comparable(responseDefaultFeedback(response.package, "wrong"));
+  const unsupported = targets.map((target, index) => ({ target, index })).filter(({ target }) =>
+    typeof target.feedback !== "string" || !target.feedback.trim() || genericFeedback(target.feedback) ||
+    comparable(target.feedback) === defaultWrong);
+  if (unsupported.length < 2) return null;
+  const [left, right] = unsupported;
+  const order = targets.map(target => target.id);
+  [order[left.index], order[right.index]] = [order[right.index], order[left.index]];
+  const wrongIds = [left.target.id, right.target.id];
+  return { order, wrongIds, messages: responseFeedbackMessages(response.package, response.data, "wrong", { wrongIds }) };
+}
 const controlText = value => [...value].some(character => {
   const code = character.codePointAt(0);
   return code < 32 && ![9, 10, 13].includes(code) || code === 127;
@@ -217,6 +236,11 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
   const feedbackTexts = [...feedback, ...authoredResponseFeedback(response).map(({ text }) => text)];
   const operationTexts = practices.map(practice => practice.invariantTaskOperation).filter(Boolean);
   const requiresExplanatoryFeedback = operationTexts.some(explanatoryOperation);
+  const unexplainedOrder = unexplainedOrderingError(response);
+  if (requiresExplanatoryFeedback && unexplainedOrder) {
+    add("pedagogical_ordering_error_unexplained", "response.data.targets",
+      "Há uma ordem errada possível cujo retorno só contém rótulos, sem ajudar a compreender a relação ou o procedimento. O comentário geral após o acerto não cobre essa tentativa; confira o contraexemplo em feedbackAssessment.");
+  }
   const optionFeedback = (data.options ?? []).map(option => option.feedback).filter(value => typeof value === "string");
   const genericOptionFeedback = optionFeedback.some(genericFeedback);
   const onlyGenericFeedback = feedbackTexts.length > 0 && feedbackTexts.every(genericFeedback);
@@ -271,7 +295,8 @@ export function inspectPedagogicalEvidence({ content, practices = [], requiremen
     alternatives: (data.options ?? []).map(option => ({ text: option.text ?? option.code ?? "",
       expected: (data.answerIds ?? []).includes(option.id), feedback: option.feedback ?? "" })),
     targets, studentContent, feedback, operation: operationTexts,
-    feedbackAssessment: { requiresExplanatoryFeedback, genericOptionFeedback, onlyGenericFeedback },
+    feedbackAssessment: { requiresExplanatoryFeedback, genericOptionFeedback, onlyGenericFeedback,
+      unexplainedOrderingError: unexplainedOrder },
     // Retorno visível por estado da prática, distinguindo o texto autoral do
     // rótulo padrão do package. É o mesmo conteúdo que o renderer exibe. Só entra
     // quando há prática: a leitura humana da auditoria tem orçamento de página e a

@@ -17,6 +17,56 @@ const unit = () => ({ id: "u", position: 1, title: "Discriminar protocolos", rol
 const checks = () => PEDAGOGICAL_AUDIT_DIMENSIONS.map(dimension => ({ dimension, result: "sufficient",
   reason: "A relação entre perda e recuperação aparece no enunciado e no retorno.", evidence: ["TCP"] }));
 
+const causalOrdering = () => ({ id: "u", position: 1, title: "Reconstruir o processo", role: "practice", topics: [],
+  content: [paragraph("a", "A entrada inicia o processo."), paragraph("b", "O processamento transforma a entrada."),
+    paragraph("c", "A saída depende do processamento.")],
+  response: { id: "r", package: "aralearn.response.ordering", version: "3.0.0", data: { targets: [
+    { id: "a", targetInstanceId: "a", targetPath: "text", answer: "A entrada inicia o processo." },
+    { id: "b", targetInstanceId: "b", targetPath: "text", answer: "O processamento transforma a entrada." },
+    { id: "c", targetInstanceId: "c", targetPath: "text", answer: "A saída depende do processamento.", feedback: "A saída só existe após o processamento." }
+  ] } }, feedback: [paragraph("f", "O processamento usa a entrada para produzir a saída; essa dependência determina a sequência.")] });
+
+test("ordenação causal: comentário geral não encobre uma tentativa errada sem explicação", () => {
+  const content = causalOrdering();
+  assert.equal(validateStudyUnitEnvelope(content, RESOURCE_PACKAGE_REGISTRY).valid, true);
+  const practices = [{ evidenceRequirementId: "r1", invariantTaskOperation: "Reconstruir a cadeia causal do processo" }];
+  const audit = inspectPedagogicalEvidence({ content, practices, requirements: [{ id: "r1" }] });
+  assert.ok(audit.issues.some(issue => issue.code === "pedagogical_ordering_error_unexplained"));
+  const example = audit.observation.feedbackAssessment.unexplainedOrderingError;
+  assert.deepEqual(example.order, ["b", "a", "c"]);
+  assert.deepEqual(example.wrongIds, ["a", "b"]);
+  const rendered = RESOURCE_PACKAGE_REGISTRY.renderInstance(content.response, "response", {
+    blockKey: "ordering-audit", responseState: { order: example.order, feedback: "wrong" }
+  });
+  assert.match(rendered, /A ordem ainda não está correta\./u);
+  assert.equal(rendered.includes(content.response.data.targets[2].feedback), false);
+  assert.deepEqual(example.messages.map(message => message.origin), ["default"]);
+  const basis = { targetKind: "study_unit", targetId: "u", microsequence: { goal: "Reconstruir relações causais" },
+    planItems: [{ id: "r1", kind: "evidence_requirement", statement: practices[0].invariantTaskOperation }],
+    studyUnits: [{ id: "u", content, application: { mode: "practice", practiceApplications: practices } }], dependencies: [] };
+  assert.throws(() => requirePedagogicalAuditConsistency({ summary: "Sequência revista", outcome: "consistent", findings: [],
+    checks: checks() }, basis), { code: "pedagogical_audit_contradiction" });
+});
+
+test("ordenação: não exige feedback em todo item nem impõe explicação ao reconhecimento simples", () => {
+  const content = causalOrdering();
+  const practices = [{ evidenceRequirementId: "r1", invariantTaskOperation: "Reconstruir a sequência do processo" }];
+  const audit = () => inspectPedagogicalEvidence({ content, practices, requirements: [{ id: "r1" }] });
+  content.response.data.targets[0].feedback = "Correto.";
+  assert.ok(audit().issues.some(issue => issue.code === "pedagogical_ordering_error_unexplained"));
+  content.response.data.targets[0].feedback = "A ordem ainda não está correta.";
+  assert.ok(audit().issues.some(issue => issue.code === "pedagogical_ordering_error_unexplained"));
+  content.response.data.targets[0].feedback = "A entrada precisa existir antes da transformação.";
+  assert.deepEqual(audit().issues, []);
+  assert.equal(audit().observation.feedbackAssessment.unexplainedOrderingError, null);
+  delete content.response.data.targets[0].feedback;
+  practices[0].invariantTaskOperation = "Reconhecer a ordem apresentada";
+  assert.deepEqual(audit().issues, []);
+  assert.ok(audit().observation.feedbackAssessment.unexplainedOrderingError);
+  const theory = { ...content, response: null, feedback: [] };
+  assert.equal(inspectPedagogicalEvidence({ content: theory }).observation.feedbackAssessment.unexplainedOrderingError, null);
+});
+
 test("JSON válido com feedback editorial não é suficiente para materialização", () => {
   const content = unit();
   assert.equal(validateStudyUnitEnvelope(content, RESOURCE_PACKAGE_REGISTRY).valid, true);
