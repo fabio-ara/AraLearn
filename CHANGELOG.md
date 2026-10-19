@@ -14,6 +14,7 @@ explica os termos usados na implementação atual.
 - A exportação de autoria comporta cursos extensos dentro do limite de 32 MiB, preserva o documento integral e reutiliza sua preparação nas continuações, com nova verificação de acesso, edição e observações.
 - A inspeção identifica tentativas de ordenação causal ou procedural cujo erro oferece apenas um retorno genérico, sem confundir o comentário disponível após o acerto com ajuda durante a tentativa.
 - A leitura extensa de revisão evita executar a manutenção de observações a cada continuação, preservando as verificações de acesso e de alterações no conteúdo. (#516)
+- A leitura de revisão revalida suas fontes antes de reutilizar o plano e evita transferi-lo novamente enquanto permanecer igual. (#517)
 
 ## [0.0.131] - 2026-10-19
 

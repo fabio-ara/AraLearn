@@ -104,6 +104,11 @@ const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_REVIEW_PLAN_CONTRACT = "aralearn.course-review-plan.v1";
+const COURSE_REVIEW_PLAN_SNAPSHOT_CONTRACT = "aralearn.course-review-plan.snapshot.v1";
+const COURSE_REVIEW_PLAN_CACHE_TTL_MS = 60_000;
+const COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET = 8 * 1024 * 1024;
+const COURSE_REVIEW_PLAN_CACHE_MAX_ENTRIES = 32;
+const COURSE_REVIEW_PLAN_CACHE = new Map();
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
 const PERSON_AVATAR_BUCKET = "person-avatars";
@@ -214,6 +219,38 @@ function validTimestamp(value, { nullable = false } = {}) {
 
 function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function reviewPlanCacheKey(principal, courseId) {
+  return JSON.stringify([principal?.actorId, courseId]);
+}
+
+function reviewPlanCacheRead(key, now) {
+  const entry = COURSE_REVIEW_PLAN_CACHE.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= now) {
+    COURSE_REVIEW_PLAN_CACHE.delete(key);
+    return null;
+  }
+  COURSE_REVIEW_PLAN_CACHE.delete(key);
+  COURSE_REVIEW_PLAN_CACHE.set(key, entry);
+  return entry;
+}
+
+function reviewPlanCacheRemember(key, entry) {
+  const previous = COURSE_REVIEW_PLAN_CACHE.get(key);
+  if (previous) COURSE_REVIEW_PLAN_CACHE.delete(key);
+  if (entry.bytes > COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET) return;
+  COURSE_REVIEW_PLAN_CACHE.set(key, entry);
+  let bytes = 0;
+  for (const value of COURSE_REVIEW_PLAN_CACHE.values()) bytes += value.bytes;
+  while (bytes > COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET ||
+      COURSE_REVIEW_PLAN_CACHE.size > COURSE_REVIEW_PLAN_CACHE_MAX_ENTRIES) {
+    const oldestKey = COURSE_REVIEW_PLAN_CACHE.keys().next().value;
+    const oldest = COURSE_REVIEW_PLAN_CACHE.get(oldestKey);
+    COURSE_REVIEW_PLAN_CACHE.delete(oldestKey);
+    bytes -= oldest.bytes;
+  }
 }
 
 function normalizeComponentPolicy(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }) {
@@ -2280,27 +2317,71 @@ export class CourseSupabaseAdapter {
     courseId,
     deadlineAt = null
   }) {
-    const result = expandReviewPlanningTransport(first(await this.rpc("get_owned_course_review_plan_for_actor_v1", {
+    const cacheKey = reviewPlanCacheKey(principal, courseId);
+    const cached = reviewPlanCacheRead(cacheKey, Date.now());
+    const response = first(await this.rpc("get_owned_course_review_plan_for_actor_v2", {
       p_actor_id: principal.actorId,
-      p_course_id: courseId
-    }, { deadlineAt })));
+      p_course_id: courseId,
+      p_if_none_match: cached?.fingerprint ?? null
+    }, { deadlineAt }));
+    const unavailable = () => new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O serviço devolveu um plano estrutural de revisão inválido."
+    );
+    const snapshotFields = new Set([
+      "contract", "courseId", "courseRevision", "planVersion", "fingerprint", "notModified"
+    ]);
+    const validSnapshot = jsonRecord(response) &&
+      response.contract === COURSE_REVIEW_PLAN_SNAPSHOT_CONTRACT &&
+      response.courseId === courseId && positiveSafeInteger(response.courseRevision) &&
+      positiveSafeInteger(response.planVersion) &&
+      typeof response.fingerprint === "string" && /^[0-9a-f]{64}$/u.test(response.fingerprint);
+    if (!validSnapshot) {
+      COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+      throw unavailable();
+    }
+    if (response.notModified === true) {
+      if (!exactRecord(response, snapshotFields) || !cached ||
+          cached.courseRevision !== response.courseRevision ||
+          cached.planVersion !== response.planVersion ||
+          cached.fingerprint !== response.fingerprint) {
+        COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+        throw unavailable();
+      }
+      return withDeepLink(structuredClone(cached.representation), this.publicAppUrl, "planning");
+    }
+    if (response.notModified !== false || !exactRecord(response,
+      new Set([...snapshotFields, "representation"])) || !jsonRecord(response.representation)) {
+      COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+      throw unavailable();
+    }
+    const result = expandReviewPlanningTransport(response.representation);
     if (!jsonRecord(result) ||
         result.contract !== COURSE_REVIEW_PLAN_CONTRACT ||
         result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
+        result.courseRevision !== response.courseRevision ||
         !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
+        result.plan.version !== response.planVersion ||
         !jsonRecord(result.plan.curriculum) ||
         !Array.isArray(result.plan.curriculum.modules) ||
         !Array.isArray(result.plan.curriculumScopeItems) ||
         !Array.isArray(result.plan.parts)) {
-      throw new AuthoringApiError(
-        503,
-        "course_service_unavailable",
-        "O serviço devolveu um plano estrutural de revisão inválido."
-      );
+      COURSE_REVIEW_PLAN_CACHE.delete(cacheKey);
+      throw unavailable();
     }
+    const bytes = new TextEncoder().encode(JSON.stringify(result)).byteLength;
+    reviewPlanCacheRemember(cacheKey, {
+      courseRevision: response.courseRevision,
+      planVersion: response.planVersion,
+      fingerprint: response.fingerprint,
+      representation: structuredClone(result),
+      bytes,
+      expiresAt: Date.now() + COURSE_REVIEW_PLAN_CACHE_TTL_MS
+    });
     // Somente preparar_revisao consome esta projeção. Uma referência de aprovação
     // do mapa pertence ao leitor integral e não deve ser derivada aqui.
-    return withDeepLink(result, this.publicAppUrl, "planning");
+    return withDeepLink(structuredClone(result), this.publicAppUrl, "planning");
   }
 
   async getCourseInspectionTriageOutline({ principal, courseId, expectedRevision, deadlineAt = null }) {

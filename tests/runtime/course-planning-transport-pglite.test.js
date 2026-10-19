@@ -27,6 +27,7 @@ const mapReference = await read("20260909025135_contextual_curricular_map_refere
 const delta = await read("20261016162436_planning_transport_deduplication.sql");
 const reviewPlanDelta = await read("20261017140000_review_plan_focal_read.sql");
 const leanReviewDelta = await read("20261017181734_review_plan_lean_projection.sql");
+const conditionalReviewPlanDelta = await read("20261019174421_conditional_review_plan_snapshot.sql");
 
 // Cadeia legada real: definição original de 20260903160000 mais as duas cirurgias
 // posteriores (shared explanations 20260907222912 e correction queue 20260909032748).
@@ -154,6 +155,9 @@ const v5Payload = async (db) => (await db.query(
   "select public.get_owned_course_instructional_plan_for_actor_v5($1,$2) as value", [ACTOR, COURSE])).rows[0].value;
 const reviewPayload = async (db) => (await db.query(
   "select public.get_owned_course_review_plan_for_actor_v1($1,$2) as value", [ACTOR, COURSE])).rows[0].value;
+const conditionalReviewPayload = async (db, fingerprint = null, actor = ACTOR) => (await db.query(
+  "select public.get_owned_course_review_plan_for_actor_v2($1,$2,$3) as value",
+  [actor, COURSE, fingerprint])).rows[0].value;
 const queryValue = async (db, sql, params = []) => (await db.query(sql, params)).rows[0].value;
 const withoutContentReview = value => {
   const result = structuredClone(value);
@@ -473,5 +477,75 @@ test("curso grande le a estrutura sem executar a revisao global por microssequen
     assert.equal(Object.hasOwn(review, "approvalBasis"), false);
     await assert.rejects(() => v5Payload(db),
       "o caminho v5 continua exercendo os helpers completos");
+  } finally { await db.close(); }
+});
+
+test("plano condicional mantém a representação exata e invalida cada família de origem sem depender da revisão", async () => {
+  const db = await fixture({ microsequences: 3, textBytes: 120,
+    partAssignments: [[0, 2], [1]], rich: true });
+  try {
+    await db.exec(delta);
+    await db.exec(reviewPlanDelta);
+    await db.exec(leanReviewDelta);
+    await db.exec(conditionalReviewPlanDelta);
+    const original = expandReviewPlanningTransport(await reviewPayload(db));
+    let full = await conditionalReviewPayload(db);
+    assert.equal(full.contract, "aralearn.course-review-plan.snapshot.v1");
+    assert.equal(full.notModified, false);
+    assert.equal(full.courseRevision, 7);
+    assert.equal(full.planVersion, 1);
+    assert.match(full.fingerprint, /^[0-9a-f]{64}$/u);
+    assert.deepEqual(expandReviewPlanningTransport(full.representation), original,
+      "cold path conserva integralmente payload, encoding e approvalBasis do contrato anterior");
+    const initialFingerprint = full.fingerprint;
+    await db.exec(`create or replace function public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid,p_course_id uuid)
+      returns jsonb language plpgsql stable as $f$ begin raise exception 'plano completo nao deve ser reconstruido no warm path'; end $f$`);
+    const unchanged = await conditionalReviewPayload(db, initialFingerprint);
+    assert.deepEqual(unchanged, {
+      contract: "aralearn.course-review-plan.snapshot.v1", courseId: COURSE,
+      courseRevision: 7, planVersion: 1, fingerprint: initialFingerprint, notModified: true
+    }, "warm path retorna somente o envelope compacto após recalcular as fontes");
+    await db.exec(definition(leanReviewDelta, "public.get_owned_course_review_plan_for_actor_v1"));
+
+    await db.exec(`insert into private.course_entities(course_id,entity_type,entity_id,parent_type,parent_id,position,content,design_application)
+      values ('${COURSE}','study_unit','unit-1','microsequence','ms-001',0,
+        '{"title":"Unidade inicial"}'::jsonb,'{"curriculumScopeItemIds":[]}'::jsonb)`);
+    const mutations = [
+      { name: "curso", sql: `update public.courses set goal='Objetivo alterado sem bump' where id='${COURSE}'` },
+      { name: "plano", sql: `update private.course_instructional_plans set audience='Público alterado' where course_id='${COURSE}'` },
+      { name: "itens do plano", sql: `update private.course_instructional_plan_items set statement='Resultado alterado' where course_id='${COURSE}' and item_kind='intended_learning_outcome'` },
+      { name: "currículo module/lesson", sql: `update private.course_entities set content=content||'{"title":"Módulo alterado"}'::jsonb where course_id='${COURSE}' and entity_type='module'` },
+      { name: "corpo da explicação", sql: `update private.course_entities set content=jsonb_set(content,'{explanationPlan,purpose}','"Propósito alterado"') where course_id='${COURSE}' and entity_type='microsequence' and entity_id='ms-001'` },
+      { name: "título e aplicação da unidade", sql: `update private.course_entities set content='{"title":"Unidade alterada"}'::jsonb, design_application='{"curriculumScopeItemIds":["30000000-0000-4000-8000-000000000005"]}'::jsonb where course_id='${COURSE}' and entity_type='study_unit'` },
+      { name: "vínculo do escopo", sql: `update private.course_design_target_plan_items set didactic_microsequence_id='ms-003' where course_id='${COURSE}' and didactic_microsequence_id='ms-001'` },
+      { name: "parte autoral", sql: `update private.course_authoring_parts set title='Parte alterada' where course_id='${COURSE}' and position=0` },
+      { name: "associação da parte", sql: `update private.course_authoring_part_didactic_microsequences set production_position=9 where course_id='${COURSE}' and authoring_part_id=(select id from private.course_authoring_parts where course_id='${COURSE}' and position=0) and didactic_microsequence_id='ms-001'` }
+    ];
+    let previousFingerprint = initialFingerprint;
+    for (const mutation of mutations) {
+      await db.exec(mutation.sql);
+      const changed = await conditionalReviewPayload(db, previousFingerprint);
+      assert.equal(changed.notModified, false, mutation.name + ": fonte alterada exige representação completa");
+      assert.notEqual(changed.fingerprint, previousFingerprint, mutation.name + ": fingerprint muda sem bump de revisão");
+      assert.equal(changed.courseRevision, 7, mutation.name + ": não depende de revisão incrementada");
+      const exact = expandReviewPlanningTransport(changed.representation);
+      assert.deepEqual(exact, expandReviewPlanningTransport(await reviewPayload(db)),
+        mutation.name + ": payload continua idêntico ao leitor vigente");
+      const confirmed = await conditionalReviewPayload(db, changed.fingerprint);
+      assert.equal(confirmed.notModified, true, mutation.name + ": fingerprint atual pode ser reutilizado");
+      previousFingerprint = changed.fingerprint;
+    }
+
+    await assert.rejects(() => conditionalReviewPayload(db, "not-a-fingerprint"), /impressão digital.*inválida/iu);
+    await assert.rejects(() => conditionalReviewPayload(db, previousFingerprint, "90000000-0000-4000-8000-000000000009"),
+      /nao autorizada/u, "ACL é verificada mesmo em requisição condicional");
+    await db.exec("update public.courses set owner_id='90000000-0000-4000-8000-000000000009' where id='" + COURSE + "'");
+    await assert.rejects(() => conditionalReviewPayload(db, previousFingerprint),
+      /nao autorizada/u, "revogação do proprietário prevalece sobre fingerprint ainda em cache");
+    assert.equal(await queryValue(db, "select has_function_privilege('service_role','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') value"), true);
+    assert.equal(await queryValue(db, "select has_function_privilege('authenticated','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') value"), false);
+    assert.equal(await queryValue(db, "select has_function_privilege('anon','public.get_owned_course_review_plan_for_actor_v2(uuid,uuid,text)','execute') value"), false);
+    assert.equal(await queryValue(db, "select public.get_aralearn_runtime_manifest()->>'schemaRevision' value"), "20261019174421");
+    assert.equal(await queryValue(db, "select public.get_aralearn_runtime_manifest()->'features' ? 'course-review-plan-conditional-snapshot-v1' value"), true);
   } finally { await db.close(); }
 });
