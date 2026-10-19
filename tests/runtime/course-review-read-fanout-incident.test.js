@@ -193,6 +193,7 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
         ? 0 : Number(String(input.cursorStudyUnitId).split("-").at(-1));
       const limit = Number.isSafeInteger(input.limit) && input.limit > 0 ? input.limit : 12;
       const items = units.slice(start, start + limit);
+      calls.unitBodies.push(...items.map(item => item.studyUnit.id));
       const end = start + items.length;
       return { items: structuredClone(items), hasMore: end < units.length,
         nextCursor: end < units.length ? { studyUnitId: `unit-${end}` } : null }; },
@@ -294,8 +295,8 @@ test("preparar_revisao resolve por índice e hidrata somente os IDs selecionados
   const { adapter } = createAdapter({ unitCount: 196 });
   adapter.reset();
   await execute(adapter, { unidades: ["Unidade 46", 44, 45] });
-  assert.equal(adapter.calls.units.length, 3, "uma leitura canônica ancorada por ID selecionado");
   assert.deepEqual(adapter.calls.unitBodies, ["unit-46", "unit-44", "unit-45"]);
+  assert.equal(adapter.calls.units.length, 3, "uma leitura canônica ancorada por ID selecionado");
   assert.equal(adapter.calls.outlines.length, 1, "a identidade vem do índice compacto autenticado");
 });
 
