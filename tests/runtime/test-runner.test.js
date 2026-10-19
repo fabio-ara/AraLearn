@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { batchTestFiles, resolveTestFiles } from "../../scripts/runTests.mjs";
+import { resolveTestFiles } from "../../scripts/runTests.mjs";
 
 const runnerUrl = new URL("../../scripts/runTests.mjs", import.meta.url);
 const runnerPath = fileURLToPath(runnerUrl);
@@ -46,21 +46,9 @@ test("runner mantém integral por padrão e seleciona arquivos explícitos sem d
     assert.deepEqual(resolveTestFiles([
       "--focal", "tests/kernel/pass.test.js", "tests/kernel/pass.test.js"
     ], root), [integral[0]]);
-    fs.mkdirSync(path.join(root, ".validation"));
-    fs.writeFileSync(path.join(root, ".validation/runtime-focal-files.json"),
-      '["tests/runtime/fail.test.js","tests/kernel/pass.test.js"]\n');
-    assert.deepEqual(resolveTestFiles(["--focal-list", ".validation/runtime-focal-files.json"], root), integral,
-      "a lista compacta mantém a ordenação determinística do runner");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
-});
-
-test("runner divide seleções extensas sem perder nem reordenar arquivos", () => {
-  const files = ["a", "bbb", "cc", "dddd"];
-  const batches = batchTestFiles(files, 10);
-  assert.deepEqual(batches, [["a", "bbb"], ["cc"], ["dddd"]]);
-  assert.deepEqual(batches.flat(), files);
 });
 
 test("runner focal real não executa arquivo fora da seleção e integral propaga a falha", () => {
@@ -79,13 +67,47 @@ test("runner focal real não executa arquivo fora da seleção e integral propag
 
     const failedFocal = executeFixture(root, ["--focal", "tests/runtime/fail.test.js"]);
     assert.equal(failedFocal.status, 1, failedFocal.stderr + failedFocal.stdout);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
-    fs.mkdirSync(path.join(root, ".validation"));
-    fs.writeFileSync(path.join(root, ".validation/runtime-focal-files.json"),
-      '["tests/kernel/pass.test.js"]\n');
-    const focalList = executeFixture(root, ["--focal-list", ".validation/runtime-focal-files.json"]);
-    assert.equal(focalList.status, 0, focalList.stderr + focalList.stdout);
-    assert.match(focalList.stdout, /selected passes/u);
+test("runner focal executa uma seleção longa completa com caminhos relativos", () => {
+  const parent = os.tmpdir();
+  const root = fs.mkdtempSync(path.join(parent, `aralearn-long-test-runner-${"x".repeat(112)}-`));
+  fs.mkdirSync(path.join(root, "tests/kernel"), { recursive: true });
+  const runtime = path.join(root, "tests/runtime");
+  fs.mkdirSync(runtime, { recursive: true });
+  fs.writeFileSync(path.join(root, "package.json"), '{"type":"module"}\n');
+  const selected = Array.from({ length: 270 }, (_, index) => {
+    const name = `focal-${String(index).padStart(3, "0")}.test.js`;
+    fs.writeFileSync(path.join(runtime, name),
+      `import test from "node:test"; test("identity-${String(index).padStart(3, "0")}", () => {});\n`);
+    return path.join("tests/runtime", name);
+  });
+
+  try {
+    const files = resolveTestFiles(["--focal", ...selected], root);
+    const relativeFiles = files.map(file => path.relative(root, file));
+    assert.equal(files.length, 270);
+    assert.equal(new Set(relativeFiles).size, 270);
+    assert.deepEqual(relativeFiles, selected);
+    assert.ok(relativeFiles.every(file => !path.isAbsolute(file)));
+    if (process.platform === "win32") {
+      assert.ok(files.every(file => file.length < 250), "cada caminho individual deve continuar válido no Windows");
+      assert.ok(files.join(" ").length > 32_767, "os caminhos absolutos reproduzem o limite do spawn Windows");
+      assert.ok(relativeFiles.join(" ").length < 32_767, "a lista relativa cabe em um único spawn Windows");
+    }
+
+    const result = executeFixture(root, ["--focal", ...selected]);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stdout, /modo focal, 270 arquivo/u);
+    assert.match(result.stdout, /ℹ tests 270/u);
+    assert.match(result.stdout, /ℹ pass 270/u);
+    for (let index = 0; index < 270; index += 1) {
+      assert.ok(result.stdout.includes(`identity-${String(index).padStart(3, "0")}`),
+        `a seleção perdeu o arquivo ${selected[index]}`);
+    }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

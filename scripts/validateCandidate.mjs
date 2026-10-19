@@ -226,10 +226,6 @@ export async function executeGate(step, { root, logPath, env = process.env }) {
   const childEnv = { ...env, ...step.env };
   const fd = fs.openSync(logPath, "w");
   const failedTests = [];
-  const runtimeFilesPath = step.gate === "runtime-focal" && step.args?.[0] === "scripts/runTests.mjs" &&
-    step.args[1] === "--focal" && step.args.length > 3
-    ? path.join(root, ".validation/runtime-focal-files.json") : null;
-  let args = step.args;
   let pending = "";
   const write = (chunk, flush = false) => {
     pending += chunk;
@@ -243,20 +239,14 @@ export async function executeGate(step, { root, logPath, env = process.env }) {
   };
   let exitCode;
   try {
-    if (runtimeFilesPath) {
-      fs.mkdirSync(path.dirname(runtimeFilesPath), { recursive: true });
-      fs.writeFileSync(runtimeFilesPath, `${JSON.stringify(step.args.slice(2))}\n`);
-      args = [step.args[0], "--focal-list", ".validation/runtime-focal-files.json"];
-    }
     exitCode = await new Promise((resolve) => {
-      const child = spawn(step.command || process.execPath, args, { cwd: root, env: childEnv, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+      const child = spawn(step.command || process.execPath, step.args, { cwd: root, env: childEnv, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
       child.stdout.on("data", (chunk) => write(chunk.toString()));
       child.stderr.on("data", (chunk) => write(chunk.toString()));
       child.on("error", () => resolve(1));
       child.on("close", (code) => resolve(code ?? 1));
     });
   } finally {
-    if (runtimeFilesPath && fs.existsSync(runtimeFilesPath)) fs.unlinkSync(runtimeFilesPath);
     write("", true);
     fs.closeSync(fd);
   }
