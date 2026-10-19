@@ -1397,6 +1397,14 @@ export class CourseSupabaseAdapter {
       try {
         fetchesStarted += 1;
         const response = await this.fetchImpl(url, { ...init, signal: controller.signal });
+        // Uma restrição de franquia não se resolve repetindo a requisição nem
+        // renovando credenciais. Interrompa antes de ler o corpo do provedor:
+        // ele pode não ser JSON, ser extenso ou conter detalhes administrativos.
+        if (response.status === 402) {
+          await response.body?.cancel().catch(() => {});
+          throw new AuthoringApiError(402, "course_service_restricted",
+            "O serviço está restrito por limite de uso. Aguarde a liberação para retomar.");
+        }
         const source = await readBoundedResponseText(response, responseLimitBytes);
         let body = null;
         try {

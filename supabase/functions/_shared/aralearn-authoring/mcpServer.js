@@ -472,6 +472,9 @@ function toolFailure(
           : retryable
             ? "Refaça a mesma etapa em silêncio, sem mudar a intenção."
             : null;
+  if (normalized.code === "course_service_restricted") {
+    nextDecision = "Preserve o ponto de continuação e aguarde a liberação do serviço; novas tentativas imediatas não resolvem a restrição.";
+  }
   if (preflight || derivableMaterialization) {
     nextDecision = "Resolva autonomamente tudo que já estiver determinado pelo curso e repita a verificação. Se restar uma escolha que altere o percurso de aprendizagem, consolide as pendências relacionadas, explique ao autor o que precisa ser decidido e por que isso importa, faça uma única pergunta e, após a resposta, retome a produção original.";
   }
@@ -762,12 +765,13 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "", diagnostico 
   // envelope com id, método tools/call, ferramenta do catálogo, arguments em
   // objeto e MCP-Protocol-Version vigente — e nenhuma ferramenta foi executada.
   // É forma de protocolo, não validação de negócio dos arguments. Uma falha
-  // transitória da dependência é devolvida como falha da própria ferramenta
+  // transitória ou restrição de franquia da dependência é devolvida como falha
+  // da própria ferramenta
   // (result.isError), no mesmo envelope público de `fase=execucao`, para que
   // code, retryable e diagnostico alcancem o cliente. O HTTP 200 aqui carrega
   // apenas erro público válido — nunca sucesso de domínio — e o status original
-  // da dependência permanece no diagnostico. Só este caso entra na rota: recusa
-  // de credencial (401/403), limite de taxa, entrada inválida, id ausente,
+  // da dependência permanece no diagnostico. A restrição mantém retryable=false.
+  // Recusa de credencial (401/403), limite de taxa, entrada inválida, id ausente,
   // protocolo divergente, método ou ferramenta desconhecida e falha interna
   // seguem o contrato atual. A falha transitória do JWKS chega como
   // `oauth_verification_unavailable` na mesma resolução do principal e entra pela
@@ -777,8 +781,8 @@ function transportErrorResponse(error, cors = {}, resourceUrl = "", diagnostico 
   // A rota usa a fase REAL (`diagnostico.fase`), anterior ao rótulo de transporte.
   const principalResolutionFailure = fase === "resolucao_principal"
     || (diagnostico.fase === "resolucao_principal" && normalized.code === "oauth_verification_unavailable");
-  const routeAsToolFailure = retryable
-    && (normalized.status === 503 || normalized.status === 408)
+  const routeAsToolFailure = ((retryable && (normalized.status === 503 || normalized.status === 408))
+      || (normalized.status === 402 && normalized.code === "course_service_restricted"))
     && principalResolutionFailure
     && hasJsonRpcId
     && envelope?.method === "tools/call"
