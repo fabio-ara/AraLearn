@@ -1,7 +1,7 @@
 import { COURSE_DESIGN_PARAMETER_DEFINITIONS } from "./courseDesignParameters.js";
 import { normalizeCourseAuthoringAnalyticsPage, normalizeCourseAuthoringAnalyticsQuery } from "./courseAuthoringAnalytics.js";
 import { CourseAuthoringBasisError, exactAuthoringObject, authoringText, authoringInteger, canonicalAuthoringValue, normalizeCourseAuthoringParameter, normalizeCourseAuthoringSource, observeCourseAuthoringDimensions } from "./courseAuthoringBasis.js";
-import { flattenCourseDocument, composeCourseDocument } from "./courseEntities.js";
+import { validateProjectDocument } from "./aralearnProject.js";
 import { normalizeCourseSourcesRead } from "./courseSources.js";
 import { normalizeAppliedExplanationBasis } from "./appliedExplanationBasis.js";
 import { normalizeCourseContentReviewState } from "./courseContentReview.js";
@@ -164,10 +164,31 @@ export function normalizeCourseAuthoringComparison(value, { expectedRequest = nu
 }
 export function assembleCourseAuthoringExport({ analytics, document, explanationSources = [], appliedExplanationBases = [], contentReviews = [] }) {
   analytics = normalizeCourseAuthoringAnalyticsPage(analytics);
-  const flattened = flattenCourseDocument(document, { allowIncompleteCurriculum: true });
-  if (flattened.course.id !== analytics.course.id || flattened.course.title !== analytics.course.title) fail("O artefato exportado pertence a outro curso.");
-  const normalizedDocument = composeCourseDocument(flattened.course, flattened.rows, { allowIncompleteCurriculum: true });
-  const supportIds = new Set(flattened.rows.filter(row => row.entityType === "microsequence" && row.content.explanation).map(row => row.entityId));
+  // Validate the document once. Flattening and composing it again revalidated
+  // every resource twice more, even though export does not change its structure.
+  const validation = validateProjectDocument(document, { allowIncompleteCurriculum: true });
+  if (!validation.ok || validation.value?.courses?.length !== 1) fail("A exportação precisa conter exatamente um Curso válido.");
+  const courseDocument = validation.value.courses[0];
+  if (courseDocument.id !== analytics.course.id || courseDocument.title !== analytics.course.title) fail("O artefato exportado pertence a outro curso.");
+  const normalizedDocument = { contract: "aralearn.course.v1", courses: [courseDocument] };
+  const supportIds = new Set();
+  const unitIds = new Set();
+  for (const module of courseDocument.modules) {
+    for (const lesson of module.lessons) {
+      for (const microsequence of lesson.microsequences) {
+        if (microsequence.explanation) supportIds.add(microsequence.id);
+        // Keep the same canonical order and sibling-position constraint as the
+        // entity round trip, including sparse positions in an unfinished course.
+        const positions = new Set();
+        for (const unit of microsequence.studyUnits) {
+          if (positions.has(unit.position)) fail("Entidades irmãs não podem ocupar a mesma posição.");
+          positions.add(unit.position);
+          unitIds.add(unit.id);
+        }
+        microsequence.studyUnits.sort((left, right) => left.position - right.position || left.id.localeCompare(right.id));
+      }
+    }
+  }
   const seen = new Set();
   if (!Array.isArray(explanationSources)) fail("A proveniência da explicação é inválida.");
   explanationSources = explanationSources.map(value => {
@@ -182,7 +203,6 @@ export function assembleCourseAuthoringExport({ analytics, document, explanation
     return read;
   });
   if (seen.size !== supportIds.size) fail("A exportação precisa incluir a proveniência de cada explicação.");
-  const unitIds = new Set(flattened.rows.filter(row => row.entityType === "study_unit").map(row => row.entityId));
   const appliedIds = new Set();
   if (!Array.isArray(appliedExplanationBases) || !Array.isArray(contentReviews)) fail("Os metadados autorais precisam formar listas.");
   appliedExplanationBases = appliedExplanationBases.map(entry => {

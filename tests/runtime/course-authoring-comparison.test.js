@@ -244,14 +244,54 @@ test("Adapter não retorna comparação parcial quando um owner reader nega aces
 });
 test("Adapter exporta somente após todas páginas CAS e revisão final, sem usar cache", async () => {
   const adapter = adapterFixture(); const calls = [];
-  adapter.getCourseAuthoringAnalytics = async () => courseAuthoringAnalyticsFixture();
+  const analyticsReadLimits = [];
+  adapter.getCourseAuthoringAnalytics = async ({ responseLimitBytes }) => {
+    analyticsReadLimits.push(responseLimitBytes);
+    return courseAuthoringAnalyticsFixture();
+  };
   adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
   adapter.listCourseEntities = async (request) => { calls.push(request); return { contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID, revision: 7, items: [], hasMore: false, nextCursor: null }; };
   const result = await adapter.getCourseAuthoringExport({ principal, ...selection() });
   assert.equal(result.artifact.document.courses[0].goal, "Objetivo");
+  assert.deepEqual(analyticsReadLimits, [32 * 1024 * 1024]);
   assert.equal(calls[0].expectedRevision, 7);
   adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: OTHER_ID, revision: 7, items: [], hasMore: false, nextCursor: null });
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), (error) => error.status === 503);
+});
+
+test("exportação lê analytics acima de 8 MiB integralmente até o limite compartilhado de 32 MiB", async () => {
+  const analytics = courseAuthoringAnalyticsFixture({ courseId: ANALYTICS_COURSE_ID, revision: 7,
+    studyUnits: Array.from({ length: 700 }, (_, index) => ({ studyUnitRef: `unit-${index + 1}`, title: `Unidade ${index + 1}` })) });
+  for (const unit of analytics.basis.studyUnits) {
+    for (const parameter of unit.requestedParameters) parameter.reason = "x".repeat(1000);
+  }
+  const analyticsBytes = Buffer.byteLength(JSON.stringify(analytics));
+  assert.ok(analyticsBytes > 8 * 1024 * 1024, `fixture precisa exceder 8 MiB; recebeu ${analyticsBytes}`);
+  assert.ok(analyticsBytes < 32 * 1024 * 1024);
+
+  const adapter = adapterFixture();
+  const rawBody = JSON.stringify([analytics]);
+  assert.ok(Buffer.byteLength(rawBody) > 8 * 1024 * 1024);
+  adapter.fetchImpl = async (url, init) => {
+    assert.match(url, /\/rpc\/get_owned_course_authoring_analytics_for_actor_v4$/u);
+    assert.equal(JSON.parse(init.body).p_query.scope.kind, "course");
+    return new Response(rawBody, { status: 200, headers: {
+      "content-type": "application/json", "content-length": String(Buffer.byteLength(rawBody))
+    } });
+  };
+  adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
+  adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
+    revision: 7, items: [], hasMore: false, nextCursor: null });
+  const exported = await adapter.getCourseAuthoringExport({ principal, ...selection() });
+  assert.equal(exported.analytics.basis.studyUnits.length, 700);
+  assert.equal(exported.analytics.basis.studyUnits[699].requestedParameters[0].reason, "x".repeat(1000));
+  assert.ok(Buffer.byteLength(JSON.stringify(exported)) > 8 * 1024 * 1024,
+    "a exportação completa continua acima do antigo teto de 8 MiB");
+  assert.ok(Buffer.byteLength(JSON.stringify(exported)) < 32 * 1024 * 1024);
+  await assert.rejects(adapter.getCourseAuthoringAnalytics({ principal, courseId: ANALYTICS_COURSE_ID,
+    expectedCourseRevision: 7, query: { scope: { kind: "course", ref: null } } }),
+  error => error.status === 413 && error.code === "course_authoring_analytics_response_too_large",
+  "leituras analíticas comuns mantêm o teto de 8 MiB");
 });
 
 test("Adapter exporta fonte, aplicação e revisão do objeto fora do documento importável", async () => {

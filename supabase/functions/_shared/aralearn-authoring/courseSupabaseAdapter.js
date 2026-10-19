@@ -80,6 +80,7 @@ import { collectAppliedExplanationBases } from "../aralearn/runtime/domain/appli
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const sameCourseMedia = (left, right) => ["contentHash", "byteSize", "mediaType"].every(key => left?.[key] === right?.[key]);
 const COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES = 8 * 1024 * 1024;
+const COURSE_AUTHORING_EXPORT_ANALYTICS_RESPONSE_LIMIT_BYTES = COURSE_AUTHORING_EXPORT_MAX_BYTES;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const INSPECTION_FIELDS = new Set([
   "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions",
@@ -2955,6 +2956,7 @@ export class CourseSupabaseAdapter {
     courseId,
     expectedCourseRevision,
     query,
+    responseLimitBytes = COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES,
     deadlineAt = null
   }) {
     const normalizedQuery = normalizeCourseAuthoringAnalyticsInputValue(() =>
@@ -2972,7 +2974,7 @@ export class CourseSupabaseAdapter {
         },
         {
           deadlineAt,
-          responseLimitBytes: COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES
+          responseLimitBytes
         }
       ));
     } catch (error) {
@@ -2982,7 +2984,7 @@ export class CourseSupabaseAdapter {
         throw new AuthoringApiError(
           413,
           "course_authoring_analytics_response_too_large",
-          "A leitura de autoria excedeu 8 MiB. Use um escopo menor."
+          `A leitura de autoria excedeu ${Math.floor(responseLimitBytes / (1024 * 1024))} MiB. Use um escopo menor.`
         );
       }
       throw error;
@@ -4379,7 +4381,8 @@ export class CourseSupabaseAdapter {
 
   async getCourseAuthoringExport({ principal, courseId, expectedRevision, scope = { kind: "course", ref: null }, deadlineAt = null }) {
     const selection = normalizeCourseAuthoringAnalyticsInputValue(() => normalizeCourseAuthoringSelection({ courseId, expectedRevision, scope }));
-    const analytics = await this.getCourseAuthoringAnalytics({ principal, courseId, expectedCourseRevision: selection.expectedRevision, query: { scope: selection.scope }, deadlineAt });
+    const analytics = await this.getCourseAuthoringAnalytics({ principal, courseId, expectedCourseRevision: selection.expectedRevision,
+      query: { scope: selection.scope }, responseLimitBytes: COURSE_AUTHORING_EXPORT_ANALYTICS_RESPONSE_LIMIT_BYTES, deadlineAt });
     const course = await this.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
     if (course?.courseId !== courseId || course.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou; releia antes de exportar.");
     const rows = []; const cursors = new Set(); let cursor = null; let bytes = 0;
