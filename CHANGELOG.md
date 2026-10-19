@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.132] - 2026-10-19
+
+### Corrigido
+
+- A exportação de autoria comporta cursos extensos dentro do limite de 32 MiB, preserva o documento integral e reutiliza sua preparação nas continuações, com nova verificação de acesso, edição e observações.
+- A inspeção identifica tentativas de ordenação causal ou procedural cujo erro oferece apenas um retorno genérico, sem confundir o comentário disponível após o acerto com ajuda durante a tentativa.
+
 ## [0.0.131] - 2026-10-19
 
 ### Corrigido
