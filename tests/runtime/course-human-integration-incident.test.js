@@ -131,6 +131,16 @@ function createAdapter(options = {}) {
           ...(report ? { inspectedAt: "2026-10-05T00:00:00Z", report } : {}) },
         pedagogicalBasis: pedagogicalBasis(input.targetKind, input.targetId) }; },
     async getCourseContentInspectionReceipt() { return null; },
+    async getCourseInspectionTriageOutline({ courseId, expectedRevision }) {
+      return { contract: "aralearn.course-inspection-triage-outline.v1", courseId,
+        courseRevision: expectedRevision, plan: { title: TITLE,
+          curriculum: { modules: [{ id: "module-1", title: "Módulo", position: 0, lessons: [
+            { id: "lesson-1", title: "Lição", position: 0, microsequences: [
+              { id: MS, title: MS_TITLE, position: 0 }] }] }] }, parts: [],
+          studyUnits: units.map((item, index) => ({ id: item.studyUnit.id, title: item.studyUnit.title,
+            ordinal: index + 1, curriculumPath: { moduleId: "module-1", lessonId: "lesson-1",
+              didacticMicrosequenceId: MS }, authoringPartId: null })) } };
+    },
     async recordCourseContentInspection(input) { state.writes += 1; state.lastTarget = input.targetId;
       reports.set(input.targetId, structuredClone(input.report));
       return { contract: "aralearn.course-ai-inspection-change.v1", changed: true, idempotent: false,
@@ -138,6 +148,13 @@ function createAdapter(options = {}) {
         basisHash: state.basisHash, inspection: { state: "current", basisHash: state.basisHash,
           inspectedAt: "2026-10-05T00:00:00Z", report: structuredClone(input.report) } }; },
     async listCourseStudyUnits(input) { calls.units.push(input);
+      if (input.anchorStudyUnitId) {
+        const item = units.find(unit => unit.studyUnit.id === input.anchorStudyUnitId);
+        return { courseRevision: adapter.revision, items: item ? [{ ...structuredClone(item),
+          curriculumPath: { module: { id: "module-1" }, lesson: { id: "lesson-1" },
+            didacticMicrosequence: { id: MS } }, authoringPart: null }] : [],
+          hasMore: false, nextCursor: null };
+      }
       const start = input.cursorStudyUnitId === null ? 0 : Number(String(input.cursorStudyUnitId).split("-").at(-1));
       const limit = Number.isSafeInteger(input.limit) && input.limit > 0 ? input.limit : 12;
       const items = units.slice(start, start + limit);

@@ -240,7 +240,26 @@ function finalContextAdapter(reviewPlan) {
       return { contract: "aralearn.authoring-process-preferences.v1", revision: 0,
         updatedAt: null, preferences: defaultAuthoringProcessPreferences() };
     },
-    async listCourseStudyUnits() {
+    async getCourseInspectionTriageOutline({ courseId, expectedRevision }) {
+      const microsequences = [...new Map(units.map(item => [item.curriculumPath.didacticMicrosequence.id,
+        item.curriculumPath.didacticMicrosequence])).values()]
+        .map((item, position) => ({ id: item.id, title: item.title, position }));
+      return { contract: "aralearn.course-inspection-triage-outline.v1", courseId,
+        courseRevision: expectedRevision, plan: { title: "Curso sintetico",
+          curriculum: { modules: [{ id: "module-1", title: "Modulo", position: 0, lessons: [
+            { id: "lesson-1", title: "Licao", position: 0, microsequences }] }] }, parts: [],
+          studyUnits: units.map(item => ({ id: item.studyUnit.id, title: item.studyUnit.title,
+            ordinal: item.ordinal, curriculumPath: { moduleId: "module-1", lessonId: "lesson-1",
+              didacticMicrosequenceId: item.curriculumPath.didacticMicrosequence.id }, authoringPartId: null })) } };
+    },
+    async listCourseStudyUnits(input) {
+      if (input.anchorStudyUnitId) {
+        const item = units.find(unit => unit.studyUnit.id === input.anchorStudyUnitId);
+        return { courseRevision: 7, items: item ? [{ ...structuredClone(item),
+          curriculumPath: { module: { id: "module-1" }, lesson: { id: "lesson-1" },
+            didacticMicrosequence: { id: item.curriculumPath.didacticMicrosequence.id } }, authoringPart: null }] : [],
+          hasMore: false, nextCursor: null };
+      }
       return { items: structuredClone(units), hasMore: false, nextCursor: null };
     },
     async getCourseContentReview(input) {
