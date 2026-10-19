@@ -331,8 +331,8 @@ function producerAdapter() {
     async getCourse({ courseId }) { return { courseId, revision: COURSE.revision, title: 'C' }; },
     async getCourseInstructionalPlan() { return { courseRevision: COURSE.revision, plan: { title: 'C',
       curriculumMapStatus: 'approved', instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [],
-      curriculum: { modules: [{ id: 'module-1', title: 'Módulo', lessons: [
-        { id: 'lesson-1', title: 'Lição', microsequences: [msSpec()] }] }] },
+      curriculum: { modules: [{ id: 'module-1', title: 'Módulo', position: 0, lessons: [
+        { id: 'lesson-1', title: 'Lição', position: 0, microsequences: [msSpec()] }] }] },
       parts: [{ id: 'p1', position: 0, title: 'Parte', intent: 'Cobrir.', microsequences: [msSpec()] }] } }; },
     async getAuthoringProcessPreferences() { return { contract: 'aralearn.authoring-process-preferences.v1',
       revision: 0, updatedAt: null, preferences: defaultAuthoringProcessPreferences() }; },
@@ -348,7 +348,9 @@ function producerAdapter() {
       return { contract: 'aralearn.course-inspection-triage-outline.v1', courseId,
         courseRevision: expectedRevision, plan: { title: 'C', curriculum: { modules: [{ id: 'module-1',
           title: 'Módulo', position: 0, lessons: [{ id: 'lesson-1', title: 'Lição', position: 0,
-            microsequences: [{ id: MS, title: 'MS', position: 0 }] }] }] }, parts: [],
+          microsequences: [{ id: MS, title: 'MS', position: 0 }] }] }] },
+          parts: [{ id: 'p1', position: 0, title: 'Parte', microsequences: [
+            { id: MS, title: 'MS' }] }],
           studyUnits: units.map((item, index) => ({ id: item.studyUnit.id,
             title: item.studyUnit.title ?? item.studyUnit.content?.title ?? `Unidade ${index + 1}`,
             ordinal: index + 1,

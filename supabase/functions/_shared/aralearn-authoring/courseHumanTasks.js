@@ -2509,7 +2509,7 @@ async function buildProductionPart({ state, titles, progression, title, intent, 
 }
 
 async function resolveTaskContext({ adapter, principal, args, deadlineAt, units = [], planReader = null,
-  studyUnitReferenceIndex = false }) {
+  outlineReader = null, studyUnitReferenceIndex = false }) {
   return await resolveHumanCourseContext({
     adapter,
     principal,
@@ -2522,6 +2522,7 @@ async function resolveTaskContext({ adapter, principal, args, deadlineAt, units 
     studyUnitReferenceIndex,
     source: optionalReference(args.fonte, "fonte") ?? null,
     planReader,
+    outlineReader,
     deadlineAt
   });
 }
@@ -2720,9 +2721,11 @@ async function listUnitsForContext({ adapter, principal, resolved, deadlineAt, l
 
 function focalMicrosequences(resolved, units = resolved.studyUnits ?? []) {
   const all = new Map();
-  for (const value of internalMapCollections(curricularMapFromPlan(resolved.plan)).microsequences) {
-    const id = internalIdentity(value, "microsequence");
-    all.set(id, { ...value, id });
+  for (const moduleValue of resolved.plan?.plan?.curriculum?.modules ?? []) {
+    for (const lesson of moduleValue.lessons ?? []) for (const value of lesson.microsequences ?? []) {
+      const id = internalIdentity(value, "microsequence");
+      if (id) all.set(id, { ...value, id });
+    }
   }
   for (const part of resolved.plan?.plan?.parts ?? []) for (const value of part.microsequences ?? []) {
     all.set(value.id, { ...all.get(value.id), ...value });
@@ -2732,6 +2735,38 @@ function focalMicrosequences(resolved, units = resolved.studyUnits ?? []) {
     ? new Set(units.map(value => value.curriculumPath?.didacticMicrosequence?.id).filter(Boolean))
     : resolved.part ? new Set((resolved.part.microsequences ?? []).map(value => value.id)) : null;
   return [...all.values()].filter(value => ids === null || ids.has(value.id));
+}
+
+// Curso/parte sem seleção explícita: corpos acompanham a página de unidades; explicações
+// sem unidade no escopo aparecem só na primeira página. O outline já fornece o índice
+// completo, então esta projeção não precisa de outra leitura nem altera os demais handlers.
+function reviewPageMicrosequences({ resolved, outline, unitPage, continuation, selectedUnits }) {
+  if (resolved.microsequence || selectedUnits || (!resolved.part && (resolved.module || resolved.lesson))) {
+    return focalMicrosequences(resolved, unitPage.items);
+  }
+  const all = focalMicrosequences({ ...resolved, studyUnits: [] }, unitPage.items);
+  const studyUnitIndex = outline?.plan?.studyUnits;
+  if (!Array.isArray(studyUnitIndex)) {
+    fail("course_service_unavailable", "O índice compacto de unidades está indisponível para projetar as explicações da página.", null, 503);
+  }
+  const microIds = new Set(all.map(item => item.id));
+  const scopedUnitIndex = resolved.part
+    ? studyUnitIndex.filter(item => item.authoringPartId === resolved.part.id)
+    : studyUnitIndex;
+  const unitMicroIds = new Set();
+  for (const item of scopedUnitIndex) {
+    const id = item?.curriculumPath?.didacticMicrosequenceId;
+    if (typeof id !== "string" || !microIds.has(id)) {
+      fail("course_revision_conflict", "O índice de unidades divergiu do escopo curricular; repita a consulta.", null, 409);
+    }
+    unitMicroIds.add(id);
+  }
+  const pageMicroIds = new Set(unitPage.items.map(item => item?.curriculumPath?.didacticMicrosequence?.id).filter(Boolean));
+  if ([...pageMicroIds].some(id => !microIds.has(id))) {
+    fail("course_revision_conflict", "A página de unidades divergiu do escopo curricular; repita a consulta.", null, 409);
+  }
+  const includeEmpty = continuation.p === null;
+  return all.filter(item => pageMicroIds.has(item.id) || includeEmpty && !unitMicroIds.has(item.id));
 }
 
 function projectObservations(items) {
@@ -3381,19 +3416,6 @@ function reviewPageIdentity({ principal, courseId, revision, continuation }) {
     page: continuation.p };
 }
 
-// O carimbo de versões é uma leitura de observações: pedir o alvo mais estreito da
-// página (a primeira unidade, ou a Explicação da microssequência) mantém o custo
-// mínimo e repete a mesma forma de hierarquia que a própria página já lê.
-function reviewPageStampHierarchy(unitPage, reviewMicrosequences, courseId) {
-  const unit = unitPage?.items?.[0]?.studyUnit?.id;
-  if (typeof unit === "string" && unit) return { target: { kind: "study_unit", id: unit }, includeDescendants: false };
-  const microsequence = reviewMicrosequences?.[0]?.id;
-  if (typeof microsequence === "string" && microsequence) {
-    return { target: { kind: "microsequence_explanation", id: microsequence }, includeDescendants: false };
-  }
-  return { target: { kind: "course", id: courseId }, includeDescendants: true };
-}
-
 // Objeto de contexto da página lógica. O caminho completo e o reuso o reconstroem com
 // as mesmas funções puras a partir das mesmas leituras, e é este objeto que o paginador
 // serializa: ordem, literal, escapes Unicode, cap e hash permanecem os do contrato.
@@ -3482,13 +3504,88 @@ async function prepareInspectionTriage({ adapter, principal, args, deadlineAt })
   });
 }
 
-// O plano do recorte é lido uma vez por requisição e conferido contra a revisão pedida.
-async function ensureReviewPlan({ adapter, principal, resolved, deadlineAt }) {
-  if (resolved.plan) return resolved.plan;
+// O plano completo em metadados é reconstruído uma vez depois da página de unidades;
+// corpos de explicação só entram para os IDs que explicaçãoReadContext efetivamente usa.
+async function ensureReviewPlan({ adapter, principal, resolved, outline, explanationIds, deadlineAt }) {
   const readPlan = reviewPlanReader(adapter);
   if (!readPlan) fail("course_service_unavailable", "O leitor do planejamento está indisponível.", null, 503);
-  resolved.plan = await readPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
-  if (resolved.plan?.courseRevision !== resolved.course.revision) fail("course_revision_conflict", "O curso mudou; releia o recorte da revisão.", null, 409);
+  const projected = await readPlan({ principal, courseId: resolved.course.id,
+    expectedRevision: resolved.course.revision, explanationIds, recentLimit: 1, deadlineAt });
+  if (projected?.courseId !== undefined && projected.courseId !== resolved.course.id ||
+      projected?.courseRevision !== resolved.course.revision ||
+      !projected?.plan || projected?.sourceFingerprint !== undefined &&
+      !/^[0-9a-f]{64}$/u.test(projected.sourceFingerprint)) {
+    fail("course_revision_conflict", "O curso ou o plano mudou durante a resolução do recorte; releia a revisão.", null, 409);
+  }
+  const outlinePlan = outline?.plan;
+  const projectedPlan = projected.plan;
+  const outlineModules = outlinePlan?.curriculum?.modules ?? [];
+  const projectedModules = projectedPlan?.curriculum?.modules ?? [];
+  const outlineStructure = outlineModules.map(moduleValue => ({ id: moduleValue.id,
+    title: moduleValue.title, position: moduleValue.position,
+    lessons: (moduleValue.lessons ?? []).map(lesson => ({ id: lesson.id, title: lesson.title,
+      position: lesson.position, microsequences: (lesson.microsequences ?? []).map(item =>
+        [item.id, item.title, item.position]) })) }));
+  const projectedStructure = projectedModules.map(moduleValue => ({ id: moduleValue.id,
+    title: moduleValue.title, position: moduleValue.position,
+    lessons: (moduleValue.lessons ?? []).map(lesson => ({ id: lesson.id, title: lesson.title,
+      position: lesson.position, microsequences: (lesson.microsequences ?? []).map(item =>
+        [item.id, item.title, item.position]) })) }));
+  if (outlinePlan?.title !== projectedPlan?.title ||
+      JSON.stringify(outlineStructure) !== JSON.stringify(projectedStructure)) {
+    fail("course_revision_conflict", "A hierarquia curricular divergiu do índice usado para selecionar o recorte.", null, 409);
+  }
+  const projectedMicros = new Map(projectedModules.flatMap(moduleValue =>
+    (moduleValue.lessons ?? []).flatMap(lesson => lesson.microsequences ?? [])).map(item => [item.id, item]));
+  const partStructure = parts => (parts ?? []).map(item => ({
+    id: item.id,
+    title: item.title,
+    position: item.position,
+    microsequences: (item.microsequences ?? []).map(value => [
+      value.id, value.title, value.productionPosition
+    ])
+  }));
+  const outlinePartList = outlinePlan?.parts ?? [];
+  const projectedPartList = projectedPlan?.parts ?? [];
+  const outlineParts = new Map(outlinePartList.map(item => [item.id, item]));
+  const projectedParts = new Map(projectedPartList.map(item => [item.id, item]));
+  if (outlineParts.size !== outlinePartList.length || projectedParts.size !== projectedPartList.length ||
+      JSON.stringify(partStructure(outlinePartList)) !== JSON.stringify(partStructure(projectedPartList))) {
+    fail("course_revision_conflict", "A estrutura das partes divergiu do índice usado para selecionar o recorte.", null, 409);
+  }
+  const selectedPartId = resolved.part?.id ?? null;
+  const selectedMicrosequence = resolved.microsequence;
+  if (resolved.part) resolved.part = projectedParts.get(resolved.part.id);
+  if (resolved.module) resolved.module = (projectedPlan.curriculum?.modules ?? []).find(item => item.id === resolved.module.id);
+  if (resolved.lesson) resolved.lesson = (resolved.module?.lessons ?? projectedPlan.curriculum?.modules
+    ?.flatMap(item => item.lessons ?? []) ?? []).find(item => item.id === resolved.lesson.id);
+  if (selectedMicrosequence) {
+    const selectedPart = selectedPartId === null
+      ? projectedPartList.find(item => (item.microsequences ?? [])
+        .some(value => value.id === selectedMicrosequence.id))
+      : resolved.part;
+    const selectedPartMicrosequence = selectedPart?.microsequences?.find(item =>
+      item.id === selectedMicrosequence.id) ?? null;
+    const selectedFromPart = selectedPartId !== null || selectedMicrosequence.productionPosition !== undefined;
+    const curriculumMicrosequence = projectedMicros.get(selectedMicrosequence.id);
+    const selected = selectedFromPart
+      ? selectedPartMicrosequence && curriculumMicrosequence
+        ? { ...curriculumMicrosequence, ...selectedPartMicrosequence }
+        : selectedPartMicrosequence ?? curriculumMicrosequence
+      : curriculumMicrosequence;
+    const selectedPosition = selectedFromPart
+      ? selectedPartMicrosequence?.productionPosition
+      : selected?.position;
+    const originalPosition = selectedFromPart
+      ? selectedMicrosequence.productionPosition
+      : selectedMicrosequence.position;
+    if (!selected || selected.title !== selectedMicrosequence.title ||
+        Number(selectedPosition) !== Number(originalPosition)) {
+      fail("course_revision_conflict", "A microssequência divergiu do índice usado para selecionar o recorte.", null, 409);
+    }
+    resolved.microsequence = selected;
+  }
+  resolved.plan = projected;
   return resolved.plan;
 }
 
@@ -3560,6 +3657,9 @@ async function readReviewPageUnitPage({ adapter, principal, resolved, continuati
        !unitPage.nextCursor.studyUnitId || unitPage.nextCursor.studyUnitId === continuation.p)) {
     fail('course_service_unavailable', 'A página da revisão perdeu o ponto de continuação.', null, 503);
   }
+  if (unitPage.courseRevision !== undefined && Number(unitPage.courseRevision) !== resolved.course.revision) {
+    fail("course_revision_conflict", "A página de unidades pertence a outra revisão do curso.", null, 409);
+  }
   return unitPage;
 }
 
@@ -3582,8 +3682,7 @@ async function reusedPreparedReviewPage({ adapter, principal, args, identity, co
     if (await sha256Hex(JSON.stringify(resolved.plan)) !== entry.planDigest) return null;
     if (await sha256Hex(JSON.stringify(unitPage)) !== entry.unitPageDigest) return null;
     return { annotationSetVersion: await readReviewPageStateStamp({ adapter, principal,
-      courseId: continuation.c, revision: continuation.r, deadlineAt,
-      hierarchy: reviewPageStampHierarchy(unitPage, reviewMicrosequences, continuation.c) }), entry };
+      courseId: continuation.c, revision: continuation.r, deadlineAt }), entry };
   });
   if (!claimed) return null;
   const { observations, explanations, studyUnits } = claimed.entry.record;
@@ -3626,8 +3725,11 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   }
   const units = humanReferenceList(args.unidades, "unidades", { optional: true }) ?? [];
   const planReader = reviewPlanReader(adapter);
+  let outlineRead = null;
+  const outlineReader = typeof adapter?.getCourseInspectionTriageOutline === "function"
+    ? input => outlineRead ??= adapter.getCourseInspectionTriageOutline(input) : null;
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt, units, planReader,
-    studyUnitReferenceIndex: units.length > 0 });
+    outlineReader, studyUnitReferenceIndex: units.length > 0 });
   const continuation = await openHumanReadContinuation({ args, course: resolved.course, task: 'preparar_revisao' });
   if (args.comparacao !== undefined) {
     const reference = normalizeObservationComparisonReference(args.comparacao);
@@ -3650,9 +3752,28 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
       context: await paginateHumanReadContext({ comparacaoDeObservacao: comparison }, { state: continuation })
     });
   }
-  await ensureReviewPlan({ adapter, principal, resolved, deadlineAt });
+  let outline = resolved.plan;
+  if (!outline && outlineReader) outline = await outlineReader({ principal, courseId: resolved.course.id,
+    expectedRevision: resolved.course.revision, deadlineAt });
+  if (outline?.courseId !== undefined && (outline.courseId !== resolved.course.id ||
+      Number(outline.courseRevision) !== resolved.course.revision)) {
+    fail("course_revision_conflict", "O índice estrutural pertence a outra revisão do curso.", null, 409);
+  }
+  if (!outline) outline = resolved.plan;
+  if (!outline) fail("course_service_unavailable", "O índice compacto do curso está indisponível.", null, 503);
+  resolved.plan = outline;
   const unitPage = await readReviewPageUnitPage({ adapter, principal, resolved, continuation, units, deadlineAt });
-  const reviewMicrosequences = focalMicrosequences(resolved, unitPage.items);
+  const outlineMicrosequences = reviewPageMicrosequences({ resolved, outline, unitPage, continuation,
+    selectedUnits: units.length > 0 });
+  const explanationIds = units.length > 0 && args.auditoria !== true
+    ? [] : outlineMicrosequences.map(item => item.id);
+  await ensureReviewPlan({ adapter, principal, resolved, outline, explanationIds, deadlineAt });
+  const reviewMicrosequences = reviewPageMicrosequences({ resolved, outline, unitPage, continuation,
+    selectedUnits: units.length > 0 });
+  if (JSON.stringify(reviewMicrosequences.map(item => item.id)) !==
+      JSON.stringify(outlineMicrosequences.map(item => item.id))) {
+    fail("course_revision_conflict", "A seleção curricular mudou durante a leitura do plano.", null, 409);
+  }
   const identity = reviewPageIdentity({ principal, courseId: resolved.course.id,
     revision: resolved.course.revision, continuation });
   // Reuso e materialização compartilham a resolução acima. O fragmento confirma a

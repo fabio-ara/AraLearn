@@ -409,6 +409,7 @@ export async function resolveHumanCourseContext({
   internalSourceId = null,
   copySourcesOnly = false,
   planReader = null,
+  outlineReader = null,
   deadlineAt = null
 }) {
   if (!adapter || !principal) throw new TypeError("Dependências da resolução humana são inválidas.");
@@ -418,15 +419,28 @@ export async function resolveHumanCourseContext({
   if (planReader !== null && typeof planReader !== "function") {
     throw new TypeError("O leitor do planejamento humano é inválido.");
   }
+  if (outlineReader !== null && typeof outlineReader !== "function") {
+    throw new TypeError("O leitor compacto do planejamento humano é inválido.");
+  }
   const resolvedCourse = await resolveCourse({ adapter, principal, course, deadlineAt, copySourcesOnly });
   let plan = null;
   let resolvedPart = null;
   let resolvedModule = null;
   let resolvedLesson = null;
   let resolvedMicrosequence = null;
+  let inspectionOutline = null;
   if (part !== null || module !== null || lesson !== null || microsequence !== null) {
     const planInput = { principal, courseId: resolvedCourse.id, expectedRevision: resolvedCourse.revision, recentLimit: 1, deadlineAt };
-    plan = planReader ? await planReader(planInput) : await adapter.getCourseInstructionalPlan(planInput);
+    if (outlineReader !== null) {
+      inspectionOutline = await outlineReader(planInput);
+      if (!plainObject(inspectionOutline) || inspectionOutline.courseId !== resolvedCourse.id ||
+          Number(inspectionOutline.courseRevision) !== resolvedCourse.revision) {
+        throw new AuthoringApiError(409, "course_revision_conflict", "O curso mudou; releia a seleção.");
+      }
+      // The compact outline intentionally carries the same hierarchy fields
+      // used by humanReference resolution, without instructional-plan payloads.
+      plan = inspectionOutline;
+    } else plan = planReader ? await planReader(planInput) : await adapter.getCourseInstructionalPlan(planInput);
     const revision = Number(plan?.courseRevision);
     if (!plainObject(plan?.plan) || !Number.isSafeInteger(revision) || revision < 1) {
       throw new AuthoringApiError(503, "course_service_unavailable", "O planejamento do curso é inválido.");
@@ -456,8 +470,10 @@ export async function resolveHumanCourseContext({
     if (typeof adapter.getCourseInspectionTriageOutline !== "function") {
       throw new AuthoringApiError(503, "course_service_unavailable", "O índice compacto de unidades está indisponível.");
     }
-    const outline = await adapter.getCourseInspectionTriageOutline({ principal, courseId: resolvedCourse.id,
-      expectedRevision: resolvedCourse.revision, deadlineAt });
+    const outline = inspectionOutline ?? await (outlineReader
+      ? outlineReader({ principal, courseId: resolvedCourse.id, expectedRevision: resolvedCourse.revision, deadlineAt })
+      : adapter.getCourseInspectionTriageOutline({ principal, courseId: resolvedCourse.id,
+        expectedRevision: resolvedCourse.revision, deadlineAt }));
     if (!plainObject(outline) || Number(outline.courseRevision) !== resolvedCourse.revision ||
         outline.courseId !== resolvedCourse.id) {
       throw new AuthoringApiError(409, "course_revision_conflict", "O curso mudou; releia a seleção de unidades.");

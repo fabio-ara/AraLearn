@@ -386,6 +386,53 @@ test("#273 overrides efetivos fecham por Unit e dados ausentes continuam explíc
   );
 });
 
+test("effectiveValues são limitados pela cardinalidade das unidades no escopo", () => {
+  const units = Array.from({ length: 366 }, (_, index) => ({
+    studyUnitRef: `unit-${index + 1}`,
+    position: index + 1,
+    title: `Unidade ${index + 1}`,
+    introducedCount: index === 0 ? 2 : index === 1 ? 1 : 0
+  }));
+  const value = snapshot({ studyUnits: units });
+  const parameter = value.design.parameters.find(({ parameterId }) =>
+    parameterId === "minimum_distinct_practice_opportunities_per_evidence_requirement");
+  const assignment = index => ({
+    value: 2,
+    origin: "author",
+    reason: `Atribuição observada ${index + 1}.`,
+    sourceScopeKind: "study_unit",
+    studyUnitCount: 1
+  });
+  parameter.effectiveValues = Array.from({ length: 366 }, (_, index) => assignment(index));
+
+  const normalized = normalizeCourseAuthoringAnalyticsPage(value);
+  assert.equal(normalized.design.studyUnitCount, 366);
+  assert.equal(normalized.design.parameters.find(({ parameterId }) =>
+    parameterId === parameter.parameterId).effectiveValues.length, 366);
+
+  const overScope = structuredClone(value);
+  overScope.design.parameters.find(({ parameterId }) =>
+    parameterId === parameter.parameterId).effectiveValues.push(assignment(366));
+  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(overScope),
+    /Os valores efetivos do parâmetro é inválido/u);
+
+  const duplicated = structuredClone(value);
+  const duplicatedValues = duplicated.design.parameters.find(({ parameterId }) =>
+    parameterId === parameter.parameterId).effectiveValues;
+  duplicatedValues[1] = structuredClone(duplicatedValues[0]);
+  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(duplicated), /repete informações/u);
+
+  const scoped = snapshot({
+    scope: { kind: "didactic_microsequence", ref: "micro-dns", label: "DNS" },
+    studyUnits: units.slice(0, 2)
+  });
+  const scopedParameter = scoped.design.parameters.find(({ parameterId }) =>
+    parameterId === "minimum_distinct_practice_opportunities_per_evidence_requirement");
+  scopedParameter.effectiveValues = [assignment(0), assignment(1), assignment(2)];
+  assert.throws(() => normalizeCourseAuthoringAnalyticsPage(scoped),
+    /Os valores efetivos do parâmetro é inválido/u);
+});
+
 test("valores iguais em escopos de origem distintos permanecem comparáveis", () => {
   const value = snapshot();
   value.design.parameters[0].effectiveValues = [{

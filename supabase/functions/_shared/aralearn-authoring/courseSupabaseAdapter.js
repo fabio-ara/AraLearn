@@ -70,16 +70,20 @@ import {
 import {
   CourseAuthoringAnalyticsError,
   assembleCourseAuthoringAnalyticsPage,
+  normalizeCourseAuthoringAnalyticsPage,
   normalizeCourseAuthoringAnalyticsQuery
 } from "../aralearn/runtime/domain/courseAuthoringAnalytics.js";
 import { CourseAuthoringBasisError, canonicalAuthoringValue } from "../aralearn/runtime/domain/courseAuthoringBasis.js";
-import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExport, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
+import { normalizeCourseAuthoringComparisonRequest, normalizeCourseAuthoringSelection, buildCourseAuthoringComparison, assembleCourseAuthoringExportFromValidatedInputs, COURSE_AUTHORING_EXPORT_MAX_BYTES, serializeCourseAuthoringExport, recordValidatedCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { composeCourseDocument } from "../aralearn/runtime/domain/courseEntities.js";
 import { collectAppliedExplanationBases } from "../aralearn/runtime/domain/appliedExplanationBasis.js";
 
 const DEFAULT_RESPONSE_LIMIT_BYTES = 2 * 1024 * 1024;
 const sameCourseMedia = (left, right) => ["contentHash", "byteSize", "mediaType"].every(key => left?.[key] === right?.[key]);
 const COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES = 8 * 1024 * 1024;
+const COURSE_AUTHORING_EXPORT_ANALYTICS_RESPONSE_LIMIT_BYTES = COURSE_AUTHORING_EXPORT_MAX_BYTES;
+const normalizedAuthoringAnalyticsReads = new WeakSet();
+const normalizedCourseSourceReads = new WeakSet();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const INSPECTION_FIELDS = new Set([
   "contract", "courseId", "courseRevision", "scope", "totalCount", "scopeOptions",
@@ -100,6 +104,10 @@ const COURSE_DESIGN_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_SOURCES_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_ANCHORED_ANNOTATIONS_RESPONSE_LIMIT_BYTES = 256 * 1024;
 const COURSE_REVIEW_PLAN_CONTRACT = "aralearn.course-review-plan.v1";
+const COURSE_REVIEW_PLAN_SNAPSHOT_CONTRACT = "aralearn.course-review-plan.snapshot.v1";
+const COURSE_REVIEW_PLAN_CACHE_TTL_MS = 15 * 60_000;
+const COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET = 1_835_008;
+const COURSE_REVIEW_PLAN_CACHE = new WeakMap();
 const SOURCE_CURSOR_PATTERN = /^[A-Za-z0-9+/_-]+={0,2}$/u;
 const COURSE_SOURCE_ATTACHMENT_BUCKET = "course-source-pdfs";
 const PERSON_AVATAR_BUCKET = "person-avatars";
@@ -210,6 +218,28 @@ function validTimestamp(value, { nullable = false } = {}) {
 
 function jsonRecord(value) {
   return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function reviewPlanCacheKey(principal, courseId, explanationIds) {
+  return JSON.stringify([principal?.actorId, courseId, explanationIds]);
+}
+
+function reviewPlanCacheRead(adapter, key, now) {
+  const state = COURSE_REVIEW_PLAN_CACHE.get(adapter);
+  if (!state || state.key !== key) return null;
+  if (state.entry.expiresAt <= now) {
+    COURSE_REVIEW_PLAN_CACHE.delete(adapter);
+    return null;
+  }
+  return state.entry;
+}
+
+function reviewPlanCacheRemember(adapter, key, entry) {
+  if (entry.bytes > COURSE_REVIEW_PLAN_CACHE_BYTE_BUDGET) {
+    COURSE_REVIEW_PLAN_CACHE.delete(adapter);
+    return;
+  }
+  COURSE_REVIEW_PLAN_CACHE.set(adapter, { key, entry });
 }
 
 function normalizeComponentPolicy(value, { RESOURCE_CATALOG, RESOURCE_PACKAGE_REGISTRY }) {
@@ -1356,6 +1386,14 @@ export class CourseSupabaseAdapter {
       try {
         fetchesStarted += 1;
         const response = await this.fetchImpl(url, { ...init, signal: controller.signal });
+        // Uma restrição de franquia não se resolve repetindo a requisição nem
+        // renovando credenciais. Interrompa antes de ler o corpo do provedor:
+        // ele pode não ser JSON, ser extenso ou conter detalhes administrativos.
+        if (response.status === 402) {
+          await response.body?.cancel().catch(() => {});
+          throw new AuthoringApiError(402, "course_service_restricted",
+            "O serviço está restrito por limite de uso. Aguarde a liberação para retomar.");
+        }
         const source = await readBoundedResponseText(response, responseLimitBytes);
         let body = null;
         try {
@@ -2274,29 +2312,98 @@ export class CourseSupabaseAdapter {
   async getCourseReviewPlan({
     principal,
     courseId,
+    expectedRevision,
+    explanationIds = [],
     deadlineAt = null
   }) {
-    const result = expandReviewPlanningTransport(first(await this.rpc("get_owned_course_review_plan_for_actor_v1", {
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1 || !Array.isArray(explanationIds) ||
+        explanationIds.length > 500 || explanationIds.some(id => typeof id !== "string" || !id.trim() || id.length > 240)) {
+      throw new AuthoringApiError(503, "course_service_unavailable",
+        "A seleção do planejamento estrutural de revisão é inválida.");
+    }
+    const selectedExplanationIds = [...new Set(explanationIds)].sort();
+    const cacheKey = reviewPlanCacheKey(principal, courseId, selectedExplanationIds);
+    const cached = reviewPlanCacheRead(this, cacheKey, Date.now());
+    const response = first(await this.rpc("get_owned_course_review_plan_for_actor_v2", {
       p_actor_id: principal.actorId,
-      p_course_id: courseId
-    }, { deadlineAt })));
+      p_course_id: courseId,
+      p_expected_revision: expectedRevision,
+      p_explanation_ids: selectedExplanationIds,
+      p_if_none_match: cached?.fingerprint ?? null
+    }, { deadlineAt }));
+    const unavailable = () => new AuthoringApiError(
+      503,
+      "course_service_unavailable",
+      "O serviço devolveu um plano estrutural de revisão inválido."
+    );
+    const snapshotFields = new Set([
+      "contract", "courseId", "courseRevision", "planVersion", "fingerprint", "notModified"
+    ]);
+    const validSnapshot = jsonRecord(response) &&
+      response.contract === COURSE_REVIEW_PLAN_SNAPSHOT_CONTRACT &&
+      response.courseId === courseId && positiveSafeInteger(response.courseRevision) &&
+      positiveSafeInteger(response.planVersion) &&
+      typeof response.fingerprint === "string" && /^[0-9a-f]{64}$/u.test(response.fingerprint);
+    if (validSnapshot && response.courseRevision !== expectedRevision) {
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw new AuthoringApiError(409, "course_revision_conflict",
+        "O curso mudou durante a leitura do plano estrutural de revisão.");
+    }
+    if (!validSnapshot) {
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw unavailable();
+    }
+    if (response.notModified === true) {
+      if (!exactRecord(response, snapshotFields) || !cached ||
+          cached.courseRevision !== response.courseRevision ||
+          cached.planVersion !== response.planVersion ||
+          cached.fingerprint !== response.fingerprint) {
+        COURSE_REVIEW_PLAN_CACHE.delete(this);
+        throw unavailable();
+      }
+      const result = expandReviewPlanningTransport(JSON.parse(cached.representationJson));
+      return withDeepLink({ ...result, sourceFingerprint: response.fingerprint }, this.publicAppUrl, "planning");
+    }
+    if (response.notModified !== false || !exactRecord(response,
+      new Set([...snapshotFields, "representation"])) || !jsonRecord(response.representation)) {
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw unavailable();
+    }
+    const result = expandReviewPlanningTransport(response.representation);
     if (!jsonRecord(result) ||
         result.contract !== COURSE_REVIEW_PLAN_CONTRACT ||
         result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
+        result.courseRevision !== response.courseRevision ||
         !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
+        result.plan.version !== response.planVersion ||
         !jsonRecord(result.plan.curriculum) ||
         !Array.isArray(result.plan.curriculum.modules) ||
         !Array.isArray(result.plan.curriculumScopeItems) ||
         !Array.isArray(result.plan.parts)) {
-      throw new AuthoringApiError(
-        503,
-        "course_service_unavailable",
-        "O serviço devolveu um plano estrutural de revisão inválido."
-      );
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw unavailable();
     }
+    const selectedIds = new Set(selectedExplanationIds);
+    const allMicrosequences = result.plan.curriculum.modules.flatMap(moduleValue =>
+      (moduleValue.lessons ?? []).flatMap(lesson => lesson.microsequences ?? []));
+    if (allMicrosequences.some(microsequence => !selectedIds.has(microsequence.id) &&
+        microsequence.explanation !== null)) {
+      COURSE_REVIEW_PLAN_CACHE.delete(this);
+      throw unavailable();
+    }
+    const representationJson = JSON.stringify(response.representation);
+    const bytes = new TextEncoder().encode(representationJson).byteLength;
+    reviewPlanCacheRemember(this, cacheKey, {
+      courseRevision: response.courseRevision,
+      planVersion: response.planVersion,
+      fingerprint: response.fingerprint,
+      representationJson,
+      bytes,
+      expiresAt: Date.now() + COURSE_REVIEW_PLAN_CACHE_TTL_MS
+    });
     // Somente preparar_revisao consome esta projeção. Uma referência de aprovação
     // do mapa pertence ao leitor integral e não deve ser derivada aqui.
-    return withDeepLink(result, this.publicAppUrl, "planning");
+    return withDeepLink({ ...result, sourceFingerprint: response.fingerprint }, this.publicAppUrl, "planning");
   }
 
   async getCourseInspectionTriageOutline({ principal, courseId, expectedRevision, deadlineAt = null }) {
@@ -2518,6 +2625,7 @@ export class CourseSupabaseAdapter {
         "A leitura de Fontes não corresponde ao Curso e à consulta solicitados."
       );
     }
+    normalizedCourseSourceReads.add(normalized);
     return normalized;
   }
 
@@ -2955,6 +3063,7 @@ export class CourseSupabaseAdapter {
     courseId,
     expectedCourseRevision,
     query,
+    responseLimitBytes = COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES,
     deadlineAt = null
   }) {
     const normalizedQuery = normalizeCourseAuthoringAnalyticsInputValue(() =>
@@ -2972,7 +3081,7 @@ export class CourseSupabaseAdapter {
         },
         {
           deadlineAt,
-          responseLimitBytes: COURSE_AUTHORING_ANALYTICS_RESPONSE_LIMIT_BYTES
+          responseLimitBytes
         }
       ));
     } catch (error) {
@@ -2982,12 +3091,12 @@ export class CourseSupabaseAdapter {
         throw new AuthoringApiError(
           413,
           "course_authoring_analytics_response_too_large",
-          "A leitura de autoria excedeu 8 MiB. Use um escopo menor."
+          `A leitura de autoria excedeu ${Math.floor(responseLimitBytes / (1024 * 1024))} MiB. Use um escopo menor.`
         );
       }
       throw error;
     }
-    return normalizeCourseAuthoringAnalyticsDatabaseValue(() =>
+    const normalized = normalizeCourseAuthoringAnalyticsDatabaseValue(() =>
       assembleCourseAuthoringAnalyticsPage(raw, {
         publicAppUrl: this.publicAppUrl,
         expectedCourseId: courseId,
@@ -2995,6 +3104,8 @@ export class CourseSupabaseAdapter {
         expectedQuery: normalizedQuery
       })
     );
+    normalizedAuthoringAnalyticsReads.add(normalized);
+    return normalized;
   }
 
   async listCourseEntities({
@@ -4379,7 +4490,15 @@ export class CourseSupabaseAdapter {
 
   async getCourseAuthoringExport({ principal, courseId, expectedRevision, scope = { kind: "course", ref: null }, deadlineAt = null }) {
     const selection = normalizeCourseAuthoringAnalyticsInputValue(() => normalizeCourseAuthoringSelection({ courseId, expectedRevision, scope }));
-    const analytics = await this.getCourseAuthoringAnalytics({ principal, courseId, expectedCourseRevision: selection.expectedRevision, query: { scope: selection.scope }, deadlineAt });
+    let analytics = await this.getCourseAuthoringAnalytics({ principal, courseId, expectedCourseRevision: selection.expectedRevision,
+      query: { scope: selection.scope }, responseLimitBytes: COURSE_AUTHORING_EXPORT_ANALYTICS_RESPONSE_LIMIT_BYTES, deadlineAt });
+    if (!normalizedAuthoringAnalyticsReads.has(analytics)) {
+      analytics = normalizeCourseAuthoringAnalyticsPage(analytics, {
+        expectedCourseId: courseId,
+        expectedRevision: selection.expectedRevision,
+        expectedQuery: { scope: selection.scope }
+      });
+    }
     const course = await this.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
     if (course?.courseId !== courseId || course.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou; releia antes de exportar.");
     const rows = []; const cursors = new Set(); let cursor = null; let bytes = 0;
@@ -4397,15 +4516,17 @@ export class CourseSupabaseAdapter {
     }
     const explanationSources = [];
     for (const row of rows.filter(row => row.entityType === "microsequence" && row.content?.explanation)) {
-      explanationSources.push(await this.getCourseSources({ principal, courseId, expectedRevision,
+      const read = await this.getCourseSources({ principal, courseId, expectedRevision,
         mode: "target", sourceId: null, targetKind: "microsequence_explanation", targetId: row.entityId,
-        cursor: null, limit: 1, deadlineAt }));
+        cursor: null, limit: 1, deadlineAt });
+      explanationSources.push(normalizedCourseSourceReads.has(read) ? read :
+        normalizeCourseSourcesDatabaseValue(() => normalizeCourseSourcesRead(read)));
     }
     const current = await this.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
     if (current?.courseId !== courseId || current.revision !== expectedRevision) throw new AuthoringApiError(409, "stale_course_state", "O curso mudou durante a exportação.");
     let result;
     try {
-      result = assembleCourseAuthoringExport({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows, { allowIncompleteCurriculum: true }), explanationSources,
+      result = assembleCourseAuthoringExportFromValidatedInputs({ analytics, document: composeCourseDocument({ id: courseId, title: course.title, goal: course.goal }, rows, { allowIncompleteCurriculum: true }), explanationSources,
         appliedExplanationBases: collectAppliedExplanationBases(rows, courseId),
         contentReviews: rows.filter(row => row.contentReview != null && (row.entityType === "study_unit" || row.entityType === "microsequence" && row.content?.explanation))
           .map(row => ({ targetKind: row.entityType === "study_unit" ? "study_unit" : "microsequence_explanation", targetId: row.entityId, contentReview: row.contentReview })) });
@@ -4414,6 +4535,6 @@ export class CourseSupabaseAdapter {
     }
     try { serializeCourseAuthoringExport(result); }
     catch { throw new AuthoringApiError(413, "course_export_too_large", "A exportação excede o limite de 32 MiB."); }
-    return result;
+    return recordValidatedCourseAuthoringExport(result);
   }
 }

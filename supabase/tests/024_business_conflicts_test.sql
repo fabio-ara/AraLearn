@@ -31,6 +31,11 @@ select throws_ok($q$select public.get_owned_course_sources_for_actor_v1(
   '42501','Operação restrita ao serviço de autoria.','RPC de proprietário continua restrita ao serviço');
 select set_config('request.jwt.claim.role','service_role',true);
 
+select throws_ok($q$select public.get_owned_course_review_plan_for_actor_v2(
+  'a3350000-0000-4000-8000-000000000001','a3350000-0000-4000-8000-000000000101',2,
+  array[]::text[],null)$q$,
+  'PT409','A revisão do curso mudou.','plano focal v2 trata revisão obsoleta como conflito de negócio');
+
 create function pg_temp.capture_conflict(statement text) returns jsonb language plpgsql as $function$
 declare error_detail text;
 begin
@@ -132,7 +137,7 @@ select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]
   where n.nspname in('public','private') and p.prokind='f'),0::bigint,'contratos atuais não levantam serialização para conflito de negócio');
 select is((select sum(regexp_count(p.prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i'))
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname in('public','private') and p.prokind='f'),99::bigint,'99 guardas de negócio usam PT409, incluindo lote atômico de desenho, decisões multialvo, inspeção por IA, pacote de Fonte e retirada de áudio ainda usado pelo estudo');
+  where n.nspname in('public','private') and p.prokind='f'),100::bigint,'100 guardas de negócio usam PT409, incluindo plano focal v2, lote atômico de desenho, decisões multialvo, inspeção por IA, pacote de Fonte e retirada de áudio ainda usado pelo estudo');
 select is((select regexp_count(prosrc,$rx$\merrcode[[:space:]]*=[[:space:]]*'PT409'$rx$,1,'i') from pg_proc
   where oid='public.get_course_observation_comparison_for_actor_v1(uuid,uuid,uuid,text,text,bigint,bigint)'::regprocedure),
   1,'comparação usa conflito de negócio para a versão apresentada');

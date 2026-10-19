@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { courseAuthoringAnalyticsFixture, ANALYTICS_COURSE_ID } from "../helpers/courseAuthoringAnalyticsFixture.js";
 import { normalizeCourseAuthoringAnalyticsPage } from "../../src/domain/courseAuthoringAnalytics.js";
 import { createEmptyCourseSourceBibliographicMetadata } from "../../src/domain/courseSources.js";
-import { flattenCourseDocument } from "../../src/domain/courseEntities.js";
-import { buildCourseAuthoringComparison, normalizeCourseAuthoringComparison, normalizeCourseAuthoringComparisonRequest, assembleCourseAuthoringExport, normalizeCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
+import { composeCourseDocument, flattenCourseDocument } from "../../src/domain/courseEntities.js";
+import { buildCourseAuthoringComparison, normalizeCourseAuthoringComparison, normalizeCourseAuthoringComparisonRequest, assembleCourseAuthoringExport, normalizeCourseAuthoringExport, serializeCourseAuthoringExport } from "../../src/domain/courseAuthoringComparison.js";
+import { isValidatedCourseAuthoringExport } from "../../supabase/functions/_shared/aralearn/runtime/domain/courseAuthoringComparison.js";
 import { CourseSupabaseAdapter } from "../../supabase/functions/_shared/aralearn-authoring/courseSupabaseAdapter.js";
 import { executeCourseRoute } from "../../supabase/functions/_shared/aralearn-authoring/courseRouter.js";
 import { routeCourseRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseProtocol.js";
@@ -111,6 +112,13 @@ test("exportação substituída v1 não é aceita pelo contrato corrente", () =>
     artifact: { document: result.artifact.document, explanationSources: result.artifact.explanationSources } };
   assert.throws(() => normalizeCourseAuthoringExport(superseded), /contrato da exportação é inválido/u);
   assert.deepEqual(normalizeCourseAuthoringExport(result), result);
+});
+test("somente a montagem do adapter registra a fronteira validada; serializar valores não confere confiança", () => {
+  const fixture = sharedExplanationExportFixture();
+  const publicValue = assembleCourseAuthoringExport(fixture);
+  assert.equal(isValidatedCourseAuthoringExport(publicValue), false);
+  serializeCourseAuthoringExport(publicValue);
+  assert.equal(isValidatedCourseAuthoringExport(publicValue), false);
 });
 test("comparação distingue declaração, observação, ausências e não aplicabilidade com referências", () => {
   const { left, right } = pair();
@@ -226,6 +234,37 @@ test("exportação recompõe artefato integral e cerca curso/revisão sem snapsh
   assert.throws(() => normalizeCourseAuthoringExport({ ...result, actorId: ACTOR_ID }));
   assert.equal(JSON.stringify(result).includes("design_snapshot"), false);
 });
+
+test("montador export preserva ordenação canônica esparsa, rejeições e isolamento do documento", () => {
+  const fixture = sharedExplanationExportFixture();
+  const micro = fixture.document.courses[0].modules[0].lessons[0].microsequences[0];
+  micro.studyUnits[0].position = 9;
+  micro.studyUnits[1].position = 3;
+  micro.studyUnits.reverse();
+  const original = structuredClone(fixture.document);
+  const flattened = flattenCourseDocument(original, { allowIncompleteCurriculum: true });
+  const priorRoundTrip = composeCourseDocument(flattened.course, flattened.rows, { allowIncompleteCurriculum: true });
+  const result = assembleCourseAuthoringExport(fixture);
+  assert.deepEqual(result.artifact.document, priorRoundTrip,
+    "a substituição mantém a ordem/normalização do flatten+compose inclusive com posições esparsas");
+  assert.deepEqual(result.artifact.document.courses[0].modules[0].lessons[0].microsequences[0]
+    .studyUnits.map(unit => [unit.id, unit.position]), [["unit-2", 3], ["unit-1", 9]]);
+  assert.deepEqual(fixture.document, original, "a ordenação não muta o input do chamador");
+
+  const invalidDocuments = [
+    document => { document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].position = 3; },
+    document => { document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[1].id = "unit-2"; },
+    document => { document.courses[0].modules[0].lessons[0].microsequences[0].studyUnits[0].content[0].package = "missing.resource@1"; },
+    document => { document.courses.push({ ...structuredClone(document.courses[0]), id: OTHER_ID }); }
+  ];
+  for (const mutate of invalidDocuments) {
+    const bad = structuredClone(original);
+    mutate(bad);
+    const before = structuredClone(bad);
+    assert.throws(() => assembleCourseAuthoringExport({ ...fixture, document: bad }));
+    assert.deepEqual(bad, before, "rejeição também preserva o input");
+  }
+});
 function adapterFixture() { return new CourseSupabaseAdapter({ supabaseUrl: "https://project.example", serverApiKey: "sb_secret_test", publishableKey: "sb_publishable_test", publicAppUrl: "https://app.example/", fetchImpl: () => { throw new Error("Unexpected network"); }, attempts: 1 }); }
 test("Adapter compara dois readers CAS e recusa mudança posterior de qualquer curso", async () => {
   const adapter = adapterFixture(); const reads = [];
@@ -244,14 +283,56 @@ test("Adapter não retorna comparação parcial quando um owner reader nega aces
 });
 test("Adapter exporta somente após todas páginas CAS e revisão final, sem usar cache", async () => {
   const adapter = adapterFixture(); const calls = [];
-  adapter.getCourseAuthoringAnalytics = async () => courseAuthoringAnalyticsFixture();
+  const analyticsReadLimits = [];
+  adapter.getCourseAuthoringAnalytics = async ({ responseLimitBytes }) => {
+    analyticsReadLimits.push(responseLimitBytes);
+    return courseAuthoringAnalyticsFixture();
+  };
   adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
   adapter.listCourseEntities = async (request) => { calls.push(request); return { contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID, revision: 7, items: [], hasMore: false, nextCursor: null }; };
   const result = await adapter.getCourseAuthoringExport({ principal, ...selection() });
+  assert.equal(isValidatedCourseAuthoringExport(result), true,
+    "o adapter só marca depois de analytics, documento, fontes e metadados atravessarem seus validadores");
   assert.equal(result.artifact.document.courses[0].goal, "Objetivo");
+  assert.deepEqual(analyticsReadLimits, [32 * 1024 * 1024]);
   assert.equal(calls[0].expectedRevision, 7);
   adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: OTHER_ID, revision: 7, items: [], hasMore: false, nextCursor: null });
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), (error) => error.status === 503);
+});
+
+test("exportação lê analytics acima de 8 MiB integralmente até o limite compartilhado de 32 MiB", async () => {
+  const analytics = courseAuthoringAnalyticsFixture({ courseId: ANALYTICS_COURSE_ID, revision: 7,
+    studyUnits: Array.from({ length: 700 }, (_, index) => ({ studyUnitRef: `unit-${index + 1}`, title: `Unidade ${index + 1}` })) });
+  for (const unit of analytics.basis.studyUnits) {
+    for (const parameter of unit.requestedParameters) parameter.reason = "x".repeat(1000);
+  }
+  const analyticsBytes = Buffer.byteLength(JSON.stringify(analytics));
+  assert.ok(analyticsBytes > 8 * 1024 * 1024, `fixture precisa exceder 8 MiB; recebeu ${analyticsBytes}`);
+  assert.ok(analyticsBytes < 32 * 1024 * 1024);
+
+  const adapter = adapterFixture();
+  const rawBody = JSON.stringify([analytics]);
+  assert.ok(Buffer.byteLength(rawBody) > 8 * 1024 * 1024);
+  adapter.fetchImpl = async (url, init) => {
+    assert.match(url, /\/rpc\/get_owned_course_authoring_analytics_for_actor_v4$/u);
+    assert.equal(JSON.parse(init.body).p_query.scope.kind, "course");
+    return new Response(rawBody, { status: 200, headers: {
+      "content-type": "application/json", "content-length": String(Buffer.byteLength(rawBody))
+    } });
+  };
+  adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
+  adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
+    revision: 7, items: [], hasMore: false, nextCursor: null });
+  const exported = await adapter.getCourseAuthoringExport({ principal, ...selection() });
+  assert.equal(exported.analytics.basis.studyUnits.length, 700);
+  assert.equal(exported.analytics.basis.studyUnits[699].requestedParameters[0].reason, "x".repeat(1000));
+  assert.ok(Buffer.byteLength(JSON.stringify(exported)) > 8 * 1024 * 1024,
+    "a exportação completa continua acima do antigo teto de 8 MiB");
+  assert.ok(Buffer.byteLength(JSON.stringify(exported)) < 32 * 1024 * 1024);
+  await assert.rejects(adapter.getCourseAuthoringAnalytics({ principal, courseId: ANALYTICS_COURSE_ID,
+    expectedCourseRevision: 7, query: { scope: { kind: "course", ref: null } } }),
+  error => error.status === 413 && error.code === "course_authoring_analytics_response_too_large",
+  "leituras analíticas comuns mantêm o teto de 8 MiB");
 });
 
 test("Adapter exporta fonte, aplicação e revisão do objeto fora do documento importável", async () => {
@@ -259,7 +340,7 @@ test("Adapter exporta fonte, aplicação e revisão do objeto fora do documento 
   const { rows } = flattenCourseDocument(fixture.document);
   const calls = [];
   const adapter = adapterFixture();
-  adapter.getCourseAuthoringAnalytics = async () => fixture.analytics;
+  adapter.getCourseAuthoringAnalytics = async () => normalizeCourseAuthoringAnalyticsPage(fixture.analytics);
   adapter.getCourse = async ({ courseId }) => ({ courseId, revision: 7, title: "Curso", goal: "Objetivo" });
   adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
     revision: 7, hasMore: false, nextCursor: null, items: rows.map(row => ({ ...row,
@@ -284,6 +365,17 @@ test("Adapter exporta fonte, aplicação e revisão do objeto fora do documento 
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), { status: 503 });
   adapter.getCourseSources = async () => { throw Object.assign(new Error("Revisão mudou"), { status: 409 }); };
   await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), { status: 409 });
+
+  adapter.getCourseSources = async () => ({ ...fixture.explanationSources[0], items: [{ ...fixture.explanationSources[0].items[0], targetVersion: 0 }] });
+  await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), error => error.status === 503 && error.code === "course_service_unavailable",
+    "a leitura sobrescrita não recebe a marca do reader e cai no normalizador integral de Fontes");
+
+  adapter.getCourseSources = async () => fixture.explanationSources[0];
+  adapter.listCourseEntities = async () => ({ contract: "aralearn.course-entities.v1", courseId: ANALYTICS_COURSE_ID,
+    revision: 7, hasMore: false, nextCursor: null, items: rows.map(row => ({ ...row,
+      contentReview: row.entityType === "microsequence" ? { state: "current" } : null })) });
+  await assert.rejects(adapter.getCourseAuthoringExport({ principal, ...selection() }), { status: 503 },
+    "o composer passa contentReview cru pelo normalizador do tipo de entidade antes de marcar o export");
 });
 test("exportação falha fechada quando cursor se repete ou a revisão muda ao terminar", async () => {
   const adapter = adapterFixture(); let calls = 0;

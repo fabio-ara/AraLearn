@@ -190,7 +190,9 @@
           "contextual-design-writer-edges-v1",
           "contextual-design-course-scope-applications-v1",
           "contextual-design-command-atomic-batch-v1",
-          "course-review-plan-projection-v1"
+          "course-review-plan-projection-v1",
+          "course-review-plan-conditional-snapshot-v1",
+          "course-review-plan-focal-projection-v1"
         ],
         "databasePatterns": [
           "^table:(?:public\\.courses|private\\.course_entities|private\\.course_change_receipts|private\\.course_instructional_plans|private\\.course_instructional_plan_items|private\\.course_authoring_parts|private\\.course_authoring_part_didactic_microsequences|private\\.course_design_parameter_definitions|private\\.course_design_parameter_assignments|private\\.course_design_target_plan_items|private\\.course_authoring_guidance_assignments|private\\.course_component_policy_assignments)$",
@@ -219,8 +221,10 @@
           "function:private.course_pedagogical_report_grounded_v1(p_report jsonb, p_basis jsonb)",
           "function:private.build_course_instructional_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_compact boolean, p_include_content_review boolean)",
           "function:public.get_owned_course_instructional_plan_for_actor_v5(p_actor_id uuid, p_course_id uuid)",
-          "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)"
-          ,"function:private.course_instructional_command_bytes_limit_v1()"
+          "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)",
+          "function:private.course_review_plan_source_fingerprint_v1(p_course_id uuid)",
+          "function:public.get_owned_course_review_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_explanation_ids text[], p_if_none_match text)",
+          "function:private.course_instructional_command_bytes_limit_v1()"
         ]
       },
       "ui": [
@@ -795,6 +799,7 @@
         "manifestFeatures": [
           "course-anchored-annotations-v1",
           "course-anchored-annotations-atomic-create-v1",
+          "course-export-annotation-version-fence-v1",
           "course-annotation-subject-classification-v1"
         ],
         "databasePatterns": [

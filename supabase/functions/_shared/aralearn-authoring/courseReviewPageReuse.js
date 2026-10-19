@@ -14,14 +14,15 @@
 //
 // Validade: o recorte só é reutilizado quando (1) o resumo do literal guardado é
 // exatamente o que o cliente está continuando, (2) os resumos do plano e da página de
-// unidades releem o mesmo estado materializado e (3) a versão corrente do conjunto de
-// observações é a do materializado. O banco separa esse estado em duas versões
+// unidades releem o mesmo estado materializado e (3) uma leitura fresca do Curso,
+// após os digests, confirma a revisão e a versão corrente do conjunto de observações.
+// O banco separa esse estado em duas versões
 // independentes, e o comentário da coluna confirma a separação:
 //   - `public.courses.revision` governa conteúdo, fontes, plano, revisão e inspeção;
 //   - `public.courses.annotation_set_version` governa as observações, que por contrato
 //     NÃO alteram a revisão do curso.
-// O carimbo das duas é lido por uma consulta de observações já existente, que valida a
-// revisão e devolve a versão. Sem correspondência exata, o chamador volta ao caminho
+// O carimbo das duas é lido por uma leitura fresca do Curso depois dos digests, que
+// valida a revisão e devolve a versão. Sem correspondência exata, o chamador volta ao caminho
 // completo, que recompõe o literal do zero e deixa o 409 corrente decidir.
 //
 // O processo guarda um repositório por adapter. Cada ponto de entrada do produto cria o
@@ -115,20 +116,20 @@ export function forgetReviewPage(adapter, identity) {
   forget(repositoryFor(adapter), identityKey(identity));
 }
 
-// A consulta de observações já existente devolve a revisão do Curso e a versão do
-// conjunto. `limit: 1` reduz somente os itens da página; limpeza, filtros e resumos
-// continuam executando. Resultado incompatível impede o reuso e permite recompor. Erro
-// de dependência ou autorização propaga sem iniciar esse caminho completo.
-export async function readReviewPageStateStamp({ adapter, principal, courseId, revision, hierarchy,
+// A leitura estável do Curso valida novamente ACL/revisão e devolve a versão
+// independente das observações sem executar a rotina de limpeza da lista.
+// Resultado ausente ou incompatível impede o reuso; erro de dependência ou
+// autorização mantém o tipo e propaga.
+export async function readReviewPageStateStamp({ adapter, principal, courseId, revision,
   deadlineAt = null }) {
+  if (typeof adapter?.getCourse !== "function") return null;
   try {
-    const page = await adapter.getCourseAnchoredAnnotations({ principal, courseId,
-      expectedCourseRevision: revision, annotationSetVersion: null, cursor: null, limit: 1, deadlineAt,
-      query: { mode: "inbox", origins: [], channels: [], states: ["open", "considered"], categories: [],
-        includeUncategorized: true, subjectIds: [], annotationId: null, hierarchy } });
-    const annotationSetVersion = page?.annotationSetVersion;
+    const course = await adapter.getCourse({ principal, courseId, includeOutline: false, deadlineAt });
+    if (course?.courseId !== courseId || !Number.isSafeInteger(course?.revision) ||
+        course.revision !== revision) return null;
+    const annotationSetVersion = course?.annotationSetVersion;
     if (!Number.isSafeInteger(annotationSetVersion) || annotationSetVersion < 0) return null;
-    return Number(page?.courseRevision) === revision ? annotationSetVersion : null;
+    return annotationSetVersion;
   } catch (error) {
     // O CAS do Curso (40001/PT409) confirma que a revisão avançou: o caminho
     // completo recompõe e aplica a confirmação final de coerência. Demais falhas

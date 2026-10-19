@@ -7,6 +7,16 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.132] - 2026-10-19
+
+### Corrigido
+
+- A exportação de autoria comporta cursos extensos dentro do limite de 32 MiB, preserva o documento integral e reutiliza sua preparação nas continuações, com nova verificação de acesso, edição e observações.
+- A inspeção identifica tentativas de ordenação causal ou procedural cujo erro oferece apenas um retorno genérico, sem confundir o comentário disponível após o acerto com ajuda durante a tentativa.
+- A leitura extensa de revisão evita executar a manutenção de observações a cada continuação, preservando as verificações de acesso e de alterações no conteúdo. (#516)
+- A leitura de revisão resolve a página pelo índice compacto antes de carregar o plano, transfere só corpos de explicação usados pelo recorte e revalida todas as dependências antes de reutilizar a leitura. (#517)
+- Quando o serviço sinaliza restrição de uso, o aplicativo preserva o erro terminal e não repete a chamada nem pede nova autenticação. (#518)
+
 ## [0.0.131] - 2026-10-19
 
 ### Corrigido

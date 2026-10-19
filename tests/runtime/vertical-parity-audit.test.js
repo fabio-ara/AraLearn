@@ -76,10 +76,10 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     id,
     inventory.objects.filter(({ caseId }) => caseId === id).length
   ]));
-  assert.equal(inventory.objects.length, 756);
+  assert.equal(inventory.objects.length, 758);
   assert.deepEqual(counts, {
     "study-course-experience": 31,
-    "course-authoring-experience": 312,
+    "course-authoring-experience": 314,
     "course-source-provenance": 139,
     "course-anchored-annotations": 89,
     "course-authoring-research": 2,
@@ -111,7 +111,9 @@ test("o inventário exato cobre os onze casos correntes, incluindo áudio e cóp
     "private.course_structure_dependency_issues_v1(p_course_id uuid)",
     "private.remap_course_structure_content_v1(p_type text, p_content jsonb, p_id_map jsonb)",
     "public.mutate_course_structure_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_expected_plan_version bigint, p_command jsonb, p_request_id text)",
-    "public.reorder_course_study_units_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_microsequence_id text, p_study_unit_ids jsonb, p_request_id text)"
+    "public.reorder_course_study_units_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_microsequence_id text, p_study_unit_ids jsonb, p_request_id text)",
+    "private.course_review_plan_source_fingerprint_v1(p_course_id uuid)",
+    "public.get_owned_course_review_plan_for_actor_v2(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_explanation_ids text[], p_if_none_match text)"
   ]) assert.equal(assignments.get(`function:${signature}`), "course-authoring-experience", signature);
   for (const object of [
     "table:private.course_observation_bases",
