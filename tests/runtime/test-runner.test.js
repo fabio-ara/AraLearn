@@ -102,8 +102,8 @@ test("runner focal executa uma seleção longa completa com caminhos relativos",
     const result = executeFixture(root, ["--focal", ...selected]);
     assert.equal(result.status, 0, result.stderr + result.stdout);
     assert.match(result.stdout, /modo focal, 270 arquivo/u);
-    assert.match(result.stdout, /ℹ tests 270/u);
-    assert.match(result.stdout, /ℹ pass 270/u);
+    assert.match(result.stdout, /(?:ℹ|#) tests 270/u);
+    assert.match(result.stdout, /(?:ℹ|#) pass 270/u);
     for (let index = 0; index < 270; index += 1) {
       assert.ok(result.stdout.includes(`identity-${String(index).padStart(3, "0")}`),
         `a seleção perdeu o arquivo ${selected[index]}`);
