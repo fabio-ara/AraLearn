@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.129] - 2026-10-19
+
+### Corrigido
+
+- As leituras de autoria identificam cada oportunidade de aplicação sem confundi-la com a operação do requisito ou com suas variações; pedidos por curso continuam cobrindo unidades de várias microssequências.
+
 ## [0.0.128] - 2026-10-18
 
 ### Corrigido
