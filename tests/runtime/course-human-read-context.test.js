@@ -608,6 +608,40 @@ test("revisão lê uma página de 12, conserva cada studyUnit literal e remove m
   assert.equal(adapter.calls.inspections.length, 24, "cada página lógica audita seus alvos uma vez");
 });
 
+test("leitura formal mantém oportunidade autoral aplicada e remove IDs da projeção", async () => {
+  const evidenceRequirementId = "40000000-0000-4000-8000-000000000001";
+  const application = { mode: "practice", practiceApplications: [
+    { evidenceRequirementId, opportunityId: "Oportunidade autoral formal",
+      invariantTaskOperation: "Classificar alcance e ponto de chegada da fibra",
+      variedDimensions: ["case_or_data"] }
+  ] };
+  const unit = { ...studyUnit(1), authorship: { design: { application } } };
+  const adapter = fixture({ units: [unit] });
+  const formalReads = [];
+  adapter.getCourseContentInspection = async ({ courseId, targetKind, targetId }) => {
+    formalReads.push(targetId);
+    return { contract: "aralearn.course-ai-inspection.v1", courseId, courseRevision: adapter.revision,
+      targetKind, targetId, basisHash: "b".repeat(64),
+      inspection: { state: "unregistered", basisHash: "b".repeat(64) },
+      pedagogicalBasis: { targetKind, targetId, microsequence: { goal: "Classificar uma rede." },
+        studyUnits: [{ id: targetId, content: unit.studyUnit, application }],
+        planItems: [{ id: evidenceRequirementId, kind: "evidence_requirement",
+          statement: "Classificar alcance e ponto de chegada da fibra", description: "Aplicar o critério ao caso." }],
+        dependencies: [] }
+    };
+  };
+  const page = await channelCall("mcp", adapter, "preparar_revisao", { curso: TITLE, auditoria: true });
+  assert.equal(page.status, 200);
+  const meta = page.value.context.studyUnits[0];
+  const reviewReference = openContentReviewReference(meta.referenciaRevisao, PRINCIPAL);
+  assert.equal(reviewReference.targetId, "unit-1");
+  const practices = meta.auditoriaPedagogica.basis.studyUnits[0].application.practiceApplications;
+  assert.deepEqual(practices, [{ invariantTaskOperation: "Classificar alcance e ponto de chegada da fibra",
+    variedDimensions: ["case_or_data"], oportunidade: "Oportunidade autoral formal" }]);
+  assert.doesNotMatch(JSON.stringify(practices), /opportunityId|evidenceRequirementId/u);
+  assert.deepEqual(formalReads, ["unit-1"]);
+});
+
 // Escopo de leitura de Fontes por requisição: 1 MS, 6 unidades e 1 Explicação com as
 // mesmas duas fontes previstas E vinculadas devem custar 2 leituras de fonte + 1 de alvo
 // por materialização — não 4. O fragmento seguinte da MESMA página lógica é transporte:

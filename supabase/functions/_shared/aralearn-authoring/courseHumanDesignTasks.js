@@ -32,7 +32,7 @@ const calibrationFields = Object.fromEntries(COURSE_DESIGN_PARAMETER_DEFINITIONS
     : value.type === "enum" ? { type: "string", enum: value.allowedValues } : { type: value.type, minimum: value.minimum, maximum: value.maximum }];
 }));
 export const COURSE_HUMAN_DESIGN_TASK_DEFINITIONS = [
-  task("consultar_repertorio_instrucional", "Consultar repertório instrucional", "Lê unidades de análise, requisitos de evidência e seus vínculos. Na unidade, lê a aplicação salva; posições começam em 1.",
+  task("consultar_repertorio_instrucional", "Consultar repertório instrucional", "Lê unidades de análise, requisitos de evidência e seus vínculos. Na unidade, lê a aplicação salva: oportunidade identifica o caso autoral; operação invariável é o enunciado da tarefa do requisito; dimensões são variações declaradas. Posições começam em 1.",
     scopeFields, ["curso"], true),
   task("manter_unidade_analise", "Manter unidade de análise instrucional", "Cria, edita ou remove um item expresso do repertório do curso, inclusive antes das unidades de estudo. Edição preserva descrição omitida; remoção exige revisar vínculos, aplicações e fontes existentes.",
     maintainFields, ["curso", "operacao"]),
@@ -41,7 +41,7 @@ export const COURSE_HUMAN_DESIGN_TASK_DEFINITIONS = [
   task("vincular_repertorio_instrucional", "Vincular repertório à microssequência", "Salva a seleção completa e expressa de análise e evidência desta microssequência. Cobertura curricular e aplicações já salvas são preservadas.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
       analise: list(reference), evidencias: list(reference) }, ["curso", "microssequencia", "analise", "evidencias"]),
-  task("registrar_aplicacoes_instrucionais", "Registrar aplicações instrucionais", "Registra aplicações nas unidades inspecionadas, mantendo texto, base explicativa e configuração. Um pedido cobre unidades de várias microssequências do mesmo curso; microssequencia restringe o recorte. Unidades omitidas permanecem. Valida introdução, uso, formas e oportunidades no estado final.",
+  task("registrar_aplicacoes_instrucionais", "Registrar aplicações instrucionais", "Registra aplicações; mantém conteúdo, base e configuração. Pedido cobre unidades de várias microssequências; `microssequencia` limita recorte. Cada oportunidade é um caso; operação invariável é a tarefa do requisito; dimensões são variações declaradas. Unidades omitidas permanecem; valida resultado.",
     { curso: text(300), modulo: reference, licao: reference, microssequencia: reference,
       unidades: { ...list(object({ unidade: reference, ...applicationFields }), 64), minItems: 1 } }, ["curso", "unidades"]),
   task("aplicar_configuracao_instrucional", "Aplicar configuração às unidades existentes", "Aplica a intenção às unidades inspecionadas. Grava calibração e aplicação juntas: calibra apenas parâmetros automáticos; preserva fixações, pesquisa, texto e base. Valida aplicações salvas; unidades sem aplicação exigem uma explícita. Não declara revisão humana.",
