@@ -42,7 +42,7 @@ test("E2E restaura mesmo quando a criação do processo falha", () => {
 });
 
 test("E2E local mantém credenciais somente no filho de testes e não repete o build", () => {
-  const environment = { ARALEARN_SUPABASE_URL: "http://127.0.0.1:54321",
+  const environment = { ARALEARN_E2E_REAL_SUPABASE: "1", ARALEARN_SUPABASE_URL: "http://127.0.0.1:54321",
     ARALEARN_SUPABASE_PUBLISHABLE_KEY: "publica-sintetica", SUPABASE_SERVICE_ROLE_KEY: "administrativa-sintetica" };
   const before = structuredClone(environment), calls = [];
   assert.equal(runE2eTests({ environment, argv: ["--forbid-only"], execute(_command, args, env) {
@@ -53,6 +53,44 @@ test("E2E local mantém credenciais somente no filho de testes e não repete o b
   assert.equal(calls[1].env.SUPABASE_SERVICE_ROLE_KEY, "administrativa-sintetica");
   assert.ok(calls[1].args.includes("--forbid-only"));
   assert.deepEqual(environment, before);
+});
+
+test("E2E sintético isola a configuração publicada e a restaura após sucesso ou falha", () => {
+  for (const backendFlag of [undefined, "0"]) {
+    for (const testStatus of [0, 7]) {
+      const environment = { ARALEARN_E2E_REAL_SUPABASE: backendFlag,
+        ARALEARN_SUPABASE_URL: "https://published.supabase.invalid",
+        ARALEARN_SUPABASE_PUBLISHABLE_KEY: "publica-publicada-sintetica" };
+      const before = structuredClone(environment), calls = [];
+      assert.equal(runE2eTests({ environment, argv: [], execute(_command, args, env) {
+        calls.push({ args, env });
+        return { status: calls.length === 2 ? testStatus : 0 };
+      } }), testStatus);
+      assert.equal(calls.length, 3);
+      for (const call of calls.slice(0, 2)) {
+        assert.equal(call.env.ARALEARN_SUPABASE_URL, "https://project.supabase.test");
+        assert.equal(call.env.ARALEARN_SUPABASE_PUBLISHABLE_KEY, "sb_publishable_e2e");
+      }
+      assert.deepEqual(calls[2].env, before);
+      assert.deepEqual(environment, before);
+    }
+  }
+});
+
+test("E2E restaura a configuração publicada após erro de spawn e falha se não a restaurar", () => {
+  for (const failingCall of [1, 2, 3]) {
+    const environment = { ARALEARN_SUPABASE_URL: "https://published.supabase.invalid",
+      ARALEARN_SUPABASE_PUBLISHABLE_KEY: "publica-publicada-sintetica" };
+    const calls = [], errors = [];
+    assert.equal(runE2eTests({ environment, argv: [], reportError: message => errors.push(message),
+      execute(_command, args, env) {
+        calls.push({ args, env });
+        if (calls.length === failingCall) return { error: new Error("spawn indisponível") };
+        return { status: 0 };
+      } }), 1);
+    assert.deepEqual(calls.at(-1).env, environment);
+    assert.deepEqual(errors, ["spawn indisponível"]);
+  }
 });
 
 test("E2E não converte processo interrompido nem restauração falha em sucesso", () => {
