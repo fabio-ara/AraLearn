@@ -130,8 +130,10 @@ const SLICE = [
 const FLOOR_REM = 5.5;
 const CELL_PADDING = 22;
 const PROOF_DIR = path.resolve(process.env.ARALEARN_TABLE_PROOF_DIR || "test-results/table-reading-470");
+const E2E_BASE_URL = `http://127.0.0.1:${Number.parseInt(process.env.ARALEARN_E2E_PORT || "4182", 10)}`;
 
-async function mount(page, { width, data, zoom }) {
+async function mount(page, { width, data, zoom, clearanceBaseline = false, unit = "theory", practiceKind = "choice",
+  practiceFeedback = null }) {
   await page.setViewportSize({ width, height: 740 });
   await page.route("**/main.js", route => route.fulfill({ contentType: "application/javascript", body: "" }));
   for (const file of ["support/studyExplanationFixture.js", "fixtures/package/project-minimal.json"]) {
@@ -141,16 +143,147 @@ async function mount(page, { width, data, zoom }) {
     }));
   }
   await page.goto("/");
-  await page.evaluate(async ({ data, zoom }) => {
+  await page.evaluate(async ({ data, zoom, unit, practiceKind, practiceFeedback }) => {
     document.body.innerHTML = '<div id="app-root"><div id="aralearn-editor-root"></div></div>';
     // 200% de texto: unidade relativa do leitor, nao zoom de pagina.
     if (zoom) document.documentElement.style.fontSize = Math.round(16 * zoom) + "px";
     const { mountStudyExplanationFixture } = await import("/tests/support/studyExplanationFixture.js");
-    await mountStudyExplanationFixture(document.querySelector("#aralearn-editor-root"), { unit: "theory",
+    await mountStudyExplanationFixture(document.querySelector("#aralearn-editor-root"), { unit, practiceKind, practiceFeedback,
       resourceContent: [{ id: "representation", package: "aralearn.resource.table", version: "1.0.0", data }] });
-  }, { data, zoom });
+  }, { data, zoom, unit, practiceKind, practiceFeedback });
+  await page.evaluate(({ clearanceBaseline }) => {
+    if (!document.querySelector("#aralearn-editor-root .microsequence-workbench-screen")) {
+      throw new Error("A fixture de estudo não montou o escopo real da tela de estudo.");
+    }
+    if (clearanceBaseline) {
+      const style = document.createElement("style");
+      style.dataset.clearanceBaseline = "true";
+      style.textContent = `
+        .microsequence-workbench-screen .runtime-card-rendered-content {
+          padding-right: 0;
+          margin-right: 0;
+        }
+        .microsequence-workbench-screen .card-sheet-content {
+          width: 100%;
+          max-width: 100%;
+          padding-right: 0;
+        }
+        .microsequence-workbench-screen .study-continue-popup-body {
+          margin-right: 0;
+          padding-right: 0;
+        }
+      `;
+      document.head.append(style);
+    }
+  }, { clearanceBaseline });
   await page.waitForTimeout(120);
 }
+
+async function readClearanceGeometry(page) {
+  return page.evaluate(() => {
+    const box = element => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return { x: Math.round(rect.x * 10) / 10, y: Math.round(rect.y * 10) / 10,
+        width: Math.round(rect.width * 10) / 10, height: Math.round(rect.height * 10) / 10 };
+    };
+    const reading = document.querySelector(".card-sheet-content");
+    const readingStyle = reading && getComputedStyle(reading);
+    const readingRect = reading?.getBoundingClientRect();
+    const readingContentWidth = reading && readingRect
+      ? Math.round((readingRect.width - parseFloat(readingStyle.borderLeftWidth) - parseFloat(readingStyle.borderRightWidth) -
+        parseFloat(readingStyle.paddingLeft) - parseFloat(readingStyle.paddingRight)) * 10) / 10
+      : null;
+    const footer = document.querySelector(".study-reader-footer");
+    const iconButtons = [...(footer?.querySelectorAll(".icon-ghost, .open-mini") ?? [])].map(button => ({
+      label: button.getAttribute("aria-label") || button.title || "",
+      ...box(button)
+    }));
+    const oldScrollTop = reading?.scrollTop ?? 0;
+    if (reading) reading.scrollTop = Math.min(32, Math.max(0, reading.scrollHeight - reading.clientHeight));
+    const nativeScroll = reading ? {
+      overflowY: readingStyle.overflowY,
+      pseudoDisplay: getComputedStyle(reading, "::-webkit-scrollbar").display,
+      pseudoWidth: getComputedStyle(reading, "::-webkit-scrollbar").width,
+      clientWidth: reading.clientWidth,
+      scrollWidth: reading.scrollWidth,
+      clientHeight: reading.clientHeight,
+      scrollHeight: reading.scrollHeight,
+      moved: reading.scrollHeight <= reading.clientHeight || reading.scrollTop > oldScrollTop
+    } : null;
+    if (reading) reading.scrollTop = oldScrollTop;
+    return {
+      title: box(document.querySelector(".runtime-card-title")),
+      stack: box(document.querySelector(".runtime-resource-stack")),
+      sheet: box(document.querySelector(".runtime-card-sheet")),
+      footer: box(footer),
+      reading: { box: box(reading), contentWidth: readingContentWidth },
+      clearanceStyle: reading ? { workbenchAncestor: Boolean(reading.closest(".microsequence-workbench-screen")),
+        paddingRight: readingStyle.paddingRight, width: readingStyle.width,
+        renderedPaddingRight: getComputedStyle(reading.parentElement).paddingRight,
+        renderedMarginRight: getComputedStyle(reading.parentElement).marginRight } : null,
+      iconButtons,
+      nativeScroll
+    };
+  });
+}
+
+async function readCommentClearanceGeometry(page) {
+  return page.evaluate(() => {
+    const box = element => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return { x: Math.round(rect.x * 10) / 10, y: Math.round(rect.y * 10) / 10,
+        width: Math.round(rect.width * 10) / 10, height: Math.round(rect.height * 10) / 10 };
+    };
+    const popup = document.querySelector(".study-continue-popup");
+    const body = popup?.querySelector(".study-continue-popup-body");
+    const style = body && getComputedStyle(body);
+    const rect = body?.getBoundingClientRect();
+    const contentWidth = body && rect ? Math.round((rect.width - parseFloat(style.borderLeftWidth) -
+      parseFloat(style.borderRightWidth) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)) * 10) / 10 : null;
+    const contentRight = body && rect ? rect.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight) : null;
+    const children = [...(body?.children ?? [])];
+    const childBoxes = children.map(box);
+    const range = document.createRange();
+    const textRights = children.flatMap(child => {
+      range.selectNodeContents(child);
+      return [...range.getClientRects()].filter(line => line.width > 0 && line.height > 0).map(line => line.right);
+    });
+    const continueButton = popup?.querySelector(".study-continue-popup-btn");
+    const oldScrollTop = body?.scrollTop ?? 0;
+    if (body) body.scrollTop = body.scrollHeight;
+    const scroll = body ? {
+      overflowY: style.overflowY,
+      pseudoDisplay: getComputedStyle(body, "::-webkit-scrollbar").display,
+      pseudoWidth: getComputedStyle(body, "::-webkit-scrollbar").width,
+      clientHeight: body.clientHeight,
+      scrollHeight: body.scrollHeight,
+      scrollTop: body.scrollTop,
+      contentRight: Math.round(contentRight * 10) / 10,
+      textRightMax: textRights.length ? Math.round(Math.max(...textRights) * 10) / 10 : null
+    } : null;
+    if (body) body.scrollTop = oldScrollTop;
+    return { popup: box(popup), body: { box: box(body), contentWidth }, children: childBoxes,
+      clearanceStyle: body ? { paddingRight: style.paddingRight, marginRight: style.marginRight } : null,
+      continueButton: box(continueButton), scroll };
+  });
+}
+
+async function showLongSuccessComment(page) {
+  await page.locator('[data-action="choice-toggle"][data-choice-option-id="restrito"]').click();
+  await page.getByRole("button", { name: "Conferir resposta", exact: true }).click();
+  await expect(page.locator(".study-continue-popup")).toBeVisible();
+  await expect(page.locator(".card-answer-dock")).toContainText("Correto.");
+  await expect(page.locator(".study-continue-popup-body .runtime-paragraph-block")).toHaveCount(3);
+  await expect.poll(() => page.locator(".study-continue-popup-body").evaluate(body => body.scrollHeight > body.clientHeight))
+    .toBe(true);
+}
+
+const LONG_SUCCESS_FEEDBACK = Array.from({ length: 3 }, (_, index) => ({
+  id: "success-comment-" + (index + 1), package: "aralearn.resource.paragraph", version: "1.0.0",
+  data: { text: ("Comentário após o acerto, trecho " + (index + 1) + ": texto de leitura para verificar a rolagem sem cobrir as palavras finais. ").repeat(14) }
+}));
 
 function readGeometry(scope) {
   return scope.locator(".runtime-table-wrap").evaluate((node, { floorRem, cellPadding }) => {
@@ -274,8 +407,12 @@ function readGeometry(scope) {
       const found = document.querySelector(selector);
       if (!found) return null;
       const rect = found.getBoundingClientRect();
+      const style = getComputedStyle(found);
+      const contentWidth = rect.width - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth) -
+        parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       return { x: round(rect.x), width: round(rect.width), height: round(rect.height),
-        clientWidth: found.clientWidth, scrollWidth: found.scrollWidth };
+        clientWidth: found.clientWidth, scrollWidth: found.scrollWidth, contentWidth: round(contentWidth),
+        overflowY: style.overflowY, scrollHeight: found.scrollHeight };
     };
     const explanation = document.querySelector(".study-explanation-btn");
     const explanationRect = explanation?.getBoundingClientRect();
@@ -290,7 +427,9 @@ function readGeometry(scope) {
       frame: Math.round(node.querySelector(".runtime-table-frame").getBoundingClientRect().width),
       wrapClient: node.clientWidth, wrapScroll: node.scrollWidth, overflowX: getComputedStyle(node).overflowX,
       pageOverflow: document.documentElement.scrollWidth - innerWidth, wrapLeft: Math.round(box.left),
-      reading: external(".card-sheet-content"), sheet: external(".runtime-card-sheet"), footer: external(".study-reader-footer"),
+      reading: external(".card-sheet-content"), sheet: external(".runtime-card-sheet"),
+      title: external(".runtime-card-title"), stack: external(".runtime-resource-stack"),
+      footer: external(".study-reader-footer"),
       explanation: explanation ? { x: round(explanationRect.x), width: Math.round(explanationRect.width),
         height: Math.round(explanationRect.height), label: explanation.getAttribute("aria-label"),
         text: explanation.textContent.trim(), insideFooter: explanationRect.top >= footer.top - 1 && explanationRect.bottom <= footer.bottom + 1 } : null };
@@ -345,7 +484,9 @@ function expectContentSizedFrame(geometry, name) {
 
 function expectExternalFramesStable(geometry, name, reference) {
   expect(geometry.reading.scrollWidth - geometry.reading.clientWidth, name + ": a coluna de leitura nao estoura").toBeLessThanOrEqual(1);
-  expect(Math.abs(geometry.sheet.width - geometry.reading.width - 22), name + ": moldura externa do card").toBeLessThanOrEqual(2);
+  // O scrollport pode incluir o inset reservado ao thumb; o contrato da coluna
+  // compara a caixa útil de texto, descontando bordas e padding.
+  expect(Math.abs(geometry.sheet.width - geometry.reading.contentWidth - 22), name + ": moldura externa do card").toBeLessThanOrEqual(2);
   expect(Math.abs(geometry.sheet.x + 11 - geometry.reading.x), name + ": posicao da coluna de leitura").toBeLessThanOrEqual(1);
   expect(geometry.explanation.width, name + ": controle Explicacao").toBe(44);
   expect(geometry.explanation.height, name + ": altura do controle Explicacao").toBe(44);
@@ -385,6 +526,123 @@ for (const [name, { data }] of SLICE) {
       expect(reach.reachable, name + ": ultima coluna alcancavel").toBe(true);
     });
   }
+}
+
+for (const { width, touch, label } of [
+  { width: 320, touch: true, label: "toque-320" },
+  { width: 360, touch: true, label: "toque-360" },
+  { width: 390, touch: true, label: "toque-390" },
+  { width: 1280, touch: false, label: "desktop-1280" }
+]) {
+  test("folga da barra preserva a geometria A/B em " + label, async ({ browser }) => {
+    const context = await browser.newContext({ baseURL: E2E_BASE_URL,
+      viewport: { width, height: 740 }, isMobile: touch, hasTouch: touch, deviceScaleFactor: 1 });
+    try {
+      const results = {};
+      for (const clearanceBaseline of [true, false]) {
+        const page = await context.newPage();
+        await mount(page, { width, data: SLICE[0][1].data, clearanceBaseline });
+        results[clearanceBaseline ? "base" : "candidato"] = await readClearanceGeometry(page);
+        await page.close();
+      }
+      const { base, candidato } = results;
+      for (const key of ["title", "stack", "sheet", "footer"]) {
+        expect(candidato[key], label + ": caixa " + key + " não mudou").toEqual(base[key]);
+      }
+      expect(candidato.reading.box.x, label + ": posição horizontal da leitura não mudou")
+        .toBe(base.reading.box.x);
+      expect(candidato.reading.box.y, label + ": posição vertical da leitura não mudou")
+        .toBe(base.reading.box.y);
+      expect(candidato.reading.box.height, label + ": altura da leitura não mudou")
+        .toBe(base.reading.box.height);
+      expect(candidato.reading.contentWidth, label + ": largura útil da leitura não mudou")
+        .toBe(base.reading.contentWidth);
+      expect(base.clearanceStyle.paddingRight, label + ": base sem padding de clearance").toBe("0px");
+      expect(base.clearanceStyle.renderedMarginRight, label + ": base sem compensação lateral").toBe("0px");
+      expect(candidato.clearanceStyle.paddingRight, label + ": candidata aplica o clearance").toBe("6px");
+      expect(candidato.clearanceStyle.renderedMarginRight, label + ": candidata compensa o inset")
+        .toBe("-6px");
+      expect(candidato.reading.box.width, label + ": somente a caixa do scroller ganha 6px")
+        .toBe(base.reading.box.width + 6);
+      expect(candidato.iconButtons, label + ": ícones mantêm posição e geometria")
+        .toEqual(base.iconButtons);
+      expect(candidato.iconButtons.length, label + ": fixture inclui os seis controles do rodapé").toBe(6);
+      for (const [index, button] of candidato.iconButtons.entries()) {
+        expect(button.width, label + ": ícone " + (index + 1) + " tem alvo de 44px").toBe(44);
+        expect(button.height, label + ": ícone " + (index + 1) + " tem alvo de 44px").toBe(44);
+      }
+      for (const measurement of [base, candidato]) {
+        expect(measurement.nativeScroll.overflowY, label + ": rolagem nativa vertical ativa").toBe("auto");
+        expect(measurement.nativeScroll.pseudoDisplay, label + ": barra nativa não está escondida").not.toBe("none");
+        expect(measurement.nativeScroll.pseudoWidth, label + ": barra nativa conserva largura")
+          .not.toBe("0px");
+        expect(measurement.nativeScroll.scrollHeight, label + ": conteúdo continua rolável")
+          .toBeGreaterThan(measurement.nativeScroll.clientHeight);
+        expect(measurement.nativeScroll.moved, label + ": rolagem vertical responde").toBe(true);
+      }
+      console.log("folga A/B " + label + ": " + JSON.stringify(results));
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+for (const { width, touch, label } of [
+  { width: 320, touch: true, label: "toque-320" },
+  { width: 360, touch: true, label: "toque-360" },
+  { width: 390, touch: true, label: "toque-390" },
+  { width: 1280, touch: false, label: "desktop-1280" }
+]) {
+  test("folga da barra preserva comentário após acerto em A/B em " + label, async ({ browser }) => {
+    const context = await browser.newContext({ baseURL: E2E_BASE_URL,
+      viewport: { width, height: 740 }, isMobile: touch, hasTouch: touch, deviceScaleFactor: 1 });
+    try {
+      const results = {};
+      for (const clearanceBaseline of [true, false]) {
+        const page = await context.newPage();
+        await mount(page, { width, data: SLICE[0][1].data, clearanceBaseline,
+          unit: "practice", practiceKind: "choice-return", practiceFeedback: LONG_SUCCESS_FEEDBACK });
+        await showLongSuccessComment(page);
+        results[clearanceBaseline ? "base" : "candidato"] = await readCommentClearanceGeometry(page);
+        await page.close();
+      }
+      const { base, candidato } = results;
+      expect(candidato.popup, label + ": painel de comentário preservado").toEqual(base.popup);
+      expect(candidato.children, label + ": geometria dos parágrafos preservada").toEqual(base.children);
+      expect(candidato.continueButton, label + ": controle de continuação preservado").toEqual(base.continueButton);
+      expect(candidato.body.contentWidth, label + ": largura útil do comentário preservada")
+        .toBe(base.body.contentWidth);
+      expect(candidato.body.box.x, label + ": posição do corpo do comentário preservada").toBe(base.body.box.x);
+      expect(candidato.body.box.height, label + ": altura do corpo do comentário preservada")
+        .toBe(base.body.box.height);
+      expect(candidato.body.box.width, label + ": scroller do comentário ganha só 6px")
+        .toBe(base.body.box.width + 6);
+      expect(base.clearanceStyle, label + ": base sem compensação do comentário")
+        .toEqual({ paddingRight: "0px", marginRight: "0px" });
+      expect(candidato.clearanceStyle, label + ": candidata reserva 6px e compensa o inset")
+        .toEqual({ paddingRight: "6px", marginRight: "-6px" });
+      expect(candidato.continueButton.width, label + ": alvo de continuação mantém 44px").toBe(44);
+      expect(candidato.continueButton.height, label + ": alvo de continuação mantém 44px").toBe(44);
+      expect(candidato.scroll.contentRight, label + ": área legível termina na borda anterior do scroller")
+        .toBe(base.body.box.x + base.body.box.width);
+      for (const measurement of [base, candidato]) {
+        expect(measurement.scroll.overflowY, label + ": comentário mantém rolagem vertical nativa").toBe("auto");
+        expect(measurement.scroll.pseudoDisplay, label + ": barra nativa continua visível")
+          .not.toBe("none");
+        expect(measurement.scroll.pseudoWidth, label + ": barra nativa não é ocultada")
+          .not.toBe("0px");
+        expect(measurement.scroll.scrollHeight, label + ": comentário longo excede o painel")
+          .toBeGreaterThan(measurement.scroll.clientHeight);
+        expect(measurement.scroll.scrollTop, label + ": comentário pode rolar até o fim")
+          .toBe(measurement.scroll.scrollHeight - measurement.scroll.clientHeight);
+        expect(measurement.scroll.textRightMax, label + ": texto permanece dentro da área útil")
+          .toBeLessThanOrEqual(measurement.scroll.contentRight + 1);
+      }
+      console.log("comentário de acerto A/B " + label + ": " + JSON.stringify(results));
+    } finally {
+      await context.close();
+    }
+  });
 }
 
 test("texto ampliado a 200% mantem a distribuicao por conteudo", async ({ page }) => {
