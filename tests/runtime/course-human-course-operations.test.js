@@ -10,6 +10,7 @@ import { exportHumanCourse } from "../../supabase/functions/_shared/aralearn-aut
 import { createAuthoringActionHandler } from "../../supabase/functions/_shared/aralearn-authoring/courseActionServer.js";
 import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/aralearn-authoring/courseActionBindings.js";
 import { ARALEARN_MCP_PROTOCOL_VERSION, createAuthoringMcpHandler } from "../../supabase/functions/_shared/aralearn-authoring/mcpServer.js";
+import { preparedReadDatabase } from "../support/preparedHumanReadPglite.js";
 
 const LEFT = "30600000-0000-4000-8000-000000000101";
 const RIGHT = "30600000-0000-4000-8000-000000000102";
@@ -45,6 +46,32 @@ function exportValue({ large = false } = {}) {
     .map(unit => ({ studyUnitRef: unit.id, title: unit.title }));
   return assembleCourseAuthoringExport({ analytics: page(LEFT, "Esquerda", units), document });
 }
+
+test("exportação persiste o literal e retoma em novo adapter sem reler o curso inteiro", async () => {
+  const db = await preparedReadDatabase({ courseId: LEFT, actorId: principal.actorId });
+  try {
+    const exported = exportValue({ large: 30 });
+    let builds = 0;
+    const adapter = Object.assign(db.adapter(), readers());
+    adapter.getCourseAuthoringExport = async () => { builds++; return structuredClone(exported); };
+    const args = { recorte: { curso: "Esquerda" } };
+    let response = await call(adapter, "exportar_autoria", args), literal = "", count = 0;
+    while (true) {
+      literal += response.context.fragmento.texto;
+      count++;
+      if (!response.context.temMais) break;
+      const before = db.calls.length;
+      // Has only the real SQL continuation reader, no list/export/plan stubs.
+      response = await call(db.adapter(), "exportar_autoria", { ...args, continuacao: response.context.continuacao });
+      assert.equal(db.calls.length, before + 1);
+      assert.equal(db.calls.at(-1).name, "read_prepared_course_read_for_actor_v1");
+    }
+    assert.ok(count > 20); assert.equal(builds, 1);
+    const expected = `{"authoringExport":${serializeCourseAuthoringExport(exported)}}`.replaceAll("\u2011", "\\u2011");
+    assert.equal(literal, expected);
+    assert.equal(sha256(literal), sha256(expected));
+  } finally { await db.db.close(); }
+});
 
 test("cópia humana prepara a intenção sem efeito e recupera a mesma identidade sem reler origem", async () => {
   const adapter = readers(); const writes = [];

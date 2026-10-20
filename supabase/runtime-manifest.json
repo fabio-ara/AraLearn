@@ -1,5 +1,5 @@
 {
-  "schemaRevision": "20261019232352",
+  "schemaRevision": "20261020005726",
   "contractVersion": 1,
   "requiredFeatures": [
     "object-content-review-v1",
@@ -65,6 +65,7 @@
     "contextual-design-command-atomic-batch-v1",
     "course-review-plan-conditional-snapshot-v1",
     "course-review-plan-focal-projection-v1",
-    "course-review-plan-projection-v1"
+    "course-review-plan-projection-v1",
+    "durable-prepared-human-reads-v1"
   ]
 }

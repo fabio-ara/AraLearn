@@ -743,6 +743,62 @@
       "caseId": "study-course-experience"
     },
     {
+      "object": "constraint:private.course_prepared_read_chunks/course_prepared_read_chunks_pkey[primary_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_read_chunks/course_prepared_read_chunks_read_id_fkey[foreign_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_read_chunks/course_prepared_read_chunks_read_id_start_offset_key[unique]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_read_generations/course_prepared_read_generations_course_id_fkey[foreign_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_read_generations/course_prepared_read_generations_generation_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_read_generations/course_prepared_read_generations_pkey[primary_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_actor_id_fkey[foreign_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_byte_size_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_course_id_fkey[foreign_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_digest_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_pkey[primary_key]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_request_hash_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_selection_fingerprint_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_total_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "constraint:private.course_source_anchors/course_source_anchors_content_hash_check[check]",
       "caseId": "course-source-provenance"
     },
@@ -1121,6 +1177,10 @@
     {
       "object": "function:private.cleanup_course_anchored_annotations_v1(p_course_id uuid)",
       "caseId": "course-anchored-annotations"
+    },
+    {
+      "object": "function:private.cleanup_prepared_course_reads_v1()",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:private.collect_course_observation_bases_v1(p_course uuid)",
@@ -1517,6 +1577,10 @@
     {
       "object": "function:private.invalidate_course_source_attribution_after_target_v1()",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "function:private.invalidate_prepared_course_reads_v1()",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:private.inventory_current_data_orphans_v1(p_limit integer)",
@@ -2075,6 +2139,10 @@
       "caseId": "person-profile-and-course-access"
     },
     {
+      "object": "function:public.get_prepared_course_read_stamp_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint)",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "function:public.ingest_course_source_pdf_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint, p_source_intent jsonb, p_attachment jsonb, p_file_identity jsonb, p_channel text, p_request_id text)",
       "caseId": "course-source-provenance"
     },
@@ -2171,6 +2239,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.read_prepared_course_read_for_actor_v1(p_actor_id uuid, p_read_id uuid, p_request_hash text, p_state jsonb)",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "function:public.record_course_ai_inspection_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_target_kind text, p_target_id text, p_expected_basis_hash text, p_report jsonb, p_request_id text)",
       "caseId": "course-authoring-experience"
     },
@@ -2213,6 +2285,10 @@
     {
       "object": "function:public.save_course_curricular_map_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_course_revision bigint, p_expected_plan_version bigint, p_approved boolean, p_curricular_map jsonb, p_request_id text, p_request_hash text)",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "function:public.save_prepared_course_read_for_actor_v1(p_actor_id uuid, p_read_id uuid, p_stamp jsonb, p_request_hash text, p_digest text, p_state jsonb, p_chunks jsonb, p_next_page text, p_envelope jsonb, p_final_next_decision text)",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "function:public.search_course_access_people_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_query text, p_limit integer)",
@@ -2489,6 +2565,34 @@
     {
       "object": "index:private.course_personal_state_receipts/course_personal_state_receipts_pkey",
       "caseId": "study-course-experience"
+    },
+    {
+      "object": "index:private.course_prepared_read_chunks/course_prepared_read_chunks_pkey",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "index:private.course_prepared_read_chunks/course_prepared_read_chunks_read_id_start_offset_key",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "index:private.course_prepared_read_generations/course_prepared_read_generations_pkey",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "index:private.course_prepared_reads/course_prepared_reads_actor_idx",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "index:private.course_prepared_reads/course_prepared_reads_course_idx",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "index:private.course_prepared_reads/course_prepared_reads_expiry_idx",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "index:private.course_prepared_reads/course_prepared_reads_pkey",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "index:private.course_source_anchors/course_source_anchors_current_source_identity_v1",
@@ -2775,6 +2879,18 @@
       "caseId": "study-course-experience"
     },
     {
+      "object": "rls:private.course_prepared_read_chunks=enabled",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "rls:private.course_prepared_read_generations=enabled",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "rls:private.course_prepared_reads=enabled",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "rls:private.course_source_anchors=forced",
       "caseId": "course-source-provenance"
     },
@@ -2927,6 +3043,18 @@
       "caseId": "study-course-experience"
     },
     {
+      "object": "table:private.course_prepared_read_chunks",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "table:private.course_prepared_read_generations",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "table:private.course_prepared_reads",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "table:private.course_source_anchors",
       "caseId": "course-source-provenance"
     },
@@ -2979,8 +3107,60 @@
       "caseId": "person-profile-and-course-access"
     },
     {
+      "object": "trigger:private.course_anchored_annotation_viewer_versions/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_anchored_annotation_viewer_versions/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_anchored_annotations/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_anchored_annotations/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_authoring_part_didactic_microsequences/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_authoring_part_didactic_microsequences/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_authoring_parts/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_authoring_parts/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_design_parameter_assignments/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_design_parameter_assignments/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "trigger:private.course_design_parameter_definitions/course_design_parameter_definitions_immutable_v1",
       "caseId": "course-authoring-experience"
+    },
+    {
+      "object": "trigger:private.course_design_parameter_definitions/course_prepared_read_catalog_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_design_target_plan_items/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_design_target_plan_items/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "trigger:private.course_entities/count_course_editorial_intervention_v1",
@@ -3011,16 +3191,112 @@
       "caseId": "course-source-provenance"
     },
     {
+      "object": "trigger:private.course_entities/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_entities/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "trigger:private.course_instructional_plan_items/course_plan_items_invalidate_source_attribution_v1",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "trigger:private.course_instructional_plan_items/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_instructional_plan_items/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_instructional_plans/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_instructional_plans/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_media/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_media/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "trigger:private.course_media/guard_shared_course_media_v1",
       "caseId": "course-audio-media"
     },
     {
+      "object": "trigger:private.course_observation_bases/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_observation_bases/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_observation_targets/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_observation_targets/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_anchors/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_anchors/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attachments/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attachments/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "trigger:private.course_source_attachments/course_source_attachments_lifecycle_v1",
       "caseId": "course-source-provenance"
+    },
+    {
+      "object": "trigger:private.course_source_attribution_anchors/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attribution_anchors/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attribution_sources/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attribution_sources/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attributions/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_source_attributions/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_sources/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:private.course_sources/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "trigger:public.course_access/course_audio_access_delivery_v7",
@@ -3029,6 +3305,14 @@
     {
       "object": "trigger:public.courses/course_audio_publication_v7",
       "caseId": "course-audio-media"
+    },
+    {
+      "object": "trigger:public.courses/course_prepared_read_invalidation",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "trigger:public.courses/course_prepared_read_truncate",
+      "caseId": "course-shared-transports"
     },
     {
       "object": "trigger:public.courses/courses_authoring_relations_delete_v1",

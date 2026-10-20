@@ -5,7 +5,7 @@ select plan(33);
 select has_function('public','get_aralearn_runtime_manifest',array[]::text[],
   'o banco expõe o manifesto final');
 select is(public.get_aralearn_runtime_manifest()->>'schemaRevision',
-  '20261019232352','o manifesto identifica as capacidades correntes em ordem canônica');
+  '20261020005726','o manifesto identifica as capacidades correntes em ordem canônica');
 select is((select count(*) from private.course_component_policy_assignments
   where private.valid_course_component_policy_v1(policy) is not true),0::bigint,
   'todas as políticas persistidas satisfazem o catálogo corrente');
@@ -16,7 +16,7 @@ select is(private.course_component_catalog_v1()->>'schemaFingerprint',
   'a projeção SQL acompanha a impressão regenerada do contrato de pacotes');
 select is(public.get_aralearn_runtime_manifest()->>'contractVersion','1',
   'o contrato do manifesto permanece estável');
-select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),64,
+select is(jsonb_array_length(public.get_aralearn_runtime_manifest()->'features'),65,
   'o manifesto contém somente capacidades correntes');
 select ok(public.get_aralearn_runtime_manifest()->'features' ?
   'course-export-annotation-version-fence-v1',
@@ -48,6 +48,7 @@ select ok((public.get_aralearn_runtime_manifest()->'features') @> '[
   "course-review-plan-projection-v1",
   "course-review-plan-conditional-snapshot-v1",
   "course-review-plan-focal-projection-v1",
+  "durable-prepared-human-reads-v1",
   "course-study-unit-inspection-v2",
   "single-authoring-runtime-v1",
   "person-profile-v2",
@@ -377,10 +378,11 @@ select is((select count(*) from pg_trigger trigger_value
   join pg_class relation on relation.oid=trigger_value.tgrelid
   join pg_namespace namespace_value on namespace_value.oid=relation.relnamespace
   where namespace_value.nspname='private' and not trigger_value.tgisinternal
+    and trigger_value.tgname not in ('course_prepared_read_invalidation','course_prepared_read_truncate')
     and relation.relname in(
       'course_sources','course_source_anchors','course_source_attributions',
       'course_source_attribution_sources','course_source_attribution_anchors'
-    )),0::bigint,'Fonte corrente permanece sem histórico append-only; revisão por hash dispensa trigger de invalidação');
+    )),0::bigint,'Fontes correntes não conservam histórico; triggers novos invalidam apenas leituras efêmeras');
 
 select is((select count(*) from private.course_design_parameter_definitions),
   12::bigint,'catálogo de parâmetros de conteúdo, prática, conversa e cadência');

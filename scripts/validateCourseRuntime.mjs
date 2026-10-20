@@ -71,6 +71,7 @@ const REQUIRED_FEATURES = Object.freeze([
   "contextual-design-command-atomic-batch-v1",
   "course-review-plan-conditional-snapshot-v1",
   "course-review-plan-focal-projection-v1",
+    "durable-prepared-human-reads-v1",
   "course-review-plan-projection-v1"
 ]);
 
@@ -309,7 +310,7 @@ export async function validateRuntimeManifestRevision(
 async function validateManifest() {
   const manifest = JSON.parse(await read("supabase/runtime-manifest.json"));
   const required = [...REQUIRED_FEATURES];
-  if (manifest.schemaRevision !== "20261019232352" ||
+  if (manifest.schemaRevision !== "20261020005726" ||
       manifest.contractVersion !== 1 ||
       !Array.isArray(manifest.requiredFeatures) ||
       manifest.requiredFeatures.length !== required.length ||
