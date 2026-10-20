@@ -13,6 +13,8 @@ explica os termos usados na implementação atual.
 
 - A consulta do repertório instrucional lê apenas a estrutura e os itens necessários, preserva a revisão do curso e informa a cobertura já aplicada em referências utilizáveis na autoria, sem reconstruir a revisão global. (#534)
 
+- A barra de rolagem do estudo deixa espaço para o texto em telas móveis, preservando a largura do conteúdo, o alinhamento e a geometria dos controles. (#532)
+- O comentário após o acerto reserva a mesma folga para a barra de rolagem, sem mudar o painel, o texto ou o controle de continuação. (#533)
 - Leituras extensas são transferidas para o banco em lotes limitados e só ficam disponíveis após a verificação integral do texto; interrupções preservam os limites de armazenamento e não expõem conteúdo parcial.
 
 - A preparação de leituras extensas evita materializações repetidas no banco, mantendo a ordem dos trechos, o texto integral e as verificações de acesso e integridade.

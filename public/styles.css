@@ -5530,6 +5530,23 @@ button.account-settings-back[hidden] {
   right: 0;
 }
 
+/* Move the scrollbar into the card inset while preserving the text width. */
+.microsequence-workbench-screen .runtime-card-rendered-content {
+  padding-right: 6px;
+  margin-right: -6px;
+}
+
+.microsequence-workbench-screen .card-sheet-content {
+  width: calc(100% + 6px);
+  max-width: calc(100% + 6px);
+  padding-right: 6px;
+}
+
+.microsequence-workbench-screen .study-continue-popup-body {
+  margin-right: -6px;
+  padding-right: 6px;
+}
+
 @media (max-width: 430px) {
 
   .navigation-topbar {
