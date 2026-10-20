@@ -11,6 +11,8 @@ explica os termos usados na implementação atual.
 
 ### Corrigido
 
+- A barra de rolagem do estudo deixa espaço para o texto em telas móveis, preservando a largura do conteúdo, o alinhamento e a geometria dos controles. (#532)
+
 - A preparação de leituras extensas evita materializações repetidas no banco, mantendo a ordem dos trechos, o texto integral e as verificações de acesso e integridade.
 - A preparação de exportações e revisões extensas utiliza o orçamento restante da operação para salvar a leitura, sem interrupção antecipada pelo prazo de consultas curtas nem repetição automática da escrita. (#526)
 - As continuações de exportação e revisão conservam a leitura preparada entre instâncias do serviço e transferem somente os próximos trechos. Acesso, seleção e alterações continuam sendo verificados; uma leitura expirada pede reiniciar a consulta sem remontar o curso a cada fragmento. (#524)
