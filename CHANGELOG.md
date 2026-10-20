@@ -11,6 +11,8 @@ explica os termos usados na implementação atual.
 
 ### Corrigido
 
+- A resolução dos parâmetros pedagógicos consulta somente os escopos pertinentes, reduzindo leituras repetidas do banco durante análises e exportações de cursos extensos, sem alterar valores, motivos ou precedência. (#522)
+
 - A exportação de autoria comporta cursos extensos dentro do limite de 32 MiB, preserva o documento integral e reutiliza sua preparação nas continuações, com nova verificação de acesso, edição e observações.
 - A inspeção identifica tentativas de ordenação causal ou procedural cujo erro oferece apenas um retorno genérico, sem confundir o comentário disponível após o acerto com ajuda durante a tentativa.
 - A leitura extensa de revisão evita executar a manutenção de observações a cada continuação, preservando as verificações de acesso e de alterações no conteúdo. (#516)

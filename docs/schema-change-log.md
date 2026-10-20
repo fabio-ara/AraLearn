@@ -21,6 +21,12 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261019232352 — resolução de parâmetros por escopo
+
+A leitura dos parâmetros pedagógicos restringe as atribuições consultadas aos escopos do caminho curricular e reaproveita a expansão do snapshot durante a mesma resolução. Um índice por curso, tipo e referência de escopo evita percorrer todas as atribuições do curso para cada unidade durante análises e exportações extensas.
+
+A migração preserva valores, motivos, precedência das condições de pesquisa, exceções autorais, herança e permissões. Não reescreve conteúdo nem configurações e mantém os contratos públicos. A redução de trabalho no banco não reduz o conteúdo do artefato exportado.
+
 ## 20261018233443 — leitura do mapa curricular em cursos extensos
 
 A [migração](../supabase/migrations/20261018233443_curricular_map_lean_version_read.sql)

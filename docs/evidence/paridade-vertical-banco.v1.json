@@ -2383,6 +2383,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "index:private.course_design_parameter_assignments/course_design_parameter_assignments_scope_v1_idx",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "index:private.course_design_parameter_definitions/course_design_parameter_definitions_ordinal_key",
       "caseId": "course-authoring-experience"
     },
