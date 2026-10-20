@@ -2131,6 +2131,10 @@
       "caseId": "course-authoring-experience"
     },
     {
+      "object": "function:public.get_owned_course_instructional_repertoire_for_actor_v1(p_actor_id uuid, p_course_id uuid, p_expected_revision bigint)",
+      "caseId": "course-authoring-experience"
+    },
+    {
       "object": "function:public.get_owned_course_review_plan_for_actor_v1(p_actor_id uuid, p_course_id uuid)",
       "caseId": "course-authoring-experience"
     },

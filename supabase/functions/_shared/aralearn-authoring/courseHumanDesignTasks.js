@@ -75,12 +75,16 @@ function refs(items, values, label, title) {
   if (new Set(resolved.map(item => item.id ?? item.ref)).size !== resolved.length) fail(`${label} repete o mesmo item.`);
   return resolved;
 }
-async function loadContext(values, { applications = false } = {}) {
+async function loadContext(values, { applications = false, repertoire = false } = {}) {
   const { adapter, principal, args, deadlineAt } = values;
+  const readPlan = input => repertoire ? adapter.getCourseInstructionalRepertoire(input)
+    : adapter.getCourseInstructionalPlan(input);
   const resolved = await resolveHumanCourseContext({ adapter, principal, course: args.curso,
     module: args.modulo ?? null, lesson: args.licao ?? null, microsequence: args.microssequencia ?? null,
-    studyUnits: applications ? args.unidades.map(item => item.unidade) : args.unidade == null ? [] : [args.unidade], deadlineAt });
-  resolved.plan ??= await adapter.getCourseInstructionalPlan({ principal, courseId: resolved.course.id, recentLimit: 1, deadlineAt });
+    studyUnits: applications ? args.unidades.map(item => item.unidade) : args.unidade == null ? [] : [args.unidade],
+    planReader: readPlan, deadlineAt });
+  resolved.plan ??= await readPlan({ principal, courseId: resolved.course.id,
+    expectedRevision: resolved.course.revision, recentLimit: 1, deadlineAt });
   if (resolved.plan.courseId != null && resolved.plan.courseId !== resolved.course.id ||
       !Number.isSafeInteger(resolved.plan.courseRevision) || !Number.isSafeInteger(resolved.plan.plan?.version)) {
     fail("O planejamento não pôde ser confirmado.", 503, "course_service_unavailable");
@@ -94,18 +98,25 @@ async function readDesign(values, resolved) {
   return values.adapter.getCourseDesign({ principal: values.principal, courseId: resolved.course.id,
     scopeKind: scope(resolved).kind, scopeRef: scope(resolved).ref, childLimit: 1, deadlineAt: values.deadlineAt });
 }
-export function humanUnitApplication(unit) {
+export function humanUnitApplication(unit, plan = null) {
   const snapshot = unit?.authorship?.design?.application ?? null;
   const canonical = unit?.designApplication;
   if (!canonical || typeof canonical !== "object" || Array.isArray(canonical) ||
       !Array.isArray(canonical.practiceApplications)) return snapshot;
+  const coverage = Array.isArray(canonical.curriculumScopeItemIds) && Array.isArray(plan?.curriculumScopeItems)
+    ? canonical.curriculumScopeItemIds.map(id => {
+      const index = plan.curriculumScopeItems.findIndex(item => item.id === id);
+      if (index < 0) fail("A cobertura aplicada não corresponde ao repertório lido.", 503, "course_service_unavailable");
+      return (plan.curriculumScopeItems[index].position ?? index) + 1;
+    }) : null;
   return { ...canonical, ...(snapshot && typeof snapshot === "object" && !Array.isArray(snapshot) ? snapshot : {}),
+    cobertura: coverage,
     practiceApplications: structuredClone(canonical.practiceApplications) };
 }
-function humanUnitAppliedDesign(unit) {
+function humanUnitAppliedDesign(unit, plan) {
   const design = unit?.authorship?.design;
   if (!design || typeof design !== "object" || Array.isArray(design)) return null;
-  return { ...design, application: humanUnitApplication(unit) };
+  return { ...design, application: humanUnitApplication(unit, plan) };
 }
 function checkReceipt(value, request, settings) {
   if (settings) {
@@ -199,7 +210,10 @@ function automaticParameters(calibration) {
 }
 export const COURSE_HUMAN_DESIGN_TASK_HANDLERS = {
   async consultar_repertorio_instrucional(values) {
-    const resolved = await loadContext(values); const design = await readDesign(values, resolved);
+    const resolved = await loadContext(values, { repertoire: true }); const design = await readDesign(values, resolved);
+    if (design.courseId !== resolved.course.id || design.courseRevision !== resolved.course.revision) {
+      fail("O curso mudou durante a leitura do repertório.", 409, "course_revision_conflict");
+    }
     const human = field => items(resolved, field).map((item, index) => ({ posicao: (item.position ?? index) + 1,
       enunciado: item.statement, descricao: item.description ?? "" }));
     const linked = (ids, field) => (ids ?? []).map(id => items(resolved, field).find(item => item.id === id)?.statement ?? "Item ausente");
@@ -207,9 +221,9 @@ export const COURSE_HUMAN_DESIGN_TASK_HANDLERS = {
       analise: human("instructionalAnalysisUnits"), evidencias: human("evidenceRequirements"), cobertura: human("curriculumScopeItems"),
       vinculos: design.targetPlanItems ? { analise: linked(design.targetPlanItems.instructionalAnalysisUnitIds, "instructionalAnalysisUnits"),
         evidencias: linked(design.targetPlanItems.evidenceRequirementIds, "evidenceRequirements") } : null,
-      aplicacao: humanUnitApplication(resolved.studyUnits[0]),
+      aplicacao: humanUnitApplication(resolved.studyUnits[0], resolved.plan.plan),
       // O estado persistido não é o recibo fechado de uma escrita confirmada.
-      configuracaoAplicadaNaUnidade: humanUnitAppliedDesign(resolved.studyUnits[0]),
+      configuracaoAplicadaNaUnidade: humanUnitAppliedDesign(resolved.studyUnits[0], resolved.plan.plan),
       componentes: design.componentCatalog.options.map((item, index) => ({ posicao: index + 1, nome: item.label, finalidade: item.purpose }))
     });
   },

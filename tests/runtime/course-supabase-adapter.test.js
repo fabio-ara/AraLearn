@@ -21,6 +21,34 @@ const MCP_RESOURCE =
   "https://project.example/functions/v1/aralearn-authoring-mcp";
 const MCP_CLIENT_ID = "90000000-0000-4000-8000-000000000009";
 
+test("repertório focal usa a revisão corrente, preserva o payload e rejeita identidade ou estrutura divergente", async () => {
+  const payload = { contract: "aralearn.course-instructional-repertoire.v1", courseId: COURSE_ID,
+    courseRevision: 7, plan: { id: PLAN_ID, version: 3, title: "Redes", parts: [],
+      curriculum: { modules: [] }, instructionalAnalysisUnits: [], evidenceRequirements: [], curriculumScopeItems: [] } };
+  const calls = [];
+  let response = structuredClone(payload);
+  const value = adapter(async (url, init) => {
+    assert.ok(url.endsWith("/get_owned_course_instructional_repertoire_for_actor_v1"));
+    calls.push(JSON.parse(init.body));
+    return json(response);
+  });
+  const args = { principal: { actorId: USER_ID }, courseId: COURSE_ID, expectedRevision: 7 };
+  const result = await value.getCourseInstructionalRepertoire(args);
+  assert.deepEqual(result.plan, payload.plan);
+  assert.deepEqual(calls[0], { p_actor_id: USER_ID, p_course_id: COURSE_ID, p_expected_revision: 7 });
+  assert.equal(Object.hasOwn(result, "mapApprovalReference"), false);
+  for (const patch of [{ courseId: OTHER_COURSE_ID }, { contract: "wrong" }, { plan: { ...payload.plan, evidenceRequirements: null } }]) {
+    response = { ...payload, ...patch };
+    await assert.rejects(value.getCourseInstructionalRepertoire(args), error => error.code === "course_service_unavailable");
+  }
+  response = { ...payload, courseRevision: 8 };
+  await assert.rejects(value.getCourseInstructionalRepertoire(args), error => error.code === "course_revision_conflict");
+  const before = calls.length;
+  await assert.rejects(value.getCourseInstructionalRepertoire({ ...args, expectedRevision: null }),
+    error => error.code === "course_service_unavailable");
+  assert.equal(calls.length, before);
+});
+
 test("comparação lê apenas o alvo autorizado e valida as identidades da resposta", async () => {
   const calls = [];
   const comparison = { contract: "aralearn.course-observation-comparison.v1", courseId: COURSE_ID, courseRevision: 7,
