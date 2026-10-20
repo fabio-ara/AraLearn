@@ -56,6 +56,37 @@ test('SQL persistido recompõe bytes Unicode com um adapter novo por fragmento e
   } finally {await fixture.db.close();}
 });
 
+test('contagem e offsets SQL equivalem ao UTF-16 JS em Unicode e nas fronteiras dos chunks',async()=>{
+  const fixture=await preparedReadDatabase({courseId,actorId});
+  try {
+    const prefix=JSON.stringify({content:''}).indexOf('""')+1;
+    const cases=[
+      {name:'BMP e extremos suplementares',content:'ASCII á ñ 日本語 e\u0301 \uFFFF \u{10000} \u{10FFFF} 😀 '.repeat(700)},
+      {name:'primeiro chunk 11999 por par substituto',content:'a'.repeat(11999-prefix)+'😀'+'z'.repeat(4000)},
+      {name:'primeiro chunk 12000 com par completo',content:'a'.repeat(11998-prefix)+'😀'+'z'.repeat(4000)}
+    ];
+    for(const [index,item] of cases.entries()){
+      const {first,prepared,preparedRead}=await prepare(fixture,{value:{content:item.content}});
+      const id=decode(first.context.continuacao).s;
+      const rows=(await fixture.db.query('select start_offset,text_value from private.course_prepared_read_chunks where read_id=$1 order by ordinal',[id])).rows;
+      assert.equal(prepared.literal.length,rows.reduce((sum,row)=>sum+row.text_value.length,0),item.name);
+      assert.deepEqual(rows.map(row=>row.start_offset),rows.map((_,i)=>rows.slice(0,i).reduce((sum,row)=>sum+row.text_value.length,0)),item.name);
+      assert.equal((await fixture.db.query('select total from private.course_prepared_reads where id=$1',[id])).rows[0].total,
+        prepared.literal.length,item.name);
+      if(index===1)assert.equal(rows[0].text_value.length,11999,item.name);
+      if(index===2)assert.equal(rows[0].text_value.length,12000,item.name);
+
+      const token=decode(first.context.continuacao);
+      const offset=Math.min(rows[0].text_value.length+1,prepared.literal.length-1);
+      const window=await fixture.adapter().readPreparedHumanRead({principal,readId:id,
+        requestHash:preparedRead.requestHash,state:{...token,o:offset}});
+      assert.equal(window.start,rows[0].start_offset+rows[0].text_value.length,item.name);
+      assert.equal(window.text,rows.slice(1,3).map(row=>row.text_value).join(''),item.name);
+      assert.equal(window.text,prepared.literal.slice(window.start,window.start+window.text.length),item.name);
+    }
+  } finally {await fixture.db.close();}
+});
+
 test('página seguinte descarta a identidade persistida e mantém o cursor lógico original',async()=>{
   const fixture=await preparedReadDatabase({courseId,actorId});
   try {

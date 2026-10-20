@@ -15,7 +15,7 @@ values('52410000-0000-4000-8000-000000000101','52410000-0000-4000-8000-000000000
 create temporary table prepared_fixture as
 select public.get_prepared_course_read_stamp_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000101',revision) stamp,
-  '{"texto":"á😀日本語"}' literal
+  '{"texto":"á' || chr(65535) || chr(65536) || chr(1114111) || '😀日本語"}' literal
 from public.courses where id='52410000-0000-4000-8000-000000000101';
 alter table prepared_fixture add column digest text;
 alter table prepared_fixture add column state jsonb;
@@ -37,7 +37,7 @@ select is(public.read_prepared_course_read_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000201',repeat('a',64),state)->>'text',
   literal,'a janela conserva Unicode literalmente') from prepared_fixture;
 select is((select total from private.course_prepared_reads where id='52410000-0000-4000-8000-000000000201'),
-  (select char_length(literal)+1 from prepared_fixture),'o total conta UTF-16, inclusive o par substituto');
+  (select char_length(literal)+3 from prepared_fixture),'o total conta UTF-16 em BMP e pontos suplementares extremos');
 select ok(not has_table_privilege('authenticated','private.course_prepared_reads','SELECT') and
   not has_table_privilege('anon','private.course_prepared_read_chunks','SELECT') and
   not has_table_privilege('service_role','private.course_prepared_read_chunks','SELECT'),

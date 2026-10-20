@@ -39,6 +39,7 @@ export async function preparedReadDatabase({ courseId, actorId, revision = 7 }) 
     ${PREPARED_READ_TABLES.map(name => `create table private.${name}(course_id uuid references public.courses(id) on delete cascade,payload text);`).join('\n')}
   `);
   await db.exec(await fs.readFile(new URL('../../supabase/migrations/20261020005726_durable_prepared_human_reads.sql', import.meta.url), 'utf8'));
+  await db.exec(await fs.readFile(new URL('../../supabase/migrations/20261020045119_optimize_prepared_read_utf16_count.sql', import.meta.url), 'utf8'));
   const calls = [];
   const adapter = () => {
     const value = new CourseSupabaseAdapter({ supabaseUrl: 'https://fixture.example',
