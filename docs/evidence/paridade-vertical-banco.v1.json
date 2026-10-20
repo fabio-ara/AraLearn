@@ -799,6 +799,18 @@
       "caseId": "course-shared-transports"
     },
     {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_written_bytes_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_written_chunks_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
+      "object": "constraint:private.course_prepared_reads/course_prepared_reads_written_units_check[check]",
+      "caseId": "course-shared-transports"
+    },
+    {
       "object": "constraint:private.course_source_anchors/course_source_anchors_content_hash_check[check]",
       "caseId": "course-source-provenance"
     },
@@ -2287,7 +2299,7 @@
       "caseId": "course-authoring-experience"
     },
     {
-      "object": "function:public.save_prepared_course_read_for_actor_v1(p_actor_id uuid, p_read_id uuid, p_stamp jsonb, p_request_hash text, p_digest text, p_state jsonb, p_chunks jsonb, p_next_page text, p_envelope jsonb, p_final_next_decision text)",
+      "object": "function:public.save_prepared_course_read_batch_for_actor_v1(p_actor_id uuid, p_read_id uuid, p_stamp jsonb, p_request_hash text, p_digest text, p_state jsonb, p_chunks jsonb, p_next_page text, p_envelope jsonb, p_final_next_decision text, p_total integer, p_byte_size integer, p_start integer, p_ordinal integer)",
       "caseId": "course-shared-transports"
     },
     {

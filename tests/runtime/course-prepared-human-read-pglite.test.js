@@ -15,8 +15,7 @@ const payload={ content:('a'.repeat(11998)+'😀日本語 e\u0301 Wi\u2011Fi " \
 const envelope={ result:'Leitura literal',deepLink:null,links:[],nextDecision:'Continuar.' };
 const decode=value=>JSON.parse(Buffer.from(value,'base64url'));
 
-async function prepare(fixture, { value=payload, nextPage=null }={}) {
-  const adapter=fixture.adapter();
+async function prepare(fixture, { value=payload, nextPage=null, adapter=fixture.adapter() }={}) {
   adapter.listCourses=async()=>({ items:[{courseId,title:args.curso}],hasMore:false });
   adapter.getCourse=async()=>({ courseId,title:args.curso,revision:7,annotationSetVersion:1 });
   const preparedRead=await openPreparedHumanRead({ adapter,principal,name,args });
@@ -28,6 +27,89 @@ async function prepare(fixture, { value=payload, nextPage=null }={}) {
 }
 const resume=(fixture,token,extra={})=>openPreparedHumanRead({adapter:fixture.adapter(),principal,name,
   args:{...args,continuacao:token},...extra});
+
+test('lotes limitados reservam o total, recusam sobreposição e só publicam após conferir o hash',async()=>{
+  const fixture=await preparedReadDatabase({courseId,actorId});
+  try {
+    const adapter=fixture.adapter(),rpc=adapter.rpc,batches=[];
+    adapter.rpc=async(name,request)=>{
+      const result=await rpc(name,request);
+      if(name!=='save_prepared_course_read_batch_for_actor_v1')return result;
+      batches.push({start:request.p_start,ordinal:request.p_ordinal,count:request.p_chunks.length,
+        bytes:Buffer.byteLength(JSON.stringify(request)),result});
+      if(request.p_start===0){
+        assert.equal(result.ready,false);
+        const row=(await fixture.db.query('select * from private.course_prepared_reads where id=$1',[request.p_read_id])).rows[0];
+        assert.equal(row.byte_size,request.p_byte_size,'reserve includes all future batches');
+        assert.equal(row.written_chunks,128);
+        assert.equal(row.written_units,128*12000);
+        assert.ok(row.written_bytes<row.byte_size);
+        const state={...request.p_state,s:request.p_read_id,h:request.p_digest,o:1};
+        await assert.rejects(rpc('read_prepared_course_read_for_actor_v1',{
+          p_actor_id:actorId,p_read_id:request.p_read_id,p_request_hash:request.p_request_hash,p_state:state
+        }),e=>e.code==='PT409','a cursor cannot expose a partial read');
+        assert.deepEqual(await rpc(name,request),result,'uncertain first batch is replayable');
+        await assert.rejects(rpc(name,{...request,p_envelope:{result:'different'}}),e=>e.code==='PT409');
+        await assert.rejects(rpc(name,{...request,p_chunks:['z'.repeat(12000)]}),e=>e.code==='PT409');
+        await assert.rejects(rpc(name,{...request,p_ordinal:128,p_start:127*12000,
+          p_chunks:[request.p_chunks[127],'z'.repeat(12000)]}),e=>e.code==='PT409','partial overlap');
+        await assert.rejects(rpc(name,{...request,p_ordinal:130,p_start:12000,
+          p_chunks:['z'.repeat(12000)]}),e=>e.code==='PT409','gap cannot advance the write cursor');
+        await assert.rejects(rpc(name,{...request,p_chunks:[...request.p_chunks,'z'.repeat(12000)]}),
+          e=>e.code==='22023','129 chunks exceed the request bound');
+        assert.equal((await fixture.db.query('select count(*) n from private.course_prepared_read_chunks where read_id=$1',
+          [request.p_read_id])).rows[0].n,128);
+      }else assert.deepEqual(await rpc(name,request),result,'final batch replay preserves publication');
+      return result;
+    };
+    const {first,prepared}=await prepare(fixture,{adapter,value:{content:'a'.repeat(128*12000)+'é😀'.repeat(12000)}});
+    assert.equal(batches.length,2);
+    assert.ok(batches.every(b=>b.count<=128&&b.bytes<8*1024*1024));
+    assert.equal(batches[1].start,128*12000);
+    assert.equal(batches[1].ordinal,129);
+    assert.equal(batches[1].result.ready,true);
+    const next=(await resume(fixture,first.context.continuacao)).response.context.fragmento;
+    assert.equal(next.texto,prepared.literal.slice(next.inicio,next.fim));
+    const row=(await fixture.db.query('select is_ready,written_units,total,written_bytes,byte_size from private.course_prepared_reads')).rows[0];
+    assert.equal(row.is_ready,true);assert.equal(row.written_units,row.total);assert.equal(row.written_bytes,row.byte_size);
+    assert.equal((await fixture.db.query("select to_regprocedure('public.save_prepared_course_read_for_actor_v1(uuid,uuid,jsonb,text,text,jsonb,jsonb,text,jsonb,text)') old")).rows[0].old,null);
+  }finally{await fixture.db.close();}
+});
+
+test('hash final incorreto e mudança entre lotes deixam apenas reserva temporária ilegível',async()=>{
+  const fixture=await preparedReadDatabase({courseId,actorId});
+  try {
+    const adapter=fixture.adapter();
+    const stamp=await adapter.getPreparedHumanReadStamp({principal,courseId,expectedRevision:7});
+    const state=await openHumanReadContinuation({args,task:name,course:{id:courseId,revision:7}});
+    const chunks=[...Array(128).fill('a'.repeat(12000)),'é😀'];
+    const readId='52400000-0000-4000-8000-000000000081';
+    const request={principal,readId,stamp,requestHash:'a'.repeat(64),digest:'0'.repeat(64),
+      state:{...state,o:0,h:null},chunks,nextPage:null,envelope,finalNextDecision:null};
+    await assert.rejects(adapter.savePreparedHumanRead(request),e=>e.code==='22023');
+    const row=(await fixture.db.query('select * from private.course_prepared_reads where id=$1',[readId])).rows[0];
+    assert.equal(row.is_ready,false);assert.equal(row.written_chunks,128);
+    assert.equal((await fixture.db.query('select count(*) n from private.course_prepared_reads where is_ready')).rows[0].n,0);
+    await assert.rejects(adapter.readPreparedHumanRead({principal,readId,requestHash:request.requestHash,
+      state:{...state,s:readId,h:request.digest,o:1}}),e=>e.code==='PT409');
+    await fixture.db.exec("update private.course_prepared_reads set expires_at=statement_timestamp()-interval '1 second'");
+    await fixture.db.exec('select private.cleanup_prepared_course_reads_v1()');
+    assert.equal((await fixture.db.query('select count(*) n from private.course_prepared_read_chunks')).rows[0].n,0);
+    const rpc=adapter.rpc;
+    adapter.rpc=async(name,input)=>{
+      const result=await rpc(name,input);
+      if(name==='save_prepared_course_read_batch_for_actor_v1'&&input.p_start===0)
+        await fixture.db.query('update public.courses set annotation_set_version=annotation_set_version+1 where id=$1',[courseId]);
+      return result;
+    };
+    await assert.rejects(adapter.savePreparedHumanRead({...request,readId:'52400000-0000-4000-8000-000000000082',
+      digest:createHash('sha256').update(chunks.join('')).digest('hex')}),e=>e.code==='PT409');
+    assert.equal((await fixture.db.query('select count(*) n from private.course_prepared_reads where is_ready')).rows[0].n,0);
+    await fixture.db.query('delete from public.courses where id=$1',[courseId]);
+    assert.equal((await fixture.db.query('select count(*) n from private.course_prepared_reads')).rows[0].n,0);
+    assert.equal((await fixture.db.query('select count(*) n from private.course_prepared_read_chunks')).rows[0].n,0);
+  }finally{await fixture.db.close();}
+});
 
 test('SQL persistido recompõe bytes Unicode com um adapter novo por fragmento e janela limitada',async()=>{
   const fixture=await preparedReadDatabase({courseId,actorId});

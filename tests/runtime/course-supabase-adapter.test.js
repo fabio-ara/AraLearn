@@ -4651,7 +4651,7 @@ test("lote de desenho envia comandos normalizados, lê recibo exato e preserva t
 test("leituras preparadas traduzem PT409 sem retentar nem expor detalhes do banco", async () => {
   const cases = [
     ["getPreparedHumanReadStamp", "get_prepared_course_read_stamp_for_actor_v1"],
-    ["savePreparedHumanRead", "save_prepared_course_read_for_actor_v1"],
+    ["savePreparedHumanRead", "save_prepared_course_read_batch_for_actor_v1"],
     ["readPreparedHumanRead", "read_prepared_course_read_for_actor_v1"]
   ];
   for (const [method, rpc] of cases) {
@@ -4684,6 +4684,26 @@ const preparedSaveRequest526 = () => ({
   envelope: { result: "Leitura" }, finalNextDecision: null
 });
 
+test('lotes da leitura compartilham o prazo total e não repetem escrita incompleta',async t=>{
+  t.mock.timers.enable({apis:['setTimeout','Date'],now:1_000_000});
+  let calls=0,lastSignal;
+  const value=adapter((_url,init)=>new Promise((resolve,reject)=>{
+    const request=JSON.parse(init.body);calls++;lastSignal=init.signal;
+    assert.ok(request.p_chunks.length<=128);
+    init.signal.addEventListener('abort',()=>reject(new DOMException('cancelled','AbortError')),{once:true});
+    setTimeout(()=>resolve(json({readId:PART_ID,digest:'b'.repeat(64),total:request.p_total,
+      received:request.p_start+request.p_chunks.join('').length,ready:request.p_ordinal>1})),30_000);
+  }),{attempts:3});
+  const pending=value.savePreparedHumanRead({...preparedSaveRequest526(),chunks:Array(129).fill('a'.repeat(12000))});
+  const rejected=assert.rejects(pending,e=>e.status===503&&e.code==='service_timeout');
+  t.mock.timers.tick(30_000);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(calls,2);
+  t.mock.timers.tick(9_999);assert.equal(lastSignal.aborted,false);
+  t.mock.timers.tick(1);await rejected;
+  assert.equal(calls,2,'a later batch cannot receive a fresh 40-second budget or retry');
+});
+
 test("#526 persistência preparada conclui depois do timeout curto dentro do orçamento", async t => {
   t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
   let calls = 0;
@@ -4691,7 +4711,7 @@ test("#526 persistência preparada conclui depois do timeout curto dentro do or�
   const value = adapter((_url, init) => new Promise((resolve, reject) => {
     calls += 1;
     init.signal.addEventListener("abort", () => reject(new DOMException("cancelled", "AbortError")), { once: true });
-    setTimeout(() => resolve(json(saved)), 9_000);
+    setTimeout(() => resolve(json({ ...saved, received: 7, ready: true })), 9_000);
   }), { attempts: 3 });
   const pending = value.savePreparedHumanRead({ ...preparedSaveRequest526(), deadlineAt: Date.now() + 30_000 });
   t.mock.timers.tick(9_000);
