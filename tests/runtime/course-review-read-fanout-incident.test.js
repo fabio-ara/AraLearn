@@ -11,6 +11,7 @@ import { AuthoringApiError, readDependencyDiagnostic, withDependencyDiagnostic }
   from "../../supabase/functions/_shared/aralearn-authoring/errors.js";
 import { defaultAuthoringProcessPreferences } from "../../src/domain/authoringProcessPreferences.js";
 import { normalizeMicrosequenceExplanation } from "../../src/domain/courseExplanation.js";
+import { preparedReadDatabase } from "../support/preparedHumanReadPglite.js";
 
 const UNIT_COUNT = 47;
 const COURSE = Object.freeze({ id: "1a000000-0000-4000-8000-000000000001", revision: 41 });
@@ -224,6 +225,34 @@ function createAdapter({ unitCount = UNIT_COUNT, unitSize = 1500, multibyte = fa
   };
   return { adapter, calls, units };
 }
+
+test("revisão formal persistida mantém bases e bytes entre adapters sem repetir fontes/inspeções/plano", async () => {
+  const sql = await preparedReadDatabase({ courseId: COURSE.id, actorId: PRINCIPAL.actorId, revision: COURSE.revision });
+  try {
+    const original = createAdapter({ unitCount: 1, unitSize: 80_000, reviewProjection: "lean" });
+    const baseline = await readAll(original.adapter, { curso: TITLE, unidades: [1], auditoria: true });
+    const fixture = createAdapter({ unitCount: 1, unitSize: 80_000, reviewProjection: "lean" });
+    const firstAdapter = Object.assign(sql.adapter(), fixture.adapter);
+    const args = { curso: TITLE, unidades: [1], auditoria: true };
+    let response = await executeHumanCourseTask({ adapter: firstAdapter, principal: PRINCIPAL,
+      name: "preparar_revisao", rawArguments: args }), literal = "", count = 0;
+    const initialCalls = structuredClone(fixture.calls);
+    while (true) {
+      literal += response.context.fragmento.texto; count++;
+      if (!response.context.temMais) break;
+      const before = sql.calls.length;
+      response = await executeHumanCourseTask({ adapter: sql.adapter(), principal: PRINCIPAL,
+        name: "preparar_revisao", rawArguments: { ...args, continuacao: response.context.continuacao } });
+      assert.equal(sql.calls.length, before + 1);
+      assert.equal(sql.calls.at(-1).name, "read_prepared_course_read_for_actor_v1");
+    }
+    assert.ok(count > 5);
+    assert.deepEqual(fixture.calls, initialCalls);
+    assert.ok(initialCalls.inspections.length > 0);
+    assert.equal(fixture.adapter.totals.reviewPlans, 1);
+    assert.deepEqual(JSON.parse(literal), baseline.pages[0]);
+  } finally { await sql.db.close(); }
+});
 
 function configureReviewPageScope(adapter, units, microsequences, { unitMicrosequenceIds = [], partUnitIds = [],
   partMicrosequenceIds = microsequences.map(item => item.id) } = {}) {

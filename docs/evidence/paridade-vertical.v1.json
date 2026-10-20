@@ -1277,13 +1277,18 @@
           "flat-runtime-manifest-v1",
           "course-business-conflicts-http-409-v1",
           "oauth-only-authoring-mcp",
-          "gpt-actions-openapi-v1"
+          "gpt-actions-openapi-v1",
+          "durable-prepared-human-reads-v1"
         ],
         "databasePatterns": [
           "^function:private\\.(?:request_role|require_service_role)\\(\\)$",
           "^function:public\\.aralearn_mcp_access_token_hook\\(.*\\)$",
           "^(?:table|constraint|index|rls):private\\.authoring_action_oauth_(?:clients|authorizations|tokens)(?:[/=].*)?$",
-          "^function:public\\.(?:approve|create|deny|exchange|get|link|resolve)_authoring_action_oauth_.+\\(.*\\)$"
+          "^function:public\\.(?:approve|create|deny|exchange|get|link|resolve)_authoring_action_oauth_.+\\(.*\\)$",
+          "^(?:table|constraint|index|rls):private\\.course_prepared_read(?:s|_chunks|_generations)(?:[/=].*)?$",
+          "^function:private\\.(?:invalidate|cleanup)_prepared_course_reads_v1\\(\\)$",
+          "^function:public\\.(?:get_prepared_course_read_stamp|save_prepared_course_read|read_prepared_course_read)_for_actor_v1\\(.*\\)$",
+          "^trigger:(?:public|private)\\.[a-z_]+/course_prepared_read_(?:invalidation|truncate|catalog_invalidation)$"
         ]
       },
       "routes": [
@@ -1302,6 +1307,10 @@
         {
           "path": "supabase/functions/_shared/aralearn-authoring/courseHumanTaskExecutor.js",
           "token": "executeTrustedCourseWrite"
+        },
+        {
+          "path": "supabase/functions/_shared/aralearn-authoring/coursePreparedHumanRead.js",
+          "token": "openPreparedHumanRead"
         }
       ],
       "tests": [
@@ -1315,7 +1324,8 @@
         "tests/runtime/course-human-design-tasks.test.js",
         "tests/runtime/course-human-structure-tasks.test.js",
         "tests/runtime/course-human-access-tasks.test.js",
-        "tests/runtime/course-trusted-write-recovery.test.js"
+        "tests/runtime/course-trusted-write-recovery.test.js",
+        "tests/runtime/course-prepared-human-read-pglite.test.js"
       ],
       "justification": "Aplicativo, MCP e Actions usam os mesmos casos de uso humanos sobre o Curso vivo. MCP mantém seu transporte e principal OAuth; Actions projeta as mesmas tarefas do catálogo compartilhado em HTTP/OpenAPI, sem expor o mecanismo interno nem criar segundo motor de autoria. O catálogo 5.0.0 contém 56 tarefas e mantém argumentos de referência e delta tipados. MCP e Actions conservam provas operacionais próprias; schemas, HTTP com fixtures e inventário local não substituem conversas naturais nem o gate hospedado."
     },

@@ -21,6 +21,14 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261020005726 — continuações de leitura entre instâncias
+
+Exportação e revisão guardam temporariamente a página literal preparada no PostgreSQL. Cada continuação lê somente dois trechos adjacentes, mesmo quando outra instância da função remota atende ao pedido. A identidade opaca liga ator, consulta, revisão, página e hash; a função confirma a permissão atual, a versão das observações e a geração dos dados e a seleção textual pelos títulos próprios antes de devolver qualquer trecho. Triggers invalidam a preparação quando mudam conteúdo, planejamento, parâmetros, fontes, mídia ou observações, inclusive sem avanço da revisão do curso.
+
+O armazenamento é privado, inacessível diretamente aos papéis de cliente, limitado a quatro leituras por ator, dezesseis no total e 96 MiB de texto UTF-8 vivo. Cada leitura expira em uma hora. A limpeza executa a cada quinze minutos e ao preparar outra leitura; excluir o curso ou a conta remove os trechos por cascade. Esses limites descrevem texto vivo, não o tamanho físico do banco com índices, compressão e versões mortas. A continuação expirada ou invalidada pede reiniciar a consulta e não remonta o curso silenciosamente.
+
+Os offsets continuam em unidades UTF-16 e os fragmentos preservam pares substitutos, JSON literal, bases de inspeção, links e decisões. Uma nova página lógica recebe outra preparação. Referências formais mantêm a validação corrente de acesso e hash da base; armazenar o texto não certifica leitura nem qualidade pedagógica. Não há mudança da interface nem do conteúdo dos cursos. Alterações futuras incompatíveis na projeção devem avançar a versão de representação em coursePreparedHumanRead.js.
+
 ## 20261019232352 — resolução de parâmetros por escopo
 
 A leitura dos parâmetros pedagógicos restringe as atribuições consultadas aos escopos do caminho curricular e reaproveita a expansão do snapshot durante a mesma resolução. Um índice por curso, tipo e referência de escopo evita percorrer todas as atribuições do curso para cada unidade durante análises e exportações extensas.

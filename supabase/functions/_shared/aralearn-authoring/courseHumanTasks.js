@@ -1,3 +1,5 @@
+import { openPreparedHumanRead, presentPersistedHumanRead } from './coursePreparedHumanRead.js';
+import { prepareHumanReadContextLiteral } from './courseHumanReadContext.js';
 import { AuthoringApiError } from "./errors.js";
 import {
   COURSE_AUTHORING_ALIGNMENT_GUIDANCE,
@@ -1662,7 +1664,9 @@ export async function executeHumanCourseTask({
   }
   const args = assertTaskArguments(name, rawArguments);
   try {
-    const output = await HUMAN_TASK_HANDLERS[name]({
+    const preparedRead = await openPreparedHumanRead({ adapter, principal, name, args, deadlineAt });
+    const output = preparedRead?.response ?? await HUMAN_TASK_HANDLERS[name]({
+      preparedRead,
       adapter,
       principal,
       args,
@@ -3694,11 +3698,11 @@ async function reusedPreparedReviewPage({ adapter, principal, args, identity, co
 
 // Um único caminho de apresentação: o recorte reutilizado e o recorte recém-lido
 // entregam o mesmo objeto de contexto ao mesmo paginador.
-async function presentPreparedReviewPage({ adapter, auditoria, resolved, continuation, unitPage,
+async function presentPreparedReviewPage({ adapter, principal, preparedRead = null, deadlineAt, auditoria, resolved, continuation, unitPage,
   reviewMicrosequences, contextObject, coverage }) {
   const context = await paginateHumanReadContext(contextObject, { state: continuation,
     nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null });
-  return result("Preparei este recorte da revisão sem aplicar mudanças.", {
+  const presented = result("Preparei este recorte da revisão sem aplicar mudanças.", {
     deepLink: courseDeepLink(adapter, resolved.course, "content", unitPage.items.length
       ? [["studyUnitId", unitPage.items[0].studyUnit.id]] : reviewMicrosequences.length
         ? [["explanationId", reviewMicrosequences[0].id]] : []),
@@ -3714,10 +3718,20 @@ async function presentPreparedReviewPage({ adapter, auditoria, resolved, continu
         : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer.",
     context
   });
+  if (preparedRead && context.fragmento) {
+    const { context: ignored, ...envelope } = presented;
+    void ignored;
+    return presentPersistedHumanRead({ adapter, principal, preparedRead, deadlineAt,
+      prepared: await prepareHumanReadContextLiteral(contextObject), state: continuation,
+      nextPage: unitPage.hasMore ? unitPage.nextCursor.studyUnitId : null,
+      envelope, finalNextDecision: auditoria ? reviewAuditNextDecision(coverage)
+        : "Para a inspeção pedagógica formal, releia este recorte com auditoria: true e só então registre o parecer." });
+  }
+  return presented;
 }
 
 HUMAN_TASK_HANDLERS.preparar_revisao = async ({
-  adapter, principal, args, deadlineAt
+  adapter, principal, args, deadlineAt, preparedRead = null
 }) => {
   if (args.resumo === true) return await prepareInspectionTriage({ adapter, principal, args, deadlineAt });
   if (args.resumo !== undefined && typeof args.resumo !== "boolean") {
@@ -3779,7 +3793,7 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   // Reuso e materialização compartilham a resolução acima. O fragmento confirma a
   // projeção estrutural e a página por digest, sem reavaliar a revisão global de cada
   // microssequência; o material de observações, inspeção e Fontes fica por página.
-  const reused = await reusedPreparedReviewPage({ adapter, principal, args, identity, continuation,
+  const reused = preparedRead ? null : await reusedPreparedReviewPage({ adapter, principal, args, identity, continuation,
     resolved, unitPage, reviewMicrosequences, units, deadlineAt });
   if (reused) return reused;
   // O recorte é guardado com a versão do conjunto de observações que ele mesmo leu: o
@@ -3808,7 +3822,7 @@ HUMAN_TASK_HANDLERS.preparar_revisao = async ({
   })));
   const { contextObject, coverage } = reviewPageContext({ args, selected: units.length > 0, resolved,
     continuation, unitPage, observations, explanations, studyUnits, reviewMicrosequences });
-  const page = await presentPreparedReviewPage({ adapter, auditoria, resolved, continuation, unitPage,
+  const page = await presentPreparedReviewPage({ adapter, principal, preparedRead, deadlineAt, auditoria, resolved, continuation, unitPage,
     reviewMicrosequences, contextObject, coverage });
   // Só a página que precisou de fragmento se beneficia do reuso, e o que fica guardado é o
   // material de auditoria por alvo. Plano e página de unidades ficam como resumo e são

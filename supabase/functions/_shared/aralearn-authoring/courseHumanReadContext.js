@@ -28,6 +28,8 @@ function decode(value) {
       Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), character => character.charCodeAt(0))));
   } catch { fail('A continuação da consulta é inválida. Repita a consulta inicial.'); }
 }
+export function decodeHumanReadContinuation(value) { return decode(value); }
+export function encodeHumanReadContinuation(value) { return encode(value); }
 export async function openHumanReadContinuation({ args, course, task, queryContext = undefined }) {
   const query = Object.fromEntries(Object.entries(args).filter(([key]) => key !== 'continuacao')
     .sort(([left], [right]) => left.localeCompare(right)));
@@ -80,27 +82,44 @@ export async function paginatePreparedHumanReadLiteral(prepared, { state, nextPa
       !/^[a-f0-9]{64}$/u.test(prepared.digest)) {
     fail('O literal preparado para continuação é inválido. Recomece a consulta.');
   }
-  const next = nextPage === null ? null : encode({ ...state, p: nextPage, o: 0, h: null });
+  const { s: preparedId, ...pageState } = state;
+  const next = nextPage === null ? null : encode({ ...pageState, p: nextPage, o: 0, h: null });
+  // A prepared identity belongs to one logical page, never to the next page.
+  void preparedId;
   const { literal, digest } = prepared;
-  if (state.o >= literal.length || state.h !== null && state.h !== digest) {
+  const start = prepared.start ?? 0, total = prepared.total ?? literal.length;
+  if (state.o < start || state.o >= total || state.h !== null && state.h !== digest) {
     fail('O conteúdo da consulta mudou. Recomece para não combinar trechos diferentes.', 409);
   }
   const fragment = end => ({
     fragmento: { formato: 'application/json', inicio: state.o, fim: end,
-      total: literal.length, texto: literal.slice(state.o, end) },
-    continuacao: end === literal.length ? next : encode({ ...state, o: end, h: digest }),
-    temMais: end < literal.length || next !== null
+      total, texto: literal.slice(state.o - start, end - start) },
+    continuacao: end === total ? next : encode({ ...state, o: end, h: digest }),
+    temMais: end < total || next !== null
   });
-  let low = state.o + 1, high = Math.min(literal.length, state.o + MAX_CONTEXT_CHARACTERS), end = state.o;
+  let low = state.o + 1, high = Math.min(total, start + literal.length, state.o + MAX_CONTEXT_CHARACTERS), end = state.o;
   while (low <= high) {
     const middle = Math.floor((low + high) / 2);
     if (fits(fragment(middle))) { end = middle; low = middle + 1; }
     else high = middle - 1;
   }
   // Offsets count UTF-16 units; never divide a Unicode surrogate pair.
-  if (end < literal.length && /[\uD800-\uDBFF]/u.test(literal[end - 1])) end--;
+  if (end < total && /[\uD800-\uDBFF]/u.test(literal[end - start - 1])) end--;
   if (end <= state.o) fail('O recorte não cabe na consulta. Escolha uma unidade específica.');
   return fragment(end);
+}
+
+// Only server-authorized persisted windows use this entry point. The full digest
+// is bound by the database; it is not a hash of this small window.
+export function preparePersistedHumanReadWindow({ text, start, total, digest }) {
+  if (typeof text !== 'string' || !text.length || text.length > 24_000 ||
+      !Number.isSafeInteger(start) || start < 0 || !Number.isSafeInteger(total) ||
+      total < start + text.length || !/^[a-f0-9]{64}$/u.test(digest)) {
+    fail('A janela da leitura preparada é inválida. Recomece a consulta.');
+  }
+  const prepared = Object.freeze({ literal: text, start, total, digest });
+  preparedLiterals.add(prepared);
+  return prepared;
 }
 export async function paginateHumanReadContext(context, { state, nextPage = null, escapeNonbreakingHyphen = false }) {
   const next = nextPage === null ? null : encode({ ...state, p: nextPage, o: 0, h: null });

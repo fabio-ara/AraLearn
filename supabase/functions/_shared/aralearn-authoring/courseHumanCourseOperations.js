@@ -7,6 +7,7 @@ import { COURSE_AUTHORING_EXPORT_CONTRACT, normalizeCourseAuthoringComparison,
   normalizeCourseAuthoringExport, isValidatedCourseAuthoringExport,
   serializeCourseAuthoringExport, takeSerializedCourseAuthoringExport } from "../aralearn/runtime/domain/courseAuthoringComparison.js";
 import { createHumanNavigation, buildHumanNavigationEnvelope } from "./courseHumanNavigation.js";
+import { presentPersistedHumanRead } from "./coursePreparedHumanRead.js";
 
 const fail = message => { throw new AuthoringApiError(422, "invalid_human_course_operation", message); };
 const MAX_CACHED_EXPORT_LITERAL_CHARACTERS = 12 * 1024 * 1024;
@@ -124,7 +125,7 @@ function assertSelectedExport(value, selected) {
     throw new AuthoringApiError(503, "course_service_unavailable", "A exportação não corresponde à edição e ao recorte selecionados.");
   }
 }
-export async function exportHumanCourse({ adapter, principal, args, deadlineAt }) {
+export async function exportHumanCourse({ adapter, principal, args, deadlineAt, preparedRead = null }) {
   const selected = await selection(adapter, principal, args.recorte, deadlineAt);
   const annotationSetVersion = await readExportAnnotationSetVersion(adapter, principal, selected, deadlineAt);
   const state = await openHumanReadContinuation({ args, task: "exportar_autoria",
@@ -132,7 +133,7 @@ export async function exportHumanCourse({ adapter, principal, args, deadlineAt }
     queryContext: { annotationSetVersion } });
   const cacheIdentity = humanExportCacheIdentity(principal, selected, state);
   const cacheKey = humanExportCacheKey(principal, selected, state, annotationSetVersion);
-  let prepared = reusedHumanExport(adapter, cacheIdentity, cacheKey, state);
+  let prepared = preparedRead ? null : reusedHumanExport(adapter, cacheIdentity, cacheKey, state);
   if (!prepared) {
     {
       let exported = await adapter.getCourseAuthoringExport({ principal, ...selected, deadlineAt });
@@ -160,11 +161,13 @@ export async function exportHumanCourse({ adapter, principal, args, deadlineAt }
       throw new AuthoringApiError(409, "human_read_context_changed", "As observações mudaram durante a exportação. Recomece a consulta.");
     }
   }
+  const envelope = { result: "Preparei a exportação literal do artefato e da leitura autoral; continue até receber todos os trechos.",
+    ...buildHumanNavigationEnvelope(selectedContentLink(adapter, selected)), nextDecision: null };
+  if (preparedRead) return presentPersistedHumanRead({ adapter, principal, preparedRead, prepared,
+    state, envelope, deadlineAt });
   const context = await paginatePreparedHumanReadLiteral(prepared, { state });
   if (!humanExportCache.has(adapter) || humanExportCache.get(adapter)?.key !== cacheKey) {
     rememberHumanExport(adapter, cacheIdentity, cacheKey, prepared);
   }
-  return { result: "Preparei a exportação literal do artefato e da leitura autoral; continue até receber todos os trechos.",
-    ...buildHumanNavigationEnvelope(selectedContentLink(adapter, selected)),
-    context };
+  return { ...envelope, context };
 }

@@ -1949,6 +1949,27 @@ export class CourseSupabaseAdapter {
     }, { errorDomain: "course_admin", ...options, dependencyRpc: closedAuthoringRpcName(functionName) });
   }
 
+  async getPreparedHumanReadStamp({ principal, courseId, expectedRevision, deadlineAt }) {
+    return first(await this.rpc('get_prepared_course_read_stamp_for_actor_v1', {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision
+    }, { deadlineAt, responseLimitBytes: 4096 }));
+  }
+
+  async savePreparedHumanRead({ principal, readId, stamp, requestHash, digest, state,
+    chunks, nextPage, envelope, finalNextDecision, deadlineAt }) {
+    return first(await this.rpc('save_prepared_course_read_for_actor_v1', {
+      p_actor_id: principal.actorId, p_read_id: readId, p_stamp: stamp,
+      p_request_hash: requestHash, p_digest: digest, p_state: state, p_chunks: chunks,
+      p_next_page: nextPage, p_envelope: envelope, p_final_next_decision: finalNextDecision
+    }, { deadlineAt, responseLimitBytes: 4096, retry: false }));
+  }
+
+  async readPreparedHumanRead({ principal, readId, requestHash, state, deadlineAt }) {
+    return first(await this.rpc('read_prepared_course_read_for_actor_v1', {
+      p_actor_id: principal.actorId, p_read_id: readId, p_request_hash: requestHash, p_state: state
+    }, { deadlineAt, responseLimitBytes: 160 * 1024 }));
+  }
+
   async #userForJwt(jwt, { deadlineAt = null } = {}) {
     const user = await this.#request(`${this.supabaseUrl}/auth/v1/user`, {
       method: "GET",
