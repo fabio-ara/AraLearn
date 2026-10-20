@@ -135,7 +135,7 @@ export const choiceReturnFixtures = Object.freeze({
   }
 });
 
-export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, citationOccurrences = null, includeAudio = false, tools = "authored", practiceKind = "choice" } = {}) {
+export async function mountStudyExplanationFixture(root, { unit = "theory", state = "available", theme = "light", resourceContent = null, practiceResponse = null, practiceFeedback = null, citationOccurrences = null, includeAudio = false, tools = "authored", practiceKind = "choice" } = {}) {
   // O parâmetro anchors habilita as citações da unidade e as âncoras dentro do retorno
   // autoral da alternativa marcada, sem depender de opção passada por código.
   const anchorOccurrences = new URLSearchParams(globalThis.location?.search || "").has("anchors");
@@ -204,6 +204,7 @@ export async function mountStudyExplanationFixture(root, { unit = "theory", stat
     practice.content = structuredClone(fixture.content);
     practice.response = structuredClone(fixture.response);
   }
+  if (Array.isArray(practiceFeedback)) practice.feedback = structuredClone(practiceFeedback);
   if (resourceContent) {
     theory.content = structuredClone(resourceContent);
     practice.content = structuredClone(resourceContent);

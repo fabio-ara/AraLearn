@@ -5542,6 +5542,11 @@ button.account-settings-back[hidden] {
   padding-right: 6px;
 }
 
+.microsequence-workbench-screen .study-continue-popup-body {
+  margin-right: -6px;
+  padding-right: 6px;
+}
+
 @media (max-width: 430px) {
 
   .navigation-topbar {
