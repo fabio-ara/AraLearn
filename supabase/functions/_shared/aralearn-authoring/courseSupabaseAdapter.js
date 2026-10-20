@@ -1957,11 +1957,31 @@ export class CourseSupabaseAdapter {
 
   async savePreparedHumanRead({ principal, readId, stamp, requestHash, digest, state,
     chunks, nextPage, envelope, finalNextDecision, deadlineAt }) {
-    return first(await this.rpc('save_prepared_course_read_for_actor_v1', {
-      p_actor_id: principal.actorId, p_read_id: readId, p_stamp: stamp,
-      p_request_hash: requestHash, p_digest: digest, p_state: state, p_chunks: chunks,
-      p_next_page: nextPage, p_envelope: envelope, p_final_next_decision: finalNextDecision
-    }, { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 4096, retry: false }));
+    if (!Array.isArray(chunks) || !chunks.length) {
+      throw new AuthoringApiError(422, 'invalid_prepared_read', 'Fragmentos da leitura preparada inválidos.');
+    }
+    const encoder = new TextEncoder();
+    const saveDeadlineAt = Math.min(deadlineAt ?? Infinity, Date.now() + 40_000);
+    const total = chunks.reduce((sum, chunk) => sum + (typeof chunk === 'string' ? chunk.length : 0), 0);
+    const byteSize = chunks.reduce((sum, chunk) => sum + (typeof chunk === 'string' ? encoder.encode(chunk).length : 0), 0);
+    let start = 0;
+    let saved;
+    for (let index = 0; index < chunks.length; index += 128) {
+      const batch = chunks.slice(index, index + 128);
+      const end = start + batch.reduce((sum, chunk) => sum + (typeof chunk === 'string' ? chunk.length : 0), 0);
+      saved = first(await this.rpc('save_prepared_course_read_batch_for_actor_v1', {
+        p_actor_id: principal.actorId, p_read_id: readId, p_stamp: stamp,
+        p_request_hash: requestHash, p_digest: digest, p_state: state, p_chunks: batch,
+        p_next_page: nextPage, p_envelope: envelope, p_final_next_decision: finalNextDecision,
+        p_total: total, p_byte_size: byteSize, p_start: start, p_ordinal: index + 1
+      }, { deadlineAt: saveDeadlineAt, timeoutMs: 40_000, responseLimitBytes: 4096, retry: false }));
+      if (saved?.readId !== readId || saved.digest !== digest || saved.total !== total ||
+          saved.received !== end || saved.ready !== (index + batch.length === chunks.length)) {
+        throw new AuthoringApiError(503, 'course_service_unavailable', 'A preparação não corresponde à leitura solicitada.');
+      }
+      start = end;
+    }
+    return { readId: saved.readId, digest: saved.digest, total: saved.total };
   }
 
   async readPreparedHumanRead({ principal, readId, requestHash, state, deadlineAt }) {

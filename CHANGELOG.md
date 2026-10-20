@@ -12,6 +12,7 @@ explica os termos usados na implementação atual.
 ### Corrigido
 
 - A barra de rolagem do estudo deixa espaço para o texto em telas móveis, preservando a largura do conteúdo, o alinhamento e a geometria dos controles. (#532)
+- Leituras extensas são transferidas para o banco em lotes limitados e só ficam disponíveis após a verificação integral do texto; interrupções preservam os limites de armazenamento e não expõem conteúdo parcial.
 
 - A preparação de leituras extensas evita materializações repetidas no banco, mantendo a ordem dos trechos, o texto integral e as verificações de acesso e integridade.
 - A preparação de exportações e revisões extensas utiliza o orçamento restante da operação para salvar a leitura, sem interrupção antecipada pelo prazo de consultas curtas nem repetição automática da escrita. (#526)

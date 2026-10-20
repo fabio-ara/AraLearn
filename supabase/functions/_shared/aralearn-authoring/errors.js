@@ -17,7 +17,7 @@ export class AuthoringApiError extends Error {
 // focais exercitam alguns desses nomes, não a lista inteira.
 const AUTHORING_RPC_NAMES = new Set([
   "get_prepared_course_read_stamp_for_actor_v1",
-  "save_prepared_course_read_for_actor_v1",
+  "save_prepared_course_read_batch_for_actor_v1",
   "read_prepared_course_read_for_actor_v1",
   "apply_course_authoring_profile_for_actor_v1",
   "apply_course_design_command_batch_for_actor_v3",
