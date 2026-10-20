@@ -21,6 +21,14 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261020045119 — contagem eficiente de offsets UTF-16
+
+A gravação da leitura preparada valida o total de unidades UTF-16 e calcula os
+offsets cumulativos dos trechos com a mesma regra. A função SQL conta diretamente
+os caracteres suplementares, evitando a substituição regex aplicada a cada
+string; offsets, literalidade Unicode, limites dos trechos e demais validações
+permanecem iguais.
+
 ## 20261020005726 — continuações de leitura entre instâncias
 
 Exportação e revisão guardam temporariamente a página literal preparada no PostgreSQL. Cada continuação lê somente dois trechos adjacentes, mesmo quando outra instância da função remota atende ao pedido. A identidade opaca liga ator, consulta, revisão, página e hash; a função confirma a permissão atual, a versão das observações e a geração dos dados e a seleção textual pelos títulos próprios antes de devolver qualquer trecho. Triggers invalidam a preparação quando mudam conteúdo, planejamento, parâmetros, fontes, mídia ou observações, inclusive sem avanço da revisão do curso.
