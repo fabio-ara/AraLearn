@@ -27,10 +27,11 @@ select throws_ok($q$select public.get_prepared_course_read_stamp_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000101',
   (select (stamp->>'revision')::bigint+1 from prepared_fixture))$q$,'PT409',
   'O curso mudou; recomece a leitura.','carimbo obsoleto usa conflito de aplicação');
-select is(public.save_prepared_course_read_for_actor_v1(
+select is(public.save_prepared_course_read_batch_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000201',
   stamp,repeat('a',64),digest,state,jsonb_build_array(literal),null,
-  '{"result":"Leitura","deepLink":null,"links":[],"nextDecision":null}',null)->>'digest',digest,
+  '{"result":"Leitura","deepLink":null,"links":[],"nextDecision":null}',null,
+  char_length(literal)+3,octet_length(literal),0,1)->>'digest',digest,
   'o SQL verifica o hash real dos bytes guardados') from prepared_fixture;
 update prepared_fixture set state=state||jsonb_build_object('s','52410000-0000-4000-8000-000000000201','o',1,'h',digest);
 select is(public.read_prepared_course_read_for_actor_v1(
@@ -45,16 +46,23 @@ select ok(not has_table_privilege('authenticated','private.course_prepared_reads
 select ok(not has_function_privilege('authenticated','public.read_prepared_course_read_for_actor_v1(uuid,uuid,text,jsonb)','EXECUTE') and
   has_function_privilege('service_role','public.read_prepared_course_read_for_actor_v1(uuid,uuid,text,jsonb)','EXECUTE'),
   'somente o serviço chama a fronteira autorizada');
+select ok(not has_function_privilege('authenticated','public.save_prepared_course_read_batch_for_actor_v1(uuid,uuid,jsonb,text,text,jsonb,jsonb,text,jsonb,text,integer,integer,integer,integer)','EXECUTE') and
+  not has_function_privilege('anon','public.save_prepared_course_read_batch_for_actor_v1(uuid,uuid,jsonb,text,text,jsonb,jsonb,text,jsonb,text,integer,integer,integer,integer)','EXECUTE') and
+  has_function_privilege('service_role','public.save_prepared_course_read_batch_for_actor_v1(uuid,uuid,jsonb,text,text,jsonb,jsonb,text,jsonb,text,integer,integer,integer,integer)','EXECUTE'),
+  'o lote tem a mesma fronteira exclusiva do serviço');
+select ok(to_regprocedure('public.save_prepared_course_read_for_actor_v1(uuid,uuid,jsonb,text,text,jsonb,jsonb,text,jsonb,text)') is null,
+  'o caminho de requisição integral foi retirado');
 update public.courses set annotation_set_version=annotation_set_version+1
 where id='52410000-0000-4000-8000-000000000101';
 select throws_ok($q$select public.read_prepared_course_read_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000201',repeat('a',64),
   (select state from prepared_fixture))$q$,'PT409',
   'A leitura preparada expirou ou mudou; recomece a consulta.','observação invalida sem remontar o curso');
-select throws_ok($q$select public.save_prepared_course_read_for_actor_v1(
+select throws_ok($q$select public.save_prepared_course_read_batch_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000202',
   stamp,repeat('a',64),digest,state-'s'||jsonb_build_object('o',0,'h',null),jsonb_build_array(literal),null,
-  '{"result":"Leitura","deepLink":null,"links":[],"nextDecision":null}',null) from prepared_fixture$q$,'PT409',
+  '{"result":"Leitura","deepLink":null,"links":[],"nextDecision":null}',null,
+  char_length(literal)+3,octet_length(literal),0,1) from prepared_fixture$q$,'PT409',
   'O conteúdo mudou durante a preparação; recomece a leitura.','gravação com carimbo obsoleto usa conflito de aplicação');
 update private.course_prepared_reads set expires_at=statement_timestamp()-interval '1 second'
 where id='52410000-0000-4000-8000-000000000201';

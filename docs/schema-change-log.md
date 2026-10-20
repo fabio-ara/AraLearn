@@ -21,6 +21,10 @@ v10](revisao-v10-estudo-implementacao.md) situa a publicação da versão 0.0.10
 Outros termos recorrentes estão no
 [glossário técnico](glossario-tecnico.md).
 
+## 20261020090110 — preparação em lotes limitados
+
+O salvamento transfere até 128 trechos por requisição e reserva o tamanho integral antes do primeiro lote. Leituras parciais permanecem inacessíveis até a conferência final do hash UTF-8. A mesma reserva contabiliza lotes interrompidos nos limites por conta e globais; expiração e exclusão em cascata removem seus trechos. Repetir um lote idêntico não duplica dados; sobreposições, lacunas e mudanças de metadados são recusadas. O método do adapter mantém seu contrato e prazo total, e a RPC que recebia o corpo inteiro foi retirada.
+
 ## 20261020081444 — menos materialização ao salvar leituras
 
 A validação percorre os trechos na ordem do array, calcula seus offsets UTF-16 uma vez e conserva as posições para a gravação. Isso remove a expansão materializada de JSON, a ordenação do agregado e a janela cumulativa do caminho de salvamento. O hash continua sendo calculado sobre o literal UTF-8 completo; tipos, limites, permissões, invalidação e retenção permanecem verificados. Não há alteração de conteúdo ou da interface.

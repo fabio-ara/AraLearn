@@ -1287,7 +1287,7 @@
           "^function:public\\.(?:approve|create|deny|exchange|get|link|resolve)_authoring_action_oauth_.+\\(.*\\)$",
           "^(?:table|constraint|index|rls):private\\.course_prepared_read(?:s|_chunks|_generations)(?:[/=].*)?$",
           "^function:private\\.(?:invalidate|cleanup)_prepared_course_reads_v1\\(\\)$",
-          "^function:public\\.(?:get_prepared_course_read_stamp|save_prepared_course_read|read_prepared_course_read)_for_actor_v1\\(.*\\)$",
+          "^function:public\\.(?:get_prepared_course_read_stamp|save_prepared_course_read_batch|read_prepared_course_read)_for_actor_v1\\(.*\\)$",
           "^trigger:(?:public|private)\\.[a-z_]+/course_prepared_read_(?:invalidation|truncate|catalog_invalidation)$"
         ]
       },
