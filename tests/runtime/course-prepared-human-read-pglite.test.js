@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { preparedReadDatabase, PREPARED_READ_TABLES } from '../support/preparedHumanReadPglite.js';
 import { openPreparedHumanRead, presentPersistedHumanRead } from '../../supabase/functions/_shared/aralearn-authoring/coursePreparedHumanRead.js';
 import { openHumanReadContinuation, prepareHumanReadContextLiteral } from '../../supabase/functions/_shared/aralearn-authoring/courseHumanReadContext.js';
@@ -193,5 +194,23 @@ test('reserva global despeja leituras antigas pelo total de bytes e rejeita dige
     await assert.rejects(fixture.adapter().savePreparedHumanRead({...request,digest:'0'.repeat(64),chunks:['invalid']}),e=>e.code==='22023');
     await assert.rejects(fixture.adapter().savePreparedHumanRead({...request,digest:first.prepared.digest,
       chunks:[first.prepared.literal]}),e=>e.code==='22023');
+    const literal=first.prepared.literal;
+    const validChunks=[literal.slice(0,12000),literal.slice(12000)];
+    // The digest still matches the string chunks, so rejecting these inputs
+    // depends on checking every item's type, including JSON null.
+    for(const invalid of [null,true,17,{},[]]){
+      await assert.rejects(fixture.adapter().savePreparedHumanRead({...request,
+        digest:first.prepared.digest,chunks:[invalid,...validChunks]}),e=>e.code==='22023');
+    }
+    // Both pieces fit individually and rejoin to the correct hash, but a
+    // non-final piece shorter than 11999 UTF-16 units is not admissible.
+    await assert.rejects(fixture.adapter().savePreparedHumanRead({...request,
+      digest:first.prepared.digest,chunks:[literal.slice(0,1100),literal.slice(1100)]}),e=>e.code==='22023');
+    const ordered=['a'.repeat(12000),'b'.repeat(12000)];
+    const digest=createHash('sha256').update(ordered.join('')).digest('hex');
+    await assert.rejects(fixture.adapter().savePreparedHumanRead({...request,
+      digest,chunks:[ordered[1],ordered[0]]}),e=>e.code==='22023');
+    assert.equal((await fixture.db.query('select 1 from private.course_prepared_reads where id=$1',
+      [request.readId])).rows.length,0,'invalid input never publishes a read');
   } finally {await fixture.db.close();}
 });
