@@ -116,7 +116,7 @@ begin
   from public.courses course join private.course_prepared_read_generations generation on generation.course_id=course.id
   where course.id=p_course_id;
   if (v_result->>'revision')::bigint is distinct from p_expected_revision then
-    raise exception 'O curso mudou; recomece a leitura.' using errcode='40001';
+    raise exception 'O curso mudou; recomece a leitura.' using errcode='PT409';
   end if;
   return v_result;
 end
@@ -156,7 +156,7 @@ begin
   perform 1 from private.course_prepared_read_generations where course_id=v_course_id for share;
   v_current:=public.get_prepared_course_read_stamp_for_actor_v1(p_actor_id,v_course_id,(p_stamp->>'revision')::bigint);
   if v_current is distinct from p_stamp then
-    raise exception 'O conteúdo mudou durante a preparação; recomece a leitura.' using errcode='40001';
+    raise exception 'O conteúdo mudou durante a preparação; recomece a leitura.' using errcode='PT409';
   end if;
   if p_read_id is null or p_request_hash is null or p_request_hash!~'^[0-9a-f]{64}$'
     or p_digest is null or p_digest!~'^[0-9a-f]{64}$'
@@ -217,7 +217,7 @@ begin
   perform private.require_service_role();
   select * into v_read from private.course_prepared_reads where id=p_read_id and actor_id=p_actor_id;
   if not found then
-    raise exception 'A leitura preparada expirou ou está indisponível; recomece a consulta.' using errcode='40001';
+    raise exception 'A leitura preparada expirou ou está indisponível; recomece a consulta.' using errcode='PT409';
   end if;
   perform private.require_course_access_v1(v_read.course_id,p_actor_id,true);
   v_current:=public.get_prepared_course_read_stamp_for_actor_v1(p_actor_id,v_read.course_id,v_read.revision);
@@ -230,7 +230,7 @@ begin
     or p_state->'r' is distinct from to_jsonb(v_read.revision) or p_state->'q' is distinct from v_read.state->'q'
     or p_state->'p' is distinct from v_read.state->'p' or p_state->>'h' is distinct from v_read.digest
     or v_offset is null or v_offset<1 or v_offset>=v_read.total then
-    raise exception 'A leitura preparada expirou ou mudou; recomece a consulta.' using errcode='40001';
+    raise exception 'A leitura preparada expirou ou mudou; recomece a consulta.' using errcode='PT409';
   end if;
   -- Two adjacent chunks cover a fragment without detoasting the full literal.
   select min(start_offset),string_agg(text_value,'' order by ordinal) into v_start,v_text

@@ -23,6 +23,10 @@ update prepared_fixture set digest=encode(extensions.digest(convert_to(literal,'
   state=jsonb_build_object('c',stamp->'courseId','r',stamp->'revision','q',repeat('b',64),'o',0,'h',null,'p',null);
 select is((select count(*) from private.course_prepared_read_generations
   where course_id='52410000-0000-4000-8000-000000000101'),1::bigint,'um curso novo recebe geração de invalidação');
+select throws_ok($q$select public.get_prepared_course_read_stamp_for_actor_v1(
+  '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000101',
+  (select (stamp->>'revision')::bigint+1 from prepared_fixture))$q$,'PT409',
+  'O curso mudou; recomece a leitura.','carimbo obsoleto usa conflito de aplicação');
 select is(public.save_prepared_course_read_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000201',
   stamp,repeat('a',64),digest,state,jsonb_build_array(literal),null,
@@ -45,11 +49,21 @@ update public.courses set annotation_set_version=annotation_set_version+1
 where id='52410000-0000-4000-8000-000000000101';
 select throws_ok($q$select public.read_prepared_course_read_for_actor_v1(
   '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000201',repeat('a',64),
-  (select state from prepared_fixture))$q$,'40001',
+  (select state from prepared_fixture))$q$,'PT409',
   'A leitura preparada expirou ou mudou; recomece a consulta.','observação invalida sem remontar o curso');
+select throws_ok($q$select public.save_prepared_course_read_for_actor_v1(
+  '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000202',
+  stamp,repeat('a',64),digest,state-'s'||jsonb_build_object('o',0,'h',null),jsonb_build_array(literal),null,
+  '{"result":"Leitura","deepLink":null,"links":[],"nextDecision":null}',null) from prepared_fixture$q$,'PT409',
+  'O conteúdo mudou durante a preparação; recomece a leitura.','gravação com carimbo obsoleto usa conflito de aplicação');
 update private.course_prepared_reads set expires_at=statement_timestamp()-interval '1 second'
 where id='52410000-0000-4000-8000-000000000201';
 select is(private.cleanup_prepared_course_reads_v1(),1::bigint,'limpeza remove a leitura expirada');
+select throws_ok($q$select public.read_prepared_course_read_for_actor_v1(
+  '52410000-0000-4000-8000-000000000001','52410000-0000-4000-8000-000000000201',repeat('a',64),
+  (select state from prepared_fixture))$q$,'PT409',
+  'A leitura preparada expirou ou está indisponível; recomece a consulta.','leitura removida pela expiração usa conflito de aplicação');
+
 select is((select count(*) from private.course_prepared_read_chunks
   where read_id='52410000-0000-4000-8000-000000000201'),0::bigint,'limpeza remove os trechos por cascade');
 select is((select command from cron.job where jobname='aralearn-prepared-read-retention-v1'),

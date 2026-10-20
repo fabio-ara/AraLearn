@@ -71,11 +71,11 @@ test('acesso, ator, argumentos e curso são conferidos novamente; cursor não au
   const fixture=await preparedReadDatabase({courseId,actorId});
   try {
     const {first}=await prepare(fixture); const token=first.context.continuacao;
-    await assert.rejects(resume(fixture,token,{principal:{...principal,actorId:otherId}}),e=>e.code==='40001');
-    await assert.rejects(resume(fixture,token,{args:{...args,curso:'Outro',continuacao:token}}),e=>e.code==='40001');
+    await assert.rejects(resume(fixture,token,{principal:{...principal,actorId:otherId}}),e=>e.code==='PT409');
+    await assert.rejects(resume(fixture,token,{args:{...args,curso:'Outro',continuacao:token}}),e=>e.code==='PT409');
     for(const patch of [{c:otherId},{r:8},{h:'0'.repeat(64)},{q:'0'.repeat(64)},{o:0},{p:'different'}]){
       const invalid=Buffer.from(JSON.stringify({...decode(token),...patch})).toString('base64url');
-      await assert.rejects(resume(fixture,invalid),e=>e.code==='40001'||e.code==='human_read_context_changed');
+      await assert.rejects(resume(fixture,invalid),e=>e.code==='PT409'||e.code==='human_read_context_changed');
     }
     await fixture.db.query('update public.courses set owner_id=$1 where id=$2',[otherId,courseId]);
     await assert.rejects(resume(fixture,token),e=>e.code==='42501');
@@ -94,13 +94,13 @@ test('fontes, corpos, plano, observações e parâmetros invalidam mesmo sem inc
         if(operation==='insert')await fixture.db.query(`insert into private.${table} values($1,'before')`,[courseId]);
         if(operation==='update')await fixture.db.query(`update private.${table} set payload='after' where course_id=$1`,[courseId]);
         if(operation==='delete')await fixture.db.query(`delete from private.${table} where course_id=$1`,[courseId]);
-        await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='40001',`${table}/${operation}`);
+        await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='PT409',`${table}/${operation}`);
       }
     }
     for(const sql of ["update public.courses set annotation_set_version=annotation_set_version+1",
       "insert into private.course_design_parameter_definitions values('new')",'truncate private.course_sources']){
       const {first}=await prepare(fixture,{value:{text:'x'.repeat(13_000)}});
-      await fixture.db.exec(sql);await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='40001');
+      await fixture.db.exec(sql);await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='PT409');
     }
     assert.equal((await fixture.db.query('select revision from public.courses')).rows[0].revision,7);
   } finally {await fixture.db.close();}
@@ -112,14 +112,14 @@ test('mudança durante preparo impede publicação; expiração/limite/remoção
     const prepared=await prepare(fixture,{value:{text:'x'.repeat(13_000)}});
     await fixture.db.exec("update public.courses set payload='changed'");
     await assert.rejects(presentPersistedHumanRead({adapter:fixture.adapter(),principal,...prepared,
-      envelope,finalNextDecision:null}),e=>e.code==='40001');
+      envelope,finalNextDecision:null}),e=>e.code==='PT409');
     const ids=[];
     for(let index=0;index<5;index++)ids.push(decode((await prepare(fixture,{value:{text:'x'.repeat(13_000)}})).first.context.continuacao).s);
     assert.equal((await fixture.db.query('select count(*)::int count from private.course_prepared_reads')).rows[0].count,4);
     assert.equal((await fixture.db.query('select 1 from private.course_prepared_read_chunks where read_id=$1',[ids[0]])).rows.length,0);
     const {first}=await prepare(fixture,{value:{text:'x'.repeat(13_000)}});
     await fixture.db.exec("update private.course_prepared_reads set expires_at=now()-interval '1 second'");
-    await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='40001');
+    await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='PT409');
     await fixture.db.exec('select private.cleanup_prepared_course_reads_v1()');
     assert.equal((await fixture.db.query('select count(*)::int count from private.course_prepared_read_chunks')).rows[0].count,0);
     const latest=await prepare(fixture);
@@ -139,7 +139,7 @@ test('novo curso com o mesmo título invalida a resolução textual anterior sem
     const before=(await fixture.db.query('select generation from private.course_prepared_read_generations where course_id=$1',[courseId])).rows[0].generation;
     await fixture.db.query('insert into public.courses(id,owner_id,revision) values($1,$2,1)',[otherId,actorId]);
     assert.equal((await fixture.db.query('select generation from private.course_prepared_read_generations where course_id=$1',[courseId])).rows[0].generation,before);
-    await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='40001');
+    await assert.rejects(resume(fixture,first.context.continuacao),e=>e.code==='PT409');
   } finally {await fixture.db.close();}
 });
 

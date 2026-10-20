@@ -4646,3 +4646,32 @@ test("lote de desenho envia comandos normalizados, lê recibo exato e preserva t
   }), error => error.status === 409 &&
     error.code === "course_design_recovery_mismatch");
 });
+
+
+test("leituras preparadas traduzem PT409 sem retentar nem expor detalhes do banco", async () => {
+  const cases = [
+    ["getPreparedHumanReadStamp", "get_prepared_course_read_stamp_for_actor_v1"],
+    ["savePreparedHumanRead", "save_prepared_course_read_for_actor_v1"],
+    ["readPreparedHumanRead", "read_prepared_course_read_for_actor_v1"]
+  ];
+  for (const [method, rpc] of cases) {
+    let calls = 0;
+    const value = adapter(async url => {
+      calls += 1;
+      assert.ok(url.endsWith('/rpc/' + rpc));
+      return json({ code: "PT409", message: "private.prepared-read-conflict" }, 409);
+    }, { attempts: 3 });
+    await assert.rejects(() => value[method]({
+      principal: { actorId: USER_ID }, courseId: COURSE_ID, expectedRevision: 7,
+      readId: PART_ID, stamp: { courseId: COURSE_ID, revision: 7 },
+      requestHash: "a".repeat(64), digest: "b".repeat(64), state: {},
+      chunks: ["literal"], nextPage: null, envelope: { result: "Leitura" }, finalNextDecision: null
+    }), error => {
+      assert.equal(error.status, 409);
+      assert.equal(error.code, "stale_course_state");
+      assert.equal(error.message.includes("private.prepared-read-conflict"), false);
+      return true;
+    });
+    assert.equal(calls, 1, method);
+  }
+});
