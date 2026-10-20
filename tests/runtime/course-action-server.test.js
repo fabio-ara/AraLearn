@@ -85,6 +85,10 @@ function adapterFixture(overrides = {}, scopes = ["authoring:read", "authoring:w
         }
       };
     },
+    async getCourseInstructionalRepertoire({ expectedRevision }) {
+      assert.equal(expectedRevision, 3);
+      return this.getCourseInstructionalPlan();
+    },
     ...overrides
   };
 }

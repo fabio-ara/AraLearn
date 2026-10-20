@@ -2350,6 +2350,27 @@ export class CourseSupabaseAdapter {
     return withDeepLink({ ...result, mapApprovalReference }, this.publicAppUrl, "planning");
   }
 
+  async getCourseInstructionalRepertoire({ principal, courseId, expectedRevision, deadlineAt = null }) {
+    if (!positiveSafeInteger(expectedRevision)) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "A revisão do repertório é inválida.");
+    }
+    const result = first(await this.rpc("get_owned_course_instructional_repertoire_for_actor_v1", {
+      p_actor_id: principal.actorId, p_course_id: courseId, p_expected_revision: expectedRevision
+    }, { deadlineAt, responseLimitBytes: 2 * 1024 * 1024 }));
+    if (!jsonRecord(result) || result.contract !== "aralearn.course-instructional-repertoire.v1" ||
+        result.courseId !== courseId || !positiveSafeInteger(result.courseRevision) ||
+        !jsonRecord(result.plan) || !positiveSafeInteger(result.plan.version) ||
+        !jsonRecord(result.plan.curriculum) || !Array.isArray(result.plan.curriculum.modules) ||
+        !Array.isArray(result.plan.parts) || !Array.isArray(result.plan.curriculumScopeItems) ||
+        !Array.isArray(result.plan.instructionalAnalysisUnits) || !Array.isArray(result.plan.evidenceRequirements)) {
+      throw new AuthoringApiError(503, "course_service_unavailable", "O serviço devolveu um repertório inválido.");
+    }
+    if (result.courseRevision !== expectedRevision) {
+      throw new AuthoringApiError(409, "course_revision_conflict", "O curso mudou durante a leitura do repertório.");
+    }
+    return withDeepLink(result, this.publicAppUrl, "planning");
+  }
+
   async getCourseReviewPlan({
     principal,
     courseId,

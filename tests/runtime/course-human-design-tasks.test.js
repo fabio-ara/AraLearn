@@ -49,6 +49,10 @@ function harness({ lost = false, pending = false, drift = false, denied = false,
   adapter.listCourses = async () => ({ items: [{ courseId, title: "Curso" }], hasMore: false });
   adapter.getCourse = async () => ({ courseId, title: "Curso", revision });
   adapter.getCourseInstructionalPlan = async () => { reads.push(revision); return { courseId, courseRevision: revision, plan: structuredClone(plan) }; };
+  adapter.getCourseInstructionalRepertoire = async ({ expectedRevision }) => {
+    assert.equal(expectedRevision, revision);
+    return { courseId, courseRevision: revision, plan: structuredClone(plan) };
+  };
   adapter.listCourseStudyUnits = async () => ({ items: [{ ordinal: 1, version: 4, studyUnit: { id: "unit", title: "Interações" },
     authorship: { design: { application: { mode: "expository", analysisIdeas: { introduced: [{ name: "Interação", description: "Descrição preservada." }], used: [], developed: [] } } } } }], hasMore: false });
   adapter.getCourseDesign = async ({ scopeKind, scopeRef }) => ({ courseId, courseRevision: revision,

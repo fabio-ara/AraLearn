@@ -19,6 +19,7 @@ const ACTION_URL = "https://edge.example/functions/v1/aralearn-authoring-action"
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const ACTOR_ID = "20000000-0000-4000-8000-000000000001";
 const ANALYSIS_ID = "30000000-0000-4000-8000-000000000001";
+const SCOPE_IDS = ["50000000-0000-4000-8000-000000000001", "50000000-0000-4000-8000-000000000002"];
 const MODULE_ID = "module-a";
 const LESSON_ID = "lesson-a";
 const MICRO_ID = "micro-a";
@@ -36,7 +37,8 @@ function planRead() {
       version: 3,
       title: TITLE,
       objective: "Explicar serviços em rede.",
-      curriculumScopeItems: [],
+      curriculumScopeItems: SCOPE_IDS.map((id, index) => ({ id, position: index === 0 ? 1 : 4,
+        statement: index === 0 ? "Processos em rede." : "Serviços de transporte." })),
       curriculum: { modules: [{
         id: MODULE_ID, position: 0, title: "Fundamentos",
         lessons: [{ id: LESSON_ID, position: 0, title: "Relações",
@@ -65,6 +67,11 @@ function adapterFixture(application, { designApplication, designSnapshot } = {})
     },
     async getCourse({ courseId }) {
       return { courseId, title: TITLE, revision: 7 };
+    },
+    async getCourseInstructionalRepertoire({ expectedRevision }) {
+      assert.equal(expectedRevision, 7);
+      reads.push("repertoire");
+      return structuredClone(planRead());
     },
     async getCourseInstructionalPlan() {
       reads.push("plan");
@@ -166,7 +173,7 @@ test("estado de desenho da unidade não é confundido com recibo em executor, MC
         { application: structuredClone(application) }, channel);
       assert.equal(Object.hasOwn(output.context, "configuracaoAplicada"), false, channel);
       assert.deepEqual(output.context.aplicacao, structuredClone(application), channel);
-      assert.deepEqual(adapter.reads, ["plan", "units", "design"], channel);
+      assert.deepEqual(adapter.reads, ["repertoire", "units", "design"], channel);
     }
   }
 });
@@ -180,6 +187,18 @@ test("curso e escopo sem unidade continuam preservados", async () => {
     assert.equal(output.context.aplicacao, null);
     assert.equal(Object.hasOwn(output.context, "configuracaoAplicada"), false);
     assert.equal(adapter.reads.includes("units"), false);
+  }
+});
+
+test("repertório não combina o plano lido com configuração de outra revisão ou curso", async () => {
+  for (const change of [{ courseRevision: 8 }, { courseId: ANALYSIS_ID }]) {
+    const adapter = adapterFixture(null);
+    const readDesign = adapter.getCourseDesign.bind(adapter);
+    adapter.getCourseDesign = async input => ({ ...await readDesign(input), ...change });
+    await assert.rejects(executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "consultar_repertorio_instrucional", rawArguments: { curso: TITLE, microssequencia: "Sockets", unidade: 1 } }),
+    error => error.code === "course_revision_conflict");
+    assert.equal(adapter.reads.includes("plan"), false);
   }
 });
 
@@ -198,8 +217,8 @@ test("readback focal expõe oportunidades aplicadas sem expor referências inter
     ]
   };
   const adapter = adapterFixture(application);
-  adapter.getCourseInstructionalPlan = async () => {
-    adapter.reads.push("plan");
+  adapter.getCourseInstructionalRepertoire = async () => {
+    adapter.reads.push("repertoire");
     const read = planRead();
     read.plan.evidenceRequirements = [{ id: "40000000-0000-4000-8000-000000000001", position: 0,
       version: 1, statement: "Classificar alcance e ponto de chegada da fibra",
@@ -223,7 +242,7 @@ test("readback focal expõe oportunidades aplicadas sem expor referências inter
     application.practiceApplications.map(({ opportunityId }) => opportunityId));
   assert.ok(configuration.context.aplicacaoNaUnidade.practiceApplications.every(item =>
     !Object.hasOwn(item, "opportunityId") && !Object.hasOwn(item, "evidenceRequirementId")));
-  assert.equal(adapter.reads.filter(read => read === "plan").length, 1);
+  assert.equal(adapter.reads.filter(read => read === "repertoire").length, 1);
   assert.equal(adapter.reads.includes("units"), true);
 });
 
@@ -240,7 +259,7 @@ test("snapshot authoring real preserva repertório e configuração enquanto usa
     mode: "practice",
     introducedInstructionalAnalysisUnitIds: [ANALYSIS_ID],
     usedInstructionalAnalysisUnitIds: [ANALYSIS_ID],
-    curriculumScopeItemIds: [],
+    curriculumScopeItemIds: [SCOPE_IDS[1], SCOPE_IDS[0]],
     componentRefs: [...legacySnapshot.componentRefs],
     explanationApplications: [{ instructionalAnalysisUnitId: ANALYSIS_ID, developedForms: ["mechanism"],
       notApplicable: [{ form: "plain_definition", reason: "A unidade pratica um mecanismo." }] }],
@@ -265,6 +284,7 @@ test("snapshot authoring real preserva repertório e configuração enquanto usa
 
   const repertoire = await throughMcp(adapter, args);
   const repertoireApplication = repertoire.context.aplicacao;
+  assert.deepEqual(repertoireApplication.cobertura, [5, 2]);
   assert.deepEqual(repertoireApplication.practiceApplications, expectedPractices);
   assert.deepEqual(repertoireApplication.practiceEvidence, legacySnapshot.practiceEvidence);
   assert.deepEqual(repertoireApplication.analysisIdeas, legacySnapshot.analysisIdeas);
@@ -277,6 +297,7 @@ test("snapshot authoring real preserva repertório e configuração enquanto usa
   assert.doesNotMatch(JSON.stringify(repertoire.context), /opportunityId|evidenceRequirementId|instructionalAnalysisUnitIds/u);
 
   const configuration = await throughMcp(adapter, args, "consultar_configuracao");
+  assert.deepEqual(configuration.context.aplicacaoNaUnidade.cobertura, [5, 2]);
   assert.deepEqual(configuration.context.aplicacaoNaUnidade.practiceApplications, expectedPractices);
   assert.deepEqual(configuration.context.aplicacaoNaUnidade.practiceEvidence, legacySnapshot.practiceEvidence);
   assert.deepEqual(configuration.context.aplicacaoNaUnidade.analysisIdeas, legacySnapshot.analysisIdeas);
@@ -287,6 +308,22 @@ test("snapshot authoring real preserva repertório e configuração enquanto usa
   assert.deepEqual(configuration.context.configuracaoAplicadaNaUnidade.parametros.find(item =>
     item.campo === "posicao_da_pratica")?.valor, "before_and_after");
   assert.doesNotMatch(JSON.stringify(configuration.context), /opportunityId|evidenceRequirementId|instructionalAnalysisUnitIds/u);
+});
+
+test("cobertura aplicada distingue vazio explícito, ausência e referência inválida nos canais", async () => {
+  const args = { curso: TITLE, microssequencia: "Sockets", unidade: 1 };
+  for (const [ids, expected] of [[[], []], [undefined, null]]) {
+    const adapter = adapterFixture({}, { designApplication: { practiceApplications: [],
+      ...(ids === undefined ? {} : { curriculumScopeItemIds: ids }) } });
+    for (const name of ["consultar_repertorio_instrucional", "consultar_configuracao"]) {
+      const response = await throughMcp(adapter, args, name);
+      assert.deepEqual((response.context.aplicacao ?? response.context.aplicacaoNaUnidade).cobertura, expected);
+    }
+  }
+  const adapter = adapterFixture({}, { designApplication: { practiceApplications: [], curriculumScopeItemIds: ["missing"] } });
+  await assert.rejects(() => executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "consultar_repertorio_instrucional", rawArguments: args }), error => error.status === 503 &&
+      error.code === "course_service_unavailable" && /cobertura aplicada/u.test(error.message));
 });
 
 test("recibo de recuperação incompleto permanece falha fechada", async () => {

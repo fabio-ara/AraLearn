@@ -3284,7 +3284,7 @@ HUMAN_TASK_HANDLERS.consultar_configuracao = async ({
           : "A intenção solicitada e o valor aplicado podem divergir legitimamente; quer manter a herança, fixar alguma condição ou detalhar um parâmetro?",
         context: {
           configuracaoSolicitada: projectConfiguration(configuration),
-          aplicacaoNaUnidade: humanUnitApplication(unit),
+          aplicacaoNaUnidade: humanUnitApplication(unit, resolved.plan?.plan),
           configuracaoAplicadaNaUnidade: appliedConfiguration
         }
       }
