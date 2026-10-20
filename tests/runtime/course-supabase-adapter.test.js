@@ -4675,3 +4675,47 @@ test("leituras preparadas traduzem PT409 sem retentar nem expor detalhes do banc
     assert.equal(calls, 1, method);
   }
 });
+
+
+const preparedSaveRequest526 = () => ({
+  principal: { actorId: USER_ID }, readId: PART_ID,
+  stamp: { courseId: COURSE_ID, revision: 7 }, requestHash: "a".repeat(64),
+  digest: "b".repeat(64), state: {}, chunks: ["literal"], nextPage: null,
+  envelope: { result: "Leitura" }, finalNextDecision: null
+});
+
+test("#526 persistência preparada conclui depois do timeout curto dentro do orçamento", async t => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
+  let calls = 0;
+  const saved = { readId: PART_ID, digest: "b".repeat(64), total: 7 };
+  const value = adapter((_url, init) => new Promise((resolve, reject) => {
+    calls += 1;
+    init.signal.addEventListener("abort", () => reject(new DOMException("cancelled", "AbortError")), { once: true });
+    setTimeout(() => resolve(json(saved)), 9_000);
+  }), { attempts: 3 });
+  const pending = value.savePreparedHumanRead({ ...preparedSaveRequest526(), deadlineAt: Date.now() + 30_000 });
+  t.mock.timers.tick(9_000);
+  assert.deepEqual(await pending, saved);
+  assert.equal(calls, 1);
+});
+
+for (const [label, budget] of [["deadline menor", 4_000], ["teto próprio sem deadline", 40_000]]) {
+  test("#526 persistência preparada respeita " + label + " sem repetir escrita", async t => {
+    t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 1_000_000 });
+    let calls = 0;
+    let signal;
+    const value = adapter((_url, init) => new Promise((_resolve, reject) => {
+      calls += 1; signal = init.signal;
+      signal.addEventListener("abort", () => reject(new DOMException("cancelled", "AbortError")), { once: true });
+    }), { attempts: 3 });
+    const pending = value.savePreparedHumanRead({ ...preparedSaveRequest526(),
+      ...(budget === 4_000 ? { deadlineAt: Date.now() + budget } : {}) });
+    const rejected = assert.rejects(pending, error => error.status === 503 && error.code === "service_timeout");
+    t.mock.timers.tick(budget - 1);
+    assert.equal(signal.aborted, false);
+    t.mock.timers.tick(1);
+    await rejected;
+    assert.equal(signal.aborted, true);
+    assert.equal(calls, 1);
+  });
+}

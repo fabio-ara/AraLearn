@@ -1961,7 +1961,7 @@ export class CourseSupabaseAdapter {
       p_actor_id: principal.actorId, p_read_id: readId, p_stamp: stamp,
       p_request_hash: requestHash, p_digest: digest, p_state: state, p_chunks: chunks,
       p_next_page: nextPage, p_envelope: envelope, p_final_next_decision: finalNextDecision
-    }, { deadlineAt, responseLimitBytes: 4096, retry: false }));
+    }, { deadlineAt, timeoutMs: 40_000, responseLimitBytes: 4096, retry: false }));
   }
 
   async readPreparedHumanRead({ principal, readId, requestHash, state, deadlineAt }) {

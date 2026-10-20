@@ -11,6 +11,7 @@ explica os termos usados na implementação atual.
 
 ### Corrigido
 
+- A preparação de exportações e revisões extensas utiliza o orçamento restante da operação para salvar a leitura, sem interrupção antecipada pelo prazo de consultas curtas nem repetição automática da escrita. (#526)
 - As continuações de exportação e revisão conservam a leitura preparada entre instâncias do serviço e transferem somente os próximos trechos. Acesso, seleção e alterações continuam sendo verificados; uma leitura expirada pede reiniciar a consulta sem remontar o curso a cada fragmento. (#524)
 - A resolução dos parâmetros pedagógicos consulta somente os escopos pertinentes, reduzindo leituras repetidas do banco durante análises e exportações de cursos extensos, sem alterar valores, motivos ou precedência. (#522)
 
