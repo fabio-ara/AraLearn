@@ -21,11 +21,19 @@ import { encodeCourseActionTaskRequest } from "../../supabase/functions/_shared/
 import { inspectExplanationReconciliation } from "../../src/domain/courseExplanationReconciliation.js";
 import { createDefaultCourseAudioConfig, COURSE_MEDIA_COURSE_MAX_BYTES } from "../../src/domain/courseMedia.js";
 import { bpmnInstance } from "../helpers/bpmnFixture.js";
+import { preparedReadDatabase } from "../support/preparedHumanReadPglite.js";
 
 const COURSE_ID = "10000000-0000-4000-8000-000000000001";
 const CHANNEL_ORIGIN = "https://chatgpt.com";
 const CHANNEL_MCP_URL = "https://edge.example/functions/v1/aralearn-authoring-mcp";
 const CHANNEL_ACTION_URL = "https://edge.example/functions/v1/aralearn-authoring-action";
+function attachPreparedRead(adapter, database) {
+  const prepared = database.adapter();
+  for (const name of ["getPreparedHumanReadStamp", "savePreparedHumanRead", "readPreparedHumanRead"]) {
+    adapter[name] = prepared[name].bind(prepared);
+  }
+  return adapter;
+}
 async function materializationChannel(channel, adapter, name, args) {
   const handler = channel === "actions"
     ? createAuthoringActionHandler({ adapter, allowedOrigins: new Set([CHANNEL_ORIGIN]),
@@ -1159,11 +1167,86 @@ test("preparação paginada mantém nextDecision curto no lote máximo", async (
   assert.equal(first.context.fragmento.inicio, 0);
   assert.ok(first.nextDecision.length <= 1000);
   assert.match(first.nextDecision, /continue a mesma preparação/iu);
+  assert.match(first.nextDecision, /mesmos argumentos e a continuacao recebida/iu);
   const second = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
     name: "preparar_materializacao", rawArguments: { ...args, continuacao: first.context.continuacao } });
   assert.ok(second.nextDecision.length <= 1000);
   assert.ok(second.context.fragmento.inicio > first.context.fragmento.inicio);
   assert.equal(adapter.calls.length, 0, "paginação e calibração permanecem sem escrita");
+});
+
+test("preparação paginada retoma por token persistido sem reenviar candidato", async () => {
+  const database = await preparedReadDatabase({ courseId: COURSE_ID, actorId: PRINCIPAL.actorId, revision: 8 });
+  try {
+    const adapter = attachPreparedRead(publicCalibrationAdapter().adapter, database);
+    const counts = { plan: 0, design: 0, units: 0 };
+    for (const [key, name] of [["plan", "getCourseInstructionalPlan"], ["design", "getCourseDesign"],
+      ["units", "listCourseStudyUnits"]]) {
+      const original = adapter[name];
+      adapter[name] = async (...args) => { counts[key]++; return original(...args); };
+    }
+    const unidades = Array.from({ length: 64 }, (_, index) => ({ ...structuredClone(unit()), posicao: index + 1 }));
+    const args = { curso: "Curso de Redes", unidades };
+    const first = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: args });
+    assert.equal(first.context.temMais, true);
+    assert.equal(typeof first.context.continuacao, "string");
+    assert.match(first.nextDecision, /apenas curso e continuacao recebida, sem reenviar unidades/iu);
+    const afterPreparation = { ...counts };
+    const oldStyle = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: { ...args, continuacao: first.context.continuacao } });
+    assert.ok(oldStyle.context.fragmento.inicio > first.context.fragmento.inicio);
+    assert.deepEqual(counts, afterPreparation, "continuação completa não reexecuta preflight");
+    const minimal = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: { curso: args.curso, continuacao: first.context.continuacao } });
+    assert.deepEqual(minimal.context.fragmento, oldStyle.context.fragmento);
+    assert.deepEqual(counts, afterPreparation, "continuação mínima não relê o candidato");
+    assert.equal(adapter.calls.length, 0, "preparo e continuação não gravam o curso");
+  } finally {
+    await database.db.close();
+  }
+});
+
+test("prévia bloqueada multipágina retoma por token persistido sem reler o candidato", async () => {
+  const database = await preparedReadDatabase({ courseId: COURSE_ID, actorId: PRINCIPAL.actorId, revision: 8 });
+  try {
+    const adapter = attachPreparedRead(publicCalibrationAdapter({
+      pendingIds: COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id)
+    }).adapter, database);
+    const counts = { plan: 0, design: 0, units: 0 };
+    for (const [key, name] of [["plan", "getCourseInstructionalPlan"], ["design", "getCourseDesign"],
+      ["units", "listCourseStudyUnits"]]) {
+      const original = adapter[name];
+      adapter[name] = async (...args) => { counts[key]++; return original(...args); };
+    }
+    const unidades = Array.from({ length: 64 }, (_, index) => ({ ...structuredClone(unit()), posicao: index + 1 }));
+    const first = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: { curso: "Curso de Redes", unidades } });
+    assert.match(first.context.fragmento.texto, /"state":"blocked"/u);
+    assert.equal(first.context.temMais, true);
+    assert.match(first.nextDecision, /apenas curso e continuacao recebida, sem reenviar unidades/iu);
+    const afterPreparation = { ...counts };
+    const resumed = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: {
+        curso: "Curso de Redes", continuacao: first.context.continuacao
+      } });
+    assert.ok(resumed.context.fragmento.inicio > first.context.fragmento.inicio);
+    assert.deepEqual(counts, afterPreparation, "continuação bloqueada não relê preflight nem candidato");
+    assert.equal(adapter.calls.length, 0, "prévia bloqueada não grava o curso");
+  } finally {
+    await database.db.close();
+  }
+});
+
+test("contrato de continuação rejeita inicial incompleta e mistura parcial antes da leitura", async () => {
+  const { adapter } = publicCalibrationAdapter();
+  await assert.rejects(() => executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: { curso: "Curso de Redes" } }),
+  error => error.code === "missing_human_task_argument");
+  await assert.rejects(() => executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: { curso: "Curso de Redes", continuacao: "token", concluir: true } }),
+  error => error.code === "invalid_human_task_argument");
+  assert.deepEqual(adapter.calls, [], "a rejeição do formato não consulta nem grava o curso");
 });
 
 test("recuperação de calibração não ultrapassa aprovação do mapa", () => {

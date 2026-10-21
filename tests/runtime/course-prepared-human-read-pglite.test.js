@@ -68,12 +68,41 @@ test('lotes limitados reservam o total, recusam sobreposição e só publicam ap
     assert.equal(batches[1].start,128*12000);
     assert.equal(batches[1].ordinal,129);
     assert.equal(batches[1].result.ready,true);
-    const next=(await resume(fixture,first.context.continuacao)).response.context.fragmento;
+    const nextResponse=(await resume(fixture,first.context.continuacao)).response;
+    const next=nextResponse.context.fragmento;
+    assert.equal(nextResponse.__aralearnPreparedTask,undefined);
     assert.equal(next.texto,prepared.literal.slice(next.inicio,next.fim));
     const row=(await fixture.db.query('select is_ready,written_units,total,written_bytes,byte_size from private.course_prepared_reads')).rows[0];
     assert.equal(row.is_ready,true);assert.equal(row.written_units,row.total);assert.equal(row.written_bytes,row.byte_size);
     assert.equal((await fixture.db.query("select to_regprocedure('public.save_prepared_course_read_for_actor_v1(uuid,uuid,jsonb,text,text,jsonb,jsonb,text,jsonb,text)') old")).rows[0].old,null);
   }finally{await fixture.db.close();}
+});
+
+test('a continuação mínima não troca exportação ou revisão por materialização',async()=>{
+  for(const source of [
+    { task:'preparar_revisao', args },
+    { task:'exportar_autoria', args:{ recorte:{ curso:args.curso } } }
+  ]){
+    const fixture=await preparedReadDatabase({courseId,actorId});
+    try {
+      const adapter=fixture.adapter();
+      adapter.listCourses=async()=>({items:[{courseId,title:args.curso}],hasMore:false});
+      adapter.getCourse=async()=>({courseId,title:args.curso,revision:7,annotationSetVersion:1});
+      const preparedRead=await openPreparedHumanRead({adapter,principal,name:source.task,args:source.args});
+      const state=await openHumanReadContinuation({args:source.args,task:source.task,
+        course:{id:courseId,revision:7}});
+      const prepared=await prepareHumanReadContextLiteral({source:'x'.repeat(13_000)});
+      const first=await presentPersistedHumanRead({adapter,principal,preparedRead,prepared,state,
+        envelope,finalNextDecision:null});
+      const cursor=decode(first.context.continuacao);
+      const row=(await fixture.db.query('select envelope from private.course_prepared_reads where id=$1',[cursor.s])).rows[0];
+      assert.equal(row.envelope.__aralearnPreparedTask,source.task);
+      await fixture.db.query('update private.course_prepared_reads set request_hash=$1 where id=$2',[cursor.q,cursor.s]);
+      await assert.rejects(openPreparedHumanRead({adapter,principal,name:'preparar_materializacao',
+        args:{curso:args.curso,continuacao:first.context.continuacao}}),
+        error=>error.code==='human_read_context_changed',source.task);
+    } finally { await fixture.db.close(); }
+  }
 });
 
 test('hash final incorreto e mudança entre lotes deixam apenas reserva temporária ilegível',async()=>{

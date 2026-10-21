@@ -686,9 +686,15 @@ em mensagens adequadas à tarefa, sem expor credenciais ou caminhos internos.
 Uma leitura pode ser maior que a resposta admitida pelo canal. Nesse caso, o
 serviço devolve uma parte do conteúdo e uma referência para obter a seguinte.
 `temMais: true` e `continuacao` não nula indicam que a leitura está incompleta.
-O cliente repete a mesma tarefa e todos os argumentos da consulta inicial,
-acrescentando somente `continuacao` com o valor recebido, sem editá-lo. Filtros,
-seleções de curso e demais argumentos permanecem os da consulta inicial.
+Como compatibilidade geral, o cliente repete a mesma tarefa e todos os
+argumentos da consulta inicial, acrescentando somente `continuacao` com o valor
+recebido, sem editá-lo. A exceção focal de `preparar_materializacao` é uma
+continuação persistida que aceita somente `curso` e `continuacao`; o servidor
+lê a leitura editorial persistida correspondente à emissão, inclusive quando
+ela está bloqueada; isso não recupera nem valida novamente o JSON candidato para
+gravação. A forma completa continua disponível e misturas parciais são
+rejeitadas. Filtros, seleções de curso e demais argumentos permanecem os da
+consulta inicial.
 A ordem das chaves dos objetos é indiferente; a ordem das listas e os valores
 precisam permanecer iguais. Se a revisão do curso mudar entre páginas, a leitura
 reinicia para evitar combinar estados diferentes. A mensagem de erro distingue

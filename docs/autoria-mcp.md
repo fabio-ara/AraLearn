@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.9.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.10.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -52,7 +52,7 @@ ou reconstruir seu conteúdo.
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_repertorio_instrucional` | ler unidades de análise, requisitos de evidência, vínculos e aplicações salvas |
 | `consultar_observacoes` | ler as entradas versionadas da fila pertinente à explicação ou às unidades |
-| `preparar_revisao` | leitura integral para revisão e parecer; `resumo: true` consulta triagem compacta por alvo e devolve argumentos posicionais para reabrir o mesmo alvo com `auditoria: true`, sem validade para `registrar_inspecao` |
+| `preparar_revisao` | leitura integral do conteúdo salvo para revisão e parecer; `resumo: true` consulta triagem compacta por alvo e devolve argumentos posicionais para reabrir o mesmo alvo com `auditoria: true`, sem recuperar candidato de `preparar_materializacao` nem validade para `registrar_inspecao` |
 | `consultar_fontes` | localizar fontes, âncoras e proveniência |
 | `consultar_componentes` | buscar representações pela função e ler o contrato exato do componente escolhido |
 | `consultar_audios` | recuperar uma página da biblioteca de áudios do curso para reutilização |
@@ -210,7 +210,7 @@ prática. Também verifica as escolhas de apresentação, as fontes e a cobertur
 prevista. A explicação permanece a base consultável da microssequência; as
 unidades desenvolvem o ensino, os exemplos e as práticas previstas para o percurso.
 
-Para unidades candidatas, o preparo é obrigatório: releia `context.preflight.leituraEditorial`, que projeta abertura, sequência de ensino, prática, alternativas e feedback observáveis, e envie `preparationReference` exatamente como devolvida. `ready` significa apenas prontidão estrutural, não parecer de inteligibilidade ou qualidade; a decisão semântica continua editorial. `blocked` reúne as causas estruturais a corrigir. A gravação recusa referência ausente ou divergente da base e do candidato. A conclusão vazia de conteúdo já salvo e a recuperação somente-leitura mantêm seus fluxos próprios.
+Para unidades candidatas, o preparo é obrigatório: releia `context.preflight.leituraEditorial`, que projeta abertura, sequência de ensino, prática, alternativas e feedback observáveis, e envie `preparationReference` exatamente como devolvida. `ready` significa apenas prontidão estrutural, não parecer de inteligibilidade ou qualidade; a decisão semântica continua editorial. `blocked` reúne as causas estruturais a corrigir. Se a projeção paginar, a forma mínima seguinte é `{curso, continuacao}` e reutiliza a leitura editorial persistida correspondente, inclusive quando bloqueada; ela não recupera o JSON candidato para gravação. A forma completa continua aceita, e a gravação recusa referência ausente ou divergente da base e do candidato. A conclusão vazia de conteúdo já salvo e a recuperação somente-leitura mantêm seus fluxos próprios.
 
 `materializar_parte` recebe o foco de uma única microssequência e as unidades
 novas ou explicitamente alteradas desse foco. A parte é resolvida no servidor.
@@ -362,9 +362,11 @@ recupera o restante do mesmo recorte antes de avaliar seu conteúdo. A
 [continuação e reconstrução](aralearn-contract.md#continuação-e-reconstrução-do-conteúdo)
 especifica os fragmentos literais e seus limites.
 
-Se `preparar_materializacao` paginar `context`, repita curso, foco, processo,
-unidades e demais argumentos sem alteração, acrescentando apenas `continuacao`.
-Reúna todos os fragmentos JSON em ordem antes da leitura editorial; extraia
+Se `preparar_materializacao` paginar `context`, a continuação persistida pode
+ser retomada com `{curso, continuacao}`. A forma anterior, repetindo curso,
+foco, processo, unidades e demais argumentos sem alteração, também permanece
+válida; não misture partes do pedido nem edite o token. Reúna todos os
+fragmentos JSON em ordem antes da leitura editorial; extraia
 `preparationReference` do preflight reconstruído e envie-a junto ao mesmo
 candidato em `materializar_parte`.
 

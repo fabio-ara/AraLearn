@@ -841,12 +841,21 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Confere estrutura do candidato ou acumulado; ready não é parecer de inteligibilidade. Antes de gravar, releia editorialmente este candidato.",
-    inputSchema({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
-      autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
-      unidades: MATERIALIZATION_INPUT_SCHEMA, concluir: { type: "boolean", default: false },
-      explicacoes: EXPLANATIONS_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA
-    }, ["curso", "unidades"]),
+    "Confere a estrutura do candidato antes de gravar; ready é estrutural. Após uma página, use curso e continuacao; a forma completa continua aceita.",
+    {
+      ...inputSchema({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
+        autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
+        unidades: MATERIALIZATION_INPUT_SCHEMA,
+        concluir: { type: "boolean", description: "false mantém produção parcial; true valida o acumulado salvo e o novo candidato antes de concluir a Parte." },
+        explicacoes: EXPLANATIONS_SCHEMA,
+        continuacao: { type: "string", maxLength: 4096,
+          description: "Token opaco; após a primeira página use somente curso e continuacao." }
+      }, ["curso"]),
+      anyOf: Object.freeze([
+        Object.freeze({ required: Object.freeze(["unidades"]) }),
+        Object.freeze({ required: Object.freeze(["continuacao"]), maxProperties: 2 })
+      ])
+    },
     { readOnly: true }
   ),
   task(
@@ -1289,9 +1298,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.9.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.10.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:a96be5fa8f3d02512bbbf3e307e9a2eeac22e58260f912d41470f0c6de1c4b70";
+  "sha256:5c89c7950aa7d6aea66f6185753a5857802842fe80e8f52b2ba2b1bc4c6180a9";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -1411,6 +1420,19 @@ function validateMaterializationInputArguments(name, args) {
     "A conclusão sem unidades novas reutiliza o conteúdo salvo e não aceita explicações.");
 }
 
+function validateMaterializationContinuationArguments(name, args) {
+  if (name !== "preparar_materializacao") return;
+  const hasUnits = Object.hasOwn(args, "unidades");
+  const hasContinuation = Object.hasOwn(args, "continuacao");
+  if (!hasUnits && !hasContinuation) {
+    fail("missing_human_task_argument", "Informe unidades.", { field: "unidades" });
+  }
+  if (!hasUnits && hasContinuation && Object.keys(args).sort().join(",") !== "continuacao,curso") {
+    fail("invalid_human_task_argument",
+      "Uma continuação sem o candidato aceita somente curso e continuacao.");
+  }
+}
+
 function assertTaskArguments(name, rawArguments) {
   const definition = courseHumanTaskDefinition(name);
   if (!definition) throw new AuthoringApiError(404, "unknown_human_task", "Tarefa de autoria inexistente.");
@@ -1421,6 +1443,7 @@ function assertTaskArguments(name, rawArguments) {
       fail("missing_human_task_argument", `Informe ${required}.`, { field: required });
     }
   }
+  validateMaterializationContinuationArguments(name, raw);
   validateMaterializationInputArguments(name, raw);
   return safeClone(raw, "arguments", 512 * 1024);
 }
@@ -3130,7 +3153,7 @@ async function prepareFocalTask({ adapter, principal, args, resolved, deadlineAt
 }
 
 HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
-  adapter, principal, args, deadlineAt
+  adapter, principal, args, deadlineAt, preparedRead = null
 }) => {
   const autonomous = humanAutonomyArgument(args);
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
@@ -3165,33 +3188,35 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   const editorialReviewRequired = ready && !closesSavedPart && focal.units.length > 0;
   preflight.escopoDaProntidao = "estrutural";
   const recovery = ready ? null : humanMaterializationRecovery(preflight);
-  const readContext = await paginateHumanReadContext(withoutTechnicalState({
+  const contextObject = withoutTechnicalState({
     criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
     preflight,
     parte: { posicao: Number(part.position) + 1, titulo: part.title, intencao: part.intent },
     ...process
-  }), { state: continuation });
+  });
+  const readContext = await paginateHumanReadContext(contextObject, { state: continuation });
+  const finalNextDecision = recovery ?? (editorialReviewRequired
+    ? "Antes de materializar_parte, releia o conteúdo candidato desta chamada: abertura e termos, contexto de autores, exemplos desenvolvidos, alternativas plausíveis e feedback específico. Se falhar, corrija e repita preparar_materializacao."
+    : null);
   const nextDecision = readContext.temMais
-    ? `Continue a mesma preparação com continuacao recebida até reconstituir toda a leitura editorial.${
+    ? `${preparedRead
+      ? "Continue preparar_materializacao com apenas curso e continuacao recebida, sem reenviar unidades"
+      : "Continue a mesma preparação com os mesmos argumentos e a continuacao recebida"} até reconstituir toda a leitura editorial.${
       recovery ? ` ${recovery}` : ""
-    }`
-    : recovery ?? (editorialReviewRequired
-      ? "Antes de materializar_parte, releia o conteúdo candidato desta chamada: abertura e termos, contexto de autores, exemplos desenvolvidos, alternativas plausíveis e feedback específico. Se falhar, corrija e repita preparar_materializacao."
-      : null);
-  return result(
-    ready
-      ? closesSavedPart
-        ? "As verificações estruturais do conteúdo salvo passaram para concluir a Parte; nenhuma unidade será regravada."
-        : editorialReviewRequired
-          ? "As verificações estruturais passaram; isso não avalia inteligibilidade nem qualidade pedagógica. Antes de gravar, releia editorialmente o conteúdo candidato desta chamada e corrija qualquer falha."
-          : "As verificações estruturais passaram; isso não é um parecer pedagógico."
-      : recovery ?? "Ainda há uma dependência a resolver antes desta produção.",
-    {
-      deepLink: null,
-      nextDecision,
-      context: readContext
-    }
-  );
+    }` : finalNextDecision;
+  const message = ready
+    ? closesSavedPart
+      ? "As verificações estruturais do conteúdo salvo passaram para concluir a Parte; nenhuma unidade será regravada."
+      : editorialReviewRequired
+        ? "As verificações estruturais passaram; isso não avalia inteligibilidade nem qualidade pedagógica. Antes de gravar, releia editorialmente o conteúdo candidato desta chamada e corrija qualquer falha."
+        : "As verificações estruturais passaram; isso não é um parecer pedagógico."
+    : recovery ?? "Ainda há uma dependência a resolver antes desta produção.";
+  if (preparedRead && readContext.fragmento) {
+    return presentPersistedHumanRead({ adapter, principal, preparedRead,
+      prepared: await prepareHumanReadContextLiteral(contextObject), state: continuation,
+      envelope: { result: message, deepLink: null, nextDecision }, finalNextDecision, deadlineAt });
+  }
+  return result(message, { deepLink: null, nextDecision, context: readContext });
 };
 
 function humanAppliedReading({ present, value }) {

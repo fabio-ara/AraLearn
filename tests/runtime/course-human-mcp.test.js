@@ -441,12 +441,12 @@ test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
   assert.equal(new Set(EXPECTED_NAMES).size, 56);
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "preparar_materializacao").description,
-    /ready não é parecer de inteligibilidade/u);
+    /ready é estrutural/u);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.9.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.10.0");
   // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
   // a mesma referência e o mesmo parecer, sem recompor a tentativa.
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,
@@ -1220,8 +1220,12 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
     ].filter(Boolean)) {
       assert.doesNotMatch(copy, forbiddenPublicCopy, `${task.name}: ${copy}`);
       assert.doesNotMatch(copy, authorAsStudent, `${task.name}: ${copy}`);
+      if (task.name === "preparar_materializacao" && /acumulado salvo e o novo candidato/iu.test(copy)) {
+        assert.match(copy, /acumulado salvo e o novo candidato antes de concluir a Parte/iu);
+      }
       assert.doesNotMatch(
-        copy.replace(/^\P{L}*\p{L}+\b/u, ""),
+        (task.name === "preparar_materializacao" && /acumulado salvo e o novo candidato/iu.test(copy)
+          ? copy.replace(/\bParte\b/u, "parte") : copy).replace(/^\P{L}*\p{L}+\b/u, ""),
         artificiallyCapitalized,
         `${task.name}: ${copy}`
       );

@@ -352,7 +352,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.9.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.10.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -772,6 +772,12 @@ test("MCP e Actions conservam proposta e base completa, permitem reutilizar a ba
     assert.equal(prepareEmpty({ curso: "Redes para iniciantes", microssequencia: "Sockets",
       unidades: [], concluir: true }), true,
     "A preparação pública aceita a mesma conclusão sem conteúdo novo.");
+    assert.equal(prepareEmpty({ curso: "Redes para iniciantes", continuacao: "token" }), true,
+      "A preparação aceita a retomada mínima persistida.");
+    assert.equal(prepareEmpty({ curso: "Redes para iniciantes", continuacao: "token", concluir: true }), false,
+      "A retomada mínima não aceita mistura parcial.");
+    assert.equal(prepareEmpty({ curso: "Redes para iniciantes" }), false,
+      "A preparação inicial ainda exige unidades.");
     for (const name of ["preparar_materializacao", "materializar_parte"]) {
       const description = tools.find(task => task.name === name).inputSchema.properties.unidades.description;
       assert.match(description, /ordem final da microssequência/u, name);
@@ -969,15 +975,15 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
   // permitindo um lote atômico de unidades de várias microssequências do mesmo
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
-  // mesma referência e parecer. O catálogo 11.9.0 também aceita em `ajustar_configuracao`
+  // mesma referência e parecer. O catálogo 11.10.0 também aceita em `ajustar_configuracao`
   // as referências fechadas do lote novo e do comando de desenho legado. Em
   // `materializar_parte`, a localização da tentativa pelo curso e pela
-  // microssequência permanece. No catálogo 11.9.0, com instruções completas do
-  // servidor e orientação de triagem, a medição é 102066 minificados / 210555
-  // formatados. Tetos 103000 / 212200 mantêm cerca de 1% de folga local; não
+  // microssequência permanece. No catálogo 11.10.0, com instruções completas do
+  // servidor e orientação de triagem, a medição é 102944 minificados / 212528
+  // formatados. Tetos 104000 / 214600 mantêm cerca de 1% de folga local; não
   // são limites do editor, cuja aceitação exige conferência no cliente real.
-  assert.ok(openApiText.length < 103_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 212_200);
+  assert.ok(openApiText.length < 104_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 214_600);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 

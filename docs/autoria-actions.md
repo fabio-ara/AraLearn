@@ -21,7 +21,7 @@ que reúne a importação do arquivo, a autorização da conta e o teste de leit
 ## Operações
 
 As [tabelas de leituras e escritas do catálogo](autoria-mcp.md#tarefas-disponíveis)
-definem as **56 tarefas de autoria** do catálogo **11.9.0**. O OpenAPI as
+definem as **56 tarefas de autoria** do catálogo **11.10.0**. O OpenAPI as
 oferece por **30 operações HTTP**: 24 diretas e seis grupos contextuais.
 Uma operação HTTP é o pedido enviado a um endereço do serviço; um grupo permite
 escolher entre várias tarefas por esse mesmo endereço. Argumentos, validação
@@ -317,13 +317,13 @@ e dos campos, mas não estabelece um tamanho total para esse arquivo.
 
 O contrato importável oferece 30 operações: 24 diretas e seis grupos com
 argumentos definidos para cada tarefa. Essa organização conserva as 56 tarefas
-do catálogo 11.9.0. A aceitação do arquivo pelo editor, a publicação do
+do catálogo 11.10.0. A aceitação do arquivo pelo editor, a publicação do
 assistente e a execução contra o serviço são verificações distintas.
 
 O gerador mede o tamanho em unidades UTF-16, a contagem usada por
-`String.length` em JavaScript. Com o catálogo 11.9.0, a medição atual é de
-102.653 unidades no arquivo compacto e 211.897 na apresentação formatada. O
-repositório mantém tetos locais de regressão de 103.000 e 212.000 unidades,
+`String.length` em JavaScript. Com o catálogo 11.10.0, a medição atual é de
+102.944 unidades no arquivo compacto e 212.528 na apresentação formatada. O
+repositório mantém tetos locais de regressão de 104.000 e 214.600 unidades,
 respectivamente, definidos em
 [buildChatGptActionOpenApi.mjs](../scripts/buildChatGptActionOpenApi.mjs), e não
 um limite da especificação ou do importador. O limite publicado de 100.000
