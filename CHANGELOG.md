@@ -11,7 +11,8 @@ explica os termos usados na implementação atual.
 
 ### Alterado
 
-- A preparação editorial vincula a materialização à referência exata da candidata e oferece prévia paginada, com orientação sobre introdução, autoria, exemplos e feedback. A reconstrução mantém compatibilidade com partes sem grants automáticos; `ready` continua indicando apenas prontidão estrutural, sem garantir qualidade pedagógica ou escala ilimitada no plano Free.
+- A preparação editorial mostra o conteúdo destinado ao estudante em prévia paginada, vincula a gravação ao candidato revisado e orienta sobre contexto, autoria, exemplos e feedback.
+- A verificação de reconstrução cobre novas tabelas sem permissões automáticas e preserva o acesso controlado.
 
 ## [0.0.132] - 2026-10-19
 
