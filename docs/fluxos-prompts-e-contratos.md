@@ -183,15 +183,16 @@ microssequência envolvidas e informa como completar a produção.
 `preparar_materializacao` recebe em `unidades` o mesmo candidato da escrita,
 confere repertório, vínculos, requisitos, formas, componentes, fontes, práticas
 e cobertura, e devolve uma projeção editorial paginada do conteúdo observável
-pelo estudante. Continue com os mesmos argumentos e `continuacao` até reconstruir
-todo o contexto. `ready` significa prontidão estrutural, não parecer semântico:
+pelo estudante. Após a primeira página persistida, continue com `curso` e
+`continuacao`; a forma antiga com todos os argumentos continua aceita, mas
+misturas parciais são recusadas. `ready` significa prontidão estrutural, não parecer semântico:
 revise abertura, termos/autores, exemplo desenvolvido, alternativas e feedback
 antes da primeira gravação. `materializar_parte` exige a `preparationReference`
 da leitura exata; candidato ou base alterados tornam a referência obsoleta e
 nada é gravado. Conclusão sem unidades e recuperação somente leitura não exigem
 preparação.
 
-O contrato de autoria corrente é o catálogo **11.9.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.10.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,

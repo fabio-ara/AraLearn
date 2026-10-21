@@ -7,6 +7,14 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.135] - 2026-10-21
+
+### Alterado
+
+- A prévia editorial paginada pode continuar com `curso` e `continuacao` quando a leitura preparada estiver disponível, sem reenviar o candidato; a forma completa com os mesmos argumentos continua aceita quando essa leitura não estiver disponível.
+- A continuação preserva a leitura, a base, as permissões e as verificações de acesso já conferidas. Preparar ou continuar a prévia não grava unidades nem explicações no curso.
+- A descrição de conclusão distingue o acumulado salvo do novo candidato antes de finalizar a Parte.
+
 ## [0.0.134] - 2026-10-21
 
 ### Corrigido

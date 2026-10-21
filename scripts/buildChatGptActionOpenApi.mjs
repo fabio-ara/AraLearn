@@ -111,11 +111,13 @@ const errorSchema = {
 // completion of an existing part from saved content and its corresponding
 // read-only preparation. Its measured baseline is 101679 minified / 209831
 // pretty-printed characters. Catalog 11.9.0 adds the preparation reference and
-// paged editorial reading for candidate materialization. These local
-// regression ceilings leave about 1% headroom; acceptance in the real editor
-// remains a separate gate.
-const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 212_200;
-const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 103_000;
+// paged editorial reading for candidate materialization. Catalog 11.10.0 adds
+// the persisted minimal continuation while retaining the complete form. The
+// 11.10.0 measured baseline is 102944 minified / 212528 pretty-printed
+// characters; these local regression ceilings leave about 1% headroom.
+// Acceptance in the real editor remains a separate gate.
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 214_600;
+const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 104_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 
 if (!outputSchema || actionTools.some(({ outputSchema: candidate }) => (
