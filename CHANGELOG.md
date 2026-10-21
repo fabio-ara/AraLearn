@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.134] - 2026-10-21
+
+### Corrigido
+
+- Na autoria de uma unidade nova, quando escolhas automáticas de calibração ainda faltam, o preparo informa a unidade e os parâmetros pendentes e orienta preencher `configuracao.parametros` e `configuracao.motivo` no próprio candidato antes de repetir a preparação.
+- Uma calibração ainda incompleta não é apresentada como indisponibilidade de serviço; fixações do autor e da pesquisa e bloqueios reais de configuração continuam sendo preservados. `ready` continua sendo uma conferência estrutural, não uma garantia de qualidade semântica.
+
 ## [0.0.133] - 2026-10-21
 
 ### Alterado
