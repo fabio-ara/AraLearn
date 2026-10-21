@@ -22,7 +22,7 @@ AraLearn, onde também pode ser editado pela interface.
 
 ## Tarefas disponíveis
 
-As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.8.0**, definido em
+As tarefas vêm do catálogo público `aralearn.human-authoring-tasks` **11.9.0**, definido em
 [courseHumanTasks.js](../supabase/functions/_shared/aralearn-authoring/courseHumanTasks.js).
 O catálogo contém 56 tarefas. Cada definição reúne nome,
 argumentos aceitos e resultado. As tabelas descrevem seus usos; os formatos
@@ -48,7 +48,7 @@ ou reconstruir seu conteúdo.
 | `comparar_cursos` | confrontar inventário, configuração e dimensões declaradas de dois recortes próprios |
 | `exportar_autoria` | obter o artefato literal e a leitura autoral de um recorte próprio |
 | `consultar_planejamento` | ler o mapa completo por continuação, o foco em uma parte ou microssequência, ou recuperar situação e referência vigente com `resumo: true` |
-| `preparar_materializacao` | consultar antecipadamente a prontidão do foco; a materialização executa essa verificação quando a referência é omitida |
+| `preparar_materializacao` | conferir estrutura e devolver a projeção focal do conteúdo candidato para leitura editorial antes da primeira gravação |
 | `consultar_configuracao` | ler parâmetros pedagógicos, alvos editoriais e direção editorial efetivos |
 | `consultar_repertorio_instrucional` | ler unidades de análise, requisitos de evidência, vínculos e aplicações salvas |
 | `consultar_observacoes` | ler as entradas versionadas da fila pertinente à explicação ou às unidades |
@@ -76,7 +76,7 @@ ou reconstruir seu conteúdo.
 | `remover_ramo_curricular` | remover explicitamente ramo e descendentes, protegendo referências sobreviventes e fontes compartilhadas |
 | `salvar_parte` | agrupar microssequências já previstas para produção e registrar sua progressão local |
 | `salvar_explicacoes` | produzir ou corrigir bases explicativas e fontes antes ou depois das unidades, preservando as unidades existentes |
-| `materializar_parte` | gravar uma microssequência com parte e preparação resolvidas pelo servidor; com `recuperacao`, apenas consultar o recibo da tentativa interrompida |
+| `materializar_parte` | gravar uma microssequência após leitura editorial do candidato, enviando `preparationReference` exata; com `recuperacao`, apenas consultar o recibo da tentativa interrompida |
 | `reordenar_unidades` | salvar a ordem completa das unidades de uma microssequência, preservando identificadores, conteúdo e configuração aplicada |
 | `ajustar_configuracao` | fixar valores de autoria ou pesquisa, delegar parâmetros automáticos ou restaurar herança no escopo em um lote atômico; consultar a recuperação exata sem reaplicar |
 | `ajustar_orientacao` | alterar a orientação do objeto corrente para trabalho futuro |
@@ -210,12 +210,7 @@ prática. Também verifica as escolhas de apresentação, as fontes e a cobertur
 prevista. A explicação permanece a base consultável da microssequência; as
 unidades desenvolvem o ensino, os exemplos e as práticas previstas para o percurso.
 
-Essa chamada antecipada é opcional. Ao omitir `referenciaPreparo`, a
-materialização executa a mesma verificação com o conteúdo solicitado antes de
-gravar. O resultado `blocked` reúne as causas a corrigir. Quando falta o ensino
-de uma ideia no percurso, o retorno identifica a ideia e o passo necessário
-para completar a produção. Uma referência explícita de preparo precisa
-corresponder à base, à configuração e à intenção correntes.
+Para unidades candidatas, o preparo é obrigatório: releia `context.preflight.leituraEditorial`, que projeta abertura, sequência de ensino, prática, alternativas e feedback observáveis, e envie `preparationReference` exatamente como devolvida. `ready` significa apenas prontidão estrutural, não parecer de inteligibilidade ou qualidade; a decisão semântica continua editorial. `blocked` reúne as causas estruturais a corrigir. A gravação recusa referência ausente ou divergente da base e do candidato. A conclusão vazia de conteúdo já salvo e a recuperação somente-leitura mantêm seus fluxos próprios.
 
 `materializar_parte` recebe o foco de uma única microssequência e as unidades
 novas ou explicitamente alteradas desse foco. A parte é resolvida no servidor.
@@ -366,6 +361,12 @@ continuação quando necessário. Essas regras são compartilhadas com Actions.
 recupera o restante do mesmo recorte antes de avaliar seu conteúdo. A
 [continuação e reconstrução](aralearn-contract.md#continuação-e-reconstrução-do-conteúdo)
 especifica os fragmentos literais e seus limites.
+
+Se `preparar_materializacao` paginar `context`, repita curso, foco, processo,
+unidades e demais argumentos sem alteração, acrescentando apenas `continuacao`.
+Reúna todos os fragmentos JSON em ordem antes da leitura editorial; extraia
+`preparationReference` do preflight reconstruído e envie-a junto ao mesmo
+candidato em `materializar_parte`.
 
 Erros devolvem `code`, mensagem, diagnóstico limitado e `recovery`, que informa
 como retomar a operação e preservar a tentativa. Os dados técnicos necessários

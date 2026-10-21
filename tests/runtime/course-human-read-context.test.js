@@ -435,18 +435,17 @@ test("preparo focal verifica o candidato sem reexportar apoio ou repertório ext
       usedBy: [],
       revisitedBy: []
     }));
-    const read = await channelCall(channel, adapter, "preparar_materializacao", {
-      curso: TITLE,
-      unidades: [focalCandidate()]
+    const { context, pages } = await readChannelContext(channel, adapter, "preparar_materializacao", {
+      curso: TITLE, unidades: [focalCandidate()]
     });
-    assert.equal(read.status, 200, read.envelope);
-    assert.ok(read.envelope.length < 20000, `${channel}: o preparo deve permanecer pequeno`);
-    assert.equal(Object.hasOwn(read.value.context, "fragmento"), false);
-    assert.equal(Object.hasOwn(read.value.context, "continuacao"), false);
-    assert.equal(Object.hasOwn(read.value.context, "explicacoes"), false);
-    assert.equal(Object.hasOwn(read.value.context.parte, "repertorioDisponivelDoCurso"), false);
-    assert.doesNotMatch(read.envelope, new RegExp(support.content.at(-1).data.text.slice(0, 80), "u"));
-    assert.doesNotMatch(read.envelope, /Descrição extensa alheia ao diagnóstico focal/u);
+    assert.ok(pages >= 1, `${channel}: o preparo deve ser legível`);
+    assert.equal(Object.hasOwn(context, "fragmento"), false);
+    assert.equal(context.continuacao, null);
+    assert.equal(context.temMais, false);
+    assert.equal(Object.hasOwn(context, "explicacoes"), false);
+    assert.equal(Object.hasOwn(context.parte, "repertorioDisponivelDoCurso"), false);
+    assert.doesNotMatch(JSON.stringify(context), new RegExp(support.content.at(-1).data.text.slice(0, 80), "u"));
+    assert.doesNotMatch(JSON.stringify(context), /Descrição extensa alheia ao diagnóstico focal/u);
   }
 });
 
@@ -454,14 +453,16 @@ test("preparo recebe exatamente o mesmo candidato usado pela escrita", async () 
   for (const channel of ["actions", "mcp"]) {
     const { adapter } = materializationPreparationFixture(1);
     const candidate = focalCandidate();
-    const read = await channelCall(channel, adapter, "preparar_materializacao", {
-      curso: TITLE,
-      unidades: [candidate]
+    const { context, pages } = await readChannelContext(channel, adapter, "preparar_materializacao", {
+      curso: TITLE, unidades: [candidate]
     });
-    assert.equal(read.status, 200, read.envelope);
-    assert.ok(read.value.context.preflight);
-    assert.equal(read.value.context.parte.titulo, "Interfaces");
-    assert.equal(Object.hasOwn(read.value.context, "temMais"), false);
+    assert.ok(pages >= 1, `${channel}: a prévia deve ser remontada antes da revisão`);
+    assert.ok(context.preflight);
+    assert.equal(context.parte.titulo, "Interfaces");
+    assert.equal(context.continuacao, null);
+    assert.equal(context.temMais, false);
+    assert.deepEqual(context.preflight.leituraEditorial[0].studentContent.map(item => item.text),
+      candidate.conteudo.content.map(item => item.data.text));
   }
 });
 
@@ -1734,7 +1735,7 @@ test("fontes extensas atravessam ambos os transportes em envelopes Actions abaix
 test("critérios de entrega chegam uma vez na retomada, no planejamento e no preparo", async () => {
   const encoder = new TextEncoder();
   const coreBytes = encoder.encode(JSON.stringify(COURSE_AUTHORING_DELIVERY_CORE)).byteLength;
-  assert.equal(COURSE_AUTHORING_DELIVERY_CORE.length, 6, "o núcleo canônico tem seis linhas");
+  assert.equal(COURSE_AUTHORING_DELIVERY_CORE.length, 8, "o núcleo canônico tem oito linhas");
   assert.ok(coreBytes <= 1_000, "o núcleo canônico precisa caber em 1000 bytes");
   for (const task of ["consultar_planejamento", "preparar_materializacao"]) {
     const guide = courseAuthoringGuidanceForCall(task);

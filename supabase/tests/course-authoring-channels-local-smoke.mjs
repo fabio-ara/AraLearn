@@ -151,13 +151,14 @@ async function completeRead(client, task, args) {
 // `concluir` falso conserva a produção parcial de uma parte com vários focos.
 export async function materializeChannelPart(client, lot, { concluir = true } = {}) {
   const { curso, microssequencia, unidades, explicacoes } = lot.materialization;
-  const prepared = await client.call("preparar_materializacao", {
+  const prepared = await completeRead(client, "preparar_materializacao", {
     curso, microssequencia, concluir,
     unidades: unidades.map(humanMaterializationUnitPlan), explicacoes
   });
   assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
-  await client.call("materializar_parte", { ...lot.materialization, concluir });
-  return { ...prepared, pages: 1 };
+  await client.call("materializar_parte", { ...lot.materialization, concluir,
+    preparationReference: prepared.context.preflight.referencia });
+  return prepared;
 }
 
 // Full migrated DB through the canonical adapter; no SQL fixture substitutions.

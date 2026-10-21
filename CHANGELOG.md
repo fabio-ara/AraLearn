@@ -7,6 +7,12 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.133] - 2026-10-21
+
+### Alterado
+
+- A preparação editorial vincula a materialização à referência exata da candidata e oferece prévia paginada, com orientação sobre introdução, autoria, exemplos e feedback. A reconstrução mantém compatibilidade com partes sem grants automáticos; `ready` continua indicando apenas prontidão estrutural, sem garantir qualidade pedagógica ou escala ilimitada no plano Free.
+
 ## [0.0.132] - 2026-10-19
 
 ### Corrigido

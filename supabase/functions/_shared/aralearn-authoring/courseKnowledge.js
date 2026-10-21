@@ -13,12 +13,14 @@ export const COURSE_AUTHORING_CALIBRATION_RECOVERY =
 // Núcleo curto derivado das regras vigentes dos guias. Entrega o critério antes da
 // primeira escrita sem repetir a política extensa nem criar validador próprio.
 export const COURSE_AUTHORING_DELIVERY_CORE = Object.freeze([
-  "Explique o assunto com linguagem clara, contexto suficiente e progressão adequada ao aluno. Abra situando propósito, conexão e vocabulário.",
-  "No material de estudo e no feedback, trate do assunto e da tarefa; decisões e avaliações de autoria ficam fora. Use ressalvas que ajudem a compreender ou decidir.",
-  "Desenvolva na explicação os conceitos, relações e exemplos da consulta; nas unidades, ensine os pressupostos que só existem nela ou remeta a ela com clareza, organizando os parágrafos por função. Reutilize definições e dados úteis, sem copiar o desenvolvimento.",
-  "Escolha atividades que permitam observar a operação prevista pelo objetivo e explique os acertos e erros no retorno.",
-  "Dimensione os cálculos ao objetivo. Ofereça calculadora ou outro apoio quando a carga aritmética desviar o foco do que se pretende aprender.",
-  "Vincule afirmações substantivas às passagens verificadas que as sustentam; exemplos construídos dispensam citações artificiais."
+  "Explique com clareza e progressão; abra por propósito e vocabulário.",
+  "Antes de gravar, revise a abertura concreta antes das abstrações; apresente autores pelo nome completo e contexto confirmado. ready indica só estrutura.",
+  "Desenvolva exemplos visíveis com dados e raciocínio; exponha contrastes plausíveis. Práticas usam distratores possíveis e feedback sobre assunto, raciocínio e erro, sem metacomentário. Plano, títulos e feedback não substituem ensino; falhas pedem correção e novo preparo.",
+  "Material e feedback tratam do assunto e da tarefa, não de decisões autorais.",
+  "Explique conceitos e relações da consulta; ensine pressupostos nas unidades ou remeta a ela. Organize por função e reutilize sem copiar.",
+  "Escolha atividades que evidenciem o objetivo; explique acertos e erros.",
+  "Dimensione cálculos ao objetivo; apoie quando a aritmética desviar o foco.",
+  "Vincule afirmações substantivas a fontes verificadas; exemplos próprios dispensam citação."
 ]);
 
 export const COURSE_AUTHORING_SERVER_INSTRUCTIONS = [
@@ -55,6 +57,7 @@ export const COURSE_AUTHORING_GUIDES = Object.freeze({
     instructions: Object.freeze([
       ...COURSE_AUTHORING_DELIVERY_CORE,
       SUBSTANTIVE_EVIDENCE_GUIDANCE,
+      "Na preparação, se context tiver fragmento, continuacao ou temMais, repita os mesmos argumentos e acrescente só continuacao; reconstitua todos os fragmentos application/json em ordem antes da leitura editorial. preparationReference só é obtida do preflight reconstituído e vale para os mesmos curso, foco e unidades.",
       "Use o deepLink e os links tipados retornados conforme sua relation: content lê o objeto, observations abre a central, sources consulta fontes, planning mostra o planejamento e parameters abre parâmetros. Preserve target e revision; não reconstrua URLs por palavras como revisão. Um destino removido exige recuperar a identidade disponível, sem substituir silenciosamente pela primeira unidade.",
       "Produza uma microssequência por chamada a materializar_parte, desenvolvendo a explicação e as práticas desse foco; partes continuam agrupamentos operacionais. IDs de instâncias, versões atuais e posições omitidas são preenchidos pelo AraLearn. Não reduza componentes, opções, lacunas ou variedade para reduzir trabalho. Depois de materializar_parte, o deepLink abre o conteúdo da parte produzida. Use esse endereço também quando o texto do link disser revisar ou inspecionar a parte; section=review serve exclusivamente à lista de observações. Apresente o conjunto produzido e os objetos que realmente precisam de inspeção, sem solicitar novamente a revisão de bases preservadas. Um estado desatualizado exige conferir o que mudou e seu alcance; não afirme que o sistema está correto nem peça para revisar tudo apenas por receber esse estado.",
       "Ao entregar conteúdo novo, convide brevemente a ler e marcar a revisão no próprio objeto. Consulte as marcas persistidas na retomada: a pessoa não precisa comunicar novamente uma revisão feita no app. Se pedir o próximo passo sem revisar, prossiga no escopo autorizado e informe apenas que o conteúdo anterior continua salvo sem revisão autoral. Pontos de revisão são oportunidades de inspeção; ausência de marca não bloqueia a produção seguinte nem o estudo. Respeite uma pausa expressamente pedida pela pessoa, sem inventar uma a partir do estado rascunho.",
