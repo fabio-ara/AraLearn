@@ -50,10 +50,14 @@ function preparedReadUnavailable() {
 export async function openPreparedHumanRead({ adapter, principal, name, args, deadlineAt }) {
   const state = args.continuacao === undefined ? null : decodeHumanReadContinuation(args.continuacao);
   const minimal = minimalMaterializationContinuation(name, args);
+  // Recovery reads only the persisted write receipt; do not probe prepared-read
+  // capabilities or load editorial context in this mode.
+  if (name === 'preparar_materializacao' && args.recuperacao !== undefined) return null;
+  if (!eligible(name, args)) return null;
   const supportsPreparedRead = typeof adapter?.getPreparedHumanReadStamp === 'function' &&
     typeof adapter?.savePreparedHumanRead === 'function' && typeof adapter?.readPreparedHumanRead === 'function';
   if (minimal && !supportsPreparedRead) preparedReadUnavailable();
-  if (!eligible(name, args) || !supportsPreparedRead) return null;
+  if (!supportsPreparedRead) return null;
   if (minimal && state?.s === undefined) changed();
   // A legacy full-argument cursor remains on the old in-memory path. Only a
   // cursor carrying a persisted read may omit the candidate safely.
