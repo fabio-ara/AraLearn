@@ -177,6 +177,18 @@ A área trata de retenção e de arquivos ou registros remanescentes que o siste
 consegue identificar. Cada remoção é novamente verificada no servidor.
 A [política de privacidade](privacidade.md) descreve acesso, retenção e exclusão.
 
+### Limites de armazenamento
+
+O AraLearn é mantido compatível com o plano Supabase Free, cujas franquias são
+finitas: 500 MB de banco de dados por projeto e 1 GB de Storage por organização.
+Tráfego de saída (egress) tem medição e franquia próprias, separadas do espaço
+armazenado. Os valores efetivos e o uso do projeto devem ser conferidos no painel
+Supabase; compatibilidade com o plano não significa uso ilimitado. A manutenção
+de arquivos remove somente resíduos classificados e confirmados, preservando
+objetos ainda referenciados. Consulte os [limites de banco de dados](https://supabase.com/docs/guides/platform/database-size),
+[cobrança e franquias](https://supabase.com/docs/guides/platform/billing-on-supabase)
+e [egress e bandwidth](https://supabase.com/docs/guides/storage/serving/bandwidth).
+
 ## Aplicação web e Android
 
 O AraLearn pode ser usado no navegador, instalado a partir dele ou aberto no

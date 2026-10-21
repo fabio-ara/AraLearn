@@ -316,6 +316,45 @@ function resetDisposableApplicationState(container, firstFinalMigration) {
     drop schema if exists public cascade;
     create schema public authorization pg_database_owner;
     grant usage on schema public to public;
+    alter default privileges for role postgres
+      revoke all on tables from anon, authenticated, service_role;
+    alter default privileges for role supabase_admin
+      revoke all on tables from anon, authenticated, service_role;
+    create schema if not exists supabase_migrations;
+    create table if not exists supabase_migrations.schema_migrations (
+      version text primary key,
+      statements text,
+      name text
+    );
+    drop schema if exists aralearn_default_acl_probe cascade;
+    create schema aralearn_default_acl_probe;
+    grant create on schema aralearn_default_acl_probe to postgres, supabase_admin;
+    set role postgres;
+    create table aralearn_default_acl_probe.postgres_created(id integer);
+    reset role;
+    set role supabase_admin;
+    create table aralearn_default_acl_probe.supabase_admin_created(id integer);
+    reset role;
+    do $default_acl_probe$
+    begin
+      if exists (
+        select 1
+        from (values ('anon'), ('authenticated'), ('service_role')) role_value(name)
+        cross join (values
+          ('aralearn_default_acl_probe.postgres_created'),
+          ('aralearn_default_acl_probe.supabase_admin_created')
+        ) table_value(name)
+        cross join (values
+          ('SELECT'), ('INSERT'), ('UPDATE'), ('DELETE'),
+          ('TRUNCATE'), ('REFERENCES'), ('TRIGGER')
+        ) privilege_value(name)
+        where has_table_privilege(role_value.name, table_value.name, privilege_value.name)
+      ) then
+        raise exception 'Os grants default de tabela para API roles permanecem ativos.';
+      end if;
+    end;
+    $default_acl_probe$;
+    drop schema aralearn_default_acl_probe cascade;
     truncate table auth.users cascade;
     delete from supabase_migrations.schema_migrations
     where version >= '${finalBoundary}';
@@ -1088,6 +1127,39 @@ export function verifyApplicationConvergence(clean, restored, expectedManifest) 
       "Instalação limpa e upgrade divergem nas definições ou padrões dos catálogos correntes.");
     compareRuntimeManifest(expectedManifest, queryJson(clean,
       "select public.get_aralearn_runtime_manifest()"));
+    const privilegeBoundary = queryJson(clean, `select jsonb_build_object(
+      'publicTableSelect', exists (
+        select 1
+        from (values ('anon'), ('authenticated'), ('service_role')) role_value(name)
+        cross join (values ('courses'), ('course_access'),
+          ('course_personal_states'), ('person_profiles')) table_value(name)
+        where has_table_privilege(role_value.name,
+          'public.' || table_value.name, 'select')
+      ),
+      'privateTableSelect', has_table_privilege(
+        'service_role', 'private.course_entities', 'select'
+      ),
+      'authenticatedCourseRpc', has_function_privilege(
+        'authenticated', 'public.get_course_v1(uuid)', 'execute'
+      ),
+      'serviceRetentionRpc', has_function_privilege(
+        'service_role',
+        'public.run_current_retention_for_actor_v1(uuid,integer,boolean)',
+        'execute'
+      ),
+      'authenticatedRetentionRpc', has_function_privilege(
+        'authenticated',
+        'public.run_current_retention_for_actor_v1(uuid,integer,boolean)',
+        'execute'
+      )
+    )`);
+    assert.deepEqual(privilegeBoundary, {
+      publicTableSelect: false,
+      privateTableSelect: false,
+      authenticatedCourseRpc: true,
+      serviceRetentionRpc: true,
+      authenticatedRetentionRpc: false
+    }, "A reconstrução limpa alterou a fronteira explícita de tabelas e RPCs.");
     assert.deepEqual(readAppliedRevisions(clean), readAppliedRevisions(restored),
       "Instalação limpa e upgrade possuem histórias de migrations diferentes.");
     for (const container of [clean, restored]) {

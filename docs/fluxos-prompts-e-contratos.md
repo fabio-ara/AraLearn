@@ -57,7 +57,7 @@ informações; uma operação de escrita pode modificar o estado salvo.
 | --- | --- | --- |
 | planejar | `consultar_planejamento` | `salvar_mapa_curricular`, `salvar_ramo_curricular`, `aprovar_mapa_curricular` |
 | desenvolver a explicação | `consultar_planejamento`, `preparar_revisao` | `salvar_explicacoes` |
-| produzir unidades | `preparar_materializacao` (consulta antecipada opcional) | `salvar_parte`, `materializar_parte` |
+| produzir unidades | `preparar_materializacao` (leitura editorial obrigatória antes da escrita) | `salvar_parte`, `materializar_parte` |
 | ajustar escolhas | `consultar_configuracao` | `ajustar_configuracao` |
 | corrigir material | `consultar_observacoes`, `preparar_revisao` | `aplicar_correcoes`, `retomar_correcao` |
 | conferir fontes | `consultar_fontes` | `manter_fonte`, `incorporar_pdf_como_fonte` |
@@ -180,16 +180,18 @@ de estudo com ensino, exemplos e a prática prevista. Quando falta o ensino de
 uma ideia nesse percurso, o preparo identifica a ideia, a unidade e a
 microssequência envolvidas e informa como completar a produção.
 
-`preparar_materializacao` é uma consulta antecipada opcional. Recebe em
-`unidades` as mesmas propostas de conteúdo usadas na escrita e confere
-conjuntamente repertório, vínculos, requisitos, formas, componentes, fontes,
-práticas e cobertura.
-Sem `referenciaPreparo`, `materializar_parte` faz essa verificação internamente
-com o conteúdo solicitado antes de gravar. Um resultado `blocked` agrega as
-causas previsíveis para correção. Quando fornecida, a referência explícita de
-preparo deve corresponder à base, configuração e intenção correntes.
+`preparar_materializacao` recebe em `unidades` o mesmo candidato da escrita,
+confere repertório, vínculos, requisitos, formas, componentes, fontes, práticas
+e cobertura, e devolve uma projeção editorial paginada do conteúdo observável
+pelo estudante. Continue com os mesmos argumentos e `continuacao` até reconstruir
+todo o contexto. `ready` significa prontidão estrutural, não parecer semântico:
+revise abertura, termos/autores, exemplo desenvolvido, alternativas e feedback
+antes da primeira gravação. `materializar_parte` exige a `preparationReference`
+da leitura exata; candidato ou base alterados tornam a referência obsoleta e
+nada é gravado. Conclusão sem unidades e recuperação somente leitura não exigem
+preparação.
 
-O contrato de autoria corrente é o catálogo **11.8.0**. `materializar_parte`
+O contrato de autoria corrente é o catálogo **11.9.0**. `materializar_parte`
 recebe o foco de **uma microssequência** e somente unidades novas ou
 explicitamente alteradas desse foco. A parte é resolvida pelo servidor; ela
 continua sendo agrupamento operacional, não alvo pedagógico. IDs de instâncias,

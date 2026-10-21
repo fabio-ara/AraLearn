@@ -738,6 +738,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   const groups = new Map();
   const sourceCache = new Map();
   const scopedDesigns = new Map();
+  const editorialProjection = [];
   const audioCandidates = planUnits.map((unit, index) => ({ content: unit.conteudo, unit: index + 1 }));
   const arrangement = arrangeMaterializationUnits(existingBySlot, planUnits, micros, add);
   for (const retained of arrangement.retained) {
@@ -800,8 +801,29 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
         bpmnIssues.push({ ...issue, ...details });
         if (issue.blocking) add(issue.code, issue.message, { ...details, path: issue.path });
       }
-      for (const issue of inspectPedagogicalEvidence({ content: normalizedContent, practices,
-        requirements: planItems(context.plan, "evidenceRequirements") }).issues) {
+      const evidence = inspectPedagogicalEvidence({ content: normalizedContent, practices,
+        requirements: planItems(context.plan, "evidenceRequirements") });
+      const feedbackByText = new Map();
+      for (const text of evidence.observation.feedback) {
+        feedbackByText.set(text, { text, unitFeedback: true, states: [] });
+      }
+      for (const [state, messages] of Object.entries(evidence.observation.feedbackStates ?? {})) {
+        for (const message of messages) {
+          const entry = feedbackByText.get(message.text) ?? { text: message.text, unitFeedback: false, states: [] };
+          entry.states.push({ state, origin: message.origin, ...(message.scope ? { scope: message.scope } : {}),
+            ...(message.condition ? { condition: message.condition } : {}) });
+          feedbackByText.set(message.text, entry);
+        }
+      }
+      editorialProjection.push({ position: planned.posicao ?? index + 1,
+        microsequence: micro?.title ?? "", title: normalizedContent.title ?? "",
+        studentContent: evidence.observation.studentContent,
+        practice: { question: evidence.observation.question,
+          alternatives: evidence.observation.alternatives.map(({ text, expected }) => ({ text, expected })),
+          targets: evidence.observation.targets,
+          operation: evidence.observation.operation,
+          feedback: [...feedbackByText.values()] } });
+      for (const issue of evidence.issues) {
         add(issue.code, issue.message, { ...details, path: issue.path });
       }
       delete normalizedContent.id;
@@ -1063,6 +1085,7 @@ export async function preflightHumanCourseMaterialization({ adapter, principal, 
   const unique = [...new Map(blockers.map(blocker => [JSON.stringify(blocker), blocker])).values()];
   return { state: unique.length ? "blocked" : "ready", referencia: unique.length ? null : `materialization-v1:${identity}`,
     blockers: unique, reconciliations, completion: complete ? "complete" : "partial",
+    ...(editorialProjection.length ? { leituraEditorial: editorialProjection } : {}),
     ...(bpmnIssues.length ? { bpmnReview: { state: "needs_review", issues: bpmnIssues } } : {}) };
 }
 
@@ -2057,6 +2080,8 @@ export async function materializeHumanCoursePart({
   units,
   explanations,
   preparationReference = null,
+  preparationValidatedBeforeDerivedPart = false,
+  expectedPreparationCourseRevision = null,
   complete = false,
   allowDraftCurricularMap = false,
   deadlineAt = null
@@ -2076,17 +2101,27 @@ export async function materializeHumanCoursePart({
       deadlineAt
     }),
     async build(context, { newId }) {
+      if (expectedPreparationCourseRevision !== null &&
+          context.course.revision !== expectedPreparationCourseRevision) {
+        throw new AuthoringApiError(409, "human_materialization_preflight_stale",
+          "A base mudou depois da criação da Parte técnica; prepare novamente antes de gravar.");
+      }
       producedPartPosition = Number(context.part.position) + 1;
       const preflight = await preflightHumanCourseMaterialization({ adapter, principal, context,
         planUnits: units.map(humanMaterializationUnitPlan), explanations, complete,
         allowDraftCurricularMap, deadlineAt });
-      if (preparationReference && preflight.referencia !== preparationReference) {
+      if (preparationReference && !preparationValidatedBeforeDerivedPart &&
+          preflight.referencia !== preparationReference) {
         throw new AuthoringApiError(409, "human_materialization_preflight_stale",
           "A base ou as intenções mudaram depois do preparo; releia o preflight antes de escrever.", { preflight });
       }
       if (preflight.state !== "ready") {
         throw new AuthoringApiError(422, "human_materialization_preflight_blocked",
           "Resolva os bloqueios agregados de preparar_materializacao antes de materializar.", { preflight });
+      }
+      if (units.length > 0 && !preparationReference) {
+        throw new AuthoringApiError(422, "human_materialization_preparation_required",
+          "Execute preparar_materializacao e envie a referência exata antes de gravar unidades candidatas.");
       }
       bpmnReview = preflight.bpmnReview ?? null;
       const prepared = await prepareUnits({

@@ -78,6 +78,7 @@ test("#307 restauração preserva o checkpoint histórico e continua até o mani
   assert.match(script, /resetDisposableApplicationState\(source, resolved\.migrations\[0\]\)/u);
   assert.match(script, /drop schema if exists private cascade/u);
   assert.match(script, /drop schema if exists public cascade/u);
+  assert.match(script, /create schema if not exists supabase_migrations[\s\S]+create table if not exists supabase_migrations\.schema_migrations/u);
   assert.match(script, /where schemaname='storage'/u);
   assert.match(script, /delete from supabase_migrations\.schema_migrations/u);
   assert.match(script, /applyMigrationFiles\(restored, stages\.beforeContextual/u);
@@ -97,6 +98,13 @@ test("convergência exige políticas válidas nos dois escopos após atravessar 
     componentPolicyIntegritySql: "policy-integrity-query",
     queryJson: (container, sql) => sql === "policy-integrity-query"
       ? (container === "clean" ? { total: 0, invalid: 0, scopes: [] } : restoredPolicies)
+      : sql.includes("publicTableSelect") ? vm.runInContext(`({
+          publicTableSelect: false,
+          privateTableSelect: false,
+          authenticatedCourseRpc: true,
+          serviceRetentionRpc: true,
+          authenticatedRetentionRpc: false
+        })`, context)
       : sql.includes("get_aralearn_runtime_manifest") ? {} : { parameters: [], components: {} },
     compareRuntimeManifest: () => {}, readAppliedRevisions: () => [],
     createHash: () => ({ update: () => ({ digest: () => "synthetic-hash" }) }) });
@@ -258,6 +266,25 @@ test("#274 mede redução técnica e registra a fronteira do backup de Storage",
   ]) assert.match(script, new RegExp(`'${measure}'`, "u"), measure);
   assert.match(script, /databaseBackupContainsMetadataOnly/u);
   assert.match(script, /objectRecoveryRequiresStorageBackup:\s*true/u);
+});
+
+test("reconstrução limpa simula ausência de grants automáticos e confere acesso por RPC", () => {
+  const reset = script.slice(
+    script.indexOf("function resetDisposableApplicationState("),
+    script.indexOf("function migrationsBefore(")
+  );
+  assert.match(reset, /alter default privileges for role postgres\s+revoke all on tables from anon, authenticated, service_role/iu);
+  assert.match(reset, /alter default privileges for role supabase_admin\s+revoke all on tables from anon, authenticated, service_role/iu);
+  assert.match(reset, /set role postgres;[\s\S]+postgres_created[\s\S]+set role supabase_admin;[\s\S]+supabase_admin_created/u);
+  assert.match(reset, /has_table_privilege\(role_value\.name, table_value\.name, privilege_value\.name\)/u);
+  assert.match(reset, /Os grants default de tabela para API roles permanecem ativos/u);
+  assert.ok(reset.indexOf("$default_acl_probe$") < reset.indexOf("delete from supabase_migrations.schema_migrations"));
+  assert.match(script, /'publicTableSelect', exists/u);
+  assert.match(script, /'privateTableSelect', has_table_privilege/u);
+  assert.match(script, /'authenticatedCourseRpc', has_function_privilege/u);
+  assert.match(script, /'serviceRetentionRpc', has_function_privilege/u);
+  assert.match(script, /'authenticatedRetentionRpc', has_function_privilege/u);
+  assert.match(script, /publicTableSelect: false,[\s\S]*privateTableSelect: false,[\s\S]*authenticatedCourseRpc: true,[\s\S]*serviceRetentionRpc: true,[\s\S]*authenticatedRetentionRpc: false/u);
 });
 
 

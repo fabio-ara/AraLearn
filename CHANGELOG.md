@@ -7,6 +7,13 @@ feita. Para compreender o produto vigente, comece pelo [mapa da
 documentação](docs/README.md); o [glossário técnico](docs/glossario-tecnico.md)
 explica os termos usados na implementação atual.
 
+## [0.0.133] - 2026-10-21
+
+### Alterado
+
+- A preparação editorial mostra o conteúdo destinado ao estudante em prévia paginada, vincula a gravação ao candidato revisado e orienta sobre contexto, autoria, exemplos e feedback.
+- A verificação de reconstrução cobre novas tabelas sem permissões automáticas e preserva o acesso controlado.
+
 ## [0.0.132] - 2026-10-19
 
 ### Corrigido

@@ -440,11 +440,13 @@ function internalMapEntities(planRead) {
 test("catálogo MCP publica somente as tarefas humanas correntes", () => {
   assert.deepEqual(COURSE_HUMAN_TASKS.map(({ name }) => name), EXPECTED_NAMES);
   assert.equal(new Set(EXPECTED_NAMES).size, 56);
+  assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "preparar_materializacao").description,
+    /ready não é parecer de inteligibilidade/u);
   const actualHash = createHash("sha256")
     .update(JSON.stringify(COURSE_HUMAN_TASKS))
     .digest("hex");
   assert.equal(COURSE_HUMAN_TASK_CATALOG_HASH, `sha256:${actualHash}`);
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.8.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.9.0");
   // A inspeção anuncia no próprio catálogo como recuperar uma resposta perdida:
   // a mesma referência e o mesmo parecer, sem recompor a tentativa.
   assert.match(COURSE_HUMAN_TASKS.find(({ name }) => name === "registrar_inspecao").description,
@@ -1138,7 +1140,7 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
       title: "Definição focal",
       role: "theory",
       content: [{ id: "body", package: "aralearn.resource.paragraph", version: "1.0.0",
-        data: { text: "Um socket liga o processo ao serviço de transporte." } }],
+        data: { text: "Um socket é um endpoint que vincula processo à camada de transporte, definido por endereço IP e porta." } }],
       response: null,
       feedback: [],
       topics: ["socket"]
@@ -1176,8 +1178,15 @@ test("preparo focal não transforma a parte operacional em dependência pedagóg
     rawArguments: { curso: "Redes para iniciantes", unidades: [candidate] }
   });
 
-  assert.equal(output.result, "A produção solicitada está coerente com o percurso e pode ser salva.");
+  assert.match(output.result, /verificações estruturais passaram/u);
+  assert.match(output.result, /não avalia inteligibilidade nem qualidade pedagógica/u);
   assert.equal(output.context.preflight.state, "ready");
+  assert.equal(output.context.preflight.escopoDaProntidao, "estrutural");
+  assert.match(output.nextDecision, /releia o conteúdo candidato desta chamada/u);
+  assert.match(output.nextDecision, /exemplos desenvolvidos/u);
+  assert.ok(output.context.criteriosDeEntrega.some(text => /abertura concreta antes das abstrações/u.test(text)));
+  assert.ok(output.context.criteriosDeEntrega.some(text => /nome completo e contexto confirmado/u.test(text)));
+  assert.ok(output.context.criteriosDeEntrega.some(text => /distratores possíveis/u.test(text)));
   assert.deepEqual(output.context.preflight.blockers, []);
   assert.deepEqual(output.context.parte, {
     posicao: 2,
@@ -1267,6 +1276,7 @@ test("#272 schemas, descrições e annotations distinguem leitura de escrita", (
   };
   const materializationArguments = {
     curso: "Redes",
+    preparationReference: `materialization-v1:${"0".repeat(64)}`,
     microssequencia: 1,
     explicacoes: [{ microssequencia: 1,
       conteudo: { title: "Processo e socket", content: structuredClone(content.content) }, fontes: [] }],

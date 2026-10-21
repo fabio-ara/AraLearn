@@ -236,12 +236,28 @@ async function materializeFocusedUnits({ adapter, principal, course, units, init
     const complete = !initial || index === units.length - 1;
     const args = { curso: course, microssequencia: unit.microssequencia, concluir: complete,
       unidades: [unit], explicacoes: sharedExplanations().filter(entry => entry.microssequencia === unit.microssequencia) };
-    const prepared = await executeHumanCourseTask({ adapter, principal, name: "preparar_materializacao",
-      rawArguments: { ...args, unidades: args.unidades.map(humanMaterializationUnitPlan) } });
+    const preparationArgs = { ...args, unidades: args.unidades.map(humanMaterializationUnitPlan) };
+    let continuation; let literal = ""; let prepared;
+    for (let page = 0; page < 80; page++) {
+      prepared = await executeHumanCourseTask({ adapter, principal, name: "preparar_materializacao",
+        rawArguments: { ...preparationArgs, ...(continuation ? { continuacao: continuation } : {}) } });
+      const context = prepared.context;
+      if (!context.fragmento) break;
+      assert.equal(context.fragmento.inicio, literal.length);
+      literal += context.fragmento.texto;
+      if (context.fragmento.fim === context.fragmento.total) {
+        prepared.context = JSON.parse(literal);
+        break;
+      }
+      continuation = context.continuacao;
+      assert.ok(continuation, "A leitura editorial precisa continuar até seu fim.");
+      assert.ok(page < 79, "A leitura editorial não terminou em 80 páginas.");
+    }
     assert.equal(prepared.context.preflight.state, "ready", JSON.stringify(prepared.context.preflight.blockers));
     assert.equal(prepared.context.parte.titulo, "Sockets");
     assert.equal(prepared.context.preflight.completion, complete ? "complete" : "partial");
-    materialized = await executeHumanCourseTask({ adapter, principal, name: "materializar_parte", rawArguments: args });
+    materialized = await executeHumanCourseTask({ adapter, principal, name: "materializar_parte",
+      rawArguments: { ...args, preparationReference: prepared.context.preflight.referencia } });
     assert.equal(materialized.context.completion, complete ? "complete" : "partial");
   }
   return materialized;

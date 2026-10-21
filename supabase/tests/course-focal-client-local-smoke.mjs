@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { curricularMap } from "./course-authoring-current-local-smoke.mjs";
-import { wireClient } from "./course-authoring-channels-local-smoke.mjs";
+import { materializeChannelPart, wireClient } from "./course-authoring-channels-local-smoke.mjs";
 import { completeHumanContent } from "../functions/_shared/aralearn-authoring/courseFocalMaterialization.js";
 import { explanationReconciliationTargets } from "../../src/domain/courseExplanationReconciliation.js";
 import {
@@ -304,8 +304,9 @@ export async function runFocalClientProof(environment = process.env) {
     await mcp.call("vincular_repertorio_instrucional", { curso: courseTitle,
       microssequencia: batch.microssequencia, analise: ANALYSIS.map(([enunciado]) => enunciado), evidencias: REQUIREMENTS });
     await mcp.call("salvar_parte", focalPart(courseTitle, batch));
-    await mcp.call("materializar_parte", { curso: courseTitle, microssequencia: batch.microssequencia,
-      concluir: true, unidades: materializationUnits(batch), explicacoes: materializationExplanations(batch) });
+    await materializeChannelPart(mcp, { materialization: { curso: courseTitle,
+      microssequencia: batch.microssequencia, concluir: true,
+      unidades: materializationUnits(batch), explicacoes: materializationExplanations(batch) } });
 
     const pristine = await readFocalReview(mcp, courseTitle, batch);
     const pristineThird = structuredClone(contentOf(pristine.studies[2]));

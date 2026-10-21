@@ -73,7 +73,7 @@ test("fixture dos canais vincula seis requisitos, fontes literais e reconciliaç
   }
 });
 
-test("smoke dos canais prepara e grava o mesmo candidato focal sem referência pública intermediária", async () => {
+test("smoke dos canais remonta o preparo paginado e grava o candidato com sua referência exata", async () => {
   const fixture = channelFixtures("Curso sintético");
   const lot = fixture.lots[0];
   assert.deepEqual(fixture.parts.map(group => group.lots.length), [3, 3], "a parte agrupa três focos");
@@ -81,20 +81,30 @@ test("smoke dos canais prepara e grava o mesmo candidato focal sem referência p
   assert.deepEqual(lot.materialization.unidades.map(unit => unit.microssequencia),
     [lot.materialization.microssequencia, lot.materialization.microssequencia]);
   const calls = [];
+  const preparedContext = { preflight: { state: "ready", referencia: "internal-only", blockers: [] } };
+  const preparedLiteral = JSON.stringify(preparedContext);
+  const split = Math.floor(preparedLiteral.length / 2);
   const client = { call: async (task, args) => {
     calls.push({ task, args });
-    return { context: { preflight: { state: "ready", referencia: "internal-only", blockers: [] } } };
+    if (task === "materializar_parte") return { context: {} };
+    const secondPage = args.continuacao === "next";
+    return { context: { fragmento: { inicio: secondPage ? split : 0,
+      fim: secondPage ? preparedLiteral.length : split, total: preparedLiteral.length,
+      texto: secondPage ? preparedLiteral.slice(split) : preparedLiteral.slice(0, split) },
+    continuacao: secondPage ? null : "next", temMais: !secondPage } };
   } };
-  await materializeChannelPart(client, lot);
-  assert.deepEqual(calls.map(call => call.task), ["preparar_materializacao", "materializar_parte"]);
+  const prepared = await materializeChannelPart(client, lot);
+  assert.equal(prepared.pages, 2, "o candidato é preparado após remontar duas páginas");
+  assert.deepEqual(calls.map(call => call.task), ["preparar_materializacao", "preparar_materializacao", "materializar_parte"]);
   assert.equal(calls[0].args.concluir, true);
+  assert.equal(calls[1].args.continuacao, "next");
   assert.equal(calls[0].args.microssequencia, lot.materialization.microssequencia);
   assert.equal(Object.hasOwn(calls[0].args, "parte"), false);
   assert.deepEqual(calls[0].args.unidades, lot.materialization.unidades.map(humanMaterializationUnitPlan));
   assert.deepEqual(calls[0].args.explicacoes, lot.materialization.explicacoes);
-  assert.deepEqual(calls[1].args, { ...lot.materialization, concluir: true });
-  assert.equal(Object.hasOwn(calls[1].args, "parte"), false);
-  assert.equal(Object.hasOwn(calls[1].args, "referenciaPreparo"), false);
+  assert.deepEqual(calls[2].args, { ...lot.materialization, concluir: true, preparationReference: "internal-only" });
+  assert.equal(Object.hasOwn(calls[2].args, "parte"), false);
+  assert.equal(Object.hasOwn(calls[2].args, "referenciaPreparo"), false);
   const partialCalls = [];
   await materializeChannelPart({ call: async (task, args) => { partialCalls.push({ task, args });
     return { context: { preflight: { state: "ready", referencia: "internal-only", blockers: [] } } }; } },

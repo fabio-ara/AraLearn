@@ -291,7 +291,7 @@ const SOURCE_ROLES_SCHEMA = Object.freeze({
   items: Object.freeze({ type: "string", enum: Object.freeze(Object.keys(HUMAN_SOURCE_ROLES)) })
 });
 const READ_CONTINUATION_SCHEMA = Object.freeze({ type: 'string', maxLength: 4096,
-  description: 'Repita os argumentos iniciais e esta continuação.' });
+  description: 'Repita os mesmos argumentos.' });
 const SOURCE_NAMES_SCHEMA = Object.freeze({
   type: "array", maxItems: 32,
   items: Object.freeze({ oneOf: Object.freeze([
@@ -524,7 +524,7 @@ const EXPLANATION_MATERIALIZATION_BRANCHES = Object.freeze([
 // devolvida por course_write_uncertain sem payload, sem preparo e sem reaplicar.
 // O modo é fechado e exclusivo com os argumentos de produção.
 const MATERIALIZATION_PRODUCTION_FIELDS = Object.freeze([
-  "curso", "microssequencia", "explicacoes", "concluir", "processo", "autonomo", "unidades"
+  "curso", "microssequencia", "explicacoes", "concluir", "processo", "autonomo", "unidades", "preparationReference"
 ]);
 // Duas leituras fechadas da mesma tentativa: a referência exata devolvida pelo
 // erro e, quando ela se perdeu, o curso e a microssequência do recorte. Nenhuma
@@ -841,10 +841,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "preparar_materializacao",
     "Preparar a materialização",
-    "Confere unidades candidatas ou o acumulado salvo; retorna ready/blocked sem gravar.",
+    "Confere estrutura do candidato ou acumulado; ready não é parecer de inteligibilidade. Antes de gravar, releia editorialmente este candidato.",
     inputSchema({ curso: COURSE_SCHEMA, microssequencia: HUMAN_REFERENCE_SCHEMA, processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
-      unidades: MATERIALIZATION_INPUT_SCHEMA, concluir: { type: "boolean", default: false }, explicacoes: EXPLANATIONS_SCHEMA
+      unidades: MATERIALIZATION_INPUT_SCHEMA, concluir: { type: "boolean", default: false },
+      explicacoes: EXPLANATIONS_SCHEMA, continuacao: READ_CONTINUATION_SCHEMA
     }, ["curso", "unidades"]),
     { readOnly: true }
   ),
@@ -1008,7 +1009,7 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
   task(
     "materializar_parte",
     "Produzir uma microssequência",
-    "Produz a microssequência com verificação automática; deriva parte, IDs, versões e posições. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Com recuperacao, consulta o recibo. Inspecione o resultado.",
+    "Exige preparationReference do preparo para o candidato. Deriva parte, IDs, versões e posições. " + COURSE_AUTHORING_ALIGNMENT_GUIDANCE + " Com recuperacao, consulta o recibo.",
     { ...inputSchema({
       curso: COURSE_SCHEMA,
       microssequencia: { ...HUMAN_REFERENCE_SCHEMA, description: "Copie o título do planejamento, sem prefixos. O AraLearn resolve a parte." },
@@ -1017,8 +1018,11 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
       processo: AUTHORING_PROCESS_REFERENCE_SCHEMA,
       autonomo: AUTONOMOUS_PRODUCTION_SCHEMA,
       unidades: MATERIALIZATION_INPUT_SCHEMA,
+      preparationReference: { type: "string" },
       recuperacao: MATERIALIZATION_RECOVERY_SCHEMA
     }), allOf: Object.freeze([
+      ifThen({ required: ["unidades"], properties: { unidades: { minItems: 1 } } },
+        { required: ["preparationReference"] }),
       ifThen({ required: ["recuperacao"] }, { allOf: Object.freeze(MATERIALIZATION_PRODUCTION_FIELDS.map(field =>
         Object.freeze({ not: Object.freeze({ required: Object.freeze([field]) }) }))) }),
       ifThen({ not: { required: ["recuperacao"] } }, { required: ["curso", "unidades"] })
@@ -1285,9 +1289,9 @@ export const COURSE_HUMAN_TASKS = Object.freeze([
 ]);
 
 export const COURSE_HUMAN_TASK_CATALOG_ID = "aralearn.human-authoring-tasks";
-export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.8.0";
+export const COURSE_HUMAN_TASK_CATALOG_VERSION = "11.9.0";
 export const COURSE_HUMAN_TASK_CATALOG_HASH =
-  "sha256:0ffa26f8dffda762bafe665d5c98bb3bb4e128bcc04b3c8322e84bea5e411fa2";
+  "sha256:a96be5fa8f3d02512bbbf3e307e9a2eeac22e58260f912d41470f0c6de1c4b70";
 export const COURSE_HUMAN_TASK_CATALOG_METADATA = Object.freeze({
   id: COURSE_HUMAN_TASK_CATALOG_ID,
   version: COURSE_HUMAN_TASK_CATALOG_VERSION,
@@ -3130,6 +3134,8 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
 }) => {
   const autonomous = humanAutonomyArgument(args);
   const resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
+  const continuation = await openHumanReadContinuation({ args, course: resolved.course,
+    task: "preparar_materializacao" });
   const focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
   const part = focal.part;
   resolved.part = part;
@@ -3156,26 +3162,34 @@ HUMAN_TASK_HANDLERS.preparar_materializacao = async ({
   }
   const ready = preflight.state === "ready";
   const closesSavedPart = args.concluir === true && Array.isArray(args.unidades) && args.unidades.length === 0;
+  const editorialReviewRequired = ready && !closesSavedPart && focal.units.length > 0;
+  preflight.escopoDaProntidao = "estrutural";
   const recovery = ready ? null : humanMaterializationRecovery(preflight);
+  const readContext = await paginateHumanReadContext(withoutTechnicalState({
+    criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
+    preflight,
+    parte: { posicao: Number(part.position) + 1, titulo: part.title, intencao: part.intent },
+    ...process
+  }), { state: continuation });
+  const nextDecision = readContext.temMais
+    ? `Continue a mesma preparação com continuacao recebida até reconstituir toda a leitura editorial.${
+      recovery ? ` ${recovery}` : ""
+    }`
+    : recovery ?? (editorialReviewRequired
+      ? "Antes de materializar_parte, releia o conteúdo candidato desta chamada: abertura e termos, contexto de autores, exemplos desenvolvidos, alternativas plausíveis e feedback específico. Se falhar, corrija e repita preparar_materializacao."
+      : null);
   return result(
     ready
       ? closesSavedPart
-        ? "O conteúdo salvo está coerente para concluir a Parte; nenhuma unidade será regravada."
-        : "A produção solicitada está coerente com o percurso e pode ser salva."
+        ? "As verificações estruturais do conteúdo salvo passaram para concluir a Parte; nenhuma unidade será regravada."
+        : editorialReviewRequired
+          ? "As verificações estruturais passaram; isso não avalia inteligibilidade nem qualidade pedagógica. Antes de gravar, releia editorialmente o conteúdo candidato desta chamada e corrija qualquer falha."
+          : "As verificações estruturais passaram; isso não é um parecer pedagógico."
       : recovery ?? "Ainda há uma dependência a resolver antes desta produção.",
     {
       deepLink: null,
-      nextDecision: recovery,
-      context: withoutTechnicalState({
-        criteriosDeEntrega: COURSE_AUTHORING_DELIVERY_CORE,
-        preflight,
-        parte: {
-          posicao: Number(part.position) + 1,
-          titulo: part.title,
-          intencao: part.intent
-        },
-        ...process
-      })
+      nextDecision,
+      context: readContext
     }
   );
 };
@@ -4399,6 +4413,8 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
     processReference: args.processo ?? null, autonomous });
   if (process.exigeConciliacao) fail("authoring_process_conflict", "Resolva as condições conflitantes do recorte antes de produzir.", null, 409);
   let allowDraft = process.processoCorrente.pontosDeRevisao.includes("curricular_map") === false;
+  let preparationValidatedBeforeDerivedPart = false;
+  let expectedPreparationCourseRevision = null;
   if (focal.part.id === null) {
     // Agrupamento técnico derivado do mapa em rascunho: persiste a Parte com a
     // autonomia que o processo validado autoriza e relê antes de materializar.
@@ -4406,7 +4422,24 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
     const mapaAprovado = resolved.plan?.plan?.curriculumMapStatus === "approved";
     if (!allowDraft && !mapaAprovado) fail("curricular_map_not_approved",
       curricularMapProductionBlockMessage(resolved.plan?.plan?.curriculumMapStatus), null, 409);
-    await adapter.saveCourseAuthoringPart({
+    if (focal.units.length > 0) {
+      const prepared = await preflightHumanCourseMaterialization({ adapter, principal, context: resolved,
+        planUnits: safeClone(focal.units, "unidades", 480 * 1024),
+        explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024),
+        complete: args.concluir === true, allowDraftCurricularMap: allowDraft, deadlineAt });
+      if (prepared.state === "ready" && typeof args.preparationReference !== "string") {
+        fail("human_materialization_preparation_required",
+          "Antes de criar a Parte técnica, execute preparar_materializacao e envie a referência exata devolvida.",
+          { nextDecision: "Execute preparar_materializacao com o mesmo curso, foco e unidades candidatas." });
+      }
+      if (prepared.state !== "ready" || prepared.referencia !== args.preparationReference) {
+        fail("human_materialization_preflight_stale",
+          "A preparação não corresponde à base e às unidades atuais; prepare novamente antes de criar a Parte técnica.",
+          { preflight: prepared }, 409);
+      }
+      preparationValidatedBeforeDerivedPart = true;
+    }
+    const savedPart = await adapter.saveCourseAuthoringPart({
       principal,
       courseId: resolved.course.id,
       requestId: ("parte-tecnica-" + String(focal.microsequence.id).replace(/[^A-Za-z0-9._:-]/gu, "-") +
@@ -4419,10 +4452,16 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
         microsequences: focal.part.microsequences.map((item, index) => ({ microsequenceId: item.id, position: index })) },
       deadlineAt
     });
+    expectedPreparationCourseRevision = savedPart.courseRevision;
     resolved = await resolveTaskContext({ adapter, principal, args, deadlineAt });
     focal = await prepareFocalTask({ adapter, principal, args, resolved, deadlineAt });
     if (focal.part.id === null) throw new AuthoringApiError(503, "course_service_unavailable",
       "A Parte derivada não pôde ser relida antes da materialização.");
+    if (expectedPreparationCourseRevision !== resolved.course.revision ||
+        savedPart.planVersion !== planVersion(resolved.plan)) {
+      fail("human_materialization_preflight_stale",
+        "A base mudou depois da criação da Parte técnica; prepare novamente antes de gravar unidades.", null, 409);
+    }
     resolved.part = focal.part;
     process = await currentAuthoringProcessContext({ adapter, principal, resolved, deadlineAt,
       processReference: args.processo ?? null, autonomous });
@@ -4434,7 +4473,10 @@ HUMAN_TASK_HANDLERS.materializar_parte = async ({
     complete: args.concluir === true,
     allowDraftCurricularMap: allowDraft,
     units: safeClone(focal.units, "unidades", 480 * 1024),
-    explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024), deadlineAt });
+    explanations: safeClone(focal.explanations, "explicacoes", 480 * 1024),
+    preparationReference: args.preparationReference,
+    preparationValidatedBeforeDerivedPart,
+    expectedPreparationCourseRevision, deadlineAt });
   return { ...output, context: { ...output.context, ...process },
     nextDecision: output.nextDecision + " " + (process.processoCorrente.pontosDeRevisao.includes("study_unit")
       ? "Convide a ler e marcar a revisão das unidades. Consulte as marcas já feitas no app; um pedido para avançar autoriza o próximo passo do mandato, deixando o conteúdo anterior sem marca pendente de revisão."

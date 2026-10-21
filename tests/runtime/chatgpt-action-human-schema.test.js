@@ -201,6 +201,7 @@ const samples = {
   materializar_parte: {
     curso: "Redes para iniciantes",
     microssequencia: "Sockets",
+    preparationReference: `materialization-v1:${"0".repeat(64)}`,
     explicacoes: [{ microssequencia: "Sockets", conteudo: {
       title: "Processo, socket e transporte", content: SAMPLE_THEORY_CONTENT.content
     }, fontes: [] }],
@@ -351,7 +352,7 @@ test("#357 OpenAPI preserva 56 tarefas em seis grupos e 24 operações diretas",
     openApi.info["x-aralearn-task-catalog-version"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.version
   );
-  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.8.0");
+  assert.equal(COURSE_HUMAN_TASK_CATALOG_METADATA.version, "11.9.0");
   assert.equal(
     openApi.info["x-aralearn-task-catalog-fingerprint"],
     COURSE_HUMAN_TASK_CATALOG_METADATA.hash
@@ -868,7 +869,7 @@ test("Actions orienta proveniência, componentes locais e formas calibradas no p
   const instance = unit.properties.conteudo.properties.content.items;
   assert.deepEqual(instance.required, ["package", "data"]);
   const materializationTask = actionTools.find(({ name }) => name === "materializar_parte");
-  assert.match(materializationTask.description, /microssequência com verificação automática/iu);
+  assert.match(materializationTask.description, /Exige preparationReference do preparo/u);
   assert.match(materializationGuidance, /declare na aplicação da unidade as formas explicativas efetivamente realizadas/iu);
   assert.match(materializationGuidance, /justifique as não aplicáveis/iu);
   assert.match(
@@ -942,10 +943,10 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // `microssequencia` opcional em `registrar_aplicacoes_instrucionais`,
   // permitindo um lote atômico de unidades de várias microssequências do mesmo
   // curso. O catálogo 11.3.0 declara em `registrar_inspecao` a recuperação pela
-  // mesma referência e parecer. O catálogo 11.8.0 também aceita em `ajustar_configuracao`
+  // mesma referência e parecer. O catálogo 11.9.0 também aceita em `ajustar_configuracao`
   // as referências fechadas do lote novo e do comando de desenho legado. Em
   // `materializar_parte`, a localização da tentativa pelo curso e pela
-  // microssequência permanece. No catálogo 11.8.0, com instruções completas do
+  // microssequência permanece. No catálogo 11.9.0, com instruções completas do
   // servidor e orientação de triagem, a medição é 102066 minificados / 210555
   // formatados. Tetos 103000 / 212000 mantêm cerca de 1% de folga local; não
   // são limites do editor, cuja aceitação exige conferência no cliente real.

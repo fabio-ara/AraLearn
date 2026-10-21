@@ -108,9 +108,8 @@ const errorSchema = {
 // 101751 minified / 209947 pretty-printed characters. Catalog 11.6.0 adds the
 // completion of an existing part from saved content and its corresponding
 // read-only preparation. Its measured baseline is 101679 minified / 209831
-// pretty-printed characters. Catalog 11.8.0 adds two formal focal-reference
-// arguments and compact triage. Its full server instructions and triage guidance
-// measure 102066 minified / 210555 pretty-printed characters. These local
+// pretty-printed characters. Catalog 11.9.0 adds the preparation reference and
+// paged editorial reading for candidate materialization. These local
 // regression ceilings leave about 1% headroom; acceptance in the real editor
 // remains a separate gate.
 const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 212_000;

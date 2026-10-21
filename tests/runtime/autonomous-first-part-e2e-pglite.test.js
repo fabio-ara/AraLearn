@@ -344,6 +344,26 @@ async function runCore(adapter, name, args, principal = PRINCIPAL) {
   return await executeHumanCourseTask({ adapter, principal, name, rawArguments: args });
 }
 
+async function readPreparation(read) {
+  let continuation;
+  let literal = "";
+  for (let page = 0; page < 100; page++) {
+    const context = await read(continuation);
+    if (!context.fragmento) return context;
+    assert.equal(context.fragmento.inicio, literal.length);
+    literal += context.fragmento.texto;
+    if (context.fragmento.fim === context.fragmento.total) return JSON.parse(literal);
+    continuation = context.continuacao;
+    assert.equal(context.temMais, true);
+  }
+  assert.fail("A leitura editorial não terminou dentro do limite de páginas esperado.");
+}
+
+async function prepareCore(adapter, args) {
+  return readPreparation(async continuacao => (await runCore(adapter, "preparar_materializacao",
+    { ...args, ...(continuacao ? { continuacao } : {}) })).context);
+}
+
 async function viaMcpHandler(adapter, name, args) {
   const resourceUrl = "https://edge.example/functions/v1/aralearn-authoring-mcp";
   const handler = createAuthoringMcpHandler({ adapter, resourceUrl,
@@ -360,6 +380,11 @@ async function viaMcpHandler(adapter, name, args) {
   return { status: response.status, payload, texto };
 }
 
+async function prepareMcp(adapter, args) {
+  return readPreparation(async continuacao => (await viaMcpHandler(adapter, "preparar_materializacao",
+    { ...args, ...(continuacao ? { continuacao } : {}) })).payload.result.structuredContent.context);
+}
+
 async function viaActionsHandler(adapter, name, args) {
   const actionBaseUrl = "https://project.example/functions/v1/aralearn-authoring-action";
   const handler = createAuthoringActionHandler({ adapter, allowedOrigins: new Set(["https://chatgpt.com"]),
@@ -373,6 +398,11 @@ async function viaActionsHandler(adapter, name, args) {
   let payload;
   try { payload = JSON.parse(texto); } catch { payload = undefined; }
   return { status: response.status, payload, texto };
+}
+
+async function prepareActions(adapter, args) {
+  return readPreparation(async continuacao => (await viaActionsHandler(adapter, "preparar_materializacao",
+    { ...args, ...(continuacao ? { continuacao } : {}) })).payload.context);
 }
 
 async function snapshot(db) {
@@ -404,11 +434,12 @@ test("núcleo humano: mapa em rascunho, zero partes e autonomia derivada criam a
     assert.deepEqual(saida.context.processoCorrente.pontosDeRevisao, []);
     assert.deepEqual((await adapter.getAuthoringProcessPreferences()).preferences.reviewPoints,
       ["curricular_map", "explanation", "study_unit"]);
-    const preparo = await runCore(adapter, "preparar_materializacao", { ...ARGS, processo: referencia });
-    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
+    const preparo = await prepareCore(adapter, { ...ARGS, processo: referencia });
+    assert.equal(preparo.preflight.state, "ready", JSON.stringify(preparo.preflight.blockers));
     assert.deepEqual((await snapshot(db)).partes, []);
     assert.equal(writes.length, 0);
-    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparo.preflight.referencia });
     const estado = await snapshot(db);
     assert.equal(estado.partes.length, 1);
     assert.equal(estado.partes[0].title, MICRO_TITLE);
@@ -422,11 +453,12 @@ test("núcleo humano: mapa em rascunho, zero partes e autonomia derivada criam a
 test("autonomia explícita sem referência prepara e grava o mapa em rascunho com o mesmo lote", async () => {
   const { db, writes, adapter } = await setup();
   try {
-    const preparo = await runCore(adapter, "preparar_materializacao", { ...ARGS, autonomo: true });
-    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
+    const preparo = await prepareCore(adapter, { ...ARGS, autonomo: true });
+    assert.equal(preparo.preflight.state, "ready", JSON.stringify(preparo.preflight.blockers));
     assert.deepEqual((await snapshot(db)).partes, []);
     assert.equal(writes.length, 0, "o preparo permanece somente leitura");
-    const saida = await runCore(adapter, "materializar_parte", { ...ARGS, autonomo: true });
+    const saida = await runCore(adapter, "materializar_parte", { ...ARGS, autonomo: true,
+      preparationReference: preparo.preflight.referencia });
     assert.ok(saida.context);
     const estado = await snapshot(db);
     assert.equal(estado.partes.length, 1);
@@ -442,10 +474,11 @@ test("mesmo núcleo pelo canal MCP persiste a primeira prática com a Parte deri
   try {
     const { referencia } = await retomadaAutonoma(adapter, { viaMcp: true });
     assert.ok(typeof referencia === "string" && referencia.length > 8);
-    const preparo = await viaMcpHandler(adapter, "preparar_materializacao", { ...ARGS, processo: referencia });
-    assert.equal(preparo.payload.result.structuredContent.context.preflight.state, "ready",
-      JSON.stringify(preparo.payload.result.structuredContent.context.preflight.blockers));
-    const salida = await viaMcpHandler(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const preparo = await prepareMcp(adapter, { ...ARGS, processo: referencia });
+    assert.equal(preparo.preflight.state, "ready",
+      JSON.stringify(preparo.preflight.blockers));
+    const salida = await viaMcpHandler(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparo.preflight.referencia });
     assert.ok(salida.payload?.result, "status=" + salida.status + " texto=" + salida.texto.slice(0, 240));
     assert.equal(salida.payload.result.isError ?? false, false);
     const estado = await snapshot(db);
@@ -490,7 +523,9 @@ test("ator sem posse e planejamento divergente não vazam detalhe interno", asyn
   const conflito = await setup({ stalePlan: true });
   try {
     const { referencia } = await retomadaAutonoma(conflito.adapter);
-    await assert.rejects(() => runCore(conflito.adapter, "materializar_parte", { ...ARGS, processo: referencia }), error => {
+    const preparo = await prepareCore(conflito.adapter, { ...ARGS, processo: referencia });
+    await assert.rejects(() => runCore(conflito.adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparo.preflight.referencia }), error => {
       assert.equal(error.status, 409, error.code + " :: " + error.message);
       assert.ok(["stale_course_state", "curricular_map_not_approved"].includes(error.code));
       assert.ok(!/40001|private\./u.test(error.message));
@@ -535,7 +570,9 @@ test("derivação preserva a posição do recorte e recusa ambiguidade", () => {
 test("mapa aprovado dispensa autonomia para a Parte derivada", async () => {
   const { db, writes, adapter } = await setup({ approved: true });
   try {
-    await runCore(adapter, "materializar_parte", ARGS);
+    const preparo = await prepareCore(adapter, ARGS);
+    await runCore(adapter, "materializar_parte", { ...ARGS,
+      preparationReference: preparo.preflight.referencia });
     const estado = await snapshot(db);
     assert.equal(estado.partes.length, 1);
     assert.equal(estado.unidades.length, 1);
@@ -550,10 +587,10 @@ test("mesmo núcleo pelo HANDLER Actions, com autenticação stub rotulada, pers
     assert.ok(retomada.payload?.context, "status=" + retomada.status + " texto=" + retomada.texto.slice(0, 260));
     const referencia = retomada.payload.context.referenciaProcesso;
     assert.ok(typeof referencia === "string" && referencia.length > 8);
-    const preparo = await viaActionsHandler(adapter, "preparar_materializacao", { ...ARGS, processo: referencia });
-    assert.equal(preparo.payload?.context?.preflight?.state, "ready",
-      JSON.stringify(preparo.payload?.context?.preflight?.blockers ?? preparo.texto.slice(0, 260)));
-    const salida = await viaActionsHandler(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const preparo = await prepareActions(adapter, { ...ARGS, processo: referencia });
+    assert.equal(preparo.preflight.state, "ready", JSON.stringify(preparo.preflight.blockers));
+    const salida = await viaActionsHandler(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparo.preflight.referencia });
     assert.ok(salida.payload?.context, "status=" + salida.status + " texto=" + salida.texto.slice(0, 300));
     const estado = await snapshot(db);
     assert.equal(estado.partes.length, 1);
@@ -576,7 +613,9 @@ test("segunda microssequência não agrupada cria Parte 2 preservando Parte 1 e 
     [COURSE, IDEA, EVIDENCE]);
 
     const { referencia } = await retomadaAutonoma(adapter);
-    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const preparoAInicial = await prepareCore(adapter, { ...ARGS, processo: referencia });
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparoAInicial.preflight.referencia });
     const primeira = await snapshot(db);
     assert.equal(primeira.partes.length, 1);
     assert.equal(primeira.unidades.length, 1);
@@ -588,9 +627,10 @@ test("segunda microssequência não agrupada cria Parte 2 preservando Parte 1 e 
         ideiasIntroduzidas: [], ideiasUtilizadas: ["Relação central"], explicacoes: [] } };
     const segundaArgs = { curso: TITLE, microssequencia: "Segunda sequencia",
       unidades: [payload2], concluir: false, processo: referencia };
-    const preparoSegunda = await runCore(adapter, "preparar_materializacao", segundaArgs);
-    assert.equal(preparoSegunda.context.preflight.state, "ready", JSON.stringify(preparoSegunda.context.preflight.blockers));
-    await runCore(adapter, "materializar_parte", segundaArgs);
+    const preparoSegunda = await prepareCore(adapter, segundaArgs);
+    assert.equal(preparoSegunda.preflight.state, "ready", JSON.stringify(preparoSegunda.preflight.blockers));
+    await runCore(adapter, "materializar_parte", { ...segundaArgs,
+      preparationReference: preparoSegunda.preflight.referencia });
     const estado = await snapshot(db);
     assert.equal(estado.partes.length, 2);
     assert.deepEqual(estado.partes.map(parte => parte.title), [MICRO_TITLE, "Segunda sequencia"]);
@@ -619,11 +659,11 @@ test("dependência curricular pendente bloqueia o foco sem refém de Microssequ�
       concluir: false, processo: referencia };
 
     // B depende de A: sem unidade produzida, o preflight não promete prontidão.
-    const preparoBloqueado = await runCore(adapter, "preparar_materializacao", argsSegunda);
-    assert.equal(preparoBloqueado.context.preflight.state, "blocked");
-    const bloqueio = preparoBloqueado.context.preflight.blockers
+    const preparoBloqueado = await prepareCore(adapter, argsSegunda);
+    assert.equal(preparoBloqueado.preflight.state, "blocked");
+    const bloqueio = preparoBloqueado.preflight.blockers
       .find(blocker => blocker.code === "curricular_dependency_not_produced");
-    assert.ok(bloqueio, JSON.stringify(preparoBloqueado.context.preflight.blockers));
+    assert.ok(bloqueio, JSON.stringify(preparoBloqueado.preflight.blockers));
     assert.match(bloqueio.message, new RegExp(MICRO_TITLE, "u"), "o bloqueio nomeia a dependência");
     assert.match(bloqueio.message, /antes ou inclua as duas no mesmo lote/u, "o bloqueio informa o próximo passo");
     await assert.rejects(() => runCore(adapter, "materializar_parte", argsSegunda), error => {
@@ -641,15 +681,16 @@ test("dependência curricular pendente bloqueia o foco sem refém de Microssequ�
     assert.ok(erro.details.preflight.blockers.some(item => item.code === "curricular_dependency_not_produced"));
 
     // A não depende de ninguém: produzi-la não é refém de B nem de C.
-    const preparoA = await runCore(adapter, "preparar_materializacao", { ...ARGS, processo: referencia });
-    assert.equal(preparoA.context.preflight.state, "ready", JSON.stringify(preparoA.context.preflight.blockers));
-    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const preparoA = await prepareCore(adapter, { ...ARGS, processo: referencia });
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparoA.preflight.referencia });
     assert.deepEqual((await snapshot(db)).unidades.map(unidade => unidade.micro), [MICRO]);
 
     // Com A produzida, B libera; C segue fora do lote sem bloquear B.
-    const preparoB = await runCore(adapter, "preparar_materializacao", argsSegunda);
-    assert.equal(preparoB.context.preflight.state, "ready", JSON.stringify(preparoB.context.preflight.blockers));
-    await runCore(adapter, "materializar_parte", argsSegunda);
+    const preparoB = await prepareCore(adapter, argsSegunda);
+    assert.equal(preparoB.preflight.state, "ready", JSON.stringify(preparoB.preflight.blockers));
+    await runCore(adapter, "materializar_parte", { ...argsSegunda,
+      preparationReference: preparoB.preflight.referencia });
     assert.deepEqual((await snapshot(db)).unidades.map(unidade => unidade.micro).sort(), [MICRO, MICRO_2]);
   } finally { await db.close(); }
 });
@@ -659,19 +700,24 @@ test("dependência produzida fora do agrupamento técnico é reconhecida pelo es
   try {
     await seedChainPart(db, adapter);
     const { referencia } = await retomadaAutonoma(adapter);
-    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const preparoA = await prepareCore(adapter, { ...ARGS, processo: referencia });
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparoA.preflight.referencia });
     const argsSegunda = { curso: TITLE, microssequencia: MICRO_2_TITLE, unidades: [payloadSegunda()],
       concluir: false, processo: referencia };
-    await runCore(adapter, "materializar_parte", argsSegunda);
+    const preparoB = await prepareCore(adapter, argsSegunda);
+    await runCore(adapter, "materializar_parte", { ...argsSegunda,
+      preparationReference: preparoB.preflight.referencia });
     // A e B saem do agrupamento: a dependência de C precisa vir do estado
     // persistido, não da declaração do recorte desta escrita.
     await db.query("delete from private.course_authoring_part_didactic_microsequences" +
       " where course_id=$1 and didactic_microsequence_id=any($2)", [COURSE, [MICRO, MICRO_2]]);
     const argsTerceira = { curso: TITLE, microssequencia: MICRO_3_TITLE, unidades: [payloadTerceira()],
       concluir: false, processo: referencia };
-    const preparo = await runCore(adapter, "preparar_materializacao", argsTerceira);
-    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
-    await runCore(adapter, "materializar_parte", argsTerceira);
+    const preparo = await prepareCore(adapter, argsTerceira);
+    assert.equal(preparo.preflight.state, "ready", JSON.stringify(preparo.preflight.blockers));
+    await runCore(adapter, "materializar_parte", { ...argsTerceira,
+      preparationReference: preparo.preflight.referencia });
     assert.equal((await snapshot(db)).unidades.length, 3);
   } finally { await db.close(); }
 });
@@ -680,7 +726,9 @@ test("primeira Parte derivada preserva unidade existente sem agrupamento e posi�
   const { db, adapter } = await setup();
   try {
     const { referencia } = await retomadaAutonoma(adapter);
-    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia });
+    const preparoA = await prepareCore(adapter, { ...ARGS, processo: referencia });
+    await runCore(adapter, "materializar_parte", { ...ARGS, processo: referencia,
+      preparationReference: preparoA.preflight.referencia });
     const anterior = (await db.query("select entity_id id, position, content, design_snapshot, design_application" +
       " from private.course_entities where course_id=$1 and entity_type='study_unit'", [COURSE])).rows[0];
     // A unidade passa a existir sem agrupamento: a Parte é apenas técnica.
@@ -689,9 +737,10 @@ test("primeira Parte derivada preserva unidade existente sem agrupamento e posi�
 
     const semPosicao = { curso: TITLE, microssequencia: MICRO_TITLE, unidades: [payloadSemPosicao()],
       concluir: false, processo: referencia };
-    const preparo = await runCore(adapter, "preparar_materializacao", semPosicao);
-    assert.equal(preparo.context.preflight.state, "ready", JSON.stringify(preparo.context.preflight.blockers));
-    await runCore(adapter, "materializar_parte", semPosicao);
+    const preparo = await prepareCore(adapter, semPosicao);
+    assert.equal(preparo.preflight.state, "ready", JSON.stringify(preparo.preflight.blockers));
+    await runCore(adapter, "materializar_parte", { ...semPosicao,
+      preparationReference: preparo.preflight.referencia });
 
     const unidades = (await db.query("select entity_id id, position, content from private.course_entities" +
       " where course_id=$1 and entity_type='study_unit' order by position, entity_id", [COURSE])).rows;

@@ -49,6 +49,16 @@ function explanationFixtures() {
   return [{ microssequencia: "DNS", conteudo: dnsExplanation(), fontes: [] }];
 }
 const materializeHumanCoursePart = materializeCompletePart;
+async function prepareAndMaterialize(request) {
+  if (request.preparationReference !== undefined || !request.units?.length) {
+    return materializeCompletePart(request);
+  }
+  const preparation = await prepareMaterialization(request.adapter, request.units, {
+    explanations: request.explanations ?? [], complete: request.complete === true,
+    allowDraftCurricularMap: request.allowDraftCurricularMap === true
+  });
+  return materializeCompletePart({ ...request, preparationReference: preparation.referencia });
+}
 const PART_ID = "20000000-0000-4000-8000-000000000001";
 const ANALYSIS_ID = "30000000-0000-4000-8000-000000000001";
 const SECOND_ANALYSIS_ID = "30000000-0000-4000-8000-000000000002";
@@ -124,9 +134,14 @@ test("materialização pelo catálogo relê processo pessoal e mantém cadência
     const get = adapter.getCourseDesign;
     adapter.getCourseDesign = async request => request.scopeKind === "course"
       ? courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 }) : get(request);
+    const candidate = unit();
+    const preparation = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: { curso: "Curso de Redes",
+        unidades: [candidate], explicacoes: explanationFixtures() } });
     const output = await executeHumanCourseTask({ adapter, principal: PRINCIPAL, name: "materializar_parte",
-      rawArguments: { curso: "Curso de Redes", unidades: [unit()], explicacoes: explanationFixtures() } });
-    assert.deepEqual(reads, ["preferences"]);
+      rawArguments: { curso: "Curso de Redes", unidades: [candidate], explicacoes: explanationFixtures(),
+        preparationReference: preparation.context.preflight.referencia } });
+    assert.deepEqual(reads, ["preferences", "preferences"]);
     assert.equal(Object.hasOwn(output.context, "criteriosDeEntrega"), false,
       "o recibo de produção não repete os critérios de entrega");
     assert.equal(output.context.processoCorrente.foco, focus);
@@ -231,7 +246,8 @@ test("conclui o acumulado salvo com unidades vazias sem regravar conteúdo", asy
       curso: "Curso de Redes", microssequencia: "DNS", unidades: [], concluir: true });
     assert.equal(response.status, 200, response.envelope);
     assert.equal(response.value.context.preflight.state, "ready", channel);
-    assert.match(response.value.result, /conteúdo salvo está coerente para concluir a Parte; nenhuma unidade será regravada/iu);
+    assert.match(response.value.result, /verificações estruturais do conteúdo salvo passaram/u);
+    assert.doesNotMatch(response.value.result, /parecer pedagógico|qualidade pedagógica/iu);
   }
   assert.equal(adapter.calls.length, 1, "preparar a conclusão não grava");
 
@@ -284,7 +300,7 @@ test("conclui o acumulado salvo com unidades vazias sem regravar conteúdo", asy
   assert.ok(adapter.calls.slice(2).every(call => call.units.length === 0 && call.complete === true));
 
   const withNewContent = adapterFixture();
-  const produced = await materializeCompletePart({ adapter: withNewContent, principal: PRINCIPAL,
+  const produced = await prepareAndMaterialize({ adapter: withNewContent, principal: PRINCIPAL,
     course: "Curso de Redes", part: 1, units: [unit()], complete: true });
   assert.equal(produced.context.qualidadePedagogica, "pending_independent_inspection");
   assert.match(produced.nextDecision, /segunda leitura pedagógica/iu);
@@ -295,7 +311,7 @@ test("Explicação conserva fonte e âncora na mesma operação das unidades", a
   const support = explanationFixtures()[0];
   support.fontes = [{ fonte: "RFC 1035", relacao: "supported_by", papeis: ["tecnica_conceitual"],
     ancoras: ["Seção 2 — Introdução"], ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "O DNS associa nomes a endereços." }] }];
-  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [unit()], explanations: [support] });
   assert.equal(adapter.calls.length, 1);
   assert.deepEqual(adapter.calls[0].explanations[0].content, support.conteudo);
@@ -334,12 +350,12 @@ test("explicação rejeita vínculo técnico genérico e reutiliza um PDF com â
     }
     return read;
   };
-  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()],
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()],
     explanations: [{ ...support, fontes: [2, 3].map((position, index) => ({ fonte: "RFC 1035", relacao: "supported_by",
       papeis: ["tecnica_conceitual"], ancoras: [position], ocorrencias: [{ ...occurrence,
         trecho: index ? "Uma consulta usa o nome para obter a informação correspondente." : occurrence.trecho }] })) }] });
   const links = adapter.calls[0].explanations[0].sourceLinks;
-  assert.equal(detailReads, 2, "uma leitura para o preflight e outra para a escrita; nenhuma ingestão por citação");
+  assert.equal(detailReads, 3, "preparo, revalidação e escrita consultam os detalhes sem ingestão por citação");
   assert.equal(links[0].sourceId, links[1].sourceId);
   assert.deepEqual(links.map(link => link.anchors), [[{ anchorId: "pdf-page-2" }], [{ anchorId: "pdf-page-3" }]],
     "a posição consultada não muda quando há âncoras retiradas antes dela");
@@ -367,9 +383,9 @@ test("unidades reutilizam base salva antes da produção e vínculos exatos, sem
     if (request.mode === "target") return { items: [{ sourceLinks: structuredClone(links) }] };
     return readSources(request);
   };
-  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()] });
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [unit()] });
   assert.equal(adapter.calls.length, 1);
-  assert.equal(sourceReads.filter(read => read.mode === "target").length, 1);
+  assert.equal(sourceReads.filter(read => read.mode === "target").length, 2);
   assert.equal(sourceReads[0].targetKind, "microsequence_explanation");
   assert.equal(sourceReads[0].targetId, "micro-dns");
   assert.equal(sourceReads[0].expectedRevision, 8);
@@ -749,7 +765,7 @@ function pedagogicalUnit(position, {
 test("#272 materializa Parte com Fonte/Âncora sem IDs, fences, steps ou requestIds públicos", async () => {
   const adapter = adapterFixture();
   adapter.publicAppUrl = "https://aralearn.example/app";
-  const receipt = await materializeHumanCoursePart({
+  const receipt = await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -815,7 +831,7 @@ for (const authenticationKind of ["oauth", "action"]) test(`materialização ${a
   adapter.materializeCourseAuthoringPart = async (request) => ({
     ...await materialize(request), deepLink: `${adapter.publicAppUrl}#/authoring/courses/${COURSE_ID}?section=review`
   });
-  const receipt = await materializeHumanCoursePart({ adapter, principal: { ...PRINCIPAL, authenticationKind },
+  const receipt = await prepareAndMaterialize({ adapter, principal: { ...PRINCIPAL, authenticationKind },
     course: "Curso de Redes", part: 1, units: [unit()] });
   assert.equal(receipt.deepLink,
     `https://aralearn.example/app/#/authoring/courses/${COURSE_ID}?section=content&authoringPartId=${PART_ID}`);
@@ -882,7 +898,7 @@ test("#303 materialização aceita os pacotes ferramenta atuais pelo contrato co
     mode: "catalog", audioConfig: createDefaultCourseAudioConfig(), storage: { uniqueBytes: media.byteSize, maxUniqueBytes: COURSE_MEDIA_COURSE_MAX_BYTES },
     items: [{ ...media, fileName: "saudacao.wav" }], nextCursor: null });
   value.conteudo.content.push(...additions);
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [value] });
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [value] });
   assert.equal(adapter.calls.length, 1);
   const stored = adapter.calls[0].units[0];
   assert.deepEqual(stored.content.content.slice(1), additions);
@@ -938,7 +954,7 @@ test("parâmetro automático pendente exige escolha contextual justificada do ag
     };
     const ready = await prepareMaterialization(value, [candidate]);
     assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-    await materializeHumanCoursePart({
+    await prepareAndMaterialize({
       adapter: value,
       principal: PRINCIPAL,
       course: "Curso de Redes",
@@ -956,6 +972,7 @@ test("parâmetro automático pendente exige escolha contextual justificada do ag
 });
 test("MCP aceita escolha contextual explícita e distingue indisponibilidade de leitura", async () => {
   for (const unavailable of [false, true]) {
+    let designUnavailable = false;
     const adapter = adapterFixture();
     adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
     adapter.getAuthoringProcessPreferences = async () => ({
@@ -965,7 +982,7 @@ test("MCP aceita escolha contextual explícita e distingue indisponibilidade de 
     const readDesign = adapter.getCourseDesign;
     adapter.getCourseDesign = async request => {
       if (request.scopeKind === "course") return courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 });
-      if (unavailable) throw new AuthoringApiError(503, "course_service_unavailable", "Leitura indisponível.");
+      if (designUnavailable) throw new AuthoringApiError(503, "course_service_unavailable", "Leitura indisponível.");
       const design = await readDesign(request);
       design.parameters.find(({ parameterId }) => parameterId ===
         "minimum_distinct_practice_opportunities_per_evidence_requirement").effectiveAssignment = {
@@ -979,6 +996,11 @@ test("MCP aceita escolha contextual explícita e distingue indisponibilidade de 
       motivo: "Uma oportunidade basta nesta unidade expositiva, que não contém prática avaliativa.",
       parametros: { oportunidades_distintas_por_requisito: 1 }
     };
+    const preparation = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: { curso: "Curso de Redes",
+        unidades: [candidate], explicacoes: explanationFixtures() } });
+    assert.equal(preparation.context.preflight.state, "ready");
+    designUnavailable = unavailable;
     const resourceUrl = "https://edge.example/functions/v1/aralearn-authoring-mcp";
     const handler = createAuthoringMcpHandler({ adapter, resourceUrl,
       allowedOrigins: new Set(["https://chatgpt.com"]), authorizationServer: "https://project.example/auth/v1" });
@@ -988,7 +1010,8 @@ test("MCP aceita escolha contextual explícita e distingue indisponibilidade de 
       "MCP-Protocol-Version": ARALEARN_MCP_PROTOCOL_VERSION
     }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: {
       name: "materializar_parte", arguments: { curso: "Curso de Redes",
-        unidades: [candidate], explicacoes: explanationFixtures() }
+        unidades: [candidate], explicacoes: explanationFixtures(),
+        preparationReference: preparation.context.preflight.referencia }
     } }) }));
     const payload = await response.json();
     assert.equal(response.status, 200);
@@ -1074,7 +1097,7 @@ test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisã
   const expositoryAdapter = adapterFixture();
   const expository = unit();
   delete expository.aplicacaoPedagogica.modo;
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: expositoryAdapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1089,7 +1112,7 @@ test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisã
   const practiceAdapter = pedagogicalAdapter({ analysisCount: 0 });
   const practice = pedagogicalUnit(1, { mode: "pratica" });
   delete practice.aplicacaoPedagogica.modo;
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: practiceAdapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1117,7 +1140,7 @@ test("o modo pedagógico é derivado do conteúdo e das aplicações sem decisã
     }]
   });
   delete mixed.aplicacaoPedagogica.modo;
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: mixedAdapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1196,7 +1219,7 @@ test("calibração contextual pode variar uma unidade nova sem substituir condi�
     direcaoEditorial: "Conserve as duas ideias relacionadas no mesmo exemplo em evolução."
   };
 
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1322,7 +1345,7 @@ test("#272 materialização falha cedo quando a Âncora humana não existe", asy
 
 test("#302 materialização conserva dois usos da mesma fonte, trecho literal e identidade própria", async () => {
   const adapter = adapterFixture();
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [unit([
       { fonte: "RFC 1035", relacao: "informed_by", papeis: ["leitura_complementar"] },
       { fonte: "RFC 1035", relacao: "quoted_from", papeis: ["tecnica_conceitual"], ancoras: [1],
@@ -1356,7 +1379,7 @@ test("fonte sem localização confirmada permanece não verificada e não exige 
   };
 
   const safe = withoutAnchors();
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: safe,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1482,7 +1505,7 @@ test("revisão explícita reutiliza identidade e conserva conteúdo da unidade o
   const replacement = { ...unit(), unidade: 1 };
   const ready = await prepareMaterialization(adapter, [replacement]);
   assert.equal(ready.state, "ready");
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [replacement], preparationReference: ready.referencia });
   const write = adapter.calls[0];
   assert.equal(write.units.length, 1);
@@ -1502,7 +1525,7 @@ test("nova unidade ocupa posição final e desloca omitidas sem sobrescrever seu
   const saved = persistedStudyUnit(savedId, 1);
   adapter.listCourseStudyUnits = async () => ({ items: [structuredClone(saved)], hasMore: false, nextCursor: null });
   const inserted = pedagogicalUnit(1, { mode: "pratica" });
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [inserted], complete: false });
   const write = adapter.calls[0];
   assert.equal(write.complete, false);
@@ -1538,7 +1561,7 @@ test("preflight acumulado conserva exigências aplicadas às omitidas após muda
   saved.designApplication.explanationApplications[0].developedForms.push("mechanism");
   const ready = await prepareMaterialization(adapter, [next], { complete: true });
   assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [next], complete: true, preparationReference: ready.referencia });
   assert.equal(adapter.calls.length, 1);
 });
@@ -1649,7 +1672,7 @@ test("configuração completa preserva condição fixa e sela a calibração da 
       alvo_palavras_unidade: 200
     }
   };
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1732,7 +1755,7 @@ test("substituição reutiliza calibração automática aplicada com intenção 
     const ready = await prepareMaterialization(adapter, [replacement]);
     assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
     assert.equal(adapter.calls.length, 0);
-    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
       units: [replacement], preparationReference: ready.referencia });
     const applied = adapter.calls[0].units[0];
     assert.equal(applied.studyUnitId, saved.studyUnit.id);
@@ -1759,7 +1782,7 @@ test("calibração aplicada não substitui intenção corrente nem permite recal
       replacement.configuracao.parametros.alvo_palavras_conversa = assignment.value;
       const ready = await prepareMaterialization(adapter, [replacement]);
       assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-      await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+      await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
         units: [replacement], preparationReference: ready.referencia });
       const applied = adapter.calls[0].units[0].designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId);
       assert.equal(applied.value, assignment.value);
@@ -1787,7 +1810,7 @@ test("edição preserva calibração automática aplicada mesmo com intenção a
     const original = structuredClone({ saved, current });
     if (!explicit) delete replacement.configuracao;
     replacement.conteudo.title = "Conteúdo revisto sem recalibrar";
-    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
       units: [replacement] });
     assert.equal(adapter.calls.length, 1);
     const written = adapter.calls[0].units[0];
@@ -1842,7 +1865,7 @@ test("conjuntos aplicados e correntes com ordem SQL conservam a mesma configura�
   replacement.configuracao.parametros.formas_de_explicacao.reverse();
   const ready = await prepareMaterialization(adapter, [replacement]);
   assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [replacement], preparationReference: ready.referencia });
   assert.deepEqual(normalizeCourseDesignParameterValue(parameter.parameterId,
     adapter.calls[0].units[0].designSnapshot.parameters.find(entry => entry.parameterId === parameter.parameterId).value),
@@ -1921,7 +1944,7 @@ test("override da Unit rege teto, formas, prática, variação e componentes na 
     }, scenario.code);
   }
   const validAdapter = unitScopedPedagogicalAdapter();
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: validAdapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1946,7 +1969,7 @@ test("teto 1 e 2 preservam o inventário e mudam somente sua distribuição", as
     formas: ["plain_definition", "mechanism"]
   });
   const ceilingOne = pedagogicalAdapter({ ceiling: 1 });
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: ceilingOne,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1959,7 +1982,7 @@ test("teto 1 e 2 preservam o inventário e mudam somente sua distribuição", as
   assert.equal(ceilingOne.calls[0].units.length, 2);
 
   const ceilingTwo = pedagogicalAdapter({ ceiling: 2 });
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: ceilingTwo,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -1993,7 +2016,7 @@ test("prática aplica mínimo, operação invariável e dimensões efetivas", as
     oportunidade,
     dimensoesVariadas
   });
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -2042,7 +2065,7 @@ test("variação exigida vazia dispensa dimensões declaradas; exigência não v
     motivo: "A etapa não exige dimensão de variação própria.",
     parametros: { dimensoes_de_variacao_da_pratica: [] }
   };
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter: empty,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -2123,7 +2146,7 @@ test("condição fixada de pesquisa em variação não é relaxada para conjunto
 
 test("consolidação formativa não fabrica requisito de evidência", async () => {
   const adapter = pedagogicalAdapter({ analysisCount: 0, withEvidence: false });
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -2138,7 +2161,7 @@ test("consolidação formativa não fabrica requisito de evidência", async () =
 
 test("formas podem continuar depois da introdução, mas nunca antes dela", async () => {
   const adapter = pedagogicalAdapter({ ceiling: 1, analysisCount: 1 });
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -2182,7 +2205,7 @@ test("conclusão exige cobertura da microssequência, mas preserva produção pa
     complete: true, units: [content]
   }), error => Boolean(preflightBlocker(error, "human_materialization_incomplete_scope_coverage")));
   assert.deepEqual(adapter.calls, []);
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     complete: false, units: [content]
   });
@@ -2210,13 +2233,13 @@ test("conclusão exige cobertura declarada no mapa e permite concluir com o vín
     return true;
   });
   assert.deepEqual(adapter.calls, []);
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
     part: 1, complete: false, units: [pending] });
   assert.equal(adapter.calls.length, 1);
   assert.deepEqual(adapter.calls[0].units[0].designApplication.curriculumScopeItemIds, []);
   // Positivo: o mapa declara o item e a unidade o desenvolve.
   const coherent = pedagogicalAdapter({ analysisCount: 0 });
-  await materializeHumanCoursePart({ adapter: coherent, principal: PRINCIPAL, course: "Curso de Redes",
+  await prepareAndMaterialize({ adapter: coherent, principal: PRINCIPAL, course: "Curso de Redes",
     part: 1, complete: true, units: [pedagogicalUnit(1, { mode: "pratica" })] });
   assert.deepEqual(coherent.calls[0].units[0].designApplication.curriculumScopeItemIds, [CURRICULUM_SCOPE_ID]);
 });
@@ -2255,7 +2278,7 @@ test("materialização desenvolve de fato cada item de escopo atribuído à micr
   assert.deepEqual(adapter.calls, []);
 
   content.aplicacaoPedagogica.cobertura = [CURRICULUM_SCOPE_STATEMENT];
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -2542,7 +2565,7 @@ test("item focal percorre a microssequência e chega às unidades como introduç
     "Aprender e aplicar uma associação de rede."
   ];
 
-  await materializeHumanCoursePart({
+  await prepareAndMaterialize({
     adapter,
     principal: PRINCIPAL,
     course: "Curso de Redes",
@@ -2552,8 +2575,8 @@ test("item focal percorre a microssequência e chega às unidades como introduç
 
   const expectedDesignReads = [{ scopeKind: "didactic_microsequence", scopeRef: "micro-foundations" },
     { scopeKind: "didactic_microsequence", scopeRef: "micro-application" }];
-  assert.deepEqual(designReads, [...expectedDesignReads, ...expectedDesignReads],
-    "preflight e montagem da escrita leem a configuração dos mesmos recortes");
+  assert.deepEqual(designReads, [...expectedDesignReads, ...expectedDesignReads, ...expectedDesignReads],
+    "preparo, revalidação estrutural e montagem leem os mesmos recortes");
   assert.equal(materializationReads.length, 1);
   const [introduced, used, revisited] = materializationReads[0].units;
   assert.equal(introduced.didacticMicrosequenceId, "micro-foundations");
@@ -2609,7 +2632,7 @@ test("cadência delegada recebe escolha e motivo no snapshot sem escritor anteri
   content.configuracao = { motivo: "Produção sintética em blocos pequenos.", parametros: {
     alvo_microssequencias_por_parte: 3, alvo_partes_por_lote: 2, frequencia_de_pausa: "each_part"
   } };
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [content] });
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1, units: [content] });
   assert.equal(adapter.calls.length, 1);
   const applied = adapter.calls[0].units[0].designSnapshot.parameters.filter(({ parameterId }) => ids.includes(parameterId));
   assert.deepEqual(applied.map(({ value }) => value), [3, 2, "each_part"]);
@@ -2684,7 +2707,7 @@ test("preflight confronta seis ensinamentos da base com o percurso inteiro sob t
     for (const item of SIX_TEACHINGS.slice(-ceiling)) assert.ok(incomplete.blockers.some(blocker =>
       blocker.code === "human_materialization_incomplete_analysis_inventory" && blocker.idea === item.statement));
 
-    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
       units, complete: true, preparationReference: ready.referencia });
     assert.equal(adapter.calls.length, 1, "ready seguido na mesma basis permite a escrita única");
     assert.equal(adapter.calls[0].units.length, 6 / ceiling);
@@ -2792,6 +2815,80 @@ test("referência ready inclui aprovação do mapa e não autoriza a escrita ap�
     course: "Curso de Redes", part: 1, units, complete: false, preparationReference: ready.referencia }),
   { status: 409, code: "human_materialization_preflight_stale" });
   assert.deepEqual(adapter.calls, []);
+});
+
+test("preparo projeta leitura editorial e a escrita exige a mesma referência sem gravar em caso stale", async () => {
+  const adapter = adapterFixture();
+  const candidate = unit();
+  const ready = await prepareMaterialization(adapter, [candidate]);
+  assert.equal(ready.state, "ready");
+  assert.equal(ready.leituraEditorial.length, 1);
+  const view = ready.leituraEditorial[0];
+  assert.ok(view.studentContent.some(item => item.text));
+  assert.equal(Object.hasOwn(view, "opening"), false);
+  assert.equal(Object.hasOwn(view, "teaching"), false);
+  assert.ok(view.practice);
+  assert.ok(Array.isArray(view.practice.alternatives));
+  const feedbackText = view.practice.feedback.map(item => item.text);
+  assert.equal(new Set(feedbackText).size, feedbackText.length, "cada feedback é projetado uma única vez");
+  assert.deepEqual(adapter.calls, [], "a projeção é somente leitura");
+
+  await assert.rejects(() => materializeCompletePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [candidate] }),
+  { status: 422, code: "human_materialization_preparation_required" });
+  const changed = structuredClone(candidate);
+  changed.conteudo.title += " alterado";
+  await assert.rejects(() => materializeCompletePart({ adapter, principal: PRINCIPAL,
+    course: "Curso de Redes", part: 1, units: [changed], preparationReference: ready.referencia }),
+  { status: 409, code: "human_materialization_preflight_stale" });
+  assert.deepEqual(adapter.calls, [], "referência ausente ou stale não alcança o escritor");
+
+  await materializeCompletePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+    units: [candidate], preparationReference: ready.referencia });
+  assert.equal(adapter.calls.length, 1);
+});
+
+test("leitura editorial grande pagina em 16 KiB, reconstrói sem perda e vincula a continuação ao candidato", async () => {
+  const adapter = adapterFixture();
+  adapter.getAuthoringProcessPreferences = async () => ({ contract: "aralearn.authoring-process-preferences.v1",
+    revision: 1, updatedAt: "2026-10-20T00:00:00Z", preferences: defaultAuthoringProcessPreferences() });
+  const readDesign = adapter.getCourseDesign;
+  adapter.getCourseDesign = async request => request.scopeKind === "course"
+    ? courseDesignFixture({ courseId: COURSE_ID }, { scope: "course", revision: 8 }) : readDesign(request);
+  const candidate = unit();
+  const baseParagraph = candidate.conteudo.content[0];
+  for (let index = 0; index < 3; index++) candidate.conteudo.content.push({
+    ...structuredClone(baseParagraph), id: `large-paragraph-${index + 1}`,
+    data: { ...baseParagraph.data, text: `${index + 1}: ${"ensino concreto ".repeat(700)}` }
+  });
+  const args = { curso: "Curso de Redes", unidades: [candidate] };
+  const expected = await prepareMaterialization(adapter, [candidate]);
+  assert.equal(expected.state, "ready");
+  assert.ok(new TextEncoder().encode(JSON.stringify(expected.leituraEditorial)).byteLength > 16 * 1024);
+
+  const pages = [];
+  let response = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: args });
+  assert.equal(response.context.temMais, true);
+  const firstContinuation = response.context.continuacao;
+  while (true) {
+    const context = response.context;
+    assert.ok(new TextEncoder().encode(JSON.stringify(context)).byteLength <= 16 * 1024);
+    pages.push(context.fragmento.texto);
+    if (!context.temMais) break;
+    response = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+      name: "preparar_materializacao", rawArguments: { ...args, continuacao: context.continuacao } });
+  }
+  const reconstructed = JSON.parse(pages.join(""));
+  assert.deepEqual(reconstructed.preflight.leituraEditorial, expected.leituraEditorial);
+  assert.match(reconstructed.preflight.referencia, /^materialization-v1:[a-f0-9]{64}$/u);
+  assert.deepEqual(adapter.calls, [], "paginar a leitura não cria gravações nem cache persistido");
+
+  const changed = structuredClone(candidate);
+  changed.conteudo.title += " alterado";
+  await assert.rejects(() => executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: { ...args, unidades: [changed],
+      continuacao: firstContinuation } }), { status: 409, code: "human_read_context_changed" });
 });
 
 test("referência ready perde validade quando muda a Explicação fornecida", async () => {
@@ -2908,7 +3005,7 @@ test("caso real: completar lacunas classifica sem recopiar a base e sem manter a
   const secondUnit = pedagogicalUnit(3, { used: [1] });
   const ready = await prepareMaterialization(adapter, [firstUnit, secondUnit]);
   assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-  await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [firstUnit, secondUnit], preparationReference: ready.referencia });
   const write = adapter.calls[0];
   assert.equal(write.units.length, 2);
@@ -2964,7 +3061,7 @@ test("pré-tentativa do alvo novo antes da explicação declara o alvo pelo requ
     const ready = await prepareMaterialization(adapter, units, { complete: true });
     assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
     assert.deepEqual(ready.blockers, []);
-    await materializeHumanCoursePart({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
+    await prepareAndMaterialize({ adapter, principal: PRINCIPAL, course: "Curso de Redes",
       part: 1, complete: true, units, preparationReference: ready.referencia });
     assert.equal(adapter.calls.length, 1);
     const write = adapter.calls[0];
@@ -3023,7 +3120,7 @@ test("valor declarado de posição da prática não certifica a ordem executada"
   const units = [teaching(1), afterTeachingPractice(2)];
   const ready = await prepareMaterialization(teachingFirst, units, { complete: true });
   assert.equal(ready.state, "ready", JSON.stringify(ready.blockers));
-  await materializeHumanCoursePart({ adapter: teachingFirst, principal: PRINCIPAL,
+  await prepareAndMaterialize({ adapter: teachingFirst, principal: PRINCIPAL,
     course: "Curso de Redes", part: 1, complete: true, units,
     preparationReference: ready.referencia });
   const write = teachingFirst.calls[0];
@@ -3177,7 +3274,7 @@ test("preflight aceita 32 vínculos de Fonte e recusa 33 antes de qualquer grava
     ocorrencias: [{ lugar: "conteudo", recurso: 1, trecho: "O DNS associa nomes a endereços." }] });
 
   const accepted = adapterFixture();
-  await materializeCompletePart({ adapter: accepted, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
+  await prepareAndMaterialize({ adapter: accepted, principal: PRINCIPAL, course: "Curso de Redes", part: 1,
     units: [unit()], explanations: [{ ...explanationFixtures()[0], fontes: Array.from({ length: 32 }, sourceLink) }] });
   assert.equal(accepted.calls.length, 1, "32 vínculos atravessam o preflight e a escrita");
   const links = accepted.calls[0].explanations[0].sourceLinks;
