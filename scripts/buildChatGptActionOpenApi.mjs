@@ -36,6 +36,7 @@ const blockerSchema = {
     properties: {
       code: { type: "string" },
       message: { type: "string" },
+        parameter: { type: "string" },
       unit: { type: "integer" },
       explanation: { type: "integer" },
       entry: { type: "integer" },
@@ -68,6 +69,7 @@ const errorSchema = {
           preflight: { type: "object", additionalProperties: false, required: ["state", "referencia", "completion", "blockers"], properties: {
             state: { type: "string", enum: ["ready", "blocked"] },
             referencia: { type: ["string", "null"] }, completion: { type: "string", enum: ["complete", "partial"] },
+            orientacao: { type: "string", minLength: 1, maxLength: 1000 },
             blockers: blockerSchema
           } },
           blockers: blockerSchema
@@ -112,7 +114,7 @@ const errorSchema = {
 // paged editorial reading for candidate materialization. These local
 // regression ceilings leave about 1% headroom; acceptance in the real editor
 // remains a separate gate.
-const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 212_000;
+const CHATGPT_ACTION_EDITOR_CHARACTER_BUDGET = 212_200;
 const CHATGPT_ACTION_ARTIFACT_CHARACTER_BUDGET = 103_000;
 const STUDY_UNIT_CONTENT_REF = "#/components/schemas/HumanStudyUnitContent";
 

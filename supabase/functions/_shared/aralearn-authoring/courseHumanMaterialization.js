@@ -1492,13 +1492,21 @@ function designSnapshot(design, microsequenceId) {
       503
     );
   }
-  if (parameters.some((parameter) =>
+  const pendingEntries = parameters.filter((parameter) =>
     parameter?.effectiveAssignment?.value === null ||
-    parameter?.effectiveAssignment?.value === undefined)) {
+    parameter?.effectiveAssignment?.value === undefined);
+  if (pendingEntries.length) {
+    const pendingParameters = pendingEntries
+      .map((parameter) => COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) =>
+        id === parameter?.parameterId)?.humanField)
+      .filter((parameter) => typeof parameter === "string" && parameter);
+    const details = pendingParameters.length
+      ? { parameter: pendingParameters.join(", ") } : undefined;
     fail(
       "human_materialization_contextual_calibration_required",
       "Uma unidade nova ainda está sem calibração contextual.",
-      409
+      409,
+      details
     );
   }
   return {
@@ -1553,7 +1561,9 @@ function effectiveParameter(design, parameterId) {
   if (!plainObject(parameter?.effectiveAssignment)) {
     fail("course_service_unavailable", "A configuração pedagógica efetiva está incompleta.", 503);
   }
-  if (parameter.effectiveAssignment.mode === "automatic" && parameter.effectiveAssignment.value === null) {
+  if (parameter.effectiveAssignment.mode === "automatic" &&
+      (parameter.effectiveAssignment.value === null ||
+        parameter.effectiveAssignment.value === undefined)) {
     fail(
       "human_materialization_contextual_calibration_required",
       "Uma unidade nova ainda está sem calibração contextual.",
@@ -1748,8 +1758,20 @@ function validatePedagogicalGroup(
     const design = unit.design;
     const policy = design?.componentPolicy?.effectiveAssignment?.policy;
     const unitTargets = design?.targetPlanItems;
+    const parameterErrors = new Map();
     const parameter = id => { try { return effectiveParameter(design, id); }
-      catch (error) { report(error.code, error.message, error.status); return undefined; } };
+      catch (error) {
+        parameterErrors.set(id, error);
+        const humanField = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id: definitionId }) =>
+          definitionId === id)?.humanField ?? id;
+        report(error.code, error.message, error.status, {
+          unit: unit.inputIndex + 1, parameter: humanField, ...microsequenceDetail
+        });
+        return undefined;
+      } };
+    const calibrationPending = id => parameterErrors.get(id)?.code ===
+      "human_materialization_contextual_calibration_required";
+    const invalidParameter = (id, valid) => !valid && !calibrationPending(id);
     const ceiling = parameter(PARAMETER_IDS.ceiling);
     const requiredForms = parameter(PARAMETER_IDS.explanationForms);
     const practiceMinimum = parameter(PARAMETER_IDS.practiceMinimum);
@@ -1759,12 +1781,17 @@ function validatePedagogicalGroup(
           JSON.stringify([...targetAnalysis]) ||
         JSON.stringify(unitTargets.evidenceRequirementIds || []) !==
           JSON.stringify([...targetEvidence]) ||
-        !Number.isSafeInteger(ceiling) || ceiling < 1 ||
-        !Array.isArray(requiredForms) || !Number.isSafeInteger(practiceMinimum) ||
-        practiceMinimum < 1 || !Array.isArray(requiredDimensions)) {
+        invalidParameter(PARAMETER_IDS.ceiling, Number.isSafeInteger(ceiling) && ceiling >= 1) ||
+        invalidParameter(PARAMETER_IDS.explanationForms, Array.isArray(requiredForms)) ||
+        invalidParameter(PARAMETER_IDS.practiceMinimum,
+          Number.isSafeInteger(practiceMinimum) && practiceMinimum >= 1) ||
+        invalidParameter(PARAMETER_IDS.variationDimensions, Array.isArray(requiredDimensions))) {
       report("course_service_unavailable", "Os parâmetros efetivos essenciais são inválidos.", 503);
       continue;
     }
+    if ([PARAMETER_IDS.ceiling, PARAMETER_IDS.explanationForms,
+      PARAMETER_IDS.practiceMinimum, PARAMETER_IDS.variationDimensions]
+      .some(calibrationPending)) continue;
     const mode = pedagogicalMode(unit.source);
     const noveltySet = new Set(unit.noveltyIds);
     const usedSet = new Set(unit.usedIds);
@@ -2402,6 +2429,24 @@ export function humanMaterializationRecovery(preflight) {
   if (mapApproval) return mapApproval.curriculumMapStatus === "absent"
     ? "Ainda não há mapa curricular salvo neste curso; construa e salve o mapa antes de produzir a unidade."
     : "O mapa curricular está em rascunho. Se a revisão curricular faz parte do pedido, apresente o mapa salvo para a pessoa aprovar; se o pedido já autoriza produzir sem essa revisão, retome a produção com autonomia explícita.";
+  const calibrationBlockers = blockers.filter(blocker =>
+    blocker?.code === "human_materialization_contextual_calibration_required");
+  if (calibrationBlockers.length) {
+    const units = [...new Set(calibrationBlockers
+      .map(blocker => Number.isSafeInteger(blocker?.unit) ? `unidade ${blocker.unit}` : null)
+      .filter(Boolean))];
+    const parameters = [...new Set(calibrationBlockers.flatMap(blocker =>
+      typeof blocker?.parameter === "string"
+        ? blocker.parameter.split(",").map(value => value.trim()).filter(Boolean) : []))];
+    const summary = values => values.length <= 3
+      ? values.join(", ").replace(/, ([^,]*)$/u, " e $1")
+      : `${values.slice(0, 3).join(", ")} e mais ${values.length - 3}`;
+    const target = units.length === 1 ? ` na ${units[0]}`
+      : units.length > 1 ? ` nas ${summary(units)}` : " nas unidades indicadas";
+    const pending = parameters.length
+      ? ` para os parâmetros pendentes (${summary(parameters)})` : "";
+    return `No próprio candidato novo${target}, informe em configuracao.parametros${pending} as escolhas automáticas delegadas conforme público, objetivo e conteúdo e justifique-as em configuracao.motivo; preserve fixações do autor e da pesquisa e repita preparar_materializacao.`;
+  }
   const inventory = blockers.find(blocker =>
     blocker.code === "human_materialization_incomplete_analysis_inventory" && blocker.idea);
   if (inventory) return `Apresente o ensino de “${inventory.idea}” no percurso desta microssequência, respeitando a posição de prática escolhida, e repita a verificação.`;

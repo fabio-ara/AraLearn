@@ -924,6 +924,32 @@ test("#272 resultado comum é curto e não usa envelope de compatibilidade", () 
   assert.doesNotMatch(serialized, /requestId|courseId|revision|hash|path|resultFacts/iu);
 });
 
+test("Actions declara e valida o envelope público de preflight com orientação e parâmetro", () => {
+  const schema = resolveReferences(openApi.components.schemas.HumanTaskError);
+  const validate = new Ajv2020({ allErrors: true, strict: false }).compile(schema);
+  const envelope = {
+    error: {
+      code: "human_materialization_preflight_blocked",
+      message: "Ainda há uma dependência a resolver antes desta produção.",
+      retryable: false,
+      details: { preflight: {
+        state: "blocked", referencia: null, completion: "partial",
+        orientacao: "Preencha configuracao.parametros e repita preparar_materializacao.",
+        blockers: [{
+          code: "human_materialization_contextual_calibration_required",
+          message: "A escolha automática ainda precisa de calibração contextual.",
+          unit: 1, microsequence: "DNS", parameter: "formas_de_explicacao"
+        }]
+      } }
+    },
+    nextDecision: "Repita a preparação após completar a calibração pendente."
+  };
+  assert.equal(validate(envelope), true, JSON.stringify(validate.errors));
+  assert.equal(schema.properties.error.properties.details.properties.preflight.properties.orientacao.maxLength, 1000);
+  assert.equal(schema.properties.error.properties.details.properties.preflight.properties.blockers.items.properties.parameter.type,
+    "string");
+});
+
 test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   assert.deepEqual(openApi.security, [{ AraLearnOAuth: ["openid", "email"] }]);
   const flow = openApi.components.securitySchemes.AraLearnOAuth.flows.authorizationCode;
@@ -948,10 +974,10 @@ test("#272 OAuth, respostas e orçamento permanecem importáveis", () => {
   // `materializar_parte`, a localização da tentativa pelo curso e pela
   // microssequência permanece. No catálogo 11.9.0, com instruções completas do
   // servidor e orientação de triagem, a medição é 102066 minificados / 210555
-  // formatados. Tetos 103000 / 212000 mantêm cerca de 1% de folga local; não
+  // formatados. Tetos 103000 / 212200 mantêm cerca de 1% de folga local; não
   // são limites do editor, cuja aceitação exige conferência no cliente real.
   assert.ok(openApiText.length < 103_000, `OpenAPI ocupa ${openApiText.length} caracteres minificados.`);
-  assert.ok(JSON.stringify(openApi, null, 2).length < 212_000);
+  assert.ok(JSON.stringify(openApi, null, 2).length < 212_200);
   assert.doesNotMatch(openApiText, /"const"/u);
 });
 

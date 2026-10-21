@@ -98,6 +98,37 @@ async function prepareMaterialization(adapter, units, options = {}) {
     planUnits: units.map(humanMaterializationUnitPlan), ...options });
 }
 
+function publicCalibrationAdapter({ pendingIds = [], pendingValue = null, malformed = false } = {}) {
+  const adapter = adapterFixture();
+  adapter.resolvePrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "oauth" });
+  adapter.resolveActionPrincipal = async () => ({ ...PRINCIPAL, authenticationKind: "action" });
+  adapter.getAuthoringProcessPreferences = async () => ({
+    contract: "aralearn.authoring-process-preferences.v1", revision: 0, updatedAt: null,
+    preferences: defaultAuthoringProcessPreferences()
+  });
+  const readDesign = adapter.getCourseDesign;
+  const pending = new Set(pendingIds);
+  adapter.getCourseDesign = async request => {
+    const base = courseDesignFixture({ courseId: COURSE_ID, moduleId: "module-network",
+      lessonId: "lesson-network", microsequenceId: "micro-dns", studyUnitId: "unit-dns" },
+    { scope: request.scopeKind ?? "study_unit", revision: 8 });
+    if (!["didactic_microsequence", "study_unit"].includes(request.scopeKind)) return base;
+    const design = { ...base, ...(await readDesign(request)) };
+    if (malformed && request.scopeKind === "didactic_microsequence") {
+      design.parameters = design.parameters.slice(0, -1);
+      return design;
+    }
+    if (request.scopeKind === "didactic_microsequence") {
+      for (const parameter of design.parameters) if (pending.has(parameter.parameterId)) {
+        parameter.effectiveAssignment = { mode: "automatic", value: pendingValue,
+          origin: "system_default", reason: "Escolha contextual ainda não realizada.", sourceScope: null };
+      }
+    }
+    return design;
+  };
+  return { adapter, readDesign };
+}
+
 test("BPMN na materialização recusa produção inválida e diagnostica legado preservado", async () => {
   for (const slot of ["content", "feedback"]) {
     const adapter = adapterFixture();
@@ -944,8 +975,12 @@ test("parâmetro automático pendente exige escolha contextual justificada do ag
 
     const blocked = await prepareMaterialization(value, [candidate]);
     assert.equal(blocked.state, "blocked");
-    assert.ok(blocked.blockers.some(({ code }) =>
-      code === "human_materialization_contextual_calibration_required"));
+    const calibration = blocked.blockers.find(({ code }) =>
+      code === "human_materialization_contextual_calibration_required");
+    assert.ok(calibration);
+    assert.equal(calibration.unit, 1);
+    assert.equal(calibration.parameter, definition.humanField);
+    assert.match(humanMaterializationRecovery(blocked), new RegExp(definition.humanField, "u"));
     assert.deepEqual(value.calls, []);
 
     candidate.configuracao = {
@@ -969,6 +1004,175 @@ test("parâmetro automático pendente exige escolha contextual justificada do ag
     assert.equal(applied.origin, "automatic");
     assert.equal(applied.reason, candidate.configuracao.motivo);
   });
+});
+
+test("calibração pendente sem campo catalogado ainda bloqueia o snapshot", async () => {
+  const adapter = adapterFixture();
+  const readDesign = adapter.getCourseDesign;
+  adapter.getCourseDesign = async request => {
+    const design = await readDesign(request);
+    if (request.scopeKind === "didactic_microsequence") {
+      design.parameters[0] = {
+        ...design.parameters[0], parameterId: "parameter_malformed",
+        effectiveAssignment: { ...design.parameters[0].effectiveAssignment, value: null }
+      };
+    }
+    return design;
+  };
+  const blocked = await prepareMaterialization(adapter, [unit()]);
+  assert.equal(blocked.state, "blocked");
+  assert.equal(blocked.blockers[0].code, "human_materialization_contextual_calibration_required");
+  assert.equal(blocked.blockers[0].parameter, undefined);
+  assert.deepEqual(adapter.calls, []);
+});
+
+test("calibração nova pelos handlers públicos não cria 503 secundário", async () => {
+  const centralIds = [
+    "new_analysis_unit_ceiling_per_expository_study_unit",
+    "required_explanation_forms",
+    "minimum_distinct_practice_opportunities_per_evidence_requirement",
+    "required_practice_variation_dimensions"
+  ];
+  for (const channel of ["actions", "mcp"]) for (const pendingValue of [null, undefined])
+    for (const pendingId of centralIds) {
+      const definition = COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === pendingId);
+      const { adapter } = publicCalibrationAdapter({ pendingIds: [pendingId], pendingValue });
+      const response = await materializationChannel(channel, adapter, "preparar_materializacao", {
+        curso: "Curso de Redes", unidades: [unit()]
+      });
+      assert.equal(response.status, 200, `${channel}:${pendingId}:${pendingValue} ${response.envelope}`);
+      assert.equal(response.value.context.preflight.state, "blocked", `${channel}:${pendingId}:${pendingValue}`);
+      const blockers = response.value.context.preflight.blockers;
+      assert.ok(blockers.some(({ code, parameter }) =>
+        code === "human_materialization_contextual_calibration_required" &&
+        parameter?.includes(definition.humanField)), `${channel}:${pendingId}:${pendingValue}`);
+      assert.equal(blockers.some(({ code }) => code === "course_service_unavailable"), false,
+        `${channel}:${pendingId}:${pendingValue}: ausência não pode gerar 503 secundário`);
+      assert.equal(adapter.calls.length, 0, `${channel}:${pendingId}:${pendingValue}: sem escrita`);
+    }
+
+  const allIds = COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id);
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter, readDesign } = publicCalibrationAdapter({ pendingIds: allIds });
+    const blocked = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", unidades: [unit()]
+    });
+    assert.equal(blocked.status, 200, `${channel}:todos nulos ${blocked.envelope}`);
+    assert.equal(blocked.value.context.preflight.state, "blocked", `${channel}:todos nulos`);
+    const blockers = blocked.value.context.preflight.blockers;
+    assert.ok(blockers.some(({ code }) => code === "human_materialization_contextual_calibration_required"),
+      `${channel}:todos nulos: calibração preservada`);
+    assert.equal(blockers.some(({ code }) => code === "course_service_unavailable"), false,
+      `${channel}:todos nulos: nenhum 503 derivado`);
+    const diagnostic = JSON.stringify(blockers);
+    const humanFields = COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ humanField }) => humanField);
+    assert.equal(humanFields.join(", ").length, 319,
+      "a concatenação de referência dos 12 campos permanece mensurável sob o limite individual");
+    assert.ok(blocked.value.nextDecision.length <= 1000,
+      `${channel}:todos nulos: nextDecision respeita o limite do resultado`);
+    for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+      assert.match(diagnostic, new RegExp(definition.humanField, "u"),
+        `${channel}:todos nulos: ${definition.humanField}`);
+    }
+    const rejected = await materializationChannel(channel, adapter, "materializar_parte", {
+      curso: "Curso de Redes", unidades: [unit()]
+    });
+    const error = channel === "actions" ? rejected.payload.error : rejected.value.error;
+    assert.ok(error, `${channel}:ERROR público preservado`);
+    assert.equal(error.code, "human_materialization_preflight_blocked", `${channel}:código do ERROR`);
+    const projected = error.details?.preflight;
+    assert.equal(projected?.state, "blocked", `${channel}:preflight projetado`);
+    assert.match(String(projected?.orientacao), /configuracao\.parametros/u, `${channel}:orientação projetada`);
+    const projectedDiagnostic = JSON.stringify(projected.blockers);
+    for (const definition of COURSE_DESIGN_PARAMETER_DEFINITIONS) {
+      assert.match(projectedDiagnostic, new RegExp(definition.humanField, "u"),
+        `${channel}:ERROR não perde ${definition.humanField}`);
+    }
+    assert.equal(projected.blockers.some(({ code }) => code === "course_service_unavailable"), false,
+      `${channel}:calibração não cria 503 secundário no ERROR`);
+    const partial = unit();
+    const partialDefinition = COURSE_DESIGN_PARAMETER_DEFINITIONS[0];
+    const original = await readDesign({ scopeKind: "didactic_microsequence" });
+    const partialValue = original.parameters.find(({ parameterId }) =>
+      parameterId === partialDefinition.id).effectiveAssignment.value;
+    partial.configuracao = { motivo: "Calibração parcial conforme o contexto da unidade.", parametros: {
+      [partialDefinition.humanField]: structuredClone(partialValue)
+    } };
+    const partialResponse = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", unidades: [partial]
+    });
+    assert.equal(partialResponse.value.context.preflight.state, "blocked", `${channel}:parcial`);
+    assert.equal(partialResponse.value.context.preflight.blockers.some(({ code }) =>
+      code === "course_service_unavailable"), false, `${channel}:parcial: nenhum 503 derivado`);
+
+    const complete = unit();
+    complete.configuracao = { motivo: "Calibração completa conforme público, objetivo e conteúdo.", parametros:
+      Object.fromEntries(original.parameters.map((parameter) => [
+        COURSE_DESIGN_PARAMETER_DEFINITIONS.find(({ id }) => id === parameter.parameterId).humanField,
+        structuredClone(parameter.effectiveAssignment.value)
+      ])) };
+    const ready = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", unidades: [complete]
+    });
+    assert.equal(ready.value.context.preflight.state, "ready", `${channel}:completo`);
+    assert.match(ready.value.context.preflight.referencia, /^materialization-v1:[a-f0-9]{64}$/u);
+    assert.equal(adapter.calls.length, 0, `${channel}:completo: preparo sem escrita`);
+  }
+
+  for (const channel of ["actions", "mcp"]) {
+    const { adapter } = publicCalibrationAdapter({ malformed: true });
+    const response = await materializationChannel(channel, adapter, "preparar_materializacao", {
+      curso: "Curso de Redes", unidades: [unit()]
+    });
+    assert.equal(response.value.context.preflight.state, "blocked", `${channel}:configuração inválida`);
+    assert.ok(response.value.context.preflight.blockers.some(({ code }) =>
+      code === "course_service_unavailable"), `${channel}:503 genuíno preservado`);
+    assert.equal(adapter.calls.length, 0, `${channel}:configuração inválida sem escrita`);
+  }
+});
+
+test("recuperação de calibração resume lote grande sem perder unidades nos blockers", () => {
+  const blockers = Array.from({ length: 256 }, (_, index) => ({
+    code: "human_materialization_contextual_calibration_required",
+    message: `A unidade ${index + 1} ainda exige calibração.`,
+    unit: index + 1,
+    parameter: "formas_de_explicacao"
+  }));
+  const recovery = humanMaterializationRecovery({ blockers });
+  assert.ok(recovery.length <= 1000, `orientação excedeu o contrato: ${recovery.length}`);
+  assert.match(recovery, /unidade 1, unidade 2, unidade 3 e mais 253/u);
+  assert.match(recovery, /configuracao\.parametros/u);
+  assert.match(recovery, /preserve fixações do autor e da pesquisa/u);
+  assert.equal(blockers.length, 256);
+});
+
+test("preparação paginada mantém nextDecision curto no lote máximo", async () => {
+  const { adapter } = publicCalibrationAdapter({
+    pendingIds: COURSE_DESIGN_PARAMETER_DEFINITIONS.map(({ id }) => id)
+  });
+  const unidades = Array.from({ length: 64 }, (_, index) => ({ ...structuredClone(unit()), posicao: index + 1 }));
+  const args = { curso: "Curso de Redes", unidades };
+  const first = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: args });
+  assert.equal(first.context.temMais, true);
+  assert.equal(typeof first.context.continuacao, "string");
+  assert.equal(first.context.fragmento.inicio, 0);
+  assert.ok(first.nextDecision.length <= 1000);
+  assert.match(first.nextDecision, /continue a mesma preparação/iu);
+  const second = await executeHumanCourseTask({ adapter, principal: PRINCIPAL,
+    name: "preparar_materializacao", rawArguments: { ...args, continuacao: first.context.continuacao } });
+  assert.ok(second.nextDecision.length <= 1000);
+  assert.ok(second.context.fragmento.inicio > first.context.fragmento.inicio);
+  assert.equal(adapter.calls.length, 0, "paginação e calibração permanecem sem escrita");
+});
+
+test("recuperação de calibração não ultrapassa aprovação do mapa", () => {
+  const recovery = humanMaterializationRecovery({ blockers: [
+    { code: "human_materialization_contextual_calibration_required", unit: 1, parameter: "alvo_palavras_conversa" },
+    { code: "human_materialization_map_approval_required", curriculumMapStatus: "draft" }
+  ] });
+  assert.match(recovery, /apresente o mapa salvo para a pessoa aprovar/u);
+  assert.doesNotMatch(recovery, /configuracao\.parametros/u);
 });
 test("MCP aceita escolha contextual explícita e distingue indisponibilidade de leitura", async () => {
   for (const unavailable of [false, true]) {
